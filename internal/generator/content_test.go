@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/layout"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestBuildContentItems(t *testing.T) {

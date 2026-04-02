@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/testutil"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // MockFileStat is a test implementation of FileStat that allows controlling

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // MetadataFilePath is the location of metadata JSON within the PPTX archive.

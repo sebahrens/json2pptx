@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // defaultTextSizeHPt is the default font size for shape_grid text cells in

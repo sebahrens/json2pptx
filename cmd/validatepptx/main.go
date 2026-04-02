@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ValidationResult holds the validation outcome.

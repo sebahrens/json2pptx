@@ -12,7 +12,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // Package represents an open PPTX package (OPC archive).

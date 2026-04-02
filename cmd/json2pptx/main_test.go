@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/layout"
-	"github.com/ahrens/go-slide-creator/internal/pipeline"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Tests for JSON input mode

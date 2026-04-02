@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/parser"
-	"github.com/ahrens/go-slide-creator/internal/pipeline"
-	"github.com/ahrens/go-slide-creator/internal/template"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/parser"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func main() {

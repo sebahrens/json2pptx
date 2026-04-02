@@ -7,7 +7,7 @@ import (
 	_ "image/png"  // Register PNG decoder
 	"os"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // EMUsPerPixel is the conversion factor from pixels to EMUs (English Metric Units).

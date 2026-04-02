@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // regexSldLayoutID extracts the id attribute from <p:sldLayoutId id="NNN" .../> entries.

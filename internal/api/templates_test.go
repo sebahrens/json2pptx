@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
-	"github.com/ahrens/go-slide-creator/internal/template"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // mockTemplateCache is a simple in-memory cache for testing.

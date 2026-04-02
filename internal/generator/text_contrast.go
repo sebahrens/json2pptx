@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/ahrens/svggen"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // =============================================================================

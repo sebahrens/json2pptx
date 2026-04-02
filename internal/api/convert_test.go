@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
-	"github.com/ahrens/go-slide-creator/internal/pipeline"
-	"github.com/ahrens/go-slide-creator/internal/template"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 // TestConvertSuccess validates AC1: Convert Success.

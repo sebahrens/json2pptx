@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/ahrens/go-slide-creator/internal/resource"
+	"github.com/sebahrens/json2pptx/internal/resource"
 )
 
 // hasURLReferences returns true if any slide contains a URL reference that needs resolution.

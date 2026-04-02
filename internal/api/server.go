@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
-	"github.com/ahrens/go-slide-creator/internal/pipeline"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // requestIDKey is the context key for storing the request ID.

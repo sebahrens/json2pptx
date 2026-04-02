@@ -3,7 +3,7 @@ package chartutil
 import (
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/internal/safeyaml"
 )
 
 func TestGaugeE2E_DataFlow(t *testing.T) {

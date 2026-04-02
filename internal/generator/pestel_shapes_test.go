@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestIsPESTELDiagram(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/safeyaml"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // NormalizeDiagramData converts common YAML shorthand formats into the canonical

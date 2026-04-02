@@ -1,4 +1,4 @@
-module github.com/ahrens/go-slide-creator
+module github.com/sebahrens/json2pptx
 
 go 1.25.0
 

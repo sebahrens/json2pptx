@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/templates"
+	"github.com/sebahrens/json2pptx/templates"
 )
 
 const (

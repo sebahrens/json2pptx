@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 func TestGenerateShapeXML_MinimalRect(t *testing.T) {

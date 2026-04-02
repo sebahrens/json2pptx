@@ -12,15 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/config"
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/layout"
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/resource"
-	"github.com/ahrens/go-slide-creator/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/resource"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/ahrens/svggen"
-	"github.com/ahrens/go-slide-creator/internal/template"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ConversionResult holds the result of a single file conversion.

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // applySmartAutofit uses font metrics to determine whether text overflows the

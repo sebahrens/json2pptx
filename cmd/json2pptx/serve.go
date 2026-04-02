@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/api"
-	"github.com/ahrens/go-slide-creator/internal/config"
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/template"
+	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 func runServe() error {

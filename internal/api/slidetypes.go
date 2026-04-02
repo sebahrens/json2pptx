@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // SlideTypesResponse is the response for GET /api/v1/slide-types.

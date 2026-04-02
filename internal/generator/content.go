@@ -1,8 +1,8 @@
 package generator
 
 import (
-	"github.com/ahrens/go-slide-creator/internal/layout"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // BuildContentItems creates content items for the generator based on layout content mappings.

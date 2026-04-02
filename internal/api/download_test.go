@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
 )
 
 func TestDownloadHandler_Success(t *testing.T) {

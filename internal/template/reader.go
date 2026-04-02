@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // Reader provides access to PPTX template files.

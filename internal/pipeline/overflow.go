@@ -3,9 +3,9 @@ package pipeline
 import (
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/layout"
-	"github.com/ahrens/go-slide-creator/internal/textfit"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // estimateBodyOverflow checks whether the body text content of a slide would

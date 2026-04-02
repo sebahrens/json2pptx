@@ -8,7 +8,7 @@ package pagination
 import (
 	"fmt"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // DefaultMaxBullets is the fallback threshold when no template layout

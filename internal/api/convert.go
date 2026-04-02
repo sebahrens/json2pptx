@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
-	"github.com/ahrens/go-slide-creator/internal/pipeline"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // DefaultConvertTimeout is the default timeout for convert operations (2 minutes).

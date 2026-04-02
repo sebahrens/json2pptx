@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // TestGaugeSmallDimensions tests gauge rendering at small dimensions

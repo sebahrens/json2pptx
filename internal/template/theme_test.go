@@ -3,7 +3,7 @@ package template
 import (
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // TestParseTheme_StandardTemplate tests theme extraction from a standard PPTX template.

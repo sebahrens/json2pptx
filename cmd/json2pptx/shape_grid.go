@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/icons"
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/shapegrid"
-	"github.com/ahrens/go-slide-creator/internal/types"
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/icons"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // ShapeGridResult holds the output of resolveShapeGrid: both the raw XML

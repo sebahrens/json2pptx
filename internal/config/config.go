@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/safeyaml"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Config holds all configuration for the service.

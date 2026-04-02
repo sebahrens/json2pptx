@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/icons"
+	"github.com/sebahrens/json2pptx/icons"
 	"github.com/tdewolff/canvas"
 	"github.com/tdewolff/canvas/renderers/rasterizer"
 )

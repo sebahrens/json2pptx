@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // ParseLayouts extracts layout metadata from a PPTX template.

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/template"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 func TestAnalyzeTemplateForSkillInfo_FiltersOtherPlaceholders(t *testing.T) {

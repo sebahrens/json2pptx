@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/ahrens/svggen"
-	"github.com/ahrens/go-slide-creator/internal/template"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 func main() {

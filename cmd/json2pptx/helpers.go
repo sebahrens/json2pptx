@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/ahrens/go-slide-creator/internal/template"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // getOrAnalyzeTemplate retrieves cached template analysis or analyzes on demand.

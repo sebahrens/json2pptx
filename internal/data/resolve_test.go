@@ -3,7 +3,7 @@ package data
 import (
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestResolveField_NoVars(t *testing.T) {

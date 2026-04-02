@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/data"
-	"github.com/ahrens/go-slide-creator/internal/parser"
-	"github.com/ahrens/go-slide-creator/internal/themegen"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/data"
+	"github.com/sebahrens/json2pptx/internal/parser"
+	"github.com/sebahrens/json2pptx/internal/themegen"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // PrepareRequest holds the inputs for presentation preparation.

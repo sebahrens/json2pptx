@@ -14,7 +14,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // SplitContentOverflow splits slides that have more content items than any

@@ -9,11 +9,11 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/layout"
-	"github.com/ahrens/go-slide-creator/internal/pagination"
-	"github.com/ahrens/go-slide-creator/internal/parser"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/pagination"
+	"github.com/sebahrens/json2pptx/internal/parser"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Pipeline is the interface for the presentation conversion pipeline.

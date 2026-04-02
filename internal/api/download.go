@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
 )
 
 // validDownloadFilename matches only hex-encoded filenames with .pptx extension

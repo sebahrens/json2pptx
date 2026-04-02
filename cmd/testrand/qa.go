@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/visualqa"
+	"github.com/sebahrens/json2pptx/internal/visualqa"
 )
 
 // slideInputForQA mirrors just the fields we need from the JSON input.

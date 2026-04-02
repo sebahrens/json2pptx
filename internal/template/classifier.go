@@ -4,7 +4,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // EMU (English Metric Units) constants for slide layout classification.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // GenerateThemeOverride creates a full ThemeOverride from a single brand hex color.

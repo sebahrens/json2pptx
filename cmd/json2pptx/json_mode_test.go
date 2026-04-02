@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/generator"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestSanitizeOutputFilename_PathTraversal(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // complexDiagramTypes lists diagram types that are inherently complex and

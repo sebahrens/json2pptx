@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/internal/safeyaml"
 )
 
 // Context holds resolved variable data for interpolation.

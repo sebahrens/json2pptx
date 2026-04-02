@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // SVGConversionError indicates that SVG conversion failed.

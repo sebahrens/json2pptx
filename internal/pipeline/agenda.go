@@ -1,6 +1,6 @@
 package pipeline
 
-import "github.com/ahrens/go-slide-creator/internal/types"
+import "github.com/sebahrens/json2pptx/internal/types"
 
 // GenerateAgenda creates an agenda slide from section divider titles and inserts
 // it after the title slide (index 0). If there are fewer than 2 sections, no

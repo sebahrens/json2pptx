@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/template"
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // Note: singlePassContext, mediaRel, and nativeSVGInsert are defined in contexts.go

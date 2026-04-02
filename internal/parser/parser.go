@@ -6,7 +6,7 @@ package parser
 import (
 	"fmt"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Parse is a deprecated stub. Markdown parsing has been removed; use JSON mode.

@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // =============================================================================

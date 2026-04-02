@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	apierrors "github.com/ahrens/go-slide-creator/internal/api/errors"
-	"github.com/ahrens/go-slide-creator/internal/template"
+	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 // TestNewServer verifies that NewServer creates a properly configured server.

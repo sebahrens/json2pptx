@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // FileStatResult contains the result of a file stat operation.

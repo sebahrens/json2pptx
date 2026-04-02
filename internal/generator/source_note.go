@@ -3,7 +3,7 @@ package generator
 import (
 	"fmt"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // Source note position constants (in EMUs).

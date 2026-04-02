@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // TestValidateSlidesAgainstTemplate_ChartDiagramSvggen verifies that

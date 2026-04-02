@@ -16,7 +16,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/testrand"
+	"github.com/sebahrens/json2pptx/internal/testrand"
 )
 
 func main() {

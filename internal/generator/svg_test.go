@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // markToolsFound marks the converter's toolOnce as already fired,

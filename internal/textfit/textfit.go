@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/ahrens/svggen/fontcache"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/tdewolff/canvas"
 )
 

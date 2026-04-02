@@ -6,9 +6,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/types"
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // ParseTheme extracts theme information from a PPTX template.

@@ -3,7 +3,7 @@ package layout
 import (
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // canonicalRule defines how a canonical layout name maps to template layouts via tags.

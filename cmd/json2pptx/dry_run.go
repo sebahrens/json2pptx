@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/ahrens/go-slide-creator/internal/config"
-	"github.com/ahrens/go-slide-creator/internal/pptx"
-	"github.com/ahrens/go-slide-creator/internal/template"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // dryRunOutput is the top-level JSON printed to stdout in dry-run mode.

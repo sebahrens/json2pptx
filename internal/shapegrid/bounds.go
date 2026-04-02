@@ -1,6 +1,6 @@
 package shapegrid
 
-import "github.com/ahrens/go-slide-creator/internal/pptx"
+import "github.com/sebahrens/json2pptx/internal/pptx"
 
 // Standard 16:9 slide dimensions in EMU.
 const (

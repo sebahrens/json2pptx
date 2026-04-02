@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // SlotPopulationConfig provides configuration for slot-based content population.

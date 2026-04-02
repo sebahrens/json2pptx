@@ -9,7 +9,7 @@ import (
 	"github.com/tdewolff/canvas/renderers/rasterizer"
 
 	"github.com/ahrens/svggen/raster"
-	"github.com/ahrens/go-slide-creator/internal/types"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // RenderSlidePNG renders a single slide definition to PNG bytes.

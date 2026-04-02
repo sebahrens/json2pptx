@@ -5,8 +5,8 @@ import (
 	"archive/zip"
 	"os"
 
-	"github.com/ahrens/go-slide-creator/internal/types"
-	"github.com/ahrens/go-slide-creator/internal/utils"
+	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // ZipContext holds ZIP I/O state for single-pass generation.

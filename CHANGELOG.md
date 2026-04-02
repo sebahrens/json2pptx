@@ -51,5 +51,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Worker pool for concurrent chart rendering
 - Template caching with LRU eviction
 
-[Unreleased]: https://github.com/ahrens/go-slide-creator/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/ahrens/go-slide-creator/releases/tag/v0.1.0
+[Unreleased]: https://github.com/sebahrens/json2pptx/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sebahrens/json2pptx/releases/tag/v0.1.0

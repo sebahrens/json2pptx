@@ -1,7 +1,7 @@
 // Package generator provides PPTX file generation from slide specifications.
 package generator
 
-import "github.com/ahrens/go-slide-creator/internal/types"
+import "github.com/sebahrens/json2pptx/internal/types"
 
 // Re-export SVG configuration types from the types package.
 // These types are defined in internal/types to avoid circular dependencies.
