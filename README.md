@@ -55,8 +55,8 @@ brew install go
 brew install librsvg
 
 # Clone and install
-git clone https://github.com/ahrens/go-slide-creator.git
-cd go-slide-creator
+git clone https://github.com/sebahrens/json2pptx.git
+cd json2pptx
 make install
 ```
 
@@ -82,8 +82,8 @@ export PATH="/usr/local/go/bin:$PATH"
 sudo apt install -y make librsvg2-bin
 
 # Clone and install
-git clone https://github.com/ahrens/go-slide-creator.git
-cd go-slide-creator
+git clone https://github.com/sebahrens/json2pptx.git
+cd json2pptx
 make install
 ```
 
@@ -101,8 +101,8 @@ source ~/.bashrc
 Install [Go](https://go.dev/dl/) using the Windows installer, then:
 
 ```powershell
-git clone https://github.com/ahrens/go-slide-creator.git
-cd go-slide-creator
+git clone https://github.com/sebahrens/json2pptx.git
+cd json2pptx
 .\install.ps1
 ```
 
@@ -124,8 +124,8 @@ Follow the Linux instructions above inside your WSL2 distro. Generated `.pptx` f
 If you prefer Make, use Git Bash or MSYS2 which provide the bash shell the Makefile requires:
 
 ```sh
-git clone https://github.com/ahrens/go-slide-creator.git
-cd go-slide-creator
+git clone https://github.com/sebahrens/json2pptx.git
+cd json2pptx
 make install
 ```
 
@@ -162,7 +162,7 @@ docker run -d \
   -p 8080:8080 \
   -v ./templates:/app/templates:ro \
   -v ./output:/app/output:rw \
-  ghcr.io/ahrens/go-slide-creator:latest
+  ghcr.io/sebahrens/json2pptx:latest
 ```
 
 ## Quick Start
