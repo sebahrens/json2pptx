@@ -49,13 +49,13 @@ func OuterShadow(blurPt, distPt float64, dirDeg int, color string, alpha int) Sh
 func (s Shadow) WriteEffectXML(buf *bytes.Buffer) {
 	buf.WriteString(`<a:outerShdw`)
 	if s.BlurRadius > 0 {
-		buf.WriteString(fmt.Sprintf(` blurRad="%d"`, s.BlurRadius))
+		fmt.Fprintf(buf, ` blurRad="%d"`, s.BlurRadius)
 	}
 	if s.Distance > 0 {
-		buf.WriteString(fmt.Sprintf(` dist="%d"`, s.Distance))
+		fmt.Fprintf(buf, ` dist="%d"`, s.Distance)
 	}
 	if s.Direction != 0 {
-		buf.WriteString(fmt.Sprintf(` dir="%d"`, s.Direction))
+		fmt.Fprintf(buf, ` dir="%d"`, s.Direction)
 	}
 	if s.Alignment != "" {
 		buf.WriteString(fmt.Sprintf(` algn="%s"`, s.Alignment))

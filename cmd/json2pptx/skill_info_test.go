@@ -9,7 +9,7 @@ import (
 )
 
 func TestAnalyzeTemplateForSkillInfo_FiltersOtherPlaceholders(t *testing.T) {
-	templatePath := "../../testdata/templates/forest-green.pptx"
+	templatePath := "../../templates/forest-green.pptx"
 
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo(templatePath, cache, "full")

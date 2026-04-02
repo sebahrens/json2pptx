@@ -562,8 +562,6 @@ const (
 	// rowHeaderBodyGap is the horizontal gap between header and body in a row.
 	rowHeaderBodyGap int64 = 91440 // ~0.1"
 
-	// rowBodyInset is the text inset for the body area.
-	rowBodyInset int64 = 72000 // ~0.079"
 )
 
 // generatePanelRowsGroupXML produces the complete <p:grpSp> XML for panels arranged
@@ -647,15 +645,6 @@ const (
 
 	// statCardInset is the text inset for stat card shapes.
 	statCardInset int64 = 108000 // ~0.118"
-
-	// statCardValueHeightRatio is the hero value zone as a fraction of card height.
-	statCardValueHeightRatio = 0.45
-
-	// statCardLabelHeightRatio is the title label zone as a fraction of card height.
-	statCardLabelHeightRatio = 0.20
-
-	// statCardMinCols is the minimum number of columns in the stat card grid.
-	statCardMinCols = 2
 
 	// statCardMaxCols is the maximum number of columns.
 	statCardMaxCols = 4
@@ -843,7 +832,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 //
 // For panels without icons (iconBytes == nil), no p:pic is emitted and no
 // relationship is allocated — this is the normal case per the reference file.
-func (ctx *singlePassContext) allocatePanelIconRelIDs() {
+func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 	// We need a global shape ID counter that avoids conflicts across slides.
 	// Start at a high base to avoid conflicts with typical OOXML IDs.
 	nextShapeID := uint32(10000)

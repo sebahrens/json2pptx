@@ -203,7 +203,7 @@ const minDiagramHeightEMU int64 = 1828800
 
 // processDiagramContent handles unified diagram content (charts and infographics).
 // This is the preferred code path for all visual diagrams.
-func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int, resolver *placeholderResolver) {
+func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int, resolver *placeholderResolver) { //nolint:gocognit
 	// Native panel shapes: intercept panel_layout (columns/rows/stat_cards) before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPanelNativeLayout(diagramSpec) {
 		ctx.processPanelNativeShapes(slideNum, item, shapeIdx)

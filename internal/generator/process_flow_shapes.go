@@ -149,7 +149,7 @@ func (ctx *singlePassContext) processProcessFlowNativeShapes(slideNum int, item 
 }
 
 // parseProcessFlowDiagramData extracts steps, connections, and direction from the diagram data map.
-func parseProcessFlowDiagramData(data map[string]any) ([]processFlowStep, []processFlowConnection, string) {
+func parseProcessFlowDiagramData(data map[string]any) ([]processFlowStep, []processFlowConnection, string) { //nolint:gocognit
 	var steps []processFlowStep
 
 	if stepsRaw, ok := data["steps"].([]any); ok {
@@ -419,7 +419,6 @@ func pfLayoutSingleRow(layouts []pfStepLayout, bounds types.BoundingBox, totalW,
 				totalW += pfGap
 			}
 		}
-		maxH = int64(float64(maxH) * scale)
 	}
 
 	startX := bounds.X + (bounds.Width-totalW)/2
@@ -435,7 +434,7 @@ func pfLayoutSingleRow(layouts []pfStepLayout, bounds types.BoundingBox, totalW,
 }
 
 // pfLayoutMultiRow distributes steps across multiple rows with zigzag ordering.
-func pfLayoutMultiRow(layouts []pfStepLayout, steps []processFlowStep, bounds types.BoundingBox, maxH int64, n int) pfLayoutResult {
+func pfLayoutMultiRow(layouts []pfStepLayout, steps []processFlowStep, bounds types.BoundingBox, maxH int64, n int) pfLayoutResult { //nolint:gocognit
 	// Find number of rows where steps fit.
 	numRows := 2
 	for numRows <= n {
@@ -476,7 +475,6 @@ func pfLayoutMultiRow(layouts []pfStepLayout, steps []processFlowStep, bounds ty
 		}
 		maxH = int64(float64(maxH) * scale)
 		rowSpacing = int64(float64(rowSpacing) * scale)
-		totalH = bounds.Height
 	}
 
 	scaledTotalH := int64(numRows)*maxH + int64(numRows-1)*rowSpacing

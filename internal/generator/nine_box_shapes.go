@@ -226,7 +226,7 @@ func decodeNineBoxAxes(encoded string) (xTitle string, yTitle string, xLabels, y
 
 // generateNineBoxGroupXML produces the complete <p:grpSp> XML for a 3x3 nine box grid
 // with axis labels.
-func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string { //nolint:gocognit
 	// panels[0] = axis metadata, panels[1..9] = cells [row*3+col]
 	if len(panels) != 10 {
 		slog.Warn("generateNineBoxGroupXML: expected 10 panels (1 axis + 9 cells)", "got", len(panels))
@@ -277,6 +277,9 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	for row := 0; row < 3; row++ {
 		for col := 0; col < 3; col++ {
 			panelIdx := 1 + row*3 + col // skip axis panel at index 0
+			if panelIdx >= len(panels) {
+				continue
+			}
 			panel := panels[panelIdx]
 			colors := nineBoxCellColors[row][col]
 

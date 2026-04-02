@@ -43,9 +43,6 @@ import (
 
 // Porter EMU constants.
 const (
-	// porterGap is the gap between the center box edge and peripheral box edge (EMU).
-	porterGap int64 = 146304 // ~0.16"
-
 	// porterCornerRadius is the roundRect adjustment value.
 	porterCornerRadius int64 = 8000
 

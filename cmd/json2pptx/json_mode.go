@@ -1301,7 +1301,7 @@ func isLikelySubtitle(placeholderID string) bool {
 func scoreChartData(item ContentInput) []string {
 	spec := item.ChartValue
 	if spec == nil && len(item.Value) > 0 {
-		var parsed types.ChartSpec
+		var parsed types.ChartSpec //nolint:staticcheck // backward compat
 		if err := json.Unmarshal(item.Value, &parsed); err == nil {
 			spec = &parsed
 		}
@@ -1587,10 +1587,10 @@ func jsonSlideToDefinition(slide SlideInput) types.SlideDefinition { //nolint:go
 				}
 			}
 		case "chart":
-			if chart, ok := resolved.(*types.ChartSpec); ok {
+			if chart, ok := resolved.(*types.ChartSpec); ok { //nolint:staticcheck // backward compat
 				def.Content.DiagramSpec = chart.ToDiagramSpec()
 			} else if len(item.Value) > 0 {
-				var chart types.ChartSpec
+				var chart types.ChartSpec //nolint:staticcheck // backward compat
 				if json.Unmarshal(item.Value, &chart) == nil {
 					def.Content.DiagramSpec = chart.ToDiagramSpec()
 				}

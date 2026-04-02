@@ -169,16 +169,12 @@ func parseValueChainData(data map[string]any) ([]nativePanelData, valueChainMeta
 
 	// Parse support activities
 	supportRaw := extractActivityList(data, "support", "support_activities")
-	for _, act := range supportRaw {
-		panels = append(panels, act)
-	}
+	panels = append(panels, supportRaw...)
 	meta.supportCount = len(supportRaw)
 
 	// Parse primary activities
 	primaryRaw := extractActivityList(data, "primary", "primary_activities")
-	for _, act := range primaryRaw {
-		panels = append(panels, act)
-	}
+	panels = append(panels, primaryRaw...)
 	meta.primaryCount = len(primaryRaw)
 
 	// Parse margin label
@@ -292,6 +288,9 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 	if meta.supportCount > 0 {
 		barH := (supportH - int64(meta.supportCount-1)*vcGap) / int64(meta.supportCount)
 		for i := 0; i < meta.supportCount; i++ {
+			if i >= len(panels) {
+				break
+			}
 			panel := panels[i]
 			barY := bounds.Y + int64(i)*(barH+vcGap)
 			sc := vcSupportColors[i%len(vcSupportColors)]
@@ -333,7 +332,6 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 			nextID,
 		)
 		children = append(children, []byte(xml))
-		nextID++
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}

@@ -80,11 +80,6 @@ func isHeatmapDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "heatmap"
 }
 
-// heatmapCellData holds parsed data for a single cell in the NxM grid.
-type heatmapCellData struct {
-	value float64
-}
-
 // heatmapParsedData holds all parsed heatmap data.
 type heatmapParsedData struct {
 	rowLabels  []string
@@ -200,8 +195,8 @@ func decodeHeatmapMeta(encoded string) (minVal, maxVal float64, colorScale strin
 		return 0, 0, "sequential", nil, nil
 	}
 
-	fmt.Sscanf(lines[0], "%g", &minVal)
-	fmt.Sscanf(lines[1], "%g", &maxVal)
+	_, _ = fmt.Sscanf(lines[0], "%g", &minVal)
+	_, _ = fmt.Sscanf(lines[1], "%g", &maxVal)
 	colorScale = lines[2]
 
 	// Split remaining lines at "---" separator.
@@ -328,7 +323,7 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 
 			// Parse the value from panel title.
 			var val float64
-			fmt.Sscanf(panel.title, "%g", &val)
+			_, _ = fmt.Sscanf(panel.title, "%g", &val)
 
 			// Compute fill based on value.
 			fill := heatmapCellFill(val, minVal, maxVal, colorScale)
@@ -391,22 +386,6 @@ func heatmapCellFill(value, minVal, maxVal float64, colorScale string) pptx.Fill
 	lumMod := 20000 + int(t*80000)
 	lumOff := 100000 - lumMod
 	return pptx.SchemeFill("accent1", pptx.LumMod(lumMod), pptx.LumOff(lumOff))
-}
-
-// heatmapTextColor returns the text fill for a cell value based on luminance.
-// Light cells (low lumMod) get dark text, dark cells (high lumMod) get light text.
-func heatmapTextColor(value, minVal, maxVal float64) pptx.Fill {
-	if maxVal == minVal {
-		return pptx.SchemeFill("dk1")
-	}
-	t := (value - minVal) / (maxVal - minVal)
-	t = math.Max(0, math.Min(1, t))
-
-	// Crossover at t=0.6 — cells darker than 60% get light text.
-	if t > 0.6 {
-		return pptx.SchemeFill("lt1")
-	}
-	return pptx.SchemeFill("dk1")
 }
 
 // generateHeatmapCellXML produces a single rect cell shape for the heatmap grid.

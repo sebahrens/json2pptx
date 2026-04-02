@@ -7,7 +7,7 @@ import (
 )
 
 // hasURLReferences returns true if any slide contains a URL reference that needs resolution.
-func hasURLReferences(slides []SlideInput) bool {
+func hasURLReferences(slides []SlideInput) bool { //nolint:gocognit
 	for i := range slides {
 		if slides[i].Background != nil && slides[i].Background.URL != "" {
 			return true
@@ -45,7 +45,7 @@ func hasURLReferences(slides []SlideInput) bool {
 // background.url, image_value.url) to local cached files via the Resolver.
 // After this function returns, all URL fields have been cleared and the
 // corresponding Path fields point to local files.
-func resolveURLs(slides []SlideInput, resolver *resource.Resolver) error {
+func resolveURLs(slides []SlideInput, resolver *resource.Resolver) error { //nolint:gocognit
 	for i := range slides {
 		// Background image URL
 		if slides[i].Background != nil && slides[i].Background.URL != "" {

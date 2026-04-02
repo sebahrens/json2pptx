@@ -67,9 +67,6 @@ const (
 	// houseFoundationHeightRatio is the fraction of total height for the foundation.
 	houseFoundationHeightRatio float64 = 0.13
 
-	// houseMaxFloors is the maximum number of floors supported.
-	houseMaxFloors int = 10
-
 	// houseMaxSectionsPerFloor is the max number of pillars per floor.
 	houseMaxSectionsPerFloor int = 12
 )
@@ -227,7 +224,7 @@ func parseHouseFoundationLabel(data map[string]any) string {
 
 // parseHouseNativeFloors parses floors or sections from data.
 // Returns a list of floor metadata and their corresponding section data.
-func parseHouseNativeFloors(data map[string]any) ([]houseFloorMeta, [][]houseSectionData) {
+func parseHouseNativeFloors(data map[string]any) ([]houseFloorMeta, [][]houseSectionData) { //nolint:gocognit
 	// Try "floors" key first (multi-story layout).
 	if rawFloors, ok := data["floors"].([]any); ok && len(rawFloors) > 0 {
 		var metas []houseFloorMeta
@@ -400,6 +397,7 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 
 	// --- Roof (triangle) ---
 	roofY := bounds.Y
+	roofTitle := panels[0].title // safe: len(panels) >= 2 checked above
 	shapeIdx++
 	roofShape, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeIDBase + shapeIdx,
@@ -417,7 +415,7 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 				Align:    "ctr",
 				NoBullet: true,
 				Runs: []pptx.Run{{
-					Text:     panels[0].title,
+					Text:     roofTitle,
 					Lang:     "en-US",
 					FontSize: labelFont,
 					Bold:     true,
