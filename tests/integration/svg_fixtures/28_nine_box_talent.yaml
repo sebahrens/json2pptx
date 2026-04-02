@@ -1,0 +1,42 @@
+type: nine_box_talent
+title: Engineering Team Assessment
+data:
+  x_axis_label: Current Performance
+  y_axis_label: Growth Potential
+  x_axis_labels:
+    - Developing
+    - Effective
+    - Outstanding
+  y_axis_labels:
+    - Limited
+    - Moderate
+    - High
+  cells:
+    - position:
+        row: 0
+        col: 2
+      label: Stars
+      items:
+        - name: Sarah Chen
+          subtitle: Tech Lead
+        - name: Marcus Johnson
+          subtitle: Senior Engineer
+    - position:
+        row: 1
+        col: 1
+      label: Core Contributors
+      items:
+        - name: Chris Anderson
+          subtitle: Engineer II
+        - name: Rachel Green
+          subtitle: Engineer II
+    - position:
+        row: 2
+        col: 0
+      label: Needs Development
+      items:
+        - name: Pat Lee
+          subtitle: Engineer I
+output:
+  width: 800
+  height: 700

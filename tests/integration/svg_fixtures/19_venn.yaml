@@ -1,0 +1,29 @@
+type: venn
+title: Skill Overlap Analysis
+data:
+  circles:
+    - label: Engineering
+      items:
+        - Coding
+        - Architecture
+        - Testing
+    - label: Design
+      items:
+        - UX Research
+        - Visual Design
+        - Prototyping
+    - label: Product
+      items:
+        - Strategy
+        - Roadmap
+        - Analytics
+  intersections:
+    - sets: [0, 1]
+      label: Design Systems
+    - sets: [1, 2]
+      label: User Empathy
+    - sets: [0, 2]
+      label: Technical PM
+output:
+  width: 700
+  height: 600

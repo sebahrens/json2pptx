@@ -1,0 +1,12 @@
+type: scatter_chart
+title: Feature Prioritization
+data:
+  series:
+    - name: Features
+      x_values: [10, 30, 50, 70, 90, 20, 60, 80]
+      values: [80, 60, 40, 90, 20, 50, 70, 35]
+  x_label: Implementation Effort
+  y_label: Customer Value
+output:
+  width: 800
+  height: 600

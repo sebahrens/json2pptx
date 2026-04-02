@@ -1,0 +1,33 @@
+{
+  "template": "modern-template",
+  "output_filename": "27_diagram_venn.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Venn Diagram"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "venn",
+            "title": "Skill Overlap",
+            "data": {
+              "circles": [
+                {"label": "Engineering", "items": ["Coding", "Architecture"]},
+                {"label": "Design", "items": ["UX Research", "Visual Design"]},
+                {"label": "Product", "items": ["Strategy", "Roadmap"]}
+              ],
+              "intersections": [
+                {"sets": [0, 1], "label": "Design Systems"},
+                {"sets": [1, 2], "label": "User Empathy"},
+                {"sets": [0, 2], "label": "Technical PM"},
+                {"sets": [0, 1, 2], "label": "Full Stack Product"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

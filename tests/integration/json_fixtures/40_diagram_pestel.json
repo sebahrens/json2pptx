@@ -1,0 +1,28 @@
+{
+  "template": "modern-template",
+  "output_filename": "40_diagram_pestel.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "PESTEL Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "pestel",
+            "title": "Market Environment",
+            "data": {
+              "political": ["Trade policies", "Government stability"],
+              "economic": ["Interest rates", "Inflation trends"],
+              "social": ["Remote work adoption", "Demographic shifts"],
+              "technological": ["AI advancement", "Cloud computing"],
+              "environmental": ["Carbon regulations", "Sustainability demand"],
+              "legal": ["Data privacy laws", "IP protection"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

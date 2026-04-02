@@ -1,0 +1,13 @@
+type: donut_chart
+title: Budget Allocation
+data:
+  categories:
+    - Engineering
+    - Sales & Marketing
+    - Operations
+    - Research
+    - Admin
+  values: [40, 25, 15, 12, 8]
+output:
+  width: 600
+  height: 600

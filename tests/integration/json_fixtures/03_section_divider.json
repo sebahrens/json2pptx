@@ -1,0 +1,12 @@
+{
+  "template": "modern-template",
+  "output_filename": "03_section_divider.pptx",
+  "slides": [
+    {
+      "slide_type": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Section One: Introduction"}
+      ]
+    }
+  ]
+}

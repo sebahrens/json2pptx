@@ -1,0 +1,18 @@
+{
+  "type": "donut_chart",
+  "title": "Budget Allocation",
+  "subtitle": "Annual Operating Budget",
+  "data": {
+    "categories": ["Engineering", "Sales & Marketing", "Operations", "G&A", "R&D"],
+    "values": [35, 25, 20, 12, 8]
+  },
+  "style": {
+    "palette": ["#2563EB", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"],
+    "show_legend": true,
+    "show_values": true
+  },
+  "output": {
+    "width": 600,
+    "height": 500
+  }
+}

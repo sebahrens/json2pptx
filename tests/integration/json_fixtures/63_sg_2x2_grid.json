@@ -1,0 +1,92 @@
+{
+  "template": "modern-template",
+  "output_filename": "63_sg_2x2_grid.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "SWOT Analysis"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": 2,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#2E7D32",
+                  "text": {
+                    "content": "Strengths\n\nStrong brand recognition\nExperienced team\nProven technology",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#C62828",
+                  "text": {
+                    "content": "Weaknesses\n\nLimited market presence\nHigh operating costs\nLegacy systems",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#1565C0",
+                  "text": {
+                    "content": "Opportunities\n\nEmerging markets\nDigital transformation\nStrategic partnerships",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#E65100",
+                  "text": {
+                    "content": "Threats\n\nNew competitors\nRegulatory changes\nEconomic uncertainty",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

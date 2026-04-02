@@ -1,0 +1,28 @@
+{
+  "template": "modern-template",
+  "output_filename": "10_chart_line.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Growth Trend (Line Chart)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "line_chart",
+            "title": "Monthly Active Users (K)",
+            "data": [
+              {"label": "Jan", "value": 85},
+              {"label": "Feb", "value": 92},
+              {"label": "Mar", "value": 98},
+              {"label": "Apr", "value": 110},
+              {"label": "May", "value": 125},
+              {"label": "Jun", "value": 138}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

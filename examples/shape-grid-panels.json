@@ -1,0 +1,533 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "shape-grid-panels.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Shape Grid Showcase"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Horizontal Panels & Numbered Rows"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Strategic Pillars"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "col_span": 4,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Our Four Strategic Pillars",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Innovation\n\nInvest in R&D and emerging technologies to stay ahead of market trends",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Growth\n\nExpand into new markets and increase customer acquisition by 25%",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Efficiency\n\nStreamline operations and reduce costs through automation",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Talent\n\nAttract and retain top talent with competitive programs",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Service Offerings"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "What We Deliver",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Consulting\n\nStrategic advisory services tailored to your business needs",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Implementation\n\nEnd-to-end deployment with dedicated project teams",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Support\n\n24/7 managed services and proactive monitoring",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 12,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Market Segments"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": 5,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "col_span": 5,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Target Markets",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Healthcare\n\nDigital transformation for providers and payers",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 4,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Finance\n\nRegulatory compliance and risk management",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 4,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Retail\n\nOmnichannel experiences and supply chain",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 4,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Energy\n\nSustainability and grid modernization",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 4,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Tech\n\nCloud-native platforms and AI/ML ops",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 4,
+                    "inset_right": 4
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Implementation Roadmap"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "row_gap": 16,
+        "columns": [
+          8,
+          92
+        ],
+        "rows": [
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "1",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Discovery & Assessment\nConduct stakeholder interviews, audit existing systems, identify quick wins and long-term opportunities",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 8,
+                    "inset_bottom": 8,
+                    "inset_right": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "2",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Design & Planning\nDefine target architecture, create detailed project plan with milestones and resource allocation",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 8,
+                    "inset_bottom": 8,
+                    "inset_right": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "3",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Build & Integrate\nDevelop core platform, integrate with existing systems, run parallel testing environments",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 8,
+                    "inset_bottom": 8,
+                    "inset_right": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "4",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Deploy & Optimize\nRoll out in phases, monitor KPIs, iterate based on user feedback and performance data",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 8,
+                    "inset_bottom": 8,
+                    "inset_right": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "5",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Scale & Evolve\nExpand to additional business units, establish center of excellence, drive continuous improvement",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 8,
+                    "inset_bottom": 8,
+                    "inset_right": 10
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Thank You"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Questions?"
+        }
+      ]
+    }
+  ]
+}

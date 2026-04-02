@@ -1,0 +1,28 @@
+{
+  "template": "modern-template",
+  "output_filename": "41_diagram_panel_layout.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Service Overview"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "panel_layout",
+            "title": "Our Approach",
+            "data": {
+              "panels": [
+                {"icon": "chart", "title": "Discovery", "body": "Understand your needs"},
+                {"icon": "settings", "title": "Design", "body": "Create the solution"},
+                {"icon": "check", "title": "Deliver", "body": "Ship and measure"},
+                {"icon": "refresh", "title": "Iterate", "body": "Continuous improvement"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

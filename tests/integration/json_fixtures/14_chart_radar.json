@@ -1,0 +1,26 @@
+{
+  "template": "modern-template",
+  "output_filename": "14_chart_radar.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Team Skills (Radar Chart)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "radar_chart",
+            "title": "Engineering Team Skills",
+            "data": {
+              "categories": ["Frontend", "Backend", "DevOps", "Security", "Testing", "Architecture"],
+              "series": [
+                {"name": "Team", "values": [85, 92, 78, 70, 88, 82]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

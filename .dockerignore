@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Beads issue tracking
+.beads
+
+# Test files and output
+*_test.go
+test_output/
+coverage.out
+*.test
+
+# Documentation
+*.md
+!README.md
+docs/
+specs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Binary output
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+.cache/
+tmp/
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Local configuration (may contain secrets)
+.env
+.env.*
+config.local.yaml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug files
+*.log
+*.pprof

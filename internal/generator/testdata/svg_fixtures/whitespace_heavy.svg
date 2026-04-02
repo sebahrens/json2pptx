@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="200"
+     height="200"
+     viewBox="0 0 200 200">
+
+  <!-- SVG with lots of whitespace and formatting -->
+
+  <rect
+    width="200"
+    height="200"
+    fill="#95a5a6"
+  />
+
+  <circle
+    cx="100"
+    cy="100"
+    r="60"
+    fill="#7f8c8d"
+  />
+
+</svg>

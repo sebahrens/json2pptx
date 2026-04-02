@@ -1,0 +1,304 @@
+{
+  "template": "modern-template",
+  "output_filename": "70_sg_geometry_showcase.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Geometry Showcase - 20 Shapes"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 76
+        },
+        "gap": 6,
+        "columns": 5,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "rect",
+                    "size": 9,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "roundRect",
+                    "size": 9,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "ellipse",
+                    "size": 9,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "diamond",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "diamond",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "triangle",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "triangle",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "hexagon",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "hexagon",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "chevron",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "homePlate",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "rightArrow",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "star5",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "star5",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "pentagon",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "pentagon",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "octagon",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "octagon",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "trapezoid",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "trapezoid",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "parallelogram",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "parallel",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "cloud",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "cloud",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "heart",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "heart",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "plus",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "plus",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "donut",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "donut",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "flowChartProcess",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "flowProc",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "flowChartDecision",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "flowDec",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

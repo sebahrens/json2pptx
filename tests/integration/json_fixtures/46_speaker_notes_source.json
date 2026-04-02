@@ -1,0 +1,19 @@
+{
+  "template": "modern-template",
+  "output_filename": "46_speaker_notes_source.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Slide with Notes and Source"},
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": ["Point one", "Point two", "Point three"]
+        }
+      ],
+      "speaker_notes": "These are detailed speaker notes.\nThey can span multiple lines.\n\nKey talking points:\n- Mention the revenue growth\n- Highlight customer satisfaction",
+      "source": "Source: Annual Report 2025, p. 42"
+    }
+  ]
+}

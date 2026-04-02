@@ -1,0 +1,29 @@
+{
+  "template": "modern-template",
+  "output_filename": "26_diagram_pyramid.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Priority Pyramid"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "pyramid",
+            "title": "Maslow's Hierarchy",
+            "data": {
+              "levels": [
+                {"label": "Self-Actualization", "description": "Creativity"},
+                {"label": "Esteem", "description": "Confidence"},
+                {"label": "Love/Belonging", "description": "Friendship"},
+                {"label": "Safety", "description": "Security"},
+                {"label": "Physiological", "description": "Food, water"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

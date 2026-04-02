@@ -1,0 +1,30 @@
+{
+  "template": "modern-template",
+  "output_filename": "38_diagram_heatmap.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Team Skills Heatmap"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "heatmap",
+            "title": "Skill Proficiency Matrix",
+            "data": {
+              "row_labels": ["Alice", "Bob", "Carol", "Dave"],
+              "col_labels": ["Go", "Python", "TypeScript", "SQL"],
+              "values": [
+                [9, 7, 6, 8],
+                [5, 9, 8, 7],
+                [7, 6, 9, 5],
+                [8, 8, 5, 9]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

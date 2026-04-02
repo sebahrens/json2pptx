@@ -1,0 +1,194 @@
+{
+  "template": "modern-template",
+  "output_filename": "75_sg_split_column_image.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Split-Column: Text + Full-Height Image"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": [
+          55,
+          45
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "dk1",
+                  "text": {
+                    "content": "VOLATILITY\n\nThe degree of variation in a trading price series over time.\n\nVolatility is often measured as the standard deviation of returns.",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5,
+                    "inset_top": 5,
+                    "inset_right": 5
+                  }
+                }
+              },
+              {
+                "row_span": 2,
+                "image": {
+                  "path": "/nonexistent/ocean-waves.jpg",
+                  "alt": "Ocean waves representing market volatility",
+                  "overlay": {
+                    "color": "000000",
+                    "alpha": 0.3
+                  },
+                  "text": {
+                    "content": "Market Volatility",
+                    "size": 18,
+                    "bold": true,
+                    "color": "FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "b"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "KEY TAKEAWAY\n\nVolatility ≠ Risk\n\nHigh volatility creates opportunities for informed investors.",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5,
+                    "inset_top": 5,
+                    "inset_right": 5
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Split-Column: Full-Height Image + Text"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": [
+          45,
+          55
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "row_span": 3,
+                "image": {
+                  "path": "/nonexistent/city-skyline.jpg",
+                  "alt": "City skyline representing urban growth",
+                  "overlay": {
+                    "color": "1B2A4A",
+                    "alpha": 0.4
+                  },
+                  "text": {
+                    "content": "Urban Growth",
+                    "size": 20,
+                    "bold": true,
+                    "color": "FFFFFF",
+                    "align": "l",
+                    "vertical_align": "b"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "dk1",
+                  "text": {
+                    "content": "POPULATION\n\n68% of the world population is projected to live in urban areas by 2050.",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5,
+                    "inset_top": 5,
+                    "inset_right": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "INFRASTRUCTURE\n\nSmart city initiatives require $2.5T in investment over the next decade.",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5,
+                    "inset_top": 5,
+                    "inset_right": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "SUSTAINABILITY\n\nGreen building standards adoption has increased 300% since 2015.",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 5,
+                    "inset_top": 5,
+                    "inset_right": 5
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

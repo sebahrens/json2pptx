@@ -1,0 +1,72 @@
+{
+  "template": "template_1",
+  "footer": {
+    "enabled": true,
+    "left_text": "Mixed Format Test"
+  },
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Typed Title"},
+        {"placeholder_id": "subtitle", "type": "text", "value": "Legacy Subtitle"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Legacy Title"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Typed bullet 1", "Typed bullet 2"]}
+      ],
+      "speaker_notes": "Mix of typed and legacy"
+    },
+    {
+      "layout_id": "slideLayout3",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Typed Title"},
+        {"placeholder_id": "body", "type": "body_and_bullets", "value": {
+          "body": "Legacy body_and_bullets",
+          "bullets": ["Legacy item 1", "Legacy item 2"],
+          "trailing_body": "Legacy trailing"
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Legacy Title"},
+        {"placeholder_id": "body", "type": "bullet_groups", "bullet_groups_value": {
+          "body": "Typed bullet groups intro",
+          "groups": [
+            {"header": "Typed Group 1", "bullets": ["Item A", "Item B"]},
+            {"header": "Typed Group 2", "body": "Group body", "bullets": ["Item C"]}
+          ]
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Typed Chart Title"},
+        {"placeholder_id": "body", "type": "chart", "value": {
+          "type": "line",
+          "title": "Legacy Chart via Value",
+          "data": {"2023": 45, "2024": 62, "2025": 78}
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout6",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Legacy Table Title"},
+        {"placeholder_id": "body", "type": "table", "table_value": {
+          "headers": ["Metric", "Value"],
+          "rows": [
+            ["Users", "10,000"],
+            ["Revenue", "$500K"]
+          ]
+        }}
+      ]
+    }
+  ]
+}

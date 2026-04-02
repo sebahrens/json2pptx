@@ -1,0 +1,39 @@
+type: porters_five_forces
+title: Cloud Computing Industry Analysis
+data:
+  industry_name: Enterprise Cloud Services
+  forces:
+    - type: rivalry
+      label: Competitive Rivalry
+      intensity: 0.85
+      factors:
+        - AWS, Azure, GCP dominance
+        - Price competition
+        - Feature parity race
+    - type: new_entrants
+      label: Threat of New Entrants
+      intensity: 0.35
+      factors:
+        - High capital requirements
+        - Economies of scale needed
+    - type: substitutes
+      label: Threat of Substitutes
+      intensity: 0.3
+      factors:
+        - On-premise declining
+        - Edge computing emerging
+    - type: suppliers
+      label: Supplier Power
+      intensity: 0.45
+      factors:
+        - Chip shortages impact
+        - Data center real estate
+    - type: buyers
+      label: Buyer Power
+      intensity: 0.7
+      factors:
+        - Multi-cloud strategies
+        - Switching costs decreasing
+output:
+  width: 800
+  height: 700

@@ -1,0 +1,10 @@
+type: pie_chart
+title: Binary Split
+data:
+  categories:
+    - Yes
+    - No
+  values: [73, 27]
+output:
+  width: 500
+  height: 500

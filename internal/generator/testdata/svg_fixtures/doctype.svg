@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150">
+  <rect width="150" height="150" fill="#1abc9c"/>
+  <text x="75" y="80" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16">With DOCTYPE</text>
+</svg>

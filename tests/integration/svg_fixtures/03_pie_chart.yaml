@@ -1,0 +1,13 @@
+type: pie_chart
+title: Market Share Distribution
+data:
+  categories:
+    - Our Company
+    - Competitor A
+    - Competitor B
+    - Competitor C
+    - Others
+  values: [35, 25, 20, 12, 8]
+output:
+  width: 600
+  height: 600

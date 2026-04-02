@@ -1,0 +1,14 @@
+{
+  "template": "modern-template",
+  "output_filename": "01_title_slide.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Main Presentation Title"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Subtitle with additional context"}
+      ],
+      "speaker_notes": "Welcome the audience."
+    }
+  ]
+}

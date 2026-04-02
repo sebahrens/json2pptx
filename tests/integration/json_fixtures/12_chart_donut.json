@@ -1,0 +1,24 @@
+{
+  "template": "modern-template",
+  "output_filename": "12_chart_donut.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Budget Allocation (Donut Chart)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "donut_chart",
+            "title": "Annual Budget Distribution",
+            "data": {
+              "categories": ["Engineering", "Sales & Marketing", "Operations", "Research", "Administration"],
+              "values": [40, 25, 15, 12, 8]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

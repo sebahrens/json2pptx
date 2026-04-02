@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <!-- Checkerboard background to show transparency -->
+  <defs>
+    <pattern id="checker" width="30" height="30" patternUnits="userSpaceOnUse">
+      <rect width="15" height="15" fill="#ccc"/>
+      <rect x="15" y="15" width="15" height="15" fill="#ccc"/>
+      <rect x="15" width="15" height="15" fill="#fff"/>
+      <rect y="15" width="15" height="15" fill="#fff"/>
+    </pattern>
+  </defs>
+  <rect width="300" height="300" fill="url(#checker)"/>
+  <!-- Overlapping semi-transparent circles -->
+  <circle cx="100" cy="150" r="80" fill="#e74c3c" opacity="0.7"/>
+  <circle cx="200" cy="150" r="80" fill="#3498db" opacity="0.7"/>
+  <circle cx="150" cy="220" r="80" fill="#2ecc71" opacity="0.7"/>
+</svg>

@@ -1,0 +1,147 @@
+{
+  "template": "modern-template",
+  "output_filename": "66_sg_mixed_heights.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Dashboard with Mixed Heights"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 20,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Executive Dashboard - Q4 2025 Performance Summary",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 50,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 15
+                  },
+                  "line": {
+                    "color": "accent1",
+                    "width": 1.5
+                  },
+                  "text": {
+                    "content": "Revenue\n\n$4.2M\n+18% YoY",
+                    "size": 14,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 15
+                  },
+                  "line": {
+                    "color": "accent2",
+                    "width": 1.5
+                  },
+                  "text": {
+                    "content": "Customers\n\n1,247\n+32% YoY",
+                    "size": 14,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent3",
+                    "alpha": 15
+                  },
+                  "line": {
+                    "color": "accent3",
+                    "width": 1.5
+                  },
+                  "text": {
+                    "content": "NPS Score\n\n72\n+8 pts YoY",
+                    "size": 14,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "#333333",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Key Risk: Supply chain delays",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "col_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "#333333",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Next Steps: Finalize vendor contracts and launch Phase 2 rollout by end of January",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "full-showcase.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Product Launch Strategy"
+        },
+        {
+          "placeholder_id": "Subtitle 2",
+          "type": "text",
+          "value": "Go-to-Market Plan for FY2026"
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Executive Summary"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "bullets",
+          "value": [
+            "New enterprise platform launching Q2 2026",
+            "Target market: mid-market and enterprise SaaS companies",
+            "Projected first-year revenue: $15M ARR",
+            "Three-phase rollout: beta, limited GA, full GA",
+            "Investment required: $4.2M across engineering and marketing"
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Market Analysis"
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Total Addressable Market"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "bar",
+            "title": "TAM by Segment ($B)",
+            "data": {
+              "Enterprise": 8.5,
+              "Mid-Market": 5.2,
+              "SMB": 3.1,
+              "Startup": 1.4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Competitive Landscape"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "pie",
+            "title": "Current Market Share",
+            "data": {
+              "Incumbent A": 30,
+              "Incumbent B": 22,
+              "Our Position": 8,
+              "Emerging Players": 15,
+              "Fragmented": 25
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout3",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Our Differentiation"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "bullets",
+          "value": [
+            "AI-powered automation",
+            "50% faster time-to-value",
+            "Native multi-cloud support",
+            "Built-in compliance (SOC2, HIPAA)"
+          ]
+        },
+        {
+          "placeholder_id": "Content Placeholder 3",
+          "type": "bullets",
+          "value": [
+            "Real-time collaboration",
+            "Zero-trust security model",
+            "Open API ecosystem",
+            "Predictive analytics engine"
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Go-to-Market Plan"
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Revenue Projections"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "line",
+            "title": "Projected ARR Growth ($M)",
+            "data": {
+              "Q2 2026": 1.2,
+              "Q3 2026": 3.5,
+              "Q4 2026": 7.0,
+              "Q1 2027": 11.0,
+              "Q2 2027": 15.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Investment Breakdown"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "waterfall",
+            "title": "Launch Investment ($M)",
+            "data": {
+              "Engineering": 2.0,
+              "Marketing": 1.2,
+              "Sales Hiring": 0.5,
+              "Infrastructure": 0.3,
+              "Training": 0.2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout3",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Launch Timeline"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "bullets",
+          "value": [
+            "Apr 2026: Private beta with 10 design partners",
+            "Jun 2026: Limited GA with self-serve onboarding",
+            "Sep 2026: Full GA with enterprise features"
+          ]
+        },
+        {
+          "placeholder_id": "Content Placeholder 3",
+          "type": "bullets",
+          "value": [
+            "Partner enablement program launches May 2026",
+            "Conference presence at SaaStr and re:Invent",
+            "Analyst briefings scheduled for Q3"
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Product Readiness Assessment"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "radar",
+            "title": "Launch Readiness Score",
+            "data": {
+              "Core Features": 92,
+              "Performance": 85,
+              "Security": 95,
+              "Documentation": 78,
+              "Support Tooling": 70,
+              "Integrations": 65
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Key Risks and Mitigations"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "bullets",
+          "value": [
+            "Risk: Incumbent response with aggressive pricing / Mitigation: Focus on value-based selling and ROI proof points",
+            "Risk: Slower enterprise sales cycles / Mitigation: Strong self-serve funnel and PLG motion",
+            "Risk: Integration complexity / Mitigation: Pre-built connectors for top 20 tools",
+            "Risk: Hiring timeline slippage / Mitigation: Augment with consulting partners"
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Success Metrics"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "bullets",
+          "value": [
+            "100 paying customers within 6 months of GA",
+            "$15M ARR by end of first year",
+            "Net Revenue Retention above 120%",
+            "Customer NPS score above 60",
+            "Time-to-value under 2 weeks for mid-market",
+            "Win rate above 35% against incumbents"
+          ]
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {
+          "placeholder_id": "Text Placeholder 1",
+          "type": "text",
+          "value": "Questions?"
+        }
+      ]
+    }
+  ]
+}

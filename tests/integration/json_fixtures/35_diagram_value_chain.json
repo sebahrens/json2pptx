@@ -1,0 +1,35 @@
+{
+  "template": "modern-template",
+  "output_filename": "35_diagram_value_chain.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Value Chain Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "value_chain",
+            "title": "Manufacturing Value Chain",
+            "data": {
+              "primary_activities": [
+                {"label": "Inbound Logistics", "items": ["Sourcing", "Inventory"]},
+                {"label": "Operations", "items": ["Assembly", "QA"]},
+                {"label": "Outbound Logistics", "items": ["Distribution", "Fulfillment"]},
+                {"label": "Marketing & Sales", "items": ["Brand", "Digital"]},
+                {"label": "Service", "items": ["Support", "Warranty"]}
+              ],
+              "support_activities": [
+                {"label": "Infrastructure", "items": ["Finance", "Legal"]},
+                {"label": "HR", "items": ["Talent", "Training"]},
+                {"label": "Technology", "items": ["R&D", "IT"]},
+                {"label": "Procurement", "items": ["Contracts", "Cost optimization"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

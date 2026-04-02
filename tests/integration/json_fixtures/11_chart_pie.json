@@ -1,0 +1,24 @@
+{
+  "template": "modern-template",
+  "output_filename": "11_chart_pie.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Market Share (Pie Chart)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "pie_chart",
+            "title": "Market Share by Company",
+            "data": {
+              "categories": ["Our Company", "Competitor A", "Competitor B", "Competitor C", "Others"],
+              "values": [35, 25, 20, 12, 8]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

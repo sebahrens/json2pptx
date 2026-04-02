@@ -1,0 +1,268 @@
+{
+  "template": "modern-template",
+  "output_filename": "65_sg_4x4_grid.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "4x4 Grid with Accent Colors"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 6,
+        "columns": 4,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "A1",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "B1",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "C1",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "D1",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "A2",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "B2",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "C2",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "D2",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "A3",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "B3",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "C3",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "D3",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "A4",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "B4",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "C4",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "D4",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

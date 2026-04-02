@@ -1,0 +1,31 @@
+# Docker Compose development overrides
+# This file is automatically loaded by docker-compose
+# and adds development-specific configurations.
+#
+# Usage: docker-compose up --build
+# (automatically loads docker-compose.yml + docker-compose.override.yml)
+
+services:
+  server:
+    # Development build settings
+    build:
+      args:
+        VERSION: dev
+        COMMIT_SHA: local
+        BUILD_TIME: development
+
+    volumes:
+      # Development: mount testdata for test fixtures
+      - ./testdata:/app/testdata:ro
+      # Development: mount examples directory
+      - ./examples:/app/examples:ro
+
+    environment:
+      # Development settings
+      - LOG_LEVEL=debug
+      - SERVER_AUTH_MODE=disabled
+      # Allow all origins in development
+      - ALLOWED_ORIGINS=*
+
+    # Development: remove restart policy for easier debugging
+    restart: "no"

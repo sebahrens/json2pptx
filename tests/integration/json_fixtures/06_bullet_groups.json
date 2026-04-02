@@ -1,0 +1,35 @@
+{
+  "template": "modern-template",
+  "output_filename": "06_bullet_groups.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Initiatives"},
+        {
+          "placeholder_id": "body",
+          "type": "bullet_groups",
+          "bullet_groups_value": {
+            "body": "Three strategic pillars drive our growth:",
+            "groups": [
+              {
+                "header": "Digital Transformation",
+                "body": "Modernizing our technology stack",
+                "bullets": ["Cloud migration complete by Q2", "AI-powered analytics rollout"]
+              },
+              {
+                "header": "Market Expansion",
+                "bullets": ["APAC office opening in Singapore", "LATAM partnerships signed"]
+              },
+              {
+                "header": "Operational Excellence",
+                "bullets": ["Supply chain optimization", "Lean manufacturing adoption"]
+              }
+            ],
+            "trailing_body": "Each initiative has a dedicated executive sponsor."
+          }
+        }
+      ]
+    }
+  ]
+}

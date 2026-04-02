@@ -1,0 +1,57 @@
+{
+  "template": "modern-template",
+  "output_filename": "43_transitions.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Fade Transition"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["This slide uses fade"]}
+      ],
+      "transition": "fade",
+      "transition_speed": "slow"
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Push Transition"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["This slide uses push"]}
+      ],
+      "transition": "push",
+      "transition_speed": "med"
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Wipe Transition"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["This slide uses wipe"]}
+      ],
+      "transition": "wipe",
+      "transition_speed": "fast"
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cover Transition"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["This slide uses cover"]}
+      ],
+      "transition": "cover"
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cut Transition"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["This slide uses cut"]}
+      ],
+      "transition": "cut"
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "No Transition"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["This slide uses none"]}
+      ],
+      "transition": "none"
+    }
+  ]
+}

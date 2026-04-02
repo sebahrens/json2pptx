@@ -1,0 +1,102 @@
+{
+  "template": "modern-template",
+  "output_filename": "59_sg_5col_equal.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Five Narrow Panels"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": 5,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Research",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Design",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Build",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "Test",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "Deploy",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

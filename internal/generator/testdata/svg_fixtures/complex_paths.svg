@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#ecf0f1"/>
+  <!-- Star path -->
+  <path d="M150,20 L180,100 L265,100 L195,150 L220,235 L150,185 L80,235 L105,150 L35,100 L120,100 Z"
+        fill="#f39c12" stroke="#e67e22" stroke-width="3"/>
+  <!-- Bezier curve path -->
+  <path d="M20,280 Q75,200 150,280 T280,280"
+        fill="none" stroke="#3498db" stroke-width="4"/>
+  <!-- Complex polygon -->
+  <polygon points="150,250 120,290 180,290" fill="#27ae60"/>
+</svg>

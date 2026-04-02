@@ -1,0 +1,25 @@
+type: panel_layout
+title: Our Development Process
+data:
+  panels:
+    - icon: search
+      title: Discovery
+      body: Understand user needs and market context
+    - icon: pencil
+      title: Design
+      body: Create wireframes and prototypes
+    - icon: code
+      title: Build
+      body: Implement features with quality code
+    - icon: check
+      title: Test
+      body: Ensure quality through automated testing
+    - icon: rocket
+      title: Ship
+      body: Deploy to production with confidence
+    - icon: chart
+      title: Measure
+      body: Track metrics and iterate
+output:
+  width: 900
+  height: 400

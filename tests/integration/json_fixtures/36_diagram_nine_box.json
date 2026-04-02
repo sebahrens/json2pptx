@@ -1,0 +1,44 @@
+{
+  "template": "modern-template",
+  "output_filename": "36_diagram_nine_box.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Talent Assessment"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "nine_box_talent",
+            "title": "Engineering Team",
+            "data": {
+              "x_axis_label": "Performance",
+              "y_axis_label": "Potential",
+              "cells": [
+                {
+                  "position": {"row": 0, "col": 2},
+                  "label": "Stars",
+                  "items": [{"name": "Sarah Chen", "subtitle": "Tech Lead"}]
+                },
+                {
+                  "position": {"row": 1, "col": 1},
+                  "label": "Core Contributors",
+                  "items": [
+                    {"name": "Chris Anderson", "subtitle": "Engineer II"},
+                    {"name": "Rachel Green", "subtitle": "Engineer II"}
+                  ]
+                },
+                {
+                  "position": {"row": 2, "col": 0},
+                  "label": "Needs Development",
+                  "items": [{"name": "Pat Lee", "subtitle": "Engineer I"}]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

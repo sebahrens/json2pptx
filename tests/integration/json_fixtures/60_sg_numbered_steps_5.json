@@ -1,0 +1,201 @@
+{
+  "template": "modern-template",
+  "output_filename": "60_sg_numbered_steps_5.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Five Step Process"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": [
+          10,
+          90
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "1",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 15
+                  },
+                  "text": {
+                    "content": "Define project scope and objectives",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "2",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 15
+                  },
+                  "text": {
+                    "content": "Gather requirements from stakeholders",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "3",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent3",
+                    "alpha": 15
+                  },
+                  "text": {
+                    "content": "Design solution architecture",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "4",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent4",
+                    "alpha": 15
+                  },
+                  "text": {
+                    "content": "Implement and test the solution",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "5",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent5",
+                    "alpha": 15
+                  },
+                  "text": {
+                    "content": "Deploy and monitor in production",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

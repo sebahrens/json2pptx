@@ -1,0 +1,26 @@
+{
+  "template": "modern-template",
+  "output_filename": "50_edge_unicode.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Unicode & Special Characters"},
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "Arrows: -> <- => <=",
+            "Math: pi = 3.14159, sqrt(2) = 1.414",
+            "Currency: $100, 50 pounds, 200 yen",
+            "Accents: cafe, resume, naive",
+            "CJK: Tokyo, Beijing, Seoul",
+            "Emoji safe: check mark, star, warning",
+            "Symbols: (c) (r) (tm) 1/2 1/4 3/4",
+            "Quotes: \"double\" 'single' backtick"
+          ]
+        }
+      ]
+    }
+  ]
+}

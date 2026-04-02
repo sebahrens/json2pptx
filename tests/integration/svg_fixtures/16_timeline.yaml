@@ -1,0 +1,36 @@
+type: timeline
+title: Product Launch Roadmap
+subtitle: 2026 Release Schedule
+data:
+  activities:
+    - id: p1
+      label: Q1
+      type: phase
+      start_date: "2026-01-01"
+      end_date: "2026-03-31"
+    - id: p2
+      label: Q2
+      type: phase
+      start_date: "2026-04-01"
+      end_date: "2026-06-30"
+    - id: design
+      label: UX Research & Design
+      type: activity
+      start_date: "2026-01-15"
+      end_date: "2026-03-15"
+    - id: backend
+      label: Backend Development
+      type: activity
+      start_date: "2026-02-15"
+      end_date: "2026-05-30"
+    - id: m1
+      label: Alpha Release
+      type: milestone
+      date: "2026-05-01"
+    - id: m2
+      label: GA Launch
+      type: milestone
+      date: "2026-06-15"
+output:
+  width: 1000
+  height: 400

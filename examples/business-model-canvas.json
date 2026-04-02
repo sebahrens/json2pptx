@@ -1,0 +1,437 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "business-model-canvas.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Business Model Canvas"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Osterwalder 9-Block Framework via Shape Grid"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Business Model Canvas — SaaS Platform"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": [
+          20,
+          15,
+          15,
+          20,
+          15,
+          15
+        ],
+        "rows": [
+          {
+            "height": 10,
+            "cells": [
+              {
+                "col_span": 6,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "BUSINESS MODEL CANVAS",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 35,
+            "cells": [
+              {
+                "row_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "KEY PARTNERS\n\n• Cloud providers (AWS/Azure)\n• Payment processors\n• API marketplace partners\n• System integrators\n• Technology resellers",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "KEY ACTIVITIES\n\n• Platform development\n• Customer onboarding\n• Data security & compliance\n• Continuous integration",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "col_span": 2,
+                "row_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "VALUE PROPOSITIONS\n\n• Reduce manual work by 60%\n• Real-time analytics dashboard\n• Enterprise-grade security\n• Seamless integrations\n• Pay-as-you-grow pricing",
+                    "size": 8,
+                    "bold": false,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CUSTOMER RELATIONSHIPS\n\n• Self-service portal\n• Dedicated CSM (Enterprise)\n• Community forums\n• Quarterly business reviews",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "row_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CUSTOMER SEGMENTS\n\n• SMB (10-200 employees)\n• Mid-market (200-2000)\n• Enterprise (2000+)\n• Vertical: Financial services\n• Vertical: Healthcare",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 35,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "KEY RESOURCES\n\n• Engineering team (45 FTE)\n• Proprietary ML models\n• SOC 2 certification\n• Customer data platform",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CHANNELS\n\n• Direct sales team\n• Product-led growth\n• Partner referrals\n• Content marketing",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "COST STRUCTURE\n\n• Cloud infrastructure (35%)  •  Engineering salaries (40%)  •  Sales & marketing (15%)  •  G&A (10%)",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "REVENUE STREAMS\n\n• SaaS subscriptions (75%)  •  Professional services (15%)  •  API usage fees (10%)",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Business Model Canvas — E-Commerce Marketplace"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": [
+          20,
+          15,
+          15,
+          20,
+          15,
+          15
+        ],
+        "rows": [
+          {
+            "height": 10,
+            "cells": [
+              {
+                "col_span": 6,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "E-COMMERCE MARKETPLACE",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 35,
+            "cells": [
+              {
+                "row_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "KEY PARTNERS\n\n• Logistics providers\n• Payment gateways\n• Brand suppliers\n• Influencer networks\n• Warehouse operators",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "KEY ACTIVITIES\n\n• Seller acquisition\n• Catalog curation\n• Fraud prevention\n• Recommendation engine",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "col_span": 2,
+                "row_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "VALUE PROPOSITIONS\n\nBuyers:\n• Wide selection, fast delivery\n• Price comparison & reviews\n• Easy returns\n\nSellers:\n• Access to millions of buyers\n• Fulfillment services\n• Analytics & insights",
+                    "size": 8,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CUSTOMER RELATIONSHIPS\n\n• Buyer: Automated/self-service\n• Seller: Dedicated support\n• Loyalty program\n• Review ecosystem",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "row_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CUSTOMER SEGMENTS\n\n• Urban consumers 25-45\n• Small business sellers\n• D2C brand operators\n• Bargain hunters\n• Premium shoppers",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 35,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "KEY RESOURCES\n\n• Technology platform\n• Seller network (50K+)\n• Fulfillment centers\n• Customer data",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CHANNELS\n\n• Mobile app (60% traffic)\n• Website\n• Social commerce\n• Affiliate marketing",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "COST STRUCTURE\n\n• Fulfillment & logistics (45%)  •  Technology (25%)  •  Marketing (20%)  •  Operations (10%)",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "REVENUE STREAMS\n\n• Transaction fees (60%)  •  Seller subscriptions (20%)  •  Advertising (15%)  •  Fulfillment fees (5%)",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Thank You"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Business Model Canvas Examples"
+        }
+      ]
+    }
+  ]
+}

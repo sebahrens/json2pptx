@@ -1,0 +1,17 @@
+type: funnel_chart
+title: Sales Pipeline
+data:
+  values:
+    - label: Leads
+      value: 10000
+    - label: Qualified
+      value: 4500
+    - label: Proposals
+      value: 2000
+    - label: Negotiations
+      value: 800
+    - label: Closed Won
+      value: 350
+output:
+  width: 800
+  height: 500

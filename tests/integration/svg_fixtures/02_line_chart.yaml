@@ -1,0 +1,17 @@
+type: line_chart
+title: Monthly Active Users
+subtitle: Growth Trend (Thousands)
+data:
+  categories:
+    - Jan
+    - Feb
+    - Mar
+    - Apr
+    - May
+    - Jun
+  series:
+    - name: MAU
+      values: [85, 92, 98, 110, 125, 138]
+output:
+  width: 800
+  height: 400

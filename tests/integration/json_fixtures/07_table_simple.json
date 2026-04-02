@@ -1,0 +1,30 @@
+{
+  "template": "modern-template",
+  "output_filename": "07_table_simple.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Financial Summary"},
+        {
+          "placeholder_id": "body",
+          "type": "table",
+          "table_value": {
+            "headers": ["Metric", "FY2024", "FY2025", "Change"],
+            "rows": [
+              ["Revenue", "$3.4B", "$4.2B", "+25%"],
+              ["EBITDA", "$680M", "$840M", "+24%"],
+              ["Net Income", "$340M", "$420M", "+24%"]
+            ],
+            "style": {
+              "header_background": "accent1",
+              "borders": "horizontal",
+              "striped": true
+            },
+            "column_alignments": ["left", "right", "right", "right"]
+          }
+        }
+      ]
+    }
+  ]
+}

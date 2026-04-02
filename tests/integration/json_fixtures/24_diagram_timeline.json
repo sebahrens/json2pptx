@@ -1,0 +1,30 @@
+{
+  "template": "modern-template",
+  "output_filename": "24_diagram_timeline.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Project Timeline"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "timeline",
+            "title": "Implementation Roadmap",
+            "data": {
+              "activities": [
+                {"id": "p1", "label": "Q1", "type": "phase", "start_date": "2026-01-01", "end_date": "2026-03-31"},
+                {"id": "p2", "label": "Q2", "type": "phase", "start_date": "2026-04-01", "end_date": "2026-06-30"},
+                {"id": "d1", "label": "Design", "type": "activity", "start_date": "2026-01-15", "end_date": "2026-03-15"},
+                {"id": "d2", "label": "Build", "type": "activity", "start_date": "2026-03-01", "end_date": "2026-05-30"},
+                {"id": "m1", "label": "Alpha", "type": "milestone", "date": "2026-04-01"},
+                {"id": "m2", "label": "Launch", "type": "milestone", "date": "2026-06-15"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

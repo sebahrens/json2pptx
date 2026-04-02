@@ -1,0 +1,1007 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "consulting-layouts.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Consulting Layout Patterns"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Shape Grid Showcase"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Process Flow (Chevron Header)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": 4,
+        "rows": [
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Discover",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Design",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Deliver",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Sustain",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Stakeholder interviews\nCurrent state assessment\nPain point mapping\nOpportunity sizing",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Solution architecture\nTarget operating model\nRoadmap development\nBusiness case",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Agile implementation\nChange management\nTraining & enablement\nProgress tracking",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Performance monitoring\nContinuous improvement\nKnowledge transfer\nValue realization",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "MECE Framework (2x2 Matrix)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": 2,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "High Impact / Low Effort\n\nQuick Wins\n\nAutomate manual reporting\nConsolidate vendor contracts\nStandardize onboarding",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "High Impact / High Effort\n\nStrategic Bets\n\nPlatform migration to cloud\nEnterprise data lake\nCustomer 360 program",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Low Impact / Low Effort\n\nFill-Ins\n\nUpdate documentation\nMinor UI polish\nTeam skill assessments",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Low Impact / High Effort\n\nDeprioritize\n\nLegacy system rewrite\nCustom ERP module\nFull rebrand initiative",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Key Findings (Numbered Takeaways)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "row_gap": 14,
+        "columns": [
+          8,
+          92
+        ],
+        "rows": [
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "1",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Market opportunity is larger than initially scoped\nTotal addressable market of $4.2B growing at 18% CAGR; current penetration is only 3%",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "2",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Technology stack requires modernization before scaling\nCurrent infrastructure supports 2x growth; 10x requires cloud-native re-architecture",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "3",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Talent gap is the primary constraint to execution\nNeed 40 engineers and 15 product managers within 12 months to execute roadmap",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "4",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Partnership strategy can accelerate time-to-market by 6 months\nThree strategic partners identified with complementary capabilities and shared customer base",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Workstream Overview (3x3 Grid)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Technology",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "People",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Process",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Cloud Migration\n\nMigrate core services to AWS\nTarget: Q2 completion\nBudget: $2.1M",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Org Restructure\n\nAlign teams to product lines\nTarget: Q1 completion\nBudget: $400K",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Agile Adoption\n\nTransition to SAFe framework\nTarget: Q2 completion\nBudget: $300K",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Data Platform\n\nBuild unified data lake\nTarget: Q3 completion\nBudget: $1.5M",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Talent Acquisition\n\nHire 40 engineers + 15 PMs\nTarget: Q3 completion\nBudget: $800K",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Automation\n\nCI/CD, testing, monitoring\nTarget: Q2 completion\nBudget: $250K",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Comparison View (Side-by-Side)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": 2,
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Current State",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Future State",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Manual data entry across 5 systems\nMonthly reporting with 2-week lag\n15% error rate in financial close\nSiloed customer data\nReactive support model\nOn-premise infrastructure\n$4.2M annual IT spend",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Unified platform with API integrations\nReal-time dashboards and alerts\n<1% error rate with automated validation\nCustomer 360 single source of truth\nPredictive support with AI\nCloud-native auto-scaling\n$2.8M annual IT spend (33% reduction)",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Timeline & Milestones (Horizontal Phases)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 8,
+        "row_gap": 16,
+        "columns": 4,
+        "rows": [
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Phase 1\nQ1 2026",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Phase 2\nQ2 2026",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Phase 3\nQ3 2026",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Phase 4\nQ4 2026",
+                    "size": 11,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 10,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Foundation",
+                    "size": 9,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Build",
+                    "size": 9,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Launch",
+                    "size": 9,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Optimize",
+                    "size": 9,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Requirements\nTeam formation\nVendor selection\nArchitecture design",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 6,
+                    "inset_left": 6,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Core development\nData migration\nIntegration testing\nUser acceptance",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 6,
+                    "inset_left": 6,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Go-live (Region 1)\nTraining rollout\nChange management\nSupport ramp-up",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 6,
+                    "inset_left": 6,
+                    "inset_right": 4
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Global rollout\nPerformance tuning\nProcess refinement\nValue measurement",
+                    "size": 8,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 6,
+                    "inset_left": 6,
+                    "inset_right": 4
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Investment Summary (KPI Scorecard)"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": 4,
+        "rows": [
+          {
+            "height": 35,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "$8.4M\n\nTotal Investment",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "2.1x\n\nROI (3-year)",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "18 mo\n\nPayback Period",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "$17.6M\n\nNPV",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Breakdown:\nTechnology: $5.2M\nPeople: $2.1M\nProcess: $1.1M",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 8,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Drivers:\nCost savings: 40%\nRevenue uplift: 35%\nRisk reduction: 25%",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 8,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Assumptions:\n15% discount rate\n5% annual growth\nBase case scenario",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 8,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Sensitivity:\nBest: $22.1M\nBase: $17.6M\nWorst: $11.3M",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 8,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Next Steps"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Questions & Discussion"
+        }
+      ]
+    }
+  ]
+}

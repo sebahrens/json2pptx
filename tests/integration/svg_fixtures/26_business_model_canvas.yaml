@@ -1,0 +1,45 @@
+type: business_model_canvas
+title: DataSync SaaS
+subtitle: B2B Data Integration Platform
+data:
+  boxes:
+    key_partners:
+      items:
+        - Cloud providers
+        - System integrators
+    key_activities:
+      items:
+        - Platform development
+        - Customer onboarding
+    key_resources:
+      items:
+        - Engineering team
+        - Proprietary ETL engine
+    value_proposition:
+      items:
+        - No-code data pipelines
+        - Real-time sync
+        - 200+ connectors
+    customer_relationships:
+      items:
+        - Self-service free tier
+        - Premium support
+    channels:
+      items:
+        - Website
+        - Partner referrals
+    customer_segments:
+      items:
+        - Data teams at mid-market
+        - Enterprise IT departments
+    cost_structure:
+      items:
+        - Cloud infrastructure (40%)
+        - Engineering salaries (35%)
+    revenue_streams:
+      items:
+        - Monthly/annual subscriptions
+        - Usage-based pricing
+output:
+  width: 1100
+  height: 800

@@ -1,0 +1,593 @@
+{
+  "output_filename": "contrast-fixer-test.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Contrast Fixer Stress Test"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Testing user-specified colors across all templates"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Gold & Light Text on Dark Fills"
+        }
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "gap": 6,
+        "rows": [
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Gold on Accent1",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Should stay GOLD",
+                        "size": 10,
+                        "color": "#E0E0E0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Gold on Accent2",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Should stay GOLD",
+                        "size": 10,
+                        "color": "#E0E0E0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#2C3E50",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Gold on Dark Hex",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Should stay GOLD",
+                        "size": 10,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "White on Accent1",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Should stay WHITE",
+                        "size": 10,
+                        "color": "#DDDDDD"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "White on Accent2",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Should stay WHITE",
+                        "size": 10,
+                        "color": "#DDDDDD"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "White on Accent3",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Should stay WHITE",
+                        "size": 10,
+                        "color": "#DDDDDD"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Dark on Light Fill",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#1A1A2E"
+                      },
+                      {
+                        "content": "Should stay DARK",
+                        "size": 10,
+                        "color": "#555555"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Cyan Accent",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#00BCD4"
+                      },
+                      {
+                        "content": "Intentional brand color",
+                        "size": 10,
+                        "color": "#90CAF9"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#000000",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Red on Black",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#CC0000"
+                      },
+                      {
+                        "content": "Bain-style red accent",
+                        "size": 10,
+                        "color": "#AAAAAA"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "KPI Cards (Typography Hierarchy)"
+        }
+      ],
+      "shape_grid": {
+        "columns": 4,
+        "gap": 6,
+        "rows": [
+          {
+            "height": 25,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "$8.4M",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Total Investment",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "2.1x",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "ROI (3-year)",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "18 mo",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Payback Period",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#333333",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "$17.6M",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Net Present Value",
+                        "size": 11,
+                        "color": "#BBBBBB"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Breakdown:",
+                        "size": 11,
+                        "bold": true
+                      },
+                      {
+                        "content": "Tech: $5.2M\nPeople: $2.1M\nProcess: $1.1M",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Drivers:",
+                        "size": 11,
+                        "bold": true
+                      },
+                      {
+                        "content": "Cost savings: 40%\nRevenue uplift: 35%\nRisk reduction: 25%",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Assumptions:",
+                        "size": 11,
+                        "bold": true
+                      },
+                      {
+                        "content": "15% discount rate\n5% annual growth\nBase case",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Sensitivity:",
+                        "size": 11,
+                        "bold": true
+                      },
+                      {
+                        "content": "Best: $22.1M\nBase: $17.6M\nWorst: $11.3M",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "2x2 Matrix with Brand Colors"
+        }
+      ],
+      "shape_grid": {
+        "columns": 2,
+        "gap": 6,
+        "rows": [
+          {
+            "height": 45,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "High Impact / Low Effort",
+                        "size": 10,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Quick Wins",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Automate reporting\nConsolidate vendors\nStandardize onboarding",
+                        "size": 9,
+                        "color": "#E0E0E0"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "High Impact / High Effort",
+                        "size": 10,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Strategic Bets",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Cloud migration\nEnterprise data lake\nCustomer 360",
+                        "size": 9,
+                        "color": "#E0E0E0"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 45,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Low Impact / Low Effort",
+                        "size": 10,
+                        "bold": true
+                      },
+                      {
+                        "content": "Fill-Ins",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Update docs\nMinor UI polish\nSkill assessments",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Low Impact / High Effort",
+                        "size": 10,
+                        "bold": true
+                      },
+                      {
+                        "content": "Deprioritize",
+                        "size": 16,
+                        "bold": true,
+                        "color": "#CC0000"
+                      },
+                      {
+                        "content": "Legacy rewrite\nCustom ERP\nFull rebrand",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "template": "forest-green",
+  "output_filename": "charts.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Data Visualization Examples"
+        },
+        {
+          "placeholder_id": "Subtitle 2",
+          "type": "text",
+          "value": "Bar, Line, and Pie Charts"
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Quarterly Revenue (Bar Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "bar",
+            "title": "Revenue by Quarter ($M)",
+            "data": {
+              "Q1 2025": 12.0,
+              "Q2 2025": 14.5,
+              "Q3 2025": 15.2,
+              "Q4 2025": 18.0,
+              "Q1 2026": 21.3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Monthly Active Users (Line Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "line",
+            "title": "MAU Growth Trend (Thousands)",
+            "data": {
+              "Jan": 85,
+              "Feb": 92,
+              "Mar": 98,
+              "Apr": 110,
+              "May": 125,
+              "Jun": 138
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Market Share Distribution (Pie Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "pie",
+            "title": "Market Share by Company",
+            "data": {
+              "Our Company": 35,
+              "Competitor A": 25,
+              "Competitor B": 20,
+              "Competitor C": 12,
+              "Others": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Budget Allocation (Donut Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "donut",
+            "title": "Annual Budget Distribution",
+            "data": {
+              "Engineering": 40,
+              "Sales & Marketing": 25,
+              "Operations": 15,
+              "Research": 12,
+              "Administration": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Regional Performance (Area Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "area",
+            "title": "Revenue by Region ($M)",
+            "data": {
+              "North America": 45,
+              "Europe": 28,
+              "Asia Pacific": 18,
+              "Latin America": 6,
+              "Middle East": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Sales Funnel (Funnel Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "funnel",
+            "title": "Sales Pipeline Conversion",
+            "data": {
+              "Leads": 10000,
+              "Qualified": 4500,
+              "Proposals": 2000,
+              "Negotiations": 800,
+              "Closed Won": 350
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

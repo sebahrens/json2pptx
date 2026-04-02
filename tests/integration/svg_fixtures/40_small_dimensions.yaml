@@ -1,0 +1,13 @@
+type: bar_chart
+title: Small Chart
+data:
+  categories:
+    - A
+    - B
+    - C
+  series:
+    - name: Values
+      values: [10, 20, 15]
+output:
+  width: 200
+  height: 150

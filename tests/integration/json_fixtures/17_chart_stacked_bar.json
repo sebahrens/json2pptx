@@ -1,0 +1,28 @@
+{
+  "template": "modern-template",
+  "output_filename": "17_chart_stacked_bar.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue Mix (Stacked Bar)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "stacked_bar_chart",
+            "title": "Revenue by Product and Quarter",
+            "data": {
+              "categories": ["Q1", "Q2", "Q3", "Q4"],
+              "series": [
+                {"name": "Enterprise", "values": [8, 9, 10, 12]},
+                {"name": "SMB", "values": [3, 4, 4, 5]},
+                {"name": "Startup", "values": [1, 1.5, 1.2, 1]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

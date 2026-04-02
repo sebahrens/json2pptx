@@ -1,0 +1,18 @@
+{
+  "type": "pie_chart",
+  "title": "Market Share by Segment",
+  "subtitle": "Q4 2024",
+  "data": {
+    "categories": ["Enterprise", "Mid-Market", "SMB", "Consumer"],
+    "values": [42, 28, 18, 12]
+  },
+  "style": {
+    "palette": "vibrant",
+    "show_legend": true,
+    "show_values": true
+  },
+  "output": {
+    "width": 600,
+    "height": 500
+  }
+}

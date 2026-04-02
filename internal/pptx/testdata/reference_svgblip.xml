@@ -1,0 +1,117 @@
+<!--
+Reference OOXML Fragments for SVG+PNG Fallback in PPTX
+======================================================
+
+This file documents the exact XML structure required for embedding SVG images
+with PNG fallback in PPTX files. PowerPoint 2016+ renders the SVG while older
+versions fall back to the PNG.
+
+Office version support:
+- PowerPoint 2016+ (Office 365, 2019, 2021): Renders SVG
+- PowerPoint 2013 and earlier: Shows PNG fallback
+- LibreOffice Impress: Shows PNG fallback
+- Other viewers: PNG fallback
+
+Key namespace definitions:
+- xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+- xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+- xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+- xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main"
+
+The SVG extension GUID: {96DAC541-7B7A-43D3-8B79-37D633B846F1}
+-->
+
+<!-- ============================================================
+     Reference p:pic element with SVG and PNG fallback
+     ============================================================
+
+     This is a complete picture element ready for insertion into
+     a slide's p:spTree. The relationship IDs (rId1, rId2) must
+     be replaced with actual relationship IDs from the slide's
+     .rels file.
+-->
+<p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <!-- Non-visual properties: ID, name, and accessibility -->
+  <p:nvPicPr>
+    <p:cNvPr id="4" name="Chart 1" descr="Description for screen readers"/>
+    <p:cNvPicPr>
+      <a:picLocks noChangeAspect="1"/>
+    </p:cNvPicPr>
+    <p:nvPr/>
+  </p:nvPicPr>
+
+  <!-- Blip fill with SVG extension -->
+  <p:blipFill>
+    <!-- Primary blip: PNG fallback (r:embed="rId1") -->
+    <a:blip r:embed="rId1">
+      <a:extLst>
+        <!-- SVG extension for Office 2016+ -->
+        <a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}">
+          <!-- SVG blip (r:embed="rId2") -->
+          <asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main"
+                        r:embed="rId2"/>
+        </a:ext>
+      </a:extLst>
+    </a:blip>
+    <a:stretch>
+      <a:fillRect/>
+    </a:stretch>
+  </p:blipFill>
+
+  <!-- Shape properties: position and size in EMUs -->
+  <p:spPr>
+    <a:xfrm>
+      <!-- Position: 1 inch from left, 1.5 inches from top -->
+      <!-- 914400 EMU = 1 inch -->
+      <a:off x="914400" y="1371600"/>
+      <!-- Size: 5 inches wide, 3 inches tall -->
+      <a:ext cx="4572000" cy="2743200"/>
+    </a:xfrm>
+    <a:prstGeom prst="rect">
+      <a:avLst/>
+    </a:prstGeom>
+  </p:spPr>
+</p:pic>
+
+<!-- ============================================================
+     Required slide relationships (ppt/slides/_rels/slideN.xml.rels)
+     ============================================================
+-->
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <!-- PNG fallback - referenced by a:blip/@r:embed -->
+  <Relationship Id="rId1"
+                Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+                Target="../media/image1.png"/>
+  <!-- SVG image - referenced by asvg:svgBlip/@r:embed -->
+  <Relationship Id="rId2"
+                Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+                Target="../media/image1.svg"/>
+</Relationships>
+
+<!-- ============================================================
+     Required content types ([Content_Types].xml)
+     ============================================================
+-->
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <!-- PNG content type -->
+  <Default Extension="png" ContentType="image/png"/>
+  <!-- SVG content type -->
+  <Default Extension="svg" ContentType="image/svg+xml"/>
+</Types>
+
+<!-- ============================================================
+     EMU Reference Table
+     ============================================================
+
+     914400 EMU = 1 inch
+     360000 EMU = 1 cm
+     12700 EMU = 1 point
+     9525 EMU = 1 pixel (at 96 DPI)
+
+     Common slide sizes (in EMU):
+     - Standard (4:3): 9144000 x 6858000
+     - Widescreen (16:9): 12192000 x 6858000
+     - Widescreen (16:10): 12192000 x 7620000
+-->

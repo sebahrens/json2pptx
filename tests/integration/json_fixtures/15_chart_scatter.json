@@ -1,0 +1,29 @@
+{
+  "template": "modern-template",
+  "output_filename": "15_chart_scatter.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Effort vs Impact (Scatter Chart)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "scatter_chart",
+            "title": "Feature Prioritization",
+            "data": {
+              "series": [
+                {
+                  "name": "Features",
+                  "x_values": [10, 30, 50, 70, 90],
+                  "values": [80, 60, 40, 90, 20]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150">
+  <circle cx="75" cy="75" r="50" fill="#e74c3c"/>
+  <text x="75" y="82" text-anchor="middle" fill="white" font-size="14">No ViewBox</text>
+</svg>

@@ -1,0 +1,25 @@
+{
+  "template": "modern-template",
+  "output_filename": "22_chart_gauge.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Customer Satisfaction (Gauge)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "gauge_chart",
+            "title": "NPS Score",
+            "data": {
+              "value": 72,
+              "min": 0,
+              "max": 100
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

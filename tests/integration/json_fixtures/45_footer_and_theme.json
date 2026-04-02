@@ -1,0 +1,39 @@
+{
+  "template": "modern-template",
+  "output_filename": "45_footer_and_theme.pptx",
+  "footer": {
+    "enabled": true,
+    "left_text": "Acme Corp | Confidential"
+  },
+  "theme_override": {
+    "colors": {
+      "accent1": "#E31837",
+      "accent2": "#4472C4",
+      "dk1": "#1A1A1A",
+      "lt1": "#FFFFFF"
+    },
+    "title_font": "Helvetica",
+    "body_font": "Calibri"
+  },
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Custom Theme Deck"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "With footer and color overrides"}
+      ]
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Custom Colors Applied"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "Accent1 is now red",
+          "Title font is Helvetica",
+          "Body font is Calibri",
+          "Footer shows company name"
+        ]}
+      ]
+    }
+  ]
+}

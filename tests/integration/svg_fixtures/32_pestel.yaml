@@ -1,0 +1,30 @@
+type: pestel
+title: Market Environment Analysis
+data:
+  political:
+    - Trade policies shifting
+    - Government stability
+    - Tax reform proposals
+  economic:
+    - Interest rate trends
+    - Inflation outlook
+    - Currency fluctuations
+  social:
+    - Remote work adoption
+    - Demographic shifts
+    - Consumer behavior changes
+  technological:
+    - AI advancement
+    - Cloud computing maturity
+    - IoT proliferation
+  environmental:
+    - Carbon regulations
+    - Sustainability demand
+    - Climate risk
+  legal:
+    - Data privacy laws (GDPR, CCPA)
+    - IP protection
+    - Employment regulations
+output:
+  width: 900
+  height: 600

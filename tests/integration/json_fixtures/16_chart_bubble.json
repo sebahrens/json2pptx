@@ -1,0 +1,30 @@
+{
+  "template": "modern-template",
+  "output_filename": "16_chart_bubble.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Market Opportunity (Bubble Chart)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "bubble_chart",
+            "title": "Market Segments",
+            "data": {
+              "series": [
+                {
+                  "name": "Segments",
+                  "x_values": [20, 50, 80, 30, 60],
+                  "values": [70, 40, 90, 30, 60],
+                  "sizes": [100, 250, 180, 90, 300]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

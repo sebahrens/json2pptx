@@ -1,0 +1,38 @@
+{
+  "template": "modern-template",
+  "output_filename": "25_diagram_process_flow.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Order Processing"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "process_flow",
+            "title": "Order Fulfillment",
+            "data": {
+              "steps": [
+                {"id": "start", "label": "Order Received", "type": "start"},
+                {"id": "validate", "label": "Validate Order", "type": "step"},
+                {"id": "check", "label": "Payment OK?", "type": "decision"},
+                {"id": "fulfill", "label": "Fulfill Order", "type": "step"},
+                {"id": "reject", "label": "Reject", "type": "step"},
+                {"id": "end", "label": "Complete", "type": "end"}
+              ],
+              "connections": [
+                {"from": "start", "to": "validate"},
+                {"from": "validate", "to": "check"},
+                {"from": "check", "to": "fulfill", "label": "Yes"},
+                {"from": "check", "to": "reject", "label": "No"},
+                {"from": "fulfill", "to": "end"},
+                {"from": "reject", "to": "end"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

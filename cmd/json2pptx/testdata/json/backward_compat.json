@@ -1,0 +1,89 @@
+{
+  "template": "template_2",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Legacy Format Title"},
+        {"placeholder_id": "subtitle", "type": "text", "value": "Using Only Value Field"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Key Points"},
+        {"placeholder_id": "body", "type": "bullets", "value": ["First bullet", "Second bullet", "Third bullet"]}
+      ],
+      "speaker_notes": "Cover these three points"
+    },
+    {
+      "layout_id": "slideLayout3",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Overview"},
+        {"placeholder_id": "body", "type": "body_and_bullets", "value": {
+          "body": "Introduction paragraph",
+          "bullets": ["Point A", "Point B"],
+          "trailing_body": "Conclusion paragraph"
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Grouped Content"},
+        {"placeholder_id": "body", "type": "bullet_groups", "value": {
+          "body": "Two key areas:",
+          "groups": [
+            {"header": "Area 1", "bullets": ["Item 1a", "Item 1b"]},
+            {"header": "Area 2", "body": "Additional context", "bullets": ["Item 2a"]}
+          ],
+          "trailing_body": "Both areas are critical."
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Revenue Chart"},
+        {"placeholder_id": "body", "type": "chart", "value": {
+          "type": "bar",
+          "title": "Monthly Revenue",
+          "data": {"Jan": 100, "Feb": 120, "Mar": 150}
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Architecture"},
+        {"placeholder_id": "body", "type": "diagram", "value": {
+          "type": "process_flow",
+          "title": "Data Pipeline",
+          "data": {
+            "steps": ["Ingest", "Transform", "Load", "Analyze"]
+          }
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout6",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Data Table"},
+        {"placeholder_id": "body", "type": "table", "value": {
+          "headers": ["Name", "Role"],
+          "rows": [["Alice", "Engineer"], ["Bob", "Designer"]]
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "value": "Product Photo"},
+        {"placeholder_id": "body", "type": "image", "value": {
+          "path": "/images/product.png",
+          "alt": "Product screenshot"
+        }}
+      ]
+    }
+  ]
+}

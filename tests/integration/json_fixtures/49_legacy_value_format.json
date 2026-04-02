@@ -1,0 +1,55 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "49_legacy_value_format.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Legacy Format Title"
+        },
+        {
+          "placeholder_id": "Subtitle 2",
+          "type": "text",
+          "value": "Using legacy value field"
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Legacy Bullets"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "bullets",
+          "value": ["Bullet A", "Bullet B", "Bullet C"]
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Legacy Chart"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "bar",
+            "title": "Sales",
+            "data": {"Q1": 10, "Q2": 15, "Q3": 12, "Q4": 18}
+          }
+        }
+      ]
+    }
+  ]
+}

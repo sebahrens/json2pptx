@@ -1,0 +1,9 @@
+type: gauge_chart
+title: NPS Score
+data:
+  value: 72
+  min: 0
+  max: 100
+output:
+  width: 500
+  height: 400

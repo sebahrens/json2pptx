@@ -1,0 +1,40 @@
+type: process_flow
+title: Order Processing Workflow
+data:
+  steps:
+    - id: start
+      label: Order Received
+      type: start
+    - id: validate
+      label: Validate Order
+      type: step
+    - id: payment
+      label: Payment OK?
+      type: decision
+    - id: fulfill
+      label: Fulfill Order
+      type: step
+    - id: reject
+      label: Reject Order
+      type: step
+    - id: end
+      label: Complete
+      type: end
+  connections:
+    - from: start
+      to: validate
+    - from: validate
+      to: payment
+    - from: payment
+      to: fulfill
+      label: Approved
+    - from: payment
+      to: reject
+      label: Declined
+    - from: fulfill
+      to: end
+    - from: reject
+      to: end
+output:
+  width: 900
+  height: 500

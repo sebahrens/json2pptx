@@ -1,0 +1,13 @@
+type: treemap_chart
+title: Revenue by Product Line
+data:
+  categories:
+    - Enterprise Platform
+    - SMB Suite
+    - API Services
+    - Professional Services
+    - Training
+  values: [45, 25, 15, 10, 5]
+output:
+  width: 800
+  height: 500

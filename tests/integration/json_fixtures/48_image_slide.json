@@ -1,0 +1,20 @@
+{
+  "template": "modern-template",
+  "output_filename": "48_image_slide.pptx",
+  "slides": [
+    {
+      "slide_type": "image",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Team Photo"},
+        {
+          "placeholder_id": "body",
+          "type": "image",
+          "image_value": {
+            "path": "/nonexistent/photo.png",
+            "alt": "Team group photo"
+          }
+        }
+      ]
+    }
+  ]
+}

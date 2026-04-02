@@ -1,0 +1,26 @@
+type: swot
+title: Company SWOT Analysis
+subtitle: Strategic Planning 2026
+data:
+  strengths:
+    - Strong brand recognition
+    - Loyal customer base
+    - Efficient supply chain
+    - Experienced leadership team
+  weaknesses:
+    - Limited market share in Asia
+    - High operating costs
+    - Aging technology infrastructure
+  opportunities:
+    - Emerging markets expansion
+    - AI and automation adoption
+    - Strategic partnerships
+    - Sustainability initiatives
+  threats:
+    - Increasing competition
+    - Regulatory changes
+    - Economic uncertainty
+    - Supply chain disruptions
+output:
+  width: 800
+  height: 600

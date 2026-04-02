@@ -1,0 +1,29 @@
+{
+  "template": "modern-template",
+  "output_filename": "33_diagram_house.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategy House"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "house_diagram",
+            "title": "Strategic Framework",
+            "data": {
+              "roof": "Vision: Global Leader in Digital Payments",
+              "sections": [
+                {"label": "Technology", "items": ["Cloud", "API Platform"]},
+                {"label": "Product", "items": ["Mobile Payments", "Analytics"]},
+                {"label": "People", "items": ["Talent", "Culture"]}
+              ],
+              "foundation": "Core Values: Integrity, Innovation, Customer Focus"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

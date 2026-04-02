@@ -1,0 +1,36 @@
+{
+  "template": "modern-template",
+  "output_filename": "04_two_column.pptx",
+  "slides": [
+    {
+      "slide_type": "two-column",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Comparison View"},
+        {
+          "placeholder_id": "body",
+          "type": "bullet_groups",
+          "bullet_groups_value": {
+            "groups": [
+              {
+                "header": "Strengths",
+                "bullets": ["Market leader", "Strong brand", "Great team"]
+              }
+            ]
+          }
+        },
+        {
+          "placeholder_id": "body_2",
+          "type": "bullet_groups",
+          "bullet_groups_value": {
+            "groups": [
+              {
+                "header": "Weaknesses",
+                "bullets": ["Limited reach", "High cost", "Slow delivery"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

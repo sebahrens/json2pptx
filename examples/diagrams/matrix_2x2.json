@@ -1,0 +1,39 @@
+{
+  "type": "matrix_2x2",
+  "title": "Feature Prioritization Matrix",
+  "subtitle": "Product Roadmap Planning",
+  "data": {
+    "x_axis_label": "Implementation Effort",
+    "y_axis_label": "Customer Value",
+    "quadrant_labels": [
+      "Quick Wins",
+      "Major Projects",
+      "Fill-Ins",
+      "Time Sinks"
+    ],
+    "quadrant_colors": [
+      "#59A14F",
+      "#EDC948",
+      "#76B7B2",
+      "#E15759"
+    ],
+    "quadrant_opacity": 0.15,
+    "points": [
+      {"label": "Dark Mode", "x": 15, "y": 75, "description": "High demand, simple CSS"},
+      {"label": "AI Assistant", "x": 85, "y": 90, "description": "Complex but valuable"},
+      {"label": "Export PDF", "x": 25, "y": 85, "description": "Frequently requested"},
+      {"label": "Mobile App", "x": 90, "y": 70, "description": "Major initiative"},
+      {"label": "Emoji Support", "x": 10, "y": 30, "description": "Nice to have"},
+      {"label": "Custom Themes", "x": 45, "y": 55, "description": "Moderate effort"},
+      {"label": "Legacy Import", "x": 75, "y": 25, "description": "Few users need it"},
+      {"label": "Keyboard Shortcuts", "x": 20, "y": 60, "description": "Power user feature"}
+    ]
+  },
+  "style": {
+    "palette": "corporate"
+  },
+  "output": {
+    "width": 700,
+    "height": 600
+  }
+}

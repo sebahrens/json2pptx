@@ -1,0 +1,131 @@
+{
+  "template": "modern-template",
+  "output_filename": "62_sg_chevron_header.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Chevron Process Header"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 20,
+            "col_gap": 0,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Phase 1\nDiscovery",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Phase 2\nDevelopment",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Phase 3\nDelivery",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 15
+                  },
+                  "line": "accent1",
+                  "text": {
+                    "content": "User research\nCompetitive analysis\nRequirements gathering",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 15
+                  },
+                  "line": "accent2",
+                  "text": {
+                    "content": "Sprint planning\nIterative builds\nCode reviews",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent3",
+                    "alpha": 15
+                  },
+                  "line": "accent3",
+                  "text": {
+                    "content": "QA validation\nStaging deploy\nProduction launch",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

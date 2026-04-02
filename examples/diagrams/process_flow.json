@@ -1,0 +1,37 @@
+{
+  "type": "process_flow",
+  "title": "Order Processing Workflow",
+  "subtitle": "E-commerce Order Fulfillment",
+  "data": {
+    "steps": [
+      {"id": "start", "label": "Order Received", "type": "start", "icon": "📩"},
+      {"id": "validate", "label": "Validate Order", "type": "step"},
+      {"id": "payment", "label": "Payment OK?", "type": "decision"},
+      {"id": "inventory", "label": "Check Inventory", "type": "decision"},
+      {"id": "fulfill", "label": "Fulfill Order", "type": "step"},
+      {"id": "backorder", "label": "Create Backorder", "type": "step"},
+      {"id": "ship", "label": "Ship Package", "type": "step"},
+      {"id": "notify", "label": "Notify Customer", "type": "step"},
+      {"id": "reject", "label": "Reject Order", "type": "step"},
+      {"id": "end", "label": "Complete", "type": "end"}
+    ],
+    "connections": [
+      {"from": "start", "to": "validate"},
+      {"from": "validate", "to": "payment"},
+      {"from": "payment", "to": "inventory", "label": "Approved"},
+      {"from": "payment", "to": "reject", "label": "Declined"},
+      {"from": "inventory", "to": "fulfill", "label": "In Stock"},
+      {"from": "inventory", "to": "backorder", "label": "Out of Stock"},
+      {"from": "fulfill", "to": "ship"},
+      {"from": "backorder", "to": "notify"},
+      {"from": "ship", "to": "notify"},
+      {"from": "notify", "to": "end"},
+      {"from": "reject", "to": "end"}
+    ],
+    "direction": "horizontal"
+  },
+  "output": {
+    "width": 900,
+    "height": 500
+  }
+}

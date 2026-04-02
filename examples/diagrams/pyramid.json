@@ -1,0 +1,17 @@
+{
+  "type": "pyramid",
+  "title": "Maslow's Hierarchy of Needs",
+  "data": {
+    "levels": [
+      {"label": "Self-Actualization", "description": "Creativity, fulfillment"},
+      {"label": "Esteem", "description": "Confidence, achievement"},
+      {"label": "Love/Belonging", "description": "Friendship, family"},
+      {"label": "Safety", "description": "Security, health"},
+      {"label": "Physiological", "description": "Food, water, shelter"}
+    ]
+  },
+  "output": {
+    "width": 800,
+    "height": 600
+  }
+}

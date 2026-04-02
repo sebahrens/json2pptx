@@ -1,0 +1,1088 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "icons-and-svg-grid-test.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Icons and SVG Grid Test"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Comprehensive Icon Library Testing with Shape Grid"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Icon Gallery - 4x3 Grid"
+        }
+      ],
+      "shape_grid": {
+        "gap": 20,
+        "columns": 4,
+        "bounds": {
+          "x": 5,
+          "y": 15,
+          "width": 90,
+          "height": 80
+        },
+        "rows": [
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "chart-pie",
+                  "fill": "#4A90E2"
+                }
+              },
+              {
+                "icon": {
+                  "name": "chart-bar",
+                  "fill": "#50E3C2"
+                }
+              },
+              {
+                "icon": {
+                  "name": "chart-line",
+                  "fill": "#F5A623"
+                }
+              },
+              {
+                "icon": {
+                  "name": "chart-scatter",
+                  "fill": "#BD10E0"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "trending-up",
+                  "fill": "#7ED321"
+                }
+              },
+              {
+                "icon": {
+                  "name": "trending-down",
+                  "fill": "#FF6B6B"
+                }
+              },
+              {
+                "icon": {
+                  "name": "target",
+                  "fill": "#9B9B9B"
+                }
+              },
+              {
+                "icon": {
+                  "name": "rocket",
+                  "fill": "#FF0084"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4ECDC4"
+                }
+              },
+              {
+                "icon": {
+                  "name": "alert-circle",
+                  "fill": "#FF9F1C"
+                }
+              },
+              {
+                "icon": {
+                  "name": "user",
+                  "fill": "#2E86AB"
+                }
+              },
+              {
+                "icon": {
+                  "name": "bulb",
+                  "fill": "#FFD700"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Outline vs Filled Icons"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": 4,
+        "bounds": {
+          "x": 5,
+          "y": 15,
+          "width": 90,
+          "height": 80
+        },
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "col_span": 1,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Outline",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "col_span": 1,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Filled",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "col_span": 1,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Outline",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "col_span": 1,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Filled",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "heart"
+                }
+              },
+              {
+                "icon": {
+                  "name": "filled:heart",
+                  "fill": "#FF1744"
+                }
+              },
+              {
+                "icon": {
+                  "name": "star"
+                }
+              },
+              {
+                "icon": {
+                  "name": "filled:star",
+                  "fill": "#FFD700"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "bookmark"
+                }
+              },
+              {
+                "icon": {
+                  "name": "filled:bookmark"
+                }
+              },
+              {
+                "icon": {
+                  "name": "bell"
+                }
+              },
+              {
+                "icon": {
+                  "name": "filled:bell-ringing",
+                  "fill": "#FF6B6B"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Process Flow with Icons"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": 5,
+        "bounds": {
+          "x": 5,
+          "y": 15,
+          "width": 90,
+          "height": 80
+        },
+        "rows": [
+          {
+            "height": 25,
+            "cells": [
+              {
+                "icon": {
+                  "name": "search",
+                  "fill": "#4A90E2"
+                }
+              },
+              {
+                "icon": {
+                  "name": "arrow-right",
+                  "fill": "#999999"
+                }
+              },
+              {
+                "icon": {
+                  "name": "checklist",
+                  "fill": "#50E3C2"
+                }
+              },
+              {
+                "icon": {
+                  "name": "arrow-right",
+                  "fill": "#999999"
+                }
+              },
+              {
+                "icon": {
+                  "name": "rocket",
+                  "fill": "#F5A623"
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Discover",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {},
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Plan",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {},
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Execute",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "KPI Dashboard with Icons"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": [
+          10,
+          40,
+          50
+        ],
+        "bounds": {
+          "x": 5,
+          "y": 15,
+          "width": 90,
+          "height": 80
+        },
+        "rows": [
+          {
+            "height": 20,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Q1 2026 Performance Metrics",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "icon": {
+                  "name": "chart-bar",
+                  "fill": "#4A90E2"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Revenue",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#333333",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#E8F4F8",
+                  "text": {
+                    "content": "$21.5M\n+17% YoY",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#4A90E2",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "icon": {
+                  "name": "users-group",
+                  "fill": "#50E3C2"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Customers",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#333333",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#E8F8F4",
+                  "text": {
+                    "content": "1,250\n+8% QoQ",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#50E3C2",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {
+                "icon": {
+                  "name": "trending-up",
+                  "fill": "#F5A623"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Growth Rate",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#333333",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#FFF8E8",
+                  "text": {
+                    "content": "145%\nAnnualized",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#F5A623",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Status Indicators with Colors"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": 3,
+        "bounds": {
+          "x": 10,
+          "y": 20,
+          "width": 80,
+          "height": 70
+        },
+        "rows": [
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#4CAF50",
+                  "text": {
+                    "content": "On Track",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#FF9800",
+                  "text": {
+                    "content": "At Risk",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F44336",
+                  "text": {
+                    "content": "Off Track",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {
+                "icon": {
+                  "name": "circle-check",
+                  "fill": "#4CAF50"
+                }
+              },
+              {
+                "icon": {
+                  "name": "alert-circle",
+                  "fill": "#FF9800"
+                }
+              },
+              {
+                "icon": {
+                  "name": "alert-triangle",
+                  "fill": "#F44336"
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F0F0F0",
+                  "text": {
+                    "content": "All objectives met. Team performing excellently.",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_left": 6,
+                    "inset_right": 6,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F0F0F0",
+                  "text": {
+                    "content": "Some risks identified. Mitigation in progress.",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_left": 6,
+                    "inset_right": 6,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F0F0F0",
+                  "text": {
+                    "content": "Critical issues. Immediate action required.",
+                    "size": 10,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_left": 6,
+                    "inset_right": 6,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Icon Categories Test"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": 5,
+        "bounds": {
+          "x": 5,
+          "y": 15,
+          "width": 90,
+          "height": 80
+        },
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#6C7AC0",
+                  "text": {
+                    "content": "Charts",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#6C7AC0",
+                  "text": {
+                    "content": "Actions",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#6C7AC0",
+                  "text": {
+                    "content": "Status",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#6C7AC0",
+                  "text": {
+                    "content": "Objects",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#6C7AC0",
+                  "text": {
+                    "content": "Feedback",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "chart-pie"
+                }
+              },
+              {
+                "icon": {
+                  "name": "download"
+                }
+              },
+              {
+                "icon": {
+                  "name": "check"
+                }
+              },
+              {
+                "icon": {
+                  "name": "briefcase"
+                }
+              },
+              {
+                "icon": {
+                  "name": "thumb-up"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "chart-bar"
+                }
+              },
+              {
+                "icon": {
+                  "name": "upload"
+                }
+              },
+              {
+                "icon": {
+                  "name": "x"
+                }
+              },
+              {
+                "icon": {
+                  "name": "book"
+                }
+              },
+              {
+                "icon": {
+                  "name": "thumb-down"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "icon": {
+                  "name": "chart-line"
+                }
+              },
+              {
+                "icon": {
+                  "name": "share"
+                }
+              },
+              {
+                "icon": {
+                  "name": "alert-circle"
+                }
+              },
+              {
+                "icon": {
+                  "name": "certificate"
+                }
+              },
+              {
+                "icon": {
+                  "name": "heart"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Mixed Icons and Shapes"
+        }
+      ],
+      "shape_grid": {
+        "gap": 16,
+        "columns": 4,
+        "bounds": {
+          "x": 5,
+          "y": 15,
+          "width": 90,
+          "height": 80
+        },
+        "rows": [
+          {
+            "height": 20,
+            "cells": [
+              {
+                "col_span": 4,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Feature Comparison",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Feature",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Plan A",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Plan B",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Plan C",
+                    "size": 12,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F5F5F5",
+                  "text": {
+                    "content": "Support",
+                    "size": 11,
+                    "bold": true,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8
+                  }
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F5F5F5",
+                  "text": {
+                    "content": "Analytics",
+                    "size": 11,
+                    "bold": true,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8
+                  }
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              },
+              {
+                "icon": {
+                  "name": "x",
+                  "fill": "#F44336"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#F5F5F5",
+                  "text": {
+                    "content": "API Access",
+                    "size": 11,
+                    "bold": true,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8
+                  }
+                }
+              },
+              {
+                "icon": {
+                  "name": "x",
+                  "fill": "#F44336"
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              },
+              {
+                "icon": {
+                  "name": "check",
+                  "fill": "#4CAF50"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Test Complete"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Icons and SVG Grid functionality verified"
+        }
+      ]
+    }
+  ]
+}

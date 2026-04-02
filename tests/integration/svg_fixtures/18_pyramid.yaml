@@ -1,0 +1,17 @@
+type: pyramid
+title: Maslow's Hierarchy of Needs
+data:
+  levels:
+    - label: Self-Actualization
+      description: Creativity and fulfillment
+    - label: Esteem
+      description: Confidence and achievement
+    - label: Love/Belonging
+      description: Friendship and family
+    - label: Safety
+      description: Security and health
+    - label: Physiological
+      description: Food, water, shelter
+output:
+  width: 800
+  height: 600

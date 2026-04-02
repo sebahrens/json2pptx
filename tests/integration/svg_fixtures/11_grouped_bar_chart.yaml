@@ -1,0 +1,16 @@
+type: grouped_bar_chart
+title: "Revenue: 2024 vs 2025"
+data:
+  categories:
+    - Q1
+    - Q2
+    - Q3
+    - Q4
+  series:
+    - name: "2024"
+      values: [10, 12, 13, 15]
+    - name: "2025"
+      values: [14, 16, 18, 21]
+output:
+  width: 800
+  height: 400

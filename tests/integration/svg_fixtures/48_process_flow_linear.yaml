@@ -1,0 +1,26 @@
+type: process_flow
+title: Simple Linear Flow
+data:
+  steps:
+    - id: a
+      label: Start
+      type: start
+    - id: b
+      label: Step 1
+      type: step
+    - id: c
+      label: Step 2
+      type: step
+    - id: d
+      label: End
+      type: end
+  connections:
+    - from: a
+      to: b
+    - from: b
+      to: c
+    - from: c
+      to: d
+output:
+  width: 800
+  height: 200

@@ -1,0 +1,49 @@
+type: gantt
+title: Product Development Plan
+subtitle: Q1-Q2 2026
+data:
+  tasks:
+    - id: req
+      label: Requirements
+      start: "2026-01-01"
+      end: "2026-01-31"
+      category: Planning
+    - id: design
+      label: System Design
+      start: "2026-01-15"
+      end: "2026-02-28"
+      category: Planning
+      dependencies:
+        - req
+    - id: backend
+      label: Backend Development
+      start: "2026-02-15"
+      end: "2026-04-30"
+      category: Engineering
+      dependencies:
+        - design
+    - id: frontend
+      label: Frontend Development
+      start: "2026-03-01"
+      end: "2026-05-15"
+      category: Engineering
+      dependencies:
+        - design
+    - id: testing
+      label: Integration Testing
+      start: "2026-04-15"
+      end: "2026-05-31"
+      category: QA
+      dependencies:
+        - backend
+        - frontend
+  milestones:
+    - label: Kickoff
+      date: "2026-01-01"
+    - label: Alpha
+      date: "2026-04-01"
+    - label: GA Launch
+      date: "2026-06-30"
+output:
+  width: 1000
+  height: 500

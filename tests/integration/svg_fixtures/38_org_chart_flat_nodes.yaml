@@ -1,0 +1,21 @@
+type: org_chart
+title: Flat Node Format
+data:
+  nodes:
+    - id: "1"
+      name: CEO
+      title: Chief Executive
+    - id: "2"
+      name: CTO
+      title: Chief Technology
+      parent: "1"
+    - id: "3"
+      name: CFO
+      title: Chief Financial
+      parent: "1"
+    - id: "4"
+      name: VP Eng
+      parent: "2"
+output:
+  width: 700
+  height: 400

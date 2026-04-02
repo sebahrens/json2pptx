@@ -1,0 +1,110 @@
+{
+  "template": "modern-template",
+  "output_filename": "69_sg_spacers.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Spacers with Null Cells"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": 3,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Left Panel\n\nKey insights and findings from the research phase",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              null,
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Right Panel\n\nRecommendations and next steps for the team",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              null,
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Center\nFocus",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              null
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "Bottom Left\n\nTimeline and milestones",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              null,
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "Bottom Right\n\nBudget and resources",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#f39c12"/>
+  <rect x="50" y="50" width="980" height="1820" fill="#e67e22" rx="20"/>
+  <text x="540" y="960" text-anchor="middle" fill="white" font-family="sans-serif" font-size="72" transform="rotate(90 540 960)">9:16 Tall</text>
+</svg>

@@ -1,0 +1,371 @@
+{
+  "template": "modern-template",
+  "output_filename": "61_sg_numbered_steps_10.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Ten Step Implementation Plan"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 78
+        },
+        "gap": 5,
+        "columns": [
+          10,
+          90
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "1",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Identify business need",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "2",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Conduct stakeholder interviews",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "3",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent3",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Define success metrics",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "4",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent4",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Create project charter",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "5",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent5",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Assemble cross-functional team",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "6",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent6",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Design technical architecture",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "7",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Build minimum viable product",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "8",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Run user acceptance testing",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "9",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent3",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Deploy to production environment",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "10",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent4",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Monitor and iterate on feedback",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 5
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

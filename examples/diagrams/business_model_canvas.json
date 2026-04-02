@@ -1,0 +1,86 @@
+{
+  "type": "business_model_canvas",
+  "title": "DataSync SaaS",
+  "subtitle": "B2B Data Integration Platform",
+  "data": {
+    "boxes": {
+      "key_partners": {
+        "items": [
+          "Cloud providers (AWS, GCP)",
+          "Data warehouse partners",
+          "System integrators",
+          "Technology consultants"
+        ]
+      },
+      "key_activities": {
+        "items": [
+          "Platform development",
+          "Connector maintenance",
+          "Customer onboarding",
+          "Security compliance"
+        ]
+      },
+      "key_resources": {
+        "items": [
+          "Engineering team",
+          "Proprietary ETL engine",
+          "SOC 2 certification",
+          "Partner network"
+        ]
+      },
+      "value_proposition": {
+        "items": [
+          "No-code data pipelines",
+          "Real-time sync",
+          "200+ pre-built connectors",
+          "Enterprise security"
+        ]
+      },
+      "customer_relationships": {
+        "items": [
+          "Self-service free tier",
+          "Premium support",
+          "Dedicated CSM for enterprise",
+          "Community forums"
+        ]
+      },
+      "channels": {
+        "items": [
+          "Website & product-led growth",
+          "Content marketing",
+          "Partner referrals",
+          "Enterprise sales team"
+        ]
+      },
+      "customer_segments": {
+        "items": [
+          "Data teams at mid-market",
+          "Enterprise IT departments",
+          "Startups scaling data ops",
+          "Analytics teams"
+        ]
+      },
+      "cost_structure": {
+        "items": [
+          "Cloud infrastructure (40%)",
+          "Engineering salaries (35%)",
+          "Sales & marketing (15%)",
+          "G&A (10%)"
+        ]
+      },
+      "revenue_streams": {
+        "items": [
+          "Monthly/annual subscriptions",
+          "Usage-based pricing (data volume)",
+          "Enterprise contracts",
+          "Professional services"
+        ]
+      }
+    },
+    "footnote": "Business model as of 2024"
+  },
+  "output": {
+    "width": 1100,
+    "height": 800
+  }
+}

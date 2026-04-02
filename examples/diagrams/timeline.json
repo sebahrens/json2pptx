@@ -1,0 +1,26 @@
+{
+  "type": "timeline",
+  "title": "Product Launch Roadmap",
+  "subtitle": "2024 Release Schedule",
+  "data": {
+    "activities": [
+      {"id": "p1", "label": "Q1", "type": "phase", "start_date": "2024-01-01", "end_date": "2024-03-31"},
+      {"id": "p2", "label": "Q2", "type": "phase", "start_date": "2024-04-01", "end_date": "2024-06-30"},
+      {"id": "p3", "label": "Q3", "type": "phase", "start_date": "2024-07-01", "end_date": "2024-09-30"},
+      {"id": "design", "label": "UX Research & Design", "type": "activity", "start_date": "2024-01-15", "end_date": "2024-03-15"},
+      {"id": "backend", "label": "Backend Development", "type": "activity", "start_date": "2024-02-15", "end_date": "2024-05-30"},
+      {"id": "frontend", "label": "Frontend Development", "type": "activity", "start_date": "2024-03-01", "end_date": "2024-06-15"},
+      {"id": "testing", "label": "QA & Testing", "type": "activity", "start_date": "2024-05-01", "end_date": "2024-07-15"},
+      {"id": "docs", "label": "Documentation", "type": "activity", "start_date": "2024-06-01", "end_date": "2024-07-31"},
+      {"id": "m1", "label": "Alpha Release", "type": "milestone", "date": "2024-05-01"},
+      {"id": "m2", "label": "Beta Release", "type": "milestone", "date": "2024-06-15"},
+      {"id": "m3", "label": "GA Launch", "type": "milestone", "date": "2024-08-01"}
+    ],
+    "show_today": true,
+    "time_unit": "month"
+  },
+  "output": {
+    "width": 1000,
+    "height": 400
+  }
+}

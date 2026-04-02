@@ -1,0 +1,151 @@
+# golangci-lint configuration for go-slide-creator
+# See: https://golangci-lint.run/docs/configuration/
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  allow-parallel-runners: true
+
+linters:
+  default: standard
+  enable:
+    # Error handling
+    - errcheck       # Check for unchecked errors
+    # Note: err113 disabled - requires sentinel errors which is a major refactor
+    # - err113       # Error wrapping (was goerr113)
+    # Note: wrapcheck disabled - conflicts with internal package error patterns
+    # - wrapcheck    # Ensure errors are wrapped properly
+
+    # Complexity
+    - gocyclo        # Cyclomatic complexity
+    - gocognit       # Cognitive complexity
+
+    # Security
+    - gosec          # Security checks
+
+    # Note: stylecheck is now part of staticcheck in v2
+    # staticcheck is enabled by default with 'standard' preset
+
+  settings:
+    gocyclo:
+      # Max cyclomatic complexity (default: 30)
+      min-complexity: 25
+
+    gocognit:
+      # Max cognitive complexity (default: 30)
+      min-complexity: 35
+
+    errcheck:
+      # Report assignment of errors to blank identifier
+      check-blank: false
+      # Check type assertions
+      check-type-assertions: true
+      # Disable default exclusions for common functions like fmt.Println
+      disable-default-exclusions: false
+
+    gosec:
+      # Exclude specific rules that have high false positive rates
+      excludes:
+        - G101  # Hardcoded credentials - false positive on header constants like "X-API-Key"
+        - G104  # Errors unhandled - false positive on hash.Write which can't fail
+        - G115  # Integer overflow - false positive on safe bounded conversions
+        - G301  # Directory permissions - 0755 is standard for directories
+        - G304  # File inclusion - necessary for file operations
+        - G306  # File permissions - 0644 is standard for non-sensitive files
+
+    staticcheck:
+      # SAxxxx checks in https://staticcheck.io/docs/checks/
+      checks: ["all"]
+
+  exclusions:
+    # Built-in preset for common false positives
+    presets:
+      - comments
+      - std-error-handling
+
+    # Exclude some linters from running on tests
+    rules:
+      # Allow using deprecated ChartSpec in backward compatibility paths
+      - path: _test\.go
+        linters:
+          - staticcheck
+        text: "SA1019"
+
+      # Allow ChartSpec usage in CLI tools that still support the old format
+      - path: cmd/(json2pptx|testgen)/main\.go
+        linters:
+          - staticcheck
+        text: "SA1019"
+
+      # Tests can use simpler error handling patterns and have higher complexity
+      # (table-driven tests with many cases are naturally complex)
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gocyclo
+          - gocognit
+
+      # Integration tests may have higher complexity
+      - path: internal/integration/
+        linters:
+          - gocyclo
+          - gocognit
+
+      # SVG rendering has complex data parsing that's hard to simplify
+      - path: internal/svggen/(matrix2x2|porters_five_forces|timeline|waterfall)\.go
+        linters:
+          - gocognit
+
+      # Generator has complex content building logic
+      - path: internal/generator/content\.go
+        linters:
+          - gocognit
+          - gocyclo
+
+      # Parser has complex chart data payload building
+      - path: internal/parser/content\.go
+        linters:
+          - gocognit
+
+      # Layout heuristic is inherently complex
+      - path: internal/layout/heuristic\.go
+        linters:
+          - gocognit
+
+      # Main entry points are allowed higher complexity
+      - path: cmd/(server|visualtest)/main\.go
+        linters:
+          - gocognit
+          - gocyclo
+
+      # Exclude staticcheck style suggestions (QF = quick fix suggestions, not errors)
+      - linters:
+          - staticcheck
+        text: "QF100"
+
+      # Allow G204 (subprocess) in svg.go where we call external converters
+      - path: internal/generator/svg\.go
+        linters:
+          - gosec
+        text: "G204"
+
+      # Allow G110 (decompression bomb) in file utilities that handle user uploads
+      - path: internal/utils/file\.go
+        linters:
+          - gosec
+        text: "G110"
+
+      # Allow G602 (slice bounds) in builder where we check bounds
+      - path: internal/svggen/builder\.go
+        linters:
+          - gosec
+        text: "G602"
+
+
+issues:
+  # Maximum issues per linter (0 = unlimited)
+  max-issues-per-linter: 50
+
+  # Maximum issues with the same text (0 = unlimited)
+  max-same-issues: 3

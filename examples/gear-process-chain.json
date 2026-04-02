@@ -1,0 +1,591 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "gear-process-chain.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Gear Process Chain"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Showcasing gear6 and gear9 Geometries"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Interlocking Business Processes"
+        }
+      ],
+      "shape_grid": {
+        "gap": 8,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 35,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Plan",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Build",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Ship",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Requirements gathering\nRoadmap definition\nResource allocation\nRisk assessment",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Architecture design\nSprint execution\nCode review & QA\nIntegration testing",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Release packaging\nDeployment automation\nMonitoring & alerts\nCustomer feedback loop",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Manufacturing Value Chain"
+        }
+      ],
+      "shape_grid": {
+        "gap": 8,
+        "columns": [
+          20,
+          20,
+          20,
+          20,
+          20
+        ],
+        "rows": [
+          {
+            "height": 30,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Source",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Make",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Test",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Pack",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Deliver",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Supplier mgmt\nRaw materials\nQuality checks",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Assembly lines\nProcess control\nWaste reduction",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "QA protocols\nCompliance cert\nDefect tracking",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Packaging design\nLabeling & SKU\nPallet optimization",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Logistics\nLast-mile delivery\nCustomer receipt",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "DevOps Flywheel"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": [
+          25,
+          25,
+          25,
+          25
+        ],
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "col_span": 4,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Continuous Delivery Engine",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 28,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "#2E86C1",
+                  "text": {
+                    "content": "Code",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "#28B463",
+                  "text": {
+                    "content": "Test",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "#E67E22",
+                  "text": {
+                    "content": "Deploy",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "#8E44AD",
+                  "text": {
+                    "content": "Monitor",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Feature branches\nPR review gates\nLinting & formatting\nDependency scanning",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Unit tests (>90%)\nIntegration suites\nE2E smoke tests\nPerformance benchmarks",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Blue-green rollout\nCanary release (5%)\nFeature flags\nRollback <2 min",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "APM dashboards\nError rate alerts\nSLO tracking (99.9%)\nIncident response",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Gear6 vs Gear9 Comparison"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": 2,
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "GEAR6 — Six Teeth",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "GEAR9 — Nine Teeth",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "gear6",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Core\nProcess",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "gear9",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Complex\nProcess",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Use for primary, high-level processes with fewer moving parts. The six-tooth silhouette reads cleanly at smaller sizes and conveys simplicity.",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Use for complex, multi-stakeholder processes with many interfaces. The nine-tooth silhouette conveys intricacy and precision engineering.",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "template": "template_1",
+  "output_filename": "all_content_types.pptx",
+  "footer": {
+    "enabled": true,
+    "left_text": "Acme Corp | Confidential"
+  },
+  "theme_override": {
+    "colors": {"accent1": "#336699", "dk1": "#1A1A1A"},
+    "title_font": "Helvetica",
+    "body_font": "Calibri"
+  },
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Q4 Business Review"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Annual Performance Summary"}
+      ],
+      "speaker_notes": "Welcome the audience and set expectations",
+      "source": "FY2025 Annual Report",
+      "transition": "fade",
+      "transition_speed": "fast",
+      "build": "bullets"
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Key Highlights"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "Revenue up 25% year-over-year",
+          "Customer satisfaction at all-time high (94%)",
+          "Three new product launches",
+          "Expanded into APAC market"
+        ]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout3",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"},
+        {"placeholder_id": "body", "type": "body_and_bullets", "body_and_bullets_value": {
+          "body": "Our fiscal year exceeded expectations across all key metrics.",
+          "bullets": [
+            "Revenue grew by 25% to $4.2B",
+            "Operating margins improved 3 percentage points",
+            "Customer NPS reached 72"
+          ],
+          "trailing_body": "We are well-positioned for continued growth in FY2026."
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Initiatives"},
+        {"placeholder_id": "body", "type": "bullet_groups", "bullet_groups_value": {
+          "body": "Three strategic pillars drive our growth strategy:",
+          "groups": [
+            {
+              "header": "Digital Transformation",
+              "body": "Modernizing our technology stack",
+              "bullets": ["Cloud migration complete by Q2", "AI-powered analytics rollout"]
+            },
+            {
+              "header": "Market Expansion",
+              "bullets": ["APAC office opening in Singapore", "LATAM partnerships signed"]
+            },
+            {
+              "header": "Operational Excellence",
+              "bullets": ["Supply chain optimization", "Lean manufacturing adoption"]
+            }
+          ],
+          "trailing_body": "Each initiative has a dedicated executive sponsor and quarterly milestones."
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue by Segment"},
+        {"placeholder_id": "body", "type": "chart", "chart_value": {
+          "type": "bar",
+          "title": "Quarterly Revenue ($M)",
+          "data": {"Q1": 2.8, "Q2": 3.1, "Q3": 3.2, "Q4": 3.4}
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Market Share"},
+        {"placeholder_id": "body", "type": "chart", "chart_value": {
+          "type": "pie",
+          "title": "Revenue by Segment",
+          "data": {"Enterprise": 42, "Mid-Market": 28, "SMB": 18, "Startup": 12}
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Project Timeline"},
+        {"placeholder_id": "body", "type": "diagram", "diagram_value": {
+          "type": "timeline",
+          "title": "Implementation Roadmap",
+          "data": {
+            "phases": [
+              {"name": "Phase 1: Discovery", "start": "2026-01", "end": "2026-03"},
+              {"name": "Phase 2: Build", "start": "2026-04", "end": "2026-08"},
+              {"name": "Phase 3: Deploy", "start": "2026-09", "end": "2026-12"}
+            ]
+          }
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout6",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Financial Summary"},
+        {"placeholder_id": "body", "type": "table", "table_value": {
+          "headers": ["Metric", "FY2024", "FY2025", "Change"],
+          "rows": [
+            ["Revenue", "$3.4B", "$4.2B", "+25%"],
+            ["EBITDA", "$680M", "$840M", "+24%"],
+            ["Net Income", "$340M", "$420M", "+24%"],
+            [{"content": "Total Assets", "col_span": 1}, "$12.1B", "$14.3B", "+18%"]
+          ],
+          "style": {
+            "header_background": "accent1",
+            "borders": "horizontal",
+            "striped": true
+          },
+          "column_alignments": ["left", "right", "right", "right"]
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Our Team"},
+        {"placeholder_id": "body", "type": "image", "image_value": {
+          "path": "/images/team_photo.png",
+          "alt": "Executive leadership team group photo"
+        }}
+      ]
+    }
+  ]
+}

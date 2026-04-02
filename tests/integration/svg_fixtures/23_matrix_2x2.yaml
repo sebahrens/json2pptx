@@ -1,0 +1,32 @@
+type: matrix_2x2
+title: Feature Prioritization Matrix
+data:
+  x_axis_label: Implementation Effort
+  y_axis_label: Customer Value
+  quadrant_labels:
+    - Quick Wins
+    - Major Projects
+    - Fill-Ins
+    - Time Sinks
+  points:
+    - label: Dark Mode
+      x: 15
+      y: 75
+    - label: AI Assistant
+      x: 85
+      y: 90
+    - label: Export PDF
+      x: 25
+      y: 85
+    - label: Mobile App
+      x: 90
+      y: 70
+    - label: Emoji Support
+      x: 10
+      y: 30
+    - label: Legacy Import
+      x: 75
+      y: 25
+output:
+  width: 700
+  height: 600

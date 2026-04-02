@@ -1,0 +1,20 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "56_all_templates.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Midnight Blue Template"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Testing alternate template"}
+      ]
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Content Slide"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Point A", "Point B", "Point C"]}
+      ]
+    }
+  ]
+}

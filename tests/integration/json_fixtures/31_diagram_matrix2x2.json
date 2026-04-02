@@ -1,0 +1,31 @@
+{
+  "template": "modern-template",
+  "output_filename": "31_diagram_matrix2x2.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Prioritization Matrix"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "matrix_2x2",
+            "title": "Effort vs Impact",
+            "data": {
+              "x_axis_label": "Implementation Effort",
+              "y_axis_label": "Customer Value",
+              "quadrant_labels": ["Quick Wins", "Major Projects", "Fill-Ins", "Time Sinks"],
+              "points": [
+                {"label": "Dark Mode", "x": 15, "y": 75},
+                {"label": "AI Assistant", "x": 85, "y": 90},
+                {"label": "Export PDF", "x": 25, "y": 85},
+                {"label": "Legacy Import", "x": 75, "y": 25}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

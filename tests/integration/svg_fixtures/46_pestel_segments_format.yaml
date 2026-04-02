@@ -1,0 +1,27 @@
+type: pestel
+title: PESTEL with Segments Format
+data:
+  segments:
+    - name: Political
+      items:
+        - Trade policies
+        - Government stability
+    - name: Economic
+      items:
+        - Interest rates
+        - GDP growth
+    - name: Social
+      items:
+        - Remote work
+    - name: Technological
+      items:
+        - AI
+    - name: Environmental
+      items:
+        - Climate regulation
+    - name: Legal
+      items:
+        - GDPR compliance
+output:
+  width: 900
+  height: 600

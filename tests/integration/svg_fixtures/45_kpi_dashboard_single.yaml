@@ -1,0 +1,11 @@
+type: kpi_dashboard
+title: Single KPI
+data:
+  metrics:
+    - label: Revenue
+      value: "$21M"
+      delta: "+17%"
+      trend: up
+output:
+  width: 400
+  height: 200

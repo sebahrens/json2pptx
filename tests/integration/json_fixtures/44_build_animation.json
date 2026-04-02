@@ -1,0 +1,23 @@
+{
+  "template": "modern-template",
+  "output_filename": "44_build_animation.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Bullet Build Animation"},
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "First point appears",
+            "Then the second",
+            "Then the third",
+            "Finally the fourth"
+          ]
+        }
+      ],
+      "build": "bullets"
+    }
+  ]
+}

@@ -1,0 +1,1698 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "visual-maturity-stress-test.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Visual Maturity Stress Test"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Comprehensive Shape Grid Feature Validation"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Sharp Corners Verification (adj=0 default)"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          25,
+          25,
+          25,
+          25
+        ],
+        "gap": 6,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "roundRect\n(should be SHARP)",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "rect\n(always sharp)",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#2C3E50",
+                  "text": {
+                    "content": "Custom hex\n(should be SHARP)",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "adjustments": {
+                    "adj": 16667
+                  },
+                  "text": {
+                    "content": "Explicit rounded\n(adj=16667)",
+                    "size": 11,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 60,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Default roundRect body panel\nShould have SHARP 90-degree corners\nNo rounded edges visible",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Compare with explicit rect\nBoth should look identical\nSharp corners everywhere",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "This is a plain rect\nFor visual comparison\nShould match roundRect cells",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "adjustments": {
+                    "adj": 16667
+                  },
+                  "text": {
+                    "content": "ONLY this cell\nshould have rounded corners\n(explicit adj=16667)",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Footer Safe Zone Verification"
+        }
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "gap": 6,
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Header A",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Header B",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Header C",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Content panel A\nThis content should NOT touch the bottom edge of the slide\nThere must be visible clearance below",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Content panel B\nCheck: is there footer space reserved?\nThe bottom of this panel should stop well above the slide edge",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Content panel C\nMinimum 0.4 inch (317500 EMU) clearance expected\nMeasure the gap from panel bottom to slide bottom",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Typography Hierarchy (Multi-Paragraph)"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          25,
+          25,
+          25,
+          25
+        ],
+        "gap": 6,
+        "rows": [
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "$8.4M",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Total Investment",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "2.1x",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "ROI (3-year)",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "18 mo",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Payback Period",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "$17.6M",
+                        "size": 28,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "NPV",
+                        "size": 11,
+                        "color": "#C0C0C0"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Breakdown:",
+                        "size": 11,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Technology: $5.2M\nPeople: $2.1M\nProcess: $1.1M",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Drivers:",
+                        "size": 11,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Cost savings: 40%\nRevenue uplift: 35%\nRisk reduction: 25%",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Assumptions:",
+                        "size": 11,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "15% discount rate\n5% annual growth\nBase case scenario",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Sensitivity:",
+                        "size": 11,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Best: $22.1M\nBase: $17.6M\nWorst: $11.3M",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Connector Lines Between Phases"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          25,
+          25,
+          25,
+          25
+        ],
+        "gap": 8,
+        "rows": [
+          {
+            "height": 15,
+            "connector": {
+              "style": "arrow",
+              "color": "accent1",
+              "width": 1.5,
+              "dash": "solid"
+            },
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Phase 1\nQ1 2026",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Phase 2\nQ2 2026",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "homePlate",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Phase 3\nQ3 2026",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#888888",
+                  "text": {
+                    "content": "Phase 4\nQ4 2026",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 10,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Foundation",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Build",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Launch",
+                    "size": 10,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#888888",
+                  "text": {
+                    "content": "Optimize",
+                    "size": 10,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Requirements\nTeam formation\nVendor selection\nArchitecture design",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Core development\nData migration\nIntegration testing\nUser acceptance",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Go-live (Region 1)\nTraining rollout\nChange management\nSupport ramp-up",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Global rollout\nPerformance tuning\nProcess refinement\nValue measurement",
+                    "size": 9,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Accent Bars on Numbered Findings"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          8,
+          92
+        ],
+        "gap": 6,
+        "rows": [
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "1",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                },
+                "accent_bar": {
+                  "position": "left",
+                  "color": "accent2",
+                  "width": 6
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Market opportunity is larger than initially scoped",
+                        "size": 12,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Total addressable market of $4.2B growing at 18% CAGR; current penetration is only 3%",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "2",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                },
+                "accent_bar": {
+                  "position": "left",
+                  "color": "accent2",
+                  "width": 6
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Technology stack requires modernization before scaling",
+                        "size": 12,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Current infrastructure supports 2x growth; 10x requires cloud-native re-architecture",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "3",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                },
+                "accent_bar": {
+                  "position": "left",
+                  "color": "accent2",
+                  "width": 6
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Talent gap is the primary constraint to execution",
+                        "size": 12,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Need 40 engineers and 15 product managers within 12 months to execute roadmap",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "4",
+                    "size": 24,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                },
+                "accent_bar": {
+                  "position": "left",
+                  "color": "accent2",
+                  "width": 6
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Partnership strategy can accelerate time-to-market by 6 months",
+                        "size": 12,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Three strategic partners identified with complementary capabilities and shared customer base",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Auto-Height Rows (content-aware sizing)"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          8,
+          92
+        ],
+        "gap": 5,
+        "rows": [
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "1",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Short finding: Revenue exceeded targets by 12%",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "2",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Longer finding with more detail: The customer acquisition cost decreased by 23% due to improved marketing efficiency and better targeting algorithms deployed in Q3. This represents a significant operational improvement.",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "3",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Very long finding: Enterprise customer segment grew 34% YoY, driven by three key factors:\n1. Launch of SSO and audit logging features in Q2\n2. Dedicated enterprise sales team hired in Q1\n3. Strategic partnerships with three system integrators\n\nThis segment now represents 45% of total revenue, up from 31% last year.",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "4",
+                    "size": 18,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Medium finding: Churn rate improved from 3.2% to 2.1%",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "2x2 Matrix with Sharp Corners"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          50,
+          50
+        ],
+        "gap": 6,
+        "rows": [
+          {
+            "height": 45,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "High Impact / Low Effort",
+                        "size": 10,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Quick Wins",
+                        "size": 14,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Automate manual reporting\nConsolidate vendor contracts\nStandardize onboarding",
+                        "size": 9,
+                        "color": "#E0E0E0"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "High Impact / High Effort",
+                        "size": 10,
+                        "bold": true,
+                        "color": "#FFFFFF"
+                      },
+                      {
+                        "content": "Strategic Bets",
+                        "size": 14,
+                        "bold": true,
+                        "color": "#FFD700"
+                      },
+                      {
+                        "content": "Platform migration to cloud\nEnterprise data lake\nCustomer 360 program",
+                        "size": 9,
+                        "color": "#E0E0E0"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 45,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Low Impact / Low Effort",
+                        "size": 10,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Fill-Ins",
+                        "size": 14,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Update documentation\nMinor UI polish\nTeam skill assessments",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "paragraphs": [
+                      {
+                        "content": "Low Impact / High Effort",
+                        "size": 10,
+                        "bold": true,
+                        "color": "#2C3E50"
+                      },
+                      {
+                        "content": "Deprioritize",
+                        "size": 14,
+                        "bold": true,
+                        "color": "#CC0000"
+                      },
+                      {
+                        "content": "Legacy system rewrite\nCustom ERP module\nFull rebrand initiative",
+                        "size": 9,
+                        "color": "#555555"
+                      }
+                    ],
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 10,
+                    "inset_top": 10
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "5-Column Category Grid (Bain Myth 2 Style)"
+        }
+      ],
+      "shape_grid": {
+        "columns": 5,
+        "gap": 4,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Strategic",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Financial",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Operational",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Technological",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Organizational",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Scale",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Leverage",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Operating leverage",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Availability",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Employee engagement",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Portfolio concentration",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Liquidity",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Supplier concentration",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Workload mobility",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Crisis preparedness",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Cross-correlations",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Insurance coverage",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Operating buffers",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Cybersecurity",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Personal resilience",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Industry dynamics",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Hedges",
+                    "size": 11,
+                    "color": "#2C3E50"
+                  }
+                }
+              },
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Alpha/Transparency Fill Test"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          33,
+          33,
+          34
+        ],
+        "gap": 6,
+        "rows": [
+          {
+            "height": 30,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "#000000",
+                    "alpha": 0.3
+                  },
+                  "text": {
+                    "content": "Alpha 0.3\n(30% opaque)",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "#000000",
+                    "alpha": 0.6
+                  },
+                  "text": {
+                    "content": "Alpha 0.6\n(60% opaque)",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "#000000",
+                    "alpha": 0.9
+                  },
+                  "text": {
+                    "content": "Alpha 0.9\n(90% opaque)",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 0.3
+                  },
+                  "text": {
+                    "content": "Accent1 @ 0.3",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent1",
+                    "alpha": 0.6
+                  },
+                  "text": {
+                    "content": "Accent1 @ 0.6",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 0.7
+                  },
+                  "text": {
+                    "content": "Accent2 @ 0.7",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Accent Bar Positions"
+        }
+      ],
+      "shape_grid": {
+        "columns": [
+          50,
+          50
+        ],
+        "gap": 8,
+        "rows": [
+          {
+            "height": 40,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Left accent bar\n(default position)",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 14,
+                    "inset_top": 8
+                  }
+                },
+                "accent_bar": {
+                  "position": "left",
+                  "color": "accent2",
+                  "width": 5
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Top accent bar",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 14
+                  }
+                },
+                "accent_bar": {
+                  "position": "top",
+                  "color": "accent1",
+                  "width": 5
+                }
+              }
+            ]
+          },
+          {
+            "height": 40,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Bottom accent bar",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                },
+                "accent_bar": {
+                  "position": "bottom",
+                  "color": "#CC0000",
+                  "width": 5
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Right accent bar",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_top": 8
+                  }
+                },
+                "accent_bar": {
+                  "position": "right",
+                  "color": "accent3",
+                  "width": 5
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "End of Stress Test"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "All features exercised"
+        }
+      ]
+    }
+  ]
+}

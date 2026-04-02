@@ -1,0 +1,26 @@
+{
+  "template": "modern-template",
+  "output_filename": "28_diagram_swot.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "SWOT Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "swot",
+            "title": "Company SWOT",
+            "data": {
+              "strengths": ["Strong brand", "Loyal customers", "Great team"],
+              "weaknesses": ["Limited market share", "High costs"],
+              "opportunities": ["New markets", "AI adoption", "Partnerships"],
+              "threats": ["Competition", "Regulation", "Economic uncertainty"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

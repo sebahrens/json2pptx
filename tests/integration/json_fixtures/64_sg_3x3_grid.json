@@ -1,0 +1,157 @@
+{
+  "template": "modern-template",
+  "output_filename": "64_sg_3x3_grid.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "3x3 Mixed Geometry Grid"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": 3,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Rect\nCell A1",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "ellipse",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Ellipse\nCell B1",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "RoundRect\nCell C1",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "diamond",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "Diamond\nA2",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "hexagon",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "Hexagon\nB2",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "pentagon",
+                  "fill": "accent6",
+                  "text": {
+                    "content": "Pentagon\nC2",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "triangle",
+                  "fill": "#4472C4",
+                  "text": {
+                    "content": "Tri\nA3",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "octagon",
+                  "fill": "#ED7D31",
+                  "text": {
+                    "content": "Octagon\nB3",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "trapezoid",
+                  "fill": "#70AD47",
+                  "text": {
+                    "content": "Trapezoid\nC3",
+                    "size": 10,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

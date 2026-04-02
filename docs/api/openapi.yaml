@@ -1,0 +1,1111 @@
+openapi: 3.0.3
+info:
+  title: Go Slide Creator API
+  description: |
+    REST API for converting JSON slide definitions into professional PowerPoint presentations.
+
+    The Go Slide Creator service accepts structured JSON input, selects optimal layouts from
+    PPTX templates, and generates production-ready presentations.
+
+    ## Features
+
+    - **Template-based generation**: Leverage existing PPTX templates with multiple layouts
+    - **JSON input**: Structured slide definitions with typed content items
+    - **Layout intelligence**: Automatic layout selection based on content type
+    - **Multiple output formats**: Download file URL or inline base64 data
+
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Health
+    description: Service health and status monitoring
+  - name: Templates
+    description: Template discovery and analysis
+  - name: Conversion
+    description: JSON to PPTX conversion
+  - name: Downloads
+    description: Generated file downloads
+  - name: Metadata
+    description: Service metadata
+
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: Check service health
+
+      description: |
+        Returns the current health status of the service, including version
+        information and uptime.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthyResponse'
+              example:
+                status: healthy
+                version: "1.0.0"
+                commit_sha: "a1b2c3d"
+                build_time: "2026-01-15T10:30:00Z"
+                uptime_seconds: 3600
+
+  /api/v1/templates:
+    get:
+      tags:
+        - Templates
+      summary: List available templates
+
+      description: |
+        Returns a list of all available PPTX templates with basic metadata.
+        Templates are discovered from the configured templates directory.
+      operationId: listTemplates
+      responses:
+        '200':
+          description: List of available templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTemplatesResponse'
+              example:
+                templates:
+                  - name: corporate
+                    display_name: Corporate
+                    aspect_ratio: "16:9"
+                    layout_count: 12
+                  - name: minimal-dark
+                    display_name: Minimal Dark
+                    aspect_ratio: "16:9"
+                    layout_count: 8
+                  - name: creative
+                    display_name: Creative
+                    aspect_ratio: "4:3"
+                    layout_count: 15
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: TEMPLATE_ERROR
+                  message: "Failed to read templates directory: permission denied"
+
+  /api/v1/templates/{name}:
+    get:
+      tags:
+        - Templates
+      summary: Get template details
+
+      description: |
+        Returns detailed information about a specific template, including:
+        - All available layouts with placeholder information
+        - Theme colors extracted from the template
+        - Typography settings (title and body fonts)
+
+        Use this endpoint to understand what layouts are available before
+        generating a presentation.
+      operationId: getTemplateDetails
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Template name (without .pptx extension)
+          schema:
+            type: string
+          example: corporate
+      responses:
+        '200':
+          description: Detailed template information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetailsResponse'
+              example:
+                name: corporate
+                display_name: Corporate
+                aspect_ratio: "16:9"
+                layouts:
+                  - id: "layout1"
+                    name: Title Slide
+                    tags:
+                      - title
+                      - opening
+                    placeholders:
+                      - title
+                      - body
+                  - id: "layout2"
+                    name: Title and Content
+                    tags:
+                      - content
+                      - bullets
+                    placeholders:
+                      - title
+                      - body
+                      - content
+                  - id: "layout3"
+                    name: Two Content
+                    tags:
+                      - two-column
+                      - comparison
+                    placeholders:
+                      - title
+                      - body
+                      - content
+                      - content
+                theme:
+                  colors:
+                    - "#1F4E79"
+                    - "#2E75B6"
+                    - "#9DC3E6"
+                    - "#DEEBF7"
+                    - "#000000"
+                    - "#FFFFFF"
+                  fonts:
+                    title: Calibri Light
+                    body: Calibri
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request:
+                  summary: Missing template name
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_REQUEST
+                      message: "Template name is required"
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: TEMPLATE_NOT_FOUND
+                  message: "Template 'nonexistent' not found"
+        '500':
+          description: Template analysis error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: TEMPLATE_ERROR
+                  message: "Failed to analyze template: invalid PPTX structure"
+
+  /api/v1/convert:
+    post:
+      tags:
+        - Conversion
+      summary: Convert JSON slides to PPTX
+      description: |
+        Converts structured JSON slide definitions into a PowerPoint presentation.
+
+        ## JSON Input Format
+
+        The request body contains a template name and an array of slide definitions:
+
+        ```json
+        {
+          "template": "corporate",
+          "slides": [
+            {
+              "type": "title",
+              "title": "My Presentation",
+              "content": { "body": "Welcome" }
+            },
+            {
+              "type": "content",
+              "title": "Key Points",
+              "content": {
+                "bullets": ["First point", "Second point"]
+              }
+            }
+          ]
+        }
+        ```
+
+        ## Output Formats
+
+        - **file** (default): Returns a download URL valid for 1 hour
+        - **base64**: Returns the PPTX file as base64-encoded data
+
+      operationId: convertSlides
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertRequest'
+            examples:
+              basic:
+                summary: Basic conversion
+                value:
+                  template: corporate
+                  slides:
+                    - type: title
+                      title: Q4 Report
+                      content:
+                        body: "Jane Smith | Strategy Team"
+                    - type: content
+                      title: Introduction
+                      content:
+                        bullets:
+                          - Revenue growth of 15%
+                          - New market expansion
+                          - Team grew by 20%
+              with_options:
+                summary: With base64 output
+                value:
+                  template: minimal-dark
+                  slides:
+                    - type: content
+                      title: New Features
+                      content:
+                        bullets:
+                          - Feature A
+                          - Feature B
+                  options:
+                    output_format: base64
+      responses:
+        '200':
+          description: Conversion successful
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ConvertResponseFile'
+                  - $ref: '#/components/schemas/ConvertResponseBase64'
+              examples:
+                file_response:
+                  summary: File output format
+                  value:
+                    success: true
+                    file_url: "/api/v1/download/a1b2c3d4e5f6789012345678.pptx"
+                    expires_at: "2025-01-17T15:30:00Z"
+                    stats:
+                      slide_count: 5
+                      processing_time_ms: 1250
+                      warnings: []
+                base64_response:
+                  summary: Base64 output format
+                  value:
+                    success: true
+                    data: "UEsDBBQAAAAIAG5..."
+                    filename: "Q4 Report.pptx"
+                    stats:
+                      slide_count: 5
+                      processing_time_ms: 1150
+                      warnings:
+                        - "Slide 3: Content may overflow placeholder"
+        '400':
+          description: Invalid request or input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_slides:
+                  summary: Missing slides array
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_REQUEST
+                      message: "Slides array is required"
+                      details:
+                        field: slides
+                missing_template:
+                  summary: Missing template name
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_REQUEST
+                      message: "Template name is required"
+                      details:
+                        field: template
+                invalid_input:
+                  summary: Invalid slide definition
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_INPUT
+                      message: "Invalid content type: unknown"
+                invalid_output_format:
+                  summary: Invalid output format
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_REQUEST
+                      message: "Invalid output format: xml (must be 'file' or 'base64')"
+                      details:
+                        field: options.output_format
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: TEMPLATE_NOT_FOUND
+                  message: "Template 'nonexistent' not found"
+                  details:
+                    field: template
+        '500':
+          description: Generation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                template_error:
+                  summary: Template analysis failed
+                  value:
+                    success: false
+                    error:
+                      code: TEMPLATE_ERROR
+                      message: "Failed to analyze template: corrupted file"
+                generation_error:
+                  summary: PPTX generation failed
+                  value:
+                    success: false
+                    error:
+                      code: GENERATION_ERROR
+                      message: "Failed to generate presentation: disk full"
+
+  /api/v1/download/{filename}:
+    get:
+      tags:
+        - Downloads
+      summary: Download generated PPTX
+
+      description: |
+        Downloads a previously generated PPTX file.
+
+        Files are automatically deleted after 1 hour. Attempting to download
+        an expired or non-existent file returns a 404 error.
+      operationId: downloadFile
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: |
+            File identifier returned from the convert endpoint.
+            Format: `{hex_string}.pptx` (32 hex characters + .pptx extension)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}\.pptx$'
+          example: a1b2c3d4e5f6789012345678.pptx
+      responses:
+        '200':
+          description: PPTX file download
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: application/vnd.openxmlformats-officedocument.presentationml.presentation
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'attachment; filename="presentation.pptx"'
+          content:
+            application/vnd.openxmlformats-officedocument.presentationml.presentation:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: FILE_NOT_FOUND
+                  message: "File not found or expired"
+        '500':
+          description: File access error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: FILE_ERROR
+                  message: "Failed to access file: permission denied"
+
+  /api/v1/slide-types:
+    get:
+      tags:
+        - Metadata
+      summary: List supported slide types
+      description: |
+        Returns the list of supported slide types for JSON input.
+      operationId: listSlideTypes
+
+      responses:
+        '200':
+          description: Slide type list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlideTypesResponse'
+              example:
+                slide_types:
+                  - type: title
+                    description: Opening slide with title and optional subtitle
+                  - type: content
+                    description: Standard bullet slide with title and body
+                  - type: two-column
+                    description: Side-by-side content layout
+                  - type: image
+                    description: Image-focused slide with title
+                  - type: chart
+                    description: Data visualization slide
+                  - type: comparison
+                    description: Comparison layout for side-by-side elements
+                  - type: blank
+                    description: Empty slide with no placeholders
+                  - type: section
+                    description: Section divider slide for separating presentation sections
+                  - type: diagram
+                    description: Diagram slide (pyramid, venn, org chart, etc.)
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthyResponse:
+      type: object
+      required:
+        - status
+        - version
+        - uptime_seconds
+      properties:
+        status:
+          type: string
+          enum: [healthy]
+          description: Service status
+        version:
+          type: string
+          description: Service version
+          example: "1.0.0"
+        commit_sha:
+          type: string
+          description: Git commit SHA of the running build
+          example: "a1b2c3d"
+        build_time:
+          type: string
+          description: Timestamp when the binary was built
+          example: "2026-01-15T10:30:00Z"
+        uptime_seconds:
+          type: integer
+          format: int64
+          description: Seconds since service started
+          example: 3600
+
+    ListTemplatesResponse:
+      type: object
+      required:
+        - templates
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateInfo'
+
+    TemplateInfo:
+      type: object
+      required:
+        - name
+        - display_name
+        - aspect_ratio
+        - layout_count
+      properties:
+        name:
+          type: string
+          description: Template identifier (used in API requests)
+          example: corporate
+        display_name:
+          type: string
+          description: Human-readable template name
+          example: Corporate
+        aspect_ratio:
+          type: string
+          description: Slide aspect ratio
+          enum: ["16:9", "4:3"]
+          example: "16:9"
+        layout_count:
+          type: integer
+          description: Number of available layouts in the template
+          example: 12
+
+    TemplateDetailsResponse:
+      type: object
+      required:
+        - name
+        - display_name
+        - aspect_ratio
+        - layouts
+        - theme
+      properties:
+        name:
+          type: string
+          description: Template identifier
+          example: corporate
+        display_name:
+          type: string
+          description: Human-readable template name
+          example: Corporate
+        aspect_ratio:
+          type: string
+          description: Slide aspect ratio
+          enum: ["16:9", "4:3"]
+          example: "16:9"
+        layouts:
+          type: array
+          items:
+            $ref: '#/components/schemas/LayoutSummary'
+        theme:
+          $ref: '#/components/schemas/ThemeSummary'
+
+    LayoutSummary:
+      type: object
+      required:
+        - id
+        - name
+        - tags
+        - placeholders
+      properties:
+        id:
+          type: string
+          description: Layout identifier (used internally)
+          example: layout1
+        name:
+          type: string
+          description: Layout name from template
+          example: Title Slide
+        tags:
+          type: array
+          items:
+            type: string
+          description: Classification tags for layout selection
+          example:
+            - title
+            - opening
+        placeholders:
+          type: array
+          items:
+            type: string
+            enum: [title, body, content, image, chart, table]
+          description: Placeholder types available in this layout
+          example:
+            - title
+            - body
+
+    ThemeSummary:
+      type: object
+      required:
+        - colors
+        - fonts
+      properties:
+        colors:
+          type: array
+          items:
+            type: string
+            pattern: '^#[0-9A-Fa-f]{6}$'
+          description: Theme colors as hex values
+          example:
+            - "#1F4E79"
+            - "#2E75B6"
+            - "#FFFFFF"
+        fonts:
+          $ref: '#/components/schemas/FontInfo'
+
+    FontInfo:
+      type: object
+      required:
+        - title
+        - body
+      properties:
+        title:
+          type: string
+          description: Font name for titles
+          example: Calibri Light
+        body:
+          type: string
+          description: Font name for body text
+          example: Calibri
+
+    ConvertRequest:
+      type: object
+      required:
+        - template
+        - slides
+      properties:
+        template:
+          type: string
+          description: Template name (without .pptx extension)
+          example: corporate
+        slides:
+          type: array
+          description: Array of slide definitions
+          items:
+            $ref: '#/components/schemas/APISlide'
+          minItems: 1
+        options:
+          $ref: '#/components/schemas/ConvertOptions'
+
+    APISlide:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Slide type
+          enum: [title, content, section, two-column, image, chart, diagram, comparison, blank]
+          example: content
+        title:
+          type: string
+          description: Slide title
+          example: "Key Points"
+        content:
+          $ref: '#/components/schemas/APIContent'
+        speaker_notes:
+          type: string
+          description: Speaker notes (not rendered on slide)
+        source:
+          type: string
+          description: Source attribution text
+        transition:
+          type: string
+          description: Slide transition type
+          enum: [fade, push, wipe, cover, cut, none]
+        transition_speed:
+          type: string
+          description: Transition speed
+          enum: [slow, med, fast]
+        build:
+          type: string
+          description: Build animation
+          example: bullets
+        shape_grid:
+          $ref: '#/components/schemas/ShapeGridInput'
+
+    APIContent:
+      type: object
+      properties:
+        body:
+          type: string
+          description: Plain text body
+        bullets:
+          type: array
+          items:
+            type: string
+          description: Bullet points
+
+    ConvertOptions:
+      type: object
+      properties:
+        output_format:
+          type: string
+          enum: [file, base64]
+          default: file
+          description: |
+            Output format for the generated presentation.
+            - `file`: Returns a download URL (valid for 1 hour)
+            - `base64`: Returns the PPTX as base64-encoded data
+        svg_scale:
+          type: number
+          format: double
+          minimum: 0.5
+          maximum: 10.0
+          description: |
+            Scale factor for SVG chart rendering. Higher values produce
+            sharper charts at the cost of larger file size.
+            When omitted or set to 0, the default scale is used.
+        exclude_template_slides:
+          type: boolean
+          default: true
+          description: |
+            Whether to exclude the template's example slides from the
+            generated output. Always forced to `true` by the server —
+            template example slides are never included in output.
+
+    ShapeGridInput:
+      type: object
+      description: Grid of preset geometry shapes for custom slide layouts
+      required:
+        - rows
+      properties:
+        bounds:
+          $ref: '#/components/schemas/GridBoundsInput'
+        gap:
+          type: number
+          format: double
+          description: Uniform gap between cells (percentage of grid dimension)
+          example: 2
+        col_gap:
+          type: number
+          format: double
+          description: Column gap override (percentage of grid width)
+        row_gap:
+          type: number
+          format: double
+          description: Row gap override (percentage of grid height)
+        columns:
+          description: |
+            Number of equal columns (integer) or array of column width percentages.
+            When omitted, column count is inferred from the maximum cell count across rows.
+          oneOf:
+            - type: integer
+              minimum: 1
+              example: 3
+            - type: array
+              items:
+                type: number
+                format: double
+              example: [30, 40, 30]
+        rows:
+          type: array
+          description: Array of row definitions
+          items:
+            $ref: '#/components/schemas/GridRowInput'
+          minItems: 1
+
+    GridBoundsInput:
+      type: object
+      description: Bounding rectangle as slide percentages (0–100)
+      properties:
+        x:
+          type: number
+          format: double
+          description: Left edge (percentage of slide width)
+          example: 5
+        y:
+          type: number
+          format: double
+          description: Top edge (percentage of slide height)
+          example: 18
+        width:
+          type: number
+          format: double
+          description: Width (percentage of slide width)
+          example: 90
+        height:
+          type: number
+          format: double
+          description: Height (percentage of slide height)
+          example: 72
+
+    GridRowInput:
+      type: object
+      required:
+        - cells
+      properties:
+        cells:
+          type: array
+          description: Array of cells in this row
+          items:
+            $ref: '#/components/schemas/GridCellInput'
+
+    GridCellInput:
+      type: object
+      description: A cell holding either a shape or a table (mutually exclusive)
+      properties:
+        col_span:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of columns this cell spans
+        row_span:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of rows this cell spans
+        shape:
+          $ref: '#/components/schemas/ShapeSpecInput'
+        table:
+          type: object
+          description: Data table (same schema as the table content type)
+
+    ShapeSpecInput:
+      type: object
+      description: Preset geometry shape with optional fill, line, text, and rotation
+      required:
+        - geometry
+      properties:
+        geometry:
+          type: string
+          description: |
+            OOXML preset geometry name.
+            Common values: rect, roundRect, ellipse, diamond, triangle, hexagon, chevron, rightArrow, star5
+          example: roundRect
+        fill:
+          description: Fill color ("#hex") or gradient object
+          oneOf:
+            - type: string
+              example: "#4472C4"
+            - type: object
+        line:
+          description: Line color ("#hex") or line style object
+          oneOf:
+            - type: string
+              example: "#2E75B6"
+            - type: object
+        text:
+          description: Text string shorthand or full ShapeTextInput object
+          oneOf:
+            - type: string
+              example: "Step 1"
+            - $ref: '#/components/schemas/ShapeTextInput'
+        rotation:
+          type: number
+          format: double
+          description: Rotation in degrees
+          default: 0
+        adjustments:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          description: Preset geometry adjustment values
+
+    ShapeTextInput:
+      type: object
+      description: Text content and formatting for a shape
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Text content (supports <b>, <i>, <u> inline formatting)
+          example: "Key Takeaway"
+        size:
+          type: number
+          format: double
+          description: Font size in points
+          example: 14
+        bold:
+          type: boolean
+          default: false
+          description: Bold text
+        italic:
+          type: boolean
+          default: false
+          description: Italic text
+        align:
+          type: string
+          enum: [l, ctr, r]
+          default: ctr
+          description: "Horizontal alignment: l (left), ctr (center), r (right)"
+        vertical_align:
+          type: string
+          enum: [t, ctr, b]
+          default: ctr
+          description: "Vertical alignment: t (top), ctr (middle), b (bottom)"
+        color:
+          type: string
+          description: "Text color: #hex or scheme name (e.g., lt1)"
+          example: "#FFFFFF"
+        font:
+          type: string
+          description: "Font name, or +mn-lt (theme body) / +mj-lt (theme title)"
+          default: "+mn-lt"
+          example: "Arial"
+        inset_left:
+          type: number
+          format: double
+          default: 0
+          description: Left text inset in points
+        inset_right:
+          type: number
+          format: double
+          default: 0
+          description: Right text inset in points
+        inset_top:
+          type: number
+          format: double
+          default: 0
+          description: Top text inset in points
+        inset_bottom:
+          type: number
+          format: double
+          default: 0
+          description: Bottom text inset in points
+
+    ConvertResponseFile:
+      type: object
+      required:
+        - success
+        - file_url
+        - expires_at
+        - stats
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        file_url:
+          type: string
+          description: Relative URL to download the generated file
+          example: /api/v1/download/a1b2c3d4e5f6789012345678.pptx
+        expires_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the file expires
+          example: "2025-01-17T15:30:00Z"
+        stats:
+          $ref: '#/components/schemas/ConvertStats'
+
+    ConvertResponseBase64:
+      type: object
+      required:
+        - success
+        - data
+        - filename
+        - stats
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: string
+          format: byte
+          description: Base64-encoded PPTX file data
+        filename:
+          type: string
+          description: Suggested filename for the presentation
+          example: Q4 Report.pptx
+        stats:
+          $ref: '#/components/schemas/ConvertStats'
+
+    ConvertStats:
+      type: object
+      required:
+        - slide_count
+        - processing_time_ms
+        - warnings
+      properties:
+        slide_count:
+          type: integer
+          description: Number of slides generated
+          example: 5
+        processing_time_ms:
+          type: integer
+          format: int64
+          description: Processing time in milliseconds
+          example: 1250
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Non-fatal warnings during generation
+          example:
+            - "Slide 3: Content may overflow placeholder"
+
+    SlideTypesResponse:
+      type: object
+      required:
+        - slide_types
+      properties:
+        slide_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlideTypeInfo'
+
+    SlideTypeInfo:
+      type: object
+      required:
+        - type
+        - description
+      properties:
+        type:
+          type: string
+          description: Slide type identifier
+          example: title
+        description:
+          type: string
+          description: Slide type description
+          example: Opening slide with title and optional subtitle
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - UNAUTHORIZED
+            - INVALID_REQUEST
+            - INVALID_JSON
+            - INVALID_YAML
+            - INVALID_TEMPLATE
+            - INVALID_INPUT
+            - INVALID_SLIDE_TYPE
+            - INVALID_CONTENT_TYPE
+            - TEMPLATE_ERROR
+            - TEMPLATE_NOT_FOUND
+            - GENERATION_ERROR
+            - RENDER_ERROR
+            - FILE_NOT_FOUND
+            - FILE_ERROR
+            - RATE_LIMITED
+            - REQUEST_TOO_LARGE
+            - REQUEST_TIMEOUT
+            - PANIC_RECOVERED
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+          example:
+            field: slides

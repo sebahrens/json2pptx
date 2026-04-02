@@ -1,0 +1,233 @@
+[
+  {
+    "layout_id": "slideLayout1",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "title_slide_title",
+        "value": "Legacy Format Title"
+      },
+      {
+        "placeholder_id": "subtitle",
+        "type": "title_slide_title",
+        "value": "Using Only Value Field"
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout2",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Key Points"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "bullets",
+        "value": [
+          "First bullet",
+          "Second bullet",
+          "Third bullet"
+        ]
+      }
+    ],
+    "speaker_notes": "Cover these three points"
+  },
+  {
+    "layout_id": "slideLayout3",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Overview"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "body_and_bullets",
+        "value": {
+          "body": "Introduction paragraph",
+          "bullets": [
+            "Point A",
+            "Point B"
+          ],
+          "trailing_body": "Conclusion paragraph"
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout4",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Grouped Content"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "bullet_groups",
+        "value": {
+          "body": "Two key areas:",
+          "groups": [
+            {
+              "body": "",
+              "bullets": [
+                "Item 1a",
+                "Item 1b"
+              ],
+              "header": "Area 1"
+            },
+            {
+              "body": "Additional context",
+              "bullets": [
+                "Item 2a"
+              ],
+              "header": "Area 2"
+            }
+          ],
+          "trailing_body": "Both areas are critical."
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout5",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Revenue Chart"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "diagram",
+        "value": {
+          "data": {
+            "categories": [
+              "Jan",
+              "Feb",
+              "Mar"
+            ],
+            "series": [
+              {
+                "name": "Data",
+                "values": [
+                  100,
+                  120,
+                  150
+                ]
+              }
+            ]
+          },
+          "title": "Monthly Revenue",
+          "type": "bar_chart"
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout5",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Architecture"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "diagram",
+        "value": {
+          "data": {
+            "steps": [
+              "Ingest",
+              "Transform",
+              "Load",
+              "Analyze"
+            ]
+          },
+          "title": "Data Pipeline",
+          "type": "process_flow"
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout6",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Data Table"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "table",
+        "value": {
+          "column_alignments": null,
+          "headers": [
+            "Name",
+            "Role"
+          ],
+          "rows": [
+            [
+              {
+                "col_span": 1,
+                "content": "Alice",
+                "row_span": 1
+              },
+              {
+                "col_span": 1,
+                "content": "Engineer",
+                "row_span": 1
+              }
+            ],
+            [
+              {
+                "col_span": 1,
+                "content": "Bob",
+                "row_span": 1
+              },
+              {
+                "col_span": 1,
+                "content": "Designer",
+                "row_span": 1
+              }
+            ]
+          ],
+          "style": {
+            "borders": "all",
+            "header_background": "accent1",
+            "striped": false
+          }
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout7",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Product Photo"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "image",
+        "value": {
+          "alt": "Product screenshot",
+          "path": "/images/product.png"
+        }
+      }
+    ]
+  }
+]

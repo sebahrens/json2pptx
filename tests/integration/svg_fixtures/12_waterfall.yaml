@@ -1,0 +1,28 @@
+type: waterfall
+title: Profit Bridge Analysis
+subtitle: Revenue to Net Income
+data:
+  points:
+    - label: Revenue
+      value: 1000
+      type: total
+    - label: COGS
+      value: -380
+      type: decrease
+    - label: Gross Profit
+      value: 620
+      type: subtotal
+    - label: OpEx
+      value: -300
+      type: decrease
+    - label: Other
+      value: 25
+      type: increase
+    - label: Net Income
+      value: 345
+      type: total
+style:
+  show_values: true
+output:
+  width: 900
+  height: 500

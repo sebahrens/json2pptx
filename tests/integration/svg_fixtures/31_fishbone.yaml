@@ -1,0 +1,28 @@
+type: fishbone
+title: Root Cause Analysis
+data:
+  effect: Customer Churn Increasing
+  causes:
+    - category: People
+      items:
+        - Understaffed support team
+        - Training gaps in product knowledge
+        - High employee turnover
+    - category: Process
+      items:
+        - Slow onboarding process
+        - No escalation path defined
+        - Delayed response times
+    - category: Technology
+      items:
+        - Frequent outages
+        - Poor mobile UX
+        - Missing API features
+    - category: Policy
+      items:
+        - Rigid contract terms
+        - No trial extension option
+        - Complex pricing model
+output:
+  width: 1000
+  height: 500

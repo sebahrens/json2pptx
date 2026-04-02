@@ -1,0 +1,161 @@
+{
+  "template": "modern-template",
+  "output_filename": "68_sg_hierarchy.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Visual Hierarchy Layout"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 8,
+        "columns": 4,
+        "rows": [
+          {
+            "height": 18,
+            "cells": [
+              {
+                "col_span": 4,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "dk1",
+                  "text": {
+                    "content": "Company Strategic Vision 2026",
+                    "size": 22,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 12,
+            "cells": [
+              {
+                "col_span": 4,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Mission: Empower organizations through intelligent automation",
+                    "size": 14,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 40,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent2",
+                    "alpha": 20
+                  },
+                  "line": "accent2",
+                  "text": {
+                    "content": "Product\n\nAI Platform\nAnalytics Suite\nMobile SDK",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent3",
+                    "alpha": 20
+                  },
+                  "line": "accent3",
+                  "text": {
+                    "content": "Engineering\n\nCloud Infra\nML Pipeline\nDevOps",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent4",
+                    "alpha": 20
+                  },
+                  "line": "accent4",
+                  "text": {
+                    "content": "Sales\n\nEnterprise\nSMB\nPartners",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": {
+                    "color": "accent5",
+                    "alpha": 20
+                  },
+                  "line": "accent5",
+                  "text": {
+                    "content": "Operations\n\nFinance\nHR\nLegal",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 3
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 10,
+            "cells": [
+              {
+                "col_span": 4,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "dk1",
+                    "alpha": 10
+                  },
+                  "text": {
+                    "content": "Core Values: Integrity | Innovation | Impact | Inclusion",
+                    "size": 11,
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

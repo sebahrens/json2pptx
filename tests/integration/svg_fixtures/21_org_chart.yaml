@@ -1,0 +1,24 @@
+type: org_chart
+title: Leadership Team
+data:
+  root:
+    name: Jane Smith
+    title: CEO
+    children:
+      - name: Bob Johnson
+        title: CTO
+        children:
+          - name: Alice Chen
+            title: VP Engineering
+          - name: David Kim
+            title: VP Product
+      - name: Carol White
+        title: CFO
+        children:
+          - name: Eve Brown
+            title: Controller
+      - name: Frank Lee
+        title: COO
+output:
+  width: 900
+  height: 600

@@ -1,0 +1,72 @@
+{
+  "template": "modern-template",
+  "output_filename": "72_sg_process_flow.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Process Flow with Arrows"}
+      ],
+      "shape_grid": {
+        "bounds": {"x": 3, "y": 30, "width": 94, "height": 40},
+        "gap": 0,
+        "columns": 7,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {"content": "Ideate", "size": 11, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent1",
+                  "text": ""
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {"content": "Design", "size": 11, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent2",
+                  "text": ""
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {"content": "Build", "size": 11, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent3",
+                  "text": ""
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {"content": "Launch", "size": 11, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "template": "modern-template",
+  "output_filename": "23_chart_treemap.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue Breakdown (Treemap)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "treemap_chart",
+            "title": "Revenue by Product Line",
+            "data": {
+              "categories": ["Enterprise Platform", "SMB Suite", "API Services", "Professional Services", "Training"],
+              "values": [45, 25, 15, 10, 5]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

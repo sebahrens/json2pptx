@@ -1,0 +1,54 @@
+# Docker Compose configuration for go-slide-creator
+# Usage: docker-compose up --build
+#
+# Volumes:
+#   templates: Read-only mount for PPTX templates
+#   output:    Read-write mount for generated files
+#   testdata:  Development only - test fixtures (use 'dev' profile)
+#   fonts:     Optional - mount custom fonts from host
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT_SHA: ${COMMIT_SHA:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount templates directory (read-only for security)
+      - ./templates:/app/templates:ro
+      # Mount output directory (read-write for generated files)
+      - ./output:/app/output:rw
+      # Mount config file (optional - uses defaults if not present)
+      - ./config.yaml:/app/config.yaml:ro
+      # Optional: Mount custom fonts from host
+      # - ./fonts:/usr/share/fonts/custom:ro
+    environment:
+      # Server configuration
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # LLM API configuration (set in .env file or environment)
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Template paths
+      - TEMPLATES_DIR=/app/templates
+      - OUTPUT_DIR=/app/output
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    # Graceful shutdown: allow time for in-flight requests to complete
+    # Should match or exceed server.shutdown_timeout in config
+    stop_grace_period: 15s
+    restart: unless-stopped
+volumes:
+  output:
+    driver: local

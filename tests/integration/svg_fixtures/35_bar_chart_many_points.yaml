@@ -1,0 +1,30 @@
+type: bar_chart
+title: Dense Data (20 categories)
+data:
+  categories:
+    - A
+    - B
+    - C
+    - D
+    - E
+    - F
+    - G
+    - H
+    - I
+    - J
+    - K
+    - L
+    - M
+    - N
+    - O
+    - P
+    - Q
+    - R
+    - S
+    - T
+  series:
+    - name: Values
+      values: [10, 25, 18, 32, 45, 22, 38, 15, 28, 42, 35, 20, 48, 12, 30, 27, 40, 16, 33, 50]
+output:
+  width: 1000
+  height: 400

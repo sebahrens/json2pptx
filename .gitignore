@@ -1,0 +1,131 @@
+# SVG icon sets (57MB, 12K files) — download with scripts/download_svg_icons.sh
+/svg/
+
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Root-level Go binaries (built without -o flag)
+/json2pptx
+/pptx2jpg
+/server
+/slide-server
+/svgserver
+/go-slide-creator
+/mktemplate
+/preview
+/testgen
+
+# Root-level compiled binaries (not built with -o bin/)
+/json2pptx
+/testrand
+
+# User-uploaded layout files
+/New-layouts/
+
+# Development prompt artifacts
+PROMPT_*.md
+
+# Log files
+*.log
+
+# One-off test/dev files
+settings.json
+
+# Test artifacts
+*.test
+coverage.out
+*.prof
+
+# Test output directory (generated during tests)
+/test_output/
+/analysis-output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build cache
+/cache/
+/output/
+
+# Templates (track embed.go + bundled .pptx; ignore user-added files)
+/templates/*
+!/templates/embed.go
+!/templates/midnight-blue.pptx
+!/templates/forest-green.pptx
+!/templates/warm-coral.pptx
+!/templates/modern-template.pptx
+
+# Environment
+.env
+.env.local
+session-*.md
+CLAUDE-SKILL-*.md
+
+# Stray font files at repo root (fonts belong in fonts/)
+/*.ttf
+/*.otf
+
+# Generated PDFs
+*.pdf
+
+# Private/proprietary templates (not for distribution)
+/private/
+
+# Security audit reports (internal use only)
+specs/*security-audit*
+
+# Archives and distribution bundles
+*.zip
+*.tar.gz
+dist/
+
+# Extracted PPTX internals (don't commit raw OOXML)
+/ppt/
+/_rels/
+/customXml/
+/docProps/
+/[Content_Types].xml
+
+# Root-level generated/stress-test PPTX files
+/*.pptx
+
+# Generated example outputs
+examples/*.pptx
+examples/output/
+
+# Internal QA documents
+QA_FINDINGS*.md
+
+
+# CI test output
+/test_ci_output/
+
+# Auto Claude data directory
+.auto-claude/
+
+# Claude Code configuration (local AI assistant settings)
+.claude/
+
+# Go workspace files (not committed for publishable modules)
+go.work
+go.work.sum
+
+# Beads issue tracker (internal project management)
+.beads/
+
+# Python cache (from debug scripts)
+__pycache__/
+*.pyc

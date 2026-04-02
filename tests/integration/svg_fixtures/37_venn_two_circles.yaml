@@ -1,0 +1,18 @@
+type: venn
+title: Two Circle Venn
+data:
+  circles:
+    - label: Set A
+      items:
+        - Alpha
+        - Beta
+    - label: Set B
+      items:
+        - Gamma
+        - Delta
+  intersections:
+    - sets: [0, 1]
+      label: Overlap
+output:
+  width: 600
+  height: 500

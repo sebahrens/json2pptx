@@ -1,0 +1,24 @@
+{
+  "template": "modern-template",
+  "output_filename": "42_inline_formatting.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Text Formatting Test"},
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "<b>Bold text</b> in a bullet",
+            "<i>Italic text</i> in a bullet",
+            "<u>Underlined text</u> in a bullet",
+            "<b><i>Bold and italic</i></b> combined",
+            "Normal text with <b>bold</b> in the middle",
+            "Multiple <b>bold</b> and <i>italic</i> runs"
+          ]
+        }
+      ]
+    }
+  ]
+}

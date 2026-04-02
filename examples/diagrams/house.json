@@ -1,0 +1,32 @@
+{
+  "type": "house_diagram",
+  "title": "Strategy House",
+  "subtitle": "Strategic Framework Overview",
+  "data": {
+    "roof": "Vision: Be the Global Leader in Digital Payments",
+    "sections": [
+      {
+        "label": "Technology",
+        "items": ["Cloud Infrastructure", "API Platform", "Security"]
+      },
+      {
+        "label": "Product",
+        "items": ["Mobile Payments", "Merchant Tools", "Analytics"]
+      },
+      {
+        "label": "People",
+        "items": ["Talent Development", "Culture", "Leadership"]
+      },
+      {
+        "label": "Operations",
+        "items": ["Process Excellence", "Compliance", "Risk Management"]
+      }
+    ],
+    "foundation": "Core Values: Integrity, Innovation, Customer Focus, Collaboration",
+    "footnote": "Source: Strategic Planning Review 2024"
+  },
+  "output": {
+    "width": 800,
+    "height": 600
+  }
+}

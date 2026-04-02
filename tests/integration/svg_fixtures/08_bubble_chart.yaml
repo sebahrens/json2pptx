@@ -1,0 +1,11 @@
+type: bubble_chart
+title: Market Segments
+data:
+  series:
+    - name: Products
+      x_values: [20, 50, 80, 30, 60]
+      values: [70, 40, 90, 30, 60]
+      sizes: [100, 250, 180, 90, 300]
+output:
+  width: 800
+  height: 600

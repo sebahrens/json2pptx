@@ -1,0 +1,54 @@
+{
+  "template": "template_1",
+  "slides": [
+    {
+      "layout_id": "slideLayout6",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Simple String Cells"},
+        {"placeholder_id": "body", "type": "table", "table_value": {
+          "headers": ["Product", "Q1", "Q2", "Q3", "Q4"],
+          "rows": [
+            ["Widget A", "100", "120", "115", "130"],
+            ["Widget B", "80", "95", "90", "105"],
+            ["Widget C", "60", "70", "75", "85"]
+          ]
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout6",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Mixed Cells with Spans"},
+        {"placeholder_id": "body", "type": "table", "table_value": {
+          "headers": ["Category", "H1", "H2", "Total"],
+          "rows": [
+            [{"content": "Revenue", "col_span": 1}, "$1.2M", "$1.5M", "$2.7M"],
+            [{"content": "Expenses", "col_span": 1}, "$800K", "$900K", "$1.7M"],
+            [{"content": "Net Income", "col_span": 1, "row_span": 1}, "$400K", "$600K", {"content": "$1.0M", "col_span": 1}]
+          ],
+          "style": {
+            "header_background": "accent2",
+            "borders": "all",
+            "striped": false
+          }
+        }}
+      ]
+    },
+    {
+      "layout_id": "slideLayout6",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Spanning Cells"},
+        {"placeholder_id": "body", "type": "table", "table_value": {
+          "headers": ["Region", "Product", "Revenue"],
+          "rows": [
+            [{"content": "North America", "row_span": 2}, "Enterprise", "$5.2M"],
+            ["", "SMB", "$2.1M"],
+            [{"content": "Europe", "row_span": 2}, "Enterprise", "$3.8M"],
+            ["", "SMB", "$1.4M"],
+            [{"content": "Grand Total", "col_span": 2}, {"content": "$12.5M", "col_span": 1}]
+          ]
+        }}
+      ]
+    }
+  ]
+}

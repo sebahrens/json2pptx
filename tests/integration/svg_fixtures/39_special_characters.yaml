@@ -1,0 +1,14 @@
+type: bar_chart
+title: "Labels with Special Chars: <>&\""
+data:
+  categories:
+    - "Revenue ($M)"
+    - "Growth (%)"
+    - "R&D / Innovation"
+    - "P&L <Summary>"
+  series:
+    - name: "FY2025 'Actual'"
+      values: [42, 17, 8.5, 33]
+output:
+  width: 800
+  height: 400

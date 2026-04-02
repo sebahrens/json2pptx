@@ -1,0 +1,9 @@
+type: house_diagram
+title: House Without Pillars
+data:
+  roof: "Vision Statement"
+  sections: []
+  foundation: "Foundation Statement"
+output:
+  width: 600
+  height: 400

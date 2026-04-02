@@ -1,0 +1,10 @@
+{
+  "template": "modern-template",
+  "output_filename": "55_blank_slide.pptx",
+  "slides": [
+    {
+      "slide_type": "blank",
+      "content": []
+    }
+  ]
+}

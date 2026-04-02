@@ -1,0 +1,16 @@
+type: area_chart
+title: Revenue by Region
+data:
+  categories:
+    - Q1
+    - Q2
+    - Q3
+    - Q4
+  series:
+    - name: North America
+      values: [30, 35, 38, 42]
+    - name: Europe
+      values: [18, 20, 22, 25]
+output:
+  width: 800
+  height: 400

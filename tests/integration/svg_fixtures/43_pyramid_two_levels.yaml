@@ -1,0 +1,11 @@
+type: pyramid
+title: Simple Two-Level Pyramid
+data:
+  levels:
+    - label: Top
+      description: The apex
+    - label: Bottom
+      description: The base
+output:
+  width: 600
+  height: 400

@@ -1,0 +1,44 @@
+type: value_chain
+title: Manufacturing Value Chain
+data:
+  primary_activities:
+    - label: Inbound Logistics
+      items:
+        - Component sourcing
+        - Inventory control
+    - label: Operations
+      items:
+        - Assembly lines
+        - Quality assurance
+    - label: Outbound Logistics
+      items:
+        - Warehouse management
+        - Global distribution
+    - label: Marketing & Sales
+      items:
+        - Brand management
+        - Digital marketing
+    - label: Service
+      items:
+        - Customer support
+        - Warranty service
+  support_activities:
+    - label: Infrastructure
+      items:
+        - Finance
+        - Legal
+    - label: Human Resources
+      items:
+        - Talent acquisition
+        - Training
+    - label: Technology
+      items:
+        - R&D innovation
+        - IT systems
+    - label: Procurement
+      items:
+        - Supplier negotiations
+        - Cost optimization
+output:
+  width: 1000
+  height: 600

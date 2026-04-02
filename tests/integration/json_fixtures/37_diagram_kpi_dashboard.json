@@ -1,0 +1,28 @@
+{
+  "template": "modern-template",
+  "output_filename": "37_diagram_kpi_dashboard.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "KPI Dashboard"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "kpi_dashboard",
+            "title": "Q1 Performance",
+            "data": {
+              "metrics": [
+                {"label": "Revenue", "value": "$21M", "delta": "+17%", "trend": "up"},
+                {"label": "Customers", "value": "1,250", "delta": "+8%", "trend": "up"},
+                {"label": "NPS", "value": "72", "delta": "+5", "trend": "up"},
+                {"label": "Churn", "value": "2.1%", "delta": "-0.3%", "trend": "down"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

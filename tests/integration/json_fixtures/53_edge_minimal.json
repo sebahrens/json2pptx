@@ -1,0 +1,11 @@
+{
+  "template": "modern-template",
+  "output_filename": "53_edge_minimal.pptx",
+  "slides": [
+    {
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Minimal Slide"}
+      ]
+    }
+  ]
+}

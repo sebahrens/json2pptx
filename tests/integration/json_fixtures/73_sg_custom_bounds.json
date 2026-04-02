@@ -1,0 +1,104 @@
+{
+  "template": "modern-template",
+  "output_filename": "73_sg_custom_bounds.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Custom Bounds Layout"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 15,
+          "y": 25,
+          "width": 70,
+          "height": 50
+        },
+        "gap": 10,
+        "columns": 2,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "line": {
+                    "color": "accent1",
+                    "width": 2
+                  },
+                  "text": {
+                    "content": "Centered Panel A\n\nThis grid uses non-default bounds with x:15, y:25",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "line": {
+                    "color": "accent2",
+                    "width": 2
+                  },
+                  "text": {
+                    "content": "Centered Panel B\n\nWidth 70% and height 50% of slide",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "line": {
+                    "color": "accent3",
+                    "width": 2
+                  },
+                  "text": {
+                    "content": "Centered Panel C\n\nSmaller grid area leaves more whitespace",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "line": {
+                    "color": "accent4",
+                    "width": 2
+                  },
+                  "text": {
+                    "content": "Centered Panel D\n\nUseful for focused content",
+                    "size": 12,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+type: swot
+title: Minimal SWOT
+data:
+  strengths:
+    - One strength
+  weaknesses:
+    - One weakness
+  opportunities:
+    - One opportunity
+  threats:
+    - One threat
+output:
+  width: 600
+  height: 400

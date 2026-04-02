@@ -1,0 +1,11 @@
+type: bar_chart
+title: Single Data Point
+data:
+  categories:
+    - Only Value
+  series:
+    - name: Data
+      values: [42]
+output:
+  width: 400
+  height: 300

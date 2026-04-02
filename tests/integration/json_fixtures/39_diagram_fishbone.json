@@ -1,0 +1,29 @@
+{
+  "template": "modern-template",
+  "output_filename": "39_diagram_fishbone.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Root Cause Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "fishbone",
+            "title": "Ishikawa Diagram",
+            "data": {
+              "effect": "Customer Churn Increasing",
+              "causes": [
+                {"category": "People", "items": ["Understaffed support", "Training gaps"]},
+                {"category": "Process", "items": ["Slow onboarding", "No escalation path"]},
+                {"category": "Technology", "items": ["Frequent outages", "Poor UX"]},
+                {"category": "Policy", "items": ["Rigid contracts", "No trial extension"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

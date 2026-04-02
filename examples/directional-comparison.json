@@ -1,0 +1,651 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "directional-comparison.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Directional Comparison"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "value": "Before → After with Chevron Divider"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Operating Model Transformation"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": [
+          42,
+          16,
+          42
+        ],
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "BEFORE",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "AFTER",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Siloed departments\nManual handoffs between teams\nWeekly status meetings\nDecisions escalated to VP level\nEmail-driven communication",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Cross-functional squads\nAutomated workflows\nDaily standups with async updates\nDecisions made at team level\nReal-time collaboration tools",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Technology Stack Migration"
+        }
+      ],
+      "shape_grid": {
+        "gap": 10,
+        "columns": [
+          42,
+          16,
+          42
+        ],
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#B85450",
+                  "text": {
+                    "content": "LEGACY",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#82B366",
+                  "text": {
+                    "content": "MODERN",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Infrastructure\n\nOn-premise data centers\n3-month provisioning cycle\nManual server configuration",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Infrastructure\n\nMulti-cloud (AWS + Azure)\nSelf-service in minutes\nInfrastructure as Code",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Data\n\nSeparate databases per app\nBatch ETL overnight\nNo single source of truth",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Data\n\nUnified data lakehouse\nReal-time streaming pipelines\nGoverned data mesh",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Deployment\n\nQuarterly release cycles\nManual testing (2 weeks)\nDowntime during deploys",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Deployment\n\nContinuous delivery (daily)\nAutomated test suite (CI/CD)\nZero-downtime blue-green",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Customer Experience Redesign"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": [
+          44,
+          12,
+          44
+        ],
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "TODAY",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "TOMORROW",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Onboarding\n\n5-step form, 15 min avg\n30% drop-off rate\nManual identity verification",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Onboarding\n\nSingle-screen signup, 2 min avg\n8% drop-off rate\nAI-powered instant KYC",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Support\n\nEmail only, 48hr SLA\nNPS score: 32\nNo self-service options",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Support\n\nOmnichannel, 4hr SLA\nNPS score: 72\nAI chatbot resolves 60% of tickets",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Personalization\n\nOne-size-fits-all pricing\nGeneric email campaigns\nNo usage analytics",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rightArrow",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Personalization\n\nUsage-based dynamic pricing\nBehavior-triggered journeys\nReal-time recommendation engine",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 8,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "value": "Financial Impact Summary"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": [
+          44,
+          12,
+          44
+        ],
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#B85450",
+                  "text": {
+                    "content": "CURRENT STATE",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "#82B366",
+                  "text": {
+                    "content": "TARGET STATE (Y2)",
+                    "size": 12,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Revenue: $45M\nGross Margin: 52%\nCustomer Acquisition Cost: $1,200\nChurn Rate: 18% annually",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 12,
+                    "inset_right": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "chevron",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "",
+                    "size": 1
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Revenue: $78M (+73%)\nGross Margin: 68% (+16pp)\nCustomer Acquisition Cost: $680 (−43%)\nChurn Rate: 9% (−50%)",
+                    "size": 11,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 12,
+                    "inset_right": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 40,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Key Investment Areas                                     Expected ROI\n\nTechnology modernization ($8.5M)                    3.2x over 3 years\nProcess automation ($3.2M)                              4.1x over 2 years\nTalent & training ($2.8M)                                   2.8x over 3 years\nCustomer experience ($4.1M)                            3.7x over 2 years\n\nTotal investment: $18.6M  →  Projected NPV: $52M",
+                    "size": 10,
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_top": 10,
+                    "inset_left": 12,
+                    "inset_right": 12
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,3114 @@
+{
+  "template": "warm-coral",
+  "output_filename": "sovereign-ai-strategy.pptx",
+  "footer": {
+    "enabled": true,
+    "left_text": "Confidential"
+  },
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Strategic Imperative of Sovereign AI"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Building National Sovereign AI Infrastructure Under Domestic Jurisdiction\nMarch 2026 | Prepared for the National Digital Sovereignty Council"
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Burning Platform"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 74
+        },
+        "gap": 8,
+        "row_gap": 12,
+        "columns": [
+          10,
+          90
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "database",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• 78% of EU Government Data on Foreign Infrastructure\n• US CLOUD Act grants law enforcement access regardless of data location — direct conflict with GDPR Article 48",
+                    "size": 16,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "globe",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• China Investing $47B in Parallel Sovereign Stack\n• Accelerating global digital bifurcation; nations choosing sides between US and Chinese infrastructure ecosystems",
+                    "size": 16,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "cpu",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Permanent Dependency Without Domestic GPU Clusters by 2028\n• Training frontier AI models requires 10,000+ GPU clusters that do not exist outside hyperscaler facilities today",
+                    "size": 16,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Opportunity"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 74
+        },
+        "gap": 8,
+        "row_gap": 12,
+        "columns": [
+          10,
+          90
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "coins",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• EUR 12-18B Investment Over Five Years, 3.2x Projected ROI\n• Hybrid partnership model captures 85% of sovereignty benefits at 55% of full-build cost",
+                    "size": 16,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "trending-up",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• EUR 8-12B Addressable Market in Government and Regulated Sectors\n• Sovereign AI Infrastructure demand growing 35% CAGR driven by NIS2 compliance deadline",
+                    "size": 16,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "rocket",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• First-Mover Advantage in Trusted AI Infrastructure\n• Export model to allied nations — potential EUR 3-5B additional revenue from ASEAN, LatAm, Africa markets",
+                    "size": 16,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Why Our Nation, Why Now: Three Strategic Imperatives"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "columns": 3,
+        "gap": 10,
+        "row_gap": 10,
+        "rows": [
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "shield",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Vulnerability",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "icon": {
+                    "name": "rocket",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Opportunity",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "icon": {
+                    "name": "clock",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Urgency",
+                    "size": 14,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "82% of classified workloads on foreign infrastructure; defense and intelligence agencies exposed to CLOUD Act discovery",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "EUR 4-6B EU co-funding available through Digital Infrastructure Consortium — allocation closes June 2026",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "NIS2 compliance deadline Oct 2026; every month of delay increases migration cost by 8%",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "US Hyperscalers Control 70% of Cloud Infrastructure — Our Data Is Subject to Foreign Law"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "stacked_bar",
+            "title": "Cloud Infrastructure Market Share by Provider Origin (USD Billions)",
+            "data": {
+              "categories": [
+                "2022",
+                "2023",
+                "2024",
+                "2025E",
+                "2026E",
+                "2027E"
+              ],
+              "series": [
+                {
+                  "name": "US Hyperscalers (AWS/Azure/GCP)",
+                  "values": [
+                    198,
+                    229,
+                    267,
+                    308,
+                    351,
+                    396
+                  ]
+                },
+                {
+                  "name": "Chinese Providers (Alibaba/Huawei/Tencent)",
+                  "values": [
+                    32,
+                    39,
+                    48,
+                    58,
+                    69,
+                    82
+                  ]
+                },
+                {
+                  "name": "European Sovereign AI Infrastructure",
+                  "values": [
+                    4,
+                    7,
+                    12,
+                    19,
+                    28,
+                    41
+                  ]
+                },
+                {
+                  "name": "Other Regional",
+                  "values": [
+                    18,
+                    22,
+                    27,
+                    33,
+                    40,
+                    48
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Sovereignty Gap: Six Dimensions of Strategic Exposure"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "row_gap": 10,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 14,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "database",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Data Residency",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "icon": {
+                    "name": "cpu",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Compute Access",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "icon": {
+                    "name": "shield",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Security Clearance",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 28,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "78% of EU gov data on US infrastructure; CLOUD Act exposure",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "No domestic 10K+ GPU clusters for frontier model training",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Classified workloads cannot run on foreign-owned infra",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 14,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "icon": {
+                    "name": "lock",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "IP Protection",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent5",
+                  "icon": {
+                    "name": "globe",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Supply Chain",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent6",
+                  "icon": {
+                    "name": "users",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Talent Retention",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 28,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Model weights and training data subject to foreign discovery orders",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Semiconductor dependency on TSMC/Samsung; ASML chokepoint",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "62% of EU AI researchers emigrate to US/UK within 5 years",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Peer Nations Are Investing EUR 28B+ — We Risk Being Left Behind"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "bar",
+            "title": "Announced Sovereign AI Infrastructure Investment by Region (EUR Billions, 2023-2027)",
+            "data": {
+              "categories": [
+                "EU/EEA",
+                "China",
+                "India",
+                "Middle East",
+                "ASEAN",
+                "Latin America"
+              ],
+              "series": [
+                {
+                  "name": "Government Funded",
+                  "values": [
+                    28,
+                    47,
+                    8.5,
+                    12,
+                    4.2,
+                    2.1
+                  ]
+                },
+                {
+                  "name": "Private Sector Co-Investment",
+                  "values": [
+                    19,
+                    31,
+                    6.2,
+                    9.5,
+                    3.8,
+                    1.4
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Three EU Regulations Mandate Sovereign AI Infrastructure — Each Deadline Is Now"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 74
+        },
+        "gap": 8,
+        "row_gap": 12,
+        "columns": [
+          10,
+          90
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "shield",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• EU AI Act (2024): Risk Classification Mandates Auditable Infrastructure\n• High-risk AI systems require training on infrastructure subject to EU audit jurisdiction",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "lock",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• GDPR Article 48: Blocks Compliance with Foreign Court Orders\n• Domestic data residency now a legal requirement, not a preference — extraterritorial requests must be denied",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "alert-triangle",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• NIS2 Directive: Critical Infrastructure Deadline October 2026\n• Operators must use EUCS-certified cloud providers — 18 months to achieve compliance or face penalties",
+                    "size": 14,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Who Controls Your Data?"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 76
+        },
+        "gap": 8,
+        "row_gap": 8,
+        "columns": [
+          8,
+          44,
+          44
+        ],
+        "rows": [
+          {
+            "height": 8,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "1",
+                    "size": 24,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#FFFFFF",
+                    "bold": true
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Domestic",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "b",
+                    "color": "#444444"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Foreign",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "b",
+                    "color": "#444444"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 38,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Home\nGov\nLaw",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#444444"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Full Sovereignty\n\nDomestic data, domestic law\nTarget state for classified and regulated workloads",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Legal Conflict Zone\n\nForeign-hosted data, domestic law claims\nGDPR vs CLOUD Act collision",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 38,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Foreign\nGov\nLaw",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#444444"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "Managed Risk\n\nDomestic data, foreign law exposure\nHyperscaler local regions with CLOUD Act reach",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Current EU Position\n\nForeign data, foreign law\n78% of gov workloads here today",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 6,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "4",
+                    "size": 24,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#FFFFFF",
+                    "bold": true
+                  }
+                }
+              },
+              {
+                "col_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "← Data Location →",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "color": "#444444"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Sovereign AI Maturity Model: Four Pillars of National Capability"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "row_gap": 10,
+        "columns": 4,
+        "rows": [
+          {
+            "height": 18,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "server",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Infrastructure",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "icon": {
+                    "name": "shield",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Governance",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "icon": {
+                    "name": "bulb",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Innovation",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "icon": {
+                    "name": "users",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Talent",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Domestic data centers, sovereign cloud stack, GPU clusters",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Regulatory framework, EUCS certification, audit mechanisms",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "R&D ecosystem, model training, open-source contribution",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Skills pipeline, retention incentives, repatriation programs",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 50,
+            "cells": [
+              {
+                "col_span": 4,
+                "diagram": {
+                  "type": "bar",
+                  "title": "Current Maturity Assessment (1-5 Scale)",
+                  "data": {
+                    "categories": [
+                      "Infrastructure",
+                      "Governance",
+                      "Innovation",
+                      "Talent"
+                    ],
+                    "series": [
+                      {
+                        "name": "Current State",
+                        "values": [
+                          2.1,
+                          3.4,
+                          2.8,
+                          1.9
+                        ]
+                      },
+                      {
+                        "name": "Target (2029)",
+                        "values": [
+                          4.5,
+                          4.8,
+                          4.2,
+                          3.8
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Strategic Pathways: Sovereignty, Speed, and Cost"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 76
+        },
+        "gap": 8,
+        "row_gap": 8,
+        "columns": [
+          8,
+          44,
+          44
+        ],
+        "rows": [
+          {
+            "height": 8,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "1",
+                    "size": 24,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#FFFFFF",
+                    "bold": true
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Slower",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "b",
+                    "color": "#444444"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Faster",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "b",
+                    "color": "#444444"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 38,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "High\nSov.",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#444444"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Full Sovereign Build\n\nEUR 15-18B | 5-7 years\nMax control, highest cost\nRegulatory-ready: 4-5 years",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Sovereign Partnership ★\n\nEUR 8-12B | 3-5 years\nDomestic operational control\nRegulatory-ready: 2-3 years",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 38,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "Low\nSov.",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#444444"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Do Nothing\n\n• EUR 0 — 0% sovereign\n• Non-compliant by Oct 2026\n• Strategic dependency deepens",
+                    "size": 13,
+                    "color": "#333333",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Regulated Outsource\n\nEUR 2-4B | 1-2 years\nHyperscaler with local controls\nPartial compliance only",
+                    "size": 13,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 10,
+                    "inset_left": 10,
+                    "inset_right": 10,
+                    "inset_bottom": 10
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 6,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "4",
+                    "size": 24,
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "color": "#FFFFFF",
+                    "bold": true
+                  }
+                }
+              },
+              {
+                "col_span": 2,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "none",
+                  "text": {
+                    "content": "← Speed to Market →",
+                    "size": 13,
+                    "bold": true,
+                    "align": "ctr",
+                    "vertical_align": "t",
+                    "color": "#444444"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Hybrid Partnership: EUR 10-14B for 85% Sovereignty at 2x Speed"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "columns": 2,
+        "gap": 12,
+        "row_gap": 10,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Why Hybrid Wins",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Cost-Sovereignty Tradeoff",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "auto_height": true,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Hybrid delivers 2.1x better cost-per-sovereignty-point vs full build: EUR 10-14B for 85% sovereignty vs EUR 15-18B for 95%\n\n• Pure sovereign build takes 5-7 years — too slow given AI acceleration; frontier model capabilities double every 6-9 months\n\n• Bleu (France), Delos (Germany), and Tim/Google (Italy) prove the model works at scale with classified workload clearance\n\n• Key principle: Foreign technology is acceptable if domestic entities control operations, data access, encryption keys, and audit rights\n\n• Phased approach: Start with partnership, build domestic capability in parallel, reduce foreign dependency from 78% to under 25% over 5 years",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Full Build: EUR 15-18B — 95% sovereign\n\n• Hybrid Partnership: EUR 10-14B — 85% sovereign*\n\n• Regulated Outsource: EUR 2-4B — 40% sovereign\n\n• Do Nothing: EUR 0 — non-compliant by Oct 2026\n\n• *85% sovereignty = domestic operational control, encryption key management, audit rights, data residency. Remaining 15%: foreign technology components under export license.",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Nine Core Capabilities for Sovereign AI Infrastructure"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "row_gap": 8,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "cloud",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "AI/ML Platform",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "database",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Data Platform",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "lock",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Security Layer",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Model training, inference, MLOps\n• Target: Mistral, Aleph Alpha class",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Lakehouse, streaming, analytics\n• Target: Exasol, Celonis alternatives",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• HSM, zero-trust, key management\n• Target: Utimaco, IDnomic sovereign PKI",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "icon": {
+                    "name": "network",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Cloud Platform",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "icon": {
+                    "name": "cpu",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "GPU/Accelerator",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "icon": {
+                    "name": "server",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Data Centers",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 20,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Compute, storage, networking\n• Target: OVHcloud, IONOS, StackIT",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• NVIDIA H100/B200 clusters\n• Target: 50K+ GPUs by 2028",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Tier IV, domestic soil, green energy\n• Target: 6 facilities, 200MW total",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 12,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "icon": {
+                    "name": "building-bank",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Governance & Compliance",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 14,
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "EUCS certification, NIS2, ISO 27001/27701 — DevOps & CI/CD with sovereign Kubernetes distribution — SOC 2 Type II domestic audit rights with real-time compliance dashboards",
+                    "size": 13,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Investment Case: EUR 12-18B Over 5 Years with 3.2x Projected ROI"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "waterfall",
+            "title": "Investment Breakdown and Value Creation (EUR Billions)",
+            "data": {
+              "points": [
+                {
+                  "label": "Data Centers",
+                  "value": -3.2,
+                  "type": "decrease"
+                },
+                {
+                  "label": "GPU Clusters",
+                  "value": -4.8,
+                  "type": "decrease"
+                },
+                {
+                  "label": "Cloud Platform",
+                  "value": -2.4,
+                  "type": "decrease"
+                },
+                {
+                  "label": "AI/ML Stack",
+                  "value": -1.6,
+                  "type": "decrease"
+                },
+                {
+                  "label": "Security/Gov",
+                  "value": -0.8,
+                  "type": "decrease"
+                },
+                {
+                  "label": "Talent & Ops",
+                  "value": -1.2,
+                  "type": "decrease"
+                },
+                {
+                  "label": "Total Investment",
+                  "value": -14.0,
+                  "type": "subtotal"
+                },
+                {
+                  "label": "Avoided Costs",
+                  "value": 8.5,
+                  "type": "increase"
+                },
+                {
+                  "label": "Revenue Creation",
+                  "value": 12.2,
+                  "type": "increase"
+                },
+                {
+                  "label": "Strategic Value",
+                  "value": 24.1,
+                  "type": "increase"
+                },
+                {
+                  "label": "Net Value",
+                  "value": 30.8,
+                  "type": "total"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Investment Sensitivity: Three Budget Scenarios"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "row_gap": 10,
+        "columns": 1,
+        "rows": [
+          {
+            "height": 8,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Investment Sensitivity Analysis",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 52,
+            "cells": [
+              {
+                "table": {
+                  "headers": [
+                    "Scenario",
+                    "Capex",
+                    "GPU Target 2029",
+                    "Gov Migration",
+                    "Payback",
+                    "Risk Level"
+                  ],
+                  "rows": [
+                    [
+                      "Constrained",
+                      "EUR 10B",
+                      "35K GPUs",
+                      "30%",
+                      "7 years",
+                      "High — misses Phase 2 scale"
+                    ],
+                    [
+                      "Optimal",
+                      "EUR 14B",
+                      "50K GPUs",
+                      "60%",
+                      "4.5 years",
+                      "Moderate — balanced"
+                    ],
+                    [
+                      "Aggressive",
+                      "EUR 18B",
+                      "75K GPUs",
+                      "80%",
+                      "3.2 years",
+                      "High — execution risk"
+                    ]
+                  ],
+                  "style": {
+                    "header_background": "accent2",
+                    "borders": "horizontal",
+                    "striped": true
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "icon": {
+                    "name": "target",
+                    "fill": "#000000"
+                  },
+                  "text": {
+                    "content": "Recommendation: EUR 14B Optimal Scenario\n• EUR 6B domestic funding + EUR 8B EU co-investment through Digital Infrastructure Consortium\n• Balances sovereignty targets with execution feasibility and fiscal constraints",
+                    "size": 16,
+                    "color": "#000000",
+                    "align": "ctr",
+                    "vertical_align": "ctr",
+                    "inset_top": 8,
+                    "inset_left": 6,
+                    "inset_right": 6,
+                    "inset_bottom": 8
+                  }
+                },
+                "accent_bar": {
+                  "position": "top",
+                  "color": "accent1",
+                  "width": 4
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Our Addressable Market: EUR 8-12B by 2029 in Government and Regulated Sectors"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "line",
+            "title": "Sovereign AI Infrastructure Revenue Projection (EUR Billions)",
+            "data": {
+              "categories": [
+                "2024",
+                "2025",
+                "2026",
+                "2027",
+                "2028",
+                "2029"
+              ],
+              "series": [
+                {
+                  "name": "Government & Defense",
+                  "values": [
+                    1.8,
+                    3.2,
+                    5.1,
+                    7.4,
+                    9.8,
+                    12.1
+                  ]
+                },
+                {
+                  "name": "Regulated Industries (Finance/Health)",
+                  "values": [
+                    2.4,
+                    4.1,
+                    6.8,
+                    10.2,
+                    13.9,
+                    17.5
+                  ]
+                },
+                {
+                  "name": "Critical Infrastructure",
+                  "values": [
+                    0.8,
+                    1.5,
+                    2.6,
+                    4.1,
+                    5.8,
+                    7.6
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Investment Allocation by Phase and Category"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "row_gap": 10,
+        "columns": 2,
+        "rows": [
+          {
+            "height": 55,
+            "cells": [
+              {
+                "col_span": 2,
+                "diagram": {
+                  "type": "bar",
+                  "title": "Capex Allocation by Phase (EUR Billions)",
+                  "data": {
+                    "categories": [
+                      "Phase 1 (Yr 1-2)",
+                      "Phase 2 (Yr 2-4)",
+                      "Phase 3 (Yr 4-5)"
+                    ],
+                    "series": [
+                      {
+                        "name": "Infrastructure",
+                        "values": [
+                          1.8,
+                          3.4,
+                          1.6
+                        ]
+                      },
+                      {
+                        "name": "Platform & Software",
+                        "values": [
+                          0.6,
+                          1.8,
+                          1.2
+                        ]
+                      },
+                      {
+                        "name": "Talent & Operations",
+                        "values": [
+                          0.4,
+                          0.8,
+                          0.6
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "coins",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Total Capex",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "icon": {
+                    "name": "trending-up",
+                    "fill": "#FFFFFF"
+                  },
+                  "text": {
+                    "content": "Breakeven",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 22,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• EUR 12.2B over 5 years\n• Peak spend in Phase 2",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Year 4 operational breakeven\n• EUR 2.8B annual run-rate by Yr 5",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Implementation Roadmap: Three Phases Over Five Years"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "columns": 3,
+        "gap": 10,
+        "row_gap": 10,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Phase 1: Foundation (2026-2027)",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Phase 2: Scale (2027-2029)",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Phase 3: Autonomy (2029-2031)",
+                    "size": 16,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "height": 72,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Establish governance entity\n• Procure first 2 data centers\n• Deploy 10K GPUs\n• Onboard 3 anchor tenants\n• Achieve EUCS basic certification",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Expand to 6 data centers\n• Reach 50K GPUs\n• Launch sovereign AI platform\n• Migrate 40% gov workloads\n• Train first domestic frontier model",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Full sovereign stack operational\n• 75% gov workload migration\n• Commercial expansion\n• Positive operating margin\n• Foreign dependency <25%",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "t",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Critical Risks to Delivery — and Why We Can Manage Them"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 20,
+        "columns": 1,
+        "rows": [
+          {
+            "height": 100,
+            "cells": [
+              {
+                "table": {
+                  "headers": [
+                    "Risk",
+                    "Likelihood",
+                    "Impact",
+                    "Mitigation",
+                    "Owner"
+                  ],
+                  "rows": [
+                    [
+                      "GPU supply disruption (NVIDIA export controls)",
+                      "High",
+                      "High",
+                      "Multi-vendor strategy: NVIDIA + AMD + Intel; domestic accelerator R&D (SiPearl)",
+                      "CTO Office"
+                    ],
+                    [
+                      "Talent shortfall (62% AI researcher emigration)",
+                      "High",
+                      "High",
+                      "Competitive compensation, repatriation incentives, university partnerships",
+                      "CHRO"
+                    ],
+                    [
+                      "Regulatory fragmentation across EU member states",
+                      "Medium",
+                      "High",
+                      "Single EU-level procurement framework; align with IPCEI cloud initiative",
+                      "Legal/Gov Affairs"
+                    ],
+                    [
+                      "Budget overrun exceeding 20% of baseline",
+                      "Medium",
+                      "Medium",
+                      "Stage-gate funding; Phase 2 contingent on Phase 1 KPIs",
+                      "CFO"
+                    ],
+                    [
+                      "Hyperscaler competitive response and lobbying",
+                      "High",
+                      "Medium",
+                      "Focus on classified/regulated segments where hyperscalers cannot compete",
+                      "CEO/Strategy"
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Organizational Model: Purpose-Built Entity with Public-Private Governance"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "columns": [
+          15,
+          85
+        ],
+        "gap": 8,
+        "row_gap": 10,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Sovereign AI Board",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  },
+                  "icon": {
+                    "name": "building-bank",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Political oversight, strategic direction, funding approval",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent2",
+                  "text": {
+                    "content": "Executive Management",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  },
+                  "icon": {
+                    "name": "users",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "CEO, CTO, CFO, CISO — recruited from industry with clearance",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent4",
+                  "text": {
+                    "content": "Technical Directorate",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  },
+                  "icon": {
+                    "name": "server",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Infrastructure build, platform ops, AI research partnerships",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent3",
+                  "text": {
+                    "content": "Commercial Unit",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  },
+                  "icon": {
+                    "name": "briefcase",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "Customer acquisition, SLA management, pricing strategy",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent5",
+                  "text": {
+                    "content": "Compliance & Audit",
+                    "size": 13,
+                    "bold": true,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  },
+                  "icon": {
+                    "name": "shield-check",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "EUCS certification, NIS2, independent audit — reports to Board",
+                    "size": 14,
+                    "color": "dk1",
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 8,
+                    "inset_right": 8,
+                    "inset_top": 8,
+                    "inset_bottom": 8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Success Metrics & Accountability: Quarterly KPIs"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 20,
+        "columns": 1,
+        "rows": [
+          {
+            "height": 100,
+            "cells": [
+              {
+                "table": {
+                  "headers": [
+                    "KPI",
+                    "Target",
+                    "Deadline",
+                    "Owner"
+                  ],
+                  "rows": [
+                    [
+                      "Governance entity established",
+                      "Legal incorporation",
+                      "Q3 2026",
+                      "Program Director"
+                    ],
+                    [
+                      "First data center operational",
+                      "10K GPUs",
+                      "Q4 2027",
+                      "CTO"
+                    ],
+                    [
+                      "Anchor tenants signed",
+                      "3 contracts",
+                      "Q2 2027",
+                      "Commercial Lead"
+                    ],
+                    [
+                      "EUCS basic certification",
+                      "Achieved",
+                      "Q1 2028",
+                      "CISO"
+                    ],
+                    [
+                      "Government workload migration",
+                      "15%",
+                      "Q4 2027",
+                      "CTO"
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "two-column",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Case Studies: Sovereign AI Infrastructure Initiatives Proving the Model"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "European Pioneers",
+            "bullets": [
+              "Bleu (France): Orange + Capgemini JV for Microsoft Azure under French domestic operational control; EUR 1B+ invested since 2022; ANSSI SecNumCloud certified 2024. Lesson: Partnership model can achieve top-tier certification within 2 years.",
+              "Delos (Germany): SAP + Arvato sovereign Microsoft 365; EUR 500M invested; operational since 2024; BSI C5 certified. Lesson: Enterprise SaaS sovereignty is achievable without rebuilding the application layer.",
+              "S3NS (France): Thales + Google JV; Thales controls encryption keys and operations; targeting SecNumCloud 2025. Lesson: Key management separation is the critical sovereignty control point.",
+              "GXFS (Gaia-X): Federation services across 22 countries; 380+ members. Lesson: Interoperability standards must precede infrastructure buildout."
+            ]
+          }
+        },
+        {
+          "placeholder_id": "body_2",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "Global Benchmarks",
+            "bullets": [
+              "China Government Cloud: $47B since 2021; 90% of gov workloads now domestic; Huawei/Alibaba/Tencent sovereign stack. Lesson: Anchor tenant mandate drives rapid adoption — we need the same commitment.",
+              "UAE (G42): Mubadala-backed; Cerebras partnership for 36 exaFLOPS; Falcon LLM trained domestically in 18 months. Lesson: Smaller nations can leapfrog with focused GPU investment and a single champion entity.",
+              "India (MeghRaj/NIC): 700+ e-gov apps on domestic cloud; citizen data mandate since 2019. Lesson: Sector-by-sector mandates create predictable demand for sovereign providers.",
+              "Japan (GIGA Cloud): NTT + NEC; JPY 900B budget through 2025; ISMAP certification framework. Lesson: National certification frameworks accelerate vendor readiness."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Financial Summary: Five-Year P&L Projection"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "bar",
+            "title": "Sovereign AI Infrastructure Entity — Revenue vs Cost (EUR Billions)",
+            "data": {
+              "categories": [
+                "Year 1",
+                "Year 2",
+                "Year 3",
+                "Year 4",
+                "Year 5"
+              ],
+              "series": [
+                {
+                  "name": "Revenue",
+                  "values": [
+                    0.3,
+                    1.1,
+                    2.8,
+                    5.2,
+                    8.1
+                  ]
+                },
+                {
+                  "name": "Operating Costs",
+                  "values": [
+                    -1.4,
+                    -2.6,
+                    -3.8,
+                    -4.5,
+                    -5.1
+                  ]
+                },
+                {
+                  "name": "Capex",
+                  "values": [
+                    -2.8,
+                    -3.2,
+                    -2.8,
+                    -2.0,
+                    -1.4
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Critical Path to Cabinet Decision: 90 Days"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 3,
+          "y": 18,
+          "width": 94,
+          "height": 74
+        },
+        "gap": 8,
+        "row_gap": 12,
+        "columns": [
+          10,
+          90
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "users",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Weeks 1-2: Establish Cross-Ministry Task Force\n• Digital, Defense, Finance, Industry — EUR 5M from existing Digital Ministry allocation",
+                    "size": 13,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "briefcase",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Weeks 3-4: Issue RFI to European Cloud and AI Partners\n• OVHcloud, IONOS, T-Systems, Mistral, Aleph Alpha — expressions of interest for sovereign partnership",
+                    "size": 13,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "server",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Weeks 5-8: Commission GPU Feasibility Study\n• Engage NVIDIA, AMD, Intel on sovereign supply agreements with 5-year volume commitments",
+                    "size": 13,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "building-bank",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Weeks 8-10: Draft Sovereign AI Entity Founding Legislation\n• Public-private vehicle, governance structure, state aid compatibility framework",
+                    "size": 13,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "icon": {
+                    "name": "target",
+                    "fill": "#FFFFFF"
+                  }
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "lt2",
+                  "text": {
+                    "content": "• Weeks 10-13: Cabinet Decision and EU Co-Funding Submission\n• Investment memorandum for EUR 2.8B Phase 1 — Cabinet target: June 15, 2026",
+                    "size": 13,
+                    "align": "l",
+                    "vertical_align": "ctr",
+                    "inset_left": 10,
+                    "inset_right": 8,
+                    "inset_top": 6,
+                    "inset_bottom": 6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "closing",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Thank You"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "The Window for Sovereign AI Infrastructure Is Closing\n\nNations that control their AI infrastructure will shape the rules of the digital economy.\nNations that do not will be subject to them."
+        }
+      ]
+    }
+  ]
+}

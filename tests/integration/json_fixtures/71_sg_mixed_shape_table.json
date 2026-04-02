@@ -1,0 +1,76 @@
+{
+  "template": "modern-template",
+  "output_filename": "71_sg_mixed_shape_table.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Shape and Table Mixed Layout"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "columns": 2,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": {
+                    "content": "Key Metrics\n\nRevenue: $4.2M\nGrowth: 18%\nMargin: 42%",
+                    "size": 14,
+                    "color": "#FFFFFF",
+                    "align": "ctr",
+                    "vertical_align": "ctr"
+                  }
+                }
+              },
+              {
+                "table": {
+                  "headers": [
+                    "Region",
+                    "Revenue",
+                    "Growth"
+                  ],
+                  "rows": [
+                    [
+                      "North America",
+                      "$2.1M",
+                      "+22%"
+                    ],
+                    [
+                      "Europe",
+                      "$1.2M",
+                      "+15%"
+                    ],
+                    [
+                      "Asia Pacific",
+                      "$0.6M",
+                      "+28%"
+                    ],
+                    [
+                      "Latin America",
+                      "$0.3M",
+                      "+12%"
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

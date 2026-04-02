@@ -1,0 +1,21 @@
+{
+  "template": "modern-template",
+  "output_filename": "52_edge_many_slides.pptx",
+  "slides": [
+    {"slide_type": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 1"}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["A", "B"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 3"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["C", "D"]}]},
+    {"slide_type": "section", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Section Break"}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 5"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["E", "F"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 6"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["G", "H"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 7"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["I", "J"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 8"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["K", "L"]}]},
+    {"slide_type": "section", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Another Section"}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 10"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["M", "N"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 11"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["O", "P"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 12"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Q", "R"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 13"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["S", "T"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 14"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["U", "V"]}]},
+    {"slide_type": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 15"}, {"placeholder_id": "body", "type": "bullets", "bullets_value": ["W", "X"]}]}
+  ]
+}

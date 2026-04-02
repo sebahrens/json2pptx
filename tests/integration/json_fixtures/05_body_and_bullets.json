@@ -1,0 +1,25 @@
+{
+  "template": "modern-template",
+  "output_filename": "05_body_and_bullets.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"},
+        {
+          "placeholder_id": "body",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "Our fiscal year exceeded expectations across all key metrics.",
+            "bullets": [
+              "Revenue grew by 25% to $4.2B",
+              "Operating margins improved 3 percentage points",
+              "Customer NPS reached 72"
+            ],
+            "trailing_body": "We are well-positioned for continued growth in FY2026."
+          }
+        }
+      ]
+    }
+  ]
+}

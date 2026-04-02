@@ -1,0 +1,30 @@
+{
+  "template": "modern-template",
+  "output_filename": "20_chart_waterfall.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Profit Bridge (Waterfall)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "waterfall",
+            "title": "Revenue to Net Income ($M)",
+            "data": {
+              "points": [
+                {"label": "Revenue", "value": 100, "type": "total"},
+                {"label": "COGS", "value": -38, "type": "decrease"},
+                {"label": "Gross Profit", "value": 62, "type": "subtotal"},
+                {"label": "OpEx", "value": -25, "type": "decrease"},
+                {"label": "Other", "value": 5, "type": "increase"},
+                {"label": "Net Income", "value": 42, "type": "total"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

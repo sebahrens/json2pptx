@@ -1,0 +1,186 @@
+[
+  {
+    "layout_id": "slideLayout1",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "title_slide_title",
+        "value": "Typed Title"
+      },
+      {
+        "placeholder_id": "subtitle",
+        "type": "title_slide_title",
+        "value": "Legacy Subtitle"
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout2",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Legacy Title"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "bullets",
+        "value": [
+          "Typed bullet 1",
+          "Typed bullet 2"
+        ]
+      }
+    ],
+    "speaker_notes": "Mix of typed and legacy"
+  },
+  {
+    "layout_id": "slideLayout3",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Typed Title"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "body_and_bullets",
+        "value": {
+          "body": "Legacy body_and_bullets",
+          "bullets": [
+            "Legacy item 1",
+            "Legacy item 2"
+          ],
+          "trailing_body": "Legacy trailing"
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout4",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Legacy Title"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "bullet_groups",
+        "value": {
+          "body": "Typed bullet groups intro",
+          "groups": [
+            {
+              "body": "",
+              "bullets": [
+                "Item A",
+                "Item B"
+              ],
+              "header": "Typed Group 1"
+            },
+            {
+              "body": "Group body",
+              "bullets": [
+                "Item C"
+              ],
+              "header": "Typed Group 2"
+            }
+          ],
+          "trailing_body": ""
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout5",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Typed Chart Title"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "diagram",
+        "value": {
+          "data": {
+            "categories": [
+              "2023",
+              "2024",
+              "2025"
+            ],
+            "series": [
+              {
+                "name": "Data",
+                "values": [
+                  45,
+                  62,
+                  78
+                ]
+              }
+            ]
+          },
+          "title": "Legacy Chart via Value",
+          "type": "line_chart"
+        }
+      }
+    ]
+  },
+  {
+    "layout_id": "slideLayout6",
+    "content_count": 2,
+    "content": [
+      {
+        "placeholder_id": "title",
+        "type": "text",
+        "value": "Legacy Table Title"
+      },
+      {
+        "placeholder_id": "body",
+        "type": "table",
+        "value": {
+          "column_alignments": null,
+          "headers": [
+            "Metric",
+            "Value"
+          ],
+          "rows": [
+            [
+              {
+                "col_span": 1,
+                "content": "Users",
+                "row_span": 1
+              },
+              {
+                "col_span": 1,
+                "content": "10,000",
+                "row_span": 1
+              }
+            ],
+            [
+              {
+                "col_span": 1,
+                "content": "Revenue",
+                "row_span": 1
+              },
+              {
+                "col_span": 1,
+                "content": "$500K",
+                "row_span": 1
+              }
+            ]
+          ],
+          "style": {
+            "borders": "all",
+            "header_background": "accent1",
+            "striped": false
+          }
+        }
+      }
+    ]
+  }
+]

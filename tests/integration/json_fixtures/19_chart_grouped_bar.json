@@ -1,0 +1,27 @@
+{
+  "template": "modern-template",
+  "output_filename": "19_chart_grouped_bar.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "YoY Comparison (Grouped Bar)"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "grouped_bar_chart",
+            "title": "Revenue: 2024 vs 2025",
+            "data": {
+              "categories": ["Q1", "Q2", "Q3", "Q4"],
+              "series": [
+                {"name": "2024", "values": [10, 12, 13, 15]},
+                {"name": "2025", "values": [14, 16, 18, 21]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

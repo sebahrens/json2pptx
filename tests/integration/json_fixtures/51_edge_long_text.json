@@ -1,0 +1,21 @@
+{
+  "template": "modern-template",
+  "output_filename": "51_edge_long_text.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Very Long Title That Goes On And On And On To Test How The Generator Handles Extremely Long Title Text That Might Overflow"},
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "This is a very long bullet point that contains a lot of text to test how the generator handles wrapping and overflow when the content exceeds the available space in the placeholder. It should wrap gracefully without breaking the layout or causing any rendering issues.",
+            "Short bullet",
+            "Another extremely verbose bullet point that goes on and on describing things in great detail because sometimes people write very long bullet points in their presentations and we need to make sure the system handles this gracefully without any issues whatsoever in any circumstance."
+          ]
+        }
+      ]
+    }
+  ]
+}

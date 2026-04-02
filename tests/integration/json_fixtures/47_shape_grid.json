@@ -1,0 +1,72 @@
+{
+  "template": "modern-template",
+  "output_filename": "47_shape_grid.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Shape Grid Layout"
+        }
+      ],
+      "shape_grid": {
+        "bounds": {
+          "x": 5,
+          "y": 18,
+          "width": 90,
+          "height": 72
+        },
+        "gap": 10,
+        "columns": 3,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#4472C4",
+                  "text": "Strategy"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#ED7D31",
+                  "text": "Execution"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "#70AD47",
+                  "text": "Results"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "col_span": 3,
+                "shape": {
+                  "geometry": "rect",
+                  "fill": {
+                    "color": "#4472C4",
+                    "alpha": 20
+                  },
+                  "line": {
+                    "color": "#4472C4",
+                    "width": 1.5
+                  },
+                  "text": "Foundation: Core Values and Mission"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "template": "warm-coral",
+  "output_filename": "diagrams.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Advanced Chart Types"
+        },
+        {
+          "placeholder_id": "Subtitle 2",
+          "type": "text",
+          "value": "Waterfall, Radar, Gauge, and More"
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Profit Bridge (Waterfall Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "waterfall",
+            "title": "Q1 Profit Bridge ($M)",
+            "data": {
+              "Revenue": 21.3,
+              "COGS": -6.7,
+              "Gross Profit": 14.6,
+              "OpEx": -10.1,
+              "Net Income": 4.5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Team Competency Assessment (Radar Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "radar",
+            "title": "Engineering Team Skills",
+            "data": {
+              "Frontend": 85,
+              "Backend": 92,
+              "DevOps": 78,
+              "Security": 70,
+              "Testing": 88,
+              "Architecture": 82
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Customer Satisfaction (Gauge Chart)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "gauge",
+            "title": "NPS Score",
+            "data": {
+              "Score": 72
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Revenue by Segment (Treemap)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "treemap",
+            "title": "Revenue Breakdown by Product Line",
+            "data": {
+              "Enterprise Platform": 45,
+              "SMB Suite": 25,
+              "API Services": 15,
+              "Professional Services": 10,
+              "Training": 5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "Title 1",
+          "type": "text",
+          "value": "Quarterly Comparison (Stacked Bar)"
+        },
+        {
+          "placeholder_id": "Content Placeholder 2",
+          "type": "chart",
+          "value": {
+            "type": "stacked_bar",
+            "title": "Revenue Mix by Quarter",
+            "data": {
+              "Q1": 12,
+              "Q2": 14.5,
+              "Q3": 15.2,
+              "Q4": 18
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

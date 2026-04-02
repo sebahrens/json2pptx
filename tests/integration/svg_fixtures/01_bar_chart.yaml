@@ -1,0 +1,15 @@
+type: bar_chart
+title: Quarterly Revenue
+subtitle: FY2025 Results
+data:
+  categories:
+    - Q1
+    - Q2
+    - Q3
+    - Q4
+  series:
+    - name: Revenue
+      values: [12, 14.5, 15.2, 18]
+output:
+  width: 800
+  height: 400

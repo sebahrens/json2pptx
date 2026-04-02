@@ -1,0 +1,33 @@
+{
+  "template": "modern-template",
+  "output_filename": "34_diagram_bmc.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Business Model Canvas"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "business_model_canvas",
+            "title": "SaaS Platform BMC",
+            "data": {
+              "boxes": {
+                "key_partners": {"items": ["Cloud providers", "Integrators"]},
+                "key_activities": {"items": ["Platform development", "Customer onboarding"]},
+                "key_resources": {"items": ["Engineering team", "IP"]},
+                "value_proposition": {"items": ["No-code pipelines", "Real-time sync"]},
+                "customer_relationships": {"items": ["Self-service", "Premium support"]},
+                "channels": {"items": ["Website", "Sales team"]},
+                "customer_segments": {"items": ["Mid-market", "Enterprise"]},
+                "cost_structure": {"items": ["Infrastructure 40%", "Engineering 35%"]},
+                "revenue_streams": {"items": ["Subscriptions", "Usage-based pricing"]}
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

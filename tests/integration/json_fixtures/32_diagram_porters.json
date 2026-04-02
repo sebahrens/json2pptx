@@ -1,0 +1,30 @@
+{
+  "template": "modern-template",
+  "output_filename": "32_diagram_porters.pptx",
+  "slides": [
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Porter's Five Forces"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "porters_five_forces",
+            "title": "Industry Analysis",
+            "data": {
+              "industry_name": "Enterprise SaaS",
+              "forces": [
+                {"type": "rivalry", "label": "Competitive Rivalry", "intensity": 0.85, "factors": ["Price wars", "Feature parity"]},
+                {"type": "new_entrants", "label": "New Entrants", "intensity": 0.35, "factors": ["High barriers"]},
+                {"type": "substitutes", "label": "Substitutes", "intensity": 0.3, "factors": ["Open source"]},
+                {"type": "suppliers", "label": "Supplier Power", "intensity": 0.45, "factors": ["Cloud providers"]},
+                {"type": "buyers", "label": "Buyer Power", "intensity": 0.7, "factors": ["Multi-vendor"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

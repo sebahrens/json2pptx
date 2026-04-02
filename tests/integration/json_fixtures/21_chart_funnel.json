@@ -1,0 +1,29 @@
+{
+  "template": "modern-template",
+  "output_filename": "21_chart_funnel.pptx",
+  "slides": [
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Sales Funnel"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "funnel_chart",
+            "title": "Sales Pipeline Conversion",
+            "data": {
+              "values": [
+                {"label": "Leads", "value": 10000},
+                {"label": "Qualified", "value": 4500},
+                {"label": "Proposals", "value": 2000},
+                {"label": "Negotiations", "value": 800},
+                {"label": "Closed Won", "value": 350}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+type: kpi_dashboard
+title: Q1 2026 Key Metrics
+data:
+  metrics:
+    - label: Revenue
+      value: "$21M"
+      delta: "+17%"
+      trend: up
+    - label: Customers
+      value: "1,250"
+      delta: "+8%"
+      trend: up
+    - label: NPS Score
+      value: "72"
+      delta: "+5"
+      trend: up
+    - label: Churn Rate
+      value: "2.1%"
+      delta: "-0.3%"
+      trend: down
+    - label: ARR
+      value: "$84M"
+      delta: "+22%"
+      trend: up
+    - label: Headcount
+      value: "145"
+      delta: "+12"
+      trend: up
+output:
+  width: 900
+  height: 400
