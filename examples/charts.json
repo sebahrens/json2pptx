@@ -3,32 +3,32 @@
   "output_filename": "charts.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "slide_type": "title",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Data Visualization Examples"
+          "text_value": "Data Visualization Examples"
         },
         {
-          "placeholder_id": "Subtitle 2",
+          "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Bar, Line, and Pie Charts"
+          "text_value": "Bar, Line, and Pie Charts"
         }
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Quarterly Revenue (Bar Chart)"
+          "text_value": "Quarterly Revenue (Bar Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "bar",
             "title": "Revenue by Quarter ($M)",
             "data": {
@@ -43,17 +43,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Monthly Active Users (Line Chart)"
+          "text_value": "Monthly Active Users (Line Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "line",
             "title": "MAU Growth Trend (Thousands)",
             "data": {
@@ -69,17 +69,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Market Share Distribution (Pie Chart)"
+          "text_value": "Market Share Distribution (Pie Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "pie",
             "title": "Market Share by Company",
             "data": {
@@ -94,17 +94,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Budget Allocation (Donut Chart)"
+          "text_value": "Budget Allocation (Donut Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "donut",
             "title": "Annual Budget Distribution",
             "data": {
@@ -119,17 +119,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Regional Performance (Area Chart)"
+          "text_value": "Regional Performance (Area Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "area",
             "title": "Revenue by Region ($M)",
             "data": {
@@ -144,17 +144,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Sales Funnel (Funnel Chart)"
+          "text_value": "Sales Funnel (Funnel Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "funnel",
             "title": "Sales Pipeline Conversion",
             "data": {

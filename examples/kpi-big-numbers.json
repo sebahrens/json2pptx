@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "KPI Big Numbers"
+          "text_value": "KPI Big Numbers"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Dashboard-Style Metrics with Shape Grid"
+          "text_value": "Dashboard-Style Metrics with Shape Grid"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Q4 2025 Performance Summary"
+          "text_value": "Q4 2025 Performance Summary"
         }
       ],
       "shape_grid": {
@@ -153,7 +153,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Engineering Velocity"
+          "text_value": "Engineering Velocity"
         }
       ],
       "shape_grid": {
@@ -216,7 +216,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Sales Pipeline"
+          "text_value": "Sales Pipeline"
         }
       ],
       "shape_grid": {
@@ -372,7 +372,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Monthly Highlights"
+          "text_value": "Monthly Highlights"
         }
       ],
       "shape_grid": {

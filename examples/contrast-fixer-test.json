@@ -1,4 +1,5 @@
 {
+  "template": "midnight-blue",
   "output_filename": "contrast-fixer-test.pptx",
   "slides": [
     {
@@ -7,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Contrast Fixer Stress Test"
+          "text_value": "Contrast Fixer Stress Test"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Testing user-specified colors across all templates"
+          "text_value": "Testing user-specified colors across all templates"
         }
       ]
     },
@@ -22,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Gold & Light Text on Dark Fills"
+          "text_value": "Gold & Light Text on Dark Fills"
         }
       ],
       "shape_grid": {
@@ -242,7 +243,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "KPI Cards (Typography Hierarchy)"
+          "text_value": "KPI Cards (Typography Hierarchy)"
         }
       ],
       "shape_grid": {
@@ -447,7 +448,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "2x2 Matrix with Brand Colors"
+          "text_value": "2x2 Matrix with Brand Colors"
         }
       ],
       "shape_grid": {

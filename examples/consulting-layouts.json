@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Consulting Layout Patterns"
+          "text_value": "Consulting Layout Patterns"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Shape Grid Showcase"
+          "text_value": "Shape Grid Showcase"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Process Flow (Chevron Header)"
+          "text_value": "Process Flow (Chevron Header)"
         }
       ],
       "shape_grid": {
@@ -165,7 +165,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "MECE Framework (2x2 Matrix)"
+          "text_value": "MECE Framework (2x2 Matrix)"
         }
       ],
       "shape_grid": {
@@ -251,7 +251,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Key Findings (Numbered Takeaways)"
+          "text_value": "Key Findings (Numbered Takeaways)"
         }
       ],
       "shape_grid": {
@@ -403,7 +403,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Workstream Overview (3x3 Grid)"
+          "text_value": "Workstream Overview (3x3 Grid)"
         }
       ],
       "shape_grid": {
@@ -566,7 +566,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Comparison View (Side-by-Side)"
+          "text_value": "Comparison View (Side-by-Side)"
         }
       ],
       "shape_grid": {
@@ -650,7 +650,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Timeline & Milestones (Horizontal Phases)"
+          "text_value": "Timeline & Milestones (Horizontal Phases)"
         }
       ],
       "shape_grid": {
@@ -852,7 +852,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Investment Summary (KPI Scorecard)"
+          "text_value": "Investment Summary (KPI Scorecard)"
         }
       ],
       "shape_grid": {
@@ -994,12 +994,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Next Steps"
+          "text_value": "Next Steps"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Questions & Discussion"
+          "text_value": "Questions & Discussion"
         }
       ]
     }

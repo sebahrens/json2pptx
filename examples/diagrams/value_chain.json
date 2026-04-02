@@ -1,52 +1,42 @@
 {
-  "type": "value_chain",
-  "title": "Manufacturing Value Chain",
-  "subtitle": "Consumer Electronics Division",
-  "data": {
-    "primary_activities": [
-      {
-        "label": "Inbound Logistics",
-        "items": ["Component sourcing", "Supplier management", "Inventory control", "Quality inspection"]
-      },
-      {
-        "label": "Operations",
-        "items": ["Assembly lines", "Quality assurance", "Process optimization", "Lean manufacturing"]
-      },
-      {
-        "label": "Outbound Logistics",
-        "items": ["Warehouse management", "Order fulfillment", "Global distribution", "3PL partnerships"]
-      },
-      {
-        "label": "Marketing & Sales",
-        "items": ["Brand management", "Digital marketing", "Retail partnerships", "Direct sales"]
-      },
-      {
-        "label": "Service",
-        "items": ["Customer support", "Warranty service", "Repair centers", "Extended care plans"]
-      }
-    ],
-    "support_activities": [
-      {
-        "label": "Firm Infrastructure",
-        "items": ["Finance & accounting", "Legal & compliance", "Strategic planning", "Quality management"]
-      },
-      {
-        "label": "Human Resources",
-        "items": ["Talent acquisition", "Training programs", "Compensation", "Employee relations"]
-      },
-      {
-        "label": "Technology Development",
-        "items": ["R&D innovation", "Product design", "Process automation", "IT systems"]
-      },
-      {
-        "label": "Procurement",
-        "items": ["Supplier negotiations", "Contract management", "Cost optimization", "Risk management"]
-      }
-    ],
-    "margin_label": "Profit Margin"
-  },
-  "output": {
-    "width": 1000,
-    "height": 600
-  }
+  "template": "midnight-blue",
+  "output_filename": "value_chain.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Manufacturing Value Chain"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Consumer Electronics Division"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Value Chain Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "value_chain",
+            "title": "Manufacturing Value Chain",
+            "data": {
+              "primary": [
+                {"label": "Inbound Logistics", "items": ["Component sourcing", "Supplier management", "Inventory control", "Quality inspection"]},
+                {"label": "Operations", "items": ["Assembly lines", "Quality assurance", "Process optimization", "Lean manufacturing"]},
+                {"label": "Outbound Logistics", "items": ["Warehouse management", "Order fulfillment", "Global distribution", "3PL partnerships"]},
+                {"label": "Marketing & Sales", "items": ["Brand management", "Digital marketing", "Retail partnerships", "Direct sales"]},
+                {"label": "Service", "items": ["Customer support", "Warranty service", "Repair centers", "Extended care plans"]}
+              ],
+              "support": [
+                {"label": "Firm Infrastructure", "items": ["Finance & accounting", "Legal & compliance", "Strategic planning", "Quality management"]},
+                {"label": "Human Resources", "items": ["Talent acquisition", "Training programs", "Compensation", "Employee relations"]},
+                {"label": "Technology Development", "items": ["R&D innovation", "Product design", "Process automation", "IT systems"]},
+                {"label": "Procurement", "items": ["Supplier negotiations", "Contract management", "Cost optimization", "Risk management"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

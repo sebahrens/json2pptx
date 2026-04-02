@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Shape Grid Showcase"
+          "text_value": "Shape Grid Showcase"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Horizontal Panels & Numbered Rows"
+          "text_value": "Horizontal Panels & Numbered Rows"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Strategic Pillars"
+          "text_value": "Strategic Pillars"
         }
       ],
       "shape_grid": {
@@ -123,7 +123,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Service Offerings"
+          "text_value": "Service Offerings"
         }
       ],
       "shape_grid": {
@@ -209,7 +209,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Market Segments"
+          "text_value": "Market Segments"
         }
       ],
       "shape_grid": {
@@ -325,7 +325,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Implementation Roadmap"
+          "text_value": "Implementation Roadmap"
         }
       ],
       "shape_grid": {
@@ -520,12 +520,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Thank You"
+          "text_value": "Thank You"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Questions?"
+          "text_value": "Questions?"
         }
       ]
     }

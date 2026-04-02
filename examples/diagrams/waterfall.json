@@ -1,28 +1,46 @@
 {
-  "type": "waterfall",
-  "title": "Profit Bridge Analysis",
-  "subtitle": "Revenue to Net Income",
-  "data": {
-    "points": [
-      {"label": "Revenue", "value": 1000, "type": "total"},
-      {"label": "COGS", "value": -380, "type": "decrease"},
-      {"label": "Gross Profit", "value": 620, "type": "subtotal"},
-      {"label": "Sales & Marketing", "value": -180, "type": "decrease"},
-      {"label": "R&D", "value": -120, "type": "decrease"},
-      {"label": "G&A", "value": -80, "type": "decrease"},
-      {"label": "Operating Income", "value": 240, "type": "subtotal"},
-      {"label": "Other Income", "value": 25, "type": "increase"},
-      {"label": "Interest", "value": -15, "type": "decrease"},
-      {"label": "Taxes", "value": -62, "type": "decrease"},
-      {"label": "Net Income", "value": 188, "type": "total"}
-    ],
-    "footnote": "All values in millions USD"
-  },
-  "style": {
-    "show_values": true
-  },
-  "output": {
-    "width": 900,
-    "height": 500
-  }
+  "template": "midnight-blue",
+  "output_filename": "waterfall.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Profit Bridge Analysis"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Revenue to Net Income"}
+      ]
+    },
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Profit Bridge Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "waterfall",
+            "title": "Profit Bridge ($M)",
+            "data": {
+              "points": [
+                {"label": "Revenue", "value": 1000, "type": "total"},
+                {"label": "COGS", "value": -380, "type": "decrease"},
+                {"label": "Gross Profit", "value": 620, "type": "subtotal"},
+                {"label": "Sales & Marketing", "value": -180, "type": "decrease"},
+                {"label": "R&D", "value": -120, "type": "decrease"},
+                {"label": "G&A", "value": -80, "type": "decrease"},
+                {"label": "Operating Income", "value": 240, "type": "subtotal"},
+                {"label": "Other Income", "value": 25, "type": "increase"},
+                {"label": "Interest", "value": -15, "type": "decrease"},
+                {"label": "Taxes", "value": -62, "type": "decrease"},
+                {"label": "Net Income", "value": 188, "type": "total"}
+              ]
+            },
+            "style": {
+              "show_values": true
+            }
+          }
+        }
+      ],
+      "source": "All values in millions USD"
+    }
+  ]
 }

@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Icons and SVG Grid Test"
+          "text_value": "Icons and SVG Grid Test"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Comprehensive Icon Library Testing with Shape Grid"
+          "text_value": "Comprehensive Icon Library Testing with Shape Grid"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Icon Gallery - 4x3 Grid"
+          "text_value": "Icon Gallery - 4x3 Grid"
         }
       ],
       "shape_grid": {
@@ -129,7 +129,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Outline vs Filled Icons"
+          "text_value": "Outline vs Filled Icons"
         }
       ],
       "shape_grid": {
@@ -267,7 +267,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Process Flow with Icons"
+          "text_value": "Process Flow with Icons"
         }
       ],
       "shape_grid": {
@@ -370,7 +370,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "KPI Dashboard with Icons"
+          "text_value": "KPI Dashboard with Icons"
         }
       ],
       "shape_grid": {
@@ -539,7 +539,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Status Indicators with Colors"
+          "text_value": "Status Indicators with Colors"
         }
       ],
       "shape_grid": {
@@ -684,7 +684,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Icon Categories Test"
+          "text_value": "Icon Categories Test"
         }
       ],
       "shape_grid": {
@@ -868,7 +868,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Mixed Icons and Shapes"
+          "text_value": "Mixed Icons and Shapes"
         }
       ],
       "shape_grid": {
@@ -1075,12 +1075,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Test Complete"
+          "text_value": "Test Complete"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Icons and SVG Grid functionality verified"
+          "text_value": "Icons and SVG Grid functionality verified"
         }
       ]
     }

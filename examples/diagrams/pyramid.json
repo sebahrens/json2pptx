@@ -1,17 +1,36 @@
 {
-  "type": "pyramid",
-  "title": "Maslow's Hierarchy of Needs",
-  "data": {
-    "levels": [
-      {"label": "Self-Actualization", "description": "Creativity, fulfillment"},
-      {"label": "Esteem", "description": "Confidence, achievement"},
-      {"label": "Love/Belonging", "description": "Friendship, family"},
-      {"label": "Safety", "description": "Security, health"},
-      {"label": "Physiological", "description": "Food, water, shelter"}
-    ]
-  },
-  "output": {
-    "width": 800,
-    "height": 600
-  }
+  "template": "midnight-blue",
+  "output_filename": "pyramid.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Maslow's Hierarchy of Needs"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Psychological Framework"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Maslow's Hierarchy of Needs"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "pyramid",
+            "title": "Hierarchy of Needs",
+            "data": {
+              "levels": [
+                {"label": "Self-Actualization", "description": "Creativity, fulfillment"},
+                {"label": "Esteem", "description": "Confidence, achievement"},
+                {"label": "Love/Belonging", "description": "Friendship, family"},
+                {"label": "Safety", "description": "Security, health"},
+                {"label": "Physiological", "description": "Food, water, shelter"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

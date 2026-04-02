@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Business Model Canvas"
+          "text_value": "Business Model Canvas"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Osterwalder 9-Block Framework via Shape Grid"
+          "text_value": "Osterwalder 9-Block Framework via Shape Grid"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Business Model Canvas — SaaS Platform"
+          "text_value": "Business Model Canvas — SaaS Platform"
         }
       ],
       "shape_grid": {
@@ -224,7 +224,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Business Model Canvas — E-Commerce Marketplace"
+          "text_value": "Business Model Canvas — E-Commerce Marketplace"
         }
       ],
       "shape_grid": {
@@ -424,12 +424,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Thank You"
+          "text_value": "Thank You"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Business Model Canvas Examples"
+          "text_value": "Business Model Canvas Examples"
         }
       ]
     }

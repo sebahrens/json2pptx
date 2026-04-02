@@ -1,32 +1,37 @@
 {
-  "type": "house_diagram",
-  "title": "Strategy House",
-  "subtitle": "Strategic Framework Overview",
-  "data": {
-    "roof": "Vision: Be the Global Leader in Digital Payments",
-    "sections": [
-      {
-        "label": "Technology",
-        "items": ["Cloud Infrastructure", "API Platform", "Security"]
-      },
-      {
-        "label": "Product",
-        "items": ["Mobile Payments", "Merchant Tools", "Analytics"]
-      },
-      {
-        "label": "People",
-        "items": ["Talent Development", "Culture", "Leadership"]
-      },
-      {
-        "label": "Operations",
-        "items": ["Process Excellence", "Compliance", "Risk Management"]
-      }
-    ],
-    "foundation": "Core Values: Integrity, Innovation, Customer Focus, Collaboration",
-    "footnote": "Source: Strategic Planning Review 2024"
-  },
-  "output": {
-    "width": 800,
-    "height": 600
-  }
+  "template": "midnight-blue",
+  "output_filename": "house.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategy House"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Strategic Framework Overview"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategy House"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "house_diagram",
+            "title": "Strategy House",
+            "data": {
+              "roof": "Vision: Be the Global Leader in Digital Payments",
+              "sections": [
+                {"label": "Technology", "items": ["Cloud Infrastructure", "API Platform", "Security"]},
+                {"label": "Product", "items": ["Mobile Payments", "Merchant Tools", "Analytics"]},
+                {"label": "People", "items": ["Talent Development", "Culture", "Leadership"]},
+                {"label": "Operations", "items": ["Process Excellence", "Compliance", "Risk Management"]}
+              ],
+              "foundation": "Core Values: Integrity, Innovation, Customer Focus, Collaboration"
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

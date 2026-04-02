@@ -1,74 +1,47 @@
 {
-  "type": "nine_box_talent",
-  "title": "Engineering Team Assessment",
-  "subtitle": "Annual Performance Review - 2024",
-  "data": {
-    "x_axis_label": "Current Performance",
-    "y_axis_label": "Growth Potential",
-    "x_axis_labels": ["Developing", "Effective", "Outstanding"],
-    "y_axis_labels": ["Limited", "Moderate", "High"],
-    "cells": [
-      {
-        "position": {"row": 0, "col": 2},
-        "label": "Stars",
-        "items": [
-          {"name": "Sarah Chen", "subtitle": "Tech Lead"},
-          {"name": "Marcus Johnson", "subtitle": "Senior Engineer"}
-        ]
-      },
-      {
-        "position": {"row": 0, "col": 1},
-        "label": "High Potentials",
-        "items": [
-          {"name": "Emily Rodriguez", "subtitle": "Engineer II"},
-          {"name": "James Kim", "subtitle": "Engineer II"}
-        ]
-      },
-      {
-        "position": {"row": 1, "col": 2},
-        "label": "High Performers",
-        "items": [
-          {"name": "Alex Thompson", "subtitle": "Senior Engineer"},
-          {"name": "Lisa Wang", "subtitle": "Senior Engineer"},
-          {"name": "David Miller", "subtitle": "Engineer III"}
-        ]
-      },
-      {
-        "position": {"row": 1, "col": 1},
-        "label": "Core Contributors",
-        "items": [
-          {"name": "Chris Anderson", "subtitle": "Engineer II"},
-          {"name": "Rachel Green", "subtitle": "Engineer II"},
-          {"name": "Mike Brown", "subtitle": "Engineer II"},
-          {"name": "Amy Wilson", "subtitle": "Engineer I"}
-        ]
-      },
-      {
-        "position": {"row": 2, "col": 2},
-        "label": "Solid Performers",
-        "items": [
-          {"name": "Tom Davis", "subtitle": "Engineer III"}
-        ]
-      },
-      {
-        "position": {"row": 2, "col": 1},
-        "label": "Average",
-        "items": [
-          {"name": "John Smith", "subtitle": "Engineer I"}
-        ]
-      },
-      {
-        "position": {"row": 1, "col": 0},
-        "label": "Coaching Needed",
-        "items": [
-          {"name": "Pat Lee", "subtitle": "Engineer I"}
-        ]
-      }
-    ],
-    "footnote": "Assessment based on H1 + H2 2024 performance data"
-  },
-  "output": {
-    "width": 800,
-    "height": 700
-  }
+  "template": "midnight-blue",
+  "output_filename": "nine_box_talent.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Engineering Team Assessment"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Annual Performance Review - 2024"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "9-Box Talent Grid"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "nine_box_talent",
+            "title": "Engineering Team Assessment",
+            "data": {
+              "x_label": "Current Performance",
+              "y_label": "Growth Potential",
+              "employees": [
+                {"name": "Sarah Chen", "performance": 3, "potential": 3, "title": "Tech Lead"},
+                {"name": "Marcus Johnson", "performance": 3, "potential": 3, "title": "Senior Engineer"},
+                {"name": "Emily Rodriguez", "performance": 2, "potential": 3, "title": "Engineer II"},
+                {"name": "James Kim", "performance": 2, "potential": 3, "title": "Engineer II"},
+                {"name": "Alex Thompson", "performance": 3, "potential": 2, "title": "Senior Engineer"},
+                {"name": "Lisa Wang", "performance": 3, "potential": 2, "title": "Senior Engineer"},
+                {"name": "David Miller", "performance": 3, "potential": 2, "title": "Engineer III"},
+                {"name": "Chris Anderson", "performance": 2, "potential": 2, "title": "Engineer II"},
+                {"name": "Rachel Green", "performance": 2, "potential": 2, "title": "Engineer II"},
+                {"name": "Mike Brown", "performance": 2, "potential": 2, "title": "Engineer II"},
+                {"name": "Amy Wilson", "performance": 2, "potential": 2, "title": "Engineer I"},
+                {"name": "Tom Davis", "performance": 3, "potential": 1, "title": "Engineer III"},
+                {"name": "John Smith", "performance": 2, "potential": 1, "title": "Engineer I"},
+                {"name": "Pat Lee", "performance": 1, "potential": 2, "title": "Engineer I"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

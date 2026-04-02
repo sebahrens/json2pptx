@@ -1,18 +1,37 @@
 {
-  "type": "pie_chart",
-  "title": "Market Share by Segment",
-  "subtitle": "Q4 2024",
-  "data": {
-    "categories": ["Enterprise", "Mid-Market", "SMB", "Consumer"],
-    "values": [42, 28, 18, 12]
-  },
-  "style": {
-    "palette": "vibrant",
-    "show_legend": true,
-    "show_values": true
-  },
-  "output": {
-    "width": 600,
-    "height": 500
-  }
+  "template": "midnight-blue",
+  "output_filename": "pie_chart.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Market Share by Segment"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Q4 2024"}
+      ]
+    },
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Market Share by Segment"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "pie",
+            "title": "Market Share (%)",
+            "data": {
+              "Enterprise": 42,
+              "Mid-Market": 28,
+              "SMB": 18,
+              "Consumer": 12
+            },
+            "style": {
+              "show_legend": true,
+              "show_values": true
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

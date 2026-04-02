@@ -1,24 +1,40 @@
 {
-  "type": "bar_chart",
-  "title": "Quarterly Sales by Region",
-  "subtitle": "FY 2024",
-  "data": {
-    "categories": ["North", "South", "East", "West"],
-    "series": [
-      {"name": "Q1", "values": [120, 98, 145, 87]},
-      {"name": "Q2", "values": [135, 112, 152, 94]},
-      {"name": "Q3", "values": [142, 125, 168, 105]},
-      {"name": "Q4", "values": [155, 138, 175, 118]}
-    ]
-  },
-  "style": {
-    "palette": "corporate",
-    "show_legend": true,
-    "show_values": false,
-    "show_grid": true
-  },
-  "output": {
-    "width": 800,
-    "height": 500
-  }
+  "template": "midnight-blue",
+  "output_filename": "bar_chart.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Sales by Region"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "FY 2024"}
+      ]
+    },
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Sales by Region"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "grouped_bar",
+            "title": "Sales by Region ($K)",
+            "data": {
+              "categories": ["North", "South", "East", "West"],
+              "series": [
+                {"name": "Q1", "values": [120, 98, 145, 87]},
+                {"name": "Q2", "values": [135, 112, 152, 94]},
+                {"name": "Q3", "values": [142, 125, 168, 105]},
+                {"name": "Q4", "values": [155, 138, 175, 118]}
+              ]
+            },
+            "style": {
+              "show_legend": true,
+              "show_values": false
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -3,32 +3,32 @@
   "output_filename": "diagrams.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "slide_type": "title",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Advanced Chart Types"
+          "text_value": "Advanced Chart Types"
         },
         {
-          "placeholder_id": "Subtitle 2",
+          "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Waterfall, Radar, Gauge, and More"
+          "text_value": "Waterfall, Radar, Gauge, and More"
         }
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Profit Bridge (Waterfall Chart)"
+          "text_value": "Profit Bridge (Waterfall Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "waterfall",
             "title": "Q1 Profit Bridge ($M)",
             "data": {
@@ -43,17 +43,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Team Competency Assessment (Radar Chart)"
+          "text_value": "Team Competency Assessment (Radar Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "radar",
             "title": "Engineering Team Skills",
             "data": {
@@ -69,38 +69,40 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Customer Satisfaction (Gauge Chart)"
+          "text_value": "Customer Satisfaction (Gauge Chart)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "gauge",
             "title": "NPS Score",
             "data": {
-              "Score": 72
+              "value": 72,
+              "min": 0,
+              "max": 100
             }
           }
         }
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Revenue by Segment (Treemap)"
+          "text_value": "Revenue by Segment (Treemap)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "treemap",
             "title": "Revenue Breakdown by Product Line",
             "data": {
@@ -115,17 +117,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "chart",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Quarterly Comparison (Stacked Bar)"
+          "text_value": "Quarterly Comparison (Stacked Bar)"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "stacked_bar",
             "title": "Revenue Mix by Quarter",
             "data": {

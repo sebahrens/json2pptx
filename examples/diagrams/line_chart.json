@@ -1,21 +1,37 @@
 {
-  "type": "line_chart",
-  "title": "Monthly Revenue Trend",
-  "subtitle": "Year-over-Year Comparison",
-  "data": {
-    "categories": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    "series": [
-      {"name": "2023", "values": [85, 92, 88, 95, 102, 110, 108, 115, 120, 125, 132, 145]},
-      {"name": "2024", "values": [95, 105, 112, 118, 125, 135, 142, 150, 158, 165, 175, 190]}
-    ]
-  },
-  "style": {
-    "palette": "corporate",
-    "show_legend": true,
-    "show_grid": true
-  },
-  "output": {
-    "width": 900,
-    "height": 500
-  }
+  "template": "midnight-blue",
+  "output_filename": "line_chart.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Monthly Revenue Trend"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Year-over-Year Comparison"}
+      ]
+    },
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Monthly Revenue Trend"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "line",
+            "title": "Revenue ($K) — 2023 vs 2024",
+            "data": {
+              "categories": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+              "series": [
+                {"name": "2023", "values": [85, 92, 88, 95, 102, 110, 108, 115, 120, 125, 132, 145]},
+                {"name": "2024", "values": [95, 105, 112, 118, 125, 135, 142, 150, 158, 165, 175, 190]}
+              ]
+            },
+            "style": {
+              "show_legend": true
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

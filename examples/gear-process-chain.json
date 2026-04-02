@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Gear Process Chain"
+          "text_value": "Gear Process Chain"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Showcasing gear6 and gear9 Geometries"
+          "text_value": "Showcasing gear6 and gear9 Geometries"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Interlocking Business Processes"
+          "text_value": "Interlocking Business Processes"
         }
       ],
       "shape_grid": {
@@ -135,7 +135,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Manufacturing Value Chain"
+          "text_value": "Manufacturing Value Chain"
         }
       ],
       "shape_grid": {
@@ -311,7 +311,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "DevOps Flywheel"
+          "text_value": "DevOps Flywheel"
         }
       ],
       "shape_grid": {
@@ -477,7 +477,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Gear6 vs Gear9 Comparison"
+          "text_value": "Gear6 vs Gear9 Comparison"
         }
       ],
       "shape_grid": {

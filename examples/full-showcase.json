@@ -3,32 +3,32 @@
   "output_filename": "full-showcase.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "slide_type": "title",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Product Launch Strategy"
+          "text_value": "Product Launch Strategy"
         },
         {
-          "placeholder_id": "Subtitle 2",
+          "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Go-to-Market Plan for FY2026"
+          "text_value": "Go-to-Market Plan for FY2026"
         }
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Executive Summary"
+          "text_value": "Executive Summary"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "New enterprise platform launching Q2 2026",
             "Target market: mid-market and enterprise SaaS companies",
             "Projected first-year revenue: $15M ARR",
@@ -39,27 +39,27 @@
       ]
     },
     {
-      "layout_id": "slideLayout4",
+      "slide_type": "section",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Market Analysis"
+          "text_value": "Market Analysis"
         }
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Total Addressable Market"
+          "text_value": "Total Addressable Market"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "bar",
             "title": "TAM by Segment ($B)",
             "data": {
@@ -73,17 +73,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Competitive Landscape"
+          "text_value": "Competitive Landscape"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "pie",
             "title": "Current Market Share",
             "data": {
@@ -98,17 +98,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout3",
+      "slide_type": "two-column",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Our Differentiation"
+          "text_value": "Our Differentiation"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "AI-powered automation",
             "50% faster time-to-value",
             "Native multi-cloud support",
@@ -116,9 +116,9 @@
           ]
         },
         {
-          "placeholder_id": "Content Placeholder 3",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Real-time collaboration",
             "Zero-trust security model",
             "Open API ecosystem",
@@ -128,27 +128,27 @@
       ]
     },
     {
-      "layout_id": "slideLayout4",
+      "slide_type": "section",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Go-to-Market Plan"
+          "text_value": "Go-to-Market Plan"
         }
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Revenue Projections"
+          "text_value": "Revenue Projections"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "line",
             "title": "Projected ARR Growth ($M)",
             "data": {
@@ -163,17 +163,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Investment Breakdown"
+          "text_value": "Investment Breakdown"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "waterfall",
             "title": "Launch Investment ($M)",
             "data": {
@@ -188,26 +188,26 @@
       ]
     },
     {
-      "layout_id": "slideLayout3",
+      "slide_type": "two-column",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Launch Timeline"
+          "text_value": "Launch Timeline"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Apr 2026: Private beta with 10 design partners",
             "Jun 2026: Limited GA with self-serve onboarding",
             "Sep 2026: Full GA with enterprise features"
           ]
         },
         {
-          "placeholder_id": "Content Placeholder 3",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Partner enablement program launches May 2026",
             "Conference presence at SaaStr and re:Invent",
             "Analyst briefings scheduled for Q3"
@@ -216,17 +216,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Product Readiness Assessment"
+          "text_value": "Product Readiness Assessment"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "chart",
-          "value": {
+          "chart_value": {
             "type": "radar",
             "title": "Launch Readiness Score",
             "data": {
@@ -242,17 +242,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Key Risks and Mitigations"
+          "text_value": "Key Risks and Mitigations"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Risk: Incumbent response with aggressive pricing / Mitigation: Focus on value-based selling and ROI proof points",
             "Risk: Slower enterprise sales cycles / Mitigation: Strong self-serve funnel and PLG motion",
             "Risk: Integration complexity / Mitigation: Pre-built connectors for top 20 tools",
@@ -262,17 +262,17 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "slide_type": "content",
       "content": [
         {
-          "placeholder_id": "Title 1",
+          "placeholder_id": "title",
           "type": "text",
-          "value": "Success Metrics"
+          "text_value": "Success Metrics"
         },
         {
-          "placeholder_id": "Content Placeholder 2",
+          "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "100 paying customers within 6 months of GA",
             "$15M ARR by end of first year",
             "Net Revenue Retention above 120%",
@@ -284,12 +284,12 @@
       ]
     },
     {
-      "layout_id": "slideLayout5",
+      "slide_type": "blank",
       "content": [
         {
-          "placeholder_id": "Text Placeholder 1",
+          "placeholder_id": "body",
           "type": "text",
-          "value": "Questions?"
+          "text_value": "Questions?"
         }
       ]
     }

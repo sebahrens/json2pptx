@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Directional Comparison"
+          "text_value": "Directional Comparison"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Before → After with Chevron Divider"
+          "text_value": "Before → After with Chevron Divider"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Operating Model Transformation"
+          "text_value": "Operating Model Transformation"
         }
       ],
       "shape_grid": {
@@ -130,7 +130,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Technology Stack Migration"
+          "text_value": "Technology Stack Migration"
         }
       ],
       "shape_grid": {
@@ -328,7 +328,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Customer Experience Redesign"
+          "text_value": "Customer Experience Redesign"
         }
       ],
       "shape_grid": {
@@ -526,7 +526,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Financial Impact Summary"
+          "text_value": "Financial Impact Summary"
         }
       ],
       "shape_grid": {

@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Visual Maturity Stress Test"
+          "text_value": "Visual Maturity Stress Test"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Comprehensive Shape Grid Feature Validation"
+          "text_value": "Comprehensive Shape Grid Feature Validation"
         }
       ]
     },
@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Sharp Corners Verification (adj=0 default)"
+          "text_value": "Sharp Corners Verification (adj=0 default)"
         }
       ],
       "shape_grid": {
@@ -164,7 +164,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Footer Safe Zone Verification"
+          "text_value": "Footer Safe Zone Verification"
         }
       ],
       "shape_grid": {
@@ -267,7 +267,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Typography Hierarchy (Multi-Paragraph)"
+          "text_value": "Typography Hierarchy (Multi-Paragraph)"
         }
       ],
       "shape_grid": {
@@ -481,7 +481,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Connector Lines Between Phases"
+          "text_value": "Connector Lines Between Phases"
         }
       ],
       "shape_grid": {
@@ -673,7 +673,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Accent Bars on Numbered Findings"
+          "text_value": "Accent Bars on Numbered Findings"
         }
       ],
       "shape_grid": {
@@ -876,7 +876,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Auto-Height Rows (content-aware sizing)"
+          "text_value": "Auto-Height Rows (content-aware sizing)"
         }
       ],
       "shape_grid": {
@@ -1016,7 +1016,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "2x2 Matrix with Sharp Corners"
+          "text_value": "2x2 Matrix with Sharp Corners"
         }
       ],
       "shape_grid": {
@@ -1169,7 +1169,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "5-Column Category Grid (Bain Myth 2 Style)"
+          "text_value": "5-Column Category Grid (Bain Myth 2 Style)"
         }
       ],
       "shape_grid": {
@@ -1460,7 +1460,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Alpha/Transparency Fill Test"
+          "text_value": "Alpha/Transparency Fill Test"
         }
       ],
       "shape_grid": {
@@ -1580,7 +1580,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Accent Bar Positions"
+          "text_value": "Accent Bar Positions"
         }
       ],
       "shape_grid": {
@@ -1685,12 +1685,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "End of Stress Test"
+          "text_value": "End of Stress Test"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "All features exercised"
+          "text_value": "All features exercised"
         }
       ]
     }

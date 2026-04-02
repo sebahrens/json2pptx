@@ -1,34 +1,52 @@
 {
-  "type": "swot",
-  "title": "Company SWOT Analysis",
-  "subtitle": "Strategic Planning 2026",
-  "data": {
-    "strengths": [
-      "Strong brand recognition",
-      "Loyal customer base",
-      "Efficient supply chain",
-      "Experienced leadership team"
-    ],
-    "weaknesses": [
-      "Limited market share in Asia",
-      "High operating costs",
-      "Aging technology infrastructure"
-    ],
-    "opportunities": [
-      "Emerging markets expansion",
-      "AI and automation adoption",
-      "Strategic partnerships",
-      "Sustainability initiatives"
-    ],
-    "threats": [
-      "Increasing competition",
-      "Regulatory changes",
-      "Economic uncertainty",
-      "Supply chain disruptions"
-    ]
-  },
-  "output": {
-    "width": 800,
-    "height": 600
-  }
+  "template": "midnight-blue",
+  "output_filename": "swot.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Company SWOT Analysis"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Strategic Planning 2026"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "SWOT Analysis"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "swot",
+            "title": "Company SWOT",
+            "data": {
+              "strengths": [
+                "Strong brand recognition",
+                "Loyal customer base",
+                "Efficient supply chain",
+                "Experienced leadership team"
+              ],
+              "weaknesses": [
+                "Limited market share in Asia",
+                "High operating costs",
+                "Aging technology infrastructure"
+              ],
+              "opportunities": [
+                "Emerging markets expansion",
+                "AI and automation adoption",
+                "Strategic partnerships",
+                "Sustainability initiatives"
+              ],
+              "threats": [
+                "Increasing competition",
+                "Regulatory changes",
+                "Economic uncertainty",
+                "Supply chain disruptions"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

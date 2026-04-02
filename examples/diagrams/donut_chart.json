@@ -1,18 +1,39 @@
 {
-  "type": "donut_chart",
-  "title": "Budget Allocation",
-  "subtitle": "Annual Operating Budget",
-  "data": {
-    "categories": ["Engineering", "Sales & Marketing", "Operations", "G&A", "R&D"],
-    "values": [35, 25, 20, 12, 8]
-  },
-  "style": {
-    "palette": ["#2563EB", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"],
-    "show_legend": true,
-    "show_values": true
-  },
-  "output": {
-    "width": 600,
-    "height": 500
-  }
+  "template": "midnight-blue",
+  "output_filename": "donut_chart.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Budget Allocation"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Annual Operating Budget"}
+      ]
+    },
+    {
+      "slide_type": "chart",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Budget Allocation"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "donut",
+            "title": "Budget Allocation (%)",
+            "data": {
+              "Engineering": 35,
+              "Sales & Marketing": 25,
+              "Operations": 20,
+              "G&A": 12,
+              "R&D": 8
+            },
+            "style": {
+              "colors": ["#2563EB", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"],
+              "show_legend": true,
+              "show_values": true
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -1,45 +1,37 @@
 {
-  "type": "porters_five_forces",
-  "title": "Cloud Computing Industry Analysis",
-  "subtitle": "Competitive Landscape Assessment",
-  "data": {
-    "industry_name": "Enterprise Cloud Services",
-    "forces": [
-      {
-        "type": "rivalry",
-        "label": "Competitive Rivalry",
-        "intensity": 0.85,
-        "factors": ["AWS, Azure, GCP dominance", "Price competition", "Feature parity race"]
-      },
-      {
-        "type": "new_entrants",
-        "label": "Threat of New Entrants",
-        "intensity": 0.35,
-        "factors": ["High capital requirements", "Economies of scale needed", "Brand loyalty barriers"]
-      },
-      {
-        "type": "substitutes",
-        "label": "Threat of Substitutes",
-        "intensity": 0.3,
-        "factors": ["On-premise declining", "Hybrid options", "Edge computing emerging"]
-      },
-      {
-        "type": "suppliers",
-        "label": "Supplier Power",
-        "intensity": 0.45,
-        "factors": ["Chip shortages impact", "Data center real estate", "Network providers"]
-      },
-      {
-        "type": "buyers",
-        "label": "Buyer Power",
-        "intensity": 0.7,
-        "factors": ["Multi-cloud strategies", "Negotiation leverage", "Switching costs decreasing"]
-      }
-    ],
-    "footnote": "Analysis as of Q4 2024"
-  },
-  "output": {
-    "width": 800,
-    "height": 700
-  }
+  "template": "midnight-blue",
+  "output_filename": "porters_five_forces.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cloud Computing Industry Analysis"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Competitive Landscape Assessment"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Porter's Five Forces"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "porters_five_forces",
+            "title": "Enterprise Cloud Services",
+            "data": {
+              "industry_name": "Enterprise Cloud Services",
+              "forces": [
+                {"type": "rivalry", "label": "Competitive Rivalry", "intensity": 0.9, "factors": ["AWS, Azure, GCP dominance", "Price competition", "Feature parity race"]},
+                {"type": "new_entrants", "label": "Threat of New Entrants", "intensity": 0.3, "factors": ["High capital requirements", "Economies of scale needed", "Brand loyalty barriers"]},
+                {"type": "substitutes", "label": "Threat of Substitutes", "intensity": 0.5, "factors": ["On-premise declining", "Hybrid options", "Edge computing emerging"]},
+                {"type": "suppliers", "label": "Supplier Power", "intensity": 0.6, "factors": ["Chip shortages impact", "Data center real estate", "Network providers"]},
+                {"type": "buyers", "label": "Buyer Power", "intensity": 0.7, "factors": ["Multi-cloud strategies", "Negotiation leverage", "Switching costs decreasing"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -8,12 +8,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Quarterly Business Review"
+          "text_value": "Quarterly Business Review"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Q1 2026 Results and Outlook"
+          "text_value": "Q1 2026 Results and Outlook"
         }
       ]
     },
@@ -23,12 +23,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Agenda"
+          "text_value": "Agenda"
         },
         {
           "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Financial Performance Summary",
             "Customer Growth Metrics",
             "Product Development Update",
@@ -44,12 +44,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Financial Highlights"
+          "text_value": "Financial Highlights"
         },
         {
           "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Revenue reached $21M, up 17% quarter-over-quarter",
             "Gross margin improved to 68%, driven by operational efficiency",
             "Operating expenses grew 12%, below revenue growth rate",
@@ -65,12 +65,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Key Metrics Comparison"
+          "text_value": "Key Metrics Comparison"
         },
         {
           "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Revenue: $21M (+17%)",
             "Customers: 1,250 (+8%)",
             "ARR: $84M",
@@ -80,7 +80,7 @@
         {
           "placeholder_id": "body_2",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Headcount: 145 (+12)",
             "Uptime: 99.95%",
             "Support CSAT: 4.6/5",
@@ -95,12 +95,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Strategic Priorities for Q2"
+          "text_value": "Strategic Priorities for Q2"
         },
         {
           "placeholder_id": "body",
           "type": "bullets",
-          "value": [
+          "bullets_value": [
             "Launch enterprise tier with SSO and audit logging",
             "Expand partner integration program to 20 partners",
             "Begin international expansion into EMEA markets",
@@ -116,7 +116,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Appendix"
+          "text_value": "Appendix"
         }
       ]
     },
@@ -126,12 +126,12 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "value": "Thank You"
+          "text_value": "Thank You"
         },
         {
           "placeholder_id": "subtitle",
           "type": "text",
-          "value": "Questions & Discussion"
+          "text_value": "Questions & Discussion"
         }
       ]
     }

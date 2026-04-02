@@ -1,25 +1,37 @@
 {
-  "type": "gantt",
-  "title": "Product Development Plan",
-  "subtitle": "Q1-Q2 2024",
-  "data": {
-    "tasks": [
-      {"id": "req", "label": "Requirements", "start": "2024-01-01", "end": "2024-01-31", "category": "Planning"},
-      {"id": "design", "label": "System Design", "start": "2024-01-15", "end": "2024-02-28", "category": "Planning", "dependencies": ["req"]},
-      {"id": "backend", "label": "Backend Development", "start": "2024-02-15", "end": "2024-04-30", "category": "Engineering", "dependencies": ["design"]},
-      {"id": "frontend", "label": "Frontend Development", "start": "2024-03-01", "end": "2024-05-15", "category": "Engineering", "dependencies": ["design"]},
-      {"id": "integration", "label": "Integration Testing", "start": "2024-04-15", "end": "2024-05-31", "category": "QA", "dependencies": ["backend", "frontend"]},
-      {"id": "docs", "label": "Documentation", "start": "2024-05-01", "end": "2024-06-15", "category": "Documentation", "dependencies": ["backend"]}
-    ],
-    "milestones": [
-      {"label": "Kickoff", "date": "2024-01-01"},
-      {"label": "Alpha Release", "date": "2024-04-01"},
-      {"label": "Beta Release", "date": "2024-05-31"},
-      {"label": "GA Launch", "date": "2024-06-30"}
-    ]
-  },
-  "output": {
-    "width": 1000,
-    "height": 500
-  }
+  "template": "midnight-blue",
+  "output_filename": "gantt.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Product Development Plan"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Q1-Q2 2024"}
+      ]
+    },
+    {
+      "slide_type": "diagram",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Product Development Plan"},
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "gantt",
+            "title": "Development Timeline",
+            "data": {
+              "tasks": [
+                {"name": "Requirements", "start": "2024-01-01", "end": "2024-01-31"},
+                {"name": "System Design", "start": "2024-01-15", "end": "2024-02-28"},
+                {"name": "Backend Development", "start": "2024-02-15", "end": "2024-04-30"},
+                {"name": "Frontend Development", "start": "2024-03-01", "end": "2024-05-15"},
+                {"name": "Integration Testing", "start": "2024-04-15", "end": "2024-05-31"},
+                {"name": "Documentation", "start": "2024-05-01", "end": "2024-06-15"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
 }
