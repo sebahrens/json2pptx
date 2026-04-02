@@ -19,7 +19,7 @@ var canonicalNames = map[string]canonicalRule{
 	"content":                 {requireTags: []string{"content"}, excludeTags: []string{"two-column", "section-header"}},
 	"section":                 {requireTags: []string{"section-header"}},
 	"closing":                 {requireTags: []string{"closing"}},
-	"blank":                   {requireTags: []string{"blank-title", "blank"}},
+	"blank":                   {requireTags: []string{"blank-title", "blank"}, nameHint: "title"},
 	"two-column":              {requireTags: []string{"two-column"}, nameHint: "50"},
 	"two-column-wide-narrow":  {requireTags: []string{"two-column"}, nameHint: "60"},
 	"two-column-narrow-wide":  {requireTags: []string{"two-column"}, nameHint: "40/60"},
