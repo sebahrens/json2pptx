@@ -24,21 +24,92 @@ Convert JSON slide definitions to PowerPoint presentations with intelligent layo
 
 ## Installation
 
-### From Source
+### Prerequisites
+
+- **Go 1.25+** -- [download](https://go.dev/dl/)
+- **Git** -- for cloning and version info
+- **Make** -- build automation (see platform notes below)
+- **librsvg** or **resvg** -- for SVG-to-PNG chart/diagram rendering (optional but recommended)
+
+### macOS
 
 ```sh
+# Install Go (if not already installed)
+brew install go
+
+# Install SVG converter (recommended for charts/diagrams)
+brew install librsvg
+
+# Clone and install
 git clone https://github.com/ahrens/go-slide-creator.git
 cd go-slide-creator
 make install
 ```
 
-This builds the binaries and installs them to `~/.local/bin/`. To install to a different prefix:
+Binaries are installed to `~/.local/bin/`. Add to your PATH if needed:
 
 ```sh
-make install PREFIX=/usr/local
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### Quick Install Script
+### Linux (including WSL2)
+
+```sh
+# Install Go (Ubuntu/Debian)
+sudo apt update
+sudo apt install -y golang-go
+
+# Or install the latest Go manually
+wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
+export PATH="/usr/local/go/bin:$PATH"
+
+# Install build tools and SVG converter
+sudo apt install -y make librsvg2-bin
+
+# Clone and install
+git clone https://github.com/ahrens/go-slide-creator.git
+cd go-slide-creator
+make install
+```
+
+Binaries are installed to `~/.local/bin/`. Add to your PATH if needed:
+
+```sh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+> **WSL2 note:** The generated `.pptx` files are regular files accessible from Windows at `\\wsl$\<distro>\home\<user>\...` or via the output directory you specify.
+
+### Windows
+
+Windows builds require a bash-compatible shell. Use one of:
+
+- **WSL2** (recommended) -- follow the Linux instructions above inside your WSL2 distro
+- **Git Bash / MSYS2** -- provides the bash shell that the Makefile requires
+
+With Git Bash or MSYS2:
+
+```sh
+# Ensure Go is installed and in PATH
+# https://go.dev/dl/ -- download the Windows installer
+
+# Clone and install
+git clone https://github.com/ahrens/go-slide-creator.git
+cd go-slide-creator
+make install
+```
+
+On Windows (non-WSL), binaries install to `%LOCALAPPDATA%\json2pptx\bin\`. Ensure this is in your PATH.
+
+Alternatively, cross-compile from any platform:
+
+```sh
+make build-windows-amd64    # Creates bin/json2pptx.exe
+```
+
+### Quick Install Script (macOS / Linux / WSL2)
 
 ```sh
 ./install.sh                    # Build + install to ~/.local
@@ -46,7 +117,7 @@ make install PREFIX=/usr/local
 ./install.sh --skip-skill       # Binary only, no Claude Code skill
 ```
 
-### Docker
+### Docker (all platforms)
 
 ```sh
 # Copy and configure environment
@@ -123,6 +194,42 @@ curl -X POST http://localhost:8080/api/v1/convert \
       }
     ]
   }'
+```
+
+### Running the Sovereign AI Example
+
+The repo includes a full example deck at `examples/sovereign-ai-strategy.json` that demonstrates charts, diagrams, shape grids, and multiple slide types. Run it with a built-in template:
+
+```sh
+json2pptx generate -json examples/sovereign-ai-strategy.json -output ./output
+```
+
+This uses the `warm-coral` template (specified inside the JSON) and writes `sovereign-ai-strategy.pptx` to `./output/`.
+
+To use a different built-in template, override it with `-template`:
+
+```sh
+json2pptx generate -json examples/sovereign-ai-strategy.json -template midnight-blue -output ./output
+```
+
+To use your own external `.pptx` template, point `-templates-dir` at the directory containing it:
+
+```sh
+# Place your template in a directory
+cp /path/to/my-corporate-theme.pptx ./my-templates/
+
+# Reference it by filename (without .pptx extension)
+json2pptx generate \
+  -json examples/sovereign-ai-strategy.json \
+  -template my-corporate-theme \
+  -templates-dir ./my-templates \
+  -output ./output
+```
+
+Preview what layouts would be selected without generating (dry-run):
+
+```sh
+json2pptx generate -dry-run -json examples/sovereign-ai-strategy.json
 ```
 
 ## JSON Input Format
