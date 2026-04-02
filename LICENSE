@@ -1,6 +1,6 @@
-MIT License
+MIT License with Commercial Use Restriction
 
-Copyright (c) 2024-2026 The go-slide-creator Authors
+Copyright (c) 2024-2026 Sebastian Ahrens
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -9,8 +9,26 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+2. COMMERCIAL USE RESTRICTION: Any organization with more than 200 employees,
+   contractors, or equivalent staff (collectively "Large Organizations") must
+   obtain prior written permission from the copyright holder before using the
+   Software for commercial purposes. "Commercial purposes" means any use
+   intended for or directed toward commercial advantage or monetary
+   compensation, including but not limited to:
+   (a) incorporating the Software into a product or service offered for sale,
+   (b) using the Software to generate revenue or support revenue-generating
+       operations, or
+   (c) using the Software in the course of business operations.
+
+   To request a commercial license, contact: platon2001@icloud.com
+
+   This restriction does not apply to:
+   - Individuals and organizations with 200 or fewer staff
+   - Non-commercial use (academic research, education, personal projects)
+   - Evaluation and testing purposes
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

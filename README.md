@@ -3,7 +3,7 @@
 **Structured presentations from structured data.** Define what your slides *mean* -- json2pptx handles what they *look like*.
 
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT + Commercial](https://img.shields.io/badge/License-MIT%20%2B%20Commercial-blue.svg)](LICENSE)
 
 ## Philosophy
 
@@ -628,6 +628,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style guideli
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License with a commercial use restriction for organizations with more than 200 staff. Free for individuals, small/mid-size companies, academia, and non-commercial use. See [LICENSE](LICENSE) for details. For commercial licensing inquiries, contact platon2001@icloud.com.
 
 Third-party license information is documented in [LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md).
