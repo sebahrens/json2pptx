@@ -11,7 +11,11 @@
 
 # Force bash on all platforms (POSIX commands like mkdir -p, [ -d ], case, etc.)
 # On Windows this requires Git Bash, MSYS2, or WSL2.
-SHELL := /bin/bash
+# /bin/bash works on macOS, Linux, WSL2, and most Git Bash installs.
+# On MSYS2/Chocolatey where bash may live elsewhere, override with:
+#   make SHELL=$(which bash)
+BASH_CANDIDATES := /bin/bash /usr/bin/bash
+SHELL := $(firstword $(wildcard $(BASH_CANDIDATES)) bash)
 
 # Ensure common tool paths are available (GUI editors like TextMate/Sublime use /bin/sh without profile)
 # macOS:      /usr/local/bin, /opt/homebrew/bin
@@ -177,15 +181,25 @@ install-mcp:
 ifndef SKIP_MCP
 	@echo "==> Configuring MCP server in $(HOME)/.claude/mcp.json..."
 	@mkdir -p "$(HOME)/.claude"
-	@if command -v jq >/dev/null 2>&1; then \
+	@# On MSYS2/Git Bash, convert /c/Users/... to C:/Users/... for mcp.json
+	@# so that Claude Code (running outside MSYS) can find the binary.
+	@_mcp_bin="$(PREFIX)/bin/json2pptx$(EXE)"; \
+	_mcp_tdir="$(HOME)/.json2pptx/templates"; \
+	if [ -n "$(IS_WINDOWS)" ]; then \
+		_mcp_bin=$$(echo "$$_mcp_bin" | sed 's|^/\([a-zA-Z]\)/|\1:/|'); \
+		_mcp_tdir=$$(echo "$$_mcp_tdir" | sed 's|^/\([a-zA-Z]\)/|\1:/|'); \
+	fi; \
+	if command -v jq >/dev/null 2>&1; then \
+		TMPFILE="$(HOME)/.claude/mcp.json.$$$$.tmp"; \
 		if [ -f "$(HOME)/.claude/mcp.json" ]; then \
-			UPDATED=$$(jq --arg bin "$(PREFIX)/bin/json2pptx$(EXE)" --arg tdir "$(HOME)/.json2pptx/templates" \
+			jq --arg bin "$$_mcp_bin" --arg tdir "$$_mcp_tdir" \
 				'.mcpServers["json2pptx"] = {command: $$bin, args: ["mcp", "--templates-dir", $$tdir, "--output", "./output"]}' \
-				"$(HOME)/.claude/mcp.json") && \
-			printf '%s\n' "$$UPDATED" > "$(HOME)/.claude/mcp.json"; \
+				"$(HOME)/.claude/mcp.json" > "$$TMPFILE" && \
+			mv "$$TMPFILE" "$(HOME)/.claude/mcp.json"; \
 		else \
 			printf '{"mcpServers":{"json2pptx":{"command":"%s","args":["mcp","--templates-dir","%s","--output","./output"]}}}\n' \
-				"$(PREFIX)/bin/json2pptx$(EXE)" "$(HOME)/.json2pptx/templates" | jq . > "$(HOME)/.claude/mcp.json"; \
+				"$$_mcp_bin" "$$_mcp_tdir" | jq . > "$$TMPFILE" && \
+			mv "$$TMPFILE" "$(HOME)/.claude/mcp.json"; \
 		fi; \
 		echo "    $(HOME)/.claude/mcp.json (json2pptx server configured)"; \
 	else \
@@ -225,22 +239,13 @@ build-windows-amd64:
 
 ensure-templates:
 	@if ! ls templates/*.pptx >/dev/null 2>&1; then \
-		echo "==> No templates found; copying testdata templates for embed..."; \
-		cp testdata/templates/*.pptx templates/; \
+		echo "ERROR: No templates found in templates/. Cannot build."; \
+		exit 1; \
 	fi
 
-dist-linux: release-check
+dist-linux: release-check ensure-templates
 	@echo "==> Building Linux distribution: $(DIST_NAME)"
-	@# Swap production templates with testdata stubs for a small binary
-	mkdir -p /tmp/json2pptx-real-templates
-	mv templates/*.pptx /tmp/json2pptx-real-templates/
-	cp testdata/templates/*.pptx templates/
-	@# Build with only testdata templates embedded
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/json2pptx-linux-amd64 ./cmd/json2pptx/ \
-		|| { mv /tmp/json2pptx-real-templates/*.pptx templates/; rm -rf /tmp/json2pptx-real-templates; exit 1; }
-	@# Restore production templates
-	mv /tmp/json2pptx-real-templates/*.pptx templates/
-	rm -rf /tmp/json2pptx-real-templates
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/json2pptx-linux-amd64 ./cmd/json2pptx/
 	@# Stage the archive
 	rm -rf $(DIST_STAGING)
 	mkdir -p $(DIST_STAGING)/bin $(DIST_STAGING)/templates
@@ -252,24 +257,14 @@ dist-linux: release-check
 	fi
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
-	cp scripts/DIST-README $(DIST_STAGING)/README
 	@echo "==> Creating archive: $(DIST_ARCHIVE)"
 	cd dist && tar czf $(DIST_NAME).tar.gz $(DIST_NAME)
 	@echo "==> Distribution ready: $(DIST_ARCHIVE)"
 	@ls -lh $(DIST_ARCHIVE)
 
-dist-windows: release-check
+dist-windows: release-check ensure-templates
 	@echo "==> Building Windows distribution: $(WIN_DIST_NAME)"
-	@# Swap production templates with testdata stubs for a small binary
-	mkdir -p /tmp/json2pptx-real-templates
-	mv templates/*.pptx /tmp/json2pptx-real-templates/
-	cp testdata/templates/*.pptx templates/
-	@# Build with only testdata templates embedded
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o bin/json2pptx-windows-amd64.exe ./cmd/json2pptx/ \
-		|| { mv /tmp/json2pptx-real-templates/*.pptx templates/; rm -rf /tmp/json2pptx-real-templates; exit 1; }
-	@# Restore production templates
-	mv /tmp/json2pptx-real-templates/*.pptx templates/
-	rm -rf /tmp/json2pptx-real-templates
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o bin/json2pptx-windows-amd64.exe ./cmd/json2pptx/
 	@# Stage the archive
 	rm -rf $(WIN_DIST_STAGING)
 	mkdir -p $(WIN_DIST_STAGING)/bin $(WIN_DIST_STAGING)/templates
@@ -280,7 +275,6 @@ dist-windows: release-check
 		cp .claude/skills/template-deck/* $(WIN_DIST_STAGING)/skills/template-deck/; \
 	fi
 	cp scripts/install-dist.ps1 $(WIN_DIST_STAGING)/install.ps1
-	cp scripts/DIST-README-WINDOWS $(WIN_DIST_STAGING)/README.txt
 	@echo "==> Creating archive: $(WIN_DIST_ARCHIVE)"
 	cd dist && tar czf $(WIN_DIST_NAME).tar.gz $(WIN_DIST_NAME)
 	@echo "==> Distribution ready: $(WIN_DIST_ARCHIVE)"
@@ -291,26 +285,34 @@ dist-windows: release-check
 check: build
 	go test ./... -count=1 -timeout=120s
 	go vet ./...
+	cd svggen && go test ./... -count=1 -timeout=120s
+	cd svggen && go vet ./...
 
 test:
 	go test ./... -v
+	cd svggen && go test ./... -v
 
 test-race:
 	go test ./... -v -race
+	cd svggen && go test ./... -v -race
 
 test-cover:
 	go test ./... -v -coverprofile=coverage.out
 	go tool cover -func=coverage.out
+	cd svggen && go test ./... -v -coverprofile=coverage.out
+	cd svggen && go tool cover -func=coverage.out
 
 test-svg-stress: build
 	./bin/testrand svg-stress --seed=$${SEED:-0}
 
 lint:
 	golangci-lint run ./...
+	cd svggen && golangci-lint run ./...
 
 vulncheck:
 	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
 	govulncheck ./...
+	cd svggen && govulncheck ./...
 
 security: vulncheck lint
 

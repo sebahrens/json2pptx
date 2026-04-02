@@ -82,28 +82,40 @@ source ~/.bashrc
 
 > **WSL2 note:** The generated `.pptx` files are regular files accessible from Windows at `\\wsl$\<distro>\home\<user>\...` or via the output directory you specify.
 
-### Windows
+### Windows (native PowerShell -- no bash required)
 
-Windows builds require a bash-compatible shell. Use one of:
+Install [Go](https://go.dev/dl/) using the Windows installer, then:
 
-- **WSL2** (recommended) -- follow the Linux instructions above inside your WSL2 distro
-- **Git Bash / MSYS2** -- provides the bash shell that the Makefile requires
+```powershell
+git clone https://github.com/ahrens/go-slide-creator.git
+cd go-slide-creator
+.\install.ps1
+```
 
-With Git Bash or MSYS2:
+This builds all binaries, installs them to `%LOCALAPPDATA%\json2pptx\bin\`, copies templates, and configures the MCP server. Options:
+
+```powershell
+.\install.ps1 -Prefix "C:\tools"     # Custom install prefix
+.\install.ps1 -SkipSkill             # Skip Claude Code skill
+.\install.ps1 -SkipMcp              # Skip MCP config
+.\install.ps1 -SkipTemplates        # Skip template files
+```
+
+### Windows (WSL2)
+
+Follow the Linux instructions above inside your WSL2 distro. Generated `.pptx` files are accessible from Windows at `\\wsl$\<distro>\home\<user>\...`.
+
+### Windows (Git Bash / MSYS2)
+
+If you prefer Make, use Git Bash or MSYS2 which provide the bash shell the Makefile requires:
 
 ```sh
-# Ensure Go is installed and in PATH
-# https://go.dev/dl/ -- download the Windows installer
-
-# Clone and install
 git clone https://github.com/ahrens/go-slide-creator.git
 cd go-slide-creator
 make install
 ```
 
-On Windows (non-WSL), binaries install to `%LOCALAPPDATA%\json2pptx\bin\`. Ensure this is in your PATH.
-
-Alternatively, cross-compile from any platform:
+Cross-compile from any platform:
 
 ```sh
 make build-windows-amd64    # Creates bin/json2pptx.exe
