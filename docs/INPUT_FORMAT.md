@@ -390,7 +390,13 @@ Charts are rendered as SVG images and embedded in the slide.
 
 #### Chart Data Format
 
-Array-of-objects with `label` and `value` fields:
+**Flat map** (recommended for simple charts):
+
+```json
+"data": {"Q1": 100, "Q2": 150, "Q3": 180}
+```
+
+**Array of objects** (preserves display order):
 
 ```json
 "data": [
@@ -398,6 +404,24 @@ Array-of-objects with `label` and `value` fields:
   {"label": "Q2", "value": 150}
 ]
 ```
+
+**Multi-series** (for `stacked_bar`, `grouped_bar`, `stacked_area`):
+
+```json
+"data": {"Q1": [10, 15, 8], "Q2": [12, 18, 9]},
+"series_labels": ["Product A", "Product B", "Product C"]
+```
+
+**Scatter/bubble** (for `scatter` and `bubble` charts):
+
+```json
+"data": [
+  {"x": 10, "y": 20},
+  {"x": 15, "y": 30, "size": 5}
+]
+```
+
+Both flat map and array-of-objects formats are fully supported. The array format is automatically converted to a flat map internally, preserving key order.
 
 #### Optional Chart Fields
 
