@@ -28,10 +28,16 @@ LDFLAGS    := -ldflags "-s -w -X main.Version=$(VERSION) -X main.CommitSHA=$(COM
 # Platform detection
 ifeq ($(OS),Windows_NT)
   EXE := .exe
-  PREFIX ?= $(LOCALAPPDATA)/json2pptx
+  # Prefer LOCALAPPDATA; fall back to USERPROFILE, then HOME
+  _WINBASE := $(or $(LOCALAPPDATA),$(USERPROFILE),$(HOME))
+  PREFIX ?= $(_WINBASE)/json2pptx
+  # Ensure HOME is set (Git Bash sets it, but MSYS2 minimal may not)
+  HOME ?= $(USERPROFILE)
+  IS_WINDOWS := 1
 else
   EXE :=
   PREFIX ?= $(HOME)/.local
+  IS_WINDOWS :=
 endif
 
 # Distribution archive settings
@@ -122,10 +128,20 @@ endif
 	@# PATH check
 	@case ":$(PATH):" in \
 	  *":$(PREFIX)/bin:"*) ;; \
-	  *) echo "" && echo "NOTE: $(PREFIX)/bin is not in your PATH." \
-	     && echo "      Add to your shell profile:" \
-	     && echo "" \
-	     && echo "    export PATH=\"$(PREFIX)/bin:\$$PATH\"" ;; \
+	  *) echo "" && echo "NOTE: $(PREFIX)/bin is not in your PATH."; \
+	     if [ -n "$(IS_WINDOWS)" ]; then \
+	       echo "      Add to your PATH (PowerShell, run as admin):"; \
+	       echo ""; \
+	       echo '    [Environment]::SetEnvironmentVariable("Path", "$(PREFIX)\bin;" + $$env:Path, "User")'; \
+	       echo ""; \
+	       echo "      Or in Git Bash / MSYS2:"; \
+	       echo ""; \
+	       echo '    export PATH="$(PREFIX)/bin:$$PATH"'; \
+	     else \
+	       echo "      Add to your shell profile:"; \
+	       echo ""; \
+	       echo '    export PATH="$(PREFIX)/bin:$$PATH"'; \
+	     fi ;; \
 	esac
 
 install-bin: build
@@ -142,7 +158,7 @@ ifndef SKIP_TEMPLATES
 	@echo "==> Installing templates to $(HOME)/.json2pptx/templates/"
 	@mkdir -p "$(HOME)/.json2pptx/templates"
 	@cp templates/*.pptx "$(HOME)/.json2pptx/templates/"
-	@echo "    $(shell ls templates/*.pptx | wc -l | tr -d ' ') templates installed"
+	@echo "    $$(ls templates/*.pptx 2>/dev/null | wc -l | tr -d ' ') templates installed"
 endif
 
 install-skill:
@@ -163,13 +179,13 @@ ifndef SKIP_MCP
 	@mkdir -p "$(HOME)/.claude"
 	@if command -v jq >/dev/null 2>&1; then \
 		if [ -f "$(HOME)/.claude/mcp.json" ]; then \
-			UPDATED=$$(jq --arg bin "$(PREFIX)/bin/json2pptx" --arg tdir "$(HOME)/.json2pptx/templates" \
+			UPDATED=$$(jq --arg bin "$(PREFIX)/bin/json2pptx$(EXE)" --arg tdir "$(HOME)/.json2pptx/templates" \
 				'.mcpServers["json2pptx"] = {command: $$bin, args: ["mcp", "--templates-dir", $$tdir, "--output", "./output"]}' \
 				"$(HOME)/.claude/mcp.json") && \
 			printf '%s\n' "$$UPDATED" > "$(HOME)/.claude/mcp.json"; \
 		else \
 			printf '{"mcpServers":{"json2pptx":{"command":"%s","args":["mcp","--templates-dir","%s","--output","./output"]}}}\n' \
-				"$(PREFIX)/bin/json2pptx" "$(HOME)/.json2pptx/templates" | jq . > "$(HOME)/.claude/mcp.json"; \
+				"$(PREFIX)/bin/json2pptx$(EXE)" "$(HOME)/.json2pptx/templates" | jq . > "$(HOME)/.claude/mcp.json"; \
 		fi; \
 		echo "    $(HOME)/.claude/mcp.json (json2pptx server configured)"; \
 	else \
