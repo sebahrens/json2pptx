@@ -1,9 +1,23 @@
-# Go Slide Creator
+# json2pptx
 
-Convert JSON slide definitions to PowerPoint presentations with intelligent layout selection, built-in chart rendering, and consulting-grade diagram generation.
+**Structured presentations from structured data.** Define what your slides *mean* -- json2pptx handles what they *look like*.
 
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## Philosophy
+
+PowerPoint is a visual tool. You drag boxes, pick fonts, nudge alignment. This works for one-off decks, but it falls apart when presentations need to be generated programmatically, updated from data, or produced at scale.
+
+json2pptx takes the same approach that LaTeX brought to documents: **separate content from presentation.** In LaTeX, you declare `\section{Introduction}` and the typesetter handles margins, fonts, and spacing. In json2pptx, you declare `"type": "chart", "chart_value": {...}` and the engine handles layout selection, SVG rendering, and placement into the right template slot.
+
+This is *what you mean is what you get* for presentations:
+
+- You say "bar chart with Q1-Q4 revenue" -- json2pptx picks the layout, renders the chart as SVG, and places it
+- You say "three bullet points" -- json2pptx selects a content layout that fits, applies the template's typography, and handles overflow
+- You say "SWOT analysis" -- json2pptx generates the diagram with proper quadrant geometry and colors from your theme
+
+The input is a JSON document. The output is a `.pptx` file that opens in PowerPoint, Keynote, or Google Slides -- no post-editing required. Templates control the visual identity; your JSON controls the content and structure.
 
 ## Features
 
