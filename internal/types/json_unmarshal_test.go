@@ -236,3 +236,71 @@ func TestChartSpecJSONUnmarshal_PreservesKeyOrder(t *testing.T) {
 		})
 	}
 }
+
+func TestChartSpecJSONUnmarshal_LabelValueArray(t *testing.T) {
+	// Regression test: [{label, value}] array format must preserve values.
+	// Previously, convertPointArrayToSeriesData dropped the "value" field,
+	// causing all chart values to become zero.
+	input := `{"type":"bar","title":"Revenue","data":[{"label":"Q1","value":12},{"label":"Q2","value":18},{"label":"Q3","value":25}]}`
+	var cs ChartSpec
+	if err := json.Unmarshal([]byte(input), &cs); err != nil {
+		t.Fatalf("unmarshal label/value array: %v", err)
+	}
+
+	// Should be converted to flat map format
+	if len(cs.Data) != 3 {
+		t.Fatalf("len(Data) = %d, want 3; got %v", len(cs.Data), cs.Data)
+	}
+
+	// Values must be preserved
+	wantValues := map[string]float64{"Q1": 12, "Q2": 18, "Q3": 25}
+	for label, wantVal := range wantValues {
+		got, ok := cs.Data[label]
+		if !ok {
+			t.Errorf("Data[%q] missing", label)
+			continue
+		}
+		gotFloat, ok := got.(float64)
+		if !ok {
+			t.Errorf("Data[%q] = %T, want float64", label, got)
+			continue
+		}
+		if gotFloat != wantVal {
+			t.Errorf("Data[%q] = %v, want %v", label, gotFloat, wantVal)
+		}
+	}
+
+	// Order must be preserved from array
+	wantOrder := []string{"Q1", "Q2", "Q3"}
+	if len(cs.DataOrder) != len(wantOrder) {
+		t.Fatalf("DataOrder = %v, want %v", cs.DataOrder, wantOrder)
+	}
+	for i, want := range wantOrder {
+		if cs.DataOrder[i] != want {
+			t.Errorf("DataOrder[%d] = %q, want %q", i, cs.DataOrder[i], want)
+		}
+	}
+
+	// End-to-end: ToDiagramSpec should produce valid bar chart data
+	ds := cs.ToDiagramSpec()
+	if ds == nil {
+		t.Fatal("ToDiagramSpec returned nil")
+	}
+	series, ok := ds.Data["series"].([]map[string]any)
+	if !ok {
+		t.Fatalf("data[series] = %T, want []map[string]any", ds.Data["series"])
+	}
+	if len(series) != 1 {
+		t.Fatalf("len(series) = %d, want 1", len(series))
+	}
+	values, ok := series[0]["values"].([]float64)
+	if !ok {
+		t.Fatalf("series[0][values] = %T, want []float64", series[0]["values"])
+	}
+	wantSeriesValues := []float64{12, 18, 25}
+	for i, want := range wantSeriesValues {
+		if values[i] != want {
+			t.Errorf("series values[%d] = %v, want %v", i, values[i], want)
+		}
+	}
+}

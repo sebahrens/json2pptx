@@ -81,8 +81,12 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	// Try parsing data as array of point objects.
 	var dataArr []map[string]any
 	if err := json.Unmarshal(raw.Data, &dataArr); err == nil && len(dataArr) > 0 {
-		// Convert array of {label, x, y} to series format.
-		cs.Data = convertPointArrayToSeriesData(dataArr)
+		// Convert array format to either flat map ({label,value}) or series ({x,y}).
+		data, order := convertPointArrayToSeriesData(dataArr)
+		cs.Data = data
+		if len(cs.DataOrder) == 0 && len(order) > 0 {
+			cs.DataOrder = order
+		}
 		return nil
 	}
 
@@ -103,8 +107,55 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// convertPointArrayToSeriesData converts [{label, x, y}, ...] to {"series": [{name, points}]}.
-func convertPointArrayToSeriesData(arr []map[string]any) map[string]any {
+// convertPointArrayToSeriesData converts an array of point objects to the
+// appropriate data format depending on the fields present:
+//
+//   - [{label, value}, ...] → flat map {"label1": value1, "label2": value2, ...}
+//     This is the simple chart format for bar/line/pie/etc.
+//   - [{x, y}, ...] or [{x, y, size}, ...] → series format {"series": [{name, points}]}
+//     This is the scatter/bubble format.
+//
+// It also returns a key-order slice so that flat-map conversions preserve the
+// original array ordering.
+func convertPointArrayToSeriesData(arr []map[string]any) (data map[string]any, order []string) {
+	// Detect simple {label, value} format: at least one item has both "label" and "value"
+	// and no item has "x" or "y" fields.
+	isSimple := false
+	if len(arr) > 0 {
+		hasLabelValue := false
+		hasXY := false
+		for _, item := range arr {
+			_, hasLabel := item["label"]
+			_, hasValue := item["value"]
+			if hasLabel && hasValue {
+				hasLabelValue = true
+			}
+			if _, ok := item["x"]; ok {
+				hasXY = true
+			}
+			if _, ok := item["y"]; ok {
+				hasXY = true
+			}
+		}
+		isSimple = hasLabelValue && !hasXY
+	}
+
+	if isSimple {
+		// Convert [{label: "Q1", value: 12}, ...] → {"Q1": 12, ...}
+		flat := make(map[string]any, len(arr))
+		order = make([]string, 0, len(arr))
+		for _, item := range arr {
+			label, _ := item["label"].(string)
+			if label == "" {
+				continue
+			}
+			flat[label] = item["value"]
+			order = append(order, label)
+		}
+		return flat, order
+	}
+
+	// Scatter/bubble format: convert to series with points
 	points := make([]map[string]any, 0, len(arr))
 	for _, item := range arr {
 		pt := make(map[string]any)
@@ -120,11 +171,14 @@ func convertPointArrayToSeriesData(arr []map[string]any) map[string]any {
 		if size, ok := item["size"]; ok {
 			pt["size"] = size
 		}
+		if value, ok := item["value"]; ok {
+			pt["value"] = value
+		}
 		points = append(points, pt)
 	}
 	return map[string]any{
 		"series": []map[string]any{{"name": "Data", "points": points}},
-	}
+	}, nil
 }
 
 // IsTimeSeries returns true if this chart spec contains time-series data.
