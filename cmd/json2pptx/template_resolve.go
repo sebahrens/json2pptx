@@ -92,6 +92,8 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 //
 // The flagTemplatesDir is the value from --templates-dir (may be empty or default).
 func resolveTemplatePath(templateName, flagTemplatesDir string) (string, error) {
+	// Strip .pptx extension if user included it (e.g., "my-template.pptx" -> "my-template")
+	templateName = strings.TrimSuffix(templateName, ".pptx")
 	filename := templateName + ".pptx"
 
 	// Build candidate directories in priority order.

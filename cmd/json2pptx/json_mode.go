@@ -143,7 +143,7 @@ type SlideQuality struct {
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool) error { //nolint:gocognit,gocyclo
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// Read JSON input
@@ -178,9 +178,16 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		}
 	}
 
+	// CLI -template flag overrides JSON template field
+	if templateOverride != "" {
+		// Strip .pptx extension if user included it
+		templateOverride = strings.TrimSuffix(templateOverride, ".pptx")
+		input.Template = templateOverride
+	}
+
 	// Validate input
 	if input.Template == "" {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("template is required in JSON input"))
+		return writeJSONError(jsonOutputPath, fmt.Errorf("template is required: use -template flag or set \"template\" in JSON input"))
 	}
 	if len(input.Slides) == 0 {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("at least one slide is required"))

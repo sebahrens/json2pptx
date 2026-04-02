@@ -91,7 +91,7 @@ func TestShapeGridCrossTemplate(t *testing.T) {
 
 				// Run through JSON mode (no JSON output file needed)
 				jsonResultPath := filepath.Join(outputDir, fixtureName+"_"+tmpl+".result.json")
-				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false)
+				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "")
 				if err != nil {
 					t.Fatalf("runJSONMode failed: %v", err)
 				}

@@ -724,7 +724,7 @@ func TestRunJSONMode_MissingTemplate(t *testing.T) {
 		t.Fatalf("failed to write JSON input: %v", err)
 	}
 
-	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false)
+	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false, "")
 
 	if err == nil {
 		t.Error("expected error for missing template")
@@ -760,7 +760,7 @@ func TestRunJSONMode_MissingSlides(t *testing.T) {
 		t.Fatalf("failed to write JSON input: %v", err)
 	}
 
-	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false)
+	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false, "")
 
 	if err == nil {
 		t.Error("expected error for missing slides")
@@ -777,7 +777,7 @@ func TestRunJSONMode_InvalidJSON(t *testing.T) {
 		t.Fatalf("failed to write JSON input: %v", err)
 	}
 
-	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false)
+	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false, "")
 
 	if err == nil {
 		t.Error("expected error for invalid JSON")
@@ -788,7 +788,7 @@ func TestRunJSONMode_NonexistentInput(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.json")
 
-	err := runJSONMode("/nonexistent/file.json", outputPath, tmpDir, tmpDir, "", false, false)
+	err := runJSONMode("/nonexistent/file.json", outputPath, tmpDir, tmpDir, "", false, false, "")
 
 	if err == nil {
 		t.Error("expected error for nonexistent input")
@@ -806,7 +806,7 @@ func TestRunJSONMode_TemplateNotFound(t *testing.T) {
 		t.Fatalf("failed to write JSON input: %v", err)
 	}
 
-	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false)
+	err := runJSONMode(jsonPath, outputPath, tmpDir, tmpDir, "", false, false, "")
 
 	if err == nil {
 		t.Error("expected error for nonexistent template")
@@ -1331,7 +1331,7 @@ func TestRunJSONMode_OutputFilenameExtension(t *testing.T) {
 	}
 
 	// Template doesn't exist, but we can test that extension would be added
-	err := runJSONMode(jsonPath, "", tmpDir, tmpDir, "", false, false)
+	err := runJSONMode(jsonPath, "", tmpDir, tmpDir, "", false, false, "")
 	if err == nil {
 		t.Log("Expected error (template not found) but this tests the code path")
 	}
@@ -1349,7 +1349,7 @@ func TestRunJSONMode_InvalidConfig(t *testing.T) {
 	}
 
 	// Invalid config path should return error
-	err := runJSONMode(jsonPath, "", tmpDir, tmpDir, "/nonexistent/config.yaml", false, false)
+	err := runJSONMode(jsonPath, "", tmpDir, tmpDir, "/nonexistent/config.yaml", false, false, "")
 	if err == nil {
 		t.Error("expected error for invalid config path")
 	}

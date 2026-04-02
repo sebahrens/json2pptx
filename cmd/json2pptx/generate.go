@@ -42,12 +42,10 @@ func runGenerate() error {
 		return fmt.Errorf("JSON input is required: use -json <file.json> or -json - for stdin")
 	}
 
-	// Suppress unused variable warnings for flags consumed by runJSONMode/runJSONDryRun
-	_ = templateName
 	_ = verbose
 
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templatesDir, *configPath)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG)
+	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName)
 }
