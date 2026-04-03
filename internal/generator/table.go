@@ -158,7 +158,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	var xml strings.Builder
 
 	// Graphic frame wrapper
-	xml.WriteString(fmt.Sprintf(`<p:graphicFrame>`+
+	fmt.Fprintf(&xml, `<p:graphicFrame>`+
 		`<p:nvGraphicFramePr>`+
 		`<p:cNvPr id="4" name="Table 1"/>`+
 		`<p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr>`+
@@ -173,7 +173,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		`<a:tbl>`,
 		config.Bounds.X, config.Bounds.Y,
 		config.Bounds.Width, totalHeight,
-	))
+	)
 
 	// Table properties with explicit table-level borders.
 	// Without <a:tblBorders>, PowerPoint renders default grid lines
@@ -182,10 +182,10 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	if config.Style.Striped {
 		bandRow = "1"
 	}
-	xml.WriteString(fmt.Sprintf(`<a:tblPr firstRow="1" bandRow="%s">`, bandRow))
+	fmt.Fprintf(&xml, `<a:tblPr firstRow="1" bandRow="%s">`, bandRow)
 	xml.WriteString(generateTableLevelBorders(config.Style.Borders))
 	if config.Style.StyleID != "" {
-		xml.WriteString(fmt.Sprintf(`<a:tableStyleId>%s</a:tableStyleId>`, config.Style.StyleID))
+		fmt.Fprintf(&xml, `<a:tableStyleId>%s</a:tableStyleId>`, config.Style.StyleID)
 	}
 	xml.WriteString(`</a:tblPr>`)
 
@@ -432,7 +432,7 @@ func generateTableGrid(colWidths []int64) string {
 	var xml strings.Builder
 	xml.WriteString(`<a:tblGrid>`)
 	for _, w := range colWidths {
-		xml.WriteString(fmt.Sprintf(`<a:gridCol w="%d"/>`, w))
+		fmt.Fprintf(&xml, `<a:gridCol w="%d"/>`, w)
 	}
 	xml.WriteString(`</a:tblGrid>`)
 	return xml.String()
@@ -441,7 +441,7 @@ func generateTableGrid(colWidths []int64) string {
 // generateHeaderRow generates the header row XML.
 func generateHeaderRow(headers []string, height int64, config TableRenderConfig) string {
 	var xml strings.Builder
-	xml.WriteString(fmt.Sprintf(`<a:tr h="%d">`, height))
+	fmt.Fprintf(&xml, `<a:tr h="%d">`, height)
 
 	for colIdx, header := range headers {
 		xml.WriteString(generateHeaderCell(header, colIdx, config))
@@ -454,7 +454,7 @@ func generateHeaderRow(headers []string, height int64, config TableRenderConfig)
 // generateHeaderRowWithMerges generates the header row XML when headers have colspan/rowspan.
 func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config TableRenderConfig) string {
 	var xml strings.Builder
-	xml.WriteString(fmt.Sprintf(`<a:tr h="%d">`, height))
+	fmt.Fprintf(&xml, `<a:tr h="%d">`, height)
 
 	colIdx := 0
 	for _, cell := range cells {
@@ -463,8 +463,8 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 				xml.WriteString(`<a:tc hMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody><a:tcPr/></a:tc>`)
 			} else if cell.RowSpan == 0 {
 				overrides := &cellBorderOverrides{suppressTop: true}
-				xml.WriteString(fmt.Sprintf(`<a:tc vMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody>%s</a:tc>`,
-					generateCellProperties(config, true, 0, overrides)))
+				fmt.Fprintf(&xml, `<a:tc vMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody>%s</a:tc>`,
+					generateCellProperties(config, true, 0, overrides))
 			}
 			colIdx++
 			continue
@@ -482,11 +482,11 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 		if cell.RowSpan > 1 {
 			overrides = &cellBorderOverrides{suppressBottom: true}
 		}
-		xml.WriteString(fmt.Sprintf(`<a:tc%s>%s%s</a:tc>`,
+		fmt.Fprintf(&xml, `<a:tc%s>%s%s</a:tc>`,
 			attrs,
 			generateCellContent(cell.Content, true, config, colIdx),
 			generateCellProperties(config, true, 0, overrides),
-		))
+		)
 		colIdx++
 	}
 
@@ -505,7 +505,7 @@ func generateHeaderCell(text string, colIdx int, config TableRenderConfig) strin
 // generateDataRow generates a data row XML, handling merges.
 func generateDataRow(row []types.TableCell, rowIdx int, height int64, config TableRenderConfig) string {
 	var xml strings.Builder
-	xml.WriteString(fmt.Sprintf(`<a:tr h="%d">`, height))
+	fmt.Fprintf(&xml, `<a:tr h="%d">`, height)
 
 	for colIdx, cell := range row {
 		xml.WriteString(generateDataCell(cell, rowIdx, colIdx, config))
@@ -518,13 +518,13 @@ func generateDataRow(row []types.TableCell, rowIdx int, height int64, config Tab
 // generateSummaryRow generates the italic summary row for truncated tables.
 func generateSummaryRow(row []types.TableCell, rowIdx int, height int64, config TableRenderConfig) string {
 	var xml strings.Builder
-	xml.WriteString(fmt.Sprintf(`<a:tr h="%d">`, height))
+	fmt.Fprintf(&xml, `<a:tr h="%d">`, height)
 
 	for colIdx, cell := range row {
-		xml.WriteString(fmt.Sprintf(`<a:tc>%s%s</a:tc>`,
+		fmt.Fprintf(&xml, `<a:tc>%s%s</a:tc>`,
 			generateItalicCellContent(cell.Content, config, colIdx),
 			generateCellProperties(config, false, rowIdx, nil),
-		))
+		)
 	}
 
 	xml.WriteString(`</a:tr>`)
@@ -664,7 +664,7 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 	if isHeader {
 		schemeColor := mapToSchemeColor(config.Style.HeaderBackground)
 		if schemeColor != "none" {
-			xml.WriteString(fmt.Sprintf(`<a:solidFill><a:schemeClr val="%s"/></a:solidFill>`, schemeColor))
+			fmt.Fprintf(&xml, `<a:solidFill><a:schemeClr val="%s"/></a:solidFill>`, schemeColor)
 		}
 	} else if config.Style.Striped && rowIdx%2 == 1 {
 		// Use accent1 at 15% saturation for a reliably visible alternating stripe.

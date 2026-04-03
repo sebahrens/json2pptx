@@ -73,7 +73,7 @@ type ContentInput struct {
 	BodyAndBulletsValue *BodyAndBulletsInput `json:"body_and_bullets_value,omitempty"`
 	BulletGroupsValue   *BulletGroupsInput   `json:"bullet_groups_value,omitempty"`
 	TableValue          *TableInput          `json:"table_value,omitempty"`
-	ChartValue          *types.ChartSpec     `json:"chart_value,omitempty"`
+	ChartValue          *types.ChartSpec     `json:"chart_value,omitempty"` //nolint:staticcheck // ChartSpec is deprecated but still used for backward compat
 	DiagramValue        *types.DiagramSpec   `json:"diagram_value,omitempty"`
 	ImageValue          *ImageInput          `json:"image_value,omitempty"`
 

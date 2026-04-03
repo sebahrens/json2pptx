@@ -22,7 +22,7 @@ func RectFromPoints(x, y, w, h float64) RectEmu {
 func WriteTransform(buf *bytes.Buffer, bounds RectEmu, rotation int64, flipH, flipV bool) {
 	buf.WriteString(`<a:xfrm`)
 	if rotation != 0 {
-		buf.WriteString(fmt.Sprintf(` rot="%d"`, rotation))
+		fmt.Fprintf(buf, ` rot="%d"`, rotation)
 	}
 	if flipH {
 		buf.WriteString(` flipH="1"`)
@@ -31,7 +31,7 @@ func WriteTransform(buf *bytes.Buffer, bounds RectEmu, rotation int64, flipH, fl
 		buf.WriteString(` flipV="1"`)
 	}
 	buf.WriteString(`>`)
-	buf.WriteString(fmt.Sprintf(`<a:off x="%d" y="%d"/>`, bounds.X, bounds.Y))
-	buf.WriteString(fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, bounds.CX, bounds.CY))
+	fmt.Fprintf(buf, `<a:off x="%d" y="%d"/>`, bounds.X, bounds.Y)
+	fmt.Fprintf(buf, `<a:ext cx="%d" cy="%d"/>`, bounds.CX, bounds.CY)
 	buf.WriteString(`</a:xfrm>`)
 }

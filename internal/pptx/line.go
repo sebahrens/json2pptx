@@ -38,18 +38,18 @@ func SolidLinePoints(widthPt float64, hex string) Line {
 // WriteTo writes the line's DrawingML XML (a:ln element) into buf.
 func (l Line) WriteTo(buf *bytes.Buffer) {
 	if l.Width > 0 {
-		buf.WriteString(fmt.Sprintf(`<a:ln w="%d"`, l.Width))
+		fmt.Fprintf(buf, `<a:ln w="%d"`, l.Width)
 	} else {
 		buf.WriteString(`<a:ln`)
 	}
 	if l.Cap != "" {
-		buf.WriteString(fmt.Sprintf(` cap="%s"`, l.Cap))
+		fmt.Fprintf(buf, ` cap="%s"`, l.Cap)
 	}
 	if l.Compound != "" {
-		buf.WriteString(fmt.Sprintf(` cmpd="%s"`, l.Compound))
+		fmt.Fprintf(buf, ` cmpd="%s"`, l.Compound)
 	}
 	if l.Align != "" {
-		buf.WriteString(fmt.Sprintf(` algn="%s"`, l.Align))
+		fmt.Fprintf(buf, ` algn="%s"`, l.Align)
 	}
 	buf.WriteString(`>`)
 
@@ -58,7 +58,7 @@ func (l Line) WriteTo(buf *bytes.Buffer) {
 
 	// Dash
 	if l.Dash != "" {
-		buf.WriteString(fmt.Sprintf(`<a:prstDash val="%s"/>`, l.Dash))
+		fmt.Fprintf(buf, `<a:prstDash val="%s"/>`, l.Dash)
 	}
 
 	// Join

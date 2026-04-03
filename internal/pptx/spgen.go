@@ -84,9 +84,9 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 	buf.WriteByte('\n')
 
 	// cNvPr
-	buf.WriteString(fmt.Sprintf(`    <p:cNvPr id="%d" name="%s"`, opts.ID, escapeXMLAttr(name)))
+	fmt.Fprintf(&buf, `    <p:cNvPr id="%d" name="%s"`, opts.ID, escapeXMLAttr(name))
 	if opts.Description != "" {
-		buf.WriteString(fmt.Sprintf(` descr="%s"`, escapeXMLAttr(opts.Description)))
+		fmt.Fprintf(&buf, ` descr="%s"`, escapeXMLAttr(opts.Description))
 	}
 	buf.WriteString(`/>`)
 	buf.WriteByte('\n')
@@ -116,14 +116,14 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 	buf.WriteByte('\n')
 
 	// prstGeom + avLst
-	buf.WriteString(fmt.Sprintf(`    <a:prstGeom prst="%s">`, string(opts.Geometry)))
+	fmt.Fprintf(&buf, `    <a:prstGeom prst="%s">`, string(opts.Geometry))
 	buf.WriteByte('\n')
 	if len(opts.Adjustments) > 0 {
 		buf.WriteString(`      <a:avLst>`)
 		buf.WriteByte('\n')
 		for _, adj := range opts.Adjustments {
-			buf.WriteString(fmt.Sprintf(`        <a:gd name="%s" fmla="val %d"/>`,
-				escapeXMLAttr(adj.Name), adj.Value))
+			fmt.Fprintf(&buf, `        <a:gd name="%s" fmla="val %d"/>`,
+				escapeXMLAttr(adj.Name), adj.Value)
 			buf.WriteByte('\n')
 		}
 		buf.WriteString(`      </a:avLst>`)

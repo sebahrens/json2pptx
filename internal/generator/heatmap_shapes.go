@@ -393,7 +393,7 @@ func generateHeatmapCellXML(valueText string, x, y, cx, cy int64, shapeID uint32
 	var text *pptx.TextBody
 	if showValue && valueText != "" {
 		var val float64
-		fmt.Sscanf(valueText, "%g", &val)
+		_, _ = fmt.Sscanf(valueText, "%g", &val)
 		// Re-format to clean display.
 		displayText := valueText
 

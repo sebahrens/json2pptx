@@ -87,9 +87,9 @@ func GeneratePic(opts PicOptions) ([]byte, error) {
 	buf.WriteByte('\n')
 
 	// cNvPr
-	buf.WriteString(fmt.Sprintf(`    <p:cNvPr id="%d" name="%s"`, opts.ID, escapeXMLAttr(name)))
+	fmt.Fprintf(&buf, `    <p:cNvPr id="%d" name="%s"`, opts.ID, escapeXMLAttr(name))
 	if opts.Description != "" {
-		buf.WriteString(fmt.Sprintf(` descr="%s"`, escapeXMLAttr(opts.Description)))
+		fmt.Fprintf(&buf, ` descr="%s"`, escapeXMLAttr(opts.Description))
 	}
 	buf.WriteString(`/>`)
 	buf.WriteByte('\n')
@@ -116,14 +116,14 @@ func GeneratePic(opts PicOptions) ([]byte, error) {
 	// a:blip with potential SVG extension
 	if opts.SVGRelID != "" {
 		// Blip with SVG extension
-		buf.WriteString(fmt.Sprintf(`    <a:blip r:embed="%s">`, opts.PNGRelID))
+		fmt.Fprintf(&buf, `    <a:blip r:embed="%s">`, opts.PNGRelID)
 		buf.WriteByte('\n')
 		buf.WriteString(`      <a:extLst>`)
 		buf.WriteByte('\n')
-		buf.WriteString(fmt.Sprintf(`        <a:ext uri="%s">`, SVGBlipExtensionURI))
+		fmt.Fprintf(&buf, `        <a:ext uri="%s">`, SVGBlipExtensionURI)
 		buf.WriteByte('\n')
-		buf.WriteString(fmt.Sprintf(`          <asvg:svgBlip xmlns:asvg="%s" r:embed="%s"/>`,
-			SVGBlipNamespace, opts.SVGRelID))
+		fmt.Fprintf(&buf, `          <asvg:svgBlip xmlns:asvg="%s" r:embed="%s"/>`,
+			SVGBlipNamespace, opts.SVGRelID)
 		buf.WriteByte('\n')
 		buf.WriteString(`        </a:ext>`)
 		buf.WriteByte('\n')
@@ -133,7 +133,7 @@ func GeneratePic(opts PicOptions) ([]byte, error) {
 		buf.WriteByte('\n')
 	} else {
 		// Simple blip without extensions
-		buf.WriteString(fmt.Sprintf(`    <a:blip r:embed="%s"/>`, opts.PNGRelID))
+		fmt.Fprintf(&buf, `    <a:blip r:embed="%s"/>`, opts.PNGRelID)
 		buf.WriteByte('\n')
 	}
 
@@ -156,9 +156,9 @@ func GeneratePic(opts PicOptions) ([]byte, error) {
 	if opts.ExtentCX > 0 || opts.ExtentCY > 0 {
 		buf.WriteString(`    <a:xfrm>`)
 		buf.WriteByte('\n')
-		buf.WriteString(fmt.Sprintf(`      <a:off x="%d" y="%d"/>`, opts.OffsetX, opts.OffsetY))
+		fmt.Fprintf(&buf, `      <a:off x="%d" y="%d"/>`, opts.OffsetX, opts.OffsetY)
 		buf.WriteByte('\n')
-		buf.WriteString(fmt.Sprintf(`      <a:ext cx="%d" cy="%d"/>`, opts.ExtentCX, opts.ExtentCY))
+		fmt.Fprintf(&buf, `      <a:ext cx="%d" cy="%d"/>`, opts.ExtentCX, opts.ExtentCY)
 		buf.WriteByte('\n')
 		buf.WriteString(`    </a:xfrm>`)
 		buf.WriteByte('\n')

@@ -101,20 +101,20 @@ func GenerateConnector(opts ConnectorOptions) ([]byte, error) {
 	// --- nvCxnSpPr ---
 	buf.WriteString(`  <p:nvCxnSpPr>`)
 	buf.WriteByte('\n')
-	buf.WriteString(fmt.Sprintf(`    <p:cNvPr id="%d" name="%s"/>`, opts.ID, escapeXMLAttr(name)))
+	fmt.Fprintf(&buf, `    <p:cNvPr id="%d" name="%s"/>`, opts.ID, escapeXMLAttr(name))
 	buf.WriteByte('\n')
 
 	if opts.StartConn != nil || opts.EndConn != nil {
 		buf.WriteString(`    <p:cNvCxnSpPr>`)
 		buf.WriteByte('\n')
 		if opts.StartConn != nil {
-			buf.WriteString(fmt.Sprintf(`      <a:stCxn id="%d" idx="%d"/>`,
-				opts.StartConn.ShapeID, opts.StartConn.SiteIdx))
+			fmt.Fprintf(&buf, `      <a:stCxn id="%d" idx="%d"/>`,
+				opts.StartConn.ShapeID, opts.StartConn.SiteIdx)
 			buf.WriteByte('\n')
 		}
 		if opts.EndConn != nil {
-			buf.WriteString(fmt.Sprintf(`      <a:endCxn id="%d" idx="%d"/>`,
-				opts.EndConn.ShapeID, opts.EndConn.SiteIdx))
+			fmt.Fprintf(&buf, `      <a:endCxn id="%d" idx="%d"/>`,
+				opts.EndConn.ShapeID, opts.EndConn.SiteIdx)
 			buf.WriteByte('\n')
 		}
 		buf.WriteString(`    </p:cNvCxnSpPr>`)
@@ -136,7 +136,7 @@ func GenerateConnector(opts ConnectorOptions) ([]byte, error) {
 	WriteTransform(&buf, opts.Bounds, 0, opts.FlipH, opts.FlipV)
 	buf.WriteByte('\n')
 
-	buf.WriteString(fmt.Sprintf(`    <a:prstGeom prst="%s">`, string(opts.Geometry)))
+	fmt.Fprintf(&buf, `    <a:prstGeom prst="%s">`, string(opts.Geometry))
 	buf.WriteByte('\n')
 	buf.WriteString(`      <a:avLst/>`)
 	buf.WriteByte('\n')

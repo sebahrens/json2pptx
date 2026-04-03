@@ -166,14 +166,14 @@ func (f Fill) WriteColorTo(buf *bytes.Buffer) {
 // writeColorElement writes a color element with optional modifier children.
 func writeColorElement(buf *bytes.Buffer, tag, val string, mods []colorMod) {
 	if len(mods) == 0 {
-		buf.WriteString(fmt.Sprintf(`<a:%s val="%s"/>`, tag, val))
+		fmt.Fprintf(buf, `<a:%s val="%s"/>`, tag, val)
 		return
 	}
-	buf.WriteString(fmt.Sprintf(`<a:%s val="%s">`, tag, val))
+	fmt.Fprintf(buf, `<a:%s val="%s">`, tag, val)
 	for _, m := range mods {
-		buf.WriteString(fmt.Sprintf(`<a:%s val="%d"/>`, m.name, m.val))
+		fmt.Fprintf(buf, `<a:%s val="%d"/>`, m.name, m.val)
 	}
-	buf.WriteString(fmt.Sprintf(`</a:%s>`, tag))
+	fmt.Fprintf(buf, `</a:%s>`, tag)
 }
 
 // writeGradientFill writes a <a:gradFill> element.
@@ -181,7 +181,7 @@ func (f Fill) writeGradientFill(buf *bytes.Buffer) {
 	buf.WriteString(`<a:gradFill>`)
 	buf.WriteString(`<a:gsLst>`)
 	for _, stop := range f.stops {
-		buf.WriteString(fmt.Sprintf(`<a:gs pos="%d">`, stop.Position))
+		fmt.Fprintf(buf, `<a:gs pos="%d">`, stop.Position)
 		stop.Color.WriteColorTo(buf)
 		buf.WriteString(`</a:gs>`)
 	}
@@ -192,7 +192,7 @@ func (f Fill) writeGradientFill(buf *bytes.Buffer) {
 		if f.scaled {
 			scaled = "1"
 		}
-		buf.WriteString(fmt.Sprintf(`<a:lin ang="%d" scaled="%s"/>`, f.angle, scaled))
+		fmt.Fprintf(buf, `<a:lin ang="%d" scaled="%s"/>`, f.angle, scaled)
 	case gradientRadial:
 		buf.WriteString(`<a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>`)
 	}
@@ -201,13 +201,13 @@ func (f Fill) writeGradientFill(buf *bytes.Buffer) {
 
 // writePatternFill writes a <a:pattFill> element.
 func (f Fill) writePatternFill(buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf(`<a:pattFill prst="%s">`, f.pattern))
-	buf.WriteString(fmt.Sprintf(`<a:fgClr><a:srgbClr val="%s"/></a:fgClr>`, f.patternFG))
-	buf.WriteString(fmt.Sprintf(`<a:bgClr><a:srgbClr val="%s"/></a:bgClr>`, f.patternBG))
+	fmt.Fprintf(buf, `<a:pattFill prst="%s">`, f.pattern)
+	fmt.Fprintf(buf, `<a:fgClr><a:srgbClr val="%s"/></a:fgClr>`, f.patternFG)
+	fmt.Fprintf(buf, `<a:bgClr><a:srgbClr val="%s"/></a:bgClr>`, f.patternBG)
 	buf.WriteString(`</a:pattFill>`)
 }
 
 // writePictureFill writes a <a:blipFill> element.
 func (f Fill) writePictureFill(buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf(`<a:blipFill><a:blip r:embed="%s"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>`, f.rID))
+	fmt.Fprintf(buf, `<a:blipFill><a:blip r:embed="%s"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>`, f.rID)
 }

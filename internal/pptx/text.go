@@ -66,20 +66,20 @@ func (tb TextBody) WriteTo(buf *bytes.Buffer) {
 func (tb TextBody) writeBodyPr(buf *bytes.Buffer) {
 	buf.WriteString(`<a:bodyPr`)
 	if tb.Wrap != "" {
-		buf.WriteString(fmt.Sprintf(` wrap="%s"`, tb.Wrap))
+		fmt.Fprintf(buf, ` wrap="%s"`, tb.Wrap)
 	}
 	if tb.Anchor != "" {
-		buf.WriteString(fmt.Sprintf(` anchor="%s"`, tb.Anchor))
+		fmt.Fprintf(buf, ` anchor="%s"`, tb.Anchor)
 	}
 	if tb.AnchorCtr {
 		buf.WriteString(` anchorCtr="1"`)
 	}
 	if tb.Vert != "" {
-		buf.WriteString(fmt.Sprintf(` vert="%s"`, tb.Vert))
+		fmt.Fprintf(buf, ` vert="%s"`, tb.Vert)
 	}
 	if tb.Insets != [4]int64{} {
-		buf.WriteString(fmt.Sprintf(` lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
-			tb.Insets[0], tb.Insets[1], tb.Insets[2], tb.Insets[3]))
+		fmt.Fprintf(buf, ` lIns="%d" tIns="%d" rIns="%d" bIns="%d"`,
+			tb.Insets[0], tb.Insets[1], tb.Insets[2], tb.Insets[3])
 	}
 	buf.WriteString(`>`)
 
@@ -105,19 +105,19 @@ func (p Paragraph) WriteXML(buf *bytes.Buffer) {
 	if hasPPr {
 		buf.WriteString(`<a:pPr`)
 		if p.Align != "" {
-			buf.WriteString(fmt.Sprintf(` algn="%s"`, p.Align))
+			fmt.Fprintf(buf, ` algn="%s"`, p.Align)
 		}
 		if p.MarginL != 0 {
-			buf.WriteString(fmt.Sprintf(` marL="%d"`, p.MarginL))
+			fmt.Fprintf(buf, ` marL="%d"`, p.MarginL)
 		}
 		if p.Indent != 0 {
-			buf.WriteString(fmt.Sprintf(` indent="%d"`, p.Indent))
+			fmt.Fprintf(buf, ` indent="%d"`, p.Indent)
 		}
 		hasChildren := p.Bullet != nil || p.NoBullet || p.SpaceAfter > 0
 		if hasChildren {
 			buf.WriteString(`>`)
 			if p.SpaceAfter > 0 {
-				buf.WriteString(fmt.Sprintf(`<a:spcAft><a:spcPts val="%d"/></a:spcAft>`, p.SpaceAfter))
+				fmt.Fprintf(buf, `<a:spcAft><a:spcPts val="%d"/></a:spcAft>`, p.SpaceAfter)
 			}
 			if p.Bullet != nil {
 				p.Bullet.marshalXML(buf)
@@ -146,10 +146,10 @@ func (b BulletDef) marshalXML(buf *bytes.Buffer) {
 		buf.WriteString(`</a:buClr>`)
 	}
 	if b.Font != "" {
-		buf.WriteString(fmt.Sprintf(`<a:buFont typeface="%s"/>`, escapeXMLAttr(b.Font)))
+		fmt.Fprintf(buf, `<a:buFont typeface="%s"/>`, escapeXMLAttr(b.Font))
 	}
 	if b.Char != "" {
-		buf.WriteString(fmt.Sprintf(`<a:buChar char="%s"/>`, escapeXMLAttr(b.Char)))
+		fmt.Fprintf(buf, `<a:buChar char="%s"/>`, escapeXMLAttr(b.Char))
 	}
 }
 
@@ -157,7 +157,7 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 	// Use <a:fld> for field elements (e.g. slidenum), <a:r> for normal runs
 	isField := r.FieldType != ""
 	if isField {
-		buf.WriteString(fmt.Sprintf(`<a:fld id="%s" type="%s">`, escapeXMLAttr(r.FieldID), escapeXMLAttr(r.FieldType)))
+		fmt.Fprintf(buf, `<a:fld id="%s" type="%s">`, escapeXMLAttr(r.FieldID), escapeXMLAttr(r.FieldType))
 	} else {
 		buf.WriteString(`<a:r>`)
 	}
@@ -167,10 +167,10 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 	if hasRPr {
 		buf.WriteString(`<a:rPr`)
 		if r.Lang != "" {
-			buf.WriteString(fmt.Sprintf(` lang="%s"`, r.Lang))
+			fmt.Fprintf(buf, ` lang="%s"`, r.Lang)
 		}
 		if r.FontSize > 0 {
-			buf.WriteString(fmt.Sprintf(` sz="%d"`, r.FontSize))
+			fmt.Fprintf(buf, ` sz="%d"`, r.FontSize)
 		}
 		if r.Bold {
 			buf.WriteString(` b="1"`)
@@ -188,7 +188,7 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 				r.Color.WriteTo(buf)
 			}
 			if r.FontFamily != "" {
-				buf.WriteString(fmt.Sprintf(`<a:latin typeface="%s"/>`, escapeXMLAttr(r.FontFamily)))
+				fmt.Fprintf(buf, `<a:latin typeface="%s"/>`, escapeXMLAttr(r.FontFamily))
 			}
 			buf.WriteString(`</a:rPr>`)
 		} else {

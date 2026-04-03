@@ -281,7 +281,7 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 		// Parse "forceType:intensity" from value field
 		if parts := strings.SplitN(p.value, ":", 2); len(parts) == 2 {
 			forces[i].forceType = porterForceType(parts[0])
-			fmt.Sscanf(parts[1], "%f", &forces[i].intensity)
+			_, _ = fmt.Sscanf(parts[1], "%f", &forces[i].intensity)
 		}
 		// Parse factors from body
 		if p.body != "" {

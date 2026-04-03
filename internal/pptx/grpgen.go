@@ -61,9 +61,9 @@ func GenerateGroupWithChildSpace(opts GroupOptions, childBounds RectEmu) ([]byte
 	buf.WriteByte('\n')
 
 	// cNvPr
-	buf.WriteString(fmt.Sprintf(`    <p:cNvPr id="%d" name="%s"`, opts.ID, escapeXMLAttr(name)))
+	fmt.Fprintf(&buf, `    <p:cNvPr id="%d" name="%s"`, opts.ID, escapeXMLAttr(name))
 	if opts.Description != "" {
-		buf.WriteString(fmt.Sprintf(` descr="%s"`, escapeXMLAttr(opts.Description)))
+		fmt.Fprintf(&buf, ` descr="%s"`, escapeXMLAttr(opts.Description))
 	}
 	buf.WriteString(`/>`)
 	buf.WriteByte('\n')
@@ -85,10 +85,10 @@ func GenerateGroupWithChildSpace(opts GroupOptions, childBounds RectEmu) ([]byte
 
 	// xfrm with child offset/extent
 	buf.WriteString(`    <a:xfrm>`)
-	buf.WriteString(fmt.Sprintf(`<a:off x="%d" y="%d"/>`, opts.Bounds.X, opts.Bounds.Y))
-	buf.WriteString(fmt.Sprintf(`<a:ext cx="%d" cy="%d"/>`, opts.Bounds.CX, opts.Bounds.CY))
-	buf.WriteString(fmt.Sprintf(`<a:chOff x="%d" y="%d"/>`, childBounds.X, childBounds.Y))
-	buf.WriteString(fmt.Sprintf(`<a:chExt cx="%d" cy="%d"/>`, childBounds.CX, childBounds.CY))
+	fmt.Fprintf(&buf, `<a:off x="%d" y="%d"/>`, opts.Bounds.X, opts.Bounds.Y)
+	fmt.Fprintf(&buf, `<a:ext cx="%d" cy="%d"/>`, opts.Bounds.CX, opts.Bounds.CY)
+	fmt.Fprintf(&buf, `<a:chOff x="%d" y="%d"/>`, childBounds.X, childBounds.Y)
+	fmt.Fprintf(&buf, `<a:chExt cx="%d" cy="%d"/>`, childBounds.CX, childBounds.CY)
 	buf.WriteString(`</a:xfrm>`)
 	buf.WriteByte('\n')
 

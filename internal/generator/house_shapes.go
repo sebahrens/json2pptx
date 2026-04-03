@@ -397,7 +397,7 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 
 	// --- Roof (triangle) ---
 	roofY := bounds.Y
-	roofTitle := panels[0].title // safe: len(panels) >= 2 checked above
+	roofTitle := panels[0].title //nolint:gosec // safe: len(panels) >= 2 checked above
 	shapeIdx++
 	roofShape, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeIDBase + shapeIdx,

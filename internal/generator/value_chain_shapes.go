@@ -291,7 +291,7 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 			if i >= len(panels) {
 				break
 			}
-			panel := panels[i]
+			panel := panels[i] //nolint:gosec // bounds checked by i >= len(panels) break above
 			barY := bounds.Y + int64(i)*(barH+vcGap)
 			sc := vcSupportColors[i%len(vcSupportColors)]
 

@@ -58,7 +58,7 @@ func (s Shadow) WriteEffectXML(buf *bytes.Buffer) {
 		fmt.Fprintf(buf, ` dir="%d"`, s.Direction)
 	}
 	if s.Alignment != "" {
-		buf.WriteString(fmt.Sprintf(` algn="%s"`, s.Alignment))
+		fmt.Fprintf(buf, ` algn="%s"`, s.Alignment)
 	}
 	buf.WriteString(`>`)
 	if !s.Color.IsZero() {
@@ -77,7 +77,7 @@ type Glow struct {
 
 // WriteEffectXML writes the <a:glow> element.
 func (g Glow) WriteEffectXML(buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf(`<a:glow rad="%d">`, g.Radius))
+	fmt.Fprintf(buf, `<a:glow rad="%d">`, g.Radius)
 	if !g.Color.IsZero() {
 		g.Color.WriteColorTo(buf)
 	}
@@ -92,7 +92,7 @@ type SoftEdge struct {
 
 // WriteEffectXML writes the <a:softEdge> element.
 func (se SoftEdge) WriteEffectXML(buf *bytes.Buffer) {
-	buf.WriteString(fmt.Sprintf(`<a:softEdge rad="%d"/>`, se.Radius))
+	fmt.Fprintf(buf, `<a:softEdge rad="%d"/>`, se.Radius)
 }
 
 // WriteEffectList writes an <a:effectLst> element containing the given effects.
