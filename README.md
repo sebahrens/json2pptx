@@ -440,6 +440,77 @@ Get layout details for a template:
 json2pptx skill-info --mode=full --template=midnight-blue
 ```
 
+### Creating a Custom Template
+
+Any `.pptx` file can serve as a template. Open PowerPoint (or Google Slides, Keynote, LibreOffice Impress), design your slides in the **Slide Master** view, and save as `.pptx`. json2pptx analyzes the layouts at runtime and maps your JSON content to the right placeholders.
+
+#### Required Layouts (4 minimum)
+
+Your template must contain at least these 4 slide layouts for json2pptx to work:
+
+| Layout | Purpose | Placeholders | Maps to `slide_type` |
+|--------|---------|--------------|----------------------|
+| **Title Slide** | Opening slide | Title + Subtitle | `title` |
+| **Content** | Main content slides | Title + Body | `content`, `chart`, `diagram` |
+| **Section Divider** | Section breaks | Title (+ optional Body) | `section` |
+| **Closing** | Final slide | Title + Subtitle | `blank` (closing tag) |
+
+The layouts are detected by their **placeholder structure**, not by name. A layout with one title and one large body placeholder is classified as "content" regardless of what you call it.
+
+#### Recommended Layouts (6 for full coverage)
+
+For the best experience, also include:
+
+| Layout | Purpose | Placeholders | Maps to `slide_type` |
+|--------|---------|--------------|----------------------|
+| **Two Content** | Side-by-side content | Title + 2 Body placeholders | `two-column`, `comparison` |
+| **Blank** | Empty slide (for shape grids) | None | `blank` |
+
+If these are missing, json2pptx **synthesizes** them automatically from your content layout. A "Blank + Title" layout is also synthesized when needed for shape grid slides.
+
+#### Placeholder Rules
+
+- Each layout should use standard PowerPoint **placeholder types** (Title, Body, Subtitle) -- not plain text boxes
+- The **Title** placeholder is what json2pptx targets with `placeholder_id: "title"`
+- The **Body/Content** placeholder is targeted with `placeholder_id: "body"`
+- The **Subtitle** placeholder is targeted with `placeholder_id: "subtitle"`
+- Placeholder size determines character capacity -- json2pptx calculates `max_chars` from the bounding box
+
+#### Theme and Colors
+
+json2pptx extracts your template's **theme colors** (`accent1` through `accent6`, `dk1`, `dk2`, `lt1`, `lt2`) and uses them for:
+- Native diagram shapes (SWOT quadrants, Porter's forces, process flow steps)
+- Chart color palettes
+- Shape grid fills when using scheme references like `"fill": "accent1"`
+- Automatic text contrast correction
+
+Define your colors in the slide master's theme. Per-deck overrides are also supported via `theme_override` in JSON.
+
+#### How to Use Your Template
+
+```sh
+# Place your .pptx in a directory
+mkdir my-templates
+cp my-corporate-theme.pptx my-templates/
+
+# Use it (reference by filename without .pptx)
+json2pptx generate -json slides.json -template my-corporate-theme -templates-dir my-templates
+
+# Validate it
+json2pptx validate-template my-templates/my-corporate-theme.pptx
+
+# Inspect detected layouts
+json2pptx skill-info --mode=full --template=my-corporate-theme --templates-dir=my-templates
+```
+
+#### Tips
+
+- Design in **16:9 aspect ratio** (standard for modern presentations)
+- Use **Slide Master** view in PowerPoint to edit layouts -- don't design on individual slides
+- Keep layout names descriptive (e.g., "One Content", "Two Column") -- json2pptx uses names as classification hints
+- Test with `json2pptx skill-info --mode=full` to see how your layouts are classified and what tags they receive
+- If a layout is misclassified, adjust its placeholder structure (add/remove/resize placeholders)
+
 ## CLI Tool (json2pptx)
 
 The `json2pptx` binary is the primary CLI tool. It works as a batch converter, HTTP API server, and MCP server.
