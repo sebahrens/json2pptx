@@ -19,6 +19,62 @@ This is *what you mean is what you get* for presentations:
 
 The input is a JSON document. The output is a `.pptx` file that opens in PowerPoint, Keynote, or Google Slides -- no post-editing required. Templates control the visual identity; your JSON controls the content and structure.
 
+## How It Works
+
+### The 3 Inputs
+
+```
+JSON (content) + Template (.pptx)  -->  json2pptx  -->  Presentation (.pptx)
+```
+
+1. **Template** -- A real PowerPoint file with pre-designed slide layouts, colors, and fonts (e.g., `midnight-blue.pptx`). You never edit this directly.
+2. **JSON** -- Your content: what goes on each slide, which layout to use, and what type of content (text, bullets, charts, diagrams, tables, shape grids).
+3. **The binary** -- `json2pptx generate` reads both, matches content to template placeholders, and writes the final `.pptx`.
+
+### Slides, Layouts, and Placeholders
+
+Each slide has a **layout** (picked by `slide_type`) and **content items** targeting **placeholders**:
+
+```json
+{
+  "slide_type": "content",
+  "content": [
+    {"placeholder_id": "title", "type": "text", "text_value": "Revenue"},
+    {"placeholder_id": "body",  "type": "chart", "chart_value": {"type": "bar", "data": {"Q1": 12, "Q2": 14}}}
+  ]
+}
+```
+
+- **`slide_type`** -- semantic hint that picks the right layout: `title`, `content`, `chart`, `section`, `two-column`, `blank`, `diagram`
+- **`placeholder_id`** -- canonical slot name: `title`, `subtitle`, `body`. These are portable across all templates.
+- **`type`** -- what kind of content: `text`, `bullets`, `chart`, `diagram`, `table`, `image`, `body_and_bullets`, `bullet_groups`
+
+You don't need to know internal layout IDs. The system resolves them automatically -- the same JSON works with any template.
+
+### Two Rendering Paths
+
+| Path | What | How | Result |
+|------|------|-----|--------|
+| **Native OOXML shapes** | SWOT, Porter's, BMC, pyramids, process flows, value chains, heatmaps, and more (12 types) | Generated as real PowerPoint shapes | Editable, crisp at any zoom |
+| **SVG-rendered charts** | Bar, line, pie, radar, waterfall, gauge, treemap, and more (15 types) | Rendered by `svggen` and embedded as images | High-quality visuals in PowerPoint/Keynote |
+
+### Shape Grids
+
+For custom visual layouts (consulting-style panels, process steps, matrices), `shape_grid` lets you define a grid of shapes directly on a slide. Each cell can hold a shape, table, icon, or image. These render as native OOXML shapes -- fully editable in PowerPoint.
+
+### At a Glance
+
+| Concept | What it does |
+|---------|-------------|
+| Template | Provides design (colors, fonts, layouts) |
+| JSON | Describes content (what goes where) |
+| `slide_type` | Picks the right layout automatically |
+| `placeholder_id` | Targets a slot (`title`, `body`, `subtitle`) |
+| Content `type` | Determines rendering (text, chart, diagram, etc.) |
+| Native shapes | Editable PowerPoint objects for business diagrams |
+| SVG charts | High-quality rendered images for data visualizations |
+| Shape grids | Custom grid layouts with shapes, tables, icons, images |
+
 ## Features
 
 - **JSON-to-PPTX conversion** -- define slides as structured JSON, get polished PowerPoint files
