@@ -5,6 +5,9 @@ import (
 )
 
 func TestSVGStressAllTypes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping SVG stress test in short mode")
+	}
 	runner := NewSVGStressRunner(42)
 	report := runner.Run("")
 
@@ -17,6 +20,9 @@ func TestSVGStressAllTypes(t *testing.T) {
 }
 
 func TestSVGStressSeedReproducibility(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping SVG stress test in short mode")
+	}
 	r1 := NewSVGStressRunner(12345)
 	r2 := NewSVGStressRunner(12345)
 
@@ -62,6 +68,9 @@ func TestSVGStressAliasResolution(t *testing.T) {
 }
 
 func TestSVGStressPerType(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping SVG stress test in short mode")
+	}
 	types := DiagramTypes()
 	runner := NewSVGStressRunner(777)
 
