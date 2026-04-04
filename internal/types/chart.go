@@ -20,7 +20,7 @@ type ChartSpec struct {
 	Height       int                `json:"height,omitempty"`        // Height in pixels (default: 600)
 	Scale        float64            `json:"scale,omitempty"`         // Resolution scale (default: calculated dynamically, min 2.0)
 	Style        *ChartStyle        `json:"style,omitempty"`         // Optional styling overrides
-	OutputFormat ChartOutputFormat  `json:"output_format,omitempty"` // Output format: png (default) or svg
+	OutputFormat string             `json:"output_format,omitempty"` // Output format: png (default) or svg
 
 	// SeriesLabels provides series names for multi-series chart types
 	// (stacked_bar, grouped_bar, stacked_area). When Data values are arrays,
@@ -51,7 +51,7 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 		Height       int               `json:"height,omitempty"`
 		Scale        float64           `json:"scale,omitempty"`
 		Style        *ChartStyle       `json:"style,omitempty"`
-		OutputFormat ChartOutputFormat `json:"output_format,omitempty"`
+		OutputFormat string            `json:"output_format,omitempty"`
 		SeriesLabels []string          `json:"series_labels,omitempty"`
 		TimeData     map[string]any    `json:"time_data,omitempty"`
 		TimeOrder    []string          `json:"time_order,omitempty"`
@@ -180,19 +180,6 @@ func convertPointArrayToSeriesData(arr []map[string]any) (data map[string]any, o
 		"series": []map[string]any{{"name": "Data", "points": points}},
 	}, nil
 }
-
-// ChartOutputFormat specifies the output format for chart rendering.
-type ChartOutputFormat string
-
-const (
-	// ChartFormatPNG renders the chart as a PNG image (default).
-	ChartFormatPNG ChartOutputFormat = "png"
-
-	// ChartFormatSVG renders the chart as an SVG vector graphic.
-	// SVG provides better scaling fidelity and smaller file size for simple charts.
-	// When embedded in PPTX, SVG is converted based on the configured SVG strategy.
-	ChartFormatSVG ChartOutputFormat = "svg"
-)
 
 // ChartType represents the type of chart to render.
 type ChartType string
