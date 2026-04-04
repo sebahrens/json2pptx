@@ -52,6 +52,16 @@ func TestGenerateNotesSlideXML(t *testing.T) {
 				`<a:endParaRPr lang="en-US"/>`,
 			},
 		},
+		{
+			name:      "notes with illegal XML control characters",
+			notesText: "before\x01\x08\x0B\x0C\x0E\x1Fafter",
+			wantParts: []string{
+				"beforeafter",
+			},
+			wantAbsent: []string{
+				"\x01", "\x08", "\x0B", "\x0C", "\x0E", "\x1F",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -126,6 +136,11 @@ func TestXmlEscapeString(t *testing.T) {
 		{name: "double quote", input: `say "hello"`, want: "say &quot;hello&quot;"},
 		{name: "single quote", input: "it's", want: "it&apos;s"},
 		{name: "multiple escapes", input: `<a href="x">&</a>`, want: "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"},
+		{name: "strips null byte", input: "hello\x00world", want: "helloworld"},
+		{name: "strips control chars", input: "a\x01b\x08c\x0Bd\x0Ce\x0Ef\x1Fg", want: "abcdefg"},
+		{name: "preserves tab", input: "a\tb", want: "a\tb"},
+		{name: "preserves newline", input: "a\nb", want: "a\nb"},
+		{name: "preserves carriage return", input: "a\rb", want: "a\rb"},
 	}
 
 	for _, tt := range tests {

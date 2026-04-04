@@ -111,23 +111,30 @@ func splitOnNewlines(text string) []string {
 	return result
 }
 
-// xmlEscapeString escapes special XML characters in a string.
+// xmlEscapeString escapes special XML characters and strips XML 1.0 illegal
+// control characters (U+0000-U+0008, U+000B, U+000C, U+000E-U+001F).
+// Tab (0x09), newline (0x0A), and carriage return (0x0D) are preserved.
 func xmlEscapeString(s string) string {
 	var buf []byte
 	for i := 0; i < len(s); i++ {
-		switch s[i] {
-		case '&':
+		b := s[i]
+		switch {
+		case b == '&':
 			buf = append(buf, []byte("&amp;")...)
-		case '<':
+		case b == '<':
 			buf = append(buf, []byte("&lt;")...)
-		case '>':
+		case b == '>':
 			buf = append(buf, []byte("&gt;")...)
-		case '"':
+		case b == '"':
 			buf = append(buf, []byte("&quot;")...)
-		case '\'':
+		case b == '\'':
 			buf = append(buf, []byte("&apos;")...)
+		case b == '\t', b == '\n', b == '\r':
+			buf = append(buf, b)
+		case b < 0x20:
+			// Strip XML 1.0 illegal control characters
 		default:
-			buf = append(buf, s[i])
+			buf = append(buf, b)
 		}
 	}
 	return string(buf)
