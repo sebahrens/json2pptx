@@ -30,7 +30,10 @@ func TestThemeColorsReachChart(t *testing.T) {
 				t.Skipf("template not available: %v", err)
 			}
 			defer f.Close()
-			stat, _ := f.Stat()
+			stat, err := f.Stat()
+			if err != nil {
+				t.Fatalf("stat: %v", err)
+			}
 			zr, err := zip.NewReader(f, stat.Size())
 			if err != nil {
 				t.Fatalf("zip reader: %v", err)

@@ -11,6 +11,85 @@ import (
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
+type jsonPalette struct {
+	Accent1     string `json:"accent1"`
+	Accent2     string `json:"accent2"`
+	Accent3     string `json:"accent3"`
+	Accent4     string `json:"accent4"`
+	Accent5     string `json:"accent5"`
+	Accent6     string `json:"accent6"`
+	Background  string `json:"background"`
+	TextPrimary string `json:"text_primary"`
+}
+
+type jsonColor struct {
+	Name string `json:"name"`
+	RGB  string `json:"rgb"`
+}
+
+type jsonTemplate struct {
+	Name      string      `json:"name"`
+	TitleFont string      `json:"title_font"`
+	BodyFont  string      `json:"body_font"`
+	Colors    []jsonColor `json:"colors"`
+	Palette   jsonPalette `json:"palette"`
+}
+
+// processTemplate opens a PPTX template, extracts theme info, and returns structured data.
+// The file is closed before returning, avoiding resource leaks when called in a loop.
+func processTemplate(name, path string) (jsonTemplate, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return jsonTemplate{}, fmt.Errorf("opening %s: %w", path, err)
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return jsonTemplate{}, fmt.Errorf("stat %s: %w", path, err)
+	}
+	zr, err := zip.NewReader(f, stat.Size())
+	if err != nil {
+		return jsonTemplate{}, fmt.Errorf("reading zip %s: %w", path, err)
+	}
+
+	themeInfo := template.ParseThemeFromZip(zr)
+
+	themeInputs := make([]svggen.ThemeColorInput, len(themeInfo.Colors))
+	for i, tc := range themeInfo.Colors {
+		themeInputs[i] = svggen.ThemeColorInput{Name: tc.Name, RGB: tc.RGB}
+	}
+	palette := svggen.NewPaletteFromThemeColors(themeInputs)
+
+	jt := jsonTemplate{
+		Name:      name,
+		TitleFont: themeInfo.TitleFont,
+		BodyFont:  themeInfo.BodyFont,
+		Palette: jsonPalette{
+			Accent1:     palette.Accent1.Hex(),
+			Accent2:     palette.Accent2.Hex(),
+			Accent3:     palette.Accent3.Hex(),
+			Accent4:     palette.Accent4.Hex(),
+			Accent5:     palette.Accent5.Hex(),
+			Accent6:     palette.Accent6.Hex(),
+			Background:  palette.Background.Hex(),
+			TextPrimary: palette.TextPrimary.Hex(),
+		},
+	}
+	for _, c := range themeInfo.Colors {
+		jt.Colors = append(jt.Colors, jsonColor{Name: c.Name, RGB: c.RGB})
+	}
+	return jt, nil
+}
+
+func themeInputsFromJSON(jt jsonTemplate) []svggen.ThemeColorInput {
+	inputs := make([]svggen.ThemeColorInput, len(jt.Colors))
+	for i, c := range jt.Colors {
+		inputs[i] = svggen.ThemeColorInput{Name: c.Name, RGB: c.RGB}
+	}
+	return inputs
+}
+
 func main() {
 	templateFlag := flag.String("template", "", "Template name to debug (default: all templates)")
 	jsonFlag := flag.Bool("json", false, "Output as JSON")
@@ -53,27 +132,6 @@ func main() {
 		templates = filtered
 	}
 
-	type jsonPalette struct {
-		Accent1    string `json:"accent1"`
-		Accent2    string `json:"accent2"`
-		Accent3    string `json:"accent3"`
-		Accent4    string `json:"accent4"`
-		Accent5    string `json:"accent5"`
-		Accent6    string `json:"accent6"`
-		Background string `json:"background"`
-		TextPrimary string `json:"text_primary"`
-	}
-	type jsonColor struct {
-		Name string `json:"name"`
-		RGB  string `json:"rgb"`
-	}
-	type jsonTemplate struct {
-		Name      string       `json:"name"`
-		TitleFont string       `json:"title_font"`
-		BodyFont  string       `json:"body_font"`
-		Colors    []jsonColor  `json:"colors"`
-		Palette   jsonPalette  `json:"palette"`
-	}
 	var jsonResults []jsonTemplate
 
 	for _, t := range templates {
@@ -81,61 +139,19 @@ func main() {
 			fmt.Printf("\n=== %s ===\n", t.name)
 		}
 
-		f, err := os.Open(t.path)
+		jt, err := processTemplate(t.name, t.path)
 		if err != nil {
-			fmt.Printf("  ERROR opening: %v\n", err)
+			fmt.Printf("  ERROR: %v\n", err)
 			continue
 		}
-		defer f.Close()
-
-		stat, _ := f.Stat()
-		zr, err := zip.NewReader(f, stat.Size())
-		if err != nil {
-			fmt.Printf("  ERROR reading zip: %v\n", err)
-			continue
-		}
-
-		// Use ParseThemeFromZip (same as generator does)
-		themeInfo := template.ParseThemeFromZip(zr)
-
-		// Now simulate what diagramSpecToSVGGen does
-		themeInputs := make([]svggen.ThemeColorInput, len(themeInfo.Colors))
-		for i, tc := range themeInfo.Colors {
-			themeInputs[i] = svggen.ThemeColorInput{
-				Name: tc.Name,
-				RGB:  tc.RGB,
-			}
-		}
-
-		// Build palette (same as StyleGuideFromSpec does)
-		palette := svggen.NewPaletteFromThemeColors(themeInputs)
 
 		if *jsonFlag {
-			jt := jsonTemplate{
-				Name:      t.name,
-				TitleFont: themeInfo.TitleFont,
-				BodyFont:  themeInfo.BodyFont,
-				Palette: jsonPalette{
-					Accent1:     palette.Accent1.Hex(),
-					Accent2:     palette.Accent2.Hex(),
-					Accent3:     palette.Accent3.Hex(),
-					Accent4:     palette.Accent4.Hex(),
-					Accent5:     palette.Accent5.Hex(),
-					Accent6:     palette.Accent6.Hex(),
-					Background:  palette.Background.Hex(),
-					TextPrimary: palette.TextPrimary.Hex(),
-				},
-			}
-			for _, c := range themeInfo.Colors {
-				jt.Colors = append(jt.Colors, jsonColor{Name: c.Name, RGB: c.RGB})
-			}
 			jsonResults = append(jsonResults, jt)
 		} else {
-			fmt.Printf("  Theme name: %s\n", themeInfo.Name)
-			fmt.Printf("  Title font: %s\n", themeInfo.TitleFont)
-			fmt.Printf("  Body font: %s\n", themeInfo.BodyFont)
-			fmt.Printf("  Colors (%d):\n", len(themeInfo.Colors))
-			for _, c := range themeInfo.Colors {
+			palette := svggen.NewPaletteFromThemeColors(themeInputsFromJSON(jt))
+			fmt.Printf("  Theme name: %s\n", t.name)
+			fmt.Printf("  Colors (%d):\n", len(jt.Colors))
+			for _, c := range jt.Colors {
 				fmt.Printf("    %-10s %s\n", c.Name, c.RGB)
 			}
 			fmt.Printf("  Resulting palette:\n")
