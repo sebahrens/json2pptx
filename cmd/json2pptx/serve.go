@@ -119,12 +119,23 @@ func runServe() error {
 		StrictValidation: cfg.Templates.IsStrictValidation(),
 	})
 
+	// Start output file cleanup daemon (enforces FileRetention policy)
+	outputCleaner := api.NewOutputCleaner(api.OutputCleanerConfig{
+		OutputDir: cfg.Storage.OutputDir,
+		Retention: cfg.Storage.FileRetention,
+		Interval:  cfg.Storage.CleanupInterval,
+		Logger:    logger,
+	})
+	outputCleaner.Start()
+	defer outputCleaner.Stop()
+
 	// Create HTTP server
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:        apiServer,
 		ReadTimeout:    cfg.Server.ReadTimeout,
 		WriteTimeout:   cfg.Server.WriteTimeout,
+		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
