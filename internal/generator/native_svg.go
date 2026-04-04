@@ -170,13 +170,7 @@ func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte
 	// Store the updated inserts back (with shape IDs)
 	ctx.nativeSVGInserts[slideNum] = nativeSVGs
 
-	// Find closing </p:spTree> and insert p:pic elements before it
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return nil, fmt.Errorf("could not find </p:spTree> in slide XML")
-	}
-
-	// Insert the p:pic elements
+	// Insert the p:pic elements before </p:spTree>
 	insertion := strings.Join(picsToInsert, "\n")
-	return spliceBytes(slideData, insertPos, insertion), nil
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
 }

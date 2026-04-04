@@ -9,14 +9,18 @@ import (
 )
 
 // spTreePattern matches the opening and closing spTree tags.
+// Both prefixed (p:spTree) and unprefixed (spTree) forms are supported
+// because Go's encoding/xml marshals without namespace prefixes;
+// fixOOXMLNamespaces adds the p: prefix later in the pipeline.
 var (
-	spTreeOpenPattern  = regexp.MustCompile(`<p:spTree[^>]*>`)
-	spTreeClosePattern = regexp.MustCompile(`</p:spTree>`)
+	spTreeOpenPattern  = regexp.MustCompile(`<(?:p:)?spTree[^>]*>`)
+	spTreeClosePattern = regexp.MustCompile(`</(?:p:)?spTree>`)
 
 	// Shape element patterns - these are the child elements that can appear in spTree
 	// after the mandatory nvGrpSpPr and grpSpPr elements.
-	// Order: p:sp, p:grpSp, p:graphicFrame, p:cxnSp, p:pic, p:contentPart
-	shapeElementPattern = regexp.MustCompile(`<p:(sp|grpSp|graphicFrame|cxnSp|pic|contentPart)\b`)
+	// Order: sp, grpSp, graphicFrame, cxnSp, pic, contentPart
+	// Supports both prefixed (p:sp) and unprefixed (sp) forms.
+	shapeElementPattern = regexp.MustCompile(`<(?:p:)?(sp|grpSp|graphicFrame|cxnSp|pic|contentPart)\b`)
 )
 
 // InsertPosition specifies where to insert a new element in the spTree.

@@ -1,8 +1,6 @@
 package generator
 
 import (
-	"fmt"
-
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
@@ -56,11 +54,5 @@ func generateSourceNoteShape(sourceText string) string {
 func insertSourceNote(slideData []byte, sourceText string) ([]byte, error) {
 	shapeXML := generateSourceNoteShape(sourceText)
 
-	// Find closing </p:spTree> and insert source note shape before it
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return nil, fmt.Errorf("could not find </p:spTree> in slide XML for source note")
-	}
-
-	return spliceBytes(slideData, insertPos, shapeXML), nil
+	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

@@ -691,7 +691,10 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 
 	// Insert table graphicFrame elements (replacing removed placeholder shapes)
 	if hasTable {
-		slideData = insertTableFrames(slideData, tableInserts)
+		slideData, err = insertTableFrames(slideData, tableInserts)
+		if err != nil {
+			return fmt.Errorf("failed to insert table frames for slide %d: %w", slideNum, err)
+		}
 	}
 
 	// Insert p:pic elements for regular media (images, charts, infographics)
@@ -706,7 +709,10 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 
 	// Insert native panel group shapes (p:grpSp elements)
 	if hasPanel {
-		slideData = insertPanelGroups(slideData, panelInserts)
+		slideData, err = insertPanelGroups(slideData, panelInserts)
+		if err != nil {
+			return fmt.Errorf("failed to insert panel groups for slide %d: %w", slideNum, err)
+		}
 	}
 
 	// Insert raw shape XML fragments (e.g., from shape_grid)
@@ -716,7 +722,10 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		// parsed slide shapes vs layout background. Shape_grid shapes need
 		// per-cell contrast checks: text color vs the cell's own fill color.
 		shapes := enforceShapeGridContrast(spec.RawShapeXML, ctx.themeColors)
-		slideData = insertRawShapes(slideData, shapes)
+		slideData, err = insertRawShapes(slideData, shapes)
+		if err != nil {
+			return fmt.Errorf("failed to insert raw shapes for slide %d: %w", slideNum, err)
+		}
 	}
 
 	// Insert native SVG icon pics AFTER raw shapes so icons render on top
@@ -791,19 +800,14 @@ func (ctx *singlePassContext) removeTablePlaceholders(slide *slideXML, tables []
 }
 
 // insertTableFrames inserts <p:graphicFrame> elements for tables before </p:spTree>.
-func insertTableFrames(slideData []byte, tables []tableInsert) []byte {
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return slideData // Cannot find insertion point
-	}
-
+func insertTableFrames(slideData []byte, tables []tableInsert) ([]byte, error) {
 	var frames []string
 	for _, t := range tables {
 		frames = append(frames, t.graphicFrameXML)
 	}
 
 	insertion := strings.Join(frames, "\n")
-	return spliceBytes(slideData, insertPos, insertion)
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
 }
 
 // removeMediaPlaceholders removes placeholder shapes that are being replaced by p:pic elements.
@@ -885,15 +889,9 @@ func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, me
 		return slideData, nil
 	}
 
-	// Find closing </p:spTree> and insert p:pic elements before it
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return nil, fmt.Errorf("could not find </p:spTree> in slide XML")
-	}
-
-	// Insert the p:pic elements
+	// Insert the p:pic elements before </p:spTree>
 	insertion := strings.Join(picsToInsert, "\n")
-	return spliceBytes(slideData, insertPos, insertion), nil
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
 }
 
 // removeNativeSVGPlaceholders removes placeholder shapes that are being replaced by native SVG.
@@ -1403,25 +1401,13 @@ func streamImageToZip(w *zip.Writer, imagePath, zipPath string) error {
 }
 
 // insertRawShapes inserts pre-generated <p:sp> XML fragments before </p:spTree>.
-func insertRawShapes(slideData []byte, shapes [][]byte) []byte {
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return slideData
-	}
-
-	// Calculate total size for a single allocation
-	totalSize := len(slideData)
+func insertRawShapes(slideData []byte, shapes [][]byte) ([]byte, error) {
+	var parts []string
 	for _, s := range shapes {
-		totalSize += len(s) + 1 // +1 for newline
+		parts = append(parts, string(s))
 	}
-	result := make([]byte, 0, totalSize)
-	result = append(result, slideData[:insertPos]...)
-	for _, s := range shapes {
-		result = append(result, '\n')
-		result = append(result, s...)
-	}
-	result = append(result, slideData[insertPos:]...)
-	return result
+	insertion := strings.Join(parts, "\n")
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
 }
 
 // insertBackgroundImage injects a <p:bg> element into slide XML before <p:spTree>.
@@ -1449,29 +1435,6 @@ func insertBackgroundImage(slideData []byte, relID string) []byte {
 		}
 	}
 	return slideData
-}
-
-// findLastClosingSpTree returns the byte offset of the last "</p:spTree>" or "</spTree>"
-// closing tag in slideData, or -1 if not found. This avoids converting to string.
-func findLastClosingSpTree(slideData []byte) int {
-	for _, tag := range [][]byte{[]byte("</p:spTree>"), []byte("</spTree>")} {
-		if pos := bytes.LastIndex(slideData, tag); pos != -1 {
-			return pos
-		}
-	}
-	return -1
-}
-
-// spliceBytes inserts "\n" + insertion + "\n" before position pos in data,
-// staying entirely in []byte space to avoid string↔[]byte round-trips.
-func spliceBytes(data []byte, pos int, insertion string) []byte {
-	result := make([]byte, 0, len(data)+len(insertion)+2)
-	result = append(result, data[:pos]...)
-	result = append(result, '\n')
-	result = append(result, insertion...)
-	result = append(result, '\n')
-	result = append(result, data[pos:]...)
-	return result
 }
 
 // streamBytesToZip writes byte data directly to the ZIP archive.

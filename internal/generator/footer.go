@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -155,13 +154,7 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 		return slideData, nil
 	}
 
-	// Find closing </p:spTree> and insert footer shapes before it
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return nil, fmt.Errorf("could not find </p:spTree> in slide XML for footer")
-	}
-
-	return spliceBytes(slideData, insertPos, footerXML), nil
+	return pptx.InsertIntoSpTree(slideData, []byte(footerXML), pptx.InsertAtEnd)
 }
 
 // extractSlideTitle finds the title text from a slide's content items.

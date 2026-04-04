@@ -1081,12 +1081,7 @@ func (ctx *singlePassContext) removePanelPlaceholders(slide *slideXML, inserts [
 
 // insertPanelGroups inserts pre-generated <p:grpSp> elements for panel inserts
 // before </p:spTree> in the marshaled slide XML.
-func insertPanelGroups(slideData []byte, inserts []panelShapeInsert) []byte {
-	insertPos := findLastClosingSpTree(slideData)
-	if insertPos == -1 {
-		return slideData // Cannot find insertion point
-	}
-
+func insertPanelGroups(slideData []byte, inserts []panelShapeInsert) ([]byte, error) {
 	var groups []string
 	for _, ins := range inserts {
 		if ins.groupXML != "" {
@@ -1094,9 +1089,9 @@ func insertPanelGroups(slideData []byte, inserts []panelShapeInsert) []byte {
 		}
 	}
 	if len(groups) == 0 {
-		return slideData
+		return slideData, nil
 	}
 
 	insertion := strings.Join(groups, "\n")
-	return spliceBytes(slideData, insertPos, insertion)
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
 }

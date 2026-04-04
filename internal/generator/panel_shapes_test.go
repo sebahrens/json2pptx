@@ -642,7 +642,10 @@ func TestInsertPanelGroups(t *testing.T) {
 		{groupXML: `<p:grpSp><p:nvGrpSpPr/></p:grpSp>`},
 	}
 
-	result := insertPanelGroups(slideXML, inserts)
+	result, err := insertPanelGroups(slideXML, inserts)
+	if err != nil {
+		t.Fatalf("insertPanelGroups failed: %v", err)
+	}
 
 	// Group XML should appear before </p:spTree>
 	if !strings.Contains(string(result), `<p:grpSp><p:nvGrpSpPr/></p:grpSp>`) {
@@ -661,7 +664,10 @@ func TestInsertPanelGroups_EmptyGroupXML(t *testing.T) {
 		{groupXML: ""}, // No XML generated (e.g., no panels)
 	}
 
-	result := insertPanelGroups(slideXML, inserts)
+	result, err := insertPanelGroups(slideXML, inserts)
+	if err != nil {
+		t.Fatalf("insertPanelGroups failed: %v", err)
+	}
 
 	// Should return unchanged
 	if string(result) != string(slideXML) {
