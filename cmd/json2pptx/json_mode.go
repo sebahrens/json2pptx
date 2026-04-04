@@ -142,67 +142,59 @@ type SlideQuality struct {
 	Issues      []string `json:"issues,omitempty"`
 }
 
-// runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string) error { //nolint:gocognit,gocyclo
-	startTime := time.Now()
-
-	// Read JSON input
+// parseJSONInput reads JSON from a file or stdin, applies patch operations if present,
+// applies the template override, and validates required fields.
+func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, error) {
 	var inputData []byte
 	var err error
 
 	if jsonPath == "-" {
-		// Read from stdin
 		inputData, err = io.ReadAll(os.Stdin)
 	} else {
-		// Read from file
 		inputData, err = os.ReadFile(jsonPath)
 	}
 	if err != nil {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("failed to read JSON input: %w", err))
+		return nil, fmt.Errorf("failed to read JSON input: %w", err)
 	}
 
-	// Try to detect if this is a patch input (has "operations" field)
 	var input PresentationInput
 	var patchInput PresentationPatchInput
 	if err := json.Unmarshal(inputData, &patchInput); err == nil && len(patchInput.Operations) > 0 {
-		// Apply patch operations to get the effective input
 		patched, patchErr := applyPresentationPatch(patchInput)
 		if patchErr != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("failed to apply patch: %w", patchErr))
+			return nil, fmt.Errorf("failed to apply patch: %w", patchErr)
 		}
 		input = *patched
 	} else {
-		// Parse as PresentationInput (superset of legacy JSONInput — accepts both formats)
 		if err := json.Unmarshal(inputData, &input); err != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("failed to parse JSON: %w", err))
+			return nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}
 	}
 
-	// CLI -template flag overrides JSON template field
 	if templateOverride != "" {
-		// Strip .pptx extension if user included it
-		templateOverride = strings.TrimSuffix(templateOverride, ".pptx")
-		input.Template = templateOverride
+		input.Template = strings.TrimSuffix(templateOverride, ".pptx")
 	}
 
-	// Validate input
 	if input.Template == "" {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("template is required: use -template flag or set \"template\" in JSON input"))
+		return nil, fmt.Errorf("template is required: use -template flag or set \"template\" in JSON input")
 	}
 	if len(input.Slides) == 0 {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("at least one slide is required"))
+		return nil, fmt.Errorf("at least one slide is required")
 	}
 
-	// Load configuration (optional)
+	return &input, nil
+}
+
+// loadRunConfig loads configuration from configPath (or defaults) and applies CLI overrides.
+func loadRunConfig(configPath, templatesDir, outputDir string, chartPNG bool) (config.Config, error) {
 	cfg := config.DefaultConfig()
 	if configPath != "" {
+		var err error
 		cfg, err = config.Load(configPath)
 		if err != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("failed to load config: %w", err))
+			return cfg, fmt.Errorf("failed to load config: %w", err)
 		}
 	}
-
-	// Override with CLI flags
 	if templatesDir != "" {
 		cfg.Templates.Dir = templatesDir
 	}
@@ -212,6 +204,70 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	if chartPNG {
 		slog.Warn("--chart-png is deprecated and will be removed in a future release; native SVG is the default strategy")
 		cfg.SVG.Strategy = types.SVGStrategyPNG
+	}
+	return cfg, nil
+}
+
+// analyzeTemplateLayouts opens a template, parses layouts, synthesizes missing layouts,
+// normalizes placeholder names, and returns the metadata needed for slide conversion.
+func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64) {
+	reader, err := template.OpenTemplate(templatePath)
+	if err != nil {
+		return nil, nil, 0, 0
+	}
+	defer func() { _ = reader.Close() }()
+
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		return nil, nil, 0, 0
+	}
+
+	theme := template.ParseTheme(reader)
+	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
+	analysis := &types.TemplateAnalysis{
+		TemplatePath: templatePath,
+		SlideWidth:   slideWidth,
+		SlideHeight:  slideHeight,
+		Layouts:      layouts,
+		Theme:        theme,
+	}
+	template.SynthesizeIfNeeded(reader, analysis)
+
+	// Normalize placeholder names to canonical form (body, body_2, body_3, etc.)
+	normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
+	if normErr == nil && len(normalizedFiles) > 0 {
+		if analysis.Synthesis == nil {
+			analysis.Synthesis = &types.SynthesisManifest{
+				SyntheticFiles: normalizedFiles,
+			}
+		} else {
+			for path, data := range normalizedFiles {
+				analysis.Synthesis.SyntheticFiles[path] = data
+			}
+		}
+	}
+
+	var syntheticFiles map[string][]byte
+	if analysis.Synthesis != nil {
+		syntheticFiles = analysis.Synthesis.SyntheticFiles
+	}
+	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight
+}
+
+// runJSONMode processes JSON input and generates PPTX.
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string) error {
+	startTime := time.Now()
+
+	// Parse and validate JSON input
+	input, err := parseJSONInput(jsonPath, templateOverride)
+	if err != nil {
+		return writeJSONError(jsonOutputPath, err)
+	}
+
+	// Load configuration with CLI overrides
+	cfg, err := loadRunConfig(configPath, templatesDir, outputDir, chartPNG)
+	if err != nil {
+		return writeJSONError(jsonOutputPath, err)
 	}
 
 	// Create output directory
@@ -226,48 +282,8 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 	defer templateCleanup()
 
-	// Analyze template before slide conversion — provides layout metadata
-	// for auto-layout selection and synthesizes missing layouts (e.g., two-column).
-	var templateLayouts []types.LayoutMetadata
-	var syntheticFiles map[string][]byte
-	var slideWidth, slideHeight int64
-	if reader, err := template.OpenTemplate(templatePath); err == nil {
-		defer func() { _ = reader.Close() }()
-		if layouts, err := template.ParseLayouts(reader); err == nil {
-			theme := template.ParseTheme(reader)
-			slideWidth, slideHeight = template.ParseSlideDimensions(reader)
-			analysis := &types.TemplateAnalysis{
-				TemplatePath: templatePath,
-				SlideWidth:   slideWidth,
-				SlideHeight:  slideHeight,
-				Layouts:      layouts,
-				Theme:        theme,
-			}
-			template.SynthesizeIfNeeded(reader, analysis)
-
-			// Normalize placeholder names to canonical form (body, body_2, body_3, etc.)
-			// This must happen before autoMapPlaceholders so slot IDs resolve to
-			// the same canonical names that the generator uses after normalizeTemplateLayouts.
-			normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
-			if normErr == nil && len(normalizedFiles) > 0 {
-				if analysis.Synthesis == nil {
-					analysis.Synthesis = &types.SynthesisManifest{
-						SyntheticFiles: normalizedFiles,
-					}
-				} else {
-					for path, data := range normalizedFiles {
-						analysis.Synthesis.SyntheticFiles[path] = data
-					}
-				}
-			}
-
-			// Use post-synthesis layouts (includes synthetic layouts like two-column)
-			templateLayouts = analysis.Layouts
-			if analysis.Synthesis != nil {
-				syntheticFiles = analysis.Synthesis.SyntheticFiles
-			}
-		}
-	}
+	// Analyze template for layout metadata, synthetic files, and dimensions
+	templateLayouts, syntheticFiles, slideWidth, slideHeight := analyzeTemplateLayouts(templatePath)
 
 	// Resolve canonical layout names (e.g. "title", "content", "closing") to
 	// concrete layout IDs using tag-based matching against the target template.

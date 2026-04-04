@@ -179,7 +179,7 @@ func needsVirtualLayout(slide SlideInput) bool {
 // If zone is non-nil, explicit input.Bounds are clamped against it to prevent content
 // from overlapping title or footer chrome.
 // slideWidth and slideHeight are the template's actual slide dimensions in EMU (0 = use 16:9 defaults).
-func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) (*ShapeGridResult, error) { //nolint:gocognit,gocyclo
+func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) (*ShapeGridResult, error) {
 	if input == nil || len(input.Rows) == 0 {
 		return nil, nil
 	}
@@ -217,81 +217,37 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	}
 
 	// Convert DTO rows to shapegrid.Row
-	rows := make([]shapegrid.Row, len(input.Rows))
-	for i, r := range input.Rows {
+	rows := convertGridRows(input.Rows)
+
+	grid := &shapegrid.Grid{
+		Bounds:  bounds,
+		Columns: colWidths,
+		Rows:    rows,
+		ColGap:  colGap,
+		RowGap:  rowGap,
+	}
+
+	// Resolve grid into cells with absolute coordinates
+	result, err := shapegrid.Resolve(grid, alloc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate XML fragments, icon inserts, and image inserts from resolved cells
+	return generateGridOutput(result, alloc)
+}
+
+// convertGridRows converts DTO GridRowInput slices into shapegrid.Row domain objects.
+func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
+	rows := make([]shapegrid.Row, len(inputRows))
+	for i, r := range inputRows {
 		cells := make([]shapegrid.Cell, len(r.Cells))
 		for j, c := range r.Cells {
 			if c == nil || (c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil) {
 				cells[j] = shapegrid.Cell{}
 				continue
 			}
-			cell := shapegrid.Cell{
-				ColSpan: c.ColSpan,
-				RowSpan: c.RowSpan,
-				Fit:     shapegrid.FitMode(c.Fit),
-			}
-			if c.Shape != nil {
-				cell.Shape = &shapegrid.ShapeSpec{
-					Geometry:    c.Shape.Geometry,
-					Fill:        c.Shape.Fill,
-					Line:        c.Shape.Line,
-					Text:        c.Shape.Text,
-					Rotation:    c.Shape.Rotation,
-					Adjustments: c.Shape.Adjustments,
-				}
-			}
-			if c.Table != nil {
-				cell.TableSpec = c.Table.ToTableSpec()
-			}
-			if c.Icon != nil {
-				cell.Icon = &shapegrid.IconSpec{
-					Name:     c.Icon.Name,
-					Path:     c.Icon.Path,
-					Fill:     c.Icon.Fill,
-					Position: c.Icon.Position,
-				}
-			}
-			// Support icon nested inside shape (e.g. {"shape": {"fill": "accent1", "icon": {"name": "shield"}}})
-			if c.Shape != nil && c.Shape.Icon != nil && cell.Icon == nil {
-				cell.Icon = &shapegrid.IconSpec{
-					Name:     c.Shape.Icon.Name,
-					Path:     c.Shape.Icon.Path,
-					Fill:     c.Shape.Icon.Fill,
-					Position: c.Shape.Icon.Position,
-				}
-			}
-			if c.Image != nil {
-				imgSpec := &shapegrid.ImageSpec{
-					Path: c.Image.Path,
-					Alt:  c.Image.Alt,
-				}
-				if c.Image.Overlay != nil {
-					imgSpec.Overlay = &shapegrid.OverlaySpec{
-						Color: c.Image.Overlay.Color,
-						Alpha: c.Image.Overlay.Alpha,
-					}
-				}
-				if c.Image.Text != nil {
-					imgSpec.Text = &shapegrid.ImageText{
-						Content:       c.Image.Text.Content,
-						Size:          c.Image.Text.Size,
-						Bold:          c.Image.Text.Bold,
-						Color:         c.Image.Text.Color,
-						Align:         c.Image.Text.Align,
-						VerticalAlign: c.Image.Text.VerticalAlign,
-						Font:          c.Image.Text.Font,
-					}
-				}
-				cell.Image = imgSpec
-			}
-			if c.AccentBar != nil {
-				cell.AccentBar = &shapegrid.AccentBarSpec{
-					Position: c.AccentBar.Position,
-					Color:    c.AccentBar.Color,
-					Width:    c.AccentBar.Width,
-				}
-			}
-			cells[j] = cell
+			cells[j] = convertGridCell(c)
 		}
 		var connSpec *shapegrid.ConnectorSpec
 		if r.Connector != nil {
@@ -309,51 +265,95 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 			Connector:  connSpec,
 		}
 	}
+	return rows
+}
 
-	grid := &shapegrid.Grid{
-		Bounds:  bounds,
-		Columns: colWidths,
-		Rows:    rows,
-		ColGap:  colGap,
-		RowGap:  rowGap,
+// convertGridCell converts a single GridCellInput DTO into a shapegrid.Cell.
+func convertGridCell(c *GridCellInput) shapegrid.Cell {
+	cell := shapegrid.Cell{
+		ColSpan: c.ColSpan,
+		RowSpan: c.RowSpan,
+		Fit:     shapegrid.FitMode(c.Fit),
 	}
-
-	// Resolve grid into cells with absolute coordinates
-	result, err := shapegrid.Resolve(grid, alloc)
-	if err != nil {
-		return nil, err
+	if c.Shape != nil {
+		cell.Shape = &shapegrid.ShapeSpec{
+			Geometry:    c.Shape.Geometry,
+			Fill:        c.Shape.Fill,
+			Line:        c.Shape.Line,
+			Text:        c.Shape.Text,
+			Rotation:    c.Shape.Rotation,
+			Adjustments: c.Shape.Adjustments,
+		}
 	}
+	if c.Table != nil {
+		cell.TableSpec = c.Table.ToTableSpec()
+	}
+	if c.Icon != nil {
+		cell.Icon = &shapegrid.IconSpec{
+			Name:     c.Icon.Name,
+			Path:     c.Icon.Path,
+			Fill:     c.Icon.Fill,
+			Position: c.Icon.Position,
+		}
+	}
+	// Support icon nested inside shape (e.g. {"shape": {"fill": "accent1", "icon": {"name": "shield"}}})
+	if c.Shape != nil && c.Shape.Icon != nil && cell.Icon == nil {
+		cell.Icon = &shapegrid.IconSpec{
+			Name:     c.Shape.Icon.Name,
+			Path:     c.Shape.Icon.Path,
+			Fill:     c.Shape.Icon.Fill,
+			Position: c.Shape.Icon.Position,
+		}
+	}
+	if c.Image != nil {
+		imgSpec := &shapegrid.ImageSpec{
+			Path: c.Image.Path,
+			Alt:  c.Image.Alt,
+		}
+		if c.Image.Overlay != nil {
+			imgSpec.Overlay = &shapegrid.OverlaySpec{
+				Color: c.Image.Overlay.Color,
+				Alpha: c.Image.Overlay.Alpha,
+			}
+		}
+		if c.Image.Text != nil {
+			imgSpec.Text = &shapegrid.ImageText{
+				Content:       c.Image.Text.Content,
+				Size:          c.Image.Text.Size,
+				Bold:          c.Image.Text.Bold,
+				Color:         c.Image.Text.Color,
+				Align:         c.Image.Text.Align,
+				VerticalAlign: c.Image.Text.VerticalAlign,
+				Font:          c.Image.Text.Font,
+			}
+		}
+		cell.Image = imgSpec
+	}
+	if c.AccentBar != nil {
+		cell.AccentBar = &shapegrid.AccentBarSpec{
+			Position: c.AccentBar.Position,
+			Color:    c.AccentBar.Color,
+			Width:    c.AccentBar.Width,
+		}
+	}
+	return cell
+}
 
-	// Generate XML for each resolved cell
+// generateGridOutput converts resolved grid cells into XML fragments and media inserts.
+func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator) (*ShapeGridResult, error) {
 	var shapes [][]byte
 	var iconInserts []generator.IconInsert
 	var imageInserts []generator.ImageInsert
+
 	for _, cell := range result.Cells {
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
-			xml, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+			s, icons, err := generateShapeCellXML(cell, alloc)
 			if err != nil {
-				return nil, fmt.Errorf("shape id %d: %w", cell.ID, err)
+				return nil, err
 			}
-			shapes = append(shapes, xml)
-			// If the shape also has an icon overlay, emit an icon insert on top
-			if cell.IconSpec != nil {
-				svgData, err := resolveIconSVG(cell.IconSpec)
-				if err != nil {
-					return nil, fmt.Errorf("icon overlay on shape id %d: %w", cell.ID, err)
-				}
-				ib := cell.IconBounds
-				if ib.CX == 0 && ib.CY == 0 {
-					ib = cell.Bounds // fallback
-				}
-				iconInserts = append(iconInserts, generator.IconInsert{
-					SVGData:  svgData,
-					OffsetX:  ib.X,
-					OffsetY:  ib.Y,
-					ExtentCX: ib.CX,
-					ExtentCY: ib.CY,
-				})
-			}
+			shapes = append(shapes, s...)
+			iconInserts = append(iconInserts, icons...)
 		case shapegrid.CellKindTable:
 			cfg := generator.TableRenderConfig{
 				Bounds: types.BoundingBox{
@@ -365,11 +365,11 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 				Style:            cell.TableSpec.Style,
 				ColumnAlignments: cell.TableSpec.ColumnAlignments,
 			}
-			result, err := generator.GenerateTableXML(cell.TableSpec, cfg)
+			tblResult, err := generator.GenerateTableXML(cell.TableSpec, cfg)
 			if err != nil {
 				return nil, fmt.Errorf("table in grid: %w", err)
 			}
-			shapes = append(shapes, []byte(result.XML))
+			shapes = append(shapes, []byte(tblResult.XML))
 		case shapegrid.CellKindIcon:
 			svgData, err := resolveIconSVG(cell.IconSpec)
 			if err != nil {
@@ -383,32 +383,12 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 				ExtentCY: cell.Bounds.CY,
 			})
 		case shapegrid.CellKindImage:
-			imageInserts = append(imageInserts, generator.ImageInsert{
-				Path:     cell.ImageSpec.Path,
-				Alt:      cell.ImageSpec.Alt,
-				OffsetX:  cell.Bounds.X,
-				OffsetY:  cell.Bounds.Y,
-				ExtentCX: cell.Bounds.CX,
-				ExtentCY: cell.Bounds.CY,
-			})
-			// Generate overlay rectangle on top of image
-			if cell.ImageSpec.Overlay != nil {
-				overlayID := alloc.Alloc()
-				overlayXML, err := shapegrid.GenerateImageOverlayXML(cell.ImageSpec.Overlay, overlayID, cell.Bounds)
-				if err != nil {
-					return nil, fmt.Errorf("image overlay id %d: %w", overlayID, err)
-				}
-				shapes = append(shapes, overlayXML)
+			s, imgs, err := generateImageCellXML(cell, alloc)
+			if err != nil {
+				return nil, err
 			}
-			// Generate text label on top of image (and overlay)
-			if cell.ImageSpec.Text != nil {
-				textID := alloc.Alloc()
-				textXML, err := shapegrid.GenerateImageTextXML(cell.ImageSpec.Text, textID, cell.Bounds)
-				if err != nil {
-					return nil, fmt.Errorf("image text id %d: %w", textID, err)
-				}
-				shapes = append(shapes, textXML)
-			}
+			shapes = append(shapes, s...)
+			imageInserts = append(imageInserts, imgs...)
 		default:
 			return nil, fmt.Errorf("unsupported cell kind: %s", cell.Kind)
 		}
@@ -438,6 +418,64 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		IconInserts:  iconInserts,
 		ImageInserts: imageInserts,
 	}, nil
+}
+
+// generateShapeCellXML produces XML and icon inserts for a shape cell.
+func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator) ([][]byte, []generator.IconInsert, error) {
+	xml, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+	if err != nil {
+		return nil, nil, fmt.Errorf("shape id %d: %w", cell.ID, err)
+	}
+	shapes := [][]byte{xml}
+	var icons []generator.IconInsert
+	if cell.IconSpec != nil {
+		svgData, err := resolveIconSVG(cell.IconSpec)
+		if err != nil {
+			return nil, nil, fmt.Errorf("icon overlay on shape id %d: %w", cell.ID, err)
+		}
+		ib := cell.IconBounds
+		if ib.CX == 0 && ib.CY == 0 {
+			ib = cell.Bounds
+		}
+		icons = append(icons, generator.IconInsert{
+			SVGData:  svgData,
+			OffsetX:  ib.X,
+			OffsetY:  ib.Y,
+			ExtentCX: ib.CX,
+			ExtentCY: ib.CY,
+		})
+	}
+	return shapes, icons, nil
+}
+
+// generateImageCellXML produces XML overlays/text and image inserts for an image cell.
+func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator) ([][]byte, []generator.ImageInsert, error) {
+	imgs := []generator.ImageInsert{{
+		Path:     cell.ImageSpec.Path,
+		Alt:      cell.ImageSpec.Alt,
+		OffsetX:  cell.Bounds.X,
+		OffsetY:  cell.Bounds.Y,
+		ExtentCX: cell.Bounds.CX,
+		ExtentCY: cell.Bounds.CY,
+	}}
+	var shapes [][]byte
+	if cell.ImageSpec.Overlay != nil {
+		overlayID := alloc.Alloc()
+		overlayXML, err := shapegrid.GenerateImageOverlayXML(cell.ImageSpec.Overlay, overlayID, cell.Bounds)
+		if err != nil {
+			return nil, nil, fmt.Errorf("image overlay id %d: %w", overlayID, err)
+		}
+		shapes = append(shapes, overlayXML)
+	}
+	if cell.ImageSpec.Text != nil {
+		textID := alloc.Alloc()
+		textXML, err := shapegrid.GenerateImageTextXML(cell.ImageSpec.Text, textID, cell.Bounds)
+		if err != nil {
+			return nil, nil, fmt.Errorf("image text id %d: %w", textID, err)
+		}
+		shapes = append(shapes, textXML)
+	}
+	return shapes, imgs, nil
 }
 
 // resolveColumnsDTO parses the JSON columns field and returns percentage widths.

@@ -499,7 +499,7 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 // Each group's header is rendered at level 0 (no bullet marker), and bullets at level 1+.
 // This preserves the hierarchical structure where bold text serves as section headers.
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
-func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int) error { //nolint:gocognit,gocyclo
+func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int) error {
 	content, ok := value.(BulletGroupsContent)
 	if !ok {
 		return fmt.Errorf("invalid bullet_groups value for placeholder %s", placeholderID)
@@ -560,82 +560,7 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 	}
 
 	for _, group := range content.Groups {
-		// Build header text, optionally merging group body for dense layouts.
-		// In dense mode, "Revenue Growth" + "On track" becomes "Revenue Growth — On track"
-		// to save a paragraph and reduce font scaling.
-		headerText := group.Header
-		groupBodyRendered := false
-		if denseGroups && group.Body != "" && headerText != "" {
-			// Merge first line of body into header with em-dash separator
-			bodyLines := strings.Split(group.Body, "\n")
-			if len(bodyLines) > 0 && bodyLines[0] != "" {
-				headerText += " — " + bodyLines[0]
-				groupBodyRendered = len(bodyLines) == 1
-			}
-		}
-
-		// Add section header if present (no bullet marker, rendered with buNone).
-		// Headers are forced bold for visual hierarchy — distinguishes group
-		// titles from bullet content even when the source text has no **bold** markers.
-		if headerText != "" {
-			_, rProps := getBulletStyleForLevel(templateStyles, 0)
-			runs := createFormattedRuns(headerText, rProps)
-			for i := range runs {
-				runs[i].RunProperties.Bold = "1"
-			}
-			spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, headerSpcBefVal)
-			paragraphs = append(paragraphs, paragraphXML{
-				Properties: noBulletParagraphProps(spcBef),
-				Runs:       runs,
-			})
-		}
-
-		// Add group-level body text (text between header and bullets in the markdown).
-		// Rendered without bullet marker, after the header and before the bullets.
-		// Skipped if already merged into header for dense layouts.
-		if group.Body != "" && !groupBodyRendered {
-			bodyText := group.Body
-			if denseGroups && headerText != group.Header {
-				// First line was merged into header; render remaining lines
-				bodyLines := strings.Split(group.Body, "\n")
-				if len(bodyLines) > 1 {
-					bodyText = strings.Join(bodyLines[1:], "\n")
-				} else {
-					bodyText = ""
-				}
-			}
-			for _, bodyPara := range strings.Split(bodyText, "\n") {
-				if bodyPara == "" {
-					continue
-				}
-				_, rProps := getBulletStyleForLevel(templateStyles, 0)
-				runs := createFormattedRuns(bodyPara, rProps)
-				paragraphs = append(paragraphs, paragraphXML{
-					Properties: noBulletParagraphProps(""),
-					Runs:       runs,
-				})
-			}
-		}
-
-		// Add bullet paragraphs for this group (using bullet level + 1).
-		// Sub-bullets render one level deeper than the first bullet-enabled level
-		// so they are visually indented relative to bold section headers (marL=0).
-		subBulletLevel := bulletLevel + 1
-		for _, bullet := range group.Bullets {
-			pProps, rProps := getBulletStyleForLevel(templateStyles, subBulletLevel)
-			runs := createFormattedRuns(bullet, rProps)
-			// Ensure sub-bullets have a minimum left margin so they are visually
-			// indented relative to headers. Templates where the resolved style
-			// has marL=0 would otherwise render headers and bullets flush.
-			if pProps.MarL != nil && *pProps.MarL == 0 {
-				fallbackMarL := 360000 // ~0.4 in
-				pProps.MarL = &fallbackMarL
-			}
-			paragraphs = append(paragraphs, paragraphXML{
-				Properties: pProps,
-				Runs:       runs,
-			})
-		}
+		paragraphs = append(paragraphs, buildGroupParagraphs(group, denseGroups, headerSpcBefVal, bulletLevel, templateStyles)...)
 	}
 
 	// Add trailing body paragraph(s) if present (rendered without bullet marker).
@@ -689,4 +614,76 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 	}
 
 	return nil
+}
+
+// buildGroupParagraphs converts a single BulletGroup into paragraphs with
+// optional dense-mode header merging, body text, and indented sub-bullets.
+func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal string, bulletLevel int, templateStyles []bulletLevelStyle) []paragraphXML {
+	var paragraphs []paragraphXML
+
+	// Build header text, optionally merging group body for dense layouts.
+	headerText := group.Header
+	groupBodyRendered := false
+	if denseGroups && group.Body != "" && headerText != "" {
+		bodyLines := strings.Split(group.Body, "\n")
+		if len(bodyLines) > 0 && bodyLines[0] != "" {
+			headerText += " — " + bodyLines[0]
+			groupBodyRendered = len(bodyLines) == 1
+		}
+	}
+
+	// Section header (no bullet marker, forced bold for visual hierarchy)
+	if headerText != "" {
+		_, rProps := getBulletStyleForLevel(templateStyles, 0)
+		runs := createFormattedRuns(headerText, rProps)
+		for i := range runs {
+			runs[i].RunProperties.Bold = "1"
+		}
+		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, headerSpcBefVal)
+		paragraphs = append(paragraphs, paragraphXML{
+			Properties: noBulletParagraphProps(spcBef),
+			Runs:       runs,
+		})
+	}
+
+	// Group-level body text (skipped if already merged into header)
+	if group.Body != "" && !groupBodyRendered {
+		bodyText := group.Body
+		if denseGroups && headerText != group.Header {
+			bodyLines := strings.Split(group.Body, "\n")
+			if len(bodyLines) > 1 {
+				bodyText = strings.Join(bodyLines[1:], "\n")
+			} else {
+				bodyText = ""
+			}
+		}
+		for _, bodyPara := range strings.Split(bodyText, "\n") {
+			if bodyPara == "" {
+				continue
+			}
+			_, rProps := getBulletStyleForLevel(templateStyles, 0)
+			runs := createFormattedRuns(bodyPara, rProps)
+			paragraphs = append(paragraphs, paragraphXML{
+				Properties: noBulletParagraphProps(""),
+				Runs:       runs,
+			})
+		}
+	}
+
+	// Sub-bullets (indented one level deeper than the base bullet level)
+	subBulletLevel := bulletLevel + 1
+	for _, bullet := range group.Bullets {
+		pProps, rProps := getBulletStyleForLevel(templateStyles, subBulletLevel)
+		runs := createFormattedRuns(bullet, rProps)
+		if pProps.MarL != nil && *pProps.MarL == 0 {
+			fallbackMarL := 360000
+			pProps.MarL = &fallbackMarL
+		}
+		paragraphs = append(paragraphs, paragraphXML{
+			Properties: pProps,
+			Runs:       runs,
+		})
+	}
+
+	return paragraphs
 }
