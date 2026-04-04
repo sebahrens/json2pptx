@@ -448,12 +448,138 @@ func TestWarnShapeXMLContrast_SchemeColorFill(t *testing.T) {
 
 	// Should not panic on good contrast
 	warnShapeXMLContrast([]byte(shapeXML), tc)
+}
 
-	// accent1 (#FD5108 = orange) fill with lt1 (white) text — contrast 3.3, below WCAG AA
-	// Should warn but NOT modify (user-specified)
-	lowContrastXML := `<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Fix</a:t></a:r></a:p></p:txBody></p:sp>`
+func TestIsShapeFillSemantic(t *testing.T) {
+	tests := []struct {
+		name string
+		xml  string
+		want bool
+	}{
+		{
+			name: "scheme color fill is semantic",
+			xml:  `<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody/></p:sp>`,
+			want: true,
+		},
+		{
+			name: "sRGB fill is not semantic",
+			xml:  `<p:sp><p:spPr><a:solidFill><a:srgbClr val="1B2A4A"/></a:solidFill></p:spPr><p:txBody/></p:sp>`,
+			want: false,
+		},
+		{
+			name: "noFill is not semantic",
+			xml:  `<p:sp><p:spPr><a:noFill/></p:spPr><p:txBody/></p:sp>`,
+			want: false,
+		},
+		{
+			name: "no spPr is not semantic",
+			xml:  `<p:sp><p:txBody/></p:sp>`,
+			want: false,
+		},
+	}
 
-	warnShapeXMLContrast([]byte(lowContrastXML), tc)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isShapeFillSemantic([]byte(tt.xml))
+			if got != tt.want {
+				t.Errorf("isShapeFillSemantic() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFixShapeXMLContrast_SemanticFill(t *testing.T) {
+	// Use a theme where accent1 is light pink — white text has very low contrast
+	tc := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#FFB6C1"}, // light pink — contrast with white ~1.65
+	}
+
+	// accent1 (light pink) fill with lt1 (white) text — very low contrast
+	// Since fill is semantic, text should be auto-fixed
+	input := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Fix</a:t></a:r></a:p></p:txBody></p:sp>`)
+
+	result := fixShapeXMLContrast(input, tc)
+
+	if string(result) == string(input) {
+		t.Error("expected low-contrast text to be fixed on semantic fill, but shape was unchanged")
+	}
+
+	// Verify lt1 scheme color was replaced with an sRGB color
+	if strings.Contains(string(result), `schemeClr val="lt1"`) {
+		t.Error("expected lt1 schemeClr to be replaced")
+	}
+	if !strings.Contains(string(result), "srgbClr") {
+		t.Error("expected srgbClr replacement in output")
+	}
+
+	// Verify the replacement has adequate contrast against accent1
+	fillHex := extractShapeFillHex(result, tc)
+	bgColor, _ := svggen.ParseColor(fillHex)
+
+	// Extract the replacement color
+	resultStr := string(result)
+	idx := strings.Index(resultStr, `<p:txBody>`)
+	txBody := resultStr[idx:]
+	srgbMatch := srgbClrInFillRegexp.FindStringSubmatch(txBody)
+	if len(srgbMatch) < 3 {
+		t.Fatal("could not find srgbClr in fixed txBody")
+	}
+	newColor, err := svggen.ParseColor("#" + srgbMatch[2])
+	if err != nil {
+		t.Fatalf("failed to parse replacement color: %v", err)
+	}
+	ratio := newColor.ContrastWith(bgColor)
+	if ratio < svggen.WCAGAALarge {
+		t.Errorf("replacement color %s has contrast %.2f against %s, want >= %.1f",
+			newColor.Hex(), ratio, bgColor.Hex(), svggen.WCAGAALarge)
+	}
+}
+
+func TestFixShapeXMLContrast_GoodContrastUnchanged(t *testing.T) {
+	tc := consultingThemeColors()
+
+	// dk1 (#000000 = black) fill with lt1 (white) text — excellent contrast
+	input := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>OK</a:t></a:r></a:p></p:txBody></p:sp>`)
+
+	result := fixShapeXMLContrast(input, tc)
+
+	if string(result) != string(input) {
+		t.Errorf("expected no change for good-contrast text on semantic fill\n  input:  %s\n  output: %s", input, result)
+	}
+}
+
+func TestEnforceShapeGridContrast_FixesSemanticFill(t *testing.T) {
+	// Use a theme where accent1 is a light color (like modern-template's light pink)
+	lightTheme := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#FFB6C1"}, // light pink
+	}
+
+	shapes := [][]byte{
+		// Semantic fill (accent1 = light pink) with white text — low contrast, should be auto-fixed
+		[]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`),
+		// Explicit hex fill with low-contrast text — warn only, unchanged
+		[]byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="FFB6C1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`),
+	}
+
+	original1 := string(shapes[1])
+	result := enforceShapeGridContrast(shapes, lightTheme)
+
+	// First shape (semantic fill): should be modified
+	if string(result[0]) == string([]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`)) {
+		t.Error("expected semantic fill shape to have text contrast auto-fixed")
+	}
+	if !strings.Contains(string(result[0]), "srgbClr") {
+		t.Error("expected srgbClr replacement in semantic fill shape")
+	}
+
+	// Second shape (explicit hex fill): should be unchanged
+	if string(result[1]) != original1 {
+		t.Error("expected explicit hex fill shape to be unchanged (warn-only)")
+	}
 }
 
 func TestFixSrgbColorsForContrast(t *testing.T) {
