@@ -149,8 +149,9 @@ func runServe() error {
 		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 		pprofAddr := fmt.Sprintf("%s:%d", cfg.Server.PprofBind, cfg.Server.PprofPort)
 		pprofServer := &http.Server{
-			Addr:    pprofAddr,
-			Handler: pprofMux,
+			Addr:              pprofAddr,
+			Handler:           pprofMux,
+			ReadHeaderTimeout: 10 * time.Second,
 		}
 		go func() {
 			slog.Info("starting pprof server", "addr", pprofAddr)

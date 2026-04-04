@@ -122,7 +122,7 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 	var effectiveAnalysis *types.TemplateAnalysis
 
 	if req.Presentation == nil {
-		return nil, fmt.Errorf("Presentation is required; markdown parsing has been removed")
+		return nil, fmt.Errorf("presentation is required; markdown parsing has been removed")
 	}
 
 	// Pre-parsed presentation provided.
