@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // TestGenerate_FileSize_AC10 tests AC10: File Size Reasonable
@@ -211,6 +213,7 @@ func TestGenerate_FileSize_AC10(t *testing.T) {
 	t.Logf("Generation took: %v", result.Duration)
 
 	// Verify it's a valid PPTX
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -334,6 +337,7 @@ func TestGenerate_CompleteIntegration(t *testing.T) {
 	}
 
 	// Verify output is valid PPTX
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -401,6 +405,7 @@ func TestGenerate_EmptyContentHandling(t *testing.T) {
 	}
 
 	// Verify slides were created
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -489,6 +494,7 @@ func TestGenerate_MultipleImagesPerSlide(t *testing.T) {
 	}
 
 	// Verify output is valid PPTX
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -598,6 +604,7 @@ func TestGenerate_MixedContent(t *testing.T) {
 	}
 
 	// Verify output structure
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -682,6 +689,7 @@ func TestGenerate_ImageEmbedding_AC5(t *testing.T) {
 	}
 
 	// AC5: Verify image is embedded
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -762,6 +770,7 @@ func TestGenerate_ImageScaling_AC6(t *testing.T) {
 	}
 
 	// Verify it's a valid PPTX with media
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -831,6 +840,7 @@ func TestGenerate_RelationshipLinkage_AC_NEW2(t *testing.T) {
 	}
 
 	// AC-NEW2: Verify relationships file is present
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -955,6 +965,7 @@ func TestGenerate_FullPipelineValidation(t *testing.T) {
 	}
 
 	// Open and validate the output
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -1079,6 +1090,7 @@ func TestGenerate_StreamingImageHandling_AC2(t *testing.T) {
 	}
 
 	// Verify the output is valid
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -1253,6 +1265,7 @@ func TestGenerate_SinglePassOptimization_AC1(t *testing.T) {
 	}
 
 	// Verify file is valid PPTX
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -1343,6 +1356,7 @@ func TestGenerate_SVGImageEmbedding(t *testing.T) {
 	}
 
 	// SVG should be converted to PNG and embedded
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -1439,6 +1453,7 @@ func TestGenerate_SVGWithPNGImage(t *testing.T) {
 	}
 
 	// Both images should be embedded
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -1586,6 +1601,23 @@ func TestInsertBackgroundImage(t *testing.T) {
 	}
 }
 
+// validatePPTXStructure runs OOXML structural validation on a generated PPTX file.
+// It checks [Content_Types].xml, presentation.xml, relationship targets, and required parts.
+func validatePPTXStructure(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("validatePPTXStructure: failed to read %s: %v", path, err)
+	}
+	v, err := pptx.NewValidator(data)
+	if err != nil {
+		t.Fatalf("validatePPTXStructure: invalid PPTX %s: %v", path, err)
+	}
+	if err := v.Validate(); err != nil {
+		t.Errorf("validatePPTXStructure: OOXML validation failed for %s:\n%v", path, err)
+	}
+}
+
 func stringContains(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
@@ -1642,6 +1674,7 @@ func TestGenerate_BackgroundImage(t *testing.T) {
 	}
 
 	// Verify output is valid ZIP
+	validatePPTXStructure(t, outputPath)
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
