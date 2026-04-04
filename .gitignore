@@ -19,6 +19,9 @@ bin/
 /preview
 /testgen
 
+# svggen binary (built inside submodule dir)
+/svggen/svggen
+
 # Root-level compiled binaries (not built with -o bin/)
 /json2pptx
 /testrand
