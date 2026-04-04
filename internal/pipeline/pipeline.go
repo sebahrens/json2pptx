@@ -12,7 +12,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/pagination"
-	"github.com/sebahrens/json2pptx/internal/parser"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -26,12 +25,7 @@ type Pipeline interface {
 
 // ConvertRequest contains the input for a conversion operation.
 type ConvertRequest struct {
-	// Markdown is the source content in markdown format.
-	// Deprecated: Use Presentation instead. When Presentation is non-nil,
-	// Markdown is ignored and PreparePresentation is skipped.
-	Markdown string
-	// Presentation is a pre-parsed presentation definition.
-	// When set, the pipeline skips markdown parsing and uses this directly.
+	// Presentation is the pre-parsed presentation definition (required).
 	Presentation *types.PresentationDefinition
 	// TemplateAnalysis is the pre-analyzed template structure.
 	TemplateAnalysis *types.TemplateAnalysis
@@ -126,33 +120,20 @@ func NewPipelineWithGenerator(gen generator.Generator) *DefaultPipeline {
 func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*ConvertResult, error) {
 	var presentation *types.PresentationDefinition
 	var effectiveAnalysis *types.TemplateAnalysis
-	var dataWarnings []string
 
-	if req.Presentation != nil {
-		// Pre-parsed presentation provided — skip markdown parsing.
-		presentation = req.Presentation
-		effectiveAnalysis = req.TemplateAnalysis
+	if req.Presentation == nil {
+		return nil, fmt.Errorf("Presentation is required; markdown parsing has been removed")
+	}
 
-		// Apply theme overrides if specified.
-		if presentation.Metadata.ThemeOverride != nil && req.TemplateAnalysis != nil {
-			analysisCopy := *req.TemplateAnalysis
-			analysisCopy.Theme = analysisCopy.Theme.ApplyOverride(presentation.Metadata.ThemeOverride)
-			effectiveAnalysis = &analysisCopy
-		}
-	} else {
-		// Legacy path: parse markdown via PreparePresentation.
-		prepared, err := PreparePresentation(PrepareRequest{
-			Markdown:         req.Markdown,
-			BaseDir:          req.BaseDir,
-			DataOverrides:    req.DataOverrides,
-			TemplateAnalysis: req.TemplateAnalysis,
-		})
-		if err != nil {
-			return nil, err
-		}
-		presentation = prepared.Presentation
-		effectiveAnalysis = prepared.EffectiveAnalysis
-		dataWarnings = prepared.Warnings
+	// Pre-parsed presentation provided.
+	presentation = req.Presentation
+	effectiveAnalysis = req.TemplateAnalysis
+
+	// Apply theme overrides if specified.
+	if presentation.Metadata.ThemeOverride != nil && req.TemplateAnalysis != nil {
+		analysisCopy := *req.TemplateAnalysis
+		analysisCopy.Theme = analysisCopy.Theme.ApplyOverride(presentation.Metadata.ThemeOverride)
+		effectiveAnalysis = &analysisCopy
 	}
 
 	// Step 1.5: Auto-paginate overflowing slides (when enabled via frontmatter).
@@ -175,7 +156,8 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 	}
 
 	// Merge warnings from data resolution, pagination, and layout selection
-	allWarnings := append(dataWarnings, paginationWarnings...)
+	var allWarnings []string
+	allWarnings = append(allWarnings, paginationWarnings...)
 	allWarnings = append(allWarnings, slideWarnings...)
 
 	// Dry-run mode: skip PPTX generation, return validation results
@@ -322,16 +304,6 @@ func ConvertSlidesPartial(
 	templateAnalysis *types.TemplateAnalysis,
 	partial bool,
 ) ([]generator.SlideSpec, []string, []SlideError, error) {
-	// Pre-parse slot and table content so the generator receives fully-resolved
-	// data and does not need to import the parser package.
-	for i := range presentation.Slides {
-		slide := &presentation.Slides[i]
-		parser.ResolveSlideTable(slide)
-		if slide.HasSlots() {
-			parser.ResolveSlotContent(slide.Slots)
-		}
-	}
-
 	// Assign section numbers to section divider slides. Templates design
 	// section dividers with a decorative body placeholder (e.g., a large "01"
 	// or "#" indicator). Without body text, this placeholder is cleared,

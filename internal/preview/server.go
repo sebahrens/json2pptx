@@ -16,7 +16,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/data"
 	"github.com/sebahrens/json2pptx/internal/pagination"
-	"github.com/sebahrens/json2pptx/internal/parser"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/themegen"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -94,20 +93,18 @@ func (s *Server) reload() {
 		return
 	}
 
-	// Parse markdown
-	markdown := string(content)
+	// Parse JSON presentation definition.
 	baseDir := filepath.Dir(s.cfg.File)
-	presentation, parseErr := parser.Parse(markdown)
-	if parseErr != nil {
-		s.setError(fmt.Sprintf("parse: %v", parseErr))
+	var presentation types.PresentationDefinition
+	if err := json.Unmarshal(content, &presentation); err != nil {
+		s.setError(fmt.Sprintf("parse: %v", err))
 		return
 	}
 
 	// Check for fatal parse errors
-	if parser.HasErrors(presentation) {
-		errors := parser.GetErrorsByLevel(presentation, types.ErrorLevelError)
-		if len(errors) > 0 {
-			s.setError(errors[0].Format())
+	for _, pe := range presentation.Errors {
+		if pe.Level == types.ErrorLevelError {
+			s.setError(pe.Format())
 			return
 		}
 	}
@@ -116,17 +113,17 @@ func (s *Server) reload() {
 	if len(presentation.Metadata.Data) > 0 {
 		dataCtx, _, err := data.BuildContext(presentation.Metadata.Data, nil, baseDir)
 		if err == nil {
-			_ = data.ResolveVariables(presentation, dataCtx)
+			_ = data.ResolveVariables(&presentation, dataCtx)
 		}
 	}
 
 	// Auto-agenda
 	if presentation.Metadata.AutoAgenda {
-		pipeline.GenerateAgenda(presentation)
+		pipeline.GenerateAgenda(&presentation)
 	}
 
 	// Auto-paginate
-	_ = pagination.Paginate(presentation)
+	_ = pagination.Paginate(&presentation)
 
 	// Resolve brand_color into a ThemeOverride (if specified)
 	if presentation.Metadata.BrandColor != "" {
