@@ -284,12 +284,17 @@
       ]
     },
     {
-      "slide_type": "blank",
+      "slide_type": "title",
       "content": [
         {
-          "placeholder_id": "body",
+          "placeholder_id": "title",
           "type": "text",
           "text_value": "Questions?"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Thank you for your time"
         }
       ]
     }
