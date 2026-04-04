@@ -87,11 +87,13 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 
 // resolveTemplatePath finds a specific template file across all search locations.
 // It searches directories in priority order and falls back to embedded templates.
-// Returns the full path to the .pptx file. If the template is embedded, it is
-// extracted to a temporary file and the caller is responsible for cleanup.
+// Returns the full path to the .pptx file and a cleanup function. The cleanup
+// function removes any temporary file created for embedded templates; callers
+// must call it when done with the template path. For non-embedded templates the
+// cleanup function is a no-op.
 //
 // The flagTemplatesDir is the value from --templates-dir (may be empty or default).
-func resolveTemplatePath(templateName, flagTemplatesDir string) (string, error) {
+func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(), error) {
 	// Strip .pptx extension if user included it (e.g., "my-template.pptx" -> "my-template")
 	templateName = strings.TrimSuffix(templateName, ".pptx")
 	filename := templateName + ".pptx"
@@ -120,38 +122,40 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, error) 
 	// 4. Current directory
 	candidates = append(candidates, "./templates")
 
+	noop := func() {}
+
 	// Search each candidate
 	for _, dir := range candidates {
 		path := filepath.Join(dir, filename)
 		if fileExists(path) {
 			abs, err := filepath.Abs(path)
 			if err != nil {
-				return path, nil
+				return path, noop, nil
 			}
-			return abs, nil
+			return abs, noop, nil
 		}
 	}
 
 	// 5. Embedded templates
 	data, err := fs.ReadFile(templates.Embedded, filename)
 	if err != nil {
-		return "", fmt.Errorf("template %q not found in any search location or embedded templates", templateName)
+		return "", noop, fmt.Errorf("template %q not found in any search location or embedded templates", templateName)
 	}
 
 	// Extract to temp file (PPTX libraries need a real file path)
 	tmpFile, err := os.CreateTemp("", "json2pptx-template-*.pptx")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file for embedded template: %w", err)
+		return "", noop, fmt.Errorf("failed to create temp file for embedded template: %w", err)
 	}
 
 	if _, err := tmpFile.Write(data); err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		return "", fmt.Errorf("failed to write embedded template to temp file: %w", err)
+		return "", noop, fmt.Errorf("failed to write embedded template to temp file: %w", err)
 	}
 	if err := tmpFile.Close(); err != nil {
 		os.Remove(tmpFile.Name())
-		return "", fmt.Errorf("failed to close temp file for embedded template: %w", err)
+		return "", noop, fmt.Errorf("failed to close temp file for embedded template: %w", err)
 	}
 
 	slog.Debug("extracted embedded template to temp file",
@@ -159,7 +163,13 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, error) 
 		"path", tmpFile.Name(),
 	)
 
-	return tmpFile.Name(), nil
+	cleanup := func() {
+		if err := os.Remove(tmpFile.Name()); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove temp template file", "path", tmpFile.Name(), "err", err)
+		}
+	}
+
+	return tmpFile.Name(), cleanup, nil
 }
 
 // listAvailableTemplates returns the names of all available templates

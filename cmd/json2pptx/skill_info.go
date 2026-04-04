@@ -127,11 +127,12 @@ func runSkillInfo() error {
 	// Resolve each template name to a path via the search path
 	var templatePaths []string
 	for _, name := range templateNames {
-		path, err := resolveTemplatePath(name, *templatesDir)
+		path, cleanup, err := resolveTemplatePath(name, *templatesDir)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not resolve template %q: %v\n", name, err)
 			continue
 		}
+		defer cleanup()
 		templatePaths = append(templatePaths, path)
 	}
 

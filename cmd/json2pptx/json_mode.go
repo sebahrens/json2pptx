@@ -220,10 +220,11 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 
 	// Resolve template path using search path (flag, env, home, cwd, embedded)
-	templatePath, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
+	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("%s", templateNotFoundError(input.Template, cfg.Templates.Dir)))
 	}
+	defer templateCleanup()
 
 	// Analyze template before slide conversion — provides layout metadata
 	// for auto-layout selection and synthesizes missing layouts (e.g., two-column).

@@ -14,14 +14,16 @@ var privateRanges []*net.IPNet
 
 func init() {
 	for _, cidr := range []string{
-		"127.0.0.0/8",    // IPv4 loopback
-		"10.0.0.0/8",     // RFC1918
-		"172.16.0.0/12",  // RFC1918
-		"192.168.0.0/16", // RFC1918
-		"169.254.0.0/16", // link-local
-		"::1/128",        // IPv6 loopback
-		"fc00::/7",       // IPv6 unique local
-		"fe80::/10",      // IPv6 link-local
+		"0.0.0.0/8",          // "this" network (localhost on Linux)
+		"127.0.0.0/8",        // IPv4 loopback
+		"10.0.0.0/8",         // RFC1918
+		"172.16.0.0/12",      // RFC1918
+		"192.168.0.0/16",     // RFC1918
+		"169.254.0.0/16",     // link-local
+		"100.64.0.0/10",      // CGN / shared address space (RFC6598)
+		"::1/128",            // IPv6 loopback
+		"fc00::/7",           // IPv6 unique local
+		"fe80::/10",          // IPv6 link-local
 	} {
 		_, block, _ := net.ParseCIDR(cidr)
 		privateRanges = append(privateRanges, block)
@@ -29,7 +31,14 @@ func init() {
 }
 
 // isPrivateIP returns true if the IP falls within a private/loopback range.
+// IPv4-mapped IPv6 addresses (e.g. ::ffff:127.0.0.1) are normalized to IPv4
+// before checking, preventing bypass via IPv6 encoding of private IPv4 addresses.
 func isPrivateIP(ip net.IP) bool {
+	// Normalize IPv4-mapped IPv6 (::ffff:x.x.x.x) to plain IPv4 so that
+	// IPv4 CIDR ranges match regardless of representation.
+	if v4 := ip.To4(); v4 != nil {
+		ip = v4
+	}
 	for _, block := range privateRanges {
 		if block.Contains(ip) {
 			return true

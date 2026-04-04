@@ -188,10 +188,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Resolve template
-	templatePath, err := resolveTemplatePath(input.Template, mc.templatesDir)
+	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
 	if err != nil {
 		return mcp.NewToolResultError(templateNotFoundError(input.Template, mc.templatesDir)), nil
 	}
+	defer templateCleanup()
 
 	// Analyze template
 	var templateLayouts []types.LayoutMetadata
@@ -386,12 +387,13 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Resolve and analyze template
-	templatePath, err := resolveTemplatePath(input.Template, mc.templatesDir)
+	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
 	if err != nil {
 		output.Valid = false
 		output.Errors = append(output.Errors, templateNotFoundError(input.Template, mc.templatesDir))
 		return marshalValidateResult(output)
 	}
+	defer templateCleanup()
 
 	templateAnalysis, err := getOrAnalyzeTemplate(templatePath, mc.cache)
 	if err != nil {

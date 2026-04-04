@@ -118,12 +118,13 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 	}
 
 	// Resolve template for validation
-	templatePath, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
+	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
 	if err != nil {
 		output.Valid = false
 		output.Errors = append(output.Errors, templateNotFoundError(input.Template, cfg.Templates.Dir))
 		return writeDryRunOutput(output)
 	}
+	defer templateCleanup()
 
 	cache := template.NewMemoryCache(24 * time.Hour)
 	templateAnalysis, err := getOrAnalyzeTemplate(templatePath, cache)
