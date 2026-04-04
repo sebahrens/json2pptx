@@ -75,8 +75,8 @@ Commands:
   help               Show this help
 
 Examples:
-  json2pptx generate -template corporate slides.json
-  json2pptx -template corporate slides.json          (implicit generate)
+  json2pptx generate -json slides.json -template corporate
+  json2pptx -json slides.json -template corporate     (implicit generate)
   json2pptx validate slides.json
   json2pptx validate-template templates/corporate.pptx
   json2pptx skill-info --templates-dir ./templates

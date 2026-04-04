@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -125,6 +126,27 @@ func runServe() error {
 		ReadTimeout:    cfg.Server.ReadTimeout,
 		WriteTimeout:   cfg.Server.WriteTimeout,
 		MaxHeaderBytes: 1 << 20,
+	}
+
+	// Start pprof server if configured
+	if cfg.Server.PprofPort > 0 {
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		pprofAddr := fmt.Sprintf("%s:%d", cfg.Server.PprofBind, cfg.Server.PprofPort)
+		pprofServer := &http.Server{
+			Addr:    pprofAddr,
+			Handler: pprofMux,
+		}
+		go func() {
+			slog.Info("starting pprof server", "addr", pprofAddr)
+			if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				slog.Error("pprof server failed", "error", err)
+			}
+		}()
 	}
 
 	// Start server

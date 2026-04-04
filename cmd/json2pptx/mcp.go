@@ -24,6 +24,7 @@ type mcpConfig struct {
 	templatesDir string
 	outputDir    string
 	cfg          config.Config
+	cache        *template.MemoryCache
 }
 
 // runMCP starts an MCP server over stdio, exposing json2pptx tools.
@@ -73,6 +74,7 @@ func runMCP() error {
 		templatesDir: cfg.Templates.Dir,
 		outputDir:    cfg.Storage.OutputDir,
 		cfg:          cfg,
+		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
 	s := server.NewMCPServer(
@@ -324,11 +326,9 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		}
 	}
 
-	cache := template.NewMemoryCache(24 * time.Hour)
-
 	var templates []skillTemplateInfo
 	for _, path := range templatePaths {
-		info, err := analyzeTemplateForSkillInfo(path, cache, mode)
+		info, err := analyzeTemplateForSkillInfo(path, mc.cache, mode)
 		if err != nil {
 			continue
 		}
@@ -393,8 +393,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		return marshalValidateResult(output)
 	}
 
-	cache := template.NewMemoryCache(24 * time.Hour)
-	templateAnalysis, err := getOrAnalyzeTemplate(templatePath, cache)
+	templateAnalysis, err := getOrAnalyzeTemplate(templatePath, mc.cache)
 	if err != nil {
 		output.Valid = false
 		output.Errors = append(output.Errors, fmt.Sprintf("template analysis failed: %v", err))

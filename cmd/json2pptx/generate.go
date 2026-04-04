@@ -42,8 +42,6 @@ func runGenerate() error {
 		return fmt.Errorf("JSON input is required: use -json <file.json> or -json - for stdin")
 	}
 
-	_ = verbose
-
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templatesDir, *configPath)
 	}
