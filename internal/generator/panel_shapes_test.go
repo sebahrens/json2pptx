@@ -516,7 +516,7 @@ func TestAllocatePanelIconRelIDs_IconAndNoIcon(t *testing.T) {
 			},
 		},
 		MediaContext: MediaContext{
-			mediaCounter:    1,
+			media:           pptx.NewMediaAllocator(),
 			usedExtensions:  make(map[string]bool),
 			mediaFiles:      make(map[string]string),
 			slideRelUpdates: make(map[int][]mediaRel),
@@ -590,7 +590,7 @@ func TestAllocatePanelIconRelIDs_RelIDAfterExistingRels(t *testing.T) {
 			},
 		},
 		MediaContext: MediaContext{
-			mediaCounter:   1,
+			media:          pptx.NewMediaAllocator(),
 			usedExtensions: make(map[string]bool),
 			mediaFiles:     make(map[string]string),
 			slideRelUpdates: map[int][]mediaRel{
@@ -622,7 +622,7 @@ func TestAllocatePanelIconRelIDs_NoPanels(t *testing.T) {
 			panelShapeInserts: make(map[int][]panelShapeInsert),
 		},
 		MediaContext: MediaContext{
-			mediaCounter:    1,
+			media:           pptx.NewMediaAllocator(),
 			usedExtensions:  make(map[string]bool),
 			mediaFiles:      make(map[string]string),
 			slideRelUpdates: make(map[int][]mediaRel),

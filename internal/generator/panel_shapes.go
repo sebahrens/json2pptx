@@ -839,7 +839,7 @@ func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 
 	// Sort slide numbers for deterministic shape ID and rel ID allocation.
 	// Map iteration order is non-deterministic in Go; without sorting,
-	// nextShapeID and mediaCounter would vary between runs.
+	// nextShapeID and media allocator state would vary between runs.
 	slideNums := make([]int, 0, len(ctx.panelShapeInserts))
 	for slideNum := range ctx.panelShapeInserts {
 		slideNums = append(slideNums, slideNum)
@@ -870,9 +870,8 @@ func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 				}
 
 				// Allocate media filename
-				panel.iconMediaFile = fmt.Sprintf("image%d.png", ctx.mediaCounter)
-				ctx.mediaCounter++
-				ctx.usedExtensions["png"] = true
+				panel.iconMediaFile = ctx.allocPNG(fmt.Sprintf("panelicon-s%d-i%d-j%d", slideNum, i, j))
+
 
 				// Allocate relationship ID
 				panel.iconRelID = fmt.Sprintf("rId%d", nextRelID)

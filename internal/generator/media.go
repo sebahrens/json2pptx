@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -393,12 +392,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// PowerPoint 2016+ renders the crisp vector SVG; the PNG is a spec-required
 		// placeholder that is never displayed. Using a constant 67-byte PNG avoids
 		// expensive per-diagram rasterization.
-		svgMediaFile := fmt.Sprintf("image%d.svg", ctx.mediaCounter)
-		ctx.mediaCounter++
-		pngMediaFile := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-		ctx.mediaCounter++
-		ctx.usedExtensions["svg"] = true
-		ctx.usedExtensions["png"] = true
+		svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("diagram-s%d-x%d", slideNum, removeIdx))
 
 		// Use the rendered PNG if available (e.g., when PNG strategy was used
 		// for this diagram), otherwise use the 1x1 transparent constant.
@@ -422,9 +416,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// PNG-only embedding (for LibreOffice compatibility or when SVG unavailable).
 		// The rasterizer (tdewolff/canvas) correctly scales text and shapes
 		// identically. PNG is rendered at 2x from placeholder-sized SVG.
-		mediaFileName := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-		ctx.mediaCounter++
-		ctx.usedExtensions["png"] = true
+		mediaFileName := ctx.allocPNG(fmt.Sprintf("diagram-s%d-x%d", slideNum, removeIdx))
 
 		ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 			mediaFileName:  mediaFileName,
@@ -908,13 +900,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, p
 	}
 
 	// Allocate media filenames
-	svgMediaFile := fmt.Sprintf("image%d.svg", ctx.mediaCounter)
-	ctx.mediaCounter++
-	pngMediaFile := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-	ctx.mediaCounter++
-
-	ctx.usedExtensions["svg"] = true
-	ctx.usedExtensions["png"] = true
+	svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("nativesvg-s%d-x%d", slideNum, shapeIdx))
 
 	// Track as native SVG insert
 	ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
@@ -982,23 +968,7 @@ func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string
 // allocateMediaSlot registers an image file and returns its media filename.
 // If the image is already registered, returns the existing filename.
 func (ctx *singlePassContext) allocateMediaSlot(imagePath string) string {
-	if existing, present := ctx.mediaFiles[imagePath]; present {
-		return existing
-	}
-
-	ext := filepath.Ext(imagePath)
-	if ext == "" {
-		ext = ".png"
-	}
-	mediaFileName := fmt.Sprintf("image%d%s", ctx.mediaCounter, ext)
-	ctx.mediaFiles[imagePath] = mediaFileName
-	ctx.mediaCounter++
-
-	// Track extension
-	extLower := strings.TrimPrefix(strings.ToLower(ext), ".")
-	ctx.usedExtensions[extLower] = true
-
-	return mediaFileName
+	return ctx.allocPNGForFile(imagePath)
 }
 
 // insertSVGFallbackImage inserts a placeholder image indicating SVG rendering is unavailable.
@@ -1026,9 +996,7 @@ func (ctx *singlePassContext) insertSVGFallbackImage(slideNum int, placeholderBo
 		return
 	}
 
-	mediaFileName := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-	ctx.mediaCounter++
-	ctx.usedExtensions["png"] = true
+	mediaFileName := ctx.allocPNG(fmt.Sprintf("svgfallback-s%d-x%d", slideNum, shapeIdx))
 
 	// Track relationship with byte data for p:pic insertion
 	ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
@@ -1064,12 +1032,7 @@ func (ctx *singlePassContext) insertSVGFallbackImageSVG(slideNum int, placeholde
 		w, h, w, h,
 	))
 
-	svgMediaFile := fmt.Sprintf("image%d.svg", ctx.mediaCounter)
-	ctx.mediaCounter++
-	pngMediaFile := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-	ctx.mediaCounter++
-	ctx.usedExtensions["svg"] = true
-	ctx.usedExtensions["png"] = true
+	svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("svgfallbacksvg-s%d-x%d", slideNum, shapeIdx))
 
 	ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 		svgData:        svgData,
@@ -1106,9 +1069,7 @@ func (ctx *singlePassContext) insertDiagramPlaceholder(slideNum int, placeholder
 		return
 	}
 
-	mediaFileName := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-	ctx.mediaCounter++
-	ctx.usedExtensions["png"] = true
+	mediaFileName := ctx.allocPNG(fmt.Sprintf("diagramph-s%d-x%d", slideNum, shapeIdx))
 
 	ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 		mediaFileName:  mediaFileName,
@@ -1145,12 +1106,7 @@ func (ctx *singlePassContext) insertDiagramPlaceholderSVG(slideNum int, placehol
 		w, h, w, h, label,
 	))
 
-	svgMediaFile := fmt.Sprintf("image%d.svg", ctx.mediaCounter)
-	ctx.mediaCounter++
-	pngMediaFile := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-	ctx.mediaCounter++
-	ctx.usedExtensions["svg"] = true
-	ctx.usedExtensions["png"] = true
+	svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("diagramphsvg-s%d-x%d", slideNum, shapeIdx))
 
 	ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 		svgData:        svgData,

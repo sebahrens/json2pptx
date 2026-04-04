@@ -314,21 +314,17 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 
 // scanTemplate reads the template to understand its structure
 func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
-	// Count existing slides and find max media number
+	// Count existing slides and scan media files for collision-free numbering
+	var mediaPaths []string
 	for _, f := range ctx.templateReader.File {
 		if slideFileRegexSP.MatchString(f.Name) {
 			ctx.existingSlides++
 		}
-
-		if strings.HasPrefix(f.Name, PathMedia+"image") {
-			var num int
-			if _, err := fmt.Sscanf(f.Name, PatternMediaImage, &num); err == nil {
-				if num >= ctx.mediaCounter {
-					ctx.mediaCounter = num + 1
-				}
-			}
+		if strings.HasPrefix(f.Name, PathMedia) {
+			mediaPaths = append(mediaPaths, f.Name)
 		}
 	}
+	ctx.media.ScanPaths(mediaPaths)
 
 	// Extract actual slide dimensions from presentation.xml <p:sldSz>
 	ctx.extractSlideDimensions()
@@ -367,13 +363,9 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 			ctx.slideSources[slideNum] = slide.SourceNote
 		}
 		// Register icon inserts from shape_grid as native SVG inserts
-		for _, icon := range slide.IconInserts {
-			svgMediaFile := fmt.Sprintf("image%d.svg", ctx.mediaCounter)
-			ctx.mediaCounter++
-			pngMediaFile := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-			ctx.mediaCounter++
-			ctx.usedExtensions["svg"] = true
-			ctx.usedExtensions["png"] = true
+		for iconIdx, icon := range slide.IconInserts {
+			sourceID := fmt.Sprintf("icon-s%d-i%d", slideNum, iconIdx)
+			svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(sourceID)
 			ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 				svgData:        icon.SVGData,
 				pngData:        transparentPNG1x1,
@@ -387,7 +379,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 			})
 		}
 		// Register image inserts from shape_grid as media relationships
-		for _, img := range slide.ImageInserts {
+		for imgIdx, img := range slide.ImageInserts {
 			// Validate image path for security (prevent path traversal)
 			if err := ValidateImagePathWithConfig(img.Path, ctx.allowedImagePaths); err != nil {
 				ctx.warnings = append(ctx.warnings, fmt.Sprintf("shape_grid image: path validation failed: %v", err))
@@ -405,12 +397,8 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 					ctx.warnings = append(ctx.warnings, fmt.Sprintf("shape_grid image: failed to read SVG file: %v", err))
 					continue
 				}
-				svgMediaFile := fmt.Sprintf("image%d.svg", ctx.mediaCounter)
-				ctx.mediaCounter++
-				pngMediaFile := fmt.Sprintf("image%d.png", ctx.mediaCounter)
-				ctx.mediaCounter++
-				ctx.usedExtensions["svg"] = true
-				ctx.usedExtensions["png"] = true
+				sourceID := fmt.Sprintf("gridsvg-s%d-i%d", slideNum, imgIdx)
+				svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(sourceID)
 				ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 					svgData:        svgData,
 					pngData:        transparentPNG1x1,

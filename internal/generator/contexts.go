@@ -5,7 +5,10 @@ import (
 	"archive/zip"
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -99,7 +102,7 @@ type nativePanelData struct {
 // MediaContext holds media tracking state for single-pass generation.
 // Responsible for managing image files, extensions, and relationships.
 type MediaContext struct {
-	mediaCounter    int
+	media           *pptx.MediaAllocator
 	mediaFiles      map[string]string  // image path -> media filename
 	usedExtensions  map[string]bool    // image extensions for Content_Types.xml
 	slideRelUpdates map[int][]mediaRel // slideNum -> relationships to add
@@ -189,7 +192,7 @@ func newSinglePassContext(outputPath string, slides []SlideSpec, allowedPaths []
 			slideBgMedia:           make(map[int]mediaRel),
 		},
 		MediaContext: MediaContext{
-			mediaCounter:    1,
+			media:           pptx.NewMediaAllocator(),
 			mediaFiles:      make(map[string]string),
 			usedExtensions:  make(map[string]bool),
 			slideRelUpdates: make(map[int][]mediaRel),
@@ -276,6 +279,60 @@ var transparentPNG1x1 = []byte{
 	0x01, 0xe5, 0x27, 0xde, 0xfc,
 	0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, // IEND chunk
 	0xae, 0x42, 0x60, 0x82,
+}
+
+// allocSVGPNGPair allocates a paired SVG+PNG media filename slot via the MediaAllocator.
+// sourceID should uniquely identify the content (e.g., "chart-slide3-idx2").
+// Returns (svgMediaFile, pngMediaFile) basenames like ("image5.svg", "image6.png").
+func (ctx *singlePassContext) allocSVGPNGPair(sourceID string) (svgMediaFile, pngMediaFile string) {
+	svgPath := ctx.media.Allocate("svg", sourceID+":svg")
+	pngPath := ctx.media.Allocate("png", sourceID+":png")
+	ctx.usedExtensions["svg"] = true
+	ctx.usedExtensions["png"] = true
+	return pptx.MediaFilename(svgPath), pptx.MediaFilename(pngPath)
+}
+
+// allocPNG allocates a single PNG media filename slot via the MediaAllocator.
+// Returns the basename like "image5.png".
+func (ctx *singlePassContext) allocPNG(sourceID string) string {
+	mediaPath := ctx.media.AllocatePNG(sourceID)
+	ctx.usedExtensions["png"] = true
+	return pptx.MediaFilename(mediaPath)
+}
+
+// allocMedia allocates a media filename slot for any extension via the MediaAllocator.
+// ext should include the dot (e.g., ".png", ".jpg").
+// Returns the basename like "image5.png".
+func (ctx *singlePassContext) allocMedia(ext string, sourceID string) string {
+	mediaPath := ctx.media.Allocate(ext, sourceID)
+	extLower := strings.TrimPrefix(strings.ToLower(ext), ".")
+	ctx.usedExtensions[extLower] = true
+	return pptx.MediaFilename(mediaPath)
+}
+
+// nextMediaNum returns the next image number that would be allocated.
+func (ctx *singlePassContext) nextMediaNum() int {
+	return ctx.media.NextImageNum()
+}
+
+// allocPNGForFile allocates a media filename for an image file path, with deduplication.
+// If the same file path was already allocated, returns the existing filename.
+// Returns the basename like "image5.png".
+func (ctx *singlePassContext) allocPNGForFile(imagePath string) string {
+	if existing, present := ctx.mediaFiles[imagePath]; present {
+		return existing
+	}
+	ext := filepath.Ext(imagePath)
+	if ext == "" {
+		ext = ".png"
+	}
+	mediaPath := ctx.media.Allocate(strings.TrimPrefix(ext, "."), "file:"+imagePath)
+	mediaFileName := pptx.MediaFilename(mediaPath)
+	ctx.mediaFiles[imagePath] = mediaFileName
+
+	extLower := strings.TrimPrefix(strings.ToLower(ext), ".")
+	ctx.usedExtensions[extLower] = true
+	return mediaFileName
 }
 
 // getPlaceholderBounds extracts bounds from shape transform or uses explicit bounds.

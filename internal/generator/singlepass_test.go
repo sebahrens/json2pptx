@@ -1553,41 +1553,42 @@ func TestGetPlaceholderBounds(t *testing.T) {
 // TestAllocateMediaSlot tests media slot allocation
 func TestAllocateMediaSlot(t *testing.T) {
 	ctx := newSinglePassContext("", nil, nil, false, nil)
-	ctx.mediaCounter = 5
+	// Pre-seed the allocator so numbering starts at 5 (simulate 4 existing images)
+	ctx.media.ScanPaths([]string{"ppt/media/image4.png"})
 
 	tests := []struct {
 		name              string
 		imagePath         string
 		wantMediaFile     string
-		wantCounterAfter  int
+		wantNextAfter     int
 		wantExtensionUsed string
 	}{
 		{
 			name:              "new PNG file",
 			imagePath:         "/path/to/image.png",
 			wantMediaFile:     "image5.png",
-			wantCounterAfter:  6,
+			wantNextAfter:     6,
 			wantExtensionUsed: "png",
 		},
 		{
 			name:              "same file returns cached",
 			imagePath:         "/path/to/image.png",
 			wantMediaFile:     "image5.png",
-			wantCounterAfter:  6, // no increment
+			wantNextAfter:     6, // no increment
 			wantExtensionUsed: "png",
 		},
 		{
 			name:              "new JPG file",
 			imagePath:         "/path/to/photo.jpg",
 			wantMediaFile:     "image6.jpg",
-			wantCounterAfter:  7,
+			wantNextAfter:     7,
 			wantExtensionUsed: "jpg",
 		},
 		{
 			name:              "file without extension defaults to png",
 			imagePath:         "/path/to/noext",
 			wantMediaFile:     "image7.png",
-			wantCounterAfter:  8,
+			wantNextAfter:     8,
 			wantExtensionUsed: "png",
 		},
 	}
@@ -1599,8 +1600,8 @@ func TestAllocateMediaSlot(t *testing.T) {
 			if got != tt.wantMediaFile {
 				t.Errorf("allocateMediaSlot() = %q, want %q", got, tt.wantMediaFile)
 			}
-			if ctx.mediaCounter != tt.wantCounterAfter {
-				t.Errorf("mediaCounter = %d, want %d", ctx.mediaCounter, tt.wantCounterAfter)
+			if ctx.nextMediaNum() != tt.wantNextAfter {
+				t.Errorf("nextMediaNum() = %d, want %d", ctx.nextMediaNum(), tt.wantNextAfter)
 			}
 			if !ctx.usedExtensions[tt.wantExtensionUsed] {
 				t.Errorf("extension %q not marked as used", tt.wantExtensionUsed)

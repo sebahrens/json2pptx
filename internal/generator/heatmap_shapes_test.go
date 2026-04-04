@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
+
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -379,7 +381,7 @@ func TestAllocatePanelIconRelIDs_HeatmapMode(t *testing.T) {
 			},
 		},
 		MediaContext: MediaContext{
-			mediaCounter:    1,
+			media:           pptx.NewMediaAllocator(),
 			usedExtensions:  make(map[string]bool),
 			mediaFiles:      make(map[string]string),
 			slideRelUpdates: make(map[int][]mediaRel),
