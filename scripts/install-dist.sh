@@ -46,7 +46,7 @@ Options:
 
 Installs:
   $PREFIX/bin/json2pptx                    CLI binary (also serves as MCP server)
-  ~/.claude/skills/template-deck/          Claude Code skill (unless --skip-skill)
+  ~/.claude/skills/*/                      Claude Code skills (unless --skip-skill)
   ~/.claude/mcp.json                       MCP server configuration (unless --skip-mcp)
 USAGE
       exit 0
@@ -95,8 +95,7 @@ fi
 
 if [ "$SKIP_SKILL" = false ]; then
   echo ""
-  echo "==> Installing Claude Code skill (template-deck)..."
-  SKILL_DIR="$HOME/.claude/skills/template-deck"
+  echo "==> Installing Claude Code skills..."
 
   # Clean up old skill name if present
   OLD_SKILL_DIR="$HOME/.claude/skills/make-slides"
@@ -105,13 +104,14 @@ if [ "$SKIP_SKILL" = false ]; then
     echo "    Removed old skill: $OLD_SKILL_DIR"
   fi
 
-  if [ -d "$SCRIPT_DIR/skills/template-deck" ]; then
-    mkdir -p "$SKILL_DIR"
-    cp "$SCRIPT_DIR/skills/template-deck/"* "$SKILL_DIR/"
-    echo "    $SKILL_DIR/"
-  else
-    echo "    WARNING: No skill files found in archive."
-  fi
+  for skill_name in template-deck generate-deck slide-visual-qa; do
+    if [ -d "$SCRIPT_DIR/skills/$skill_name" ]; then
+      SKILL_DIR="$HOME/.claude/skills/$skill_name"
+      mkdir -p "$SKILL_DIR"
+      cp "$SCRIPT_DIR/skills/$skill_name/"* "$SKILL_DIR/"
+      echo "    $SKILL_DIR/"
+    fi
+  done
 fi
 
 # --- Install MCP config ---
@@ -174,7 +174,7 @@ if [ -d "$SCRIPT_DIR/templates" ]; then
   echo "  Templates: $HOME/.json2pptx/templates/"
 fi
 if [ "$SKIP_SKILL" = false ]; then
-  echo "  Skill:     ~/.claude/skills/template-deck/"
+  echo "  Skills:    ~/.claude/skills/{template-deck,generate-deck,slide-visual-qa}/"
 fi
 if [ "$SKIP_MCP" = false ]; then
   echo "  MCP:       ~/.claude/mcp.json (json2pptx server)"

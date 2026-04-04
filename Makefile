@@ -123,7 +123,7 @@ ifndef SKIP_TEMPLATES
 	@echo "    Templates:  $(HOME)/.json2pptx/templates/"
 endif
 ifndef SKIP_SKILL
-	@echo "    Skill:      $(HOME)/.claude/skills/template-deck/"
+	@echo "    Skills:     $(HOME)/.claude/skills/{template-deck,generate-deck,slide-visual-qa}/"
 endif
 ifndef SKIP_MCP
 	@echo "    MCP config: $(HOME)/.claude/mcp.json"
@@ -166,14 +166,13 @@ endif
 
 install-skill:
 ifndef SKIP_SKILL
-	@echo "==> Installing Claude Code skill (template-deck)..."
-	@if [ -d .claude/skills/template-deck ]; then \
-		mkdir -p "$(HOME)/.claude/skills/template-deck"; \
-		cp .claude/skills/template-deck/* "$(HOME)/.claude/skills/template-deck/"; \
-		echo "    $(HOME)/.claude/skills/template-deck/"; \
-	else \
-		echo "    Skipped (no skill files found)"; \
-	fi
+	@echo "==> Installing Claude Code skills..."
+	@for skill_dir in skills/*/; do \
+		skill_name=$$(basename "$$skill_dir"); \
+		mkdir -p "$(HOME)/.claude/skills/$$skill_name"; \
+		cp "$$skill_dir"* "$(HOME)/.claude/skills/$$skill_name/"; \
+		echo "    $(HOME)/.claude/skills/$$skill_name/"; \
+	done
 endif
 
 install-mcp:
@@ -213,6 +212,8 @@ uninstall:
 	) true
 	@rm -rf "$(HOME)/.json2pptx"
 	@rm -rf "$(HOME)/.claude/skills/template-deck"
+	@rm -rf "$(HOME)/.claude/skills/generate-deck"
+	@rm -rf "$(HOME)/.claude/skills/slide-visual-qa"
 	@echo "    Done (MCP config left in place — edit ~/.claude/mcp.json manually)"
 
 # ─── Cross-compilation ────────────────────────────────────────────────
@@ -250,10 +251,11 @@ dist-linux: release-check ensure-templates
 	mkdir -p $(DIST_STAGING)/bin $(DIST_STAGING)/templates
 	cp bin/json2pptx-linux-amd64 $(DIST_STAGING)/bin/json2pptx
 	cp templates/*.pptx $(DIST_STAGING)/templates/
-	@if [ -d .claude/skills/template-deck ]; then \
-		mkdir -p $(DIST_STAGING)/skills/template-deck; \
-		cp .claude/skills/template-deck/* $(DIST_STAGING)/skills/template-deck/; \
-	fi
+	@for skill_dir in skills/*/; do \
+		skill_name=$$(basename "$$skill_dir"); \
+		mkdir -p $(DIST_STAGING)/skills/$$skill_name; \
+		cp "$$skill_dir"* $(DIST_STAGING)/skills/$$skill_name/; \
+	done
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
 	@echo "==> Creating archive: $(DIST_ARCHIVE)"

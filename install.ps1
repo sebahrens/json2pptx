@@ -34,7 +34,7 @@ Options:
 Installs:
   <Prefix>\bin\json2pptx.exe                CLI binary (also serves as MCP server)
   ~\.json2pptx\templates\                   PPTX template files
-  ~\.claude\skills\template-deck\           Claude Code skill files
+  ~\.claude\skills\*\                       Claude Code skill files (3 skills)
   ~\.claude\mcp.json                        MCP server configuration
 "@
     exit 0
@@ -157,10 +157,7 @@ if (-not $SkipTemplates) {
 
 if (-not $SkipSkill) {
     Write-Host ""
-    Write-Host "==> Installing Claude Code skill (template-deck)..."
-
-    $SkillSrc = Join-Path $ScriptDir ".claude\skills\template-deck"
-    $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\template-deck"
+    Write-Host "==> Installing Claude Code skills..."
 
     # Clean up old skill name
     $OldSkillDst = Join-Path $env:USERPROFILE ".claude\skills\make-slides"
@@ -169,12 +166,18 @@ if (-not $SkipSkill) {
         Write-Host "    Removed old skill: $OldSkillDst"
     }
 
-    if (Test-Path $SkillSrc) {
-        New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
-        Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Force
-        Write-Host "    $SkillDst"
-    } else {
-        Write-Host "    Skipped (no skill files found)" -ForegroundColor Yellow
+    $SkillNames = @("template-deck", "generate-deck", "slide-visual-qa")
+    foreach ($SkillName in $SkillNames) {
+        $SkillSrc = Join-Path $ScriptDir "skills\$SkillName"
+        $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\$SkillName"
+
+        if (Test-Path $SkillSrc) {
+            New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
+            Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Force
+            Write-Host "    $SkillDst"
+        } else {
+            Write-Host "    Skipped $SkillName (no skill files found)" -ForegroundColor Yellow
+        }
     }
 }
 
@@ -234,7 +237,7 @@ if (-not $SkipTemplates) {
     Write-Host "  Templates: $env:USERPROFILE\.json2pptx\templates\"
 }
 if (-not $SkipSkill) {
-    Write-Host "  Skill:     ~\.claude\skills\template-deck\"
+    Write-Host "  Skills:    ~\.claude\skills\{template-deck,generate-deck,slide-visual-qa}\"
 }
 if (-not $SkipMcp) {
     Write-Host "  MCP:       ~\.claude\mcp.json"

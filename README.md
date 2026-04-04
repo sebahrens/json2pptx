@@ -90,7 +90,7 @@ For custom visual layouts (consulting-style panels, process steps, matrices), `s
 - **Slide transitions and build animations** -- fade, push, wipe, cover, cut; bullet-by-bullet reveal
 - **HTTP API** -- REST endpoints for programmatic generation
 - **MCP server** -- Model Context Protocol support for AI-assisted deck creation
-- **Claude Code skill** -- integrated skill for AI-driven presentation authoring
+- **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, field reference, and visual QA
 
 ## Installation
 
@@ -162,7 +162,7 @@ cd json2pptx
 .\install.ps1
 ```
 
-This builds all binaries, installs them to `%LOCALAPPDATA%\json2pptx\bin\`, copies templates, and configures the MCP server. Options:
+This builds all binaries, installs them to `%LOCALAPPDATA%\json2pptx\bin\`, copies templates, installs Claude Code skills, and configures the MCP server. Options:
 
 ```powershell
 .\install.ps1 -Prefix "C:\tools"     # Custom install prefix
@@ -312,6 +312,120 @@ Preview what layouts would be selected without generating (dry-run):
 
 ```sh
 json2pptx generate -dry-run -json examples/sovereign-ai-strategy.json
+```
+
+## Claude Code Integration
+
+json2pptx ships with three Claude Code skills and an MCP server that let an AI agent create, validate, and refine presentations from natural language prompts.
+
+### What Gets Installed
+
+`make install` (or `./install.sh` / `.\install.ps1`) sets up everything:
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| MCP server config | `~/.claude/mcp.json` | Connects Claude Code to json2pptx tools |
+| **generate-deck** skill | `~/.claude/skills/generate-deck/` | Constrained deck generation workflow |
+| **template-deck** skill | `~/.claude/skills/template-deck/` | Complete field reference (layouts, charts, shapes) |
+| **slide-visual-qa** skill | `~/.claude/skills/slide-visual-qa/` | Visual QA for rendered slide images |
+
+Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
+
+### MCP Server
+
+The MCP server exposes json2pptx as a set of tools that Claude Code can call directly:
+
+| Tool | Description |
+|------|-------------|
+| `list_templates` | Discover templates, layouts, and placeholder IDs |
+| `validate_input` | Check JSON for errors before generating |
+| `generate_presentation` | Generate a PPTX from JSON input |
+
+Start manually (for debugging):
+
+```sh
+json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
+```
+
+The installer configures this automatically in `~/.claude/mcp.json`.
+
+### Using the Generate Deck Skill
+
+The `generate-deck` skill (`/generate-deck` in Claude Code) guides the AI through a constrained generation workflow optimized for consulting-quality decks.
+
+**Ask Claude Code to create a deck:**
+
+```
+Create a 12-slide strategy deck about our cloud migration plan.
+Use the warm-coral template.
+```
+
+**The skill enforces a 3-stage workflow:**
+
+1. **Plan** -- Claude produces a slide outline (layout types, visual patterns, narrative arc) and presents it for your approval before writing any JSON.
+
+2. **Generate** -- Claude writes the full JSON in one pass, using proven shape grid patterns (icon rows, card grids, 2x2 matrices, comparison tables) rather than inventing structures from scratch.
+
+3. **Validate & Repair** -- Claude calls `validate_input` to catch structural errors, then fixes only the failing slides rather than regenerating the entire deck.
+
+**Built-in pattern library:** The skill includes 6 battle-tested shape grid patterns extracted from the `sovereign-ai-strategy` reference deck:
+
+| Pattern | Use for |
+|---------|---------|
+| Icon Rows | Agenda items, key points with icons, risk factors |
+| Card Grid | Strategic pillars, capabilities, dimensions |
+| Labeled 2x2 Matrix | Tradeoff analysis, strategic positioning |
+| Two-Column Header + Body | Pros/cons, before/after comparisons |
+| Table in Grid | Data tables, scenario comparisons |
+| Card Grid + Chart | Maturity models, assessments with data |
+
+**Invariants are enforced automatically.** The skill encodes rules like "cell col_spans must sum to column count", "chart series values must match categories length", and "use `ctr` not `center` for alignment" -- preventing the most common structural errors.
+
+### Using the Template Deck Skill
+
+The `template-deck` skill (`~/.claude/skills/template-deck/TEMPLATE_GUIDE.md` after installation) is the complete field reference for the JSON format. It documents:
+
+- All content types (text, bullets, charts, diagrams, tables, images, body_and_bullets, bullet_groups)
+- All 15 chart types with data format examples
+- All 21 diagram types with data schemas
+- Complete shape grid properties (bounds, columns, rows, cells, shapes, icons, images)
+- Patch operations for incremental slide updates
+- Footer, theme override, and slide-level field reference
+
+The generate-deck skill references this automatically when it needs field details.
+
+### Using the Visual QA Skill
+
+After generating a deck, convert slides to images and run visual QA:
+
+```sh
+# Convert PPTX to images (requires LibreOffice + ImageMagick)
+pptx2jpg -input output/my-deck.pptx -output /tmp/slides/ -density 150
+
+# Then in Claude Code:
+/slide-visual-qa /tmp/slides/
+```
+
+The skill inspects each slide image for layout issues, text overflow, contrast problems, and spacing defects.
+
+### Example Workflow
+
+A typical AI-assisted workflow:
+
+```
+You:     "Build a board presentation about our Q1 results.
+          Include revenue charts, team growth, and strategic priorities.
+          Use midnight-blue template, 10 slides."
+
+Claude:  [Plans outline, presents for approval]
+         [Generates JSON using card grids for KPIs, bar charts for revenue]
+         [Validates with validate_input, fixes any errors]
+         [Calls generate_presentation → output/q1-board.pptx]
+
+You:     "The revenue chart should be stacked bar, not regular bar.
+          Also add a 2x2 matrix for strategic priorities."
+
+Claude:  [Patches only the affected slides, regenerates]
 ```
 
 ## JSON Input Format

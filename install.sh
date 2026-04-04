@@ -19,7 +19,7 @@ SKIP_SKILL=false
 SKIP_BUILD=false
 SKIP_MCP=false
 SKIP_TEMPLATES=false
-SKILL_NAME="template-deck"
+SKILL_NAMES=(template-deck generate-deck slide-visual-qa)
 OLD_SKILL_NAME="make-slides"
 
 # Binaries to install (user-facing tools)
@@ -158,25 +158,27 @@ fi
 
 if [[ "$SKIP_SKILL" == false ]]; then
   echo ""
-  echo "==> Installing Claude Code skill ($SKILL_NAME)..."
+  echo "==> Installing Claude Code skills..."
 
-  SKILL_SRC="$SCRIPT_DIR/.claude/skills/$SKILL_NAME"
-  SKILL_DST="$HOME/.claude/skills/$SKILL_NAME"
-
-  if [[ ! -d "$SKILL_SRC" ]]; then
-    echo "    Skipped (no skill files found)"
-  else
-    # Clean up old skill name if present
-    OLD_SKILL_DST="$HOME/.claude/skills/$OLD_SKILL_NAME"
-    if [[ -d "$OLD_SKILL_DST" ]]; then
-      echo "    Removing old skill: $OLD_SKILL_DST"
-      rm -rf "$OLD_SKILL_DST"
-    fi
-
-    mkdir -p "$SKILL_DST"
-    cp -R "$SKILL_SRC"/* "$SKILL_DST"/
-    echo "    Installed: $SKILL_DST"
+  # Clean up old skill name if present
+  OLD_SKILL_DST="$HOME/.claude/skills/$OLD_SKILL_NAME"
+  if [[ -d "$OLD_SKILL_DST" ]]; then
+    echo "    Removing old skill: $OLD_SKILL_DST"
+    rm -rf "$OLD_SKILL_DST"
   fi
+
+  for SKILL_NAME in "${SKILL_NAMES[@]}"; do
+    SKILL_SRC="$SCRIPT_DIR/skills/$SKILL_NAME"
+    SKILL_DST="$HOME/.claude/skills/$SKILL_NAME"
+
+    if [[ ! -d "$SKILL_SRC" ]]; then
+      echo "    Skipped $SKILL_NAME (no skill files found)"
+    else
+      mkdir -p "$SKILL_DST"
+      cp -R "$SKILL_SRC"/* "$SKILL_DST"/
+      echo "    Installed: $SKILL_DST"
+    fi
+  done
 fi
 
 # --- Install MCP config ---
@@ -243,7 +245,7 @@ if [[ "$SKIP_TEMPLATES" == false ]]; then
   echo "  Templates: ~/.json2pptx/templates/"
 fi
 if [[ "$SKIP_SKILL" == false ]]; then
-  echo "  Skill:     ~/.claude/skills/$SKILL_NAME/"
+  echo "  Skills:    ~/.claude/skills/{template-deck,generate-deck,slide-visual-qa}/"
 fi
 if [[ "$SKIP_MCP" == false ]]; then
   echo "  MCP:       ~/.claude/mcp.json"

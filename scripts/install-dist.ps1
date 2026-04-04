@@ -25,7 +25,7 @@ Options:
 
 Installs:
   <Prefix>\bin\json2pptx.exe                CLI binary (also serves as MCP server)
-  ~\.claude\skills\template-deck\           Claude Code skill files
+  ~\.claude\skills\*\                       Claude Code skill files (3 skills)
   ~\.claude\mcp.json                        MCP server configuration (merged)
 "@
     exit 0
@@ -69,10 +69,7 @@ if (Test-Path $TemplateSrc) {
 
 if (-not $SkipSkill) {
     Write-Host ""
-    Write-Host "==> Installing Claude Code skill (template-deck)..."
-
-    $SkillSrc = Join-Path $ScriptDir "skills\template-deck"
-    $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\template-deck"
+    Write-Host "==> Installing Claude Code skills..."
 
     # Clean up old skill name
     $OldSkillDst = Join-Path $env:USERPROFILE ".claude\skills\make-slides"
@@ -81,12 +78,15 @@ if (-not $SkipSkill) {
         Write-Host "    Removed old skill: $OldSkillDst"
     }
 
-    if (Test-Path $SkillSrc) {
-        New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
-        Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Force
-        Write-Host "    $SkillDst"
-    } else {
-        Write-Host "    WARNING: No skill files found in archive." -ForegroundColor Yellow
+    foreach ($SkillName in @("template-deck", "generate-deck", "slide-visual-qa")) {
+        $SkillSrc = Join-Path $ScriptDir "skills\$SkillName"
+        $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\$SkillName"
+
+        if (Test-Path $SkillSrc) {
+            New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
+            Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Force
+            Write-Host "    $SkillDst"
+        }
     }
 }
 
@@ -145,7 +145,7 @@ if (Test-Path (Join-Path $ScriptDir "templates")) {
     Write-Host "  Templates: $env:USERPROFILE\.json2pptx\templates\"
 }
 if (-not $SkipSkill) {
-    Write-Host "  Skill:     ~\.claude\skills\template-deck\"
+    Write-Host "  Skills:    ~\.claude\skills\{template-deck,generate-deck,slide-visual-qa}\"
 }
 if (-not $SkipMcp) {
     Write-Host "  MCP:       ~\.claude\mcp.json (json2pptx server)"
