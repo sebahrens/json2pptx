@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LLM-assisted content refinement
 - Visual inspection for quality assurance
 - HTTP API for slide generation
-- Worker pool for concurrent chart rendering
+- Inline chart rendering during single-pass generation
 - Template caching with LRU eviction
 
 [Unreleased]: https://github.com/sebahrens/json2pptx/compare/v0.1.0...HEAD

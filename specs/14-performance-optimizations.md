@@ -14,7 +14,7 @@ Analysis of the Go Slide Creator codebase for performance bottlenecks and optimi
 | H3: Unbounded Cache | ✅ **Implemented** | `cache.go:62-96` - LRU eviction with `maxSize` |
 | H4: Chart Temp Files | ✅ **Implemented** | `svg.go:212,285` - `defer os.Remove` cleanup |
 | H5: Full File Read Download | ✅ **Implemented** | `download.go:85-96` - Uses `http.ServeContent` |
-| M1: Semaphore for Chart Rendering | ✅ **Implemented** | `workerpool/pool.go` - Bounded worker pool |
+| M1: Semaphore for Chart Rendering | ✅ **Implemented** | `singlepass.go` - Inline chart rendering during single-pass generation |
 | M2: sync.Pool for Buffers | ❌ Not Implemented | Low priority |
 | M3: Streaming JSON Parse | ❌ Not Implemented | Low priority |
 | M4: LLM Client Goroutine Leak | ⚠️ Partial | Circuit breaker exists; Close() method planned |

@@ -111,7 +111,7 @@ The implementation uses a **single-pass ZIP generation** for optimal performance
 1. **Initialize Context**: Open template as ZIP reader, create output file
 2. **Scan Template**: Count existing slides, find max media number, parse theme colors
 3. **Prepare Slides**: Create slide XML from layouts, resolve empty transforms from masters
-4. **Pre-render Charts**: Concurrently render all charts using worker pool
+4. **Pre-render Charts**: Render all charts inline during single-pass generation
 5. **Prepare Images**: Validate paths, scale images, track media files
 6. **Write Output**: Single-pass copy unchanged files, write modified/new files, add media
 7. **Finalize**: Close ZIP, move temp file to output path
@@ -203,7 +203,7 @@ Body text followed by bullet points in the same placeholder:
 
 Charts are rendered during generation using `*types.ChartSpec`:
 
-1. Chart specs are pre-rendered concurrently using worker pool
+1. Chart specs are rendered inline during single-pass ZIP generation
 2. Theme colors from template are injected into chart styling
 3. Rendered PNG is embedded as image
 4. No embedded Excel data (static image only)
