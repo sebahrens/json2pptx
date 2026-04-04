@@ -12,46 +12,6 @@ import (
 // mmToPxFactor converts mm to CSS pixels at 96 DPI.
 const mmToPxFactor = 96.0 / 25.4 // ≈ 3.7795275590551
 
-// scaleSVGToPixelCoords converts an mm-coordinate SVG to a pure CSS-pixel SVG.
-//
-// LibreOffice (and PowerPoint PDF export) misinterpret font-size "px" values
-// when the SVG viewBox uses mm-scale coordinates, causing text to appear
-// oversized and garbled. The only reliable fix is to output SVGs where the
-// viewBox matches the viewport (both in CSS pixels) and all coordinates and
-// font sizes are in actual CSS pixels.
-//
-// This function scales all coordinate values in the SVG by 96/25.4 (mm→px).
-func scaleSVGToPixelCoords(svgContent []byte, widthMM, heightMM float64) []byte {
-	widthPx := math.Round(widthMM * mmToPxFactor)
-	heightPx := math.Round(heightMM * mmToPxFactor)
-
-	s := string(svgContent)
-
-	// 1. Replace SVG tag: viewport and viewBox to pixel values
-	s = svgViewportMMRe.ReplaceAllString(s, fmt.Sprintf(`width="%.0f" height="%.0f"`, widthPx, heightPx))
-	s = replaceViewBox(s, widthPx, heightPx)
-
-	// 2. Scale path data in d="..." attributes
-	s = scalePathDataInSVG(s)
-
-	// 3. Scale coordinate attributes (x, y, cx, cy, r, x1, y1, x2, y2)
-	s = scaleCoordAttributes(s)
-
-	// 4. Scale font-size in style attributes: "font: [weight] Npx family"
-	s = scaleFontSizes(s)
-
-	// 5. Scale stroke-width in style attributes
-	s = scaleStrokeWidths(s)
-
-	// 6. Scale transform translate values
-	s = scaleTranslateTransforms(s)
-
-	// 7. Scale gradient coordinates
-	s = scaleGradientCoords(s)
-
-	return []byte(s)
-}
-
 // replaceViewBox replaces viewBox="0 0 W H" with pixel values.
 var viewBoxRe = regexp.MustCompile(`viewBox="0 0 [0-9.]+ [0-9.]+"`)
 

@@ -90,6 +90,7 @@ func NewFishboneChart(builder *SVGBuilder, config FishboneConfig) *FishboneChart
 }
 
 // Draw renders the fishbone diagram.
+//nolint:gocognit // complex chart rendering logic
 func (fc *FishboneChart) Draw(data FishboneData) error {
 	if data.Effect == "" {
 		return fmt.Errorf("fishbone diagram requires an 'effect'")
@@ -758,6 +759,7 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 //  1. Spread X positions further apart along the spine.
 //  2. If still overlapping, reduce label font size (down to a floor).
 //  3. Re-measure and re-position after each adjustment.
+//nolint:gocognit // complex chart rendering logic
 func (fc *FishboneChart) resolveCollisions(
 	layouts []fishboneBranchLayout,
 	b *SVGBuilder,

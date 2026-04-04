@@ -212,6 +212,7 @@ type XLabelLayout struct {
 //   - plotWidth: the available horizontal space for all categories
 //   - baseFontSize: the starting font size (typically style.Typography.SizeSmall)
 //   - isNarrow: true when the chart is narrow (width < 500pt)
+//nolint:gocognit // complex chart rendering logic
 func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize float64, isNarrow bool) XLabelLayout {
 	numCats := len(categories)
 	if numCats == 0 {

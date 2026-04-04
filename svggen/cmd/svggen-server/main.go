@@ -46,27 +46,6 @@ type serverConfig struct {
 	TrustedProxies    string // Comma-separated list of trusted proxy CIDRs
 }
 
-// defaultServerConfig returns the default server configuration.
-func defaultServerConfig() serverConfig {
-	return serverConfig{
-		Port:                 3001,
-		ReadTimeout:          30 * time.Second,
-		WriteTimeout:         60 * time.Second,
-		IdleTimeout:          120 * time.Second,
-		ShutdownTimeout:      30 * time.Second,
-		MaxRequestSize:       10 * 1024 * 1024,
-		CacheTTL:             5 * time.Minute,
-		CacheMaxEntries:      1000,
-		CacheCleanupInterval: 1 * time.Minute,
-
-		// Security defaults - disabled by default for backward compatibility
-		AuthEnabled:       false,
-		RateLimitEnabled:  false,
-		RateLimitRequests: 100,
-		RateLimitWindow:   time.Minute,
-	}
-}
-
 // runOptions allows customizing run() behavior for testing.
 type runOptions struct {
 	// config provides all server configuration values directly.
@@ -75,14 +54,6 @@ type runOptions struct {
 	skipServer bool
 	// logWriter is the destination for log output. If nil, uses os.Stdout.
 	logWriter io.Writer
-}
-
-// defaultRunOptions returns the default run options.
-func defaultRunOptions() runOptions {
-	return runOptions{
-		config:    defaultServerConfig(),
-		logWriter: os.Stdout,
-	}
 }
 
 func run() error {

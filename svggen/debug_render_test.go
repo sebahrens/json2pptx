@@ -51,9 +51,10 @@ func TestDebugTimelineRender(t *testing.T) {
 		t.Fatalf("png: %v", err)
 	}
 
-	os.WriteFile("/tmp/timeline_test.png", pngData, 0644)
-	os.WriteFile("/tmp/timeline_test.svg", svgDoc.Bytes(), 0644)
-	t.Log("wrote /tmp/timeline_test.png and /tmp/timeline_test.svg")
+	tmpDir := t.TempDir()
+	os.WriteFile(tmpDir+"/timeline_test.png", pngData, 0644)
+	os.WriteFile(tmpDir+"/timeline_test.svg", svgDoc.Bytes(), 0644)
+	t.Logf("wrote %s/timeline_test.png and %s/timeline_test.svg", tmpDir, tmpDir)
 
 	// Also test the overlapping activities + milestones variant
 	req2 := &RequestEnvelope{
@@ -85,8 +86,8 @@ func TestDebugTimelineRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("png multi-row: %v", err)
 	}
-	os.WriteFile("/tmp/timeline_multirow.png", pngData2, 0644)
-	os.WriteFile("/tmp/timeline_multirow.svg", svgDoc2.Bytes(), 0644)
-	t.Log("wrote /tmp/timeline_multirow.png and /tmp/timeline_multirow.svg")
+	os.WriteFile(tmpDir+"/timeline_multirow.png", pngData2, 0644)
+	os.WriteFile(tmpDir+"/timeline_multirow.svg", svgDoc2.Bytes(), 0644)
+	t.Logf("wrote %s/timeline_multirow.png and %s/timeline_multirow.svg", tmpDir, tmpDir)
 }
 

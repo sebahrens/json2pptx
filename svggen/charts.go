@@ -1720,6 +1720,7 @@ func (sc *ScatterChart) drawAxes(plotArea Rect, xScale, yScale *LinearScale) {
 }
 
 // drawPoints draws the scatter points.
+//nolint:gocognit // complex chart rendering logic
 func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, colors []Color) {
 	b := sc.builder
 	style := b.StyleGuide()
@@ -1989,6 +1990,7 @@ func NewPieChart(builder *SVGBuilder, config PieChartConfig) *PieChart {
 }
 
 // Draw renders the pie chart.
+//nolint:gocognit // complex chart rendering logic
 func (pc *PieChart) Draw(data ChartData) error {
 	if len(data.Series) == 0 || len(data.Series[0].Values) == 0 {
 		return fmt.Errorf("pie chart requires values")
@@ -2359,6 +2361,7 @@ func NewRadarChart(builder *SVGBuilder, config RadarChartConfig) *RadarChart {
 }
 
 // Draw renders the radar chart.
+//nolint:gocognit // complex chart rendering logic
 func (rc *RadarChart) Draw(data ChartData) error {
 	if len(data.Series) == 0 || len(data.Categories) == 0 {
 		return fmt.Errorf("radar chart requires series and categories")

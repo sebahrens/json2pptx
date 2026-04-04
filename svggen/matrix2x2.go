@@ -532,6 +532,7 @@ type labelDirection struct {
 //
 // fontSize and offset are pre-computed by drawPoints based on the total number of
 // data points so that dense charts get smaller, tighter labels.
+//nolint:gocognit // complex chart rendering logic
 func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label string, plotArea Rect, placed []placedLabel, fontSize, offset float64) placedLabel {
 	b := mc.builder
 	style := b.StyleGuide()
@@ -757,6 +758,7 @@ func (d *Matrix2x2Diagram) Render(req *RequestEnvelope) (*SVGDocument, error) {
 
 // RenderWithBuilder renders the diagram and returns both the builder and SVG document.
 // This allows callers to generate PNG/PDF output from the same builder.
+//nolint:gocognit // complex chart rendering logic
 func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDocument, error) {
 	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
 		data, err := parseMatrix2x2Data(req)
@@ -877,6 +879,7 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 }
 
 // parseMatrix2x2Data parses the request data into Matrix2x2Data.
+//nolint:gocognit // complex chart rendering logic
 func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
 	data := Matrix2x2Data{
 		Title:    req.Title,

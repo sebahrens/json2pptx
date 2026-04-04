@@ -818,7 +818,6 @@ func TestOrgChart_NodesWithinSVGBounds(t *testing.T) {
 			// Build and layout the tree to check node positions.
 			root := chart.buildLayoutTree(&tt.data.Root, 0)
 			chart.computeSubtreeWidths(root)
-			maxDepth := chart.maxDepth(root)
 			plotArea := config.PlotArea()
 
 			// Account for title header
@@ -827,7 +826,7 @@ func TestOrgChart_NodesWithinSVGBounds(t *testing.T) {
 			plotArea.Y += headerHeight
 			plotArea.H -= headerHeight
 
-			chart.scaleToFit(root, plotArea, maxDepth)
+			chart.scaleToFit(root, plotArea)
 			chart.positionNodes(root, plotArea.X+plotArea.W/2, plotArea.Y+chart.config.NodeHeight/2, plotArea)
 			chart.clampToPlotArea(root, plotArea)
 
@@ -920,7 +919,6 @@ func TestOrgChart_TextCollision10Plus(t *testing.T) {
 
 	root := chart.buildLayoutTree(&data.Root, 0)
 	chart.computeSubtreeWidths(root)
-	maxDepth := chart.maxDepth(root)
 	plotArea := config.PlotArea()
 
 	style := builder.StyleGuide()
@@ -928,7 +926,7 @@ func TestOrgChart_TextCollision10Plus(t *testing.T) {
 	plotArea.Y += headerHeight
 	plotArea.H -= headerHeight
 
-	chart.scaleToFit(root, plotArea, maxDepth)
+	chart.scaleToFit(root, plotArea)
 	chart.positionNodes(root, plotArea.X+plotArea.W/2, plotArea.Y+chart.config.NodeHeight/2, plotArea)
 	chart.clampToPlotArea(root, plotArea)
 

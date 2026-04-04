@@ -11,11 +11,6 @@ func approxEqual(a, b, tol float64) bool {
 	return math.Abs(a-b) <= tol
 }
 
-// scaleVal is a test helper that scales a mm value by the factor.
-func scaleVal(mm float64) float64 {
-	return mm * mmToPxFactor
-}
-
 // --- scalePathData ---
 
 func TestScalePathData_SimpleMoveAndLine(t *testing.T) {

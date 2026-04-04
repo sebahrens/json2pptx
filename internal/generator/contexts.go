@@ -300,16 +300,6 @@ func (ctx *singlePassContext) allocPNG(sourceID string) string {
 	return pptx.MediaFilename(mediaPath)
 }
 
-// allocMedia allocates a media filename slot for any extension via the MediaAllocator.
-// ext should include the dot (e.g., ".png", ".jpg").
-// Returns the basename like "image5.png".
-func (ctx *singlePassContext) allocMedia(ext string, sourceID string) string {
-	mediaPath := ctx.media.Allocate(ext, sourceID)
-	extLower := strings.TrimPrefix(strings.ToLower(ext), ".")
-	ctx.usedExtensions[extLower] = true
-	return pptx.MediaFilename(mediaPath)
-}
-
 // nextMediaNum returns the next image number that would be allocated.
 func (ctx *singlePassContext) nextMediaNum() int {
 	return ctx.media.NextImageNum()

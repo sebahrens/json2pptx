@@ -32,6 +32,7 @@ func RegistryRenderMultiFormat(r *Registry, req *RequestEnvelope, formats ...str
 }
 
 // renderMultiFormat implements multi-format rendering for a given registry.
+//nolint:gocognit // complex chart rendering logic
 func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*RenderResult, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err

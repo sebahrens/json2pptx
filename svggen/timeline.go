@@ -211,6 +211,7 @@ func (tr timelineRange) dateToX(date time.Time, plotArea Rect) float64 {
 }
 
 // Draw renders the timeline diagram.
+//nolint:gocognit // complex chart rendering logic
 func (tc *TimelineChart) Draw(data TimelineData) error {
 	if len(data.Activities) == 0 {
 		return fmt.Errorf("timeline has no activities to render")
@@ -672,17 +673,6 @@ func (tc *TimelineChart) assignRows(activities []TimelineActivity, dateRange tim
 	}
 
 	return rows
-}
-
-// drawActivity renders a single timeline activity.
-// labelBudget is the horizontal space allocated per activity for label sizing.
-func (tc *TimelineChart) drawActivity(activity TimelineActivity, index int, row int, dateRange timelineRange, plotArea Rect, labelBudget float64) {
-	switch activity.Type {
-	case TimelineActivityTypeMilestone:
-		tc.drawMilestone(activity, index, row, dateRange, plotArea, labelBudget, false)
-	default:
-		tc.drawActivityBar(activity, index, row, dateRange, plotArea, labelBudget, false)
-	}
 }
 
 // drawActivityBar draws an activity bar.
@@ -1267,6 +1257,7 @@ func (tc *TimelineChart) drawTimeGrid(dateRange timelineRange, timeUnit string, 
 // activityDates are dates where activities/milestones occur. When label
 // thinning is active (labelStep > 1), the axis will prioritise showing
 // labels at these dates so the axis aligns with visible chart elements.
+//nolint:gocognit // complex chart rendering logic
 func (tc *TimelineChart) drawTimeAxis(dateRange timelineRange, timeUnit string, axisArea Rect, activityDates []time.Time) {
 	b := tc.builder
 	style := b.StyleGuide()
@@ -1633,6 +1624,7 @@ func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
 }
 
 // parseTimelineActivity parses a single activity from map data.
+//nolint:gocognit // complex chart rendering logic
 func parseTimelineActivity(raw any, index int) TimelineActivity {
 	activity := TimelineActivity{
 		ID:   fmt.Sprintf("activity_%d", index),
@@ -1789,7 +1781,7 @@ func autoAssignDatelessActivities(activities []TimelineActivity) []TimelineActiv
 	duration := maxDate.Sub(minDate)
 	if duration <= 0 {
 		duration = time.Duration(n) * 30 * 24 * time.Hour
-		maxDate = minDate.Add(duration)
+		// maxDate not updated here; only duration is needed for spacing below.
 	}
 
 	for j, idx := range datelessIdx {

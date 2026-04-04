@@ -58,7 +58,11 @@ func Get(name string, fallbackName string) *canvas.FontFamily {
 	// Fast path: already cached.
 	if elem, ok := cache.items[name]; ok {
 		cache.order.MoveToFront(elem)
-		return elem.Value.(*entry).font
+		e, ok := elem.Value.(*entry)
+		if !ok {
+			return nil
+		}
+		return e.font
 	}
 
 	// Slow path: load the font.
@@ -122,7 +126,9 @@ func (c *fontCache) evictOldest() {
 		return
 	}
 	c.order.Remove(oldest)
-	delete(c.items, oldest.Value.(*entry).key)
+	if e, ok := oldest.Value.(*entry); ok {
+		delete(c.items, e.key)
+	}
 }
 
 // Len returns the number of entries currently in the cache. Useful for testing.

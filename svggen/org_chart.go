@@ -158,11 +158,8 @@ func (oc *OrgChartRenderer) Draw(data OrgChartData) error {
 	// Compute subtree widths bottom-up
 	oc.computeSubtreeWidths(root)
 
-	// Count depth to scale vertically
-	maxDepth := oc.maxDepth(root)
-
 	// Scale node dimensions if tree won't fit
-	oc.scaleToFit(root, plotArea, maxDepth)
+	oc.scaleToFit(root, plotArea)
 
 	// Position nodes top-down
 	oc.positionNodes(root, plotArea.X+plotArea.W/2, plotArea.Y+oc.config.NodeHeight/2, plotArea)
@@ -310,7 +307,7 @@ func (oc *OrgChartRenderer) maxBreadthAtDepth(root *layoutNode) int {
 //
 // When the tree is too deep or wide to render legibly even after scaling,
 // scaleToFit prunes leaf-level children to keep nodes at a readable size.
-func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect, maxDepth int) {
+func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect) {
 	// Minimum node dimensions below which text becomes illegible. When
 	// projected node sizes fall below these thresholds, the deepest level is
 	// pruned to keep remaining nodes at a readable size.
@@ -371,7 +368,7 @@ func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect, maxDepth
 	}
 
 	// Check vertical fit
-	maxDepth = oc.maxDepth(root) // recalculate after pruning
+	maxDepth := oc.maxDepth(root) // recalculate after pruning
 	totalHeight := float64(maxDepth+1)*oc.config.NodeHeight + float64(maxDepth)*oc.config.VerticalGap
 	if totalHeight > plotArea.H {
 		scale := plotArea.H / totalHeight

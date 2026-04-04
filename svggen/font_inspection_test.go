@@ -347,7 +347,7 @@ func TestFontSizeInspection(t *testing.T) {
 				continue
 			}
 
-			cmd := exec.Command("rsvg-convert", "-d", "192", "-p", "192", "-o", pngFile, svgFile)
+			cmd := exec.Command("rsvg-convert", "-d", "192", "-p", "192", "-o", pngFile, svgFile) //nolint:gosec // G204: test-only code; arguments are constructed from test fixtures, not user input
 			if out, err := cmd.CombinedOutput(); err != nil {
 				t.Errorf("rsvg-convert %s: %v\n%s", svgFile, err, string(out))
 				continue

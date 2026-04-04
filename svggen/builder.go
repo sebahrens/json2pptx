@@ -174,28 +174,8 @@ func fixSVGFontUnits(svgContent []byte) []byte {
 }
 
 // svgViewportMMRe matches mm-based viewport dimensions in the SVG root element.
-// Used by fixSVGViewportUnits to convert to pixel-based viewport.
+// Used by scaleSVGToPixelCoordsSafe to convert to pixel-based viewport.
 var svgViewportMMRe = regexp.MustCompile(`width="[0-9.]+mm" height="[0-9.]+mm"`)
-
-// fixSVGViewportUnits converts mm-based SVG viewport to pixel-based for PPTX
-// renderer compatibility. The viewBox is left unchanged so all internal coordinates
-// (paths, text positions, font sizes in user units) remain correct.
-//
-// Before: <svg width="282.24mm" height="211.68mm" viewBox="0 0 282.24 211.68">
-// After:  <svg width="1067"     height="800"      viewBox="0 0 282.24 211.68">
-//
-// This fixes garbled/oversized text in PowerPoint and LibreOffice PDF export.
-// Both renderers misinterpret CSS font-size "px" values when the SVG viewport
-// uses physical mm units, causing double-scaling. With pixel-based viewport,
-// 1 user unit maps to ~3.78 CSS pixels (≈1mm at 96 DPI) and font sizes in "px"
-// (which are user units per SVG spec) render at the correct physical size.
-func fixSVGViewportUnits(svgContent []byte, widthMM, heightMM float64) []byte {
-	const mmToPxFactor = 96.0 / 25.4 // CSS pixels per mm at 96 DPI
-	widthPx := math.Round(widthMM * mmToPxFactor)
-	heightPx := math.Round(heightMM * mmToPxFactor)
-	replacement := []byte(fmt.Sprintf(`width="%.0f" height="%.0f"`, widthPx, heightPx))
-	return svgViewportMMRe.ReplaceAll(svgContent, replacement)
-}
 
 // matrixRotateRe matches matrix transforms that represent -90° or +90° rotations.
 // matrix(0,-1,1,0,tx,ty) is -90° rotation around (tx,ty).
@@ -519,39 +499,6 @@ func (b *SVGBuilder) DrawRoundedRect(r Rect, radius float64) *SVGBuilder {
 	p.LineTo(x, y+rx)
 	// Top-left corner
 	p.QuadTo(x, y, x+rx, y)
-	p.Close()
-
-	b.ctx.DrawPath(0, 0, p)
-	return b
-}
-
-// drawTopRoundedRect draws a filled rectangle with only the top corners
-// rounded. The bottom corners are square. This is useful for header bars
-// inside rounded containers so the header doesn't protrude outside the
-// parent's top corners.
-func (b *SVGBuilder) drawTopRoundedRect(r Rect, radius float64) *SVGBuilder {
-	x := r.X * ptToMM
-	y := (b.height - r.Y - r.H) * ptToMM
-	w := r.W * ptToMM
-	h := r.H * ptToMM
-	rx := radius * ptToMM
-
-	maxR := min(w, h) / 2
-	if rx > maxR {
-		rx = maxR
-	}
-
-	p := &canvas.Path{}
-	// NOTE: canvas Y=0 is at the bottom. In screen coords, "top" of the
-	// header is at canvas y+h and "bottom" is at canvas y. We want the
-	// screen-top corners (canvas y+h) rounded and screen-bottom corners
-	// (canvas y) square.
-	p.MoveTo(x, y)          // bottom-left (screen-bottom, square)
-	p.LineTo(x+w, y)        // bottom-right (screen-bottom, square)
-	p.LineTo(x+w, y+h-rx)   // right edge up to top-right curve
-	p.QuadTo(x+w, y+h, x+w-rx, y+h) // top-right corner (rounded)
-	p.LineTo(x+rx, y+h)     // top edge
-	p.QuadTo(x, y+h, x, y+h-rx) // top-left corner (rounded)
 	p.Close()
 
 	b.ctx.DrawPath(0, 0, p)

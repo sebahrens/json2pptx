@@ -89,6 +89,7 @@ type renderFlags struct {
 	theme  string
 }
 
+//nolint:gocognit // complex chart rendering logic
 func parseRenderFlags(args []string) (*renderFlags, error) {
 	f := &renderFlags{}
 	for i := 0; i < len(args); i++ {
@@ -160,6 +161,7 @@ func parseRenderFlags(args []string) (*renderFlags, error) {
 	return f, nil
 }
 
+//nolint:gocognit // complex chart rendering logic
 func cmdRender(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	f, err := parseRenderFlags(args)
 	if err != nil {
@@ -372,11 +374,12 @@ Flags:
 func cmdValidate(args []string, stdin io.Reader, stderr io.Writer) int {
 	var input string
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
+		arg := args[i] // bounds already checked by loop condition
+		switch arg {
 		case "-i", "--input":
 			i++
 			if i >= len(args) {
-				fmt.Fprintf(stderr, "svggen validate: missing value for %s\n", args[i-1])
+				fmt.Fprintf(stderr, "svggen validate: missing value for %s\n", arg)
 				return exitValidation
 			}
 			input = args[i]
@@ -392,7 +395,7 @@ If -i is not provided, reads from stdin.
 Exit codes: 0=valid, 2=invalid`)
 			return exitOK
 		default:
-			fmt.Fprintf(stderr, "svggen validate: unknown flag: %s\n", args[i])
+			fmt.Fprintf(stderr, "svggen validate: unknown flag: %s\n", arg)
 			return exitValidation
 		}
 	}
@@ -446,21 +449,23 @@ Exit codes: 0=valid, 2=invalid`)
 
 // --- batch ---
 
+//nolint:gocognit // complex chart rendering logic
 func cmdBatch(args []string, stderr io.Writer) int {
 	var inputPath, outputPath, format string
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
+		arg := args[i] // bounds already checked by loop condition
+		switch arg {
 		case "-i", "--input":
 			i++
 			if i >= len(args) {
-				fmt.Fprintf(stderr, "svggen batch: missing value for %s\n", args[i-1])
+				fmt.Fprintf(stderr, "svggen batch: missing value for %s\n", arg)
 				return exitRender
 			}
 			inputPath = args[i]
 		case "-o", "--output":
 			i++
 			if i >= len(args) {
-				fmt.Fprintf(stderr, "svggen batch: missing value for %s\n", args[i-1])
+				fmt.Fprintf(stderr, "svggen batch: missing value for %s\n", arg)
 				return exitRender
 			}
 			outputPath = args[i]
@@ -482,7 +487,7 @@ Flags:
   --format FORMAT     Output format: svg (default), png, pdf`)
 			return exitOK
 		default:
-			fmt.Fprintf(stderr, "svggen batch: unknown flag: %s\n", args[i])
+			fmt.Fprintf(stderr, "svggen batch: unknown flag: %s\n", arg)
 			return exitRender
 		}
 	}
