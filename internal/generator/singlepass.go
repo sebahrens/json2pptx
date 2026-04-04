@@ -3,6 +3,7 @@ package generator
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"log/slog"
@@ -195,14 +196,26 @@ func (ctx *singlePassContext) runPipelinePhases() error {
 		return fmt.Errorf("failed to scan template: %w", err)
 	}
 
+	if err := ctx.ctx.Err(); err != nil {
+		return fmt.Errorf("generation cancelled after template scan: %w", err)
+	}
+
 	// Phase 2: Prepare all slide modifications and new slides
 	if err := ctx.prepareSlides(); err != nil {
 		return fmt.Errorf("failed to prepare slides: %w", err)
 	}
 
+	if err := ctx.ctx.Err(); err != nil {
+		return fmt.Errorf("generation cancelled after slide preparation: %w", err)
+	}
+
 	// Phase 3: Prepare image content and media files
 	if err := ctx.prepareImages(); err != nil {
 		return fmt.Errorf("failed to prepare images: %w", err)
+	}
+
+	if err := ctx.ctx.Err(); err != nil {
+		return fmt.Errorf("generation cancelled after image preparation: %w", err)
 	}
 
 	// Phase 3.5: Clear unmapped placeholder shapes to prevent template text leaking
@@ -265,10 +278,11 @@ func (ctx *singlePassContext) finalizePPTX(slideCount int) (*GenerationResult, e
 //
 // AC1 (C1 fix): Given a generation request with 10 slides,
 // When processed, Then only ONE ZIP read and ONE ZIP write operation occurs.
-func generateSinglePass(req GenerationRequest) (*GenerationResult, []string, error) {
+func generateSinglePass(goCtx context.Context, req GenerationRequest) (*GenerationResult, []string, error) {
 	svgCfg, compatMode := buildSVGConfig(req)
 
 	ctx := newSinglePassContext(req.OutputPath, req.Slides, req.AllowedImagePaths, req.ExcludeTemplateSlides, req.SyntheticFiles)
+	ctx.ctx = goCtx
 	ctx.svgConverter = NewSVGConverterWithConfig(svgCfg)
 	ctx.themeOverride = req.ThemeOverride
 	ctx.footerConfig = req.Footer

@@ -3,6 +3,7 @@ package generator
 
 import (
 	"archive/zip"
+	"context"
 	"os"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -156,6 +157,7 @@ type OutputContext struct {
 //   - ChartContext: Chart rendering
 //   - OutputContext: Output files and warnings
 type singlePassContext struct {
+	ctx context.Context // propagated from Generate() for cancellation and timeouts
 	ZipContext
 	SlideContext
 	MediaContext

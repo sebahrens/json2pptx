@@ -892,7 +892,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, p
 	}
 
 	// Generate PNG fallback
-	pngPath, cleanup, err := ctx.svgConverter.ConvertToPNG(imagePath, 0)
+	pngPath, cleanup, err := ctx.svgConverter.ConvertToPNG(ctx.ctx, imagePath, 0)
 	if err != nil {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("SVG PNG fallback generation failed for %s: %v, using placeholder", imagePath, err))
 		ctx.insertSVGFallbackImage(slideNum, placeholderBounds, shapeIdx)
@@ -944,7 +944,7 @@ func (ctx *singlePassContext) convertSVGToRaster(imagePath string, placeholderBo
 		return "", false
 	}
 
-	convertedPath, cleanup, err := ctx.svgConverter.Convert(imagePath)
+	convertedPath, cleanup, err := ctx.svgConverter.Convert(ctx.ctx, imagePath)
 	if err != nil {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("SVG conversion failed for %s: %v, using placeholder", imagePath, err))
 		ctx.insertSVGFallbackImage(slideNum, placeholderBounds, shapeIdx)

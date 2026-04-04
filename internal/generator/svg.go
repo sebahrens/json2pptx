@@ -2,6 +2,7 @@
 package generator
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -193,15 +194,15 @@ func (c *SVGConverter) findTools() {
 // Returns the path to the converted file (PNG, EMF, or original SVG for native) and a cleanup function.
 // The caller MUST call the cleanup function when done with the output file.
 // For native strategy, returns the original SVG path with a no-op cleanup function.
-func (c *SVGConverter) Convert(svgPath string) (outputPath string, cleanup func(), err error) {
+func (c *SVGConverter) Convert(ctx context.Context, svgPath string) (outputPath string, cleanup func(), err error) {
 	switch c.Strategy {
 	case SVGStrategyNative:
 		// Native embedding - return original SVG, no conversion needed
 		return svgPath, func() {}, nil
 	case SVGStrategyEMF:
-		return c.ConvertToEMF(svgPath)
+		return c.ConvertToEMF(ctx, svgPath)
 	default: // PNG
-		return c.ConvertToPNG(svgPath, 0)
+		return c.ConvertToPNG(ctx, svgPath, 0)
 	}
 }
 
@@ -214,7 +215,7 @@ func (c *SVGConverter) Convert(svgPath string) (outputPath string, cleanup func(
 // - "auto" (default): tries rsvg-convert first, then resvg as fallback
 // - "rsvg-convert": forces rsvg-convert only
 // - "resvg": forces resvg only
-func (c *SVGConverter) ConvertToPNG(svgPath string, scale float64) (pngPath string, cleanup func(), err error) {
+func (c *SVGConverter) ConvertToPNG(ctx context.Context, svgPath string, scale float64) (pngPath string, cleanup func(), err error) {
 	c.findTools()
 
 	// Determine converter order based on preference
@@ -297,19 +298,19 @@ func (c *SVGConverter) ConvertToPNG(svgPath string, scale float64) (pngPath stri
 	var convErr error
 	switch preference {
 	case PNGConverterRsvg:
-		convErr = c.runRsvgConvert(svgPath, pngPath, scale, maxW)
+		convErr = c.runRsvgConvert(ctx, svgPath, pngPath, scale, maxW)
 	case PNGConverterResvg:
-		convErr = c.runResvg(svgPath, pngPath, scale, maxW)
+		convErr = c.runResvg(ctx, svgPath, pngPath, scale, maxW)
 	default: // auto - try primary first, then fallback
 		if c.rsvgConvertPath != "" {
-			convErr = c.runRsvgConvert(svgPath, pngPath, scale, maxW)
+			convErr = c.runRsvgConvert(ctx, svgPath, pngPath, scale, maxW)
 			// If rsvg-convert fails and resvg is available, try resvg
 			if convErr != nil && c.resvgPath != "" {
-				convErr = c.runResvg(svgPath, pngPath, scale, maxW)
+				convErr = c.runResvg(ctx, svgPath, pngPath, scale, maxW)
 			}
 		} else {
 			// rsvg-convert not available, use resvg
-			convErr = c.runResvg(svgPath, pngPath, scale, maxW)
+			convErr = c.runResvg(ctx, svgPath, pngPath, scale, maxW)
 		}
 	}
 
@@ -337,7 +338,7 @@ func (c *SVGConverter) ConvertToPNG(svgPath string, scale float64) (pngPath stri
 // runRsvgConvert executes rsvg-convert to convert SVG to PNG.
 // rsvg-convert -z 2.0 -o output.png input.svg
 // When maxWidth > 0, adds -w and -a flags to cap the output pixel width.
-func (c *SVGConverter) runRsvgConvert(svgPath, pngPath string, scale float64, maxWidth int) error {
+func (c *SVGConverter) runRsvgConvert(ctx context.Context, svgPath, pngPath string, scale float64, maxWidth int) error {
 	args := []string{
 		"-z", fmt.Sprintf("%.1f", scale),
 	}
@@ -346,7 +347,7 @@ func (c *SVGConverter) runRsvgConvert(svgPath, pngPath string, scale float64, ma
 	}
 	args = append(args, "-o", pngPath, svgPath)
 
-	cmd := exec.Command(c.rsvgConvertPath, args...)
+	cmd := exec.CommandContext(ctx, c.rsvgConvertPath, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("rsvg-convert failed: %s: %w", strings.TrimSpace(string(output)), err)
@@ -358,7 +359,7 @@ func (c *SVGConverter) runRsvgConvert(svgPath, pngPath string, scale float64, ma
 // resvg uses different syntax: resvg --zoom 2.0 input.svg output.png
 // Note: resvg uses --zoom instead of -z for scale factor.
 // When maxWidth > 0, adds -w flag to cap the output pixel width.
-func (c *SVGConverter) runResvg(svgPath, pngPath string, scale float64, maxWidth int) error {
+func (c *SVGConverter) runResvg(ctx context.Context, svgPath, pngPath string, scale float64, maxWidth int) error {
 	args := []string{
 		"--zoom", fmt.Sprintf("%.1f", scale),
 	}
@@ -367,7 +368,7 @@ func (c *SVGConverter) runResvg(svgPath, pngPath string, scale float64, maxWidth
 	}
 	args = append(args, svgPath, pngPath)
 
-	cmd := exec.Command(c.resvgPath, args...)
+	cmd := exec.CommandContext(ctx, c.resvgPath, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("resvg failed: %s: %w", strings.TrimSpace(string(output)), err)
@@ -381,7 +382,7 @@ func (c *SVGConverter) runResvg(svgPath, pngPath string, scale float64, maxWidth
 //
 // EMF preserves vector quality and works with PowerPoint 2010+.
 // Requires Inkscape to be installed and available in PATH.
-func (c *SVGConverter) ConvertToEMF(svgPath string) (emfPath string, cleanup func(), err error) {
+func (c *SVGConverter) ConvertToEMF(ctx context.Context, svgPath string) (emfPath string, cleanup func(), err error) {
 	c.findTools()
 
 	if c.inkscapePath == "" {
@@ -429,7 +430,7 @@ func (c *SVGConverter) ConvertToEMF(svgPath string) (emfPath string, cleanup fun
 
 	// Run inkscape to convert SVG to EMF
 	// inkscape --export-type=emf --export-filename=output.emf input.svg
-	cmd := exec.Command(c.inkscapePath,
+	cmd := exec.CommandContext(ctx, c.inkscapePath,
 		"--export-type=emf",
 		"--export-filename="+emfPath,
 		svgPath,
@@ -489,8 +490,8 @@ func SVGConversionAvailable() bool {
 // ConvertSVGToPNG converts an SVG file to PNG using the default converter.
 // Returns the path to the temporary PNG file and a cleanup function.
 // The caller MUST call the cleanup function when done with the PNG file.
-func ConvertSVGToPNG(svgPath string, scale float64) (pngPath string, cleanup func(), err error) {
-	return DefaultSVGConverter().ConvertToPNG(svgPath, scale)
+func ConvertSVGToPNG(ctx context.Context, svgPath string, scale float64) (pngPath string, cleanup func(), err error) {
+	return DefaultSVGConverter().ConvertToPNG(ctx, svgPath, scale)
 }
 
 // TempFilePatterns lists the glob patterns for temp files created by SVG conversion.

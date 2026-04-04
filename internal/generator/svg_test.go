@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -130,7 +131,7 @@ func TestSVGConverter_ConvertToPNG(t *testing.T) {
 	}
 
 	// Convert to PNG
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, 0) // 0 = use default scale
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0) // 0 = use default scale
 	if err != nil {
 		t.Fatalf("ConvertToPNG failed: %v", err)
 	}
@@ -168,7 +169,7 @@ func TestSVGConverter_ConvertToPNG_CustomScale(t *testing.T) {
 	var lastSize int64
 
 	for _, scale := range scales {
-		pngPath, cleanup, err := converter.ConvertToPNG(svgPath, scale)
+		pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, scale)
 		if err != nil {
 			t.Errorf("ConvertToPNG with scale %.1f failed: %v", scale, err)
 			continue
@@ -207,7 +208,7 @@ func TestSVGConverter_ConvertToPNG_InvalidSVG(t *testing.T) {
 	}
 
 	// Conversion should fail
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, 0)
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
 	if err == nil {
 		if cleanup != nil {
 			cleanup()
@@ -228,7 +229,7 @@ func TestSVGConverter_ConvertToPNG_NonExistent(t *testing.T) {
 		t.Skip("rsvg-convert not available")
 	}
 
-	_, cleanup, err := converter.ConvertToPNG("/nonexistent/file.svg", 0)
+	_, cleanup, err := converter.ConvertToPNG(context.Background(), "/nonexistent/file.svg", 0)
 	if err == nil {
 		if cleanup != nil {
 			cleanup()
@@ -250,7 +251,7 @@ func TestSVGConverter_Cleanup(t *testing.T) {
 		t.Fatalf("Failed to write test SVG: %v", err)
 	}
 
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, 0)
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
 	if err != nil {
 		t.Fatalf("ConvertToPNG failed: %v", err)
 	}
@@ -282,7 +283,7 @@ func TestSVGConverter_ComplexSVG(t *testing.T) {
 		t.Fatalf("Failed to write test SVG: %v", err)
 	}
 
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 	if err != nil {
 		t.Fatalf("ConvertToPNG failed for complex SVG: %v", err)
 	}
@@ -314,7 +315,7 @@ func TestConvertSVGToPNG(t *testing.T) {
 		t.Fatalf("Failed to write test SVG: %v", err)
 	}
 
-	pngPath, cleanup, err := ConvertSVGToPNG(svgPath, DefaultSVGScale)
+	pngPath, cleanup, err := ConvertSVGToPNG(context.Background(), svgPath, DefaultSVGScale)
 	if err != nil {
 		t.Fatalf("ConvertSVGToPNG failed: %v", err)
 	}
@@ -507,7 +508,7 @@ func TestSVGConverter_Convert_Native(t *testing.T) {
 	}
 
 	// Convert using strategy-based method - should return original path
-	outputPath, cleanup, err := converter.Convert(svgPath)
+	outputPath, cleanup, err := converter.Convert(context.Background(), svgPath)
 	if err != nil {
 		t.Fatalf("Convert() error = %v", err)
 	}
@@ -543,7 +544,7 @@ func TestSVGConverter_Convert_PNG(t *testing.T) {
 	}
 
 	// Convert using strategy-based method
-	outputPath, cleanup, err := converter.Convert(svgPath)
+	outputPath, cleanup, err := converter.Convert(context.Background(), svgPath)
 	if err != nil {
 		t.Fatalf("Convert failed: %v", err)
 	}
@@ -584,7 +585,7 @@ func TestSVGConverter_ConvertToEMF(t *testing.T) {
 	}
 
 	// Convert to EMF
-	emfPath, cleanup, err := converter.ConvertToEMF(svgPath)
+	emfPath, cleanup, err := converter.ConvertToEMF(context.Background(), svgPath)
 	if err != nil {
 		t.Fatalf("ConvertToEMF failed: %v", err)
 	}
@@ -625,7 +626,7 @@ func TestSVGConverter_Convert_EMF(t *testing.T) {
 	}
 
 	// Convert using strategy-based method
-	outputPath, cleanup, err := converter.Convert(svgPath)
+	outputPath, cleanup, err := converter.Convert(context.Background(), svgPath)
 	if err != nil {
 		t.Fatalf("Convert failed: %v", err)
 	}
@@ -653,7 +654,7 @@ func TestSVGConverter_ConvertToEMF_MissingTool(t *testing.T) {
 	}
 	markToolsFound(converter)
 
-	_, cleanup, err := converter.ConvertToEMF("/path/to/file.svg")
+	_, cleanup, err := converter.ConvertToEMF(context.Background(), "/path/to/file.svg")
 	if err == nil {
 		if cleanup != nil {
 			cleanup()
@@ -738,7 +739,7 @@ func TestSVGFixtures_Sizes(t *testing.T) {
 				t.Skipf("Fixture file not found: %s", svgPath)
 			}
 
-			pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 			if err != nil {
 				t.Fatalf("ConvertToPNG failed for %s: %v", tt.filename, err)
 			}
@@ -800,7 +801,7 @@ func TestSVGFixtures_AspectRatios(t *testing.T) {
 				t.Skipf("Fixture file not found: %s", svgPath)
 			}
 
-			pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 			if err != nil {
 				t.Fatalf("ConvertToPNG failed for %s: %v", tt.filename, err)
 			}
@@ -872,7 +873,7 @@ func TestSVGFixtures_Complexity(t *testing.T) {
 				t.Skipf("Fixture file not found: %s", svgPath)
 			}
 
-			pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 			if err != nil {
 				t.Fatalf("ConvertToPNG failed for %s: %v", tt.filename, err)
 			}
@@ -951,7 +952,7 @@ func TestSVGFixtures_EdgeCases(t *testing.T) {
 				t.Skipf("Fixture file not found: %s", svgPath)
 			}
 
-			pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 			if tt.expectError {
 				if err == nil {
 					if cleanup != nil {
@@ -995,7 +996,7 @@ func TestSVGScaling_Fidelity(t *testing.T) {
 	results := make(map[float64]int64)
 
 	for _, scale := range scales {
-		pngPath, cleanup, err := converter.ConvertToPNG(svgPath, scale)
+		pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, scale)
 		if err != nil {
 			t.Errorf("ConvertToPNG at scale %.1f failed: %v", scale, err)
 			continue
@@ -1093,7 +1094,7 @@ func TestSVGConversion_AllFixtures(t *testing.T) {
 		totalFiles++
 		t.Run(entry.Name(), func(t *testing.T) {
 			svgPath := filepath.Join(fixturesDir, entry.Name())
-			pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 			if err != nil {
 				failCount++
 				t.Errorf("ConvertToPNG failed: %v", err)
@@ -1161,7 +1162,7 @@ func TestSVGConverter_ConvertToPNG_PathTraversal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, cleanup, err := converter.ConvertToPNG(tt.path, DefaultSVGScale)
+			_, cleanup, err := converter.ConvertToPNG(context.Background(), tt.path, DefaultSVGScale)
 			if cleanup != nil {
 				cleanup()
 			}
@@ -1221,7 +1222,7 @@ func TestSVGConverter_ConvertToEMF_PathTraversal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, cleanup, err := converter.ConvertToEMF(tt.path)
+			_, cleanup, err := converter.ConvertToEMF(context.Background(), tt.path)
 			if cleanup != nil {
 				cleanup()
 			}
@@ -1300,7 +1301,7 @@ func TestSVGConverter_SafePaths(t *testing.T) {
 			}
 
 			// Should convert successfully
-			pngPath, cleanup, err := converter.ConvertToPNG(svgPath, DefaultSVGScale)
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 			if err != nil {
 				t.Errorf("ConvertToPNG(%q) should succeed for safe path, got error: %v", tt.filename, err)
 				return
@@ -1465,7 +1466,7 @@ func TestSVGConverter_ConvertToPNG_WithResvg(t *testing.T) {
 	}
 
 	// Convert to PNG using resvg
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, 0)
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
 	if err != nil {
 		t.Fatalf("ConvertToPNG with resvg failed: %v", err)
 	}
@@ -1504,7 +1505,7 @@ func TestSVGConverter_ConvertToPNG_PreferRsvg(t *testing.T) {
 	}
 
 	// Convert to PNG using rsvg-convert
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, 0)
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
 	if err != nil {
 		t.Fatalf("ConvertToPNG with rsvg-convert failed: %v", err)
 	}
@@ -1543,7 +1544,7 @@ func TestSVGConverter_ConvertToPNG_Auto(t *testing.T) {
 	}
 
 	// Convert to PNG using auto mode
-	pngPath, cleanup, err := converter.ConvertToPNG(svgPath, 0)
+	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
 	if err != nil {
 		t.Fatalf("ConvertToPNG with auto mode failed: %v", err)
 	}
@@ -1570,7 +1571,7 @@ func TestSVGConverter_ConvertToPNG_ResvgMissing(t *testing.T) {
 	}
 	markToolsFound(converter)
 
-	_, cleanup, err := converter.ConvertToPNG("/path/to/file.svg", DefaultSVGScale)
+	_, cleanup, err := converter.ConvertToPNG(context.Background(), "/path/to/file.svg", DefaultSVGScale)
 	if cleanup != nil {
 		cleanup()
 	}
@@ -1596,7 +1597,7 @@ func TestSVGConverter_ConvertToPNG_RsvgMissing(t *testing.T) {
 	}
 	markToolsFound(converter)
 
-	_, cleanup, err := converter.ConvertToPNG("/path/to/file.svg", DefaultSVGScale)
+	_, cleanup, err := converter.ConvertToPNG(context.Background(), "/path/to/file.svg", DefaultSVGScale)
 	if cleanup != nil {
 		cleanup()
 	}
@@ -1623,7 +1624,7 @@ func TestSVGConverter_ConvertToPNG_BothMissing(t *testing.T) {
 	}
 	markToolsFound(converter)
 
-	_, cleanup, err := converter.ConvertToPNG("/path/to/file.svg", DefaultSVGScale)
+	_, cleanup, err := converter.ConvertToPNG(context.Background(), "/path/to/file.svg", DefaultSVGScale)
 	if cleanup != nil {
 		cleanup()
 	}
@@ -1706,7 +1707,7 @@ func TestSVGConverter_Convert_StrategyPNG_AutoFallback(t *testing.T) {
 	}
 
 	// Convert using strategy-based method
-	outputPath, cleanup, err := converter.Convert(svgPath)
+	outputPath, cleanup, err := converter.Convert(context.Background(), svgPath)
 	if err != nil {
 		t.Fatalf("Convert failed: %v", err)
 	}

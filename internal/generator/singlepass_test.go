@@ -2,6 +2,7 @@ package generator
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -852,7 +853,7 @@ func TestGenerateSinglePass_ErrorHandling(t *testing.T) {
 				}
 			}
 
-			_, _, err := generateSinglePass(tt.req)
+			_, _, err := generateSinglePass(context.Background(), tt.req)
 			if err == nil {
 				t.Errorf("expected error containing %q, got nil", tt.wantErrMsg)
 				return
@@ -882,7 +883,7 @@ func TestGenerateSinglePass_LayoutNotFound(t *testing.T) {
 		},
 	}
 
-	_, _, err := generateSinglePass(req)
+	_, _, err := generateSinglePass(context.Background(), req)
 	if err == nil {
 		t.Error("expected error for non-existent layout, got nil")
 		return
@@ -928,7 +929,7 @@ func TestGenerateSinglePass_BasicGeneration(t *testing.T) {
 		},
 	}
 
-	result, warnings, err := generateSinglePass(req)
+	result, warnings, err := generateSinglePass(context.Background(), req)
 	if err != nil {
 		t.Fatalf("generateSinglePass failed: %v", err)
 	}
@@ -1000,7 +1001,7 @@ func TestGenerateSinglePass_SVGStrategy(t *testing.T) {
 				SVGScale:    tt.svgScale,
 			}
 
-			result, _, err := generateSinglePass(req)
+			result, _, err := generateSinglePass(context.Background(), req)
 			if err != nil {
 				t.Fatalf("generateSinglePass failed: %v", err)
 			}

@@ -194,7 +194,7 @@ func Generate(ctx context.Context, req GenerationRequest) (*GenerationResult, er
 	}
 
 	// Use single-pass generation for optimal performance
-	result, warnings, err := generateSinglePass(req)
+	result, warnings, err := generateSinglePass(ctx, req)
 	if err != nil {
 		// Clean up partial output if it exists
 		_ = os.Remove(req.OutputPath)
