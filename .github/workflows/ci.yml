@@ -87,6 +87,9 @@ jobs:
         with:
           go-version-file: svggen/go.mod
 
+      - name: Regenerate golden files for this environment
+        run: cd svggen && go test -run TestGolden -update -count=1 -timeout=5m
+
       - name: Test svggen module
         run: cd svggen && go test ./... -short -v -race -timeout=10m
 
