@@ -394,25 +394,3 @@ type ShapeFillInput struct {
 	Alpha float64 `json:"alpha,omitempty"` // 0-100, percentage
 }
 
-// ShapeLineInput is the expanded object form for shape line.
-type ShapeLineInput struct {
-	Color string  `json:"color"`
-	Width float64 `json:"width,omitempty"` // points
-	Dash  string  `json:"dash,omitempty"`  // "solid", "dash", "dot", etc.
-}
-
-// ShapeTextInput is the expanded object form for shape text.
-type ShapeTextInput struct {
-	Content       string  `json:"content"`
-	Size          float64 `json:"size,omitempty"`           // font size in points
-	Bold          bool    `json:"bold,omitempty"`
-	Italic        bool    `json:"italic,omitempty"`
-	Align         string  `json:"align,omitempty"`           // horizontal: "l", "ctr", "r"
-	VerticalAlign string  `json:"vertical_align,omitempty"`  // vertical: "t" (top), "ctr" (middle), "b" (bottom)
-	Color         string  `json:"color,omitempty"`           // "#hex" or scheme name
-	Font          string  `json:"font,omitempty"`            // explicit font name or "+mn-lt" for theme body font
-	InsetLeft     float64 `json:"inset_left,omitempty"`      // left inset in points
-	InsetRight    float64 `json:"inset_right,omitempty"`     // right inset in points
-	InsetTop      float64 `json:"inset_top,omitempty"`       // top inset in points
-	InsetBottom   float64 `json:"inset_bottom,omitempty"`    // bottom inset in points
-}

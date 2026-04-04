@@ -217,30 +217,4 @@ func (s SlideIDXML) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	return e.EncodeToken(start.End())
 }
 
-// ============================================================================
-// Common Slide Structure Types
-// ============================================================================
-
-// These types represent the common structure shared between slide layouts
-// (for reading) and slides (for generation). Different packages may embed
-// or wrap these types with specific XML tags.
-
-// PlaceholderXML represents a placeholder (ph) element.
-// Used by both template and generator packages.
-type PlaceholderXML struct {
-	Type  string `xml:"type,attr,omitempty"`
-	Index *int   `xml:"idx,attr,omitempty"`
-}
-
-// OffsetXML represents the off element with x,y coordinates.
-type OffsetXML struct {
-	X int64 `xml:"x,attr"`
-	Y int64 `xml:"y,attr"`
-}
-
-// ExtentsXML represents the ext element with width/height.
-type ExtentsXML struct {
-	CX int64 `xml:"cx,attr"`
-	CY int64 `xml:"cy,attr"`
-}
 

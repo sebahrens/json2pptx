@@ -28,11 +28,6 @@ func loggerFromContext(ctx context.Context) *slog.Logger {
 // loggerKey is the context key for the logger.
 type loggerKey struct{}
 
-// ContextWithLogger returns a context with the given logger.
-func ContextWithLogger(ctx context.Context, logger *slog.Logger) context.Context {
-	return context.WithValue(ctx, loggerKey{}, logger)
-}
-
 // SelectionRequest contains all information needed for layout selection.
 type SelectionRequest struct {
 	Slide   types.SlideDefinition  // From parser

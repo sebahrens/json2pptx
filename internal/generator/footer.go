@@ -314,17 +314,6 @@ func removeDuplicateFooterBrandMark(slide *slideXML, leftText string, slideHeigh
 	return slide
 }
 
-// FooterTopEdge returns the default Y position (in EMU) of the footer zone's top edge.
-// Content should not extend below this line. If slideHeight is 0, the standard 16:9 height is used.
-// Uses the 5.5mm-from-bottom rule: Y = slideHeight - 5.5mm - footerHeight.
-func FooterTopEdge(slideHeight int64) int64 {
-	if slideHeight <= 0 {
-		slideHeight = defaultSlideHeightEMU
-	}
-	footerMarginEMU := int64(defaultFooterMarginMM * float64(emuPerMM))
-	return slideHeight - footerMarginEMU - defaultFooterCY
-}
-
 // resolveFooterPositions extracts footer placeholder positions from a master positions map.
 // Returns positions for keys "type:dt", "type:ftr", "type:sldNum".
 // If the master doesn't define these, returns default positions.

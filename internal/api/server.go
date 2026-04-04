@@ -16,13 +16,6 @@ import (
 // requestIDKey is the context key for storing the request ID.
 type requestIDKey struct{}
 
-// RequestIDFromContext extracts the request ID from a context.
-// Returns an empty string if no request ID is set.
-func RequestIDFromContext(ctx context.Context) string {
-	id, _ := ctx.Value(requestIDKey{}).(string)
-	return id
-}
-
 // generateRequestID creates a random 8-byte hex request ID.
 func generateRequestID() string {
 	b := make([]byte, 8)

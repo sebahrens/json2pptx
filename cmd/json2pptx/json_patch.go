@@ -82,20 +82,4 @@ func applyPresentationPatch(patch PresentationPatchInput) (*PresentationInput, e
 	return &result, nil
 }
 
-// Legacy types kept for backward compatibility with existing tests and callers.
-
-// JSONPatchInput represents a patch operation on an existing JSON input.
-// Deprecated: Use PresentationPatchInput for typed field support.
-type JSONPatchInput struct {
-	Base       JSONInput        `json:"base"`
-	Operations []PatchOperation `json:"operations"`
-}
-
-// PatchOperation represents a single patch operation on a slide.
-// Deprecated: Use PresentationPatchOperation for typed field support.
-type PatchOperation struct {
-	Op         string     `json:"op"`
-	SlideIndex int        `json:"slide_index"`
-	Slide      *JSONSlide `json:"slide,omitempty"`
-}
 

@@ -12,14 +12,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
-// ErrPathTraversal indicates an attempted path traversal attack.
-// This is an alias to the shared utils error for backward compatibility.
-var ErrPathTraversal = utils.ErrPathTraversal
-
-// ErrPathOutsideAllowed indicates a path is outside allowed directories.
-// This is an alias to the shared utils error for backward compatibility.
-var ErrPathOutsideAllowed = utils.ErrPathOutsideAllowed
-
 // ValidateImagePathWithConfig validates that an image path is safe to use,
 // with explicit configuration injection.
 // It prevents path traversal attacks (CRIT-03) by:

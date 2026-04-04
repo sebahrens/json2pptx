@@ -39,11 +39,6 @@ func WithModel(model string) Option {
 	return func(a *Agent) { a.model = model }
 }
 
-// WithMaxTokens sets the max response tokens.
-func WithMaxTokens(n int) Option {
-	return func(a *Agent) { a.maxTokens = n }
-}
-
 // WithParallelism sets the number of concurrent API calls.
 func WithParallelism(n int) Option {
 	return func(a *Agent) { a.parallelism = n }
@@ -52,11 +47,6 @@ func WithParallelism(n int) Option {
 // WithAPIURL overrides the Anthropic API endpoint.
 func WithAPIURL(url string) Option {
 	return func(a *Agent) { a.apiURL = url }
-}
-
-// WithHTTPClient sets a custom HTTP client (useful for testing).
-func WithHTTPClient(c *http.Client) Option {
-	return func(a *Agent) { a.httpClient = c }
 }
 
 // NewAgent creates a new visual QA agent.

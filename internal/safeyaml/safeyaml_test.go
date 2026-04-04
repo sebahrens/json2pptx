@@ -169,44 +169,6 @@ func TestUnmarshal_InvalidYAML(t *testing.T) {
 	}
 }
 
-func TestValidateSize(t *testing.T) {
-	tests := []struct {
-		name    string
-		size    int
-		maxSize int
-		wantErr bool
-	}{
-		{
-			name:    "within limit",
-			size:    100,
-			maxSize: 1000,
-			wantErr: false,
-		},
-		{
-			name:    "at limit",
-			size:    1000,
-			maxSize: 1000,
-			wantErr: false,
-		},
-		{
-			name:    "over limit",
-			size:    1001,
-			maxSize: 1000,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			data := make([]byte, tt.size)
-			err := ValidateSize(data, tt.maxSize)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateSize() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestDefaultLimits(t *testing.T) {
 	limits := DefaultLimits()
 

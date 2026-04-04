@@ -91,122 +91,12 @@ func TestWrite(t *testing.T) {
 	}
 }
 
-func TestWriteBadRequest(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteBadRequest(rec, CodeInvalidJSON, "Invalid JSON", nil)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
-	}
-}
-
-func TestWriteNotFound(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteNotFound(rec, CodeFileNotFound, "File not found", nil)
-
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
-	}
-}
-
 func TestWriteInternalError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteInternalError(rec, CodeInternalError, "Something went wrong", nil)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
-	}
-}
-
-func TestWriteRateLimited(t *testing.T) {
-	rec := httptest.NewRecorder()
-	details := map[string]any{"retry_after": 60}
-	WriteRateLimited(rec, "Rate limit exceeded", details)
-
-	if rec.Code != http.StatusTooManyRequests {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusTooManyRequests)
-	}
-
-	var resp Response
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if resp.Error.Code != CodeRateLimited {
-		t.Errorf("code = %q, want %q", resp.Error.Code, CodeRateLimited)
-	}
-}
-
-func TestWriteRequestTooLarge(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteRequestTooLarge(rec, "Request too large", nil)
-
-	if rec.Code != http.StatusRequestEntityTooLarge {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusRequestEntityTooLarge)
-	}
-
-	var resp Response
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if resp.Error.Code != CodeRequestTooLarge {
-		t.Errorf("code = %q, want %q", resp.Error.Code, CodeRequestTooLarge)
-	}
-}
-
-func TestWriteGatewayTimeout(t *testing.T) {
-	rec := httptest.NewRecorder()
-	details := map[string]any{"timeout_seconds": 120}
-	WriteGatewayTimeout(rec, "Request processing timed out", details)
-
-	if rec.Code != http.StatusGatewayTimeout {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusGatewayTimeout)
-	}
-
-	var resp Response
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if resp.Error.Code != CodeRequestTimeout {
-		t.Errorf("code = %q, want %q", resp.Error.Code, CodeRequestTimeout)
-	}
-}
-
-func TestWriteUnauthorized(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteUnauthorized(rec, "Invalid API key", nil)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
-	}
-
-	var resp Response
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if resp.Error.Code != CodeUnauthorized {
-		t.Errorf("code = %q, want %q", resp.Error.Code, CodeUnauthorized)
-	}
-}
-
-func TestWriteUnsupportedMediaType(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteUnsupportedMediaType(rec, "Unsupported content type", nil)
-
-	if rec.Code != http.StatusUnsupportedMediaType {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnsupportedMediaType)
-	}
-
-	var resp Response
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-
-	if resp.Error.Code != CodeInvalidContentType {
-		t.Errorf("code = %q, want %q", resp.Error.Code, CodeInvalidContentType)
 	}
 }
 

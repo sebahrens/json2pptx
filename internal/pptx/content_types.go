@@ -25,8 +25,6 @@ const (
 	ContentTypePresentationMain = "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"
 	ContentTypeSlide            = "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"
 	ContentTypeSlideLayout      = "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"
-	ContentTypeSlideMaster      = "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"
-	ContentTypeTheme            = "application/vnd.openxmlformats-officedocument.theme+xml"
 	ContentTypeNotesSlide       = "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"
 	ContentTypeRelationships    = "application/vnd.openxmlformats-package.relationships+xml"
 )

@@ -73,42 +73,7 @@ func Write(w http.ResponseWriter, status int, code, message string, details map[
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-// WriteBadRequest writes a 400 Bad Request error with the given code and message.
-func WriteBadRequest(w http.ResponseWriter, code, message string, details map[string]any) {
-	Write(w, http.StatusBadRequest, code, message, details)
-}
-
-// WriteNotFound writes a 404 Not Found error with the given code and message.
-func WriteNotFound(w http.ResponseWriter, code, message string, details map[string]any) {
-	Write(w, http.StatusNotFound, code, message, details)
-}
-
 // WriteInternalError writes a 500 Internal Server Error with the given code and message.
 func WriteInternalError(w http.ResponseWriter, code, message string, details map[string]any) {
 	Write(w, http.StatusInternalServerError, code, message, details)
-}
-
-// WriteRateLimited writes a 429 Too Many Requests error.
-func WriteRateLimited(w http.ResponseWriter, message string, details map[string]any) {
-	Write(w, http.StatusTooManyRequests, CodeRateLimited, message, details)
-}
-
-// WriteRequestTooLarge writes a 413 Request Entity Too Large error.
-func WriteRequestTooLarge(w http.ResponseWriter, message string, details map[string]any) {
-	Write(w, http.StatusRequestEntityTooLarge, CodeRequestTooLarge, message, details)
-}
-
-// WriteUnauthorized writes a 401 Unauthorized error (CRIT-01).
-func WriteUnauthorized(w http.ResponseWriter, message string, details map[string]any) {
-	Write(w, http.StatusUnauthorized, CodeUnauthorized, message, details)
-}
-
-// WriteUnsupportedMediaType writes a 415 Unsupported Media Type error.
-func WriteUnsupportedMediaType(w http.ResponseWriter, message string, details map[string]any) {
-	Write(w, http.StatusUnsupportedMediaType, CodeInvalidContentType, message, details)
-}
-
-// WriteGatewayTimeout writes a 504 Gateway Timeout error.
-func WriteGatewayTimeout(w http.ResponseWriter, message string, details map[string]any) {
-	Write(w, http.StatusGatewayTimeout, CodeRequestTimeout, message, details)
 }

@@ -136,30 +136,6 @@ type InsertOptions struct {
 	ZOrder *int
 }
 
-// OpenDocumentFile opens a PPTX document from a file path.
-//
-// Returns the Document, a Closer for the underlying file, and any error.
-// The caller must close the Closer when done with the Document.
-//
-// Example:
-//
-//	doc, closer, err := OpenDocumentFile("template.pptx")
-//	if err != nil {
-//	    return err
-//	}
-//	defer closer.Close()
-//
-//	// ... modify document ...
-//
-//	return doc.Save(outputFile)
-func OpenDocumentFile(path string) (*Document, io.Closer, error) {
-	pkg, closer, err := OpenFile(path)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &Document{pkg: pkg}, closer, nil
-}
-
 // OpenDocumentFromBytes opens a PPTX document from a byte slice.
 //
 // This is a convenience function for in-memory operations.
@@ -454,73 +430,6 @@ func relativePathFromSlide(mediaPath string) string {
 	// So relative path is ../media/filename
 	filename := path.Base(mediaPath)
 	return "../media/" + filename
-}
-
-// InsertShapeOptions configures the insertion of a shape into a slide.
-type InsertShapeOptions struct {
-	// SlideIndex is the zero-based index of the target slide.
-	SlideIndex int
-
-	// Shape defines the shape to insert.
-	Shape ShapeOptions
-
-	// ZOrder controls the stacking position of the shape.
-	// If nil, the shape is added at the default position (on top).
-	ZOrder *int
-}
-
-// InsertShape inserts a preset geometry shape into a slide.
-func (d *Document) InsertShape(opts InsertShapeOptions) error {
-	if opts.Shape.Geometry == "" {
-		return fmt.Errorf("InsertShape: Shape.Geometry is required")
-	}
-	if opts.Shape.Bounds.IsZero() {
-		return fmt.Errorf("InsertShape: Shape.Bounds must have non-zero area")
-	}
-
-	// 1. Find the target slide
-	slideEnum, err := NewSlideEnumerator(d.pkg)
-	if err != nil {
-		return fmt.Errorf("InsertShape: failed to enumerate slides: %w", err)
-	}
-
-	slideInfo := slideEnum.ByIndex(opts.SlideIndex)
-	if slideInfo == nil {
-		return fmt.Errorf("InsertShape: slide index %d out of range (have %d slides)",
-			opts.SlideIndex, slideEnum.Count())
-	}
-
-	// 2. Read slide XML and allocate shape ID
-	slideXML, err := d.pkg.ReadEntry(slideInfo.PartPath)
-	if err != nil {
-		return fmt.Errorf("InsertShape: failed to read slide: %w", err)
-	}
-
-	shapeAlloc := NewShapeIDAllocator(slideXML)
-	opts.Shape.ID = shapeAlloc.Alloc()
-
-	// 3. Generate p:sp element
-	spXML, err := GenerateShape(opts.Shape)
-	if err != nil {
-		return fmt.Errorf("InsertShape: failed to generate p:sp: %w", err)
-	}
-
-	// 4. Determine insertion position
-	position := InsertAtEnd
-	if opts.ZOrder != nil {
-		position = InsertPosition(*opts.ZOrder)
-	}
-
-	// 5. Insert into spTree
-	newSlideXML, err := InsertIntoSpTree(slideXML, spXML, position)
-	if err != nil {
-		return fmt.Errorf("InsertShape: failed to insert into spTree: %w", err)
-	}
-
-	// 6. Save modified slide
-	d.pkg.SetEntry(slideInfo.PartPath, newSlideXML)
-
-	return nil
 }
 
 // InsertGroupOptions configures the insertion of a group shape into a slide.

@@ -164,21 +164,6 @@ func UnmarshalStrictWithLimits(data []byte, v interface{}, limits Limits) error 
 	return strictDecoder.Decode(v)
 }
 
-// ValidateSize checks if YAML content size is within limits.
-// This can be used for early rejection before parsing.
-func ValidateSize(data []byte, maxSize int) error {
-	if len(data) > maxSize {
-		return fmt.Errorf("%w: %d bytes exceeds limit of %d bytes",
-			ErrYAMLTooLarge, len(data), maxSize)
-	}
-	return nil
-}
-
-// ValidateSizeString checks if a YAML string size is within limits.
-func ValidateSizeString(s string, maxSize int) error {
-	return ValidateSize([]byte(s), maxSize)
-}
-
 // ExtractMapKeyOrder parses YAML and returns the ordered keys of the map
 // at the given top-level field name. This preserves the source document
 // ordering that is lost when unmarshaling to map[string]interface{}.

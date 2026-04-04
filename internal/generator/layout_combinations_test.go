@@ -506,44 +506,6 @@ func TestAspectRatio_RectangularChartsCanStretch(t *testing.T) {
 	}
 }
 
-// TestAspectRatio_DetectLayoutPreset validates preset detection logic.
-func TestAspectRatio_DetectLayoutPreset(t *testing.T) {
-	tests := []struct {
-		name            string
-		placeholderW    types.EMU
-		slideW          types.EMU
-		expectedPreset  types.LayoutPreset
-	}{
-		{
-			name:           "Full width placeholder",
-			placeholderW:   8000000, // ~90% of slide
-			slideW:         9144000,
-			expectedPreset: types.PresetContent16x9,
-		},
-		{
-			name:           "Half width placeholder",
-			placeholderW:   4500000, // ~50% of slide
-			slideW:         9144000,
-			expectedPreset: types.PresetHalf16x9,
-		},
-		{
-			name:           "Third width placeholder",
-			placeholderW:   2800000, // ~30% of slide
-			slideW:         9144000,
-			expectedPreset: types.PresetThird16x9,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			preset := types.DetectLayoutPreset(tt.placeholderW, tt.slideW)
-			if preset != tt.expectedPreset {
-				t.Errorf("DetectLayoutPreset() = %v, want %v", preset, tt.expectedPreset)
-			}
-		})
-	}
-}
-
 // =============================================================================
 // VALIDATION ASSERTIONS FOR CI
 // =============================================================================

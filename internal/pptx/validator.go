@@ -3,7 +3,6 @@ package pptx
 
 import (
 	"bytes"
-	"encoding/xml"
 	"fmt"
 	"path"
 	"strings"
@@ -71,7 +70,6 @@ const (
 	ErrCodeMissingElement     = "MISSING_ELEMENT"
 	ErrCodeMalformedXML       = "MALFORMED_XML"
 	ErrCodeMissingContentType = "MISSING_CONTENT_TYPE"
-	ErrCodeInvalidStructure   = "INVALID_STRUCTURE"
 )
 
 // NewValidator creates a validator from PPTX bytes.
@@ -557,18 +555,3 @@ func (v *Validator) DumpStructure() string {
 	return b.String()
 }
 
-// UnmarshalSlide parses a slide's XML into a generic map for inspection.
-// This is useful for asserting specific attribute values.
-func (v *Validator) UnmarshalSlide(slideIndex int) (map[string]interface{}, error) {
-	data, err := v.SlideXML(slideIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := xml.Unmarshal(data, &result); err != nil {
-		// Fall back to string representation if generic unmarshal fails
-		return map[string]interface{}{"_raw": string(data)}, nil
-	}
-	return result, nil
-}
