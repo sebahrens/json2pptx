@@ -209,6 +209,25 @@ func (ts *TemplateService) GetOrAnalyzeTemplate(templatePath string) (*types.Tem
 	// Synthesize missing layout capabilities (e.g., two-column)
 	template.SynthesizeIfNeeded(reader, analysis)
 
+	// Normalize placeholder names to canonical form (title, body, body_2, image, etc.)
+	// This produces modified layout XML bytes stored in SyntheticFiles so the generator
+	// reads normalized shapes. Also updates layout metadata placeholder IDs in-place.
+	normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
+	if normErr != nil {
+		return nil, fmt.Errorf("failed to normalize layouts: %w", normErr)
+	}
+	if len(normalizedFiles) > 0 {
+		if analysis.Synthesis == nil {
+			analysis.Synthesis = &types.SynthesisManifest{
+				SyntheticFiles: normalizedFiles,
+			}
+		} else {
+			for path, data := range normalizedFiles {
+				analysis.Synthesis.SyntheticFiles[path] = data
+			}
+		}
+	}
+
 	// Cache the analysis
 	if fastCache, ok := ts.cache.(types.FastValidationCache); ok && !modTime.IsZero() {
 		fastCache.SetWithModTime(templatePath, analysis, modTime)
