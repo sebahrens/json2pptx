@@ -3,7 +3,7 @@ module github.com/sebahrens/json2pptx
 go 1.25.0
 
 require (
-	github.com/ahrens/svggen v0.0.0
+	github.com/sebahrens/json2pptx/svggen v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.45.0
 	github.com/tdewolff/canvas v0.0.0-20260109131636-69e1540379c6
@@ -11,7 +11,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/ahrens/svggen => ./svggen
+replace github.com/sebahrens/json2pptx/svggen => ./svggen
 
 require (
 	codeberg.org/go-pdf/fpdf v0.11.1 // indirect

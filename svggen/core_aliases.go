@@ -5,7 +5,7 @@
 // diagram implementations linked.
 package svggen
 
-import "github.com/ahrens/svggen/core"
+import "github.com/sebahrens/json2pptx/svggen/core"
 
 // --- Type aliases (same type, full backward compat) ---
 

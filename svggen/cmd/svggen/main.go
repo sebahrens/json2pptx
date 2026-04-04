@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	// Import root package to auto-register all diagram types via init().
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // Exit codes.

@@ -4,13 +4,13 @@
 // implementations.
 //
 // For full functionality with all built-in diagrams auto-registered, import
-// the parent package github.com/ahrens/svggen instead.
+// the parent package github.com/sebahrens/json2pptx/svggen instead.
 //
 // Selective diagram registration:
 //
 //	import (
-//	    "github.com/ahrens/svggen/core"
-//	    _ "github.com/ahrens/svggen/diagrams/bar"  // register only bar charts
+//	    "github.com/sebahrens/json2pptx/svggen/core"
+//	    _ "github.com/sebahrens/json2pptx/svggen/diagrams/bar"  // register only bar charts
 //	)
 //
 //	result, err := core.Render(&core.RequestEnvelope{...})

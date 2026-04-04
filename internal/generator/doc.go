@@ -36,5 +36,5 @@
 // # Dependencies
 //
 // This package integrates with internal/pptx for low-level PPTX manipulation,
-// github.com/ahrens/svggen for chart rendering, and internal/types for shared data models.
+// github.com/sebahrens/json2pptx/svggen for chart rendering, and internal/types for shared data models.
 package generator

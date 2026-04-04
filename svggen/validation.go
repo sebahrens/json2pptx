@@ -13,7 +13,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ahrens/svggen/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen/internal/safeyaml"
 )
 
 // DecodeOptions configures the parsing and validation behavior.

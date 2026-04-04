@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	// Import root package to auto-register all diagram types.
-	_ "github.com/ahrens/svggen"
+	_ "github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestRunHelp(t *testing.T) {

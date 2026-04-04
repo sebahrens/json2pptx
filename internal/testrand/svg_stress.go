@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // Variant describes a stress test data variant.

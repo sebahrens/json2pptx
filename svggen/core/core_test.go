@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/ahrens/svggen/core"
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // mockDiagram is a minimal Diagram for testing the registry.

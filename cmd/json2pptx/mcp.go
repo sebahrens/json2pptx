@@ -344,7 +344,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		Templates:      templates,
 		SupportedTypes: buildSupportedTypes(),
 		InputFormats:   []string{"json"},
-		OutputFormats:  []string{"pptx", "pdf"},
+		OutputFormats:  []string{"pptx"},
 	}
 
 	responseJSON, err := json.MarshalIndent(output, "", "  ")

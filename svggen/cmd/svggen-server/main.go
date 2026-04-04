@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ahrens/svggen"
-	"github.com/ahrens/svggen/server/httpserver"
+	"github.com/sebahrens/json2pptx/svggen"
+	"github.com/sebahrens/json2pptx/svggen/server/httpserver"
 )
 
 func main() {

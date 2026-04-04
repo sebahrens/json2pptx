@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/ahrens/svggen/fontcache"
-	"github.com/ahrens/svggen/raster"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
+	"github.com/sebahrens/json2pptx/svggen/raster"
 	"github.com/tdewolff/canvas"
 	"github.com/tdewolff/canvas/renderers/pdf"
 	"github.com/tdewolff/canvas/renderers/rasterizer"

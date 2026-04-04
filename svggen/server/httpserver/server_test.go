@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // mockDiagram is a test diagram that always succeeds.

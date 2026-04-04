@@ -18,7 +18,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )

@@ -5,7 +5,7 @@ package svggen
 import (
 	"math"
 
-	"github.com/ahrens/svggen/core"
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // maxSafeValue mirrors core's unexported constant for package-internal use.

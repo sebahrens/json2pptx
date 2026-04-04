@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/ahrens/svggen/core"
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // RenderMultiFormat dispatches a request and returns results in multiple formats.

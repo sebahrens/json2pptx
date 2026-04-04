@@ -9,7 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	// Import root package to auto-register all diagram types.
-	_ "github.com/ahrens/svggen"
+	_ "github.com/sebahrens/json2pptx/svggen"
 )
 
 func makeRequest(args map[string]any) mcp.CallToolRequest {

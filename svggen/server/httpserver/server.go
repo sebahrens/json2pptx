@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ahrens/svggen"
-	"github.com/ahrens/svggen/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen"
+	"github.com/sebahrens/json2pptx/svggen/internal/safeyaml"
 	"golang.org/x/sync/errgroup"
 )
 

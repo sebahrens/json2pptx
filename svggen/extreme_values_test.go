@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // stripBase64Data removes base64-encoded data from SVG content to avoid

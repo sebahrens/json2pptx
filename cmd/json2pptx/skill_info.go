@@ -161,7 +161,7 @@ func runSkillInfo() error {
 		Templates:     templates,
 		SupportedTypes: buildSupportedTypes(),
 		InputFormats:  []string{"json"},
-		OutputFormats: []string{"pptx", "pdf"},
+		OutputFormats: []string{"pptx"},
 	}
 
 	if *jsonFlag {

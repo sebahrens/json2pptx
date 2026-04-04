@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 

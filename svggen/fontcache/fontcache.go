@@ -10,7 +10,7 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/ahrens/svggen/fonts"
+	"github.com/sebahrens/json2pptx/svggen/fonts"
 	"github.com/tdewolff/canvas"
 )
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // TestFontSizeInspection generates SVGs for all major diagram types at

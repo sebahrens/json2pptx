@@ -1,4 +1,4 @@
-module github.com/ahrens/svggen
+module github.com/sebahrens/json2pptx/svggen
 
 go 1.25.0
 

@@ -25,7 +25,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	// Import root package to auto-register all diagram types via init().
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 const version = "0.1.0"

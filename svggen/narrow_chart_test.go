@@ -3,7 +3,7 @@ package svggen_test
 import (
 	"testing"
 
-	"github.com/ahrens/svggen"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // TestNarrowWidthCharts tests chart rendering at half-width (~480pt) simulating

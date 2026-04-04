@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Go Slide Creator! This document p
 ```bash
 # Clone the repository
 git clone https://github.com/sebahrens/json2pptx.git
-cd go-slide-creator
+cd json2pptx
 
 # Install dependencies
 go mod download

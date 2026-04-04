@@ -10,7 +10,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/ahrens/svggen/fontcache"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/tdewolff/canvas"
 )
