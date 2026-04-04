@@ -77,6 +77,39 @@ jobs:
           version: v2.8.0
           args: --timeout=5m
 
+  svggen-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: svggen/go.mod
+
+      - name: Test svggen module
+        run: cd svggen && go test ./... -short -v -race -timeout=10m
+
+      - name: Vet svggen module
+        run: cd svggen && go vet ./...
+
+  svggen-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: svggen/go.mod
+
+      - name: Run golangci-lint on svggen
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.8.0
+          working-directory: svggen
+          args: --timeout=5m
+
   security:
     runs-on: ubuntu-latest
     steps:
