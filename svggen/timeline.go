@@ -211,7 +211,7 @@ func (tr timelineRange) dateToX(date time.Time, plotArea Rect) float64 {
 }
 
 // Draw renders the timeline diagram.
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func (tc *TimelineChart) Draw(data TimelineData) error {
 	if len(data.Activities) == 0 {
 		return fmt.Errorf("timeline has no activities to render")
@@ -1257,7 +1257,7 @@ func (tc *TimelineChart) drawTimeGrid(dateRange timelineRange, timeUnit string, 
 // activityDates are dates where activities/milestones occur. When label
 // thinning is active (labelStep > 1), the axis will prioritise showing
 // labels at these dates so the axis aligns with visible chart elements.
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func (tc *TimelineChart) drawTimeAxis(dateRange timelineRange, timeUnit string, axisArea Rect, activityDates []time.Time) {
 	b := tc.builder
 	style := b.StyleGuide()
@@ -1624,7 +1624,7 @@ func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
 }
 
 // parseTimelineActivity parses a single activity from map data.
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func parseTimelineActivity(raw any, index int) TimelineActivity {
 	activity := TimelineActivity{
 		ID:   fmt.Sprintf("activity_%d", index),

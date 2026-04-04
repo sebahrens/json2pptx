@@ -471,7 +471,7 @@ func (d *ScatterChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuild
 //
 // Format 2 is produced by ChartSpec.ToDiagramSpec() when converting
 // map[string]float64 data into scatter chart format.
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func extractScatterChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
 	chartData := ChartData{
@@ -1255,7 +1255,7 @@ func (d *BubbleChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilde
 }
 
 // extractBubbleChartData extracts ChartData for bubble charts with bubble_values.
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func extractBubbleChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
 	chartData := ChartData{

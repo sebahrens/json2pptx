@@ -89,7 +89,7 @@ type renderFlags struct {
 	theme  string
 }
 
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func parseRenderFlags(args []string) (*renderFlags, error) {
 	f := &renderFlags{}
 	for i := 0; i < len(args); i++ {
@@ -161,7 +161,7 @@ func parseRenderFlags(args []string) (*renderFlags, error) {
 	return f, nil
 }
 
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func cmdRender(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	f, err := parseRenderFlags(args)
 	if err != nil {
@@ -374,7 +374,7 @@ Flags:
 func cmdValidate(args []string, stdin io.Reader, stderr io.Writer) int {
 	var input string
 	for i := 0; i < len(args); i++ {
-		arg := args[i] // bounds already checked by loop condition
+		arg := args[i] //nolint:gosec // G602: i is bounded by loop condition
 		switch arg {
 		case "-i", "--input":
 			i++
@@ -449,11 +449,11 @@ Exit codes: 0=valid, 2=invalid`)
 
 // --- batch ---
 
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func cmdBatch(args []string, stderr io.Writer) int {
 	var inputPath, outputPath, format string
 	for i := 0; i < len(args); i++ {
-		arg := args[i] // bounds already checked by loop condition
+		arg := args[i] //nolint:gosec // G602: i is bounded by loop condition
 		switch arg {
 		case "-i", "--input":
 			i++

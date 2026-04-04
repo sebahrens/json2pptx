@@ -401,7 +401,7 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 }
 
 // drawBarsAndConnectors draws the waterfall bars and connecting lines.
-//nolint:gocognit // complex chart rendering logic
+//nolint:gocognit,gocyclo // complex chart rendering logic
 func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, isNarrow bool) {
 	b := wc.builder
 	style := b.StyleGuide()

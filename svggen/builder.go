@@ -580,7 +580,7 @@ func (b *SVGBuilder) DrawPolyline(points []Point) *SVGBuilder {
 	p.MoveTo(first.X*ptToMM, (b.height-first.Y)*ptToMM)
 
 	for i := 1; i < len(points); i++ {
-		pt := points[i]
+		pt := points[i] //nolint:gosec // G602: i is bounded by len(points)
 		p.LineTo(pt.X*ptToMM, (b.height-pt.Y)*ptToMM)
 	}
 
