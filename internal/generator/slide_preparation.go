@@ -116,9 +116,12 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	// Enforce WCAG AA text contrast against the layout background.
 	// Some templates (e.g. section dividers) use accent scheme colors for
 	// body text that have poor contrast on the layout's background fill.
-	bgHex := extractLayoutBackgroundColor(layoutData, ctx.themeColors)
-	if bgHex != "" {
-		enforceTextContrastInSlide(slide, bgHex, ctx.themeColors)
+	// Skip when the slide opts out via contrast_check: false.
+	if input.slideSpec.ContrastCheck == nil || *input.slideSpec.ContrastCheck {
+		bgHex := extractLayoutBackgroundColor(layoutData, ctx.themeColors)
+		if bgHex != "" {
+			enforceTextContrastInSlide(slide, bgHex, ctx.themeColors)
+		}
 	}
 
 	slideEntry := fmt.Sprintf(`<p:sldId id="%d" r:id="%s"/>`, uint32(256+input.slideNum), input.relID)

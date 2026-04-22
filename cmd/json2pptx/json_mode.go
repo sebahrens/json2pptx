@@ -84,6 +84,10 @@ type JSONSlide struct {
 
 	// Build is the build animation: "bullets" for one-by-one bullet reveal
 	Build string `json:"build,omitempty"`
+
+	// ContrastCheck controls WCAG text contrast enforcement. Default true.
+	// Set to false to preserve user-specified text colors even when contrast is low.
+	ContrastCheck *bool `json:"contrast_check,omitempty"`
 }
 
 // JSONContentItem represents content to place in a placeholder.
@@ -422,6 +426,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 			Transition:      jsonSlide.Transition,
 			TransitionSpeed: jsonSlide.TransitionSpeed,
 			Build:           jsonSlide.Build,
+			ContrastCheck:   jsonSlide.ContrastCheck,
 		})
 	}
 
@@ -542,6 +547,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			Transition:      slide.Transition,
 			TransitionSpeed: slide.TransitionSpeed,
 			Build:           slide.Build,
+			ContrastCheck:   slide.ContrastCheck,
 		}
 
 		// Convert background image spec

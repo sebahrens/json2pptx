@@ -55,6 +55,7 @@ type SlideSpec struct {
 	Transition      string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
 	TransitionSpeed string           // Transition speed: "slow", "med", "fast" (default: "med")
 	Build           string           // Build animation: "bullets" for one-by-one bullet reveal
+	ContrastCheck   *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
 	RawShapeXML     [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
 	IconInserts     []IconInsert     // SVG icon images from shape_grid (require media registration)
 	ImageInserts    []ImageInsert    // Image files from shape_grid (require media registration)

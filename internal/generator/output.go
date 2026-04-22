@@ -717,11 +717,12 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 
 	// Insert raw shape XML fragments (e.g., from shape_grid)
 	if spec, ok := ctx.slideContentMap[slideNum]; ok && len(spec.RawShapeXML) > 0 {
-		// Enforce WCAG AA text contrast within each shape_grid cell.
-		// The standard enforceTextContrastInSlide (run earlier) only handles
-		// parsed slide shapes vs layout background. Shape_grid shapes need
-		// per-cell contrast checks: text color vs the cell's own fill color.
-		shapes := enforceShapeGridContrast(spec.RawShapeXML, ctx.themeColors)
+		shapes := spec.RawShapeXML
+		// Enforce WCAG AA text contrast within each shape_grid cell,
+		// unless the slide opts out via contrast_check: false.
+		if spec.ContrastCheck == nil || *spec.ContrastCheck {
+			shapes = enforceShapeGridContrast(shapes, ctx.themeColors)
+		}
 		slideData, err = insertRawShapes(slideData, shapes)
 		if err != nil {
 			return fmt.Errorf("failed to insert raw shapes for slide %d: %w", slideNum, err)

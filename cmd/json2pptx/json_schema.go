@@ -48,6 +48,7 @@ type SlideInput struct {
 	Transition      string           `json:"transition,omitempty"`
 	TransitionSpeed string           `json:"transition_speed,omitempty"`
 	Build           string           `json:"build,omitempty"`
+	ContrastCheck   *bool            `json:"contrast_check,omitempty"`
 }
 
 // BackgroundInput defines a slide background image.

@@ -202,6 +202,7 @@ func convertTypedPath(t *testing.T, data []byte) []generator.SlideSpec {
 			Transition:      slide.Transition,
 			TransitionSpeed: slide.TransitionSpeed,
 			Build:           slide.Build,
+			ContrastCheck:   slide.ContrastCheck,
 		})
 	}
 	return specs

@@ -617,3 +617,108 @@ func TestFixSrgbColorsForContrast(t *testing.T) {
 		})
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestContrastCheckOptOut(t *testing.T) {
+	tc := consultingThemeColors()
+	bgHex := "#FFE8D4" // warm fill — accent2 (#FE7C39) has poor contrast here
+
+	makeSlide := func() *slideXML {
+		return &slideXML{
+			CommonSlideData: commonSlideDataXML{
+				ShapeTree: shapeTreeXML{
+					Shapes: []shapeXML{
+						{
+							TextBody: &textBodyXML{
+								ListStyle: &listStyleXML{
+									Inner: `<a:lvl1pPr><a:defRPr><a:solidFill><a:schemeClr val="accent2"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
+								},
+								Paragraphs: []paragraphXML{},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("default_nil_enforces_contrast", func(t *testing.T) {
+		slide := makeSlide()
+		original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
+
+		// nil ContrastCheck → enforce (default behavior)
+		var cc *bool
+		if cc == nil || *cc {
+			enforceTextContrastInSlide(slide, bgHex, tc)
+		}
+
+		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
+		if after == original {
+			t.Error("expected contrast enforcement to modify low-contrast accent2, but it was unchanged")
+		}
+		if strings.Contains(after, `schemeClr val="accent2"`) {
+			t.Error("expected accent2 to be replaced")
+		}
+	})
+
+	t.Run("true_enforces_contrast", func(t *testing.T) {
+		slide := makeSlide()
+		original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
+
+		cc := boolPtr(true)
+		if cc == nil || *cc {
+			enforceTextContrastInSlide(slide, bgHex, tc)
+		}
+
+		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
+		if after == original {
+			t.Error("expected contrast enforcement to modify low-contrast accent2, but it was unchanged")
+		}
+	})
+
+	t.Run("false_skips_contrast", func(t *testing.T) {
+		slide := makeSlide()
+		original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
+
+		cc := boolPtr(false)
+		if cc == nil || *cc {
+			enforceTextContrastInSlide(slide, bgHex, tc)
+		}
+
+		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
+		if after != original {
+			t.Errorf("expected no change when contrast_check=false, but lstStyle was modified:\n  before: %s\n  after:  %s", original, after)
+		}
+	})
+}
+
+func TestContrastCheckOptOut_ShapeGrid(t *testing.T) {
+	tc := consultingThemeColors()
+
+	// Shape XML with semantic scheme fill (accent2) and white text — low contrast.
+	// Uses schemeClr so enforceShapeGridContrast takes the fix (not warn-only) path.
+	shapeXML := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent2"/></a:solidFill></p:spPr><p:txBody><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>Hello</a:t></a:r></a:p></p:txBody></p:sp>`)
+
+	t.Run("nil_enforces", func(t *testing.T) {
+		shapes := [][]byte{shapeXML}
+		var cc *bool
+		if cc == nil || *cc {
+			shapes = enforceShapeGridContrast(shapes, tc)
+		}
+		if string(shapes[0]) == string(shapeXML) {
+			t.Error("expected shape_grid contrast enforcement to modify low-contrast text")
+		}
+	})
+
+	t.Run("false_skips", func(t *testing.T) {
+		shapes := [][]byte{shapeXML}
+		cc := boolPtr(false)
+		if cc == nil || *cc {
+			shapes = enforceShapeGridContrast(shapes, tc)
+		}
+		if string(shapes[0]) != string(shapeXML) {
+			t.Error("expected no change when contrast_check=false")
+		}
+	})
+}
