@@ -166,17 +166,37 @@ func TestGenerateTableXML_NoBorders(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// All borders should use noFill with w="0" when borders=none
-	if !strings.Contains(result.XML, `<a:lnL w="0"><a:noFill/></a:lnL>`) {
-		t.Error("left border should use noFill with w=0 when borders=none")
+	// When borders=none, <a:tblBorders> should not appear at all —
+	// this lets the template table style control borders.
+	if strings.Contains(result.XML, `<a:tblBorders>`) {
+		t.Error("tblBorders element should not be emitted when borders=none")
 	}
-	if !strings.Contains(result.XML, `<a:lnR w="0"><a:noFill/></a:lnR>`) {
-		t.Error("right border should use noFill with w=0 when borders=none")
+}
+
+func TestGenerateTableXML_OmittedBordersWithStyle(t *testing.T) {
+	// When borders are omitted and a table style is set, tblBorders should
+	// not be emitted so the style's own border definitions take effect.
+	table := &types.TableSpec{
+		Headers: []string{"Header 1"},
+		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{StyleID: "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"},
 	}
-	// No borders should have solid fill (borderWidth)
-	solidBorder := fmt.Sprintf(`<a:lnL w="%d"`, borderWidth)
-	if strings.Contains(result.XML, solidBorder) {
-		t.Error("no solid left border when borders=none")
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{Width: 1000000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(result.XML, `<a:tblBorders>`) {
+		t.Error("tblBorders should not be emitted when borders are omitted and a table style is set")
+	}
+	if !strings.Contains(result.XML, `<a:tableStyleId>`) {
+		t.Error("tableStyleId should be present")
 	}
 }
 
@@ -1327,22 +1347,30 @@ func TestGenerateTableLevelBorders(t *testing.T) {
 	noFillMarker := `w="0"><a:noFill/>`
 
 	tests := []struct {
-		style                string
-		insideVSolid         bool
-		insideHSolid         bool
-		outerTopSolid        bool
-		outerLeftSolid       bool
+		style        string
+		expectEmpty  bool
+		insideVSolid bool
+		insideHSolid bool
+		outerTopSolid bool
+		outerLeftSolid bool
 	}{
-		{"none", false, false, false, false},
-		{"horizontal", false, true, true, false},
-		{"all", true, true, true, true},
-		{"outer", true, true, true, true},
-		{"", true, true, true, true}, // default
+		{"none", true, false, false, false, false},
+		{"horizontal", false, false, true, true, false},
+		{"all", false, true, true, true, true},
+		{"outer", false, true, true, true, true},
+		{"", false, true, true, true, true}, // default
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.style, func(t *testing.T) {
 			result := generateTableLevelBorders(tc.style)
+
+			if tc.expectEmpty {
+				if result != "" {
+					t.Errorf("expected empty string for style %q, got %q", tc.style, result)
+				}
+				return
+			}
 
 			checkElement := func(tag string, expectSolid bool) {
 				// Extract the content between <tag>...</tag>

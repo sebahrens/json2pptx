@@ -185,7 +185,11 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		bandRow = "1"
 	}
 	fmt.Fprintf(&xml, `<a:tblPr firstRow="1" bandRow="%s">`, bandRow)
-	xml.WriteString(generateTableLevelBorders(config.Style.Borders))
+	// When borders are omitted and a table style is in use, skip tblBorders
+	// so the style's own border definitions (wholeTbl > tcBdr) take effect.
+	if !(config.Style.Borders == "" && config.Style.StyleID != "") {
+		xml.WriteString(generateTableLevelBorders(config.Style.Borders))
+	}
 	if config.Style.StyleID != "" {
 		fmt.Fprintf(&xml, `<a:tableStyleId>%s</a:tableStyleId>`, config.Style.StyleID)
 	}
@@ -744,12 +748,10 @@ func generateTableLevelBorders(borderStyle string) string {
 
 	switch borderStyle {
 	case "none":
-		xml.WriteString(wrap("a:top", noBorder))
-		xml.WriteString(wrap("a:bottom", noBorder))
-		xml.WriteString(wrap("a:left", noBorder))
-		xml.WriteString(wrap("a:right", noBorder))
-		xml.WriteString(wrap("a:insideH", noBorder))
-		xml.WriteString(wrap("a:insideV", noBorder))
+		// Don't emit <a:tblBorders> at all — let the template table style
+		// (wholeTbl > tcBdr) control borders. Emitting explicit noFill entries
+		// would suppress the style's border definitions.
+		return ""
 	case "horizontal":
 		xml.WriteString(wrap("a:top", solidBorder))
 		xml.WriteString(wrap("a:bottom", solidBorder))
