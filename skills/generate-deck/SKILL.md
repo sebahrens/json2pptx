@@ -51,23 +51,20 @@ slides — do not invent grid structures from scratch. Copy the pattern, change 
 
 ### Stage 3: Validate, Render, Verify, Repair
 
-Validation is NOT verification. `validate_input` checks JSON structure; it does not catch silent visual failures (table truncation, contrast auto-fix, blank-render of unsupported cell types, clipped multiline cells, synthesized-layout chart drops). **Images are truth.**
+Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
 1. **Schema check.** Call `validate_input` (MCP) or have the user run `json2pptx validate`. Fix any errors — fix only failing slides, don't regenerate the deck.
 2. **Generate.** Call `generate_presentation` (MCP) or `json2pptx generate`.
-3. **Render to images.** Run `pptx2jpg -input <out.pptx> -output <dir>/ -density 150`. Requires LibreOffice + ImageMagick; if unavailable, **say so explicitly** and flag every table/diagram/two-column slide for manual inspection before declaring done.
+3. **Render to images.** Run `pptx2jpg -input <out.pptx> -output <dir>/ -density 150`. Requires LibreOffice + ImageMagick; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done.
 4. **Inspection checklist (per slide).** Before handing back to the user, confirm:
-   - [ ] Every table row is visible. No "…and N more rows" text.
+   - [ ] Text fits its shape or cell — no clipping, no visible overflow.
    - [ ] Chart axes/legends are readable at deck-viewing size.
-   - [ ] Every `shape_grid` cell has the content you expect — no blank rectangles where a diagram/chart was.
-   - [ ] Two-column layouts actually show content in both columns (not just text).
-   - [ ] Text color intentional — no surprise grays from contrast auto-fix (see Invariant 16).
-   - [ ] Footer/source render where expected; no "Source: Source:" double prefix (see Anti-Pattern list).
+   - [ ] Every placeholder and grid cell shows the content you intended.
+   - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Invariant 16).
+   - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Anti-Pattern list).
 5. **Repair.** If a slide fails the checklist, the fix is in the JSON, not in PowerPoint. Common repairs:
-   - Truncated table → lower `style.font_size` (see Table Density Reference), increase row height, or split across two slides.
+   - Text clipping or overflow → lower font size, increase cell/row allocation, or split content across slides.
    - Unexpected gray text → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Invariant 16).
-   - Blank grid cell → you probably used a known-broken cell type (`diagram` in shape_grid — see Anti-Patterns).
-   - Blank two-column body → the template may lack a native two-column layout; fall back to a single-column chart/table or a shape_grid with side-by-side table cells.
 
 Do not tell the user the deck is done until the checklist passes or you have explicitly flagged what you couldn't verify.
 
@@ -242,7 +239,7 @@ The recommended quadrant uses `accent1` + bold text to visually highlight it. No
 
 **Use for:** data tables, scenario comparisons, financial summaries, vendor comparisons
 
-Consulting tables are dense: 6-11 data rows, 4-6 columns. The #1 failure mode is silent truncation: tables that don't fit the allocated height get "…and N more rows" appended and ship broken. Budget the table's height FIRST, then size the header around it. Always set `style.font_size` explicitly.
+Consulting tables are dense: 6-11 data rows, 4-6 columns. Budget the table's height first, then size the header around it. Set `style.font_size` explicitly so you control density rather than inheriting a default.
 
 ```json
 {
@@ -295,7 +292,7 @@ Consulting tables are dense: 6-11 data rows, 4-6 columns. The #1 failure mode is
 - `gap: 4, row_gap: 2` — tiny gaps. A 5-row grid with default `row_gap: 10` burns 40pt of vertical space for nothing.
 - Header row `height: 5` (% of grid height) — just enough for a 12pt bold label.
 - Table row `auto_height: true` — takes all remaining space. With the bounds above, that's ~77% of slide height, enough for 9 rows + header at font_size 9.
-- `style.font_size: 9` — fits 8-10 rows comfortably. **Without this, the table defaults to a larger size and truncates.**
+- `style.font_size: 9` — fits 8-10 rows comfortably at this bound allocation.
 - `header_background: "accent1"` — the only accent guaranteed safe for white header text on every bundled template. Others may trigger contrast auto-fix.
 - `column_alignments` — first column left (labels), numeric columns right.
 
@@ -360,7 +357,7 @@ These are non-negotiable. Violating them causes broken slides.
 1. **Cell count must match columns.** Every row: `sum(cell.col_span or 1 for each cell) == column count`. If `columns: 3`, every row needs cells spanning exactly 3 columns total.
 2. **`columns` type matters.** Integer `3` = three equal columns. Array `[10, 90]` = proportional widths. Never use `[3]` (single column at width 3%) when you mean `3` (three equal columns).
 3. **`bounds` uses percentages (0-100).** Not points, not EMU. `{"x": 5, "y": 18, "width": 90, "height": 72}` means 5% from left, 18% from top.
-4. **`gap`/`row_gap`/`col_gap` are typographic points, not percentages.** Default 8. Typical 4-12 for spacious slides; **1-4 for data-dense slides**. They are cumulative: a 5-row grid with `row_gap: 10` burns 40pt (~5% of slide height) on empty space. If a table is truncating, check the gaps first. (TEMPLATE_GUIDE.md previously said percentages — that was wrong; source of truth is `internal/shapegrid/grid.go`.)
+4. **`gap`/`row_gap`/`col_gap` are typographic points, not percentages.** Default 8. Typical 4-12 for spacious slides; **1-4 for data-dense slides**. They are cumulative: a 5-row grid with `row_gap: 10` burns 40pt (~5% of slide height) on empty space. Tighten gaps before shrinking content. (TEMPLATE_GUIDE.md previously said percentages — that was wrong; source of truth is `internal/shapegrid/grid.go`.)
 5. **Row `height` is a percentage of grid height.** `"height": 22` = 22% of `bounds.height`. Rows without height split remaining space equally.
 6. **One content type per cell.** Exactly one of: `shape`, `table`, `icon`, `image`, or `diagram`. Never combine them.
 7. **Body text in shape grids MUST include all insets.** Always set `inset_left`, `inset_right`, `inset_top`, `inset_bottom` (typically 6-10pt) on body/content cells. Without them, text jams against shape edges.
@@ -385,7 +382,7 @@ These are non-negotiable. Violating them causes broken slides.
 12. **`fill` vocabulary — prefer semantic over hex.** Semantic names (`accent1`-`accent6`, `lt1`, `lt2`, `dk1`, `dk2`, `bg1`, `bg2`, `tx1`, `tx2`, `hlink`, `folHlink`, `none`) now emit `<a:schemeClr>` in the output PPTX, so colors **adapt when the template theme changes**. Hex (`"#RRGGBB"`) bakes the color in. Always prefer semantic. For tints/shades use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` — 75000/25000 is a common 75% tint — rather than pre-calculating hex. Alpha: `{"color": "accent1", "alpha": 50}`. Never raw names like `"blue"`.
 13. **`align` values:** `"l"`, `"ctr"`, `"r"`, `"just"`. NOT `"left"`, `"center"`, `"right"`.
 14. **`vertical_align` values:** `"t"`, `"ctr"`, `"b"`. NOT `"top"`, `"middle"`, `"bottom"`.
-15. **Templates:** `forest-green`, `midnight-blue`, `modern-template`, `warm-coral`. Other templates (e.g., `pwc-template`) may live in the templates directory but lack a native `two-column` layout — the engine synthesizes one that renders only text (charts/tables disappear silently). See Anti-Patterns below.
+15. **Templates:** `forest-green`, `midnight-blue`, `modern-template`, `warm-coral`. Additional custom templates may live in the templates directory; inspect with `json2pptx skill-info` before use.
 
 ### Contrast Auto-Fix
 
@@ -403,16 +400,11 @@ These do NOT produce an error. They produce a broken deck that looks plausible i
 
 | Anti-Pattern | What happens | Fix |
 |---|---|---|
-| Table with 7+ rows and no `style.font_size` | Rows silently truncated, "…and N more rows" appears | Set `style.font_size` (see Table Density Reference) |
-| `diagram` cell type inside `shape_grid` | Cell renders blank — pies, donuts, gauges, bars all disappear | Put chart on a `content` layout, or use `chart_value` top-level. Engine fix tracked as `go-slide-creator-xc1v` |
-| Chart or table in `body` / `body_2` on a template lacking native two-column | Placeholder renders empty; only text works | Check `json2pptx skill-info` for native "Two Content"; if absent, use `content` layout or a shape_grid with side-by-side table cells. Tracked as `go-slide-creator-032c` |
-| `<b>text</b>` / `<i>` / `<u>` inside shape_grid cell text | Tags render as literal `<b>text</b>` characters | Use separate shapes with `"bold": true` / `size`. Engine bug `go-slide-creator-jcf6` |
 | `"footer": "My Footer"` (string) | Engine crashes: `cannot unmarshal string into footer` | Must be an object: `"footer": {"enabled": true, "left_text": "My Footer"}` |
-| `"source": "Source: Internal Analytics"` | Renders as "Source: Source: Internal Analytics" | Omit the prefix: `"source": "Internal Analytics"` — engine adds "Source: " |
+| `"source": "Source: Internal Analytics"` | Renders as "Source: Source: Internal Analytics" | Omit the prefix: `"source": "Internal Analytics"` — engine prepends "Source: " |
 | `{"type": "chart", "chart": {...}}` or `{"type": "table", "table": {...}}` in the content array | Engine error or silent empty slide | Field names are `chart_value` / `table_value` / `diagram_value` / `text_value` — always the `_value` suffix |
 | `"layout_id": "Title Slide"` (display name) | Fails to resolve | Use canonical names: `title`, `content`, `two-column`, `blank`, `section`, `closing` (see Invariant 11) |
-| White text on `accent3`-`accent6` fill | Text silently replaced with gray, design intent lost | Use `accent1` (or verified dark accent); OR switch text to `dk1`; see Safe Color Pairings |
-| Validator says `table_count: 0`, deck has grid-embedded tables | Validator counts only top-level content array tables | Do NOT treat validator counts as ground truth for grid content. Tracked as `go-slide-creator-4itz` |
+| White text on `accent3`-`accent6` fill | Contrast auto-fix silently replaces text with dark gray, design intent lost | Use `accent1` (or verified dark accent); OR switch text to `dk1`; see Safe Color Pairings |
 
 ---
 
@@ -460,7 +452,6 @@ Rules of thumb for fitting a table in a shape_grid. Assumes `auto_height: true` 
 | Missing insets on body text cells | Always include all 4 insets (6-10pt) |
 | `"type": "stacked-bar"` | Use underscores: `"type": "stacked_bar"` |
 | `"align": "center"` | Use short form: `"align": "ctr"` |
-| Chart in shape grid | Does NOT currently work (`diagram` cells render blank). Place chart on a `content` layout slide instead. |
 | `"placeholder_id": "body"` on blank layout | Blank layouts only have `title` placeholder; body goes in `shape_grid` |
 | Rows with wrong cell count | Count col_spans: must sum to column count per row |
 | `"fill": "blue"` | Use semantic names (`accent1`) or hex (`"#0066CC"`) |
@@ -543,12 +534,6 @@ The skill above covers the common cases. For less-frequent features, see `TEMPLA
 | All 15 chart types / 21 diagram types | Content Types → chart / diagram |
 
 Claude reads `TEMPLATE_GUIDE.md` as part of the skill context on each session; navigate to the relevant section when one of the above is needed. Do not duplicate the GUIDE content here — it drifts.
-
-### Known-broken features (do not use until beads close)
-- `diagram` cell type inside `shape_grid` — blank render (`go-slide-creator-xc1v`)
-- Inline `<b>`/`<i>`/`<u>` tags in shape_grid cell text — render literal (`go-slide-creator-jcf6`)
-- Charts/tables in `body`/`body_2` on templates lacking a native two-column layout (`go-slide-creator-032c`)
-- Validator summary counts for grid-embedded tables (`go-slide-creator-4itz`)
 
 ---
 
