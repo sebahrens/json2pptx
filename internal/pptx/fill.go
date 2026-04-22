@@ -26,31 +26,31 @@ const (
 	gradientRadial
 )
 
-// colorMod represents a color modifier element (lumMod, lumOff, alpha, tint, shade).
-type colorMod struct {
+// ColorMod represents a color modifier element (lumMod, lumOff, alpha, tint, shade).
+type ColorMod struct {
 	name string
 	val  int // percentage × 1000 (e.g. 75000 = 75%)
 }
 
 // LumMod creates a luminance modulation modifier.
 // val is in thousandths of a percent (e.g., 75000 = 75%).
-func LumMod(val int) colorMod { return colorMod{name: "lumMod", val: val} }
+func LumMod(val int) ColorMod { return ColorMod{name: "lumMod", val: val} }
 
 // LumOff creates a luminance offset modifier.
 // val is in thousandths of a percent (e.g., 25000 = 25%).
-func LumOff(val int) colorMod { return colorMod{name: "lumOff", val: val} }
+func LumOff(val int) ColorMod { return ColorMod{name: "lumOff", val: val} }
 
 // Alpha creates an alpha transparency modifier.
 // val is in thousandths of a percent (e.g., 50000 = 50%).
-func Alpha(val int) colorMod { return colorMod{name: "alpha", val: val} }
+func Alpha(val int) ColorMod { return ColorMod{name: "alpha", val: val} }
 
 // Tint creates a tint modifier.
 // val is in thousandths of a percent (e.g., 60000 = 60%).
-func Tint(val int) colorMod { return colorMod{name: "tint", val: val} }
+func Tint(val int) ColorMod { return ColorMod{name: "tint", val: val} }
 
 // Shade creates a shade modifier.
 // val is in thousandths of a percent (e.g., 80000 = 80%).
-func Shade(val int) colorMod { return colorMod{name: "shade", val: val} }
+func Shade(val int) ColorMod { return ColorMod{name: "shade", val: val} }
 
 // GradientStop defines a single color stop in a gradient fill.
 type GradientStop struct {
@@ -64,7 +64,7 @@ type Fill struct {
 	typ    fillType
 	color  string     // hex color (without #) for solid fills
 	scheme string     // scheme color name for scheme fills (e.g. "accent1", "dk1")
-	mods   []colorMod // color modifiers
+	mods   []ColorMod // color modifiers
 
 	// Gradient fill fields
 	gradType gradientType
@@ -94,12 +94,12 @@ func SolidFill(hex string) Fill {
 // SolidFillWithAlpha creates a solid fill with alpha transparency.
 // alpha is in thousandths of a percent (e.g., 50000 = 50%).
 func SolidFillWithAlpha(hex string, alpha int) Fill {
-	return Fill{set: true, typ: fillSolid, color: hex, mods: []colorMod{Alpha(alpha)}}
+	return Fill{set: true, typ: fillSolid, color: hex, mods: []ColorMod{Alpha(alpha)}}
 }
 
 // SchemeFill creates a fill referencing a theme color scheme (e.g. "accent1", "dk1").
 // Optional color modifiers adjust luminance, alpha, etc.
-func SchemeFill(scheme string, mods ...colorMod) Fill {
+func SchemeFill(scheme string, mods ...ColorMod) Fill {
 	return Fill{set: true, typ: fillScheme, scheme: scheme, mods: mods}
 }
 
@@ -195,7 +195,7 @@ func (f Fill) WriteColorTo(buf *bytes.Buffer) {
 }
 
 // writeColorElement writes a color element with optional modifier children.
-func writeColorElement(buf *bytes.Buffer, tag, val string, mods []colorMod) {
+func writeColorElement(buf *bytes.Buffer, tag, val string, mods []ColorMod) {
 	if len(mods) == 0 {
 		fmt.Fprintf(buf, `<a:%s val="%s"/>`, tag, val)
 		return

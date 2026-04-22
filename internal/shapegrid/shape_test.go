@@ -371,6 +371,92 @@ func TestResolveFillString_AllSchemeColors(t *testing.T) {
 	}
 }
 
+func TestResolveFillInput_LumModLumOff(t *testing.T) {
+	raw := json.RawMessage(`{"color":"accent3","lumMod":20000,"lumOff":80000}`)
+	fill, err := ResolveFillInput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	fill.WriteTo(&buf)
+	expected := `<a:solidFill><a:schemeClr val="accent3"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill>`
+	if buf.String() != expected {
+		t.Errorf("LumModLumOff XML:\ngot:  %s\nwant: %s", buf.String(), expected)
+	}
+}
+
+func TestResolveFillInput_Tint(t *testing.T) {
+	raw := json.RawMessage(`{"color":"accent1","tint":50000}`)
+	fill, err := ResolveFillInput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	fill.WriteTo(&buf)
+	expected := `<a:solidFill><a:schemeClr val="accent1"><a:tint val="50000"/></a:schemeClr></a:solidFill>`
+	if buf.String() != expected {
+		t.Errorf("Tint XML:\ngot:  %s\nwant: %s", buf.String(), expected)
+	}
+}
+
+func TestResolveFillInput_Shade(t *testing.T) {
+	raw := json.RawMessage(`{"color":"accent2","shade":75000}`)
+	fill, err := ResolveFillInput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	fill.WriteTo(&buf)
+	expected := `<a:solidFill><a:schemeClr val="accent2"><a:shade val="75000"/></a:schemeClr></a:solidFill>`
+	if buf.String() != expected {
+		t.Errorf("Shade XML:\ngot:  %s\nwant: %s", buf.String(), expected)
+	}
+}
+
+func TestResolveFillInput_AlphaWithLumMod(t *testing.T) {
+	raw := json.RawMessage(`{"color":"accent1","alpha":50,"lumMod":80000}`)
+	fill, err := ResolveFillInput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	fill.WriteTo(&buf)
+	expected := `<a:solidFill><a:schemeClr val="accent1"><a:alpha val="50000"/><a:lumMod val="80000"/></a:schemeClr></a:solidFill>`
+	if buf.String() != expected {
+		t.Errorf("AlphaWithLumMod XML:\ngot:  %s\nwant: %s", buf.String(), expected)
+	}
+}
+
+func TestResolveFillInput_LumModOutOfRange(t *testing.T) {
+	raw := json.RawMessage(`{"color":"accent1","lumMod":200000}`)
+	_, err := ResolveFillInput(raw)
+	if err == nil {
+		t.Error("expected error for lumMod > 100000")
+	}
+}
+
+func TestResolveFillInput_ShadeNegative(t *testing.T) {
+	raw := json.RawMessage(`{"color":"accent1","shade":-1}`)
+	_, err := ResolveFillInput(raw)
+	if err == nil {
+		t.Error("expected error for shade < 0")
+	}
+}
+
+func TestResolveLineInput_WithLumMod(t *testing.T) {
+	raw := json.RawMessage(`{"color":"dk1","lumMod":50000,"width":2}`)
+	line, err := ResolveLineInput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	line.Fill.WriteTo(&buf)
+	expected := `<a:solidFill><a:schemeClr val="dk1"><a:lumMod val="50000"/></a:schemeClr></a:solidFill>`
+	if buf.String() != expected {
+		t.Errorf("Line LumMod XML:\ngot:  %s\nwant: %s", buf.String(), expected)
+	}
+}
+
 func TestResolveLineInput_InvalidJSON(t *testing.T) {
 	raw := json.RawMessage(`{invalid}`)
 	_, err := ResolveLineInput(raw)

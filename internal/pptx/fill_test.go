@@ -52,7 +52,7 @@ func TestFill_SchemeFill_WithMods(t *testing.T) {
 func TestFill_SolidFill_WithAlpha(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	f := Fill{set: true, typ: fillSolid, color: "FF0000", mods: []colorMod{Alpha(50000)}}
+	f := Fill{set: true, typ: fillSolid, color: "FF0000", mods: []ColorMod{Alpha(50000)}}
 	f.WriteTo(&buf)
 	got := buf.String()
 	expected := `<a:solidFill><a:srgbClr val="FF0000"><a:alpha val="50000"/></a:srgbClr></a:solidFill>`

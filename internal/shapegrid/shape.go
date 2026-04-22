@@ -98,13 +98,34 @@ func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 
 	// Object form
 	var obj struct {
-		Color string  `json:"color"`
-		Alpha float64 `json:"alpha,omitempty"`
+		Color  string  `json:"color"`
+		Alpha  float64 `json:"alpha,omitempty"`
+		LumMod int     `json:"lumMod,omitempty"`
+		LumOff int     `json:"lumOff,omitempty"`
+		Tint   int     `json:"tint,omitempty"`
+		Shade  int     `json:"shade,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return pptx.Fill{}, fmt.Errorf("fill must be a color string (e.g. \"#FF0000\", \"accent1\", \"none\") or object {\"color\": \"...\", \"alpha\": 50}: %w", err)
 	}
 
+	// Validate color modifier ranges [0, 100000]
+	for _, pair := range []struct {
+		name string
+		val  int
+	}{
+		{"lumMod", obj.LumMod},
+		{"lumOff", obj.LumOff},
+		{"tint", obj.Tint},
+		{"shade", obj.Shade},
+	} {
+		if pair.val < 0 || pair.val > 100000 {
+			return pptx.Fill{}, fmt.Errorf("fill %s must be between 0 and 100000, got %d", pair.name, pair.val)
+		}
+	}
+
+	// Build color modifiers
+	var mods []pptx.ColorMod
 	if obj.Alpha > 0 {
 		// Normalize alpha to OOXML thousandths-of-percent (100000 = fully opaque).
 		// Accept both fractional (0-1) and percentage (1-100) conventions.
@@ -114,12 +135,36 @@ func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 		} else {
 			alphaVal *= 1000 // 50 → 50000
 		}
-		alphaMod := pptx.Alpha(int(alphaVal))
+		mods = append(mods, pptx.Alpha(int(alphaVal)))
+	}
+	if obj.LumMod > 0 {
+		mods = append(mods, pptx.LumMod(obj.LumMod))
+	}
+	if obj.LumOff > 0 {
+		mods = append(mods, pptx.LumOff(obj.LumOff))
+	}
+	if obj.Tint > 0 {
+		mods = append(mods, pptx.Tint(obj.Tint))
+	}
+	if obj.Shade > 0 {
+		mods = append(mods, pptx.Shade(obj.Shade))
+	}
+
+	if len(mods) > 0 {
 		if schemeColorNames[obj.Color] {
-			return pptx.SchemeFill(obj.Color, alphaMod), nil
+			return pptx.SchemeFill(obj.Color, mods...), nil
 		}
-		hex := strings.TrimPrefix(obj.Color, "#")
-		return pptx.SolidFillWithAlpha(hex, int(alphaVal)), nil
+		// For hex colors, only alpha is supported via SolidFillWithAlpha
+		if obj.Alpha > 0 {
+			alphaVal := obj.Alpha
+			if alphaVal <= 1 {
+				alphaVal *= 100000
+			} else {
+				alphaVal *= 1000
+			}
+			hex := strings.TrimPrefix(obj.Color, "#")
+			return pptx.SolidFillWithAlpha(hex, int(alphaVal)), nil
+		}
 	}
 	return ResolveFillString(obj.Color), nil
 }
@@ -153,12 +198,31 @@ func ResolveLineInput(raw json.RawMessage) (pptx.Line, error) {
 
 	// Object form
 	var obj struct {
-		Color string  `json:"color"`
-		Width float64 `json:"width,omitempty"`
-		Dash  string  `json:"dash,omitempty"`
+		Color  string  `json:"color"`
+		Width  float64 `json:"width,omitempty"`
+		Dash   string  `json:"dash,omitempty"`
+		LumMod int     `json:"lumMod,omitempty"`
+		LumOff int     `json:"lumOff,omitempty"`
+		Tint   int     `json:"tint,omitempty"`
+		Shade  int     `json:"shade,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return pptx.Line{}, fmt.Errorf("line must be a color string (e.g. \"#000000\") or object {\"color\": \"...\", \"width\": 2, \"dash\": \"dot\"}: %w", err)
+	}
+
+	// Validate color modifier ranges [0, 100000]
+	for _, pair := range []struct {
+		name string
+		val  int
+	}{
+		{"lumMod", obj.LumMod},
+		{"lumOff", obj.LumOff},
+		{"tint", obj.Tint},
+		{"shade", obj.Shade},
+	} {
+		if pair.val < 0 || pair.val > 100000 {
+			return pptx.Line{}, fmt.Errorf("line %s must be between 0 and 100000, got %d", pair.name, pair.val)
+		}
 	}
 
 	width := int64(12700) // 1pt default
@@ -166,7 +230,26 @@ func ResolveLineInput(raw json.RawMessage) (pptx.Line, error) {
 		width = int64(obj.Width * 12700) // points to EMU
 	}
 
-	fill := ResolveFillString(obj.Color)
+	var mods []pptx.ColorMod
+	if obj.LumMod > 0 {
+		mods = append(mods, pptx.LumMod(obj.LumMod))
+	}
+	if obj.LumOff > 0 {
+		mods = append(mods, pptx.LumOff(obj.LumOff))
+	}
+	if obj.Tint > 0 {
+		mods = append(mods, pptx.Tint(obj.Tint))
+	}
+	if obj.Shade > 0 {
+		mods = append(mods, pptx.Shade(obj.Shade))
+	}
+
+	var fill pptx.Fill
+	if len(mods) > 0 && schemeColorNames[obj.Color] {
+		fill = pptx.SchemeFill(obj.Color, mods...)
+	} else {
+		fill = ResolveFillString(obj.Color)
+	}
 
 	return pptx.Line{
 		Width: width,
