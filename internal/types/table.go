@@ -30,7 +30,7 @@ type CellMerge struct {
 type TableStyle struct {
 	HeaderBackground string // "accent1"-"accent6", "none", or hex color
 	Borders          string // "all", "horizontal", "outer", "none"
-	Striped          bool   // Alternating row colors
+	Striped          *bool  // Alternating row colors (nil = default on, explicit false = off)
 	StyleID          string // OOXML table style GUID (e.g., "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
 	UseTableStyle    bool   // When true, suppress all explicit formatting and let the table style control appearance
 }
@@ -45,6 +45,6 @@ const DefaultTableStyleID = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
 var DefaultTableStyle = TableStyle{
 	HeaderBackground: "",
 	Borders:          "all",
-	Striped:          false,
+	Striped:          nil,
 	StyleID:          DefaultTableStyleID,
 }

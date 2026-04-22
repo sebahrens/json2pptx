@@ -114,7 +114,7 @@ func contentValueToSerializable(c generator.ContentItem) any {
 		return map[string]any{
 			"headers":           spec.Headers,
 			"rows":              rows,
-			"style":             map[string]any{"header_background": spec.Style.HeaderBackground, "borders": spec.Style.Borders, "striped": spec.Style.Striped},
+			"style":             map[string]any{"header_background": spec.Style.HeaderBackground, "borders": spec.Style.Borders, "striped": spec.Style.Striped != nil && *spec.Style.Striped},
 			"column_alignments": spec.ColumnAlignments,
 		}
 	case generator.ContentDiagram:

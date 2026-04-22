@@ -341,7 +341,7 @@ func TestGenerateTableXML_StripedRows(t *testing.T) {
 			{{Content: "Row 1", ColSpan: 1, RowSpan: 1}},
 			{{Content: "Row 2", ColSpan: 1, RowSpan: 1}},
 		},
-		Style: types.TableStyle{HeaderBackground: "accent1", Borders: "all", Striped: true},
+		Style: types.TableStyle{HeaderBackground: "accent1", Borders: "all", Striped: boolPtr(true)},
 	}
 
 	config := TableRenderConfig{

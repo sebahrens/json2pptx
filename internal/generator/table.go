@@ -180,9 +180,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// Table properties with explicit table-level borders.
 	// Without <a:tblBorders>, PowerPoint renders default grid lines
 	// even when cell-level borders specify noFill.
-	bandRow := "0"
-	if config.Style.Striped || config.Style.UseTableStyle {
-		bandRow = "1"
+	bandRow := "1"
+	if config.Style.Striped != nil && !*config.Style.Striped {
+		bandRow = "0"
 	}
 	fmt.Fprintf(&xml, `<a:tblPr firstRow="1" bandRow="%s">`, bandRow)
 	// When use_table_style is set, skip tblBorders entirely so the style controls borders.
@@ -690,7 +690,7 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 					xml.WriteString(cb.String())
 				}
 			}
-		} else if config.Style.Striped && rowIdx%2 == 1 {
+		} else if (config.Style.Striped == nil || *config.Style.Striped) && rowIdx%2 == 1 {
 			// Use accent1 at 15% saturation for a reliably visible alternating stripe.
 			// The previous bg2 scheme color was visually identical to the slide
 			// background on many templates, making the stripe invisible.

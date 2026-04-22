@@ -89,7 +89,7 @@ type TableInput struct {
 type TableStyle struct {
 	HeaderBackground string `json:"header_background,omitempty"`
 	Borders          string `json:"borders,omitempty"`
-	Striped          bool   `json:"striped,omitempty"`
+	Striped          *bool  `json:"striped,omitempty"`
 }
 
 // TableCellObj is used for cells with col_span or row_span.
@@ -568,7 +568,7 @@ func (g *Generator) tableContent(pid string) ContentInput {
 	style := &TableStyle{
 		HeaderBackground: tableHeaderBGs[g.rng.IntN(len(tableHeaderBGs))],
 		Borders:          tableBorders[g.rng.IntN(len(tableBorders))],
-		Striped:          g.rng.IntN(2) == 0,
+		Striped:          boolPtr(g.rng.IntN(2) == 0),
 	}
 
 	colAligns := make([]string, cols)
@@ -1186,3 +1186,5 @@ func (g *Generator) randomTheme() *ThemeInput {
 		BodyFont:  fonts[g.rng.IntN(len(fonts))],
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }

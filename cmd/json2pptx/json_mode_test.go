@@ -1376,6 +1376,8 @@ func TestMergeTextItemsSamePlaceholder(t *testing.T) {
 // strPtr is a test helper that returns a pointer to a string.
 func strPtr(s string) *string { return &s }
 
+func boolPtr(b bool) *bool { return &b }
+
 func TestValidateDiagramSpec(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -108,7 +108,7 @@ func TestTableInput_ToTableSpec(t *testing.T) {
 		Style: &TableStyleInput{
 			HeaderBackground: strPtr("accent2"),
 			Borders:          "horizontal",
-			Striped:          true,
+			Striped:          boolPtr(true),
 		},
 		ColumnAlignments: []string{"left", "right"},
 	}
@@ -141,8 +141,8 @@ func TestTableInput_ToTableSpec(t *testing.T) {
 	if spec.Style.Borders != "horizontal" {
 		t.Errorf("Style.Borders = %q, want horizontal", spec.Style.Borders)
 	}
-	if !spec.Style.Striped {
-		t.Error("Style.Striped = false, want true")
+	if spec.Style.Striped == nil || !*spec.Style.Striped {
+		t.Error("Style.Striped should be true")
 	}
 
 	// Column alignments

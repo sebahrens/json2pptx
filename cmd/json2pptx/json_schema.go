@@ -230,7 +230,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 	if t.Style != nil {
 		spec.Style = types.TableStyle{
 			Borders:       t.Style.Borders,
-			Striped:       t.Style.Striped,
+			Striped:       t.Style.Striped, // nil means unset (default banding on)
 			UseTableStyle: t.Style.UseTableStyle,
 			StyleID:       t.Style.StyleID,
 		}
@@ -282,7 +282,7 @@ func (c *TableCellInput) UnmarshalJSON(data []byte) error {
 type TableStyleInput struct {
 	HeaderBackground *string `json:"header_background,omitempty"`
 	Borders          string  `json:"borders,omitempty"`
-	Striped          bool    `json:"striped,omitempty"`
+	Striped          *bool   `json:"striped,omitempty"`
 	UseTableStyle    bool    `json:"use_table_style,omitempty"`
 	StyleID          string  `json:"style_id,omitempty"`
 }

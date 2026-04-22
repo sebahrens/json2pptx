@@ -247,7 +247,7 @@ func (v *VisualDeckGenerator) tableSlide(cols, rows int, title, headerBG, border
 			{PlaceholderID: "body", Type: "table", TableValue: &TableInput{
 				Headers:          headers,
 				Rows:             tableRows,
-				Style:            &TableStyle{HeaderBackground: headerBG, Borders: borders, Striped: striped},
+				Style:            &TableStyle{HeaderBackground: headerBG, Borders: borders, Striped: &striped},
 				ColumnAlignments: aligns,
 			}},
 		},
