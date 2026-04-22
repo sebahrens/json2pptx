@@ -1723,6 +1723,90 @@ func TestPrepareImages_DiagramContent(t *testing.T) {
 	}
 }
 
+// TestPrepareImages_FallbackResolution verifies that prepareImages uses
+// ResolveWithFallback so that charts/tables on synthesized two-column layouts
+// (where metadata has "slot1"/"slot2" but normalized shapes are "body"/"body_2")
+// still resolve correctly. Regression test for go-slide-creator-032c.
+func TestPrepareImages_FallbackResolution(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	ctx.svgConverter = NewSVGConverterWithConfig(SVGConfig{
+		Strategy: SVGStrategyNative,
+		Scale:    DefaultSVGScale,
+	})
+
+	diagramSpec := &types.DiagramSpec{
+		Type:  "bar_chart",
+		Title: "Test",
+		Data: map[string]any{
+			"categories": []string{"A", "B"},
+			"series":     []map[string]any{{"name": "Data", "values": []float64{10, 20}}},
+		},
+	}
+
+	phIdx := 10
+	// Slide has shapes named "body" and "body_2" (normalized names),
+	// but content items reference "slot1" (pre-normalization metadata ID).
+	slide := &slideXML{
+		CommonSlideData: commonSlideDataXML{
+			ShapeTree: shapeTreeXML{
+				Shapes: []shapeXML{
+					{
+						NonVisualProperties: nonVisualPropertiesXML{
+							ConnectionNonVisual: connectionNonVisualXML{Name: "title"},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "title"}},
+						},
+						ShapeProperties: shapePropertiesXML{Transform: &transformXML{
+							Offset: offsetXML{X: 0, Y: 0},
+							Extent: extentXML{CX: 9144000, CY: 1143000},
+						}},
+						TextBody: &textBodyXML{Paragraphs: []paragraphXML{{}}},
+					},
+					{
+						NonVisualProperties: nonVisualPropertiesXML{
+							ConnectionNonVisual: connectionNonVisualXML{Name: "body"},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "body", Index: &phIdx}},
+						},
+						ShapeProperties: shapePropertiesXML{Transform: &transformXML{
+							Offset: offsetXML{X: 457200, Y: 1600200},
+							Extent: extentXML{CX: 5486400, CY: 4800600},
+						}},
+						TextBody: &textBodyXML{Paragraphs: []paragraphXML{{}}},
+					},
+				},
+			},
+		},
+	}
+
+	ctx.templateSlideData[1] = slide
+	ctx.slideContentMap[1] = SlideSpec{
+		LayoutID: "slideLayout99",
+		Content: []ContentItem{
+			{
+				PlaceholderID: "slot1", // Metadata ID from synthesis (not yet normalized)
+				Type:          ContentDiagram,
+				Value:         diagramSpec,
+			},
+		},
+	}
+
+	err := ctx.prepareImages()
+	if err != nil {
+		t.Fatalf("prepareImages() error = %v", err)
+	}
+
+	// The diagram should be resolved via positional fallback (slot1 → first content shape)
+	if len(ctx.nativeSVGInserts[1]) != 1 {
+		t.Errorf("expected 1 native SVG insert (via fallback resolution), got %d", len(ctx.nativeSVGInserts[1]))
+	}
+
+	// Verify no "placeholder not found" warnings were emitted
+	for _, w := range ctx.warnings {
+		if strings.Contains(w, "slot1") && strings.Contains(w, "not found") {
+			t.Errorf("unexpected placeholder-not-found warning: %s", w)
+		}
+	}
+}
+
 // TestProcessDiagramContent_PreservesPosition verifies that diagram position is preserved from placeholder transform.
 // With FitMode "contain" (auto-applied to all diagrams), the chart is aspect-ratio-fitted and
 // centered within the placeholder bounds, so offsets and extents reflect the fitted dimensions.

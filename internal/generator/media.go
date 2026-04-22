@@ -118,12 +118,18 @@ func (ctx *singlePassContext) prepareImages() error {
 				continue
 			}
 
-			shapeIdx, found := resolver.Resolve(item.PlaceholderID)
+			shapeIdx, tier, found := resolver.ResolveWithFallback(item.PlaceholderID)
 			if !found {
 				available := resolver.Keys()
 				layoutID := slideSpec.LayoutID
 				ctx.warnings = append(ctx.warnings, placeholderNotFoundError(item.PlaceholderID, layoutID, available))
 				continue
+			}
+
+			// Log non-exact resolutions for observability (matches populateTextInSlide behavior).
+			if tier != TierExact {
+				resolvedName := slide.CommonSlideData.ShapeTree.Shapes[shapeIdx].NonVisualProperties.ConnectionNonVisual.Name
+				logFallbackResolution(item.PlaceholderID, resolvedName, tier, slideSpec.LayoutID)
 			}
 
 			shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
@@ -440,7 +446,7 @@ func (ctx *singlePassContext) hasTextCollisionForShape(slideNum int, diagramShap
 	}
 	for _, ci := range slideSpec.Content {
 		if ci.Type == ContentText {
-			if textShapeIdx, found := resolver.Resolve(ci.PlaceholderID); found && textShapeIdx == diagramShapeIdx {
+			if textShapeIdx, _, found := resolver.ResolveWithFallback(ci.PlaceholderID); found && textShapeIdx == diagramShapeIdx {
 				return true
 			}
 		}
