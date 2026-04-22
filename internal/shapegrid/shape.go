@@ -27,15 +27,8 @@ const (
 	bulletIndent     = pptx.BulletIndent
 )
 
-// schemeColorNames are the valid OOXML theme color scheme names.
-var schemeColorNames = map[string]bool{
-	"accent1": true, "accent2": true, "accent3": true,
-	"accent4": true, "accent5": true, "accent6": true,
-	"dk1": true, "dk2": true, "lt1": true, "lt2": true,
-	"tx1": true, "tx2": true,
-	"bg1": true, "bg2": true,
-	"hlink": true, "folHlink": true,
-}
+// schemeColorNames aliases the canonical set from the pptx package.
+var schemeColorNames = pptx.SchemeColorNames
 
 // GenerateShapeXML creates a <p:sp> XML element from a ShapeSpec and resolved cell.
 // Optional extraInsets are added to the text body insets (e.g., to make room for

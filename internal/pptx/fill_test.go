@@ -218,3 +218,66 @@ func TestFill_MarshalColorXML(t *testing.T) {
 		}
 	})
 }
+
+func TestIsSchemeColor(t *testing.T) {
+	t.Parallel()
+
+	schemes := []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6",
+		"dk1", "dk2", "lt1", "lt2", "tx1", "tx2", "bg1", "bg2", "hlink", "folHlink"}
+	for _, s := range schemes {
+		if !IsSchemeColor(s) {
+			t.Errorf("IsSchemeColor(%q) = false, want true", s)
+		}
+	}
+
+	notSchemes := []string{"", "none", "FF0000", "#accent1", "primary", "red"}
+	for _, s := range notSchemes {
+		if IsSchemeColor(s) {
+			t.Errorf("IsSchemeColor(%q) = true, want false", s)
+		}
+	}
+}
+
+func TestResolveColorString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"accent1", `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>`},
+		{"dk1", `<a:solidFill><a:schemeClr val="dk1"/></a:solidFill>`},
+		{"tx2", `<a:solidFill><a:schemeClr val="tx2"/></a:solidFill>`},
+		{"FF0000", `<a:solidFill><a:srgbClr val="FF0000"/></a:solidFill>`},
+		{"#4472C4", `<a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>`},
+		{"none", `<a:noFill/>`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			var buf bytes.Buffer
+			fill := ResolveColorString(tc.input)
+			fill.WriteTo(&buf)
+			if buf.String() != tc.expected {
+				t.Errorf("ResolveColorString(%q):\ngot:  %s\nwant: %s", tc.input, buf.String(), tc.expected)
+			}
+		})
+	}
+
+	t.Run("empty returns zero", func(t *testing.T) {
+		fill := ResolveColorString("")
+		if !fill.IsZero() {
+			t.Error("ResolveColorString(\"\") should return zero Fill")
+		}
+	})
+}
+
+func TestPatternFill_SchemeColors(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	PatternFill("pct5", "accent1", "lt1").WriteTo(&buf)
+	expected := `<a:pattFill prst="pct5"><a:fgClr><a:schemeClr val="accent1"/></a:fgClr><a:bgClr><a:schemeClr val="lt1"/></a:bgClr></a:pattFill>`
+	if buf.String() != expected {
+		t.Errorf("PatternFill with scheme colors:\ngot:  %s\nwant: %s", buf.String(), expected)
+	}
+}

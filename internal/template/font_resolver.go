@@ -204,9 +204,9 @@ func (r *MasterFontResolver) extractColor(defRPr *defaultRunPropsXML) string {
 		return normalizeColorHex(defRPr.SolidFill.SRGBColor.Val)
 	}
 
-	// Try scheme color
+	// Preserve scheme color name as-is so downstream can emit <a:schemeClr>.
 	if defRPr.SolidFill.SchemeColor != nil && defRPr.SolidFill.SchemeColor.Val != "" {
-		return r.resolveSchemeColor(defRPr.SolidFill.SchemeColor.Val)
+		return defRPr.SolidFill.SchemeColor.Val
 	}
 
 	return ""

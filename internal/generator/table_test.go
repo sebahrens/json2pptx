@@ -91,7 +91,8 @@ func TestGenerateTableXML_HeaderStyling(t *testing.T) {
 		{"accent4", "accent4", "accent4"},
 		{"accent5", "accent5", "accent5"},
 		{"accent6", "accent6", "accent6"},
-		{"default", "", "accent1"},
+		{"default_accent1", "accent1", "accent1"},
+		// Note: empty HeaderBackground means no fill — use DefaultTableStyle for accent1 default
 	}
 
 	for _, tc := range tests {
@@ -578,8 +579,18 @@ func TestMapToSchemeColor(t *testing.T) {
 		{"accent4", "accent4"},
 		{"accent5", "accent5"},
 		{"accent6", "accent6"},
+		{"dk1", "dk1"},
+		{"dk2", "dk2"},
+		{"lt1", "lt1"},
+		{"lt2", "lt2"},
+		{"tx1", "tx1"},
+		{"tx2", "tx2"},
+		{"bg1", "bg1"},
+		{"bg2", "bg2"},
+		{"hlink", "hlink"},
+		{"folHlink", "folHlink"},
 		{"none", "none"},
-		{"", "accent1"},
+		{"", "none"},
 		{"unknown", "accent1"},
 	}
 

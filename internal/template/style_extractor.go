@@ -230,6 +230,8 @@ func extractListStyle(lstStyle *listStyleStyleXML, style *PlaceholderStyle) {
 	if lvl1.BulletColor != nil {
 		if lvl1.BulletColor.SRGBColor != nil {
 			style.BulletColor = normalizeColorHex(lvl1.BulletColor.SRGBColor.Val)
+		} else if lvl1.BulletColor.SchemeColor != nil {
+			style.BulletColor = lvl1.BulletColor.SchemeColor.Val
 		}
 	}
 	if lvl1.BulletSizePercent != nil {
@@ -246,8 +248,12 @@ func extractListStyle(lstStyle *listStyleStyleXML, style *PlaceholderStyle) {
 		if defRPr.Latin != nil {
 			style.FontFamily = defRPr.Latin.Typeface
 		}
-		if defRPr.SolidFill != nil && defRPr.SolidFill.SRGBColor != nil {
-			style.FontColor = normalizeColorHex(defRPr.SolidFill.SRGBColor.Val)
+		if defRPr.SolidFill != nil {
+			if defRPr.SolidFill.SRGBColor != nil {
+				style.FontColor = normalizeColorHex(defRPr.SolidFill.SRGBColor.Val)
+			} else if defRPr.SolidFill.SchemeColor != nil {
+				style.FontColor = defRPr.SolidFill.SchemeColor.Val
+			}
 		}
 	}
 }

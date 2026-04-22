@@ -1,6 +1,7 @@
 package template
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"log/slog"
@@ -636,7 +637,14 @@ func appendLstStyle(buf []byte, style *PlaceholderStyle) []byte {
 
 	if style.BulletChar != "" {
 		if style.BulletColor != "" {
-			buf = append(buf, fmt.Sprintf(`<a:buClr><a:srgbClr val="%s"/></a:buClr>`, stripHashPrefix(style.BulletColor))...)
+			fill := pptx.ResolveColorString(style.BulletColor)
+			if !fill.IsZero() {
+				var cb bytes.Buffer
+				buf = append(buf, `<a:buClr>`...)
+				fill.WriteColorTo(&cb)
+				buf = append(buf, cb.Bytes()...)
+				buf = append(buf, `</a:buClr>`...)
+			}
 		}
 		if style.BulletSize != 0 {
 			buf = append(buf, fmt.Sprintf(`<a:buSzPct val="%d"/>`, style.BulletSize*1000)...)
@@ -685,7 +693,12 @@ func appendDefRPr(buf []byte, style *PlaceholderStyle) []byte {
 
 	buf = append(buf, `>`...)
 	if style.FontColor != "" {
-		buf = append(buf, fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, stripHashPrefix(style.FontColor))...)
+		fill := pptx.ResolveColorString(style.FontColor)
+		if !fill.IsZero() {
+			var cb bytes.Buffer
+			fill.WriteTo(&cb)
+			buf = append(buf, cb.Bytes()...)
+		}
 	}
 	if style.FontFamily != "" {
 		buf = append(buf, fmt.Sprintf(`<a:latin typeface="%s"/>`, xmlEscapeAttr(style.FontFamily))...)

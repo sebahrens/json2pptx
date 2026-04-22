@@ -362,15 +362,15 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 // hexColorRe matches #RGB or #RRGGBB hex color strings.
 var hexColorRe = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
-// schemeColorNames is the set of valid OOXML scheme color names that can be used
-// as fill color values instead of hex colors.
-var schemeColorNames = map[string]bool{
-	"accent1": true, "accent2": true, "accent3": true,
-	"accent4": true, "accent5": true, "accent6": true,
-	"dk1": true, "dk2": true, "lt1": true, "lt2": true,
-	"tx1": true, "tx2": true, "bg1": true, "bg2": true,
-	"hlink": true, "folHlink": true, "none": true,
-}
+// schemeColorNames aliases the canonical set from the pptx package, plus "none".
+var schemeColorNames = func() map[string]bool {
+	m := make(map[string]bool, len(pptx.SchemeColorNames)+1)
+	for k, v := range pptx.SchemeColorNames {
+		m[k] = v
+	}
+	m["none"] = true
+	return m
+}()
 
 // isValidFillColor checks whether a color string is a valid hex color or scheme color name.
 func isValidFillColor(s string) bool {

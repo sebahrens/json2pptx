@@ -3,6 +3,7 @@ package pptx
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 // fillType distinguishes between the different fill kinds in DrawingML.
@@ -124,6 +125,36 @@ func PictureFill(rID string) Fill {
 	return Fill{set: true, typ: fillPicture, rID: rID}
 }
 
+// SchemeColorNames is the set of valid OOXML theme color scheme names.
+var SchemeColorNames = map[string]bool{
+	"accent1": true, "accent2": true, "accent3": true,
+	"accent4": true, "accent5": true, "accent6": true,
+	"dk1": true, "dk2": true, "lt1": true, "lt2": true,
+	"tx1": true, "tx2": true,
+	"bg1": true, "bg2": true,
+	"hlink": true, "folHlink": true,
+}
+
+// IsSchemeColor returns true if s is a valid OOXML scheme color name.
+func IsSchemeColor(s string) bool {
+	return SchemeColorNames[s]
+}
+
+// ResolveColorString returns a SchemeFill for scheme color names (e.g. "accent1"),
+// a SolidFill for hex colors (with or without "#" prefix), or a zero Fill for empty strings.
+func ResolveColorString(s string) Fill {
+	if s == "" {
+		return Fill{}
+	}
+	if s == "none" {
+		return NoFill()
+	}
+	if IsSchemeColor(s) {
+		return SchemeFill(s)
+	}
+	return SolidFill(strings.TrimPrefix(s, "#"))
+}
+
 // IsZero returns true if the Fill has not been set (zero value).
 func (f Fill) IsZero() bool {
 	return !f.set
@@ -202,9 +233,21 @@ func (f Fill) writeGradientFill(buf *bytes.Buffer) {
 // writePatternFill writes a <a:pattFill> element.
 func (f Fill) writePatternFill(buf *bytes.Buffer) {
 	fmt.Fprintf(buf, `<a:pattFill prst="%s">`, f.pattern)
-	fmt.Fprintf(buf, `<a:fgClr><a:srgbClr val="%s"/></a:fgClr>`, f.patternFG)
-	fmt.Fprintf(buf, `<a:bgClr><a:srgbClr val="%s"/></a:bgClr>`, f.patternBG)
+	writePatternColor(buf, "fgClr", f.patternFG)
+	writePatternColor(buf, "bgClr", f.patternBG)
 	buf.WriteString(`</a:pattFill>`)
+}
+
+// writePatternColor writes a pattern color element, using schemeClr for scheme
+// names and srgbClr for hex values.
+func writePatternColor(buf *bytes.Buffer, tag, color string) {
+	fmt.Fprintf(buf, `<a:%s>`, tag)
+	if IsSchemeColor(color) {
+		fmt.Fprintf(buf, `<a:schemeClr val="%s"/>`, color)
+	} else {
+		fmt.Fprintf(buf, `<a:srgbClr val="%s"/>`, strings.TrimPrefix(color, "#"))
+	}
+	fmt.Fprintf(buf, `</a:%s>`, tag)
 }
 
 // writePictureFill writes a <a:blipFill> element.

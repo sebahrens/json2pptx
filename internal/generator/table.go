@@ -2,9 +2,11 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -662,9 +664,14 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 
 	// Add fill for header cells
 	if isHeader {
-		schemeColor := mapToSchemeColor(config.Style.HeaderBackground)
-		if schemeColor != "none" {
-			fmt.Fprintf(&xml, `<a:solidFill><a:schemeClr val="%s"/></a:solidFill>`, schemeColor)
+		hdrBg := config.Style.HeaderBackground
+		if hdrBg != "none" && hdrBg != "" {
+			fill := pptx.ResolveColorString(hdrBg)
+			if !fill.IsZero() {
+				var cb bytes.Buffer
+				fill.WriteTo(&cb)
+				xml.WriteString(cb.String())
+			}
 		}
 	} else if config.Style.Striped && rowIdx%2 == 1 {
 		// Use accent1 at 15% saturation for a reliably visible alternating stripe.
@@ -764,25 +771,15 @@ func generateTableLevelBorders(borderStyle string) string {
 }
 
 // mapToSchemeColor maps style color names to PowerPoint scheme colors.
+// Accepts all valid OOXML scheme color names (accent1-6, dk1/dk2, lt1/lt2, etc.).
 func mapToSchemeColor(colorName string) string {
-	switch colorName {
-	case "accent1":
-		return "accent1"
-	case "accent2":
-		return "accent2"
-	case "accent3":
-		return "accent3"
-	case "accent4":
-		return "accent4"
-	case "accent5":
-		return "accent5"
-	case "accent6":
-		return "accent6"
-	case "none":
+	if colorName == "none" || colorName == "" {
 		return "none"
-	default:
-		return "accent1" // Default to accent1
 	}
+	if pptx.IsSchemeColor(colorName) {
+		return colorName
+	}
+	return "accent1" // Default to accent1 for unrecognized names
 }
 
 // escapeXMLText escapes special characters for XML text content.
