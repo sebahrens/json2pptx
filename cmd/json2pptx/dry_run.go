@@ -415,6 +415,12 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (shapeCount int, warn
 			if cell.Table != nil {
 				shapeCount++
 			}
+			if cell.Diagram != nil {
+				shapeCount++
+				if cell.Diagram.Type == "" {
+					errors = append(errors, fmt.Sprintf("slide %d: shape_grid row %d cell %d: diagram type is required", slideNum, rowIdx+1, cellIdx+1))
+				}
+			}
 		}
 	}
 

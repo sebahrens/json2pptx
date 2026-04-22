@@ -243,7 +243,7 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 	for i, r := range inputRows {
 		cells := make([]shapegrid.Cell, len(r.Cells))
 		for j, c := range r.Cells {
-			if c == nil || (c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil) {
+			if c == nil || (c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil) {
 				cells[j] = shapegrid.Cell{}
 				continue
 			}
@@ -329,6 +329,9 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 		}
 		cell.Image = imgSpec
 	}
+	if c.Diagram != nil {
+		cell.DiagramSpec = c.Diagram
+	}
 	if c.AccentBar != nil {
 		cell.AccentBar = &shapegrid.AccentBarSpec{
 			Position: c.AccentBar.Position,
@@ -382,6 +385,12 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 				ExtentCX: cell.Bounds.CX,
 				ExtentCY: cell.Bounds.CY,
 			})
+		case shapegrid.CellKindDiagram:
+			icons, err := generateDiagramCellInserts(cell)
+			if err != nil {
+				return nil, err
+			}
+			iconInserts = append(iconInserts, icons...)
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {
@@ -478,6 +487,26 @@ func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAlloca
 	return shapes, imgs, nil
 }
 
+// generateDiagramCellInserts renders a diagram cell via svggen and returns IconInserts
+// for native SVG embedding. The diagram is rendered as SVG only (no rasterization
+// needed — the singlepass generator uses a 1x1 transparent PNG fallback for native SVG).
+func generateDiagramCellInserts(cell shapegrid.ResolvedCell) ([]generator.IconInsert, error) {
+	result, err := generator.RenderDiagramSpecWithMetadata(cell.DiagramSpec, nil, 0, true)
+	if err != nil {
+		return nil, fmt.Errorf("diagram in grid cell %d: %w", cell.ID, err)
+	}
+	if len(result.SVG) == 0 {
+		return nil, fmt.Errorf("diagram in grid cell %d: renderer returned empty SVG", cell.ID)
+	}
+	return []generator.IconInsert{{
+		SVGData:  result.SVG,
+		OffsetX:  cell.Bounds.X,
+		OffsetY:  cell.Bounds.Y,
+		ExtentCX: cell.Bounds.CX,
+		ExtentCY: cell.Bounds.CY,
+	}}, nil
+}
+
 // resolveColumnsDTO parses the JSON columns field and returns percentage widths.
 func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, error) {
 	if len(raw) == 0 {
@@ -489,7 +518,7 @@ func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, err
 			}
 		}
 		if maxCols == 0 {
-			return nil, fmt.Errorf("shape_grid: no cells defined; add cells with a \"shape\", \"table\", \"icon\", or \"image\" key to at least one row")
+			return nil, fmt.Errorf("shape_grid: no cells defined; add cells with a \"shape\", \"table\", \"icon\", \"image\", or \"diagram\" key to at least one row")
 		}
 		return shapegrid.ResolveColumns(nil, []int{maxCols})
 	}

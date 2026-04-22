@@ -47,7 +47,7 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid fit mode %q; valid values are \"contain\", \"fit-width\", or \"fit-height\" (omit for default stretch behavior)", r, ci, cell.Fit))
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil {
+			if cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil {
 				col++
 				continue
 			}

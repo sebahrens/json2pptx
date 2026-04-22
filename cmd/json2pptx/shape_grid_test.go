@@ -1379,3 +1379,43 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 		}
 	})
 }
+
+func TestResolveShapeGrid_DiagramCell(t *testing.T) {
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`2`),
+		Rows: []GridRowInput{{
+			Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`), Text: json.RawMessage(`"Label"`)}},
+				{Diagram: &types.DiagramSpec{
+					Type: "pie",
+					Data: map[string]any{
+						"values": []any{60.0, 40.0},
+						"labels": []any{"A", "B"},
+					},
+				}},
+			},
+		}},
+	}
+
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	// 1 shape XML for the rect cell, 0 for the diagram (diagram goes through IconInserts)
+	if len(result.Shapes) != 1 {
+		t.Fatalf("expected 1 shape XML (rect only), got %d", len(result.Shapes))
+	}
+	// Diagram cell should produce an IconInsert with SVG data
+	if len(result.IconInserts) != 1 {
+		t.Fatalf("expected 1 icon insert (diagram SVG), got %d", len(result.IconInserts))
+	}
+	if len(result.IconInserts[0].SVGData) == 0 {
+		t.Error("diagram icon insert has empty SVG data")
+	}
+	if result.IconInserts[0].ExtentCX == 0 || result.IconInserts[0].ExtentCY == 0 {
+		t.Error("diagram icon insert has zero dimensions")
+	}
+}

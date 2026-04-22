@@ -333,16 +333,17 @@ type ConnectorSpecInput struct {
 }
 
 // GridCellInput defines a single cell in the shape grid.
-// Only one of Shape, Table, Icon, or Image should be set per cell.
+// Only one of Shape, Table, Icon, Image, or Diagram should be set per cell.
 type GridCellInput struct {
-	ColSpan   int              `json:"col_span,omitempty"`
-	RowSpan   int              `json:"row_span,omitempty"`
-	Fit       string           `json:"fit,omitempty"` // "contain", "fit-width", "fit-height" (default: stretch)
-	Shape     *ShapeSpecInput  `json:"shape,omitempty"`
-	Table     *TableInput      `json:"table,omitempty"`
-	Icon      *IconInput       `json:"icon,omitempty"`
-	Image     *GridImageInput  `json:"image,omitempty"`
-	AccentBar *AccentBarInput  `json:"accent_bar,omitempty"` // Optional decorative accent bar
+	ColSpan   int                `json:"col_span,omitempty"`
+	RowSpan   int                `json:"row_span,omitempty"`
+	Fit       string             `json:"fit,omitempty"` // "contain", "fit-width", "fit-height" (default: stretch)
+	Shape     *ShapeSpecInput    `json:"shape,omitempty"`
+	Table     *TableInput        `json:"table,omitempty"`
+	Icon      *IconInput         `json:"icon,omitempty"`
+	Image     *GridImageInput    `json:"image,omitempty"`
+	Diagram   *types.DiagramSpec `json:"diagram,omitempty"` // Chart/diagram rendered via svggen
+	AccentBar *AccentBarInput    `json:"accent_bar,omitempty"` // Optional decorative accent bar
 }
 
 // AccentBarInput defines a decorative accent bar rendered alongside a cell.

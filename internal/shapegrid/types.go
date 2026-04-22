@@ -14,10 +14,11 @@ import (
 type CellKind string
 
 const (
-	CellKindShape CellKind = "shape"
-	CellKindTable CellKind = "table"
-	CellKindIcon  CellKind = "icon"
-	CellKindImage CellKind = "image"
+	CellKindShape   CellKind = "shape"
+	CellKindTable   CellKind = "table"
+	CellKindIcon    CellKind = "icon"
+	CellKindImage   CellKind = "image"
+	CellKindDiagram CellKind = "diagram"
 )
 
 // FitMode controls how a shape is scaled within its grid cell bounds.
@@ -61,16 +62,17 @@ type ConnectorSpec struct {
 }
 
 // Cell is a single cell in the grid.
-// Only one of Shape, TableSpec, Icon, or Image should be set per cell.
+// Only one of Shape, TableSpec, Icon, Image, or DiagramSpec should be set per cell.
 type Cell struct {
-	ColSpan   int              // Number of columns to span (default 1)
-	RowSpan   int              // Number of rows to span (default 1)
-	Fit       FitMode          // How the shape scales within cell bounds
-	Shape     *ShapeSpec       // Shape specification (nil = empty cell unless TableSpec/Icon/Image set)
-	TableSpec *types.TableSpec // Table specification (nil = empty cell unless Shape/Icon/Image set)
-	Icon      *IconSpec        // Icon specification (nil = empty cell unless Shape/TableSpec/Image set)
-	Image     *ImageSpec       // Image specification (nil = empty cell unless Shape/TableSpec/Icon set)
-	AccentBar *AccentBarSpec   // Optional decorative accent bar alongside the cell
+	ColSpan     int                // Number of columns to span (default 1)
+	RowSpan     int                // Number of rows to span (default 1)
+	Fit         FitMode            // How the shape scales within cell bounds
+	Shape       *ShapeSpec         // Shape specification (nil = empty cell unless other content set)
+	TableSpec   *types.TableSpec   // Table specification
+	Icon        *IconSpec          // Icon specification
+	Image       *ImageSpec         // Image specification
+	DiagramSpec *types.DiagramSpec // Diagram/chart specification (rendered via svggen)
+	AccentBar   *AccentBarSpec     // Optional decorative accent bar alongside the cell
 }
 
 // AccentBarSpec defines a decorative accent bar rendered alongside a cell.
@@ -129,16 +131,17 @@ type ShapeSpec struct {
 // ResolvedCell is the output of grid resolution: a cell with its absolute
 // position, size, kind, and associated specification.
 type ResolvedCell struct {
-	Kind       CellKind
-	Bounds     pptx.RectEmu     // Shape bounds (may differ from cell bounds when fit mode is applied)
-	CellBounds pptx.RectEmu     // Original cell bounds before fit adjustment
-	IconBounds pptx.RectEmu     // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
-	TextInsets [4]int64         // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
-	ID         uint32
-	ShapeSpec  *ShapeSpec       // Set when Kind == CellKindShape
-	TableSpec  *types.TableSpec // Set when Kind == CellKindTable
-	IconSpec   *IconSpec        // Set when Kind == CellKindIcon
-	ImageSpec  *ImageSpec       // Set when Kind == CellKindImage
+	Kind        CellKind
+	Bounds      pptx.RectEmu       // Shape bounds (may differ from cell bounds when fit mode is applied)
+	CellBounds  pptx.RectEmu       // Original cell bounds before fit adjustment
+	IconBounds  pptx.RectEmu       // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
+	TextInsets  [4]int64           // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
+	ID          uint32
+	ShapeSpec   *ShapeSpec         // Set when Kind == CellKindShape
+	TableSpec   *types.TableSpec   // Set when Kind == CellKindTable
+	IconSpec    *IconSpec          // Set when Kind == CellKindIcon
+	ImageSpec   *ImageSpec         // Set when Kind == CellKindImage
+	DiagramSpec *types.DiagramSpec // Set when Kind == CellKindDiagram
 }
 
 // ResolvedConnector is a connector line between two adjacent cells in a row.

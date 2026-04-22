@@ -112,7 +112,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				break
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil {
+			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil {
 				col++
 				continue
 			}
@@ -172,6 +172,9 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			if cell.Image != nil {
 				rc.Kind = CellKindImage
 				rc.ImageSpec = cell.Image
+			} else if cell.DiagramSpec != nil {
+				rc.Kind = CellKindDiagram
+				rc.DiagramSpec = cell.DiagramSpec
 			} else if hasShapeWithIcon {
 				// Shape with icon overlay: shape stretches to fill the cell,
 				// icon is contained (square) within the shape bounds, scaled down.
