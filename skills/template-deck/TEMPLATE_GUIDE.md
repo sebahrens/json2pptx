@@ -359,9 +359,9 @@ Set `slide_type` to `"blank"` (or `"virtual"`) and omit `layout_id`. The engine 
 | Field     | Type                | Default      | Description |
 |-----------|---------------------|--------------|-------------|
 | `bounds`  | `{x, y, width, height}` | Auto-derived | Bounding rectangle as slide percentages (0-100) |
-| `gap`     | `number`            | 0            | Uniform gap between cells (% of grid dimension) |
-| `col_gap` | `number`            | `gap`        | Column gap override (% of grid width) |
-| `row_gap` | `number`            | `gap`        | Row gap override (% of grid height) |
+| `gap`     | `number`            | 8            | Uniform gap between cells, in typographic points. Typical values 4-12. |
+| `col_gap` | `number`            | `gap`        | Column gap override, in points. |
+| `row_gap` | `number`            | `gap`        | Row gap override, in points. Cumulative: 5 rows × `row_gap: 10` = 50pt of vertical space consumed. On data-dense slides use 1-3. |
 | `columns` | `number \| number[]` | Cell count   | Equal columns (`3`) or explicit widths (`[30, 40, 30]`) |
 | `rows`    | `GridRowInput[]`    | ---          | Array of row definitions |
 
