@@ -212,46 +212,24 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string
 	return ""
 }
 
-// isShapeFillSemantic returns true if the shape's fill in spPr uses a scheme
-// color reference (<a:schemeClr>) rather than an explicit sRGB color. Shapes
-// with semantic fills delegate their color to the theme, so it's safe to
-// auto-fix text contrast. Shapes with explicit hex fills preserve user intent.
-func isShapeFillSemantic(shapeXML []byte) bool {
-	spPrStart := bytes.Index(shapeXML, []byte("<p:spPr>"))
-	spPrEnd := bytes.Index(shapeXML, []byte("</p:spPr>"))
-	if spPrStart < 0 || spPrEnd < 0 || spPrEnd <= spPrStart {
-		return false
-	}
-	spPr := shapeXML[spPrStart:spPrEnd]
-	return shapeFillSchemeRegexp.Match(spPr) && !shapeFillSrgbRegexp.Match(spPr)
-}
-
 // enforceShapeGridContrast checks text colors within shape_grid raw shape XML
-// fragments against each shape's own fill color. The behavior depends on
-// whether the shape fill uses a semantic (scheme) color or an explicit hex:
-//
-//   - Semantic fill (e.g., accent1, lt2): Auto-fix text color if contrast is
-//     below WCAG AA Large (3:1). The user delegated the fill color to the
-//     theme, so adjusting text to maintain readability is safe.
-//   - Explicit hex fill (e.g., #1B2A4A): Warn only. The user chose an exact
-//     color, so silently replacing text would destroy design intent.
+// fragments against each shape's own fill color. It auto-fixes low-contrast
+// text (below WCAG AA Large 3:1) regardless of whether the fill uses a
+// semantic scheme color or an explicit hex value. Users who want to preserve
+// exact color choices can opt out via contrast_check: false on the slide.
 //
 // This is called after the standard enforceTextContrastInSlide pass, which
 // handles parsed slide shapes with template-inherited colors.
 func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor) [][]byte {
 	for i, shape := range shapes {
-		if isShapeFillSemantic(shape) {
-			shapes[i] = fixShapeXMLContrast(shape, themeColors)
-		} else {
-			warnShapeXMLContrast(shape, themeColors)
-		}
+		shapes[i] = fixShapeXMLContrast(shape, themeColors)
 	}
 	return shapes
 }
 
-// fixShapeXMLContrast fixes low-contrast text in a raw shape XML fragment
-// whose fill uses a semantic (scheme) color. It resolves the fill to hex,
-// then replaces text colors in the txBody that have insufficient contrast.
+// fixShapeXMLContrast fixes low-contrast text in a raw shape XML fragment.
+// It resolves the shape's fill color (scheme or sRGB) to hex, then replaces
+// text colors in the txBody that have insufficient contrast.
 func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor) []byte {
 	fillHex := extractShapeFillHex(shapeXML, themeColors)
 	if fillHex == "" {
@@ -291,78 +269,6 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor) []byte
 	return result
 }
 
-// warnShapeXMLContrast checks text contrast within a single raw shape XML
-// fragment against its own fill color. It logs warnings for low-contrast
-// text but does NOT modify the XML — shape_grid colors are user-specified.
-func warnShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor) {
-	fillHex := extractShapeFillHex(shapeXML, themeColors)
-	if fillHex == "" {
-		return // No fill or can't resolve — skip
-	}
-
-	bgColor, err := svggen.ParseColor(fillHex)
-	if err != nil {
-		return
-	}
-
-	// Find txBody section
-	txStart := bytes.Index(shapeXML, []byte("<p:txBody>"))
-	closingTag := []byte("</p:txBody>")
-	txEnd := bytes.Index(shapeXML, closingTag)
-	if txStart < 0 || txEnd < 0 || txEnd <= txStart {
-		return
-	}
-	txEnd += len(closingTag)
-
-	txBody := string(shapeXML[txStart:txEnd])
-
-	// Check scheme colors
-	for _, match := range schemeClrInFillRegexp.FindAllStringSubmatch(txBody, -1) {
-		if len(match) < 4 {
-			continue
-		}
-		schemeName := match[2]
-		hexColor := resolveSchemeColorToHex(schemeName, themeColors)
-		if hexColor == "" {
-			continue
-		}
-		fgColor, err := svggen.ParseColor(hexColor)
-		if err != nil {
-			continue
-		}
-		ratio := fgColor.ContrastWith(bgColor)
-		if ratio < svggen.WCAGAALarge {
-			slog.Warn("shape_grid: low text contrast (user-specified color preserved)",
-				slog.String("scheme", schemeName),
-				slog.String("resolved", hexColor),
-				slog.String("fill", fillHex),
-				slog.Float64("contrast_ratio", ratio),
-				slog.Float64("wcag_aa_large", svggen.WCAGAALarge),
-			)
-		}
-	}
-
-	// Check sRGB colors
-	for _, match := range srgbClrInFillRegexp.FindAllStringSubmatch(txBody, -1) {
-		if len(match) < 4 {
-			continue
-		}
-		hexVal := match[2]
-		fgColor, err := svggen.ParseColor("#" + hexVal)
-		if err != nil {
-			continue
-		}
-		ratio := fgColor.ContrastWith(bgColor)
-		if ratio < svggen.WCAGAALarge {
-			slog.Warn("shape_grid: low text contrast (user-specified color preserved)",
-				slog.String("color", "#"+hexVal),
-				slog.String("fill", fillHex),
-				slog.Float64("contrast_ratio", ratio),
-				slog.Float64("wcag_aa_large", svggen.WCAGAALarge),
-			)
-		}
-	}
-}
 
 // srgbClrInFillRegexp matches <a:solidFill><a:srgbClr val="RRGGBB"/></a:solidFill>
 // in text run properties. Captures the full element and the hex color.
