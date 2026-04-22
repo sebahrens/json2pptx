@@ -4,6 +4,7 @@ package generator
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -132,6 +133,15 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			table.Rows = append(truncatedRows, summaryRow)
 			summaryRowIdx = len(table.Rows) - 1
 			numRows = len(table.Rows) + 1 // +1 for header
+
+			// Warn about truncation so users don't ship decks with missing data.
+			tableID := strings.Join(table.Headers, ", ")
+			slog.Warn("table rows truncated: data exceeds allocated height",
+				slog.String("headers", tableID),
+				slog.Int("total_rows", len(truncatedRows)+overflow),
+				slog.Int("visible_rows", len(truncatedRows)),
+				slog.Int("hidden_rows", overflow),
+			)
 		}
 	}
 

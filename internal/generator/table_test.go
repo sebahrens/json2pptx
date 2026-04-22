@@ -1,7 +1,9 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -1330,6 +1332,89 @@ func TestGenerateTableXML_DenseTable_RowTruncation(t *testing.T) {
 	gridColCount := strings.Count(result.XML, "<a:gridCol w=")
 	if gridColCount != numCols {
 		t.Errorf("expected %d grid columns, got %d", numCols, gridColCount)
+	}
+}
+
+func TestGenerateTableXML_TruncationEmitsWarning(t *testing.T) {
+	// Verify that truncation emits a slog.Warn so users are alerted to missing data.
+	numDataRows := 15
+	rows := make([][]types.TableCell, numDataRows)
+	for i := 0; i < numDataRows; i++ {
+		rows[i] = []types.TableCell{
+			{Content: fmt.Sprintf("Row %d", i+1), ColSpan: 1, RowSpan: 1},
+			{Content: "Data", ColSpan: 1, RowSpan: 1},
+		}
+	}
+
+	table := &types.TableSpec{
+		Headers: []string{"Name", "Value"},
+		Rows:    rows,
+		Style:   types.DefaultTableStyle,
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X: 457200, Y: 914400,
+			Width:  8229600,
+			Height: 2743200, // 3 inches — forces truncation
+		},
+		Style: table.Style,
+	}
+
+	// Capture slog output
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	_, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "table rows truncated") {
+		t.Error("truncation should emit a slog warning containing 'table rows truncated'")
+	}
+	if !strings.Contains(logOutput, "hidden_rows") {
+		t.Error("truncation warning should include hidden_rows count")
+	}
+	if !strings.Contains(logOutput, "Name, Value") {
+		t.Error("truncation warning should include table headers for identification")
+	}
+}
+
+func TestGenerateTableXML_NoTruncation_NoWarning(t *testing.T) {
+	// A small table that fits should NOT emit a truncation warning.
+	table := &types.TableSpec{
+		Headers: []string{"A", "B"},
+		Rows: [][]types.TableCell{
+			{{Content: "1", ColSpan: 1, RowSpan: 1}, {Content: "2", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.DefaultTableStyle,
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X: 457200, Y: 914400,
+			Width:  8229600,
+			Height: 2743200,
+		},
+		Style: table.Style,
+	}
+
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	_, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(buf.String(), "table rows truncated") {
+		t.Error("small table should not emit a truncation warning")
 	}
 }
 
