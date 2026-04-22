@@ -622,10 +622,16 @@ func alignmentToOOXML(alignment string) string {
 func generateCellContent(text string, isHeader bool, config TableRenderConfig, colIdx int) string {
 	fontSize := config.DefaultSize
 	bold := "0"
+	// When a table style is active and no explicit header_background is set,
+	// the style's firstRow > tcTxStyle controls text formatting (bold, color).
+	// Only force bold when we are NOT deferring to the table style.
+	styleControlsHeader := config.Style.StyleID != "" && config.Style.HeaderBackground == ""
 	if isHeader {
 		// Headers are slightly larger and bold
 		fontSize = int(float64(fontSize) * 1.1)
-		bold = "1"
+		if !styleControlsHeader {
+			bold = "1"
+		}
 	}
 
 	// Determine paragraph alignment from column alignments

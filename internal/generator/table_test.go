@@ -149,6 +149,90 @@ func TestGenerateTableXML_NoHeaderFillWhenOmitted(t *testing.T) {
 	}
 }
 
+func TestGenerateTableXML_HeaderTextNotOverriddenWithStyle(t *testing.T) {
+	// When a table style is active and header_background is NOT set,
+	// the table style's firstRow > tcTxStyle should control header text
+	// formatting. We must NOT force bold (b="1") which could interfere
+	// with table style inheritance in PowerPoint.
+	table := &types.TableSpec{
+		Headers: []string{"Header 1", "Header 2"},
+		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "B", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{HeaderBackground: "", StyleID: types.DefaultTableStyleID, Borders: "all"},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{Width: 2000000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Header text runs should NOT have b="1" when table style controls formatting.
+	// The table style's firstRow already defines bold+color for header text.
+	if strings.Contains(result.XML, `b="1"`) {
+		t.Error("header cell should not force bold when table style is active and header_background is not set")
+	}
+
+	// Ensure no solidFill in rPr (no forced text color)
+	if strings.Contains(result.XML, `<a:rPr`) && strings.Contains(result.XML, `<a:solidFill`) {
+		// Check this isn't from a border or cell fill (which is fine)
+		// The rPr should be self-closing with no children
+		if strings.Contains(result.XML, `</a:rPr>`) {
+			t.Error("header text run properties should not contain solidFill when deferring to table style")
+		}
+	}
+}
+
+func TestGenerateTableXML_HeaderBoldWhenNoStyle(t *testing.T) {
+	// When no table style is in use, headers should still be bold.
+	table := &types.TableSpec{
+		Headers: []string{"Header 1"},
+		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{HeaderBackground: "", Borders: "all"},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{Width: 1000000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(result.XML, `b="1"`) {
+		t.Error("header cell should be bold when no table style is active")
+	}
+}
+
+func TestGenerateTableXML_HeaderBoldWithExplicitBackground(t *testing.T) {
+	// When header_background IS explicitly set (even with a table style),
+	// we are overriding the style's fill, so we should also force bold.
+	table := &types.TableSpec{
+		Headers: []string{"Header 1"},
+		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{HeaderBackground: "accent1", StyleID: types.DefaultTableStyleID, Borders: "all"},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{Width: 1000000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(result.XML, `b="1"`) {
+		t.Error("header cell should be bold when header_background is explicitly set")
+	}
+}
+
 func TestGenerateTableXML_NoBorders(t *testing.T) {
 	table := &types.TableSpec{
 		Headers: []string{"Header 1"},
