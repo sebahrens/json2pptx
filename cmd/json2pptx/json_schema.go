@@ -228,9 +228,11 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 	}
 	if t.Style != nil {
 		spec.Style = types.TableStyle{
-			HeaderBackground: t.Style.HeaderBackground,
-			Borders:          t.Style.Borders,
-			Striped:          t.Style.Striped,
+			Borders: t.Style.Borders,
+			Striped: t.Style.Striped,
+		}
+		if t.Style.HeaderBackground != nil {
+			spec.Style.HeaderBackground = *t.Style.HeaderBackground
 		}
 	} else {
 		spec.Style = types.DefaultTableStyle
@@ -271,9 +273,9 @@ func (c *TableCellInput) UnmarshalJSON(data []byte) error {
 
 // TableStyleInput maps to types.TableStyle.
 type TableStyleInput struct {
-	HeaderBackground string `json:"header_background,omitempty"`
-	Borders          string `json:"borders,omitempty"`
-	Striped          bool   `json:"striped,omitempty"`
+	HeaderBackground *string `json:"header_background,omitempty"`
+	Borders          string  `json:"borders,omitempty"`
+	Striped          bool    `json:"striped,omitempty"`
 }
 
 // ImageInput maps to generator.ImageContent.

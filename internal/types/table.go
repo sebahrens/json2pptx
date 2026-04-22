@@ -39,8 +39,10 @@ type TableStyle struct {
 const DefaultTableStyleID = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
 
 // DefaultTableStyle provides sensible defaults for table styling.
+// HeaderBackground is intentionally empty so the table style's firstRow
+// appearance takes effect; set it explicitly to override.
 var DefaultTableStyle = TableStyle{
-	HeaderBackground: "accent1",
+	HeaderBackground: "",
 	Borders:          "all",
 	Striped:          false,
 	StyleID:          DefaultTableStyleID,

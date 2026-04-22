@@ -91,8 +91,6 @@ func TestGenerateTableXML_HeaderStyling(t *testing.T) {
 		{"accent4", "accent4", "accent4"},
 		{"accent5", "accent5", "accent5"},
 		{"accent6", "accent6", "accent6"},
-		{"default_accent1", "accent1", "accent1"},
-		// Note: empty HeaderBackground means no fill — use DefaultTableStyle for accent1 default
 	}
 
 	for _, tc := range tests {
@@ -118,6 +116,36 @@ func TestGenerateTableXML_HeaderStyling(t *testing.T) {
 				t.Errorf("expected header fill with %s, got XML: %s", tc.expectedScheme, result.XML)
 			}
 		})
+	}
+}
+
+func TestGenerateTableXML_NoHeaderFillWhenOmitted(t *testing.T) {
+	// When HeaderBackground is empty (default), no solidFill should be emitted
+	// so the table style's firstRow appearance takes effect.
+	table := &types.TableSpec{
+		Headers: []string{"Header 1"},
+		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{HeaderBackground: "", Borders: "all"},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{Width: 1000000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The tcPr should close immediately after borders — no solidFill between borders and </a:tcPr>
+	if strings.Contains(result.XML, `<a:schemeClr val="accent1"/></a:solidFill></a:tcPr>`) {
+		t.Error("header cell should not contain accent1 solidFill when HeaderBackground is empty")
+	}
+	// More broadly: no fill element should appear as direct child of tcPr for header cells.
+	// solidFill inside <a:ln> (borders) is fine; we check that no schemeClr fill precedes </a:tcPr>.
+	if strings.Contains(result.XML, `</a:solidFill></a:tcPr>`) {
+		t.Error("header cell tcPr should not end with a solidFill when HeaderBackground is empty")
 	}
 }
 

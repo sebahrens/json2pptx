@@ -176,7 +176,7 @@
           ],
           "style": {
             "borders": "all",
-            "header_background": "accent1",
+            "header_background": "",
             "striped": false
           }
         }

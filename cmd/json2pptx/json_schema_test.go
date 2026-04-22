@@ -106,7 +106,7 @@ func TestTableInput_ToTableSpec(t *testing.T) {
 			},
 		},
 		Style: &TableStyleInput{
-			HeaderBackground: "accent2",
+			HeaderBackground: strPtr("accent2"),
 			Borders:          "horizontal",
 			Striped:          true,
 		},
@@ -160,9 +160,9 @@ func TestTableInput_ToTableSpec_DefaultStyle(t *testing.T) {
 	}
 
 	spec := input.ToTableSpec()
-	// When no style is provided, DefaultTableStyle should be used
-	if spec.Style.HeaderBackground != "accent1" {
-		t.Errorf("default Style.HeaderBackground = %q, want accent1", spec.Style.HeaderBackground)
+	// When no style is provided, DefaultTableStyle should be used (empty = no fill override)
+	if spec.Style.HeaderBackground != "" {
+		t.Errorf("default Style.HeaderBackground = %q, want empty", spec.Style.HeaderBackground)
 	}
 	if spec.Style.Borders != "all" {
 		t.Errorf("default Style.Borders = %q, want all", spec.Style.Borders)
