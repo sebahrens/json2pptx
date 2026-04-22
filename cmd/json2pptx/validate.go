@@ -188,8 +188,10 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 
 		// Validate shape_grid if present.
 		if slide.ShapeGrid != nil {
-			shapeCount, gridWarnings, gridErrors := validateShapeGrid(slide.ShapeGrid, i+1)
-			result.ShapeCount += shapeCount
+			gridCounts, gridWarnings, gridErrors := validateShapeGrid(slide.ShapeGrid, i+1)
+			result.ShapeCount += gridCounts.Shapes
+			result.TableCount += gridCounts.Tables
+			result.DiagramCount += gridCounts.Diagrams
 			result.Warnings = append(result.Warnings, gridWarnings...)
 			if len(gridErrors) > 0 {
 				result.Valid = false

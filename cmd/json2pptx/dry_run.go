@@ -345,9 +345,11 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 		// Validate shape_grid if present
 		if slideInput.ShapeGrid != nil {
-			shapeCount, gridWarnings, gridErrors := validateShapeGrid(slideInput.ShapeGrid, i+1)
-			slide.ShapeCount = shapeCount
-			output.ShapeCount += shapeCount
+			gridCounts, gridWarnings, gridErrors := validateShapeGrid(slideInput.ShapeGrid, i+1)
+			slide.ShapeCount = gridCounts.Shapes
+			output.ShapeCount += gridCounts.Shapes
+			output.TableCount += gridCounts.Tables
+			output.DiagramCount += gridCounts.Diagrams
 			output.Warnings = append(output.Warnings, gridWarnings...)
 			if len(gridErrors) > 0 {
 				output.Valid = false
@@ -377,9 +379,17 @@ func isValidFillColor(s string) bool {
 	return hexColorRe.MatchString(s) || schemeColorNames[s]
 }
 
-// validateShapeGrid validates a ShapeGridInput and returns the shape count,
+// gridContentCounts holds counts of content types found inside shape_grid cells.
+type gridContentCounts struct {
+	Shapes   int
+	Tables   int
+	Diagrams int
+}
+
+// validateShapeGrid validates a ShapeGridInput and returns content counts,
 // warnings, and errors.
-func validateShapeGrid(grid *ShapeGridInput, slideNum int) (shapeCount int, warnings []string, errors []string) {
+
+func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCounts, warnings []string, errors []string) {
 	if len(grid.Rows) == 0 {
 		errors = append(errors, fmt.Sprintf("slide %d: shape_grid has no rows", slideNum))
 		return
@@ -402,7 +412,7 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (shapeCount int, warn
 				continue
 			}
 			if cell.Shape != nil {
-				shapeCount++
+				counts.Shapes++
 				// Validate geometry name
 				if cell.Shape.Geometry == "" {
 					errors = append(errors, fmt.Sprintf("slide %d: shape_grid row %d cell %d: geometry is required", slideNum, rowIdx+1, cellIdx+1))
@@ -413,10 +423,12 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (shapeCount int, warn
 				validateShapeFillColor(cell.Shape.Fill, slideNum, rowIdx+1, cellIdx+1, &warnings)
 			}
 			if cell.Table != nil {
-				shapeCount++
+				counts.Shapes++
+				counts.Tables++
 			}
 			if cell.Diagram != nil {
-				shapeCount++
+				counts.Shapes++
+				counts.Diagrams++
 				if cell.Diagram.Type == "" {
 					errors = append(errors, fmt.Sprintf("slide %d: shape_grid row %d cell %d: diagram type is required", slideNum, rowIdx+1, cellIdx+1))
 				}
