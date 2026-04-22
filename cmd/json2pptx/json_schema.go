@@ -229,11 +229,17 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 	}
 	if t.Style != nil {
 		spec.Style = types.TableStyle{
-			Borders: t.Style.Borders,
-			Striped: t.Style.Striped,
+			Borders:       t.Style.Borders,
+			Striped:       t.Style.Striped,
+			UseTableStyle: t.Style.UseTableStyle,
+			StyleID:       t.Style.StyleID,
 		}
 		if t.Style.HeaderBackground != nil {
 			spec.Style.HeaderBackground = *t.Style.HeaderBackground
+		}
+		// Default StyleID when not explicitly set
+		if spec.Style.StyleID == "" {
+			spec.Style.StyleID = types.DefaultTableStyleID
 		}
 	} else {
 		spec.Style = types.DefaultTableStyle
@@ -277,6 +283,8 @@ type TableStyleInput struct {
 	HeaderBackground *string `json:"header_background,omitempty"`
 	Borders          string  `json:"borders,omitempty"`
 	Striped          bool    `json:"striped,omitempty"`
+	UseTableStyle    bool    `json:"use_table_style,omitempty"`
+	StyleID          string  `json:"style_id,omitempty"`
 }
 
 // ImageInput maps to generator.ImageContent.

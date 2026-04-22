@@ -176,6 +176,48 @@ func TestTableInput_ToTableSpec_Nil(t *testing.T) {
 	}
 }
 
+func TestTableInput_ToTableSpec_UseTableStyle(t *testing.T) {
+	customStyleID := "{CUSTOM-GUID-1234}"
+	input := TableInput{
+		Headers: []string{"A", "B"},
+		Rows: [][]TableCellInput{
+			{{Content: "1", ColSpan: 1, RowSpan: 1}, {Content: "2", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: &TableStyleInput{
+			UseTableStyle: true,
+			StyleID:       customStyleID,
+		},
+	}
+
+	spec := input.ToTableSpec()
+	if !spec.Style.UseTableStyle {
+		t.Error("Style.UseTableStyle = false, want true")
+	}
+	if spec.Style.StyleID != customStyleID {
+		t.Errorf("Style.StyleID = %q, want %q", spec.Style.StyleID, customStyleID)
+	}
+}
+
+
+func TestTableInput_ToTableSpec_UseTableStyleDefaultStyleID(t *testing.T) {
+	input := TableInput{
+		Headers: []string{"A"},
+		Rows: [][]TableCellInput{
+			{{Content: "1", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: &TableStyleInput{
+			UseTableStyle: true,
+		},
+	}
+
+	spec := input.ToTableSpec()
+	// When StyleID is not set, it should default to the standard table style GUID
+	wantStyleID := "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
+	if spec.Style.StyleID != wantStyleID {
+		t.Errorf("Style.StyleID = %q, want default %q", spec.Style.StyleID, wantStyleID)
+	}
+}
+
 // --- ThemeInput.ToThemeOverride() ---
 
 func TestThemeInput_ToThemeOverride(t *testing.T) {

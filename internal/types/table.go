@@ -32,6 +32,7 @@ type TableStyle struct {
 	Borders          string // "all", "horizontal", "outer", "none"
 	Striped          bool   // Alternating row colors
 	StyleID          string // OOXML table style GUID (e.g., "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
+	UseTableStyle    bool   // When true, suppress all explicit formatting and let the table style control appearance
 }
 
 // DefaultTableStyleID is the OOXML GUID for "Medium Style 2 - Accent 1",

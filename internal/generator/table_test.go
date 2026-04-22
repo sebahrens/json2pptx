@@ -1617,3 +1617,61 @@ func TestLongestToken(t *testing.T) {
 		})
 	}
 }
+
+// TestGenerateTableXML_UseTableStyle verifies that use_table_style suppresses
+// all explicit formatting (borders, fills, bold) and lets the table style control.
+func TestGenerateTableXML_UseTableStyle(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Name", "Value"},
+		Rows: [][]types.TableCell{
+			{{Content: "Alpha", ColSpan: 1, RowSpan: 1}, {Content: "100", ColSpan: 1, RowSpan: 1}},
+			{{Content: "Beta", ColSpan: 1, RowSpan: 1}, {Content: "200", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.TableStyle{
+			StyleID:       types.DefaultTableStyleID,
+			UseTableStyle: true,
+		},
+	}
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 0, Y: 0, Width: 8229600, Height: 4572000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should NOT contain tblBorders
+	if strings.Contains(result.XML, "<a:tblBorders>") {
+		t.Error("use_table_style should suppress <a:tblBorders>")
+	}
+
+	// Should NOT contain solidFill (no header fill, no stripe fill)
+	if strings.Contains(result.XML, "<a:solidFill>") {
+		t.Error("use_table_style should suppress <a:solidFill> on cells")
+	}
+
+	// Should NOT contain explicit cell borders (lnL, lnR, lnT, lnB)
+	if strings.Contains(result.XML, "<a:lnL") {
+		t.Error("use_table_style should suppress explicit cell borders")
+	}
+
+	// Should emit firstRow="1" and bandRow="1"
+	if !strings.Contains(result.XML, `firstRow="1"`) {
+		t.Error("use_table_style should still emit firstRow=\"1\"")
+	}
+	if !strings.Contains(result.XML, `bandRow="1"`) {
+		t.Error("use_table_style should emit bandRow=\"1\"")
+	}
+
+	// Should still emit tableStyleId
+	if !strings.Contains(result.XML, "<a:tableStyleId>") {
+		t.Error("use_table_style should still emit <a:tableStyleId>")
+	}
+
+	// Header text should NOT be bold (b="0" or no b attribute)
+	if strings.Contains(result.XML, `b="1"`) {
+		t.Error("use_table_style should not force bold on header text")
+	}
+}

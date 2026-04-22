@@ -181,14 +181,17 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// Without <a:tblBorders>, PowerPoint renders default grid lines
 	// even when cell-level borders specify noFill.
 	bandRow := "0"
-	if config.Style.Striped {
+	if config.Style.Striped || config.Style.UseTableStyle {
 		bandRow = "1"
 	}
 	fmt.Fprintf(&xml, `<a:tblPr firstRow="1" bandRow="%s">`, bandRow)
-	// When borders are omitted and a table style is in use, skip tblBorders
+	// When use_table_style is set, skip tblBorders entirely so the style controls borders.
+	// When borders are omitted and a table style is in use, also skip tblBorders
 	// so the style's own border definitions (wholeTbl > tcBdr) take effect.
-	if !(config.Style.Borders == "" && config.Style.StyleID != "") {
-		xml.WriteString(generateTableLevelBorders(config.Style.Borders))
+	if !config.Style.UseTableStyle {
+		if !(config.Style.Borders == "" && config.Style.StyleID != "") {
+			xml.WriteString(generateTableLevelBorders(config.Style.Borders))
+		}
 	}
 	if config.Style.StyleID != "" {
 		fmt.Fprintf(&xml, `<a:tableStyleId>%s</a:tableStyleId>`, config.Style.StyleID)
@@ -625,7 +628,8 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 	// When a table style is active and no explicit header_background is set,
 	// the style's firstRow > tcTxStyle controls text formatting (bold, color).
 	// Only force bold when we are NOT deferring to the table style.
-	styleControlsHeader := config.Style.StyleID != "" && config.Style.HeaderBackground == ""
+	// When use_table_style is set, always defer to the style.
+	styleControlsHeader := config.Style.UseTableStyle || (config.Style.StyleID != "" && config.Style.HeaderBackground == "")
 	if isHeader {
 		// Headers are slightly larger and bold
 		fontSize = int(float64(fontSize) * 1.1)
@@ -669,25 +673,29 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 	// important for rowspan cells where the merged height is larger than the text.
 	xml.WriteString(`<a:tcPr anchor="ctr">`)
 
-	// Add borders based on style, with merge overrides
-	xml.WriteString(generateBorderXMLWithOverrides(config.Style.Borders, isHeader, overrides))
+	// When use_table_style is set, skip explicit borders and fills entirely
+	// so the table style controls all cell appearance.
+	if !config.Style.UseTableStyle {
+		// Add borders based on style, with merge overrides
+		xml.WriteString(generateBorderXMLWithOverrides(config.Style.Borders, isHeader, overrides))
 
-	// Add fill for header cells
-	if isHeader {
-		hdrBg := config.Style.HeaderBackground
-		if hdrBg != "none" && hdrBg != "" {
-			fill := pptx.ResolveColorString(hdrBg)
-			if !fill.IsZero() {
-				var cb bytes.Buffer
-				fill.WriteTo(&cb)
-				xml.WriteString(cb.String())
+		// Add fill for header cells
+		if isHeader {
+			hdrBg := config.Style.HeaderBackground
+			if hdrBg != "none" && hdrBg != "" {
+				fill := pptx.ResolveColorString(hdrBg)
+				if !fill.IsZero() {
+					var cb bytes.Buffer
+					fill.WriteTo(&cb)
+					xml.WriteString(cb.String())
+				}
 			}
+		} else if config.Style.Striped && rowIdx%2 == 1 {
+			// Use accent1 at 15% saturation for a reliably visible alternating stripe.
+			// The previous bg2 scheme color was visually identical to the slide
+			// background on many templates, making the stripe invisible.
+			xml.WriteString(`<a:solidFill><a:schemeClr val="accent1"><a:lumMod val="15000"/><a:lumOff val="85000"/></a:schemeClr></a:solidFill>`)
 		}
-	} else if config.Style.Striped && rowIdx%2 == 1 {
-		// Use accent1 at 15% saturation for a reliably visible alternating stripe.
-		// The previous bg2 scheme color was visually identical to the slide
-		// background on many templates, making the stripe invisible.
-		xml.WriteString(`<a:solidFill><a:schemeClr val="accent1"><a:lumMod val="15000"/><a:lumOff val="85000"/></a:schemeClr></a:solidFill>`)
 	}
 
 	xml.WriteString(`</a:tcPr>`)
