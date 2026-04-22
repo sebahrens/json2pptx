@@ -33,7 +33,8 @@ type Run struct {
 	FontSize   int    // Font size in hundredths of a point (e.g. 1200 = 12pt)
 	Bold       bool
 	Italic     bool
-	Dirty      bool   // Emit dirty="0" (marks text as spell-check clean)
+	Underline  bool
+	Dirty      bool // Emit dirty="0" (marks text as spell-check clean)
 	Color      Fill   // Text color fill
 	Lang       string // Language tag (e.g. "en-US")
 	FontFamily string // Font typeface (e.g. "+mn-lt" for theme minor font, "Arial")
@@ -163,7 +164,7 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 	}
 
 	// Run properties
-	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != ""
+	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != ""
 	if hasRPr {
 		buf.WriteString(`<a:rPr`)
 		if r.Lang != "" {
@@ -177,6 +178,9 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 		}
 		if r.Italic {
 			buf.WriteString(` i="1"`)
+		}
+		if r.Underline {
+			buf.WriteString(` u="sng"`)
 		}
 		if r.Dirty {
 			buf.WriteString(` dirty="0"`)

@@ -541,11 +541,12 @@ type runXML struct {
 // child elements (solidFill, latin font, etc.) using innerxml.
 // Bold and Italic are used for inline <b>bold</b> and <i>italic</i> formatting.
 type runPropertiesXML struct {
-	Lang     string `xml:"lang,attr,omitempty"` // Language code (e.g., "en-US")
-	FontSize string `xml:"sz,attr,omitempty"`   // Font size in hundredths of a point (e.g., "7200" = 72pt)
-	Bold     string `xml:"b,attr,omitempty"`    // Bold flag: "1" for bold, omit otherwise
-	Italic   string `xml:"i,attr,omitempty"`    // Italic flag: "1" for italic, omit otherwise
-	Inner    string `xml:",innerxml"`           // Child elements (preserved verbatim)
+	Lang      string `xml:"lang,attr,omitempty"` // Language code (e.g., "en-US")
+	FontSize  string `xml:"sz,attr,omitempty"`   // Font size in hundredths of a point (e.g., "7200" = 72pt)
+	Bold      string `xml:"b,attr,omitempty"`    // Bold flag: "1" for bold, omit otherwise
+	Italic    string `xml:"i,attr,omitempty"`    // Italic flag: "1" for italic, omit otherwise
+	Underline string `xml:"u,attr,omitempty"`    // Underline style: "sng" for single, omit otherwise
+	Inner     string `xml:",innerxml"`           // Child elements (preserved verbatim)
 }
 
 // endParaRPrXML preserves end paragraph run properties (used by OOXML for cursor styling).

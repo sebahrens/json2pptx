@@ -27,6 +27,7 @@ type BulletTextOptions struct {
 
 	// Detection controls
 	DetectNumbered bool // Also detect "N. " numbered list prefixes
+	InlineTags     bool // Parse <b>, <i>, <u> inline formatting tags
 }
 
 // ParseBulletText splits text on newlines and detects bullet prefixes.
@@ -84,7 +85,11 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 			}
 		}
 
-		para.Runs = []Run{run}
+		if opts.InlineTags && strings.Contains(run.Text, "<") {
+			para.Runs = SplitInlineTags(run)
+		} else {
+			para.Runs = []Run{run}
+		}
 		paragraphs = append(paragraphs, para)
 	}
 

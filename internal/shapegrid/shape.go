@@ -347,6 +347,7 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 		Color:          colorFill,
 		FontFamily:     font,
 		DetectNumbered: true,
+		InlineTags:     true,
 	})
 
 	// Convert point insets to EMU (1pt = 12700 EMU)
@@ -409,16 +410,25 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 			align = defaultAlign
 		}
 
+		baseRun := pptx.Run{
+			Text:       d.Content,
+			FontSize:   fontSize,
+			Bold:       d.Bold,
+			Italic:     d.Italic,
+			Color:      colorFill,
+			FontFamily: font,
+		}
+
+		var runs []pptx.Run
+		if strings.Contains(d.Content, "<") {
+			runs = pptx.SplitInlineTags(baseRun)
+		} else {
+			runs = []pptx.Run{baseRun}
+		}
+
 		paragraphs[i] = pptx.Paragraph{
 			Align: align,
-			Runs: []pptx.Run{{
-				Text:       d.Content,
-				FontSize:   fontSize,
-				Bold:       d.Bold,
-				Italic:     d.Italic,
-				Color:      colorFill,
-				FontFamily: font,
-			}},
+			Runs:  runs,
 		}
 	}
 

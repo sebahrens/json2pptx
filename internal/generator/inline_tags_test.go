@@ -121,11 +121,11 @@ func TestParseInlineTags(t *testing.T) {
 		},
 		// Underline support
 		{
-			name:  "underline maps to bold",
+			name:  "underline",
 			input: "normal <u>underlined</u> normal",
 			want: []TextRun{
 				{Text: "normal "},
-				{Text: "underlined", Bold: true},
+				{Text: "underlined", Underline: true},
 				{Text: " normal"},
 			},
 		},
@@ -198,6 +198,9 @@ func TestParseInlineTags(t *testing.T) {
 				}
 				if got[i].Italic != exp.Italic {
 					t.Errorf("run[%d].Italic = %v, expected %v", i, got[i].Italic, exp.Italic)
+				}
+				if got[i].Underline != exp.Underline {
+					t.Errorf("run[%d].Underline = %v, expected %v", i, got[i].Underline, exp.Underline)
 				}
 			}
 		})

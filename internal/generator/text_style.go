@@ -295,6 +295,9 @@ func createFormattedRuns(text string, templateRProps *runPropertiesXML) []runXML
 		if tr.Italic {
 			rProps.Italic = "1"
 		}
+		if tr.Underline {
+			rProps.Underline = "sng"
+		}
 
 		runs[i] = runXML{
 			RunProperties: rProps,
