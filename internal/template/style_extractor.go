@@ -335,9 +335,10 @@ func convertToShapeXML(shape *shapeStyleXML) *shapeXML {
 // tableStyleIndex provides lazy, cached lookup of table style GUIDs declared in
 // a template's ppt/tableStyles.xml.  Parse happens at most once per instance.
 type tableStyleIndex struct {
-	reader *Reader
-	once   sync.Once
-	styles map[string]string // styleId → styleName
+	reader       *Reader
+	once         sync.Once
+	styles       map[string]string // styleId → styleName
+	defaultStyle string            // def attribute from tblStyleLst (template's declared default)
 }
 
 // newTableStyleIndex creates an index bound to the given template reader.
@@ -353,6 +354,17 @@ func (idx *tableStyleIndex) lookup(id string) (name string, ok bool) {
 	idx.once.Do(idx.parse)
 	name, ok = idx.styles[id]
 	return
+}
+
+// declaredDefault returns the template's declared default table style GUID
+// (the def attribute of <a:tblStyleLst>).  Returns ("", false) if the
+// template has no tableStyles.xml, no def attribute, or malformed XML.
+func (idx *tableStyleIndex) declaredDefault() (string, bool) {
+	idx.once.Do(idx.parse)
+	if idx.defaultStyle == "" {
+		return "", false
+	}
+	return idx.defaultStyle, true
 }
 
 // parse reads and unmarshals ppt/tableStyles.xml.  Called at most once via
@@ -374,6 +386,8 @@ func (idx *tableStyleIndex) parse() {
 			"template", idx.reader.Path(), "error", err)
 		return
 	}
+
+	idx.defaultStyle = lst.Default
 
 	for _, s := range lst.Styles {
 		if s.StyleID != "" {

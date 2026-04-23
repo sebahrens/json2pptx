@@ -217,14 +217,23 @@ const ContentTable ContentType = "table"
 
 // PopulateTableInShape generates table XML and prepares it for placeholder replacement.
 // This function integrates the table generator with the existing content population flow.
+// If resolver is non-nil, the table's style_id is resolved against the template's
+// declared styles before rendering.  Pass nil to use the default (engine) resolver.
 func PopulateTableInShape(
 	table *types.TableSpec,
 	placeholder types.PlaceholderInfo,
 	theme *types.ThemeInfo,
+	resolver TableStyleResolver,
 ) (*TableRenderResult, error) {
 	if table == nil {
 		return nil, fmt.Errorf("table spec is nil")
 	}
+
+	style := table.Style
+	if resolver == nil {
+		resolver = defaultTableStyleResolver{}
+	}
+	style.StyleID = resolver.ResolveTableStyleID(style.StyleID)
 
 	// Build render config from placeholder bounds
 	config := TableRenderConfig{
@@ -235,7 +244,7 @@ func PopulateTableInShape(
 			Height: placeholder.Bounds.Height,
 		},
 		Theme:            theme,
-		Style:            table.Style,
+		Style:            style,
 		DefaultFont:      placeholder.FontFamily,
 		DefaultSize:      placeholder.FontSize,
 		ColumnAlignments: table.ColumnAlignments,

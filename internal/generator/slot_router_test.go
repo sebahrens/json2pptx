@@ -371,7 +371,7 @@ func TestPopulateTableInShape(t *testing.T) {
 		},
 	}
 
-	result, err := PopulateTableInShape(table, placeholder, nil)
+	result, err := PopulateTableInShape(table, placeholder, nil, nil)
 	if err != nil {
 		t.Fatalf("PopulateTableInShape() error = %v", err)
 	}
@@ -400,7 +400,7 @@ func TestPopulateTableInShape_NilTable(t *testing.T) {
 		Type: types.PlaceholderBody,
 	}
 
-	_, err := PopulateTableInShape(nil, placeholder, nil)
+	_, err := PopulateTableInShape(nil, placeholder, nil, nil)
 	if err == nil {
 		t.Error("PopulateTableInShape(nil) expected error")
 	}

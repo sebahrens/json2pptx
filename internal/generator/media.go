@@ -177,7 +177,7 @@ func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem
 		},
 	}
 
-	result, err := PopulateTableInShape(tableSpec, placeholder, nil)
+	result, err := PopulateTableInShape(tableSpec, placeholder, nil, nil)
 	if err != nil {
 		reason := fmt.Sprintf("failed to generate table XML: %v", err)
 		ctx.warnings = append(ctx.warnings, reason)

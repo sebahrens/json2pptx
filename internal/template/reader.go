@@ -14,10 +14,11 @@ import (
 
 // Reader provides access to PPTX template files.
 type Reader struct {
-	path   string
-	hash   string
-	zip    *zip.ReadCloser
-	closed bool
+	path      string
+	hash      string
+	zip       *zip.ReadCloser
+	closed    bool
+	tblStyles *tableStyleIndex // lazy; created on first ResolveTableStyleID call
 }
 
 // OpenTemplate opens a PPTX template file and validates its structure.

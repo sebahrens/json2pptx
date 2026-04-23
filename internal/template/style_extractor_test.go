@@ -435,6 +435,45 @@ func TestTableStyleIndex_EmptyStyleListTestdata(t *testing.T) {
 	}
 }
 
+func TestTableStyleIndex_DeclaredDefault_ModernTemplate(t *testing.T) {
+	templatePath := filepath.Join("..", "..", "templates", "modern-template.pptx")
+	reader, err := OpenTemplate(templatePath)
+	if err != nil {
+		t.Fatalf("Failed to open template: %v", err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	idx := newTableStyleIndex(reader)
+	guid, ok := idx.declaredDefault()
+	if !ok {
+		t.Fatal("expected declaredDefault to succeed for modern-template")
+	}
+	if guid == "" {
+		t.Fatal("expected non-empty default GUID")
+	}
+}
+
+func TestTableStyleIndex_DeclaredDefault_AllBundled(t *testing.T) {
+	// All bundled templates should either have a declared default or gracefully
+	// return false — never panic.
+	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+	for _, tmpl := range templates {
+		t.Run(tmpl, func(t *testing.T) {
+			reader, err := OpenTemplate(filepath.Join("..", "..", "templates", tmpl+".pptx"))
+			if err != nil {
+				t.Fatalf("Failed to open template: %v", err)
+			}
+			defer func() { _ = reader.Close() }()
+
+			idx := newTableStyleIndex(reader)
+			guid, ok := idx.declaredDefault()
+			if ok && guid == "" {
+				t.Error("declaredDefault returned ok=true with empty GUID")
+			}
+		})
+	}
+}
+
 func TestTableStyleIndex_MalformedXML(t *testing.T) {
 	// Directly test the parse path with a fabricated index that has
 	// already-populated styles map to verify malformed XML doesn't panic
