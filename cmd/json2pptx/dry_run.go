@@ -29,6 +29,7 @@ type dryRunOutput struct {
 	ValidationWarnings []*patterns.ValidationError  `json:"validation_warnings,omitempty"`
 	Errors             []string                    `json:"errors,omitempty"`
 	Slides             []dryRunSlide               `json:"slides"`
+	FitFindings        []fitFinding                `json:"fit_findings,omitempty"`
 }
 
 // dryRunSlide describes one slide in the dry-run report.

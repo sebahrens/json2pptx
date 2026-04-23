@@ -141,6 +141,10 @@ Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "b
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: output.pptx). Path components are stripped for safety."),
 		),
+		mcp.WithString("strict_fit",
+			mcp.Description("Text-fit checking mode: off (skip fit checks), warn (default; report overflow warnings), or strict (refuse generation if any cell overflows)."),
+			mcp.Enum("off", "warn", "strict"),
+		),
 	)
 }
 
@@ -159,12 +163,15 @@ func mcpListTemplatesTool() mcp.Tool {
 
 func mcpValidateTool() mcp.Tool {
 	return mcp.NewTool("validate_input",
-		mcp.WithDescription("Validate a JSON presentation definition without generating output. Returns validation errors or success."),
+		mcp.WithDescription("Validate a JSON presentation definition without generating output. Returns validation errors or success. When fit_report is true, also runs per-cell text overflow measurement and includes findings in the result."),
 		mcp.WithString("json_input",
 			mcp.Required(),
 			mcp.Description(`JSON string containing the presentation definition to validate. Same format as generate_presentation json_input.
 
 Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","content":[{"placeholder_id":"title","type":"text","text_value":"Hello"}]}]}`),
+		),
+		mcp.WithBoolean("fit_report",
+			mcp.Description("When true, run per-cell text overflow measurement and include NDJSON-style fit findings in the result. Default: false."),
 		),
 	)
 }
@@ -189,6 +196,17 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	if len(input.Slides) == 0 {
 		return mcp.NewToolResultError("at least one slide is required"), nil
+	}
+
+	// Text-fit checking via strict_fit parameter (default: warn).
+	strictFit := "warn"
+	if sf, err := request.RequireString("strict_fit"); err == nil && sf != "" {
+		strictFit = sf
+	}
+	if strictFit != "off" {
+		if err := checkStrictFit(&input, strictFit); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("strict-fit check failed: %v", err)), nil
+		}
 	}
 
 	// Create output directory
@@ -416,6 +434,11 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// Validate slides against template (layout IDs, placeholder IDs,
 	// character limits, content types, chart/diagram data)
 	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
+
+	// Fit report: measure per-cell text overflow when requested.
+	if fitReport, ok := request.GetArguments()["fit_report"].(bool); ok && fitReport {
+		output.FitFindings = generateFitReport(&input)
+	}
 
 	return marshalValidateResult(output)
 }
