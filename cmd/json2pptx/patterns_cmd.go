@@ -147,7 +147,7 @@ func runPatternsShow() error {
 	}
 
 	if *jsonOut {
-		schemaJSON, _ := json.Marshal(pat.Schema())
+		schemaJSON := patterns.SchemaJSON(pat)
 		result := skillPatternFull{
 			Name:        pat.Name(),
 			Description: pat.Description(),
@@ -181,7 +181,7 @@ func runPatternsShow() error {
 		fmt.Printf("Supports callout: no\n")
 	}
 	fmt.Println()
-	schemaJSON, _ := json.MarshalIndent(pat.Schema(), "", "  ")
+	schemaJSON := patterns.SchemaJSONIndent(pat)
 	fmt.Printf("Schema:\n%s\n", string(schemaJSON))
 	return nil
 }

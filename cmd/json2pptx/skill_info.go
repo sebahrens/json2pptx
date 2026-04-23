@@ -629,7 +629,7 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 
 	full := make([]skillPatternFull, len(all))
 	for i, p := range all {
-		schemaJSON, _ := json.Marshal(p.Schema())
+		schemaJSON := patterns.SchemaJSON(p)
 		full[i] = skillPatternFull{
 			Name:            p.Name(),
 			Description:     p.Description(),

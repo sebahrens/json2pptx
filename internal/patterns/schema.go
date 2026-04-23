@@ -1,6 +1,9 @@
 package patterns
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"sync"
+)
 
 // Schema holds a hand-authored JSON Schema (draft 2020-12) for a pattern's
 // external contract. Used by discovery surfaces (skill-info, MCP show_pattern,
@@ -206,6 +209,41 @@ func CellOverridesSchema(defName string) *Schema {
 			`^[0-9]+$`: RefSchema(defName),
 		}).
 		WithAdditionalProperties(false)
+}
+
+// ---------------------------------------------------------------------------
+// Schema JSON cache — precompute per pattern on first access
+// ---------------------------------------------------------------------------
+
+var schemaJSONCache sync.Map // map[string][]byte keyed by Pattern.Name()
+
+// SchemaJSON returns the JSON-encoded schema for a pattern, caching the
+// result so subsequent calls avoid re-building and re-marshaling the
+// schema tree. Patterns are static singletons registered at init(),
+// so their schemas never change.
+func SchemaJSON(p Pattern) []byte {
+	name := p.Name()
+	if cached, ok := schemaJSONCache.Load(name); ok {
+		return cached.([]byte) //nolint:errcheck // type assertion on known []byte
+	}
+	data, _ := json.Marshal(p.Schema()) //nolint:errcheck // schema marshaling is infallible
+	schemaJSONCache.Store(name, data)
+	return data
+}
+
+// SchemaJSONIndent returns the indented JSON-encoded schema for a pattern,
+// using the same underlying cache strategy as SchemaJSON but with a
+// separate cache for the indented form.
+var schemaJSONIndentCache sync.Map
+
+func SchemaJSONIndent(p Pattern) []byte {
+	name := p.Name()
+	if cached, ok := schemaJSONIndentCache.Load(name); ok {
+		return cached.([]byte) //nolint:errcheck // type assertion on known []byte
+	}
+	data, _ := json.MarshalIndent(p.Schema(), "", "  ") //nolint:errcheck // schema marshaling is infallible
+	schemaJSONIndentCache.Store(name, data)
+	return data
 }
 
 func intPtr(v int) *int          { return &v }

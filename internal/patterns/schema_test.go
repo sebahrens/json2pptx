@@ -359,3 +359,47 @@ func TestPatternSchemaCompression(t *testing.T) {
 		}
 	}
 }
+
+func TestSchemaJSONCacheConsistency(t *testing.T) {
+	// Verify SchemaJSON returns the same bytes as json.Marshal(p.Schema())
+	for _, p := range Default().List() {
+		direct, err := json.Marshal(p.Schema())
+		if err != nil {
+			t.Fatalf("%s: marshal error: %v", p.Name(), err)
+		}
+		cached := SchemaJSON(p)
+		if string(cached) != string(direct) {
+			t.Errorf("%s: SchemaJSON mismatch with json.Marshal(Schema())", p.Name())
+		}
+
+		// Call again to verify cache hit returns same result
+		cached2 := SchemaJSON(p)
+		if string(cached2) != string(cached) {
+			t.Errorf("%s: SchemaJSON not stable across calls", p.Name())
+		}
+	}
+}
+
+func BenchmarkSchemaJSONDirect(b *testing.B) {
+	all := Default().List()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, p := range all {
+			json.Marshal(p.Schema()) //nolint:errcheck
+		}
+	}
+}
+
+func BenchmarkSchemaJSONCached(b *testing.B) {
+	all := Default().List()
+	// Prime cache
+	for _, p := range all {
+		SchemaJSON(p)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, p := range all {
+			SchemaJSON(p)
+		}
+	}
+}

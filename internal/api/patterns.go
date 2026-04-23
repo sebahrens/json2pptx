@@ -62,7 +62,7 @@ func (h *PatternsHandler) ShowHandler() http.HandlerFunc {
 			Description: pat.Description(),
 			UseWhen:     pat.UseWhen(),
 			Version:     pat.Version(),
-			Schema:      pat.Schema(),
+			Schema:      patterns.SchemaJSON(pat),
 		}
 		resp.CellsHint = pat.CellsHint()
 		if cs, ok := pat.(patterns.CalloutSupport); ok {
@@ -192,7 +192,7 @@ type patternShowResponse struct {
 	Version         int              `json:"version"`
 	CellsHint       string           `json:"cells_hint,omitempty"`
 	SupportsCallout bool             `json:"supports_callout"`
-	Schema          *patterns.Schema `json:"schema"`
+	Schema          json.RawMessage  `json:"schema"`
 }
 
 type patternValidateResponse struct {

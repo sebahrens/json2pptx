@@ -613,7 +613,7 @@ func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		return mcp.NewToolResultError(fmt.Sprintf("%s; available: %v", msg, names)), nil
 	}
 
-	schemaJSON, _ := json.Marshal(pat.Schema())
+	schemaJSON := patterns.SchemaJSON(pat)
 
 	result := skillPatternFull{
 		Name:        pat.Name(),
