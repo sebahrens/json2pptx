@@ -34,8 +34,8 @@ Slides:
 ```
 
 Each line picks a `layout_id` and a visual approach. For shape grid slides, name the
-pattern (see Pattern Library below). For content slides, note the content type
-(bullets, chart, table, diagram).
+pattern (run `json2pptx patterns list` for the catalog). For content slides, note the
+content type (bullets, chart, table, diagram).
 
 Present the outline to the user. Proceed to Stage 2 only after approval or if the user
 asked for the full deck directly.
@@ -46,8 +46,8 @@ the argument arc. Do not fragment this across stages.
 
 ### Stage 2: Generate Full JSON
 
-Generate the complete JSON in one pass. Use the pattern recipes below for shape grid
-slides — do not invent grid structures from scratch. Copy the pattern, change the content.
+Generate the complete JSON in one pass. Use named patterns for shape grid slides — run
+`json2pptx patterns show <name>` for each pattern's value schema, then fill in content.
 
 ### Stage 3: Validate, Render, Verify, Repair
 
@@ -72,279 +72,17 @@ Do not tell the user the deck is done until the checklist passes or you have exp
 
 ## Pattern Library
 
-These are the proven shape grid patterns extracted from the sovereign-ai-strategy
-reference deck. When you need a shape grid, pick the closest pattern and fill in content.
-Do NOT invent new grid structures unless no pattern fits.
+For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-column
+comparisons, use json2pptx's named patterns. Named patterns expand to validated
+`shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with
+~100 tokens.
 
-### Pattern 1: Icon Rows (2-column: icon badge + text)
+- **Browse the catalog:** `json2pptx patterns list`
+- **View a pattern's value schema:** `json2pptx patterns show <name>`
+- **Validate before generating:** `json2pptx patterns validate <name> <values.json>`
 
-**Use for:** agenda items, key points with icons, regulatory requirements, risk factors
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "TITLE"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 3, "y": 18, "width": 94, "height": 74},
-    "gap": 8,
-    "row_gap": 12,
-    "columns": [10, 90],
-    "rows": [
-      {
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "accent1", "icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}}},
-          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "CONTENT", "size": 16, "align": "l", "vertical_align": "ctr", "inset_left": 8, "inset_right": 8, "inset_top": 6, "inset_bottom": 6}}}
-        ]
-      }
-    ]
-  }
-}
-```
-
-Repeat the row block 2-5 times. Use the same accent fill for all icon cells within a slide.
-
-### Pattern 2: Card Grid (N-column: header + body)
-
-**Use for:** strategic pillars, capabilities, dimensions, categories
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "TITLE"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 5, "y": 18, "width": 90, "height": 72},
-    "columns": 3,
-    "gap": 10,
-    "row_gap": 10,
-    "rows": [
-      {
-        "height": 22,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "accent1", "icon": {"name": "ICON", "fill": "#FFFFFF"}, "text": {"content": "Header 1", "size": 14, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}},
-          {"shape": {"geometry": "rect", "fill": "accent1", "icon": {"name": "ICON", "fill": "#FFFFFF"}, "text": {"content": "Header 2", "size": 14, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}},
-          {"shape": {"geometry": "rect", "fill": "accent1", "icon": {"name": "ICON", "fill": "#FFFFFF"}, "text": {"content": "Header 3", "size": 14, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}}
-        ]
-      },
-      {
-        "auto_height": true,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Body 1", "size": 14, "color": "dk1", "align": "l", "vertical_align": "t", "inset_left": 8, "inset_right": 8, "inset_top": 8, "inset_bottom": 8}}},
-          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Body 2", "size": 14, "color": "dk1", "align": "l", "vertical_align": "t", "inset_left": 8, "inset_right": 8, "inset_top": 8, "inset_bottom": 8}}},
-          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Body 3", "size": 14, "color": "dk1", "align": "l", "vertical_align": "t", "inset_left": 8, "inset_right": 8, "inset_top": 8, "inset_bottom": 8}}}
-        ]
-      }
-    ]
-  }
-}
-```
-
-For 2, 3, or 4 columns: change `columns` and match the cell count in every row.
-
-**Header color choice.** The pattern above uses uniform `accent1` — always safe, produces a clean consulting look. If you want to distinguish categories, cycle **only among accents that pass WCAG against white**. On most templates `accent1` and `accent2` are dark enough; `accent3`-`accent6` are frequently light/pastel and will either (a) silently trigger contrast auto-fix (text replaced with dark gray, breaking the design) or (b) warn and render unreadable white-on-pastel. See the **Safe Color Pairings** table below. When in doubt, keep headers uniform and distinguish cards by icon or body copy.
-
-### Pattern 3: Labeled 2x2 Matrix
-
-**Use for:** strategic positioning, tradeoff analysis, 2-axis comparisons
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "TITLE"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 3, "y": 18, "width": 94, "height": 76},
-    "gap": 8,
-    "row_gap": 8,
-    "columns": [8, 44, 44],
-    "rows": [
-      {
-        "height": 8,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "", "size": 24, "align": "ctr", "vertical_align": "ctr", "color": "#FFFFFF", "bold": true}}},
-          {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "X-Axis Left", "size": 13, "bold": true, "align": "ctr", "vertical_align": "b", "color": "#444444"}}},
-          {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "X-Axis Right", "size": 13, "bold": true, "align": "ctr", "vertical_align": "b", "color": "#444444"}}}
-        ]
-      },
-      {
-        "height": 38,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "Y-Axis\nTop", "size": 13, "bold": true, "align": "ctr", "vertical_align": "ctr", "color": "#444444"}}},
-          {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Quadrant 1\n\nDescription", "size": 13, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr", "inset_top": 10, "inset_left": 10, "inset_right": 10, "inset_bottom": 10}}},
-          {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Quadrant 2 (recommended)\n\nDescription", "size": 13, "color": "#FFFFFF", "bold": true, "align": "ctr", "vertical_align": "ctr", "inset_top": 10, "inset_left": 10, "inset_right": 10, "inset_bottom": 10}}}
-        ]
-      },
-      {
-        "height": 38,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "Y-Axis\nBottom", "size": 13, "bold": true, "align": "ctr", "vertical_align": "ctr", "color": "#444444"}}},
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Quadrant 3\n\nDescription", "size": 13, "color": "dk1", "align": "ctr", "vertical_align": "ctr", "inset_top": 10, "inset_left": 10, "inset_right": 10, "inset_bottom": 10}}},
-          {"shape": {"geometry": "roundRect", "fill": "lt2", "text": {"content": "Quadrant 4\n\nDescription", "size": 13, "color": "dk1", "align": "ctr", "vertical_align": "ctr", "inset_top": 10, "inset_left": 10, "inset_right": 10, "inset_bottom": 10}}}
-        ]
-      },
-      {
-        "height": 6,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "none", "text": {"content": "", "size": 24, "align": "ctr", "vertical_align": "ctr", "color": "#FFFFFF", "bold": true}}},
-          {"col_span": 2, "shape": {"geometry": "rect", "fill": "none", "text": {"content": "X-Axis Label", "size": 13, "bold": true, "align": "ctr", "vertical_align": "t", "color": "#444444"}}}
-        ]
-      }
-    ]
-  }
-}
-```
-
-The recommended quadrant uses `accent1` + bold text to visually highlight it. Non-recommended quadrants use `lt2` with `dk1` text for low-emphasis contrast. Do NOT use `accent3`-`accent6` as quadrant fills with white text — on most templates they are too light and the contrast auto-fix will replace the white text with gray, inverting the emphasis.
-
-### Pattern 4: Two-Column Header + Body
-
-**Use for:** pros/cons, before/after, comparison of two options
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "TITLE"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 5, "y": 18, "width": 90, "height": 72},
-    "columns": 2,
-    "gap": 12,
-    "row_gap": 10,
-    "rows": [
-      {
-        "height": 12,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Option A", "size": 13, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}},
-          {"shape": {"geometry": "rect", "fill": "accent2", "text": {"content": "Option B", "size": 13, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr"}}}
-        ]
-      },
-      {
-        "auto_height": true,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Details for Option A", "size": 14, "color": "dk1", "align": "l", "vertical_align": "t", "inset_left": 8, "inset_right": 8, "inset_top": 8, "inset_bottom": 8}}},
-          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Details for Option B", "size": 14, "color": "dk1", "align": "l", "vertical_align": "t", "inset_left": 8, "inset_right": 8, "inset_top": 8, "inset_bottom": 8}}}
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Pattern 5: Table in Grid (realistic density)
-
-**Use for:** data tables, scenario comparisons, financial summaries, vendor comparisons
-
-Consulting tables are dense: 6-11 data rows, 4-6 columns. Budget the table's height first, then size the header around it. Set `style.font_size` explicitly so you control density rather than inheriting a default.
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "TITLE"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 3, "y": 15, "width": 94, "height": 82},
-    "gap": 4,
-    "row_gap": 2,
-    "columns": 1,
-    "rows": [
-      {
-        "height": 5,
-        "cells": [
-          {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Table Title", "size": 12, "bold": true, "color": "#FFFFFF", "align": "l", "vertical_align": "ctr", "inset_left": 10}}}
-        ]
-      },
-      {
-        "auto_height": true,
-        "cells": [
-          {
-            "table": {
-              "headers": ["Metric", "Q1 Actual", "Q1 Target", "Q2 Actual", "Q2 Target", "Variance"],
-              "rows": [
-                ["Revenue",          "$12.4M", "$12.0M", "$14.1M", "$13.5M", "+$0.6M"],
-                ["New Customers",    "312",    "300",    "388",    "350",    "+38"],
-                ["Gross Margin",     "62%",    "60%",    "64%",    "62%",    "+2pp"],
-                ["CAC",              "$482",   "$500",   "$445",   "$480",   "-$35"],
-                ["LTV",              "$4,210", "$4,000", "$4,680", "$4,200", "+$480"],
-                ["Churn (monthly)",  "2.1%",   "2.5%",   "1.9%",   "2.3%",   "-0.4pp"],
-                ["NPS",              "52",     "50",     "58",     "55",     "+3"],
-                ["Headcount",        "87",     "90",     "94",     "95",     "-1"],
-                ["R&D % of Rev",     "22%",    "20%",    "21%",    "20%",    "+1pp"]
-              ],
-              "style": {"header_background": "accent1", "borders": "horizontal", "striped": true, "font_size": 9},
-              "column_alignments": ["l", "r", "r", "r", "r", "r"]
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**Why the numbers look like this:**
-- `bounds.y: 15, height: 82` — data-dense slide pushes toward the title; defaults (`y:18 height:72`) leave wasted space.
-- `gap: 4, row_gap: 2` — tiny gaps. A 5-row grid with default `row_gap: 10` burns 40pt of vertical space for nothing.
-- Header row `height: 5` (% of grid height) — just enough for a 12pt bold label.
-- Table row `auto_height: true` — takes all remaining space. With the bounds above, that's ~77% of slide height, enough for 9 rows + header at font_size 9.
-- `style.font_size: 9` — fits 8-10 rows comfortably at this bound allocation.
-- `header_background: "accent1"` — the only accent guaranteed safe for white header text on every bundled template. Others may trigger contrast auto-fix.
-- `column_alignments` — first column left (labels), numeric columns right.
-
-See the **Table Density Reference** below for row-count vs. font-size sizing rules.
-
-### Pattern 5b: Two Tables on One Slide
-
-**Use for:** classification + penalty, tiers + detail, before/after comparisons
-
-Common in consulting decks. Budget tables FIRST; section labels take whatever is left.
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "TITLE"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 3, "y": 15, "width": 94, "height": 82},
-    "gap": 2,
-    "row_gap": 1,
-    "columns": 1,
-    "rows": [
-      {"height": 3, "cells": [{"shape": {"geometry": "rect", "fill": "none", "text": {"content": "A. Classification", "size": 10, "bold": true, "color": "dk1", "align": "l", "vertical_align": "ctr"}}}]},
-      {"height": 42, "cells": [{"table": {
-        "headers": ["Tier", "Criteria", "Example", "Obligations"],
-        "rows": [
-          ["Prohibited",   "Unacceptable risk", "Social scoring",      "Banned"],
-          ["High",         "Safety/fundamental rights impact", "CV screening", "Full compliance"],
-          ["Limited",      "Transparency needed", "Chatbots",         "Disclosure"],
-          ["Minimal",      "Low/no risk",       "Spam filters",         "None"]
-        ],
-        "style": {"header_background": "accent1", "borders": "horizontal", "striped": true, "font_size": 9},
-        "column_alignments": ["l", "l", "l", "l"]
-      }}]},
-      {"height": 3, "cells": [{"shape": {"geometry": "rect", "fill": "none", "text": {"content": "B. Penalty Structure", "size": 10, "bold": true, "color": "dk1", "align": "l", "vertical_align": "ctr"}}}]},
-      {"auto_height": true, "cells": [{"table": {
-        "headers": ["Violation", "Max Fine", "% of Global Revenue"],
-        "rows": [
-          ["Prohibited AI use",        "€35M",  "7%"],
-          ["High-risk non-compliance", "€15M",  "3%"],
-          ["Incorrect info to authorities", "€7.5M", "1.5%"]
-        ],
-        "style": {"header_background": "accent1", "borders": "horizontal", "striped": true, "font_size": 9},
-        "column_alignments": ["l", "r", "r"]
-      }}]}
-    ]
-  }
-}
-```
-
-**Allocation logic:** 3% + 42% + 3% + (remaining ~50%) = ~100%. Section labels at 3% with font_size 10 are readable; anything smaller disappears. If you have a third or fourth section header, drop to `size: 9` on the labels.
+Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in
+the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
 ---
 
