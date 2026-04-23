@@ -49,6 +49,12 @@ the argument arc. Do not fragment this across stages.
 Generate the complete JSON in one pass. Use named patterns for shape grid slides — run
 `json2pptx patterns show <name>` for each pattern's value schema, then fill in content.
 
+**Pre-emit checklist (verify BEFORE outputting JSON):**
+
+1. Every table: logical rows × cols ≤ TDR ceiling (rows ≤ 7, cols ≤ 6, font ≥ 9pt) — see Rule 20. Count multiline cells as N rows.
+2. Every fill is semantic (`accent1`, `lt2`, `dk1`, etc.) except documented brand-color allowlist — no mixed hex+semantic on any slide (Rule 12).
+3. No sibling shapes in any `shape_grid` with computed gap < 4pt — no stacked tables separated by hairline dividers.
+
 ### Stage 3: Validate, Render, Verify, Repair
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
@@ -117,7 +123,7 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | # | Rule | Rationale |
 |---|---|---|
 | 11 | `layout_id` canonical names only: `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda` | Display names like `"Title Slide"` fail to resolve |
-| 12 | Prefer semantic fills (`accent1`, `lt2`, `dk1`) over hex; never raw names like `"blue"` | Semantic colors adapt to template theme; use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` for tints |
+| 12 | Semantic fills (`accent1`, `lt2`, `dk1`) required; hex `#RRGGBB` forbidden unless in brand-color allowlist. **Never mix semantic and hex fills on the same slide.** Never use raw names like `"blue"` | Semantic colors adapt to template theme; use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` for tints. Mixed hex+semantic on one slide breaks visual consistency and is always a bug |
 | 13 | `align`: `"l"`, `"ctr"`, `"r"`, `"just"` | NOT `"left"`, `"center"`, `"right"` |
 | 14 | `vertical_align`: `"t"`, `"ctr"`, `"b"` | NOT `"top"`, `"middle"`, `"bottom"` |
 | 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect with `json2pptx skill-info` |
@@ -138,6 +144,67 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | 18 | `"source": "Source: X"` | `"source": "X"` | Renders "Source: Source: X" — engine prepends prefix |
 | 19 | `"chart": {...}` / `"table": {...}` | `"chart_value": {...}` / `"table_value": {...}` | Empty slide — content fields need `_value` suffix |
 
+### Table Density (TDR — enforced, not advisory)
+
+| # | Rule | Rationale |
+|---|---|---|
+| 20 | **MUST split** if rows > 7 OR cols > 6 OR font_size < 9pt. No exceptions. | Tables exceeding these limits overflow, clip, or become unreadable at presentation-viewing distance. Emit `split_slide` instead of cramming |
+
+**Multiline cell counting.** A table cell containing `\n` or a comma-list with ≥3 items counts as N logical rows where N = max(line_count, ceil(comma_items / 1)). Apply this adjusted row count BEFORE the rows > 7 check. A 5-row table where 3 cells each contain 2 lines = 5 + 3 = 8 logical rows → must split.
+
+**Refusal wording.** When TDR forces a split, emit exactly: *"This table has [N] logical rows × [M] columns; per Rule 20 I cannot fit this — emitting split_slide to distribute rows across slides."* Do not silently shrink fonts below 9pt to avoid the split.
+
+### Anti-patterns
+
+**Two-tables-one-grid.** Sibling tables stacked in the same `shape_grid` with `row_gap < 4pt` or a divider shape between them with height < 4% of slide height. This creates a visual collision — the tables read as one broken table.
+
+Bad — two tables jammed together:
+```json
+{
+  "rows": [
+    {"cells": [{"table": {"headers": ["Q1","Q2"], "rows": [["10","20"]]}}]},
+    {"height": 2, "cells": [{"shape": {"type": "rect", "fill": "accent1"}}]},
+    {"cells": [{"table": {"headers": ["Q3","Q4"], "rows": [["30","40"]]}}]}
+  ],
+  "row_gap": 2
+}
+```
+
+Good — separate slides or adequate spacing:
+```json
+{
+  "rows": [
+    {"cells": [{"table": {"headers": ["Q1","Q2"], "rows": [["10","20"]]}}]},
+    {"height": 8, "cells": [{"shape": {"type": "rect", "fill": "accent1"}}]},
+    {"cells": [{"table": {"headers": ["Q3","Q4"], "rows": [["30","40"]]}}]}
+  ],
+  "row_gap": 6
+}
+```
+Or better: put each table on its own slide.
+
+**Hex-fill mix.** A slide containing both semantic fills (`accent1`, `lt2`, etc.) AND non-allowlisted `#RRGGBB` hex fills. This always indicates a mistake — either commit to semantic colors or to a documented brand palette, never both on one slide.
+
+Bad — mixed fills on one slide:
+```json
+{
+  "cells": [
+    {"shape": {"fill": "accent1", "text": "Revenue"}},
+    {"shape": {"fill": "#FF6B35", "text": "Costs"}}
+  ]
+}
+```
+
+Good — all semantic:
+```json
+{
+  "cells": [
+    {"shape": {"fill": "accent1", "text": "Revenue"}},
+    {"shape": {"fill": "accent2", "text": "Costs"}}
+  ]
+}
+```
+
 ---
 
 ## Color Roles
@@ -148,7 +215,7 @@ Each template exposes `color_roles` in `json2pptx skill-info` output — use `pr
 
 ## Table Density Reference
 
-Run `json2pptx tables guide` for font size and row-count guidance when building table slides in shape grids.
+Run `json2pptx tables guide` for detailed font size and row-count guidance when building table slides in shape grids. **Rule 20 (above) is enforced at generation time** — consult the tables guide for sizing recommendations within those hard limits.
 
 ---
 
