@@ -1,0 +1,164 @@
+{
+  "gap": 10,
+  "columns": 3,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Card 1",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Description 1",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Card 2",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Description 2",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Card 3",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Description 3",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Card 4",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Description 4",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Card 5",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Description 5",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Card 6",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Description 6",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
