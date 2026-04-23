@@ -1,6 +1,9 @@
 package patterns
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Error codes for structured validation errors.
 const (
@@ -13,6 +16,33 @@ const (
 	ErrCodeMaxItems      = "max_items"
 	ErrCodeEmptyValue    = "empty_value"
 )
+
+// Sentinel errors for matching with errors.Is. Each ValidationError wraps the
+// sentinel corresponding to its Code, so callers can write:
+//
+//	if errors.Is(err, patterns.ErrRequired) { ... }
+var (
+	ErrRequired      = errors.New("required field missing")
+	ErrMaxLength     = errors.New("value exceeds maximum length")
+	ErrOutOfRange    = errors.New("value out of range")
+	ErrCountMismatch = errors.New("item count mismatch")
+	ErrUnknownKey    = errors.New("unknown key")
+	ErrMinItems      = errors.New("too few items")
+	ErrMaxItems      = errors.New("too many items")
+	ErrEmptyValue    = errors.New("empty value")
+)
+
+// codeSentinel maps error code strings to their sentinel errors.
+var codeSentinel = map[string]error{
+	ErrCodeRequired:      ErrRequired,
+	ErrCodeMaxLength:     ErrMaxLength,
+	ErrCodeOutOfRange:    ErrOutOfRange,
+	ErrCodeCountMismatch: ErrCountMismatch,
+	ErrCodeUnknownKey:    ErrUnknownKey,
+	ErrCodeMinItems:      ErrMinItems,
+	ErrCodeMaxItems:      ErrMaxItems,
+	ErrCodeEmptyValue:    ErrEmptyValue,
+}
 
 // ValidationError is a structured validation error with a JSON path, error
 // code, human-readable message, and optional fix suggestion. It implements the
@@ -27,6 +57,12 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return e.Message
+}
+
+// Unwrap returns the sentinel error for this validation error's Code,
+// enabling errors.Is matching (e.g. errors.Is(err, patterns.ErrRequired)).
+func (e *ValidationError) Unwrap() error {
+	return codeSentinel[e.Code]
 }
 
 // --- Constructors ---

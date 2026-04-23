@@ -36,6 +36,59 @@ func TestValidationErrorUnwrap(t *testing.T) {
 	}
 }
 
+func TestValidationErrorSentinelMatching(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      *ValidationError
+		sentinel error
+	}{
+		{"required", errRequired("p", "f"), ErrRequired},
+		{"max_length", errMaxLength("p", "f", 10, 20), ErrMaxLength},
+		{"out_of_range", errOutOfRange("p", "f", 1, 5, 10), ErrOutOfRange},
+		{"count_mismatch", errCountMismatch("p", "f", 4, 3, ""), ErrCountMismatch},
+		{"unknown_key", errUnknownKey("p", "f", "bad", "a, b"), ErrUnknownKey},
+		{"min_items", errMinItems("p", "f", 2, 1, ""), ErrMinItems},
+		{"max_items", errMaxItems("p", "f", 5, 10, ""), ErrMaxItems},
+		{"empty_value", errEmptyValue("p", "f"), ErrEmptyValue},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !errors.Is(tt.err, tt.sentinel) {
+				t.Errorf("errors.Is(%v, %v) = false, want true", tt.err, tt.sentinel)
+			}
+			// Original error text must be preserved.
+			if tt.err.Error() == "" {
+				t.Error("Error() returned empty string")
+			}
+		})
+	}
+}
+
+func TestValidationErrorSentinelInJoinedErrors(t *testing.T) {
+	joined := errors.Join(
+		errRequired("card-grid", "cells[0].header"),
+		errMaxLength("card-grid", "cells[0].body", 300, 450),
+	)
+
+	if !errors.Is(joined, ErrRequired) {
+		t.Error("errors.Is(joined, ErrRequired) = false, want true")
+	}
+	if !errors.Is(joined, ErrMaxLength) {
+		t.Error("errors.Is(joined, ErrMaxLength) = false, want true")
+	}
+	if errors.Is(joined, ErrUnknownKey) {
+		t.Error("errors.Is(joined, ErrUnknownKey) = true, want false")
+	}
+}
+
+func TestValidationErrorUnwrapUnknownCode(t *testing.T) {
+	ve := newValidationError("p", "f", "custom_code", "msg", "fix")
+	if ve.Unwrap() != nil {
+		t.Errorf("Unwrap() = %v, want nil for unknown code", ve.Unwrap())
+	}
+}
+
 func TestValidateProducesStructuredErrors(t *testing.T) {
 	p, ok := Default().Get("card-grid")
 	if !ok {
