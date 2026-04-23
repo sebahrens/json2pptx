@@ -45,6 +45,10 @@ type Pattern interface {
 	// Returns an errors.Join-aggregated error, or nil.
 	Validate(values, overrides any, cellOverrides map[int]any) error
 
+	// CellsHint returns a human-readable cell count description for compact
+	// discovery output. Examples: "3", "3-7", "rows × cols", "9", "4 + axes".
+	CellsHint() string
+
 	// Expand produces a ShapeGridInput from the pattern's typed inputs.
 	Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error)
 }
@@ -89,17 +93,6 @@ type PatternCallout struct {
 	Text     string `json:"text"`
 	Emphasis string `json:"emphasis,omitempty"` // "bold", "italic", "bold-italic"
 	Accent   string `json:"accent,omitempty"`   // scheme ref, e.g. "accent1"
-}
-
-// ---------------------------------------------------------------------------
-// CellDescriber — optional interface for compact discovery output
-// ---------------------------------------------------------------------------
-
-// CellDescriber is an optional interface patterns can implement to provide
-// a human-readable cell count description for compact discovery output.
-// Examples: "3", "3-7", "rows × cols", "9", "4 + axes".
-type CellDescriber interface {
-	CellsHint() string
 }
 
 // ---------------------------------------------------------------------------

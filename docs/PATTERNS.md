@@ -30,7 +30,7 @@ Every pattern PR must include all of these:
   - `Schema()` returning a hand-authored JSON Schema (see below)
   - `Validate()` using `errors.Join` aggregation
   - `Expand()` returning `*jsonschema.ShapeGridInput`
-  - `CellsHint()` (implement `CellDescriber` interface)
+  - `CellsHint()` (part of the core `Pattern` interface)
 - [ ] **Tests** (`internal/patterns/<name>_test.go`)
   - Metadata: `Name()`, `UseWhen()` non-empty (D6), `Version()`
   - Schema validity: marshals to valid JSON Schema draft 2020-12

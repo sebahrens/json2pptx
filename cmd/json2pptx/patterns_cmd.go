@@ -80,10 +80,7 @@ func runPatternsList() error {
 	if *jsonOut {
 		entries := make([]skillPatternCompact, len(all))
 		for i, p := range all {
-			cells := ""
-			if cd, ok := p.(patterns.CellDescriber); ok {
-				cells = cd.CellsHint()
-			}
+			cells := p.CellsHint()
 			var sizeBytes int
 			if ex, ok := p.(patterns.Exemplar); ok {
 				sizeBytes, _ = patterns.CanonicalSizeBytes(p, ex.ExemplarValues())
@@ -112,11 +109,7 @@ func runPatternsList() error {
 	fmt.Printf("%-25s %-10s %s\n", "NAME", "CELLS", "USE WHEN")
 	fmt.Printf("%-25s %-10s %s\n", strings.Repeat("-", 25), strings.Repeat("-", 10), strings.Repeat("-", 40))
 	for _, p := range all {
-		cells := ""
-		if cd, ok := p.(patterns.CellDescriber); ok {
-			cells = cd.CellsHint()
-		}
-		fmt.Printf("%-25s %-10s %s\n", p.Name(), cells, p.UseWhen())
+		fmt.Printf("%-25s %-10s %s\n", p.Name(), p.CellsHint(), p.UseWhen())
 	}
 	return nil
 }
@@ -162,9 +155,7 @@ func runPatternsShow() error {
 			Version:     pat.Version(),
 			Schema:      schemaJSON,
 		}
-		if cd, ok := pat.(patterns.CellDescriber); ok {
-			result.Cells = cd.CellsHint()
-		}
+		result.Cells = pat.CellsHint()
 		if cs, ok := pat.(patterns.CalloutSupport); ok {
 			result.SupportsCallout = cs.SupportsCallout()
 			if cs.SupportsCallout() {
@@ -183,9 +174,7 @@ func runPatternsShow() error {
 	fmt.Printf("Pattern: %s (v%d)\n", pat.Name(), pat.Version())
 	fmt.Printf("Description: %s\n", pat.Description())
 	fmt.Printf("Use when: %s\n", pat.UseWhen())
-	if cd, ok := pat.(patterns.CellDescriber); ok {
-		fmt.Printf("Cells: %s\n", cd.CellsHint())
-	}
+	fmt.Printf("Cells: %s\n", pat.CellsHint())
 	if cs, ok := pat.(patterns.CalloutSupport); ok && cs.SupportsCallout() {
 		fmt.Printf("Supports callout: yes\n")
 	} else {

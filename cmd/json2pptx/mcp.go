@@ -578,13 +578,9 @@ func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallTool
 
 	entries := make([]skillPatternCompact, len(all))
 	for i, p := range all {
-		cells := ""
-		if cd, ok := p.(patterns.CellDescriber); ok {
-			cells = cd.CellsHint()
-		}
 		entries[i] = skillPatternCompact{
 			Name:    p.Name(),
-			Cells:   cells,
+			Cells:   p.CellsHint(),
 			UseWhen: p.UseWhen(),
 		}
 	}
@@ -627,9 +623,7 @@ func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		Version:     pat.Version(),
 		Schema:      schemaJSON,
 	}
-	if cd, ok := pat.(patterns.CellDescriber); ok {
-		result.Cells = cd.CellsHint()
-	}
+	result.Cells = pat.CellsHint()
 
 	responseJSON, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {

@@ -33,9 +33,7 @@ func (h *PatternsHandler) ListHandler() http.HandlerFunc {
 				UseWhen:     p.UseWhen(),
 				Version:     p.Version(),
 			}
-			if cd, ok := p.(patterns.CellDescriber); ok {
-				item.CellsHint = cd.CellsHint()
-			}
+			item.CellsHint = p.CellsHint()
 			if cs, ok := p.(patterns.CalloutSupport); ok {
 				item.SupportsCallout = cs.SupportsCallout()
 			}
@@ -66,9 +64,7 @@ func (h *PatternsHandler) ShowHandler() http.HandlerFunc {
 			Version:     pat.Version(),
 			Schema:      pat.Schema(),
 		}
-		if cd, ok := pat.(patterns.CellDescriber); ok {
-			resp.CellsHint = cd.CellsHint()
-		}
+		resp.CellsHint = pat.CellsHint()
 		if cs, ok := pat.(patterns.CalloutSupport); ok {
 			resp.SupportsCallout = cs.SupportsCallout()
 		}

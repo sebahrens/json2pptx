@@ -605,10 +605,7 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 
 	compact := make([]skillPatternCompact, len(all))
 	for i, p := range all {
-		cells := ""
-		if cd, ok := p.(patterns.CellDescriber); ok {
-			cells = cd.CellsHint()
-		}
+		cells := p.CellsHint()
 		var sizeBytes int
 		if ex, ok := p.(patterns.Exemplar); ok {
 			sizeBytes, _ = patterns.CanonicalSizeBytes(p, ex.ExemplarValues())
