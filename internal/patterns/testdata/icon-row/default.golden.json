@@ -1,0 +1,82 @@
+{
+  "gap": 12,
+  "columns": 3,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "🚀",
+                  "size": 28,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Launch",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "📈",
+                  "size": 28,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Growth",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "💰",
+                  "size": 28,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Revenue",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
