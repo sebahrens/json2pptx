@@ -49,6 +49,11 @@ const (
 	CodeRequestTimeout     = "REQUEST_TIMEOUT"
 	CodeInvalidContentType = "INVALID_CONTENT_TYPE"
 
+	// Pattern errors
+	CodePatternNotFound         = "PATTERN_NOT_FOUND"
+	CodePatternValidationFailed = "PATTERN_VALIDATION_FAILED"
+	CodePatternExpandFailed     = "PATTERN_EXPAND_FAILED"
+
 	// Server errors
 	CodeInternalError = "INTERNAL_ERROR"
 )

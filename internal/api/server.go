@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -25,11 +26,12 @@ func generateRequestID() string {
 
 // Server represents the HTTP API server.
 type Server struct {
-	mux             *http.ServeMux
-	convertService  *ConvertService
-	templateService *TemplateService
-	healthHandler   *HealthHandler
-	logger          *slog.Logger
+	mux              *http.ServeMux
+	convertService   *ConvertService
+	templateService  *TemplateService
+	healthHandler    *HealthHandler
+	patternsHandler  *PatternsHandler
+	logger           *slog.Logger
 }
 
 // ServerConfig holds configuration for creating a server.
@@ -58,13 +60,15 @@ func NewServer(cfg ServerConfig) *Server {
 		CommitSHA: cfg.CommitSHA,
 		BuildTime: cfg.BuildTime,
 	})
+	patternsHandler := NewPatternsHandler(patterns.Default())
 
 	s := &Server{
-		mux:             http.NewServeMux(),
-		convertService:  convertService,
-		templateService: templateService,
-		healthHandler:   healthHandler,
-		logger:          cfg.Logger,
+		mux:              http.NewServeMux(),
+		convertService:   convertService,
+		templateService:  templateService,
+		healthHandler:    healthHandler,
+		patternsHandler:  patternsHandler,
+		logger:           cfg.Logger,
 	}
 
 	s.setupRoutes()
@@ -79,6 +83,10 @@ func (s *Server) setupRoutes() {
 	s.mux.Handle("GET /api/v1/slide-types", SlideTypesHandler())
 	s.mux.Handle("POST /api/v1/convert", s.convertService.ConvertHandler())
 	s.mux.Handle("GET /api/v1/download/{filename}", s.convertService.DownloadHandler())
+	s.mux.Handle("GET /api/v1/patterns", s.patternsHandler.ListHandler())
+	s.mux.Handle("GET /api/v1/patterns/{name}", s.patternsHandler.ShowHandler())
+	s.mux.Handle("POST /api/v1/patterns/{name}/validate", s.patternsHandler.ValidateHandler())
+	s.mux.Handle("POST /api/v1/patterns/{name}/expand", s.patternsHandler.ExpandHandler())
 }
 
 // ServeHTTP implements http.Handler with request ID injection, security headers, and panic recovery.
