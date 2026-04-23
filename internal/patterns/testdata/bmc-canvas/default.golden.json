@@ -1,0 +1,308 @@
+{
+  "gap": 4,
+  "columns": 5,
+  "rows": [
+    {
+      "cells": [
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Key Partners",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Supplier A",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Partner B",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Key Activities",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Manufacturing",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Problem solving",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Value Propositions",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Newness",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Performance",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Customization",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Customer Relationships",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Personal assistance",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Self-service",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Customer Segments",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Mass market",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Niche market",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Key Resources",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Physical assets",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• IP",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Channels",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Direct sales",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Web",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "col_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Cost Structure",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Fixed costs",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Variable costs",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "col_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Revenue Streams",
+                  "size": 11,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Asset sale",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "• Subscription",
+                  "size": 9,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
