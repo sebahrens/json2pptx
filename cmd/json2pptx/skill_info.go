@@ -118,6 +118,7 @@ func runSkillInfo() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	templateName := fs.String("template", "", "Analyze a single template by name (optional)")
 	mode := fs.String("mode", "compact", "Output mode: list, compact, or full")
+	includeFullSchemas := fs.Bool("include-full-schemas", false, "Include full JSON schemas for all patterns (large; ~39K tokens)")
 	jsonFlag := fs.Bool("json", true, "Output as JSON (default: true)")
 
 	fs.Usage = func() {
@@ -174,11 +175,15 @@ func runSkillInfo() error {
 		templates = append(templates, info)
 	}
 
-	// Build pattern entries (compact for list/compact mode, full for full mode)
+	// Build pattern entries (compact for list/compact mode, full only when explicitly requested)
 	var patternsCompact []skillPatternCompact
 	var patternsFull []skillPatternFull
 	if *mode != "list" {
-		patternsCompact, patternsFull = buildPatternEntries(*mode)
+		effectiveMode := *mode
+		if effectiveMode == "full" && !*includeFullSchemas {
+			effectiveMode = "compact"
+		}
+		patternsCompact, patternsFull = buildPatternEntries(effectiveMode)
 	}
 
 	// Build output
