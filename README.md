@@ -634,7 +634,7 @@ The `json2pptx` binary is the primary CLI tool. It works as a batch converter, H
 | Command              | Description                                                   |
 |----------------------|---------------------------------------------------------------|
 | `generate`           | Convert JSON input to PPTX (default if subcommand is omitted) |
-| `validate`           | Validate JSON input without generating a file                 |
+| `validate`           | Validate JSON input without generating a file (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
 | `validate-template`  | Check template compatibility                                  |
 | `skill-info`         | Show template capabilities for Claude Code skill integration  |
 | `serve`              | Start the HTTP API server                                     |

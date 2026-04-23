@@ -87,6 +87,7 @@ examples/         # Example JSON input files (14 decks)
 - **SVG for charts/diagrams**: The `svggen/` module renders charts as SVG, embedded as EMF in the PPTX.
 - **Shape grids**: Complex layouts (BMC, KPI dashboards, timelines) use `shape_grid` in JSON, rendered by `internal/shapegrid/`.
 - **Named patterns**: Reusable `shape_grid` skeletons in `internal/patterns/` that expand at generation time. See [docs/PATTERNS.md](docs/PATTERNS.md) for the authoring guide and [docs/PATTERN_LIBRARY_SPEC.md](docs/PATTERN_LIBRARY_SPEC.md) for the full design spec.
+- **Fit findings**: Content overflow and density diagnostics emitted by `validate -fit-report` and MCP `generate_presentation(fit_report=true)`. See [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for the code catalog, action semantics, and scope rules.
 
 ## Testing Notes
 
