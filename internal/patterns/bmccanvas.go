@@ -23,7 +23,7 @@ func (b *bmcCanvas) Description() string {
 	return "Formal 9-cell Business Model Canvas (Osterwalder)"
 }
 func (b *bmcCanvas) UseWhen() string {
-	return "Formal Business Model Canvas methodology only — for general feature cards prefer card-grid"
+	return "Osterwalder BMC only; prefer card-grid for general cards"
 }
 func (b *bmcCanvas) Version() int      { return 1 }
 func (b *bmcCanvas) CellsHint() string { return "9" }
