@@ -64,6 +64,101 @@ func TestComparison2colRowUnmarshalJSON(t *testing.T) {
 		})
 	}
 
+	// Headers array form
+	t.Run("headers_array_form", func(t *testing.T) {
+		input := `{"headers":["Before","After"],"rows":[{"left":"A","right":"B"}]}`
+		var vals Comparison2colValues
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if vals.HeaderLeft != "Before" {
+			t.Errorf("HeaderLeft = %q, want %q", vals.HeaderLeft, "Before")
+		}
+		if vals.HeaderRight != "After" {
+			t.Errorf("HeaderRight = %q, want %q", vals.HeaderRight, "After")
+		}
+		if vals.Headers != [2]string{"Before", "After"} {
+			t.Errorf("Headers = %v, want [Before, After]", vals.Headers)
+		}
+	})
+
+	t.Run("legacy_header_left_right_still_works", func(t *testing.T) {
+		input := `{"header_left":"Pros","header_right":"Cons","rows":[{"left":"A","right":"B"}]}`
+		var vals Comparison2colValues
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if vals.HeaderLeft != "Pros" {
+			t.Errorf("HeaderLeft = %q, want %q", vals.HeaderLeft, "Pros")
+		}
+		if vals.HeaderRight != "Cons" {
+			t.Errorf("HeaderRight = %q, want %q", vals.HeaderRight, "Cons")
+		}
+	})
+
+	t.Run("headers_array_takes_precedence_over_legacy", func(t *testing.T) {
+		input := `{"headers":["New L","New R"],"header_left":"Old L","header_right":"Old R","rows":[{"left":"A","right":"B"}]}`
+		var vals Comparison2colValues
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if vals.HeaderLeft != "New L" {
+			t.Errorf("HeaderLeft = %q, want %q (headers should take precedence)", vals.HeaderLeft, "New L")
+		}
+		if vals.HeaderRight != "New R" {
+			t.Errorf("HeaderRight = %q, want %q (headers should take precedence)", vals.HeaderRight, "New R")
+		}
+	})
+
+	t.Run("headers_array_expand_equivalence", func(t *testing.T) {
+		arrayJSON := `{"headers":["Pros","Cons"],"rows":[{"left":"Fast","right":"Expensive"}]}`
+		legacyJSON := `{"header_left":"Pros","header_right":"Cons","rows":[{"left":"Fast","right":"Expensive"}]}`
+
+		var arrayVals, legacyVals Comparison2colValues
+		if err := json.Unmarshal([]byte(arrayJSON), &arrayVals); err != nil {
+			t.Fatalf("unmarshal array form: %v", err)
+		}
+		if err := json.Unmarshal([]byte(legacyJSON), &legacyVals); err != nil {
+			t.Fatalf("unmarshal legacy form: %v", err)
+		}
+
+		p := &comparison2col{}
+		arrayGrid, err := p.Expand(ExpandContext{}, &arrayVals, nil, nil)
+		if err != nil {
+			t.Fatalf("expand array: %v", err)
+		}
+		legacyGrid, err := p.Expand(ExpandContext{}, &legacyVals, nil, nil)
+		if err != nil {
+			t.Fatalf("expand legacy: %v", err)
+		}
+
+		arrayOut, _ := json.Marshal(arrayGrid)
+		legacyOut, _ := json.Marshal(legacyGrid)
+		if string(arrayOut) != string(legacyOut) {
+			t.Errorf("expand outputs differ.\narray:  %s\nlegacy: %s", arrayOut, legacyOut)
+		}
+	})
+
+	t.Run("marshal_uses_compact_headers_form", func(t *testing.T) {
+		vals := Comparison2colValues{
+			Headers:     [2]string{"Left", "Right"},
+			HeaderLeft:  "Left",
+			HeaderRight: "Right",
+			Rows:        []Comparison2colRow{{Left: "A", Right: "B"}},
+		}
+		data, err := json.Marshal(vals)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		s := string(data)
+		if !strings.Contains(s, `"headers"`) {
+			t.Errorf("expected headers field in output: %s", s)
+		}
+		if strings.Contains(s, `"header_left"`) {
+			t.Errorf("legacy header_left should not appear in output: %s", s)
+		}
+	})
+
 	// Round-trip equivalence
 	t.Run("string_object_expand_equivalence", func(t *testing.T) {
 		objJSON := `{"rows":[{"left":"Fast","right":"Expensive"},{"left":"Reliable","right":"Complex"}]}`

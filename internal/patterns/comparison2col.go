@@ -28,8 +28,7 @@ func (c *comparison2col) SupportsCallout() bool  { return true }
 
 func (c *comparison2col) ExemplarValues() any {
 	return &Comparison2colValues{
-		HeaderLeft:  "Pros",
-		HeaderRight: "Cons",
+		Headers: [2]string{"Pros", "Cons"},
 		Rows: []Comparison2colRow{
 			{Left: "Fast", Right: "Expensive"},
 			{Left: "Reliable", Right: "Complex"},
@@ -70,10 +69,58 @@ func (r *Comparison2colRow) UnmarshalJSON(data []byte) error {
 }
 
 // Comparison2colValues is the values type for comparison-2col.
+//
+// Headers can be specified two ways (both optional):
+//   - New: "headers": ["Left", "Right"]   (preferred, saves tokens)
+//   - Legacy: "header_left": "Left", "header_right": "Right"
+//
+// If both are present, "headers" takes precedence. Internally the struct
+// normalises to HeaderLeft / HeaderRight for Expand and Validate.
 type Comparison2colValues struct {
+	Headers     [2]string           `json:"headers,omitempty"`
 	HeaderLeft  string              `json:"header_left,omitempty"`
 	HeaderRight string              `json:"header_right,omitempty"`
 	Rows        []Comparison2colRow `json:"rows"`
+}
+
+// UnmarshalJSON supports both "headers" array and legacy "header_left"/"header_right".
+// If "headers" is present, it takes precedence and populates HeaderLeft/HeaderRight.
+func (v *Comparison2colValues) UnmarshalJSON(data []byte) error {
+	// Use an alias to avoid recursion.
+	type alias Comparison2colValues
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+
+	// Normalise: headers array → HeaderLeft/HeaderRight
+	if a.Headers != [2]string{} {
+		a.HeaderLeft = a.Headers[0]
+		a.HeaderRight = a.Headers[1]
+	} else if a.HeaderLeft != "" || a.HeaderRight != "" {
+		// Back-fill Headers from legacy fields so MarshalJSON is consistent.
+		a.Headers = [2]string{a.HeaderLeft, a.HeaderRight}
+	}
+
+	*v = Comparison2colValues(a)
+	return nil
+}
+
+// MarshalJSON emits the compact "headers" form when headers are present,
+// omitting the legacy header_left/header_right fields.
+func (v Comparison2colValues) MarshalJSON() ([]byte, error) {
+	type compactForm struct {
+		Headers [2]string           `json:"headers,omitempty"`
+		Rows    []Comparison2colRow `json:"rows"`
+	}
+	if v.Headers != [2]string{} {
+		return json.Marshal(compactForm{Headers: v.Headers, Rows: v.Rows})
+	}
+	// No headers at all — omit both fields.
+	type rowsOnly struct {
+		Rows []Comparison2colRow `json:"rows"`
+	}
+	return json.Marshal(rowsOnly{Rows: v.Rows})
 }
 
 // Comparison2colOverrides is the standard text overrides (accent, header_size, body_size).
@@ -104,10 +151,14 @@ func (c *comparison2col) Schema() *Schema {
 	).WithDescription("Row: string \"Left | Right\" or {left, right}")
 
 
+	headersSchema := ArraySchema(StringSchema(60), 2, 2).
+		WithDescription("Column headers [left, right] (preferred over header_left/header_right)")
+
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"header_left":  StringSchema(60).WithDescription("Optional left column header"),
-			"header_right": StringSchema(60).WithDescription("Optional right column header"),
+			"headers":      headersSchema,
+			"header_left":  StringSchema(60).WithDescription("Left column header (legacy, prefer headers)"),
+			"header_right": StringSchema(60).WithDescription("Right column header (legacy, prefer headers)"),
 			"rows":         ArraySchema(rowSchema, 1, 10).WithDescription("Comparison rows (1–10)"),
 		},
 		[]string{"rows"},
