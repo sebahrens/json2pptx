@@ -171,22 +171,10 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 		}
 	}
 
-	accent := "accent1"
-	if ovr.Accent != "" {
-		accent = ovr.Accent
-	}
-	labelSize := 14.0
-	if ovr.LabelSize > 0 {
-		labelSize = ovr.LabelSize
-	}
-	dateSize := 10.0
-	if ovr.DateSize > 0 {
-		dateSize = ovr.DateSize
-	}
-	bodySize := 10.0
-	if ovr.BodySize > 0 {
-		bodySize = ovr.BodySize
-	}
+	accent := ResolveAccent(ovr.Accent)
+	labelSize := ResolveSize(ovr.LabelSize, 14.0)
+	dateSize := ResolveSize(ovr.DateSize, 10.0)
+	bodySize := ResolveSize(ovr.BodySize, 10.0)
 	connectorStyle := "arrow"
 	if ovr.Connector != "" {
 		connectorStyle = ovr.Connector

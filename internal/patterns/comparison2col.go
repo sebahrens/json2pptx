@@ -76,12 +76,8 @@ type Comparison2colValues struct {
 	Rows        []Comparison2colRow `json:"rows"`
 }
 
-// Comparison2colOverrides contains pattern-level overrides for comparison-2col.
-type Comparison2colOverrides struct {
-	Accent       string  `json:"accent,omitempty"`
-	HeaderSize   float64 `json:"header_size,omitempty"`
-	BodySize     float64 `json:"body_size,omitempty"`
-}
+// Comparison2colOverrides is the standard text overrides (accent, header_size, body_size).
+type Comparison2colOverrides = TextOverrides
 
 // Comparison2colCellOverride is an alias for the shared CellOverride struct.
 type Comparison2colCellOverride = CellOverride
@@ -120,14 +116,7 @@ func (c *comparison2col) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": valuesSchema,
-			"overrides": ObjectSchema(
-				map[string]*Schema{
-					"accent":      StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"header_size": NumberSchema(6, 120).WithDescription("Font size for header text in points"),
-					"body_size":   NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-				},
-				nil,
-			).WithAdditionalProperties(false),
+			"overrides": textOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -221,18 +210,9 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
-	accent := "accent1"
-	if ovr.Accent != "" {
-		accent = ovr.Accent
-	}
-	headerSize := 18.0
-	if ovr.HeaderSize > 0 {
-		headerSize = ovr.HeaderSize
-	}
-	bodySize := 14.0
-	if ovr.BodySize > 0 {
-		bodySize = ovr.BodySize
-	}
+	accent := ResolveAccent(ovr.Accent)
+	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
+	bodySize := ResolveSize(ovr.BodySize, 14.0)
 
 	hasHeaders := vals.HeaderLeft != "" || vals.HeaderRight != ""
 	cellIdx := 0 // running cell index for cell_overrides

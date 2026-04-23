@@ -217,18 +217,9 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := "accent1"
-	if ovr.Accent != "" {
-		accent = ovr.Accent
-	}
-	headerSize := 11.0
-	if ovr.HeaderSize > 0 {
-		headerSize = ovr.HeaderSize
-	}
-	bulletSize := 9.0
-	if ovr.BulletSize > 0 {
-		bulletSize = ovr.BulletSize
-	}
+	accent := ResolveAccent(ovr.Accent)
+	headerSize := ResolveSize(ovr.HeaderSize, 11.0)
+	bulletSize := ResolveSize(ovr.BulletSize, 9.0)
 
 	// BMC canonical layout (5 columns, 3 rows):
 	//

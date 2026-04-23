@@ -104,26 +104,26 @@ func applyEmphasis(para map[string]any, emphasis string) {
 
 // resolveKPIAccent returns the accent color, defaulting to accent1.
 func resolveKPIAccent(ovr *KPIOverrides) string {
-	if ovr != nil && ovr.Accent != "" {
-		return ovr.Accent
+	if ovr == nil {
+		return "accent1"
 	}
-	return "accent1"
+	return ResolveAccent(ovr.Accent)
 }
 
 // resolveKPIBigSize returns the big-number font size, defaulting to 36pt.
 func resolveKPIBigSize(ovr *KPIOverrides) float64 {
-	if ovr != nil && ovr.BigSize > 0 {
-		return ovr.BigSize
+	if ovr == nil {
+		return 36.0
 	}
-	return 36.0
+	return ResolveSize(ovr.BigSize, 36.0)
 }
 
 // resolveKPISmallSize returns the caption font size, defaulting to 14pt.
 func resolveKPISmallSize(ovr *KPIOverrides) float64 {
-	if ovr != nil && ovr.SmallSize > 0 {
-		return ovr.SmallSize
+	if ovr == nil {
+		return 14.0
 	}
-	return 14.0
+	return ResolveSize(ovr.SmallSize, 14.0)
 }
 
 // validateKPICells validates a slice of KPI cells for a pattern with the given

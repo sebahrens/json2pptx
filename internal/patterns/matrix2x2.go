@@ -57,10 +57,8 @@ type Matrix2x2Values struct {
 
 // Matrix2x2Overrides contains pattern-level overrides for matrix-2x2.
 type Matrix2x2Overrides struct {
-	Accent     string  `json:"accent,omitempty"`
-	HeaderSize float64 `json:"header_size,omitempty"`
-	BodySize   float64 `json:"body_size,omitempty"`
-	LabelSize  float64 `json:"label_size,omitempty"`
+	TextOverrides
+	LabelSize float64 `json:"label_size,omitempty"`
 }
 
 // Matrix2x2CellOverride is an alias for the shared CellOverride struct.
@@ -199,22 +197,10 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := "accent1"
-	if ovr.Accent != "" {
-		accent = ovr.Accent
-	}
-	headerSize := 16.0
-	if ovr.HeaderSize > 0 {
-		headerSize = ovr.HeaderSize
-	}
-	bodySize := 12.0
-	if ovr.BodySize > 0 {
-		bodySize = ovr.BodySize
-	}
-	labelSize := 14.0
-	if ovr.LabelSize > 0 {
-		labelSize = ovr.LabelSize
-	}
+	accent := ResolveAccent(ovr.Accent)
+	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
+	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	labelSize := ResolveSize(ovr.LabelSize, 14.0)
 
 	// Layout: 3 columns [y-axis label, left quadrants, right quadrants]
 	// Row 0: [empty corner, x-axis label (col_span=2)]

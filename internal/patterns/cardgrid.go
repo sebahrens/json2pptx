@@ -80,12 +80,8 @@ type CardGridValues struct {
 	Cells   []CardGridCell `json:"cells"`
 }
 
-// CardGridOverrides contains pattern-level overrides for card-grid.
-type CardGridOverrides struct {
-	Accent     string  `json:"accent,omitempty"`
-	HeaderSize float64 `json:"header_size,omitempty"`
-	BodySize   float64 `json:"body_size,omitempty"`
-}
+// CardGridOverrides is the standard text overrides (accent, header_size, body_size).
+type CardGridOverrides = TextOverrides
 
 // CardGridCellOverride is an alias for the shared CellOverride struct.
 type CardGridCellOverride = CellOverride
@@ -123,14 +119,7 @@ func (c *cardGrid) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": valuesSchema,
-			"overrides": ObjectSchema(
-				map[string]*Schema{
-					"accent":      StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"header_size": NumberSchema(6, 120).WithDescription("Font size for card headers in points"),
-					"body_size":   NumberSchema(6, 120).WithDescription("Font size for card body in points"),
-				},
-				nil,
-			).WithAdditionalProperties(false),
+			"overrides": textOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -222,18 +211,9 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := "accent1"
-	if ovr.Accent != "" {
-		accent = ovr.Accent
-	}
-	headerSize := 16.0
-	if ovr.HeaderSize > 0 {
-		headerSize = ovr.HeaderSize
-	}
-	bodySize := 12.0
-	if ovr.BodySize > 0 {
-		bodySize = ovr.BodySize
-	}
+	accent := ResolveAccent(ovr.Accent)
+	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
+	bodySize := ResolveSize(ovr.BodySize, 12.0)
 
 	var rows []jsonschema.GridRowInput
 	cellIdx := 0

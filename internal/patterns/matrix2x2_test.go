@@ -188,7 +188,7 @@ func TestMatrix2x2(t *testing.T) {
 				BottomLeft: Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
-			overrides: &Matrix2x2Overrides{Accent: "accent3"},
+			overrides: &Matrix2x2Overrides{TextOverrides: TextOverrides{Accent: "accent3"}},
 			wantNoErr: true,
 		},
 	}
@@ -287,7 +287,7 @@ func TestMatrix2x2(t *testing.T) {
 			BottomLeft: Matrix2x2Quadrant{Header: "C"},
 			BottomRight: Matrix2x2Quadrant{Header: "D"},
 		}
-		ovr := &Matrix2x2Overrides{Accent: "accent5"}
+		ovr := &Matrix2x2Overrides{TextOverrides: TextOverrides{Accent: "accent5"}}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)

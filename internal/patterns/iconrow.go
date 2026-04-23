@@ -188,18 +188,9 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := "accent1"
-	if ovr.Accent != "" {
-		accent = ovr.Accent
-	}
-	iconSize := 28.0
-	if ovr.IconSize > 0 {
-		iconSize = ovr.IconSize
-	}
-	captionSize := 12.0
-	if ovr.CaptionSize > 0 {
-		captionSize = ovr.CaptionSize
-	}
+	accent := ResolveAccent(ovr.Accent)
+	iconSize := ResolveSize(ovr.IconSize, 28.0)
+	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
 
 	gridCells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
