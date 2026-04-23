@@ -146,6 +146,9 @@ Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "b
 			mcp.Description("Text-fit checking mode: off (skip fit checks), warn (default; report overflow warnings), or strict (refuse generation if any cell overflows)."),
 			mcp.Enum("off", "warn", "strict"),
 		),
+		mcp.WithBoolean("fit_report",
+			mcp.Description("When true, include fit_findings in the response with text overflow, placeholder overflow, footer collision, and bounds-check findings. Default: false."),
+		),
 	)
 }
 
@@ -306,14 +309,21 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Merge input-layer warnings with generation warnings
 	allWarnings := append(inputWarnings, result.Warnings...)
 
+	// Collect fit findings when requested.
+	var fitFindings []patterns.FitFinding
+	if fitReport, _ := request.GetArguments()["fit_report"].(bool); fitReport {
+		fitFindings = collectFitFindings(&input, templateLayouts, slideWidth, slideHeight)
+	}
+
 	// Build response
 	output := JSONOutput{
-		Success:    true,
-		OutputPath: outputPath,
-		SlideCount: result.SlideCount,
-		DurationMs: duration.Milliseconds(),
-		Warnings:   allWarnings,
-		Quality:    computeQualityScore(input.Slides, allWarnings),
+		Success:     true,
+		OutputPath:  outputPath,
+		SlideCount:  result.SlideCount,
+		DurationMs:  duration.Milliseconds(),
+		Warnings:    allWarnings,
+		Quality:     computeQualityScore(input.Slides, allWarnings),
+		FitFindings: fitFindings,
 	}
 
 	responseJSON, err := api.MarshalMCPResponse(output)

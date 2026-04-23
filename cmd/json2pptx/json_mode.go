@@ -119,7 +119,8 @@ type JSONOutput struct {
 	Error       string        `json:"error,omitempty"`
 	Warnings    []string      `json:"warnings,omitempty"`
 	SlideErrors []SlideError  `json:"slide_errors,omitempty"`
-	Quality     *QualityScore `json:"quality,omitempty"`
+	Quality     *QualityScore       `json:"quality,omitempty"`
+	FitFindings []patterns.FitFinding `json:"fit_findings,omitempty"`
 }
 
 // SlideError describes a render-time failure for a specific slide.
