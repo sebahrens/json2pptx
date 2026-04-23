@@ -1,0 +1,24 @@
+{
+  "template": "modern-template",
+  "output_filename": "50_pattern_cardgrid_callout.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "pattern": {
+        "name": "card-grid",
+        "values": {
+          "columns": 2,
+          "rows": 1,
+          "cells": [
+            {"header": "Speed", "body": "Sub-second response times across all endpoints"},
+            {"header": "Reliability", "body": "99.99% uptime SLA with automatic failover"}
+          ]
+        },
+        "callout": {
+          "text": "Key takeaway: performance and reliability are non-negotiable",
+          "emphasis": "bold"
+        }
+      }
+    }
+  ]
+}

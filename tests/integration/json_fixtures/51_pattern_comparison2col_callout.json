@@ -1,0 +1,25 @@
+{
+  "template": "modern-template",
+  "output_filename": "51_pattern_comparison2col_callout.pptx",
+  "slides": [
+    {
+      "slide_type": "content",
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "header_left": "Current State",
+          "header_right": "Future State",
+          "rows": [
+            {"left": "Manual deployment", "right": "Automated CI/CD"},
+            {"left": "Monolithic architecture", "right": "Microservices"}
+          ]
+        },
+        "callout": {
+          "text": "Migration timeline: Q3 2026",
+          "emphasis": "italic",
+          "accent": "accent3"
+        }
+      }
+    }
+  ]
+}

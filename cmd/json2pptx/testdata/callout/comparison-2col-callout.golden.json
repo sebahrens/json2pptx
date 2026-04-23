@@ -1,0 +1,152 @@
+{
+  "gap": 8,
+  "columns": 2,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Current State",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Future State",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Manual deployment",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Automated CI/CD",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Monolithic architecture",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Microservices",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "auto_height": true,
+      "cells": [
+        {
+          "col_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent3",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Migration timeline: Q3 2026",
+                  "size": 14,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

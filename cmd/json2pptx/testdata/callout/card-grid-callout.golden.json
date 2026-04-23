@@ -1,0 +1,85 @@
+{
+  "gap": 10,
+  "columns": 2,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Speed",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Sub-second response times",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Reliability",
+                  "size": 16,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "99.99% uptime SLA",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "auto_height": true,
+      "cells": [
+        {
+          "col_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Key takeaway: performance and reliability are non-negotiable",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

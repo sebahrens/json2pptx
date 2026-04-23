@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -270,6 +272,263 @@ func TestExpandPattern_NoCalloutNilDoesNothing(t *testing.T) {
 	// Should have only 1 row (no callout appended)
 	if len(grid.Rows) != 1 {
 		t.Errorf("expected 1 row (no callout), got %d", len(grid.Rows))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Cross-template callout rendering (all 4 templates)
+// ---------------------------------------------------------------------------
+
+func TestCalloutCrossTemplate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cross-template callout test in short mode")
+	}
+
+	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	templatesDir := filepath.Join(projectRoot, "templates")
+	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+
+	fixtures := []string{
+		filepath.Join(projectRoot, "tests", "integration", "json_fixtures", "50_pattern_cardgrid_callout.json"),
+		filepath.Join(projectRoot, "tests", "integration", "json_fixtures", "51_pattern_comparison2col_callout.json"),
+	}
+
+	outputDir := t.TempDir()
+
+	for _, fixture := range fixtures {
+		fixtureName := strings.TrimSuffix(filepath.Base(fixture), ".json")
+		for _, tmpl := range templates {
+			t.Run(fixtureName+"/"+tmpl, func(t *testing.T) {
+				t.Parallel()
+
+				data, err := os.ReadFile(fixture)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				var input map[string]interface{}
+				if err := json.Unmarshal(data, &input); err != nil {
+					t.Fatal(err)
+				}
+				input["template"] = tmpl
+				outputFilename := fixtureName + "_" + tmpl + ".pptx"
+				input["output_filename"] = outputFilename
+
+				modifiedJSON, err := json.Marshal(input)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				tmpJSON := filepath.Join(outputDir, fixtureName+"_"+tmpl+".json")
+				if err := os.WriteFile(tmpJSON, modifiedJSON, 0644); err != nil {
+					t.Fatal(err)
+				}
+
+				jsonResultPath := filepath.Join(outputDir, fixtureName+"_"+tmpl+".result.json")
+				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "")
+				if err != nil {
+					t.Fatalf("runJSONMode failed: %v", err)
+				}
+
+				validatePPTX(t, filepath.Join(outputDir, outputFilename))
+			})
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Golden tests for callout expansion output
+// ---------------------------------------------------------------------------
+
+func TestExpandPattern_CalloutCardGrid_Golden(t *testing.T) {
+	input := &PatternInput{
+		Name: "card-grid",
+		Values: json.RawMessage(`{
+			"columns": 2,
+			"rows": 1,
+			"cells": [
+				{"header": "Speed", "body": "Sub-second response times"},
+				{"header": "Reliability", "body": "99.99% uptime SLA"}
+			]
+		}`),
+		Callout: &patterns.PatternCallout{
+			Text:     "Key takeaway: performance and reliability are non-negotiable",
+			Emphasis: "bold",
+		},
+	}
+
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+	grid, _, err := expandPattern(input, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern: %v", err)
+	}
+
+	got, err := json.MarshalIndent(grid, "", "  ")
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "callout", "card-grid-callout.golden.json")
+	if os.Getenv("UPDATE_GOLDEN") == "1" {
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
+			t.Fatalf("write golden: %v", err)
+		}
+		t.Log("golden file updated")
+		return
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatalf("read golden (run with UPDATE_GOLDEN=1 to create): %v", err)
+	}
+
+	if string(got) != string(want) {
+		t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestExpandPattern_CalloutComparison2col_Golden(t *testing.T) {
+	input := &PatternInput{
+		Name: "comparison-2col",
+		Values: json.RawMessage(`{
+			"header_left": "Current State",
+			"header_right": "Future State",
+			"rows": [
+				{"left": "Manual deployment", "right": "Automated CI/CD"},
+				{"left": "Monolithic architecture", "right": "Microservices"}
+			]
+		}`),
+		Callout: &patterns.PatternCallout{
+			Text:   "Migration timeline: Q3 2026",
+			Accent: "accent3",
+		},
+	}
+
+	ctx := patterns.ExpandContext{}
+	grid, _, err := expandPattern(input, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern: %v", err)
+	}
+
+	got, err := json.MarshalIndent(grid, "", "  ")
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "callout", "comparison-2col-callout.golden.json")
+	if os.Getenv("UPDATE_GOLDEN") == "1" {
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
+			t.Fatalf("write golden: %v", err)
+		}
+		t.Log("golden file updated")
+		return
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatalf("read golden (run with UPDATE_GOLDEN=1 to create): %v", err)
+	}
+
+	if string(got) != string(want) {
+		t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// cell_overrides regression: indices unchanged when callout present
+// ---------------------------------------------------------------------------
+
+func TestExpandPattern_CellOverridesUnchangedWithCallout(t *testing.T) {
+	// Expand card-grid with cell_overrides[0] accent bar, WITHOUT callout
+	baseInput := &PatternInput{
+		Name: "card-grid",
+		Values: json.RawMessage(`{
+			"columns": 2,
+			"rows": 1,
+			"cells": [
+				{"header": "Card 1", "body": "Description 1"},
+				{"header": "Card 2", "body": "Description 2"}
+			]
+		}`),
+		CellOverrides: map[string]json.RawMessage{
+			"0": json.RawMessage(`{"accent_bar": true}`),
+		},
+	}
+
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+
+	gridWithout, _, err := expandPattern(baseInput, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern without callout: %v", err)
+	}
+
+	// Expand same card-grid with cell_overrides[0] accent bar, WITH callout
+	calloutInput := &PatternInput{
+		Name: "card-grid",
+		Values: json.RawMessage(`{
+			"columns": 2,
+			"rows": 1,
+			"cells": [
+				{"header": "Card 1", "body": "Description 1"},
+				{"header": "Card 2", "body": "Description 2"}
+			]
+		}`),
+		CellOverrides: map[string]json.RawMessage{
+			"0": json.RawMessage(`{"accent_bar": true}`),
+		},
+		Callout: &patterns.PatternCallout{
+			Text:     "Summary note",
+			Emphasis: "bold",
+		},
+	}
+
+	gridWith, _, err := expandPattern(calloutInput, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern with callout: %v", err)
+	}
+
+	// Content rows should be identical (cell_overrides indexing unchanged)
+	if len(gridWithout.Rows) < 1 {
+		t.Fatal("expected at least 1 row without callout")
+	}
+	if len(gridWith.Rows) < 2 {
+		t.Fatal("expected at least 2 rows with callout (1 content + 1 callout)")
+	}
+
+	// Compare first row (content) — cell[0] should have accent bar in both
+	abWithout := gridWithout.Rows[0].Cells[0].AccentBar
+	abWith := gridWith.Rows[0].Cells[0].AccentBar
+
+	if abWithout == nil {
+		t.Fatal("cell[0] should have accent bar without callout")
+	}
+	if abWith == nil {
+		t.Fatal("cell[0] should have accent bar with callout")
+	}
+
+	if abWithout.Color != abWith.Color {
+		t.Errorf("accent bar color mismatch: without=%q, with=%q", abWithout.Color, abWith.Color)
+	}
+	if abWithout.Position != abWith.Position {
+		t.Errorf("accent bar position mismatch: without=%q, with=%q", abWithout.Position, abWith.Position)
+	}
+
+	// Cell[1] should NOT have accent bar in either case
+	if gridWithout.Rows[0].Cells[1].AccentBar != nil {
+		t.Error("cell[1] should not have accent bar without callout")
+	}
+	if gridWith.Rows[0].Cells[1].AccentBar != nil {
+		t.Error("cell[1] should not have accent bar with callout")
 	}
 }
 
