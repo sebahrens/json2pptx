@@ -63,7 +63,7 @@ func (k *kpi4up) Schema() *Schema {
 		},
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
-		"cellOverride": kpiCellOverrideSchema(),
+		"cellOverride": CellOverrideDefSchema(),
 	}).WithDescription("Four big-number KPI cards with short captions")
 }
 

@@ -123,17 +123,6 @@ func (c *comparison2col) Schema() *Schema {
 		).WithAdditionalProperties(false),
 	).WithDescription("Row: string \"Left | Right\" or {left, right}")
 
-	cellOverrideSchema := ObjectSchema(
-		map[string]*Schema{
-			"accent_bar":     BooleanSchema().WithDescription("Show accent bar decoration"),
-			"emphasis":       EnumSchema("bold", "italic", "bold-italic").WithDescription("Text emphasis"),
-			"align":          EnumSchema("l", "ctr", "r").WithDescription("Horizontal alignment"),
-			"vertical_align": EnumSchema("t", "ctr", "b").WithDescription("Vertical alignment"),
-			"font_size":      NumberSchema(6, 120).WithDescription("Font size in points"),
-			"color":          StringSchema(0).WithDescription("Text color (scheme ref, e.g. \"dk1\")"),
-		},
-		nil,
-	).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
@@ -159,7 +148,7 @@ func (c *comparison2col) Schema() *Schema {
 		},
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
-		"cellOverride": cellOverrideSchema,
+		"cellOverride": CellOverrideDefSchema(),
 	}).WithDescription("Two-column comparison with optional headers")
 }
 
