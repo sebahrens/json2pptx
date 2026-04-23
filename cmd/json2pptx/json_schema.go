@@ -40,6 +40,53 @@ type PresentationInput struct {
 	Slides         []SlideInput `json:"slides"`
 }
 
+// UnmarshalJSON handles both regular slides and split_slide entries.
+// A split_slide entry is expanded inline into N regular SlideInput entries.
+func (p *PresentationInput) UnmarshalJSON(data []byte) error {
+	// Use type alias to avoid infinite recursion.
+	type Alias PresentationInput
+	aux := &struct {
+		Slides []json.RawMessage `json:"slides"`
+		*Alias
+	}{
+		Alias: (*Alias)(p),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	p.Slides = nil
+	for i, raw := range aux.Slides {
+		// Probe for the "type" field to detect split_slide entries.
+		var probe struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			return fmt.Errorf("slide %d: %w", i+1, err)
+		}
+
+		if probe.Type == "split_slide" {
+			var ss SplitSlideInput
+			if err := json.Unmarshal(raw, &ss); err != nil {
+				return fmt.Errorf("slide %d: invalid split_slide: %w", i+1, err)
+			}
+			expanded, err := expandSplitSlide(ss)
+			if err != nil {
+				return fmt.Errorf("slide %d: %w", i+1, err)
+			}
+			p.Slides = append(p.Slides, expanded...)
+		} else {
+			var slide SlideInput
+			if err := json.Unmarshal(raw, &slide); err != nil {
+				return fmt.Errorf("slide %d: %w", i+1, err)
+			}
+			p.Slides = append(p.Slides, slide)
+		}
+	}
+
+	return nil
+}
+
 // ThemeInput maps to types.ThemeOverride.
 type ThemeInput struct {
 	Colors    map[string]string `json:"colors,omitempty"`

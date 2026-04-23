@@ -1,0 +1,73 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "split-slide-vendor-matrix.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Vendor Evaluation"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Q2 2026 Assessment"}
+      ]
+    },
+    {
+      "type": "split_slide",
+      "base": {
+        "layout_id": "slideLayout2",
+        "content": [
+          {"placeholder_id": "title", "type": "text", "text_value": "Vendor Matrix"},
+          {
+            "placeholder_id": "body",
+            "type": "table",
+            "table_value": {
+              "headers": ["Vendor", "Product", "Category", "Price", "Rating", "Status"],
+              "rows": [
+                ["Acme Corp", "Widget Pro", "Hardware", "$1,200", "4.5/5", "Active"],
+                ["Beta Inc", "DataFlow", "Software", "$800/mo", "4.2/5", "Active"],
+                ["Gamma Ltd", "SecureNet", "Security", "$2,400/yr", "4.8/5", "Under Review"],
+                ["Delta Co", "CloudSync", "Cloud", "$500/mo", "3.9/5", "Active"],
+                ["Epsilon", "AnalytiX", "Analytics", "$1,500/mo", "4.1/5", "Trial"],
+                ["Zeta Tech", "DevOps Pro", "DevOps", "$900/mo", "4.6/5", "Active"],
+                ["Eta Systems", "NetWatch", "Monitoring", "$600/mo", "4.0/5", "Active"],
+                ["Theta Corp", "CodeScan", "Security", "$1,100/yr", "4.3/5", "Under Review"],
+                ["Iota Labs", "ML Pipeline", "AI/ML", "$2,000/mo", "4.7/5", "Trial"],
+                ["Kappa Inc", "FormBuilder", "Low-Code", "$400/mo", "3.8/5", "Active"],
+                ["Lambda Co", "CRM Plus", "CRM", "$1,200/mo", "4.4/5", "Active"],
+                ["Mu Systems", "BackupVault", "Storage", "$300/mo", "4.1/5", "Active"],
+                ["Nu Tech", "ChatBot AI", "AI/ML", "$1,800/mo", "4.5/5", "Trial"],
+                ["Xi Corp", "PayGate", "Payments", "$0.30/tx", "4.6/5", "Active"],
+                ["Omicron", "LogStream", "Logging", "$700/mo", "4.2/5", "Active"],
+                ["Pi Labs", "TestRunner", "Testing", "$500/mo", "4.0/5", "Under Review"],
+                ["Rho Inc", "CI/CD Hub", "DevOps", "$800/mo", "4.3/5", "Active"],
+                ["Sigma Co", "DBaaS", "Database", "$1,500/mo", "4.5/5", "Active"]
+              ],
+              "style": {
+                "header_background": "accent1",
+                "borders": "horizontal",
+                "striped": true
+              }
+            }
+          }
+        ],
+        "speaker_notes": "18 vendors evaluated across 8 categories. Sorted by category.",
+        "source": "Source: Vendor Assessment Q2 2026"
+      },
+      "split": {
+        "by": "table.rows",
+        "group_size": 6,
+        "title_suffix": " ({page}/{total})",
+        "repeat_headers": true
+      }
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Recommendations"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "Consolidate security vendors (Gamma + Theta)",
+          "Expand AI/ML trials to production",
+          "Renegotiate DevOps contracts"
+        ]}
+      ]
+    }
+  ]
+}
