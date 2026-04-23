@@ -12,6 +12,7 @@ JSON input mode provides direct, programmatic control over slide layout and cont
 | `charts.json` | Chart types: bar, line, pie, donut, area, funnel | forest-green |
 | `diagrams.json` | Advanced chart types: waterfall, radar, gauge, treemap, stacked bar | warm-coral |
 | `full-showcase.json` | All content types combined in a product launch strategy deck | midnight-blue |
+| `patterns-smoke.json` | Pattern library smoke test: one slide per v1 pattern (kpi-3up, kpi-4up, bmc-canvas, matrix-2x2, timeline-horizontal, card-grid, icon-row, comparison-2col) | midnight-blue |
 
 ### Running a JSON example
 

@@ -1,0 +1,144 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "patterns-smoke.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "KPI 3-Up"}
+      ],
+      "pattern": {
+        "name": "kpi-3up",
+        "values": [
+          {"big": "$4.2M", "small": "Annual Revenue"},
+          {"big": "98.7%", "small": "Uptime SLA"},
+          {"big": "1,247", "small": "Active Users"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "KPI 4-Up"}
+      ],
+      "pattern": {
+        "name": "kpi-4up",
+        "values": [
+          {"big": "$4.2M", "small": "ARR"},
+          {"big": "87%", "small": "NPS Score"},
+          {"big": "1.2K", "small": "MAU"},
+          {"big": "42", "small": "Open Deals"}
+        ],
+        "overrides": {"accent": "accent2"}
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Business Model Canvas"}
+      ],
+      "pattern": {
+        "name": "bmc-canvas",
+        "values": {
+          "key_partners": {"header": "Key Partners", "bullets": ["Cloud providers", "Payment processors"]},
+          "key_activities": {"header": "Key Activities", "bullets": ["Platform development", "Customer support"]},
+          "key_resources": {"header": "Key Resources", "bullets": ["Engineering team", "IP portfolio"]},
+          "value_propositions": {"header": "Value Propositions", "bullets": ["Faster time-to-market", "Lower TCO"]},
+          "customer_relations": {"header": "Customer Relations", "bullets": ["Dedicated CSM", "Self-service portal"]},
+          "channels": {"header": "Channels", "bullets": ["Direct sales", "Partner network"]},
+          "customer_segments": {"header": "Customer Segments", "bullets": ["Enterprise SaaS", "Mid-market"]},
+          "cost_structure": {"header": "Cost Structure", "bullets": ["Infrastructure", "R&D headcount"]},
+          "revenue_streams": {"header": "Revenue Streams", "bullets": ["Subscriptions", "Professional services"]}
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Priority Matrix"}
+      ],
+      "pattern": {
+        "name": "matrix-2x2",
+        "values": {
+          "x_axis_label": "Effort",
+          "y_axis_label": "Impact",
+          "top_left": {"header": "Quick Wins", "body": "High impact, low effort"},
+          "top_right": {"header": "Major Projects", "body": "High impact, high effort"},
+          "bottom_left": {"header": "Fill-Ins", "body": "Low impact, low effort"},
+          "bottom_right": {"header": "Thankless Tasks", "body": "Low impact, high effort"}
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Product Roadmap"}
+      ],
+      "pattern": {
+        "name": "timeline-horizontal",
+        "values": [
+          {"label": "Q1 2026", "date": "Jan-Mar", "body": "Foundation & core APIs"},
+          {"label": "Q2 2026", "date": "Apr-Jun", "body": "Beta launch"},
+          {"label": "Q3 2026", "date": "Jul-Sep", "body": "GA release"},
+          {"label": "Q4 2026", "date": "Oct-Dec", "body": "Enterprise features"},
+          {"label": "Q1 2027", "date": "Jan-Mar", "body": "International expansion"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Service Tiers"}
+      ],
+      "pattern": {
+        "name": "card-grid",
+        "values": {
+          "columns": 3,
+          "rows": 2,
+          "cells": [
+            {"header": "Starter", "body": "For individuals and small teams getting started"},
+            {"header": "Professional", "body": "For growing teams that need more power"},
+            {"header": "Enterprise", "body": "For large organizations with custom needs"},
+            {"header": "API Access", "body": "Programmatic access to all platform features"},
+            {"header": "Analytics", "body": "Advanced reporting and business intelligence"},
+            {"header": "Support", "body": "24/7 dedicated support and SLA guarantees"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Our Values"}
+      ],
+      "pattern": {
+        "name": "icon-row",
+        "values": [
+          {"icon": "\u2b50", "caption": "Excellence"},
+          {"icon": "\ud83e\udd1d", "caption": "Collaboration"},
+          {"icon": "\ud83d\ude80", "caption": "Innovation"},
+          {"icon": "\u2764\ufe0f", "caption": "Customer Love"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Before vs After"}
+      ],
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "header_left": "Before",
+          "header_right": "After",
+          "rows": [
+            {"left": "Manual deployments", "right": "Automated CI/CD pipeline"},
+            {"left": "4-hour release cycles", "right": "15-minute deployments"},
+            {"left": "Monolithic architecture", "right": "Microservices with clear boundaries"},
+            {"left": "Reactive monitoring", "right": "Proactive observability"}
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "pattern_name": "kpi-3up",
+    "row_count": 1,
+    "cell_counts": [
+      3
+    ]
+  },
+  {
+    "pattern_name": "kpi-4up",
+    "row_count": 1,
+    "cell_counts": [
+      4
+    ]
+  },
+  {
+    "pattern_name": "bmc-canvas",
+    "row_count": 3,
+    "cell_counts": [
+      5,
+      2,
+      2
+    ]
+  },
+  {
+    "pattern_name": "matrix-2x2",
+    "row_count": 3,
+    "cell_counts": [
+      2,
+      3,
+      2
+    ]
+  },
+  {
+    "pattern_name": "timeline-horizontal",
+    "row_count": 1,
+    "cell_counts": [
+      5
+    ]
+  },
+  {
+    "pattern_name": "card-grid",
+    "row_count": 2,
+    "cell_counts": [
+      3,
+      3
+    ]
+  },
+  {
+    "pattern_name": "icon-row",
+    "row_count": 1,
+    "cell_counts": [
+      4
+    ]
+  },
+  {
+    "pattern_name": "comparison-2col",
+    "row_count": 5,
+    "cell_counts": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ]
+  }
+]
