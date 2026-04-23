@@ -49,11 +49,12 @@ type TimelineHorizontalValues = []TimelineStop
 
 // TimelineHorizontalOverrides contains pattern-level overrides for timeline-horizontal.
 type TimelineHorizontalOverrides struct {
-	Accent    string  `json:"accent,omitempty"`
-	LabelSize float64 `json:"label_size,omitempty"`
-	DateSize  float64 `json:"date_size,omitempty"`
-	BodySize  float64 `json:"body_size,omitempty"`
-	Connector string  `json:"connector,omitempty"` // "arrow" or "line" (default: "arrow")
+	Accent         string  `json:"accent,omitempty"`
+	SemanticAccent string  `json:"semantic_accent,omitempty"`
+	LabelSize      float64 `json:"label_size,omitempty"`
+	DateSize       float64 `json:"date_size,omitempty"`
+	BodySize       float64 `json:"body_size,omitempty"`
+	Connector      string  `json:"connector,omitempty"` // "arrow" or "line" (default: "arrow")
 }
 
 // TimelineHorizontalCellOverride is an alias for the shared CellOverride struct.
@@ -84,11 +85,12 @@ func (th *timelineHorizontal) Schema() *Schema {
 			"values": ArraySchema(stopSchema, 3, 7).WithDescription("3–7 timeline stops"),
 			"overrides": ObjectSchema(
 				map[string]*Schema{
-					"accent":     StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"label_size": NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
-					"date_size":  NumberSchema(6, 120).WithDescription("Font size for dates in points"),
-					"body_size":  NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-					"connector":  EnumSchema("arrow", "line").WithDescription("Connector style between stops (default: arrow)").WithDefault("arrow"),
+					"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+					"label_size":      NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
+					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points"),
+					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+					"connector":       EnumSchema("arrow", "line").WithDescription("Connector style between stops (default: arrow)").WithDefault("arrow"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -171,7 +173,7 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent)
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)
 	dateSize := ResolveSize(ovr.DateSize, 10.0)
 	bodySize := ResolveSize(ovr.BodySize, 10.0)

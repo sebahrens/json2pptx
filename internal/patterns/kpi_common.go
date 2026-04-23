@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -18,9 +20,10 @@ type KPICell struct {
 
 // KPIOverrides contains pattern-level overrides common to KPI patterns.
 type KPIOverrides struct {
-	Accent    string  `json:"accent,omitempty"`
-	BigSize   float64 `json:"big_size,omitempty"`
-	SmallSize float64 `json:"small_size,omitempty"`
+	Accent         string  `json:"accent,omitempty"`
+	SemanticAccent string  `json:"semantic_accent,omitempty"`
+	BigSize        float64 `json:"big_size,omitempty"`
+	SmallSize      float64 `json:"small_size,omitempty"`
 }
 
 // KPICellOverride is an alias for the shared CellOverride struct.
@@ -103,11 +106,11 @@ func applyEmphasis(para map[string]any, emphasis string) {
 }
 
 // resolveKPIAccent returns the accent color, defaulting to accent1.
-func resolveKPIAccent(ovr *KPIOverrides) string {
+func resolveKPIAccent(ovr *KPIOverrides, metadata *types.TemplateMetadata) string {
 	if ovr == nil {
 		return "accent1"
 	}
-	return ResolveAccent(ovr.Accent)
+	return ResolveAccent(ovr.Accent, ovr.SemanticAccent, metadata)
 }
 
 // resolveKPIBigSize returns the big-number font size, defaulting to 36pt.
@@ -197,9 +200,10 @@ func kpiCellSchema() *Schema {
 func kpiOverridesSchema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"accent":     StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-			"big_size":   NumberSchema(6, 120).WithDescription("Font size for big number in points"),
-			"small_size": NumberSchema(6, 120).WithDescription("Font size for small caption in points"),
+			"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"big_size":        NumberSchema(6, 120).WithDescription("Font size for big number in points"),
+			"small_size":      NumberSchema(6, 120).WithDescription("Font size for small caption in points"),
 		},
 		nil,
 	).WithAdditionalProperties(false)

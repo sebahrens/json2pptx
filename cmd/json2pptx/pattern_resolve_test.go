@@ -99,7 +99,7 @@ func TestConvertPresentationSlides_PatternAndShapeGridXOR(t *testing.T) {
 		ShapeGrid: &ShapeGridInput{},
 	}
 
-	_, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000)
+	_, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000, nil)
 	if err == nil {
 		t.Fatal("expected XOR error when both pattern and shape_grid set")
 	}
@@ -121,7 +121,7 @@ func TestConvertPresentationSlides_PatternExpansion(t *testing.T) {
 		},
 	}
 
-	specs, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000)
+	specs, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000, nil)
 	if err != nil {
 		t.Fatalf("convertPresentationSlides failed: %v", err)
 	}

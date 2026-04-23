@@ -132,3 +132,8 @@ go.work.sum
 # Python cache (from debug scripts)
 __pycache__/
 *.pyc
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

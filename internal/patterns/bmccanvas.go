@@ -67,9 +67,10 @@ type BMCCanvasValues struct {
 
 // BMCCanvasOverrides contains pattern-level overrides for bmc-canvas.
 type BMCCanvasOverrides struct {
-	Accent     string  `json:"accent,omitempty"`
-	HeaderSize float64 `json:"header_size,omitempty"`
-	BulletSize float64 `json:"bullet_size,omitempty"`
+	Accent         string  `json:"accent,omitempty"`
+	SemanticAccent string  `json:"semantic_accent,omitempty"`
+	HeaderSize     float64 `json:"header_size,omitempty"`
+	BulletSize     float64 `json:"bullet_size,omitempty"`
 }
 
 // BMCCanvasCellOverride is an alias for the shared CellOverride struct.
@@ -116,9 +117,10 @@ func (b *bmcCanvas) Schema() *Schema {
 			"values": valuesSchema,
 			"overrides": ObjectSchema(
 				map[string]*Schema{
-					"accent":      StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"header_size": NumberSchema(6, 120).WithDescription("Font size for cell headers in points"),
-					"bullet_size": NumberSchema(6, 120).WithDescription("Font size for bullet text in points"),
+					"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+					"header_size":     NumberSchema(6, 120).WithDescription("Font size for cell headers in points"),
+					"bullet_size":     NumberSchema(6, 120).WithDescription("Font size for bullet text in points"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -217,7 +219,7 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent)
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	headerSize := ResolveSize(ovr.HeaderSize, 11.0)
 	bulletSize := ResolveSize(ovr.BulletSize, 9.0)
 

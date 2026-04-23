@@ -211,7 +211,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent)
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 

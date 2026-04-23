@@ -71,9 +71,10 @@ type IconRowValues = []IconRowItem
 
 // IconRowOverrides contains pattern-level overrides for icon-row.
 type IconRowOverrides struct {
-	Accent      string  `json:"accent,omitempty"`
-	IconSize    float64 `json:"icon_size,omitempty"`
-	CaptionSize float64 `json:"caption_size,omitempty"`
+	Accent         string  `json:"accent,omitempty"`
+	SemanticAccent string  `json:"semantic_accent,omitempty"`
+	IconSize       float64 `json:"icon_size,omitempty"`
+	CaptionSize    float64 `json:"caption_size,omitempty"`
 }
 
 // IconRowCellOverride is an alias for the shared CellOverride struct.
@@ -106,9 +107,10 @@ func (ir *iconRow) Schema() *Schema {
 			"values": ArraySchema(itemSchema, 3, 5).WithDescription("3–5 icon+caption pairs"),
 			"overrides": ObjectSchema(
 				map[string]*Schema{
-					"accent":       StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"icon_size":    NumberSchema(6, 120).WithDescription("Font size for icon in points"),
-					"caption_size": NumberSchema(6, 120).WithDescription("Font size for caption in points"),
+					"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+					"icon_size":       NumberSchema(6, 120).WithDescription("Font size for icon in points"),
+					"caption_size":    NumberSchema(6, 120).WithDescription("Font size for caption in points"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -188,7 +190,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent)
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	iconSize := ResolveSize(ovr.IconSize, 28.0)
 	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
 

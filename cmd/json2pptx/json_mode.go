@@ -215,16 +215,16 @@ func loadRunConfig(configPath, templatesDir, outputDir string, chartPNG bool) (c
 
 // analyzeTemplateLayouts opens a template, parses layouts, synthesizes missing layouts,
 // normalizes placeholder names, and returns the metadata needed for slide conversion.
-func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64) {
+func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64, *types.TemplateMetadata) {
 	reader, err := template.OpenTemplate(templatePath)
 	if err != nil {
-		return nil, nil, 0, 0
+		return nil, nil, 0, 0, nil
 	}
 	defer func() { _ = reader.Close() }()
 
 	layouts, err := template.ParseLayouts(reader)
 	if err != nil {
-		return nil, nil, 0, 0
+		return nil, nil, 0, 0, nil
 	}
 
 	theme := template.ParseTheme(reader)
@@ -237,6 +237,9 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 		Theme:        theme,
 	}
 	template.SynthesizeIfNeeded(reader, analysis)
+
+	// Parse optional template metadata (for semantic accents, layout hints, etc.)
+	metadata, _ := template.ParseMetadata(reader)
 
 	// Normalize placeholder names to canonical form (body, body_2, body_3, etc.)
 	normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
@@ -256,7 +259,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
 	}
-	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight
+	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight, metadata
 }
 
 // runJSONMode processes JSON input and generates PPTX.
@@ -288,7 +291,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	defer templateCleanup()
 
 	// Analyze template for layout metadata, synthetic files, and dimensions
-	templateLayouts, syntheticFiles, slideWidth, slideHeight := analyzeTemplateLayouts(templatePath)
+	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata := analyzeTemplateLayouts(templatePath)
 
 	// Resolve canonical layout names (e.g. "title", "content", "closing") to
 	// concrete layout IDs using tag-based matching against the target template.
@@ -325,7 +328,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 
 	// Convert typed slides to generator specs (uses templateLayouts for auto-layout selection)
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight)
+	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
 	}
@@ -438,7 +441,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 // This is the primary conversion path that supports both typed fields (text_value,
 // bullets_value, etc.) and legacy json.RawMessage Value field.
 // When layouts is non-empty and a slide omits layout_id, auto-layout selection is used.
-func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
+func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
 	specs := make([]generator.SlideSpec, 0, len(slides))
 
 	// Track layout usage for variety scoring during auto-selection
@@ -567,6 +570,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 		// Expand pattern into shape_grid before downstream processing
 		if slide.Pattern != nil {
 			ctx := patterns.ExpandContext{
+				Metadata:    metadata,
 				SlideWidth:  slideWidth,
 				SlideHeight: slideHeight,
 			}

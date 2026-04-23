@@ -91,7 +91,7 @@ func (k *kpi3up) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		}
 	}
 
-	accent := resolveKPIAccent(ovr)
+	accent := resolveKPIAccent(ovr, ctx.Metadata)
 	bigSize := resolveKPIBigSize(ovr)
 	smallSize := resolveKPISmallSize(ovr)
 

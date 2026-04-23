@@ -206,6 +206,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	var templateLayouts []types.LayoutMetadata
 	var syntheticFiles map[string][]byte
 	var slideWidth, slideHeight int64
+	var templateMetadata *types.TemplateMetadata
 	if reader, err := template.OpenTemplate(templatePath); err == nil {
 		defer func() { _ = reader.Close() }()
 		if layouts, err := template.ParseLayouts(reader); err == nil {
@@ -223,6 +224,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 			if analysis.Synthesis != nil {
 				syntheticFiles = analysis.Synthesis.SyntheticFiles
 			}
+			templateMetadata, _ = template.ParseMetadata(reader)
 		}
 	}
 
@@ -234,7 +236,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Convert slides
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight)
+	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}

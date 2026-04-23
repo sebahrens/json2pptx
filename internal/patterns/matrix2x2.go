@@ -171,10 +171,11 @@ func (m *matrix2x2) Schema() *Schema {
 			"values": valuesSchema,
 			"overrides": ObjectSchema(
 				map[string]*Schema{
-					"accent":      StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"header_size": NumberSchema(6, 120).WithDescription("Font size for quadrant headers in points"),
-					"body_size":   NumberSchema(6, 120).WithDescription("Font size for quadrant body text in points"),
-					"label_size":  NumberSchema(6, 120).WithDescription("Font size for axis labels in points"),
+					"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+					"header_size":     NumberSchema(6, 120).WithDescription("Font size for quadrant headers in points"),
+					"body_size":       NumberSchema(6, 120).WithDescription("Font size for quadrant body text in points"),
+					"label_size":      NumberSchema(6, 120).WithDescription("Font size for axis labels in points"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -268,7 +269,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent)
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)

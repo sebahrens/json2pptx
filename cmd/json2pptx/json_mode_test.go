@@ -1198,7 +1198,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				},
 			},
 		}
-		specs, err := convertPresentationSlides(slides, layouts, 0, 0)
+		specs, err := convertPresentationSlides(slides, layouts, 0, 0, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1219,7 +1219,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				},
 			},
 		}
-		specs, err := convertPresentationSlides(slides, layouts, 0, 0)
+		specs, err := convertPresentationSlides(slides, layouts, 0, 0, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1232,7 +1232,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 		slides := []SlideInput{
 			{Content: []ContentInput{{Type: "text", TextValue: strPtr("Hi")}}},
 		}
-		_, err := convertPresentationSlides(slides, nil, 0, 0)
+		_, err := convertPresentationSlides(slides, nil, 0, 0, nil)
 		if err == nil {
 			t.Error("expected error when layout_id missing and no layouts, got nil")
 		}
@@ -1262,7 +1262,7 @@ func TestSectionSlideContentType(t *testing.T) {
 		},
 	}
 
-	specs, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0)
+	specs, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1308,7 +1308,7 @@ func TestSectionSlideSharedPlaceholderMerge(t *testing.T) {
 		},
 	}
 
-	specs, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0)
+	specs, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -43,6 +43,11 @@ type TemplateMetadata struct {
 
 	// LayoutHints provides additional hints for specific layouts.
 	LayoutHints map[string]LayoutHint `json:"layout_hints,omitempty"`
+
+	// SemanticAccents maps semantic roles (positive, negative, neutral) to
+	// theme accent names (e.g. "accent3"). Patterns that set semantic_accent
+	// resolve through this map; templates without it fall back to accent1.
+	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
 }
 
 // LayoutHint provides additional metadata hints for a specific layout.

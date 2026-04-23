@@ -56,8 +56,9 @@ type Pattern interface {
 // ExpandContext carries template/slide context needed by Pattern.Expand.
 type ExpandContext struct {
 	Theme        types.ThemeInfo
-	SlideWidth   int64 // EMU
-	SlideHeight  int64 // EMU
+	Metadata     *types.TemplateMetadata // optional; nil when template has no metadata
+	SlideWidth   int64                   // EMU
+	SlideHeight  int64                   // EMU
 	LayoutBounds LayoutBounds
 }
 
