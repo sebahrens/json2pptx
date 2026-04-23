@@ -1,0 +1,46 @@
+{
+  "output_filename": "table-style-demo.pptx",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Table Style Demo"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Using @template-default for template-native styling"
+        }
+      ]
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Template-Default Table Style"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "table",
+          "table_value": {
+            "headers": ["Region", "Revenue", "Growth"],
+            "rows": [
+              ["North America", "$12.4M", "+8%"],
+              ["Europe", "$8.7M", "+5%"],
+              ["Asia-Pacific", "$6.2M", "+14%"]
+            ],
+            "style": {
+              "use_table_style": true,
+              "style_id": "@template-default"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

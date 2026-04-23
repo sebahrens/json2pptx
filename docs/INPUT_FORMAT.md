@@ -336,6 +336,39 @@ Grouped bullets with section headers, for structured content like roadmaps:
 | `header_background`  | `accent1`–`accent6`, `none`, or hex color       | `accent1`  |
 | `borders`            | `all`, `horizontal`, `outer`, `none`            | `all`      |
 | `striped`            | `true`, `false`                                 | `false`    |
+| `style_id`           | `@template-default`, raw OOXML GUID, or omit    | engine default |
+| `use_table_style`    | `true`, `false`                                 | `false`    |
+
+#### Table style resolution (`style_id`)
+
+The `style_id` field controls which OOXML table style is written into the
+generated slide. It accepts three kinds of values:
+
+| Value                  | Behavior |
+|------------------------|----------|
+| *(omitted or empty)*   | Uses the engine default style (Medium Style 2 – Accent 1). |
+| `"@template-default"`  | Resolves to the default table style declared in the template's `tableStyles.xml`. If the template declares no default, falls back to the engine default. This is the recommended value when you want tables to match the template's own visual identity without hard-coding a GUID. |
+| `"{GUID}"`             | A raw OOXML table style GUID (e.g. `"{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"`). Used as-is. |
+
+#### Delegating appearance to the table style (`use_table_style`)
+
+When `use_table_style` is `true`, the engine skips its own border and fill
+generation and lets the OOXML table style control all cell appearance — borders,
+header formatting, and banding. Combine with `style_id` to select which style
+takes effect:
+
+```json
+{
+  "style": {
+    "use_table_style": true,
+    "style_id": "@template-default"
+  }
+}
+```
+
+When `use_table_style` is `false` (the default), the engine applies
+`header_background`, `borders`, and `striped` as explicit overrides on top of
+the table style.
 
 ### Chart
 
