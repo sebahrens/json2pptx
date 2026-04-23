@@ -14,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // skillInfo is the top-level JSON output for the skill-info subcommand.
@@ -62,10 +63,21 @@ type skillTemplateInfo struct {
 	AspectRatio  string                   `json:"aspect_ratio"`
 	LayoutCount  int                      `json:"layout_count"`
 	ThemeColors  map[string]string        `json:"theme_colors,omitempty"`
+	ColorRoles   *skillColorRoles         `json:"color_roles,omitempty"`
 	TitleFont    string                   `json:"title_font,omitempty"`
 	BodyFont     string                   `json:"body_font,omitempty"`
 	LayoutNames  []string                 `json:"layout_names,omitempty"`
 	Layouts      []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
+}
+
+// skillColorRoles maps design intent to scheme color names for a template.
+// Agents use this to pick safe color pairings without manual WCAG checks.
+type skillColorRoles struct {
+	PrimaryFill   string   `json:"primary_fill"`        // dark accent for headers (white text safe)
+	SecondaryFill string   `json:"secondary_fill"`      // second accent for headers (white text safe)
+	BodyFill      string   `json:"body_fill"`           // light fill for body/card cells
+	BodyText      string   `json:"body_text"`           // dark text on light backgrounds
+	WhiteTextSafe []string `json:"white_text_safe"`     // all accents passing WCAG AA (≥3.0) against white
 }
 
 // skillLayoutInfo describes a single layout (only included in full mode).
@@ -238,6 +250,7 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	}
 	info.TitleFont = analysis.Theme.TitleFont
 	info.BodyFont = analysis.Theme.BodyFont
+	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 
 	layoutNames := make([]string, len(analysis.Layouts))
 	for i, l := range analysis.Layouts {
@@ -285,6 +298,59 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	}
 
 	return info, nil
+}
+
+// buildColorRoles derives color_roles from a template's theme colors.
+// It identifies which accents pass WCAG AA large-text contrast (≥3.0) against
+// white, then picks the first two as primary/secondary fill.
+func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
+	white := svggen.MustParseColor("#FFFFFF")
+
+	// accentOrder is the order we check accents for white-text safety.
+	accentOrder := []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"}
+
+	var safe []string
+	for _, name := range accentOrder {
+		hex := findColorHex(colors, name)
+		if hex == "" {
+			continue
+		}
+		c, err := svggen.ParseColor(hex)
+		if err != nil {
+			continue
+		}
+		if c.ContrastWith(white) >= svggen.WCAGAALarge {
+			safe = append(safe, name)
+		}
+	}
+
+	roles := &skillColorRoles{
+		PrimaryFill:   "accent1",
+		SecondaryFill: "accent2",
+		BodyFill:      "lt2",
+		BodyText:      "dk1",
+		WhiteTextSafe: safe,
+	}
+
+	// Override primary/secondary with the first two white-text-safe accents.
+	if len(safe) >= 1 {
+		roles.PrimaryFill = safe[0]
+	}
+	if len(safe) >= 2 {
+		roles.SecondaryFill = safe[1]
+	}
+
+	return roles
+}
+
+// findColorHex returns the hex value for a named theme color, or "".
+func findColorHex(colors []types.ThemeColor, name string) string {
+	for _, c := range colors {
+		if c.Name == name {
+			return c.RGB
+		}
+	}
+	return ""
 }
 
 // buildSupportedTypes returns the hardcoded lists of supported types.

@@ -140,22 +140,9 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 
 ---
 
-## Safe Color Pairings
+## Color Roles
 
-Accent values are template-specific. Before cycling accents across a slide, read the template's theme via `json2pptx skill-info` and prefer these patterns:
-
-| Intent | Fill | Text | Notes |
-|---|---|---|---|
-| Primary header / emphasis | `accent1` | `#FFFFFF` | On all 4 bundled templates, accent1 is dark enough to pass |
-| Secondary header | `accent2` | `#FFFFFF` | Usually safe, but verify per template |
-| Body / supporting cell | `lt2` | `dk1` | Always safe; the go-to for card bodies |
-| Subtle background | `{"color": "accent1", "lumMod": 20000, "lumOff": 80000}` | `dk1` | 20% accent tint — light wash, dark text |
-| Light section header | `{"color": "lt2", "alpha": 30}` | `dk1` | Barely-there divider |
-| Table header | `accent1` (via `header_background`) | (auto) | Only accent1 is safe on all bundled templates |
-| Highlighted quadrant | `accent1` bold | `#FFFFFF` | Pattern 3 recommended |
-| De-emphasized quadrant | `lt2` | `dk1` | Pattern 3 non-recommended |
-
-**Never-do pairings (on unknown templates):** white text on `accent3`, `accent4`, `accent5`, `accent6` without verifying their hex via `skill-info` and checking WCAG ≥ 3.0 against white.
+Each template exposes `color_roles` in `json2pptx skill-info` output — use `primary_fill` / `secondary_fill` for header cells with white text, `body_fill` + `body_text` for card bodies, and check `white_text_safe` before using any accent with `#FFFFFF` text. For tints, use luminance modifiers: `{"color": "accent1", "lumMod": 20000, "lumOff": 80000}` (20% tint with `dk1` text).
 
 ---
 
@@ -180,28 +167,6 @@ Run `json2pptx tables guide` for font size and row-count guidance when building 
 ## Icon Names
 
 Run `json2pptx icons list` for all available names (or `--json` for JSON output). Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell.
-
----
-
-## Accent Color Strategy
-
-Within a single slide, use accent colors intentionally:
-
-- **Uniform:** All header cells use `accent1` (clean, professional; always safe for white text)
-- **Cycling:** Headers cycle `accent1`, `accent2` only — or verify accent3-6 against white first
-- **Semantic:** Green accent for positive, red/coral for negative, neutral for baseline
-
-Across the deck, keep accent usage consistent. If slide 3 uses accent1 for "Infrastructure",
-slide 8 should use accent1 for "Infrastructure" too.
-
-Body cells almost always use `"fill": "lt2"` with `"color": "dk1"` text.
-Header cells use `accent1` (or verified dark accent) with `"color": "#FFFFFF"` text.
-
-For tints/shades, prefer luminance modifiers over pre-calculated hex:
-```json
-{"fill": {"color": "accent1", "lumMod": 20000, "lumOff": 80000}}   // 20% tint
-{"fill": {"color": "accent1", "lumMod": 75000}}                    // 75% darker
-```
 
 ---
 

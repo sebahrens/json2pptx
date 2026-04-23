@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestAnalyzeTemplateForSkillInfo_FiltersOtherPlaceholders(t *testing.T) {
@@ -247,5 +248,123 @@ func TestBuildPatternEntries_ListMode(t *testing.T) {
 	// Should still produce compact entries (buildPatternEntries doesn't enforce list exclusion)
 	if len(compact) < 8 {
 		t.Fatalf("expected at least 8 compact patterns, got %d", len(compact))
+	}
+}
+
+func TestBuildColorRoles_WhiteTextSafe(t *testing.T) {
+	colors := []types.ThemeColor{
+		{Name: "accent1", RGB: "#2E5090"}, // dark blue — passes
+		{Name: "accent2", RGB: "#D4463A"}, // red — passes
+		{Name: "accent3", RGB: "#E8A838"}, // yellow-orange — fails (too light)
+		{Name: "accent4", RGB: "#43A047"}, // green — passes
+		{Name: "accent5", RGB: "#5C6BC0"}, // indigo — passes
+		{Name: "accent6", RGB: "#26A69A"}, // teal — borderline
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "lt2", RGB: "#E8ECF1"},
+	}
+
+	roles := buildColorRoles(colors)
+
+	if roles.PrimaryFill != "accent1" {
+		t.Errorf("PrimaryFill = %q, want accent1", roles.PrimaryFill)
+	}
+	if roles.SecondaryFill != "accent2" {
+		t.Errorf("SecondaryFill = %q, want accent2", roles.SecondaryFill)
+	}
+	if roles.BodyFill != "lt2" {
+		t.Errorf("BodyFill = %q, want lt2", roles.BodyFill)
+	}
+	if roles.BodyText != "dk1" {
+		t.Errorf("BodyText = %q, want dk1", roles.BodyText)
+	}
+
+	// accent3 (#E8A838) should NOT be in white_text_safe (low contrast against white)
+	for _, s := range roles.WhiteTextSafe {
+		if s == "accent3" {
+			t.Error("accent3 (#E8A838) should not be white-text-safe")
+		}
+	}
+
+	// accent1 must be in white_text_safe
+	found := false
+	for _, s := range roles.WhiteTextSafe {
+		if s == "accent1" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("accent1 should be in white_text_safe")
+	}
+}
+
+func TestBuildColorRoles_NoSafeAccents(t *testing.T) {
+	// All light accents — none pass WCAG against white
+	colors := []types.ThemeColor{
+		{Name: "accent1", RGB: "#FFEB3B"}, // bright yellow
+		{Name: "accent2", RGB: "#FFF176"}, // light yellow
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt2", RGB: "#F5F5F5"},
+	}
+
+	roles := buildColorRoles(colors)
+
+	// Falls back to accent1/accent2 defaults even though they aren't safe
+	if roles.PrimaryFill != "accent1" {
+		t.Errorf("PrimaryFill = %q, want accent1 (fallback)", roles.PrimaryFill)
+	}
+	if roles.SecondaryFill != "accent2" {
+		t.Errorf("SecondaryFill = %q, want accent2 (fallback)", roles.SecondaryFill)
+	}
+	if len(roles.WhiteTextSafe) != 0 {
+		t.Errorf("WhiteTextSafe = %v, want empty", roles.WhiteTextSafe)
+	}
+}
+
+func TestBuildColorRoles_SkipsAccent2WhenUnsafe(t *testing.T) {
+	// accent2 is too light, should pick accent3 as secondary
+	colors := []types.ThemeColor{
+		{Name: "accent1", RGB: "#1A237E"}, // very dark blue — passes
+		{Name: "accent2", RGB: "#FFEB3B"}, // bright yellow — fails
+		{Name: "accent3", RGB: "#B71C1C"}, // dark red — passes
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt2", RGB: "#F5F5F5"},
+	}
+
+	roles := buildColorRoles(colors)
+
+	if roles.PrimaryFill != "accent1" {
+		t.Errorf("PrimaryFill = %q, want accent1", roles.PrimaryFill)
+	}
+	if roles.SecondaryFill != "accent3" {
+		t.Errorf("SecondaryFill = %q, want accent3 (accent2 is unsafe)", roles.SecondaryFill)
+	}
+}
+
+func TestAnalyzeTemplateForSkillInfo_ColorRolesInCompactMode(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	if info.ColorRoles == nil {
+		t.Fatal("ColorRoles should be populated in compact mode")
+	}
+	if len(info.ColorRoles.WhiteTextSafe) == 0 {
+		t.Error("expected at least one white-text-safe accent for midnight-blue")
+	}
+}
+
+func TestAnalyzeTemplateForSkillInfo_NoColorRolesInListMode(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	if info.ColorRoles != nil {
+		t.Error("ColorRoles should be nil in list mode")
 	}
 }
