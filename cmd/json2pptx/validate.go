@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/sebahrens/json2pptx/internal/generator"
 )
 
 // runValidate implements the "validate" subcommand. It validates JSON slide
@@ -228,6 +230,21 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 			if len(gridErrors) > 0 {
 				result.Valid = false
 				result.Errors = append(result.Errors, gridErrors...)
+			}
+		}
+
+		// Measure table cell overflow via textfit.
+		for _, item := range slide.Content {
+			if item.Type != "table" {
+				continue
+			}
+			table := resolveTableFromContent(&item)
+			if table == nil {
+				continue
+			}
+			spec := table.ToTableSpec()
+			for _, w := range generator.WarnTableCellOverflow(spec, i) {
+				result.Warnings = append(result.Warnings, w.String())
 			}
 		}
 	}
