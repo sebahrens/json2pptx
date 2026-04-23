@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -87,6 +90,10 @@ func runMCP() error {
 	s.AddTool(mcpGenerateTool(), mc.handleGenerate)
 	s.AddTool(mcpListTemplatesTool(), mc.handleListTemplates)
 	s.AddTool(mcpValidateTool(), mc.handleValidate)
+	s.AddTool(mcpListPatternsTool(), handleListPatterns)
+	s.AddTool(mcpShowPatternTool(), handleShowPattern)
+	s.AddTool(mcpValidatePatternTool(), handleValidatePattern)
+	s.AddTool(mcpExpandPatternTool(), mc.handleExpandPattern)
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
@@ -412,6 +419,304 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.
 func marshalValidateResult(output dryRunOutput) (*mcp.CallToolResult, error) {
 	responseJSON, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+// --- Pattern tool definitions ---
+
+func mcpListPatternsTool() mcp.Tool {
+	return mcp.NewTool("list_patterns",
+		mcp.WithDescription("List all available named patterns. Patterns are high-level primitives that expand to shape_grid definitions, replacing ~600 tokens of boilerplate with ~100 tokens."),
+	)
+}
+
+func mcpShowPatternTool() mcp.Tool {
+	return mcp.NewTool("show_pattern",
+		mcp.WithDescription("Show full details for a named pattern, including its authoritative JSON Schema for values, overrides, and cell_overrides."),
+		mcp.WithString("name",
+			mcp.Required(),
+			mcp.Description("Pattern name (e.g., kpi-3up, bmc-canvas, card-grid)."),
+		),
+	)
+}
+
+func mcpValidatePatternTool() mcp.Tool {
+	return mcp.NewTool("validate_pattern",
+		mcp.WithDescription("Validate pattern inputs without expanding. Returns structured errors on failure."),
+		mcp.WithString("name",
+			mcp.Required(),
+			mcp.Description("Pattern name to validate against."),
+		),
+		mcp.WithString("values",
+			mcp.Required(),
+			mcp.Description("JSON string of the pattern's values (structure varies by pattern; use show_pattern to see the schema)."),
+		),
+		mcp.WithString("overrides",
+			mcp.Description("JSON string of pattern-level overrides (optional)."),
+		),
+		mcp.WithString("cell_overrides",
+			mcp.Description("JSON string of per-cell overrides keyed by cell index (optional). Example: {\"0\":{\"fill\":\"#FF0000\"}}"),
+		),
+	)
+}
+
+func mcpExpandPatternTool() mcp.Tool {
+	return mcp.NewTool("expand_pattern",
+		mcp.WithDescription("Expand a named pattern into its full shape_grid definition. Useful for debugging and previewing what a pattern call produces."),
+		mcp.WithString("name",
+			mcp.Required(),
+			mcp.Description("Pattern name to expand."),
+		),
+		mcp.WithString("values",
+			mcp.Required(),
+			mcp.Description("JSON string of the pattern's values."),
+		),
+		mcp.WithString("overrides",
+			mcp.Description("JSON string of pattern-level overrides (optional)."),
+		),
+		mcp.WithString("cell_overrides",
+			mcp.Description("JSON string of per-cell overrides keyed by cell index (optional)."),
+		),
+		mcp.WithString("theme_template",
+			mcp.Description("Template name to use for theme context during expansion. If omitted, a minimal synthesized theme is used."),
+		),
+	)
+}
+
+// --- Pattern tool handlers ---
+
+// patternValidationError is a D10 structured error for pattern validation.
+type patternValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	reg := patterns.Default()
+	all := reg.List()
+
+	entries := make([]skillPatternCompact, len(all))
+	for i, p := range all {
+		cells := ""
+		if cd, ok := p.(patterns.CellDescriber); ok {
+			cells = cd.CellsHint()
+		}
+		entries[i] = skillPatternCompact{
+			Name:    p.Name(),
+			Cells:   cells,
+			UseWhen: p.UseWhen(),
+		}
+	}
+
+	responseJSON, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	name, err := request.RequireString("name")
+	if err != nil {
+		return mcp.NewToolResultError("name is required"), nil
+	}
+
+	reg := patterns.Default()
+	pat, ok := reg.Get(name)
+	if !ok {
+		available := reg.List()
+		names := make([]string, len(available))
+		for i, p := range available {
+			names[i] = p.Name()
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("unknown pattern %q; available: %v", name, names)), nil
+	}
+
+	schemaJSON, _ := json.Marshal(pat.Schema())
+
+	result := skillPatternFull{
+		Name:        pat.Name(),
+		Description: pat.Description(),
+		Cells:       "",
+		UseWhen:     pat.UseWhen(),
+		Version:     pat.Version(),
+		Schema:      schemaJSON,
+	}
+	if cd, ok := pat.(patterns.CellDescriber); ok {
+		result.Cells = cd.CellsHint()
+	}
+
+	responseJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+func handleValidatePattern(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	name, err := request.RequireString("name")
+	if err != nil {
+		return mcp.NewToolResultError("name is required"), nil
+	}
+	valuesStr, err := request.RequireString("values")
+	if err != nil {
+		return mcp.NewToolResultError("values is required"), nil
+	}
+
+	reg := patterns.Default()
+	pat, ok := reg.Get(name)
+	if !ok {
+		return mcp.NewToolResultError(fmt.Sprintf("unknown pattern %q", name)), nil
+	}
+
+	// Unmarshal values
+	values := pat.NewValues()
+	if err := json.Unmarshal([]byte(valuesStr), values); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid values JSON: %v", err)), nil
+	}
+
+	// Unmarshal overrides
+	var overrides any
+	if overridesStr, err := request.RequireString("overrides"); err == nil && overridesStr != "" {
+		overrides = pat.NewOverrides()
+		if overrides != nil {
+			if err := json.Unmarshal([]byte(overridesStr), overrides); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid overrides JSON: %v", err)), nil
+			}
+		}
+	}
+
+	// Unmarshal cell_overrides
+	var cellOverrides map[int]any
+	if coStr, err := request.RequireString("cell_overrides"); err == nil && coStr != "" {
+		var rawCO map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(coStr), &rawCO); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid cell_overrides JSON: %v", err)), nil
+		}
+		cellOverrides = make(map[int]any, len(rawCO))
+		for key, raw := range rawCO {
+			idx, err := strconv.Atoi(key)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("cell_overrides key %q is not an integer", key)), nil
+			}
+			co := pat.NewCellOverride()
+			if co == nil {
+				return mcp.NewToolResultError(fmt.Sprintf("pattern %q does not support cell_overrides", name)), nil
+			}
+			if err := json.Unmarshal(raw, co); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid cell_overrides[%d]: %v", idx, err)), nil
+			}
+			cellOverrides[idx] = co
+		}
+	}
+
+	// Validate
+	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
+		// Return D10 structured errors
+		errors := []patternValidationError{{
+			Field:   "values",
+			Message: err.Error(),
+		}}
+		result := struct {
+			OK     bool                     `json:"ok"`
+			Errors []patternValidationError `json:"errors"`
+		}{OK: false, Errors: errors}
+
+		responseJSON, _ := json.MarshalIndent(result, "", "  ")
+		return mcp.NewToolResultText(string(responseJSON)), nil
+	}
+
+	result := struct {
+		OK bool `json:"ok"`
+	}{OK: true}
+	responseJSON, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	name, err := request.RequireString("name")
+	if err != nil {
+		return mcp.NewToolResultError("name is required"), nil
+	}
+	valuesStr, err := request.RequireString("values")
+	if err != nil {
+		return mcp.NewToolResultError("values is required"), nil
+	}
+
+	reg := patterns.Default()
+	pat, ok := reg.Get(name)
+	if !ok {
+		return mcp.NewToolResultError(fmt.Sprintf("unknown pattern %q", name)), nil
+	}
+
+	// Build PatternInput for reuse of existing expandPattern logic
+	pi := &PatternInput{
+		Name:   name,
+		Values: json.RawMessage(valuesStr),
+	}
+	if overridesStr, err := request.RequireString("overrides"); err == nil && overridesStr != "" {
+		pi.Overrides = json.RawMessage(overridesStr)
+	}
+	if coStr, err := request.RequireString("cell_overrides"); err == nil && coStr != "" {
+		var rawCO map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(coStr), &rawCO); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("invalid cell_overrides JSON: %v", err)), nil
+		}
+		pi.CellOverrides = rawCO
+	}
+
+	// Build ExpandContext — use template theme if provided, else synthesized minimal
+	expandCtx := patterns.ExpandContext{
+		SlideWidth:  9144000, // 10 inches in EMU (standard 16:9)
+		SlideHeight: 5143500, // 7.5 inches in EMU (standard 16:9 adjusted)
+		LayoutBounds: patterns.LayoutBounds{
+			X: 457200, Y: 457200, // 0.5 inch margins
+			Width: 8229600, Height: 4229100,
+		},
+	}
+
+	if templateName, err := request.RequireString("theme_template"); err == nil && templateName != "" {
+		templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("template %q not found", templateName)), nil
+		}
+		defer templateCleanup()
+
+		if reader, err := template.OpenTemplate(templatePath); err == nil {
+			defer func() { _ = reader.Close() }()
+			theme := template.ParseTheme(reader)
+			expandCtx.Theme = theme
+			w, h := template.ParseSlideDimensions(reader)
+			if w > 0 {
+				expandCtx.SlideWidth = w
+			}
+			if h > 0 {
+				expandCtx.SlideHeight = h
+			}
+		}
+	}
+
+	// Use expandPattern helper (which handles unmarshal, validate, expand)
+	grid, _, err := expandPattern(pi, expandCtx, reg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Also provide the pattern version for traceability
+	result := struct {
+		Pattern   string                   `json:"pattern"`
+		Version   int                      `json:"version"`
+		ShapeGrid *jsonschema.ShapeGridInput `json:"shape_grid"`
+	}{
+		Pattern:   pat.Name(),
+		Version:   pat.Version(),
+		ShapeGrid: grid,
+	}
+
+	responseJSON, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
