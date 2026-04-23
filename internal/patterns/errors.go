@@ -16,6 +16,12 @@ const (
 	ErrCodeMaxItems      = "max_items"
 	ErrCodeEmptyValue        = "empty_value"
 	ErrCodeHexFillNonBrand  = "hex_fill_non_brand"
+
+	// Fit-report error codes.
+	ErrCodeFitOverflow       = "fit_overflow"
+	ErrCodeDensityExceeded   = "density_exceeded"
+	ErrCodeStackedTables     = "stacked_tables"
+	ErrCodeDividerTooThin    = "divider_too_thin"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -32,6 +38,11 @@ var (
 	ErrMaxItems      = errors.New("too many items")
 	ErrEmptyValue        = errors.New("empty value")
 	ErrHexFillNonBrand  = errors.New("hex fill color is not in brand allowlist")
+
+	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
+	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
+	ErrStackedTables   = errors.New("stacked tables with insufficient gap")
+	ErrDividerTooThin  = errors.New("divider shape too thin")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -45,17 +56,35 @@ var codeSentinel = map[string]error{
 	ErrCodeMaxItems:      ErrMaxItems,
 	ErrCodeEmptyValue:        ErrEmptyValue,
 	ErrCodeHexFillNonBrand:  ErrHexFillNonBrand,
+	ErrCodeFitOverflow:       ErrFitOverflow,
+	ErrCodeDensityExceeded:   ErrDensityExceeded,
+	ErrCodeStackedTables:     ErrStackedTables,
+	ErrCodeDividerTooThin:    ErrDividerTooThin,
+}
+
+// FixSuggestion is a structured fix suggestion with a machine-readable kind
+// and optional parameters. The kind identifies the category of remediation
+// (e.g. "split_at_row", "shrink_text"), and params carry the specifics.
+type FixSuggestion struct {
+	Kind   string         `json:"kind"`             // e.g. "split_at_row", "shrink_text", "provide_value"
+	Params map[string]any `json:"params,omitempty"`  // kind-specific parameters
+}
+
+// TextFix creates a FixSuggestion with kind "text" wrapping a free-form message.
+// Used for existing pattern validation errors that predate structured fix kinds.
+func TextFix(msg string) *FixSuggestion {
+	return &FixSuggestion{Kind: "text", Params: map[string]any{"message": msg}}
 }
 
 // ValidationError is a structured validation error with a JSON path, error
 // code, human-readable message, and optional fix suggestion. It implements the
 // error interface so it can be used with errors.Join alongside plain errors.
 type ValidationError struct {
-	Pattern string `json:"pattern"`       // e.g. "card-grid"
-	Path    string `json:"path"`          // JSON path, e.g. "cells[2].header"
-	Code    string `json:"code"`          // machine-readable code, e.g. "required"
-	Message string `json:"message"`       // human-readable, e.g. "card-grid: cells[2].header is required"
-	Fix     string `json:"fix,omitempty"` // optional fix suggestion
+	Pattern string         `json:"pattern"`       // e.g. "card-grid"
+	Path    string         `json:"path"`          // JSON path, e.g. "cells[2].header"
+	Code    string         `json:"code"`          // machine-readable code, e.g. "required"
+	Message string         `json:"message"`       // human-readable, e.g. "card-grid: cells[2].header is required"
+	Fix     *FixSuggestion `json:"fix,omitempty"` // optional structured fix suggestion
 }
 
 func (e *ValidationError) Error() string {
@@ -77,7 +106,7 @@ func errRequired(pattern, path string) *ValidationError {
 		Path:    path,
 		Code:    ErrCodeRequired,
 		Message: fmt.Sprintf("%s: %s is required", pattern, path),
-		Fix:     fmt.Sprintf("provide a non-empty value for %s", path),
+		Fix:     TextFix(fmt.Sprintf("provide a non-empty value for %s", path)),
 	}
 }
 
@@ -88,7 +117,7 @@ func errMaxLength(pattern, path string, maxLen, actualLen int) *ValidationError 
 		Path:    path,
 		Code:    ErrCodeMaxLength,
 		Message: fmt.Sprintf("%s: %s exceeds maxLength %d (%d chars)", pattern, path, maxLen, actualLen),
-		Fix:     fmt.Sprintf("shorten %s to at most %d characters", path, maxLen),
+		Fix:     TextFix(fmt.Sprintf("shorten %s to at most %d characters", path, maxLen)),
 	}
 }
 
@@ -99,7 +128,7 @@ func errOutOfRange(pattern, path string, min, max, actual int) *ValidationError 
 		Path:    path,
 		Code:    ErrCodeOutOfRange,
 		Message: fmt.Sprintf("%s: %s must be %d–%d, got %d", pattern, path, min, max, actual),
-		Fix:     fmt.Sprintf("set %s to a value between %d and %d", path, min, max),
+		Fix:     TextFix(fmt.Sprintf("set %s to a value between %d and %d", path, min, max)),
 	}
 }
 
@@ -110,7 +139,7 @@ func errUnknownKey(pattern, path, key, allowedList string) *ValidationError {
 		Path:    path,
 		Code:    ErrCodeUnknownKey,
 		Message: fmt.Sprintf("%s: %s contains unknown key %q; allowed keys per D15: %s", pattern, path, key, allowedList),
-		Fix:     fmt.Sprintf("remove %q from %s or use one of: %s", key, path, allowedList),
+		Fix:     TextFix(fmt.Sprintf("remove %q from %s or use one of: %s", key, path, allowedList)),
 	}
 }
 
@@ -121,7 +150,7 @@ func errEmptyValue(pattern, path string) *ValidationError {
 		Path:    path,
 		Code:    ErrCodeEmptyValue,
 		Message: fmt.Sprintf("%s: %s must not be empty", pattern, path),
-		Fix:     fmt.Sprintf("provide a non-empty value for %s", path),
+		Fix:     TextFix(fmt.Sprintf("provide a non-empty value for %s", path)),
 	}
 }
 
@@ -137,7 +166,7 @@ func errCellOverrideOutOfRange(pattern string, idx, maxIdx int, hint string) *Va
 		Path:    path,
 		Code:    ErrCodeOutOfRange,
 		Message: msg,
-		Fix:     fmt.Sprintf("use a cell_overrides key between 0 and %d", maxIdx),
+		Fix:     TextFix(fmt.Sprintf("use a cell_overrides key between 0 and %d", maxIdx)),
 	}
 }
 
@@ -152,7 +181,7 @@ func errCountMismatch(pattern, path string, expected, actual int, hint string) *
 		Path:    path,
 		Code:    ErrCodeCountMismatch,
 		Message: msg,
-		Fix:     fmt.Sprintf("provide exactly %d items in %s", expected, path),
+		Fix:     TextFix(fmt.Sprintf("provide exactly %d items in %s", expected, path)),
 	}
 }
 
@@ -167,7 +196,7 @@ func errMinItems(pattern, path string, minCount, actual int, hint string) *Valid
 		Path:    path,
 		Code:    ErrCodeMinItems,
 		Message: msg,
-		Fix:     fmt.Sprintf("provide at least %d items in %s", minCount, path),
+		Fix:     TextFix(fmt.Sprintf("provide at least %d items in %s", minCount, path)),
 	}
 }
 
@@ -182,7 +211,7 @@ func errMaxItems(pattern, path string, maxCount, actual int, hint string) *Valid
 		Path:    path,
 		Code:    ErrCodeMaxItems,
 		Message: msg,
-		Fix:     fmt.Sprintf("reduce %s to at most %d items", path, maxCount),
+		Fix:     TextFix(fmt.Sprintf("reduce %s to at most %d items", path, maxCount)),
 	}
 }
 
@@ -194,6 +223,6 @@ func newValidationError(pattern, path, code, message, fix string) *ValidationErr
 		Path:    path,
 		Code:    code,
 		Message: message,
-		Fix:     fix,
+		Fix:     TextFix(fix),
 	}
 }

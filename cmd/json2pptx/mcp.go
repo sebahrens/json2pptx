@@ -494,10 +494,10 @@ func mcpExpandPatternTool() mcp.Tool {
 
 // patternValidationError is a D10 structured error for pattern validation.
 type patternValidationError struct {
-	Field   string `json:"field"`
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message"`
-	Fix     string `json:"fix,omitempty"`
+	Field   string                  `json:"field"`
+	Code    string                  `json:"code,omitempty"`
+	Message string                  `json:"message"`
+	Fix     *patterns.FixSuggestion `json:"fix,omitempty"`
 }
 
 // splitValidationErrors converts a (possibly joined) validation error into

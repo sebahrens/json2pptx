@@ -33,9 +33,15 @@ const (
 	defaultRowHeight = 370840
 	// Default font size in hundredths of point (18pt)
 	defaultFontSize = 1800
+	// DefaultTableFontSize is the exported default font size for table cells
+	// in hundredths of a point (18pt). Used by the fit-report walker.
+	DefaultTableFontSize = defaultFontSize
 	// Minimum font size for table cells in hundredths of point (10pt).
 	// Below this, text becomes unreadable in projected presentations.
 	minFontSizeForTable = 1000
+	// MinTableFontSize is the exported minimum font size floor for table cells
+	// in hundredths of a point (10pt). Used by the fit-report walker.
+	MinTableFontSize = minFontSizeForTable
 	// Border width in EMUs (1 point = 12700 EMUs)
 	borderWidth = 12700
 	// Default font family

@@ -17,8 +17,8 @@ func TestValidationErrorImplementsError(t *testing.T) {
 	if ve.Path != "cells[0].header" {
 		t.Errorf("Path = %q, want %q", ve.Path, "cells[0].header")
 	}
-	if ve.Fix == "" {
-		t.Error("Fix is empty")
+	if ve.Fix == nil || ve.Fix.Kind == "" {
+		t.Error("Fix is nil or has empty Kind")
 	}
 }
 
@@ -127,8 +127,8 @@ func TestValidateProducesStructuredErrors(t *testing.T) {
 				if ve.Path == "" {
 					t.Error("ValidationError.Path is empty")
 				}
-				if ve.Fix == "" {
-					t.Error("ValidationError.Fix is empty")
+				if ve.Fix == nil || ve.Fix.Kind == "" {
+					t.Error("ValidationError.Fix is nil or has empty Kind")
 				}
 				if !strings.Contains(ve.Message, "card-grid") {
 					t.Errorf("Message %q does not contain pattern name", ve.Message)

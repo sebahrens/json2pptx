@@ -471,7 +471,7 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 				Path:    path,
 				Code:    patterns.ErrCodeHexFillNonBrand,
 				Message: fmt.Sprintf("slide %d: shape_grid row %d cell %d: fill color %q is a raw hex value; prefer a scheme color for template portability", slideNum, row, cell, color),
-				Fix:     "use accent1/accent2/lt2/dk1 instead",
+				Fix:     &patterns.FixSuggestion{Kind: "use_semantic_color", Params: map[string]any{"message": "use accent1/accent2/lt2/dk1 instead"}},
 			})
 		}
 	}
