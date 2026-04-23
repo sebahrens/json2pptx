@@ -112,6 +112,89 @@ func DetectPlaceholderOverflow(input PlaceholderOverflowInput) *patterns.FitFind
 	}
 }
 
+// TitleWrapsInput describes a title placeholder to check for text wrapping.
+type TitleWrapsInput struct {
+	// SlideIndex is the zero-based slide index (for JSON path generation).
+	SlideIndex int
+	// Path is the JSON path prefix, e.g. "slides[0].content.title".
+	Path string
+	// Title is the title text string.
+	Title string
+	// WidthEMU is the title placeholder width in EMU.
+	WidthEMU int64
+	// HeightEMU is the title placeholder height in EMU.
+	HeightEMU int64
+	// FontSizeHPt is the font size in hundredths of a point (e.g. 3600 = 36pt).
+	FontSizeHPt int
+	// FontName is the font family name (e.g. "Arial").
+	FontName string
+}
+
+// DetectTitleWraps checks whether a title text wraps to more than one line
+// within its placeholder. Title wrapping is common and usually acceptable,
+// so the finding uses action "review" (informational) rather than
+// "shrink_or_split".
+//
+// Returns nil when the title fits on a single line or when measurement
+// is not possible.
+func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
+	if input.Title == "" || input.WidthEMU <= 0 || input.HeightEMU <= 0 {
+		return nil
+	}
+
+	fontSizeHPt := input.FontSizeHPt
+	if fontSizeHPt <= 0 {
+		fontSizeHPt = 2000
+	}
+
+	params := textfit.Params{
+		WidthEMU:    input.WidthEMU,
+		HeightEMU:   input.HeightEMU,
+		FontSizeHPt: fontSizeHPt,
+		FontName:    input.FontName,
+		Paragraphs:  []string{input.Title},
+	}
+
+	measuredEMU := textfit.MeasureHeight(params)
+	if measuredEMU <= 0 {
+		return nil
+	}
+
+	// A single line height is fontSize * lineSpacing (default 1.2).
+	// MeasureHeight uses the same default, so compute the single-line
+	// threshold identically: fontPt * 1.2, converted to EMU.
+	fontSizePt := float64(fontSizeHPt) / 100.0
+	singleLineEMU := int64(fontSizePt * 1.2 * 12700) // 12700 EMU per point
+
+	if measuredEMU <= singleLineEMU {
+		return nil
+	}
+
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: "placeholder",
+			Path:    input.Path,
+			Code:    patterns.ErrCodeTitleWraps,
+			Message: fmt.Sprintf(
+				"title wraps to multiple lines (%.0fpt font, %.1f\" wide placeholder)",
+				fontSizePt,
+				float64(input.WidthEMU)/914400.0,
+			),
+			Fix: &patterns.FixSuggestion{Kind: "shorten_title"},
+		},
+		Action: "review",
+		Measured: &patterns.Extent{
+			WidthEMU:  input.WidthEMU,
+			HeightEMU: measuredEMU,
+		},
+		Allowed: &patterns.Extent{
+			WidthEMU:  input.WidthEMU,
+			HeightEMU: singleLineEMU,
+		},
+		OverflowRatio: float64(measuredEMU) / float64(singleLineEMU),
+	}
+}
+
 // autofitPresent returns true when the autofit mode indicates PowerPoint will
 // automatically shrink text to fit (normAutofit or spAutoFit).
 func autofitPresent(mode string) bool {

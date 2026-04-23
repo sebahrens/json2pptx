@@ -171,6 +171,87 @@ func TestAutofitPresent(t *testing.T) {
 	}
 }
 
+// Title placeholder dimensions: 8.5" × 0.6" (typical title area).
+const (
+	testTitleWidthEMU  = 7772400 // 8.5"
+	testTitleHeightEMU = 548640  // 0.6"
+)
+
+func TestDetectTitleWraps_SingleLine(t *testing.T) {
+	// Short title that fits on one line → no finding.
+	input := TitleWrapsInput{
+		SlideIndex:  0,
+		Path:        "slides[0].content.title",
+		Title:       "Short Title",
+		WidthEMU:    testTitleWidthEMU,
+		HeightEMU:   testTitleHeightEMU,
+		FontSizeHPt: 3600, // 36pt
+		FontName:    "Arial",
+	}
+
+	finding := DetectTitleWraps(input)
+	if finding != nil {
+		t.Errorf("expected no finding for single-line title, got code=%s", finding.Code)
+	}
+}
+
+func TestDetectTitleWraps_MultiLine(t *testing.T) {
+	// Long title that forces wrapping → finding emitted with code title_wraps, action review.
+	input := TitleWrapsInput{
+		SlideIndex:  0,
+		Path:        "slides[0].content.title",
+		Title:       "This Is an Extremely Long Title That Will Definitely Wrap to Multiple Lines in a Standard Title Placeholder at Large Font Size Because It Contains So Many Words",
+		WidthEMU:    testTitleWidthEMU,
+		HeightEMU:   testTitleHeightEMU,
+		FontSizeHPt: 3600, // 36pt
+		FontName:    "Arial",
+	}
+
+	finding := DetectTitleWraps(input)
+	if finding == nil {
+		t.Fatal("expected finding for multi-line title")
+	}
+
+	if finding.Code != patterns.ErrCodeTitleWraps {
+		t.Errorf("Code = %q, want %q", finding.Code, patterns.ErrCodeTitleWraps)
+	}
+	if finding.Action != "review" {
+		t.Errorf("Action = %q, want %q", finding.Action, "review")
+	}
+	if finding.OverflowRatio <= 1.0 {
+		t.Errorf("OverflowRatio = %.2f, want > 1.0", finding.OverflowRatio)
+	}
+	if finding.Measured == nil {
+		t.Error("Measured extent should be non-nil")
+	}
+	if finding.Allowed == nil {
+		t.Error("Allowed extent should be non-nil")
+	}
+}
+
+func TestDetectTitleWraps_EmptyTitle(t *testing.T) {
+	finding := DetectTitleWraps(TitleWrapsInput{
+		SlideIndex:  0,
+		Path:        "slides[0].content.title",
+		Title:       "",
+		WidthEMU:    testTitleWidthEMU,
+		HeightEMU:   testTitleHeightEMU,
+		FontSizeHPt: 3600,
+		FontName:    "Arial",
+	})
+	if finding != nil {
+		t.Error("expected nil for empty title")
+	}
+}
+
+func TestDetectTitleWraps_DistinctFromPlaceholderOverflow(t *testing.T) {
+	// Verify that the code is distinct from placeholder_overflow.
+	if patterns.ErrCodeTitleWraps == patterns.ErrCodePlaceholderOverflow {
+		t.Errorf("ErrCodeTitleWraps (%q) must differ from ErrCodePlaceholderOverflow (%q)",
+			patterns.ErrCodeTitleWraps, patterns.ErrCodePlaceholderOverflow)
+	}
+}
+
 func TestAutofitLabel(t *testing.T) {
 	if got := autofitLabel(""); got != "none" {
 		t.Errorf("autofitLabel(\"\") = %q, want \"none\"", got)

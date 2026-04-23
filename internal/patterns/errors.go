@@ -26,6 +26,7 @@ const (
 	ErrCodePlaceholderOverflow   = "placeholder_overflow"
 	ErrCodeSlideBoundsOverflow   = "slide_bounds_overflow"
 	ErrCodeFooterCollision       = "footer_collision"
+	ErrCodeTitleWraps            = "title_wraps"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -51,6 +52,7 @@ var (
 	ErrPlaceholderOverflow = errors.New("placeholder text overflows frame")
 	ErrSlideBoundsOverflow = errors.New("shape center falls outside slide bounds")
 	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
+	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -72,6 +74,7 @@ var codeSentinel = map[string]error{
 	ErrCodePlaceholderOverflow:   ErrPlaceholderOverflow,
 	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
 	ErrCodeFooterCollision:       ErrFooterCollision,
+	ErrCodeTitleWraps:            ErrTitleWraps,
 }
 
 // FixSuggestion is a structured fix suggestion with a machine-readable kind
