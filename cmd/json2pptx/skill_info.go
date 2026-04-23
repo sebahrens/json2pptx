@@ -32,17 +32,19 @@ type skillPatternCompact struct {
 	Name                   string `json:"name"`
 	Cells                  string `json:"cells"`
 	UseWhen                string `json:"use_when"`
+	SupportsCallout        bool   `json:"supports_callout"`
 	EstimatedPromptSizeBytes int  `json:"estimated_prompt_size_bytes"`
 }
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.
 type skillPatternFull struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Cells       string          `json:"cells"`
-	UseWhen     string          `json:"use_when"`
-	Version     int             `json:"version"`
-	Schema      json.RawMessage `json:"schema"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description"`
+	Cells           string          `json:"cells"`
+	UseWhen         string          `json:"use_when"`
+	SupportsCallout bool            `json:"supports_callout"`
+	Version         int             `json:"version"`
+	Schema          json.RawMessage `json:"schema"`
 }
 
 // skillToolInfo identifies the tool and its version.
@@ -539,10 +541,15 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 		if ex, ok := p.(patterns.Exemplar); ok {
 			sizeBytes, _ = patterns.CanonicalSizeBytes(p, ex.ExemplarValues())
 		}
+		supportsCallout := false
+		if cs, ok := p.(patterns.CalloutSupport); ok {
+			supportsCallout = cs.SupportsCallout()
+		}
 		compact[i] = skillPatternCompact{
 			Name:                     p.Name(),
 			Cells:                    cells,
 			UseWhen:                  p.UseWhen(),
+			SupportsCallout:          supportsCallout,
 			EstimatedPromptSizeBytes: sizeBytes,
 		}
 	}
@@ -555,12 +562,13 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 	for i, p := range all {
 		schemaJSON, _ := json.Marshal(p.Schema())
 		full[i] = skillPatternFull{
-			Name:        p.Name(),
-			Description: p.Description(),
-			Cells:       compact[i].Cells,
-			UseWhen:     p.UseWhen(),
-			Version:     p.Version(),
-			Schema:      schemaJSON,
+			Name:            p.Name(),
+			Description:     p.Description(),
+			Cells:           compact[i].Cells,
+			UseWhen:         p.UseWhen(),
+			SupportsCallout: compact[i].SupportsCallout,
+			Version:         p.Version(),
+			Schema:          schemaJSON,
 		}
 	}
 	return compact, full

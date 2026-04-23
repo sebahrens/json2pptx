@@ -36,6 +36,9 @@ func (h *PatternsHandler) ListHandler() http.HandlerFunc {
 			if cd, ok := p.(patterns.CellDescriber); ok {
 				item.CellsHint = cd.CellsHint()
 			}
+			if cs, ok := p.(patterns.CalloutSupport); ok {
+				item.SupportsCallout = cs.SupportsCallout()
+			}
 			items[i] = item
 		}
 		writeJSON(w, http.StatusOK, patternListResponse{Patterns: items})
@@ -62,6 +65,9 @@ func (h *PatternsHandler) ShowHandler() http.HandlerFunc {
 		}
 		if cd, ok := pat.(patterns.CellDescriber); ok {
 			resp.CellsHint = cd.CellsHint()
+		}
+		if cs, ok := pat.(patterns.CalloutSupport); ok {
+			resp.SupportsCallout = cs.SupportsCallout()
 		}
 		writeJSON(w, http.StatusOK, resp)
 	}
@@ -162,11 +168,12 @@ func (h *PatternsHandler) ExpandHandler() http.HandlerFunc {
 // ---------------------------------------------------------------------------
 
 type patternListItem struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	UseWhen     string `json:"use_when"`
-	Version     int    `json:"version"`
-	CellsHint  string `json:"cells_hint,omitempty"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	UseWhen         string `json:"use_when"`
+	Version         int    `json:"version"`
+	CellsHint       string `json:"cells_hint,omitempty"`
+	SupportsCallout bool   `json:"supports_callout"`
 }
 
 type patternListResponse struct {
@@ -174,12 +181,13 @@ type patternListResponse struct {
 }
 
 type patternShowResponse struct {
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	UseWhen     string           `json:"use_when"`
-	Version     int              `json:"version"`
-	CellsHint  string           `json:"cells_hint,omitempty"`
-	Schema      *patterns.Schema `json:"schema"`
+	Name            string           `json:"name"`
+	Description     string           `json:"description"`
+	UseWhen         string           `json:"use_when"`
+	Version         int              `json:"version"`
+	CellsHint       string           `json:"cells_hint,omitempty"`
+	SupportsCallout bool             `json:"supports_callout"`
+	Schema          *patterns.Schema `json:"schema"`
 }
 
 type patternValidateResponse struct {

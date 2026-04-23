@@ -18,11 +18,12 @@ func init() {
 
 type comparison2col struct{}
 
-func (c *comparison2col) Name() string        { return "comparison-2col" }
-func (c *comparison2col) Description() string { return "Two-column comparison with optional headers" }
-func (c *comparison2col) UseWhen() string     { return "Two-column compare (pros/cons, vs.)" }
-func (c *comparison2col) Version() int        { return 1 }
-func (c *comparison2col) CellsHint() string   { return "2 + header" }
+func (c *comparison2col) Name() string           { return "comparison-2col" }
+func (c *comparison2col) Description() string    { return "Two-column comparison with optional headers" }
+func (c *comparison2col) UseWhen() string        { return "Two-column compare (pros/cons, vs.)" }
+func (c *comparison2col) Version() int           { return 1 }
+func (c *comparison2col) CellsHint() string      { return "2 + header" }
+func (c *comparison2col) SupportsCallout() bool  { return true }
 
 func (c *comparison2col) ExemplarValues() any {
 	return &Comparison2colValues{

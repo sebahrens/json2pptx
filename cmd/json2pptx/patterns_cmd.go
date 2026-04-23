@@ -156,6 +156,9 @@ func runPatternsShow() error {
 		if cd, ok := pat.(patterns.CellDescriber); ok {
 			result.Cells = cd.CellsHint()
 		}
+		if cs, ok := pat.(patterns.CalloutSupport); ok {
+			result.SupportsCallout = cs.SupportsCallout()
+		}
 		data, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
@@ -170,6 +173,9 @@ func runPatternsShow() error {
 	fmt.Printf("Use when: %s\n", pat.UseWhen())
 	if cd, ok := pat.(patterns.CellDescriber); ok {
 		fmt.Printf("Cells: %s\n", cd.CellsHint())
+	}
+	if cs, ok := pat.(patterns.CalloutSupport); ok && cs.SupportsCallout() {
+		fmt.Printf("Supports callout: yes\n")
 	}
 	fmt.Println()
 	schemaJSON, _ := json.MarshalIndent(pat.Schema(), "", "  ")

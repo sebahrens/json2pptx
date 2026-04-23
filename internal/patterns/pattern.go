@@ -70,6 +70,27 @@ type LayoutBounds struct {
 }
 
 // ---------------------------------------------------------------------------
+// CalloutSupport — optional interface for envelope-level callout (D18)
+// ---------------------------------------------------------------------------
+
+// CalloutSupport is an optional interface patterns can implement to declare
+// support for an envelope-level callout row appended below the pattern grid.
+// Non-uniform patterns (e.g. matrix-2x2, bmc-canvas) should not implement
+// this interface. Patterns that do implement it return true from SupportsCallout.
+type CalloutSupport interface {
+	SupportsCallout() bool
+}
+
+// PatternCallout is the DTO for an envelope-level callout band rendered
+// below the pattern content. It is a plain text row (no nested shape_grid,
+// no bullets) per D15 discipline.
+type PatternCallout struct {
+	Text     string `json:"text"`
+	Emphasis string `json:"emphasis,omitempty"` // "bold", "italic", "bold-italic"
+	Accent   string `json:"accent,omitempty"`   // scheme ref, e.g. "accent1"
+}
+
+// ---------------------------------------------------------------------------
 // CellDescriber — optional interface for compact discovery output
 // ---------------------------------------------------------------------------
 

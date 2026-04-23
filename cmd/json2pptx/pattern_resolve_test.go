@@ -133,6 +133,146 @@ func TestConvertPresentationSlides_PatternExpansion(t *testing.T) {
 	}
 }
 
+func TestExpandPattern_CalloutCardGrid(t *testing.T) {
+	input := &PatternInput{
+		Name: "card-grid",
+		Values: json.RawMessage(`{
+			"columns": 2,
+			"rows": 1,
+			"cells": [
+				{"header": "Card 1", "body": "Description 1"},
+				{"header": "Card 2", "body": "Description 2"}
+			]
+		}`),
+		Callout: &patterns.PatternCallout{
+			Text:     "Key takeaway: both cards matter",
+			Emphasis: "bold",
+		},
+	}
+
+	ctx := patterns.ExpandContext{
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
+	}
+
+	grid, _, err := expandPattern(input, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern with callout failed: %v", err)
+	}
+
+	// card-grid 1×2 = 1 row + 1 callout row = 2 rows
+	if len(grid.Rows) != 2 {
+		t.Fatalf("expected 2 rows (1 content + 1 callout), got %d", len(grid.Rows))
+	}
+
+	// Callout row should have AutoHeight and 1 cell spanning 2 columns
+	calloutRow := grid.Rows[1]
+	if !calloutRow.AutoHeight {
+		t.Error("callout row should have AutoHeight=true")
+	}
+	if len(calloutRow.Cells) != 1 {
+		t.Fatalf("callout row should have 1 cell, got %d", len(calloutRow.Cells))
+	}
+	if calloutRow.Cells[0].ColSpan != 2 {
+		t.Errorf("callout cell ColSpan = %d, want 2", calloutRow.Cells[0].ColSpan)
+	}
+	if calloutRow.Cells[0].Shape == nil {
+		t.Fatal("callout cell should have a Shape")
+	}
+}
+
+func TestExpandPattern_CalloutComparison2col(t *testing.T) {
+	input := &PatternInput{
+		Name: "comparison-2col",
+		Values: json.RawMessage(`{
+			"header_left": "Pros",
+			"header_right": "Cons",
+			"rows": [
+				{"left": "Fast", "right": "Expensive"}
+			]
+		}`),
+		Callout: &patterns.PatternCallout{
+			Text:   "Overall: choose wisely",
+			Accent: "accent3",
+		},
+	}
+
+	ctx := patterns.ExpandContext{}
+
+	grid, _, err := expandPattern(input, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern with callout failed: %v", err)
+	}
+
+	// comparison-2col with headers: 1 header row + 1 body row + 1 callout row = 3
+	if len(grid.Rows) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+	}
+
+	calloutRow := grid.Rows[2]
+	if !calloutRow.AutoHeight {
+		t.Error("callout row should have AutoHeight=true")
+	}
+	// Should use accent3 fill
+	var fill string
+	if err := json.Unmarshal(calloutRow.Cells[0].Shape.Fill, &fill); err != nil {
+		t.Fatalf("fill unmarshal: %v", err)
+	}
+	if fill != "accent3" {
+		t.Errorf("callout fill = %q, want %q", fill, "accent3")
+	}
+}
+
+func TestExpandPattern_CalloutUnsupportedPattern(t *testing.T) {
+	input := &PatternInput{
+		Name: "matrix-2x2",
+		Values: json.RawMessage(`{
+			"x_axis_label": "X",
+			"y_axis_label": "Y",
+			"top_left": {"header": "A"},
+			"top_right": {"header": "B"},
+			"bottom_left": {"header": "C"},
+			"bottom_right": {"header": "D"}
+		}`),
+		Callout: &patterns.PatternCallout{
+			Text: "This should fail",
+		},
+	}
+
+	ctx := patterns.ExpandContext{}
+
+	_, _, err := expandPattern(input, ctx, patterns.Default())
+	if err == nil {
+		t.Fatal("expected error for unsupported callout on matrix-2x2")
+	}
+	if !strings.Contains(err.Error(), "does not support callout") {
+		t.Errorf("error should mention 'does not support callout', got: %v", err)
+	}
+}
+
+func TestExpandPattern_NoCalloutNilDoesNothing(t *testing.T) {
+	input := &PatternInput{
+		Name: "card-grid",
+		Values: json.RawMessage(`{
+			"columns": 1,
+			"rows": 1,
+			"cells": [{"header": "A", "body": "B"}]
+		}`),
+		// No Callout
+	}
+
+	ctx := patterns.ExpandContext{}
+
+	grid, _, err := expandPattern(input, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern failed: %v", err)
+	}
+	// Should have only 1 row (no callout appended)
+	if len(grid.Rows) != 1 {
+		t.Errorf("expected 1 row (no callout), got %d", len(grid.Rows))
+	}
+}
+
 func TestComputeQualityScore_ShapeGridNotEmpty(t *testing.T) {
 	slides := []SlideInput{
 		{

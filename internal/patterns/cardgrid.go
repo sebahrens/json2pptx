@@ -18,11 +18,12 @@ func init() {
 
 type cardGrid struct{}
 
-func (c *cardGrid) Name() string        { return "card-grid" }
-func (c *cardGrid) Description() string { return "Parameterized N×M grid of titled cards" }
-func (c *cardGrid) UseWhen() string     { return "N×M titled cards" }
-func (c *cardGrid) Version() int        { return 1 }
-func (c *cardGrid) CellsHint() string   { return "rows × cols" }
+func (c *cardGrid) Name() string           { return "card-grid" }
+func (c *cardGrid) Description() string    { return "Parameterized N×M grid of titled cards" }
+func (c *cardGrid) UseWhen() string        { return "N×M titled cards" }
+func (c *cardGrid) Version() int           { return 1 }
+func (c *cardGrid) CellsHint() string      { return "rows × cols" }
+func (c *cardGrid) SupportsCallout() bool  { return true }
 
 func (c *cardGrid) ExemplarValues() any {
 	return &CardGridValues{
