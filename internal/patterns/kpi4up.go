@@ -24,6 +24,16 @@ func (k *kpi4up) UseWhen() string     { return "Four big-number KPIs with short 
 func (k *kpi4up) Version() int        { return 1 }
 func (k *kpi4up) CellsHint() string   { return "4" }
 
+func (k *kpi4up) ExemplarValues() any {
+	v := Kpi4upValues{
+		{Big: "$4.2M", Small: "ARR"},
+		{Big: "127%", Small: "NRR"},
+		{Big: "12d", Small: "Sales cycle"},
+		{Big: "98%", Small: "CSAT"},
+	}
+	return &v
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

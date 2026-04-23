@@ -24,6 +24,15 @@ func (th *timelineHorizontal) UseWhen() string     { return "Linear timeline wit
 func (th *timelineHorizontal) Version() int        { return 1 }
 func (th *timelineHorizontal) CellsHint() string   { return "3-7" }
 
+func (th *timelineHorizontal) ExemplarValues() any {
+	v := TimelineHorizontalValues{
+		{Label: "Phase 1", Date: "Q1 2025", Body: "Planning"},
+		{Label: "Phase 2", Date: "Q2 2025", Body: "Development"},
+		{Label: "Phase 3", Date: "Q3 2025", Body: "Launch"},
+	}
+	return &v
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

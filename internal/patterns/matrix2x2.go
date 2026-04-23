@@ -24,6 +24,17 @@ func (m *matrix2x2) UseWhen() string     { return "Quadrant/positioning matrix w
 func (m *matrix2x2) Version() int        { return 1 }
 func (m *matrix2x2) CellsHint() string   { return "4 + axes" }
 
+func (m *matrix2x2) ExemplarValues() any {
+	return &Matrix2x2Values{
+		XAxisLabel:  "Market Share",
+		YAxisLabel:  "Market Growth",
+		TopLeft:     Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
+		TopRight:    Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
+		BottomLeft:  Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
+		BottomRight: Matrix2x2Quadrant{Header: "Dogs", Body: "Low growth, low share"},
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

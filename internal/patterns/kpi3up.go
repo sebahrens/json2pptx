@@ -24,6 +24,15 @@ func (k *kpi3up) UseWhen() string     { return "Three big-number KPIs with short
 func (k *kpi3up) Version() int        { return 1 }
 func (k *kpi3up) CellsHint() string   { return "3" }
 
+func (k *kpi3up) ExemplarValues() any {
+	v := Kpi3upValues{
+		{Big: "$4.2M", Small: "ARR"},
+		{Big: "127%", Small: "NRR"},
+		{Big: "12d", Small: "Sales cycle"},
+	}
+	return &v
+}
+
 // ---------------------------------------------------------------------------
 // Types — aliases to shared KPI types for backward compatibility
 // ---------------------------------------------------------------------------

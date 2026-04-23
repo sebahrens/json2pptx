@@ -24,6 +24,15 @@ func (ir *iconRow) UseWhen() string     { return "Icon + caption row" }
 func (ir *iconRow) Version() int        { return 1 }
 func (ir *iconRow) CellsHint() string   { return "3-5" }
 
+func (ir *iconRow) ExemplarValues() any {
+	v := IconRowValues{
+		{Icon: "🚀", Caption: "Launch"},
+		{Icon: "📈", Caption: "Growth"},
+		{Icon: "💰", Caption: "Revenue"},
+	}
+	return &v
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

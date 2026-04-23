@@ -24,6 +24,21 @@ func (c *cardGrid) UseWhen() string     { return "N×M titled cards" }
 func (c *cardGrid) Version() int        { return 1 }
 func (c *cardGrid) CellsHint() string   { return "rows × cols" }
 
+func (c *cardGrid) ExemplarValues() any {
+	return &CardGridValues{
+		Columns: 3,
+		Rows:    2,
+		Cells: []CardGridCell{
+			{Header: "Card 1", Body: "Description 1"},
+			{Header: "Card 2", Body: "Description 2"},
+			{Header: "Card 3", Body: "Description 3"},
+			{Header: "Card 4", Body: "Description 4"},
+			{Header: "Card 5", Body: "Description 5"},
+			{Header: "Card 6", Body: "Description 6"},
+		},
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

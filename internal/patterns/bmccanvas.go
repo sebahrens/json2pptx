@@ -25,8 +25,22 @@ func (b *bmcCanvas) Description() string {
 func (b *bmcCanvas) UseWhen() string {
 	return "Formal Business Model Canvas methodology only — for general feature cards prefer card-grid"
 }
-func (b *bmcCanvas) Version() int    { return 1 }
+func (b *bmcCanvas) Version() int      { return 1 }
 func (b *bmcCanvas) CellsHint() string { return "9" }
+
+func (b *bmcCanvas) ExemplarValues() any {
+	return &BMCCanvasValues{
+		KeyPartners:       BMCCell{Header: "Key Partners", Bullets: []string{"Supplier A", "Partner B"}},
+		KeyActivities:     BMCCell{Header: "Key Activities", Bullets: []string{"Manufacturing", "Problem solving"}},
+		KeyResources:      BMCCell{Header: "Key Resources", Bullets: []string{"Physical assets", "IP"}},
+		ValuePropositions: BMCCell{Header: "Value Propositions", Bullets: []string{"Newness", "Performance", "Customization"}},
+		CustomerRelations: BMCCell{Header: "Customer Relationships", Bullets: []string{"Personal assistance", "Self-service"}},
+		Channels:          BMCCell{Header: "Channels", Bullets: []string{"Direct sales", "Web"}},
+		CustomerSegments:  BMCCell{Header: "Customer Segments", Bullets: []string{"Mass market", "Niche market"}},
+		CostStructure:     BMCCell{Header: "Cost Structure", Bullets: []string{"Fixed costs", "Variable costs"}},
+		RevenueStreams:     BMCCell{Header: "Revenue Streams", Bullets: []string{"Asset sale", "Subscription"}},
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Types

@@ -24,6 +24,17 @@ func (c *comparison2col) UseWhen() string     { return "Two-column compare (pros
 func (c *comparison2col) Version() int        { return 1 }
 func (c *comparison2col) CellsHint() string   { return "2 + header" }
 
+func (c *comparison2col) ExemplarValues() any {
+	return &Comparison2colValues{
+		HeaderLeft:  "Pros",
+		HeaderRight: "Cons",
+		Rows: []Comparison2colRow{
+			{Left: "Fast", Right: "Expensive"},
+			{Left: "Reliable", Right: "Complex"},
+		},
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
