@@ -83,15 +83,8 @@ type Comparison2colOverrides struct {
 	BodySize     float64 `json:"body_size,omitempty"`
 }
 
-// Comparison2colCellOverride contains per-cell overrides for comparison-2col.
-type Comparison2colCellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
+// Comparison2colCellOverride is an alias for the shared CellOverride struct.
+type Comparison2colCellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -101,15 +94,6 @@ func (c *comparison2col) NewValues() any      { return &Comparison2colValues{} }
 func (c *comparison2col) NewOverrides() any   { return &Comparison2colOverrides{} }
 func (c *comparison2col) NewCellOverride() any { return &Comparison2colCellOverride{} }
 
-// comparison2colCellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var comparison2colCellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
 
 func (c *comparison2col) Schema() *Schema {
 	rowSchema := OneOfSchema(
@@ -214,7 +198,7 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 			continue
 		}
 		for key := range keyMap {
-			if !comparison2colCellOverrideAllowed[key] {
+			if !cellOverrideAllowed[key] {
 				errs = append(errs, fmt.Errorf("comparison-2col: cell_overrides[%d] contains unknown key %q", idx, key))
 			}
 		}

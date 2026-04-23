@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
-	"strings"
 )
 
 // ---------------------------------------------------------------------------
@@ -25,36 +23,8 @@ type KPIOverrides struct {
 	SmallSize float64 `json:"small_size,omitempty"`
 }
 
-// KPICellOverride contains per-cell overrides for KPI patterns (D15 whitelist).
-type KPICellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
-
-// kpiCellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var kpiCellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
-
-// kpiCellOverrideAllowedList returns a sorted, comma-separated string of
-// the allowed per-cell override keys for use in error messages.
-func kpiCellOverrideAllowedList() string {
-	keys := make([]string, 0, len(kpiCellOverrideAllowed))
-	for k := range kpiCellOverrideAllowed {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return strings.Join(keys, ", ")
-}
+// KPICellOverride is an alias for the shared CellOverride struct.
+type KPICellOverride = CellOverride
 
 // applyKPICellTextOverrides modifies KPI text JSON to apply per-cell overrides
 // for emphasis, align, vertical_align, font_size, and color. It re-marshals the
@@ -202,8 +172,8 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 			continue
 		}
 		for key := range keyMap {
-			if !kpiCellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("%s: cell_overrides[%d] contains unknown key %q; allowed keys per D15: %s", patternName, idx, key, kpiCellOverrideAllowedList()))
+			if !cellOverrideAllowed[key] {
+				errs = append(errs, fmt.Errorf("%s: cell_overrides[%d] contains unknown key %q; allowed keys per D15: %s", patternName, idx, key, CellOverrideAllowedList()))
 			}
 		}
 	}

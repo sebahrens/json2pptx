@@ -87,15 +87,8 @@ type CardGridOverrides struct {
 	BodySize   float64 `json:"body_size,omitempty"`
 }
 
-// CardGridCellOverride contains per-cell overrides for card-grid.
-type CardGridCellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
+// CardGridCellOverride is an alias for the shared CellOverride struct.
+type CardGridCellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -105,15 +98,6 @@ func (c *cardGrid) NewValues() any      { return &CardGridValues{} }
 func (c *cardGrid) NewOverrides() any   { return &CardGridOverrides{} }
 func (c *cardGrid) NewCellOverride() any { return &CardGridCellOverride{} }
 
-// cardGridCellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var cardGridCellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
 
 func (c *cardGrid) Schema() *Schema {
 	cellSchema := OneOfSchema(
@@ -215,7 +199,7 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 			continue
 		}
 		for key := range keyMap {
-			if !cardGridCellOverrideAllowed[key] {
+			if !cellOverrideAllowed[key] {
 				errs = append(errs, fmt.Errorf("card-grid: cell_overrides[%d] contains unknown key %q", idx, key))
 			}
 		}

@@ -72,15 +72,8 @@ type BMCCanvasOverrides struct {
 	BulletSize float64 `json:"bullet_size,omitempty"`
 }
 
-// BMCCanvasCellOverride contains per-cell overrides for bmc-canvas.
-type BMCCanvasCellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
+// BMCCanvasCellOverride is an alias for the shared CellOverride struct.
+type BMCCanvasCellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -90,15 +83,6 @@ func (b *bmcCanvas) NewValues() any      { return &BMCCanvasValues{} }
 func (b *bmcCanvas) NewOverrides() any   { return &BMCCanvasOverrides{} }
 func (b *bmcCanvas) NewCellOverride() any { return &BMCCanvasCellOverride{} }
 
-// bmcCanvasCellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var bmcCanvasCellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
 
 
 func (b *bmcCanvas) Schema() *Schema {
@@ -210,7 +194,7 @@ func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) e
 			continue
 		}
 		for key := range keyMap {
-			if !bmcCanvasCellOverrideAllowed[key] {
+			if !cellOverrideAllowed[key] {
 				errs = append(errs, fmt.Errorf("bmc-canvas: cell_overrides[%d] contains unknown key %q", idx, key))
 			}
 		}

@@ -63,15 +63,8 @@ type Matrix2x2Overrides struct {
 	LabelSize  float64 `json:"label_size,omitempty"`
 }
 
-// Matrix2x2CellOverride contains per-cell overrides for matrix-2x2 quadrant cells.
-type Matrix2x2CellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
+// Matrix2x2CellOverride is an alias for the shared CellOverride struct.
+type Matrix2x2CellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -81,15 +74,6 @@ func (m *matrix2x2) NewValues() any       { return &Matrix2x2Values{} }
 func (m *matrix2x2) NewOverrides() any    { return &Matrix2x2Overrides{} }
 func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
 
-// matrix2x2CellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var matrix2x2CellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
 
 func (m *matrix2x2) Schema() *Schema {
 	quadrantSchema := ObjectSchema(
@@ -192,7 +176,7 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 			continue
 		}
 		for key := range keyMap {
-			if !matrix2x2CellOverrideAllowed[key] {
+			if !cellOverrideAllowed[key] {
 				errs = append(errs, fmt.Errorf("matrix-2x2: cell_overrides[%d] contains unknown key %q", idx, key))
 			}
 		}

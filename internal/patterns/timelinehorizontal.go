@@ -56,15 +56,8 @@ type TimelineHorizontalOverrides struct {
 	Connector string  `json:"connector,omitempty"` // "arrow" or "line" (default: "arrow")
 }
 
-// TimelineHorizontalCellOverride contains per-cell overrides for timeline-horizontal.
-type TimelineHorizontalCellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
+// TimelineHorizontalCellOverride is an alias for the shared CellOverride struct.
+type TimelineHorizontalCellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -74,15 +67,6 @@ func (th *timelineHorizontal) NewValues() any      { return &TimelineHorizontalV
 func (th *timelineHorizontal) NewOverrides() any   { return &TimelineHorizontalOverrides{} }
 func (th *timelineHorizontal) NewCellOverride() any { return &TimelineHorizontalCellOverride{} }
 
-// timelineHorizontalCellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var timelineHorizontalCellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
 
 func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
@@ -164,7 +148,7 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 			continue
 		}
 		for key := range keyMap {
-			if !timelineHorizontalCellOverrideAllowed[key] {
+			if !cellOverrideAllowed[key] {
 				errs = append(errs, fmt.Errorf("timeline-horizontal: cell_overrides[%d] contains unknown key %q", idx, key))
 			}
 		}

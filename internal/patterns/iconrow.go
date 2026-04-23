@@ -76,15 +76,8 @@ type IconRowOverrides struct {
 	CaptionSize float64 `json:"caption_size,omitempty"`
 }
 
-// IconRowCellOverride contains per-cell overrides for icon-row.
-type IconRowCellOverride struct {
-	AccentBar     bool    `json:"accent_bar,omitempty"`
-	Emphasis      string  `json:"emphasis,omitempty"`
-	Align         string  `json:"align,omitempty"`
-	VerticalAlign string  `json:"vertical_align,omitempty"`
-	FontSize      float64 `json:"font_size,omitempty"`
-	Color         string  `json:"color,omitempty"`
-}
+// IconRowCellOverride is an alias for the shared CellOverride struct.
+type IconRowCellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -94,15 +87,6 @@ func (ir *iconRow) NewValues() any      { return &IconRowValues{} }
 func (ir *iconRow) NewOverrides() any   { return &IconRowOverrides{} }
 func (ir *iconRow) NewCellOverride() any { return &IconRowCellOverride{} }
 
-// iconRowCellOverrideAllowed is the whitelist of per-cell override keys (D15).
-var iconRowCellOverrideAllowed = map[string]bool{
-	"accent_bar":     true,
-	"emphasis":       true,
-	"align":          true,
-	"vertical_align": true,
-	"font_size":      true,
-	"color":          true,
-}
 
 func (ir *iconRow) Schema() *Schema {
 	itemSchema := OneOfSchema(
@@ -181,7 +165,7 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 			continue
 		}
 		for key := range keyMap {
-			if !iconRowCellOverrideAllowed[key] {
+			if !cellOverrideAllowed[key] {
 				errs = append(errs, fmt.Errorf("icon-row: cell_overrides[%d] contains unknown key %q", idx, key))
 			}
 		}
