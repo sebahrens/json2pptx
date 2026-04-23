@@ -1,8 +1,12 @@
 package api
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
 
 func TestMarshalMCPResponse_Default(t *testing.T) {
@@ -17,7 +21,7 @@ func TestMarshalMCPResponse_Default(t *testing.T) {
 		Items: []string{"a", "b"},
 	}
 
-	got, err := MarshalMCPResponse(v)
+	got, err := MarshalMCPResponse(context.Background(), v)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -39,7 +43,7 @@ func TestMarshalMCPResponse_Compact(t *testing.T) {
 		Items: []string{"a", "b"},
 	}
 
-	got, err := MarshalMCPResponse(v)
+	got, err := MarshalMCPResponse(context.Background(), v)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -65,7 +69,7 @@ func TestMarshalMCPResponse_EmptySlice(t *testing.T) {
 			t.Setenv("MCP_COMPACT_RESPONSES", compact)
 
 			v := response{Items: []string{}}
-			got, err := MarshalMCPResponse(v)
+			got, err := MarshalMCPResponse(context.Background(), v)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -88,7 +92,7 @@ func TestMarshalMCPResponse_OmitemptyScalar(t *testing.T) {
 	t.Setenv("MCP_COMPACT_RESPONSES", "1")
 
 	v := response{} // zero values
-	got, err := MarshalMCPResponse(v)
+	got, err := MarshalMCPResponse(context.Background(), v)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -107,7 +111,7 @@ func TestMarshalMCPResponse_EnvNotOne(t *testing.T) {
 		OK bool `json:"ok"`
 	}{OK: true}
 
-	got, err := MarshalMCPResponse(v)
+	got, err := MarshalMCPResponse(context.Background(), v)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -117,3 +121,57 @@ func TestMarshalMCPResponse_EnvNotOne(t *testing.T) {
 	}
 }
 
+func TestMarshalMCPResponse_CapabilityNegotiated(t *testing.T) {
+	// Client that negotiated compact_responses gets compact output,
+	// even without the env var.
+	t.Setenv("MCP_COMPACT_RESPONSES", "")
+
+	// Build a context with a session that has compact_responses capability.
+	s := server.NewMCPServer("test", "1.0.0")
+	session := server.NewInProcessSession("test-session", nil)
+	session.Initialize()
+	session.SetClientCapabilities(mcp.ClientCapabilities{
+		Experimental: map[string]any{
+			"compact_responses": true,
+		},
+	})
+	ctx := s.WithContext(context.Background(), session)
+
+	v := struct {
+		Name string `json:"name"`
+	}{Name: "hello"}
+
+	got, err := MarshalMCPResponse(ctx, v)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `{"name":"hello"}`
+	if string(got) != want {
+		t.Errorf("capability-negotiated compact mismatch:\ngot:  %s\nwant: %s", got, want)
+	}
+}
+
+func TestMarshalMCPResponse_CapabilityNotSet(t *testing.T) {
+	// Client that did NOT negotiate compact_responses gets indented output.
+	t.Setenv("MCP_COMPACT_RESPONSES", "")
+
+	s := server.NewMCPServer("test", "1.0.0")
+	session := server.NewInProcessSession("test-session", nil)
+	session.Initialize()
+	session.SetClientCapabilities(mcp.ClientCapabilities{})
+	ctx := s.WithContext(context.Background(), session)
+
+	v := struct {
+		OK bool `json:"ok"`
+	}{OK: true}
+
+	got, err := MarshalMCPResponse(ctx, v)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(string(got), "\n") {
+		t.Errorf("session without compact capability should produce indented output: %s", got)
+	}
+}

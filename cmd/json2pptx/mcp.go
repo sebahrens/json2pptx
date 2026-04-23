@@ -83,10 +83,22 @@ func runMCP() error {
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
+	// Advertise compact_responses as an experimental server capability.
+	// Clients that send experimental.compact_responses: true in their
+	// initialize request will receive compact (non-indented) JSON responses.
+	hooks := &server.Hooks{}
+	hooks.AddAfterInitialize(func(_ context.Context, _ any, _ *mcp.InitializeRequest, result *mcp.InitializeResult) {
+		if result.Capabilities.Experimental == nil {
+			result.Capabilities.Experimental = make(map[string]any)
+		}
+		result.Capabilities.Experimental["compact_responses"] = true
+	})
+
 	s := server.NewMCPServer(
 		"json2pptx",
 		Version,
 		server.WithToolCapabilities(false),
+		server.WithHooks(hooks),
 	)
 
 	// Register tools
@@ -329,7 +341,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		FitFindings: fitFindings,
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(output)
+	responseJSON, err := api.MarshalMCPResponse(ctx, output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -390,7 +402,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		OutputFormats:  []string{"pptx"},
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(output)
+	responseJSON, err := api.MarshalMCPResponse(ctx, output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -429,7 +441,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		output.Errors = append(output.Errors, "at least one slide is required")
 	}
 	if !output.Valid {
-		return marshalValidateResult(output)
+		return marshalValidateResult(ctx, output)
 	}
 
 	// Resolve and analyze template
@@ -437,7 +449,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if err != nil {
 		output.Valid = false
 		output.Errors = append(output.Errors, templateNotFoundError(input.Template, mc.templatesDir))
-		return marshalValidateResult(output)
+		return marshalValidateResult(ctx, output)
 	}
 	defer templateCleanup()
 
@@ -445,7 +457,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if err != nil {
 		output.Valid = false
 		output.Errors = append(output.Errors, fmt.Sprintf("template analysis failed: %v", err))
-		return marshalValidateResult(output)
+		return marshalValidateResult(ctx, output)
 	}
 
 	// Validate slides against template (layout IDs, placeholder IDs,
@@ -457,12 +469,12 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		output.FitFindings = generateFitReport(&input)
 	}
 
-	return marshalValidateResult(output)
+	return marshalValidateResult(ctx, output)
 }
 
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.
-func marshalValidateResult(output dryRunOutput) (*mcp.CallToolResult, error) {
-	responseJSON, err := api.MarshalMCPResponse(output)
+func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallToolResult, error) {
+	responseJSON, err := api.MarshalMCPResponse(ctx, output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -612,7 +624,7 @@ func toPatternValidationError(e error) patternValidationError {
 	}
 }
 
-func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	reg := patterns.Default()
 	all := reg.List()
 
@@ -625,14 +637,14 @@ func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallTool
 		}
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(entries)
+	responseJSON, err := api.MarshalMCPResponse(ctx, entries)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcp.NewToolResultText(string(responseJSON)), nil
 }
 
-func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
 		return mcp.NewToolResultError("name is required"), nil
@@ -665,14 +677,14 @@ func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	}
 	result.Cells = pat.CellsHint()
 
-	responseJSON, err := api.MarshalMCPResponse(result)
+	responseJSON, err := api.MarshalMCPResponse(ctx, result)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcp.NewToolResultText(string(responseJSON)), nil
 }
 
-func handleValidatePattern(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
 		return mcp.NewToolResultError("name is required"), nil
@@ -741,14 +753,14 @@ func handleValidatePattern(_ context.Context, request mcp.CallToolRequest) (*mcp
 			Errors []patternValidationError `json:"errors"`
 		}{OK: false, Errors: splitValidationErrors(err)}
 
-		responseJSON, _ := api.MarshalMCPResponse(result)
+		responseJSON, _ := api.MarshalMCPResponse(ctx, result)
 		return mcp.NewToolResultText(string(responseJSON)), nil
 	}
 
 	result := struct {
 		OK bool `json:"ok"`
 	}{OK: true}
-	responseJSON, _ := api.MarshalMCPResponse(result)
+	responseJSON, _ := api.MarshalMCPResponse(ctx, result)
 	return mcp.NewToolResultText(string(responseJSON)), nil
 }
 
@@ -836,7 +848,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		ShapeGrid: grid,
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(result)
+	responseJSON, err := api.MarshalMCPResponse(ctx, result)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}

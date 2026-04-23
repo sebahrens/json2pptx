@@ -231,6 +231,8 @@ json2pptx validate -fit-report examples/basic-deck.json
 
 Findings are printed to stderr grouped by slide. Exit code is nonzero only if any finding has action `refuse`.
 
-### Environment
+### Compact Responses
 
-Set `MCP_COMPACT_RESPONSES=1` to get minified JSON output from MCP tools (no indentation). This reduces token count for agent consumers. Findings content is unchanged; only whitespace formatting differs.
+MCP clients can negotiate compact (non-indented) JSON output via capability negotiation. Send `experimental.compact_responses: true` in the client capabilities during the MCP `initialize` handshake. The server advertises support for this in its own `experimental` capabilities.
+
+The `MCP_COMPACT_RESPONSES=1` environment variable is still honored as a fallback but is deprecated and will be removed in a future release.
