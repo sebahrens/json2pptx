@@ -47,6 +47,13 @@
     ]
   },
   {
+    "pattern_name": "card-grid",
+    "row_count": 1,
+    "cell_counts": [
+      3
+    ]
+  },
+  {
     "pattern_name": "icon-row",
     "row_count": 1,
     "cell_counts": [

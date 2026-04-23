@@ -109,6 +109,28 @@
     {
       "layout_id": "slideLayout2",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Service Tiers (with cell_overrides)"}
+      ],
+      "pattern": {
+        "name": "card-grid",
+        "values": {
+          "columns": 3,
+          "rows": 1,
+          "cells": [
+            {"header": "Starter", "body": "For individuals"},
+            {"header": "Professional", "body": "For growing teams"},
+            {"header": "Enterprise", "body": "For large organizations"}
+          ]
+        },
+        "cell_overrides": {
+          "1": {"accent_bar": true, "emphasis": "bold", "align": "center"},
+          "2": {"color": "accent2", "font_size": 11, "vertical_align": "middle"}
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Our Values"}
       ],
       "pattern": {

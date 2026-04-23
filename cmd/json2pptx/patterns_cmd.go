@@ -183,6 +183,18 @@ func runPatternsShow() error {
 	fmt.Println()
 	schemaJSON := patterns.SchemaJSONIndent(pat)
 	fmt.Printf("Schema:\n%s\n", string(schemaJSON))
+
+	// Show cell_overrides example if the pattern supports them
+	if pat.NewCellOverride() != nil {
+		fmt.Println()
+		fmt.Printf("cell_overrides (per-cell, keyed by cell index):\n")
+		fmt.Printf("  Allowed keys: %s\n", patterns.CellOverrideAllowedList())
+		fmt.Printf("  Example:\n")
+		fmt.Printf("    \"cell_overrides\": {\n")
+		fmt.Printf("      \"0\": {\"accent_bar\": true, \"emphasis\": \"bold\"},\n")
+		fmt.Printf("      \"2\": {\"color\": \"accent2\", \"font_size\": 11}\n")
+		fmt.Printf("    }\n")
+	}
 	return nil
 }
 
