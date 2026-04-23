@@ -8,63 +8,75 @@
           "shape": {
             "geometry": "roundRect",
             "fill": "accent1",
-            "text": [
-              {
-                "text": "$4.2M",
-                "size": 36,
-                "bold": true,
-                "color": "lt1",
-                "align": "ctr"
-              },
-              {
-                "text": "\nARR",
-                "size": 14,
-                "color": "lt1",
-                "align": "ctr"
-              }
-            ]
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "$4.2M",
+                  "size": 36,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "ARR",
+                  "size": 14,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
           }
         },
         {
           "shape": {
             "geometry": "roundRect",
             "fill": "accent1",
-            "text": [
-              {
-                "text": "127%",
-                "size": 36,
-                "bold": true,
-                "color": "lt1",
-                "align": "ctr"
-              },
-              {
-                "text": "\nNRR",
-                "size": 14,
-                "color": "lt1",
-                "align": "ctr"
-              }
-            ]
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "127%",
+                  "size": 36,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "NRR",
+                  "size": 14,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
           }
         },
         {
           "shape": {
             "geometry": "roundRect",
             "fill": "accent1",
-            "text": [
-              {
-                "text": "12d",
-                "size": 36,
-                "bold": true,
-                "color": "lt1",
-                "align": "ctr"
-              },
-              {
-                "text": "\nSales cycle",
-                "size": 14,
-                "color": "lt1",
-                "align": "ctr"
-              }
-            ]
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "12d",
+                  "size": 36,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Sales cycle",
+                  "size": 14,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
           }
         }
       ]

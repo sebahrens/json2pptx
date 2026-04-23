@@ -15,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -556,6 +557,24 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 				Path: slide.Background.Image,
 				Fit:  slide.Background.Fit,
 			}
+		}
+
+		// XOR enforcement: pattern and shape_grid are mutually exclusive (D1)
+		if slide.Pattern != nil && slide.ShapeGrid != nil {
+			return nil, fmt.Errorf("slide %d: cannot set both pattern and shape_grid", i+1)
+		}
+
+		// Expand pattern into shape_grid before downstream processing
+		if slide.Pattern != nil {
+			ctx := patterns.ExpandContext{
+				SlideWidth:  slideWidth,
+				SlideHeight: slideHeight,
+			}
+			expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
+			if err != nil {
+				return nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
+			}
+			slide.ShapeGrid = expanded
 		}
 
 		// Resolve shape_grid into raw p:sp XML fragments
@@ -1127,8 +1146,8 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 		slideScore := 1.0
 		var issues []string
 
-		// Check for empty slide (no content items)
-		if len(slide.Content) == 0 {
+		// Check for empty slide (no content items AND no shape_grid/pattern)
+		if len(slide.Content) == 0 && slide.ShapeGrid == nil && slide.Pattern == nil {
 			slideScore -= 0.5
 			issues = append(issues, "empty slide with no content")
 		}

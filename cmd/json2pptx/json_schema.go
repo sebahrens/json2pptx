@@ -66,6 +66,7 @@ type SlideInput struct {
 	Background      *BackgroundInput `json:"background,omitempty"`
 	Content         []ContentInput   `json:"content"`
 	ShapeGrid       *ShapeGridInput  `json:"shape_grid,omitempty"`
+	Pattern         *PatternInput    `json:"pattern,omitempty"`
 	SpeakerNotes    string           `json:"speaker_notes,omitempty"`
 	Source          string           `json:"source,omitempty"`
 	Transition      string           `json:"transition,omitempty"`

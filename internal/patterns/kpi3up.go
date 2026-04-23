@@ -250,21 +250,30 @@ func (k *kpi3up) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	return grid, nil
 }
 
-// buildKPITextContent creates a JSON text array with big and small runs for a KPI cell.
+// buildKPITextContent creates a JSON text object with paragraphs for a KPI cell.
+// Uses the paragraphs form expected by shapegrid.ResolveTextInput.
 func buildKPITextContent(big string, bigSize float64, small string, smallSize float64) json.RawMessage {
-	type textRun struct {
-		Text  string  `json:"text"`
-		Size  float64 `json:"size"`
-		Bold  bool    `json:"bold,omitempty"`
-		Color string  `json:"color,omitempty"`
-		Align string  `json:"align,omitempty"`
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Bold    bool    `json:"bold,omitempty"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
 	}
 
-	runs := []textRun{
-		{Text: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
-		{Text: "\n" + small, Size: smallSize, Color: "lt1", Align: "ctr"},
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+	}{
+		Paragraphs: []paragraph{
+			{Content: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"},
+		},
+		Align:         "ctr",
+		VerticalAlign: "ctr",
 	}
 
-	data, _ := json.Marshal(runs)
+	data, _ := json.Marshal(textObj)
 	return data
 }
