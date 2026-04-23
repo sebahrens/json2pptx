@@ -1,0 +1,73 @@
+{
+  "gap": 12,
+  "columns": 3,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": [
+              {
+                "text": "$4.2M",
+                "size": 36,
+                "bold": true,
+                "color": "lt1",
+                "align": "ctr"
+              },
+              {
+                "text": "\nARR",
+                "size": 14,
+                "color": "lt1",
+                "align": "ctr"
+              }
+            ]
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": [
+              {
+                "text": "127%",
+                "size": 36,
+                "bold": true,
+                "color": "lt1",
+                "align": "ctr"
+              },
+              {
+                "text": "\nNRR",
+                "size": 14,
+                "color": "lt1",
+                "align": "ctr"
+              }
+            ]
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": [
+              {
+                "text": "12d",
+                "size": 36,
+                "bold": true,
+                "color": "lt1",
+                "align": "ctr"
+              },
+              {
+                "text": "\nSales cycle",
+                "size": 14,
+                "color": "lt1",
+                "align": "ctr"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

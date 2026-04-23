@@ -115,11 +115,13 @@ func TestNewValuesOverridesCellOverrideMayReturnNil(t *testing.T) {
 	}
 }
 
-func TestDefaultRegistryEmpty(t *testing.T) {
-	// The default registry should be empty since no concrete patterns
-	// are registered in this package.
-	list := Default().List()
-	if len(list) != 0 {
-		t.Errorf("Default().List() returned %d patterns, want 0 (no patterns registered yet)", len(list))
+func TestDefaultRegistryContainsKpi3up(t *testing.T) {
+	// The default registry should contain kpi-3up after init().
+	p, ok := Default().Get("kpi-3up")
+	if !ok {
+		t.Fatal("expected kpi-3up to be registered in default registry")
+	}
+	if p.Name() != "kpi-3up" {
+		t.Errorf("Name() = %q, want %q", p.Name(), "kpi-3up")
 	}
 }
