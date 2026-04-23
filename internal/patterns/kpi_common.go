@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 )
 
 // ---------------------------------------------------------------------------
@@ -41,6 +43,93 @@ var kpiCellOverrideAllowed = map[string]bool{
 	"vertical_align": true,
 	"font_size":      true,
 	"color":          true,
+}
+
+// kpiCellOverrideAllowedList returns a sorted, comma-separated string of
+// the allowed per-cell override keys for use in error messages.
+func kpiCellOverrideAllowedList() string {
+	keys := make([]string, 0, len(kpiCellOverrideAllowed))
+	for k := range kpiCellOverrideAllowed {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ", ")
+}
+
+// applyKPICellTextOverrides modifies KPI text JSON to apply per-cell overrides
+// for emphasis, align, vertical_align, font_size, and color. It re-marshals the
+// text object with the overridden values.
+func applyKPICellTextOverrides(text json.RawMessage, ovr *KPICellOverride) json.RawMessage {
+	if ovr == nil {
+		return text
+	}
+
+	hasParagraphChange := ovr.Emphasis != "" || ovr.FontSize > 0 || ovr.Color != ""
+	hasTopLevelChange := ovr.Align != "" || ovr.VerticalAlign != ""
+	if !hasParagraphChange && !hasTopLevelChange {
+		return text
+	}
+
+	var textObj map[string]json.RawMessage
+	if err := json.Unmarshal(text, &textObj); err != nil {
+		return text
+	}
+
+	if ovr.Align != "" {
+		a, _ := json.Marshal(ovr.Align)
+		textObj["align"] = a
+	}
+	if ovr.VerticalAlign != "" {
+		va, _ := json.Marshal(ovr.VerticalAlign)
+		textObj["vertical_align"] = va
+	}
+
+	if hasParagraphChange {
+		applyKPIParagraphOverrides(textObj, ovr)
+	}
+
+	result, _ := json.Marshal(textObj)
+	return result
+}
+
+// applyKPIParagraphOverrides applies emphasis, font_size, and color overrides
+// to each paragraph in the text object.
+func applyKPIParagraphOverrides(textObj map[string]json.RawMessage, ovr *KPICellOverride) {
+	raw, ok := textObj["paragraphs"]
+	if !ok {
+		return
+	}
+	var paragraphs []map[string]any
+	if err := json.Unmarshal(raw, &paragraphs); err != nil {
+		return
+	}
+	for i := range paragraphs {
+		applyEmphasis(paragraphs[i], ovr.Emphasis)
+		if ovr.FontSize > 0 {
+			paragraphs[i]["size"] = ovr.FontSize
+		}
+		if ovr.Color != "" {
+			paragraphs[i]["color"] = ovr.Color
+		}
+	}
+	p, _ := json.Marshal(paragraphs)
+	textObj["paragraphs"] = p
+}
+
+// applyEmphasis sets bold/italic flags on a paragraph map based on the
+// emphasis string ("bold", "italic", "bold-italic").
+func applyEmphasis(para map[string]any, emphasis string) {
+	switch emphasis {
+	case "bold":
+		para["bold"] = true
+		delete(para, "italic")
+	case "italic":
+		para["italic"] = true
+		delete(para, "bold")
+	case "bold-italic":
+		para["bold"] = true
+		para["italic"] = true
+	}
 }
 
 // resolveKPIAccent returns the accent color, defaulting to accent1.
@@ -99,7 +188,7 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 	// Validate cell_overrides keys (D15 whitelist)
 	for idx, co := range cellOverrides {
 		if idx < 0 || idx >= expectedCount {
-			errs = append(errs, fmt.Errorf("%s: cell_overrides key %d out of range [0,%d]", patternName, idx, expectedCount-1))
+			errs = append(errs, fmt.Errorf("%s: cell index %d out of range; pattern has %d cells [0..%d]", patternName, idx, expectedCount, expectedCount-1))
 			continue
 		}
 		raw, err := json.Marshal(co)
@@ -114,7 +203,7 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		}
 		for key := range keyMap {
 			if !kpiCellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("%s: cell_overrides[%d] contains unknown key %q", patternName, idx, key))
+				errs = append(errs, fmt.Errorf("%s: cell_overrides[%d] contains unknown key %q; allowed keys per D15: %s", patternName, idx, key, kpiCellOverrideAllowedList()))
 			}
 		}
 	}

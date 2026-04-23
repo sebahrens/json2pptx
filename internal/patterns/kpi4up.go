@@ -103,7 +103,7 @@ func (k *kpi4up) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			Shape: shape,
 		}
 
-		// Apply cell overrides
+		// Apply cell overrides (D15)
 		if co, ok := cellOverrides[i]; ok {
 			cellOvr, coOk := co.(*KPICellOverride)
 			if !coOk {
@@ -116,6 +116,8 @@ func (k *kpi4up) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 					Width:    4,
 				}
 			}
+			// Apply text-level overrides: emphasis, align, vertical_align, font_size, color
+			shape.Text = applyKPICellTextOverrides(shape.Text, cellOvr)
 		}
 
 		gridCells[i] = gc

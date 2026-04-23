@@ -154,6 +154,44 @@ func TestKpi3up(t *testing.T) {
 			},
 			wantNoErr: true,
 		},
+		{
+			name: "accent_bar_and_emphasis_combined",
+			values: Kpi3upValues{
+				{Big: "$4.2M", Small: "ARR"},
+				{Big: "127%", Small: "NRR"},
+				{Big: "12d", Small: "Sales cycle"},
+			},
+			cellOvr: map[int]any{
+				1: &Kpi3upCellOverride{AccentBar: true, Emphasis: "bold"},
+			},
+			wantNoErr: true,
+		},
+		{
+			name: "out_of_range_cell_override",
+			values: Kpi3upValues{
+				{Big: "$4.2M", Small: "ARR"},
+				{Big: "127%", Small: "NRR"},
+				{Big: "12d", Small: "Sales cycle"},
+			},
+			cellOvr: map[int]any{
+				5: &Kpi3upCellOverride{AccentBar: true},
+			},
+			wantErr: "cell index 5 out of range; pattern has 3 cells",
+		},
+		{
+			name: "unknown_key_cites_d15_whitelist",
+			values: Kpi3upValues{
+				{Big: "$4.2M", Small: "ARR"},
+				{Big: "127%", Small: "NRR"},
+				{Big: "12d", Small: "Sales cycle"},
+			},
+			cellOvr: map[int]any{
+				0: &struct {
+					Animation string `json:"animation"`
+				}{Animation: "fade"},
+			},
+			wantErr: "allowed keys per D15",
+		},
 	}
 
 	for _, tc := range tests {
@@ -259,6 +297,61 @@ func TestKpi3up(t *testing.T) {
 		}
 		if ab.Color != "accent1" {
 			t.Errorf("accent bar color = %q, want %q", ab.Color, "accent1")
+		}
+	})
+
+	// Acceptance-criteria test: accent_bar=true + emphasis=bold on cell 1
+	t.Run("expand_accent_bar_and_emphasis_bold", func(t *testing.T) {
+		vals := Kpi3upValues{
+			{Big: "$4.2M", Small: "ARR"},
+			{Big: "127%", Small: "NRR"},
+			{Big: "12d", Small: "Sales cycle"},
+		}
+		cellOvr := map[int]any{
+			1: &Kpi3upCellOverride{AccentBar: true, Emphasis: "bold"},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, cellOvr)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+
+		// Cell 1 should have accent bar
+		ab := grid.Rows[0].Cells[1].AccentBar
+		if ab == nil {
+			t.Fatal("cell[1] should have accent bar")
+		}
+		if ab.Color != "accent1" {
+			t.Errorf("accent bar color = %q, want %q", ab.Color, "accent1")
+		}
+
+		// Cell 1 text should have bold on all paragraphs
+		cell1Text := grid.Rows[0].Cells[1].Shape.Text
+		var textObj struct {
+			Paragraphs []map[string]any `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(cell1Text, &textObj); err != nil {
+			t.Fatalf("unmarshal cell[1] text: %v", err)
+		}
+		for i, para := range textObj.Paragraphs {
+			bold, ok := para["bold"]
+			if !ok || bold != true {
+				t.Errorf("cell[1].paragraphs[%d].bold = %v, want true", i, bold)
+			}
+		}
+
+		// Cell 0 should NOT have emphasis override (paragraphs retain defaults)
+		cell0Text := grid.Rows[0].Cells[0].Shape.Text
+		var cell0TextObj struct {
+			Paragraphs []map[string]any `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(cell0Text, &cell0TextObj); err != nil {
+			t.Fatalf("unmarshal cell[0] text: %v", err)
+		}
+		// The big paragraph has bold:true by default, but the small one should NOT
+		if len(cell0TextObj.Paragraphs) >= 2 {
+			if _, hasItalic := cell0TextObj.Paragraphs[1]["italic"]; hasItalic {
+				t.Error("cell[0] small paragraph should not have italic set")
+			}
 		}
 	})
 
