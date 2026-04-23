@@ -25,6 +25,7 @@ const (
 	ErrCodeMixedFillScheme       = "mixed_fill_scheme"
 	ErrCodePlaceholderOverflow   = "placeholder_overflow"
 	ErrCodeSlideBoundsOverflow   = "slide_bounds_overflow"
+	ErrCodeFooterCollision       = "footer_collision"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -49,6 +50,7 @@ var (
 	ErrMixedFillScheme     = errors.New("slide mixes hex and semantic fill colors")
 	ErrPlaceholderOverflow = errors.New("placeholder text overflows frame")
 	ErrSlideBoundsOverflow = errors.New("shape center falls outside slide bounds")
+	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -69,6 +71,7 @@ var codeSentinel = map[string]error{
 	ErrCodeMixedFillScheme:       ErrMixedFillScheme,
 	ErrCodePlaceholderOverflow:   ErrPlaceholderOverflow,
 	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
+	ErrCodeFooterCollision:       ErrFooterCollision,
 }
 
 // FixSuggestion is a structured fix suggestion with a machine-readable kind
