@@ -188,18 +188,9 @@ Rules of thumb for fitting a table in a shape_grid. Assumes `auto_height: true` 
 
 ---
 
-## Icon Names (Verified Available)
+## Icon Names
 
-Common icons for consulting decks:
-
-`database`, `globe`, `cpu`, `coins`, `trending-up`, `rocket`, `shield`, `clock`,
-`lock`, `users`, `server`, `bulb`, `network`, `cloud`, `briefcase`, `alert-triangle`,
-`building-bank`, `chart-pie`, `target`, `award`, `check-circle`, `flag`, `layers`,
-`map-pin`, `phone`, `mail`, `calendar`, `settings`, `eye`, `heart`, `star`,
-`zap`, `bar-chart`, `pie-chart`, `activity`, `compass`, `anchor`
-
-Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or
-`"icon": {"name": "ICON_NAME"}` as a standalone cell.
+Run `json2pptx icons list` for all available names (or `--json` for JSON output). Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell.
 
 ---
 

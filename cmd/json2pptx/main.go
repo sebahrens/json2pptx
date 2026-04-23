@@ -46,6 +46,8 @@ func dispatch() error {
 		return runValidateTemplate()
 	case "patterns":
 		return runPatterns()
+	case "icons":
+		return runIcons()
 	case "skill-info":
 		return runSkillInfo()
 	case "version", "--version", "-V":
@@ -71,6 +73,7 @@ Commands:
   validate           Validate input without generating
   validate-template  Check template compatibility
   patterns           Discover, validate, and expand named patterns
+  icons              List available icon names
   skill-info         Show template capabilities for Claude Code skill
   serve              Start HTTP API server
   mcp                Start MCP (Model Context Protocol) server over stdio
