@@ -263,13 +263,20 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string) error {
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string) error {
 	startTime := time.Now()
 
 	// Parse and validate JSON input
 	input, err := parseJSONInput(jsonPath, templateOverride)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, err)
+	}
+
+	// Run text-fit checking when --strict-fit is warn or strict.
+	if strictFit != "off" {
+		if err := checkStrictFit(input, strictFit); err != nil {
+			return writeJSONError(jsonOutputPath, err)
+		}
 	}
 
 	// Load configuration with CLI overrides

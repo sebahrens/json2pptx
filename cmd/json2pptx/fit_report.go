@@ -28,6 +28,38 @@ type fitFinding struct {
 	Action           string                  `json:"action,omitempty"`
 }
 
+// checkStrictFit runs the fit report and applies the given mode's policy.
+// In "warn" mode, findings are printed to stderr but nil is returned.
+// In "strict" mode, an error is returned if any finding has action=unfittable,
+// and the full NDJSON report is written to stderr.
+func checkStrictFit(input *PresentationInput, mode string) error {
+	findings := generateFitReport(input)
+	if len(findings) == 0 {
+		return nil
+	}
+
+	if mode == "strict" {
+		hasUnfittable := false
+		for _, f := range findings {
+			if f.Action == "unfittable" {
+				hasUnfittable = true
+				break
+			}
+		}
+		if hasUnfittable {
+			enc := json.NewEncoder(os.Stderr)
+			for _, f := range findings {
+				_ = enc.Encode(f)
+			}
+			return fmt.Errorf("strict-fit: %d finding(s), generation refused", len(findings))
+		}
+	}
+
+	// warn mode (or strict with no unfittable): emit summary to stderr.
+	printFitReportSummary(findings)
+	return nil
+}
+
 // generateFitReport walks all tables and shape-grid text cells in the
 // presentation, measuring text against available cell dimensions. It returns
 // findings for cells that overflow.

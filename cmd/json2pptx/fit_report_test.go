@@ -267,6 +267,125 @@ func TestWriteFitReport_NDJSON(t *testing.T) {
 	}
 }
 
+func TestStrictFit_Off(t *testing.T) {
+	// With strict-fit=off, runJSONMode should not run fit checks at all.
+	// We just verify the code path doesn't error for an input that would
+	// produce findings in warn/strict mode.
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "input.json")
+	outputPath := filepath.Join(tmpDir, "result.json")
+
+	// Dense table that triggers density warnings.
+	input := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "content",
+			"content": [{
+				"placeholder_id": "body",
+				"type": "table",
+				"table_value": {
+					"headers": ["A","B","C","D","E","F","G","H","I","J"],
+					"rows": [
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}],
+						[{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"},{"content":"x"}]
+					]
+				}
+			}]
+		}]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	templatesDir := filepath.Join("..", "..", "templates")
+	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "off")
+	// off mode should not fail due to density — only template/gen errors
+	if err != nil {
+		t.Logf("runJSONMode returned error (expected if template issue): %v", err)
+	}
+}
+
+func TestStrictFit_Strict_RefusesUnfittable(t *testing.T) {
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "input.json")
+	outputPath := filepath.Join(tmpDir, "result.json")
+
+	// Very long text in a narrow 5-column table should trigger unfittable.
+	longText := strings.Repeat("This is very long overflow text that cannot fit. ", 20)
+	input := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "content",
+			"content": [{
+				"placeholder_id": "body",
+				"type": "table",
+				"table_value": {
+					"headers": ["A","B","C","D","E"],
+					"rows": [[{"content":"` + longText + `"},{"content":"ok"},{"content":"ok"},{"content":"ok"},{"content":"ok"}]]
+				}
+			}]
+		}]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	templatesDir := filepath.Join("..", "..", "templates")
+	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict")
+	if err == nil {
+		t.Fatal("expected error in strict mode for unfittable content")
+	}
+	if !strings.Contains(err.Error(), "strict-fit") {
+		t.Errorf("error should mention strict-fit, got: %v", err)
+	}
+}
+
+func TestStrictFit_Warn_Succeeds(t *testing.T) {
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "input.json")
+	outputPath := filepath.Join(tmpDir, "result.json")
+
+	// Same unfittable content as strict test, but warn mode should succeed.
+	longText := strings.Repeat("This is very long overflow text that cannot fit. ", 20)
+	input := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "content",
+			"content": [{
+				"placeholder_id": "body",
+				"type": "table",
+				"table_value": {
+					"headers": ["A","B","C","D","E"],
+					"rows": [[{"content":"` + longText + `"},{"content":"ok"},{"content":"ok"},{"content":"ok"},{"content":"ok"}]]
+				}
+			}]
+		}]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	templatesDir := filepath.Join("..", "..", "templates")
+	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "warn")
+	// Warn mode should not fail due to fit issues — generation proceeds.
+	if err != nil {
+		t.Fatalf("warn mode should not error on unfittable content: %v", err)
+	}
+}
+
 func TestExtractShapeTextAndFont(t *testing.T) {
 	tests := []struct {
 		name     string

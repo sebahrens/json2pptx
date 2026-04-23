@@ -19,6 +19,7 @@ func runGenerate() error {
 	chartPNG := fs.Bool("chart-png", false, "DEPRECATED: Use PNG instead of native SVG for charts. Native SVG is now the default and recommended strategy.")
 	dryRun := fs.Bool("dry-run", false, "Validate input and show layout selections without generating output")
 	fs.BoolVar(dryRun, "n", false, "Shorthand for -dry-run")
+	strictFit := fs.String("strict-fit", "warn", "Text-fit checking mode: off, warn (default), or strict (refuse on overflow)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] -json <file.json>\n\n")
@@ -27,13 +28,22 @@ func runGenerate() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -json slides.json -output ./output\n")
 		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx generate -json - -json-output result.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -dry-run -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -n -json slides.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate -n -json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate -strict-fit=strict -json slides.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		fs.PrintDefaults()
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return err
+	}
+
+	// Validate --strict-fit value
+	switch *strictFit {
+	case "off", "warn", "strict":
+		// valid
+	default:
+		return fmt.Errorf("invalid --strict-fit value %q: must be off, warn, or strict", *strictFit)
 	}
 
 	// JSON input is required
@@ -45,5 +55,5 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templatesDir, *configPath)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName)
+	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit)
 }
