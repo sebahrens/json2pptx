@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -334,6 +335,20 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					if table != nil {
 						tablePath := fmt.Sprintf("slides[%d].content[%d]", i, j)
 						output.ValidationWarnings = append(output.ValidationWarnings, pipeline.DetectTableDensity(table, tablePath)...)
+
+						// Warn when both header_background and style_id are explicitly authored.
+						if table.Style != nil {
+							if w := generator.WarnStyleCollision(i,
+								table.Style.HeaderBackground != nil,
+								table.Style.StyleID != "",
+							); w != "" {
+								output.ValidationWarnings = append(output.ValidationWarnings, &patterns.ValidationError{
+									Path:    tablePath,
+									Code:    "style_collision",
+									Message: w,
+								})
+							}
+						}
 					}
 				}
 			}

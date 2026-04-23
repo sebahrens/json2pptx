@@ -97,3 +97,20 @@ func WarnTableCellOverflow(table *types.TableSpec, slideIdx int) []TableCellOver
 
 	return warnings
 }
+
+// WarnStyleCollision returns a warning message when both header_background and
+// style_id are explicitly set on the same table. The two properties have
+// overlapping scope — style_id controls the header row appearance via
+// firstRow banding, but an explicit header_background overrides it. Authors
+// who set both likely expect one to take precedence, which leads to surprises.
+//
+// headerBGExplicit and styleIDExplicit indicate whether each field was present
+// in the authored JSON (not just defaulted). slideIdx is 0-based.
+func WarnStyleCollision(slideIdx int, headerBGExplicit, styleIDExplicit bool) string {
+	if headerBGExplicit && styleIDExplicit {
+		return fmt.Sprintf("slide %d: table has both header_background and style_id explicitly set; "+
+			"header_background overrides the table style's header row appearance",
+			slideIdx+1)
+	}
+	return ""
+}

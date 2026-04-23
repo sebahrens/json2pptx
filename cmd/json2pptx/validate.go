@@ -248,6 +248,16 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 			for _, w := range generator.WarnTableCellOverflow(spec, i) {
 				result.Warnings = append(result.Warnings, w.String())
 			}
+
+			// Warn when both header_background and style_id are explicitly authored.
+			if table.Style != nil {
+				if w := generator.WarnStyleCollision(i,
+					table.Style.HeaderBackground != nil,
+					table.Style.StyleID != "",
+				); w != "" {
+					result.Warnings = append(result.Warnings, w)
+				}
+			}
 		}
 	}
 

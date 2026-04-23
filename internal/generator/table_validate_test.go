@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -86,6 +87,37 @@ func TestWarnTableCellOverflow_SkipsMergedCells(t *testing.T) {
 			t.Errorf("merged cell at col=1 should be skipped, but got warning")
 		}
 		t.Logf("row=%d col=%d measured=%d declared=%d", w.Row, w.Col, w.MeasuredEMU, w.DeclaredEMU)
+	}
+}
+
+func TestWarnStyleCollision_BothExplicit(t *testing.T) {
+	w := WarnStyleCollision(2, true, true)
+	if w == "" {
+		t.Fatal("expected warning when both header_background and style_id are explicit")
+	}
+	if !strings.Contains(w, "slide 3") {
+		t.Errorf("expected 1-based slide index 3, got: %s", w)
+	}
+	if !strings.Contains(w, "header_background") || !strings.Contains(w, "style_id") {
+		t.Errorf("warning should mention both fields: %s", w)
+	}
+}
+
+func TestWarnStyleCollision_OnlyHeaderBG(t *testing.T) {
+	if w := WarnStyleCollision(0, true, false); w != "" {
+		t.Errorf("expected no warning when only header_background is set, got: %s", w)
+	}
+}
+
+func TestWarnStyleCollision_OnlyStyleID(t *testing.T) {
+	if w := WarnStyleCollision(0, false, true); w != "" {
+		t.Errorf("expected no warning when only style_id is set, got: %s", w)
+	}
+}
+
+func TestWarnStyleCollision_NeitherExplicit(t *testing.T) {
+	if w := WarnStyleCollision(0, false, false); w != "" {
+		t.Errorf("expected no warning when neither is set, got: %s", w)
 	}
 }
 
