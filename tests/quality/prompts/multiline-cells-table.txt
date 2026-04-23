@@ -1,0 +1,5 @@
+Create a table where several cells contain multi-line content (2-4 lines each).
+Include cells with bullet-like content separated by newlines, long descriptions
+that wrap, and cells mixing short labels with longer explanations.
+
+This prompt tests the multiline counting rule in TDR density detection.

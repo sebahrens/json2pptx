@@ -1,0 +1,5 @@
+Create a KPI dashboard slide with 9 metric tiles arranged in a 3x3 grid.
+Each tile should show a metric name, current value, trend indicator, and
+comparison to target. Use shape_grid with semantic colors.
+
+This prompt tests shape_grid text fitting in small cells.

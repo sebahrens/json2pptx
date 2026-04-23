@@ -1,0 +1,37 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "mixed-hex-and-semantic.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Status Overview"
+        }
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "rows": [
+          {
+            "height": 45,
+            "cells": [
+              {"shape": {"fill": "#3498DB", "text": "On Track: Project Alpha is progressing well with all milestones met"}},
+              {"shape": {"fill": "accent1", "text": "At Risk: Project Beta has resource constraints"}},
+              {"shape": {"fill": "#E74C3C", "text": "Delayed: Project Gamma missed Q1 deadline"}}
+            ]
+          },
+          {
+            "height": 45,
+            "cells": [
+              {"shape": {"fill": "accent2", "text": "Complete: Infrastructure migration finished"}},
+              {"shape": {"fill": "#2ECC71", "text": "In Progress: Security audit underway"}},
+              {"shape": {"fill": "accent3", "text": "Planned: Phase 2 rollout scheduled for Q3"}}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

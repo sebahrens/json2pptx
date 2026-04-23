@@ -1,0 +1,5 @@
+Create a shape_grid slide with mixed font sizes: some cells at 8pt (below minimum),
+some at 10pt, and headers at 18pt. Include enough text that small-font cells
+require multiple wrap lines.
+
+This prompt is a regression guard for font-size floor enforcement (font_size < 9).

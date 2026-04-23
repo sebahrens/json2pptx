@@ -1,0 +1,5 @@
+Create a vendor comparison matrix slide with 5 vendors as columns and 8 feature
+rows. Each cell should contain a short assessment (1-2 sentences). Use a shape_grid
+pattern with semantic fill colors (accent1, accent2, etc.) for the header row.
+
+This prompt tests moderate table density near the TDR boundary.

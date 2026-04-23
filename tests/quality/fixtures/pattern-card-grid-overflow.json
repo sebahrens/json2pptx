@@ -1,0 +1,48 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "pattern-card-grid-overflow.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Product Feature Roadmap"
+        }
+      ],
+      "shape_grid": {
+        "columns": 4,
+        "rows": [
+          {
+            "height": 30,
+            "cells": [
+              {"shape": {"fill": "accent1", "text": {"content": "Real-time Analytics Dashboard\nProvides live data visualization with customizable widgets and automated alerting for key metrics", "size": 10}}},
+              {"shape": {"fill": "accent2", "text": {"content": "Advanced ML Pipeline\nEnd-to-end machine learning workflow with automated feature engineering and model deployment", "size": 10}}},
+              {"shape": {"fill": "accent3", "text": {"content": "Multi-tenant Architecture\nIsolated data partitioning with configurable resource allocation and tenant-level billing", "size": 10}}},
+              {"shape": {"fill": "accent4", "text": {"content": "Enterprise SSO Integration\nSAML 2.0 and OIDC support with directory sync and just-in-time provisioning", "size": 10}}}
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {"shape": {"fill": "accent5", "text": {"content": "GraphQL API Gateway\nFederated schema stitching with query optimization, rate limiting, and developer sandbox", "size": 10}}},
+              {"shape": {"fill": "accent6", "text": {"content": "Compliance Automation\nAutomated SOC 2 evidence collection with continuous control monitoring and audit trails", "size": 10}}},
+              {"shape": {"fill": "accent1", "text": {"content": "Data Residency Controls\nConfigurable geographic data boundaries with encryption at rest and in-transit by region", "size": 10}}},
+              {"shape": {"fill": "accent2", "text": {"content": "Workflow Orchestration\nVisual workflow builder with conditional logic, parallel execution, and error handling", "size": 10}}}
+            ]
+          },
+          {
+            "height": 30,
+            "cells": [
+              {"shape": {"fill": "accent3", "text": {"content": "Custom Report Builder\nDrag-and-drop report designer with scheduled generation and multi-format export options", "size": 10}}},
+              {"shape": {"fill": "accent4", "text": {"content": "Edge Computing Support\nDistributed processing nodes with local caching, offline mode, and eventual consistency", "size": 10}}},
+              {"shape": {"fill": "accent5", "text": {"content": "AI-Powered Search\nSemantic search with natural language queries, faceted filtering, and relevance tuning", "size": 10}}},
+              {"shape": {"fill": "accent6", "text": {"content": "Automated Scaling Engine\nPredictive autoscaling based on historical patterns with cost optimization recommendations", "size": 10}}}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

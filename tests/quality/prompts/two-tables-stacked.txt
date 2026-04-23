@@ -1,0 +1,5 @@
+Create a slide with two tables stacked vertically in a shape_grid: a revenue
+breakdown table (5 rows x 4 cols) on top and an expense breakdown table
+(5 rows x 4 cols) on the bottom. Use minimal row gap between them.
+
+This prompt forces the stacked_tables structural smell detector.

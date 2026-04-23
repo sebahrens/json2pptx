@@ -1,0 +1,4 @@
+Create a Business Model Canvas slide with all 9 sections densely populated.
+Each section should contain 4-6 bullet points of realistic business content.
+
+This prompt tests the BMC pattern with high content density per cell.

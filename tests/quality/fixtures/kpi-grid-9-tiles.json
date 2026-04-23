@@ -1,0 +1,45 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "kpi-grid-9-tiles.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q1 2026 KPI Dashboard"
+        }
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "rows": [
+          {
+            "height": 33,
+            "cells": [
+              {"shape": {"fill": "accent1", "text": {"content": "Revenue\n$12.4M\n↑ 18% YoY\nTarget: $11.0M", "size": 12}}},
+              {"shape": {"fill": "accent2", "text": {"content": "Gross Margin\n68.5%\n↑ 2.1pp\nTarget: 65%", "size": 12}}},
+              {"shape": {"fill": "accent3", "text": {"content": "Net Income\n$2.8M\n↑ 24% YoY\nTarget: $2.5M", "size": 12}}}
+            ]
+          },
+          {
+            "height": 33,
+            "cells": [
+              {"shape": {"fill": "accent4", "text": {"content": "ARR\n$48.2M\n↑ 32% YoY\nTarget: $45M", "size": 12}}},
+              {"shape": {"fill": "accent5", "text": {"content": "Churn Rate\n3.2%\n↓ 0.8pp\nTarget: <4%", "size": 12}}},
+              {"shape": {"fill": "accent6", "text": {"content": "NPS Score\n72\n↑ 5 pts\nTarget: 65", "size": 12}}}
+            ]
+          },
+          {
+            "height": 33,
+            "cells": [
+              {"shape": {"fill": "accent1", "text": {"content": "CAC\n$1,240\n↓ 15%\nTarget: $1,500", "size": 12}}},
+              {"shape": {"fill": "accent2", "text": {"content": "LTV:CAC\n4.2x\n↑ 0.6x\nTarget: 3.5x", "size": 12}}},
+              {"shape": {"fill": "accent3", "text": {"content": "Headcount\n247\n+18 QoQ\nPlan: 260", "size": 12}}}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

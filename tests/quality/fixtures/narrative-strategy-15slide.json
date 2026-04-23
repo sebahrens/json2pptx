@@ -1,0 +1,111 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "narrative-strategy-15slide.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Digital Transformation Strategy 2026-2028"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Board Presentation — April 2026"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Agenda"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Executive Summary", "Market Analysis", "Competitive Landscape", "Strategic Priorities", "Implementation Timeline", "Resource Requirements", "Risk Assessment", "Financial Projections", "Next Steps"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Revenue grew 18% YoY to $48.2M ARR", "Customer base expanded to 1,200+ enterprise accounts", "Platform reliability maintained at 99.99% uptime", "Three key strategic initiatives proposed for 2026-2028"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Market Analysis"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["TAM estimated at $12B by 2028 (Gartner)", "Fastest growth in mid-market segment (35% CAGR)", "Regulatory tailwinds driving compliance adoption", "AI/ML capabilities becoming table stakes"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Competitive Landscape"},
+        {"placeholder_id": "body", "type": "table", "table_value": {"headers": ["Competitor", "Market Share", "Strength", "Weakness"], "rows": [[{"content": "Incumbent A"}, {"content": "25%"}, {"content": "Brand"}, {"content": "Legacy tech"}], [{"content": "Startup B"}, {"content": "8%"}, {"content": "Innovation"}, {"content": "Scale"}], [{"content": "Us"}, {"content": "12%"}, {"content": "Platform"}, {"content": "Awareness"}]]}}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "SWOT Analysis"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Strengths: Strong engineering team, proven platform", "Weaknesses: Limited brand awareness in EMEA", "Opportunities: AI-driven analytics, compliance automation", "Threats: Incumbent price wars, talent competition"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priority 1: Platform Expansion"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Launch self-serve tier for mid-market", "Expand marketplace integrations to 500+", "Invest in developer experience and documentation", "Target: 40% increase in new account acquisition"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priority 2: AI Innovation"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Build proprietary LLM for domain-specific insights", "Launch predictive analytics module", "Automate compliance evidence collection", "Target: 25% reduction in time-to-insight"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priority 3: Global Expansion"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Open EMEA headquarters in London", "Hire regional sales teams in DACH and Nordics", "Achieve EU data residency certification", "Target: $10M international ARR by 2028"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Implementation Timeline"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["H1 2026: Foundation — infrastructure and team building", "H2 2026: Launch — self-serve tier and AI module beta", "H1 2027: Scale — EMEA operations, marketplace growth", "H2 2027: Optimize — iterate on AI, expand compliance", "2028: Accelerate — full global presence, IPO readiness"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Resource Requirements"},
+        {"placeholder_id": "body", "type": "table", "table_value": {"headers": ["Category", "2026", "2027", "2028"], "rows": [[{"content": "Engineering"}, {"content": "+30 FTE"}, {"content": "+20 FTE"}, {"content": "+15 FTE"}], [{"content": "Sales"}, {"content": "+10 FTE"}, {"content": "+15 FTE"}, {"content": "+10 FTE"}], [{"content": "Infrastructure"}, {"content": "$2.5M"}, {"content": "$3.0M"}, {"content": "$3.5M"}], [{"content": "Total Investment"}, {"content": "$18M"}, {"content": "$22M"}, {"content": "$25M"}]]}}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Risk Assessment"},
+        {"placeholder_id": "body", "type": "table", "table_value": {"headers": ["Risk", "Likelihood", "Impact", "Mitigation"], "rows": [[{"content": "Talent shortage"}, {"content": "High"}, {"content": "High"}, {"content": "Remote-first, competitive comp"}], [{"content": "Market downturn"}, {"content": "Medium"}, {"content": "High"}, {"content": "Maintain 18-mo runway"}], [{"content": "Tech disruption"}, {"content": "Low"}, {"content": "Critical"}, {"content": "Continuous R&D investment"}]]}}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Financial Projections"},
+        {"placeholder_id": "body", "type": "table", "table_value": {"headers": ["Metric", "2026E", "2027E", "2028E"], "rows": [[{"content": "ARR"}, {"content": "$65M"}, {"content": "$95M"}, {"content": "$140M"}], [{"content": "Gross Margin"}, {"content": "70%"}, {"content": "72%"}, {"content": "75%"}], [{"content": "Net Revenue Retention"}, {"content": "125%"}, {"content": "130%"}, {"content": "135%"}], [{"content": "Free Cash Flow"}, {"content": "-$5M"}, {"content": "$2M"}, {"content": "$15M"}]]}}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Next Steps"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Board approval of $18M 2026 investment plan", "Finalize EMEA office location by end of Q2", "Begin executive search for VP International", "Launch self-serve beta with 50 design partners", "Present quarterly progress update in July 2026"]}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Q&A"},
+        {"placeholder_id": "body", "type": "text", "text_value": "Thank you for your time. Questions and discussion welcome."}
+      ]
+    }
+  ]
+}

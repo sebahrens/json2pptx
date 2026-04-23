@@ -1,0 +1,7 @@
+Create a slide with a dense comparison table of 16 rows and 6 columns.
+The table should compare cloud providers (AWS, Azure, GCP, Oracle, IBM, Alibaba)
+across metrics like Compute, Storage, Networking, Security, Compliance, Pricing,
+Support, SLA, Regions, CDN, Serverless, Containers, AI/ML, IoT, Edge, and Databases.
+
+This prompt deliberately exceeds TDR density limits (rows>7, cols=6) and should
+trigger density_exceeded and fit_overflow warnings in the fit report.

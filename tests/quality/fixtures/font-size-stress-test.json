@@ -1,0 +1,45 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "font-size-stress-test.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Font Size Stress Test"
+        }
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "rows": [
+          {
+            "height": 25,
+            "cells": [
+              {"shape": {"fill": "accent1", "text": {"content": "Header Cell at 18pt\nThis is the main heading for the section with adequate font size for readability", "size": 18}}},
+              {"shape": {"fill": "accent2", "text": {"content": "Medium Cell at 10pt\nThis cell uses a moderate font size that should be readable on most screens but is getting close to the minimum", "size": 10}}},
+              {"shape": {"fill": "accent3", "text": {"content": "Small Cell at 8pt\nThis cell uses a very small font size below the 9pt minimum threshold which should trigger a warning in the quality metrics", "size": 8}}}
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {"shape": {"fill": "accent4", "text": {"content": "Dense text at 8pt with multiple lines\nLine 2: Additional context about the metric performance over time\nLine 3: Year-over-year comparison shows improvement\nLine 4: Target achievement at 95%", "size": 8}}},
+              {"shape": {"fill": "accent5", "text": {"content": "Normal text at 12pt\nThis is a comfortable reading size for presentation content displayed on screen", "size": 12}}},
+              {"shape": {"fill": "accent6", "text": {"content": "Tiny text at 7pt\nThis is way too small for any practical presentation use and should definitely be flagged by quality checks", "size": 7}}}
+            ]
+          },
+          {
+            "height": 40,
+            "cells": [
+              {"shape": {"fill": "accent1", "text": {"content": "Large narrative block at 10pt with extensive content\nThis paragraph demonstrates what happens when you try to fit too much textual content into a shape grid cell. The content should wrap multiple times and potentially overflow the allocated vertical space, which is exactly the kind of issue the eval harness needs to detect and flag.", "size": 10}}},
+              {"shape": {"fill": "accent2", "text": {"content": "Acceptable at 9pt\nRight at the threshold. Should not trigger font size warnings but may trigger overflow if the content is too long for the cell dimensions.", "size": 9}}},
+              {"shape": {"fill": "accent3", "text": {"content": "Mixed sizes would go here\nIn practice, cells can't mix sizes in shape_grid\nBut this tests the boundary at 11pt", "size": 11}}}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

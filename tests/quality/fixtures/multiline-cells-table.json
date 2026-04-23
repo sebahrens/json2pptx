@@ -1,0 +1,30 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "multiline-cells-table.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Initiative Assessment"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "table",
+          "table_value": {
+            "headers": ["Initiative", "Description", "Status", "Next Steps"],
+            "rows": [
+              [{"content": "Cloud Migration"}, {"content": "Migrate all on-premise workloads to AWS.\nPhase 1: Dev/staging environments.\nPhase 2: Production."}, {"content": "In Progress\n65% complete"}, {"content": "Complete Phase 1 by March.\nBegin Phase 2 planning.\nHire 2 cloud engineers."}],
+              [{"content": "Data Platform"}, {"content": "Build unified data lake.\nConsolidate 12 data sources.\nImplement governance framework."}, {"content": "Planning\n20% complete"}, {"content": "Finalize architecture.\nSelect vendor.\nBegin POC in Q2."}],
+              [{"content": "Security Hardening"}, {"content": "Implement zero-trust architecture.\nDeploy SIEM solution.\nConduct pen testing."}, {"content": "At Risk\n40% complete\nBlocked on budget"}, {"content": "Escalate budget request.\nPrioritize SIEM.\nSchedule pen test."}],
+              [{"content": "API Gateway"}, {"content": "Centralize API management.\nImplement rate limiting.\nAdd developer portal."}, {"content": "Complete\n100%"}, {"content": "Monitor adoption.\nGather feedback.\nPlan v2 features."}],
+              [{"content": "Mobile App Refresh"}, {"content": "Redesign mobile UX.\nAdd offline capability.\nIntegrate biometric auth."}, {"content": "Not Started\nDepends on API Gateway"}, {"content": "Begin UX research.\nCreate wireframes.\nEstimate effort."}]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

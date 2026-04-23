@@ -133,6 +133,12 @@ go.work.sum
 __pycache__/
 *.pyc
 
+# Quality eval harness generated output
+tests/quality/results.csv
+tests/quality/test-output.log
+tests/quality/pptx_output/
+tests/quality/slide_images/
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

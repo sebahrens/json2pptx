@@ -1,0 +1,33 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "comparison-matrix-5vendors.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Vendor Comparison Matrix"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "table",
+          "table_value": {
+            "headers": ["Feature", "Vendor A", "Vendor B", "Vendor C", "Vendor D", "Vendor E"],
+            "rows": [
+              [{"content": "Integration"}, {"content": "Native REST API with full OAuth 2.0 support"}, {"content": "SOAP-only with basic auth"}, {"content": "REST + GraphQL hybrid"}, {"content": "Webhook-based events"}, {"content": "gRPC with mTLS"}],
+              [{"content": "Scalability"}, {"content": "Auto-scaling up to 10K instances"}, {"content": "Manual scaling, max 500"}, {"content": "Kubernetes-native autoscaler"}, {"content": "Fixed capacity pools"}, {"content": "Serverless, unlimited"}],
+              [{"content": "Compliance"}, {"content": "SOC 2, HIPAA, GDPR"}, {"content": "SOC 2 only"}, {"content": "SOC 2, GDPR, PCI-DSS"}, {"content": "ISO 27001"}, {"content": "FedRAMP, SOC 2"}],
+              [{"content": "Pricing"}, {"content": "$0.05/req, volume discounts"}, {"content": "$0.10/req flat"}, {"content": "Free tier + $0.03/req"}, {"content": "$500/mo flat"}, {"content": "Usage-based, $0.02/req"}],
+              [{"content": "SLA"}, {"content": "99.99% uptime guaranteed"}, {"content": "99.9% best effort"}, {"content": "99.95% with credits"}, {"content": "99.99%"}, {"content": "99.999%"}],
+              [{"content": "Support"}, {"content": "24/7 with 15-min response"}, {"content": "Business hours only"}, {"content": "24/7, 1-hour response"}, {"content": "Email only, 48h"}, {"content": "Dedicated TAM"}],
+              [{"content": "Data Residency"}, {"content": "US, EU, APAC regions"}, {"content": "US only"}, {"content": "Global with GDPR zones"}, {"content": "EU + US"}, {"content": "Any region"}],
+              [{"content": "Migration"}, {"content": "Automated tooling available"}, {"content": "Manual CSV import only"}, {"content": "API-driven bulk migration"}, {"content": "Professional services"}, {"content": "Self-serve + docs"}]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

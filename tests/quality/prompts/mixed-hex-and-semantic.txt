@@ -1,0 +1,4 @@
+Create a shape_grid slide where some cells use hex fill colors (#3498DB, #E74C3C,
+#2ECC71) and others use semantic scheme colors (accent1, accent2, accent3).
+
+This prompt forces the mixed_fill_scheme structural smell detector.

@@ -1,0 +1,41 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "dense-table-16x6.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Cloud Provider Comparison"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "table",
+          "table_value": {
+            "headers": ["Capability", "AWS", "Azure", "GCP", "Oracle", "IBM"],
+            "rows": [
+              [{"content": "Compute"}, {"content": "EC2, Lambda"}, {"content": "VMs, Functions"}, {"content": "GCE, Cloud Run"}, {"content": "OCI Compute"}, {"content": "Virtual Servers"}],
+              [{"content": "Storage"}, {"content": "S3, EBS"}, {"content": "Blob, Disk"}, {"content": "GCS, PD"}, {"content": "Object Storage"}, {"content": "Cloud Object"}],
+              [{"content": "Networking"}, {"content": "VPC, ELB"}, {"content": "VNet, LB"}, {"content": "VPC, CLB"}, {"content": "VCN"}, {"content": "VPC"}],
+              [{"content": "Security"}, {"content": "IAM, KMS"}, {"content": "AD, Key Vault"}, {"content": "IAM, KMS"}, {"content": "IAM"}, {"content": "IAM"}],
+              [{"content": "Compliance"}, {"content": "SOC, HIPAA"}, {"content": "SOC, HIPAA"}, {"content": "SOC, HIPAA"}, {"content": "SOC"}, {"content": "SOC, HIPAA"}],
+              [{"content": "Pricing"}, {"content": "Pay-as-you-go"}, {"content": "Pay-as-you-go"}, {"content": "Per-second billing"}, {"content": "BYOL friendly"}, {"content": "Tiered"}],
+              [{"content": "Support"}, {"content": "Enterprise"}, {"content": "Unified"}, {"content": "Premium"}, {"content": "Premier"}, {"content": "Advanced"}],
+              [{"content": "SLA"}, {"content": "99.99%"}, {"content": "99.99%"}, {"content": "99.99%"}, {"content": "99.95%"}, {"content": "99.99%"}],
+              [{"content": "Regions"}, {"content": "30+"}, {"content": "60+"}, {"content": "35+"}, {"content": "40+"}, {"content": "19"}],
+              [{"content": "CDN"}, {"content": "CloudFront"}, {"content": "Front Door"}, {"content": "Cloud CDN"}, {"content": "N/A"}, {"content": "CDN"}],
+              [{"content": "Serverless"}, {"content": "Lambda"}, {"content": "Functions"}, {"content": "Cloud Functions"}, {"content": "Fn Project"}, {"content": "Functions"}],
+              [{"content": "Containers"}, {"content": "ECS, EKS"}, {"content": "AKS"}, {"content": "GKE"}, {"content": "OKE"}, {"content": "IKS"}],
+              [{"content": "AI/ML"}, {"content": "SageMaker"}, {"content": "Azure ML"}, {"content": "Vertex AI"}, {"content": "AI Services"}, {"content": "Watson"}],
+              [{"content": "IoT"}, {"content": "IoT Core"}, {"content": "IoT Hub"}, {"content": "IoT Core"}, {"content": "IoT"}, {"content": "Watson IoT"}],
+              [{"content": "Edge"}, {"content": "Outposts"}, {"content": "Stack Edge"}, {"content": "Distributed"}, {"content": "Roving Edge"}, {"content": "Satellite"}],
+              [{"content": "Databases"}, {"content": "RDS, DynamoDB"}, {"content": "SQL, Cosmos"}, {"content": "Cloud SQL, Spanner"}, {"content": "Autonomous DB"}, {"content": "Db2, Cloudant"}]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+Create a card-grid pattern slide with 12 cards, each containing a title (15+ chars),
+a body paragraph (50+ chars), and a metric value. The content volume should
+exceed what fits comfortably in the grid cells.
+
+This prompt tests text overflow detection in shape_grid pattern cells.

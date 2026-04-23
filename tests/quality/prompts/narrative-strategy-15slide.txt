@@ -1,0 +1,6 @@
+Create a 15-slide strategy narrative deck covering: title, agenda, executive summary,
+market analysis, competitive landscape, SWOT analysis, strategic priorities (3 slides),
+implementation timeline, resource requirements, risk assessment, financial projections,
+next steps, and Q&A.
+
+This prompt tests multi-slide deck generation with varied content types.

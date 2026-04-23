@@ -1,0 +1,56 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "two-tables-stacked.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Revenue vs. Expenses"
+        }
+      ],
+      "shape_grid": {
+        "columns": 1,
+        "gap": 1,
+        "rows": [
+          {
+            "height": 48,
+            "cells": [
+              {
+                "table": {
+                  "headers": ["Revenue Stream", "Q1", "Q2", "Q3", "Q4"],
+                  "rows": [
+                    [{"content": "Product Sales"}, {"content": "$3.2M"}, {"content": "$3.5M"}, {"content": "$3.8M"}, {"content": "$4.1M"}],
+                    [{"content": "Services"}, {"content": "$1.1M"}, {"content": "$1.2M"}, {"content": "$1.3M"}, {"content": "$1.4M"}],
+                    [{"content": "Licensing"}, {"content": "$0.8M"}, {"content": "$0.9M"}, {"content": "$0.9M"}, {"content": "$1.0M"}],
+                    [{"content": "Support"}, {"content": "$0.5M"}, {"content": "$0.5M"}, {"content": "$0.6M"}, {"content": "$0.6M"}],
+                    [{"content": "Total"}, {"content": "$5.6M"}, {"content": "$6.1M"}, {"content": "$6.6M"}, {"content": "$7.1M"}]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "height": 48,
+            "cells": [
+              {
+                "table": {
+                  "headers": ["Expense Category", "Q1", "Q2", "Q3", "Q4"],
+                  "rows": [
+                    [{"content": "COGS"}, {"content": "$1.8M"}, {"content": "$1.9M"}, {"content": "$2.0M"}, {"content": "$2.1M"}],
+                    [{"content": "R&D"}, {"content": "$1.2M"}, {"content": "$1.3M"}, {"content": "$1.4M"}, {"content": "$1.5M"}],
+                    [{"content": "Sales & Marketing"}, {"content": "$0.9M"}, {"content": "$1.0M"}, {"content": "$1.1M"}, {"content": "$1.2M"}],
+                    [{"content": "G&A"}, {"content": "$0.4M"}, {"content": "$0.4M"}, {"content": "$0.5M"}, {"content": "$0.5M"}],
+                    [{"content": "Total"}, {"content": "$4.3M"}, {"content": "$4.6M"}, {"content": "$5.0M"}, {"content": "$5.3M"}]
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

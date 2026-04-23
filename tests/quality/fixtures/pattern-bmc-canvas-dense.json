@@ -1,0 +1,30 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "pattern-bmc-canvas-dense.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout7",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Business Model Canvas"
+        }
+      ],
+      "pattern": {
+        "name": "business-model-canvas",
+        "data": {
+          "key_partners": "Cloud infrastructure providers (AWS, Azure, GCP)\nSystem integrators (Accenture, Deloitte)\nTechnology OEMs (Intel, NVIDIA)\nChannel resellers in APAC and EMEA\nOpen-source community contributors\nAcademic research institutions",
+          "key_activities": "Platform R&D and feature development\nEnterprise sales and account management\nCustomer success and onboarding\nPartner ecosystem development\nCompliance certification maintenance\nDeveloper community engagement",
+          "key_resources": "Engineering team (120+ developers)\nProprietary ML models and training data\nPatent portfolio (35 patents filed)\nEnterprise customer relationships\nSOC 2 / HIPAA certifications\nGlobal CDN infrastructure",
+          "value_propositions": "10x faster time-to-insight vs. legacy tools\nNo-code analytics for business users\nEnterprise-grade security and compliance\nReal-time collaborative decision-making\nSeamless integration with 200+ data sources\nPredictive analytics powered by proprietary AI",
+          "customer_relationships": "Dedicated customer success managers\nTiered support (Standard/Premium/Enterprise)\nQuarterly business reviews\nOnline community and knowledge base\nCertification and training programs\nAnnual user conference",
+          "channels": "Direct enterprise sales team\nOnline self-serve platform\nPartner/reseller network (150+ partners)\nAWS/Azure/GCP marketplaces\nDeveloper documentation portal\nIndustry conferences and events",
+          "customer_segments": "Enterprise (5000+ employees)\nMid-market (500-5000 employees)\nPublic sector and government\nFinancial services and banking\nHealthcare and life sciences\nRetail and e-commerce",
+          "cost_structure": "Engineering salaries (55% of costs)\nCloud infrastructure hosting (18%)\nSales and marketing (15%)\nG&A and legal/compliance (8%)\nR&D partnerships and grants (4%)",
+          "revenue_streams": "Annual SaaS subscriptions (70%)\nProfessional services/consulting (15%)\nMarketplace transaction fees (8%)\nTraining and certification revenue (4%)\nData enrichment add-ons (3%)"
+        }
+      }
+    }
+  ]
+}
