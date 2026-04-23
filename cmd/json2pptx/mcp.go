@@ -16,6 +16,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -315,7 +316,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Quality:    computeQualityScore(input.Slides, allWarnings),
 	}
 
-	responseJSON, err := json.MarshalIndent(output, "", "  ")
+	responseJSON, err := api.MarshalMCPResponse(output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -376,7 +377,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		OutputFormats:  []string{"pptx"},
 	}
 
-	responseJSON, err := json.MarshalIndent(output, "", "  ")
+	responseJSON, err := api.MarshalMCPResponse(output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -445,7 +446,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.
 func marshalValidateResult(output dryRunOutput) (*mcp.CallToolResult, error) {
-	responseJSON, err := json.MarshalIndent(output, "", "  ")
+	responseJSON, err := api.MarshalMCPResponse(output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -608,7 +609,7 @@ func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallTool
 		}
 	}
 
-	responseJSON, err := json.MarshalIndent(entries, "", "  ")
+	responseJSON, err := api.MarshalMCPResponse(entries)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -648,7 +649,7 @@ func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	}
 	result.Cells = pat.CellsHint()
 
-	responseJSON, err := json.MarshalIndent(result, "", "  ")
+	responseJSON, err := api.MarshalMCPResponse(result)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -724,14 +725,14 @@ func handleValidatePattern(_ context.Context, request mcp.CallToolRequest) (*mcp
 			Errors []patternValidationError `json:"errors"`
 		}{OK: false, Errors: splitValidationErrors(err)}
 
-		responseJSON, _ := json.MarshalIndent(result, "", "  ")
+		responseJSON, _ := api.MarshalMCPResponse(result)
 		return mcp.NewToolResultText(string(responseJSON)), nil
 	}
 
 	result := struct {
 		OK bool `json:"ok"`
 	}{OK: true}
-	responseJSON, _ := json.MarshalIndent(result, "", "  ")
+	responseJSON, _ := api.MarshalMCPResponse(result)
 	return mcp.NewToolResultText(string(responseJSON)), nil
 }
 
@@ -819,7 +820,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		ShapeGrid: grid,
 	}
 
-	responseJSON, err := json.MarshalIndent(result, "", "  ")
+	responseJSON, err := api.MarshalMCPResponse(result)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
