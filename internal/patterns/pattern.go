@@ -113,12 +113,14 @@ type Schema struct {
 type Registry struct {
 	mu       sync.RWMutex
 	patterns map[string]Pattern
+	aliases  map[string]string // alias → canonical name
 }
 
 // NewRegistry creates an empty Registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		patterns: make(map[string]Pattern),
+		aliases:  make(map[string]string),
 	}
 }
 
@@ -135,14 +137,63 @@ func (r *Registry) Register(p Pattern) {
 	r.patterns[name] = p
 }
 
+// RegisterAlias adds an alternative name that resolves to an existing
+// canonical pattern. It panics if the alias collides with a canonical name
+// or another alias, or if the target pattern is not registered.
+func (r *Registry) RegisterAlias(alias, canonical string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.patterns[alias]; exists {
+		panic(fmt.Sprintf("patterns: alias %q collides with canonical name", alias))
+	}
+	if _, exists := r.aliases[alias]; exists {
+		panic(fmt.Sprintf("patterns: duplicate alias %q", alias))
+	}
+	if _, exists := r.patterns[canonical]; !exists {
+		panic(fmt.Sprintf("patterns: alias %q target %q is not registered", alias, canonical))
+	}
+	r.aliases[alias] = canonical
+}
+
 // Get returns the pattern with the given name and true, or (nil, false) if
-// no such pattern is registered.
+// no such pattern is registered. Aliases are resolved transparently.
 func (r *Registry) Get(name string) (Pattern, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	p, ok := r.patterns[name]
-	return p, ok
+	if p, ok := r.patterns[name]; ok {
+		return p, true
+	}
+	if canonical, ok := r.aliases[name]; ok {
+		p, ok := r.patterns[canonical]
+		return p, ok
+	}
+	return nil, false
+}
+
+// ResolveAlias returns the canonical name for the given input. If the input
+// is already a canonical name or is unknown, it is returned unchanged.
+func (r *Registry) ResolveAlias(name string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if canonical, ok := r.aliases[name]; ok {
+		return canonical
+	}
+	return name
+}
+
+// Aliases returns a copy of the alias→canonical mapping.
+func (r *Registry) Aliases() map[string]string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make(map[string]string, len(r.aliases))
+	for alias, canonical := range r.aliases {
+		out[alias] = canonical
+	}
+	return out
 }
 
 // List returns all registered patterns sorted by name.
@@ -176,6 +227,13 @@ func (r *Registry) Suggest(name string) (string, bool) {
 		if d < bestDist {
 			bestDist = d
 			best = registered
+		}
+	}
+	for alias := range r.aliases {
+		d := damerauLevenshtein(name, alias)
+		if d < bestDist {
+			bestDist = d
+			best = alias
 		}
 	}
 	if bestDist <= maxDist {

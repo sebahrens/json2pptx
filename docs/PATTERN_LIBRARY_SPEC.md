@@ -6,6 +6,34 @@
 
 `shape_grid` JSON costs ~600 model tokens per non-trivial slide. ~70% of complex slides in `examples/` reuse a small set of layouts (KPI grids, BMC, 2×2 matrix, timeline, card grid, icon row, two-col compare). A named-pattern primitive replaces ~600 tokens with ~100 by lifting recurring `shape_grid` skeletons into the binary, theme-aware and validated.
 
+## 1.1 Naming convention & aliases
+
+Canonical pattern names follow the form **`{noun}-{qualifier}`**:
+
+| Qualifier style | Examples |
+|---|---|
+| count + suffix | `kpi-3up`, `kpi-4up` |
+| dimensions | `matrix-2x2` |
+| column count | `comparison-2col` |
+| orientation | `timeline-horizontal` |
+| compound noun | `card-grid`, `icon-row`, `bmc-canvas` |
+
+When a pattern is the only variant of its noun (e.g. only one timeline layout exists), the registry provides a **short alias** that drops the qualifier:
+
+| Alias | Canonical |
+|---|---|
+| `timeline` | `timeline-horizontal` |
+| `bmc` | `bmc-canvas` |
+| `matrix` | `matrix-2x2` |
+| `comparison` | `comparison-2col` |
+
+Aliases resolve transparently in `Registry.Get` — callers never need to distinguish alias from canonical. `Registry.List` returns only canonical patterns (aliases are excluded). `Registry.Suggest` considers both canonical names and aliases for typo correction.
+
+**Rules for adding aliases:**
+- An alias MUST NOT collide with any canonical name.
+- Only add an alias when there is exactly one variant of a noun. If `timeline-vertical` is added later, the `timeline` alias should be removed.
+- Aliases are registered in `internal/patterns/z_aliases.go` (sorted last to run after all pattern `init` functions).
+
 ## 2. Final decisions
 
 | # | Decision |

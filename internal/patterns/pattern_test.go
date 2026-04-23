@@ -248,3 +248,154 @@ func TestDefaultRegistryContainsKpi3up(t *testing.T) {
 		t.Errorf("Name() = %q, want %q", p.Name(), "kpi-3up")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Alias tests
+// ---------------------------------------------------------------------------
+
+func TestRegisterAliasAndGet(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "timeline-horizontal"})
+	r.RegisterAlias("timeline", "timeline-horizontal")
+
+	// Alias resolves to canonical pattern.
+	p, ok := r.Get("timeline")
+	if !ok {
+		t.Fatal("expected Get to find pattern via alias")
+	}
+	if p.Name() != "timeline-horizontal" {
+		t.Errorf("Name() = %q, want %q", p.Name(), "timeline-horizontal")
+	}
+
+	// Canonical name still works.
+	p2, ok := r.Get("timeline-horizontal")
+	if !ok {
+		t.Fatal("expected Get to find pattern via canonical name")
+	}
+	if p2.Name() != "timeline-horizontal" {
+		t.Errorf("Name() = %q, want %q", p2.Name(), "timeline-horizontal")
+	}
+}
+
+func TestRegisterAliasPanicsOnCollisionWithCanonical(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "card-grid"})
+
+	defer func() {
+		if rec := recover(); rec == nil {
+			t.Fatal("expected panic when alias collides with canonical name")
+		}
+	}()
+	r.RegisterAlias("card-grid", "card-grid")
+}
+
+func TestRegisterAliasPanicsOnDuplicate(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "timeline-horizontal"})
+	r.RegisterAlias("timeline", "timeline-horizontal")
+
+	defer func() {
+		if rec := recover(); rec == nil {
+			t.Fatal("expected panic on duplicate alias")
+		}
+	}()
+	r.RegisterAlias("timeline", "timeline-horizontal")
+}
+
+func TestRegisterAliasPanicsOnMissingTarget(t *testing.T) {
+	r := NewRegistry()
+
+	defer func() {
+		if rec := recover(); rec == nil {
+			t.Fatal("expected panic when alias target is not registered")
+		}
+	}()
+	r.RegisterAlias("tl", "nonexistent")
+}
+
+func TestResolveAlias(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "bmc-canvas"})
+	r.RegisterAlias("bmc", "bmc-canvas")
+
+	if got := r.ResolveAlias("bmc"); got != "bmc-canvas" {
+		t.Errorf("ResolveAlias(%q) = %q, want %q", "bmc", got, "bmc-canvas")
+	}
+	if got := r.ResolveAlias("bmc-canvas"); got != "bmc-canvas" {
+		t.Errorf("ResolveAlias(%q) = %q, want %q", "bmc-canvas", got, "bmc-canvas")
+	}
+	if got := r.ResolveAlias("unknown"); got != "unknown" {
+		t.Errorf("ResolveAlias(%q) = %q, want %q", "unknown", got, "unknown")
+	}
+}
+
+func TestAliasesReturnsMap(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "timeline-horizontal"})
+	r.Register(&stubPattern{name: "bmc-canvas"})
+	r.RegisterAlias("timeline", "timeline-horizontal")
+	r.RegisterAlias("bmc", "bmc-canvas")
+
+	aliases := r.Aliases()
+	if len(aliases) != 2 {
+		t.Fatalf("Aliases() returned %d entries, want 2", len(aliases))
+	}
+	if aliases["timeline"] != "timeline-horizontal" {
+		t.Errorf("aliases[timeline] = %q, want %q", aliases["timeline"], "timeline-horizontal")
+	}
+	if aliases["bmc"] != "bmc-canvas" {
+		t.Errorf("aliases[bmc] = %q, want %q", aliases["bmc"], "bmc-canvas")
+	}
+}
+
+func TestListExcludesAliases(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "timeline-horizontal"})
+	r.RegisterAlias("timeline", "timeline-horizontal")
+
+	list := r.List()
+	if len(list) != 1 {
+		t.Fatalf("List() returned %d patterns, want 1 (aliases excluded)", len(list))
+	}
+	if list[0].Name() != "timeline-horizontal" {
+		t.Errorf("List()[0].Name() = %q, want %q", list[0].Name(), "timeline-horizontal")
+	}
+}
+
+func TestSuggestFindsAlias(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "timeline-horizontal"})
+	r.RegisterAlias("timeline", "timeline-horizontal")
+
+	// "timline" is 1 edit from "timeline" (the alias).
+	name, ok := r.Suggest("timline")
+	if !ok {
+		t.Fatal("expected Suggest to find a match for typo of alias")
+	}
+	if name != "timeline" {
+		t.Errorf("Suggest(%q) = %q, want %q", "timline", name, "timeline")
+	}
+}
+
+func TestDefaultRegistryAliases(t *testing.T) {
+	// Verify the default aliases resolve correctly.
+	tests := []struct {
+		alias     string
+		canonical string
+	}{
+		{"timeline", "timeline-horizontal"},
+		{"bmc", "bmc-canvas"},
+		{"matrix", "matrix-2x2"},
+		{"comparison", "comparison-2col"},
+	}
+	for _, tt := range tests {
+		p, ok := Default().Get(tt.alias)
+		if !ok {
+			t.Errorf("Default().Get(%q) failed", tt.alias)
+			continue
+		}
+		if p.Name() != tt.canonical {
+			t.Errorf("Default().Get(%q).Name() = %q, want %q", tt.alias, p.Name(), tt.canonical)
+		}
+	}
+}
