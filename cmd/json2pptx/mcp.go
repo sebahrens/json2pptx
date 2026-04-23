@@ -104,6 +104,7 @@ func runMCP() error {
 	// Register tools
 	s.AddTool(mcpGenerateTool(), mc.handleGenerate)
 	s.AddTool(mcpListTemplatesTool(), mc.handleListTemplates)
+	s.AddTool(mcpGetDataFormatHintsTool(), handleGetDataFormatHints)
 	s.AddTool(mcpValidateTool(), mc.handleValidate)
 	s.AddTool(mcpListPatternsTool(), handleListPatterns)
 	s.AddTool(mcpShowPatternTool(), handleShowPattern)
@@ -173,6 +174,15 @@ func mcpListTemplatesTool() mcp.Tool {
 		mcp.WithString("mode",
 			mcp.Description("Detail level: list (names only), compact (names + theme), or full (all placeholders)."),
 			mcp.Enum("list", "compact", "full"),
+		),
+	)
+}
+
+func mcpGetDataFormatHintsTool() mcp.Tool {
+	return mcp.NewTool("get_data_format_hints",
+		mcp.WithDescription("Fetch the full data_format_hints map for all chart and diagram types. Use the digest from list_templates to avoid refetching when hints haven't changed."),
+		mcp.WithString("digest",
+			mcp.Description("Digest from a previous list_templates response. If it matches the current hints, a not_modified response is returned instead of the full map."),
 		),
 	)
 }
@@ -391,13 +401,20 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		templates = append(templates, info)
 	}
 
+	st := buildSupportedTypes()
+
+	// Replace full data_format_hints with a digest to reduce payload size.
+	// Agents fetch the full hints on demand via get_data_format_hints.
+	st.DataFormatHintsDigest = computeDataFormatHintsDigest(st.DataFormatHints)
+	st.DataFormatHints = nil
+
 	output := skillInfo{
 		Tool: skillToolInfo{
 			Name:    "json2pptx",
 			Version: Version,
 		},
 		Templates:      templates,
-		SupportedTypes: buildSupportedTypes(),
+		SupportedTypes: st,
 		InputFormats:   []string{"json"},
 		OutputFormats:  []string{"pptx"},
 	}
@@ -408,6 +425,38 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	}
 
 	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+// dataFormatHintsResponse is the JSON envelope for get_data_format_hints.
+type dataFormatHintsResponse struct {
+	Digest      string                     `json:"digest"`
+	NotModified bool                       `json:"not_modified,omitempty"`
+	Hints       map[string]skillDataFormat `json:"data_format_hints,omitempty"`
+}
+
+func handleGetDataFormatHints(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	hints := buildDataFormatHints()
+	digest := computeDataFormatHintsDigest(hints)
+
+	// If the caller already has this digest, return a short not_modified response.
+	if d, err := request.RequireString("digest"); err == nil && d == digest {
+		resp := dataFormatHintsResponse{
+			Digest:      digest,
+			NotModified: true,
+		}
+		b, _ := json.Marshal(resp)
+		return mcp.NewToolResultText(string(b)), nil
+	}
+
+	resp := dataFormatHintsResponse{
+		Digest: digest,
+		Hints:  hints,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(b)), nil
 }
 
 func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

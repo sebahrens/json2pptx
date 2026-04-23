@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -115,12 +117,13 @@ type skillCapacity struct {
 
 // skillSupportedTypes lists all supported slide, chart, diagram, and grid types.
 type skillSupportedTypes struct {
-	SlideTypes      []string                    `json:"slide_types"`
-	ChartTypes      []string                    `json:"chart_types"`
-	DiagramTypes    []string                    `json:"diagram_types"`
-	GridCellTypes   []string                    `json:"grid_cell_types"`
-	ShapeGeometries []string                    `json:"shape_geometries"`
-	DataFormatHints map[string]skillDataFormat  `json:"data_format_hints,omitempty"`
+	SlideTypes           []string                    `json:"slide_types"`
+	ChartTypes           []string                    `json:"chart_types"`
+	DiagramTypes         []string                    `json:"diagram_types"`
+	GridCellTypes        []string                    `json:"grid_cell_types"`
+	ShapeGeometries      []string                    `json:"shape_geometries"`
+	DataFormatHints      map[string]skillDataFormat  `json:"data_format_hints,omitempty"`
+	DataFormatHintsDigest string                     `json:"data_format_hints_digest,omitempty"`
 }
 
 // skillDataFormat describes the expected data structure for a chart or diagram type.
@@ -617,6 +620,18 @@ func buildDataFormatHints() map[string]skillDataFormat {
 			Description:  "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"",
 		},
 	}
+}
+
+// computeDataFormatHintsDigest returns a stable SHA-256 hex digest of the
+// canonical JSON encoding of the data format hints map. The digest is stable
+// across runs because json.Marshal sorts map keys deterministically.
+func computeDataFormatHintsDigest(hints map[string]skillDataFormat) string {
+	b, err := json.Marshal(hints)
+	if err != nil {
+		return ""
+	}
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:])
 }
 
 // buildPatternEntries builds compact (always) and full (mode=full only) pattern

@@ -347,6 +347,28 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}
 	})
 
+	t.Run("list_templates returns digest not full hints", func(t *testing.T) {
+		result, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected tool error: %v", result.Content)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp skillInfo
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if resp.SupportedTypes.DataFormatHintsDigest == "" {
+			t.Error("expected data_format_hints_digest to be populated")
+		}
+		if resp.SupportedTypes.DataFormatHints != nil {
+			t.Error("expected data_format_hints to be omitted from list_templates response")
+		}
+	})
+
 	t.Run("strict_fit=strict refuses on overflow", func(t *testing.T) {
 		// Build a table with many columns and long cell content to trigger
 		// both TDR density ceiling (cells > 60 at >=18pt is impossible with
@@ -408,6 +430,119 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		errText := result.Content[0].(mcp.TextContent).Text
 		if !strings.Contains(errText, "strict-fit") {
 			t.Errorf("expected error to mention strict-fit, got: %s", errText)
+		}
+	})
+}
+
+func TestMCPGetDataFormatHints(t *testing.T) {
+	t.Run("returns full hints and digest", func(t *testing.T) {
+		result, err := handleGetDataFormatHints(context.Background(), makeRequest(map[string]any{}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected tool error: %v", result.Content)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp dataFormatHintsResponse
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if resp.Digest == "" {
+			t.Error("expected non-empty digest")
+		}
+		if resp.NotModified {
+			t.Error("expected not_modified=false when no digest provided")
+		}
+		if len(resp.Hints) == 0 {
+			t.Error("expected non-empty data_format_hints")
+		}
+		if _, ok := resp.Hints["bar"]; !ok {
+			t.Error("expected 'bar' in data_format_hints")
+		}
+	})
+
+	t.Run("returns not_modified when digest matches", func(t *testing.T) {
+		digest := computeDataFormatHintsDigest(buildDataFormatHints())
+
+		result, err := handleGetDataFormatHints(context.Background(), makeRequest(map[string]any{
+			"digest": digest,
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected tool error: %v", result.Content)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp dataFormatHintsResponse
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if !resp.NotModified {
+			t.Error("expected not_modified=true when digest matches")
+		}
+		if resp.Digest != digest {
+			t.Errorf("digest mismatch: got %q, want %q", resp.Digest, digest)
+		}
+		if resp.Hints != nil {
+			t.Error("expected nil hints when not_modified=true")
+		}
+	})
+
+	t.Run("returns full hints when digest does not match", func(t *testing.T) {
+		result, err := handleGetDataFormatHints(context.Background(), makeRequest(map[string]any{
+			"digest": "stale-digest-value",
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp dataFormatHintsResponse
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if resp.NotModified {
+			t.Error("expected not_modified=false when digest does not match")
+		}
+		if len(resp.Hints) == 0 {
+			t.Error("expected non-empty data_format_hints")
+		}
+	})
+
+	t.Run("digest is stable across calls", func(t *testing.T) {
+		d1 := computeDataFormatHintsDigest(buildDataFormatHints())
+		d2 := computeDataFormatHintsDigest(buildDataFormatHints())
+		if d1 != d2 {
+			t.Errorf("digest not stable: %q != %q", d1, d2)
+		}
+	})
+
+	t.Run("list_templates digest matches get_data_format_hints digest", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		ltResult, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		ltText := ltResult.Content[0].(mcp.TextContent).Text
+		var ltResp skillInfo
+		if err := json.Unmarshal([]byte(ltText), &ltResp); err != nil {
+			t.Fatalf("failed to parse list_templates response: %v", err)
+		}
+
+		hResult, _ := handleGetDataFormatHints(context.Background(), makeRequest(map[string]any{}))
+		hText := hResult.Content[0].(mcp.TextContent).Text
+		var hResp dataFormatHintsResponse
+		if err := json.Unmarshal([]byte(hText), &hResp); err != nil {
+			t.Fatalf("failed to parse get_data_format_hints response: %v", err)
+		}
+
+		if ltResp.SupportedTypes.DataFormatHintsDigest != hResp.Digest {
+			t.Errorf("digest mismatch between list_templates (%q) and get_data_format_hints (%q)",
+				ltResp.SupportedTypes.DataFormatHintsDigest, hResp.Digest)
 		}
 	})
 }
