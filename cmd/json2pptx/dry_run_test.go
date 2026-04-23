@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -232,4 +233,40 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestValidateShapeFillColor_HexWarning(t *testing.T) {
+	tests := []struct {
+		name        string
+		color       string
+		wantWarning bool
+	}{
+		{"scheme name accent1 — no warning", "accent1", false},
+		{"scheme name dk1 — no warning", "dk1", false},
+		{"allowlisted black — no warning", "#000000", false},
+		{"allowlisted white — no warning", "#FFFFFF", false},
+		{"allowlisted white lowercase — no warning", "#ffffff", false},
+		{"allowlisted short black — no warning", "#000", false},
+		{"allowlisted short white — no warning", "#fff", false},
+		{"non-allowlisted hex — warning", "#65686B", true},
+		{"non-allowlisted hex lowercase — warning", "#65686b", true},
+		{"non-allowlisted short hex — warning", "#abc", true},
+		{"empty — no warning", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, _ := json.Marshal(tt.color)
+			var warnings []string
+			valWarnings := validateShapeFillColor(json.RawMessage(raw), 1, 1, 1, &warnings)
+			got := len(valWarnings) > 0
+			if got != tt.wantWarning {
+				t.Errorf("color %q: got warning=%v, want %v (valWarnings=%v)", tt.color, got, tt.wantWarning, valWarnings)
+			}
+			if tt.wantWarning && len(valWarnings) > 0 {
+				if valWarnings[0].Code != patterns.ErrCodeHexFillNonBrand {
+					t.Errorf("expected code %q, got %q", patterns.ErrCodeHexFillNonBrand, valWarnings[0].Code)
+				}
+			}
+		})
+	}
 }

@@ -6,9 +6,11 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -22,9 +24,10 @@ type dryRunOutput struct {
 	DiagramCount int            `json:"diagram_count"`
 	TableCount   int            `json:"table_count"`
 	ShapeCount   int            `json:"shape_count"`
-	Warnings     []string       `json:"warnings"`
-	Errors       []string       `json:"errors,omitempty"`
-	Slides       []dryRunSlide  `json:"slides"`
+	Warnings           []string                    `json:"warnings"`
+	ValidationWarnings []*patterns.ValidationError  `json:"validation_warnings,omitempty"`
+	Errors             []string                    `json:"errors,omitempty"`
+	Slides             []dryRunSlide               `json:"slides"`
 }
 
 // dryRunSlide describes one slide in the dry-run report.
@@ -345,12 +348,13 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 		// Validate shape_grid if present
 		if slideInput.ShapeGrid != nil {
-			gridCounts, gridWarnings, gridErrors := validateShapeGrid(slideInput.ShapeGrid, i+1)
+			gridCounts, gridWarnings, gridErrors, gridValWarnings := validateShapeGrid(slideInput.ShapeGrid, i+1)
 			slide.ShapeCount = gridCounts.Shapes
 			output.ShapeCount += gridCounts.Shapes
 			output.TableCount += gridCounts.Tables
 			output.DiagramCount += gridCounts.Diagrams
 			output.Warnings = append(output.Warnings, gridWarnings...)
+			output.ValidationWarnings = append(output.ValidationWarnings, gridValWarnings...)
 			if len(gridErrors) > 0 {
 				output.Valid = false
 				output.Errors = append(output.Errors, gridErrors...)
@@ -363,6 +367,19 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 // hexColorRe matches #RGB or #RRGGBB hex color strings.
 var hexColorRe = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
+
+// brandHexAllowlist contains lowercase hex values that are deliberately used as
+// raw colors (black, white) and should NOT trigger the hex_fill_non_brand
+// warning. Lookups must lowercase the input first.
+var brandHexAllowlist = map[string]bool{
+	"#000000": true, "#000": true,
+	"#ffffff": true, "#fff": true,
+}
+
+// isAllowlistedHex reports whether a hex color string is in the brand allowlist.
+func isAllowlistedHex(s string) bool {
+	return brandHexAllowlist[strings.ToLower(s)]
+}
 
 // schemeColorNames aliases the canonical set from the pptx package, plus "none".
 var schemeColorNames = func() map[string]bool {
@@ -387,9 +404,8 @@ type gridContentCounts struct {
 }
 
 // validateShapeGrid validates a ShapeGridInput and returns content counts,
-// warnings, and errors.
-
-func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCounts, warnings []string, errors []string) {
+// warnings, errors, and structured validation warnings.
+func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCounts, warnings []string, errors []string, valWarnings []*patterns.ValidationError) {
 	if len(grid.Rows) == 0 {
 		errors = append(errors, fmt.Sprintf("slide %d: shape_grid has no rows", slideNum))
 		return
@@ -420,7 +436,8 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 					errors = append(errors, fmt.Sprintf("slide %d: shape_grid row %d cell %d: unknown geometry %q", slideNum, rowIdx+1, cellIdx+1, cell.Shape.Geometry))
 				}
 				// Validate fill color
-				validateShapeFillColor(cell.Shape.Fill, slideNum, rowIdx+1, cellIdx+1, &warnings)
+				vw := validateShapeFillColor(cell.Shape.Fill, slideNum, rowIdx+1, cellIdx+1, &warnings)
+				valWarnings = append(valWarnings, vw...)
 			}
 			if cell.Table != nil {
 				counts.Shapes++
@@ -440,9 +457,23 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 }
 
 // validateShapeFillColor checks that a shape fill value has a valid color format.
-func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnings *[]string) {
+// It also returns structured warnings for hex colors not in the brand allowlist.
+func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnings *[]string) []*patterns.ValidationError {
 	if len(raw) == 0 {
-		return
+		return nil
+	}
+	var valWarnings []*patterns.ValidationError
+	checkHex := func(color string) {
+		if hexColorRe.MatchString(color) && !isAllowlistedHex(color) {
+			path := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d].shape.fill", slideNum-1, row-1, cell-1)
+			valWarnings = append(valWarnings, &patterns.ValidationError{
+				Pattern: "shape_grid",
+				Path:    path,
+				Code:    patterns.ErrCodeHexFillNonBrand,
+				Message: fmt.Sprintf("slide %d: shape_grid row %d cell %d: fill color %q is a raw hex value; prefer a scheme color for template portability", slideNum, row, cell, color),
+				Fix:     "use accent1/accent2/lt2/dk1 instead",
+			})
+		}
 	}
 	// Try string form
 	var s string
@@ -450,7 +481,8 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 		if s != "" && !isValidFillColor(s) {
 			*warnings = append(*warnings, fmt.Sprintf("slide %d: shape_grid row %d cell %d: fill color %q should be #RGB, #RRGGBB, or a scheme color name (e.g. accent1, dk1)", slideNum, row, cell, s))
 		}
-		return
+		checkHex(s)
+		return valWarnings
 	}
 	// Try object form
 	var obj ShapeFillInput
@@ -458,7 +490,9 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 		if obj.Color != "" && !isValidFillColor(obj.Color) {
 			*warnings = append(*warnings, fmt.Sprintf("slide %d: shape_grid row %d cell %d: fill color %q should be #RGB, #RRGGBB, or a scheme color name (e.g. accent1, dk1)", slideNum, row, cell, obj.Color))
 		}
+		checkHex(obj.Color)
 	}
+	return valWarnings
 }
 
 // writeDryRunOutput writes the dry-run result as JSON to stdout.

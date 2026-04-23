@@ -14,7 +14,8 @@ const (
 	ErrCodeUnknownKey    = "unknown_key"
 	ErrCodeMinItems      = "min_items"
 	ErrCodeMaxItems      = "max_items"
-	ErrCodeEmptyValue    = "empty_value"
+	ErrCodeEmptyValue        = "empty_value"
+	ErrCodeHexFillNonBrand  = "hex_fill_non_brand"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -29,7 +30,8 @@ var (
 	ErrUnknownKey    = errors.New("unknown key")
 	ErrMinItems      = errors.New("too few items")
 	ErrMaxItems      = errors.New("too many items")
-	ErrEmptyValue    = errors.New("empty value")
+	ErrEmptyValue        = errors.New("empty value")
+	ErrHexFillNonBrand  = errors.New("hex fill color is not in brand allowlist")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -41,7 +43,8 @@ var codeSentinel = map[string]error{
 	ErrCodeUnknownKey:    ErrUnknownKey,
 	ErrCodeMinItems:      ErrMinItems,
 	ErrCodeMaxItems:      ErrMaxItems,
-	ErrCodeEmptyValue:    ErrEmptyValue,
+	ErrCodeEmptyValue:        ErrEmptyValue,
+	ErrCodeHexFillNonBrand:  ErrHexFillNonBrand,
 }
 
 // ValidationError is a structured validation error with a JSON path, error
