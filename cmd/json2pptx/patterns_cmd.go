@@ -428,5 +428,9 @@ func unknownPatternError(name string, reg *patterns.Registry) error {
 	for i, p := range all {
 		names[i] = p.Name()
 	}
-	return fmt.Errorf("unknown pattern %q; available: %s\nHint: use `json2pptx patterns list` to see all patterns", name, strings.Join(names, ", "))
+	msg := fmt.Sprintf("unknown pattern %q", name)
+	if suggestion, ok := reg.Suggest(name); ok {
+		msg += fmt.Sprintf("; did you mean %q?", suggestion)
+	}
+	return fmt.Errorf("%s; available: %s\nHint: use `json2pptx patterns list` to see all patterns", msg, strings.Join(names, ", "))
 }

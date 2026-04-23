@@ -170,6 +170,73 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Damerau-Levenshtein + Suggest tests
+// ---------------------------------------------------------------------------
+
+func TestDamerauLevenshtein(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want int
+	}{
+		{"", "", 0},
+		{"", "abc", 3},
+		{"abc", "", 3},
+		{"abc", "abc", 0},
+		{"abc", "abd", 1},   // substitution
+		{"abc", "abcd", 1},  // insertion
+		{"abcd", "abc", 1},  // deletion
+		{"abc", "bac", 1},   // transposition
+		{"card-grid", "card_grid", 1},  // underscore vs hyphen
+		{"card-grids", "card-grid", 1}, // trailing s
+		{"kpi-3up", "kpi-3pu", 1},      // transposition
+		{"card-grid", "bmc-canvas", 10}, // very different
+	}
+	for _, tt := range tests {
+		got := damerauLevenshtein(tt.a, tt.b)
+		if got != tt.want {
+			t.Errorf("damerauLevenshtein(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
+		}
+	}
+}
+
+func TestSuggestFindsClose(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&stubPattern{name: "card-grid"})
+	r.Register(&stubPattern{name: "bmc-canvas"})
+	r.Register(&stubPattern{name: "kpi-3up"})
+
+	tests := []struct {
+		input      string
+		wantName   string
+		wantFound  bool
+	}{
+		{"card_grid", "card-grid", true},   // underscore → hyphen (dist 1)
+		{"card-grids", "card-grid", true},  // trailing s (dist 1)
+		{"kpi-3pu", "kpi-3up", true},       // transposition (dist 1)
+		{"bmc-canva", "bmc-canvas", true},  // missing char (dist 1)
+		{"totally-different", "", false},    // too far away
+	}
+	for _, tt := range tests {
+		name, ok := r.Suggest(tt.input)
+		if ok != tt.wantFound {
+			t.Errorf("Suggest(%q) found=%v, want %v", tt.input, ok, tt.wantFound)
+			continue
+		}
+		if ok && name != tt.wantName {
+			t.Errorf("Suggest(%q) = %q, want %q", tt.input, name, tt.wantName)
+		}
+	}
+}
+
+func TestSuggestEmptyRegistry(t *testing.T) {
+	r := NewRegistry()
+	_, ok := r.Suggest("anything")
+	if ok {
+		t.Error("Suggest on empty registry should return false")
+	}
+}
+
 func TestDefaultRegistryContainsKpi3up(t *testing.T) {
 	// The default registry should contain kpi-3up after init().
 	p, ok := Default().Get("kpi-3up")

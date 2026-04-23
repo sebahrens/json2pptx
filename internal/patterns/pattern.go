@@ -166,6 +166,73 @@ func (r *Registry) List() []Pattern {
 	return result
 }
 
+// Suggest returns the closest registered pattern name to the given input,
+// using Damerau-Levenshtein distance. It returns ("", false) if no pattern
+// is within maxDist edits (default 2).
+func (r *Registry) Suggest(name string) (string, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	const maxDist = 2
+	best := ""
+	bestDist := maxDist + 1
+
+	for registered := range r.patterns {
+		d := damerauLevenshtein(name, registered)
+		if d < bestDist {
+			bestDist = d
+			best = registered
+		}
+	}
+	if bestDist <= maxDist {
+		return best, true
+	}
+	return "", false
+}
+
+// damerauLevenshtein computes the Damerau-Levenshtein distance between two
+// strings (optimal string alignment variant). It counts insertions, deletions,
+// substitutions, and transpositions of adjacent characters.
+func damerauLevenshtein(a, b string) int {
+	la, lb := len(a), len(b)
+	// Quick bounds check.
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+
+	// d[i][j] = distance between a[:i] and b[:j].
+	d := make([][]int, la+1)
+	for i := range d {
+		d[i] = make([]int, lb+1)
+		d[i][0] = i
+	}
+	for j := 0; j <= lb; j++ {
+		d[0][j] = j
+	}
+
+	for i := 1; i <= la; i++ {
+		for j := 1; j <= lb; j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			d[i][j] = min(
+				d[i-1][j]+1,      // deletion
+				d[i][j-1]+1,      // insertion
+				d[i-1][j-1]+cost, // substitution
+			)
+			// Transposition.
+			if i > 1 && j > 1 && a[i-1] == b[j-2] && a[i-2] == b[j-1] {
+				d[i][j] = min(d[i][j], d[i-2][j-2]+cost)
+			}
+		}
+	}
+	return d[la][lb]
+}
+
 // ---------------------------------------------------------------------------
 // Package-level default registry
 // ---------------------------------------------------------------------------

@@ -26,7 +26,11 @@ type PatternInput struct {
 func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, []string, error) {
 	pat, ok := reg.Get(p.Name)
 	if !ok {
-		return nil, nil, fmt.Errorf("unknown pattern %q", p.Name)
+		msg := fmt.Sprintf("unknown pattern %q", p.Name)
+		if suggestion, ok := reg.Suggest(p.Name); ok {
+			msg += fmt.Sprintf("; did you mean %q?", suggestion)
+		}
+		return nil, nil, fmt.Errorf("%s", msg)
 	}
 
 	// Unmarshal values

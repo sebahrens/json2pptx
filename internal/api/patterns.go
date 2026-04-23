@@ -51,8 +51,11 @@ func (h *PatternsHandler) ShowHandler() http.HandlerFunc {
 		name := r.PathValue("name")
 		pat, ok := h.registry.Get(name)
 		if !ok {
-			writeError(w, http.StatusNotFound, apierrors.CodePatternNotFound,
-				fmt.Sprintf("Pattern %q not found", name), nil)
+			msg := fmt.Sprintf("Pattern %q not found", name)
+			if suggestion, ok := h.registry.Suggest(name); ok {
+				msg += fmt.Sprintf("; did you mean %q?", suggestion)
+			}
+			writeError(w, http.StatusNotFound, apierrors.CodePatternNotFound, msg, nil)
 			return
 		}
 
@@ -79,8 +82,11 @@ func (h *PatternsHandler) ValidateHandler() http.HandlerFunc {
 		name := r.PathValue("name")
 		pat, ok := h.registry.Get(name)
 		if !ok {
-			writeError(w, http.StatusNotFound, apierrors.CodePatternNotFound,
-				fmt.Sprintf("Pattern %q not found", name), nil)
+			msg := fmt.Sprintf("Pattern %q not found", name)
+			if suggestion, ok := h.registry.Suggest(name); ok {
+				msg += fmt.Sprintf("; did you mean %q?", suggestion)
+			}
+			writeError(w, http.StatusNotFound, apierrors.CodePatternNotFound, msg, nil)
 			return
 		}
 
@@ -114,8 +120,11 @@ func (h *PatternsHandler) ExpandHandler() http.HandlerFunc {
 		name := r.PathValue("name")
 		pat, ok := h.registry.Get(name)
 		if !ok {
-			writeError(w, http.StatusNotFound, apierrors.CodePatternNotFound,
-				fmt.Sprintf("Pattern %q not found", name), nil)
+			msg := fmt.Sprintf("Pattern %q not found", name)
+			if suggestion, ok := h.registry.Suggest(name); ok {
+				msg += fmt.Sprintf("; did you mean %q?", suggestion)
+			}
+			writeError(w, http.StatusNotFound, apierrors.CodePatternNotFound, msg, nil)
 			return
 		}
 

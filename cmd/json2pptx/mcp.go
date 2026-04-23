@@ -581,7 +581,11 @@ func handleShowPattern(_ context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		for i, p := range available {
 			names[i] = p.Name()
 		}
-		return mcp.NewToolResultError(fmt.Sprintf("unknown pattern %q; available: %v", name, names)), nil
+		msg := fmt.Sprintf("unknown pattern %q", name)
+		if suggestion, ok := reg.Suggest(name); ok {
+			msg += fmt.Sprintf("; did you mean %q?", suggestion)
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("%s; available: %v", msg, names)), nil
 	}
 
 	schemaJSON, _ := json.Marshal(pat.Schema())
@@ -618,7 +622,11 @@ func handleValidatePattern(_ context.Context, request mcp.CallToolRequest) (*mcp
 	reg := patterns.Default()
 	pat, ok := reg.Get(name)
 	if !ok {
-		return mcp.NewToolResultError(fmt.Sprintf("unknown pattern %q", name)), nil
+		msg := fmt.Sprintf("unknown pattern %q", name)
+		if suggestion, ok := reg.Suggest(name); ok {
+			msg += fmt.Sprintf("; did you mean %q?", suggestion)
+		}
+		return mcp.NewToolResultError(msg), nil
 	}
 
 	// Unmarshal values
@@ -694,7 +702,11 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	reg := patterns.Default()
 	pat, ok := reg.Get(name)
 	if !ok {
-		return mcp.NewToolResultError(fmt.Sprintf("unknown pattern %q", name)), nil
+		msg := fmt.Sprintf("unknown pattern %q", name)
+		if suggestion, ok := reg.Suggest(name); ok {
+			msg += fmt.Sprintf("; did you mean %q?", suggestion)
+		}
+		return mcp.NewToolResultError(msg), nil
 	}
 
 	// Build PatternInput for reuse of existing expandPattern logic
