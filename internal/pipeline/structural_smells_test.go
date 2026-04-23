@@ -324,6 +324,73 @@ func TestStructuralSmellErrorCodes(t *testing.T) {
 
 // --- effectiveRowGap ---
 
+// --- Table density ---
+
+func makeDensityTable(dataRows, cols int) *jsonschema.TableInput {
+	headers := make([]string, cols)
+	for i := range headers {
+		headers[i] = "H"
+	}
+	rows := make([][]jsonschema.TableCellInput, dataRows)
+	for i := range rows {
+		row := make([]jsonschema.TableCellInput, cols)
+		for j := range row {
+			row[j] = jsonschema.TableCellInput{Content: "x", ColSpan: 1, RowSpan: 1}
+		}
+		rows[i] = row
+	}
+	return &jsonschema.TableInput{Headers: headers, Rows: rows}
+}
+
+func TestDetectTableDensity_NoWarning(t *testing.T) {
+	// 6 data rows + 1 header = 7 logical rows, 6 cols → no warning
+	table := makeDensityTable(6, 6)
+	warnings := DetectTableDensity(table, "slides[0].content[0]")
+	if len(warnings) != 0 {
+		t.Errorf("expected no warnings for 7×6 table, got %d: %v", len(warnings), warnings)
+	}
+}
+
+func TestDetectTableDensity_TooManyRowsAndCols(t *testing.T) {
+	// 7 data rows + 1 header = 8 logical rows > 7, 7 cols > 6
+	table := makeDensityTable(7, 7)
+	warnings := DetectTableDensity(table, "slides[0].content[0]")
+	if len(warnings) != 2 {
+		t.Fatalf("expected 2 warnings for 8×7 table, got %d: %v", len(warnings), warnings)
+	}
+	for _, w := range warnings {
+		if w.Code != patterns.ErrCodeDensityExceeded {
+			t.Errorf("expected code %q, got %q", patterns.ErrCodeDensityExceeded, w.Code)
+		}
+	}
+}
+
+func TestDetectTableDensity_MultilineCells(t *testing.T) {
+	// 6 data rows + 1 header = 7, but 3 multiline cells add 3 → 10 > 7
+	table := makeDensityTable(6, 6)
+	table.Rows[0][0] = jsonschema.TableCellInput{Content: "a\nb", ColSpan: 1, RowSpan: 1}
+	table.Rows[1][0] = jsonschema.TableCellInput{Content: "a\nb", ColSpan: 1, RowSpan: 1}
+	table.Rows[2][0] = jsonschema.TableCellInput{Content: "a\nb", ColSpan: 1, RowSpan: 1}
+
+	warnings := DetectTableDensity(table, "slides[0].content[0]")
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d: %v", len(warnings), warnings)
+	}
+	if warnings[0].Code != patterns.ErrCodeDensityExceeded {
+		t.Errorf("expected code %q, got %q", patterns.ErrCodeDensityExceeded, warnings[0].Code)
+	}
+	if warnings[0].Fix == nil || warnings[0].Fix.Kind != "split_at_row" {
+		t.Errorf("expected fix kind 'split_at_row', got %v", warnings[0].Fix)
+	}
+}
+
+func TestDetectTableDensity_NilTable(t *testing.T) {
+	warnings := DetectTableDensity(nil, "slides[0]")
+	if len(warnings) != 0 {
+		t.Errorf("expected no warnings for nil table, got %d", len(warnings))
+	}
+}
+
 func TestEffectiveRowGap(t *testing.T) {
 	tests := []struct {
 		name string

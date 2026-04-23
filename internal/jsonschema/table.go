@@ -3,8 +3,17 @@ package jsonschema
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
+)
+
+// Table density rule (TDR) thresholds.
+const (
+	TDRMaxRows   = 7
+	TDRMaxCols   = 6
+	TDRMinFontPt = 9
 )
 
 // TableInput represents a table with headers, rows, and optional styling.
@@ -93,4 +102,60 @@ type TableStyleInput struct {
 	Striped          *bool   `json:"striped,omitempty"`
 	UseTableStyle    bool    `json:"use_table_style,omitempty"`
 	StyleID          string  `json:"style_id,omitempty"`
+}
+
+// LogicalRowCount returns the effective row count for this table, accounting
+// for multiline cells. The count includes the header row.
+func (t *TableInput) LogicalRowCount() int {
+	if t == nil || len(t.Headers) == 0 {
+		return 0
+	}
+	logicalRows := len(t.Rows) + 1 // +1 for header row
+	for _, row := range t.Rows {
+		for _, cell := range row {
+			logicalRows += CellExtraLogicalRows(cell.Content)
+		}
+	}
+	return logicalRows
+}
+
+// CellExtraLogicalRows returns the number of extra logical rows a cell's
+// content contributes beyond 1. A cell with N newlines contributes N extra rows.
+// A cell with a comma-separated list of ≥3 items contributes (items-1) extra rows.
+// The higher of the two counts is used.
+//
+// This matches the multiline cell counting rule in the generate-deck skill:
+// effective logical rows = max(line_count, comma_items).
+func CellExtraLogicalRows(content string) int {
+	if content == "" {
+		return 0
+	}
+
+	// Count newline-separated lines.
+	lineCount := strings.Count(content, "\n") + 1
+
+	// Count comma-separated items (only if ≥3).
+	commaItems := 0
+	parts := strings.Split(content, ",")
+	if len(parts) >= 3 {
+		// Verify these look like list items (non-empty after trim).
+		count := 0
+		for _, p := range parts {
+			if strings.TrimSpace(p) != "" {
+				count++
+			}
+		}
+		if count >= 3 {
+			commaItems = count
+		}
+	}
+
+	// Effective logical row count for this cell.
+	effective := int(math.Max(float64(lineCount), float64(commaItems)))
+
+	// Extra rows beyond the 1 row the cell already occupies.
+	if effective <= 1 {
+		return 0
+	}
+	return effective - 1
 }

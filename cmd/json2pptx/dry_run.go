@@ -11,6 +11,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -326,6 +327,12 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					output.DiagramCount++
 				case "table":
 					output.TableCount++
+					// Density check for content-level table.
+					table := resolveTableFromContent(&item)
+					if table != nil {
+						tablePath := fmt.Sprintf("slides[%d].content[%d]", i, j)
+						output.ValidationWarnings = append(output.ValidationWarnings, pipeline.DetectTableDensity(table, tablePath)...)
+					}
 				}
 			}
 
@@ -442,6 +449,9 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 			if cell.Table != nil {
 				counts.Shapes++
 				counts.Tables++
+				// Density check for embedded table.
+				tablePath := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d].table", slideNum-1, rowIdx, cellIdx)
+				valWarnings = append(valWarnings, pipeline.DetectTableDensity(cell.Table, tablePath)...)
 			}
 			if cell.Diagram != nil {
 				counts.Shapes++

@@ -206,6 +206,48 @@ func detectMixedFillScheme(grid *jsonschema.ShapeGridInput, slideIdx int) []*pat
 	return nil
 }
 
+// DetectTableDensity checks a single table against TDR density rules and returns
+// warnings as ValidationError values. The path is the JSON path prefix for the
+// table (e.g. "slides[0].content[1]").
+func DetectTableDensity(table *jsonschema.TableInput, path string) []*patterns.ValidationError {
+	if table == nil || len(table.Headers) == 0 {
+		return nil
+	}
+
+	numCols := len(table.Headers)
+	logicalRows := table.LogicalRowCount()
+
+	var warnings []*patterns.ValidationError
+
+	if logicalRows > jsonschema.TDRMaxRows {
+		warnings = append(warnings, &patterns.ValidationError{
+			Pattern: "table",
+			Path:    path,
+			Code:    patterns.ErrCodeDensityExceeded,
+			Message: fmt.Sprintf("table has %d logical rows (max %d); consider splitting across slides", logicalRows, jsonschema.TDRMaxRows),
+			Fix: &patterns.FixSuggestion{
+				Kind:   "split_at_row",
+				Params: map[string]any{"row": len(table.Rows) / 2, "logical_rows": logicalRows, "max_rows": jsonschema.TDRMaxRows},
+			},
+		})
+	}
+
+	if numCols > jsonschema.TDRMaxCols {
+		warnings = append(warnings, &patterns.ValidationError{
+			Pattern: "table",
+			Path:    path,
+			Code:    patterns.ErrCodeDensityExceeded,
+			Message: fmt.Sprintf("table has %d columns (max %d); consider removing columns or splitting", numCols, jsonschema.TDRMaxCols),
+			Fix: &patterns.FixSuggestion{
+				Kind:   "reduce_columns",
+				Params: map[string]any{"columns": numCols, "max_columns": jsonschema.TDRMaxCols},
+			},
+		})
+	}
+
+	return warnings
+}
+
 // extractFillColor parses a fill JSON value (string or object) and returns the color string.
 func extractFillColor(raw json.RawMessage) string {
 	// Try string form.

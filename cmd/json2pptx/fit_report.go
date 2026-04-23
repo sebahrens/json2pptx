@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
@@ -161,6 +162,17 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 			Message: fmt.Sprintf("table has %d cells (%d rows × %d cols) at %.0fpt; TDR ceiling is %d", totalCells, numRows, numCols, fontPt, tdrCeiling),
 			Fix:     &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": numRows / 2}},
 			Action:  "unfittable",
+		})
+	}
+
+	// Schema-level density check (rows ≤ 7, cols ≤ 6 with multiline counting).
+	for _, ve := range pipeline.DetectTableDensity(table, pathPrefix) {
+		findings = append(findings, fitFinding{
+			Code:    ve.Code,
+			Path:    ve.Path,
+			Message: ve.Message,
+			Fix:     ve.Fix,
+			Action:  "warning",
 		})
 	}
 
