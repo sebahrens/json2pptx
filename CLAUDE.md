@@ -86,6 +86,7 @@ examples/         # Example JSON input files (14 decks)
 - **Contrast enforcement**: `internal/generator/text_contrast.go` auto-fixes low-contrast text on layout backgrounds (WCAG AA). Shape grid text is warn-only (user-specified colors preserved).
 - **SVG for charts/diagrams**: The `svggen/` module renders charts as SVG, embedded as EMF in the PPTX.
 - **Shape grids**: Complex layouts (BMC, KPI dashboards, timelines) use `shape_grid` in JSON, rendered by `internal/shapegrid/`.
+- **Named patterns**: Reusable `shape_grid` skeletons in `internal/patterns/` that expand at generation time. See [docs/PATTERNS.md](docs/PATTERNS.md) for the authoring guide and [docs/PATTERN_LIBRARY_SPEC.md](docs/PATTERN_LIBRARY_SPEC.md) for the full design spec.
 
 ## Testing Notes
 
