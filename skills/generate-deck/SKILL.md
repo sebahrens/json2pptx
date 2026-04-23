@@ -60,11 +60,11 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - [ ] Text fits its shape or cell — no clipping, no visible overflow.
    - [ ] Chart axes/legends are readable at deck-viewing size.
    - [ ] Every placeholder and grid cell shows the content you intended.
-   - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Invariant 16).
-   - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Anti-Pattern list).
+   - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Rule 16).
+   - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Rule 18).
 5. **Repair.** If a slide fails the checklist, the fix is in the JSON, not in PowerPoint. Common repairs:
    - Text clipping or overflow → lower font size, increase cell/row allocation, or split content across slides.
-   - Unexpected gray text → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Invariant 16).
+   - Unexpected gray text → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Rule 16).
 
 Do not tell the user the deck is done until the checklist passes or you have explicitly flagged what you couldn't verify.
 
@@ -88,63 +88,55 @@ the values, and let the engine handle grid structure, bounds, and gap arithmetic
 
 ---
 
-## Invariants (Rules That Prevent Rendering Errors)
+## Rules
 
-These are non-negotiable. Violating them causes broken slides.
+Non-negotiable. Violating these causes broken or incorrect slides.
 
 ### Shape Grid
 
-1. **Cell count must match columns.** Every row: `sum(cell.col_span or 1 for each cell) == column count`. If `columns: 3`, every row needs cells spanning exactly 3 columns total.
-2. **`columns` type matters.** Integer `3` = three equal columns. Array `[10, 90]` = proportional widths. Never use `[3]` (single column at width 3%) when you mean `3` (three equal columns).
-3. **`bounds` uses percentages (0-100).** Not points, not EMU. `{"x": 5, "y": 18, "width": 90, "height": 72}` means 5% from left, 18% from top.
-4. **`gap`/`row_gap`/`col_gap` are typographic points, not percentages.** Default 8. Typical 4-12 for spacious slides; **1-4 for data-dense slides**. They are cumulative: a 5-row grid with `row_gap: 10` burns 40pt (~5% of slide height) on empty space. Tighten gaps before shrinking content. (TEMPLATE_GUIDE.md previously said percentages — that was wrong; source of truth is `internal/shapegrid/grid.go`.)
-5. **Row `height` is a percentage of grid height.** `"height": 22` = 22% of `bounds.height`. Rows without height split remaining space equally.
-6. **One content type per cell.** Exactly one of: `shape`, `table`, `icon`, `image`, or `diagram`. Never combine them.
-7. **Body text in shape grids MUST include all insets.** Always set `inset_left`, `inset_right`, `inset_top`, `inset_bottom` (typically 6-10pt) on body/content cells. Without them, text jams against shape edges.
+| # | Rule | Rationale |
+|---|---|---|
+| 1 | Cell col_spans must sum to column count per row | Engine panics on mismatched grids |
+| 2 | `columns: 3` (int) = 3 equal cols; `[10, 90]` = proportional widths. Never `[3]` | `[3]` creates one column at 3% width, not three columns |
+| 3 | `bounds` uses percentages (0-100), not points or EMU | `{"x": 5, "y": 18, "width": 90, "height": 72}` = 5% from left, 18% from top |
+| 4 | `gap`/`row_gap`/`col_gap` are typographic points, not percentages. Default 8; 1-4 for dense slides | Cumulative: 5-row grid with `row_gap: 10` burns 40pt (~5% height). Tighten gaps before shrinking content |
+| 5 | Row `height` is a percentage of `bounds.height` | Rows without height split remaining space equally |
+| 6 | One content type per cell: `shape`, `table`, `icon`, `image`, or `diagram` | Combining silently drops content |
+| 7 | Body text cells MUST set all 4 insets (6-10pt each) | Without insets, text jams against shape edges |
 
 ### Charts
 
-8. **Series values must match categories length.** For multi-series charts: every `series[i].values` array must have exactly `len(categories)` elements.
-9. **Chart types use underscores.** `stacked_bar`, `grouped_bar`, `stacked_area`. Never hyphens (`stacked-bar`).
-10. **Two data formats — don't mix them.**
-    - Single series: `"data": {"Q1": 10, "Q2": 15, "Q3": 22}`
-    - Multi-series: `"data": {"categories": [...], "series": [{"name": "...", "values": [...]}]}`
-    - Waterfall: `"data": {"points": [{"label": "...", "value": N, "type": "increase|decrease|subtotal|total"}]}`
+| # | Rule | Rationale |
+|---|---|---|
+| 8 | `series[i].values` length must equal `len(categories)` | Mismatched arrays produce corrupted charts |
+| 9 | Chart types use underscores: `stacked_bar`, `grouped_bar` | Hyphens (`stacked-bar`) silently fail |
+| 10 | Don't mix data formats. Single: `{"Q1": 10}`; Multi: `{categories, series}`; Waterfall: `{points}` | Pick one format per chart |
 
 ### Content and Layout
 
-11. **`layout_id` accepts canonical semantic names only.** Use `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda`. Do NOT use display names like `"Title Slide"` or `"One Content"` — those are what `json2pptx skill-info` prints, not valid input. (Source: `internal/layout/canonical.go`.) **`placeholder_id` per layout type:**
-    - `title` / `closing` layout: `title`, `subtitle`
-    - `content` layout: `title`, `body`
-    - `two-column` layout: `title`, `body`, `body_2`
-    - `blank` layout: `title` only in `content`; body content goes in `shape_grid`
-    - `section` layout: `title`, `subtitle`
-12. **`fill` vocabulary — prefer semantic over hex.** Semantic names (`accent1`-`accent6`, `lt1`, `lt2`, `dk1`, `dk2`, `bg1`, `bg2`, `tx1`, `tx2`, `hlink`, `folHlink`, `none`) now emit `<a:schemeClr>` in the output PPTX, so colors **adapt when the template theme changes**. Hex (`"#RRGGBB"`) bakes the color in. Always prefer semantic. For tints/shades use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` — 75000/25000 is a common 75% tint — rather than pre-calculating hex. Alpha: `{"color": "accent1", "alpha": 50}`. Never raw names like `"blue"`.
-13. **`align` values:** `"l"`, `"ctr"`, `"r"`, `"just"`. NOT `"left"`, `"center"`, `"right"`.
-14. **`vertical_align` values:** `"t"`, `"ctr"`, `"b"`. NOT `"top"`, `"middle"`, `"bottom"`.
-15. **Templates:** `forest-green`, `midnight-blue`, `modern-template`, `warm-coral`. Additional custom templates may live in the templates directory; inspect with `json2pptx skill-info` before use.
+| # | Rule | Rationale |
+|---|---|---|
+| 11 | `layout_id` canonical names only: `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda` | Display names like `"Title Slide"` fail to resolve |
+| 12 | Prefer semantic fills (`accent1`, `lt2`, `dk1`) over hex; never raw names like `"blue"` | Semantic colors adapt to template theme; use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` for tints |
+| 13 | `align`: `"l"`, `"ctr"`, `"r"`, `"just"` | NOT `"left"`, `"center"`, `"right"` |
+| 14 | `vertical_align`: `"t"`, `"ctr"`, `"b"` | NOT `"top"`, `"middle"`, `"bottom"` |
+| 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect with `json2pptx skill-info` |
+
+**`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank` → `title` only (body goes in `shape_grid`); `section` → `title`, `subtitle`.
 
 ### Contrast Auto-Fix
 
-16. **The engine auto-fixes low-contrast text.** When text color would fail WCAG AA Large against its fill (ratio < ~3.0), the engine replaces the text color with a calculated dark gray. This fires *silently* for scheme-color fills and produces "warning preserved" for hex fills — the behaviors are being unified; do not rely on either. Consequences:
-    - White text on `accent3`-`accent6` (usually light/pastel accents) will become gray on most templates.
-    - The design you intended (white-on-peach brand color) is NOT what ships.
-    - To disable the auto-fix on a specific slide or shape, set `"contrast_check": false` on the slide or element. Use sparingly — only when you have verified contrast by another means (e.g., the fill is actually dark enough but the engine's calculation disagrees, or the gray text is intentional for a decorative element).
-    - Preferred path: pick a fill that passes (see **Safe Color Pairings**). Second: switch text to `dk1`. Opt-out is last resort.
-
----
-
-## Anti-Patterns That Silently Break
-
-These do NOT produce an error. They produce a broken deck that looks plausible in JSON. Every one of these has bitten real deck production.
-
-| Anti-Pattern | What happens | Fix |
+| # | Rule | Rationale |
 |---|---|---|
-| `"footer": "My Footer"` (string) | Engine crashes: `cannot unmarshal string into footer` | Must be an object: `"footer": {"enabled": true, "left_text": "My Footer"}` |
-| `"source": "Source: Internal Analytics"` | Renders as "Source: Source: Internal Analytics" | Omit the prefix: `"source": "Internal Analytics"` — engine prepends "Source: " |
-| `{"type": "chart", "chart": {...}}` or `{"type": "table", "table": {...}}` in the content array | Engine error or silent empty slide | Field names are `chart_value` / `table_value` / `diagram_value` / `text_value` — always the `_value` suffix |
-| `"layout_id": "Title Slide"` (display name) | Fails to resolve | Use canonical names: `title`, `content`, `two-column`, `blank`, `section`, `closing` (see Invariant 11) |
-| White text on `accent3`-`accent6` fill | Contrast auto-fix silently replaces text with dark gray, design intent lost | Use `accent1` (or verified dark accent); OR switch text to `dk1`; see Safe Color Pairings |
+| 16 | Engine auto-replaces low-contrast text with dark gray (WCAG AA, ratio < ~3.0) | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
+
+### Silent Traps (no error, broken output)
+
+| # | Wrong | Right | What happens |
+|---|---|---|---|
+| 17 | `"footer": "text"` (string) | `"footer": {"enabled": true, "left_text": "text"}` | Crash: cannot unmarshal string |
+| 18 | `"source": "Source: X"` | `"source": "X"` | Renders "Source: Source: X" — engine prepends prefix |
+| 19 | `"chart": {...}` / `"table": {...}` | `"chart_value": {...}` / `"table_value": {...}` | Empty slide — content fields need `_value` suffix |
 
 ---
 
@@ -181,22 +173,6 @@ Rules of thumb for fitting a table in a shape_grid. Assumes `auto_height: true` 
 | 17+ | — | — | Split across two slides |
 
 **Multiline cells eat budget.** A cell with 3 text lines at font_size 8 needs roughly the same vertical space as 3 single-line rows. If you use multiline cells, count each line as a row when sizing.
-
----
-
-## Common Mistakes
-
-| Mistake | Fix |
-|---|---|
-| `"columns": [3]` (array with one element) | Use `"columns": 3` (integer) for 3 equal columns |
-| Missing insets on body text cells | Always include all 4 insets (6-10pt) |
-| `"type": "stacked-bar"` | Use underscores: `"type": "stacked_bar"` |
-| `"align": "center"` | Use short form: `"align": "ctr"` |
-| `"placeholder_id": "body"` on blank layout | Blank layouts only have `title` placeholder; body goes in `shape_grid` |
-| Rows with wrong cell count | Count col_spans: must sum to column count per row |
-| `"fill": "blue"` | Use semantic names (`accent1`) or hex (`"#0066CC"`) |
-| Body text with `"body_left"` / `"body_right"` | Two-column uses `"body"` and `"body_2"` |
-| Mixing chart data formats in one chart | Pick one: flat map, categories+series, or points |
 
 ---
 
