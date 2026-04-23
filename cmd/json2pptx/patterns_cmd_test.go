@@ -204,6 +204,40 @@ func TestPatternsValidate(t *testing.T) {
 			t.Error("expected at least one error")
 		}
 	})
+
+	t.Run("multi_error_split_d10", func(t *testing.T) {
+		// card-grid with columns=0, rows=0 produces two validation errors;
+		// they must appear as separate entries (not collapsed into one).
+		multiErrValues := `{"columns":0,"rows":0,"cells":[]}`
+		multiErrFile := writeTestFile(t, dir, "multi_err.json", multiErrValues)
+
+		out, err := runBin(bin, "patterns", "validate", "--json", "card-grid", multiErrFile)
+		if err == nil {
+			t.Fatal("expected non-zero exit for invalid values")
+		}
+		var result struct {
+			OK     bool                     `json:"ok"`
+			Errors []patternValidationError `json:"errors"`
+		}
+		jsonStart := strings.Index(string(out), "{")
+		jsonEnd := strings.LastIndex(string(out), "}") + 1
+		if jsonStart < 0 || jsonEnd <= jsonStart {
+			t.Fatalf("no JSON found in output: %s", out)
+		}
+		if err := json.Unmarshal(out[jsonStart:jsonEnd], &result); err != nil {
+			t.Fatalf("invalid JSON: %v\n%s", err, out)
+		}
+		if result.OK {
+			t.Error("expected ok=false")
+		}
+		if len(result.Errors) < 2 {
+			t.Errorf("expected at least 2 separate errors, got %d", len(result.Errors))
+		}
+		// Verify field extraction — first error should target "columns"
+		if len(result.Errors) > 0 && result.Errors[0].Field != "columns" {
+			t.Errorf("expected first error field='columns', got %q", result.Errors[0].Field)
+		}
+	})
 }
 
 func TestPatternsExpand(t *testing.T) {

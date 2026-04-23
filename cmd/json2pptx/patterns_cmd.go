@@ -401,10 +401,7 @@ func emitValidationResult(name string, jsonMode bool, validationErr error) error
 		}{
 			OK:      false,
 			Pattern: name,
-			Errors: []patternValidationError{{
-				Field:   "values",
-				Message: validationErr.Error(),
-			}},
+			Errors:  splitValidationErrors(validationErr),
 		}
 		data, _ := json.MarshalIndent(result, "", "  ")
 		fmt.Println(string(data))

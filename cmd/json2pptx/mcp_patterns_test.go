@@ -154,6 +154,37 @@ func TestMCPValidatePattern(t *testing.T) {
 		}
 	})
 
+	t.Run("multiple errors split", func(t *testing.T) {
+		// card-grid with columns=0 + rows=0 produces 2 joined errors;
+		// D10 requires they appear as separate entries.
+		values := `{"columns":0,"rows":0,"cells":[]}`
+		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
+			"name":   "card-grid",
+			"values": values,
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp struct {
+			OK     bool                     `json:"ok"`
+			Errors []patternValidationError `json:"errors"`
+		}
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if resp.OK {
+			t.Error("expected ok=false")
+		}
+		if len(resp.Errors) < 2 {
+			t.Errorf("expected at least 2 separate errors, got %d", len(resp.Errors))
+		}
+		if len(resp.Errors) > 0 && resp.Errors[0].Field != "columns" {
+			t.Errorf("expected first error field='columns', got %q", resp.Errors[0].Field)
+		}
+	})
+
 	t.Run("unknown pattern", func(t *testing.T) {
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":   "nonexistent",

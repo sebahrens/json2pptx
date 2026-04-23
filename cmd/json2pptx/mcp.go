@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -494,6 +495,54 @@ type patternValidationError struct {
 	Message string `json:"message"`
 }
 
+// splitValidationErrors converts a (possibly joined) validation error into
+// individual D10 structured errors. If the error implements Unwrap() []error
+// (as errors.Join does), each sub-error becomes its own entry. The field is
+// extracted from the error message prefix "pattern-name: field rest…".
+func splitValidationErrors(err error) []patternValidationError {
+	// Try to unwrap joined errors (Go 1.20+ errors.Join).
+	type unwrapper interface {
+		Unwrap() []error
+	}
+	var individual []error
+	if joined, ok := err.(unwrapper); ok {
+		individual = joined.Unwrap()
+	} else {
+		individual = []error{err}
+	}
+
+	out := make([]patternValidationError, 0, len(individual))
+	for _, e := range individual {
+		msg := e.Error()
+		field := "values"
+
+		// Error messages follow "pattern-name: field_path rest…".
+		// Extract the field path after the colon-space prefix.
+		if colonIdx := strings.Index(msg, ": "); colonIdx >= 0 {
+			rest := msg[colonIdx+2:]
+			// The field path is the first token (word chars, dots, brackets).
+			endIdx := 0
+			for endIdx < len(rest) {
+				ch := rest[endIdx]
+				if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '.' || ch == '[' || ch == ']' {
+					endIdx++
+				} else {
+					break
+				}
+			}
+			if endIdx > 0 {
+				field = rest[:endIdx]
+			}
+		}
+
+		out = append(out, patternValidationError{
+			Field:   field,
+			Message: msg,
+		})
+	}
+	return out
+}
+
 func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	reg := patterns.Default()
 	all := reg.List()
@@ -615,15 +664,11 @@ func handleValidatePattern(_ context.Context, request mcp.CallToolRequest) (*mcp
 
 	// Validate
 	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-		// Return D10 structured errors
-		errors := []patternValidationError{{
-			Field:   "values",
-			Message: err.Error(),
-		}}
+		// Return D10 structured errors — split joined errors into individual entries.
 		result := struct {
 			OK     bool                     `json:"ok"`
 			Errors []patternValidationError `json:"errors"`
-		}{OK: false, Errors: errors}
+		}{OK: false, Errors: splitValidationErrors(err)}
 
 		responseJSON, _ := json.MarshalIndent(result, "", "  ")
 		return mcp.NewToolResultText(string(responseJSON)), nil
