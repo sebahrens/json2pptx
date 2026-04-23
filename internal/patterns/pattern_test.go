@@ -115,6 +115,61 @@ func TestNewValuesOverridesCellOverrideMayReturnNil(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// CalloutSupport interface tests (D18)
+// ---------------------------------------------------------------------------
+
+func TestCardGridSupportsCallout(t *testing.T) {
+	p, ok := Default().Get("card-grid")
+	if !ok {
+		t.Fatal("expected card-grid to be registered")
+	}
+	cs, ok := p.(CalloutSupport)
+	if !ok {
+		t.Fatal("card-grid does not implement CalloutSupport")
+	}
+	if !cs.SupportsCallout() {
+		t.Error("card-grid.SupportsCallout() = false, want true")
+	}
+}
+
+func TestComparison2colSupportsCallout(t *testing.T) {
+	p, ok := Default().Get("comparison-2col")
+	if !ok {
+		t.Fatal("expected comparison-2col to be registered")
+	}
+	cs, ok := p.(CalloutSupport)
+	if !ok {
+		t.Fatal("comparison-2col does not implement CalloutSupport")
+	}
+	if !cs.SupportsCallout() {
+		t.Error("comparison-2col.SupportsCallout() = false, want true")
+	}
+}
+
+func TestMatrix2x2DoesNotSupportCallout(t *testing.T) {
+	p, ok := Default().Get("matrix-2x2")
+	if !ok {
+		t.Fatal("expected matrix-2x2 to be registered")
+	}
+	if cs, ok := p.(CalloutSupport); ok && cs.SupportsCallout() {
+		t.Error("matrix-2x2 should not support callout")
+	}
+}
+
+func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
+	allowed := map[string]bool{
+		"card-grid":       true,
+		"comparison-2col": true,
+	}
+	for _, p := range Default().List() {
+		cs, ok := p.(CalloutSupport)
+		if ok && cs.SupportsCallout() && !allowed[p.Name()] {
+			t.Errorf("pattern %q implements CalloutSupport but is not in the allowed set", p.Name())
+		}
+	}
+}
+
 func TestDefaultRegistryContainsKpi3up(t *testing.T) {
 	// The default registry should contain kpi-3up after init().
 	p, ok := Default().Get("kpi-3up")
