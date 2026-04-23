@@ -84,11 +84,15 @@ func runPatternsList() error {
 			if cd, ok := p.(patterns.CellDescriber); ok {
 				cells = cd.CellsHint()
 			}
+			var sizeBytes int
+			if ex, ok := p.(patterns.Exemplar); ok {
+				sizeBytes, _ = patterns.CanonicalSizeBytes(p, ex.ExemplarValues())
+			}
 			entries[i] = skillPatternCompact{
-				Name:                   p.Name(),
-				Cells:                  cells,
-				UseWhen:                p.UseWhen(),
-				EstimatedPromptSizeBytes: 0, // stub per spec; bead 12 fills this
+				Name:                     p.Name(),
+				Cells:                    cells,
+				UseWhen:                  p.UseWhen(),
+				EstimatedPromptSizeBytes: sizeBytes,
 			}
 		}
 		data, err := json.MarshalIndent(entries, "", "  ")
