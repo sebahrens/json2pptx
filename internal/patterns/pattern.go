@@ -70,12 +70,13 @@ type LayoutBounds struct {
 }
 
 // ---------------------------------------------------------------------------
-// Schema placeholder — filled in bead 3
+// Schema — see schema.go for full implementation (bead 3)
 // ---------------------------------------------------------------------------
 
-// Schema holds a hand-authored JSON Schema for a pattern's external contract.
+// Schema holds a hand-authored JSON Schema (draft 2020-12) for a pattern's
+// external contract. See schema.go for constructors and helpers.
 type Schema struct {
-	// Populated by bead 3 (go-slide-creator-dbov).
+	raw schemaJSON
 }
 
 // ---------------------------------------------------------------------------
