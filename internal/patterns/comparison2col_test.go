@@ -1,0 +1,334 @@
+package patterns
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestComparison2col(t *testing.T) {
+	p := &comparison2col{}
+
+	t.Run("metadata", func(t *testing.T) {
+		if p.Name() != "comparison-2col" {
+			t.Errorf("Name() = %q, want %q", p.Name(), "comparison-2col")
+		}
+		if p.UseWhen() == "" {
+			t.Error("UseWhen() must not be empty (D6)")
+		}
+		if p.Version() != 1 {
+			t.Errorf("Version() = %d, want 1", p.Version())
+		}
+	})
+
+	t.Run("schema_valid_json_schema", func(t *testing.T) {
+		s := p.Schema()
+		if s == nil {
+			t.Fatal("Schema() returned nil")
+		}
+		data, err := json.MarshalIndent(s, "", "  ")
+		if err != nil {
+			t.Fatalf("Schema marshal: %v", err)
+		}
+		var m map[string]any
+		if err := json.Unmarshal(data, &m); err != nil {
+			t.Fatalf("Schema unmarshal: %v", err)
+		}
+		if m["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
+			t.Errorf("missing $schema draft 2020-12")
+		}
+		if m["type"] != "object" {
+			t.Errorf("root type = %v, want object", m["type"])
+		}
+	})
+
+	tests := []struct {
+		name      string
+		values    Comparison2colValues
+		overrides *Comparison2colOverrides
+		cellOvr   map[int]any
+		wantErr   string
+		wantNoErr bool
+	}{
+		{
+			name: "happy_path_with_headers",
+			values: Comparison2colValues{
+				HeaderLeft:  "Pros",
+				HeaderRight: "Cons",
+				Rows: []Comparison2colRow{
+					{Left: "Fast", Right: "Expensive"},
+					{Left: "Reliable", Right: "Complex"},
+				},
+			},
+			wantNoErr: true,
+		},
+		{
+			name: "happy_path_no_headers",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: "Before", Right: "After"},
+				},
+			},
+			wantNoErr: true,
+		},
+		{
+			name: "empty_rows",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{},
+			},
+			wantErr: "at least 1 row",
+		},
+		{
+			name: "too_many_rows",
+			values: Comparison2colValues{
+				Rows: func() []Comparison2colRow {
+					rows := make([]Comparison2colRow, 11)
+					for i := range rows {
+						rows[i] = Comparison2colRow{Left: "a", Right: "b"}
+					}
+					return rows
+				}(),
+			},
+			wantErr: "at most 10 rows",
+		},
+		{
+			name: "missing_left",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: "", Right: "something"},
+				},
+			},
+			wantErr: "rows[0].left is required",
+		},
+		{
+			name: "missing_right",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: "something", Right: ""},
+				},
+			},
+			wantErr: "rows[0].right is required",
+		},
+		{
+			name: "left_exceeds_maxlen",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: strings.Repeat("x", 201), Right: "ok"},
+				},
+			},
+			wantErr: "exceeds maxLength 200",
+		},
+		{
+			name: "invalid_cell_override_key",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: "Fast", Right: "Expensive"},
+				},
+			},
+			cellOvr: map[int]any{
+				0: &struct {
+					BadKey string `json:"bad_key"`
+				}{BadKey: "nope"},
+			},
+			wantErr: `unknown key "bad_key"`,
+		},
+		{
+			name: "cell_override_out_of_range",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: "Fast", Right: "Expensive"},
+				},
+			},
+			cellOvr: map[int]any{
+				99: &Comparison2colCellOverride{AccentBar: true},
+			},
+			wantErr: "out of range",
+		},
+		{
+			name: "accent_override",
+			values: Comparison2colValues{
+				Rows: []Comparison2colRow{
+					{Left: "A", Right: "B"},
+				},
+			},
+			overrides: &Comparison2colOverrides{Accent: "accent3"},
+			wantNoErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run("validate_"+tc.name, func(t *testing.T) {
+			var ovr any
+			if tc.overrides != nil {
+				ovr = tc.overrides
+			}
+			err := p.Validate(&tc.values, ovr, tc.cellOvr)
+			if tc.wantNoErr {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("error %q does not contain %q", err.Error(), tc.wantErr)
+				}
+			}
+		})
+	}
+
+	// Expand tests
+	t.Run("expand_with_headers", func(t *testing.T) {
+		vals := Comparison2colValues{
+			HeaderLeft:  "Pros",
+			HeaderRight: "Cons",
+			Rows: []Comparison2colRow{
+				{Left: "Fast", Right: "Expensive"},
+				{Left: "Reliable", Right: "Complex"},
+			},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if grid == nil {
+			t.Fatal("Expand returned nil grid")
+		}
+		// 1 header row + 2 body rows = 3 rows
+		if len(grid.Rows) != 3 {
+			t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+		}
+		// Each row has 2 cells
+		for i, row := range grid.Rows {
+			if len(row.Cells) != 2 {
+				t.Errorf("row[%d] expected 2 cells, got %d", i, len(row.Cells))
+			}
+		}
+		// Header cells should have accent fill
+		var headerFill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &headerFill); err != nil {
+			t.Fatalf("header fill unmarshal: %v", err)
+		}
+		if headerFill != "accent1" {
+			t.Errorf("header fill = %q, want %q", headerFill, "accent1")
+		}
+		// Body cells should have lt1 fill
+		var bodyFill string
+		if err := json.Unmarshal(grid.Rows[1].Cells[0].Shape.Fill, &bodyFill); err != nil {
+			t.Fatalf("body fill unmarshal: %v", err)
+		}
+		if bodyFill != "lt1" {
+			t.Errorf("body fill = %q, want %q", bodyFill, "lt1")
+		}
+	})
+
+	t.Run("expand_without_headers", func(t *testing.T) {
+		vals := Comparison2colValues{
+			Rows: []Comparison2colRow{
+				{Left: "Before", Right: "After"},
+			},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		// No headers -> just 1 body row
+		if len(grid.Rows) != 1 {
+			t.Fatalf("expected 1 row, got %d", len(grid.Rows))
+		}
+	})
+
+	t.Run("expand_accent_override", func(t *testing.T) {
+		vals := Comparison2colValues{
+			HeaderLeft:  "Left",
+			HeaderRight: "Right",
+			Rows: []Comparison2colRow{
+				{Left: "A", Right: "B"},
+			},
+		}
+		ovr := &Comparison2colOverrides{Accent: "accent5"}
+		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "accent5" {
+			t.Errorf("header fill = %q, want %q", fill, "accent5")
+		}
+	})
+
+	t.Run("expand_accent_bar_override", func(t *testing.T) {
+		vals := Comparison2colValues{
+			Rows: []Comparison2colRow{
+				{Left: "A", Right: "B"},
+			},
+		}
+		cellOvr := map[int]any{
+			0: &Comparison2colCellOverride{AccentBar: true},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, cellOvr)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		// Cell 0 (left) should have accent bar
+		ab := grid.Rows[0].Cells[0].AccentBar
+		if ab == nil {
+			t.Fatal("cell[0] should have accent bar")
+		}
+		if ab.Color != "accent1" {
+			t.Errorf("accent bar color = %q, want %q", ab.Color, "accent1")
+		}
+		// Cell 1 (right) should not
+		if grid.Rows[0].Cells[1].AccentBar != nil {
+			t.Error("cell[1] should not have accent bar")
+		}
+	})
+
+	// Golden file test
+	t.Run("golden_default", func(t *testing.T) {
+		vals := Comparison2colValues{
+			HeaderLeft:  "Pros",
+			HeaderRight: "Cons",
+			Rows: []Comparison2colRow{
+				{Left: "Fast", Right: "Expensive"},
+				{Left: "Reliable", Right: "Complex"},
+			},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+
+		got, err := json.MarshalIndent(grid, "", "  ")
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+
+		goldenPath := filepath.Join("testdata", "comparison-2col", "default.golden.json")
+		if os.Getenv("UPDATE_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatalf("mkdir: %v", err)
+			}
+			if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
+				t.Fatalf("write golden: %v", err)
+			}
+			t.Log("golden file updated")
+			return
+		}
+
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatalf("read golden (run with UPDATE_GOLDEN=1 to create): %v", err)
+		}
+
+		if string(got) != string(want) {
+			t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+		}
+	})
+}

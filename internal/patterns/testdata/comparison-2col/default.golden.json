@@ -1,0 +1,128 @@
+{
+  "gap": 8,
+  "columns": 2,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Pros",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Cons",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Fast",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Expensive",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Reliable",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Complex",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
