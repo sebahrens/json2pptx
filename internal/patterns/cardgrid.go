@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -45,9 +46,31 @@ func (c *cardGrid) ExemplarValues() any {
 // ---------------------------------------------------------------------------
 
 // CardGridCell is a single card with a header and body.
+// Supports string shorthand: "Header | Body" unmarshals to {header:"Header", body:"Body"}.
 type CardGridCell struct {
 	Header string `json:"header"`
 	Body   string `json:"body"`
+}
+
+// UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
+func (c *CardGridCell) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		parts := strings.SplitN(s, " | ", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("CardGridCell string must be \"Header | Body\", got %q", s)
+		}
+		c.Header = parts[0]
+		c.Body = parts[1]
+		return nil
+	}
+	type alias CardGridCell
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("CardGridCell must be string \"Header | Body\" or {header, body}: %w", err)
+	}
+	*c = CardGridCell(a)
+	return nil
 }
 
 // CardGridValues is the values type for card-grid.
@@ -93,13 +116,16 @@ var cardGridCellOverrideAllowed = map[string]bool{
 }
 
 func (c *cardGrid) Schema() *Schema {
-	cellSchema := ObjectSchema(
-		map[string]*Schema{
-			"header": StringSchema(80).WithDescription("Card header/title"),
-			"body":   StringSchema(300).WithDescription("Card body content"),
-		},
-		[]string{"header", "body"},
-	).WithAdditionalProperties(false)
+	cellSchema := OneOfSchema(
+		StringSchema(0).WithDescription("Shorthand: \"Header | Body\""),
+		ObjectSchema(
+			map[string]*Schema{
+				"header": StringSchema(80).WithDescription("Card header/title"),
+				"body":   StringSchema(300).WithDescription("Card body content"),
+			},
+			[]string{"header", "body"},
+		).WithAdditionalProperties(false),
+	).WithDescription("Card cell: string \"Header | Body\" or {header, body}")
 
 	cellOverrideSchema := ObjectSchema(
 		map[string]*Schema{

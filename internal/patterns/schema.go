@@ -43,6 +43,7 @@ type schemaJSON struct {
 	Defs        map[string]*Schema    `json:"$defs,omitempty"`
 	Default     *json.RawMessage      `json:"default,omitempty"`
 	AdditionalProperties *bool        `json:"additionalProperties,omitempty"`
+	OneOf       []*Schema             `json:"oneOf,omitempty"`
 }
 
 // MarshalJSON implements json.Marshaler for Schema.
@@ -128,6 +129,11 @@ func EnumSchema(values ...string) *Schema {
 // BooleanSchema creates a boolean schema.
 func BooleanSchema() *Schema {
 	return &Schema{raw: schemaJSON{Type: TypeBoolean}}
+}
+
+// OneOfSchema creates a schema that matches one of the given sub-schemas.
+func OneOfSchema(schemas ...*Schema) *Schema {
+	return &Schema{raw: schemaJSON{OneOf: schemas}}
 }
 
 // ---------------------------------------------------------------------------

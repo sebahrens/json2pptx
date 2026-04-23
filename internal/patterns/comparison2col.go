@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -41,9 +42,31 @@ func (c *comparison2col) ExemplarValues() any {
 // ---------------------------------------------------------------------------
 
 // Comparison2colRow is a single row with a left and right cell.
+// Supports string shorthand: "Left | Right" unmarshals to {left:"Left", right:"Right"}.
 type Comparison2colRow struct {
 	Left  string `json:"left"`
 	Right string `json:"right"`
+}
+
+// UnmarshalJSON supports string shorthand "Left | Right" or object {left, right}.
+func (r *Comparison2colRow) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		parts := strings.SplitN(s, " | ", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("Comparison2colRow string must be \"Left | Right\", got %q", s)
+		}
+		r.Left = parts[0]
+		r.Right = parts[1]
+		return nil
+	}
+	type alias Comparison2colRow
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("Comparison2colRow must be string \"Left | Right\" or {left, right}: %w", err)
+	}
+	*r = Comparison2colRow(a)
+	return nil
 }
 
 // Comparison2colValues is the values type for comparison-2col.
@@ -89,13 +112,16 @@ var comparison2colCellOverrideAllowed = map[string]bool{
 }
 
 func (c *comparison2col) Schema() *Schema {
-	rowSchema := ObjectSchema(
-		map[string]*Schema{
-			"left":  StringSchema(200).WithDescription("Left column content"),
-			"right": StringSchema(200).WithDescription("Right column content"),
-		},
-		[]string{"left", "right"},
-	).WithAdditionalProperties(false)
+	rowSchema := OneOfSchema(
+		StringSchema(0).WithDescription("Shorthand: \"Left | Right\""),
+		ObjectSchema(
+			map[string]*Schema{
+				"left":  StringSchema(200).WithDescription("Left column content"),
+				"right": StringSchema(200).WithDescription("Right column content"),
+			},
+			[]string{"left", "right"},
+		).WithAdditionalProperties(false),
+	).WithDescription("Row: string \"Left | Right\" or {left, right}")
 
 	cellOverrideSchema := ObjectSchema(
 		map[string]*Schema{

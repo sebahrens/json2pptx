@@ -8,6 +8,93 @@ import (
 	"testing"
 )
 
+func TestCardGridCellUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    CardGridCell
+		wantErr string
+	}{
+		{
+			name:  "object_form",
+			input: `{"header":"Title","body":"Content"}`,
+			want:  CardGridCell{Header: "Title", Body: "Content"},
+		},
+		{
+			name:  "string_shorthand",
+			input: `"Title | Content"`,
+			want:  CardGridCell{Header: "Title", Body: "Content"},
+		},
+		{
+			name:  "string_with_pipe_in_body",
+			input: `"Title | Body with | pipes"`,
+			want:  CardGridCell{Header: "Title", Body: "Body with | pipes"},
+		},
+		{
+			name:    "string_no_pipe",
+			input:   `"NoPipeSeparator"`,
+			wantErr: `must be "Header | Body"`,
+		},
+		{
+			name:    "invalid_json",
+			input:   `[1,2,3]`,
+			wantErr: "must be string",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var got CardGridCell
+			err := json.Unmarshal([]byte(tc.input), &got)
+			if tc.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+				}
+				if !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("error %q does not contain %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+
+	// Round-trip: string form and object form must expand identically
+	t.Run("string_object_expand_equivalence", func(t *testing.T) {
+		objJSON := `{"columns":2,"rows":1,"cells":[{"header":"A","body":"B"},{"header":"C","body":"D"}]}`
+		strJSON := `{"columns":2,"rows":1,"cells":["A | B","C | D"]}`
+
+		var objVals, strVals CardGridValues
+		if err := json.Unmarshal([]byte(objJSON), &objVals); err != nil {
+			t.Fatalf("unmarshal object form: %v", err)
+		}
+		if err := json.Unmarshal([]byte(strJSON), &strVals); err != nil {
+			t.Fatalf("unmarshal string form: %v", err)
+		}
+
+		p := &cardGrid{}
+		objGrid, err := p.Expand(ExpandContext{}, &objVals, nil, nil)
+		if err != nil {
+			t.Fatalf("expand object: %v", err)
+		}
+		strGrid, err := p.Expand(ExpandContext{}, &strVals, nil, nil)
+		if err != nil {
+			t.Fatalf("expand string: %v", err)
+		}
+
+		objOut, _ := json.Marshal(objGrid)
+		strOut, _ := json.Marshal(strGrid)
+		if string(objOut) != string(strOut) {
+			t.Errorf("expand outputs differ.\nobject: %s\nstring: %s", objOut, strOut)
+		}
+	})
+}
+
 func TestCardGrid(t *testing.T) {
 	p := &cardGrid{}
 

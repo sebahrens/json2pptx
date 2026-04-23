@@ -8,6 +8,93 @@ import (
 	"testing"
 )
 
+func TestComparison2colRowUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    Comparison2colRow
+		wantErr string
+	}{
+		{
+			name:  "object_form",
+			input: `{"left":"Pro","right":"Con"}`,
+			want:  Comparison2colRow{Left: "Pro", Right: "Con"},
+		},
+		{
+			name:  "string_shorthand",
+			input: `"Pro | Con"`,
+			want:  Comparison2colRow{Left: "Pro", Right: "Con"},
+		},
+		{
+			name:  "string_with_pipe_in_right",
+			input: `"Left | Right with | pipes"`,
+			want:  Comparison2colRow{Left: "Left", Right: "Right with | pipes"},
+		},
+		{
+			name:    "string_no_pipe",
+			input:   `"NoPipe"`,
+			wantErr: `must be "Left | Right"`,
+		},
+		{
+			name:    "invalid_json",
+			input:   `[1,2]`,
+			wantErr: "must be string",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var got Comparison2colRow
+			err := json.Unmarshal([]byte(tc.input), &got)
+			if tc.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+				}
+				if !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("error %q does not contain %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+
+	// Round-trip equivalence
+	t.Run("string_object_expand_equivalence", func(t *testing.T) {
+		objJSON := `{"rows":[{"left":"Fast","right":"Expensive"},{"left":"Reliable","right":"Complex"}]}`
+		strJSON := `{"rows":["Fast | Expensive","Reliable | Complex"]}`
+
+		var objVals, strVals Comparison2colValues
+		if err := json.Unmarshal([]byte(objJSON), &objVals); err != nil {
+			t.Fatalf("unmarshal object form: %v", err)
+		}
+		if err := json.Unmarshal([]byte(strJSON), &strVals); err != nil {
+			t.Fatalf("unmarshal string form: %v", err)
+		}
+
+		p := &comparison2col{}
+		objGrid, err := p.Expand(ExpandContext{}, &objVals, nil, nil)
+		if err != nil {
+			t.Fatalf("expand object: %v", err)
+		}
+		strGrid, err := p.Expand(ExpandContext{}, &strVals, nil, nil)
+		if err != nil {
+			t.Fatalf("expand string: %v", err)
+		}
+
+		objOut, _ := json.Marshal(objGrid)
+		strOut, _ := json.Marshal(strGrid)
+		if string(objOut) != string(strOut) {
+			t.Errorf("expand outputs differ.\nobject: %s\nstring: %s", objOut, strOut)
+		}
+	})
+}
+
 func TestComparison2col(t *testing.T) {
 	p := &comparison2col{}
 

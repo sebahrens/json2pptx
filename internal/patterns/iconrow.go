@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -38,9 +39,31 @@ func (ir *iconRow) ExemplarValues() any {
 // ---------------------------------------------------------------------------
 
 // IconRowItem is a single icon+caption pair.
+// Supports string shorthand: "Caption" or "icon | Caption".
 type IconRowItem struct {
 	Icon    string `json:"icon"`    // Icon name or hex glyph
 	Caption string `json:"caption"` // Short caption text
+}
+
+// UnmarshalJSON supports string shorthand "Caption" or "icon | Caption", or object {icon, caption}.
+func (item *IconRowItem) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		if parts := strings.SplitN(s, " | ", 2); len(parts) == 2 {
+			item.Icon = parts[0]
+			item.Caption = parts[1]
+		} else {
+			item.Caption = s
+		}
+		return nil
+	}
+	type alias IconRowItem
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("IconRowItem must be string \"icon | Caption\" or {icon, caption}: %w", err)
+	}
+	*item = IconRowItem(a)
+	return nil
 }
 
 // IconRowValues is the values type: 3–5 icon+caption pairs.
@@ -82,13 +105,16 @@ var iconRowCellOverrideAllowed = map[string]bool{
 }
 
 func (ir *iconRow) Schema() *Schema {
-	itemSchema := ObjectSchema(
-		map[string]*Schema{
-			"icon":    StringSchema(20).WithDescription("Icon name or hex glyph (e.g. \"🚀\" or \"rocket\")"),
-			"caption": StringSchema(60).WithDescription("Short caption text"),
-		},
-		[]string{"icon", "caption"},
-	).WithAdditionalProperties(false)
+	itemSchema := OneOfSchema(
+		StringSchema(0).WithDescription("Shorthand: \"Caption\" or \"icon | Caption\""),
+		ObjectSchema(
+			map[string]*Schema{
+				"icon":    StringSchema(20).WithDescription("Icon name or hex glyph (e.g. \"🚀\" or \"rocket\")"),
+				"caption": StringSchema(60).WithDescription("Short caption text"),
+			},
+			[]string{"icon", "caption"},
+		).WithAdditionalProperties(false),
+	).WithDescription("Item: string \"icon | Caption\" or {icon, caption}")
 
 	cellOverrideSchema := ObjectSchema(
 		map[string]*Schema{
