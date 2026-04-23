@@ -1,0 +1,108 @@
+{
+  "gap": 16,
+  "columns": 3,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Phase 1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Q1 2025",
+                  "size": 10,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Planning",
+                  "size": 10,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Phase 2",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Q2 2025",
+                  "size": 10,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Development",
+                  "size": 10,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Phase 3",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Q3 2025",
+                  "size": 10,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Launch",
+                  "size": 10,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ],
+      "connector": {
+        "style": "arrow",
+        "color": "accent1",
+        "width": 2
+      }
+    }
+  ]
+}
