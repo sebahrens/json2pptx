@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
@@ -24,7 +25,8 @@ func (c *cardGrid) Description() string    { return "Parameterized N×M grid of 
 func (c *cardGrid) UseWhen() string        { return "N×M titled cards" }
 func (c *cardGrid) Version() int           { return 1 }
 func (c *cardGrid) CellsHint() string      { return "rows × cols" }
-func (c *cardGrid) SupportsCallout() bool  { return true }
+func (c *cardGrid) SupportsCallout() bool        { return true }
+func (c *cardGrid) SupportsInlineMarkdown() bool { return true }
 
 func (c *cardGrid) ExemplarValues() any {
 	return &CardGridValues{
@@ -250,6 +252,8 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 }
 
 // buildCardGridTextContent creates a JSON text object with header + body paragraphs.
+// Body text supports inline markdown emphasis (**bold**, *italic*) which is
+// converted to <b>/<i> tags for downstream processing by SplitInlineTags.
 func buildCardGridTextContent(header string, headerSize float64, body string, bodySize float64) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
@@ -266,7 +270,7 @@ func buildCardGridTextContent(header string, headerSize float64, body string, bo
 	}{
 		Paragraphs: []paragraph{
 			{Content: header, Size: headerSize, Bold: true, Color: "lt1", Align: "l"},
-			{Content: body, Size: bodySize, Color: "lt1", Align: "l"},
+			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "lt1", Align: "l"},
 		},
 		Align:         "l",
 		VerticalAlign: "t",

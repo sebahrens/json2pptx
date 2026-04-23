@@ -96,6 +96,17 @@ type PatternCallout struct {
 }
 
 // ---------------------------------------------------------------------------
+// InlineMarkdownSupport — optional interface for markdown emphasis in body text
+// ---------------------------------------------------------------------------
+
+// InlineMarkdownSupport is an optional interface patterns can implement to
+// declare that body text supports inline markdown emphasis (**bold**, *italic*).
+// Patterns that implement this convert markdown to <b>/<i> tags at expand time.
+type InlineMarkdownSupport interface {
+	SupportsInlineMarkdown() bool
+}
+
+// ---------------------------------------------------------------------------
 // Schema — see schema.go for full implementation (bead 3)
 // ---------------------------------------------------------------------------
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // ---------------------------------------------------------------------------
@@ -24,7 +25,8 @@ func (c *comparison2col) Description() string    { return "Two-column comparison
 func (c *comparison2col) UseWhen() string        { return "Two-column compare (pros/cons, vs.)" }
 func (c *comparison2col) Version() int           { return 1 }
 func (c *comparison2col) CellsHint() string      { return "2 + header" }
-func (c *comparison2col) SupportsCallout() bool  { return true }
+func (c *comparison2col) SupportsCallout() bool        { return true }
+func (c *comparison2col) SupportsInlineMarkdown() bool { return true }
 
 func (c *comparison2col) ExemplarValues() any {
 	return &Comparison2colValues{
@@ -289,10 +291,10 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		})
 	}
 
-	// Body rows
+	// Body rows — apply inline markdown emphasis (**bold**, *italic*)
 	for _, row := range vals.Rows {
-		leftText := buildComparison2colTextContent(row.Left, bodySize, false, "dk1", "l")
-		rightText := buildComparison2colTextContent(row.Right, bodySize, false, "dk1", "l")
+		leftText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, "dk1", "l")
+		rightText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, "dk1", "l")
 
 		leftCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
