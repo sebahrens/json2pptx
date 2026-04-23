@@ -357,6 +357,49 @@ func TestAnalyzeTemplateForSkillInfo_ColorRolesInCompactMode(t *testing.T) {
 	}
 }
 
+func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
+	templates := []string{
+		"../../templates/forest-green.pptx",
+		"../../templates/midnight-blue.pptx",
+		"../../templates/modern-template.pptx",
+		"../../templates/warm-coral.pptx",
+	}
+
+	cache := template.NewMemoryCache(24 * time.Hour)
+
+	for _, tmpl := range templates {
+		t.Run(tmpl, func(t *testing.T) {
+			for _, mode := range []string{"list", "compact", "full"} {
+				info, err := analyzeTemplateForSkillInfo(tmpl, cache, mode)
+				if err != nil {
+					t.Fatalf("mode=%s: %v", mode, err)
+				}
+				// table_styles must always be a non-nil slice (never null in JSON).
+				if info.TableStyles == nil {
+					t.Errorf("mode=%s: TableStyles is nil, want empty slice", mode)
+				}
+			}
+		})
+	}
+
+	// modern-template should have at least 1 table style.
+	info, err := analyzeTemplateForSkillInfo("../../templates/modern-template.pptx", cache, "compact")
+	if err != nil {
+		t.Fatalf("modern-template: %v", err)
+	}
+	if len(info.TableStyles) == 0 {
+		t.Error("modern-template should have at least one table style")
+	}
+	for _, ts := range info.TableStyles {
+		if ts.ID == "" {
+			t.Error("table style entry has empty ID")
+		}
+		if ts.Name == "" {
+			t.Error("table style entry has empty Name")
+		}
+	}
+}
+
 func TestAnalyzeTemplateForSkillInfo_NoColorRolesInListMode(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")

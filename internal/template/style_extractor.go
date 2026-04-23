@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -354,6 +355,27 @@ func (idx *tableStyleIndex) lookup(id string) (name string, ok bool) {
 	idx.once.Do(idx.parse)
 	name, ok = idx.styles[id]
 	return
+}
+
+// TableStyleEntry is an {ID, Name} pair from ppt/tableStyles.xml.
+type TableStyleEntry struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// all returns every declared table style as a sorted slice.
+// Returns an empty (non-nil) slice when the template has no styles.
+func (idx *tableStyleIndex) all() []TableStyleEntry {
+	idx.once.Do(idx.parse)
+	entries := make([]TableStyleEntry, 0, len(idx.styles))
+	for id, name := range idx.styles {
+		entries = append(entries, TableStyleEntry{ID: id, Name: name})
+	}
+	// Sort by name for stable output.
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name < entries[j].Name
+	})
+	return entries
 }
 
 // declaredDefault returns the template's declared default table style GUID

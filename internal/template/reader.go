@@ -143,6 +143,16 @@ func (r *Reader) Hash() string {
 	return r.hash
 }
 
+// TableStyles returns all table style entries declared in the template's
+// ppt/tableStyles.xml.  Returns an empty (non-nil) slice when the template
+// has no styles or the XML is missing/malformed.
+func (r *Reader) TableStyles() []TableStyleEntry {
+	if r.tblStyles == nil {
+		r.tblStyles = newTableStyleIndex(r)
+	}
+	return r.tblStyles.all()
+}
+
 // Close closes the ZIP reader and releases resources.
 // Multiple calls to Close are safe and will not return an error.
 func (r *Reader) Close() error {

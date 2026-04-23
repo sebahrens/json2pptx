@@ -57,6 +57,12 @@ type skillToolInfo struct {
 	Built   string `json:"built,omitempty"`
 }
 
+// skillTableStyle describes a table style declared by the template.
+type skillTableStyle struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // skillTemplateInfo describes a single available template.
 type skillTemplateInfo struct {
 	Name         string                   `json:"name"`
@@ -67,6 +73,7 @@ type skillTemplateInfo struct {
 	TitleFont    string                   `json:"title_font,omitempty"`
 	BodyFont     string                   `json:"body_font,omitempty"`
 	LayoutNames  []string                 `json:"layout_names,omitempty"`
+	TableStyles  []skillTableStyle        `json:"table_styles"`
 	Layouts      []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
 }
 
@@ -237,6 +244,21 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 		Name:        name,
 		AspectRatio: analysis.AspectRatio,
 		LayoutCount: len(analysis.Layouts),
+	}
+
+	// Always include table_styles (empty array, never null).
+	reader, err := template.OpenTemplate(templatePath)
+	if err == nil {
+		entries := reader.TableStyles()
+		tblStyles := make([]skillTableStyle, len(entries))
+		for i, e := range entries {
+			tblStyles[i] = skillTableStyle{ID: e.ID, Name: e.Name}
+		}
+		info.TableStyles = tblStyles
+		_ = reader.Close()
+	}
+	if info.TableStyles == nil {
+		info.TableStyles = []skillTableStyle{}
 	}
 
 	if mode == "list" {
