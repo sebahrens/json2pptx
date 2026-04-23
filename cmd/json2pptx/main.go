@@ -44,6 +44,8 @@ func dispatch() error {
 		return runValidate()
 	case "validate-template":
 		return runValidateTemplate()
+	case "patterns":
+		return runPatterns()
 	case "skill-info":
 		return runSkillInfo()
 	case "version", "--version", "-V":
@@ -68,6 +70,7 @@ Commands:
   generate           Convert JSON to PPTX (default if omitted)
   validate           Validate input without generating
   validate-template  Check template compatibility
+  patterns           Discover, validate, and expand named patterns
   skill-info         Show template capabilities for Claude Code skill
   serve              Start HTTP API server
   mcp                Start MCP (Model Context Protocol) server over stdio
