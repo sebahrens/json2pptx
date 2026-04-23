@@ -48,6 +48,8 @@ func dispatch() error {
 		return runPatterns()
 	case "icons":
 		return runIcons()
+	case "tables":
+		return runTables()
 	case "skill-info":
 		return runSkillInfo()
 	case "version", "--version", "-V":
@@ -74,6 +76,7 @@ Commands:
   validate-template  Check template compatibility
   patterns           Discover, validate, and expand named patterns
   icons              List available icon names
+  tables             Table density and sizing reference
   skill-info         Show template capabilities for Claude Code skill
   serve              Start HTTP API server
   mcp                Start MCP (Model Context Protocol) server over stdio

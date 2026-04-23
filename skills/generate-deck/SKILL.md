@@ -161,18 +161,7 @@ Accent values are template-specific. Before cycling accents across a slide, read
 
 ## Table Density Reference
 
-Rules of thumb for fitting a table in a shape_grid. Assumes `auto_height: true` on the table's row, `bounds.height: 82`, tight gaps.
-
-| Data rows | `style.font_size` | Max columns | Notes |
-|---|---|---|---|
-| 1-4 | 12-14 | 6 | Default font works; keep spacing generous |
-| 5-7 | 10-11 | 6 | Explicit `font_size` required |
-| 8-10 | 9 | 6 | Use `bounds.y: 15`, `row_gap: 1-2` |
-| 11-13 | 8 | 5 | Tight; consider dropping a column |
-| 14-16 | 7 | 4 | The last stop before splitting |
-| 17+ | — | — | Split across two slides |
-
-**Multiline cells eat budget.** A cell with 3 text lines at font_size 8 needs roughly the same vertical space as 3 single-line rows. If you use multiline cells, count each line as a row when sizing.
+Run `json2pptx tables guide` for font size and row-count guidance when building table slides in shape grids.
 
 ---
 
