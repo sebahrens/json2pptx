@@ -75,7 +75,7 @@ func NewLoopState() *LoopState {
 // RunValidatePass executes json2pptx validate --fit-report on the given
 // JSON file and returns structured findings grouped by slide.
 func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
-	cmd := exec.Command(cfg.Binary, "validate", "-fit-report", "-", jsonPath) //nolint:gosec // controlled inputs in test/agent context
+	cmd := exec.Command(cfg.Binary, "validate", "-fit-report", jsonPath) //nolint:gosec // controlled inputs in test/agent context
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

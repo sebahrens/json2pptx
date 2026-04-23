@@ -390,6 +390,14 @@ func estimateCellHeightEMU(grid *ShapeGridInput, rowIdx int) int64 {
 	return gridHeightEMU / int64(numRows)
 }
 
+// writeFitReportNDJSON writes fit findings as NDJSON to the given writer.
+func writeFitReportNDJSON(w io.Writer, findings []fitFinding) {
+	enc := json.NewEncoder(w)
+	for _, f := range findings {
+		_ = enc.Encode(f)
+	}
+}
+
 // writeFitReport writes fit findings as NDJSON to the given path.
 // Use "-" to write to stdout.
 func writeFitReport(path string, findings []fitFinding) error {
@@ -405,13 +413,7 @@ func writeFitReport(path string, findings []fitFinding) error {
 		w = f
 	}
 
-	enc := json.NewEncoder(w)
-	for _, f := range findings {
-		if err := enc.Encode(f); err != nil {
-			return fmt.Errorf("failed to write fit finding: %w", err)
-		}
-	}
-
+	writeFitReportNDJSON(w, findings)
 	return nil
 }
 
@@ -425,5 +427,36 @@ func printFitReportSummary(findings []fitFinding) {
 	fmt.Fprintf(os.Stderr, "Fit report: %d issue(s) found\n", len(findings))
 	for _, f := range findings {
 		fmt.Fprintf(os.Stderr, "  [%s] %s: %s\n", f.Code, f.Path, f.Message)
+	}
+}
+
+// printFitFindingsBySlide prints fit findings grouped by slide index to stderr.
+func printFitFindingsBySlide(findings []fitFinding) {
+	if len(findings) == 0 {
+		fmt.Fprintln(os.Stderr, "Fit report: no issues found")
+		return
+	}
+
+	// Group by slide index extracted from path.
+	groups := make(map[int][]fitFinding)
+	var slideOrder []int
+	for _, f := range findings {
+		si := slideIndexFromPath(f.Path)
+		if _, seen := groups[si]; !seen {
+			slideOrder = append(slideOrder, si)
+		}
+		groups[si] = append(groups[si], f)
+	}
+
+	fmt.Fprintf(os.Stderr, "Fit report: %d finding(s)\n", len(findings))
+	for _, si := range slideOrder {
+		if si >= 0 {
+			fmt.Fprintf(os.Stderr, "  Slide %d:\n", si+1)
+		} else {
+			fmt.Fprintf(os.Stderr, "  Unknown slide:\n")
+		}
+		for _, f := range groups[si] {
+			fmt.Fprintf(os.Stderr, "    [%s] %s — %s\n", f.Action, f.Path, f.Message)
+		}
 	}
 }

@@ -16,7 +16,7 @@ func runValidate() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	jsonOut := fs.Bool("json", false, "Output results as JSON to stdout")
 	jsonOutputPath := fs.String("json-output", "", "Write JSON results to file (use - for stdout)")
-	fitReportPath := fs.String("fit-report", "", "Write per-cell fit report as NDJSON to file (use - for stdout)")
+	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate [options] <file.json ...>\n\n")
@@ -28,7 +28,7 @@ func runValidate() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -json-output results.json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -json-output - slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -template corporate slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx validate -fit-report report.json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate -fit-report slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json chapter2.json chapter3.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		fs.PrintDefaults()
@@ -59,7 +59,7 @@ func runValidate() error {
 	}
 
 	// Fit-report: walk all tables and shape-grid text cells for overflow.
-	if *fitReportPath != "" {
+	if *fitReport {
 		for _, filePath := range args {
 			content, err := os.ReadFile(filePath)
 			if err != nil {
@@ -78,9 +78,12 @@ func runValidate() error {
 			}
 
 			findings := generateFitReport(&input)
-			printFitReportSummary(findings)
-			if err := writeFitReport(*fitReportPath, findings); err != nil {
-				return err
+			printFitFindingsBySlide(findings)
+			writeFitReportNDJSON(os.Stdout, findings)
+			for _, f := range findings {
+				if f.Action == "unfittable" {
+					hasErrors = true
+				}
 			}
 		}
 	}
