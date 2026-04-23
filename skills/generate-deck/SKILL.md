@@ -170,37 +170,6 @@ Run `json2pptx icons list` for all available names (or `--json` for JSON output)
 
 ---
 
-## Capability Index
-
-The skill above covers the common cases. For less-frequent features, see `TEMPLATE_GUIDE.md`:
-
-| Feature | Where in GUIDE |
-|---|---|
-| `connector` on rows (arrows/lines between adjacent cells) | Shape Grid → Row Connector |
-| `accent_bar` on cells (decorative side bar) | Cell Definition |
-| `column_alignments` on tables (per-column l/c/r) | Content Types → table |
-| Callout geometries (`wedgeRoundRectCallout`, etc.) | Shape Properties |
-| `speaker_notes` on slides | Slide-Level Fields |
-| `source` citation on slides (engine prepends "Source: ") | Slide-Level Fields |
-| `footer` (must be object with `enabled: true`) | Footer Configuration |
-| `background` image on slides | Slide Background |
-| `theme_override` for custom colors/fonts | Theme Overrides |
-| `body_and_bullets`, `bullet_groups` content types | Content Types |
-| `image` cells in shape grids | Image Cell |
-| `row_span` / `col_span` for merged cells | Cell Definition |
-| `fit` property (contain / fit-width / fit-height) | Cell Definition |
-| `font_size` override on placeholders | Font Size Override |
-| Character limits per content type | Character Limits |
-| Patch operations (incremental deck edits) | Patch Operations |
-| All 15 chart types / 21 diagram types | Content Types → chart / diagram |
-
-Claude reads `TEMPLATE_GUIDE.md` as part of the skill context on each session; navigate to the relevant section when one of the above is needed. Do not duplicate the GUIDE content here — it drifts.
-
----
-
 ## Reference
 
-For complete field specifications, chart types, diagram types, shape properties,
-patch operations, and theme overrides, see:
-
-`~/.claude/skills/template-deck/TEMPLATE_GUIDE.md`
+For complete field specifications (connectors, accent bars, callout geometries, speaker notes, footers, backgrounds, theme overrides, patch operations, all chart/diagram types, and more), see `~/.claude/skills/template-deck/TEMPLATE_GUIDE.md` or run `json2pptx validate-template <path>`.
