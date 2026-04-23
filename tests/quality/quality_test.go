@@ -45,13 +45,7 @@ type metrics struct {
 	ShrinkRate       float64 // shrink actions / total findings
 }
 
-// fitFinding mirrors the NDJSON structure from json2pptx validate --fit-report.
-type fitFinding struct {
-	Code    string `json:"code"`
-	Path    string `json:"path"`
-	Message string `json:"message"`
-	Action  string `json:"action,omitempty"`
-}
+// fitFinding is defined in loop_driver.go (shared within the package).
 
 // presentationInput is a minimal parse of the JSON input for metric extraction.
 type presentationInput struct {
