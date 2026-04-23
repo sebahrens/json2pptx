@@ -1,0 +1,170 @@
+{
+  "gap": 6,
+  "columns": [
+    12,
+    44,
+    44
+  ],
+  "rows": [
+    {
+      "height": 12,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt2"
+          }
+        },
+        {
+          "col_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Market Share",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Market Growth",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            },
+            "rotation": 270
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Stars",
+                  "size": 16,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "High growth, high share",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Question Marks",
+                  "size": 16,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "High growth, low share",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Cash Cows",
+                  "size": 16,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Low growth, high share",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Dogs",
+                  "size": 16,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Low growth, low share",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
