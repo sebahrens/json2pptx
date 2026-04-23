@@ -3,7 +3,6 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -58,20 +57,16 @@ func (k *kpi3up) NewOverrides() any    { return &Kpi3upOverrides{} }
 func (k *kpi3up) NewCellOverride() any { return &Kpi3upCellOverride{} }
 
 func (k *kpi3up) Schema() *Schema {
-	cellOverride := kpiCellOverrideSchema()
-	cellOverrideProps := make(map[string]*Schema, 3)
-	for i := range 3 {
-		cellOverrideProps[strconv.Itoa(i)] = cellOverride
-	}
-
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         ArraySchema(kpiCellSchema(), 3, 3).WithDescription("Exactly 3 KPI cells"),
 			"overrides":      kpiOverridesSchema(),
-			"cell_overrides": ObjectSchema(cellOverrideProps, nil).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("Three big-number KPI cards with short captions")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": kpiCellOverrideSchema(),
+	}).WithDescription("Three big-number KPI cards with short captions")
 }
 
 func (k *kpi3up) Validate(values, overrides any, cellOverrides map[int]any) error {

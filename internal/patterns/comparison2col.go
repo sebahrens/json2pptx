@@ -144,14 +144,6 @@ func (c *comparison2col) Schema() *Schema {
 		[]string{"rows"},
 	).WithAdditionalProperties(false)
 
-	// Cell indices: 0 = left header, 1 = right header, then 2..2+2*len(rows)-1
-	// for body cells (left0, right0, left1, right1, ...).
-	// We define a pattern of cell_overrides with string keys.
-	cellOverridesProps := make(map[string]*Schema)
-	for i := 0; i < 22; i++ { // max: 2 headers + 10 rows * 2 cells = 22
-		cellOverridesProps[fmt.Sprintf("%d", i)] = cellOverrideSchema
-	}
-
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": valuesSchema,
@@ -163,13 +155,12 @@ func (c *comparison2col) Schema() *Schema {
 				},
 				nil,
 			).WithAdditionalProperties(false),
-			"cell_overrides": ObjectSchema(
-				cellOverridesProps,
-				nil,
-			).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("Two-column comparison with optional headers")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverrideSchema,
+	}).WithDescription("Two-column comparison with optional headers")
 }
 
 func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]any) error {

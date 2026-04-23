@@ -124,12 +124,6 @@ func (m *matrix2x2) Schema() *Schema {
 		[]string{"x_axis_label", "y_axis_label", "top_left", "top_right", "bottom_left", "bottom_right"},
 	).WithAdditionalProperties(false)
 
-	// Cell indices: 0=top_left, 1=top_right, 2=bottom_left, 3=bottom_right
-	cellOverridesProps := make(map[string]*Schema)
-	for i := 0; i < 4; i++ {
-		cellOverridesProps[fmt.Sprintf("%d", i)] = cellOverrideSchema
-	}
-
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": valuesSchema,
@@ -142,13 +136,12 @@ func (m *matrix2x2) Schema() *Schema {
 				},
 				nil,
 			).WithAdditionalProperties(false),
-			"cell_overrides": ObjectSchema(
-				cellOverridesProps,
-				nil,
-			).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("2×2 quadrant matrix with axis labels")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverrideSchema,
+	}).WithDescription("2×2 quadrant matrix with axis labels")
 }
 
 func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) error {

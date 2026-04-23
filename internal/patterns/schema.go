@@ -40,10 +40,11 @@ type schemaJSON struct {
 	Enum        []string              `json:"enum,omitempty"`
 	Const       *json.RawMessage      `json:"const,omitempty"`
 	Ref         string                `json:"$ref,omitempty"`
-	Defs        map[string]*Schema    `json:"$defs,omitempty"`
-	Default     *json.RawMessage      `json:"default,omitempty"`
-	AdditionalProperties *bool        `json:"additionalProperties,omitempty"`
-	OneOf       []*Schema             `json:"oneOf,omitempty"`
+	Defs                 map[string]*Schema `json:"$defs,omitempty"`
+	Default              *json.RawMessage   `json:"default,omitempty"`
+	AdditionalProperties *bool              `json:"additionalProperties,omitempty"`
+	PatternProperties    map[string]*Schema `json:"patternProperties,omitempty"`
+	OneOf                []*Schema          `json:"oneOf,omitempty"`
 }
 
 // MarshalJSON implements json.Marshaler for Schema.
@@ -136,6 +137,12 @@ func OneOfSchema(schemas ...*Schema) *Schema {
 	return &Schema{raw: schemaJSON{OneOf: schemas}}
 }
 
+// RefSchema creates a $ref schema pointing to a local definition.
+// Example: RefSchema("cellOverride") produces {"$ref": "#/$defs/cellOverride"}.
+func RefSchema(defName string) *Schema {
+	return &Schema{raw: schemaJSON{Ref: "#/$defs/" + defName}}
+}
+
 // ---------------------------------------------------------------------------
 // Fluent modifiers — return *Schema for chaining
 // ---------------------------------------------------------------------------
@@ -168,6 +175,12 @@ func (s *Schema) WithAdditionalProperties(allowed bool) *Schema {
 	return s
 }
 
+// WithPatternProperties sets the "patternProperties" keyword.
+func (s *Schema) WithPatternProperties(pp map[string]*Schema) *Schema {
+	s.raw.PatternProperties = pp
+	return s
+}
+
 // AsRoot stamps "$schema": "https://json-schema.org/draft/2020-12/schema"
 // onto the schema, marking it as a root schema document.
 func (s *Schema) AsRoot() *Schema {
@@ -178,6 +191,22 @@ func (s *Schema) AsRoot() *Schema {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// CellOverridesSchema creates a cell_overrides object schema using
+// patternProperties with a $ref to a $defs entry, replacing the old approach
+// of enumerating every cell index as a named property. The returned schema
+// uses {"patternProperties": {"^[0-9]+$": {"$ref": "#/$defs/cellOverride"}}}
+// which is semantically equivalent but dramatically smaller.
+//
+// The defName parameter is the key under $defs where the caller has placed
+// the cellOverride schema (conventionally "cellOverride").
+func CellOverridesSchema(defName string) *Schema {
+	return ObjectSchema(nil, nil).
+		WithPatternProperties(map[string]*Schema{
+			`^[0-9]+$`: RefSchema(defName),
+		}).
+		WithAdditionalProperties(false)
+}
 
 func intPtr(v int) *int          { return &v }
 func float64Ptr(v float64) *float64 { return &v }

@@ -122,12 +122,6 @@ func (b *bmcCanvas) Schema() *Schema {
 		nil,
 	).WithAdditionalProperties(false)
 
-	// 9 cells indexed 0-8
-	cellOverridesProps := make(map[string]*Schema)
-	for i := 0; i < 9; i++ {
-		cellOverridesProps[fmt.Sprintf("%d", i)] = cellOverrideSchema
-	}
-
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"key_partners":       cellSchema.WithDescription("Key Partners — who are our key partners and suppliers?"),
@@ -155,13 +149,12 @@ func (b *bmcCanvas) Schema() *Schema {
 				},
 				nil,
 			).WithAdditionalProperties(false),
-			"cell_overrides": ObjectSchema(
-				cellOverridesProps,
-				nil,
-			).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("Formal 9-cell Business Model Canvas (Osterwalder)")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverrideSchema,
+	}).WithDescription("Formal 9-cell Business Model Canvas (Osterwalder)")
 }
 
 func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) error {

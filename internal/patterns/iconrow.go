@@ -128,11 +128,6 @@ func (ir *iconRow) Schema() *Schema {
 		nil,
 	).WithAdditionalProperties(false)
 
-	cellOverridesProps := make(map[string]*Schema)
-	for i := 0; i < 5; i++ { // max 5 items
-		cellOverridesProps[fmt.Sprintf("%d", i)] = cellOverrideSchema
-	}
-
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": ArraySchema(itemSchema, 3, 5).WithDescription("3–5 icon+caption pairs"),
@@ -144,13 +139,12 @@ func (ir *iconRow) Schema() *Schema {
 				},
 				nil,
 			).WithAdditionalProperties(false),
-			"cell_overrides": ObjectSchema(
-				cellOverridesProps,
-				nil,
-			).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("Horizontal row of icon+caption pairs")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverrideSchema,
+	}).WithDescription("Horizontal row of icon+caption pairs")
 }
 
 func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) error {

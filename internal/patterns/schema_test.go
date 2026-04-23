@@ -258,3 +258,104 @@ func TestSchemaNoSchemaFieldWithoutAsRoot(t *testing.T) {
 		t.Error("$schema should be omitted unless AsRoot() is called")
 	}
 }
+
+func TestRefSchema(t *testing.T) {
+	s := RefSchema("cellOverride")
+	data, err := json.Marshal(s)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var got map[string]any
+	json.Unmarshal(data, &got)
+
+	if got["$ref"] != "#/$defs/cellOverride" {
+		t.Errorf("$ref = %v, want #/$defs/cellOverride", got["$ref"])
+	}
+	// $ref schemas should not have a type
+	if _, ok := got["type"]; ok {
+		t.Error("$ref schema should not have type")
+	}
+}
+
+func TestCellOverridesSchema(t *testing.T) {
+	cellOverride := ObjectSchema(
+		map[string]*Schema{
+			"bold":  BooleanSchema(),
+			"color": StringSchema(0),
+		},
+		nil,
+	).WithAdditionalProperties(false)
+
+	root := ObjectSchema(
+		map[string]*Schema{
+			"cell_overrides": CellOverridesSchema("cellOverride"),
+		},
+		nil,
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverride,
+	})
+
+	data, err := json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	// Check $defs.cellOverride exists
+	defs, ok := got["$defs"].(map[string]any)
+	if !ok {
+		t.Fatal("$defs missing or not an object")
+	}
+	if _, ok := defs["cellOverride"]; !ok {
+		t.Error("$defs.cellOverride missing")
+	}
+
+	// Check cell_overrides uses patternProperties
+	props := got["properties"].(map[string]any)
+	co := props["cell_overrides"].(map[string]any)
+
+	pp, ok := co["patternProperties"].(map[string]any)
+	if !ok {
+		t.Fatal("cell_overrides.patternProperties missing")
+	}
+	ref, ok := pp["^[0-9]+$"].(map[string]any)
+	if !ok {
+		t.Fatal("patternProperties['^[0-9]+$'] missing")
+	}
+	if ref["$ref"] != "#/$defs/cellOverride" {
+		t.Errorf("$ref = %v, want #/$defs/cellOverride", ref["$ref"])
+	}
+
+	// additionalProperties should be false
+	if co["additionalProperties"] != false {
+		t.Errorf("additionalProperties = %v, want false", co["additionalProperties"])
+	}
+}
+
+func TestPatternSchemaCompression(t *testing.T) {
+	// Verify all registered patterns produce schemas under 6 KB
+	// (the old card-grid schema was ~17.5 KB)
+	for _, p := range Default().List() {
+		s := p.Schema()
+		data, err := json.Marshal(s)
+		if err != nil {
+			t.Errorf("%s: marshal error: %v", p.Name(), err)
+			continue
+		}
+		if len(data) > 6000 {
+			t.Errorf("%s: schema too large: %d bytes (max 6000)", p.Name(), len(data))
+		}
+
+		// Verify schema contains $defs and patternProperties
+		var m map[string]any
+		json.Unmarshal(data, &m)
+		if _, ok := m["$defs"]; !ok {
+			t.Errorf("%s: schema missing $defs", p.Name())
+		}
+	}
+}

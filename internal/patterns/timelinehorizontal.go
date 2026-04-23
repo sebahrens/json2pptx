@@ -106,11 +106,6 @@ func (th *timelineHorizontal) Schema() *Schema {
 		nil,
 	).WithAdditionalProperties(false)
 
-	cellOverridesProps := make(map[string]*Schema)
-	for i := 0; i < 7; i++ { // max 7 stops
-		cellOverridesProps[fmt.Sprintf("%d", i)] = cellOverrideSchema
-	}
-
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": ArraySchema(stopSchema, 3, 7).WithDescription("3–7 timeline stops"),
@@ -124,13 +119,12 @@ func (th *timelineHorizontal) Schema() *Schema {
 				},
 				nil,
 			).WithAdditionalProperties(false),
-			"cell_overrides": ObjectSchema(
-				cellOverridesProps,
-				nil,
-			).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("Linear horizontal timeline with stops")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverrideSchema,
+	}).WithDescription("Linear horizontal timeline with stops")
 }
 
 func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[int]any) error {

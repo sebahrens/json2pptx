@@ -139,12 +139,6 @@ func (c *cardGrid) Schema() *Schema {
 		nil,
 	).WithAdditionalProperties(false)
 
-	// Max cells: 5 cols * 5 rows = 25
-	cellOverridesProps := make(map[string]*Schema)
-	for i := 0; i < 25; i++ {
-		cellOverridesProps[fmt.Sprintf("%d", i)] = cellOverrideSchema
-	}
-
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"columns": IntegerSchema(1, 5).WithDescription("Number of columns (1–5)"),
@@ -165,13 +159,12 @@ func (c *cardGrid) Schema() *Schema {
 				},
 				nil,
 			).WithAdditionalProperties(false),
-			"cell_overrides": ObjectSchema(
-				cellOverridesProps,
-				nil,
-			).WithAdditionalProperties(false),
+			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
-	).AsRoot().WithDescription("Parameterized N×M grid of titled cards")
+	).AsRoot().WithDefs(map[string]*Schema{
+		"cellOverride": cellOverrideSchema,
+	}).WithDescription("Parameterized N×M grid of titled cards")
 }
 
 func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) error {
