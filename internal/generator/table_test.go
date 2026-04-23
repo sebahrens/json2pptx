@@ -2,11 +2,13 @@ package generator
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -1758,5 +1760,165 @@ func TestGenerateTableXML_UseTableStyle(t *testing.T) {
 	// Header text should NOT be bold (b="0" or no b attribute)
 	if strings.Contains(result.XML, `b="1"`) {
 		t.Error("use_table_style should not force bold on header text")
+	}
+}
+
+func TestGenerateTableXML_StrictFit_OversizedTable_ReturnsError(t *testing.T) {
+	// A table with 15 data rows in a 3-inch height that would normally be
+	// truncated. Under StrictFit=true, it should return a fit_overflow error
+	// instead of silently truncating.
+	numDataRows := 15
+	rows := make([][]types.TableCell, numDataRows)
+	for i := 0; i < numDataRows; i++ {
+		rows[i] = []types.TableCell{
+			{Content: fmt.Sprintf("Service %d", i+1), ColSpan: 1, RowSpan: 1},
+			{Content: fmt.Sprintf("99.%02d%%", i), ColSpan: 1, RowSpan: 1},
+			{Content: "Active", ColSpan: 1, RowSpan: 1},
+		}
+	}
+
+	table := &types.TableSpec{
+		Headers: []string{"Service", "Uptime", "Status"},
+		Rows:    rows,
+		Style:   types.DefaultTableStyle,
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X:      457200,
+			Y:      914400,
+			Width:  8229600, // 9 inches
+			Height: 2743200, // 3 inches — forces overflow
+		},
+		Style:     table.Style,
+		StrictFit: true,
+	}
+
+	_, err := GenerateTableXML(table, config)
+	if err == nil {
+		t.Fatal("expected error for oversized table under strict-fit, got nil")
+	}
+
+	// Should be a ValidationError with fit_overflow code.
+	var ve *patterns.ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *patterns.ValidationError, got %T: %v", err, err)
+	}
+	if ve.Code != patterns.ErrCodeFitOverflow {
+		t.Errorf("expected code %q, got %q", patterns.ErrCodeFitOverflow, ve.Code)
+	}
+	if !strings.Contains(ve.Message, "strict-fit refused") {
+		t.Errorf("expected message to contain 'strict-fit refused', got %q", ve.Message)
+	}
+}
+
+func TestGenerateTableXML_StrictFit_SameTable_WarnModeSucceeds(t *testing.T) {
+	// The same oversized table should succeed (with truncation) when
+	// StrictFit is false (the default — warn/off mode).
+	numDataRows := 15
+	rows := make([][]types.TableCell, numDataRows)
+	for i := 0; i < numDataRows; i++ {
+		rows[i] = []types.TableCell{
+			{Content: fmt.Sprintf("Service %d", i+1), ColSpan: 1, RowSpan: 1},
+			{Content: fmt.Sprintf("99.%02d%%", i), ColSpan: 1, RowSpan: 1},
+			{Content: "Active", ColSpan: 1, RowSpan: 1},
+		}
+	}
+
+	table := &types.TableSpec{
+		Headers: []string{"Service", "Uptime", "Status"},
+		Rows:    rows,
+		Style:   types.DefaultTableStyle,
+	}
+
+	// Suppress slog warning output during test.
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelError})))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X:      457200,
+			Y:      914400,
+			Width:  8229600,
+			Height: 2743200, // 3 inches — forces truncation
+		},
+		Style:     table.Style,
+		StrictFit: false, // default — graceful degradation
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error in warn mode: %v", err)
+	}
+
+	// Should contain truncation summary (existing behavior preserved).
+	if !strings.Contains(result.XML, "...and") || !strings.Contains(result.XML, "more rows") {
+		t.Error("warn mode should produce truncated table with '...and N more rows' summary")
+	}
+}
+
+func TestGenerateTableXML_StrictFit_SmallTable_Succeeds(t *testing.T) {
+	// A small table that fits should succeed even under strict-fit.
+	table := &types.TableSpec{
+		Headers: []string{"Name", "Value"},
+		Rows: [][]types.TableCell{
+			{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "1", ColSpan: 1, RowSpan: 1}},
+			{{Content: "B", ColSpan: 1, RowSpan: 1}, {Content: "2", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.DefaultTableStyle,
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X:      914400,
+			Y:      914400,
+			Width:  8229600,
+			Height: 4572000, // 5 inches — plenty of room
+		},
+		Style:     table.Style,
+		StrictFit: true,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error for small table under strict-fit: %v", err)
+	}
+	if !strings.Contains(result.XML, "<p:graphicFrame>") {
+		t.Error("small table should render normally under strict-fit")
+	}
+}
+
+func TestGenerateTableXML_StrictFit_ErrorWrapsErrFitOverflow(t *testing.T) {
+	// Verify the returned error wraps the sentinel so errors.Is works.
+	rows := make([][]types.TableCell, 20)
+	for i := range rows {
+		rows[i] = []types.TableCell{
+			{Content: fmt.Sprintf("Row %d", i+1), ColSpan: 1, RowSpan: 1},
+		}
+	}
+
+	table := &types.TableSpec{
+		Headers: []string{"Data"},
+		Rows:    rows,
+		Style:   types.DefaultTableStyle,
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{
+			X: 0, Y: 0,
+			Width:  8229600,
+			Height: 2000000, // tight
+		},
+		Style:     table.Style,
+		StrictFit: true,
+	}
+
+	_, err := GenerateTableXML(table, config)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, patterns.ErrFitOverflow) {
+		t.Errorf("expected error to wrap ErrFitOverflow sentinel, got: %v", err)
 	}
 }

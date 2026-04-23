@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -19,6 +21,7 @@ type TableRenderConfig struct {
 	DefaultFont      string            // Font family (default: "Calibri")
 	DefaultSize      int               // Font size in hundredths of point (default: 1800 = 18pt)
 	ColumnAlignments []string          // Per-column alignment: "left", "center", "right"
+	StrictFit        bool              // When true, measure cells and refuse if any overflow (--strict-fit=strict)
 }
 
 // TableRenderResult contains the generated table XML.
@@ -68,6 +71,15 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	}
 	if config.DefaultFont == "" {
 		config.DefaultFont = defaultFontFamily
+	}
+
+	// Strict-fit path: measure every cell at the user-specified font size
+	// BEFORE the shrink chain. If any cell overflows, return a ValidationError
+	// instead of silently shrinking or truncating.
+	if config.StrictFit {
+		if err := measureTableCellsFit(table, config); err != nil {
+			return nil, err
+		}
 	}
 
 	// Scale font size down for wide tables to prevent text overflow and
@@ -834,4 +846,90 @@ func escapeXMLText(s string) string {
 		}
 	}
 	return buf.String()
+}
+
+// measureTableCellsFit checks every cell in the table at the configured font
+// size and bounds. Returns a patterns.ValidationError with code fit_overflow
+// if any cell's text cannot fit within the allocated cell dimensions.
+// This is the strict-fit gate: no shrinking, no truncation, just measurement.
+func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) error {
+	numCols := len(table.Headers)
+	numRows := len(table.Rows) + 1 // +1 for header
+
+	fontPt := float64(config.DefaultSize) / 100.0
+	fontName := config.DefaultFont
+
+	// Estimate column widths — use the same proportional algorithm as rendering.
+	colWidths := calculateColumnWidths(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+
+	// Row height for maxLines calculation.
+	var rowHeightEMU int64
+	if config.Bounds.Height > 0 {
+		rowHeightEMU = config.Bounds.Height / int64(numRows)
+		if rowHeightEMU < defaultRowHeight {
+			rowHeightEMU = defaultRowHeight
+		}
+	} else {
+		rowHeightEMU = defaultRowHeight
+	}
+
+	const defaultLineSpacing = 1.2
+	lineHeightPt := fontPt * defaultLineSpacing
+	emuPerPt := int64(12700)
+	maxLines := int(float64(rowHeightEMU) / (lineHeightPt * float64(emuPerPt)))
+	if maxLines < 1 {
+		maxLines = 1
+	}
+
+	// Check header cells.
+	for hi, header := range table.Headers {
+		widthEMU := colWidths[hi]
+		m := textfit.MeasureRun(header, fontName, fontPt, widthEMU, maxLines)
+		if !m.Fits {
+			return &patterns.ValidationError{
+				Pattern: "table",
+				Path:    fmt.Sprintf("headers[%d]", hi),
+				Code:    patterns.ErrCodeFitOverflow,
+				Message: fmt.Sprintf("table: header %q needs %d lines at %.0fpt; cell allows %d (strict-fit refused)", header, m.Lines, fontPt, maxLines),
+				Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+			}
+		}
+	}
+
+	// Check data cells.
+	for ri, row := range table.Rows {
+		for ci, cell := range row {
+			if cell.Content == "" || ci >= numCols {
+				continue
+			}
+			widthEMU := colWidths[ci]
+			m := textfit.MeasureRun(cell.Content, fontName, fontPt, widthEMU, maxLines)
+			if !m.Fits {
+				return &patterns.ValidationError{
+					Pattern: "table",
+					Path:    fmt.Sprintf("rows[%d][%d]", ri, ci),
+					Code:    patterns.ErrCodeFitOverflow,
+					Message: fmt.Sprintf("table: cell [%d,%d] text needs %d lines at %.0fpt; cell allows %d (strict-fit refused)", ri, ci, m.Lines, fontPt, maxLines),
+					Fix:     &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": ri}},
+				}
+			}
+		}
+	}
+
+	// Check total row capacity: if there are more rows than fit at this font,
+	// strict-fit refuses rather than truncating.
+	if config.Bounds.Height > 0 {
+		maxVisibleRows := int(config.Bounds.Height / rowHeightEMU)
+		if numRows > maxVisibleRows {
+			return &patterns.ValidationError{
+				Pattern: "table",
+				Path:    "rows",
+				Code:    patterns.ErrCodeFitOverflow,
+				Message: fmt.Sprintf("table: %d rows (incl. header) exceed capacity of %d at %.0fpt (strict-fit refused)", numRows, maxVisibleRows, fontPt),
+				Fix:     &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": maxVisibleRows - 1}},
+			}
+		}
+	}
+
+	return nil
 }
