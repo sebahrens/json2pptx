@@ -3,6 +3,8 @@ package template
 import (
 	"encoding/xml"
 	"fmt"
+	"log/slog"
+	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -328,6 +330,71 @@ func convertToShapeXML(shape *shapeStyleXML) *shapeXML {
 	}
 
 	return result
+}
+
+// tableStyleIndex provides lazy, cached lookup of table style GUIDs declared in
+// a template's ppt/tableStyles.xml.  Parse happens at most once per instance.
+type tableStyleIndex struct {
+	reader *Reader
+	once   sync.Once
+	styles map[string]string // styleId → styleName
+}
+
+// newTableStyleIndex creates an index bound to the given template reader.
+// No parsing occurs until lookup is called.
+func newTableStyleIndex(r *Reader) *tableStyleIndex {
+	return &tableStyleIndex{reader: r}
+}
+
+// lookup returns the human-readable style name for a GUID such as
+// "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}".  If the GUID is not declared in
+// the template (or the XML is missing/malformed), ok is false.
+func (idx *tableStyleIndex) lookup(id string) (name string, ok bool) {
+	idx.once.Do(idx.parse)
+	name, ok = idx.styles[id]
+	return
+}
+
+// parse reads and unmarshals ppt/tableStyles.xml.  Called at most once via
+// sync.Once.  Malformed or missing XML results in an empty index and a debug
+// log — never a load failure.
+func (idx *tableStyleIndex) parse() {
+	idx.styles = make(map[string]string)
+
+	data, err := idx.reader.ReadFile("ppt/tableStyles.xml")
+	if err != nil {
+		slog.Debug("tableStyleIndex: tableStyles.xml not found, index will be empty",
+			"template", idx.reader.Path(), "error", err)
+		return
+	}
+
+	var lst tblStyleLstXML
+	if err := xml.Unmarshal(data, &lst); err != nil {
+		slog.Debug("tableStyleIndex: malformed tableStyles.xml, index will be empty",
+			"template", idx.reader.Path(), "error", err)
+		return
+	}
+
+	for _, s := range lst.Styles {
+		if s.StyleID != "" {
+			idx.styles[s.StyleID] = s.StyleName
+		}
+	}
+}
+
+// tblStyleLstXML is the root element of ppt/tableStyles.xml.
+type tblStyleLstXML struct {
+	XMLName xml.Name         `xml:"tblStyleLst"`
+	Default string           `xml:"def,attr,omitempty"`
+	Styles  []tblStyleXML    `xml:"tblStyle"`
+}
+
+// tblStyleXML represents a single <a:tblStyle> entry.  We only need the ID and
+// name — the full style definition (bands, fills, borders) is opaque to this
+// index.
+type tblStyleXML struct {
+	StyleID   string `xml:"styleId,attr"`
+	StyleName string `xml:"styleName,attr"`
 }
 
 // XML structure definitions for style extraction (more detailed than layout parsing)

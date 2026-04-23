@@ -1,7 +1,9 @@
 package template
 
 import (
+	"encoding/xml"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -312,6 +314,149 @@ func TestExtractListStyle(t *testing.T) {
 	}
 	if style.FontColor != "#000000" {
 		t.Errorf("FontColor = %s, want #000000", style.FontColor)
+	}
+}
+
+// --- tableStyleIndex tests ---
+
+func TestTableStyleIndex_WithRealTemplate_ModernTemplate(t *testing.T) {
+	// modern-template has two declared styles
+	templatePath := filepath.Join("..", "..", "templates", "modern-template.pptx")
+	reader, err := OpenTemplate(templatePath)
+	if err != nil {
+		t.Fatalf("Failed to open template: %v", err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	idx := newTableStyleIndex(reader)
+
+	// "Medium Style 2 - Accent 1"
+	name, ok := idx.lookup("{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
+	if !ok {
+		t.Fatal("expected lookup to succeed for {5C22544A-...}")
+	}
+	if name != "Medium Style 2 - Accent 1" {
+		t.Errorf("got name %q, want %q", name, "Medium Style 2 - Accent 1")
+	}
+
+	// "No Style, Table Grid"
+	name, ok = idx.lookup("{5940675A-B579-460E-94D1-54222C63F5DA}")
+	if !ok {
+		t.Fatal("expected lookup to succeed for {5940675A-...}")
+	}
+	if name != "No Style, Table Grid" {
+		t.Errorf("got name %q, want %q", name, "No Style, Table Grid")
+	}
+
+	// Unknown GUID
+	_, ok = idx.lookup("{00000000-0000-0000-0000-000000000000}")
+	if ok {
+		t.Error("expected lookup to return false for unknown GUID")
+	}
+}
+
+func TestTableStyleIndex_EmptyStyleList(t *testing.T) {
+	// midnight-blue has an empty tblStyleLst (no tblStyle children)
+	templatePath := filepath.Join("..", "..", "templates", "midnight-blue.pptx")
+	reader, err := OpenTemplate(templatePath)
+	if err != nil {
+		t.Fatalf("Failed to open template: %v", err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	idx := newTableStyleIndex(reader)
+
+	_, ok := idx.lookup("{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
+	if ok {
+		t.Error("expected lookup to return false for template with empty style list")
+	}
+}
+
+func TestTableStyleIndex_AllBundledTemplates(t *testing.T) {
+	// All four bundled templates must load without error; lookup must not panic
+	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+	for _, tmpl := range templates {
+		t.Run(tmpl, func(t *testing.T) {
+			reader, err := OpenTemplate(filepath.Join("..", "..", "templates", tmpl+".pptx"))
+			if err != nil {
+				t.Fatalf("Failed to open template: %v", err)
+			}
+			defer func() { _ = reader.Close() }()
+
+			idx := newTableStyleIndex(reader)
+			// Exercise lookup — must not panic
+			_, _ = idx.lookup("{00000000-0000-0000-0000-000000000000}")
+		})
+	}
+}
+
+func TestTableStyleIndex_ParseOnce(t *testing.T) {
+	templatePath := filepath.Join("..", "..", "templates", "modern-template.pptx")
+	reader, err := OpenTemplate(templatePath)
+	if err != nil {
+		t.Fatalf("Failed to open template: %v", err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	idx := newTableStyleIndex(reader)
+
+	// Call lookup concurrently to verify sync.Once behavior
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			name, ok := idx.lookup("{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
+			if !ok {
+				t.Error("expected lookup to succeed")
+			}
+			if name != "Medium Style 2 - Accent 1" {
+				t.Errorf("got name %q, want %q", name, "Medium Style 2 - Accent 1")
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func TestTableStyleIndex_EmptyStyleListTestdata(t *testing.T) {
+	// testdata/standard.pptx has tableStyles.xml but no tblStyle children
+	templatePath := filepath.Join("testdata", "standard.pptx")
+	reader, err := OpenTemplate(templatePath)
+	if err != nil {
+		t.Fatalf("Failed to open template: %v", err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	idx := newTableStyleIndex(reader)
+	// Should not panic; lookup returns false
+	_, ok := idx.lookup("{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}")
+	if ok {
+		t.Error("expected lookup to return false for template with empty style list")
+	}
+}
+
+func TestTableStyleIndex_MalformedXML(t *testing.T) {
+	// Directly test the parse path with a fabricated index that has
+	// already-populated styles map to verify malformed XML doesn't panic
+	var lst tblStyleLstXML
+	err := xml.Unmarshal([]byte(`<tblStyleLst><tblStyle styleId="{ABC}" styleName="Test"/></tblStyleLst>`), &lst)
+	if err != nil {
+		t.Fatalf("unexpected unmarshal error: %v", err)
+	}
+	if len(lst.Styles) != 1 {
+		t.Fatalf("expected 1 style, got %d", len(lst.Styles))
+	}
+	if lst.Styles[0].StyleID != "{ABC}" {
+		t.Errorf("got styleId %q, want %q", lst.Styles[0].StyleID, "{ABC}")
+	}
+	if lst.Styles[0].StyleName != "Test" {
+		t.Errorf("got styleName %q, want %q", lst.Styles[0].StyleName, "Test")
+	}
+
+	// Truncated/garbage XML should unmarshal without panic
+	err = xml.Unmarshal([]byte(`<tblStyleLst><tblStyle styleId=`), &lst)
+	if err == nil {
+		t.Error("expected error for truncated XML")
 	}
 }
 
