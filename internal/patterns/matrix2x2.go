@@ -193,18 +193,19 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		return fmt.Errorf("matrix-2x2: values must be *Matrix2x2Values, got %T", values)
 	}
 
+	const name = "matrix-2x2"
 	var errs []error
 
 	// Axis labels required
 	if vals.XAxisLabel == "" {
-		errs = append(errs, fmt.Errorf("matrix-2x2: x_axis_label is required"))
+		errs = append(errs, errRequired(name, "x_axis_label"))
 	} else if len(vals.XAxisLabel) > 60 {
-		errs = append(errs, fmt.Errorf("matrix-2x2: x_axis_label exceeds maxLength 60 (%d chars)", len(vals.XAxisLabel)))
+		errs = append(errs, errMaxLength(name, "x_axis_label", 60, len(vals.XAxisLabel)))
 	}
 	if vals.YAxisLabel == "" {
-		errs = append(errs, fmt.Errorf("matrix-2x2: y_axis_label is required"))
+		errs = append(errs, errRequired(name, "y_axis_label"))
 	} else if len(vals.YAxisLabel) > 60 {
-		errs = append(errs, fmt.Errorf("matrix-2x2: y_axis_label exceeds maxLength 60 (%d chars)", len(vals.YAxisLabel)))
+		errs = append(errs, errMaxLength(name, "y_axis_label", 60, len(vals.YAxisLabel)))
 	}
 
 	// Validate each quadrant
@@ -218,38 +219,21 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		{"bottom_right", vals.BottomRight},
 	}
 	for _, qd := range quads {
+		headerPath := qd.name + ".header"
 		if qd.q.Header == "" {
-			errs = append(errs, fmt.Errorf("matrix-2x2: %s.header is required", qd.name))
+			errs = append(errs, errRequired(name, headerPath))
 		} else if len(qd.q.Header) > 80 {
-			errs = append(errs, fmt.Errorf("matrix-2x2: %s.header exceeds maxLength 80 (%d chars)", qd.name, len(qd.q.Header)))
+			errs = append(errs, errMaxLength(name, headerPath, 80, len(qd.q.Header)))
 		}
 		if len(qd.q.Body) > 200 {
-			errs = append(errs, fmt.Errorf("matrix-2x2: %s.body exceeds maxLength 200 (%d chars)", qd.name, len(qd.q.Body)))
+			errs = append(errs, errMaxLength(name, qd.name+".body", 200, len(qd.q.Body)))
 		}
 	}
 
 	// Validate cell_overrides: indices 0-3 only
 	const totalCells = 4
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= totalCells {
-			errs = append(errs, fmt.Errorf("matrix-2x2: cell_overrides key %d out of range [0,%d] (hint: 0=top_left, 1=top_right, 2=bottom_left, 3=bottom_right)", idx, totalCells-1))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("matrix-2x2: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("matrix-2x2: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("matrix-2x2: cell_overrides[%d] contains unknown key %q", idx, key))
-			}
-		}
+	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, "(hint: 0=top_left, 1=top_right, 2=bottom_left, 3=bottom_right)"); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)

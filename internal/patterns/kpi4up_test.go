@@ -153,7 +153,7 @@ func TestKpi4up(t *testing.T) {
 			cellOvr: map[int]any{
 				4: &KPICellOverride{AccentBar: true},
 			},
-			wantErr: "cell index 4 out of range; pattern has 4 cells",
+			wantErr: "cell_overrides key 4 out of range [0,3]",
 		},
 		{
 			name: "accent_override_changes_color",

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -494,55 +495,81 @@ func mcpExpandPatternTool() mcp.Tool {
 // patternValidationError is a D10 structured error for pattern validation.
 type patternValidationError struct {
 	Field   string `json:"field"`
+	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	Fix     string `json:"fix,omitempty"`
 }
 
 // splitValidationErrors converts a (possibly joined) validation error into
-// individual D10 structured errors. If the error implements Unwrap() []error
-// (as errors.Join does), each sub-error becomes its own entry. The field is
-// extracted from the error message prefix "pattern-name: field rest…".
+// individual D10 structured errors. If the error is a *patterns.ValidationError,
+// the structured fields are extracted directly. Otherwise the field is parsed
+// from the error message prefix "pattern-name: field rest…".
 func splitValidationErrors(err error) []patternValidationError {
-	// Try to unwrap joined errors (Go 1.20+ errors.Join).
-	type unwrapper interface {
-		Unwrap() []error
-	}
-	var individual []error
-	if joined, ok := err.(unwrapper); ok {
-		individual = joined.Unwrap()
-	} else {
-		individual = []error{err}
-	}
+	individual := unwrapErrors(err)
 
 	out := make([]patternValidationError, 0, len(individual))
 	for _, e := range individual {
-		msg := e.Error()
-		field := "values"
-
-		// Error messages follow "pattern-name: field_path rest…".
-		// Extract the field path after the colon-space prefix.
-		if colonIdx := strings.Index(msg, ": "); colonIdx >= 0 {
-			rest := msg[colonIdx+2:]
-			// The field path is the first token (word chars, dots, brackets).
-			endIdx := 0
-			for endIdx < len(rest) {
-				ch := rest[endIdx]
-				if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '.' || ch == '[' || ch == ']' {
-					endIdx++
-				} else {
-					break
-				}
+		// Recurse into nested errors.Join from validateCellOverrideKeys.
+		if nested := unwrapErrors(e); len(nested) > 1 {
+			for _, ne := range nested {
+				out = append(out, toPatternValidationError(ne))
 			}
-			if endIdx > 0 {
-				field = rest[:endIdx]
-			}
+			continue
 		}
-
-		out = append(out, patternValidationError{
-			Field:   field,
-			Message: msg,
-		})
+		out = append(out, toPatternValidationError(e))
 	}
 	return out
+}
+
+// unwrapErrors splits an error into individual sub-errors if it implements
+// Unwrap() []error (as errors.Join does). Otherwise returns a single-element slice.
+func unwrapErrors(err error) []error {
+	type unwrapper interface {
+		Unwrap() []error
+	}
+	if joined, ok := err.(unwrapper); ok {
+		return joined.Unwrap()
+	}
+	return []error{err}
+}
+
+// toPatternValidationError converts a single error into a patternValidationError,
+// preferring structured fields from *patterns.ValidationError when available.
+func toPatternValidationError(e error) patternValidationError {
+	// Check for structured ValidationError.
+	var ve *patterns.ValidationError
+	if errors.As(e, &ve) {
+		return patternValidationError{
+			Field:   ve.Path,
+			Code:    ve.Code,
+			Message: ve.Message,
+			Fix:     ve.Fix,
+		}
+	}
+
+	// Fallback: parse field from message format "pattern-name: field_path rest…".
+	msg := e.Error()
+	field := "values"
+	if colonIdx := strings.Index(msg, ": "); colonIdx >= 0 {
+		rest := msg[colonIdx+2:]
+		endIdx := 0
+		for endIdx < len(rest) {
+			ch := rest[endIdx]
+			if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '.' || ch == '[' || ch == ']' {
+				endIdx++
+			} else {
+				break
+			}
+		}
+		if endIdx > 0 {
+			field = rest[:endIdx]
+		}
+	}
+
+	return patternValidationError{
+		Field:   field,
+		Message: msg,
+	}
 }
 
 func handleListPatterns(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {

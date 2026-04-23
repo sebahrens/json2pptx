@@ -131,36 +131,43 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 		return fmt.Errorf("comparison-2col: values must be *Comparison2colValues, got %T", values)
 	}
 
+	const name = "comparison-2col"
 	var errs []error
 
 	// Rows required and count check
 	if len(vals.Rows) == 0 {
-		errs = append(errs, fmt.Errorf("comparison-2col: rows must contain at least 1 row"))
+		errs = append(errs, newValidationError(name, "rows", ErrCodeMinItems,
+			"comparison-2col: rows must contain at least 1 row",
+			"provide at least 1 row in rows"))
 	}
 	if len(vals.Rows) > 10 {
-		errs = append(errs, fmt.Errorf("comparison-2col: rows must contain at most 10 rows, got %d", len(vals.Rows)))
+		errs = append(errs, newValidationError(name, "rows", ErrCodeMaxItems,
+			fmt.Sprintf("comparison-2col: rows must contain at most 10 rows, got %d", len(vals.Rows)),
+			"reduce rows to at most 10"))
 	}
 
 	// Per-row validation
 	for i, row := range vals.Rows {
+		leftPath := fmt.Sprintf("rows[%d].left", i)
 		if row.Left == "" {
-			errs = append(errs, fmt.Errorf("comparison-2col: rows[%d].left is required", i))
+			errs = append(errs, errRequired(name, leftPath))
 		} else if len(row.Left) > 200 {
-			errs = append(errs, fmt.Errorf("comparison-2col: rows[%d].left exceeds maxLength 200 (%d chars)", i, len(row.Left)))
+			errs = append(errs, errMaxLength(name, leftPath, 200, len(row.Left)))
 		}
+		rightPath := fmt.Sprintf("rows[%d].right", i)
 		if row.Right == "" {
-			errs = append(errs, fmt.Errorf("comparison-2col: rows[%d].right is required", i))
+			errs = append(errs, errRequired(name, rightPath))
 		} else if len(row.Right) > 200 {
-			errs = append(errs, fmt.Errorf("comparison-2col: rows[%d].right exceeds maxLength 200 (%d chars)", i, len(row.Right)))
+			errs = append(errs, errMaxLength(name, rightPath, 200, len(row.Right)))
 		}
 	}
 
 	// Header length checks
 	if len(vals.HeaderLeft) > 60 {
-		errs = append(errs, fmt.Errorf("comparison-2col: header_left exceeds maxLength 60 (%d chars)", len(vals.HeaderLeft)))
+		errs = append(errs, errMaxLength(name, "header_left", 60, len(vals.HeaderLeft)))
 	}
 	if len(vals.HeaderRight) > 60 {
-		errs = append(errs, fmt.Errorf("comparison-2col: header_right exceeds maxLength 60 (%d chars)", len(vals.HeaderRight)))
+		errs = append(errs, errMaxLength(name, "header_right", 60, len(vals.HeaderRight)))
 	}
 
 	// Compute total cell count for cell_overrides validation
@@ -171,26 +178,8 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 	}
 
 	// Validate cell_overrides keys (D15 whitelist)
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= totalCells {
-			errs = append(errs, fmt.Errorf("comparison-2col: cell_overrides key %d out of range [0,%d]", idx, totalCells-1))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("comparison-2col: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("comparison-2col: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("comparison-2col: cell_overrides[%d] contains unknown key %q", idx, key))
-			}
-		}
+	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, ""); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)

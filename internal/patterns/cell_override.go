@@ -1,6 +1,9 @@
 package patterns
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -35,4 +38,34 @@ func CellOverrideAllowedList() string {
 	}
 	sort.Strings(keys)
 	return strings.Join(keys, ", ")
+}
+
+// validateCellOverrideKeys validates cell_overrides keys against the D15
+// whitelist, returning structured ValidationErrors. The hint parameter is
+// appended to out-of-range error messages (e.g. index-to-name mappings).
+func validateCellOverrideKeys(patternName string, cellOverrides map[int]any, totalCells int, hint string) error {
+	var errs []error
+	for idx, co := range cellOverrides {
+		if idx < 0 || idx >= totalCells {
+			errs = append(errs, errCellOverrideOutOfRange(patternName, idx, totalCells-1, hint))
+			continue
+		}
+		raw, err := json.Marshal(co)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: cell_overrides[%d]: %w", patternName, idx, err))
+			continue
+		}
+		var keyMap map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &keyMap); err != nil {
+			errs = append(errs, fmt.Errorf("%s: cell_overrides[%d]: %w", patternName, idx, err))
+			continue
+		}
+		for key := range keyMap {
+			if !cellOverrideAllowed[key] {
+				path := fmt.Sprintf("cell_overrides[%d]", idx)
+				errs = append(errs, errUnknownKey(patternName, path, key, CellOverrideAllowedList()))
+			}
+		}
+	}
+	return errors.Join(errs...)
 }

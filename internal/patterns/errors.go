@@ -1,0 +1,160 @@
+package patterns
+
+import "fmt"
+
+// Error codes for structured validation errors.
+const (
+	ErrCodeRequired      = "required"
+	ErrCodeMaxLength     = "max_length"
+	ErrCodeOutOfRange    = "out_of_range"
+	ErrCodeCountMismatch = "count_mismatch"
+	ErrCodeUnknownKey    = "unknown_key"
+	ErrCodeMinItems      = "min_items"
+	ErrCodeMaxItems      = "max_items"
+	ErrCodeEmptyValue    = "empty_value"
+)
+
+// ValidationError is a structured validation error with a JSON path, error
+// code, human-readable message, and optional fix suggestion. It implements the
+// error interface so it can be used with errors.Join alongside plain errors.
+type ValidationError struct {
+	Pattern string `json:"pattern"`       // e.g. "card-grid"
+	Path    string `json:"path"`          // JSON path, e.g. "cells[2].header"
+	Code    string `json:"code"`          // machine-readable code, e.g. "required"
+	Message string `json:"message"`       // human-readable, e.g. "card-grid: cells[2].header is required"
+	Fix     string `json:"fix,omitempty"` // optional fix suggestion
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
+// --- Constructors ---
+
+// errRequired creates a "required" validation error.
+func errRequired(pattern, path string) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeRequired,
+		Message: fmt.Sprintf("%s: %s is required", pattern, path),
+		Fix:     fmt.Sprintf("provide a non-empty value for %s", path),
+	}
+}
+
+// errMaxLength creates a "max_length" validation error.
+func errMaxLength(pattern, path string, maxLen, actualLen int) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeMaxLength,
+		Message: fmt.Sprintf("%s: %s exceeds maxLength %d (%d chars)", pattern, path, maxLen, actualLen),
+		Fix:     fmt.Sprintf("shorten %s to at most %d characters", path, maxLen),
+	}
+}
+
+// errOutOfRange creates an "out_of_range" validation error for integer bounds.
+func errOutOfRange(pattern, path string, min, max, actual int) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeOutOfRange,
+		Message: fmt.Sprintf("%s: %s must be %d–%d, got %d", pattern, path, min, max, actual),
+		Fix:     fmt.Sprintf("set %s to a value between %d and %d", path, min, max),
+	}
+}
+
+// errUnknownKey creates an "unknown_key" validation error for cell_overrides.
+func errUnknownKey(pattern, path, key, allowedList string) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeUnknownKey,
+		Message: fmt.Sprintf("%s: %s contains unknown key %q; allowed keys per D15: %s", pattern, path, key, allowedList),
+		Fix:     fmt.Sprintf("remove %q from %s or use one of: %s", key, path, allowedList),
+	}
+}
+
+// errEmptyValue creates an "empty_value" validation error.
+func errEmptyValue(pattern, path string) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeEmptyValue,
+		Message: fmt.Sprintf("%s: %s must not be empty", pattern, path),
+		Fix:     fmt.Sprintf("provide a non-empty value for %s", path),
+	}
+}
+
+// errCellOverrideOutOfRange creates an "out_of_range" error for cell_overrides keys.
+func errCellOverrideOutOfRange(pattern string, idx, maxIdx int, hint string) *ValidationError {
+	path := fmt.Sprintf("cell_overrides[%d]", idx)
+	msg := fmt.Sprintf("%s: cell_overrides key %d out of range [0,%d]", pattern, idx, maxIdx)
+	if hint != "" {
+		msg += " " + hint
+	}
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeOutOfRange,
+		Message: msg,
+		Fix:     fmt.Sprintf("use a cell_overrides key between 0 and %d", maxIdx),
+	}
+}
+
+// errCountMismatch creates a "count_mismatch" validation error.
+func errCountMismatch(pattern, path string, expected, actual int, hint string) *ValidationError {
+	msg := fmt.Sprintf("%s: %s must contain exactly %d items, got %d", pattern, path, expected, actual)
+	if hint != "" {
+		msg += " " + hint
+	}
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeCountMismatch,
+		Message: msg,
+		Fix:     fmt.Sprintf("provide exactly %d items in %s", expected, path),
+	}
+}
+
+// errMinItems creates a "min_items" validation error.
+func errMinItems(pattern, path string, minCount, actual int, hint string) *ValidationError {
+	msg := fmt.Sprintf("%s: %s must contain at least %d items, got %d", pattern, path, minCount, actual)
+	if hint != "" {
+		msg += " " + hint
+	}
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeMinItems,
+		Message: msg,
+		Fix:     fmt.Sprintf("provide at least %d items in %s", minCount, path),
+	}
+}
+
+// errMaxItems creates a "max_items" validation error.
+func errMaxItems(pattern, path string, maxCount, actual int, hint string) *ValidationError {
+	msg := fmt.Sprintf("%s: %s must contain at most %d items, got %d", pattern, path, maxCount, actual)
+	if hint != "" {
+		msg += " " + hint
+	}
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    ErrCodeMaxItems,
+		Message: msg,
+		Fix:     fmt.Sprintf("reduce %s to at most %d items", path, maxCount),
+	}
+}
+
+// newValidationError creates a ValidationError with explicit message and fix.
+// Use this when the canned constructors don't match the required message format.
+func newValidationError(pattern, path, code, message, fix string) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    path,
+		Code:    code,
+		Message: message,
+		Fix:     fix,
+	}
+}

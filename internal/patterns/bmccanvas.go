@@ -138,12 +138,13 @@ func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) e
 		return fmt.Errorf("bmc-canvas: values must be *BMCCanvasValues, got %T", values)
 	}
 
+	const name = "bmc-canvas"
 	var errs []error
 
 	// Validate each of the 9 cells
 	cells := []struct {
-		name string
-		cell BMCCell
+		cellName string
+		cell     BMCCell
 	}{
 		{"key_partners", vals.KeyPartners},
 		{"key_activities", vals.KeyActivities},
@@ -157,49 +158,37 @@ func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) e
 	}
 
 	for _, c := range cells {
+		headerPath := c.cellName + ".header"
 		if c.cell.Header == "" {
-			errs = append(errs, fmt.Errorf("bmc-canvas: %s.header is required", c.name))
+			errs = append(errs, errRequired(name, headerPath))
 		} else if len(c.cell.Header) > 60 {
-			errs = append(errs, fmt.Errorf("bmc-canvas: %s.header exceeds maxLength 60 (%d chars)", c.name, len(c.cell.Header)))
+			errs = append(errs, errMaxLength(name, headerPath, 60, len(c.cell.Header)))
 		}
 
+		bulletsPath := c.cellName + ".bullets"
 		if len(c.cell.Bullets) == 0 {
-			errs = append(errs, fmt.Errorf("bmc-canvas: %s.bullets must have at least 1 item (hint: use card-grid for cells without bullet lists)", c.name))
+			errs = append(errs, newValidationError(name, bulletsPath, ErrCodeMinItems,
+				fmt.Sprintf("bmc-canvas: %s.bullets must have at least 1 item (hint: use card-grid for cells without bullet lists)", c.cellName),
+				"provide at least 1 bullet in "+bulletsPath))
 		} else if len(c.cell.Bullets) > 10 {
-			errs = append(errs, fmt.Errorf("bmc-canvas: %s.bullets exceeds maximum 10 items (%d items)", c.name, len(c.cell.Bullets)))
+			errs = append(errs, newValidationError(name, bulletsPath, ErrCodeMaxItems,
+				fmt.Sprintf("bmc-canvas: %s.bullets exceeds maximum 10 items (%d items)", c.cellName, len(c.cell.Bullets)),
+				"reduce "+bulletsPath+" to at most 10 items"))
 		}
 		for i, bullet := range c.cell.Bullets {
+			bulletPath := fmt.Sprintf("%s.bullets[%d]", c.cellName, i)
 			if bullet == "" {
-				errs = append(errs, fmt.Errorf("bmc-canvas: %s.bullets[%d] must not be empty", c.name, i))
+				errs = append(errs, errEmptyValue(name, bulletPath))
 			} else if len(bullet) > 200 {
-				errs = append(errs, fmt.Errorf("bmc-canvas: %s.bullets[%d] exceeds maxLength 200 (%d chars)", c.name, i, len(bullet)))
+				errs = append(errs, errMaxLength(name, bulletPath, 200, len(bullet)))
 			}
 		}
 	}
 
 	// Validate cell_overrides: indices 0-8 only
 	const totalCells = 9
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= totalCells {
-			errs = append(errs, fmt.Errorf("bmc-canvas: cell_overrides key %d out of range [0,%d] (hint: %s)",
-				idx, totalCells-1, bmcCellIndexHint()))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("bmc-canvas: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("bmc-canvas: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("bmc-canvas: cell_overrides[%d] contains unknown key %q", idx, key))
-			}
-		}
+	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, "(hint: "+bmcCellIndexHint()+")"); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)

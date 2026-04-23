@@ -128,49 +128,34 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 		return fmt.Errorf("icon-row: values must be []IconRowItem, got %T", values)
 	}
 
+	const name = "icon-row"
 	var errs []error
 
 	if len(*items) < 3 {
-		errs = append(errs, fmt.Errorf("icon-row: values must contain at least 3 items, got %d (hint: use pattern kpi-3up for KPI-style cards)", len(*items)))
+		errs = append(errs, errMinItems(name, "values", 3, len(*items), "(hint: use pattern kpi-3up for KPI-style cards)"))
 	}
 	if len(*items) > 5 {
-		errs = append(errs, fmt.Errorf("icon-row: values must contain at most 5 items, got %d", len(*items)))
+		errs = append(errs, errMaxItems(name, "values", 5, len(*items), ""))
 	}
 
 	for i, item := range *items {
+		iconPath := fmt.Sprintf("values[%d].icon", i)
 		if item.Icon == "" {
-			errs = append(errs, fmt.Errorf("icon-row: values[%d].icon is required", i))
+			errs = append(errs, errRequired(name, iconPath))
 		} else if len(item.Icon) > 20 {
-			errs = append(errs, fmt.Errorf("icon-row: values[%d].icon exceeds maxLength 20 (%d chars)", i, len(item.Icon)))
+			errs = append(errs, errMaxLength(name, iconPath, 20, len(item.Icon)))
 		}
+		captionPath := fmt.Sprintf("values[%d].caption", i)
 		if item.Caption == "" {
-			errs = append(errs, fmt.Errorf("icon-row: values[%d].caption is required", i))
+			errs = append(errs, errRequired(name, captionPath))
 		} else if len(item.Caption) > 60 {
-			errs = append(errs, fmt.Errorf("icon-row: values[%d].caption exceeds maxLength 60 (%d chars)", i, len(item.Caption)))
+			errs = append(errs, errMaxLength(name, captionPath, 60, len(item.Caption)))
 		}
 	}
 
 	// Validate cell_overrides keys (D15 whitelist)
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= len(*items) {
-			errs = append(errs, fmt.Errorf("icon-row: cell_overrides key %d out of range [0,%d]", idx, len(*items)-1))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("icon-row: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("icon-row: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("icon-row: cell_overrides[%d] contains unknown key %q", idx, key))
-			}
-		}
+	if coErr := validateCellOverrideKeys(name, cellOverrides, len(*items), ""); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)

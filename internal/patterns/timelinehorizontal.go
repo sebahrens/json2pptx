@@ -108,52 +108,40 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 		return fmt.Errorf("timeline-horizontal: values must be []TimelineStop, got %T", values)
 	}
 
+	const name = "timeline-horizontal"
 	var errs []error
 
 	// Enforce 3–7 range with sibling-pattern hints
 	if len(*stops) < 3 {
-		errs = append(errs, fmt.Errorf("timeline-horizontal: values must contain at least 3 stops, got %d (hint: use pattern icon-row for fewer items with icons)", len(*stops)))
+		errs = append(errs, newValidationError(name, "values", ErrCodeMinItems,
+			fmt.Sprintf("timeline-horizontal: values must contain at least 3 stops, got %d (hint: use pattern icon-row for fewer items with icons)", len(*stops)),
+			"provide at least 3 stops in values"))
 	}
 	if len(*stops) > 7 {
-		errs = append(errs, fmt.Errorf("timeline-horizontal: values must contain at most 7 stops, got %d (hint: consider splitting across two slides)", len(*stops)))
+		errs = append(errs, newValidationError(name, "values", ErrCodeMaxItems,
+			fmt.Sprintf("timeline-horizontal: values must contain at most 7 stops, got %d (hint: consider splitting across two slides)", len(*stops)),
+			"reduce values to at most 7 stops"))
 	}
 
 	// Per-stop validation
 	for i, stop := range *stops {
+		labelPath := fmt.Sprintf("values[%d].label", i)
 		if stop.Label == "" {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: values[%d].label is required", i))
+			errs = append(errs, errRequired(name, labelPath))
 		} else if len(stop.Label) > 60 {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: values[%d].label exceeds maxLength 60 (%d chars)", i, len(stop.Label)))
+			errs = append(errs, errMaxLength(name, labelPath, 60, len(stop.Label)))
 		}
 		if len(stop.Date) > 30 {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: values[%d].date exceeds maxLength 30 (%d chars)", i, len(stop.Date)))
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].date", i), 30, len(stop.Date)))
 		}
 		if len(stop.Body) > 200 {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: values[%d].body exceeds maxLength 200 (%d chars)", i, len(stop.Body)))
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].body", i), 200, len(stop.Body)))
 		}
 	}
 
 	// Validate cell_overrides keys (D15 whitelist)
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= len(*stops) {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: cell_overrides key %d out of range [0,%d]", idx, len(*stops)-1))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("timeline-horizontal: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("timeline-horizontal: cell_overrides[%d] contains unknown key %q", idx, key))
-			}
-		}
+	if coErr := validateCellOverrideKeys(name, cellOverrides, len(*stops), ""); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)

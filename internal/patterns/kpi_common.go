@@ -141,44 +141,30 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		if siblingHint != "" && (len(cells) == expectedCount+1 || len(cells) == expectedCount-1) {
 			hint = fmt.Sprintf(" (hint: use pattern %s for %d KPIs)", siblingHint, len(cells))
 		}
-		errs = append(errs, fmt.Errorf("%s: values must contain exactly %d cells, got %d%s", patternName, expectedCount, len(cells), hint))
+		errs = append(errs, newValidationError(patternName, "values", ErrCodeCountMismatch,
+			fmt.Sprintf("%s: values must contain exactly %d cells, got %d%s", patternName, expectedCount, len(cells), hint),
+			fmt.Sprintf("provide exactly %d cells in values", expectedCount)))
 	}
 
 	// Per-cell validation
 	for i, cell := range cells {
+		bigPath := fmt.Sprintf("values[%d].big", i)
 		if cell.Big == "" {
-			errs = append(errs, fmt.Errorf("%s: values[%d].big is required", patternName, i))
+			errs = append(errs, errRequired(patternName, bigPath))
 		} else if len(cell.Big) > 8 {
-			errs = append(errs, fmt.Errorf("%s: values[%d].big exceeds maxLength 8 (%d chars)", patternName, i, len(cell.Big)))
+			errs = append(errs, errMaxLength(patternName, bigPath, 8, len(cell.Big)))
 		}
+		smallPath := fmt.Sprintf("values[%d].small", i)
 		if cell.Small == "" {
-			errs = append(errs, fmt.Errorf("%s: values[%d].small is required", patternName, i))
+			errs = append(errs, errRequired(patternName, smallPath))
 		} else if len(cell.Small) > 40 {
-			errs = append(errs, fmt.Errorf("%s: values[%d].small exceeds maxLength 40 (%d chars)", patternName, i, len(cell.Small)))
+			errs = append(errs, errMaxLength(patternName, smallPath, 40, len(cell.Small)))
 		}
 	}
 
 	// Validate cell_overrides keys (D15 whitelist)
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= expectedCount {
-			errs = append(errs, fmt.Errorf("%s: cell index %d out of range; pattern has %d cells [0..%d]", patternName, idx, expectedCount, expectedCount-1))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%s: cell_overrides[%d]: %w", patternName, idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("%s: cell_overrides[%d]: %w", patternName, idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("%s: cell_overrides[%d] contains unknown key %q; allowed keys per D15: %s", patternName, idx, key, CellOverrideAllowedList()))
-			}
-		}
+	if coErr := validateCellOverrideKeys(patternName, cellOverrides, expectedCount, ""); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)

@@ -176,7 +176,7 @@ func TestKpi3up(t *testing.T) {
 			cellOvr: map[int]any{
 				5: &Kpi3upCellOverride{AccentBar: true},
 			},
-			wantErr: "cell index 5 out of range; pattern has 3 cells",
+			wantErr: "cell_overrides key 5 out of range [0,2]",
 		},
 		{
 			name: "unknown_key_cites_d15_whitelist",

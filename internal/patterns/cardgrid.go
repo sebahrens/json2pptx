@@ -134,15 +134,16 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 		return fmt.Errorf("card-grid: values must be *CardGridValues, got %T", values)
 	}
 
+	const name = "card-grid"
 	var errs []error
 
 	// Columns range
 	if vals.Columns < 1 || vals.Columns > 5 {
-		errs = append(errs, fmt.Errorf("card-grid: columns must be 1–5, got %d", vals.Columns))
+		errs = append(errs, errOutOfRange(name, "columns", 1, 5, vals.Columns))
 	}
 	// Rows range
 	if vals.Rows < 1 || vals.Rows > 5 {
-		errs = append(errs, fmt.Errorf("card-grid: rows must be 1–5, got %d", vals.Rows))
+		errs = append(errs, errOutOfRange(name, "rows", 1, 5, vals.Rows))
 	}
 
 	// Cell count must equal columns × rows (D4: hard error, no truncation)
@@ -150,48 +151,35 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	if expectedCells > 0 && len(vals.Cells) != expectedCells {
 		hint := ""
 		if len(vals.Cells) == 9 {
-			hint = " (hint: use pattern bmc-canvas for a 9-cell Business Model Canvas)"
+			hint = "(hint: use pattern bmc-canvas for a 9-cell Business Model Canvas)"
 		}
-		errs = append(errs, fmt.Errorf("card-grid: cells must contain exactly %d items (columns=%d × rows=%d), got %d%s",
-			expectedCells, vals.Columns, vals.Rows, len(vals.Cells), hint))
+		e := errCountMismatch(name, "cells", expectedCells, len(vals.Cells), hint)
+		e.Message = fmt.Sprintf("card-grid: cells must contain exactly %d items (columns=%d × rows=%d), got %d", expectedCells, vals.Columns, vals.Rows, len(vals.Cells))
+		if hint != "" {
+			e.Message += " " + hint
+		}
+		errs = append(errs, e)
 	}
 
 	// Per-cell validation
 	for i, cell := range vals.Cells {
+		path := fmt.Sprintf("cells[%d].header", i)
 		if cell.Header == "" {
-			errs = append(errs, fmt.Errorf("card-grid: cells[%d].header is required", i))
+			errs = append(errs, errRequired(name, path))
 		} else if len(cell.Header) > 80 {
-			errs = append(errs, fmt.Errorf("card-grid: cells[%d].header exceeds maxLength 80 (%d chars)", i, len(cell.Header)))
+			errs = append(errs, errMaxLength(name, path, 80, len(cell.Header)))
 		}
+		bodyPath := fmt.Sprintf("cells[%d].body", i)
 		if cell.Body == "" {
-			errs = append(errs, fmt.Errorf("card-grid: cells[%d].body is required", i))
+			errs = append(errs, errRequired(name, bodyPath))
 		} else if len(cell.Body) > 300 {
-			errs = append(errs, fmt.Errorf("card-grid: cells[%d].body exceeds maxLength 300 (%d chars)", i, len(cell.Body)))
+			errs = append(errs, errMaxLength(name, bodyPath, 300, len(cell.Body)))
 		}
 	}
 
 	// Validate cell_overrides keys (D15 whitelist)
-	totalCells := len(vals.Cells)
-	for idx, co := range cellOverrides {
-		if idx < 0 || idx >= totalCells {
-			errs = append(errs, fmt.Errorf("card-grid: cell_overrides key %d out of range [0,%d]", idx, totalCells-1))
-			continue
-		}
-		raw, err := json.Marshal(co)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("card-grid: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		var keyMap map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &keyMap); err != nil {
-			errs = append(errs, fmt.Errorf("card-grid: cell_overrides[%d]: %w", idx, err))
-			continue
-		}
-		for key := range keyMap {
-			if !cellOverrideAllowed[key] {
-				errs = append(errs, fmt.Errorf("card-grid: cell_overrides[%d] contains unknown key %q", idx, key))
-			}
-		}
+	if coErr := validateCellOverrideKeys(name, cellOverrides, len(vals.Cells), ""); coErr != nil {
+		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)
