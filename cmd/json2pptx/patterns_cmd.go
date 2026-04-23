@@ -88,10 +88,15 @@ func runPatternsList() error {
 			if ex, ok := p.(patterns.Exemplar); ok {
 				sizeBytes, _ = patterns.CanonicalSizeBytes(p, ex.ExemplarValues())
 			}
+			supportsCallout := false
+			if cs, ok := p.(patterns.CalloutSupport); ok {
+				supportsCallout = cs.SupportsCallout()
+			}
 			entries[i] = skillPatternCompact{
 				Name:                     p.Name(),
 				Cells:                    cells,
 				UseWhen:                  p.UseWhen(),
+				SupportsCallout:          supportsCallout,
 				EstimatedPromptSizeBytes: sizeBytes,
 			}
 		}
@@ -162,6 +167,9 @@ func runPatternsShow() error {
 		}
 		if cs, ok := pat.(patterns.CalloutSupport); ok {
 			result.SupportsCallout = cs.SupportsCallout()
+			if cs.SupportsCallout() {
+				result.CalloutSchema = patternCalloutSchemaJSON()
+			}
 		}
 		data, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
@@ -180,6 +188,8 @@ func runPatternsShow() error {
 	}
 	if cs, ok := pat.(patterns.CalloutSupport); ok && cs.SupportsCallout() {
 		fmt.Printf("Supports callout: yes\n")
+	} else {
+		fmt.Printf("Supports callout: no\n")
 	}
 	fmt.Println()
 	schemaJSON, _ := json.MarshalIndent(pat.Schema(), "", "  ")
@@ -419,6 +429,32 @@ func emitValidationResult(name string, jsonMode bool, validationErr error) error
 		fmt.Fprintf(os.Stderr, "Pattern %q: validation failed\n  %s\n", name, validationErr)
 	}
 	return fmt.Errorf("validation failed")
+}
+
+// patternCalloutSchemaJSON returns the JSON Schema fragment for PatternCallout.
+// This is a static schema describing the envelope-level callout DTO.
+func patternCalloutSchemaJSON() json.RawMessage {
+	return json.RawMessage(`{
+  "type": "object",
+  "description": "Optional callout band rendered below the pattern content",
+  "properties": {
+    "text": {
+      "type": "string",
+      "description": "Callout text content"
+    },
+    "emphasis": {
+      "type": "string",
+      "description": "Text emphasis style",
+      "enum": ["bold", "italic", "bold-italic"]
+    },
+    "accent": {
+      "type": "string",
+      "description": "Scheme color reference (e.g. accent1, accent2)"
+    }
+  },
+  "required": ["text"],
+  "additionalProperties": false
+}`)
 }
 
 // unknownPatternError returns a helpful error when a pattern name is not found.

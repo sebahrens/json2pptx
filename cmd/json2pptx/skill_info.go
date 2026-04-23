@@ -45,6 +45,7 @@ type skillPatternFull struct {
 	SupportsCallout bool            `json:"supports_callout"`
 	Version         int             `json:"version"`
 	Schema          json.RawMessage `json:"schema"`
+	CalloutSchema   json.RawMessage `json:"callout_schema,omitempty"`
 }
 
 // skillToolInfo identifies the tool and its version.
@@ -569,6 +570,9 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 			SupportsCallout: compact[i].SupportsCallout,
 			Version:         p.Version(),
 			Schema:          schemaJSON,
+		}
+		if compact[i].SupportsCallout {
+			full[i].CalloutSchema = patternCalloutSchemaJSON()
 		}
 	}
 	return compact, full
