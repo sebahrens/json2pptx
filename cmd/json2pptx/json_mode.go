@@ -273,6 +273,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return writeJSONError(jsonOutputPath, err)
 	}
 
+	// Apply deck-level defaults before any validation or conversion.
+	applyDefaults(input)
+
 	// Run text-fit checking when --strict-fit is warn or strict.
 	if strictFit != "off" {
 		if err := checkStrictFit(input, strictFit); err != nil {

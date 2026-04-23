@@ -33,11 +33,20 @@ type TableStyleInput = jsonschema.TableStyleInput
 // PresentationInput is the top-level typed JSON input.
 // Maps to generator.GenerationRequest.
 type PresentationInput struct {
-	Template       string       `json:"template"`
-	OutputFilename string       `json:"output_filename,omitempty"`
-	Footer         *JSONFooter  `json:"footer,omitempty"`
-	ThemeOverride  *ThemeInput  `json:"theme_override,omitempty"`
-	Slides         []SlideInput `json:"slides"`
+	Template       string         `json:"template"`
+	OutputFilename string         `json:"output_filename,omitempty"`
+	Footer         *JSONFooter    `json:"footer,omitempty"`
+	ThemeOverride  *ThemeInput    `json:"theme_override,omitempty"`
+	Defaults       *DefaultsInput `json:"defaults,omitempty"`
+	Slides         []SlideInput   `json:"slides"`
+}
+
+// DefaultsInput provides deck-level defaults that are shallow-applied to every
+// matching block before struct validation. Swap-only semantics: if a block sets
+// a field inline, that field wins; otherwise the defaults value is copied in.
+type DefaultsInput struct {
+	TableStyle *TableStyleInput            `json:"table_style,omitempty"`
+	CellStyle  *jsonschema.ShapeSpecInput  `json:"cell_style,omitempty"`
 }
 
 // UnmarshalJSON handles both regular slides and split_slide entries.

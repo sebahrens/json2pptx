@@ -78,6 +78,7 @@ func runValidate() error {
 			} else if json.Unmarshal(content, &input) != nil {
 				continue
 			}
+			applyDefaults(&input)
 
 			findings := generateFitReport(&input)
 			printFitFindingsBySlide(findings)
@@ -163,6 +164,7 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 			return result
 		}
 	}
+	applyDefaults(&input)
 
 	// Validate required fields.
 	if input.Template == "" {

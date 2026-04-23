@@ -94,6 +94,7 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 			return writeDryRunOutput(output)
 		}
 	}
+	applyDefaults(&input)
 
 	// Validate required fields
 	if input.Template == "" {

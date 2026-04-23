@@ -194,6 +194,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return mcp.NewToolResultError(fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
 
+	// Apply deck-level defaults before any validation or conversion.
+	applyDefaults(&input)
+
 	// Validate
 	if input.Template == "" {
 		return mcp.NewToolResultError("template is required in JSON input"), nil
@@ -406,6 +409,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if err := json.Unmarshal([]byte(jsonStr), &input); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
+
+	// Apply deck-level defaults before validation.
+	applyDefaults(&input)
 
 	output := dryRunOutput{
 		Valid:    true,
