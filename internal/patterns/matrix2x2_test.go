@@ -354,6 +354,117 @@ func TestMatrix2x2(t *testing.T) {
 		}
 	})
 
+	// Quadrants array unmarshal tests
+	t.Run("unmarshal_quadrants_array", func(t *testing.T) {
+		input := `{
+			"x_axis_label": "X",
+			"y_axis_label": "Y",
+			"quadrants": [
+				{"header": "TL", "body": "top-left"},
+				{"header": "TR", "body": "top-right"},
+				{"header": "BL", "body": "bottom-left"},
+				{"header": "BR", "body": "bottom-right"}
+			]
+		}`
+		var vals Matrix2x2Values
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if vals.TopLeft.Header != "TL" || vals.TopLeft.Body != "top-left" {
+			t.Errorf("top_left = %+v, want {TL, top-left}", vals.TopLeft)
+		}
+		if vals.TopRight.Header != "TR" {
+			t.Errorf("top_right.header = %q, want %q", vals.TopRight.Header, "TR")
+		}
+		if vals.BottomLeft.Header != "BL" {
+			t.Errorf("bottom_left.header = %q, want %q", vals.BottomLeft.Header, "BL")
+		}
+		if vals.BottomRight.Header != "BR" {
+			t.Errorf("bottom_right.header = %q, want %q", vals.BottomRight.Header, "BR")
+		}
+	})
+
+	t.Run("unmarshal_quadrants_string_shorthand", func(t *testing.T) {
+		input := `{
+			"x_axis_label": "X",
+			"y_axis_label": "Y",
+			"quadrants": ["Stars | High growth", "Questions | Low share", "Cash Cows", "Dogs | Low everything"]
+		}`
+		var vals Matrix2x2Values
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if vals.TopLeft.Header != "Stars" || vals.TopLeft.Body != "High growth" {
+			t.Errorf("top_left = %+v, want {Stars, High growth}", vals.TopLeft)
+		}
+		if vals.BottomLeft.Header != "Cash Cows" || vals.BottomLeft.Body != "" {
+			t.Errorf("bottom_left = %+v, want {Cash Cows, ''}", vals.BottomLeft)
+		}
+	})
+
+	t.Run("unmarshal_named_form_still_works", func(t *testing.T) {
+		input := `{
+			"x_axis_label": "X",
+			"y_axis_label": "Y",
+			"top_left": {"header": "A"},
+			"top_right": {"header": "B"},
+			"bottom_left": {"header": "C"},
+			"bottom_right": {"header": "D"}
+		}`
+		var vals Matrix2x2Values
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if vals.TopLeft.Header != "A" {
+			t.Errorf("top_left.header = %q, want %q", vals.TopLeft.Header, "A")
+		}
+		if vals.BottomRight.Header != "D" {
+			t.Errorf("bottom_right.header = %q, want %q", vals.BottomRight.Header, "D")
+		}
+	})
+
+	t.Run("validate_quadrants_array_via_unmarshal", func(t *testing.T) {
+		input := `{
+			"x_axis_label": "X",
+			"y_axis_label": "Y",
+			"quadrants": ["A", "B", "C", "D"]
+		}`
+		var vals Matrix2x2Values
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if err := p.Validate(&vals, nil, nil); err != nil {
+			t.Errorf("unexpected validation error: %v", err)
+		}
+	})
+
+	t.Run("expand_quadrants_array", func(t *testing.T) {
+		input := `{
+			"x_axis_label": "Market Share",
+			"y_axis_label": "Growth",
+			"quadrants": [
+				"Stars | High growth",
+				"Questions | Low share",
+				"Cash Cows | Stable",
+				"Dogs | Decline"
+			]
+		}`
+		var vals Matrix2x2Values
+		if err := json.Unmarshal([]byte(input), &vals); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if grid == nil {
+			t.Fatal("Expand returned nil grid")
+		}
+		if len(grid.Rows) != 3 {
+			t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+		}
+	})
+
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := Matrix2x2Values{

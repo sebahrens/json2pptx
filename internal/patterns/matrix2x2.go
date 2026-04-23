@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -45,14 +46,66 @@ type Matrix2x2Quadrant struct {
 	Body   string `json:"body,omitempty"`
 }
 
+// UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
+func (q *Matrix2x2Quadrant) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		parts := strings.SplitN(s, " | ", 2)
+		if len(parts) == 2 {
+			q.Header = parts[0]
+			q.Body = parts[1]
+		} else {
+			q.Header = s
+		}
+		return nil
+	}
+	type alias Matrix2x2Quadrant
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("Matrix2x2Quadrant must be string or {header, body}: %w", err)
+	}
+	*q = Matrix2x2Quadrant(a)
+	return nil
+}
+
 // Matrix2x2Values is the values type for matrix-2x2.
+// Supports both named fields (top_left, top_right, bottom_left, bottom_right)
+// and positional array form (quadrants: [TL, TR, BL, BR]).
 type Matrix2x2Values struct {
-	XAxisLabel  string             `json:"x_axis_label"`
-	YAxisLabel  string             `json:"y_axis_label"`
-	TopLeft     Matrix2x2Quadrant  `json:"top_left"`
-	TopRight    Matrix2x2Quadrant  `json:"top_right"`
-	BottomLeft  Matrix2x2Quadrant  `json:"bottom_left"`
-	BottomRight Matrix2x2Quadrant  `json:"bottom_right"`
+	XAxisLabel  string            `json:"x_axis_label"`
+	YAxisLabel  string            `json:"y_axis_label"`
+	TopLeft     Matrix2x2Quadrant `json:"top_left"`
+	TopRight    Matrix2x2Quadrant `json:"top_right"`
+	BottomLeft  Matrix2x2Quadrant `json:"bottom_left"`
+	BottomRight Matrix2x2Quadrant `json:"bottom_right"`
+}
+
+// UnmarshalJSON supports positional quadrants array: {"quadrants": [TL, TR, BL, BR]}
+// as an alternative to named fields {top_left, top_right, bottom_left, bottom_right}.
+func (v *Matrix2x2Values) UnmarshalJSON(data []byte) error {
+	// Try the quadrants array form first.
+	var withArray struct {
+		XAxisLabel string              `json:"x_axis_label"`
+		YAxisLabel string              `json:"y_axis_label"`
+		Quadrants  []Matrix2x2Quadrant `json:"quadrants"`
+	}
+	if err := json.Unmarshal(data, &withArray); err == nil && len(withArray.Quadrants) == 4 {
+		v.XAxisLabel = withArray.XAxisLabel
+		v.YAxisLabel = withArray.YAxisLabel
+		v.TopLeft = withArray.Quadrants[0]
+		v.TopRight = withArray.Quadrants[1]
+		v.BottomLeft = withArray.Quadrants[2]
+		v.BottomRight = withArray.Quadrants[3]
+		return nil
+	}
+	// Fall back to named fields.
+	type alias Matrix2x2Values
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("Matrix2x2Values: %w", err)
+	}
+	*v = Matrix2x2Values(a)
+	return nil
 }
 
 // Matrix2x2Overrides contains pattern-level overrides for matrix-2x2.
@@ -74,7 +127,7 @@ func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
 
 
 func (m *matrix2x2) Schema() *Schema {
-	quadrantSchema := ObjectSchema(
+	quadrantObjSchema := ObjectSchema(
 		map[string]*Schema{
 			"header": StringSchema(80).WithDescription("Quadrant header text"),
 			"body":   StringSchema(200).WithDescription("Quadrant body text"),
@@ -82,8 +135,14 @@ func (m *matrix2x2) Schema() *Schema {
 		[]string{"header"},
 	).WithAdditionalProperties(false)
 
+	// Quadrant accepts object {header, body} or string "Header" / "Header | Body"
+	quadrantSchema := OneOfSchema(
+		quadrantObjSchema,
+		StringSchema(0).WithDescription(`String shorthand: "Header" or "Header | Body"`),
+	)
 
-	valuesSchema := ObjectSchema(
+	// Named form: top_left, top_right, bottom_left, bottom_right
+	namedValuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
@@ -94,6 +153,18 @@ func (m *matrix2x2) Schema() *Schema {
 		},
 		[]string{"x_axis_label", "y_axis_label", "top_left", "top_right", "bottom_left", "bottom_right"},
 	).WithAdditionalProperties(false)
+
+	// Positional form: quadrants: [TL, TR, BL, BR]
+	arrayValuesSchema := ObjectSchema(
+		map[string]*Schema{
+			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
+			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
+			"quadrants":    ArraySchema(quadrantSchema, 4, 4).WithDescription("Positional quadrants: [top_left, top_right, bottom_left, bottom_right]"),
+		},
+		[]string{"x_axis_label", "y_axis_label", "quadrants"},
+	).WithAdditionalProperties(false)
+
+	valuesSchema := OneOfSchema(namedValuesSchema, arrayValuesSchema)
 
 	return ObjectSchema(
 		map[string]*Schema{
