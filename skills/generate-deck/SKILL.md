@@ -84,6 +84,8 @@ comparisons, use json2pptx's named patterns. Named patterns expand to validated
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in
 the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content).
+
 ---
 
 ## Invariants (Rules That Prevent Rendering Errors)
