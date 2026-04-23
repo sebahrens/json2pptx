@@ -22,6 +22,7 @@ func (k *kpi4up) Name() string        { return "kpi-4up" }
 func (k *kpi4up) Description() string { return "Four big-number KPI cards with short captions" }
 func (k *kpi4up) UseWhen() string     { return "Four big-number KPIs with short captions" }
 func (k *kpi4up) Version() int        { return 1 }
+func (k *kpi4up) CellsHint() string   { return "4" }
 
 // ---------------------------------------------------------------------------
 // Types

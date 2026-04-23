@@ -22,6 +22,7 @@ func (ir *iconRow) Name() string        { return "icon-row" }
 func (ir *iconRow) Description() string { return "Horizontal row of icon+caption pairs" }
 func (ir *iconRow) UseWhen() string     { return "Icon + caption row" }
 func (ir *iconRow) Version() int        { return 1 }
+func (ir *iconRow) CellsHint() string   { return "3-5" }
 
 // ---------------------------------------------------------------------------
 // Types

@@ -25,7 +25,8 @@ func (b *bmcCanvas) Description() string {
 func (b *bmcCanvas) UseWhen() string {
 	return "Formal Business Model Canvas methodology only — for general feature cards prefer card-grid"
 }
-func (b *bmcCanvas) Version() int { return 1 }
+func (b *bmcCanvas) Version() int    { return 1 }
+func (b *bmcCanvas) CellsHint() string { return "9" }
 
 // ---------------------------------------------------------------------------
 // Types

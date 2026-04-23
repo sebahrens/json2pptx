@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -106,5 +108,104 @@ func TestBuildSupportedTypes_DataFormatHints(t *testing.T) {
 				t.Errorf("Description = %q, want %q", df.Description, tt.wantDesc)
 			}
 		})
+	}
+}
+
+func TestBuildPatternEntries_CompactMode(t *testing.T) {
+	compact, full := buildPatternEntries("compact")
+
+	// There should be at least the 8 v1 patterns
+	if len(compact) < 8 {
+		t.Fatalf("expected at least 8 compact patterns, got %d", len(compact))
+	}
+
+	// Full should be nil in compact mode
+	if full != nil {
+		t.Errorf("expected nil patterns_full in compact mode, got %d entries", len(full))
+	}
+
+	// Verify entries are sorted by name
+	for i := 1; i < len(compact); i++ {
+		if compact[i].Name < compact[i-1].Name {
+			t.Errorf("compact entries not sorted: %q comes after %q", compact[i].Name, compact[i-1].Name)
+		}
+	}
+
+	// Every compact entry must have name, cells, and use_when populated
+	for _, c := range compact {
+		if c.Name == "" {
+			t.Error("compact entry has empty name")
+		}
+		if c.Cells == "" {
+			t.Errorf("compact entry %q has empty cells", c.Name)
+		}
+		if c.UseWhen == "" {
+			t.Errorf("compact entry %q has empty use_when", c.Name)
+		}
+	}
+
+	// Spot-check specific patterns match their registry data
+	reg := patterns.Default()
+	for _, c := range compact {
+		p, ok := reg.Get(c.Name)
+		if !ok {
+			t.Errorf("compact entry %q not found in registry", c.Name)
+			continue
+		}
+		if c.UseWhen != p.UseWhen() {
+			t.Errorf("compact entry %q: use_when = %q, want %q", c.Name, c.UseWhen, p.UseWhen())
+		}
+	}
+}
+
+func TestBuildPatternEntries_FullMode(t *testing.T) {
+	compact, full := buildPatternEntries("full")
+
+	if len(compact) < 8 {
+		t.Fatalf("expected at least 8 compact patterns, got %d", len(compact))
+	}
+	if len(full) < 8 {
+		t.Fatalf("expected at least 8 full patterns, got %d", len(full))
+	}
+	if len(compact) != len(full) {
+		t.Errorf("compact (%d) and full (%d) entry counts should match", len(compact), len(full))
+	}
+
+	// Full entries must have valid JSON Schema
+	for _, f := range full {
+		if f.Name == "" {
+			t.Error("full entry has empty name")
+		}
+		if f.Description == "" {
+			t.Errorf("full entry %q has empty description", f.Name)
+		}
+		if f.Version < 1 {
+			t.Errorf("full entry %q has version %d, want >= 1", f.Name, f.Version)
+		}
+		if len(f.Schema) == 0 {
+			t.Errorf("full entry %q has empty schema", f.Name)
+			continue
+		}
+		// Verify schema is valid JSON
+		var raw map[string]any
+		if err := json.Unmarshal(f.Schema, &raw); err != nil {
+			t.Errorf("full entry %q: schema is not valid JSON: %v", f.Name, err)
+			continue
+		}
+		// Must have $schema field (AsRoot)
+		if _, ok := raw["$schema"]; !ok {
+			t.Errorf("full entry %q: schema missing $schema field", f.Name)
+		}
+	}
+}
+
+func TestBuildPatternEntries_ListMode(t *testing.T) {
+	// In list mode, buildPatternEntries is not called (mode == "list" guard in runSkillInfo).
+	// But if called directly, it should still return valid results.
+	compact, _ := buildPatternEntries("list")
+
+	// Should still produce compact entries (buildPatternEntries doesn't enforce list exclusion)
+	if len(compact) < 8 {
+		t.Fatalf("expected at least 8 compact patterns, got %d", len(compact))
 	}
 }

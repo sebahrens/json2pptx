@@ -22,6 +22,7 @@ func (th *timelineHorizontal) Name() string        { return "timeline-horizontal
 func (th *timelineHorizontal) Description() string { return "Linear horizontal timeline with stops" }
 func (th *timelineHorizontal) UseWhen() string     { return "Linear timeline with stops" }
 func (th *timelineHorizontal) Version() int        { return 1 }
+func (th *timelineHorizontal) CellsHint() string   { return "3-7" }
 
 // ---------------------------------------------------------------------------
 // Types

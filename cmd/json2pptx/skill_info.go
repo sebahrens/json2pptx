@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -20,8 +21,28 @@ type skillInfo struct {
 	Tool             skillToolInfo          `json:"tool"`
 	Templates        []skillTemplateInfo    `json:"templates"`
 	SupportedTypes   skillSupportedTypes    `json:"supported_types"`
+	PatternsCompact  []skillPatternCompact  `json:"patterns_compact,omitempty"`
+	PatternsFull     []skillPatternFull     `json:"patterns_full,omitempty"`
 	InputFormats     []string               `json:"input_formats"`
 	OutputFormats    []string               `json:"output_formats"`
+}
+
+// skillPatternCompact is a compact pattern entry (≤ 40 tokens) for default mode.
+type skillPatternCompact struct {
+	Name                   string `json:"name"`
+	Cells                  string `json:"cells"`
+	UseWhen                string `json:"use_when"`
+	EstimatedPromptSizeBytes int  `json:"estimated_prompt_size_bytes"`
+}
+
+// skillPatternFull is a full pattern entry including the hand-authored schema.
+type skillPatternFull struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Cells       string          `json:"cells"`
+	UseWhen     string          `json:"use_when"`
+	Version     int             `json:"version"`
+	Schema      json.RawMessage `json:"schema"`
 }
 
 // skillToolInfo identifies the tool and its version.
@@ -150,6 +171,13 @@ func runSkillInfo() error {
 		templates = append(templates, info)
 	}
 
+	// Build pattern entries (compact for list/compact mode, full for full mode)
+	var patternsCompact []skillPatternCompact
+	var patternsFull []skillPatternFull
+	if *mode != "list" {
+		patternsCompact, patternsFull = buildPatternEntries(*mode)
+	}
+
 	// Build output
 	output := skillInfo{
 		Tool: skillToolInfo{
@@ -158,10 +186,12 @@ func runSkillInfo() error {
 			Commit:  CommitSHA,
 			Built:   BuildTime,
 		},
-		Templates:     templates,
-		SupportedTypes: buildSupportedTypes(),
-		InputFormats:  []string{"json"},
-		OutputFormats: []string{"pptx"},
+		Templates:       templates,
+		SupportedTypes:  buildSupportedTypes(),
+		PatternsCompact: patternsCompact,
+		PatternsFull:    patternsFull,
+		InputFormats:    []string{"json"},
+		OutputFormats:   []string{"pptx"},
 	}
 
 	if *jsonFlag {
@@ -491,6 +521,45 @@ func buildDataFormatHints() map[string]skillDataFormat {
 			Description:  "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"",
 		},
 	}
+}
+
+// buildPatternEntries builds compact (always) and full (mode=full only) pattern
+// entries from the default pattern registry.
+func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull) {
+	reg := patterns.Default()
+	all := reg.List() // sorted by name
+
+	compact := make([]skillPatternCompact, len(all))
+	for i, p := range all {
+		cells := ""
+		if cd, ok := p.(patterns.CellDescriber); ok {
+			cells = cd.CellsHint()
+		}
+		compact[i] = skillPatternCompact{
+			Name:                   p.Name(),
+			Cells:                  cells,
+			UseWhen:                p.UseWhen(),
+			EstimatedPromptSizeBytes: 0, // stub per spec; bead 12 fills this
+		}
+	}
+
+	if mode != "full" {
+		return compact, nil
+	}
+
+	full := make([]skillPatternFull, len(all))
+	for i, p := range all {
+		schemaJSON, _ := json.Marshal(p.Schema())
+		full[i] = skillPatternFull{
+			Name:        p.Name(),
+			Description: p.Description(),
+			Cells:       compact[i].Cells,
+			UseWhen:     p.UseWhen(),
+			Version:     p.Version(),
+			Schema:      schemaJSON,
+		}
+	}
+	return compact, full
 }
 
 // printSkillInfoText outputs skill info as human-readable text.

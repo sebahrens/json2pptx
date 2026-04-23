@@ -70,6 +70,17 @@ type LayoutBounds struct {
 }
 
 // ---------------------------------------------------------------------------
+// CellDescriber — optional interface for compact discovery output
+// ---------------------------------------------------------------------------
+
+// CellDescriber is an optional interface patterns can implement to provide
+// a human-readable cell count description for compact discovery output.
+// Examples: "3", "3-7", "rows × cols", "9", "4 + axes".
+type CellDescriber interface {
+	CellsHint() string
+}
+
+// ---------------------------------------------------------------------------
 // Schema — see schema.go for full implementation (bead 3)
 // ---------------------------------------------------------------------------
 

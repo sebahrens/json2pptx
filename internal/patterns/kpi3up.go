@@ -22,6 +22,7 @@ func (k *kpi3up) Name() string        { return "kpi-3up" }
 func (k *kpi3up) Description() string { return "Three big-number KPI cards with short captions" }
 func (k *kpi3up) UseWhen() string     { return "Three big-number KPIs with short captions" }
 func (k *kpi3up) Version() int        { return 1 }
+func (k *kpi3up) CellsHint() string   { return "3" }
 
 // ---------------------------------------------------------------------------
 // Types — aliases to shared KPI types for backward compatibility

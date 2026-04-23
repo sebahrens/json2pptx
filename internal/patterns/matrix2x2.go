@@ -22,6 +22,7 @@ func (m *matrix2x2) Name() string        { return "matrix-2x2" }
 func (m *matrix2x2) Description() string { return "2×2 quadrant matrix with axis labels" }
 func (m *matrix2x2) UseWhen() string     { return "Quadrant/positioning matrix with axis labels" }
 func (m *matrix2x2) Version() int        { return 1 }
+func (m *matrix2x2) CellsHint() string   { return "4 + axes" }
 
 // ---------------------------------------------------------------------------
 // Types
