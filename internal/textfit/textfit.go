@@ -266,6 +266,41 @@ func MaxFontForWidth(text string, widthEMU int64, fontName string) int {
 	return lo
 }
 
+// MeasureHeight returns the estimated text height in EMU at 100% font scale
+// for the given params. This is a pure measurement — no fitting or scaling.
+// Returns 0 if measurement is not possible (empty input, missing font, etc.).
+func MeasureHeight(p Params) int64 {
+	if len(p.Paragraphs) == 0 || p.WidthEMU <= 0 || p.HeightEMU <= 0 {
+		return 0
+	}
+
+	if p.FontSizeHPt <= 0 {
+		p.FontSizeHPt = 2000
+	}
+	if p.FontName == "" {
+		p.FontName = "Arial"
+	}
+	if p.LineSpacing <= 0 {
+		p.LineSpacing = 1.2
+	}
+
+	widthPt := float64(p.WidthEMU) / float64(emuPerPoint)
+	usableWidthPt := widthPt - 2*7.2 // OOXML default margins
+	if usableWidthPt <= 0 {
+		return 0
+	}
+
+	fontSizePt := float64(p.FontSizeHPt) / 100.0
+
+	ff := fontcache.Get(p.FontName, "")
+	if ff == nil {
+		return 0
+	}
+
+	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+	return int64(math.Ceil(heightPt * float64(emuPerPoint)))
+}
+
 // wrapText estimates how many lines a paragraph will need when word-wrapped
 // to fit within widthPt points.
 func wrapText(face *canvas.FontFace, text string, widthPt float64) int {

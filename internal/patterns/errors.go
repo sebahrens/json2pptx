@@ -22,7 +22,8 @@ const (
 	ErrCodeDensityExceeded   = "density_exceeded"
 	ErrCodeStackedTables     = "stacked_tables"
 	ErrCodeDividerTooThin    = "divider_too_thin"
-	ErrCodeMixedFillScheme   = "mixed_fill_scheme"
+	ErrCodeMixedFillScheme       = "mixed_fill_scheme"
+	ErrCodePlaceholderOverflow   = "placeholder_overflow"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -44,7 +45,8 @@ var (
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
 	ErrStackedTables   = errors.New("stacked tables with insufficient gap")
 	ErrDividerTooThin  = errors.New("divider shape too thin")
-	ErrMixedFillScheme = errors.New("slide mixes hex and semantic fill colors")
+	ErrMixedFillScheme     = errors.New("slide mixes hex and semantic fill colors")
+	ErrPlaceholderOverflow = errors.New("placeholder text overflows frame")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -62,7 +64,8 @@ var codeSentinel = map[string]error{
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,
 	ErrCodeDividerTooThin:    ErrDividerTooThin,
-	ErrCodeMixedFillScheme:   ErrMixedFillScheme,
+	ErrCodeMixedFillScheme:       ErrMixedFillScheme,
+	ErrCodePlaceholderOverflow:   ErrPlaceholderOverflow,
 }
 
 // FixSuggestion is a structured fix suggestion with a machine-readable kind
