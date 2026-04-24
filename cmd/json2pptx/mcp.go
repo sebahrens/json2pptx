@@ -489,12 +489,12 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		OutputFormats:  []string{"pptx"},
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, output)
+	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
 
 // dataFormatHintsResponse is the JSON envelope for get_data_format_hints.
@@ -504,7 +504,7 @@ type dataFormatHintsResponse struct {
 	Hints       map[string]skillDataFormat `json:"data_format_hints,omitempty"`
 }
 
-func handleGetDataFormatHints(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	hints := buildDataFormatHints()
 	digest := computeDataFormatHintsDigest(hints)
 
@@ -514,19 +514,22 @@ func handleGetDataFormatHints(_ context.Context, request mcp.CallToolRequest) (*
 			Digest:      digest,
 			NotModified: true,
 		}
-		b, _ := json.Marshal(resp)
-		return mcp.NewToolResultText(string(b)), nil
+		mcpResult, err := api.MCPSuccessResult(ctx, resp)
+		if err != nil {
+			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		}
+		return mcpResult, nil
 	}
 
 	resp := dataFormatHintsResponse{
 		Digest: digest,
 		Hints:  hints,
 	}
-	b, err := json.Marshal(resp)
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(b)), nil
+	return mcpResult, nil
 }
 
 func mcpGetChartCapabilitiesTool() mcp.Tool {
@@ -553,28 +556,28 @@ type diagramCapabilitiesResponse struct {
 	DiagramCapabilities   []svggen.DiagramCapability   `json:"diagram_capabilities"`
 }
 
-func handleGetChartCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGetChartCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resp := chartCapabilitiesResponse{
 		CapabilitiesTBD:   svggen.CapabilitiesTBD(),
 		ChartCapabilities: svggen.ChartCapabilities(),
 	}
-	b, err := json.Marshal(resp)
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(b)), nil
+	return mcpResult, nil
 }
 
-func handleGetDiagramCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGetDiagramCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resp := diagramCapabilitiesResponse{
 		CapabilitiesTBD:     svggen.CapabilitiesTBD(),
 		DiagramCapabilities: svggen.DiagramCapabilities(),
 	}
-	b, err := json.Marshal(resp)
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(b)), nil
+	return mcpResult, nil
 }
 
 func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -677,11 +680,11 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 			output.Warnings = append(output.Warnings, d.Message)
 		}
 	}
-	responseJSON, err := api.MarshalMCPResponse(ctx, output)
+	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
 
 // --- Pattern tool definitions ---
@@ -843,11 +846,11 @@ func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallTo
 		}
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, entries)
+	mcpResult, err := api.MCPSuccessResult(ctx, entries)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
 
 func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -885,11 +888,11 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	}
 	result.Cells = pat.CellsHint()
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, result)
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
 
 func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -963,8 +966,8 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 			Errors []patternValidationError `json:"errors"`
 		}{OK: false, Errors: splitValidationErrors(err)}
 
-		responseJSON, _ := api.MarshalMCPResponse(ctx, result)
-		return mcp.NewToolResultText(string(responseJSON)), nil
+		mcpResult, _ := api.MCPSuccessResult(ctx, result)
+		return mcpResult, nil
 	}
 
 	// Callout support check — parity with expandPattern (0kyd)
@@ -975,8 +978,8 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 	result := struct {
 		OK bool `json:"ok"`
 	}{OK: true}
-	responseJSON, _ := api.MarshalMCPResponse(ctx, result)
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	mcpResult, _ := api.MCPSuccessResult(ctx, result)
+	return mcpResult, nil
 }
 
 // validateCalloutParam checks the optional "callout" parameter against the
@@ -1001,8 +1004,8 @@ func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name
 		OK     bool                     `json:"ok"`
 		Errors []patternValidationError `json:"errors"`
 	}{OK: false, Errors: splitValidationErrors(veErr)}
-	responseJSON, _ := api.MarshalMCPResponse(ctx, result)
-	return mcp.NewToolResultText(string(responseJSON))
+	mcpResult, _ := api.MCPSuccessResult(ctx, result)
+	return mcpResult
 }
 
 func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -1091,11 +1094,11 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		ShapeGrid: grid,
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, result)
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
 
 // --- Icon tool ---
@@ -1133,7 +1136,7 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	for _, s := range sets {
 		names, err := icons.List(s)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("listing %s icons: %v", s, err)), nil
+			return api.MCPSimpleError("ICON_LIST", fmt.Sprintf("listing %s icons: %v", s, err)), nil
 		}
 		if search != "" {
 			filtered := make([]string, 0, len(names)/4)
@@ -1151,9 +1154,9 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		})
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, result)
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }

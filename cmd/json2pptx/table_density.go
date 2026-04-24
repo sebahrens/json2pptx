@@ -81,12 +81,12 @@ func (mc *mcpConfig) handleTableDensityGuide(ctx context.Context, request mcp.Ca
 
 		path := filepath.Join(mc.templatesDir, templateName+".pptx")
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return mcp.NewToolResultError(templateNotFoundError(templateName, mc.templatesDir)), nil
+			return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir)), nil
 		}
 
 		reader, err := template.OpenTemplate(path)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("template analysis failed: %v", err)), nil
+			return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
 		}
 		defer func() { _ = reader.Close() }()
 
@@ -108,17 +108,17 @@ func (mc *mcpConfig) handleTableDensityGuide(ctx context.Context, request mcp.Ca
 				}
 			}
 			if len(filtered) == 0 {
-				return mcp.NewToolResultError(fmt.Sprintf("style_id %q not found in template %q; use list_templates to see available table_styles", styleID, templateName)), nil
+				return api.MCPSimpleError("STYLE_NOT_FOUND", fmt.Sprintf("style_id %q not found in template %q; use list_templates to see available table_styles", styleID, templateName)), nil
 			}
 			resp.TableStyles = filtered
 		} else {
-			return mcp.NewToolResultError("style_id requires template parameter"), nil
+			return api.MCPSimpleError("MISSING_PARAMETER", "style_id requires template parameter"), nil
 		}
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, resp)
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
