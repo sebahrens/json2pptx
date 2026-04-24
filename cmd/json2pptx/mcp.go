@@ -213,7 +213,7 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 
 // --- Tool handlers ---
 
-func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo
 	jsonStr, err := request.RequireString("json_input")
 	if err != nil {
 		return mcp.NewToolResultError("json_input is required"), nil
@@ -234,6 +234,15 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	if len(input.Slides) == 0 {
 		return mcp.NewToolResultError("at least one slide is required"), nil
+	}
+
+	// Enum validation — reject unknown values for transition, transition_speed, build, background.fit.
+	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
+		msgs := make([]string, len(enumErrs))
+		for i, ve := range enumErrs {
+			msgs[i] = ve.Error()
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("enum validation failed: %s", strings.Join(msgs, "; "))), nil
 	}
 
 	// Text-fit checking via strict_fit parameter (default: warn).
@@ -540,8 +549,15 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		unknownKeyWarnings = append(unknownKeyWarnings, ve.Error())
 	}
 
+	// Enum validation — unknown values are errors.
+	var enumErrors []string
+	for _, ve := range checkInputEnumValues(&input) {
+		enumErrors = append(enumErrors, ve.Error())
+	}
+
 	output := dryRunOutput{
-		Valid:    true,
+		Valid:    len(enumErrors) == 0,
+		Errors:   enumErrors,
 		Warnings: unknownKeyWarnings,
 		Slides:   []dryRunSlide{},
 	}

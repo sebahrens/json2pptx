@@ -102,6 +102,12 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 		output.Warnings = append(output.Warnings, ve.Error())
 	}
 
+	// Enum validation — unknown values for transition, transition_speed, build, background.fit.
+	for _, ve := range checkInputEnumValues(&input) {
+		output.Valid = false
+		output.Errors = append(output.Errors, ve.Error())
+	}
+
 	// Validate required fields
 	if input.Template == "" {
 		output.Valid = false

@@ -195,6 +195,15 @@ func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, []st
 		warnings = append(warnings, ve.Error())
 	}
 
+	// Enum validation — unknown values are errors (they silently become no-ops).
+	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
+		msgs := make([]string, len(enumErrs))
+		for i, ve := range enumErrs {
+			msgs[i] = ve.Error()
+		}
+		return nil, nil, fmt.Errorf("enum validation failed: %s", strings.Join(msgs, "; "))
+	}
+
 	return &input, warnings, nil
 }
 

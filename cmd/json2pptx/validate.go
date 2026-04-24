@@ -171,6 +171,12 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 		result.Warnings = append(result.Warnings, ve.Error())
 	}
 
+	// Enum validation — unknown values for transition, transition_speed, build, background.fit.
+	for _, ve := range checkInputEnumValues(&input) {
+		result.Valid = false
+		result.Errors = append(result.Errors, ve.Error())
+	}
+
 	// Validate required fields.
 	if input.Template == "" {
 		result.Valid = false

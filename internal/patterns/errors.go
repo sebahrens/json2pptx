@@ -18,6 +18,7 @@ const (
 	ErrCodeHexFillNonBrand    = "hex_fill_non_brand"
 	ErrCodeUnknownLayoutID    = "unknown_layout_id"
 	ErrCodeCalloutUnsupported = "callout_unsupported"
+	ErrCodeUnknownEnum        = "unknown_enum"
 
 	// Fit-report error codes.
 	ErrCodeFitOverflow       = "fit_overflow"
@@ -47,6 +48,7 @@ var (
 	ErrHexFillNonBrand    = errors.New("hex fill color is not in brand allowlist")
 	ErrUnknownLayoutID        = errors.New("layout_id not found in template")
 	ErrCalloutUnsupported     = errors.New("pattern does not support callout")
+	ErrUnknownEnum            = errors.New("unknown enum value")
 
 	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
@@ -72,6 +74,7 @@ var codeSentinel = map[string]error{
 	ErrCodeHexFillNonBrand:    ErrHexFillNonBrand,
 	ErrCodeUnknownLayoutID:        ErrUnknownLayoutID,
 	ErrCodeCalloutUnsupported:     ErrCalloutUnsupported,
+	ErrCodeUnknownEnum:            ErrUnknownEnum,
 	ErrCodeFitOverflow:       ErrFitOverflow,
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,
