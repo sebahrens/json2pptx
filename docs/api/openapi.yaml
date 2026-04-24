@@ -36,6 +36,8 @@ tags:
     description: Generated file downloads
   - name: Metadata
     description: Service metadata
+  - name: Patterns
+    description: Named pattern library (reusable shape_grid skeletons)
 
 paths:
   /api/v1/health:
@@ -81,18 +83,22 @@ paths:
                 $ref: '#/components/schemas/ListTemplatesResponse'
               example:
                 templates:
-                  - name: corporate
-                    display_name: Corporate
+                  - name: forest-green
+                    display_name: Forest Green
                     aspect_ratio: "16:9"
-                    layout_count: 12
-                  - name: minimal-dark
-                    display_name: Minimal Dark
+                    layout_count: 6
+                  - name: midnight-blue
+                    display_name: Midnight Blue
                     aspect_ratio: "16:9"
-                    layout_count: 8
-                  - name: creative
-                    display_name: Creative
-                    aspect_ratio: "4:3"
-                    layout_count: 15
+                    layout_count: 6
+                  - name: modern-template
+                    display_name: Modern Template
+                    aspect_ratio: "16:9"
+                    layout_count: 6
+                  - name: warm-coral
+                    display_name: Warm Coral
+                    aspect_ratio: "16:9"
+                    layout_count: 6
         '500':
           description: Internal server error
           content:
@@ -127,7 +133,7 @@ paths:
           description: Template name (without .pptx extension)
           schema:
             type: string
-          example: corporate
+          example: midnight-blue
       responses:
         '200':
           description: Detailed template information
@@ -136,8 +142,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/TemplateDetailsResponse'
               example:
-                name: corporate
-                display_name: Corporate
+                name: midnight-blue
+                display_name: Midnight Blue
                 aspect_ratio: "16:9"
                 layouts:
                   - id: "layout1"
@@ -229,7 +235,7 @@ paths:
 
         ```json
         {
-          "template": "corporate",
+          "template": "midnight-blue",
           "slides": [
             {
               "type": "title",
@@ -264,7 +270,7 @@ paths:
               basic:
                 summary: Basic conversion
                 value:
-                  template: corporate
+                  template: midnight-blue
                   slides:
                     - type: title
                       title: Q4 Report
@@ -280,7 +286,7 @@ paths:
               with_options:
                 summary: With base64 output
                 value:
-                  template: minimal-dark
+                  template: warm-coral
                   slides:
                     - type: content
                       title: New Features
@@ -503,6 +509,168 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/patterns:
+    get:
+      tags:
+        - Patterns
+      summary: List available patterns
+      description: |
+        Returns a compact listing of all registered named patterns with
+        metadata including description, use_when hint, version, and
+        whether the pattern supports callout annotations.
+      operationId: listPatterns
+      responses:
+        '200':
+          description: Pattern listing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternListResponse'
+
+  /api/v1/patterns/{name}:
+    get:
+      tags:
+        - Patterns
+      summary: Get pattern details
+      description: |
+        Returns full details for a specific pattern including its JSON
+        schema for values, overrides, and cell_overrides.
+      operationId: getPattern
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pattern name
+          schema:
+            type: string
+          example: bmc
+      responses:
+        '200':
+          description: Pattern details with schema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternShowResponse'
+        '404':
+          description: Pattern not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: PATTERN_NOT_FOUND
+                  message: "Pattern \"nonexistent\" not found; did you mean \"bmc\"?"
+
+  /api/v1/patterns/{name}/validate:
+    post:
+      tags:
+        - Patterns
+      summary: Validate pattern data
+      description: |
+        Validates pattern input values against the pattern's schema without
+        expanding into a shape_grid. Returns `{"ok": true}` on success or
+        an error with code `PATTERN_VALIDATION_FAILED`.
+      operationId: validatePattern
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pattern name
+          schema:
+            type: string
+          example: bmc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternRequestBody'
+      responses:
+        '200':
+          description: Validation passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternValidateResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: PATTERN_VALIDATION_FAILED
+                  message: "missing required field: value_propositions"
+                  details:
+                    pattern: bmc
+        '404':
+          description: Pattern not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/patterns/{name}/expand:
+    post:
+      tags:
+        - Patterns
+      summary: Expand pattern into shape_grid
+      description: |
+        Validates and expands pattern values into a `shape_grid` object
+        ready for inclusion in a slide definition. Uses default slide
+        dimensions (10×7.5 inches) and standard layout bounds.
+      operationId: expandPattern
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pattern name
+          schema:
+            type: string
+          example: bmc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternRequestBody'
+      responses:
+        '200':
+          description: Expanded shape_grid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternExpandResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Pattern not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Expansion failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: PATTERN_EXPAND_FAILED
+                  message: "Failed to expand pattern"
+                  details:
+                    pattern: bmc
+
 components:
   schemas:
     HealthyResponse:
@@ -555,7 +723,7 @@ components:
         name:
           type: string
           description: Template identifier (used in API requests)
-          example: corporate
+          example: midnight-blue
         display_name:
           type: string
           description: Human-readable template name
@@ -582,7 +750,7 @@ components:
         name:
           type: string
           description: Template identifier
-          example: corporate
+          example: midnight-blue
         display_name:
           type: string
           description: Human-readable template name
@@ -676,7 +844,7 @@ components:
         template:
           type: string
           description: Template name (without .pptx extension)
-          example: corporate
+          example: midnight-blue
         slides:
           type: array
           description: Array of slide definitions
@@ -1100,6 +1268,9 @@ components:
             - REQUEST_TIMEOUT
             - PANIC_RECOVERED
             - INTERNAL_ERROR
+            - PATTERN_NOT_FOUND
+            - PATTERN_VALIDATION_FAILED
+            - PATTERN_EXPAND_FAILED
         message:
           type: string
           description: Human-readable error message
@@ -1109,3 +1280,105 @@ components:
           description: Additional error context
           example:
             field: slides
+
+    PatternListItem:
+      type: object
+      required:
+        - name
+        - description
+        - use_when
+        - version
+        - supports_callout
+      properties:
+        name:
+          type: string
+          description: Pattern identifier
+          example: bmc
+        description:
+          type: string
+          description: What the pattern produces
+          example: Business Model Canvas with 9 labeled cells
+        use_when:
+          type: string
+          description: Agent-facing hint for when to select this pattern
+          example: User asks for a Business Model Canvas
+        version:
+          type: integer
+          description: Pattern schema version
+          example: 1
+        cells_hint:
+          type: string
+          description: Human-readable summary of cells in the pattern
+        supports_callout:
+          type: boolean
+          description: Whether the pattern supports callout annotations
+
+    PatternListResponse:
+      type: object
+      required:
+        - patterns
+      properties:
+        patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternListItem'
+
+    PatternShowResponse:
+      type: object
+      required:
+        - name
+        - description
+        - use_when
+        - version
+        - supports_callout
+        - schema
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        use_when:
+          type: string
+        version:
+          type: integer
+        cells_hint:
+          type: string
+        supports_callout:
+          type: boolean
+        schema:
+          type: object
+          description: JSON Schema for the pattern's values input
+
+    PatternRequestBody:
+      type: object
+      required:
+        - values
+      properties:
+        values:
+          type: object
+          description: Pattern-specific data values (schema varies per pattern)
+        overrides:
+          type: object
+          description: Style overrides for the pattern
+        cell_overrides:
+          type: object
+          additionalProperties:
+            type: object
+          description: Per-cell overrides keyed by cell index (as string)
+
+    PatternValidateResponse:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+
+    PatternExpandResponse:
+      type: object
+      required:
+        - shape_grid
+      properties:
+        shape_grid:
+          $ref: '#/components/schemas/ShapeGridInput'

@@ -14,6 +14,11 @@ A REST API for converting JSON slide definitions into professional PowerPoint pr
   - [Convert Slides](#convert-slides)
   - [Download File](#download-file)
   - [List Slide Types](#list-slide-types)
+- [Patterns](#patterns)
+  - [List Patterns](#list-patterns)
+  - [Get Pattern Details](#get-pattern-details)
+  - [Validate Pattern Data](#validate-pattern-data)
+  - [Expand Pattern](#expand-pattern)
 - [Common Use Cases](#common-use-cases)
 - [SDK Examples](#sdk-examples)
 
@@ -86,6 +91,8 @@ curl http://localhost:8080/api/v1/health
 {
   "status": "healthy",
   "version": "1.0.0",
+  "commit_sha": "a1b2c3d",
+  "build_time": "2026-01-15T10:30:00Z",
   "uptime_seconds": 3600
 }
 ```
@@ -119,6 +126,12 @@ curl http://localhost:8080/api/v1/templates
     {
       "name": "forest-green",
       "display_name": "Forest Green",
+      "aspect_ratio": "16:9",
+      "layout_count": 6
+    },
+    {
+      "name": "modern-template",
+      "display_name": "Modern Template",
       "aspect_ratio": "16:9",
       "layout_count": 6
     },
@@ -207,7 +220,7 @@ Convert JSON slide definitions to a PowerPoint presentation.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | string | Yes | Slide type: `title`, `content`, `section`, `two-column`, `chart`, `diagram`, `image`, `comparison`, `blank` |
+| `type` | string | Yes | Slide type: `title`, `content`, `section`, `two-column`, `chart`, `diagram`, `image`, `comparison`, `blank`. See [List Slide Types](#list-slide-types) for descriptions. |
 | `title` | string | No | Slide title |
 | `content` | object | No | Content with `body` (string) and/or `bullets` (string[]) |
 | `speaker_notes` | string | No | Speaker notes |
@@ -385,8 +398,191 @@ curl http://localhost:8080/api/v1/slide-types
     {"type": "image", "description": "Image-focused slide with title"},
     {"type": "chart", "description": "Data visualization slide"},
     {"type": "comparison", "description": "Comparison layout for side-by-side elements"},
-    {"type": "blank", "description": "Empty slide with no placeholders"}
+    {"type": "blank", "description": "Empty slide with no placeholders"},
+    {"type": "section", "description": "Section divider slide for separating presentation sections"},
+    {"type": "diagram", "description": "Diagram slide (pyramid, venn, org chart, etc.)"}
   ]
+}
+```
+
+---
+
+### List Patterns
+
+Retrieve all available named patterns (reusable shape_grid skeletons).
+
+**Endpoint:** `GET /api/v1/patterns`
+
+#### Request
+
+```bash
+curl http://localhost:8080/api/v1/patterns
+```
+
+#### Response
+
+```json
+{
+  "patterns": [
+    {
+      "name": "bmc",
+      "description": "Business Model Canvas with 9 labeled cells",
+      "use_when": "User asks for a Business Model Canvas",
+      "version": 1,
+      "cells_hint": "9 cells: key_partners, key_activities, key_resources, value_propositions, customer_relationships, channels, customer_segments, cost_structure, revenue_streams",
+      "supports_callout": false
+    }
+  ]
+}
+```
+
+---
+
+### Get Pattern Details
+
+Get full details for a specific pattern including its JSON schema.
+
+**Endpoint:** `GET /api/v1/patterns/{name}`
+
+#### Parameters
+
+| Parameter | Location | Required | Description |
+|-----------|----------|----------|-------------|
+| `name` | path | Yes | Pattern name (e.g., `bmc`, `kpi-dashboard`) |
+
+#### Request
+
+```bash
+curl http://localhost:8080/api/v1/patterns/bmc
+```
+
+#### Response
+
+```json
+{
+  "name": "bmc",
+  "description": "Business Model Canvas with 9 labeled cells",
+  "use_when": "User asks for a Business Model Canvas",
+  "version": 1,
+  "cells_hint": "9 cells: ...",
+  "supports_callout": false,
+  "schema": { "type": "object", "properties": { "..." : {} } }
+}
+```
+
+#### Error Response
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PATTERN_NOT_FOUND",
+    "message": "Pattern \"nonexistent\" not found; did you mean \"bmc\"?"
+  }
+}
+```
+
+---
+
+### Validate Pattern Data
+
+Validate pattern input values against the pattern's schema without expanding.
+
+**Endpoint:** `POST /api/v1/patterns/{name}/validate`
+
+#### Parameters
+
+| Parameter | Location | Required | Description |
+|-----------|----------|----------|-------------|
+| `name` | path | Yes | Pattern name |
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `values` | object | Yes | Pattern-specific data values |
+| `overrides` | object | No | Style overrides for the pattern |
+| `cell_overrides` | object | No | Per-cell overrides keyed by cell index (string) |
+
+#### Request
+
+```bash
+curl -X POST http://localhost:8080/api/v1/patterns/bmc/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "values": {
+      "key_partners": "Suppliers",
+      "key_activities": "Manufacturing",
+      "value_propositions": "Quality products"
+    }
+  }'
+```
+
+#### Response (Valid)
+
+```json
+{"ok": true}
+```
+
+#### Response (Invalid)
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PATTERN_VALIDATION_FAILED",
+    "message": "missing required field: value_propositions",
+    "details": {"pattern": "bmc"}
+  }
+}
+```
+
+---
+
+### Expand Pattern
+
+Validate and expand pattern values into a `shape_grid` ready for slide generation.
+
+**Endpoint:** `POST /api/v1/patterns/{name}/expand`
+
+#### Parameters
+
+| Parameter | Location | Required | Description |
+|-----------|----------|----------|-------------|
+| `name` | path | Yes | Pattern name |
+
+#### Request Body
+
+Same as [Validate Pattern Data](#validate-pattern-data).
+
+#### Request
+
+```bash
+curl -X POST http://localhost:8080/api/v1/patterns/bmc/expand \
+  -H "Content-Type: application/json" \
+  -d '{
+    "values": {
+      "key_partners": "Suppliers",
+      "key_activities": "Manufacturing",
+      "value_propositions": "Quality products"
+    }
+  }'
+```
+
+#### Response
+
+```json
+{
+  "shape_grid": {
+    "bounds": {"x": 5, "y": 20, "width": 90, "height": 73.3},
+    "rows": [
+      {
+        "cells": [
+          {"shape": {"geometry": "rect", "text": "Key Partners\nSuppliers", "fill": "#4472C4"}}
+        ]
+      }
+    ]
+  }
 }
 ```
 
