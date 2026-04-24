@@ -117,10 +117,10 @@ func EvaluateFindings(findings []fitFinding, state *LoopState, cfg LoopConfig) L
 	var cappedSlides []int
 
 	for slideIdx, slideFinding := range grouped {
-		// Only count slides with unfittable findings.
+		// Only count slides with refuse-action findings.
 		hasUnfittable := false
 		for _, f := range slideFinding.Findings {
-			if f.Action == "unfittable" {
+			if f.Action == "refuse" {
 				hasUnfittable = true
 				break
 			}
@@ -138,7 +138,7 @@ func EvaluateFindings(findings []fitFinding, state *LoopState, cfg LoopConfig) L
 		}
 	}
 
-	// No unfittable findings at all → pass.
+	// No refuse-action findings at all → pass.
 	if len(repairSlides) == 0 && len(cappedSlides) == 0 {
 		return LoopResult{
 			Action:  ActionPass,
@@ -169,7 +169,7 @@ func EvaluateFindings(findings []fitFinding, state *LoopState, cfg LoopConfig) L
 	}
 
 	// Some slides are repairable.
-	msg := fmt.Sprintf("%d slide(s) have unfittable cells — repair needed.", len(repairSlides))
+	msg := fmt.Sprintf("%d slide(s) have refuse-action cells — repair needed.", len(repairSlides))
 	if len(cappedSlides) > 0 {
 		msg += fmt.Sprintf(" Slide(s) %v hit repair cap — force split.", cappedSlides)
 	}
@@ -197,15 +197,15 @@ func groupBySlide(findings []fitFinding) map[int]SlideFinding {
 
 	// Generate summaries.
 	for idx, sf := range grouped {
-		unfittable := 0
+		refused := 0
 		for _, f := range sf.Findings {
-			if f.Action == "unfittable" {
-				unfittable++
+			if f.Action == "refuse" {
+				refused++
 			}
 		}
 		sf.Summary = fmt.Sprintf(
-			"Slide %d: %d finding(s), %d unfittable",
-			idx, len(sf.Findings), unfittable,
+			"Slide %d: %d finding(s), %d refused",
+			idx, len(sf.Findings), refused,
 		)
 		grouped[idx] = sf
 	}

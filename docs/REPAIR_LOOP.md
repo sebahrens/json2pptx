@@ -10,7 +10,7 @@ shrink-font cycles.
 1. Author slide JSON
 2. Run:  json2pptx validate -fit-report=- input.json
 3. Parse NDJSON stdout — each line is a fitFinding
-4. If any finding has action="unfittable":
+4. If any finding has action="refuse":
    a. Filter to failing cells only
    b. Build feedback: filtered NDJSON + 1-line summary per failing slide
    c. Send back to agent for repair turn
@@ -18,7 +18,7 @@ shrink-font cycles.
 5. If 2 repair attempts failed for the same slide:
    → Inject split_slide envelope (or downgrade to bullets)
    → Do NOT loop further
-6. Stop when: zero unfittable AND zero TDR violations
+6. Stop when: zero refuse AND zero TDR violations
 ```
 
 ## Anti-Thrash Cap
@@ -37,7 +37,7 @@ Each line is a JSON object with these fields:
 | `path` | string | JSON path, e.g. `slides[0].content[1].rows[3][2]` |
 | `message` | string | Human-readable description |
 | `fix` | object | `{kind, params}` — machine-readable fix suggestion |
-| `action` | string | `unfittable` (must fix) or `warning` (informational) |
+| `action` | string | `refuse` (must fix), `shrink_or_split`, `review`, or `info` (see FIT_FINDINGS.md) |
 | `binding_dimension` | string | `height` or `width` |
 | `required_pt` | number | Space needed (points) |
 | `allocated_pt` | number | Space available (points) |
@@ -53,7 +53,7 @@ Add this to the skill's post-generation step:
 ```bash
 json2pptx validate -fit-report=- "$JSON_PATH" | while read -r line; do
   action=$(echo "$line" | jq -r '.action')
-  if [ "$action" = "unfittable" ]; then
+  if [ "$action" = "refuse" ]; then
     echo "REPAIR NEEDED: $line"
   fi
 done
@@ -72,7 +72,7 @@ for _ in range(10):  # outer safety cap
     result = mcp.call("validate_fit_report", {"json_path": path})
     findings = parse_ndjson(result)
     
-    unfittable = [f for f in findings if f["action"] == "unfittable"]
+    unfittable = [f for f in findings if f["action"] == "refuse"]
     if not unfittable:
         break  # all clear
     
@@ -105,11 +105,11 @@ Add to your CI pipeline or pre-commit hook:
 
 ```bash
 #!/bin/bash
-# Validate all example decks — fail on unfittable findings
+# Validate all example decks — fail on refuse-action findings
 for json_file in examples/*.json; do
     output=$(json2pptx validate -fit-report=- "$json_file" 2>/dev/null)
-    if echo "$output" | grep -q '"action":"unfittable"'; then
-        echo "FAIL: $json_file has unfittable content"
+    if echo "$output" | grep -q '"action":"refuse"'; then
+        echo "FAIL: $json_file has refuse-action content"
         echo "$output" | jq -c 'select(.action=="unfittable") | {path, message}'
         exit 1
     fi

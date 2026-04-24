@@ -84,7 +84,7 @@ func runValidate() error {
 			printFitFindingsBySlide(findings)
 			writeFitReportNDJSON(os.Stdout, findings)
 			for _, f := range findings {
-				if f.Action == "unfittable" {
+				if f.Action == "refuse" {
 					hasErrors = true
 				}
 			}

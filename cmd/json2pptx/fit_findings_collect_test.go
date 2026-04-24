@@ -31,7 +31,7 @@ func TestConvertTextFitFinding(t *testing.T) {
 		Code:        patterns.ErrCodeFitOverflow,
 		Path:        "slides[0].content[1].rows[0][0]",
 		Message:     "text needs 5 lines",
-		Action:      "unfittable",
+		Action:      "refuse",
 		RequiredPt:  100,
 		AllocatedPt: 50,
 	}
@@ -44,8 +44,8 @@ func TestConvertTextFitFinding(t *testing.T) {
 	if f.Path != tf.Path {
 		t.Errorf("Path = %q, want %q", f.Path, tf.Path)
 	}
-	if f.Action != "unfittable" {
-		t.Errorf("Action = %q, want %q", f.Action, "unfittable")
+	if f.Action != "refuse" {
+		t.Errorf("Action = %q, want %q", f.Action, "refuse")
 	}
 	if f.Measured == nil || f.Allowed == nil {
 		t.Fatal("Measured and Allowed should be populated")

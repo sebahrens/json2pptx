@@ -285,9 +285,9 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 				m.DensityExceeded++
 			}
 			switch f.Action {
-			case "unfittable":
+			case "refuse":
 				unfittable++
-			case "shrink":
+			case "shrink_or_split":
 				shrink++
 			}
 		}

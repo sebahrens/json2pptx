@@ -39,7 +39,7 @@ func TestEvaluateFindings_Repair(t *testing.T) {
 	state := NewLoopState()
 	cfg := LoopConfig{ForceSplitOnCap: true}
 	findings := []fitFinding{
-		{Code: "fit_overflow", Path: "slides[0].content[1].rows[0][0]", Action: "unfittable"},
+		{Code: "fit_overflow", Path: "slides[0].content[1].rows[0][0]", Action: "refuse"},
 	}
 	result := EvaluateFindings(findings, state, cfg)
 	if result.Action != ActionRepair {
@@ -58,7 +58,7 @@ func TestEvaluateFindings_CapReached(t *testing.T) {
 	state.Attempts[0] = MaxRepairAttempts // already at cap
 	cfg := LoopConfig{ForceSplitOnCap: true}
 	findings := []fitFinding{
-		{Code: "fit_overflow", Path: "slides[0].content[1].rows[0][0]", Action: "unfittable"},
+		{Code: "fit_overflow", Path: "slides[0].content[1].rows[0][0]", Action: "refuse"},
 	}
 	result := EvaluateFindings(findings, state, cfg)
 	if result.Action != ActionForceSplit {
@@ -73,7 +73,7 @@ func TestEvaluateFindings_WarningOnly(t *testing.T) {
 	state := NewLoopState()
 	cfg := LoopConfig{ForceSplitOnCap: true}
 	findings := []fitFinding{
-		{Code: "density_exceeded", Path: "slides[0].content[1]", Action: "warning"},
+		{Code: "density_exceeded", Path: "slides[0].content[1]", Action: "review"},
 	}
 	result := EvaluateFindings(findings, state, cfg)
 	// Warnings (non-unfittable) don't trigger repair.
@@ -113,7 +113,7 @@ func TestDenseTableLoop(t *testing.T) {
 	// Check that at least one finding is unfittable.
 	hasUnfittable := false
 	for _, f := range findings {
-		if f.Action == "unfittable" {
+		if f.Action == "refuse" {
 			hasUnfittable = true
 			break
 		}

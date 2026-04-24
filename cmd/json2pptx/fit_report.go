@@ -30,7 +30,7 @@ type fitFinding struct {
 
 // checkStrictFit runs the fit report and applies the given mode's policy.
 // In "warn" mode, findings are printed to stderr but nil is returned.
-// In "strict" mode, an error is returned if any finding has action=unfittable,
+// In "strict" mode, an error is returned if any finding has action=refuse,
 // and the full NDJSON report is written to stderr.
 func checkStrictFit(input *PresentationInput, mode string) error {
 	findings := generateFitReport(input)
@@ -39,14 +39,14 @@ func checkStrictFit(input *PresentationInput, mode string) error {
 	}
 
 	if mode == "strict" {
-		hasUnfittable := false
+		hasRefuse := false
 		for _, f := range findings {
-			if f.Action == "unfittable" {
-				hasUnfittable = true
+			if f.Action == "refuse" {
+				hasRefuse = true
 				break
 			}
 		}
-		if hasUnfittable {
+		if hasRefuse {
 			enc := json.NewEncoder(os.Stderr)
 			for _, f := range findings {
 				_ = enc.Encode(f)
@@ -55,7 +55,7 @@ func checkStrictFit(input *PresentationInput, mode string) error {
 		}
 	}
 
-	// warn mode (or strict with no unfittable): emit summary to stderr.
+	// warn mode (or strict with no refuse): emit summary to stderr.
 	printFitReportSummary(findings)
 	return nil
 }
@@ -159,7 +159,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 				RequiredPt:       float64(m.RequiredEMU) / 12700.0,
 				AllocatedPt:      float64(defaultRowHeightEMU) / 12700.0,
 				WrapLines:        m.Lines,
-				Action:           "unfittable",
+				Action:           "refuse",
 			})
 		}
 	}
@@ -184,7 +184,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 					RequiredPt:       float64(m.RequiredEMU) / 12700.0,
 					AllocatedPt:      float64(defaultRowHeightEMU) / 12700.0,
 					WrapLines:        m.Lines,
-					Action:           "unfittable",
+					Action:           "refuse",
 				})
 			}
 		}
@@ -199,7 +199,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 			Path:    pathPrefix,
 			Message: fmt.Sprintf("table has %d cells (%d rows × %d cols) at %.0fpt; TDR ceiling is %d", totalCells, numRows, numCols, fontPt, tdrCeiling),
 			Fix:     &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": numRows / 2}},
-			Action:  "unfittable",
+			Action:  "refuse",
 		})
 	}
 
@@ -210,7 +210,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 			Path:    ve.Path,
 			Message: ve.Message,
 			Fix:     ve.Fix,
-			Action:  "warning",
+			Action:  "review",
 		})
 	}
 
@@ -294,7 +294,7 @@ func measureShapeText(shape *ShapeSpecInput, pathPrefix string, grid *ShapeGridI
 		RequiredPt:       float64(m.RequiredEMU) / 12700.0,
 		AllocatedPt:      float64(cellHeightEMU) / 12700.0,
 		WrapLines:        m.Lines,
-		Action:           "unfittable",
+		Action:           "refuse",
 	}}
 }
 
