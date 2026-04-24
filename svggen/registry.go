@@ -45,7 +45,7 @@ func RegistryRenderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, fo
 	return renderMultiFormatWithFindings(r, req, formats...)
 }
 
-// renderMultiFormatWithFindings wraps renderMultiFormat and promotes the
+// renderMultiFormatWithFindings wraps renderMultiFormatInternal and promotes the
 // result into a RenderOutput with findings from clamping and rendering.
 func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
 	// Collect clamp findings before render (renderMultiFormat also clamps
@@ -57,13 +57,20 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 		findings = core.ClampDataValuesWithFindings(req.Data)
 	}
 
-	result, err := renderMultiFormat(r, req, formats...)
+	result, builder, err := renderMultiFormatInternal(r, req, formats...)
 	if err != nil {
 		return nil, err
 	}
 	if findings == nil {
 		findings = []Finding{}
 	}
+
+	// Collect render-time findings from the builder (e.g. zero-sum pie,
+	// negative-on-log, invalid time format).
+	if builder != nil {
+		findings = append(findings, builder.Findings()...)
+	}
+
 	return &RenderOutput{
 		RenderResult: result,
 		Findings:     findings,
@@ -71,10 +78,18 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 }
 
 // renderMultiFormat implements multi-format rendering for a given registry.
-//nolint:gocognit,gocyclo // complex chart rendering logic
 func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*RenderResult, error) {
+	result, _, err := renderMultiFormatInternal(r, req, formats...)
+	return result, err
+}
+
+// renderMultiFormatInternal implements multi-format rendering and returns the
+// builder (when available) so callers can collect render-time findings.
+//
+//nolint:gocognit,gocyclo // complex chart rendering logic
+func renderMultiFormatInternal(r *Registry, req *RequestEnvelope, formats ...string) (*RenderResult, *SVGBuilder, error) {
 	if err := req.Validate(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Warn when data is empty — the diagram will render blank.
@@ -95,11 +110,11 @@ func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*R
 
 	d := r.Get(req.Type)
 	if d == nil {
-		return nil, fmt.Errorf("svggen: unknown diagram type %q", req.Type)
+		return nil, nil, fmt.Errorf("svggen: unknown diagram type %q", req.Type)
 	}
 
 	if err := d.Validate(req); err != nil {
-		return nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
+		return nil, nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
 	}
 
 	// Determine which formats to generate
@@ -122,24 +137,30 @@ func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*R
 	if needsPNG || needsPDF {
 		// First, check if diagram implements MultiFormatRenderer
 		if mfr, ok := d.(MultiFormatRenderer); ok {
-			return renderViaMultiFormat(mfr, req, formatSet)
+			res, err := renderViaMultiFormat(mfr, req, formatSet)
+			return res, nil, err
 		}
 
 		// Next, check if diagram implements DiagramWithBuilder
 		if dwb, ok := d.(DiagramWithBuilder); ok {
 			builder, svgDoc, err = dwb.RenderWithBuilder(req)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		} else {
 			// Fallback: diagram doesn't support multi-format
-			return nil, fmt.Errorf("svggen: diagram %q does not support multi-format rendering; implement DiagramWithBuilder or MultiFormatRenderer", req.Type)
+			return nil, nil, fmt.Errorf("svggen: diagram %q does not support multi-format rendering; implement DiagramWithBuilder or MultiFormatRenderer", req.Type)
 		}
 	} else {
-		// Only SVG needed - use regular Render
-		svgDoc, err = d.Render(req)
+		// Only SVG needed — prefer DiagramWithBuilder when available so the
+		// builder (and its findings) are accessible to the caller.
+		if dwb, ok := d.(DiagramWithBuilder); ok {
+			builder, svgDoc, err = dwb.RenderWithBuilder(req)
+		} else {
+			svgDoc, err = d.Render(req)
+		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -167,7 +188,7 @@ func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*R
 		}
 		pngBytes, err := builder.RenderPNG(scale)
 		if err != nil {
-			return nil, fmt.Errorf("svggen: PNG render failed: %w", err)
+			return nil, nil, fmt.Errorf("svggen: PNG render failed: %w", err)
 		}
 		result.PNG = pngBytes
 		if req.Output.Format == "png" {
@@ -179,7 +200,7 @@ func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*R
 	if needsPDF && builder != nil {
 		pdfBytes, err := builder.RenderPDF()
 		if err != nil {
-			return nil, fmt.Errorf("svggen: PDF render failed: %w", err)
+			return nil, nil, fmt.Errorf("svggen: PDF render failed: %w", err)
 		}
 		result.PDF = pdfBytes
 		if req.Output.Format == "pdf" {
@@ -187,7 +208,7 @@ func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*R
 		}
 	}
 
-	return result, nil
+	return result, builder, nil
 }
 
 // renderViaMultiFormat handles rendering for diagrams implementing MultiFormatRenderer.

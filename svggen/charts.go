@@ -291,6 +291,20 @@ func (bc *BarChart) Draw(data ChartData) error {
 	// Calculate domain
 	yMin, yMax := bc.calculateDomain(data)
 
+	// Detect all-zero series: flat/blank chart.
+	if yMin == 0 && yMax == 0 {
+		b.AddFinding(Finding{
+			Field:    "data.series",
+			Code:     FindingAllZeroSeries,
+			Message:  "all series values are zero — chart will render flat/blank",
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReplaceValue,
+				Params: map[string]any{"series_count": len(data.Series)},
+			},
+		})
+	}
+
 	// Create scales (use potentially-truncated categories for label display)
 	xScale := NewCategoricalScale(categories)
 	xScale.SetRangeCategorical(0, plotArea.W)
@@ -678,6 +692,7 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		bs := NewBarSeries(b, barConfig)
 
 		points := make([]DataPoint, len(series.Values))
+		negOnLogCount := 0
 		for i, v := range series.Values {
 			yVal := v
 			if bc.logScale != nil && v > 0 {
@@ -686,12 +701,25 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 				// Zero/negative values: place at baseline
 				dMin, _ := bc.logScale.DomainBounds()
 				yVal = math.Log10(dMin)
+				negOnLogCount++
 			}
 			points[i] = DataPoint{
 				XCategory: data.Categories[i],
 				Y:         yVal,
 				Value:     v, // original value for labels
 			}
+		}
+		if negOnLogCount > 0 {
+			b.AddFinding(Finding{
+				Field:    fmt.Sprintf("data.series[%d].values", seriesIdx),
+				Code:     FindingNegativeOnLog,
+				Message:  fmt.Sprintf("%d value(s) are zero or negative on log scale — placed at baseline", negOnLogCount),
+				Severity: "warning",
+				Fix: &FixSuggestion{
+					Kind:   FixKindExplicitScale,
+					Params: map[string]any{"clamped_count": negOnLogCount, "series_index": seriesIdx},
+				},
+			})
 		}
 
 		// Adjust x scale for bar positions within plot area
@@ -1124,9 +1152,22 @@ func (lc *LineChart) hasTimeSeriesData(data ChartData) bool {
 func (lc *LineChart) calculateTimeDomain(data ChartData) (min, max int64) {
 	initialized := false
 
-	for _, series := range data.Series {
+	for seriesIdx, series := range data.Series {
 		timeValues, err := series.GetTimeValues()
-		if err != nil || len(timeValues) == 0 {
+		if err != nil {
+			lc.builder.AddFinding(Finding{
+				Field:    fmt.Sprintf("data.series[%d].time_strings", seriesIdx),
+				Code:     FindingInvalidTimeFormat,
+				Message:  fmt.Sprintf("time series %d has unparseable time values: %v", seriesIdx, err),
+				Severity: "warning",
+				Fix: &FixSuggestion{
+					Kind:   FixKindReplaceValue,
+					Params: map[string]any{"series_index": seriesIdx, "error": err.Error()},
+				},
+			})
+			continue
+		}
+		if len(timeValues) == 0 {
 			continue
 		}
 
@@ -1266,7 +1307,20 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 		case *TimeScale:
 			// Handle time-series data
 			timeValues, err := series.GetTimeValues()
-			if err != nil || len(timeValues) == 0 {
+			if err != nil {
+				b.AddFinding(Finding{
+					Field:    fmt.Sprintf("data.series[%d].time_strings", seriesIdx),
+					Code:     FindingInvalidTimeFormat,
+					Message:  fmt.Sprintf("time series %d skipped — unparseable time values: %v", seriesIdx, err),
+					Severity: "warning",
+					Fix: &FixSuggestion{
+						Kind:   FixKindReplaceValue,
+						Params: map[string]any{"series_index": seriesIdx, "error": err.Error()},
+					},
+				})
+				continue
+			}
+			if len(timeValues) == 0 {
 				continue
 			}
 
@@ -2004,6 +2058,24 @@ func (pc *PieChart) Draw(data ChartData) error {
 	labels := data.Categories
 	if len(labels) == 0 && len(data.Series[0].Labels) > 0 {
 		labels = data.Series[0].Labels
+	}
+
+	// Detect zero-sum condition: all values zero or all negative.
+	total := 0.0
+	for _, v := range values {
+		total += v
+	}
+	if total <= 0 {
+		b.AddFinding(Finding{
+			Field:    "data.series[0].values",
+			Code:     FindingZeroSumPie,
+			Message:  "pie chart has zero or negative total — chart will render blank",
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReplaceValue,
+				Params: map[string]any{"total": total, "count": len(values)},
+			},
+		})
 	}
 
 	colors := pc.getColors(style, len(values))

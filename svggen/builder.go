@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/sebahrens/json2pptx/svggen/core"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/sebahrens/json2pptx/svggen/raster"
 	"github.com/tdewolff/canvas"
@@ -124,6 +125,11 @@ type SVGBuilder struct {
 	// Surfaced by FontErr() and Render(). Once set, all text operations no-op
 	// to avoid cascading failures, but the error is never silently swallowed.
 	fontErr error
+
+	// findings collects structured render-time diagnostics emitted by chart
+	// and diagram renderers during drawing. Retrieved via Findings() after
+	// the build is complete.
+	findings []core.Finding
 }
 
 // FontErr returns the first font-related error recorded during text operations,
@@ -131,6 +137,18 @@ type SVGBuilder struct {
 // "no text was drawn" from "font unavailable" should check this after building.
 func (b *SVGBuilder) FontErr() error {
 	return b.fontErr
+}
+
+// AddFinding appends a structured finding to the builder. Chart and diagram
+// renderers call this to report render-time diagnostics (e.g. zero-sum pie,
+// invalid time format) that are collected by the caller after rendering.
+func (b *SVGBuilder) AddFinding(f core.Finding) {
+	b.findings = append(b.findings, f)
+}
+
+// Findings returns all structured findings accumulated during rendering.
+func (b *SVGBuilder) Findings() []core.Finding {
+	return b.findings
 }
 
 // NewSVGBuilder creates a new SVGBuilder with the specified dimensions in points.
