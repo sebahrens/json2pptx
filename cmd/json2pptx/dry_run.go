@@ -97,6 +97,11 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 	}
 	applyDefaults(&input)
 
+	// Check for unknown keys (warn severity — additionalProperties:false).
+	for _, ve := range checkInputUnknownKeys(inputData) {
+		output.Warnings = append(output.Warnings, ve.Error())
+	}
+
 	// Validate required fields
 	if input.Template == "" {
 		output.Valid = false

@@ -149,8 +149,9 @@ type SlideQuality struct {
 }
 
 // parseJSONInput reads JSON from a file or stdin, applies patch operations if present,
-// applies the template override, and validates required fields.
-func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, error) {
+// applies the template override, and validates required fields. The returned
+// warnings include unknown-key detection (additionalProperties:false enforcement).
+func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, []string, error) {
 	var inputData []byte
 	var err error
 
@@ -160,7 +161,7 @@ func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, erro
 		inputData, err = os.ReadFile(jsonPath)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read JSON input: %w", err)
+		return nil, nil, fmt.Errorf("failed to read JSON input: %w", err)
 	}
 
 	var input PresentationInput
@@ -168,12 +169,12 @@ func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, erro
 	if err := json.Unmarshal(inputData, &patchInput); err == nil && len(patchInput.Operations) > 0 {
 		patched, patchErr := applyPresentationPatch(patchInput)
 		if patchErr != nil {
-			return nil, fmt.Errorf("failed to apply patch: %w", patchErr)
+			return nil, nil, fmt.Errorf("failed to apply patch: %w", patchErr)
 		}
 		input = *patched
 	} else {
 		if err := json.Unmarshal(inputData, &input); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON: %w", err)
+			return nil, nil, fmt.Errorf("failed to parse JSON: %w", err)
 		}
 	}
 
@@ -182,13 +183,19 @@ func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, erro
 	}
 
 	if input.Template == "" {
-		return nil, fmt.Errorf("template is required: use -template flag or set \"template\" in JSON input")
+		return nil, nil, fmt.Errorf("template is required: use -template flag or set \"template\" in JSON input")
 	}
 	if len(input.Slides) == 0 {
-		return nil, fmt.Errorf("at least one slide is required")
+		return nil, nil, fmt.Errorf("at least one slide is required")
 	}
 
-	return &input, nil
+	// Check for unknown keys (warn severity — additionalProperties:false).
+	var warnings []string
+	for _, ve := range checkInputUnknownKeys(inputData) {
+		warnings = append(warnings, ve.Error())
+	}
+
+	return &input, warnings, nil
 }
 
 // loadRunConfig loads configuration from configPath (or defaults) and applies CLI overrides.
@@ -268,10 +275,11 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	startTime := time.Now()
 
 	// Parse and validate JSON input
-	input, err := parseJSONInput(jsonPath, templateOverride)
+	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, err)
 	}
+	// inputWarnings consumed below via result.Warnings merge.
 
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(input)
@@ -346,7 +354,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
-	inputWarnings := validateSlidesChartData(input.Slides)
+	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
 
 	// Determine output filename — sanitize to prevent path traversal.
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)

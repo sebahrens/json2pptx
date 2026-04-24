@@ -300,8 +300,8 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return mcp.NewToolResultError(fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}
 
-	// Pre-validate chart/diagram data structures via svggen Validate().
-	inputWarnings := validateSlidesChartData(input.Slides)
+	// Check for unknown keys + pre-validate chart/diagram data.
+	inputWarnings := collectInputWarnings([]byte(jsonStr), input.Slides)
 
 	// Determine output filename
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)
@@ -534,9 +534,15 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// Apply deck-level defaults before validation.
 	applyDefaults(&input)
 
+	// Check for unknown keys (warn severity — additionalProperties:false).
+	var unknownKeyWarnings []string
+	for _, ve := range checkInputUnknownKeys([]byte(jsonStr)) {
+		unknownKeyWarnings = append(unknownKeyWarnings, ve.Error())
+	}
+
 	output := dryRunOutput{
 		Valid:    true,
-		Warnings: []string{},
+		Warnings: unknownKeyWarnings,
 		Slides:   []dryRunSlide{},
 	}
 

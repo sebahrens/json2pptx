@@ -166,6 +166,11 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 	}
 	applyDefaults(&input)
 
+	// Check for unknown keys (warn severity — additionalProperties:false).
+	for _, ve := range checkInputUnknownKeys(content) {
+		result.Warnings = append(result.Warnings, ve.Error())
+	}
+
 	// Validate required fields.
 	if input.Template == "" {
 		result.Valid = false
