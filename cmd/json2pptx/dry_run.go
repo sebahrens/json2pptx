@@ -259,17 +259,35 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 		// Check layout_id reference
 		lm, layoutFound := layoutByID[slideInput.LayoutID]
-		if !layoutFound {
-			output.Warnings = append(output.Warnings,
-				fmt.Sprintf("slide %d: layout_id %q not found in template", i+1, slideInput.LayoutID))
-		} else {
-			slide.LayoutName = lm.Name
-		}
-
 		if slideInput.LayoutID == "" {
 			output.Valid = false
 			output.Errors = append(output.Errors,
 				fmt.Sprintf("slide %d: layout_id is required", i+1))
+		} else if !layoutFound {
+			output.Valid = false
+			path := fmt.Sprintf("slides[%d].layout_id", i)
+			available := make([]string, 0, len(layoutByID))
+			for id := range layoutByID {
+				available = append(available, id)
+			}
+			msg := fmt.Sprintf("slide %d: %s", i+1, generator.LayoutNotFoundError(slideInput.LayoutID, available))
+			fix := &patterns.FixSuggestion{
+				Kind:   "use_one_of",
+				Params: map[string]any{"available": generator.FormatAvailableIDs(available)},
+			}
+			if match, _ := generator.ClosestMatch(slideInput.LayoutID, available, 3); match != "" {
+				fix.Params["did_you_mean"] = match
+			}
+			ve := &patterns.ValidationError{
+				Path:    path,
+				Code:    patterns.ErrCodeUnknownLayoutID,
+				Message: msg,
+				Fix:     fix,
+			}
+			output.Errors = append(output.Errors, ve.Error())
+			output.ValidationWarnings = append(output.ValidationWarnings, ve)
+		} else {
+			slide.LayoutName = lm.Name
 		}
 
 		// Validate content items using ContentInput.ResolveValue() for typed + legacy support

@@ -142,7 +142,7 @@ func (ctx *singlePassContext) readLayoutFile(layoutID string) ([]byte, error) {
 	layoutData, err := utils.ReadFileFromZipIndex(ctx.templateIndex, layoutPath)
 	if err != nil {
 		available := ctx.availableLayoutIDs()
-		return nil, fmt.Errorf("%s", layoutNotFoundError(layoutID, available))
+		return nil, fmt.Errorf("%s", LayoutNotFoundError(layoutID, available))
 	}
 	return layoutData, nil
 }

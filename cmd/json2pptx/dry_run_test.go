@@ -235,6 +235,90 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 	})
 }
 
+// TestValidateSlidesAgainstTemplate_UnknownLayoutID verifies that an unknown
+// layout_id produces an error (not a warning), sets Valid=false, and includes
+// a structured ValidationError with code "unknown_layout_id" and a did_you_mean
+// suggestion when the typo is close.
+func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
+	analysis := &types.TemplateAnalysis{
+		Layouts: []types.LayoutMetadata{
+			{ID: "content-slide", Name: "Content Slide"},
+			{ID: "title-slide", Name: "Title Slide"},
+			{ID: "section-header", Name: "Section Header"},
+		},
+	}
+
+	t.Run("typo layout_id is error with did_you_mean", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{LayoutID: "conten-slide"}} // typo
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		if output.Valid {
+			t.Error("expected Valid=false for unknown layout_id, got true")
+		}
+		if len(output.Errors) == 0 {
+			t.Fatal("expected at least one error for unknown layout_id")
+		}
+		if !strings.Contains(output.Errors[0], "not found") {
+			t.Errorf("error should mention 'not found': %s", output.Errors[0])
+		}
+		// Check structured ValidationError
+		if len(output.ValidationWarnings) == 0 {
+			t.Fatal("expected a ValidationError for unknown layout_id")
+		}
+		ve := output.ValidationWarnings[0]
+		if ve.Code != patterns.ErrCodeUnknownLayoutID {
+			t.Errorf("expected code %q, got %q", patterns.ErrCodeUnknownLayoutID, ve.Code)
+		}
+		if ve.Path != "slides[0].layout_id" {
+			t.Errorf("expected path slides[0].layout_id, got %q", ve.Path)
+		}
+		if ve.Fix == nil {
+			t.Fatal("expected fix suggestion")
+		}
+		if ve.Fix.Kind != "use_one_of" {
+			t.Errorf("expected fix kind 'use_one_of', got %q", ve.Fix.Kind)
+		}
+		dym, ok := ve.Fix.Params["did_you_mean"].(string)
+		if !ok || dym != "content-slide" {
+			t.Errorf("expected did_you_mean='content-slide', got %v", ve.Fix.Params["did_you_mean"])
+		}
+	})
+
+	t.Run("completely wrong layout_id is error without did_you_mean", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{LayoutID: "zzz-nonexistent-zzz"}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		if output.Valid {
+			t.Error("expected Valid=false for unknown layout_id")
+		}
+		if len(output.ValidationWarnings) == 0 {
+			t.Fatal("expected a ValidationError")
+		}
+		ve := output.ValidationWarnings[0]
+		if ve.Fix == nil {
+			t.Fatal("expected fix suggestion")
+		}
+		if _, ok := ve.Fix.Params["did_you_mean"]; ok {
+			t.Error("did not expect did_you_mean for completely wrong layout_id")
+		}
+	})
+
+	t.Run("valid layout_id produces no error", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{LayoutID: "content-slide"}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		if !output.Valid {
+			t.Error("expected Valid=true for valid layout_id")
+		}
+		if len(output.Errors) > 0 {
+			t.Errorf("unexpected errors: %v", output.Errors)
+		}
+	})
+}
+
 func TestValidateShapeFillColor_HexWarning(t *testing.T) {
 	tests := []struct {
 		name        string

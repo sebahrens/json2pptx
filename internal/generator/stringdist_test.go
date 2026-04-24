@@ -66,31 +66,31 @@ func TestClosestMatch(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		match, dist := closestMatch(tt.target, candidates, tt.maxDist)
+		match, dist := ClosestMatch(tt.target, candidates, tt.maxDist)
 		if tt.wantNoMatch {
 			if match != "" {
-				t.Errorf("closestMatch(%q) = (%q, %d), want no match", tt.target, match, dist)
+				t.Errorf("ClosestMatch(%q) = (%q, %d), want no match", tt.target, match, dist)
 			}
 		} else {
 			if match != tt.wantMatch {
-				t.Errorf("closestMatch(%q) match = %q, want %q", tt.target, match, tt.wantMatch)
+				t.Errorf("ClosestMatch(%q) match = %q, want %q", tt.target, match, tt.wantMatch)
 			}
 			if dist != tt.wantDist {
-				t.Errorf("closestMatch(%q) dist = %d, want %d", tt.target, dist, tt.wantDist)
+				t.Errorf("ClosestMatch(%q) dist = %d, want %d", tt.target, dist, tt.wantDist)
 			}
 		}
 	}
 }
 
 func TestClosestMatch_EmptyCandidates(t *testing.T) {
-	match, dist := closestMatch("anything", nil, 3)
+	match, dist := ClosestMatch("anything", nil, 3)
 	if match != "" || dist != -1 {
-		t.Errorf("closestMatch with nil candidates = (%q, %d), want (\"\", -1)", match, dist)
+		t.Errorf("ClosestMatch with nil candidates = (%q, %d), want (\"\", -1)", match, dist)
 	}
 
-	match, dist = closestMatch("anything", []string{}, 3)
+	match, dist = ClosestMatch("anything", []string{}, 3)
 	if match != "" || dist != -1 {
-		t.Errorf("closestMatch with empty candidates = (%q, %d), want (\"\", -1)", match, dist)
+		t.Errorf("ClosestMatch with empty candidates = (%q, %d), want (\"\", -1)", match, dist)
 	}
 }
 
@@ -104,9 +104,9 @@ func TestFormatAvailableIDs(t *testing.T) {
 		{[]string{}, "[]"},
 	}
 	for _, tt := range tests {
-		got := formatAvailableIDs(tt.ids)
+		got := FormatAvailableIDs(tt.ids)
 		if got != tt.want {
-			t.Errorf("formatAvailableIDs(%v) = %q, want %q", tt.ids, got, tt.want)
+			t.Errorf("FormatAvailableIDs(%v) = %q, want %q", tt.ids, got, tt.want)
 		}
 	}
 }
@@ -148,17 +148,17 @@ func TestLayoutNotFoundError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := layoutNotFoundError(tt.layoutID, tt.available)
+			got := LayoutNotFoundError(tt.layoutID, tt.available)
 			for _, want := range tt.wantContain {
 				if !strings.Contains(got, want) {
-					t.Errorf("layoutNotFoundError(%q) = %q, want to contain %q", tt.layoutID, got, want)
+					t.Errorf("LayoutNotFoundError(%q) = %q, want to contain %q", tt.layoutID, got, want)
 				}
 			}
 		})
 	}
 
 	// Verify "did you mean" is NOT present when no close match
-	msg := layoutNotFoundError("somethingCompletelyDifferent", []string{"slideLayout1"})
+	msg := LayoutNotFoundError("somethingCompletelyDifferent", []string{"slideLayout1"})
 	if strings.Contains(msg, "did you mean") {
 		t.Errorf("should not suggest match for very different string: %q", msg)
 	}

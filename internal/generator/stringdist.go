@@ -66,10 +66,10 @@ func min3(a, b, c int) int {
 	return c
 }
 
-// closestMatch finds the closest string to target from candidates using Levenshtein distance.
+// ClosestMatch finds the closest string to target from candidates using Levenshtein distance.
 // Returns the closest match and its distance. Only suggests if distance <= maxDistance.
 // Returns ("", -1) if no candidates exist or none are within maxDistance.
-func closestMatch(target string, candidates []string, maxDistance int) (string, int) {
+func ClosestMatch(target string, candidates []string, maxDistance int) (string, int) {
 	if len(candidates) == 0 {
 		return "", -1
 	}
@@ -91,24 +91,24 @@ func closestMatch(target string, candidates []string, maxDistance int) (string, 
 	return bestMatch, bestDist
 }
 
-// formatAvailableIDs formats a sorted list of IDs for error messages.
+// FormatAvailableIDs formats a sorted list of IDs for error messages.
 // Example output: [layout1, layout2, layout3]
-func formatAvailableIDs(ids []string) string {
+func FormatAvailableIDs(ids []string) string {
 	sorted := make([]string, len(ids))
 	copy(sorted, ids)
 	sort.Strings(sorted)
 	return "[" + strings.Join(sorted, ", ") + "]"
 }
 
-// layoutNotFoundError builds a descriptive error message when a layout_id is not found.
+// LayoutNotFoundError builds a descriptive error message when a layout_id is not found.
 // It lists available layouts and suggests the closest match if within distance 3.
-func layoutNotFoundError(layoutID string, availableLayouts []string) string {
+func LayoutNotFoundError(layoutID string, availableLayouts []string) string {
 	msg := fmt.Sprintf("layout_id %q not found in template", layoutID)
 
 	if len(availableLayouts) > 0 {
-		msg += fmt.Sprintf("; available layouts: %s", formatAvailableIDs(availableLayouts))
+		msg += fmt.Sprintf("; available layouts: %s", FormatAvailableIDs(availableLayouts))
 
-		if match, _ := closestMatch(layoutID, availableLayouts, 3); match != "" {
+		if match, _ := ClosestMatch(layoutID, availableLayouts, 3); match != "" {
 			msg += fmt.Sprintf("; did you mean %q?", match)
 		}
 	}
@@ -122,9 +122,9 @@ func placeholderNotFoundError(placeholderID string, layoutID string, availablePl
 	msg := fmt.Sprintf("placeholder_id %q not found in layout %q", placeholderID, layoutID)
 
 	if len(availablePlaceholders) > 0 {
-		msg += fmt.Sprintf("; available placeholders: %s", formatAvailableIDs(availablePlaceholders))
+		msg += fmt.Sprintf("; available placeholders: %s", FormatAvailableIDs(availablePlaceholders))
 
-		if match, _ := closestMatch(placeholderID, availablePlaceholders, 3); match != "" {
+		if match, _ := ClosestMatch(placeholderID, availablePlaceholders, 3); match != "" {
 			msg += fmt.Sprintf("; did you mean %q?", match)
 		}
 	}

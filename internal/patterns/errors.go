@@ -14,8 +14,9 @@ const (
 	ErrCodeUnknownKey    = "unknown_key"
 	ErrCodeMinItems      = "min_items"
 	ErrCodeMaxItems      = "max_items"
-	ErrCodeEmptyValue        = "empty_value"
-	ErrCodeHexFillNonBrand  = "hex_fill_non_brand"
+	ErrCodeEmptyValue          = "empty_value"
+	ErrCodeHexFillNonBrand    = "hex_fill_non_brand"
+	ErrCodeUnknownLayoutID    = "unknown_layout_id"
 
 	// Fit-report error codes.
 	ErrCodeFitOverflow       = "fit_overflow"
@@ -41,8 +42,9 @@ var (
 	ErrUnknownKey    = errors.New("unknown key")
 	ErrMinItems      = errors.New("too few items")
 	ErrMaxItems      = errors.New("too many items")
-	ErrEmptyValue        = errors.New("empty value")
-	ErrHexFillNonBrand  = errors.New("hex fill color is not in brand allowlist")
+	ErrEmptyValue          = errors.New("empty value")
+	ErrHexFillNonBrand    = errors.New("hex fill color is not in brand allowlist")
+	ErrUnknownLayoutID    = errors.New("layout_id not found in template")
 
 	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
@@ -64,8 +66,9 @@ var codeSentinel = map[string]error{
 	ErrCodeUnknownKey:    ErrUnknownKey,
 	ErrCodeMinItems:      ErrMinItems,
 	ErrCodeMaxItems:      ErrMaxItems,
-	ErrCodeEmptyValue:        ErrEmptyValue,
-	ErrCodeHexFillNonBrand:  ErrHexFillNonBrand,
+	ErrCodeEmptyValue:          ErrEmptyValue,
+	ErrCodeHexFillNonBrand:    ErrHexFillNonBrand,
+	ErrCodeUnknownLayoutID:    ErrUnknownLayoutID,
 	ErrCodeFitOverflow:       ErrFitOverflow,
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,
