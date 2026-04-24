@@ -12,9 +12,30 @@ description: >
 You generate structured JSON for the json2pptx engine. Your output must be valid input
 for the `generate_presentation` MCP tool (or the CLI `json2pptx generate -json`).
 
-Read `~/.claude/skills/template-deck/TEMPLATE_GUIDE.md` for the complete field reference
-(content types, chart types, diagram types, shape grid properties, patch operations).
-This skill covers the **generation workflow and patterns** — not the field reference.
+Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (content types, chart types, diagram types, shape grid properties, patch operations). This skill covers the **generation workflow and patterns** — not the field reference.
+
+---
+
+## MCP Tools (prefer over CLI shell-outs)
+
+When operating through the MCP server, prefer these tools over shelling out to the CLI:
+
+| Purpose | MCP tool | CLI equivalent |
+|---|---|---|
+| Introspect templates, patterns, layouts, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
+| Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines) |
+| Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
+| Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
+| Browse pattern catalog | `list_patterns` | `json2pptx patterns list` |
+| Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
+| Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
+| Expand a pattern (preview the shape_grid it produces) | `expand_pattern` | `json2pptx patterns expand` |
+| Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
+| Icon catalog | `list_icons` | `json2pptx icons list` |
+
+**Capability negotiation.** On MCP initialize, advertise the `compact_responses` experimental capability to opt into terser response envelopes (saves tokens on long decks). The server responds with a matching capability if supported.
+
+**Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`.
 
 ---
 
@@ -33,9 +54,7 @@ Slides:
   ...
 ```
 
-Each line picks a `layout_id` and a visual approach. For shape grid slides, name the
-pattern (run `json2pptx patterns list` for the catalog). For content slides, note the
-content type (bullets, chart, table, diagram).
+Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram).
 
 Present the outline to the user. Proceed to Stage 2 only after approval or if the user
 asked for the full deck directly.
@@ -46,8 +65,7 @@ the argument arc. Do not fragment this across stages.
 
 ### Stage 2: Generate Full JSON
 
-Generate the complete JSON in one pass. Use named patterns for shape grid slides — run
-`json2pptx patterns show <name>` for each pattern's value schema, then fill in content.
+Generate the complete JSON in one pass. Use named patterns for shape grid slides — call `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI) for each pattern's value schema, then fill in content. Set the pattern at the slide level via the `pattern` field (XOR with `shape_grid` — never set both).
 
 **Pre-emit checklist (verify BEFORE outputting JSON):**
 
@@ -59,8 +77,8 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
-1. **Schema check.** Call `validate_input` (MCP) or have the user run `json2pptx validate`. Fix any errors — fix only failing slides, don't regenerate the deck.
-2. **Generate.** Call `generate_presentation` (MCP) or `json2pptx generate`.
+1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). Fix any errors — fix only failing slides, don't regenerate the deck. The fit-report surfaces `patterns.ValidationError` items with `Fix.Kind` hints (e.g., `reduce_text`, `split_at_row`) that are directly actionable.
+2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `Fix.Kind: split_at_row|reduce_text`).
 3. **Render to images.** Run `pptx2jpg -input <out.pptx> -output <dir>/ -density 150`. Requires LibreOffice + ImageMagick; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done.
 4. **Inspection checklist (per slide).** Before handing back to the user, confirm:
    - [ ] Text fits its shape or cell — no clipping, no visible overflow.
@@ -78,17 +96,27 @@ Do not tell the user the deck is done until the checklist passes or you have exp
 
 ## Pattern Library
 
-For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-column
-comparisons, use json2pptx's named patterns. Named patterns expand to validated
-`shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with
-~100 tokens.
+For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-column comparisons, use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
 
-- **Browse the catalog:** `json2pptx patterns list`
-- **View a pattern's value schema:** `json2pptx patterns show <name>`
-- **Validate before generating:** `json2pptx patterns validate <name> <values.json>`
+- **Browse the catalog:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI)
+- **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI)
+- **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI)
+- **Preview expansion:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI)
 
-Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in
-the values, and let the engine handle grid structure, bounds, and gap arithmetic.
+Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
+
+```json
+{
+  "layout_id": "blank",
+  "pattern": {
+    "name": "kpi-3up",
+    "values": { ... },
+    "callout": {"text": "Takeaway", "emphasis": "accent1"}
+  }
+}
+```
+
+Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
 **Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content).
 
@@ -122,11 +150,11 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 
 | # | Rule | Rationale |
 |---|---|---|
-| 11 | `layout_id` canonical names only: `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda` | Display names like `"Title Slide"` fail to resolve |
+| 11 | `layout_id` must match a name returned by `list_templates` (MCP) or `json2pptx skill-info` (CLI). Common subset: `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda` | Display names like `"Title Slide"` fail to resolve; not every template ships every layout — prefer the authoritative list from introspection |
 | 12 | Semantic fills (`accent1`, `lt2`, `dk1`) required; hex `#RRGGBB` forbidden unless in brand-color allowlist. **Never mix semantic and hex fills on the same slide.** Never use raw names like `"blue"` | Semantic colors adapt to template theme; use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` for tints. Mixed hex+semantic on one slide breaks visual consistency and is always a bug |
 | 13 | `align`: `"l"`, `"ctr"`, `"r"`, `"just"` | NOT `"left"`, `"center"`, `"right"` |
 | 14 | `vertical_align`: `"t"`, `"ctr"`, `"b"` | NOT `"top"`, `"middle"`, `"bottom"` |
-| 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect with `json2pptx skill-info` |
+| 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect via `list_templates` (MCP) or `json2pptx skill-info` (CLI). Returns `color_roles`, `table_styles[]`, `white_text_safe`, `layout_names`, and `data_format_hints_digest` |
 
 **`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank` → `title` only (body goes in `shape_grid`); `section` → `title`, `subtitle`.
 
@@ -209,13 +237,31 @@ Good — all semantic:
 
 ## Color Roles
 
-Each template exposes `color_roles` in `json2pptx skill-info` output — use `primary_fill` / `secondary_fill` for header cells with white text, `body_fill` + `body_text` for card bodies, and check `white_text_safe` before using any accent with `#FFFFFF` text. For tints, use luminance modifiers: `{"color": "accent1", "lumMod": 20000, "lumOff": 80000}` (20% tint with `dk1` text).
+Each template exposes `color_roles` in `list_templates` (MCP) / `json2pptx skill-info` (CLI) output — use `primary_fill` / `secondary_fill` for header cells with white text, `body_fill` + `body_text` for card bodies, and check `white_text_safe` before using any accent with `#FFFFFF` text. For tints, use luminance modifiers: `{"color": "accent1", "lumMod": 20000, "lumOff": 80000}` (20% tint with `dk1` text).
+
+---
+
+## Deck-Level Defaults
+
+For multi-table decks, set shared styles once in the top-level `defaults` block instead of repeating them on every `table_value`:
+
+```json
+{
+  "defaults": {
+    "table_style": {"style_id": "grid-accent1", "header_background": "accent1"},
+    "cell_style": {"align": "l", "vertical_align": "ctr"}
+  },
+  "slides": [ ... ]
+}
+```
+
+**Semantics (V1).** Swap-only: any inline field on a table/cell fully replaces the corresponding defaults field for that field (no deep merge). Supported kinds: `table_style`, `cell_style`. See `../../docs/STYLE_DEFAULTS.md` for scope rules and the `@template-default` sentinel. Table styles available per template are listed in `list_templates`'s `table_styles[]` array.
 
 ---
 
 ## Table Density Reference
 
-Run `json2pptx tables guide` for detailed font size and row-count guidance when building table slides in shape grids. **Rule 20 (above) is enforced at generation time** — consult the tables guide for sizing recommendations within those hard limits.
+Call `table_density_guide` (MCP) or run `json2pptx tables guide` (CLI) for detailed font size and row-count guidance when building table slides in shape grids. **Rule 20 (above) is enforced at generation time** — consult the density guide for sizing recommendations within those hard limits. Pass `{template: "..."}` to scope results to a specific template's `table_styles[]`.
 
 ---
 
@@ -233,10 +279,10 @@ Run `json2pptx tables guide` for detailed font size and row-count guidance when 
 
 ## Icon Names
 
-Run `json2pptx icons list` for all available names (or `--json` for JSON output). Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell.
+Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available names. Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell.
 
 ---
 
 ## Reference
 
-For complete field specifications (connectors, accent bars, callout geometries, speaker notes, footers, backgrounds, theme overrides, patch operations, all chart/diagram types, and more), see `~/.claude/skills/template-deck/TEMPLATE_GUIDE.md` or run `json2pptx validate-template <path>`.
+For complete field specifications (connectors, accent bars, callout geometries, speaker notes, footers, backgrounds, theme overrides, patch operations, all chart/diagram types, and more), see `../template-deck/TEMPLATE_GUIDE.md` or run `json2pptx validate-template <path>`.
