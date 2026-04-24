@@ -23,6 +23,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
 // mcpConfig holds the resolved configuration for MCP tool handlers.
@@ -50,6 +51,11 @@ func runMCP() error {
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return err
+	}
+
+	// Fail fast if the font subsystem is broken.
+	if err := fontcache.Verify(); err != nil {
+		return fmt.Errorf("font subsystem check failed: %w", err)
 	}
 
 	// Load configuration

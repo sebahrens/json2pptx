@@ -16,6 +16,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
 func runServe() error {
@@ -39,6 +40,11 @@ func runServe() error {
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return err
+	}
+
+	// Fail fast if the font subsystem is broken.
+	if err := fontcache.Verify(); err != nil {
+		return fmt.Errorf("font subsystem check failed: %w", err)
 	}
 
 	// Setup logging

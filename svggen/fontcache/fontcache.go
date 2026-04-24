@@ -8,6 +8,7 @@ package fontcache
 
 import (
 	"container/list"
+	"fmt"
 	"sync"
 
 	"github.com/sebahrens/json2pptx/svggen/fonts"
@@ -129,6 +130,18 @@ func (c *fontCache) evictOldest() {
 	if e, ok := oldest.Value.(*entry); ok {
 		delete(c.items, e.key)
 	}
+}
+
+// Verify probes the font subsystem by loading a baseline font (the embedded
+// Liberation Sans). Returns an error if no font can be resolved — this
+// indicates a broken build or a stripped binary where even the embedded
+// fallback is missing.
+func Verify() error {
+	ff := Get("Liberation Sans", "")
+	if ff == nil {
+		return fmt.Errorf("fontcache: unable to load any font (even embedded Liberation Sans) — binary may be corrupt or fonts were stripped at build time")
+	}
+	return nil
 }
 
 // Len returns the number of entries currently in the cache. Useful for testing.

@@ -6,14 +6,20 @@
 package textfit
 
 import (
+	"errors"
 	"image/color"
 	"math"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/tdewolff/canvas"
 )
+
+// ErrNoFontCache is returned when fontcache.Get returns nil for the requested
+// font. This should never happen in production because the process fails fast
+// at startup if the font subsystem is broken (fontcache.Verify).
+var ErrNoFontCache = errors.New("textfit: font cache returned nil — font subsystem not initialised")
 
 // FitResult contains the OOXML autofit parameters.
 type FitResult struct {
@@ -87,9 +93,13 @@ const (
 
 // Calculate determines the font scale and line spacing reduction needed to fit
 // the given paragraphs within placeholder bounds.
-func Calculate(p Params) FitResult {
+//
+// Returns ErrNoFontCache if the font cache cannot resolve any font for the
+// requested family. This should never happen when fontcache.Verify passed at
+// startup.
+func Calculate(p Params) (FitResult, error) {
 	if len(p.Paragraphs) == 0 || p.WidthEMU <= 0 || p.HeightEMU <= 0 {
-		return FitResult{}
+		return FitResult{}, nil
 	}
 
 	// Apply defaults
@@ -112,15 +122,14 @@ func Calculate(p Params) FitResult {
 	usableWidthPt := widthPt - 2*marginPt
 	usableHeightPt := heightPt - 2*marginPt
 	if usableWidthPt <= 0 || usableHeightPt <= 0 {
-		return FitResult{}
+		return FitResult{}, nil
 	}
 
 	fontSizePt := float64(p.FontSizeHPt) / 100.0
 
 	ff := fontcache.Get(p.FontName, "")
 	if ff == nil {
-		// Can't measure — let PowerPoint handle it with default autofit
-		return FitResult{}
+		return FitResult{}, ErrNoFontCache
 	}
 
 	// Determine minimum font scale floor
@@ -138,11 +147,11 @@ func Calculate(p Params) FitResult {
 
 		if totalHeight <= usableHeightPt {
 			if scalePct == 100 {
-				return FitResult{} // Fits at full size
+				return FitResult{}, nil // Fits at full size
 			}
 			return FitResult{
 				FontScale: scalePct * 1000, // Convert to OOXML thousandths
-			}
+			}, nil
 		}
 	}
 
@@ -157,7 +166,7 @@ func Calculate(p Params) FitResult {
 			return FitResult{
 				FontScale:      minScale * 1000,
 				LnSpcReduction: lnReduction * 1000,
-			}
+			}, nil
 		}
 	}
 
@@ -166,7 +175,7 @@ func Calculate(p Params) FitResult {
 		FontScale:      minScale * 1000,
 		LnSpcReduction: maxLnSpcReductionPct * 1000,
 		Overflow:       true,
-	}
+	}, nil
 }
 
 // estimateTextHeight estimates the total height in points for the given paragraphs
@@ -268,10 +277,12 @@ func MaxFontForWidth(text string, widthEMU int64, fontName string) int {
 
 // MeasureHeight returns the estimated text height in EMU at 100% font scale
 // for the given params. This is a pure measurement — no fitting or scaling.
-// Returns 0 if measurement is not possible (empty input, missing font, etc.).
-func MeasureHeight(p Params) int64 {
+//
+// Returns ErrNoFontCache if the font cache cannot resolve any font.
+// Returns (0, nil) for empty input or degenerate dimensions.
+func MeasureHeight(p Params) (int64, error) {
 	if len(p.Paragraphs) == 0 || p.WidthEMU <= 0 || p.HeightEMU <= 0 {
-		return 0
+		return 0, nil
 	}
 
 	if p.FontSizeHPt <= 0 {
@@ -287,18 +298,18 @@ func MeasureHeight(p Params) int64 {
 	widthPt := float64(p.WidthEMU) / float64(emuPerPoint)
 	usableWidthPt := widthPt - 2*7.2 // OOXML default margins
 	if usableWidthPt <= 0 {
-		return 0
+		return 0, nil
 	}
 
 	fontSizePt := float64(p.FontSizeHPt) / 100.0
 
 	ff := fontcache.Get(p.FontName, "")
 	if ff == nil {
-		return 0
+		return 0, ErrNoFontCache
 	}
 
 	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
-	return int64(math.Ceil(heightPt * float64(emuPerPoint)))
+	return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
 }
 
 // wrapText estimates how many lines a paragraph will need when word-wrapped

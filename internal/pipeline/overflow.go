@@ -38,13 +38,16 @@ func estimateBodyOverflow(slide types.SlideDefinition, selection *layout.Selecti
 		fontName = "Arial"
 	}
 
-	result := textfit.Calculate(textfit.Params{
+	result, err := textfit.Calculate(textfit.Params{
 		WidthEMU:    bodyPH.Bounds.Width,
 		HeightEMU:   bodyPH.Bounds.Height,
 		FontSizeHPt: fontSizeHPt,
 		FontName:    fontName,
 		Paragraphs:  paragraphs,
 	})
+	if err != nil {
+		return false // cannot measure — assume fits
+	}
 
 	return result.Overflow
 }

@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
 func runGenerate() error {
@@ -50,6 +52,12 @@ func runGenerate() error {
 	if *jsonInput == "" {
 		fs.Usage()
 		return fmt.Errorf("JSON input is required: use -json <file.json> or -json - for stdin")
+	}
+
+	// Fail fast if the font subsystem is broken — this prevents silent
+	// "fits perfectly" results from textfit when no fonts can be loaded.
+	if err := fontcache.Verify(); err != nil {
+		return fmt.Errorf("font subsystem check failed: %w", err)
 	}
 
 	if *dryRun {

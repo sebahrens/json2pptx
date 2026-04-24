@@ -63,8 +63,8 @@ func DetectPlaceholderOverflow(input PlaceholderOverflowInput) *patterns.FitFind
 	}
 
 	// Condition 1: measured height at 100% scale significantly exceeds frame.
-	measuredEMU := textfit.MeasureHeight(params)
-	if measuredEMU <= 0 {
+	measuredEMU, err := textfit.MeasureHeight(params)
+	if err != nil || measuredEMU <= 0 {
 		return nil // cannot measure — skip
 	}
 
@@ -81,8 +81,8 @@ func DetectPlaceholderOverflow(input PlaceholderOverflowInput) *patterns.FitFind
 	// Condition 3: even at minimum autofit font scale, text still overflows.
 	// This acts as a safety net: if hypothetically adding normAutofit would
 	// fix it, we don't flag — the remediation is to add autofit, not split.
-	fitResult := textfit.Calculate(params)
-	if !fitResult.Overflow {
+	fitResult, err := textfit.Calculate(params)
+	if err != nil || !fitResult.Overflow {
 		return nil
 	}
 
@@ -155,8 +155,8 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 		Paragraphs:  []string{input.Title},
 	}
 
-	measuredEMU := textfit.MeasureHeight(params)
-	if measuredEMU <= 0 {
+	measuredEMU, err := textfit.MeasureHeight(params)
+	if err != nil || measuredEMU <= 0 {
 		return nil
 	}
 

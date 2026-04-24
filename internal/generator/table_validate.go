@@ -64,7 +64,10 @@ func WarnTableCellOverflow(table *types.TableSpec, slideIdx int) []TableCellOver
 		if header == "" {
 			continue
 		}
-		m := textfit.MeasureRun(header, defaultFontFamily, fontPt, colWidthEMU, 0)
+		m, err := textfit.MeasureRun(header, defaultFontFamily, fontPt, colWidthEMU, 0)
+		if err != nil {
+			continue
+		}
 		if m.RequiredEMU > slackThresholdEMU {
 			warnings = append(warnings, TableCellOverflowWarning{
 				SlideIndex:  slideIdx,
@@ -82,7 +85,10 @@ func WarnTableCellOverflow(table *types.TableSpec, slideIdx int) []TableCellOver
 			if cell.Content == "" || cell.IsMerged {
 				continue
 			}
-			m := textfit.MeasureRun(cell.Content, defaultFontFamily, fontPt, colWidthEMU, 0)
+			m, err := textfit.MeasureRun(cell.Content, defaultFontFamily, fontPt, colWidthEMU, 0)
+			if err != nil {
+				continue
+			}
 			if m.RequiredEMU > slackThresholdEMU {
 				warnings = append(warnings, TableCellOverflowWarning{
 					SlideIndex:  slideIdx,

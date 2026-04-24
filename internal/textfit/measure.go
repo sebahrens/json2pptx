@@ -31,12 +31,15 @@ type RunMeasurement struct {
 // fontName selects the font family (falls back to "Arial").
 // maxLines caps how many lines are allowed; characters beyond that count as
 // overflow. Pass 0 or negative to allow unlimited lines.
-func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, maxLines int) RunMeasurement {
+//
+// Returns ErrNoFontCache if neither the requested font nor "Arial" can be
+// resolved from the font cache.
+func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, maxLines int) (RunMeasurement, error) {
 	if text == "" {
-		return RunMeasurement{Lines: 0, Fits: true}
+		return RunMeasurement{Lines: 0, Fits: true}, nil
 	}
 	if widthEMU <= 0 || fontPt <= 0 {
-		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}
+		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}, nil
 	}
 
 	ff := fontcache.Get(fontName, "")
@@ -44,14 +47,13 @@ func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, ma
 		ff = fontcache.Get("Arial", "")
 	}
 	if ff == nil {
-		// Cannot measure — report single line, fits (let PowerPoint handle it).
-		return RunMeasurement{Lines: 1, Fits: true}
+		return RunMeasurement{}, ErrNoFontCache
 	}
 
 	// Convert EMU to points, subtract default OOXML margins (7.2pt each side).
 	widthPt := float64(widthEMU)/float64(emuPerPoint) - 2*7.2
 	if widthPt <= 0 {
-		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}
+		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}, nil
 	}
 
 	face := ff.Face(fontPt*ptToMM, color.Black, canvas.FontRegular, canvas.FontNormal)
@@ -73,7 +75,7 @@ func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, ma
 		RequiredEMU:   requiredEMU,
 		OverflowChars: overflowChars,
 		Fits:          overflowChars == 0,
-	}
+	}, nil
 }
 
 // estimateOverflowChars approximates how many characters don't fit within

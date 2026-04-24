@@ -147,7 +147,12 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		MinFontScalePct: cfg.minFontScalePct,
 	}
 
-	result := textfit.Calculate(params)
+	result, err := textfit.Calculate(params)
+	if err != nil {
+		slog.Warn("textfit: font cache unavailable, skipping autofit", slog.String("err", err.Error()))
+		bp.Inner += `<a:normAutofit/>`
+		return
+	}
 	// Prefer readability over completeness: when font would shrink below the
 	// readability threshold and there are enough paragraphs to trim, remove
 	// trailing paragraphs to keep text at a legible size.
@@ -234,7 +239,10 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params) textfit.FitR
 		trimmedParams.ExtraSpacingsPt = trimmedSpacings
 		trimmedParams.LeftMarginsPt = trimmedMargins
 
-		result := textfit.Calculate(trimmedParams)
+		result, err := textfit.Calculate(trimmedParams)
+		if err != nil {
+			break // font cache unavailable — fall through to overflow
+		}
 		if !result.Overflow {
 			// Content fits after trimming — update shape paragraphs
 			shape.TextBody.Paragraphs = paras
@@ -316,7 +324,10 @@ func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontSca
 		trimmedParams.ExtraSpacingsPt = trimmedSpacings
 		trimmedParams.LeftMarginsPt = trimmedMargins
 
-		result := textfit.Calculate(trimmedParams)
+		result, err := textfit.Calculate(trimmedParams)
+		if err != nil {
+			break // font cache unavailable — fall through to original
+		}
 		if !result.Overflow && (result.FontScale == 0 || result.FontScale >= targetMinFontScale) {
 			// Content fits at an acceptable font scale — update shape
 			shape.TextBody.Paragraphs = paras
@@ -345,7 +356,8 @@ func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontSca
 	}
 
 	// Couldn't achieve target — return original calculation
-	return textfit.Calculate(params)
+	result, _ := textfit.Calculate(params)
+	return result
 }
 
 // getShapeDimensions returns the width and height of a shape in EMUs.

@@ -884,7 +884,10 @@ func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) erro
 	// Check header cells.
 	for hi, header := range table.Headers {
 		widthEMU := colWidths[hi]
-		m := textfit.MeasureRun(header, fontName, fontPt, widthEMU, maxLines)
+		m, err := textfit.MeasureRun(header, fontName, fontPt, widthEMU, maxLines)
+		if err != nil {
+			continue // font cache unavailable — skip strict check
+		}
 		if !m.Fits {
 			return &patterns.ValidationError{
 				Pattern: "table",
@@ -903,7 +906,10 @@ func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) erro
 				continue
 			}
 			widthEMU := colWidths[ci]
-			m := textfit.MeasureRun(cell.Content, fontName, fontPt, widthEMU, maxLines)
+			m, err := textfit.MeasureRun(cell.Content, fontName, fontPt, widthEMU, maxLines)
+			if err != nil {
+				continue // font cache unavailable — skip strict check
+			}
 			if !m.Fits {
 				return &patterns.ValidationError{
 					Pattern: "table",

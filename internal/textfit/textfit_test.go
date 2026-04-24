@@ -17,7 +17,10 @@ func TestCalculate_EmptyInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Calculate(tt.params)
+			result, err := Calculate(tt.params)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if result.NeedsAutofit() {
 				t.Error("expected no autofit for empty/zero input")
 			}
@@ -28,13 +31,16 @@ func TestCalculate_EmptyInput(t *testing.T) {
 func TestCalculate_ShortTextFits(t *testing.T) {
 	// A single short paragraph in a large placeholder should not need scaling.
 	// Placeholder: ~5 inches wide, ~3 inches tall
-	result := Calculate(Params{
+	result, err := Calculate(Params{
 		WidthEMU:    5 * 914400, // 5 inches
 		HeightEMU:   3 * 914400, // 3 inches
 		FontSizeHPt: 1800,       // 18pt
 		FontName:    "Arial",
 		Paragraphs:  []string{"Short text"},
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if result.NeedsAutofit() {
 		t.Errorf("short text should fit without scaling, got FontScale=%d LnSpcReduction=%d",
@@ -49,13 +55,16 @@ func TestCalculate_ManyBulletsTriggerScaling(t *testing.T) {
 		bullets[i] = "This is a bullet point with some text that takes up space"
 	}
 
-	result := Calculate(Params{
+	result, err := Calculate(Params{
 		WidthEMU:    3 * 914400, // 3 inches
 		HeightEMU:   2 * 914400, // 2 inches
 		FontSizeHPt: 1800,       // 18pt
 		FontName:    "Arial",
 		Paragraphs:  bullets,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if !result.NeedsAutofit() {
 		t.Error("20 bullets in small placeholder should need autofit")
@@ -75,13 +84,16 @@ func TestCalculate_ExtremeOverflow(t *testing.T) {
 		paragraphs[i] = strings.Repeat("This is a very long paragraph that should definitely overflow. ", 5)
 	}
 
-	result := Calculate(Params{
+	result, err := Calculate(Params{
 		WidthEMU:    1 * 914400, // 1 inch
 		HeightEMU:   1 * 914400, // 1 inch
 		FontSizeHPt: 2400,       // 24pt
 		FontName:    "Arial",
 		Paragraphs:  paragraphs,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if !result.Overflow {
 		t.Error("extreme text should flag overflow")
@@ -114,11 +126,14 @@ func TestFitResult_NeedsAutofit(t *testing.T) {
 
 func TestCalculate_DefaultValues(t *testing.T) {
 	// Should work with zero FontSizeHPt and empty FontName (uses defaults).
-	result := Calculate(Params{
+	result, err := Calculate(Params{
 		WidthEMU:   5 * 914400,
 		HeightEMU:  3 * 914400,
 		Paragraphs: []string{"Some text"},
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Should not panic and should return a valid result
 	_ = result
@@ -165,12 +180,18 @@ func TestCalculate_PerParagraphSpacing(t *testing.T) {
 	}
 
 	// Without per-paragraph spacing
-	resultUniform := Calculate(baseParams)
+	resultUniform, err := Calculate(baseParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// With per-paragraph spacing
 	paramsWithSpacing := baseParams
 	paramsWithSpacing.ExtraSpacingsPt = perParaSpacings
-	resultPerPara := Calculate(paramsWithSpacing)
+	resultPerPara, err := Calculate(paramsWithSpacing)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Per-paragraph spacing adds more height, so it should require more aggressive scaling
 	// (lower FontScale) or trigger scaling when uniform doesn't
@@ -208,7 +229,10 @@ func TestCalculate_LeftMarginsReduceAvailableWidth(t *testing.T) {
 	}
 
 	// Without left margins
-	resultNoMargin := Calculate(baseParams)
+	resultNoMargin, err := Calculate(baseParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// With left margins on bullet paragraphs (~30pt, matching typical lvl1 marL=384048 EMU)
 	paramsWithMargin := baseParams
@@ -220,7 +244,10 @@ func TestCalculate_LeftMarginsReduceAvailableWidth(t *testing.T) {
 		30.24,
 		30.24,
 	}
-	resultWithMargin := Calculate(paramsWithMargin)
+	resultWithMargin, err := Calculate(paramsWithMargin)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// With margins, either scaling is more aggressive or overflow is triggered
 	if resultWithMargin.NeedsAutofit() && resultNoMargin.NeedsAutofit() {
@@ -235,15 +262,18 @@ func TestCalculate_LeftMarginsNil(t *testing.T) {
 	// Nil LeftMarginsPt should behave identically to no margins
 	paragraphs := []string{"Line 1", "Line 2", "Line 3"}
 
-	result1 := Calculate(Params{
+	result1, err := Calculate(Params{
 		WidthEMU:    3 * 914400,
 		HeightEMU:   2 * 914400,
 		FontSizeHPt: 1800,
 		FontName:    "Arial",
 		Paragraphs:  paragraphs,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	result2 := Calculate(Params{
+	result2, err := Calculate(Params{
 		WidthEMU:      3 * 914400,
 		HeightEMU:     2 * 914400,
 		FontSizeHPt:   1800,
@@ -251,6 +281,9 @@ func TestCalculate_LeftMarginsNil(t *testing.T) {
 		Paragraphs:    paragraphs,
 		LeftMarginsPt: nil,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if result1.FontScale != result2.FontScale {
 		t.Errorf("nil LeftMarginsPt should match no margins: got %d vs %d",
@@ -324,7 +357,7 @@ func TestCalculate_MinFontScalePctUsedInLnSpcReductionPath(t *testing.T) {
 		paragraphs[i] = "This is a medium-length bullet point for testing overflow"
 	}
 
-	result := Calculate(Params{
+	result, err := Calculate(Params{
 		WidthEMU:        3 * 914400,  // 3 inches
 		HeightEMU:       2 * 914400,  // 2 inches
 		FontSizeHPt:     2000,        // 20pt
@@ -332,6 +365,9 @@ func TestCalculate_MinFontScalePctUsedInLnSpcReductionPath(t *testing.T) {
 		Paragraphs:      paragraphs,
 		MinFontScalePct: 45,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// The result should have FontScale based on 45% (or the correct floor),
 	// not the default 60%.
@@ -355,7 +391,7 @@ func TestCalculate_PerParagraphSpacingNil(t *testing.T) {
 	// When ExtraSpacingsPt is nil, behavior should be identical to uniform ExtraSpacingPt
 	paragraphs := []string{"Line 1", "Line 2", "Line 3"}
 
-	result1 := Calculate(Params{
+	result1, err := Calculate(Params{
 		WidthEMU:       3 * 914400,
 		HeightEMU:      2 * 914400,
 		FontSizeHPt:    1800,
@@ -363,8 +399,11 @@ func TestCalculate_PerParagraphSpacingNil(t *testing.T) {
 		Paragraphs:     paragraphs,
 		ExtraSpacingPt: 12.0,
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	result2 := Calculate(Params{
+	result2, err := Calculate(Params{
 		WidthEMU:        3 * 914400,
 		HeightEMU:       2 * 914400,
 		FontSizeHPt:     1800,
@@ -373,6 +412,9 @@ func TestCalculate_PerParagraphSpacingNil(t *testing.T) {
 		ExtraSpacingPt:  12.0,
 		ExtraSpacingsPt: nil, // explicitly nil
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if result1.FontScale != result2.FontScale {
 		t.Errorf("nil ExtraSpacingsPt should match uniform: got %d vs %d",

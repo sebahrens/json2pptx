@@ -145,7 +145,10 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 
 	// Measure header cells.
 	for hi, header := range table.Headers {
-		m := textfit.MeasureRun(header, "Calibri", fontPt, colWidthEMU, maxLines)
+		m, err := textfit.MeasureRun(header, "Calibri", fontPt, colWidthEMU, maxLines)
+		if err != nil {
+			continue
+		}
 		if !m.Fits {
 			findings = append(findings, fitFinding{
 				Code:             patterns.ErrCodeFitOverflow,
@@ -167,7 +170,10 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 			if cell.Content == "" {
 				continue
 			}
-			m := textfit.MeasureRun(cell.Content, "Calibri", fontPt, colWidthEMU, maxLines)
+			m, err := textfit.MeasureRun(cell.Content, "Calibri", fontPt, colWidthEMU, maxLines)
+			if err != nil {
+				continue
+			}
 			if !m.Fits {
 				findings = append(findings, fitFinding{
 					Code:             patterns.ErrCodeFitOverflow,
@@ -274,8 +280,8 @@ func measureShapeText(shape *ShapeSpecInput, pathPrefix string, grid *ShapeGridI
 		maxLines = 1
 	}
 
-	m := textfit.MeasureRun(text, "Arial", fontPt, cellWidthEMU, maxLines)
-	if m.Fits {
+	m, err := textfit.MeasureRun(text, "Arial", fontPt, cellWidthEMU, maxLines)
+	if err != nil || m.Fits {
 		return nil
 	}
 
