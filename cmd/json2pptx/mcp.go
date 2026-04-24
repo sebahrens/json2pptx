@@ -318,6 +318,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		MaxPNGWidth:           mc.cfg.SVG.MaxPNGWidth,
 		ExcludeTemplateSlides: true,
 		SyntheticFiles:        syntheticFiles,
+		StrictFit:             strictFit,
 	}
 
 	if input.Footer != nil && input.Footer.Enabled {

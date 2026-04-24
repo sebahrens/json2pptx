@@ -129,6 +129,10 @@ type ChartContext struct {
 	// themeOverride contains per-deck color/font overrides from frontmatter.
 	// Applied after template theme is parsed, before chart rendering.
 	themeOverride *types.ThemeOverride
+
+	// strictFit controls how chart/diagram fit findings affect generation.
+	// Threaded to svggen via RequestEnvelope.Output.StrictFit.
+	strictFit string
 }
 
 // OutputContext holds output tracking state.

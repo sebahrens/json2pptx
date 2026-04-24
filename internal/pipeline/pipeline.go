@@ -57,6 +57,9 @@ type ConvertRequest struct {
 	// When true, the pipeline runs all parsing, validation, and layout
 	// selection steps but does not produce an output file.
 	DryRun bool
+	// StrictFit controls how chart/diagram fit findings affect generation.
+	// Values: "off", "warn" (default), "strict".
+	StrictFit string
 }
 
 // ConvertResult contains the output of a conversion operation.
@@ -182,6 +185,7 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 		MaxPNGWidth:           req.MaxPNGWidth,
 		ExcludeTemplateSlides: req.ExcludeTemplateSlides,
 		ThemeOverride:         presentation.Metadata.ThemeOverride,
+		StrictFit:             req.StrictFit,
 	}
 	if effectiveAnalysis.Synthesis != nil {
 		genReq.SyntheticFiles = effectiveAnalysis.Synthesis.SyntheticFiles

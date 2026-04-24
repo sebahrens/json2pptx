@@ -286,6 +286,7 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	ctx.svgConverter = NewSVGConverterWithConfig(svgCfg)
 	ctx.themeOverride = req.ThemeOverride
 	ctx.footerConfig = req.Footer
+	ctx.strictFit = req.StrictFit
 
 	cleanup, err := ctx.initializeContext(req.TemplatePath)
 	if err != nil {

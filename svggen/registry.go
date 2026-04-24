@@ -43,6 +43,12 @@ func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*R
 		slog.Warn("diagram data is empty; output will be blank", "type", req.Type)
 	}
 
+	// Log strict-fit level when set. Currently a no-op — severity promotion
+	// will be wired once chart findings are emitted (κ follow-up).
+	if sf := req.Output.StrictFit; sf != "" && sf != "off" {
+		slog.Debug("strict-fit level accepted for chart render", "level", sf, "type", req.Type)
+	}
+
 	// Clamp extreme float64 values to prevent NaN/Inf in downstream math.
 	if req.Data != nil {
 		core.ClampDataValues(req.Data)

@@ -83,7 +83,7 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := diagramSpecToSVGGen(tt.spec, tt.themeColors, 0)
+			result := diagramSpecToSVGGen(tt.spec, tt.themeColors, 0, "")
 
 			if result.Type != tt.wantType {
 				t.Errorf("diagramSpecToSVGGen() Type = %v, want %v", result.Type, tt.wantType)
@@ -109,6 +109,22 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 			}
 		})
 	}
+
+	// Verify StrictFit is threaded to OutputSpec.
+	t.Run("strict_fit_threaded", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "series": []any{}},
+		}
+		result := diagramSpecToSVGGen(spec, nil, 0, "strict")
+		if result.Output.StrictFit != "strict" {
+			t.Errorf("StrictFit = %q, want %q", result.Output.StrictFit, "strict")
+		}
+		resultOff := diagramSpecToSVGGen(spec, nil, 0, "")
+		if resultOff.Output.StrictFit != "" {
+			t.Errorf("StrictFit = %q, want empty", resultOff.Output.StrictFit)
+		}
+	})
 }
 
 func TestRenderDiagramSpec(t *testing.T) {

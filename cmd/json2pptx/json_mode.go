@@ -365,6 +365,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		MaxPNGWidth:           cfg.SVG.MaxPNGWidth,
 		ExcludeTemplateSlides: true,
 		SyntheticFiles:        syntheticFiles,
+		StrictFit:             strictFit,
 	}
 
 	// Wire footer configuration

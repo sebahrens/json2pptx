@@ -47,7 +47,7 @@ type DiagramRenderResult struct {
 // The themeColors parameter allows injecting template colors for consistent styling.
 // Returns PNG bytes suitable for embedding in a PPTX document.
 func RenderDiagramSpec(spec *types.DiagramSpec, themeColors []types.ThemeColor) ([]byte, error) {
-	result, err := RenderDiagramSpecWithMetadata(spec, themeColors, 0, false)
+	result, err := renderDiagramSpecFull(spec, themeColors, 0, false, "")
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +70,11 @@ func RenderDiagramSpec(spec *types.DiagramSpec, themeColors []types.ThemeColor) 
 // tdewolff/canvas mutex bottleneck for diagrams. The caller must supply a fallback PNG
 // (e.g., the 1x1 transparent constant) when embedding with native SVG strategy.
 func RenderDiagramSpecWithMetadata(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, svgOnly bool) (*DiagramRenderResult, error) {
+	return renderDiagramSpecFull(spec, themeColors, maxPNGWidth, svgOnly, "")
+}
+
+// renderDiagramSpecFull is the internal implementation that accepts strictFit.
+func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, svgOnly bool, strictFit string) (*DiagramRenderResult, error) {
 	if spec == nil {
 		return nil, fmt.Errorf("diagram spec is required")
 	}
@@ -79,7 +84,7 @@ func RenderDiagramSpecWithMetadata(spec *types.DiagramSpec, themeColors []types.
 	}
 
 	// Convert DiagramSpec to svggen RequestEnvelope
-	req := diagramSpecToSVGGen(spec, themeColors, maxPNGWidth)
+	req := diagramSpecToSVGGen(spec, themeColors, maxPNGWidth, strictFit)
 
 	// Determine which formats to request from svggen.
 	// When svgOnly is true (native SVG strategy), skip PNG rasterization entirely.
@@ -125,7 +130,8 @@ func RenderDiagramSpecWithMetadata(spec *types.DiagramSpec, themeColors []types.
 
 // diagramSpecToSVGGen converts a types.DiagramSpec to an svggen.RequestEnvelope.
 // maxPNGWidth caps the PNG output width (0 = no cap).
-func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int) *svggen.RequestEnvelope {
+// strictFit is threaded to OutputSpec.StrictFit for future severity promotion.
+func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope {
 	// Build style spec
 	style := svggen.StyleSpec{}
 
@@ -172,6 +178,7 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		Format:      "png",
 		FitMode:     spec.FitMode,
 		MaxPNGWidth: maxPNGWidth,
+		StrictFit:   strictFit,
 	}
 
 	if spec.Width > 0 {

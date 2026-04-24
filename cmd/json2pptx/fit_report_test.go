@@ -386,6 +386,43 @@ func TestStrictFit_Warn_Succeeds(t *testing.T) {
 	}
 }
 
+func TestStrictFit_ChartNoFindings_NoRejection(t *testing.T) {
+	// Integration test: strict-fit=strict with a chart that produces zero
+	// fit findings should succeed (baseline parity — svggen accepts the
+	// level but does not act on it yet).
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "input.json")
+	outputPath := filepath.Join(tmpDir, "result.json")
+
+	input := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "content",
+			"content": [{
+				"placeholder_id": "body",
+				"type": "chart",
+				"chart_value": {
+					"type": "bar_chart",
+					"title": "Revenue",
+					"data": {
+						"categories": ["Q1","Q2","Q3"],
+						"series": [{"name":"Rev","values":[10,20,30]}]
+					}
+				}
+			}]
+		}]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	templatesDir := filepath.Join("..", "..", "templates")
+	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict")
+	if err != nil {
+		t.Fatalf("strict-fit=strict with zero chart findings should not reject: %v", err)
+	}
+}
+
 func TestExtractShapeTextAndFont(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -795,7 +795,7 @@ func (ctx *singlePassContext) resolveDiagramWithMetadata(slideNum int, item Cont
 	// When using native SVG strategy, skip PNG rasterization entirely.
 	// The OOXML blip fallback uses a 1x1 transparent PNG constant instead.
 	svgOnly := ctx.svgConverter != nil && ctx.svgConverter.GetStrategy() == SVGStrategyNative
-	rendered, err := RenderDiagramSpecWithMetadata(diagramSpec, ctx.themeColors, maxPNGWidth, svgOnly)
+	rendered, err := renderDiagramSpecFull(diagramSpec, ctx.themeColors, maxPNGWidth, svgOnly, ctx.strictFit)
 	if err != nil {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to render diagram for placeholder %s: %v", item.PlaceholderID, err))
 		return nil, false

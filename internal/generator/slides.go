@@ -37,6 +37,7 @@ type GenerationRequest struct {
 	ThemeOverride         *types.ThemeOverride // Per-deck theme color/font overrides from frontmatter (nil = no override)
 	SyntheticFiles        map[string][]byte   // Synthetic layout files from SynthesisManifest (nil = no synthetic layouts)
 	Footer                *FooterConfig       // Footer configuration (nil = disabled)
+	StrictFit             string              // Text-fit checking mode for charts: "off", "warn", "strict" (default: "warn")
 }
 
 // BackgroundImage specifies a slide background image.
