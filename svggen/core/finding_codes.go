@@ -99,3 +99,93 @@ type Finding struct {
 	// Fix is an optional structured remediation suggestion.
 	Fix *FixSuggestion `json:"fix,omitempty"`
 }
+
+// Severity constants used by findings and the strict-fit promotion ladder.
+const (
+	SeverityInfo          = "info"
+	SeverityWarning       = "warning"
+	SeverityShrinkOrSplit = "shrink_or_split"
+	SeverityRefuse        = "refuse"
+)
+
+// promotionRule defines how a finding code's severity is promoted under each
+// strict-fit level. An empty string means "no promotion; keep original".
+type promotionRule struct {
+	warnLevel   string // severity when strict-fit=warn
+	strictLevel string // severity when strict-fit=strict
+}
+
+// promotionTable maps finding codes to their per-level severity promotions.
+// Codes absent from this table keep their original severity at all levels.
+//
+// Rationale (from θ telemetry baseline, 2-week eval run):
+//
+//   warn level promotes content-loss codes to shrink_or_split so agents see
+//   them as actionable. strict level promotes data-integrity codes to refuse
+//   so generation is blocked on bad input.
+//
+//   Advisory codes (auto-adjustments, label fitting) remain informational
+//   because they represent successful graceful degradation, not errors.
+var promotionTable = map[string]promotionRule{
+	// --- Content-loss codes: promoted under warn ---
+	FindingCapacityExceeded:      {warnLevel: SeverityShrinkOrSplit, strictLevel: SeverityRefuse},
+	FindingLegendOverflowDropped: {warnLevel: SeverityShrinkOrSplit, strictLevel: SeverityShrinkOrSplit},
+	FindingOverflowSuppressed:    {warnLevel: SeverityShrinkOrSplit, strictLevel: SeverityShrinkOrSplit},
+
+	// --- Data-integrity codes: promoted under strict only ---
+	FindingInvalidNumeric:    {strictLevel: SeverityRefuse},
+	FindingZeroSumPie:        {strictLevel: SeverityRefuse},
+	FindingNegativeOnLog:     {strictLevel: SeverityRefuse},
+	FindingInvalidTimeFormat: {strictLevel: SeverityRefuse},
+	FindingAllZeroSeries:     {strictLevel: SeverityRefuse},
+
+	// Advisory codes are intentionally absent — they keep original severity.
+	// FindingAutoLogScaleApplied, FindingTickThinned, FindingScatterLabelSkipped,
+	// FindingLabelTruncated, FindingLabelEllipsized, FindingLabelClipped
+}
+
+// PromoteFindings applies the strict-fit severity ladder to a slice of
+// findings, returning a new slice with promoted severities. The original
+// slice is not modified.
+//
+// strictFit values: "off" or "" → no promotion; "warn" → warn-level
+// promotions; "strict" → strict-level promotions.
+func PromoteFindings(findings []Finding, strictFit string) []Finding {
+	if strictFit == "" || strictFit == "off" || len(findings) == 0 {
+		return findings
+	}
+
+	out := make([]Finding, len(findings))
+	copy(out, findings)
+
+	for i := range out {
+		rule, ok := promotionTable[out[i].Code]
+		if !ok {
+			continue
+		}
+
+		var promoted string
+		switch strictFit {
+		case "warn":
+			promoted = rule.warnLevel
+		case "strict":
+			promoted = rule.strictLevel
+		}
+
+		if promoted != "" {
+			out[i].Severity = promoted
+		}
+	}
+
+	return out
+}
+
+// HasRefuseFindings reports whether any finding has severity "refuse".
+func HasRefuseFindings(findings []Finding) bool {
+	for i := range findings {
+		if findings[i].Severity == SeverityRefuse {
+			return true
+		}
+	}
+	return false
+}

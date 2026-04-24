@@ -71,8 +71,7 @@ type OutputSpec struct {
 	// StrictFit controls how chart/diagram fit findings affect generation.
 	// Values: "off" (skip fit checks), "warn" (default; report findings but proceed),
 	// "strict" (refuse generation if unfittable findings exist).
-	// Currently accepted but not acted upon — severity promotion will be wired
-	// in a follow-up once chart findings are emitted.
+	// Severity promotion is applied via the promotion table in finding_codes.go.
 	StrictFit string `json:"strict_fit,omitempty" yaml:"strict_fit,omitempty"`
 }
 

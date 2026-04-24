@@ -71,6 +71,17 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 		findings = append(findings, builder.Findings()...)
 	}
 
+	// Apply strict-fit severity promotion ladder.
+	findings = core.PromoteFindings(findings, req.Output.StrictFit)
+
+	// Under strict mode, refuse generation if any finding was promoted to refuse.
+	if req.Output.StrictFit == "strict" && core.HasRefuseFindings(findings) {
+		return &RenderOutput{
+			RenderResult: result,
+			Findings:     findings,
+		}, fmt.Errorf("svggen: strict-fit refused: one or more findings have severity %q", core.SeverityRefuse)
+	}
+
 	return &RenderOutput{
 		RenderResult: result,
 		Findings:     findings,
@@ -97,8 +108,8 @@ func renderMultiFormatInternal(r *Registry, req *RequestEnvelope, formats ...str
 		slog.Warn("diagram data is empty; output will be blank", "type", req.Type)
 	}
 
-	// Log strict-fit level when set. Currently a no-op — severity promotion
-	// will be wired once chart findings are emitted (κ follow-up).
+	// Log strict-fit level when set. Severity promotion is applied in
+	// renderMultiFormatWithFindings after findings are collected.
 	if sf := req.Output.StrictFit; sf != "" && sf != "off" {
 		slog.Debug("strict-fit level accepted for chart render", "level", sf, "type", req.Type)
 	}
