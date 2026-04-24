@@ -31,6 +31,34 @@ func RegistryRenderMultiFormat(r *Registry, req *RequestEnvelope, formats ...str
 	return renderMultiFormat(r, req, formats...)
 }
 
+// RenderMultiFormatWithFindings is like RenderMultiFormat but returns a
+// RenderOutput that includes a (currently empty) Findings slice. Callers
+// that want structured chart/diagram findings use this entry point; the
+// existing RenderMultiFormat signature is unchanged.
+func RenderMultiFormatWithFindings(req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
+	return renderMultiFormatWithFindings(DefaultRegistry(), req, formats...)
+}
+
+// RegistryRenderMultiFormatWithFindings is like RenderMultiFormatWithFindings
+// but uses a specific registry instance.
+func RegistryRenderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
+	return renderMultiFormatWithFindings(r, req, formats...)
+}
+
+// renderMultiFormatWithFindings wraps renderMultiFormat and promotes the
+// result into a RenderOutput with an empty Findings slice. Actual findings
+// will be populated when individual diagram renderers emit them (follow-up).
+func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
+	result, err := renderMultiFormat(r, req, formats...)
+	if err != nil {
+		return nil, err
+	}
+	return &RenderOutput{
+		RenderResult: result,
+		Findings:     []ValidationError{},
+	}, nil
+}
+
 // renderMultiFormat implements multi-format rendering for a given registry.
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*RenderResult, error) {

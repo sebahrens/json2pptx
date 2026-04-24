@@ -33,6 +33,9 @@ type SVGDocument = core.SVGDocument
 // RenderResult contains the output of a render operation.
 type RenderResult = core.RenderResult
 
+// RenderOutput wraps RenderResult with a Findings slice for structured feedback.
+type RenderOutput = core.RenderOutput
+
 // Diagram is the interface that all diagram renderers must implement.
 type Diagram = core.Diagram
 

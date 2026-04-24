@@ -39,6 +39,11 @@ type DiagramRenderResult struct {
 
 	// ContainerHeight is the original container height before fit mode (pixels).
 	ContainerHeight float64
+
+	// Findings contains structured validation findings from the chart/diagram
+	// render (e.g., data density warnings). Always non-nil (empty slice when
+	// no findings). Consumed by the fit-report pipeline.
+	Findings []svggen.ValidationError
 }
 
 // RenderDiagramSpec renders a DiagramSpec directly using svggen and returns the PNG bytes.
@@ -95,34 +100,35 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 		formats = []string{"svg", "png"}
 	}
 
-	result, err := svggen.RenderMultiFormat(req, formats...)
+	output, err := svggen.RenderMultiFormatWithFindings(req, formats...)
 	if err != nil {
 		return nil, fmt.Errorf("svggen render failed: %w", err)
 	}
 
 	// When PNG was requested, verify we got data back.
-	if !svgOnly && len(result.PNG) == 0 {
+	if !svgOnly && len(output.PNG) == 0 {
 		return nil, fmt.Errorf("svggen returned empty PNG data")
 	}
 
 	// Extract fit metadata from SVGDocument
 	renderResult := &DiagramRenderResult{
-		PNG: result.PNG,
+		PNG:      output.PNG,
+		Findings: output.Findings,
 	}
 
 	// Include SVG data for native embedding
-	if result.SVG != nil && len(result.SVG.Content) > 0 {
-		renderResult.SVG = result.SVG.Content
+	if output.SVG != nil && len(output.SVG.Content) > 0 {
+		renderResult.SVG = output.SVG.Content
 	}
 
-	if result.SVG != nil {
-		renderResult.FitMode = result.SVG.FitMode
-		renderResult.ContentWidth = result.SVG.Width
-		renderResult.ContentHeight = result.SVG.Height
-		renderResult.OffsetX = result.SVG.OffsetX
-		renderResult.OffsetY = result.SVG.OffsetY
-		renderResult.ContainerWidth = result.SVG.ContainerWidth
-		renderResult.ContainerHeight = result.SVG.ContainerHeight
+	if output.SVG != nil {
+		renderResult.FitMode = output.SVG.FitMode
+		renderResult.ContentWidth = output.SVG.Width
+		renderResult.ContentHeight = output.SVG.Height
+		renderResult.OffsetX = output.SVG.OffsetX
+		renderResult.OffsetY = output.SVG.OffsetY
+		renderResult.ContainerWidth = output.SVG.ContainerWidth
+		renderResult.ContainerHeight = output.SVG.ContainerHeight
 	}
 
 	return renderResult, nil

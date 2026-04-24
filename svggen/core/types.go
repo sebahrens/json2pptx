@@ -277,6 +277,18 @@ type RenderResult struct {
 	Height int
 }
 
+// RenderOutput wraps RenderResult with an optional Findings slice.
+// Callers that want structured findings opt into this type via
+// RenderMultiFormatWithFindings; the existing RenderResult-returning
+// functions remain unchanged.
+type RenderOutput struct {
+	*RenderResult
+
+	// Findings contains structured validation findings emitted during render.
+	// Always non-nil (empty slice when no findings).
+	Findings []ValidationError
+}
+
 // ParseRequest parses a JSON request into a RequestEnvelope.
 func ParseRequest(data []byte) (*RequestEnvelope, error) {
 	var req RequestEnvelope
