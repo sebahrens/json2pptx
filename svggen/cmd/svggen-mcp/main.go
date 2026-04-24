@@ -361,14 +361,18 @@ func handleGetDiagramSchema(_ context.Context, request mcp.CallToolRequest) (*mc
 		Type        string `json:"type"`
 		Description string `json:"description"`
 		Example     any    `json:"example,omitempty"`
+		DataSchema  any    `json:"data_schema,omitempty"`
 	}
-
-	_ = d // used for type existence check above
 
 	result := schemaResult{
 		Type:        diagramType,
 		Description: schema.description,
 		Example:     schema.example,
+	}
+
+	// Include the machine-readable data schema when the diagram provides one.
+	if ds, ok := d.(svggen.DiagramWithSchema); ok {
+		result.DataSchema = ds.DataSchema()
 	}
 
 	output, _ := json.MarshalIndent(result, "", "  ")

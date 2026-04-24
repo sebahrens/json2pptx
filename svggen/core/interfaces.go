@@ -26,6 +26,18 @@ type MultiFormatRenderer interface {
 	RenderPDF(req *RequestEnvelope) ([]byte, error)
 }
 
+// DiagramWithSchema is an optional interface that diagrams can implement
+// to expose a JSON Schema for their data payload. When implemented, the
+// registry validates incoming data against the schema before calling
+// Validate(), rejecting unknown fields with UNKNOWN_FIELD errors.
+type DiagramWithSchema interface {
+	Diagram
+
+	// DataSchema returns a JSON Schema describing the allowed fields
+	// in RequestEnvelope.Data for this diagram type.
+	DataSchema() *DataSchema
+}
+
 // BaseDiagram provides a shared Type() implementation for diagram types.
 // Embed it in diagram structs that have a fixed type identifier:
 //

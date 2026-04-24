@@ -45,6 +45,12 @@ type MultiFormatRenderer = core.MultiFormatRenderer
 // BaseDiagram provides a shared Type() implementation for diagram types.
 type BaseDiagram = core.BaseDiagram
 
+// DiagramWithSchema is an optional interface for diagrams that expose a data schema.
+type DiagramWithSchema = core.DiagramWithSchema
+
+// DataSchema is a lightweight JSON Schema for diagram data payloads.
+type DataSchema = core.DataSchema
+
 // ValidationError represents a structured validation failure.
 type ValidationError = core.ValidationError
 
@@ -88,6 +94,25 @@ func ParseRequest(data []byte) (*RequestEnvelope, error) { return core.ParseRequ
 
 // NewBaseDiagram creates a BaseDiagram with the given type identifier.
 func NewBaseDiagram(typeID string) BaseDiagram { return core.NewBaseDiagram(typeID) }
+
+// ObjectDataSchema creates an object data schema with additionalProperties:false.
+func ObjectDataSchema(desc string, props map[string]*DataSchema, required []string) *DataSchema {
+	return core.ObjectDataSchema(desc, props, required)
+}
+
+// ArrayDataSchema creates an array data schema.
+func ArrayDataSchema(desc string, items *DataSchema, minItems int) *DataSchema {
+	return core.ArrayDataSchema(desc, items, minItems)
+}
+
+// StringDataSchema creates a string data schema.
+func StringDataSchema(desc string) *DataSchema { return core.StringDataSchema(desc) }
+
+// NumberDataSchema creates a number data schema.
+func NumberDataSchema(desc string) *DataSchema { return core.NumberDataSchema(desc) }
+
+// BooleanDataSchema creates a boolean data schema.
+func BooleanDataSchema(desc string) *DataSchema { return core.BooleanDataSchema(desc) }
 
 // IsValidationError checks if an error is a validation error.
 func IsValidationError(err error) bool { return core.IsValidationError(err) }

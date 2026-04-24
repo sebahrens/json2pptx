@@ -113,6 +113,13 @@ func renderMultiFormatInternal(r *Registry, req *RequestEnvelope, formats ...str
 		return nil, nil, fmt.Errorf("svggen: unknown diagram type %q", req.Type)
 	}
 
+	// If the diagram provides a data schema, validate unknown fields first.
+	if ds, ok := d.(DiagramWithSchema); ok {
+		if err := core.ValidateUnknownFields(req.Data, ds.DataSchema(), req.Type); err != nil {
+			return nil, nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
+		}
+	}
+
 	if err := d.Validate(req); err != nil {
 		return nil, nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
 	}

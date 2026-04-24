@@ -129,6 +129,13 @@ func (r *Registry) Render(req *RequestEnvelope) (*SVGDocument, error) {
 		return nil, fmt.Errorf("svggen: unknown diagram type %q", req.Type)
 	}
 
+	// If the diagram provides a data schema, validate unknown fields first.
+	if ds, ok := d.(DiagramWithSchema); ok {
+		if err := ValidateUnknownFields(req.Data, ds.DataSchema(), req.Type); err != nil {
+			return nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
+		}
+	}
+
 	if err := d.Validate(req); err != nil {
 		return nil, fmt.Errorf("svggen: validation failed for %q: %w", req.Type, err)
 	}
