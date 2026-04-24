@@ -12,6 +12,11 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// DefaultFindingBudget is the maximum number of findings returned per slide
+// before overflow is summarised. Use verbose=true in BudgetFitFindings to
+// bypass the limit.
+const DefaultFindingBudget = 5
+
 // collectFitFindings runs all fit-report detectors (text overflow, placeholder
 // overflow, title wraps, footer collision, bounds overflow) and returns sorted
 // findings. The result is sorted by ActionRank descending (most severe first),
@@ -39,6 +44,154 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	})
 
 	return findings
+}
+
+// BudgetFitFindings enforces a per-slide finding budget. Within each slide,
+// findings are ranked by severity (ActionRank descending) then actionability
+// (findings with a Fix set are ranked above those without). If a slide exceeds
+// the budget, only the top findings are kept and a summary finding is appended
+// indicating how many were suppressed.
+//
+// When verbose is true the budget is not applied and all findings are returned.
+func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool) []patterns.FitFinding {
+	if verbose || len(findings) == 0 {
+		return findings
+	}
+	if budget <= 0 {
+		budget = DefaultFindingBudget
+	}
+
+	// Group findings by slide index.
+	type group struct {
+		slideIdx int
+		items    []patterns.FitFinding
+	}
+	order := []int{}           // insertion-order slide indices
+	bySlide := map[int]*group{}
+
+	for _, f := range findings {
+		si := slideIndexFromPath(f.Path)
+		g, ok := bySlide[si]
+		if !ok {
+			g = &group{slideIdx: si}
+			bySlide[si] = g
+			order = append(order, si)
+		}
+		g.items = append(g.items, f)
+	}
+
+	// Sort each group: ActionRank desc, then Fix-present before Fix-absent.
+	for _, si := range order {
+		g := bySlide[si]
+		sort.SliceStable(g.items, func(i, j int) bool {
+			ri := patterns.ActionRank(g.items[i].Action)
+			rj := patterns.ActionRank(g.items[j].Action)
+			if ri != rj {
+				return ri > rj
+			}
+			fi := g.items[i].Fix != nil
+			fj := g.items[j].Fix != nil
+			if fi != fj {
+				return fi
+			}
+			return false
+		})
+	}
+
+	// Apply budget per slide.
+	var result []patterns.FitFinding
+	for _, si := range order {
+		g := bySlide[si]
+		if len(g.items) <= budget {
+			result = append(result, g.items...)
+			continue
+		}
+		result = append(result, g.items[:budget]...)
+		suppressed := len(g.items) - budget
+		path := fmt.Sprintf("slides[%d]", si)
+		if si < 0 {
+			path = "slides[?]"
+		}
+		result = append(result, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    path,
+				Code:    "findings_truncated",
+				Message: fmt.Sprintf("%d more findings suppressed on this slide; use verbose_fit to see all", suppressed),
+			},
+			Action: "info",
+		})
+	}
+
+	return result
+}
+
+// budgetLocalFindings applies the same per-slide budget as BudgetFitFindings
+// but operates on the local fitFinding type used by generateFitReport.
+func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitFinding {
+	if verbose || len(findings) == 0 {
+		return findings
+	}
+	if budget <= 0 {
+		budget = DefaultFindingBudget
+	}
+
+	type group struct {
+		slideIdx int
+		items    []fitFinding
+	}
+	order := []int{}
+	bySlide := map[int]*group{}
+
+	for _, f := range findings {
+		si := slideIndexFromPath(f.Path)
+		g, ok := bySlide[si]
+		if !ok {
+			g = &group{slideIdx: si}
+			bySlide[si] = g
+			order = append(order, si)
+		}
+		g.items = append(g.items, f)
+	}
+
+	for _, si := range order {
+		g := bySlide[si]
+		sort.SliceStable(g.items, func(i, j int) bool {
+			ri := patterns.ActionRank(g.items[i].Action)
+			rj := patterns.ActionRank(g.items[j].Action)
+			if ri != rj {
+				return ri > rj
+			}
+			fi := g.items[i].Fix != nil
+			fj := g.items[j].Fix != nil
+			if fi != fj {
+				return fi
+			}
+			return false
+		})
+	}
+
+	var result []fitFinding
+	for _, si := range order {
+		g := bySlide[si]
+		if len(g.items) <= budget {
+			result = append(result, g.items...)
+			continue
+		}
+		result = append(result, g.items[:budget]...)
+		suppressed := len(g.items) - budget
+		path := fmt.Sprintf("slides[%d]", si)
+		if si < 0 {
+			path = "slides[?]"
+		}
+		result = append(result, fitFinding{
+			Code:    "findings_truncated",
+			Path:    path,
+			Message: fmt.Sprintf("%d more findings suppressed on this slide; use --verbose-fit to see all", suppressed),
+			Action:  "info",
+		})
+	}
+
+	return result
 }
 
 // convertTextFitFinding converts a local fitFinding to patterns.FitFinding.

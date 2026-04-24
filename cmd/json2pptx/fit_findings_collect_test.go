@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -154,5 +155,184 @@ func TestContrastSwapsToFindings_Empty(t *testing.T) {
 	findings := contrastSwapsToFindings(nil)
 	if findings != nil {
 		t.Errorf("expected nil for empty swaps, got %v", findings)
+	}
+}
+
+// --- BudgetFitFindings tests ---
+
+func makeFinding(slideIdx int, action string, code string, hasFix bool) patterns.FitFinding {
+	f := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path:    fmt.Sprintf("slides[%d].content.body", slideIdx),
+			Code:    code,
+			Message: fmt.Sprintf("finding %s on slide %d", code, slideIdx),
+		},
+		Action: action,
+	}
+	if hasFix {
+		f.Fix = &patterns.FixSuggestion{Kind: "reduce_text"}
+	}
+	return f
+}
+
+func TestBudgetFitFindings_Under(t *testing.T) {
+	// 3 findings on one slide — should pass through unchanged.
+	findings := []patterns.FitFinding{
+		makeFinding(0, "refuse", "a", true),
+		makeFinding(0, "review", "b", false),
+		makeFinding(0, "info", "c", false),
+	}
+	result := BudgetFitFindings(findings, 5, false)
+	if len(result) != 3 {
+		t.Fatalf("expected 3 findings, got %d", len(result))
+	}
+}
+
+func TestBudgetFitFindings_Over(t *testing.T) {
+	// 20 findings on slide 0 — should return 5 + 1 summary.
+	var findings []patterns.FitFinding
+	for i := 0; i < 20; i++ {
+		action := "info"
+		if i < 3 {
+			action = "refuse"
+		} else if i < 8 {
+			action = "shrink_or_split"
+		}
+		findings = append(findings, makeFinding(0, action, fmt.Sprintf("code_%d", i), i%2 == 0))
+	}
+	result := BudgetFitFindings(findings, 5, false)
+
+	if len(result) != 6 {
+		t.Fatalf("expected 6 findings (5 + 1 summary), got %d", len(result))
+	}
+
+	// Top findings should be sorted by severity desc, fix-present first.
+	for i := 0; i < 5; i++ {
+		if i > 0 {
+			ri := patterns.ActionRank(result[i].Action)
+			rPrev := patterns.ActionRank(result[i-1].Action)
+			if ri > rPrev {
+				t.Errorf("finding[%d] has higher rank (%d) than finding[%d] (%d)", i, ri, i-1, rPrev)
+			}
+		}
+	}
+
+	// Last one should be the summary.
+	summary := result[5]
+	if summary.Code != "findings_truncated" {
+		t.Errorf("summary code = %q, want %q", summary.Code, "findings_truncated")
+	}
+	if summary.Action != "info" {
+		t.Errorf("summary action = %q, want %q", summary.Action, "info")
+	}
+	if !strings.Contains(summary.Message, "15 more findings suppressed") {
+		t.Errorf("summary message = %q, want to contain '15 more findings suppressed'", summary.Message)
+	}
+	if !strings.Contains(summary.Message, "verbose_fit") {
+		t.Errorf("summary message = %q, want to contain 'verbose_fit'", summary.Message)
+	}
+}
+
+func TestBudgetFitFindings_Verbose(t *testing.T) {
+	var findings []patterns.FitFinding
+	for i := 0; i < 20; i++ {
+		findings = append(findings, makeFinding(0, "info", fmt.Sprintf("code_%d", i), false))
+	}
+	result := BudgetFitFindings(findings, 5, true)
+	if len(result) != 20 {
+		t.Fatalf("verbose mode should return all 20 findings, got %d", len(result))
+	}
+}
+
+func TestBudgetFitFindings_MultiSlide(t *testing.T) {
+	// 3 findings on slide 0 (under budget), 7 on slide 1 (over budget).
+	var findings []patterns.FitFinding
+	for i := 0; i < 3; i++ {
+		findings = append(findings, makeFinding(0, "review", fmt.Sprintf("a_%d", i), true))
+	}
+	for i := 0; i < 7; i++ {
+		findings = append(findings, makeFinding(1, "info", fmt.Sprintf("b_%d", i), false))
+	}
+	result := BudgetFitFindings(findings, 5, false)
+
+	// Slide 0: 3 findings. Slide 1: 5 + 1 summary = 6. Total = 9.
+	if len(result) != 9 {
+		t.Fatalf("expected 9 findings, got %d", len(result))
+	}
+
+	// Last should be summary for slide 1.
+	summary := result[8]
+	if summary.Code != "findings_truncated" {
+		t.Errorf("last finding code = %q, want findings_truncated", summary.Code)
+	}
+	if !strings.Contains(summary.Message, "2 more") {
+		t.Errorf("summary message = %q, want to contain '2 more'", summary.Message)
+	}
+}
+
+func TestBudgetFitFindings_FixPriority(t *testing.T) {
+	// Two findings with same severity — one with Fix, one without.
+	// The one with Fix should come first.
+	findings := []patterns.FitFinding{
+		makeFinding(0, "review", "no_fix", false),
+		makeFinding(0, "review", "has_fix", true),
+	}
+	result := BudgetFitFindings(findings, 5, false)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(result))
+	}
+	if result[0].Code != "has_fix" {
+		t.Errorf("expected fix-bearing finding first, got %q", result[0].Code)
+	}
+}
+
+func TestBudgetFitFindings_Empty(t *testing.T) {
+	result := BudgetFitFindings(nil, 5, false)
+	if result != nil {
+		t.Errorf("expected nil for empty findings, got %v", result)
+	}
+}
+
+// --- budgetLocalFindings tests ---
+
+func makeLocalFinding(slideIdx int, action string, code string, hasFix bool) fitFinding {
+	f := fitFinding{
+		Path:    fmt.Sprintf("slides[%d].content.body", slideIdx),
+		Code:    code,
+		Message: fmt.Sprintf("finding %s on slide %d", code, slideIdx),
+		Action:  action,
+	}
+	if hasFix {
+		f.Fix = &patterns.FixSuggestion{Kind: "reduce_text"}
+	}
+	return f
+}
+
+func TestBudgetLocalFindings_Over(t *testing.T) {
+	var findings []fitFinding
+	for i := 0; i < 20; i++ {
+		findings = append(findings, makeLocalFinding(0, "info", fmt.Sprintf("code_%d", i), false))
+	}
+	result := budgetLocalFindings(findings, 5, false)
+
+	if len(result) != 6 {
+		t.Fatalf("expected 6 findings (5 + 1 summary), got %d", len(result))
+	}
+	if result[5].Code != "findings_truncated" {
+		t.Errorf("summary code = %q, want findings_truncated", result[5].Code)
+	}
+	if !strings.Contains(result[5].Message, "--verbose-fit") {
+		t.Errorf("local summary should reference --verbose-fit flag, got %q", result[5].Message)
+	}
+}
+
+func TestBudgetLocalFindings_Verbose(t *testing.T) {
+	var findings []fitFinding
+	for i := 0; i < 20; i++ {
+		findings = append(findings, makeLocalFinding(0, "info", fmt.Sprintf("code_%d", i), false))
+	}
+	result := budgetLocalFindings(findings, 5, true)
+	if len(result) != 20 {
+		t.Fatalf("verbose mode should return all 20, got %d", len(result))
 	}
 }

@@ -176,6 +176,9 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, include fit_findings in the response with text overflow, placeholder overflow, footer collision, and bounds-check findings. Default: false."),
 		),
+		mcp.WithBoolean("verbose_fit",
+			mcp.Description("When true, return all fit findings without the per-slide budget limit (default: 5 per slide). Default: false."),
+		),
 	)
 }
 
@@ -215,6 +218,9 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, run per-cell text overflow measurement and include NDJSON-style fit findings in the result. Default: false."),
+		),
+		mcp.WithBoolean("verbose_fit",
+			mcp.Description("When true, return all fit findings without the per-slide budget limit (default: 5 per slide). Default: false."),
 		),
 	)
 }
@@ -371,6 +377,10 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Append contrast auto-fix findings (always emitted, not gated by fit_report).
 	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+
+	// Apply per-slide finding budget.
+	verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
+	fitFindings = BudgetFitFindings(fitFindings, DefaultFindingBudget, verboseFit)
 
 	// Build response
 	output := JSONOutput{
@@ -609,7 +619,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 	// Fit report: measure per-cell text overflow when requested.
 	if fitReport, ok := request.GetArguments()["fit_report"].(bool); ok && fitReport {
-		output.FitFindings = generateFitReport(&input)
+		findings := generateFitReport(&input)
+		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
+		output.FitFindings = budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
 	}
 
 	return marshalValidateResult(ctx, output)

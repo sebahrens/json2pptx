@@ -210,6 +210,26 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `reposition_shape` | — | Move or resize the shape to stay within bounds |
 | `split_at_row` | `row: int` | Split the table at the suggested row index |
 
+## Per-Slide Finding Budget
+
+To prevent noisy output on dense decks, findings are capped at **5 per slide** by default. Within each slide, findings are ranked by:
+
+1. **Severity** — `refuse` > `shrink_or_split` > `review` > `info`
+2. **Actionability** — findings with a `fix` object rank above those without
+
+When more than 5 findings exist on a slide, the top 5 are returned plus a summary finding with code `findings_truncated`:
+
+```json
+{
+  "path": "slides[2]",
+  "code": "findings_truncated",
+  "message": "8 more findings suppressed on this slide; use verbose_fit to see all",
+  "action": "info"
+}
+```
+
+To bypass the budget and see all findings, pass `verbose_fit: true` (MCP) or `--verbose-fit` (CLI).
+
 ## Accessing Fit Findings
 
 ### MCP (generate_presentation)
@@ -223,10 +243,13 @@ Pass `fit_report: true` in the tool input. Findings appear in the response under
 }
 ```
 
+Pass `verbose_fit: true` to return all findings without the per-slide budget limit.
+
 ### CLI (validate)
 
 ```bash
 json2pptx validate -fit-report examples/basic-deck.json
+json2pptx validate -fit-report -verbose-fit examples/basic-deck.json
 ```
 
 Findings are printed to stderr grouped by slide. Exit code is nonzero only if any finding has action `refuse`.

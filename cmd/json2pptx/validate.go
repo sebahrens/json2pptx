@@ -19,6 +19,7 @@ func runValidate() error {
 	jsonOut := fs.Bool("json", false, "Output results as JSON to stdout")
 	jsonOutputPath := fs.String("json-output", "", "Write JSON results to file (use - for stdout)")
 	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
+	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate [options] <file.json ...>\n\n")
@@ -31,6 +32,7 @@ func runValidate() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -json-output - slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -template corporate slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -fit-report slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate -fit-report -verbose-fit slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json chapter2.json chapter3.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		fs.PrintDefaults()
@@ -81,6 +83,7 @@ func runValidate() error {
 			applyDefaults(&input)
 
 			findings := generateFitReport(&input)
+			findings = budgetLocalFindings(findings, DefaultFindingBudget, *verboseFit)
 			printFitFindingsBySlide(findings)
 			writeFitReportNDJSON(os.Stdout, findings)
 			for _, f := range findings {
