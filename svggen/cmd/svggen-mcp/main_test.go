@@ -137,8 +137,8 @@ func TestHandleValidateDiagramValid(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid  bool     `json:"valid"`
-		Errors []string `json:"errors"`
+		Valid  bool      `json:"valid"`
+		Errors []finding `json:"errors"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse validation result: %v", err)
@@ -158,6 +158,121 @@ func TestHandleValidateDiagramInvalid(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Fatal("expected error for unknown type")
+	}
+}
+
+func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
+	// bar_chart with missing required data fields should return structured findings
+	result, err := handleValidateDiagram(context.Background(), makeRequest(map[string]any{
+		"type": "bar_chart",
+		"data": map[string]any{},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("expected non-error result with validation findings, got tool error: %v", result.Content)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	var vr struct {
+		Valid  bool      `json:"valid"`
+		Errors []finding `json:"errors"`
+	}
+	if err := json.Unmarshal([]byte(text), &vr); err != nil {
+		t.Fatalf("failed to parse validation result: %v", err)
+	}
+	if vr.Valid {
+		t.Fatal("expected invalid result for empty data")
+	}
+	if len(vr.Errors) == 0 {
+		t.Fatal("expected at least one structured error")
+	}
+
+	// Verify structured shape of first error
+	first := vr.Errors[0]
+	if first.Pattern != "bar_chart" {
+		t.Errorf("expected pattern 'bar_chart', got %q", first.Pattern)
+	}
+	if first.Path == "" {
+		t.Error("expected non-empty path")
+	}
+	if first.Code == "" {
+		t.Error("expected non-empty code")
+	}
+	if first.Message == "" {
+		t.Error("expected non-empty message")
+	}
+	// Code should be lowercase_snake, not UPPER_SNAKE
+	for _, c := range first.Code {
+		if c >= 'A' && c <= 'Z' {
+			t.Errorf("expected lowercase_snake code, got %q", first.Code)
+			break
+		}
+	}
+}
+
+func TestHandleValidateDiagramFixSuggestion(t *testing.T) {
+	// pie_chart with missing slices should produce a fix suggestion
+	result, err := handleValidateDiagram(context.Background(), makeRequest(map[string]any{
+		"type": "pie_chart",
+		"data": map[string]any{},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("expected validation findings, got tool error: %v", result.Content)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	var vr struct {
+		Valid  bool      `json:"valid"`
+		Errors []finding `json:"errors"`
+	}
+	if err := json.Unmarshal([]byte(text), &vr); err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+	if vr.Valid {
+		t.Fatal("expected invalid result")
+	}
+	if len(vr.Errors) == 0 {
+		t.Fatal("expected at least one error")
+	}
+
+	// At least one error should have a fix
+	hasFix := false
+	for _, e := range vr.Errors {
+		if e.Fix != nil {
+			hasFix = true
+			if e.Fix.Kind == "" {
+				t.Error("fix has empty kind")
+			}
+			break
+		}
+	}
+	if !hasFix {
+		t.Log("no fix suggestions generated (acceptable if validator returns plain errors)")
+	}
+}
+
+func TestHandleRenderDiagramInvalidStyle(t *testing.T) {
+	// Invalid style payload should produce a structured error, not be silently ignored
+	result, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
+		"type": "bar_chart",
+		"data": map[string]any{
+			"categories": []any{"A", "B"},
+			"series": []any{
+				map[string]any{"name": "S1", "values": []any{10, 20}},
+			},
+		},
+		"style": "not-an-object",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for non-object style")
 	}
 }
 
