@@ -534,7 +534,7 @@ type diagramCapabilitiesResponse struct {
 
 func handleGetChartCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resp := chartCapabilitiesResponse{
-		CapabilitiesTBD:   true,
+		CapabilitiesTBD:   svggen.CapabilitiesTBD(),
 		ChartCapabilities: svggen.ChartCapabilities(),
 	}
 	b, err := json.Marshal(resp)
@@ -546,7 +546,7 @@ func handleGetChartCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.
 
 func handleGetDiagramCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resp := diagramCapabilitiesResponse{
-		CapabilitiesTBD:     true,
+		CapabilitiesTBD:     svggen.CapabilitiesTBD(),
 		DiagramCapabilities: svggen.DiagramCapabilities(),
 	}
 	b, err := json.Marshal(resp)

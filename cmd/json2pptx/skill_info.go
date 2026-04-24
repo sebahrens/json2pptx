@@ -437,7 +437,7 @@ func buildSupportedTypes() skillSupportedTypes {
 		},
 		ChartCapabilities:   svggen.ChartCapabilities(),
 		DiagramCapabilities: svggen.DiagramCapabilities(),
-		CapabilitiesTBD:     true,
+		CapabilitiesTBD:     svggen.CapabilitiesTBD(),
 		GridCellTypes:       []string{"shape", "table", "icon", "image"},
 		ShapeGeometries:     buildShapeGeometries(),
 		DataFormatHints:     buildDataFormatHints(),
