@@ -318,7 +318,7 @@ func TestServerIntegration_RequestValidation(t *testing.T) {
 			path:        "/api/v1/convert",
 			body:        `{invalid json}`,
 			wantStatus:  http.StatusBadRequest,
-			wantErrCode: "INVALID_REQUEST",
+			wantErrCode: "INVALID_JSON",
 		},
 	}
 

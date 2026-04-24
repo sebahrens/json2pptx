@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
@@ -95,14 +96,12 @@ func (h *PatternsHandler) ValidateHandler() http.HandlerFunc {
 
 		values, overrides, cellOverrides, err := unmarshalPatternInputs(pat, &body)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, apierrors.CodePatternValidationFailed,
-				err.Error(), nil)
+			writePatternValidationError(w, name, err)
 			return
 		}
 
 		if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-			writeError(w, http.StatusBadRequest, apierrors.CodePatternValidationFailed,
-				err.Error(), map[string]any{"pattern": name})
+			writePatternValidationError(w, name, err)
 			return
 		}
 
@@ -133,14 +132,12 @@ func (h *PatternsHandler) ExpandHandler() http.HandlerFunc {
 
 		values, overrides, cellOverrides, err := unmarshalPatternInputs(pat, &body)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, apierrors.CodePatternValidationFailed,
-				err.Error(), nil)
+			writePatternValidationError(w, name, err)
 			return
 		}
 
 		if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-			writeError(w, http.StatusBadRequest, apierrors.CodePatternValidationFailed,
-				err.Error(), map[string]any{"pattern": name})
+			writePatternValidationError(w, name, err)
 			return
 		}
 
@@ -212,6 +209,33 @@ type patternRequestBody struct {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// writePatternValidationError converts a (possibly joined) validation error into
+// structured diagnostics and writes an HTTP error response with the individual
+// entries in the details map. This mirrors what MCP does via splitValidationErrors
+// so agents get the same machine-readable shape from both transports.
+func writePatternValidationError(w http.ResponseWriter, patternName string, err error) {
+	ds := diagnostics.FromJoinedError(err, "validation_failed")
+	entries := make([]map[string]any, len(ds))
+	for i, d := range ds {
+		entry := map[string]any{
+			"code":    d.Code,
+			"message": d.Message,
+		}
+		if d.Path != "" {
+			entry["path"] = d.Path
+		}
+		if d.Fix != nil {
+			entry["fix"] = d.Fix
+		}
+		entries[i] = entry
+	}
+	writeError(w, http.StatusBadRequest, apierrors.CodePatternValidationFailed,
+		diagnostics.Summary(ds), map[string]any{
+			"pattern":           patternName,
+			"validation_errors": entries,
+		})
+}
 
 // unmarshalPatternInputs deserializes the raw JSON fields from the request body
 // into the typed structs expected by the pattern. This mirrors the logic in

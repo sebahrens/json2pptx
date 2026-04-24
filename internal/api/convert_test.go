@@ -371,8 +371,40 @@ func TestConvertInvalidJSON(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if resp.Error.Code != "INVALID_REQUEST" {
-		t.Errorf("Expected error code INVALID_REQUEST, got %s", resp.Error.Code)
+	if resp.Error.Code != apierrors.CodeInvalidJSON {
+		t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidJSON, resp.Error.Code)
+	}
+}
+
+func TestConvertInvalidJSONSyntaxIncludesOffset(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	// Send JSON with a syntax error (invalid token in value position)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(`{"template": x}`))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+
+	var resp apierrors.Response
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if resp.Error.Code != apierrors.CodeInvalidJSON {
+		t.Errorf("Error code = %q, want %q", resp.Error.Code, apierrors.CodeInvalidJSON)
+	}
+	if resp.Error.Details == nil {
+		t.Fatal("Expected details to be non-nil for syntax errors")
+	}
+	if _, hasOffset := resp.Error.Details["offset"]; !hasOffset {
+		t.Error("Expected details to include 'offset' for syntax errors")
 	}
 }
 

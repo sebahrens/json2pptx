@@ -188,8 +188,7 @@ func (cs *ConvertService) parseAndValidateRequest(w http.ResponseWriter, r *http
 			return nil, "", err
 		}
 		slog.Warn("failed to parse request", "error", err)
-		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidRequest,
-			"Failed to parse request body", nil)
+		writeJSONParseError(w, err)
 		return nil, "", err
 	}
 
@@ -343,6 +342,35 @@ func generateUniqueFilename() (string, error) {
 		return "", fmt.Errorf("failed to generate secure filename: %w", err)
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// writeJSONParseError translates a json.Decoder error into a structured HTTP
+// error response. Syntax errors get INVALID_JSON with offset; type errors get
+// INVALID_JSON with field and expected type; other errors get INVALID_REQUEST.
+func writeJSONParseError(w http.ResponseWriter, err error) {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syntaxErr):
+		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
+			fmt.Sprintf("JSON syntax error: %s", syntaxErr.Error()),
+			map[string]any{"offset": syntaxErr.Offset})
+	case errors.As(err, &typeErr):
+		details := map[string]any{
+			"field":         typeErr.Field,
+			"expected_type": typeErr.Type.String(),
+			"got_value":     typeErr.Value,
+		}
+		if typeErr.Offset > 0 {
+			details["offset"] = typeErr.Offset
+		}
+		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
+			fmt.Sprintf("JSON type error at field %q: expected %s, got %s",
+				typeErr.Field, typeErr.Type, typeErr.Value), details)
+	default:
+		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
+			fmt.Sprintf("Failed to parse request body: %s", err.Error()), nil)
+	}
 }
 
 // Request and response types

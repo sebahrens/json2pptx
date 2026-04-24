@@ -123,7 +123,7 @@ func TestValidatePattern(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid values returns 400", func(t *testing.T) {
+	t.Run("invalid values returns structured validation_errors", func(t *testing.T) {
 		// Only 2 cells instead of required 3
 		body := `{"values": [{"big":"100","small":"Revenue"},{"big":"200","small":"Users"}]}`
 		req := httptest.NewRequest("POST", "/api/v1/patterns/kpi-3up/validate", bytes.NewBufferString(body))
@@ -143,6 +143,34 @@ func TestValidatePattern(t *testing.T) {
 		}
 		if errResp.Error.Code != apierrors.CodePatternValidationFailed {
 			t.Errorf("Error code = %q, want %q", errResp.Error.Code, apierrors.CodePatternValidationFailed)
+		}
+
+		// Verify structured validation_errors in details
+		details := errResp.Error.Details
+		if details == nil {
+			t.Fatal("Expected details to be non-nil")
+		}
+		if details["pattern"] != "kpi-3up" {
+			t.Errorf("details.pattern = %v, want %q", details["pattern"], "kpi-3up")
+		}
+		veRaw, ok := details["validation_errors"]
+		if !ok {
+			t.Fatal("Expected details.validation_errors to be present")
+		}
+		veSlice, ok := veRaw.([]any)
+		if !ok || len(veSlice) == 0 {
+			t.Fatalf("Expected validation_errors to be a non-empty array, got %T", veRaw)
+		}
+		// Each entry should have code and message at minimum
+		entry, ok := veSlice[0].(map[string]any)
+		if !ok {
+			t.Fatalf("Expected validation_errors[0] to be an object, got %T", veSlice[0])
+		}
+		if _, hasCode := entry["code"]; !hasCode {
+			t.Error("Expected validation_errors[0] to have 'code' field")
+		}
+		if _, hasMsg := entry["message"]; !hasMsg {
+			t.Error("Expected validation_errors[0] to have 'message' field")
 		}
 	})
 
