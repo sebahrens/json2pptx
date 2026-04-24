@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/tdewolff/canvas"
 )
 
 func TestPoint(t *testing.T) {
@@ -1504,5 +1506,71 @@ func TestDrawImage_ZeroDimensions(t *testing.T) {
 	result := b.DrawImage(img, Rect{X: 50, Y: 50, W: 100, H: 100})
 	if result != b {
 		t.Error("DrawImage with zero-dim image should return the builder")
+	}
+}
+
+// TestDrawText_NilFontFamily_ReportsError verifies that DrawText on a builder
+// with nil fontFamily records a fontErr instead of silently no-oping.
+func TestDrawText_NilFontFamily_ReportsError(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	// Force nil font family to simulate missing font
+	b.fontFamily = nil
+	b.fontErr = nil // reset any error from loadDefaultFont
+
+	b.DrawText("hello", 10, 10, TextAlignLeft, TextBaselineTop)
+
+	if b.FontErr() == nil {
+		t.Fatal("DrawText with nil fontFamily should set fontErr, got nil")
+	}
+	if !strings.Contains(b.FontErr().Error(), "font family is nil") {
+		t.Errorf("fontErr should mention nil font family, got: %s", b.FontErr())
+	}
+
+	// Render should also fail
+	_, err := b.Render()
+	if err == nil {
+		t.Fatal("Render() should return error when fontErr is set")
+	}
+}
+
+// TestMeasureText_NilFontFamily_ReportsError verifies that MeasureText on a
+// builder with nil fontFamily records a fontErr instead of silently returning zero.
+func TestMeasureText_NilFontFamily_ReportsError(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	// Force nil font family to simulate missing font
+	b.fontFamily = nil
+	b.fontErr = nil
+
+	w, h := b.MeasureText("hello")
+	if w != 0 || h != 0 {
+		t.Errorf("MeasureText with nil font should return 0,0 but got %f,%f", w, h)
+	}
+	if b.FontErr() == nil {
+		t.Fatal("MeasureText with nil fontFamily should set fontErr, got nil")
+	}
+	if !strings.Contains(b.FontErr().Error(), "font family is nil") {
+		t.Errorf("fontErr should mention nil font family, got: %s", b.FontErr())
+	}
+}
+
+// TestSafeFace_PanicRecovery_ReportsError verifies that safeFace converts a
+// canvas panic (corrupt/incompatible font) into a structured error.
+func TestSafeFace_PanicRecovery_ReportsError(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+
+	// Use a canvas.FontFamily with no fonts loaded — Face() will panic
+	// because there are no font files backing it.
+	b.fontFamily = canvas.NewFontFamily("nonexistent-empty")
+	b.fontErr = nil
+
+	face, err := b.safeFace(color.NRGBA{A: 255})
+	if face != nil {
+		t.Fatal("safeFace should return nil face for empty font family")
+	}
+	if err == nil {
+		t.Fatal("safeFace should return error when Face() panics")
+	}
+	if !strings.Contains(err.Error(), "panicked") {
+		t.Errorf("error should mention panic, got: %s", err)
 	}
 }

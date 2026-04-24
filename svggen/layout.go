@@ -610,7 +610,14 @@ func (b *SVGBuilder) DrawWrappedText(text string, rect Rect, align BoxAlign) *SV
 
 // getFontFace returns the current font face, or nil if the font isn't available.
 func (b *SVGBuilder) getFontFace() *canvas.FontFace {
-	return b.safeFace(colorToRGBA(b.style.Palette.TextPrimary))
+	face, err := b.safeFace(colorToRGBA(b.style.Palette.TextPrimary))
+	if err != nil {
+		if b.fontErr == nil {
+			b.fontErr = err
+		}
+		return nil
+	}
+	return face
 }
 
 // =============================================================================

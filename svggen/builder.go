@@ -119,6 +119,18 @@ type SVGBuilder struct {
 	// text will be truncated with ellipsis rather than further shrunk.
 	// Zero means use DefaultMinFontSize. Set via SetMinFontSize.
 	minFontSizeFloor float64
+
+	// fontErr records the first font-related error (nil face from safeFace).
+	// Surfaced by FontErr() and Render(). Once set, all text operations no-op
+	// to avoid cascading failures, but the error is never silently swallowed.
+	fontErr error
+}
+
+// FontErr returns the first font-related error recorded during text operations,
+// or nil if all text rendered successfully. Callers that need to distinguish
+// "no text was drawn" from "font unavailable" should check this after building.
+func (b *SVGBuilder) FontErr() error {
+	return b.fontErr
 }
 
 // NewSVGBuilder creates a new SVGBuilder with the specified dimensions in points.
@@ -281,8 +293,12 @@ func fixSVGTextAlignment(svgContent []byte) []byte {
 
 // loadDefaultFont loads the default Arial font family from cache.
 // Uses the shared fontcache package to avoid repeated expensive font loading.
+// Sets fontErr if no font could be loaded (including embedded fallbacks).
 func (b *SVGBuilder) loadDefaultFont() {
 	b.fontFamily = fontcache.Get("Arial", "Helvetica")
+	if b.fontFamily == nil {
+		b.fontErr = fmt.Errorf("svggen: failed to load any font (requested Arial, fallback Helvetica, embedded Liberation Sans all unavailable)")
+	}
 }
 
 // SetStyleGuide sets the style guide for the builder.
@@ -305,8 +321,12 @@ func (b *SVGBuilder) StyleGuide() *StyleGuide {
 
 // SetFontFamily sets the font family by name.
 // Uses the shared fontcache package to avoid repeated expensive font loading.
+// Sets fontErr if the requested font (and all fallbacks) could not be loaded.
 func (b *SVGBuilder) SetFontFamily(name string) *SVGBuilder {
 	b.fontFamily = fontcache.Get(name, "")
+	if b.fontFamily == nil {
+		b.fontErr = fmt.Errorf("svggen: font %q unavailable (no system or embedded fallback found)", name)
+	}
 	return b
 }
 
@@ -741,10 +761,6 @@ func (p *PathBuilder) Stroke() *SVGBuilder {
 // Font sizes are clamped to MinFontSize() to enforce a legibility floor
 // across all chart types. Title text (which is already large) is unaffected.
 func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseline TextBaseline) *SVGBuilder {
-	if b.fontFamily == nil {
-		return b
-	}
-
 	// Enforce minimum font size floor for legibility.
 	// This is a safety net: chart code should use ClampFontSize where possible,
 	// but this catch-all prevents any text from rendering below the floor.
@@ -758,9 +774,12 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 		textCol = *b.textColor
 	}
 
-	// Create font face (safely handle unavailable fonts)
-	face := b.safeFace(colorToRGBA(textCol))
-	if face == nil {
+	// Create font face — fail loud if unavailable
+	face, err := b.safeFace(colorToRGBA(textCol))
+	if err != nil {
+		if b.fontErr == nil {
+			b.fontErr = fmt.Errorf("DrawText(%q): %w", text, err)
+		}
 		return b
 	}
 
@@ -799,27 +818,32 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	return b
 }
 
-// safeFace returns a font face for the current font family, or nil if the font
-// isn't available. The canvas library panics when a font family has no loaded
-// fonts; this method recovers gracefully from that panic.
-func (b *SVGBuilder) safeFace(col color.NRGBA) (face *canvas.FontFace) {
+// safeFace returns a font face for the current font family. If the font is
+// unavailable, it returns nil and an error describing the failure. The canvas
+// library panics when a font family has no loaded fonts; this method recovers
+// from that panic and converts it to an error.
+func (b *SVGBuilder) safeFace(col color.NRGBA) (face *canvas.FontFace, err error) {
 	if b.fontFamily == nil {
-		return nil
+		return nil, fmt.Errorf("svggen: font family is nil — no fonts were loaded; text cannot be rendered")
 	}
 	defer func() {
 		if r := recover(); r != nil {
 			face = nil
+			err = fmt.Errorf("svggen: font face creation panicked (corrupt or incompatible font): %v", r)
 		}
 	}()
 	// Face() expects points and converts to mm internally (size * mmPerPt).
 	// Passing fontSize directly (already in pt) avoids double-conversion.
-	return b.fontFamily.Face(b.fontSize, col, b.fontStyle, canvas.FontNormal)
+	return b.fontFamily.Face(b.fontSize, col, b.fontStyle, canvas.FontNormal), nil
 }
 
 // MeasureText returns the width and height of the text in points.
 func (b *SVGBuilder) MeasureText(text string) (width, height float64) {
-	face := b.safeFace(color.NRGBA{A: 255})
-	if face == nil {
+	face, err := b.safeFace(color.NRGBA{A: 255})
+	if err != nil {
+		if b.fontErr == nil {
+			b.fontErr = fmt.Errorf("MeasureText(%q): %w", text, err)
+		}
 		return 0, 0
 	}
 
@@ -1009,8 +1033,12 @@ func (b *SVGBuilder) Bounds() Rect {
 	return Rect{X: 0, Y: 0, W: b.width, H: b.height}
 }
 
-// Render outputs the SVG document.
+// Render outputs the SVG document. Returns an error if any font-related
+// failures occurred during text operations (missing/corrupt font).
 func (b *SVGBuilder) Render() (*SVGDocument, error) {
+	if b.fontErr != nil {
+		return nil, b.fontErr
+	}
 	var buf bytes.Buffer
 
 	// Create SVG writer with the canvas dimensions
