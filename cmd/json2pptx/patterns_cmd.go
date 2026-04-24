@@ -270,6 +270,14 @@ func runPatternsValidate() error {
 		return emitValidationResult(name, *jsonOut, err)
 	}
 
+	// Callout support check — parity with expandPattern (0kyd)
+	if pi.Callout != nil {
+		cs, ok := pat.(patterns.CalloutSupport)
+		if !ok || !cs.SupportsCallout() {
+			return emitValidationResult(name, *jsonOut, patterns.ErrCalloutUnsupportedFor(name, reg.CalloutSupportedPatterns()))
+		}
+	}
+
 	// Success
 	if *jsonOut {
 		result := struct {

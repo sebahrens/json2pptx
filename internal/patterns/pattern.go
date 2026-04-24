@@ -222,6 +222,22 @@ func (r *Registry) List() []Pattern {
 	return result
 }
 
+// CalloutSupportedPatterns returns the sorted names of all patterns that
+// implement CalloutSupport and return true from SupportsCallout().
+func (r *Registry) CalloutSupportedPatterns() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var names []string
+	for _, p := range r.patterns {
+		if cs, ok := p.(CalloutSupport); ok && cs.SupportsCallout() {
+			names = append(names, p.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
 // Suggest returns the closest registered pattern name to the given input,
 // using Damerau-Levenshtein distance. It returns ("", false) if no pattern
 // is within maxDist edits (default 2).

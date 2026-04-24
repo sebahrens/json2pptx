@@ -623,6 +623,9 @@ func mcpValidatePatternTool() mcp.Tool {
 		mcp.WithString("cell_overrides",
 			mcp.Description("JSON string of per-cell overrides keyed by cell index (optional). Example: {\"0\":{\"fill\":\"#FF0000\"}}"),
 		),
+		mcp.WithString("callout",
+			mcp.Description("JSON string of callout band (optional). Only supported by some patterns (card-grid, comparison-2col). Example: {\"text\":\"Key takeaway\",\"emphasis\":\"bold\"}"),
+		),
 	)
 }
 
@@ -864,11 +867,42 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 		return mcp.NewToolResultText(string(responseJSON)), nil
 	}
 
+	// Callout support check — parity with expandPattern (0kyd)
+	if calloutResult := validateCalloutParam(ctx, request, name, pat); calloutResult != nil {
+		return calloutResult, nil
+	}
+
 	result := struct {
 		OK bool `json:"ok"`
 	}{OK: true}
 	responseJSON, _ := api.MarshalMCPResponse(ctx, result)
 	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+// validateCalloutParam checks the optional "callout" parameter against the
+// pattern's CalloutSupport interface. Returns a non-nil result on error,
+// or nil when callout is absent or the pattern supports it.
+func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name string, pat patterns.Pattern) *mcp.CallToolResult {
+	calloutStr, err := request.RequireString("callout")
+	if err != nil || calloutStr == "" {
+		return nil
+	}
+	var callout patterns.PatternCallout
+	if err := json.Unmarshal([]byte(calloutStr), &callout); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid callout JSON: %v", err))
+	}
+	cs, ok := pat.(patterns.CalloutSupport)
+	if ok && cs.SupportsCallout() {
+		return nil
+	}
+	reg := patterns.Default()
+	veErr := patterns.ErrCalloutUnsupportedFor(name, reg.CalloutSupportedPatterns())
+	result := struct {
+		OK     bool                     `json:"ok"`
+		Errors []patternValidationError `json:"errors"`
+	}{OK: false, Errors: splitValidationErrors(veErr)}
+	responseJSON, _ := api.MarshalMCPResponse(ctx, result)
+	return mcp.NewToolResultText(string(responseJSON))
 }
 
 func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

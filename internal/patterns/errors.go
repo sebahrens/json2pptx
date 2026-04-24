@@ -17,6 +17,7 @@ const (
 	ErrCodeEmptyValue          = "empty_value"
 	ErrCodeHexFillNonBrand    = "hex_fill_non_brand"
 	ErrCodeUnknownLayoutID    = "unknown_layout_id"
+	ErrCodeCalloutUnsupported = "callout_unsupported"
 
 	// Fit-report error codes.
 	ErrCodeFitOverflow       = "fit_overflow"
@@ -44,7 +45,8 @@ var (
 	ErrMaxItems      = errors.New("too many items")
 	ErrEmptyValue          = errors.New("empty value")
 	ErrHexFillNonBrand    = errors.New("hex fill color is not in brand allowlist")
-	ErrUnknownLayoutID    = errors.New("layout_id not found in template")
+	ErrUnknownLayoutID        = errors.New("layout_id not found in template")
+	ErrCalloutUnsupported     = errors.New("pattern does not support callout")
 
 	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
@@ -68,7 +70,8 @@ var codeSentinel = map[string]error{
 	ErrCodeMaxItems:      ErrMaxItems,
 	ErrCodeEmptyValue:          ErrEmptyValue,
 	ErrCodeHexFillNonBrand:    ErrHexFillNonBrand,
-	ErrCodeUnknownLayoutID:    ErrUnknownLayoutID,
+	ErrCodeUnknownLayoutID:        ErrUnknownLayoutID,
+	ErrCodeCalloutUnsupported:     ErrCalloutUnsupported,
 	ErrCodeFitOverflow:       ErrFitOverflow,
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,
@@ -230,6 +233,23 @@ func errMaxItems(pattern, path string, maxCount, actual int, hint string) *Valid
 		Code:    ErrCodeMaxItems,
 		Message: msg,
 		Fix:     TextFix(fmt.Sprintf("reduce %s to at most %d items", path, maxCount)),
+	}
+}
+
+// ErrCalloutUnsupportedFor creates a "callout_unsupported" validation error
+// that names the pattern and suggests patterns that do support callout.
+func ErrCalloutUnsupportedFor(pattern string, supportedPatterns []string) *ValidationError {
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    "pattern.callout",
+		Code:    ErrCodeCalloutUnsupported,
+		Message: fmt.Sprintf("%s: does not support callout", pattern),
+		Fix: &FixSuggestion{
+			Kind: "remove_field_or_switch_pattern",
+			Params: map[string]any{
+				"supports_callout_patterns": supportedPatterns,
+			},
+		},
 	}
 }
 

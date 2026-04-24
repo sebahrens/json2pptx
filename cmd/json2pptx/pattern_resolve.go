@@ -75,6 +75,15 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		return nil, nil, fmt.Errorf("pattern %q: validation failed: %w", p.Name, err)
 	}
 
+	// Pre-expand callout support check (D18): fail before Expand if pattern
+	// does not support callout — this keeps validate and expand parity (0kyd).
+	if p.Callout != nil {
+		cs, ok := pat.(patterns.CalloutSupport)
+		if !ok || !cs.SupportsCallout() {
+			return nil, nil, patterns.ErrCalloutUnsupportedFor(p.Name, reg.CalloutSupportedPatterns())
+		}
+	}
+
 	// Expand
 	grid, err := pat.Expand(ctx, values, overrides, cellOverrides)
 	if err != nil {
@@ -83,10 +92,6 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 
 	// Post-expand callout decorator (D18): append full-width callout row
 	if p.Callout != nil {
-		cs, ok := pat.(patterns.CalloutSupport)
-		if !ok || !cs.SupportsCallout() {
-			return nil, nil, fmt.Errorf("pattern %q does not support callout", p.Name)
-		}
 		grid = appendCalloutRow(grid, p.Callout)
 	}
 
