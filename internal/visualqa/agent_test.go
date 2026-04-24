@@ -166,6 +166,94 @@ func TestSchemaErrorMessage(t *testing.T) {
 	}
 }
 
+// --- Contract tests: lock the machine-readable shapes agents depend on ---
+
+// TestFinding_ContractShape verifies the JSON field names in Finding are stable.
+func TestFinding_ContractShape(t *testing.T) {
+	f := Finding{
+		SlideIndex:  1,
+		SlideType:   "content",
+		Severity:    SeverityP1,
+		Category:    "text_overflow",
+		Description: "Title extends beyond boundary",
+		Location:    "top-right",
+	}
+
+	b, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatalf("Finding JSON is not an object: %v", err)
+	}
+
+	// All six fields must be present with these exact names.
+	for _, field := range []string{"slide_index", "slide_type", "severity", "category", "description", "location"} {
+		if _, ok := raw[field]; !ok {
+			t.Errorf("Finding JSON missing stable field %q", field)
+		}
+	}
+}
+
+// TestReport_ContractShape verifies the JSON field names in Report are stable.
+func TestReport_ContractShape(t *testing.T) {
+	r := &Report{
+		Template:   "midnight-blue",
+		SlideCount: 1,
+		Results: []SlideResult{{
+			SlideIndex: 0,
+			SlideType:  "content",
+			Findings:   []Finding{},
+		}},
+	}
+	r.Summarize()
+
+	b, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatalf("Report JSON is not an object: %v", err)
+	}
+
+	for _, field := range []string{"template", "slide_count", "results", "total_issues", "total_p0", "total_p1", "total_p2", "total_p3"} {
+		if _, ok := raw[field]; !ok {
+			t.Errorf("Report JSON missing stable field %q", field)
+		}
+	}
+}
+
+// TestSchemaError_ContractShape verifies that SchemaError carries violations
+// and is type-assertable for programmatic handling.
+func TestSchemaError_ContractShape(t *testing.T) {
+	info := SlideInfo{Index: 0, Type: "content", Title: "Test"}
+
+	// Trigger a SchemaError with an unknown severity.
+	_, err := parseFindings(`[{"severity":"CRITICAL","category":"contrast","description":"Bad","location":"x"}]`, info)
+	if err == nil {
+		t.Fatal("expected SchemaError")
+	}
+
+	se, ok := err.(*SchemaError)
+	if !ok {
+		t.Fatalf("expected *SchemaError, got %T", err)
+	}
+
+	// Violations must be a non-empty string slice.
+	if len(se.Violations) == 0 {
+		t.Error("SchemaError.Violations is empty — agents use this to understand what went wrong")
+	}
+
+	// Error() must be non-empty for logging.
+	if se.Error() == "" {
+		t.Error("SchemaError.Error() is empty")
+	}
+}
+
 func TestPromptForSlideType(t *testing.T) {
 	// Known types should return specific prompts.
 	for _, st := range []string{"title", "section", "content", "chart", "table", "diagram", "image", "two-column", "comparison", "blank"} {
