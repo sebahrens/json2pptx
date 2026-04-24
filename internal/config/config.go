@@ -102,6 +102,9 @@ func DefaultConfig() Config {
 }
 
 // Load loads configuration from a YAML file, with environment variable overrides.
+// When path is non-empty but the file does not exist, Load silently falls back to
+// defaults. This is intentional: the Dockerfile hardcodes --config /app/config.yaml
+// in CMD, so containers start cleanly with defaults when no config is mounted.
 func Load(path string) (Config, error) {
 	cfg := DefaultConfig()
 
@@ -111,6 +114,7 @@ func Load(path string) (Config, error) {
 			if !os.IsNotExist(err) {
 				return Config{}, fmt.Errorf("read config file: %w", err)
 			}
+			// File not found — use defaults (see comment above).
 		} else {
 			if err := safeyaml.Unmarshal(data, &cfg); err != nil {
 				return Config{}, fmt.Errorf("parse config file: %w", err)
