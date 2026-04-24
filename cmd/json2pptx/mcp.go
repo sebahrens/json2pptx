@@ -260,30 +260,32 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	defer templateCleanup()
 
 	// Analyze template
-	var templateLayouts []types.LayoutMetadata
 	var syntheticFiles map[string][]byte
-	var slideWidth, slideHeight int64
 	var templateMetadata *types.TemplateMetadata
-	if reader, err := template.OpenTemplate(templatePath); err == nil {
-		defer func() { _ = reader.Close() }()
-		if layouts, err := template.ParseLayouts(reader); err == nil {
-			theme := template.ParseTheme(reader)
-			slideWidth, slideHeight = template.ParseSlideDimensions(reader)
-			analysis := &types.TemplateAnalysis{
-				TemplatePath: templatePath,
-				SlideWidth:   slideWidth,
-				SlideHeight:  slideHeight,
-				Layouts:      layouts,
-				Theme:        theme,
-			}
-			template.SynthesizeIfNeeded(reader, analysis)
-			templateLayouts = analysis.Layouts
-			if analysis.Synthesis != nil {
-				syntheticFiles = analysis.Synthesis.SyntheticFiles
-			}
-			templateMetadata, _ = template.ParseMetadata(reader)
-		}
+	reader, err := template.OpenTemplate(templatePath)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("template analysis failed: %v", err)), nil
 	}
+	defer func() { _ = reader.Close() }()
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("template analysis failed: %v", err)), nil
+	}
+	theme := template.ParseTheme(reader)
+	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
+	analysis := &types.TemplateAnalysis{
+		TemplatePath: templatePath,
+		SlideWidth:   slideWidth,
+		SlideHeight:  slideHeight,
+		Layouts:      layouts,
+		Theme:        theme,
+	}
+	template.SynthesizeIfNeeded(reader, analysis)
+	templateLayouts := analysis.Layouts
+	if analysis.Synthesis != nil {
+		syntheticFiles = analysis.Synthesis.SyntheticFiles
+	}
+	templateMetadata, _ = template.ParseMetadata(reader)
 
 	// Resolve relative icon paths against CWD (MCP receives inline JSON, not a file path)
 	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
