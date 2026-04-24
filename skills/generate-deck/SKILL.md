@@ -41,6 +41,8 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each entry includes concrete limits (`max_series`, `max_points`, `max_categories` for charts; `max_nodes`, `max_depth` for diagrams), density behavior, and label strategy. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
 
+**Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. It returns the same `{pattern, path, code, message, fix}` structured shape (with `fix.kind` values from the chart enum: `align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`). Invalid style payloads return a structured rejection instead of being silently ignored. Use when validating a chart/diagram before embedding it into a slide.
+
 ---
 
 ## Workflow: Plan, Generate, Validate
@@ -81,7 +83,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
-1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). Fix any errors — fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints (e.g., `reduce_text`, `split_at_row`) that are directly actionable. Stable fields for programmatic matching: `code`, `severity` (error/warning/info), `fix.kind`, `fix.params`. Advisory (human-readable, may change): `message`. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
+1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). The CLI form `-fit-report=path.json` writes **NDJSON** (one finding per line, no array wrapping); `-fit-report=-` writes NDJSON to stdout; bare `-fit-report` prints a human-readable summary to stderr. Validate exits 0 even with unfittable cells — refusal comes via `strict_fit` on generate. Fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints that are directly actionable. Stable fields for programmatic matching: `code`, `severity` (error/warning/info), `action` (`refuse`/`shrink_or_split`/`review`/`info`), `fix.kind`, `fix.params`. Advisory (human-readable, may change): `message`. See the Layout Finding Codes section below for the full code catalog. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
 2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `fix.kind: split_at_row|reduce_text`). Both native layout findings and chart findings participate in the ladder — see the chart finding codes below for which codes promote at which level. On refusal, MCP returns structured diagnostics with `IsError=true`:
    ```json
    {
@@ -163,6 +165,62 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | 8 | `series[i].values` length must equal `len(categories)` | Mismatched arrays produce corrupted charts |
 | 9 | Chart types use underscores: `stacked_bar`, `grouped_bar` | Hyphens (`stacked-bar`) silently fail |
 | 10 | Don't mix data formats. Single: `{"Q1": 10}`; Multi: `{categories, series}`; Waterfall: `{points}` | Pick one format per chart |
+
+### Layout Finding Codes
+
+Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`) and `generate_presentation` use these codes. They follow the `{path, code, severity, action, message, fix}` envelope. No prefix — the `chart.*` namespace below covers charts and diagrams.
+
+**Pre-flight codes** — emitted when measuring the deck before render:
+
+| Code | When emitted | Default action | Typical `fix.kind` |
+|------|-------------|----------------|--------------------|
+| `placeholder_overflow` | Body text overflows placeholder after autofit (three-condition gate: overshoot > 15%, autofit off/unavailable, can't fit at min font) | `shrink_or_split` | `reduce_text` |
+| `title_wraps` | Title placeholder measures >1 line (informational, distinct from `placeholder_overflow`) | `review` | `reduce_text` |
+| `slide_bounds_overflow` | JSON-authored shape center falls outside slide rect (center-based threshold, not corners) | `shrink_or_split` | `reduce_text` |
+| `footer_collision` | Authored shape bbox intersects footer area on a layout that declares a footer placeholder | `review` (strict: `refuse`) | `reduce_text` |
+| `fit_overflow` | Per-cell: text needs more lines than cell height allows at the declared font | `refuse` | `split_at_row` / `reduce_text` |
+| `density_exceeded` | Table rows × cols beyond TDR ceiling at the declared font (Rule 20) | `review` | `split_at_row` |
+| `stacked_tables` | Sibling tables in a shape_grid with `row_gap < 4pt` (two-tables-one-grid anti-pattern) | `review` | `split_at_row` |
+| `divider_too_thin` | Divider shape height < 4% of slide height | `review` | — |
+| `hex_fill_non_brand` | Non-allowlisted `#RRGGBB` fill on a shape | `review` | `use_semantic_color` |
+| `mixed_fill_scheme` | Slide mixes semantic (`accent1`, `lt2`) and hex fills (hex-fill mix anti-pattern) | `review` | `use_semantic_color` |
+
+**Render-time codes** — emitted during `generate_presentation` when the engine adjusted content to fit:
+
+| Code | When emitted |
+|------|-------------|
+| `text_trimmed` | Trailing paragraphs trimmed to fit placeholder |
+| `text_overflow` | Text still overflows placeholder after trimming |
+| `readability_trimmed` | Paragraphs trimmed for readability floor |
+| `no_autofit_overflow` | Text overflows placeholder that has `noAutofit` set |
+| `table_rows_truncated` | Table rows truncated to fit row height |
+| `table_font_scaled` | Table font scaled down to the minimum floor |
+| `diagram_clamped` | Diagram placeholder dimensions clamped to minimum |
+| `diagram_render_failed` | Diagram render failed; placeholder image inserted |
+| `column_width_deficit` | Column widths fell back to global floor |
+| `pagination_default_threshold` | Pagination used default threshold (no template capacity available) |
+
+**Action semantics (shared with chart codes):**
+- `refuse` — with `strict_fit: "strict"`, generation is blocked and MCP returns `IsError=true`; with `warn`, emits finding only
+- `shrink_or_split` — content will be adjusted or distributed; strict promotes to `refuse` for content-loss codes
+- `review` — informational; agent should inspect but no automatic remediation
+- `info` — advisory/telemetry only, never promoted
+
+**`fix.kind` enum** (stable for programmatic matching):
+
+| Kind | Semantics | Params |
+|------|-----------|--------|
+| `reduce_text` | Shorten text content in the indicated path | — |
+| `split_at_row` | Emit `split_slide` at the given row index | `row: int` |
+| `use_semantic_color` | Replace hex fill with `accent1`/`lt2`/`dk1`/… | `message?` |
+| `replace_color` | Swap one explicit color for another | `from, to` |
+| `replace_value` | Replace an invalid value with a suggested one | `suggestion, allowed?` |
+| `provide_value` | Required field is missing | `field` |
+| `use_one_of` | Value must be one of an allowed set | `allowed` |
+| `rename_field` | Unknown field name close to a known one | `suggestion` |
+| `remove_field` | Unknown field should be removed | — |
+
+Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`, `explicit_scale`, `truncate_or_split`, `align_series`, `increase_canvas`).
 
 ### Chart Finding Codes
 
