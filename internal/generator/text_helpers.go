@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // collectParagraphTexts extracts plain text from all paragraph runs.
@@ -397,13 +399,44 @@ func estimateWordWrapLines(text string, charsPerLine int) int {
 
 // truncateTextToMaxLines truncates text to fit within maxLines at the given
 // font size and placeholder width, appending an ellipsis if truncation occurs.
-// Uses a character-based width estimate (avgCharRatio × em per character).
+// Uses textfit.MeasureRun for font-metric-aware measurement when fontName is
+// available; falls back to the legacy avgCharRatio heuristic when font metrics
+// cannot be resolved (e.g. missing font cache).
 // Returns the original text unchanged if it already fits.
-func truncateTextToMaxLines(text string, widthEMU int64, fontSizeHPt int, maxLines int) string {
+func truncateTextToMaxLines(text string, widthEMU int64, fontSizeHPt int, maxLines int, fontName string) string {
 	if text == "" || widthEMU <= 0 || fontSizeHPt <= 0 || maxLines <= 0 {
 		return text
 	}
 
+	fontSizePt := float64(fontSizeHPt) / 100.0
+
+	// Try font-metric-aware measurement via textfit.MeasureRun.
+	m, err := textfit.MeasureRun(text, fontName, fontSizePt, widthEMU, maxLines)
+	if err == nil {
+		if m.Fits {
+			return text
+		}
+		// Text overflows maxLines — truncate word by word using MeasureRun.
+		words := strings.Fields(text)
+		for len(words) > 1 {
+			words = words[:len(words)-1]
+			candidate := strings.Join(words, " ") + " \u2026"
+			cm, cerr := textfit.MeasureRun(candidate, fontName, fontSizePt, widthEMU, maxLines)
+			if cerr != nil {
+				break // fall through to heuristic
+			}
+			if cm.Fits {
+				return candidate
+			}
+		}
+		// Even one word + ellipsis doesn't fit
+		if len(words) == 1 {
+			return words[0] + " \u2026"
+		}
+		return text
+	}
+
+	// Fallback: legacy character-based heuristic (no font cache available).
 	const emuPerPt = 12700
 	widthPt := float64(widthEMU) / float64(emuPerPt)
 	usablePt := widthPt - 2*7.2 // default OOXML margins
@@ -411,19 +444,16 @@ func truncateTextToMaxLines(text string, widthEMU int64, fontSizeHPt int, maxLin
 		return text
 	}
 
-	fontSizePt := float64(fontSizeHPt) / 100.0
 	const avgCharRatio = 0.55
 	charsPerLine := int(usablePt / (fontSizePt * avgCharRatio))
 	if charsPerLine < 1 {
 		charsPerLine = 1
 	}
 
-	// Check if text already fits
 	if estimateWordWrapLines(text, charsPerLine) <= maxLines {
 		return text
 	}
 
-	// Truncate word by word until it fits within maxLines
 	words := strings.Fields(text)
 	for len(words) > 1 {
 		words = words[:len(words)-1]
@@ -433,7 +463,6 @@ func truncateTextToMaxLines(text string, widthEMU int64, fontSizeHPt int, maxLin
 		}
 	}
 
-	// Even one word + ellipsis doesn't fit — return first word truncated
 	if len(words) == 1 {
 		return words[0] + " \u2026"
 	}

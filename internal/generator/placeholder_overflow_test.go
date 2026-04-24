@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -226,6 +227,34 @@ func TestDetectTitleWraps_MultiLine(t *testing.T) {
 	}
 	if finding.Allowed == nil {
 		t.Error("Allowed extent should be non-nil")
+	}
+}
+
+func TestDetectTitleWraps_ExceedsMaxLines(t *testing.T) {
+	// Title that exceeds 3-line cap → action escalates to "shrink_or_split".
+	// At 36pt/8.5", Arial needs substantial text to exceed 3 wrapped lines.
+	longTitle := strings.Repeat("Comprehensive Analysis of Global Market Trends and Revenue Growth ", 5)
+	input := TitleWrapsInput{
+		SlideIndex:  0,
+		Path:        "slides[0].content.title",
+		Title:       longTitle,
+		WidthEMU:    testTitleWidthEMU,
+		HeightEMU:   testTitleHeightEMU,
+		FontSizeHPt: 3600, // 36pt
+		FontName:    "Arial",
+		MaxLines:    3,
+	}
+
+	finding := DetectTitleWraps(input)
+	if finding == nil {
+		t.Fatal("expected finding for title exceeding max lines")
+	}
+
+	if finding.Code != patterns.ErrCodeTitleWraps {
+		t.Errorf("Code = %q, want %q", finding.Code, patterns.ErrCodeTitleWraps)
+	}
+	if finding.Action != "shrink_or_split" {
+		t.Errorf("Action = %q, want %q", finding.Action, "shrink_or_split")
 	}
 }
 

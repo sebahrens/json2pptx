@@ -192,7 +192,7 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 		if titleFontSizeHPt == 0 {
 			titleFontSizeHPt = 2000 // 20pt default (typical slide master body lvl1)
 		}
-		truncated := truncateTextToMaxLines(text, titleWidthEMU, titleFontSizeHPt, maxTitleLines)
+		truncated := truncateTextToMaxLines(text, titleWidthEMU, titleFontSizeHPt, maxTitleLines, themeFontName)
 		if truncated != text {
 			slog.Info("truncated long title to fit max lines",
 				slog.String("placeholder", placeholderID),

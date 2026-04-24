@@ -128,12 +128,17 @@ type TitleWrapsInput struct {
 	FontSizeHPt int
 	// FontName is the font family name (e.g. "Arial").
 	FontName string
+	// MaxLines is the maximum number of wrapped lines before the title is
+	// destructively truncated (default: maxTitleLines = 3). When the title
+	// exceeds this limit, the finding escalates to action "shrink_or_split".
+	MaxLines int
 }
 
 // DetectTitleWraps checks whether a title text wraps to more than one line
-// within its placeholder. Title wrapping is common and usually acceptable,
-// so the finding uses action "review" (informational) rather than
-// "shrink_or_split".
+// within its placeholder. Mild wrapping (2–MaxLines lines) uses action
+// "review" (informational). When the title exceeds MaxLines, the generator
+// will destructively truncate it, so the finding escalates to action
+// "shrink_or_split" with fix kind "shorten_title".
 //
 // Returns nil when the title fits on a single line or when measurement
 // is not possible.
@@ -146,6 +151,16 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 	if fontSizeHPt <= 0 {
 		fontSizeHPt = 2000
 	}
+
+	fontSizePt := float64(fontSizeHPt) / 100.0
+
+	// Use MeasureRun to get the actual line count for MaxLines comparison.
+	maxLines := input.MaxLines
+	if maxLines <= 0 {
+		maxLines = maxTitleLines
+	}
+
+	m, mErr := textfit.MeasureRun(input.Title, input.FontName, fontSizePt, input.WidthEMU, 0)
 
 	params := textfit.Params{
 		WidthEMU:    input.WidthEMU,
@@ -163,11 +178,28 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 	// A single line height is fontSize * lineSpacing (default 1.2).
 	// MeasureHeight uses the same default, so compute the single-line
 	// threshold identically: fontPt * 1.2, converted to EMU.
-	fontSizePt := float64(fontSizeHPt) / 100.0
 	singleLineEMU := int64(fontSizePt * 1.2 * 12700) // 12700 EMU per point
 
 	if measuredEMU <= singleLineEMU {
 		return nil
+	}
+
+	// Determine whether the title merely wraps or exceeds the truncation cap.
+	action := "review"
+	fixKind := "shorten_title"
+	msg := fmt.Sprintf(
+		"title wraps to multiple lines (%.0fpt font, %.1f\" wide placeholder)",
+		fontSizePt,
+		float64(input.WidthEMU)/914400.0,
+	)
+	if mErr == nil && m.Lines > maxLines {
+		action = "shrink_or_split"
+		msg = fmt.Sprintf(
+			"title wraps to %d lines, exceeds %d-line cap and will be truncated (%.0fpt font, %.1f\" wide placeholder)",
+			m.Lines, maxLines,
+			fontSizePt,
+			float64(input.WidthEMU)/914400.0,
+		)
 	}
 
 	return &patterns.FitFinding{
@@ -175,14 +207,10 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 			Pattern: "placeholder",
 			Path:    input.Path,
 			Code:    patterns.ErrCodeTitleWraps,
-			Message: fmt.Sprintf(
-				"title wraps to multiple lines (%.0fpt font, %.1f\" wide placeholder)",
-				fontSizePt,
-				float64(input.WidthEMU)/914400.0,
-			),
-			Fix: &patterns.FixSuggestion{Kind: "shorten_title"},
+			Message: msg,
+			Fix:     &patterns.FixSuggestion{Kind: fixKind},
 		},
-		Action: "review",
+		Action: action,
 		Measured: &patterns.Extent{
 			WidthEMU:  input.WidthEMU,
 			HeightEMU: measuredEMU,

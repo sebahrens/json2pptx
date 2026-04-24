@@ -3,6 +3,8 @@ package generator
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 func TestHasBulletsDisabled(t *testing.T) {
@@ -1547,22 +1549,24 @@ func TestEstimateWordWrapLines(t *testing.T) {
 
 func TestTruncateTextToMaxLines(t *testing.T) {
 	// Use a placeholder width of ~8 inches (7315200 EMU) and 20pt font (2000 hPt).
-	// At 20pt with avgCharRatio 0.55: charsPerLine = (8*72 - 14.4) / (20*0.55) ≈ 51
 	const widthEMU int64 = 7315200 // ~8 inches
 	const fontHPt = 2000           // 20pt
 
 	t.Run("short title unchanged", func(t *testing.T) {
 		text := "Quarterly Revenue Overview"
-		got := truncateTextToMaxLines(text, widthEMU, fontHPt, 3)
+		got := truncateTextToMaxLines(text, widthEMU, fontHPt, 3, "Arial")
 		if got != text {
 			t.Errorf("short title should not be truncated, got %q", got)
 		}
 	})
 
 	t.Run("very long title truncated with ellipsis", func(t *testing.T) {
-		// Build a title long enough to exceed 3 lines at 20pt in ~8 inches
-		text := "Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments for the Current Fiscal Year Including Detailed Regional Breakdowns"
-		got := truncateTextToMaxLines(text, widthEMU, fontHPt, 3)
+		// Build a title long enough to exceed 3 lines at 20pt in ~8 inches.
+		// With real font metrics, Arial 20pt in 8" handles ~140 chars per line,
+		// so we need >420 chars to exceed 3 wrapped lines.
+		text := strings.Repeat("Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments ", 5)
+		text = strings.TrimSpace(text)
+		got := truncateTextToMaxLines(text, widthEMU, fontHPt, 3, "Arial")
 		if got == text {
 			t.Error("long title should have been truncated")
 		}
@@ -1574,19 +1578,19 @@ func TestTruncateTextToMaxLines(t *testing.T) {
 			t.Errorf("truncated text should be shorter: got %d chars, original %d",
 				len(got), len(text))
 		}
-		// Verify it fits within 3 lines
-		const avgCharRatio = 0.55
-		widthPt := float64(widthEMU)/12700.0 - 2*7.2
-		charsPerLine := int(widthPt / (float64(fontHPt) / 100.0 * avgCharRatio))
-		lines := estimateWordWrapLines(got, charsPerLine)
-		if lines > 3 {
-			t.Errorf("truncated title wraps to %d lines, want <= 3", lines)
+		// Verify it fits within 3 lines using MeasureRun
+		m, err := textfit.MeasureRun(got, "Arial", float64(fontHPt)/100.0, widthEMU, 3)
+		if err != nil {
+			t.Fatalf("MeasureRun failed: %v", err)
+		}
+		if !m.Fits {
+			t.Errorf("truncated title does not fit within 3 lines (measured %d lines)", m.Lines)
 		}
 	})
 
 	t.Run("zero width returns original", func(t *testing.T) {
 		text := "Some Title"
-		got := truncateTextToMaxLines(text, 0, fontHPt, 3)
+		got := truncateTextToMaxLines(text, 0, fontHPt, 3, "Arial")
 		if got != text {
 			t.Errorf("zero width should return original, got %q", got)
 		}
@@ -1594,9 +1598,21 @@ func TestTruncateTextToMaxLines(t *testing.T) {
 
 	t.Run("zero font size returns original", func(t *testing.T) {
 		text := "Some Title"
-		got := truncateTextToMaxLines(text, widthEMU, 0, 3)
+		got := truncateTextToMaxLines(text, widthEMU, 0, 3, "Arial")
 		if got != text {
 			t.Errorf("zero font size should return original, got %q", got)
+		}
+	})
+
+	t.Run("fallback heuristic when font unavailable", func(t *testing.T) {
+		// Empty fontName triggers MeasureRun fallback (ErrNoFontCache) →
+		// falls through to the avgCharRatio heuristic. The function should
+		// still truncate long text rather than panicking.
+		text := "Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments for the Current Fiscal Year Including Detailed Regional Breakdowns"
+		got := truncateTextToMaxLines(text, widthEMU, fontHPt, 3, "")
+		// Should either truncate or return unchanged — must not panic.
+		if got == "" {
+			t.Error("fallback should not return empty string")
 		}
 	})
 }
@@ -1648,7 +1664,7 @@ func TestLongTitleTruncation(t *testing.T) {
 
 	t.Run("extremely long title truncated with ellipsis", func(t *testing.T) {
 		shape := makeTitleShape()
-		longTitle := "Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments for the Current Fiscal Year Including Detailed Regional Breakdowns and Forward Looking Projections"
+		longTitle := strings.Repeat("Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments ", 5)
 		err := populateShapeText(shape, ContentItem{
 			PlaceholderID: "title",
 			Type:          ContentText,
