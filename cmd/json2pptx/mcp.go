@@ -151,15 +151,20 @@ Content types and their value fields:
 - "diagram": "diagram_value":{"type":"timeline|process_flow|pyramid|venn|swot|org_chart|gantt|matrix_2x2|porters_five_forces|house_diagram|business_model_canvas|value_chain|nine_box_talent|kpi_dashboard|heatmap|fishbone|pestel|panel_layout","title":"...","data":{...}}
 - "image": "image_value":{"path":"/path/to/image.png","alt":"description"}
 
-Shape grid (optional per-slide): "shape_grid" places preset geometry shapes in a grid layout.
+Named patterns (optional per-slide, XOR with shape_grid): "pattern" expands a named pattern into a shape_grid. Use list_patterns/show_pattern to discover names and schemas.
+Example: {"pattern":{"name":"kpi-3up","values":{"items":[{"label":"Revenue","value":"$1.2M"},{"label":"Growth","value":"+15%"},{"label":"Users","value":"4.3K"}]}}}
+
+Shape grid (optional per-slide, XOR with pattern): "shape_grid" places preset geometry shapes in a grid layout.
 Example: {"shape_grid":{"columns":3,"rows":[{"cells":[{"shape":{"geometry":"roundRect","fill":"#4472C4","text":"Step 1"}},{"shape":{"geometry":"rightArrow","fill":"#70AD47"}},{"shape":{"geometry":"roundRect","fill":"#4472C4","text":"Step 2"}}]}]}}
 Cell types: "shape" (preset geometry with fill/line/text) or "table" (same as table content type).
 Common geometries: rect, roundRect, ellipse, diamond, chevron, rightArrow, hexagon, plus, star5, donut, flowChartProcess, flowChartDecision, flowChartTerminator.
 Grid options: "columns" (number or width array), "gap"/"col_gap"/"row_gap" (points), "bounds" (percentage {x,y,width,height}).
 Cell options: "col_span", "row_span" for merged cells. Shape options: "geometry", "fill" (color string or {color,alpha}), "line" ({color,width,dash}), "text" (string or {content,size,bold,italic,align,vertical_align,color,font,inset_left,inset_right,inset_top,inset_bottom}), "rotation", "adjustments".
 
-Optional top-level fields: "output_filename", "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
-Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "build".`),
+Optional top-level fields: "output_filename", "defaults":{"table_style":{...},"cell_style":{...}} (swap-only deck-level defaults applied before validation), "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
+Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "build".
+
+Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"table.rows","layout_id":"...","content":[...]} auto-paginates overflowing table rows across multiple slides.`),
 		),
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: output.pptx). Path components are stripped for safety."),
@@ -176,7 +181,10 @@ Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "b
 
 func mcpListTemplatesTool() mcp.Tool {
 	return mcp.NewTool("list_templates",
-		mcp.WithDescription("List available presentation templates with their layouts, theme colors, and capabilities."),
+		mcp.WithDescription(`List available presentation templates with their layouts, theme colors, and capabilities.
+
+Response shape per template (compact/full modes): name, aspect_ratio, layout_count, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, layout_names, table_styles [{id,name}]. Full mode adds layouts with placeholders and capacity.
+Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes).`),
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
