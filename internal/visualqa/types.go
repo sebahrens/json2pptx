@@ -16,6 +16,57 @@ const (
 	SeverityP3 Severity = "P3" // Nitpick: suggestion for improvement
 )
 
+// validSeverities is the set of allowed severity values.
+var validSeverities = map[Severity]bool{
+	SeverityP0: true,
+	SeverityP1: true,
+	SeverityP2: true,
+	SeverityP3: true,
+}
+
+// ValidSeverity reports whether s is an allowed severity value.
+func ValidSeverity(s Severity) bool {
+	return validSeverities[s]
+}
+
+// allowedCategories is the set of allowed finding category strings.
+var allowedCategories = map[string]bool{
+	"text_overflow":      true,
+	"text_truncation":    true,
+	"contrast":           true,
+	"alignment":          true,
+	"spacing":            true,
+	"overlap":            true,
+	"missing_content":    true,
+	"font_size":          true,
+	"visual_hierarchy":   true,
+	"chart_readability":  true,
+	"table_readability":  true,
+	"image_quality":      true,
+	"layout_balance":     true,
+	"color_consistency":  true,
+	"border_style":       true,
+	"footer_clearance":   true,
+	"aspect_ratio":       true,
+}
+
+// ValidCategory reports whether cat is an allowed finding category.
+func ValidCategory(cat string) bool {
+	return allowedCategories[cat]
+}
+
+// SchemaError indicates the model returned structurally valid JSON but with
+// values outside the allowed schema (unknown severity or category). Callers
+// can type-assert this to distinguish schema violations from transport or
+// JSON parse errors.
+type SchemaError struct {
+	Violations []string // human-readable descriptions of each violation
+}
+
+func (e *SchemaError) Error() string {
+	return fmt.Sprintf("schema validation failed: %v", e.Violations)
+}
+
 // Finding represents a single visual defect detected by the QA agent.
 type Finding struct {
 	SlideIndex  int      `json:"slide_index"`

@@ -158,9 +158,10 @@ func (a *Agent) InspectSlide(ctx context.Context, imgData []byte, info SlideInfo
 	findings, err := parseFindings(text, info)
 	if err != nil {
 		result.Error = fmt.Sprintf("parse findings: %v", err)
-	} else {
-		result.Findings = findings
 	}
+	// Always store findings — SchemaError returns partial results alongside
+	// the error so callers can inspect what the model produced.
+	result.Findings = findings
 
 	return result, nil
 }
@@ -234,16 +235,27 @@ func parseFindings(text string, info SlideInfo) ([]Finding, error) {
 	}
 
 	findings := make([]Finding, 0, len(raw))
-	for _, r := range raw {
+	var violations []string
+	for i, r := range raw {
+		sev := Severity(r.Severity)
+		if !ValidSeverity(sev) {
+			violations = append(violations, fmt.Sprintf("finding[%d]: unknown severity %q", i, r.Severity))
+		}
+		if !ValidCategory(r.Category) {
+			violations = append(violations, fmt.Sprintf("finding[%d]: unknown category %q", i, r.Category))
+		}
 		f := Finding{
 			SlideIndex:  info.Index,
 			SlideType:   info.Type,
-			Severity:    Severity(r.Severity),
+			Severity:    sev,
 			Category:    r.Category,
 			Description: r.Description,
 			Location:    r.Location,
 		}
 		findings = append(findings, f)
+	}
+	if len(violations) > 0 {
+		return findings, &SchemaError{Violations: violations}
 	}
 	return findings, nil
 }

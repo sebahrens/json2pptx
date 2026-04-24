@@ -13,10 +13,11 @@ func TestParseFindings(t *testing.T) {
 	info := SlideInfo{Index: 0, Type: "content", Title: "Test Slide"}
 
 	tests := []struct {
-		name    string
-		text    string
-		want    int
-		wantErr bool
+		name       string
+		text       string
+		want       int
+		wantErr    bool
+		wantSchema bool // expect SchemaError specifically
 	}{
 		{
 			name: "empty array",
@@ -42,8 +43,36 @@ func TestParseFindings(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "invalid json",
-			text: `not json at all`,
+			name:    "invalid json",
+			text:    `not json at all`,
+			wantErr: true,
+		},
+		{
+			name:       "unknown severity",
+			text:       `[{"severity":"CRITICAL","category":"contrast","description":"Bad contrast","location":"center"}]`,
+			want:       1,
+			wantSchema: true,
+		},
+		{
+			name:       "unknown category",
+			text:       `[{"severity":"P1","category":"vibe_check","description":"Looks off","location":"center"}]`,
+			want:       1,
+			wantSchema: true,
+		},
+		{
+			name:       "multiple violations",
+			text:       `[{"severity":"HIGH","category":"made_up","description":"Bad","location":"top"}]`,
+			want:       1,
+			wantSchema: true,
+		},
+		{
+			name: "code fences with language tag",
+			text: "```json\n[]\n```",
+			want: 0,
+		},
+		{
+			name:    "bare text with no json",
+			text:    "The slide looks great!",
 			wantErr: true,
 		},
 	}
@@ -54,6 +83,27 @@ func TestParseFindings(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
+				}
+				// wantErr (non-schema) should NOT be a SchemaError.
+				if _, ok := err.(*SchemaError); ok {
+					t.Fatal("expected non-schema error, got SchemaError")
+				}
+				return
+			}
+			if tt.wantSchema {
+				if err == nil {
+					t.Fatal("expected SchemaError, got nil")
+				}
+				se, ok := err.(*SchemaError)
+				if !ok {
+					t.Fatalf("expected *SchemaError, got %T: %v", err, err)
+				}
+				if len(se.Violations) == 0 {
+					t.Fatal("SchemaError has no violations")
+				}
+				// Findings should still be returned alongside the error.
+				if len(findings) != tt.want {
+					t.Errorf("got %d findings, want %d", len(findings), tt.want)
 				}
 				return
 			}
@@ -72,6 +122,47 @@ func TestParseFindings(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestValidSeverity(t *testing.T) {
+	for _, s := range []Severity{SeverityP0, SeverityP1, SeverityP2, SeverityP3} {
+		if !ValidSeverity(s) {
+			t.Errorf("ValidSeverity(%q) = false, want true", s)
+		}
+	}
+	for _, s := range []Severity{"CRITICAL", "HIGH", "low", "P4", ""} {
+		if ValidSeverity(s) {
+			t.Errorf("ValidSeverity(%q) = true, want false", s)
+		}
+	}
+}
+
+func TestValidCategory(t *testing.T) {
+	valid := []string{
+		"text_overflow", "text_truncation", "contrast", "alignment", "spacing",
+		"overlap", "missing_content", "font_size", "visual_hierarchy",
+		"chart_readability", "table_readability", "image_quality",
+		"layout_balance", "color_consistency", "border_style",
+		"footer_clearance", "aspect_ratio",
+	}
+	for _, c := range valid {
+		if !ValidCategory(c) {
+			t.Errorf("ValidCategory(%q) = false, want true", c)
+		}
+	}
+	for _, c := range []string{"vibe_check", "grammar", "content_quality", ""} {
+		if ValidCategory(c) {
+			t.Errorf("ValidCategory(%q) = true, want false", c)
+		}
+	}
+}
+
+func TestSchemaErrorMessage(t *testing.T) {
+	se := &SchemaError{Violations: []string{"bad severity", "bad category"}}
+	msg := se.Error()
+	if msg == "" {
+		t.Fatal("SchemaError.Error() returned empty")
 	}
 }
 
