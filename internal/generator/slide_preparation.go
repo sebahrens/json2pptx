@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/utils"
@@ -16,6 +17,7 @@ import (
 type slidePreparationInput struct {
 	slideSpec            SlideSpec
 	slideNum             int
+	slideIndex           int // 0-based index into the input slides array (for JSON paths)
 	relID                string
 	masterPositionsCache map[string]map[string]*transformXML
 }
@@ -39,10 +41,11 @@ func (ctx *singlePassContext) prepareSlides() error {
 	masterPositionsCache := make(map[string]map[string]*transformXML)
 
 	var newSlideEntries []string
-	for _, slideSpec := range ctx.slideSpecs {
+	for i, slideSpec := range ctx.slideSpecs {
 		input := slidePreparationInput{
 			slideSpec:            slideSpec,
 			slideNum:             nextSlideNum,
+			slideIndex:           i,
 			relID:                fmt.Sprintf("rId%d", nextRelID),
 			masterPositionsCache: masterPositionsCache,
 		}
@@ -110,7 +113,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 
 	var warnings []string
 	if len(input.slideSpec.Content) > 0 {
-		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID)
+		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex)
 	}
 
 	// Enforce WCAG AA text contrast against the layout background.
@@ -417,7 +420,7 @@ func (ctx *singlePassContext) findMaxPresentationRelID() int {
 // populateTextInSlide populates text and bullet content in a slide.
 // Image/chart content is skipped here and handled in prepareImages.
 // layoutID is used to look up the slide master's bullet level configuration.
-func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []ContentItem, layoutID string) []string {
+func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []ContentItem, layoutID string, slideIndex int) []string {
 	var warnings []string
 	resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes)
 	warnings = append(warnings, resolver.warnings...)
@@ -425,7 +428,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 	// Get the first bullet level from the slide master for this layout
 	masterBulletLevel := ctx.getFirstBulletLevelForLayout(layoutID)
 
-	for _, item := range content {
+	for j, item := range content {
 		// Skip visual content types - they are handled in prepareImages
 		if item.Type == ContentImage || item.Type == ContentDiagram || item.Type == ContentTable {
 			continue
@@ -440,6 +443,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 				slog.Any("available", available),
 			)
 			warnings = append(warnings, placeholderNotFoundError(item.PlaceholderID, layoutID, available))
+			ctx.emitPlaceholderNotFound(item.PlaceholderID, layoutID, available, slideIndex, j)
 			continue
 		}
 
@@ -534,4 +538,26 @@ func (ctx *singlePassContext) clearUnmappedPlaceholders() {
 			}
 		}
 	}
+}
+
+// emitPlaceholderNotFound constructs and appends a structured ValidationError
+// when a content item targets a placeholder_id that doesn't exist in the layout.
+func (ctx *singlePassContext) emitPlaceholderNotFound(placeholderID, layoutID string, available []string, slideIndex, contentIndex int) {
+	path := fmt.Sprintf("slides[%d].content[%d].placeholder_id", slideIndex, contentIndex)
+	msg := fmt.Sprintf("slide %d: %s", slideIndex+1, placeholderNotFoundError(placeholderID, layoutID, available))
+
+	fix := &patterns.FixSuggestion{
+		Kind:   "use_one_of",
+		Params: map[string]any{"available": FormatAvailableIDs(available)},
+	}
+	if match, _ := ClosestMatch(placeholderID, available, 3); match != "" {
+		fix.Params["did_you_mean"] = match
+	}
+
+	ctx.validationErrors = append(ctx.validationErrors, &patterns.ValidationError{
+		Path:    path,
+		Code:    patterns.ErrCodePlaceholderNotFound,
+		Message: msg,
+		Fix:     fix,
+	})
 }

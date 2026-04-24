@@ -371,13 +371,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Build response
 	output := JSONOutput{
-		Success:     true,
-		OutputPath:  outputPath,
-		SlideCount:  result.SlideCount,
-		DurationMs:  duration.Milliseconds(),
-		Warnings:    allWarnings,
-		Quality:     computeQualityScore(input.Slides, allWarnings),
-		FitFindings: fitFindings,
+		Success:          true,
+		OutputPath:       outputPath,
+		SlideCount:       result.SlideCount,
+		DurationMs:       duration.Milliseconds(),
+		Warnings:         allWarnings,
+		Quality:          computeQualityScore(input.Slides, allWarnings),
+		ValidationErrors: result.ValidationErrors,
+		FitFindings:      fitFindings,
 	}
 
 	responseJSON, err := api.MarshalMCPResponse(ctx, output)

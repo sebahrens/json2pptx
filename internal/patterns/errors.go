@@ -18,7 +18,8 @@ const (
 	ErrCodeHexFillNonBrand    = "hex_fill_non_brand"
 	ErrCodeUnknownLayoutID    = "unknown_layout_id"
 	ErrCodeCalloutUnsupported = "callout_unsupported"
-	ErrCodeUnknownEnum        = "unknown_enum"
+	ErrCodeUnknownEnum            = "unknown_enum"
+	ErrCodePlaceholderNotFound    = "placeholder_not_found"
 
 	// Fit-report error codes.
 	ErrCodeFitOverflow       = "fit_overflow"
@@ -49,6 +50,7 @@ var (
 	ErrUnknownLayoutID        = errors.New("layout_id not found in template")
 	ErrCalloutUnsupported     = errors.New("pattern does not support callout")
 	ErrUnknownEnum            = errors.New("unknown enum value")
+	ErrPlaceholderNotFound    = errors.New("placeholder_id not found in layout")
 
 	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
@@ -75,6 +77,7 @@ var codeSentinel = map[string]error{
 	ErrCodeUnknownLayoutID:        ErrUnknownLayoutID,
 	ErrCodeCalloutUnsupported:     ErrCalloutUnsupported,
 	ErrCodeUnknownEnum:            ErrUnknownEnum,
+	ErrCodePlaceholderNotFound:    ErrPlaceholderNotFound,
 	ErrCodeFitOverflow:       ErrFitOverflow,
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,

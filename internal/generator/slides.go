@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -134,9 +135,10 @@ type GenerationResult struct {
 	OutputPath    string         // Path to generated file
 	FileSize      int64          // Size of generated file in bytes
 	SlideCount    int            // Number of slides created
-	Warnings      []string       // Non-fatal warnings
-	Duration      time.Duration  // Time taken to generate
-	MediaFailures []MediaFailure // Structured per-slide media errors (diagrams, images, tables)
+	Warnings         []string                  // Non-fatal warnings
+	ValidationErrors []*patterns.ValidationError // Structured validation errors (e.g. placeholder_not_found)
+	Duration         time.Duration              // Time taken to generate
+	MediaFailures    []MediaFailure             // Structured per-slide media errors (diagrams, images, tables)
 }
 
 // MediaFailure describes a media content item that failed to render on a slide.

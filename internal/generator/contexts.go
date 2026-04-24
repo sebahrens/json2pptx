@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
@@ -147,6 +148,9 @@ type OutputContext struct {
 
 	// Warnings accumulated during generation
 	warnings []string
+
+	// Structured validation errors emitted during generation (e.g. placeholder_not_found)
+	validationErrors []*patterns.ValidationError
 
 	// Structured media failures (diagrams, images, tables that failed to render)
 	mediaFailures []MediaFailure

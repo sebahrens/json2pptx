@@ -119,8 +119,9 @@ type JSONOutput struct {
 	Error       string        `json:"error,omitempty"`
 	Warnings    []string      `json:"warnings,omitempty"`
 	SlideErrors []SlideError  `json:"slide_errors,omitempty"`
-	Quality     *QualityScore       `json:"quality,omitempty"`
-	FitFindings []patterns.FitFinding `json:"fit_findings,omitempty"`
+	Quality          *QualityScore              `json:"quality,omitempty"`
+	ValidationErrors []*patterns.ValidationError `json:"validation_errors,omitempty"`
+	FitFindings      []patterns.FitFinding       `json:"fit_findings,omitempty"`
 }
 
 // SlideError describes a render-time failure for a specific slide.
@@ -411,13 +412,14 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 
 	// Build success output
 	output := JSONOutput{
-		Success:     true,
-		OutputPath:  outputPath,
-		SlideCount:  result.SlideCount,
-		DurationMs:  time.Since(startTime).Milliseconds(),
-		Warnings:    allWarnings,
-		SlideErrors: slideErrors,
-		Quality:     computeQualityScore(input.Slides, allWarnings),
+		Success:          true,
+		OutputPath:       outputPath,
+		SlideCount:       result.SlideCount,
+		DurationMs:       time.Since(startTime).Milliseconds(),
+		Warnings:         allWarnings,
+		SlideErrors:      slideErrors,
+		Quality:          computeQualityScore(input.Slides, allWarnings),
+		ValidationErrors: result.ValidationErrors,
 	}
 
 	// Write JSON output if requested

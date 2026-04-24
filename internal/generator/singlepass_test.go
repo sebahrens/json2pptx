@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
@@ -496,7 +497,7 @@ func TestSinglePassContext_PopulateTextInSlide(t *testing.T) {
 				slide.CommonSlideData.ShapeTree.Shapes[i].TextBody = &textBodyXML{}
 			}
 
-			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1")
+			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1", 0)
 
 			if len(warnings) != tt.wantWarnings {
 				t.Errorf("got %d warnings, want %d: %v", len(warnings), tt.wantWarnings, warnings)
@@ -627,7 +628,7 @@ func TestSinglePassContext_PopulateTextInSlide_ByShapeName(t *testing.T) {
 				slide.CommonSlideData.ShapeTree.Shapes[i].TextBody = &textBodyXML{}
 			}
 
-			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1")
+			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1", 0)
 
 			if len(warnings) != tt.wantWarnings {
 				t.Errorf("got %d warnings, want %d: %v", len(warnings), tt.wantWarnings, warnings)
@@ -2283,6 +2284,80 @@ func TestPrepareImages_MissingPlaceholder(t *testing.T) {
 	}
 	if !strings.Contains(ctx.warnings[0], "available placeholders:") {
 		t.Errorf("expected warning to list available placeholders, got: %s", ctx.warnings[0])
+	}
+}
+
+// TestPopulateTextInSlide_PlaceholderNotFound_EmitsValidationError verifies that
+// targeting a non-existent placeholder_id emits a structured ValidationError with
+// available[] and did_you_mean fields.
+func TestPopulateTextInSlide_PlaceholderNotFound_EmitsValidationError(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+
+	slide := &slideXML{
+		CommonSlideData: commonSlideDataXML{
+			ShapeTree: shapeTreeXML{
+				Shapes: []shapeXML{
+					{
+						NonVisualProperties: nonVisualPropertiesXML{
+							ConnectionNonVisual: connectionNonVisualXML{ID: 2, Name: "body"},
+							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
+						},
+						TextBody: &textBodyXML{},
+					},
+					{
+						NonVisualProperties: nonVisualPropertiesXML{
+							ConnectionNonVisual: connectionNonVisualXML{ID: 3, Name: "body_2"},
+							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
+						},
+						TextBody: &textBodyXML{},
+					},
+				},
+			},
+		},
+	}
+
+	content := []ContentItem{
+		{PlaceholderID: "sidebar_widget", Type: ContentText, Value: "some text"},
+	}
+
+	warnings := ctx.populateTextInSlide(slide, content, "two-column", 2)
+
+	// Should produce a string warning
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d: %v", len(warnings), warnings)
+	}
+	if !strings.Contains(warnings[0], "sidebar_widget") {
+		t.Errorf("warning should mention sidebar_widget, got: %s", warnings[0])
+	}
+
+	// Should also produce a structured ValidationError
+	if len(ctx.validationErrors) != 1 {
+		t.Fatalf("expected 1 validation error, got %d", len(ctx.validationErrors))
+	}
+
+	ve := ctx.validationErrors[0]
+	if ve.Code != patterns.ErrCodePlaceholderNotFound {
+		t.Errorf("code = %q, want %q", ve.Code, patterns.ErrCodePlaceholderNotFound)
+	}
+	if ve.Path != "slides[2].content[0].placeholder_id" {
+		t.Errorf("path = %q, want %q", ve.Path, "slides[2].content[0].placeholder_id")
+	}
+	if ve.Fix == nil {
+		t.Fatal("expected Fix to be non-nil")
+	}
+	if ve.Fix.Kind != "use_one_of" {
+		t.Errorf("fix kind = %q, want %q", ve.Fix.Kind, "use_one_of")
+	}
+	available, ok := ve.Fix.Params["available"].(string)
+	if !ok {
+		t.Fatal("expected available to be a string")
+	}
+	if !strings.Contains(available, "body") || !strings.Contains(available, "body_2") {
+		t.Errorf("available should contain body and body_2, got: %s", available)
+	}
+	// "sidebar_widget" is too far from "body"/"body_2" for did_you_mean
+	if _, hasDYM := ve.Fix.Params["did_you_mean"]; hasDYM {
+		t.Errorf("did_you_mean should not be set for distant match, got: %v", ve.Fix.Params["did_you_mean"])
 	}
 }
 

@@ -265,11 +265,12 @@ func (ctx *singlePassContext) finalizePPTX(slideCount int) (*GenerationResult, e
 	}
 
 	return &GenerationResult{
-		OutputPath:    ctx.outputPath,
-		FileSize:      info.Size(),
-		SlideCount:    slideCount,
-		Warnings:      ctx.warnings,
-		MediaFailures: ctx.mediaFailures,
+		OutputPath:       ctx.outputPath,
+		FileSize:         info.Size(),
+		SlideCount:       slideCount,
+		Warnings:         ctx.warnings,
+		ValidationErrors: ctx.validationErrors,
+		MediaFailures:    ctx.mediaFailures,
 	}, nil
 }
 
