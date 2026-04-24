@@ -16,6 +16,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/sebahrens/json2pptx/icons"
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/generator"
@@ -119,6 +120,7 @@ func runMCP() error {
 	s.AddTool(mcpShowPatternTool(), handleShowPattern)
 	s.AddTool(mcpValidatePatternTool(), handleValidatePattern)
 	s.AddTool(mcpExpandPatternTool(), mc.handleExpandPattern)
+	s.AddTool(mcpListIconsTool(), handleListIcons)
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
@@ -1035,6 +1037,66 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		Pattern:   pat.Name(),
 		Version:   pat.Version(),
 		ShapeGrid: grid,
+	}
+
+	responseJSON, err := api.MarshalMCPResponse(ctx, result)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(responseJSON)), nil
+}
+
+// --- Icon tool ---
+
+func mcpListIconsTool() mcp.Tool {
+	return mcp.NewTool("list_icons",
+		mcp.WithDescription("List available icon names for use in shape_grid cells via {\"icon\":{\"name\":\"icon-name\"}}. Icons are bundled SVGs in two sets: outline (default, stroke-based) and filled (solid). Use set:name syntax (e.g. \"filled:chart-pie\") to select a set; plain names default to outline."),
+		mcp.WithString("set",
+			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
+			mcp.Enum("outline", "filled"),
+		),
+		mcp.WithString("search",
+			mcp.Description("Substring filter applied to icon names. Case-insensitive. Example: \"chart\" returns chart-pie, chart-bar, etc."),
+		),
+	)
+}
+
+// iconSetResult is the JSON shape for each icon set in the list_icons response.
+type iconSetResult struct {
+	Set   string   `json:"set"`
+	Count int      `json:"count"`
+	Names []string `json:"names"`
+}
+
+func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sets := []string{"outline", "filled"}
+	if s, err := request.RequireString("set"); err == nil && s != "" {
+		sets = []string{s}
+	}
+
+	search, _ := request.RequireString("search")
+	search = strings.ToLower(strings.TrimSpace(search))
+
+	result := make([]iconSetResult, 0, len(sets))
+	for _, s := range sets {
+		names, err := icons.List(s)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("listing %s icons: %v", s, err)), nil
+		}
+		if search != "" {
+			filtered := make([]string, 0, len(names)/4)
+			for _, n := range names {
+				if strings.Contains(n, search) {
+					filtered = append(filtered, n)
+				}
+			}
+			names = filtered
+		}
+		result = append(result, iconSetResult{
+			Set:   s,
+			Count: len(names),
+			Names: names,
+		})
 	}
 
 	responseJSON, err := api.MarshalMCPResponse(ctx, result)
