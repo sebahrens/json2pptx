@@ -272,6 +272,7 @@ func (ctx *singlePassContext) finalizePPTX(slideCount int) (*GenerationResult, e
 		ValidationErrors: ctx.validationErrors,
 		MediaFailures:    ctx.mediaFailures,
 		ContrastSwaps:    ctx.contrastSwaps,
+		FitFindings:      ctx.fitFindings,
 	}, nil
 }
 

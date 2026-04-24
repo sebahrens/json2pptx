@@ -157,6 +157,9 @@ type OutputContext struct {
 
 	// Contrast swaps recorded during WCAG text contrast enforcement
 	contrastSwaps []ContrastSwap
+
+	// Render-time fit findings emitted during generation
+	fitFindings []patterns.FitFinding
 }
 
 // singlePassContext holds all state needed for single-pass ZIP generation.

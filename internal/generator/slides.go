@@ -140,6 +140,7 @@ type GenerationResult struct {
 	Duration         time.Duration              // Time taken to generate
 	MediaFailures    []MediaFailure             // Structured per-slide media errors (diagrams, images, tables)
 	ContrastSwaps    []ContrastSwap             // WCAG contrast auto-fix color replacements
+	FitFindings      []patterns.FitFinding       // Render-time fit findings (overflow, truncation, clamping)
 }
 
 // MediaFailure describes a media content item that failed to render on a slide.

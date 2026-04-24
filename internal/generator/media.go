@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -191,6 +192,12 @@ func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem
 		return
 	}
 
+	// Collect table render-time findings.
+	for i := range result.Findings {
+		result.Findings[i].Path = fmt.Sprintf("slides[%d].content.%s", slideNum-1, item.PlaceholderID)
+		ctx.fitFindings = append(ctx.fitFindings, result.Findings[i])
+	}
+
 	ctx.tableInserts[slideNum] = append(ctx.tableInserts[slideNum], tableInsert{
 		placeholderIdx:  shapeIdx,
 		graphicFrameXML: result.XML,
@@ -298,6 +305,16 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			slog.Int("slide_num", slideNum),
 			slog.Int64("width_emu", placeholderBounds.Width),
 			slog.Int64("min_emu", minDiagramWidthEMU))
+		// Site 7: emit warning when diagram placeholder width is clamped.
+		ctx.emitFitFinding(patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    fmt.Sprintf("slides[%d].content.%s", slideNum-1, item.PlaceholderID),
+				Code:    patterns.ErrCodeDiagramClamped,
+				Message: fmt.Sprintf("diagram placeholder width clamped: %d EMU → %d EMU minimum", placeholderBounds.Width, minDiagramWidthEMU),
+				Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"dimension": "width", "original_emu": placeholderBounds.Width, "clamped_emu": minDiagramWidthEMU}},
+			},
+			Action: "review",
+		})
 		placeholderBounds.Width = minDiagramWidthEMU
 	}
 	if placeholderBounds.Height > 0 && placeholderBounds.Height < minDiagramHeightEMU {
@@ -305,6 +322,16 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			slog.Int("slide_num", slideNum),
 			slog.Int64("height_emu", placeholderBounds.Height),
 			slog.Int64("min_emu", minDiagramHeightEMU))
+		// Site 7: emit warning when diagram placeholder height is clamped.
+		ctx.emitFitFinding(patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    fmt.Sprintf("slides[%d].content.%s", slideNum-1, item.PlaceholderID),
+				Code:    patterns.ErrCodeDiagramClamped,
+				Message: fmt.Sprintf("diagram placeholder height clamped: %d EMU → %d EMU minimum", placeholderBounds.Height, minDiagramHeightEMU),
+				Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"dimension": "height", "original_emu": placeholderBounds.Height, "clamped_emu": minDiagramHeightEMU}},
+			},
+			Action: "review",
+		})
 		placeholderBounds.Height = minDiagramHeightEMU
 	}
 
@@ -324,13 +351,23 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			diagramType = ds.Type
 		}
 		ctx.insertDiagramPlaceholder(slideNum, diagramBounds, shapeIdx, diagramType)
+		reason := ctx.lastDiagramWarning(item.PlaceholderID)
 		ctx.mediaFailures = append(ctx.mediaFailures, MediaFailure{
 			SlideNum:      slideNum,
 			PlaceholderID: item.PlaceholderID,
 			ContentType:   "diagram",
 			DiagramType:   diagramType,
-			Reason:        ctx.lastDiagramWarning(item.PlaceholderID),
+			Reason:        reason,
 			Fallback:      "placeholder_image",
+		})
+		// Site 8: emit finding when diagram render fails and falls back to placeholder.
+		ctx.emitFitFinding(patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    fmt.Sprintf("slides[%d].content.%s", slideNum-1, item.PlaceholderID),
+				Code:    patterns.ErrCodeDiagramRenderFailed,
+				Message: fmt.Sprintf("diagram render failed, placeholder image inserted: %s", reason),
+			},
+			Action: "review",
 		})
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
@@ -24,6 +25,8 @@ type autofitConfig struct {
 	themeFontName       string
 	readabilityMinScale int // override default 62500 (62.5%)
 	minFontScalePct     int // override textfit min font scale floor (default 0 = use textfit default 60%)
+	findings            *[]patterns.FitFinding // optional collector for render-time findings
+	findingPath         string                 // JSON path prefix for findings (e.g. "slides[0].content.body")
 }
 
 // withThemeFont sets the theme font name for autofit calculations.
@@ -44,6 +47,14 @@ func withReadabilityMinScale(scale int) autofitOption {
 // more than maintaining a large minimum font size.
 func withMinFontScalePct(pct int) autofitOption {
 	return func(c *autofitConfig) { c.minFontScalePct = pct }
+}
+
+// withFindingsCollector sets a collector for render-time FitFindings.
+func withFindingsCollector(findings *[]patterns.FitFinding, path string) autofitOption {
+	return func(c *autofitConfig) {
+		c.findings = findings
+		c.findingPath = path
+	}
 }
 
 func applySmartAutofit(shape *shapeXML, themeFontName ...string) {
@@ -69,6 +80,21 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	bp := shape.TextBody.BodyProperties
 	// Respect <a:noAutofit/> — the template explicitly opted out of text scaling.
 	if strings.Contains(bp.Inner, "noAutofit") || strings.Contains(bp.Inner, "noAutoFit") {
+		// Site 12: emit hint when noAutofit is active and content may overflow.
+		if cfg.findings != nil {
+			paraCount := len(shape.TextBody.Paragraphs)
+			if paraCount > 6 {
+				*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+					ValidationError: patterns.ValidationError{
+						Path:    cfg.findingPath,
+						Code:    patterns.ErrCodeNoAutofitOverflow,
+						Message: fmt.Sprintf("noAutofit active: %d paragraphs may overflow placeholder (smart autofit suppressed by template)", paraCount),
+						Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+					},
+					Action: "review",
+				})
+			}
+		}
 		return
 	}
 	// Strip any existing normAutofit from the template. Our content-aware
@@ -100,6 +126,18 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 				scalePct = 70 // conservative floor for dimensionless estimate
 			}
 			bp.Inner += fmt.Sprintf(`<a:normAutofit fontScale="%d"/>`, scalePct*1000)
+			// Site 1: warn when zero-dim heuristic is used for dense content.
+			if cfg.findings != nil {
+				*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+					ValidationError: patterns.ValidationError{
+						Path:    cfg.findingPath,
+						Code:    patterns.ErrCodePlaceholderOverflow,
+						Message: fmt.Sprintf("placeholder has no dimensions: %d paragraphs estimated via heuristic (fits ~%d), fontScale=%d%%", paraCount, typicalFitLines, scalePct),
+						Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+					},
+					Action: "review",
+				})
+			}
 		} else {
 			bp.Inner += `<a:normAutofit/>`
 		}
@@ -163,13 +201,13 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	if result.FontScale >= readabilityMinFontScale {
 		// Font scale is acceptable, no trimming needed
 	} else if result.FontScale > 0 && len(texts) > 6 {
-		result = trimForReadability(shape, params, readabilityMinFontScale)
+		result = trimForReadability(shape, params, readabilityMinFontScale, &cfg)
 	}
 
 	// When content overflows even at maximum scaling, trim trailing paragraphs
 	// so text is never clipped at the bottom of the placeholder.
 	if result.Overflow {
-		result = trimOverflowParagraphs(shape, params)
+		result = trimOverflowParagraphs(shape, params, &cfg)
 	}
 
 	// Always add normAutofit to prevent text clipping. Without it, the empty
@@ -195,7 +233,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 // trimOverflowParagraphs removes trailing paragraphs from the shape until the
 // content fits within the placeholder at minimum font scale. Adds a "..." indicator
 // to show content was truncated. Returns the recalculated FitResult.
-func trimOverflowParagraphs(shape *shapeXML, params textfit.Params) textfit.FitResult {
+func trimOverflowParagraphs(shape *shapeXML, params textfit.Params, cfg *autofitConfig) textfit.FitResult {
 	paras := shape.TextBody.Paragraphs
 
 	// Need at least 2 paragraphs to trim (keep 1 + add "..." indicator)
@@ -265,6 +303,23 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params) textfit.FitR
 				slog.Int("original", len(params.Paragraphs)),
 				slog.Int("remaining", len(paras)+1)) // +1 for "..." indicator
 
+			// Site 2: emit finding when paragraphs are trimmed to fit.
+			if cfg.findings != nil {
+				removed := len(params.Paragraphs) - len(paras)
+				*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+					ValidationError: patterns.ValidationError{
+						Path:    cfg.findingPath,
+						Code:    patterns.ErrCodeTextTrimmed,
+						Message: fmt.Sprintf("trimmed %d trailing paragraphs to fit placeholder (%d remaining)", removed, len(paras)+1),
+						Fix: &patterns.FixSuggestion{
+							Kind:   "reduce_text",
+							Params: map[string]any{"removed_count": removed, "remaining_count": len(paras) + 1},
+						},
+					},
+					Action: "review",
+				})
+			}
+
 			return result
 		}
 	}
@@ -272,6 +327,20 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params) textfit.FitR
 	// Even 2 paragraphs don't fit — apply maximum scaling and accept overflow
 	slog.Warn("text overflow: content does not fit even after trimming",
 		slog.Int("paragraphs", len(params.Paragraphs)))
+
+	// Site 3: emit error when content overflows even at maximum scaling.
+	if cfg.findings != nil {
+		*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    cfg.findingPath,
+				Code:    patterns.ErrCodeTextOverflow,
+				Message: fmt.Sprintf("text overflow: %d paragraphs do not fit even after trimming and maximum font scaling", len(params.Paragraphs)),
+				Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+			},
+			Action: "refuse",
+		})
+	}
+
 	return textfit.FitResult{
 		FontScale:      50000,
 		LnSpcReduction: 20000,
@@ -283,7 +352,7 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params) textfit.FitR
 // scale meets the desired minimum (e.g., 70000 = 70%). Unlike trimOverflowParagraphs
 // which only runs on overflow, this proactively trims dense content to keep text
 // at a presentation-legible size. Adds a "…" indicator when paragraphs are removed.
-func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontScale int) textfit.FitResult {
+func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontScale int, cfg *autofitConfig) textfit.FitResult {
 	paras := shape.TextBody.Paragraphs
 
 	// Need at least 4 paragraphs to consider trimming for readability
@@ -350,6 +419,20 @@ func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontSca
 				slog.Int("original", len(params.Paragraphs)),
 				slog.Int("remaining", len(paras)+1),
 				slog.Int("fontScale", result.FontScale))
+
+			// Site 4: emit hint when paragraphs trimmed for readability.
+			if cfg.findings != nil {
+				removed := len(params.Paragraphs) - len(paras)
+				*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+					ValidationError: patterns.ValidationError{
+						Path:    cfg.findingPath,
+						Code:    patterns.ErrCodeReadabilityTrimmed,
+						Message: fmt.Sprintf("trimmed %d paragraphs for readability (fontScale improved to %d%%)", removed, result.FontScale/1000),
+						Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+					},
+					Action: "info",
+				})
+			}
 
 			return result
 		}

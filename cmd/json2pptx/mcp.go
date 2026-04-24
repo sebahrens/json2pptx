@@ -378,6 +378,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		fitFindings = collectFitFindings(&input, templateLayouts, slideWidth, slideHeight)
 	}
 
+	// Append render-time fit findings from the generator (overflow, truncation, clamping).
+	fitFindings = append(fitFindings, result.FitFindings...)
+
 	// Append contrast auto-fix findings (always emitted, not gated by fit_report).
 	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
 

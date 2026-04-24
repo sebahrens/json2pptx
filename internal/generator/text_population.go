@@ -12,7 +12,7 @@ import (
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
 // themeFontName is the template's theme font used for text fitting measurements
 // (e.g., "Franklin Gothic Book"). Pass "" to fall back to built-in metrics.
-func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int, themeFontName string) error {
+func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int, themeFontName string, autofitOpts ...autofitOption) error {
 	if shape.TextBody == nil {
 		shape.TextBody = &textBodyXML{
 			BodyProperties: &bodyPropertiesXML{},
@@ -32,17 +32,17 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	var err error
 	switch item.Type {
 	case ContentText:
-		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 2400, themeFontName) // 24pt cap for body text
+		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 2400, themeFontName, autofitOpts...) // 24pt cap for body text
 	case ContentSectionTitle:
-		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 0, themeFontName) // no cap — normAutofit scales to fill
+		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 0, themeFontName, autofitOpts...) // no cap — normAutofit scales to fill
 	case ContentTitleSlideTitle:
 		err = setTitleSlideTitle(shape, item.PlaceholderID, item.Value) // preserve template styling
 	case ContentBullets:
-		err = setBulletParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel)
+		err = setBulletParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	case ContentBodyAndBullets:
-		err = setBodyAndBulletsParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel)
+		err = setBodyAndBulletsParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	case ContentBulletGroups:
-		err = setBulletGroupsParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel)
+		err = setBulletGroupsParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	default:
 		return fmt.Errorf("unsupported content type %s for placeholder %s", item.Type, item.PlaceholderID)
 	}
@@ -90,7 +90,7 @@ func applyFontSizeOverride(shape *shapeXML, fontSizeHPt int) {
 // maxFontSizeHPt is the maximum allowed lstStyle font size in hundredths of a point.
 // Pass 0 to skip font capping (used for section titles where normAutofit handles sizing).
 // themeFontName is the template's theme font for text fitting measurements.
-func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, maxFontSizeHPt int, themeFontName string) error {
+func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, maxFontSizeHPt int, themeFontName string, autofitOpts ...autofitOption) error {
 	text, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid text value for placeholder %s", placeholderID)
@@ -226,7 +226,8 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	enforceTextWrap(shape)
 
 	// Enable autofit if text overflows (e.g. title routed to large-font body placeholder)
-	applySmartAutofit(shape, themeFontName)
+	opts := append([]autofitOption{withThemeFont(themeFontName)}, autofitOpts...)
+	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil
 }
@@ -281,7 +282,7 @@ func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}
 // setBulletParagraphs sets multiple bullet paragraphs in the shape.
 // It preserves paragraph and run properties from the layout template.
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
-func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int) error {
+func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int, autofitOpts ...autofitOption) error {
 	bullets, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("invalid bullets value for placeholder %s", placeholderID)
@@ -353,11 +354,13 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 	// thresholds trigger trimForReadability to drop trailing bullets with "…"
 	// rather than rendering all bullets at an illegibly small size.
 	if len(bullets) >= 12 {
-		applySmartAutofitWithOptions(shape, withReadabilityMinScale(45000), withMinFontScalePct(45))
+		opts := append([]autofitOption{withReadabilityMinScale(45000), withMinFontScalePct(45)}, autofitOpts...)
+		applySmartAutofitWithOptions(shape, opts...)
 	} else if len(bullets) >= 10 {
-		applySmartAutofitWithOptions(shape, withReadabilityMinScale(50000), withMinFontScalePct(50))
+		opts := append([]autofitOption{withReadabilityMinScale(50000), withMinFontScalePct(50)}, autofitOpts...)
+		applySmartAutofitWithOptions(shape, opts...)
 	} else {
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape, autofitOpts...)
 	}
 
 	// Vertically center sparse bullet lists to avoid excessive top-floating whitespace.
@@ -370,7 +373,7 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 // The body text appears without a bullet marker, followed by bullet points.
 // It preserves paragraph and run properties from the layout template.
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
-func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int) error {
+func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int, autofitOpts ...autofitOption) error {
 	content, ok := value.(BodyAndBulletsContent)
 	if !ok {
 		return fmt.Errorf("invalid body_and_bullets value for placeholder %s", placeholderID)
@@ -482,11 +485,13 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 	// Raised readability thresholds (from 25%/35%) to keep effective font
 	// size above ~10pt — prefer trimming trailing bullets over tiny text.
 	if totalBullets >= 12 {
-		applySmartAutofitWithOptions(shape, withReadabilityMinScale(45000), withMinFontScalePct(45))
+		opts := append([]autofitOption{withReadabilityMinScale(45000), withMinFontScalePct(45)}, autofitOpts...)
+		applySmartAutofitWithOptions(shape, opts...)
 	} else if totalBullets >= 10 {
-		applySmartAutofitWithOptions(shape, withReadabilityMinScale(50000), withMinFontScalePct(50))
+		opts := append([]autofitOption{withReadabilityMinScale(50000), withMinFontScalePct(50)}, autofitOpts...)
+		applySmartAutofitWithOptions(shape, opts...)
 	} else {
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape, autofitOpts...)
 	}
 
 	// Vertically center sparse body+bullet content to avoid excessive top-floating whitespace.
@@ -499,7 +504,7 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 // Each group's header is rendered at level 0 (no bullet marker), and bullets at level 1+.
 // This preserves the hierarchical structure where bold text serves as section headers.
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
-func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int) error {
+func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int, autofitOpts ...autofitOption) error {
 	content, ok := value.(BulletGroupsContent)
 	if !ok {
 		return fmt.Errorf("invalid bullet_groups value for placeholder %s", placeholderID)
@@ -606,11 +611,13 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 	// 5+ groups: effectively disable readability trimming (20%), allow font down to 40%.
 	// 4 groups: moderate threshold (35%), allow font down to 45%.
 	if len(content.Groups) >= 5 {
-		applySmartAutofitWithOptions(shape, withReadabilityMinScale(20000), withMinFontScalePct(40))
+		opts := append([]autofitOption{withReadabilityMinScale(20000), withMinFontScalePct(40)}, autofitOpts...)
+		applySmartAutofitWithOptions(shape, opts...)
 	} else if len(content.Groups) >= 4 {
-		applySmartAutofitWithOptions(shape, withReadabilityMinScale(35000), withMinFontScalePct(45))
+		opts := append([]autofitOption{withReadabilityMinScale(35000), withMinFontScalePct(45)}, autofitOpts...)
+		applySmartAutofitWithOptions(shape, opts...)
 	} else {
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape, autofitOpts...)
 	}
 
 	return nil

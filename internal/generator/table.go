@@ -26,9 +26,10 @@ type TableRenderConfig struct {
 
 // TableRenderResult contains the generated table XML.
 type TableRenderResult struct {
-	XML    string // Complete graphicFrame XML
-	Width  int64  // Actual width used (EMUs)
-	Height int64  // Actual height used (EMUs)
+	XML      string                 // Complete graphicFrame XML
+	Width    int64                  // Actual width used (EMUs)
+	Height   int64                  // Actual height used (EMUs)
+	Findings []patterns.FitFinding  // Render-time fit findings (truncation, scaling)
 }
 
 const (
@@ -82,6 +83,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		}
 	}
 
+	var findings []patterns.FitFinding
+	originalFontSize := config.DefaultSize
+
 	// Scale font size down for wide tables to prevent text overflow and
 	// vertical stacking.  Standard slide width (~9 in / 8229600 EMU) can
 	// comfortably fit 4 columns at 18pt.  Beyond that we reduce linearly,
@@ -93,6 +97,15 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			scaled = minFontSizeForTable
 		}
 		config.DefaultSize = scaled
+		// Site 6: emit hint when font is scaled down due to column count.
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Code:    patterns.ErrCodeTableFontScaled,
+				Message: fmt.Sprintf("table font scaled from %.0fpt to %.0fpt for %d columns", float64(originalFontSize)/100, float64(config.DefaultSize)/100, numCols),
+				Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"reason": "columns", "columns": numCols}},
+			},
+			Action: "review",
+		})
 	}
 
 	// Row-count-based font scaling: when the table has more rows than can
@@ -106,12 +119,22 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		}
 		maxVisibleRows := int(config.Bounds.Height / scaledRowHeight)
 		if numRows > maxVisibleRows && maxVisibleRows > 0 {
+			preFontSize := config.DefaultSize
 			rowScale := float64(maxVisibleRows) / float64(numRows)
 			scaled := int(float64(config.DefaultSize) * rowScale)
 			if scaled < minFontSizeForTable {
 				scaled = minFontSizeForTable
 			}
 			config.DefaultSize = scaled
+			// Site 6: emit hint when font is scaled down due to row count.
+			findings = append(findings, patterns.FitFinding{
+				ValidationError: patterns.ValidationError{
+					Code:    patterns.ErrCodeTableFontScaled,
+					Message: fmt.Sprintf("table font scaled from %.0fpt to %.0fpt for %d rows (capacity %d)", float64(preFontSize)/100, float64(config.DefaultSize)/100, numRows, maxVisibleRows),
+					Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"reason": "rows", "rows": numRows}},
+				},
+				Action: "review",
+			})
 		}
 	}
 
@@ -160,11 +183,36 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 				slog.Int("visible_rows", len(truncatedRows)),
 				slog.Int("hidden_rows", overflow),
 			)
+
+			// Site 5: emit warning when rows are truncated.
+			findings = append(findings, patterns.FitFinding{
+				ValidationError: patterns.ValidationError{
+					Code:    patterns.ErrCodeTableRowsTruncated,
+					Message: fmt.Sprintf("table rows truncated: %d of %d rows hidden (headers: %s)", overflow, len(truncatedRows)+overflow, tableID),
+					Fix: &patterns.FixSuggestion{
+						Kind:   "split_at_row",
+						Params: map[string]any{"visible_rows": len(truncatedRows), "hidden_rows": overflow},
+					},
+				},
+				Action: "review",
+			})
 		}
 	}
 
 	// Calculate dimensions
-	colWidths := calculateColumnWidths(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+	colWidths, colWidthDeficit := calculateColumnWidthsWithDiag(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+
+	// Site 10: emit warning when column widths fell back to global floor.
+	if colWidthDeficit {
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Code:    patterns.ErrCodeColumnWidthDeficit,
+				Message: fmt.Sprintf("table column widths fell back to global floor: content-aware minimums exceed available width for %d columns", numCols),
+				Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"columns": numCols}},
+			},
+			Action: "review",
+		})
+	}
 
 	// Dynamic row height: fill the placeholder evenly, with a minimum floor.
 	// When rows are clamped to defaultRowHeight and the total exceeds bounds,
@@ -249,9 +297,10 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	xml.WriteString(`</a:tbl></a:graphicData></a:graphic></p:graphicFrame>`)
 
 	return &TableRenderResult{
-		XML:    xml.String(),
-		Width:  config.Bounds.Width,
-		Height: totalHeight,
+		XML:      xml.String(),
+		Width:    config.Bounds.Width,
+		Height:   totalHeight,
+		Findings: findings,
 	}, nil
 }
 
@@ -268,23 +317,15 @@ func longestToken(s string) int {
 	return longest
 }
 
-// calculateColumnWidths distributes width across columns proportional to
-// the maximum content length in each column. Falls back to equal distribution
-// when no content is available.
-//
-// The algorithm uses a two-pass approach:
-//  1. Assign a proportional share to each column based on content length.
-//  2. Enforce per-column minimum widths based on the longest non-breakable
-//     token (word) to prevent mid-token line breaks (e.g., "$42M" → "$42"/"M").
-//     Falls back to a global floor when content-aware minimums exceed the
-//     available width.
-//  3. Re-distribute any overshoot so that the sum always equals availableWidth.
-//
-// fontSize is the effective font size in hundredths of a point (after any
-// column-count or row-count scaling). Pass 0 to use the default (1800).
-func calculateColumnWidths(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) []int64 { //nolint:gocognit,gocyclo
+// calculateColumnWidths distributes width across columns (backward-compatible wrapper).
+func calculateColumnWidths(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) []int64 {
+	widths, _ := calculateColumnWidthsWithDiag(numCols, availableWidth, headers, rows, fontSize)
+	return widths
+}
+
+func calculateColumnWidthsWithDiag(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) ([]int64, bool) { //nolint:gocognit,gocyclo
 	if numCols == 0 {
-		return nil
+		return nil, false
 	}
 	if fontSize <= 0 {
 		fontSize = defaultFontSize
@@ -318,7 +359,7 @@ func calculateColumnWidths(numCols int, availableWidth int64, headers []string, 
 	}
 
 	if totalLen == 0 {
-		return equalColumnWidths(numCols, availableWidth)
+		return equalColumnWidths(numCols, availableWidth), false
 	}
 
 	// ---- Pass 1: pure proportional allocation ----
@@ -404,7 +445,8 @@ func calculateColumnWidths(numCols int, availableWidth int64, headers []string, 
 		effectiveMin[i] = m
 		totalEffective += m
 	}
-	if totalEffective > availableWidth {
+	floorFallback := totalEffective > availableWidth
+	if floorFallback {
 		for i := range effectiveMin {
 			effectiveMin[i] = globalFloor
 		}
@@ -447,7 +489,7 @@ func calculateColumnWidths(numCols int, availableWidth int64, headers []string, 
 		}
 	}
 
-	return widths
+	return widths, floorFallback
 }
 
 // equalColumnWidths distributes width evenly across columns (fallback).

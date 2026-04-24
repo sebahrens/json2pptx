@@ -8,6 +8,7 @@ package pagination
 import (
 	"fmt"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -19,9 +20,37 @@ const DefaultMaxBullets = 8
 // layout capacity to determine the threshold. It finds the highest MaxBullets
 // across all text-capable layouts and uses that as the split point.
 // Falls back to DefaultMaxBullets if no layout capacity is available.
-func PaginateWithLayouts(pres *types.PresentationDefinition, layouts []types.LayoutMetadata) []string {
+// Returns warnings and any fit findings (e.g. when using the default threshold).
+func PaginateWithLayouts(pres *types.PresentationDefinition, layouts []types.LayoutMetadata) ([]string, []patterns.FitFinding) {
 	threshold := effectiveMaxBullets(layouts)
-	return paginateWithThreshold(pres, threshold)
+	warnings := paginateWithThreshold(pres, threshold)
+
+	// Site 9: emit hint when using default threshold (no template capacity).
+	var findings []patterns.FitFinding
+	if threshold == DefaultMaxBullets && usedDefaultThreshold(layouts) && len(warnings) > 0 {
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Code:    patterns.ErrCodePaginationDefault,
+				Message: fmt.Sprintf("pagination using default threshold of %d bullets (no template layout capacity available)", DefaultMaxBullets),
+			},
+			Action: "info",
+		})
+	}
+
+	return warnings, findings
+}
+
+// usedDefaultThreshold returns true when no layout provided bullet capacity.
+func usedDefaultThreshold(layouts []types.LayoutMetadata) bool {
+	for _, l := range layouts {
+		if !hasTextPlaceholder(l) {
+			continue
+		}
+		if l.Capacity.MaxBullets > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // Paginate splits overflowing slides using the default threshold of 8 bullets.

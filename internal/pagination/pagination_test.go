@@ -442,7 +442,7 @@ func TestPaginateWithLayouts_SplitsAtLayoutCapacity(t *testing.T) {
 		},
 	}
 
-	warnings := PaginateWithLayouts(pres, layouts)
+	warnings, _ := PaginateWithLayouts(pres, layouts)
 
 	// 6 bullets / 4 per page = 2 pages
 	if len(pres.Slides) != 2 {
@@ -476,7 +476,7 @@ func TestPaginateWithLayouts_NoSplitUnderCapacity(t *testing.T) {
 		},
 	}
 
-	warnings := PaginateWithLayouts(pres, layouts)
+	warnings, _ := PaginateWithLayouts(pres, layouts)
 
 	if len(pres.Slides) != 1 {
 		t.Fatalf("expected 1 slide (under capacity), got %d", len(pres.Slides))
@@ -506,7 +506,7 @@ func TestPaginateWithLayouts_13BulletsIn3BulletLayout(t *testing.T) {
 		},
 	}
 
-	warnings := PaginateWithLayouts(pres, layouts)
+	warnings, _ := PaginateWithLayouts(pres, layouts)
 
 	// 13 / 3 = 5 pages (3, 3, 3, 3, 1)
 	if len(pres.Slides) != 5 {
@@ -547,7 +547,7 @@ func TestPaginateWithLayouts_FallsBackToDefault(t *testing.T) {
 		},
 	}
 
-	warnings := PaginateWithLayouts(pres, layouts)
+	warnings, _ := PaginateWithLayouts(pres, layouts)
 
 	// 10 bullets / 8 (default) = 2 pages
 	if len(pres.Slides) != 2 {
@@ -583,7 +583,7 @@ func TestPaginateWithLayouts_GroupsRespectCapacity(t *testing.T) {
 		},
 	}
 
-	PaginateWithLayouts(pres, layouts)
+	_, _ = PaginateWithLayouts(pres, layouts)
 
 	// Q1 (3 bullets) fits in page 1
 	// Q2 (3 bullets) would overflow page 1 (3+3=6 > 4), goes to page 2

@@ -144,7 +144,7 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 	// Uses template layout capacity to determine the bullet threshold instead
 	// of a fixed default, so slides with more bullets than any layout supports
 	// are split into continuation slides rather than being crammed.
-	paginationWarnings := pagination.PaginateWithLayouts(presentation, req.TemplateAnalysis.Layouts)
+	paginationWarnings, _ := pagination.PaginateWithLayouts(presentation, req.TemplateAnalysis.Layouts)
 
 	// Step 1.55: Split slides whose content overflows any available layout.
 	// This handles two cases:

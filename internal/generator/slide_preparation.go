@@ -455,7 +455,10 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 		}
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName); err != nil {
+		findingPath := fmt.Sprintf("slides[%d].content.%s", slideIndex, item.PlaceholderID)
+		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName,
+			withFindingsCollector(&ctx.fitFindings, findingPath),
+		); err != nil {
 			warnings = append(warnings, err.Error())
 		}
 	}

@@ -31,6 +31,18 @@ const (
 	ErrCodeSlideBoundsOverflow   = "slide_bounds_overflow"
 	ErrCodeFooterCollision       = "footer_collision"
 	ErrCodeTitleWraps            = "title_wraps"
+
+	// Render-time finding codes (emitted during generation, not pre-flight).
+	ErrCodeTextTrimmed           = "text_trimmed"
+	ErrCodeTextOverflow          = "text_overflow"
+	ErrCodeReadabilityTrimmed    = "readability_trimmed"
+	ErrCodeNoAutofitOverflow     = "no_autofit_overflow"
+	ErrCodeTableRowsTruncated    = "table_rows_truncated"
+	ErrCodeTableFontScaled       = "table_font_scaled"
+	ErrCodeDiagramClamped        = "diagram_clamped"
+	ErrCodeDiagramRenderFailed   = "diagram_render_failed"
+	ErrCodePaginationDefault     = "pagination_default_threshold"
+	ErrCodeColumnWidthDeficit    = "column_width_deficit"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -61,6 +73,17 @@ var (
 	ErrSlideBoundsOverflow = errors.New("shape center falls outside slide bounds")
 	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
 	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
+
+	ErrTextTrimmed         = errors.New("trailing paragraphs trimmed to fit placeholder")
+	ErrTextOverflow        = errors.New("text overflows placeholder even after trimming")
+	ErrReadabilityTrimmed  = errors.New("paragraphs trimmed for readability")
+	ErrNoAutofitOverflow   = errors.New("text overflows placeholder with noAutofit")
+	ErrTableRowsTruncated  = errors.New("table rows truncated to fit height")
+	ErrTableFontScaled     = errors.New("table font scaled to minimum floor")
+	ErrDiagramClamped      = errors.New("diagram placeholder dimensions clamped to minimum")
+	ErrDiagramRenderFailed = errors.New("diagram rendering failed, placeholder image inserted")
+	ErrPaginationDefault   = errors.New("pagination using default threshold, no template capacity")
+	ErrColumnWidthDeficit  = errors.New("column widths fell back to global floor")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -87,6 +110,16 @@ var codeSentinel = map[string]error{
 	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
 	ErrCodeFooterCollision:       ErrFooterCollision,
 	ErrCodeTitleWraps:            ErrTitleWraps,
+	ErrCodeTextTrimmed:           ErrTextTrimmed,
+	ErrCodeTextOverflow:          ErrTextOverflow,
+	ErrCodeReadabilityTrimmed:    ErrReadabilityTrimmed,
+	ErrCodeNoAutofitOverflow:     ErrNoAutofitOverflow,
+	ErrCodeTableRowsTruncated:    ErrTableRowsTruncated,
+	ErrCodeTableFontScaled:       ErrTableFontScaled,
+	ErrCodeDiagramClamped:        ErrDiagramClamped,
+	ErrCodeDiagramRenderFailed:   ErrDiagramRenderFailed,
+	ErrCodePaginationDefault:     ErrPaginationDefault,
+	ErrCodeColumnWidthDeficit:    ErrColumnWidthDeficit,
 }
 
 // FixSuggestion is a structured fix suggestion with a machine-readable kind
