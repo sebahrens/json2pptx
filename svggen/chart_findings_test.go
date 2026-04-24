@@ -2,6 +2,8 @@ package svggen
 
 import (
 	"testing"
+
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // TestPieChart_ZeroSumFinding verifies that a pie chart with all-zero values
@@ -453,6 +455,176 @@ func TestLegendNoOverflow_NoFinding(t *testing.T) {
 	found := findFindingByCode(b.Findings(), FindingLegendOverflowDropped)
 	if found != nil {
 		t.Errorf("did not expect %q finding when all items fit, got: %v", FindingLegendOverflowDropped, found)
+	}
+}
+
+// TestScatterChart_LabelSkippedFinding verifies that when scatter labels
+// cannot be placed due to collision with all 4 candidate positions, a
+// chart.scatter_label_skipped finding is emitted.
+func TestScatterChart_LabelSkippedFinding(t *testing.T) {
+	// Create many overlapping points with labels to force collisions.
+	values := make([]any, 30)
+	xValues := make([]any, 30)
+	labels := make([]any, 30)
+	for i := 0; i < 30; i++ {
+		values[i] = 50.0 // All at the same Y
+		xValues[i] = 50.0 // All at the same X — maximum collision
+		labels[i] = "Label" + string(rune('A'+i%26))
+	}
+
+	req := &RequestEnvelope{
+		Type: "scatter_chart",
+		Data: map[string]any{
+			"series": []any{
+				map[string]any{
+					"name":     "Cluster",
+					"values":   values,
+					"x_values": xValues,
+					"labels":   labels,
+				},
+			},
+		},
+		Output: OutputSpec{Width: 200, Height: 200},
+		Style:  StyleSpec{ShowValues: true},
+	}
+
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+	}
+	if output.SVG == nil {
+		t.Fatal("expected SVG output")
+	}
+
+	found := findFindingByCode(output.Findings, FindingScatterLabelSkipped)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingScatterLabelSkipped, output.Findings)
+	}
+	if found.Severity != "info" {
+		t.Errorf("severity = %q, want %q", found.Severity, "info")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindIncreaseCanvas {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindIncreaseCanvas)
+	}
+}
+
+// TestCapacityExceeded_TooManySeries verifies that a chart with more than
+// MaxSeries series emits a chart.capacity_exceeded finding.
+func TestCapacityExceeded_TooManySeries(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	b.CheckChartCapacity(core.MaxSeries+1, 5)
+
+	found := findFindingByCode(b.Findings(), FindingCapacityExceeded)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingCapacityExceeded, b.Findings())
+	}
+	if found.Severity != "warning" {
+		t.Errorf("severity = %q, want %q", found.Severity, "warning")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindReduceItems {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindReduceItems)
+	}
+}
+
+// TestCapacityExceeded_NoFindingUnderLimit verifies that a chart within
+// capacity limits does NOT emit a capacity_exceeded finding.
+func TestCapacityExceeded_NoFindingUnderLimit(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	b.CheckChartCapacity(5, 10)
+
+	found := findFindingByCode(b.Findings(), FindingCapacityExceeded)
+	if found != nil {
+		t.Errorf("did not expect %q finding within limits, got: %v", FindingCapacityExceeded, found)
+	}
+}
+
+// TestGanttOverflow_EmitsOverflowSuppressed verifies that a gantt chart with
+// more rows than fit in the canvas emits a chart.overflow_suppressed finding.
+func TestGanttOverflow_EmitsOverflowSuppressed(t *testing.T) {
+	// Create many tasks to force overflow in a small canvas.
+	tasks := make([]any, 30)
+	for i := 0; i < 30; i++ {
+		tasks[i] = map[string]any{
+			"id":    string(rune('A' + i%26)),
+			"name":  "Task " + string(rune('A'+i%26)),
+			"start": "2024-01-01",
+			"end":   "2024-01-15",
+		}
+	}
+
+	req := &RequestEnvelope{
+		Type: "gantt",
+		Data: map[string]any{
+			"tasks": tasks,
+		},
+		Output: OutputSpec{Width: 400, Height: 100}, // very short
+	}
+
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+	}
+	if output.SVG == nil {
+		t.Fatal("expected SVG output")
+	}
+
+	found := findFindingByCode(output.Findings, FindingOverflowSuppressed)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingOverflowSuppressed, output.Findings)
+	}
+	if found.Severity != "warning" {
+		t.Errorf("severity = %q, want %q", found.Severity, "warning")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindReduceItems {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindReduceItems)
+	}
+}
+
+// TestOrgChartOverflow_EmitsOverflowSuppressed verifies that an org chart with
+// siblings exceeding MaxVisibleSiblings emits a chart.overflow_suppressed finding.
+func TestOrgChartOverflow_EmitsOverflowSuppressed(t *testing.T) {
+	// Create an org chart with many children under one parent.
+	children := make([]any, 15)
+	for i := 0; i < 15; i++ {
+		children[i] = map[string]any{
+			"name":  "Employee " + string(rune('A'+i%26)),
+			"title": "Staff",
+		}
+	}
+
+	req := &RequestEnvelope{
+		Type: "org_chart",
+		Data: map[string]any{
+			"root": map[string]any{
+				"name":     "CEO",
+				"title":    "Chief Executive",
+				"children": children,
+			},
+		},
+		Output: OutputSpec{Width: 400, Height: 300},
+		// Default MaxVisibleSiblings is 9; 15 children triggers collapsing.
+	}
+
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+	}
+	if output.SVG == nil {
+		t.Fatal("expected SVG output")
+	}
+
+	found := findFindingByCode(output.Findings, FindingOverflowSuppressed)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingOverflowSuppressed, output.Findings)
+	}
+	if found.Severity != "warning" {
+		t.Errorf("severity = %q, want %q", found.Severity, "warning")
 	}
 }
 

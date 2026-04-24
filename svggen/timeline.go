@@ -477,6 +477,16 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 		overflowY := plotArea.Y + plotArea.H + style.Spacing.XS
 		b.DrawText(overflowText, plotArea.X+plotArea.W/2, overflowY, TextAlignCenter, TextBaselineTop)
 		b.Pop()
+
+		b.AddFinding(Finding{
+			Code:     FindingOverflowSuppressed,
+			Message:  fmt.Sprintf("timeline: %d events hidden — canvas too small to display all activities", overflowCount),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"hidden_count": overflowCount, "diagram_type": "timeline"},
+			},
+		})
 	}
 
 	// Collect activity dates so the axis can prioritise labelling months

@@ -285,6 +285,15 @@ func (gc *GanttChart) Draw(data GanttData) error {
 	// Draw "+N more" overflow indicator when rows were capped
 	if overflow.count > 0 {
 		gc.drawOverflowIndicator(overflow.count, rows, plotArea.X, labelWidth, chartArea)
+		b.AddFinding(Finding{
+			Code:     FindingOverflowSuppressed,
+			Message:  fmt.Sprintf("gantt chart: %d rows hidden — canvas too small to display all tasks", overflow.count),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"hidden_count": overflow.count, "diagram_type": "gantt"},
+			},
+		})
 	}
 
 	// Draw swimlane headers

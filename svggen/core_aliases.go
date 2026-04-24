@@ -125,8 +125,13 @@ const (
 	FindingLegendOverflowDropped = core.FindingLegendOverflowDropped
 	FindingOverflowSuppressed    = core.FindingOverflowSuppressed
 
+	// Capacity limits (re-exported from core/limits.go).
+	MaxSeries     = core.MaxSeries
+	MaxCategories = core.MaxCategories
+	MaxPoints     = core.MaxPoints
+
 	// Fix kind constants (re-exported from core/finding_codes.go).
-	FixKindReplaceValue    = core.FixKindReplaceValue
+	FixKindReplaceValue = core.FixKindReplaceValue
 	FixKindTruncateOrSplit = core.FixKindTruncateOrSplit
 	FixKindAlignSeries     = core.FixKindAlignSeries
 	FixKindExplicitScale   = core.FixKindExplicitScale

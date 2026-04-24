@@ -245,6 +245,16 @@ func (oc *OrgChartRenderer) collapseSiblings(node *layoutNode) {
 
 	// Keep first (limit-1) children + the overflow node.
 	node.children = append(node.children[:limit-1], overflow)
+
+	oc.builder.AddFinding(Finding{
+		Code:     FindingOverflowSuppressed,
+		Message:  fmt.Sprintf("org chart: %d nodes collapsed under %q — exceeded max visible siblings (%d)", hiddenCount, node.name, limit),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind:   FixKindReduceItems,
+			Params: map[string]any{"hidden_count": hiddenCount, "parent_node": node.name, "max_visible": limit, "diagram_type": "org_chart"},
+		},
+	})
 }
 
 // computeSubtreeWidths computes the total width each subtree needs (bottom-up).

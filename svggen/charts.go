@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // =============================================================================
@@ -263,6 +265,8 @@ func (bc *BarChart) Draw(data ChartData) error {
 	b := bc.builder
 	style := b.StyleGuide()
 	colors := bc.getColors(style, len(data.Series))
+
+	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 
 	// Compute adaptive x-axis label layout (font size, rotation, thinning,
 	// and truncation) using the shared strategy so labels are not clipped.
@@ -972,6 +976,8 @@ func (lc *LineChart) Draw(data ChartData) error {
 	style := b.StyleGuide()
 	colors := lc.getColors(style, len(data.Series))
 
+	b.CheckChartCapacity(len(data.Series), len(data.Categories))
+
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(lc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
 	plotArea := layout.PlotArea
@@ -1605,6 +1611,15 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 	style := b.StyleGuide()
 	colors := sc.getColors(style, len(data.Series))
 
+	// Check capacity: for scatter charts, total points = sum of all series values.
+	totalPoints := 0
+	for _, s := range data.Series {
+		totalPoints += len(s.Values)
+	}
+	for _, f := range core.CheckCapacity(len(data.Series), 0, totalPoints) {
+		b.AddFinding(f)
+	}
+
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(sc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
 	plotArea := layout.PlotArea
@@ -2011,12 +2026,25 @@ func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, 
 					},
 				}
 
+				placed := false
 				for _, c := range candidates {
 					if !overlaps(c.rect) {
 						b.DrawText(lbl, c.x, c.y, c.align, c.base)
 						placedLabels = append(placedLabels, c.rect)
+						placed = true
 						break
 					}
+				}
+				if !placed {
+					b.AddFinding(Finding{
+						Code:     FindingScatterLabelSkipped,
+						Message:  fmt.Sprintf("scatter label %q skipped — all positions overlap existing labels", lbl),
+						Severity: "info",
+						Fix: &FixSuggestion{
+							Kind:   FixKindIncreaseCanvas,
+							Params: map[string]any{"label": lbl},
+						},
+					})
 				}
 			}
 			b.Pop()

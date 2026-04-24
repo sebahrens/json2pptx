@@ -151,6 +151,16 @@ func (b *SVGBuilder) Findings() []core.Finding {
 	return b.findings
 }
 
+// CheckChartCapacity validates that the chart data dimensions (series,
+// categories, total points) are within safe rendering limits and emits
+// FindingCapacityExceeded findings for any that exceed the threshold.
+func (b *SVGBuilder) CheckChartCapacity(seriesCount, categoryCount int) {
+	pointCount := seriesCount * categoryCount
+	for _, f := range core.CheckCapacity(seriesCount, categoryCount, pointCount) {
+		b.AddFinding(f)
+	}
+}
+
 // NewSVGBuilder creates a new SVGBuilder with the specified dimensions in points.
 func NewSVGBuilder(width, height float64) *SVGBuilder {
 	// Create canvas (canvas uses mm, so convert from points: 1pt = 0.3528mm)
