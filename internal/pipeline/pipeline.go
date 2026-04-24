@@ -133,9 +133,10 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 	effectiveAnalysis = req.TemplateAnalysis
 
 	// Apply theme overrides if specified.
+	var themeWarnings []string
 	if presentation.Metadata.ThemeOverride != nil && req.TemplateAnalysis != nil {
 		analysisCopy := *req.TemplateAnalysis
-		analysisCopy.Theme = analysisCopy.Theme.ApplyOverride(presentation.Metadata.ThemeOverride)
+		analysisCopy.Theme, themeWarnings = analysisCopy.Theme.ApplyOverride(presentation.Metadata.ThemeOverride)
 		effectiveAnalysis = &analysisCopy
 	}
 
@@ -158,8 +159,9 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 		return nil, &LayoutError{Err: err}
 	}
 
-	// Merge warnings from data resolution, pagination, and layout selection
+	// Merge warnings from theme overrides, pagination, and layout selection
 	var allWarnings []string
+	allWarnings = append(allWarnings, themeWarnings...)
 	allWarnings = append(allWarnings, paginationWarnings...)
 	allWarnings = append(allWarnings, slideWarnings...)
 

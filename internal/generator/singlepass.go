@@ -334,7 +334,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 	themeInfo := template.ParseThemeFromZip(&ctx.templateReader.Reader)
 	// Apply per-deck theme overrides from frontmatter (if any)
 	if ctx.themeOverride != nil {
-		themeInfo = themeInfo.ApplyOverride(ctx.themeOverride)
+		themeInfo, _ = themeInfo.ApplyOverride(ctx.themeOverride)
 	}
 	ctx.themeColors = themeInfo.Colors
 	ctx.themeFontName = themeInfo.BodyFont

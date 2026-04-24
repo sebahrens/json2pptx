@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"fmt"
+	"sort"
+	"time"
+)
 
 // MetadataVersion constants define supported template metadata schema versions.
 // Version history:
@@ -159,11 +163,12 @@ type ThemeColor struct {
 	RGB  string // Hex color value (e.g., "#FF0000")
 }
 
-// ApplyOverride merges a ThemeOverride into this ThemeInfo, returning a new copy.
+// ApplyOverride merges a ThemeOverride into this ThemeInfo, returning a new copy
+// and warnings for any unrecognized color keys that were silently ignored.
 // Only non-empty override values replace template defaults.
-func (t ThemeInfo) ApplyOverride(o *ThemeOverride) ThemeInfo {
+func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 	if o == nil {
-		return t
+		return t, nil
 	}
 
 	result := ThemeInfo{
@@ -182,16 +187,36 @@ func (t ThemeInfo) ApplyOverride(o *ThemeOverride) ThemeInfo {
 		result.BodyFont = o.BodyFont
 	}
 
-	// Override colors by name
+	// Override colors by name, tracking which keys matched
+	matched := make(map[string]bool, len(o.Colors))
 	if len(o.Colors) > 0 {
 		for i, c := range result.Colors {
 			if hex, ok := o.Colors[c.Name]; ok {
 				result.Colors[i].RGB = hex
+				matched[c.Name] = true
 			}
 		}
 	}
 
-	return result
+	// Warn about unrecognized color keys
+	var warnings []string
+	if len(matched) < len(o.Colors) {
+		// Collect valid names for the suggestion
+		validNames := make([]string, len(t.Colors))
+		for i, c := range t.Colors {
+			validNames[i] = c.Name
+		}
+		for key := range o.Colors {
+			if !matched[key] {
+				warnings = append(warnings, fmt.Sprintf(
+					"theme_override.colors.%s: unknown scheme color key (ignored); valid keys: %v",
+					key, validNames))
+			}
+		}
+		sort.Strings(warnings)
+	}
+
+	return result, warnings
 }
 
 // TemplateCache provides caching for template analysis results.

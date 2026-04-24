@@ -569,9 +569,10 @@ func TestThemeInfo_ApplyOverride(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		override *ThemeOverride
-		want     ThemeInfo
+		name         string
+		override     *ThemeOverride
+		want         ThemeInfo
+		wantWarnings int
 	}{
 		{
 			name:     "nil override returns copy",
@@ -657,22 +658,50 @@ func TestThemeInfo_ApplyOverride(t *testing.T) {
 			},
 		},
 		{
-			name: "override nonexistent color is ignored",
+			name: "override nonexistent color warns",
 			override: &ThemeOverride{
 				Colors: map[string]string{"accent9": "#999999"},
 			},
-			want: base,
+			want:         base,
+			wantWarnings: 1,
 		},
 		{
 			name:     "empty override changes nothing",
 			override: &ThemeOverride{},
 			want:     base,
 		},
+		{
+			name: "multiple unknown keys produce multiple warnings",
+			override: &ThemeOverride{
+				Colors: map[string]string{
+					"brand1":  "#FF0000",
+					"Accent1": "#00FF00",
+					"accent1": "#336699", // valid — should not warn
+				},
+			},
+			want: ThemeInfo{
+				Name:      "Corporate",
+				TitleFont: "Calibri Light",
+				BodyFont:  "Calibri",
+				Colors: []ThemeColor{
+					{Name: "dk1", RGB: "#000000"},
+					{Name: "lt1", RGB: "#FFFFFF"},
+					{Name: "accent1", RGB: "#336699"},
+					{Name: "accent2", RGB: "#ED7D31"},
+					{Name: "accent3", RGB: "#A5A5A5"},
+				},
+			},
+			wantWarnings: 2,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := base.ApplyOverride(tt.override)
+			got, warnings := base.ApplyOverride(tt.override)
+
+			if len(warnings) != tt.wantWarnings {
+				t.Errorf("got %d warnings, want %d: %v", len(warnings), tt.wantWarnings, warnings)
+			}
 
 			// Verify original is not mutated
 			if base.Colors[2].RGB != "#4472C4" {
