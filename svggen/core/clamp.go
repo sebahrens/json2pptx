@@ -1,6 +1,9 @@
 package core
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // maxSafeValue is the maximum absolute value allowed for float64 data values.
 // This is far beyond any real-world use case (1 quadrillion) but safely within
@@ -19,6 +22,16 @@ func ClampDataValues(data map[string]any) {
 	}
 }
 
+// ClampDataValuesWithFindings is like ClampDataValues but returns a Finding
+// for every value that was clamped (NaN, ±Inf, or exceeding ±1e15).
+func ClampDataValuesWithFindings(data map[string]any) []Finding {
+	var findings []Finding
+	for k, v := range data {
+		data[k] = clampValueWithFindings(v, k, &findings)
+	}
+	return findings
+}
+
 // clampValue clamps a single value, recursing into maps and slices.
 func clampValue(v any) any {
 	switch val := v.(type) {
@@ -32,6 +45,44 @@ func clampValue(v any) any {
 	case []any:
 		for i, inner := range val {
 			val[i] = clampValue(inner)
+		}
+		return val
+	default:
+		return v
+	}
+}
+
+// clampValueWithFindings clamps a single value and records findings, recursing
+// into maps and slices. The path parameter tracks the JSON path for diagnostics.
+func clampValueWithFindings(v any, path string, findings *[]Finding) any {
+	switch val := v.(type) {
+	case float64:
+		clamped := clampFloat64(val)
+		if clamped != val || math.IsNaN(val) {
+			*findings = append(*findings, Finding{
+				Field:    path,
+				Code:     FindingInvalidNumeric,
+				Message:  fmt.Sprintf("%s: value %v clamped to %v", path, val, clamped),
+				Severity: "warning",
+				Fix: &FixSuggestion{
+					Kind: FixKindReplaceValue,
+					Params: map[string]any{
+						"field":      path,
+						"original":   val,
+						"clamped_to": clamped,
+					},
+				},
+			})
+		}
+		return clamped
+	case map[string]any:
+		for k, inner := range val {
+			val[k] = clampValueWithFindings(inner, path+"."+k, findings)
+		}
+		return val
+	case []any:
+		for i, inner := range val {
+			val[i] = clampValueWithFindings(inner, fmt.Sprintf("%s[%d]", path, i), findings)
 		}
 		return val
 	default:

@@ -46,16 +46,27 @@ func RegistryRenderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, fo
 }
 
 // renderMultiFormatWithFindings wraps renderMultiFormat and promotes the
-// result into a RenderOutput with an empty Findings slice. Actual findings
-// will be populated when individual diagram renderers emit them (follow-up).
+// result into a RenderOutput with findings from clamping and rendering.
 func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
+	// Collect clamp findings before render (renderMultiFormat also clamps
+	// via the non-findings path, so we pre-clamp here to capture diagnostics
+	// and the subsequent ClampDataValues call inside renderMultiFormat is a no-op
+	// since values are already in range).
+	var findings []Finding
+	if req.Data != nil {
+		findings = core.ClampDataValuesWithFindings(req.Data)
+	}
+
 	result, err := renderMultiFormat(r, req, formats...)
 	if err != nil {
 		return nil, err
 	}
+	if findings == nil {
+		findings = []Finding{}
+	}
 	return &RenderOutput{
 		RenderResult: result,
-		Findings:     []ValidationError{},
+		Findings:     findings,
 	}, nil
 }
 

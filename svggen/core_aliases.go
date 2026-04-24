@@ -51,6 +51,12 @@ type ValidationError = core.ValidationError
 // ValidationErrors is a collection of validation errors.
 type ValidationErrors = core.ValidationErrors
 
+// Finding is a structured render-time diagnostic with severity and fix hint.
+type Finding = core.Finding
+
+// FixSuggestion is a structured remediation hint attached to a finding.
+type FixSuggestion = core.FixSuggestion
+
 // --- Function wrappers ---
 
 // NewRegistry creates a new empty registry.
@@ -102,4 +108,28 @@ const (
 	ErrCodeUnknownDiagram = core.ErrCodeUnknownDiagram
 	MinSVGScale           = core.MinSVGScale
 	MaxSVGScale           = core.MaxSVGScale
+
+	// Finding codes (re-exported from core/finding_codes.go).
+	FindingInvalidNumeric        = core.FindingInvalidNumeric
+	FindingZeroSumPie            = core.FindingZeroSumPie
+	FindingNegativeOnLog         = core.FindingNegativeOnLog
+	FindingAllZeroSeries         = core.FindingAllZeroSeries
+	FindingCapacityExceeded      = core.FindingCapacityExceeded
+	FindingInvalidTimeFormat     = core.FindingInvalidTimeFormat
+	FindingAutoLogScaleApplied   = core.FindingAutoLogScaleApplied
+	FindingTickThinned           = core.FindingTickThinned
+	FindingScatterLabelSkipped   = core.FindingScatterLabelSkipped
+	FindingLabelTruncated        = core.FindingLabelTruncated
+	FindingLabelEllipsized       = core.FindingLabelEllipsized
+	FindingLabelClipped          = core.FindingLabelClipped
+	FindingLegendOverflowDropped = core.FindingLegendOverflowDropped
+	FindingOverflowSuppressed    = core.FindingOverflowSuppressed
+
+	// Fix kind constants (re-exported from core/finding_codes.go).
+	FixKindReplaceValue    = core.FixKindReplaceValue
+	FixKindTruncateOrSplit = core.FixKindTruncateOrSplit
+	FixKindAlignSeries     = core.FixKindAlignSeries
+	FixKindExplicitScale   = core.FixKindExplicitScale
+	FixKindReduceItems     = core.FixKindReduceItems
+	FixKindIncreaseCanvas  = core.FixKindIncreaseCanvas
 )

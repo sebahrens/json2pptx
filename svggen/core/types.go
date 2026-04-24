@@ -284,9 +284,10 @@ type RenderResult struct {
 type RenderOutput struct {
 	*RenderResult
 
-	// Findings contains structured validation findings emitted during render.
-	// Always non-nil (empty slice when no findings).
-	Findings []ValidationError
+	// Findings contains structured render-time findings (e.g. clamped values,
+	// capacity limits, label truncation). Always non-nil (empty slice when
+	// no findings). Each Finding carries a severity and optional fix suggestion.
+	Findings []Finding
 }
 
 // ParseRequest parses a JSON request into a RequestEnvelope.

@@ -40,10 +40,10 @@ type DiagramRenderResult struct {
 	// ContainerHeight is the original container height before fit mode (pixels).
 	ContainerHeight float64
 
-	// Findings contains structured validation findings from the chart/diagram
-	// render (e.g., data density warnings). Always non-nil (empty slice when
-	// no findings). Consumed by the fit-report pipeline.
-	Findings []svggen.ValidationError
+	// Findings contains structured render-time findings from the chart/diagram
+	// render (e.g., clamped values, data density warnings). Always non-nil
+	// (empty slice when no findings). Consumed by the fit-report pipeline.
+	Findings []svggen.Finding
 }
 
 // RenderDiagramSpec renders a DiagramSpec directly using svggen and returns the PNG bytes.

@@ -16,6 +16,11 @@ func clampDataValues(data map[string]any) {
 	core.ClampDataValues(data)
 }
 
+// clampDataValuesWithFindings is a package-local alias for core.ClampDataValuesWithFindings.
+func clampDataValuesWithFindings(data map[string]any) []Finding {
+	return core.ClampDataValuesWithFindings(data)
+}
+
 // clampFloat64 clamps a float64 to [-maxSafeValue, maxSafeValue].
 func clampFloat64(f float64) float64 {
 	if math.IsNaN(f) {

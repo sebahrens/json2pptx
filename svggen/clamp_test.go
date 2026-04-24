@@ -100,3 +100,110 @@ func TestClampDataValues(t *testing.T) {
 		t.Errorf("list[3].inner: got %v, want %v", v, maxSafeValue)
 	}
 }
+
+func TestClampDataValuesWithFindings_NoFindings(t *testing.T) {
+	data := map[string]any{
+		"a": 1.0,
+		"b": 42.5,
+		"c": "text",
+		"nested": map[string]any{
+			"d": 100.0,
+		},
+	}
+
+	findings := clampDataValuesWithFindings(data)
+	if len(findings) != 0 {
+		t.Errorf("expected 0 findings for clean data, got %d", len(findings))
+	}
+	// Values unchanged
+	if data["a"].(float64) != 1.0 {
+		t.Errorf("a: got %v, want 1.0", data["a"])
+	}
+}
+
+func TestClampDataValuesWithFindings_EmitsFindings(t *testing.T) {
+	data := map[string]any{
+		"ok":     42.0,
+		"nan":    math.NaN(),
+		"posinf": math.Inf(1),
+		"neginf": math.Inf(-1),
+		"huge":   2e16,
+		"nested": map[string]any{
+			"deep_nan": math.NaN(),
+		},
+		"list": []any{
+			math.Inf(1),
+			5.0,
+		},
+	}
+
+	findings := clampDataValuesWithFindings(data)
+
+	// Should emit findings for: nan, posinf, neginf, huge, nested.deep_nan, list[0]
+	if len(findings) != 6 {
+		t.Fatalf("expected 6 findings, got %d: %v", len(findings), findings)
+	}
+
+	// Verify all findings have the right code and severity
+	for _, f := range findings {
+		if f.Code != FindingInvalidNumeric {
+			t.Errorf("finding %q has code %q, want %q", f.Field, f.Code, FindingInvalidNumeric)
+		}
+		if f.Severity != "warning" {
+			t.Errorf("finding %q has severity %q, want warning", f.Field, f.Severity)
+		}
+		if f.Fix == nil {
+			t.Errorf("finding %q has nil Fix", f.Field)
+		} else if f.Fix.Kind != FixKindReplaceValue {
+			t.Errorf("finding %q has Fix.Kind %q, want %q", f.Field, f.Fix.Kind, FixKindReplaceValue)
+		}
+	}
+
+	// Values still clamped correctly
+	if data["nan"].(float64) != 0 {
+		t.Errorf("nan: got %v, want 0", data["nan"])
+	}
+	if data["posinf"].(float64) != maxSafeValue {
+		t.Errorf("posinf: got %v, want %v", data["posinf"], maxSafeValue)
+	}
+	nested := data["nested"].(map[string]any)
+	if nested["deep_nan"].(float64) != 0 {
+		t.Errorf("nested.deep_nan: got %v, want 0", nested["deep_nan"])
+	}
+	list := data["list"].([]any)
+	if list[0].(float64) != maxSafeValue {
+		t.Errorf("list[0]: got %v, want %v", list[0], maxSafeValue)
+	}
+	if list[1].(float64) != 5.0 {
+		t.Errorf("list[1]: got %v, want 5.0", list[1])
+	}
+}
+
+func TestClampDataValuesWithFindings_FieldPaths(t *testing.T) {
+	data := map[string]any{
+		"values": []any{
+			1.0,
+			math.NaN(),
+			map[string]any{
+				"x": math.Inf(1),
+			},
+		},
+	}
+
+	findings := clampDataValuesWithFindings(data)
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(findings))
+	}
+
+	// Check paths are correct
+	paths := map[string]bool{}
+	for _, f := range findings {
+		paths[f.Field] = true
+	}
+	if !paths["values[1]"] {
+		t.Errorf("missing finding for path values[1], got paths: %v", paths)
+	}
+	if !paths["values[2].x"] {
+		t.Errorf("missing finding for path values[2].x, got paths: %v", paths)
+	}
+}
