@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
@@ -29,6 +30,7 @@ type dryRunOutput struct {
 	Warnings           []string                    `json:"warnings"`
 	ValidationWarnings []*patterns.ValidationError  `json:"validation_warnings,omitempty"`
 	Errors             []string                    `json:"errors,omitempty"`
+	Diagnostics        []diagnostics.Diagnostic    `json:"diagnostics,omitempty"`
 	Slides             []dryRunSlide               `json:"slides"`
 	FitFindings        []fitFinding                `json:"fit_findings,omitempty"`
 }

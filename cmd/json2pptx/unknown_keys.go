@@ -113,13 +113,3 @@ func checkUnknownKeysForType(raw json.RawMessage, structType reflect.Type, path 
 	return checkUnknownKeys(raw, jsonFieldNames(structType), path)
 }
 
-// collectInputWarnings runs unknown-key detection on raw JSON and chart/diagram
-// data validation on parsed slides. Returns combined warning strings.
-func collectInputWarnings(rawJSON []byte, slides []SlideInput) []string {
-	var warnings []string
-	for _, ve := range checkInputUnknownKeys(rawJSON) {
-		warnings = append(warnings, ve.Error())
-	}
-	warnings = append(warnings, validateSlidesChartData(slides)...)
-	return warnings
-}
