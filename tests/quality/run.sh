@@ -55,6 +55,12 @@ if [[ -f "$SCRIPT_DIR/results.csv" ]]; then
     column -t -s',' "$SCRIPT_DIR/results.csv" | head -30
 fi
 
+if [[ -f "$SCRIPT_DIR/findings_histogram.csv" ]]; then
+    echo ""
+    echo "--- Findings Histogram (per code) ---"
+    column -t -s',' "$SCRIPT_DIR/findings_histogram.csv" | head -40
+fi
+
 # Step 2: Update baseline if requested.
 if [[ "$UPDATE_BASELINE" == "true" ]]; then
     if [[ -f "$SCRIPT_DIR/results.csv" ]]; then

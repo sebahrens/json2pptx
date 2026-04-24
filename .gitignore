@@ -135,6 +135,7 @@ __pycache__/
 
 # Quality eval harness generated output
 tests/quality/results.csv
+tests/quality/findings_histogram.csv
 tests/quality/test-output.log
 tests/quality/pptx_output/
 tests/quality/slide_images/

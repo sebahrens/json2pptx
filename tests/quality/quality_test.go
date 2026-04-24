@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -43,6 +44,9 @@ type metrics struct {
 	DensityExceeded  int     // density_exceeded findings
 	UnfittableRate   float64 // unfittable / total findings
 	ShrinkRate       float64 // shrink actions / total findings
+	// Per-code histogram (from --fit-report NDJSON with --verbose-fit).
+	CodeCounts   map[string]int // finding code → count
+	ActionCounts map[string]int // action → count
 }
 
 // fitFinding is defined in loop_driver.go (shared within the package).
@@ -127,6 +131,11 @@ func TestMechanicalMetrics(t *testing.T) {
 	writeCSV(t, csvPath, allMetrics)
 	t.Logf("Wrote results to %s", csvPath)
 
+	// Write per-code findings histogram.
+	histPath := filepath.Join(projectRoot, "tests", "quality", "findings_histogram.csv")
+	writeHistogramCSV(t, histPath, allMetrics)
+	t.Logf("Wrote findings histogram to %s", histPath)
+
 	// Compare against baseline if it exists.
 	baselinePath := filepath.Join(projectRoot, "tests", "quality", "baseline.csv")
 	if _, err := os.Stat(baselinePath); err == nil {
@@ -185,6 +194,8 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 		return m
 	}
 
+	m.CodeCounts = make(map[string]int)
+	m.ActionCounts = make(map[string]int)
 	m.SlideCount = len(input.Slides)
 
 	for si, slide := range input.Slides {
@@ -260,14 +271,13 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 		m.HexFillRatio = float64(m.HexFillCount) / float64(m.TotalFillCount)
 	}
 
-	// Run fit-report via the binary.
-	fitReportPath := filepath.Join(t.TempDir(), name+"-fit.ndjson")
-	cmd := exec.Command(binary, "validate", "-fit-report", fitReportPath, jsonPath) //nolint:gosec // test code with controlled args
-	// Ignore exit code — validate may return non-zero for invalid inputs.
-	_ = cmd.Run()
+	// Run fit-report via the binary with -verbose-fit for unbudgeted counts.
+	// -fit-report is a boolean flag; NDJSON goes to stdout.
+	cmd := exec.Command(binary, "validate", "-fit-report", "-verbose-fit", jsonPath) //nolint:gosec // test code with controlled args
+	fitData, _ := cmd.Output()
 
-	// Parse fit-report NDJSON.
-	if fitData, err := os.ReadFile(fitReportPath); err == nil && len(fitData) > 0 {
+	// Parse fit-report NDJSON from stdout.
+	if len(fitData) > 0 {
 		var totalFindings, unfittable, shrink int
 		for _, line := range strings.Split(strings.TrimSpace(string(fitData)), "\n") {
 			if line == "" {
@@ -278,6 +288,13 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 				continue
 			}
 			totalFindings++
+			// Per-code and per-action histogram.
+			if f.Code != "" {
+				m.CodeCounts[f.Code]++
+			}
+			if f.Action != "" {
+				m.ActionCounts[f.Action]++
+			}
 			switch f.Code {
 			case "fit_overflow":
 				m.FitOverflowCount++
@@ -294,6 +311,34 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 		if totalFindings > 0 {
 			m.UnfittableRate = float64(unfittable) / float64(totalFindings)
 			m.ShrinkRate = float64(shrink) / float64(totalFindings)
+		}
+	}
+
+	// Collect render-time findings from generate -json-output.
+	jsonOutPath := filepath.Join(t.TempDir(), name+"-gen.json")
+	genCmd := exec.Command(binary, "generate", //nolint:gosec // test code with controlled args
+		"-json", jsonPath,
+		"-template", "midnight-blue",
+		"-templates-dir", filepath.Join(findProjectRoot(t), "templates"),
+		"-output", t.TempDir(),
+		"-json-output", jsonOutPath,
+		"-strict-fit=warn",
+	)
+	_ = genCmd.Run()
+
+	if genData, err := os.ReadFile(jsonOutPath); err == nil && len(genData) > 0 {
+		var genOut struct {
+			FitFindings []fitFinding `json:"fit_findings"`
+		}
+		if json.Unmarshal(genData, &genOut) == nil {
+			for _, f := range genOut.FitFindings {
+				if f.Code != "" {
+					m.CodeCounts[f.Code]++
+				}
+				if f.Action != "" {
+					m.ActionCounts[f.Action]++
+				}
+			}
 		}
 	}
 
@@ -455,5 +500,84 @@ func checkRegression(t *testing.T, name, metric string, baseline []string, col, 
 	if currentVal > baseVal {
 		t.Logf("REGRESSION %s/%s: baseline=%d current=%d (delta=+%d)",
 			name, metric, baseVal, currentVal, currentVal-baseVal)
+	}
+}
+
+// writeHistogramCSV writes a per-code findings histogram as a CSV matrix.
+// Rows are fixtures, columns are finding codes (sorted alphabetically),
+// plus a total column. A summary row at the bottom aggregates across all
+// fixtures.
+func writeHistogramCSV(t *testing.T, path string, all []metrics) {
+	t.Helper()
+
+	// Collect all unique codes across fixtures.
+	codeSet := make(map[string]bool)
+	for _, m := range all {
+		for code := range m.CodeCounts {
+			codeSet[code] = true
+		}
+	}
+
+	// Sort codes alphabetically for stable column ordering.
+	codes := make([]string, 0, len(codeSet))
+	for code := range codeSet {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+
+	// If no findings at all, still write a minimal file.
+	if len(codes) == 0 {
+		codes = []string{"(no_findings)"}
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create histogram CSV: %v", err)
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	defer w.Flush()
+
+	// Header: name, code1, code2, ..., total.
+	header := make([]string, 0, len(codes)+2)
+	header = append(header, "name")
+	header = append(header, codes...)
+	header = append(header, "total")
+	if err := w.Write(header); err != nil {
+		t.Fatalf("write histogram header: %v", err)
+	}
+
+	// Aggregate totals per code.
+	totals := make(map[string]int)
+	grandTotal := 0
+
+	// Per-fixture rows.
+	for _, m := range all {
+		row := make([]string, 0, len(codes)+2)
+		row = append(row, m.Name)
+		fixtureTotal := 0
+		for _, code := range codes {
+			count := m.CodeCounts[code]
+			row = append(row, strconv.Itoa(count))
+			totals[code] += count
+			fixtureTotal += count
+		}
+		row = append(row, strconv.Itoa(fixtureTotal))
+		grandTotal += fixtureTotal
+		if err := w.Write(row); err != nil {
+			t.Fatalf("write histogram row: %v", err)
+		}
+	}
+
+	// Summary row.
+	summary := make([]string, 0, len(codes)+2)
+	summary = append(summary, "TOTAL")
+	for _, code := range codes {
+		summary = append(summary, strconv.Itoa(totals[code]))
+	}
+	summary = append(summary, strconv.Itoa(grandTotal))
+	if err := w.Write(summary); err != nil {
+		t.Fatalf("write histogram summary: %v", err)
 	}
 }
