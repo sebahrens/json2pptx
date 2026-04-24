@@ -32,10 +32,14 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Expand a pattern (preview the shape_grid it produces) | `expand_pattern` | `json2pptx patterns expand` |
 | Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
 | Icon catalog | `list_icons` | `json2pptx icons list` |
+| Chart capability metadata (TBD values) | `get_chart_capabilities` | (CLI inlines in skill-info) |
+| Diagram capability metadata (TBD values) | `get_diagram_capabilities` | (CLI inlines in skill-info) |
 
 **Capability negotiation.** On MCP initialize, advertise the `compact_responses` experimental capability to opt into terser response envelopes (saves tokens on long decks). The server responds with a matching capability if supported.
 
 **Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`.
+
+**Capabilities TBD.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each capability entry has a `status: "tbd"` marker and null value fields (`max_series`, `max_points`, etc.) — the struct shape is stable but concrete limits are pending per-type design. `capabilities_tbd: true` at top level flags this. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand.
 
 ---
 

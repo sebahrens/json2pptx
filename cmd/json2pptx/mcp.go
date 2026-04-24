@@ -23,6 +23,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
@@ -111,6 +112,8 @@ func runMCP() error {
 	s.AddTool(mcpGenerateTool(), mc.handleGenerate)
 	s.AddTool(mcpListTemplatesTool(), mc.handleListTemplates)
 	s.AddTool(mcpGetDataFormatHintsTool(), handleGetDataFormatHints)
+	s.AddTool(mcpGetChartCapabilitiesTool(), handleGetChartCapabilities)
+	s.AddTool(mcpGetDiagramCapabilitiesTool(), handleGetDiagramCapabilities)
 	s.AddTool(mcpValidateTool(), mc.handleValidate)
 	s.AddTool(mcpListPatternsTool(), handleListPatterns)
 	s.AddTool(mcpShowPatternTool(), handleShowPattern)
@@ -458,6 +461,54 @@ func handleGetDataFormatHints(_ context.Context, request mcp.CallToolRequest) (*
 	resp := dataFormatHintsResponse{
 		Digest: digest,
 		Hints:  hints,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(b)), nil
+}
+
+func mcpGetChartCapabilitiesTool() mcp.Tool {
+	return mcp.NewTool("get_chart_capabilities",
+		mcp.WithDescription("Fetch capability metadata for all chart types. Values are TBD (null) until populated in a future release; the struct shape is stable."),
+	)
+}
+
+func mcpGetDiagramCapabilitiesTool() mcp.Tool {
+	return mcp.NewTool("get_diagram_capabilities",
+		mcp.WithDescription("Fetch capability metadata for all diagram types. Values are TBD (null) until populated in a future release; the struct shape is stable."),
+	)
+}
+
+// chartCapabilitiesResponse is the JSON envelope for get_chart_capabilities.
+type chartCapabilitiesResponse struct {
+	CapabilitiesTBD   bool                      `json:"capabilities_tbd"`
+	ChartCapabilities []svggen.ChartCapability   `json:"chart_capabilities"`
+}
+
+// diagramCapabilitiesResponse is the JSON envelope for get_diagram_capabilities.
+type diagramCapabilitiesResponse struct {
+	CapabilitiesTBD       bool                        `json:"capabilities_tbd"`
+	DiagramCapabilities   []svggen.DiagramCapability   `json:"diagram_capabilities"`
+}
+
+func handleGetChartCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	resp := chartCapabilitiesResponse{
+		CapabilitiesTBD:   true,
+		ChartCapabilities: svggen.ChartCapabilities(),
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(b)), nil
+}
+
+func handleGetDiagramCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	resp := diagramCapabilitiesResponse{
+		CapabilitiesTBD:     true,
+		DiagramCapabilities: svggen.DiagramCapabilities(),
 	}
 	b, err := json.Marshal(resp)
 	if err != nil {

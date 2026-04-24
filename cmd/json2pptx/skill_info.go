@@ -117,13 +117,16 @@ type skillCapacity struct {
 
 // skillSupportedTypes lists all supported slide, chart, diagram, and grid types.
 type skillSupportedTypes struct {
-	SlideTypes           []string                    `json:"slide_types"`
-	ChartTypes           []string                    `json:"chart_types"`
-	DiagramTypes         []string                    `json:"diagram_types"`
-	GridCellTypes        []string                    `json:"grid_cell_types"`
-	ShapeGeometries      []string                    `json:"shape_geometries"`
-	DataFormatHints      map[string]skillDataFormat  `json:"data_format_hints,omitempty"`
-	DataFormatHintsDigest string                     `json:"data_format_hints_digest,omitempty"`
+	SlideTypes            []string                      `json:"slide_types"`
+	ChartTypes            []string                      `json:"chart_types"`
+	DiagramTypes          []string                      `json:"diagram_types"`
+	ChartCapabilities     []svggen.ChartCapability       `json:"chart_capabilities"`
+	DiagramCapabilities   []svggen.DiagramCapability     `json:"diagram_capabilities"`
+	CapabilitiesTBD       bool                          `json:"capabilities_tbd"`
+	GridCellTypes         []string                      `json:"grid_cell_types"`
+	ShapeGeometries       []string                      `json:"shape_geometries"`
+	DataFormatHints       map[string]skillDataFormat    `json:"data_format_hints,omitempty"`
+	DataFormatHintsDigest string                        `json:"data_format_hints_digest,omitempty"`
 }
 
 // skillDataFormat describes the expected data structure for a chart or diagram type.
@@ -432,9 +435,12 @@ func buildSupportedTypes() skillSupportedTypes {
 			"icon_rows",
 			"stat_cards",
 		},
-		GridCellTypes:   []string{"shape", "table", "icon", "image"},
-		ShapeGeometries: buildShapeGeometries(),
-		DataFormatHints: buildDataFormatHints(),
+		ChartCapabilities:   svggen.ChartCapabilities(),
+		DiagramCapabilities: svggen.DiagramCapabilities(),
+		CapabilitiesTBD:     true,
+		GridCellTypes:       []string{"shape", "table", "icon", "image"},
+		ShapeGeometries:     buildShapeGeometries(),
+		DataFormatHints:     buildDataFormatHints(),
 	}
 }
 
