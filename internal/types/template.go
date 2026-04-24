@@ -164,7 +164,7 @@ type ThemeColor struct {
 }
 
 // ApplyOverride merges a ThemeOverride into this ThemeInfo, returning a new copy
-// and warnings for any unrecognized color keys that were silently ignored.
+// and warnings for non-embedded font overrides or unrecognized color keys.
 // Only non-empty override values replace template defaults.
 func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 	if o == nil {
@@ -179,11 +179,22 @@ func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 	}
 	copy(result.Colors, t.Colors)
 
-	// Override fonts
+	// Override fonts, warning when the replacement font is not in the template's theme.
+	var warnings []string
 	if o.TitleFont != "" {
+		if o.TitleFont != t.TitleFont {
+			warnings = append(warnings, fmt.Sprintf(
+				"theme_override.title_font: %q is not embedded in template (template uses %q) and may substitute at render time",
+				o.TitleFont, t.TitleFont))
+		}
 		result.TitleFont = o.TitleFont
 	}
 	if o.BodyFont != "" {
+		if o.BodyFont != t.BodyFont {
+			warnings = append(warnings, fmt.Sprintf(
+				"theme_override.body_font: %q is not embedded in template (template uses %q) and may substitute at render time",
+				o.BodyFont, t.BodyFont))
+		}
 		result.BodyFont = o.BodyFont
 	}
 
@@ -199,7 +210,6 @@ func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 	}
 
 	// Warn about unrecognized color keys
-	var warnings []string
 	if len(matched) < len(o.Colors) {
 		// Collect valid names for the suggestion
 		validNames := make([]string, len(t.Colors))

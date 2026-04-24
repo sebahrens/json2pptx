@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -637,6 +638,7 @@ func TestThemeInfo_ApplyOverride(t *testing.T) {
 					{Name: "accent3", RGB: "#A5A5A5"},
 				},
 			},
+			wantWarnings: 2, // both fonts differ from template
 		},
 		{
 			name: "override colors and fonts",
@@ -656,6 +658,16 @@ func TestThemeInfo_ApplyOverride(t *testing.T) {
 					{Name: "accent3", RGB: "#A5A5A5"},
 				},
 			},
+			wantWarnings: 1, // title font differs from template
+		},
+		{
+			name: "override same font produces no warning",
+			override: &ThemeOverride{
+				TitleFont: "Calibri Light",
+				BodyFont:  "Calibri",
+			},
+			want:         base,
+			wantWarnings: 0,
 		},
 		{
 			name: "override nonexistent color warns",
@@ -727,6 +739,31 @@ func TestThemeInfo_ApplyOverride(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestApplyOverride_FontWarningMessage(t *testing.T) {
+	base := ThemeInfo{
+		Name:      "Corporate",
+		TitleFont: "Inter",
+		BodyFont:  "Inter",
+	}
+	override := &ThemeOverride{
+		TitleFont: "Comic Sans MS",
+	}
+	_, warnings := base.ApplyOverride(override)
+	if len(warnings) != 1 {
+		t.Fatalf("got %d warnings, want 1", len(warnings))
+	}
+	w := warnings[0]
+	if !strings.Contains(w, "Comic Sans MS") {
+		t.Errorf("warning should mention overridden font, got: %s", w)
+	}
+	if !strings.Contains(w, "Inter") {
+		t.Errorf("warning should mention template font, got: %s", w)
+	}
+	if !strings.Contains(w, "theme_override.title_font") {
+		t.Errorf("warning should mention field path, got: %s", w)
 	}
 }
 
