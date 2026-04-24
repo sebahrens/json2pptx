@@ -71,19 +71,27 @@ Always set text insets (6-12pt) on body cells. See `docs/INPUT_FORMAT.md` for fu
 ## Project Structure
 
 ```
-cmd/json2pptx/       # CLI tool (generate, validate, serve, mcp, skill-info)
+cmd/json2pptx/       # CLI tool (generate, validate, serve, mcp, skill-info, patterns, icons, tables)
 cmd/pptx2jpg/        # PPTX to image conversion
 cmd/debugcolors/     # Template color debugging
 internal/            # Private packages
   api/               # HTTP handlers
-  generator/         # PPTX file generation
-  template/          # PPTX template analysis
-  layout/            # Layout selection (heuristic scoring)
-  types/             # Shared data types
-  parser/            # Input parsing
-  pipeline/          # Generation pipeline
   config/            # Configuration loading
+  generator/         # PPTX file generation
+  jsonschema/        # JSON Schema validation
+  layout/            # Layout selection (heuristic scoring)
+  pagination/        # Slide pagination and content splitting
+  patterns/          # Named shape grid pattern registry
+  pipeline/          # Generation pipeline
+  pptx/              # Low-level OOXML manipulation
+  resource/          # Embedded resource handling
+  safeyaml/          # Safe YAML parsing
   shapegrid/         # Shape grid engine
+  template/          # PPTX template analysis
+  textfit/           # Text fitting and overflow handling
+  types/             # Shared data types
+  utils/             # Utilities
+  visualqa/          # Visual QA agent integration
 svggen/              # SVG chart and diagram generation (separate module)
 templates/           # Built-in PPTX templates
 specs/               # Design specifications

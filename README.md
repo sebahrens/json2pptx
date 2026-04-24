@@ -637,6 +637,9 @@ The `json2pptx` binary is the primary CLI tool. It works as a batch converter, H
 | `validate`           | Validate JSON input without generating a file (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
 | `validate-template`  | Check template compatibility                                  |
 | `skill-info`         | Show template capabilities for Claude Code skill integration  |
+| `patterns`           | List, show, validate, and expand named shape grid patterns    |
+| `icons`              | List available icon sets and icons                            |
+| `tables`             | Table style guide and density reference                       |
 | `serve`              | Start the HTTP API server                                     |
 | `mcp`                | Start MCP (Model Context Protocol) server over stdio          |
 | `version`            | Show version, commit, and build information                   |
@@ -677,6 +680,7 @@ json2pptx skill-info --templates-dir ./templates --mode full
 | `-output` | `./output` | Output directory for generated PPTX files |
 | `-json-output` | | Path for JSON result output (headless mode) |
 | `-dry-run` / `-n` | `false` | Validate input and show layout selections without generating |
+| `-strict-fit` | `warn` | Text-fit checking mode: `off`, `warn`, or `strict` (refuse on overflow) |
 | `-verbose` | `false` | Enable verbose output |
 | `-config` | | Path to config file |
 
@@ -690,6 +694,10 @@ json2pptx skill-info --templates-dir ./templates --mode full
 | `GET` | `/api/v1/slide-types` | List supported slide types |
 | `POST` | `/api/v1/convert` | Convert JSON slides to PPTX |
 | `GET` | `/api/v1/download/{filename}` | Download generated file (expires after 1 hour) |
+| `GET` | `/api/v1/patterns` | List available named shape grid patterns |
+| `GET` | `/api/v1/patterns/{name}` | Show pattern details and schema |
+| `POST` | `/api/v1/patterns/{name}/validate` | Validate input against a pattern's schema |
+| `POST` | `/api/v1/patterns/{name}/expand` | Expand a pattern into a shape grid |
 
 See [docs/api/README.md](docs/api/README.md) for complete API documentation with request/response examples.
 
@@ -782,21 +790,31 @@ svg:
 
 ```
 cmd/
-  json2pptx/         CLI tool (generate, validate, serve, mcp, skill-info)
+  json2pptx/         CLI tool (generate, validate, serve, mcp, skill-info, patterns, icons, tables)
   pptx2jpg/          PPTX to image conversion (visual inspection)
   debugcolors/       Template color debugging tool
 internal/
   api/               HTTP API handlers and routing
-  generator/         Core PPTX generation pipeline
-  template/          PPTX template analysis and layout classification
-  layout/            Layout selection (heuristic scoring)
-  types/             Shared data types and input schema
-  parser/            Input parsing
-  pipeline/          Generation pipeline orchestration
   config/            Configuration loading
+  generator/         Core PPTX generation pipeline
+  jsonschema/        JSON Schema validation
+  layout/            Layout selection (heuristic scoring)
+  pagination/        Slide pagination and content splitting
+  patterns/          Named shape grid pattern registry
+  pipeline/          Generation pipeline orchestration
+  pptx/              Low-level OOXML manipulation
+  resource/          Embedded resource handling
+  safeyaml/          Safe YAML parsing
   shapegrid/         Shape grid layout engine
+  template/          PPTX template analysis and layout classification
+  testrand/          Random test data generation
+  testutil/          Test helpers
+  textfit/           Text fitting and overflow handling
+  types/             Shared data types and input schema
+  utils/             Utilities
+  visualqa/          Visual QA agent integration
 svggen/              SVG chart and diagram generation (separate Go module)
-templates/           Built-in PPTX templates (embedded at build time)
+templates/           Built-in PPTX templates
 ```
 
 ### Pipeline Flow
