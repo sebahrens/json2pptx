@@ -1,8 +1,10 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -102,5 +104,55 @@ func TestExtractContentParagraphs(t *testing.T) {
 	paras3 := extractContentParagraphs(&c3)
 	if len(paras3) != 4 {
 		t.Errorf("body_and_bullets: got %d paragraphs, want 4", len(paras3))
+	}
+}
+
+func TestContrastSwapsToFindings(t *testing.T) {
+	swaps := []generator.ContrastSwap{
+		{
+			OriginalColor:   "#FD5108",
+			ReplacedColor:   "#A03000",
+			BackgroundColor: "#FFE8D4",
+			RatioBefore:     2.1,
+			RatioAfter:      4.6,
+		},
+		{
+			OriginalColor:   "#FFFFFF",
+			ReplacedColor:   "#1A1A1A",
+			BackgroundColor: "#FFB6C1",
+			RatioBefore:     1.65,
+			RatioAfter:      8.2,
+		},
+	}
+
+	findings := contrastSwapsToFindings(swaps)
+
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(findings))
+	}
+
+	for i, f := range findings {
+		if f.Code != "contrast_autofixed" {
+			t.Errorf("finding[%d].Code = %q, want %q", i, f.Code, "contrast_autofixed")
+		}
+		if f.Action != "info" {
+			t.Errorf("finding[%d].Action = %q, want %q", i, f.Action, "info")
+		}
+		if f.Fix == nil {
+			t.Fatalf("finding[%d].Fix is nil", i)
+		}
+		if f.Fix.Kind != "replace_color" {
+			t.Errorf("finding[%d].Fix.Kind = %q, want %q", i, f.Fix.Kind, "replace_color")
+		}
+		if !strings.Contains(f.Message, swaps[i].OriginalColor) {
+			t.Errorf("finding[%d].Message should contain original color %q, got %q", i, swaps[i].OriginalColor, f.Message)
+		}
+	}
+}
+
+func TestContrastSwapsToFindings_Empty(t *testing.T) {
+	findings := contrastSwapsToFindings(nil)
+	if findings != nil {
+		t.Errorf("expected nil for empty swaps, got %v", findings)
 	}
 }

@@ -154,6 +154,9 @@ type OutputContext struct {
 
 	// Structured media failures (diagrams, images, tables that failed to render)
 	mediaFailures []MediaFailure
+
+	// Contrast swaps recorded during WCAG text contrast enforcement
+	contrastSwaps []ContrastSwap
 }
 
 // singlePassContext holds all state needed for single-pass ZIP generation.

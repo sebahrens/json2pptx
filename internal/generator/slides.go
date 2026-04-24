@@ -139,6 +139,7 @@ type GenerationResult struct {
 	ValidationErrors []*patterns.ValidationError // Structured validation errors (e.g. placeholder_not_found)
 	Duration         time.Duration              // Time taken to generate
 	MediaFailures    []MediaFailure             // Structured per-slide media errors (diagrams, images, tables)
+	ContrastSwaps    []ContrastSwap             // WCAG contrast auto-fix color replacements
 }
 
 // MediaFailure describes a media content item that failed to render on a slide.

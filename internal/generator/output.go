@@ -721,7 +721,9 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		// Enforce WCAG AA text contrast within each shape_grid cell,
 		// unless the slide opts out via contrast_check: false.
 		if spec.ContrastCheck == nil || *spec.ContrastCheck {
-			shapes = enforceShapeGridContrast(shapes, ctx.themeColors)
+			var gridSwaps []ContrastSwap
+			shapes, gridSwaps = enforceShapeGridContrast(shapes, ctx.themeColors)
+			ctx.contrastSwaps = append(ctx.contrastSwaps, gridSwaps...)
 		}
 		slideData, err = insertRawShapes(slideData, shapes)
 		if err != nil {

@@ -147,7 +147,8 @@ func TestFixSchemeColorsForContrast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := fixSchemeColorsForContrast(tt.xmlIn, bgColor, tc, "TestShape", "test")
+			var sw []ContrastSwap
+			got := fixSchemeColorsForContrast(tt.xmlIn, bgColor, "#FFE8D4", tc, &sw, "TestShape", "test")
 
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
@@ -314,7 +315,8 @@ func TestFixSchemeColorsForContrast_MultipleLevels(t *testing.T) {
 	xmlIn := `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr>` +
 		`<a:lvl2pPr><a:defRPr sz="2000"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
 
-	got := fixSchemeColorsForContrast(xmlIn, bgColor, tc, "TestShape", "test")
+	var swaps []ContrastSwap
+	got := fixSchemeColorsForContrast(xmlIn, bgColor, "#FFE8D4", tc, &swaps, "TestShape", "test")
 
 	// accent1 should be replaced (low contrast)
 	if strings.Contains(got, `schemeClr val="accent1"`) {
@@ -388,7 +390,7 @@ func TestEnforceShapeGridContrast_FixesHexFill(t *testing.T) {
 
 	original0 := string(shapes[0])
 	original1 := string(shapes[1])
-	result := enforceShapeGridContrast(shapes, tc)
+	result, _ := enforceShapeGridContrast(shapes, tc)
 
 	if len(result) != 2 {
 		t.Fatalf("expected 2 shapes, got %d", len(result))
@@ -416,7 +418,7 @@ func TestFixShapeXMLContrast_SemanticFill(t *testing.T) {
 	// Since fill is semantic, text should be auto-fixed
 	input := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Fix</a:t></a:r></a:p></p:txBody></p:sp>`)
 
-	result := fixShapeXMLContrast(input, tc)
+	result, _ := fixShapeXMLContrast(input, tc)
 
 	if string(result) == string(input) {
 		t.Error("expected low-contrast text to be fixed on semantic fill, but shape was unchanged")
@@ -459,7 +461,7 @@ func TestFixShapeXMLContrast_GoodContrastUnchanged(t *testing.T) {
 	// dk1 (#000000 = black) fill with lt1 (white) text — excellent contrast
 	input := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>OK</a:t></a:r></a:p></p:txBody></p:sp>`)
 
-	result := fixShapeXMLContrast(input, tc)
+	result, _ := fixShapeXMLContrast(input, tc)
 
 	if string(result) != string(input) {
 		t.Errorf("expected no change for good-contrast text on semantic fill\n  input:  %s\n  output: %s", input, result)
@@ -481,7 +483,7 @@ func TestEnforceShapeGridContrast_FixesBothFillTypes(t *testing.T) {
 		[]byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="FFB6C1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`),
 	}
 
-	result := enforceShapeGridContrast(shapes, lightTheme)
+	result, _ := enforceShapeGridContrast(shapes, lightTheme)
 
 	// First shape (semantic fill): should be modified
 	if string(result[0]) == string([]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`)) {
@@ -524,7 +526,8 @@ func TestFixSrgbColorsForContrast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor)
+			var srgbSwaps []ContrastSwap
+			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", &srgbSwaps)
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
 				t.Errorf("changed = %v, want %v\n  input:  %s\n  output: %s", changed, tt.wantChange, tt.xmlIn, got)
@@ -619,7 +622,7 @@ func TestContrastCheckOptOut_ShapeGrid(t *testing.T) {
 		shapes := [][]byte{shapeXML}
 		var cc *bool
 		if cc == nil || *cc {
-			shapes = enforceShapeGridContrast(shapes, tc)
+			shapes, _ = enforceShapeGridContrast(shapes, tc)
 		}
 		if string(shapes[0]) == string(shapeXML) {
 			t.Error("expected shape_grid contrast enforcement to modify low-contrast text")
@@ -630,10 +633,76 @@ func TestContrastCheckOptOut_ShapeGrid(t *testing.T) {
 		shapes := [][]byte{shapeXML}
 		cc := boolPtr(false)
 		if cc == nil || *cc {
-			shapes = enforceShapeGridContrast(shapes, tc)
+			shapes, _ = enforceShapeGridContrast(shapes, tc)
 		}
 		if string(shapes[0]) != string(shapeXML) {
 			t.Error("expected no change when contrast_check=false")
 		}
 	})
+}
+
+func TestEnforceTextContrastInSlide_ReturnsSwaps(t *testing.T) {
+	tc := consultingThemeColors()
+	bgHex := "#FFE8D4" // warm fill
+
+	slide := &slideXML{
+		CommonSlideData: commonSlideDataXML{
+			ShapeTree: shapeTreeXML{
+				Shapes: []shapeXML{
+					{
+						TextBody: &textBodyXML{
+							ListStyle: &listStyleXML{
+								// accent1 (#FD5108) on #FFE8D4 has low contrast
+								Inner: `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
+							},
+							Paragraphs: []paragraphXML{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	swaps := enforceTextContrastInSlide(slide, bgHex, tc)
+
+	if len(swaps) == 0 {
+		t.Fatal("expected at least 1 contrast swap, got 0")
+	}
+	s := swaps[0]
+	if s.OriginalColor == "" || s.ReplacedColor == "" {
+		t.Errorf("swap colors should not be empty: original=%q, replaced=%q", s.OriginalColor, s.ReplacedColor)
+	}
+	if s.BackgroundColor != bgHex {
+		t.Errorf("swap background = %q, want %q", s.BackgroundColor, bgHex)
+	}
+	if s.RatioBefore >= svggen.WCAGAALarge {
+		t.Errorf("ratio before (%.2f) should be below WCAG AA Large (%.1f)", s.RatioBefore, svggen.WCAGAALarge)
+	}
+	if s.RatioAfter < svggen.WCAGAALarge {
+		t.Errorf("ratio after (%.2f) should meet WCAG AA Large (%.1f)", s.RatioAfter, svggen.WCAGAALarge)
+	}
+}
+
+func TestEnforceShapeGridContrast_ReturnsSwaps(t *testing.T) {
+	lightTheme := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#FFB6C1"}, // light pink
+	}
+
+	shapes := [][]byte{
+		// Good contrast: black text on light pink — no swap
+		[]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>OK</a:t></a:r></a:p></p:txBody></p:sp>`),
+		// Low contrast: white text on light pink — swap expected
+		[]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Bad</a:t></a:r></a:p></p:txBody></p:sp>`),
+		// Low contrast: explicit white sRGB text on light pink — swap expected
+		[]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>Bad2</a:t></a:r></a:p></p:txBody></p:sp>`),
+	}
+
+	_, swaps := enforceShapeGridContrast(shapes, lightTheme)
+
+	// Expect swaps from shape 2 (scheme lt1→fixed) and shape 3 (sRGB FFFFFF→fixed)
+	if len(swaps) < 2 {
+		t.Fatalf("expected at least 2 contrast swaps, got %d", len(swaps))
+	}
 }

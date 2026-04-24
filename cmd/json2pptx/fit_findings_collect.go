@@ -325,3 +325,36 @@ func slideIndexFromPath(path string) int {
 	}
 	return idx
 }
+
+// contrastSwapsToFindings converts generator ContrastSwap records into
+// patterns.FitFinding values with action "info" and code "contrast_autofixed".
+func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFinding {
+	if len(swaps) == 0 {
+		return nil
+	}
+	findings := make([]patterns.FitFinding, 0, len(swaps))
+	for _, s := range swaps {
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Code: "contrast_autofixed",
+				Message: fmt.Sprintf(
+					"auto-fixed low-contrast text: %s → %s (on %s, ratio %.1f → %.1f)",
+					s.OriginalColor, s.ReplacedColor, s.BackgroundColor,
+					s.RatioBefore, s.RatioAfter,
+				),
+				Fix: &patterns.FixSuggestion{
+					Kind: "replace_color",
+					Params: map[string]any{
+						"original_color":       s.OriginalColor,
+						"replacement_color":    s.ReplacedColor,
+						"background_color":     s.BackgroundColor,
+						"contrast_ratio_before": s.RatioBefore,
+						"contrast_ratio_after":  s.RatioAfter,
+					},
+				},
+			},
+			Action: "info",
+		})
+	}
+	return findings
+}
