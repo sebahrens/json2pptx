@@ -137,6 +137,9 @@ func checkContentUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 		return warnings
 	}
 
+	// Check for redundant typed + legacy value fields.
+	warnings = append(warnings, checkRedundantValue(obj, path)...)
+
 	if v, ok := obj["body_and_bullets_value"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BodyAndBulletsInput{}), path+".body_and_bullets_value")...)
 	}
@@ -302,4 +305,54 @@ func checkGridImageUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridImageTextInput{}), path+".text")...)
 	}
 	return warnings
+}
+
+// typedFieldForType maps content type to the corresponding typed value JSON key.
+var typedFieldForType = map[string]string{
+	"text":              "text_value",
+	"bullets":           "bullets_value",
+	"body_and_bullets":  "body_and_bullets_value",
+	"bullet_groups":     "bullet_groups_value",
+	"table":             "table_value",
+	"chart":             "chart_value",
+	"diagram":           "diagram_value",
+	"image":             "image_value",
+}
+
+// checkRedundantValue warns when a content item has both a typed value field
+// and the legacy "value" field set. The typed field wins (per ResolveValue),
+// but the agent should know that "value" is being ignored.
+func checkRedundantValue(obj map[string]json.RawMessage, path string) []*patterns.ValidationError {
+	valueRaw, hasValue := obj["value"]
+	if !hasValue || len(valueRaw) == 0 {
+		return nil
+	}
+
+	typeRaw, ok := obj["type"]
+	if !ok {
+		return nil
+	}
+	var contentType string
+	if json.Unmarshal(typeRaw, &contentType) != nil {
+		return nil
+	}
+
+	typedField, ok := typedFieldForType[contentType]
+	if !ok {
+		return nil
+	}
+
+	if _, hasTyped := obj[typedField]; !hasTyped {
+		return nil
+	}
+
+	return []*patterns.ValidationError{{
+		Path:    path,
+		Code:    "redundant_field",
+		Message: fmt.Sprintf("%s: both %s and value set; using %s (value is ignored)", path, typedField, typedField),
+		Fix: &patterns.FixSuggestion{
+			Kind:   "remove_field",
+			Params: map[string]any{"field": "value"},
+		},
+	}}
 }

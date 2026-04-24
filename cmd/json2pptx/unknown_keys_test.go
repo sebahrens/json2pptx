@@ -183,3 +183,104 @@ func TestCheckInputUnknownKeys_CleanInput(t *testing.T) {
 		t.Errorf("expected no errors for clean input, got %d: %v", len(errs), errs)
 	}
 }
+
+func TestCheckRedundantValue_BothChartValueAndValue(t *testing.T) {
+	raw := json.RawMessage(`{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout1",
+			"content": [{
+				"placeholder_id": "body",
+				"type": "chart",
+				"chart_value": {"chart_type": "bar", "data": {"categories": ["A"], "series": [{"name": "s", "values": [1]}]}},
+				"value": {"chart_type": "pie"}
+			}]
+		}]
+	}`)
+	errs := checkInputUnknownKeys(raw)
+	var found *patterns.ValidationError
+	for _, ve := range errs {
+		if ve.Code == "redundant_field" {
+			found = ve
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected redundant_field warning, got %v", errs)
+	}
+	if found.Path != "slides[0].content[0]" {
+		t.Errorf("path = %q, want %q", found.Path, "slides[0].content[0]")
+	}
+	if found.Fix == nil || found.Fix.Kind != "remove_field" {
+		t.Errorf("expected remove_field fix, got %+v", found.Fix)
+	}
+	if found.Fix.Params["field"] != "value" {
+		t.Errorf("expected fix.field = %q, got %q", "value", found.Fix.Params["field"])
+	}
+}
+
+func TestCheckRedundantValue_TextValueAndValue(t *testing.T) {
+	raw := json.RawMessage(`{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout1",
+			"content": [{
+				"placeholder_id": "title",
+				"type": "text",
+				"text_value": "Hello",
+				"value": "World"
+			}]
+		}]
+	}`)
+	errs := checkInputUnknownKeys(raw)
+	var found bool
+	for _, ve := range errs {
+		if ve.Code == "redundant_field" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected redundant_field warning for text_value + value, got %v", errs)
+	}
+}
+
+func TestCheckRedundantValue_OnlyTypedField_NoWarning(t *testing.T) {
+	raw := json.RawMessage(`{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout1",
+			"content": [{
+				"placeholder_id": "title",
+				"type": "text",
+				"text_value": "Hello"
+			}]
+		}]
+	}`)
+	errs := checkInputUnknownKeys(raw)
+	for _, ve := range errs {
+		if ve.Code == "redundant_field" {
+			t.Errorf("unexpected redundant_field warning: %v", ve)
+		}
+	}
+}
+
+func TestCheckRedundantValue_OnlyLegacyValue_NoWarning(t *testing.T) {
+	raw := json.RawMessage(`{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout1",
+			"content": [{
+				"placeholder_id": "title",
+				"type": "text",
+				"value": "Hello"
+			}]
+		}]
+	}`)
+	errs := checkInputUnknownKeys(raw)
+	for _, ve := range errs {
+		if ve.Code == "redundant_field" {
+			t.Errorf("unexpected redundant_field warning: %v", ve)
+		}
+	}
+}
