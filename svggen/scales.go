@@ -505,6 +505,11 @@ type LogScale struct {
 	domainMin, domainMax float64 // original (non-log) domain bounds
 	rangeMin, rangeMax   float64
 	clamp                bool
+
+	// Tick thinning state — set by Ticks() when generated ticks exceed the
+	// requested count and are decimated.
+	ticksThinned                     bool
+	ticksOriginalCount, ticksKeptCount int
 }
 
 // NewLogScale creates a log scale for the given positive domain bounds.
@@ -614,6 +619,7 @@ func (s *LogScale) Ticks(count int) []float64 {
 
 	// If too many ticks, thin them
 	if count > 0 && len(ticks) > count*2 {
+		origCount := len(ticks)
 		step := len(ticks) / count
 		if step < 1 {
 			step = 1
@@ -627,9 +633,18 @@ func (s *LogScale) Ticks(count int) []float64 {
 			thinned = append(thinned, ticks[len(ticks)-1])
 		}
 		ticks = thinned
+		s.ticksThinned = true
+		s.ticksOriginalCount = origCount
+		s.ticksKeptCount = len(ticks)
 	}
 
 	return ticks
+}
+
+// WasThinned reports whether the last Ticks() call thinned the tick set.
+// Returns false if Ticks() has not been called or no thinning was needed.
+func (s *LogScale) WasThinned() (thinned bool, original, kept int) {
+	return s.ticksThinned, s.ticksOriginalCount, s.ticksKeptCount
 }
 
 // TickFormat returns a format function label for the given tick value.
@@ -831,6 +846,10 @@ type TimeScale struct {
 
 	// ForceInterval overrides automatic interval detection.
 	forceInterval *TimeInterval
+
+	// Tick thinning state — set by generateAlignedTicks when ticks are decimated.
+	ticksThinned                     bool
+	ticksOriginalCount, ticksKeptCount int
 }
 
 // NewTimeScale creates a new time scale with the given time domain.
@@ -1045,10 +1064,19 @@ func (s *TimeScale) generateAlignedTicks(interval TimeInterval, targetCount int)
 
 	// If we have too many ticks, skip some
 	if len(ticks) > targetCount*2 {
+		origCount := len(ticks)
 		ticks = s.decimateTicks(ticks, targetCount)
+		s.ticksThinned = true
+		s.ticksOriginalCount = origCount
+		s.ticksKeptCount = len(ticks)
 	}
 
 	return ticks
+}
+
+// WasThinned reports whether the last Ticks() call thinned the tick set.
+func (s *TimeScale) WasThinned() (thinned bool, original, kept int) {
+	return s.ticksThinned, s.ticksOriginalCount, s.ticksKeptCount
 }
 
 // alignToInterval rounds a timestamp down to the nearest interval boundary.

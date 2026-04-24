@@ -277,6 +277,19 @@ func (bc *BarChart) Draw(data ChartData) error {
 		bc.config.MarginBottom += xLayout.ExtraBottomMargin
 	}
 
+	if labelStep > 1 {
+		b.AddFinding(Finding{
+			Field:    "x_axis.labels",
+			Code:     FindingTickThinned,
+			Message:  fmt.Sprintf("x-axis labels thinned — showing every %d of %d categories", labelStep, len(data.Categories)),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"label_step": labelStep, "total_categories": len(data.Categories)},
+			},
+		})
+	}
+
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(bc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
 	plotArea := layout.PlotArea
@@ -326,12 +339,36 @@ func (bc *BarChart) Draw(data ChartData) error {
 		bc.logScale = NewLogScale(logMin, logMax)
 		bc.logScale.SetRangeLog(plotArea.H, 0)
 
+		b.AddFinding(Finding{
+			Field:    "data.series",
+			Code:     FindingAutoLogScaleApplied,
+			Message:  fmt.Sprintf("auto-switched to log scale — values span %.0fx (%.4g to %.4g)", logMax/logMin, logMin, logMax),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindExplicitScale,
+				Params: map[string]any{"scale": "log", "domain_min": logMin, "domain_max": logMax},
+			},
+		})
+
 		// Draw grid and axes using log scale
 		if bc.config.ShowGrid {
 			bc.drawLogGrid(plotArea)
 		}
 		if bc.config.ShowAxes {
 			bc.drawLogAxes(plotArea, xScale, axisFontSize, xLabelRotation, labelStep)
+		}
+		// Emit tick-thinned finding if log scale ticks were decimated.
+		if thinned, orig, kept := bc.logScale.WasThinned(); thinned {
+			b.AddFinding(Finding{
+				Field:    "y_axis.ticks",
+				Code:     FindingTickThinned,
+				Message:  fmt.Sprintf("log-scale y-axis ticks thinned from %d to %d to prevent overlap", orig, kept),
+				Severity: "info",
+				Fix: &FixSuggestion{
+					Kind:   FixKindReduceItems,
+					Params: map[string]any{"original_count": orig, "kept_count": kept},
+				},
+			})
 		}
 		// Draw bars using log scale
 		bc.drawBars(displayData, plotArea, xScale, nil, colors)
@@ -964,6 +1001,18 @@ func (lc *LineChart) Draw(data ChartData) error {
 		if xLayout.ExtraBottomMargin > 0 {
 			plotArea.H -= xLayout.ExtraBottomMargin
 		}
+		if xLayout.LabelStep > 1 {
+			b.AddFinding(Finding{
+				Field:    "x_axis.labels",
+				Code:     FindingTickThinned,
+				Message:  fmt.Sprintf("x-axis labels thinned — showing every %d of %d categories", xLayout.LabelStep, len(data.Categories)),
+				Severity: "info",
+				Fix: &FixSuggestion{
+					Kind:   FixKindReduceItems,
+					Params: map[string]any{"label_step": xLayout.LabelStep, "total_categories": len(data.Categories)},
+				},
+			})
+		}
 	}
 
 	// Create scales
@@ -997,6 +1046,22 @@ func (lc *LineChart) Draw(data ChartData) error {
 	// Draw axes
 	if lc.config.ShowAxes {
 		lc.drawAxes(plotArea, xScale, yScale, categories, xLayout)
+	}
+
+	// Emit tick-thinned finding if time scale ticks were decimated.
+	if timeScale != nil {
+		if thinned, orig, kept := timeScale.WasThinned(); thinned {
+			b.AddFinding(Finding{
+				Field:    "x_axis.ticks",
+				Code:     FindingTickThinned,
+				Message:  fmt.Sprintf("time-axis ticks thinned from %d to %d to prevent overlap", orig, kept),
+				Severity: "info",
+				Fix: &FixSuggestion{
+					Kind:   FixKindReduceItems,
+					Params: map[string]any{"original_count": orig, "kept_count": kept},
+				},
+			})
+		}
 	}
 
 	// Draw lines — use adapted categories (potentially truncated) so

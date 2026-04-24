@@ -177,6 +177,120 @@ func TestPieChart_NonZeroSum_NoFinding(t *testing.T) {
 	}
 }
 
+// TestBarChart_AutoLogScaleFinding verifies that a bar chart spanning 3+
+// orders of magnitude emits a chart.auto_log_scale_applied finding.
+func TestBarChart_AutoLogScaleFinding(t *testing.T) {
+	req := &RequestEnvelope{
+		Type: "bar_chart",
+		Data: map[string]any{
+			"categories": []any{"A", "B", "C", "D"},
+			"series": []any{
+				map[string]any{
+					"name":   "Wide Range",
+					"values": []any{0.001, 10000.0, 5.0, 500.0},
+				},
+			},
+		},
+		Output: OutputSpec{Width: 400, Height: 300},
+	}
+
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+	}
+	if output.SVG == nil {
+		t.Fatal("expected SVG output")
+	}
+
+	found := findFindingByCode(output.Findings, FindingAutoLogScaleApplied)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingAutoLogScaleApplied, output.Findings)
+	}
+	if found.Severity != "warning" {
+		t.Errorf("severity = %q, want %q", found.Severity, "warning")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindExplicitScale {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindExplicitScale)
+	}
+}
+
+// TestBarChart_NoAutoLogScale_NoFinding verifies that a bar chart with
+// a narrow value range does NOT emit auto_log_scale_applied.
+func TestBarChart_NoAutoLogScale_NoFinding(t *testing.T) {
+	req := &RequestEnvelope{
+		Type: "bar_chart",
+		Data: map[string]any{
+			"categories": []any{"A", "B", "C"},
+			"series": []any{
+				map[string]any{
+					"name":   "Narrow Range",
+					"values": []any{10.0, 50.0, 30.0},
+				},
+			},
+		},
+		Output: OutputSpec{Width: 400, Height: 300},
+	}
+
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+	}
+
+	found := findFindingByCode(output.Findings, FindingAutoLogScaleApplied)
+	if found != nil {
+		t.Errorf("did not expect %q finding for narrow-range bar chart, got: %v", FindingAutoLogScaleApplied, found)
+	}
+}
+
+// TestBarChart_TickThinnedXAxis verifies that a bar chart with many categories
+// emits a chart.tick_thinned finding for x-axis label thinning.
+func TestBarChart_TickThinnedXAxis(t *testing.T) {
+	// Create 40 categories to trigger AdaptXLabels thinning.
+	cats := make([]any, 40)
+	vals := make([]any, 40)
+	for i := range cats {
+		cats[i] = "Category " + string(rune('A'+i%26)) + string(rune('0'+i/26))
+		vals[i] = float64(i + 1)
+	}
+
+	req := &RequestEnvelope{
+		Type: "bar_chart",
+		Data: map[string]any{
+			"categories": cats,
+			"series": []any{
+				map[string]any{
+					"name":   "Dense",
+					"values": vals,
+				},
+			},
+		},
+		Output: OutputSpec{Width: 400, Height: 300},
+	}
+
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+	}
+	if output.SVG == nil {
+		t.Fatal("expected SVG output")
+	}
+
+	found := findFindingByCode(output.Findings, FindingTickThinned)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingTickThinned, output.Findings)
+	}
+	if found.Severity != "info" {
+		t.Errorf("severity = %q, want %q", found.Severity, "info")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindReduceItems {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindReduceItems)
+	}
+}
+
 // findFindingByCode returns the first Finding with the given code, or nil.
 func findFindingByCode(findings []Finding, code string) *Finding {
 	for i := range findings {

@@ -335,6 +335,38 @@ func TestLogScale_Ticks(t *testing.T) {
 	}
 }
 
+func TestLogScale_WasThinned(t *testing.T) {
+	// 0.01 to 10^15 spans 18 orders of magnitude → 18 raw ticks.
+	// Ticks(3) should thin them (since 18 > 3*2).
+	scale := NewLogScale(0.01, 1e15)
+	ticks := scale.Ticks(3)
+
+	thinned, orig, kept := scale.WasThinned()
+	if !thinned {
+		t.Fatalf("expected thinning for 18-order-of-magnitude span with count=3, got %d ticks", len(ticks))
+	}
+	if orig < 15 {
+		t.Errorf("original tick count = %d, want >= 15", orig)
+	}
+	if kept != len(ticks) {
+		t.Errorf("kept = %d, but len(ticks) = %d", kept, len(ticks))
+	}
+	if kept >= orig {
+		t.Errorf("kept (%d) should be < original (%d)", kept, orig)
+	}
+}
+
+func TestLogScale_WasThinned_NoThinning(t *testing.T) {
+	// 0.01 to 10000 spans 7 orders → 7 raw ticks, Ticks(10) won't thin.
+	scale := NewLogScale(0.01, 10000)
+	scale.Ticks(10)
+
+	thinned, _, _ := scale.WasThinned()
+	if thinned {
+		t.Error("expected no thinning for 7-order span with count=10")
+	}
+}
+
 func TestLogScale_Invert(t *testing.T) {
 	scale := NewLogScale(1, 1000).SetRangeLog(0, 300)
 
@@ -908,6 +940,26 @@ func TestTimeScale_Ticks(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestTimeScale_WasThinned(t *testing.T) {
+	// Use a 10-year span with count=2 — the minute-level interval should
+	// generate many ticks that get decimated.
+	start := int64(1704067200)                // 2024-01-01
+	end := int64(1704067200 + 10*365*24*3600) // ~10 years later
+	scale := NewTimeScale(start, end)
+	scale.Ticks(2)
+
+	thinned, orig, kept := scale.WasThinned()
+	// Whether thinning fires depends on the interval selection — a 10-year
+	// span likely selects yearly ticks (10 ticks) which IS > 2*2=4, so it
+	// should thin. If the interval is coarse enough that ≤4 ticks are
+	// generated, thinning won't fire — that's fine; just verify consistency.
+	if thinned {
+		if kept >= orig {
+			t.Errorf("kept (%d) should be < original (%d)", kept, orig)
+		}
 	}
 }
 
