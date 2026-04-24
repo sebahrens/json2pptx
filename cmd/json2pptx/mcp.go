@@ -19,6 +19,7 @@ import (
 	"github.com/sebahrens/json2pptx/icons"
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -255,11 +256,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Enum validation — reject unknown values for transition, transition_speed, build, background.fit.
 	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
-		msgs := make([]string, len(enumErrs))
-		for i, ve := range enumErrs {
-			msgs[i] = ve.Error()
-		}
-		return mcp.NewToolResultError(fmt.Sprintf("enum validation failed: %s", strings.Join(msgs, "; "))), nil
+		return api.MCPDiagnosticsError(diagnostics.FromValidationErrors(enumErrs)), nil
 	}
 
 	// Text-fit checking via strict_fit parameter (default: warn).
@@ -400,12 +397,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		FitFindings:      fitFindings,
 	}
 
-	responseJSON, err := api.MarshalMCPResponse(ctx, output)
+	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 
-	return mcp.NewToolResultText(string(responseJSON)), nil
+	return mcpResult, nil
 }
 
 func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
