@@ -476,7 +476,12 @@ func extractScatterChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
 	chartData := ChartData{
 		Title:    req.Title,
-		Footnote: req.Subtitle,
+		Subtitle: req.Subtitle,
+	}
+
+	// Parse footnote from data payload.
+	if footnote, ok := req.Data["footnote"].(string); ok {
+		chartData.Footnote = footnote
 	}
 
 	// Extract series with x_values support
@@ -761,7 +766,12 @@ func extractChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
 	chartData := ChartData{
 		Title:    req.Title,
-		Footnote: req.Subtitle,
+		Subtitle: req.Subtitle,
+	}
+
+	// Parse footnote from data payload.
+	if footnote, ok := data["footnote"].(string); ok {
+		chartData.Footnote = footnote
 	}
 
 	// Extract categories
@@ -854,7 +864,12 @@ func extractPieChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
 	chartData := ChartData{
 		Title:    req.Title,
-		Footnote: req.Subtitle,
+		Subtitle: req.Subtitle,
+	}
+
+	// Parse footnote from data payload.
+	if footnote, ok := data["footnote"].(string); ok {
+		chartData.Footnote = footnote
 	}
 
 	// Normalize aliases so "labels" maps to "categories".
@@ -1260,7 +1275,12 @@ func extractBubbleChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
 	chartData := ChartData{
 		Title:    req.Title,
-		Footnote: req.Subtitle,
+		Subtitle: req.Subtitle,
+	}
+
+	// Parse footnote from data payload.
+	if footnote, ok := data["footnote"].(string); ok {
+		chartData.Footnote = footnote
 	}
 
 	if series, ok := data["series"]; ok {

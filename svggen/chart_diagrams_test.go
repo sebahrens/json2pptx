@@ -414,6 +414,30 @@ func TestToFloat64Slice(t *testing.T) {
 }
 
 func TestExtractChartData(t *testing.T) {
+	t.Run("subtitle and footnote routing", func(t *testing.T) {
+		req := &RequestEnvelope{
+			Title:    "T",
+			Subtitle: "Sub",
+			Data: map[string]any{
+				"categories": []any{"A"},
+				"series": []any{
+					map[string]any{"name": "S", "values": []any{1.0}},
+				},
+				"footnote": "Foot",
+			},
+		}
+		data, err := extractChartData(req)
+		if err != nil {
+			t.Fatalf("extractChartData() error = %v", err)
+		}
+		if data.Subtitle != "Sub" {
+			t.Errorf("Subtitle = %q, want Sub", data.Subtitle)
+		}
+		if data.Footnote != "Foot" {
+			t.Errorf("Footnote = %q, want Foot", data.Footnote)
+		}
+	})
+
 	t.Run("extract bar chart data", func(t *testing.T) {
 		req := &RequestEnvelope{
 			Title: "Test",
@@ -451,6 +475,28 @@ func TestExtractChartData(t *testing.T) {
 }
 
 func TestExtractPieChartData(t *testing.T) {
+	t.Run("subtitle and footnote routing", func(t *testing.T) {
+		req := &RequestEnvelope{
+			Title:    "P",
+			Subtitle: "PieSub",
+			Data: map[string]any{
+				"categories": []any{"A"},
+				"values":     []any{100.0},
+				"footnote":   "PieFoot",
+			},
+		}
+		data, err := extractPieChartData(req)
+		if err != nil {
+			t.Fatalf("extractPieChartData() error = %v", err)
+		}
+		if data.Subtitle != "PieSub" {
+			t.Errorf("Subtitle = %q, want PieSub", data.Subtitle)
+		}
+		if data.Footnote != "PieFoot" {
+			t.Errorf("Footnote = %q, want PieFoot", data.Footnote)
+		}
+	})
+
 	t.Run("extract pie chart data", func(t *testing.T) {
 		req := &RequestEnvelope{
 			Title: "Pie Chart",
@@ -1084,6 +1130,33 @@ func TestFitModeRendersPieChart(t *testing.T) {
 
 // TestExtractScatterChartData tests both data formats for scatter charts.
 func TestExtractScatterChartData(t *testing.T) {
+	t.Run("subtitle and footnote routing", func(t *testing.T) {
+		req := &RequestEnvelope{
+			Title:    "S",
+			Subtitle: "ScatterSub",
+			Data: map[string]any{
+				"series": []any{
+					map[string]any{
+						"name":     "P",
+						"values":   []any{1.0},
+						"x_values": []any{2.0},
+					},
+				},
+				"footnote": "ScatterFoot",
+			},
+		}
+		data, err := extractScatterChartData(req)
+		if err != nil {
+			t.Fatalf("extractScatterChartData() error = %v", err)
+		}
+		if data.Subtitle != "ScatterSub" {
+			t.Errorf("Subtitle = %q, want ScatterSub", data.Subtitle)
+		}
+		if data.Footnote != "ScatterFoot" {
+			t.Errorf("Footnote = %q, want ScatterFoot", data.Footnote)
+		}
+	})
+
 	t.Run("parallel arrays format (values + x_values)", func(t *testing.T) {
 		req := &RequestEnvelope{
 			Title: "Scatter Test",
@@ -2100,4 +2173,32 @@ func TestExtractChartColors(t *testing.T) {
 			t.Errorf("expected nil for non-array colors, got %v", colors)
 		}
 	})
+}
+
+func TestExtractBubbleChartData_SubtitleFootnote(t *testing.T) {
+	req := &RequestEnvelope{
+		Title:    "B",
+		Subtitle: "BubbleSub",
+		Data: map[string]any{
+			"series": []any{
+				map[string]any{
+					"name":          "S",
+					"values":        []any{1.0},
+					"x_values":      []any{2.0},
+					"bubble_values": []any{3.0},
+				},
+			},
+			"footnote": "BubbleFoot",
+		},
+	}
+	data, err := extractBubbleChartData(req)
+	if err != nil {
+		t.Fatalf("extractBubbleChartData() error = %v", err)
+	}
+	if data.Subtitle != "BubbleSub" {
+		t.Errorf("Subtitle = %q, want BubbleSub", data.Subtitle)
+	}
+	if data.Footnote != "BubbleFoot" {
+		t.Errorf("Footnote = %q, want BubbleFoot", data.Footnote)
+	}
 }
