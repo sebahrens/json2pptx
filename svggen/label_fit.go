@@ -1,6 +1,9 @@
 package svggen
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // LabelFitResult holds the output of a label fitting operation.
 type LabelFitResult struct {
@@ -103,6 +106,18 @@ func (s LabelFitStrategy) Fit(b *SVGBuilder, text string, maxWidth, maxHeight fl
 
 	// Step 3: Truncate with ellipsis as last resort.
 	displayText := b.TruncateToWidth(text, maxWidth)
+
+	if displayText != text {
+		b.AddFinding(Finding{
+			Code:     FindingLabelTruncated,
+			Message:  fmt.Sprintf("label shrunk to %.1fpt and truncated — original %d chars", fontSize, len([]rune(text))),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				Kind:   FixKindTruncateOrSplit,
+				Params: map[string]any{"original": text, "truncated": displayText, "font_size": fontSize},
+			},
+		})
+	}
 
 	return LabelFitResult{
 		FontSize:    fontSize,

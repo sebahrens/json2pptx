@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -727,6 +728,7 @@ func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float6
 
 	maxY := bounds.Y + bounds.H
 	currentY := startY
+	drawn := 0
 	for _, item := range l.items {
 		// Skip items that would overflow the bounds.
 		if currentY+rowHeight > maxY+0.5 {
@@ -734,6 +736,19 @@ func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float6
 		}
 		l.drawItem(startX, currentY, item, fontSize, fontColor)
 		currentY += rowHeight + l.config.RowGap
+		drawn++
+	}
+
+	if dropped := len(l.items) - drawn; dropped > 0 {
+		l.builder.AddFinding(Finding{
+			Code:     FindingLegendOverflowDropped,
+			Message:  fmt.Sprintf("legend overflow — %d of %d items dropped (insufficient height)", dropped, len(l.items)),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"total": len(l.items), "drawn": drawn, "dropped": dropped},
+			},
+		})
 	}
 }
 
@@ -791,6 +806,7 @@ func (l *Legend) drawGrid(bounds Rect, itemWidths []float64, fontSize float64, f
 	// This prevents partial/clipped legend items when the legend height
 	// is capped (e.g. for pie/donut charts with many categories).
 	maxY := bounds.Y + bounds.H
+	drawn := 0
 	for i, item := range l.items {
 		col := i % numCols
 		row := i / numCols
@@ -804,6 +820,19 @@ func (l *Legend) drawGrid(bounds Rect, itemWidths []float64, fontSize float64, f
 		}
 
 		l.drawItem(x, y, item, fontSize, fontColor)
+		drawn++
+	}
+
+	if dropped := len(l.items) - drawn; dropped > 0 {
+		l.builder.AddFinding(Finding{
+			Code:     FindingLegendOverflowDropped,
+			Message:  fmt.Sprintf("legend overflow — %d of %d items dropped (insufficient height)", dropped, len(l.items)),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"total": len(l.items), "drawn": drawn, "dropped": dropped},
+			},
+		})
 	}
 }
 

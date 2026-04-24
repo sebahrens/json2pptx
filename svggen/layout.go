@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -353,16 +354,36 @@ func (b *SVGBuilder) TruncateText(text string, maxWidth float64, overflow TextOv
 		return text, width
 	}
 
+	var result string
+	var resultWidth float64
+	var findingCode string
+
 	switch overflow {
 	case TextOverflowClip:
-		return b.truncateClip(text, maxWidth)
+		result, resultWidth = b.truncateClip(text, maxWidth)
+		findingCode = FindingLabelClipped
 	case TextOverflowEllipsis:
-		return b.truncateEllipsis(text, maxWidth)
+		result, resultWidth = b.truncateEllipsis(text, maxWidth)
+		findingCode = FindingLabelEllipsized
 	case TextOverflowWordBreak:
-		return b.truncateWordBreak(text, maxWidth)
+		result, resultWidth = b.truncateWordBreak(text, maxWidth)
+		findingCode = FindingLabelEllipsized
 	default:
-		return b.truncateEllipsis(text, maxWidth)
+		result, resultWidth = b.truncateEllipsis(text, maxWidth)
+		findingCode = FindingLabelEllipsized
 	}
+
+	b.AddFinding(Finding{
+		Code:     findingCode,
+		Message:  fmt.Sprintf("label truncated to fit %.0fpx — original %d chars, result %d chars", maxWidth, len([]rune(text)), len([]rune(result))),
+		Severity: "info",
+		Fix: &FixSuggestion{
+			Kind:   FixKindTruncateOrSplit,
+			Params: map[string]any{"original": text, "truncated": result, "max_width": maxWidth},
+		},
+	})
+
+	return result, resultWidth
 }
 
 // truncateClip truncates text at the exact boundary.

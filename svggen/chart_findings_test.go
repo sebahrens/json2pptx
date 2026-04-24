@@ -291,6 +291,171 @@ func TestBarChart_TickThinnedXAxis(t *testing.T) {
 	}
 }
 
+// TestTruncateText_EmitsEllipsizedFinding verifies that TruncateText emits
+// a chart.label_ellipsized finding when text is truncated with ellipsis.
+func TestTruncateText_EmitsEllipsizedFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	text := "This is a very long label that will need to be truncated"
+
+	result, _ := b.TruncateText(text, 40, TextOverflowEllipsis)
+	if result == text {
+		t.Skip("text fits without truncation at this width")
+	}
+
+	found := findFindingByCode(b.Findings(), FindingLabelEllipsized)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingLabelEllipsized, b.Findings())
+	}
+	if found.Severity != "info" {
+		t.Errorf("severity = %q, want %q", found.Severity, "info")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindTruncateOrSplit {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindTruncateOrSplit)
+	}
+}
+
+// TestTruncateText_EmitsClippedFinding verifies that TruncateText emits
+// a chart.label_clipped finding when text is hard-clipped.
+func TestTruncateText_EmitsClippedFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	text := "This is a very long label that will need to be clipped"
+
+	result, _ := b.TruncateText(text, 40, TextOverflowClip)
+	if result == text {
+		t.Skip("text fits without truncation at this width")
+	}
+
+	found := findFindingByCode(b.Findings(), FindingLabelClipped)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingLabelClipped, b.Findings())
+	}
+	if found.Severity != "info" {
+		t.Errorf("severity = %q, want %q", found.Severity, "info")
+	}
+}
+
+// TestTruncateText_NoFindingWhenFits verifies that TruncateText does NOT emit
+// a finding when text fits without truncation.
+func TestTruncateText_NoFindingWhenFits(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	text := "Hi"
+
+	b.TruncateText(text, 500, TextOverflowEllipsis)
+
+	if len(b.Findings()) > 0 {
+		t.Errorf("expected no findings for text that fits, got: %v", b.Findings())
+	}
+}
+
+// TestLabelFit_EmitsTruncatedFinding verifies that LabelFitStrategy.Fit
+// emits a chart.label_truncated finding when text is truncated as last resort.
+func TestLabelFit_EmitsTruncatedFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	strategy := LabelFitStrategy{
+		PreferredSize: 12,
+		MinSize:       6,
+		AllowWrap:     false,
+	}
+
+	// Very narrow width forces truncation
+	result := strategy.Fit(b, "This is a label that definitely does not fit in tiny space", 30, 0)
+	if result.DisplayText == "This is a label that definitely does not fit in tiny space" {
+		t.Skip("text fits without truncation")
+	}
+
+	found := findFindingByCode(b.Findings(), FindingLabelTruncated)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingLabelTruncated, b.Findings())
+	}
+	if found.Severity != "info" {
+		t.Errorf("severity = %q, want %q", found.Severity, "info")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindTruncateOrSplit {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindTruncateOrSplit)
+	}
+}
+
+// TestLegendGridOverflow_EmitsFinding verifies that when legend items are
+// dropped due to insufficient height, a chart.legend_overflow_dropped finding
+// is emitted.
+func TestLegendGridOverflow_EmitsFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	style := b.StyleGuide()
+	config := PresentationPieLegendConfig(style)
+
+	labels := []string{"A", "B", "C", "D", "E", "F", "G", "H"}
+	legend := NewLegend(b, config)
+	for _, label := range labels {
+		legend.AddItem(label, MustParseColor("#4E79A7"))
+	}
+
+	// Very small height forces overflow
+	bounds := Rect{X: 10, Y: 200, W: 380, H: 15}
+	legend.Draw(bounds)
+
+	found := findFindingByCode(b.Findings(), FindingLegendOverflowDropped)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingLegendOverflowDropped, b.Findings())
+	}
+	if found.Severity != "warning" {
+		t.Errorf("severity = %q, want %q", found.Severity, "warning")
+	}
+	if found.Fix == nil {
+		t.Error("expected Fix to be non-nil")
+	} else if found.Fix.Kind != FixKindReduceItems {
+		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindReduceItems)
+	}
+}
+
+// TestLegendVerticalOverflow_EmitsFinding verifies that vertical legend layout
+// emits a chart.legend_overflow_dropped finding when items are dropped.
+func TestLegendVerticalOverflow_EmitsFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	config := DefaultLegendConfig()
+	config.Layout = LegendLayoutVertical
+
+	labels := []string{"Alpha", "Beta", "Gamma", "Delta", "Epsilon"}
+	legend := NewLegend(b, config)
+	for _, label := range labels {
+		legend.AddItem(label, MustParseColor("#F28E2B"))
+	}
+
+	// Very small height forces overflow
+	bounds := Rect{X: 10, Y: 200, W: 380, H: 20}
+	legend.Draw(bounds)
+
+	found := findFindingByCode(b.Findings(), FindingLegendOverflowDropped)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingLegendOverflowDropped, b.Findings())
+	}
+	if found.Severity != "warning" {
+		t.Errorf("severity = %q, want %q", found.Severity, "warning")
+	}
+}
+
+// TestLegendNoOverflow_NoFinding verifies that when all legend items fit,
+// no chart.legend_overflow_dropped finding is emitted.
+func TestLegendNoOverflow_NoFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	config := DefaultLegendConfig()
+
+	legend := NewLegend(b, config)
+	legend.AddItem("A", MustParseColor("#4E79A7"))
+	legend.AddItem("B", MustParseColor("#F28E2B"))
+
+	bounds := Rect{X: 10, Y: 10, W: 380, H: 280}
+	legend.Draw(bounds)
+
+	found := findFindingByCode(b.Findings(), FindingLegendOverflowDropped)
+	if found != nil {
+		t.Errorf("did not expect %q finding when all items fit, got: %v", FindingLegendOverflowDropped, found)
+	}
+}
+
 // findFindingByCode returns the first Finding with the given code, or nil.
 func findFindingByCode(findings []Finding, code string) *Finding {
 	for i := range findings {
