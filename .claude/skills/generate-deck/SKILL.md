@@ -22,26 +22,41 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
+| **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags | `get_capabilities` | (CLI inlines) |
 | Introspect templates, patterns, layouts, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
-| Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines) |
+| Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
+| Resolve a template's theme colors (semantic name → hex, including tint modifiers) | `resolve_theme` | (CLI inlines) |
+| Recommend a pattern given an intent (cold-start helper) | `recommend_pattern` | (CLI inlines) |
 | Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
+| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering | `preview_presentation_plan` | (CLI inlines) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
+| Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
+| Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
+| Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
+| Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
 | Browse pattern catalog | `list_patterns` | `json2pptx patterns list` |
 | Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
 | Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
-| Expand a pattern (preview the shape_grid it produces) | `expand_pattern` | `json2pptx patterns expand` |
+| Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`) | `expand_pattern` | `json2pptx patterns expand` |
 | Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
 | Icon catalog | `list_icons` | `json2pptx icons list` |
 | Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
 | Diagram capability metadata (max nodes, overflow behavior, required fields per type) | `get_diagram_capabilities` | (CLI inlines in skill-info) |
+| List named `table_styles`/`cell_styles` registered for a template (read-only) | `list_template_settings` | (CLI inlines) |
+| Register a named `table_style` or `cell_style` (**write — gated**) | `register_template_setting` | (CLI inlines) |
+| Delete a named template setting (**write — gated**) | `delete_template_setting` | (CLI inlines) |
 
-**Capability negotiation.** On MCP initialize, advertise the `compact_responses` experimental capability to opt into terser response envelopes (saves tokens on long decks). The server responds with a matching capability if supported.
+**Contract drift detection.** Call `get_capabilities` once per session to fetch `schema_version`, the live tool list, deprecated fields, and feature flags (`features.strict_fit`, `compact_responses`, `fit_report`, `strict_unknown_keys`, `named_patterns`, `template_settings`). Compare `schema_version` against the value you cached last session — a major bump means breaking changes and you should re-read this skill. Prefer `features.strict_fit` and `features.named_patterns` over hardcoding mode lists.
+
+**Compact responses (server-driven).** The server unconditionally advertises `experimental.compact_responses: true` in its `initialize` response. There is no client-side opt-in — read the capability after `initialize` if you want to confirm it. Use `get_capabilities` for structural feature discovery.
+
+**Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. Check `get_capabilities().features.template_settings` to confirm support before attempting writes.
 
 **Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`.
 
 **Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each entry includes concrete limits (`max_series`, `max_points`, `max_categories` for charts; `max_nodes`, `max_depth` for diagrams), density behavior, and label strategy. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
 
-**Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. It returns the same `{pattern, path, code, message, fix}` structured shape (with `fix.kind` values from the chart enum: `align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`). Invalid style payloads return a structured rejection instead of being silently ignored. Use when validating a chart/diagram before embedding it into a slide.
+**Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. It returns `{valid: bool, errors?: [{pattern, path, code, message, fix}]}` — note the wrapping `valid`/`errors` envelope (distinct from `expand_pattern`, which returns `{pattern, version, shape_grid, density_warnings}`). Per-error `fix.kind` values come from the chart enum: `align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`. Invalid style payloads return a structured rejection instead of being silently ignored. Use when validating a chart/diagram before embedding it into a slide.
 
 ---
 
@@ -99,16 +114,18 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
      "summary": "generation refused: 1 error-severity finding"
    }
    ```
-3. **Render to images.** Run `pptx2jpg -input <out.pptx> -output <dir>/ -density 150`. Requires LibreOffice + ImageMagick; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done.
+3. **Render to images.** Call `render_slide_image` (one slide) or `render_deck_thumbnails` (whole deck) over MCP — preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out. Both paths require LibreOffice + ImageMagick on the server's PATH; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done. To get a deck-level quality signal, also call `score_deck` — it returns a 0-100 score plus structured findings keyed to the same `code` vocabulary as fit-report.
 4. **Inspection checklist (per slide).** Before handing back to the user, confirm:
    - [ ] Text fits its shape or cell — no clipping, no visible overflow.
    - [ ] Chart axes/legends are readable at deck-viewing size.
    - [ ] Every placeholder and grid cell shows the content you intended.
    - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Rule 16).
    - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Rule 18).
-5. **Repair.** If a slide fails the checklist, the fix is in the JSON, not in PowerPoint. Common repairs:
-   - Text clipping or overflow → lower font size, increase cell/row allocation, or split content across slides.
-   - Unexpected gray text → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Rule 16).
+5. **Repair.** Prefer `repair_slide` (MCP) over hand-editing JSON — it accepts the same `Fix.Kind` vocabulary fit-report emits and patches one slide without regenerating the deck. Pass the deck JSON, the 0-based `slide_index`, and a `fixes` array of `{kind, params}` directives. Returns the patched deck plus post-patch fit findings for the modified slide. Supported `repair_slide` apply-only kinds are a *superset* of the fit-report enum — see "Fix kinds for `repair_slide`" below. Common repairs:
+   - Text clipping or overflow → `repair_slide` with `{kind:"reduce_text", params:{max_items|max_length}}`, `{kind:"shorten_title", params:{max_length}}`, or `{kind:"split_at_row", params:{row}}`. As a last resort, lower font size or increase cell/row allocation in JSON.
+   - Wrong layout for the content → `repair_slide` with `{kind:"swap_layout", params:{layout_id}}`.
+   - Surprise gray text from contrast auto-fix (visible as a `contrast_autofixed` finding) → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Rule 16).
+   - For a no-side-effect dry run before regenerating, call `preview_presentation_plan` to inspect layout selection, placeholder mapping, and fit findings without producing a PPTX.
 
 Do not tell the user the deck is done until the checklist passes or you have explicitly flagged what you couldn't verify.
 
@@ -121,7 +138,8 @@ For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-colu
 - **Browse the catalog:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI)
 - **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI)
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI)
-- **Preview expansion:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI)
+- **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost.
+- **Cold-start helper:** `recommend_pattern` (MCP) returns the top patterns for a stated intent (e.g., "compare two options", "show 3 KPIs"). Use when you don't know the catalog by heart.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
 
@@ -199,6 +217,13 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `diagram_render_failed` | Diagram render failed; placeholder image inserted |
 | `column_width_deficit` | Column widths fell back to global floor |
 | `pagination_default_threshold` | Pagination used default threshold (no template capacity available) |
+| `contrast_autofixed` | Text color auto-replaced for WCAG AA. `action: info`, `fix.kind: replace_color`, `fix.params: {original_color, replacement_color, background_color, contrast_ratio_before, contrast_ratio_after}` |
+
+**Budget summary code** — emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and `verbose_fit:false`:
+
+| Code | When emitted |
+|------|-------------|
+| `findings_truncated` | Per-slide finding budget exceeded; remaining findings suppressed. `action: info`, `fix.kind: truncation_summary`, `fix.params: {suppressed_count: int, top_codes: ["code:count", ...] sorted by count desc}`. Pass `verbose_fit: true` (MCP) or `--verbose-fit` (CLI) to see all findings without truncation |
 
 **Action semantics (shared with chart codes):**
 - `refuse` — with `strict_fit: "strict"`, generation is blocked and MCP returns `IsError=true`; with `warn`, emits finding only
@@ -222,6 +247,15 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 
 Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`, `explicit_scale`, `truncate_or_split`, `align_series`, `increase_canvas`).
 
+**Fix kinds for `repair_slide`.** The apply-only superset accepted by `repair_slide` includes two kinds that fit-report does not emit. Agents emit these when they decide a fix themselves:
+
+| Kind | Semantics | Params |
+|------|-----------|--------|
+| `shorten_title` | Truncate the title placeholder text | `max_length: int` (default 50) |
+| `swap_layout` | Change the slide's `layout_id` | `layout_id: string` (required) |
+
+`repair_slide` also accepts `reduce_text` (`max_items` for bullets, `max_length` for text), `split_at_row` (`row` = rows per page, optional `title_suffix`, `repeat_headers`), and `use_one_of` (`path`, `value`). Unsupported kinds return `{applied: false, message: "kind_not_supported"}`.
+
 ### Chart Finding Codes
 
 Charts and diagrams emit structured findings at render time, following the same `{path, code, message, fix}` envelope as native layout findings (see `docs/FIT_FINDINGS.md`). Codes use the `chart.*` prefix.
@@ -237,7 +271,16 @@ Charts and diagrams emit structured findings at render time, following the same 
 | `chart.capacity_exceeded` | Series/points/categories exceed renderer limits | `reduce_items` |
 | `chart.invalid_time_format` | Time-series string cannot be parsed | `replace_value` |
 
-**Advisory codes** — informational, represent successful graceful degradation:
+**Content-loss codes** — successful degradation that dropped or truncated payload; promoted under `warn`:
+
+| Code | When emitted | Fix kind |
+|------|-------------|----------|
+| `chart.legend_overflow_dropped` | Legend entries dropped (area exceeded) | `reduce_items` |
+| `chart.overflow_suppressed` | Overflow content suppressed or truncated | `reduce_items` |
+
+(`chart.capacity_exceeded` is also a content-loss code but is grouped with data-integrity above because strict promotes it all the way to `refuse`.)
+
+**Advisory codes** — informational fitting/labeling adjustments; never promoted:
 
 | Code | When emitted | Fix kind |
 |------|-------------|----------|
@@ -247,16 +290,14 @@ Charts and diagrams emit structured findings at render time, following the same 
 | `chart.label_truncated` | Label truncated to fit available space | `increase_canvas` |
 | `chart.label_ellipsized` | Label shortened with ellipsis | `increase_canvas` |
 | `chart.label_clipped` | Label hard-clipped at container boundary | `increase_canvas` |
-| `chart.legend_overflow_dropped` | Legend entries dropped (area exceeded) | `reduce_items` |
-| `chart.overflow_suppressed` | Overflow content suppressed or truncated | `reduce_items` |
 
-**Strict-fit promotion ladder for chart codes:**
+**Strict-fit promotion ladder for chart codes** (matches `svggen/core/finding_codes.go::promotionTable`):
 
-| Level | Content-loss codes promoted to | Data-integrity codes promoted to | Advisory codes |
-|-------|-------------------------------|--------------------------------|----------------|
-| `off` | (no promotion) | (no promotion) | (no promotion) |
-| `warn` | `shrink_or_split` (`capacity_exceeded`, `legend_overflow_dropped`, `overflow_suppressed`) | (no promotion) | (no promotion) |
-| `strict` | `shrink_or_split` or `refuse` (`capacity_exceeded` → `refuse`) | `refuse` (all six) | (no promotion) |
+| Level | `chart.capacity_exceeded` | `chart.legend_overflow_dropped`, `chart.overflow_suppressed` | Data-integrity codes (5) | Advisory codes (6) |
+|-------|---------------------------|-----------------------------------------------------|------------------------|--------------------|
+| `off` | (no promotion) | (no promotion) | (no promotion) | (no promotion) |
+| `warn` | `shrink_or_split` | `shrink_or_split` | (no promotion) | (no promotion) |
+| `strict` | `refuse` | `shrink_or_split` | `refuse` | (no promotion) |
 
 Example chart finding in a fit report:
 
@@ -286,7 +327,7 @@ Example chart finding in a fit report:
 
 | # | Rule | Rationale |
 |---|---|---|
-| 16 | Engine auto-replaces low-contrast text with dark gray (WCAG AA, ratio < ~3.0) | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
+| 16 | Engine auto-replaces low-contrast text with dark gray (WCAG AA, ratio < ~3.0). Auto-fixes are now visible — check `fit_findings` for `contrast_autofixed` entries (with before/after ratios) before deciding whether to re-author colors | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
 
 ### Silent Traps (no error, broken output)
 
@@ -392,6 +433,8 @@ For multi-table decks, set shared styles once in the top-level `defaults` block 
 ```
 
 **Semantics (V1).** Swap-only: any inline field on a table/cell fully replaces the corresponding defaults field for that field (no deep merge). Supported kinds: `table_style`, `cell_style`. See `../../docs/STYLE_DEFAULTS.md` for scope rules and the `@template-default` sentinel. Table styles available per template are listed in `list_templates`'s `table_styles[]` array.
+
+**Per-template named settings.** Beyond per-deck `defaults`, you can register named `table_styles` and `cell_styles` per template via `register_template_setting`, then reference them by name from any deck. List existing names with `list_template_settings{template_name}`. Both write tools (`register_template_setting`, `delete_template_setting`) require `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` on the server and return `SETTINGS_WRITE_DISABLED` otherwise; the read tool is always available. Confirm gating via `get_capabilities().features.template_settings`.
 
 ---
 
