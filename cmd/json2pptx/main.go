@@ -15,6 +15,12 @@ var (
 	BuildTime = "unknown"
 )
 
+// SchemaVersion tracks backward-incompatible changes to the JSON input schema.
+// Bump the major version when fields are removed or renamed; bump the minor
+// version when new fields are added; bump the patch for documentation-only
+// changes. Agents compare this value across sessions to detect contract drift.
+const SchemaVersion = "1.0.0"
+
 func main() {
 	if err := dispatch(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

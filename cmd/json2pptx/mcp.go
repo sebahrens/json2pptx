@@ -134,6 +134,7 @@ func runMCP() error {
 	s.AddTool(mcpListTemplateSettingsTool(), mc.handleListTemplateSettings)
 	s.AddTool(mcpRegisterTemplateSettingTool(), mc.handleRegisterTemplateSetting)
 	s.AddTool(mcpDeleteTemplateSettingTool(), mc.handleDeleteTemplateSetting)
+	s.AddTool(mcpGetCapabilitiesTool(), handleGetCapabilities)
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
