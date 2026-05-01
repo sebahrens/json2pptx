@@ -318,9 +318,28 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				// Check placeholder_id reference against layout
 				phInfo, phFound := phByKey[phKey{slideInput.LayoutID, item.PlaceholderID}]
 				if !phFound {
-					output.Warnings = append(output.Warnings,
-						fmt.Sprintf("slide %d, content %d: placeholder_id %q not found in layout %q",
-							i+1, j+1, item.PlaceholderID, slideInput.LayoutID))
+					output.Valid = false
+					available := make([]string, 0, len(lm.Placeholders))
+					for _, ph := range lm.Placeholders {
+						available = append(available, ph.ID)
+					}
+					path := fmt.Sprintf("slides[%d].content[%d].placeholder_id", i, j)
+					msg := fmt.Sprintf("slide %d: %s", i+1, generator.PlaceholderNotFoundError(item.PlaceholderID, slideInput.LayoutID, available))
+					fix := &patterns.FixSuggestion{
+						Kind:   "use_one_of",
+						Params: map[string]any{"available": generator.FormatAvailableIDs(available)},
+					}
+					if match, _ := generator.ClosestMatch(item.PlaceholderID, available, 3); match != "" {
+						fix.Params["did_you_mean"] = match
+					}
+					ve := &patterns.ValidationError{
+						Path:    path,
+						Code:    patterns.ErrCodePlaceholderNotFound,
+						Message: msg,
+						Fix:     fix,
+					}
+					output.Errors = append(output.Errors, ve.Error())
+					output.ValidationWarnings = append(output.ValidationWarnings, ve)
 				} else {
 					ph.MaxChars = phInfo.MaxChars
 

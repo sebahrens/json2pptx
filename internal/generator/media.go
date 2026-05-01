@@ -123,7 +123,7 @@ func (ctx *singlePassContext) prepareImages() error {
 			if !found {
 				available := resolver.Keys()
 				layoutID := slideSpec.LayoutID
-				ctx.warnings = append(ctx.warnings, placeholderNotFoundError(item.PlaceholderID, layoutID, available))
+				ctx.warnings = append(ctx.warnings, PlaceholderNotFoundError(item.PlaceholderID, layoutID, available))
 				continue
 			}
 

@@ -198,10 +198,10 @@ func TestPlaceholderNotFoundError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := placeholderNotFoundError(tt.placeholderID, tt.layoutID, tt.available)
+			got := PlaceholderNotFoundError(tt.placeholderID, tt.layoutID, tt.available)
 			for _, want := range tt.wantContain {
 				if !strings.Contains(got, want) {
-					t.Errorf("placeholderNotFoundError() = %q, want to contain %q", got, want)
+					t.Errorf("PlaceholderNotFoundError() = %q, want to contain %q", got, want)
 				}
 			}
 		})

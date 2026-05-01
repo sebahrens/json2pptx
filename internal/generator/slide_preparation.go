@@ -443,7 +443,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 				slog.String("layout_id", layoutID),
 				slog.Any("available", available),
 			)
-			warnings = append(warnings, placeholderNotFoundError(item.PlaceholderID, layoutID, available))
+			warnings = append(warnings, PlaceholderNotFoundError(item.PlaceholderID, layoutID, available))
 			ctx.emitPlaceholderNotFound(item.PlaceholderID, layoutID, available, slideIndex, j)
 			continue
 		}
@@ -548,7 +548,7 @@ func (ctx *singlePassContext) clearUnmappedPlaceholders() {
 // when a content item targets a placeholder_id that doesn't exist in the layout.
 func (ctx *singlePassContext) emitPlaceholderNotFound(placeholderID, layoutID string, available []string, slideIndex, contentIndex int) {
 	path := fmt.Sprintf("slides[%d].content[%d].placeholder_id", slideIndex, contentIndex)
-	msg := fmt.Sprintf("slide %d: %s", slideIndex+1, placeholderNotFoundError(placeholderID, layoutID, available))
+	msg := fmt.Sprintf("slide %d: %s", slideIndex+1, PlaceholderNotFoundError(placeholderID, layoutID, available))
 
 	fix := &patterns.FixSuggestion{
 		Kind:   "use_one_of",

@@ -116,9 +116,9 @@ func LayoutNotFoundError(layoutID string, availableLayouts []string) string {
 	return msg
 }
 
-// placeholderNotFoundError builds a descriptive error message when a placeholder_id is not found.
+// PlaceholderNotFoundError builds a descriptive error message when a placeholder_id is not found.
 // It lists available placeholders in the layout and suggests the closest match if within distance 3.
-func placeholderNotFoundError(placeholderID string, layoutID string, availablePlaceholders []string) string {
+func PlaceholderNotFoundError(placeholderID string, layoutID string, availablePlaceholders []string) string {
 	msg := fmt.Sprintf("placeholder_id %q not found in layout %q", placeholderID, layoutID)
 
 	if len(availablePlaceholders) > 0 {
