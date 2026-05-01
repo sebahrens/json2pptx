@@ -90,6 +90,13 @@ type TemplateAnalysis struct {
 	AnalyzedAt   time.Time          // Timestamp of analysis
 	Metadata     *TemplateMetadata  // Optional embedded metadata (nil if not present)
 	Synthesis    *SynthesisManifest // nil if no synthesis needed
+	TableStyles  []TableStyleInfo   // Table styles declared in ppt/tableStyles.xml
+}
+
+// TableStyleInfo describes a table style declared in a template.
+type TableStyleInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // LayoutMetadata describes a single slide layout in a template.

@@ -260,6 +260,14 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		}
 	}
 
+	// Build table style lookup for style_id validation.
+	tableStyleByID := make(map[string]string, len(analysis.TableStyles))
+	availableStyleIDs := make([]string, 0, len(analysis.TableStyles))
+	for _, ts := range analysis.TableStyles {
+		tableStyleByID[ts.ID] = ts.Name
+		availableStyleIDs = append(availableStyleIDs, ts.ID)
+	}
+
 	output.SlideCount = len(slides)
 
 	// Validate each slide
@@ -399,6 +407,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 								})
 							}
 						}
+						// Validate style_id against template's declared table styles.
+						if vw := validateTableStyleID(table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
+							output.ValidationWarnings = append(output.ValidationWarnings, vw)
+						}
 					}
 				}
 			}
@@ -447,6 +459,18 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			if len(gridErrors) > 0 {
 				output.Valid = false
 				output.Errors = append(output.Errors, gridErrors...)
+			}
+
+			// Validate style_id for tables inside shape_grid cells.
+			for rowIdx, row := range slideInput.ShapeGrid.Rows {
+				for cellIdx, cell := range row.Cells {
+					if cell != nil && cell.Table != nil {
+						tablePath := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d].table", i, rowIdx, cellIdx)
+						if vw := validateTableStyleID(cell.Table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
+							output.ValidationWarnings = append(output.ValidationWarnings, vw)
+						}
+					}
+				}
 			}
 		}
 
@@ -585,6 +609,51 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 		checkHex(obj.Color)
 	}
 	return valWarnings
+}
+
+// validateTableStyleID checks whether an authored style_id is declared in the
+// template's tableStyles.xml. Returns a ValidationError if the GUID is unknown,
+// or nil if no style_id is set, if it's the @template-default sentinel, or if
+// the GUID is found in the template.
+func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, styleByID map[string]string, availableIDs []string) *patterns.ValidationError {
+	if table.Style == nil || table.Style.StyleID == "" {
+		return nil
+	}
+	styleID := table.Style.StyleID
+
+	// @template-default is always valid — it resolves at generation time.
+	if styleID == template.TemplateDefaultSentinel {
+		return nil
+	}
+
+	// If no table styles are declared in the template, skip validation — the
+	// template's tableStyles.xml may be absent and we can't enumerate.
+	if len(styleByID) == 0 {
+		return nil
+	}
+
+	if _, ok := styleByID[styleID]; ok {
+		return nil
+	}
+
+	path := tablePath + ".style.style_id"
+	msg := fmt.Sprintf("slide %d: style_id %q not found in template table styles; use list_templates to see available table_styles",
+		slideIdx+1, styleID)
+
+	fix := &patterns.FixSuggestion{
+		Kind:   "use_one_of",
+		Params: map[string]any{"available": generator.FormatAvailableIDs(availableIDs)},
+	}
+	if match, _ := generator.ClosestMatch(styleID, availableIDs, 10); match != "" {
+		fix.Params["did_you_mean"] = match
+	}
+
+	return &patterns.ValidationError{
+		Path:    path,
+		Code:    patterns.ErrCodeUnknownTableStyleID,
+		Message: msg,
+		Fix:     fix,
+	}
 }
 
 // writeDryRunOutput writes the dry-run result as JSON to stdout.

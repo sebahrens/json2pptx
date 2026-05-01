@@ -319,6 +319,124 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 	})
 }
 
+func TestValidateTableStyleID(t *testing.T) {
+	knownGUID := "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
+	analysis := &types.TemplateAnalysis{
+		Layouts: []types.LayoutMetadata{
+			{
+				ID:   "content-slide",
+				Name: "Content Slide",
+				Placeholders: []types.PlaceholderInfo{
+					{ID: "body", Type: "body"},
+				},
+			},
+		},
+		TableStyles: []types.TableStyleInfo{
+			{ID: knownGUID, Name: "Medium Style 2 - Accent 1"},
+			{ID: "{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}", Name: "Medium Style 2 - Accent 2"},
+		},
+	}
+
+	t.Run("unknown style_id produces validation warning", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{
+			LayoutID: "content-slide",
+			Content: []ContentInput{{
+				PlaceholderID: "body",
+				Type:          "table",
+				TableValue: &TableInput{
+					Headers: []string{"A", "B"},
+					Rows:    [][]TableCellInput{{{Content: "1"}, {Content: "2"}}},
+					Style:   &TableStyleInput{StyleID: "{00000000-0000-0000-0000-000000000000}"},
+				},
+			}},
+		}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		var found *patterns.ValidationError
+		for _, vw := range output.ValidationWarnings {
+			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
+				found = vw
+				break
+			}
+		}
+		if found == nil {
+			t.Fatal("expected a ValidationError with code unknown_table_style_id")
+		}
+		if found.Fix == nil || found.Fix.Kind != "use_one_of" {
+			t.Errorf("expected fix kind 'use_one_of', got %v", found.Fix)
+		}
+	})
+
+	t.Run("known style_id produces no warning", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{
+			LayoutID: "content-slide",
+			Content: []ContentInput{{
+				PlaceholderID: "body",
+				Type:          "table",
+				TableValue: &TableInput{
+					Headers: []string{"A", "B"},
+					Rows:    [][]TableCellInput{{{Content: "1"}, {Content: "2"}}},
+					Style:   &TableStyleInput{StyleID: knownGUID},
+				},
+			}},
+		}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		for _, vw := range output.ValidationWarnings {
+			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
+				t.Errorf("unexpected unknown_table_style_id warning for known GUID")
+			}
+		}
+	})
+
+	t.Run("@template-default is always valid", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{
+			LayoutID: "content-slide",
+			Content: []ContentInput{{
+				PlaceholderID: "body",
+				Type:          "table",
+				TableValue: &TableInput{
+					Headers: []string{"A", "B"},
+					Rows:    [][]TableCellInput{{{Content: "1"}, {Content: "2"}}},
+					Style:   &TableStyleInput{StyleID: "@template-default"},
+				},
+			}},
+		}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		for _, vw := range output.ValidationWarnings {
+			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
+				t.Errorf("unexpected unknown_table_style_id warning for @template-default")
+			}
+		}
+	})
+
+	t.Run("no style_id produces no warning", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{
+			LayoutID: "content-slide",
+			Content: []ContentInput{{
+				PlaceholderID: "body",
+				Type:          "table",
+				TableValue: &TableInput{
+					Headers: []string{"A", "B"},
+					Rows:    [][]TableCellInput{{{Content: "1"}, {Content: "2"}}},
+				},
+			}},
+		}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		for _, vw := range output.ValidationWarnings {
+			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
+				t.Errorf("unexpected unknown_table_style_id warning when no style_id set")
+			}
+		}
+	})
+}
+
 func TestValidateShapeFillColor_HexWarning(t *testing.T) {
 	tests := []struct {
 		name        string

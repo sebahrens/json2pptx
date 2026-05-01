@@ -209,6 +209,7 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `shorten_title` | — | Shorten the title to avoid wrapping |
 | `reposition_shape` | — | Move or resize the shape to stay within bounds |
 | `split_at_row` | `row: int` | Split the table at the suggested row index |
+| `use_one_of` | `available: string`, `did_you_mean?: string` | Replace the value with one of the listed alternatives |
 
 ## Per-Slide Finding Budget
 

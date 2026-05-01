@@ -48,6 +48,13 @@ func getOrAnalyzeTemplate(templatePath string, cache types.TemplateCache) (*type
 	// Extract actual slide dimensions from presentation.xml
 	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
 
+	// Extract table styles for validation.
+	tblEntries := reader.TableStyles()
+	tblStyles := make([]types.TableStyleInfo, len(tblEntries))
+	for i, e := range tblEntries {
+		tblStyles[i] = types.TableStyleInfo{ID: e.ID, Name: e.Name}
+	}
+
 	analysis := &types.TemplateAnalysis{
 		TemplatePath: templatePath,
 		Hash:         reader.Hash(),
@@ -57,6 +64,7 @@ func getOrAnalyzeTemplate(templatePath string, cache types.TemplateCache) (*type
 		Layouts:      layouts,
 		Theme:        theme,
 		Metadata:     validationResult.Metadata,
+		TableStyles:  tblStyles,
 	}
 
 	// Synthesize missing layout capabilities (e.g., two-column layouts)
