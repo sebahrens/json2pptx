@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -231,6 +232,24 @@ func TestBudgetFitFindings_Over(t *testing.T) {
 	if !strings.Contains(summary.Message, "verbose_fit") {
 		t.Errorf("summary message = %q, want to contain 'verbose_fit'", summary.Message)
 	}
+
+	// Verify truncation summary includes top_codes histogram.
+	if summary.Fix == nil {
+		t.Fatal("summary.Fix should be non-nil (truncation_summary)")
+	}
+	if summary.Fix.Kind != "truncation_summary" {
+		t.Errorf("summary.Fix.Kind = %q, want %q", summary.Fix.Kind, "truncation_summary")
+	}
+	if summary.Fix.Params["suppressed_count"] != 15 {
+		t.Errorf("suppressed_count = %v, want 15", summary.Fix.Params["suppressed_count"])
+	}
+	topCodes, ok := summary.Fix.Params["top_codes"].([]string)
+	if !ok {
+		t.Fatalf("top_codes should be []string, got %T", summary.Fix.Params["top_codes"])
+	}
+	if len(topCodes) == 0 {
+		t.Error("top_codes should not be empty")
+	}
 }
 
 func TestBudgetFitFindings_Verbose(t *testing.T) {
@@ -324,6 +343,9 @@ func TestBudgetLocalFindings_Over(t *testing.T) {
 	if !strings.Contains(result[5].Message, "--verbose-fit") {
 		t.Errorf("local summary should reference --verbose-fit flag, got %q", result[5].Message)
 	}
+	if result[5].Fix == nil || result[5].Fix.Kind != "truncation_summary" {
+		t.Error("local summary should have truncation_summary Fix")
+	}
 }
 
 func TestBudgetLocalFindings_Verbose(t *testing.T) {
@@ -334,5 +356,79 @@ func TestBudgetLocalFindings_Verbose(t *testing.T) {
 	result := budgetLocalFindings(findings, 5, true)
 	if len(result) != 20 {
 		t.Fatalf("verbose mode should return all 20, got %d", len(result))
+	}
+}
+
+func TestFindingCodeHistogram(t *testing.T) {
+	items := []patterns.FitFinding{
+		makeFinding(0, "info", "fit_overflow", false),
+		makeFinding(0, "info", "density_exceeded", false),
+		makeFinding(0, "info", "fit_overflow", false),
+		makeFinding(0, "info", "fit_overflow", false),
+		makeFinding(0, "info", "density_exceeded", false),
+		makeFinding(0, "info", "bounds_overflow", false),
+	}
+	result := findingCodeHistogram(items)
+
+	// Expect: fit_overflow:3, density_exceeded:2, bounds_overflow:1
+	if len(result) != 3 {
+		t.Fatalf("expected 3 histogram entries, got %d: %v", len(result), result)
+	}
+	if result[0] != "fit_overflow:3" {
+		t.Errorf("result[0] = %q, want %q", result[0], "fit_overflow:3")
+	}
+	if result[1] != "density_exceeded:2" {
+		t.Errorf("result[1] = %q, want %q", result[1], "density_exceeded:2")
+	}
+	if result[2] != "bounds_overflow:1" {
+		t.Errorf("result[2] = %q, want %q", result[2], "bounds_overflow:1")
+	}
+}
+
+func TestBudgetFitFindings_TopCodesHistogram(t *testing.T) {
+	// 8 findings: 5 fit_overflow + 3 density_exceeded, budget=3.
+	// Expect suppressed=5, top_codes reflects the 5 suppressed items.
+	var findings []patterns.FitFinding
+	for i := 0; i < 5; i++ {
+		findings = append(findings, makeFinding(0, "info", "fit_overflow", false))
+	}
+	for i := 0; i < 3; i++ {
+		findings = append(findings, makeFinding(0, "info", "density_exceeded", false))
+	}
+	result := BudgetFitFindings(findings, 3, false)
+
+	// 3 kept + 1 summary = 4.
+	if len(result) != 4 {
+		t.Fatalf("expected 4 findings, got %d", len(result))
+	}
+	summary := result[3]
+	if summary.Fix == nil {
+		t.Fatal("summary.Fix should be non-nil")
+	}
+	if summary.Fix.Params["suppressed_count"] != 5 {
+		t.Errorf("suppressed_count = %v, want 5", summary.Fix.Params["suppressed_count"])
+	}
+	topCodes := summary.Fix.Params["top_codes"].([]string)
+	if len(topCodes) == 0 {
+		t.Fatal("top_codes should not be empty")
+	}
+	// The suppressed 5 items should produce a histogram.
+	// Exact distribution depends on sort order but total should be 5.
+	total := 0
+	for _, entry := range topCodes {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			t.Errorf("unexpected format: %q", entry)
+			continue
+		}
+		n, err := strconv.Atoi(parts[1])
+		if err != nil {
+			t.Errorf("bad count in %q: %v", entry, err)
+			continue
+		}
+		total += n
+	}
+	if total != 5 {
+		t.Errorf("histogram total = %d, want 5", total)
 	}
 }

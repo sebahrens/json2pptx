@@ -107,16 +107,24 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 			continue
 		}
 		result = append(result, g.items[:budget]...)
-		suppressed := len(g.items) - budget
+		suppressed := g.items[budget:]
 		path := fmt.Sprintf("slides[%d]", si)
 		if si < 0 {
 			path = "slides[?]"
 		}
+		topCodes := findingCodeHistogram(suppressed)
 		result = append(result, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path:    path,
 				Code:    "findings_truncated",
-				Message: fmt.Sprintf("%d more findings suppressed on this slide; use verbose_fit to see all", suppressed),
+				Message: fmt.Sprintf("%d more findings suppressed on this slide; use verbose_fit to see all", len(suppressed)),
+				Fix: &patterns.FixSuggestion{
+					Kind: "truncation_summary",
+					Params: map[string]any{
+						"suppressed_count": len(suppressed),
+						"top_codes":        topCodes,
+					},
+				},
 			},
 			Action: "info",
 		})
@@ -178,16 +186,24 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 			continue
 		}
 		result = append(result, g.items[:budget]...)
-		suppressed := len(g.items) - budget
+		suppressed := g.items[budget:]
 		path := fmt.Sprintf("slides[%d]", si)
 		if si < 0 {
 			path = "slides[?]"
 		}
+		topCodes := localFindingCodeHistogram(suppressed)
 		result = append(result, fitFinding{
 			Code:    "findings_truncated",
 			Path:    path,
-			Message: fmt.Sprintf("%d more findings suppressed on this slide; use --verbose-fit to see all", suppressed),
+			Message: fmt.Sprintf("%d more findings suppressed on this slide; use --verbose-fit to see all", len(suppressed)),
 			Action:  "info",
+			Fix: &patterns.FixSuggestion{
+				Kind: "truncation_summary",
+				Params: map[string]any{
+					"suppressed_count": len(suppressed),
+					"top_codes":        topCodes,
+				},
+			},
 		})
 	}
 
@@ -477,6 +493,50 @@ func slideIndexFromPath(path string) int {
 		return -1
 	}
 	return idx
+}
+
+// findingCodeHistogram builds a sorted "code:count" list from suppressed
+// patterns.FitFinding items, ordered by count descending.
+func findingCodeHistogram(items []patterns.FitFinding) []string {
+	counts := map[string]int{}
+	for _, f := range items {
+		counts[f.Code]++
+	}
+	return formatCodeCounts(counts)
+}
+
+// localFindingCodeHistogram builds a sorted "code:count" list from suppressed
+// fitFinding items, ordered by count descending.
+func localFindingCodeHistogram(items []fitFinding) []string {
+	counts := map[string]int{}
+	for _, f := range items {
+		counts[f.Code]++
+	}
+	return formatCodeCounts(counts)
+}
+
+// formatCodeCounts formats a code→count map as a sorted "code:N" string slice,
+// ordered by count descending, then code ascending for stability.
+func formatCodeCounts(counts map[string]int) []string {
+	type codeCount struct {
+		code  string
+		count int
+	}
+	pairs := make([]codeCount, 0, len(counts))
+	for code, n := range counts {
+		pairs = append(pairs, codeCount{code, n})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].count != pairs[j].count {
+			return pairs[i].count > pairs[j].count
+		}
+		return pairs[i].code < pairs[j].code
+	})
+	result := make([]string, len(pairs))
+	for i, p := range pairs {
+		result[i] = fmt.Sprintf("%s:%d", p.code, p.count)
+	}
+	return result
 }
 
 // contrastSwapsToFindings converts generator ContrastSwap records into
