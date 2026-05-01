@@ -182,6 +182,34 @@ Table has more cells than the TDR (Table Density Ratio) ceiling allows for the c
 }
 ```
 
+### `contrast_autofixed`
+
+**Action:** `info`
+**Pattern:** `placeholder`
+**Fix kind:** `replace_color`
+
+Text color was automatically replaced to meet WCAG AA contrast requirements against the resolved layout background. This is informational — the fix has already been applied. The `fix.params` include the original and replacement colors, the background color, and the contrast ratios before and after the swap.
+
+```json
+{
+  "pattern": "placeholder",
+  "path": "slides[1].content.body",
+  "code": "contrast_autofixed",
+  "message": "auto-fixed low-contrast text: #FFFFFF → #1A1A1A (on #F5F5F5, ratio 1.3 → 15.2)",
+  "fix": {
+    "kind": "replace_color",
+    "params": {
+      "original_color": "#FFFFFF",
+      "replacement_color": "#1A1A1A",
+      "background_color": "#F5F5F5",
+      "contrast_ratio_before": 1.3,
+      "contrast_ratio_after": 15.2
+    }
+  },
+  "action": "info"
+}
+```
+
 ## Scope Rules
 
 Fit findings are scoped to **JSON-authored content only**. Content inherited from template layouts or masters is never checked.
@@ -210,6 +238,7 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `reposition_shape` | — | Move or resize the shape to stay within bounds |
 | `split_at_row` | `row: int` | Split the table at the suggested row index |
 | `use_one_of` | `available: string`, `did_you_mean?: string` | Replace the value with one of the listed alternatives |
+| `replace_color` | `original_color: string`, `replacement_color: string`, `background_color: string`, `contrast_ratio_before: float`, `contrast_ratio_after: float` | Text color was auto-replaced for WCAG AA contrast compliance |
 
 ## Per-Slide Finding Budget
 
