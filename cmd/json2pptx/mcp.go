@@ -23,6 +23,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -801,7 +802,7 @@ func mcpValidatePatternTool() mcp.Tool {
 
 func mcpExpandPatternTool() mcp.Tool {
 	return mcp.NewTool("expand_pattern",
-		mcp.WithDescription("Expand a named pattern into its full shape_grid definition. Useful for debugging and previewing what a pattern call produces."),
+		mcp.WithDescription("Expand a named pattern into its full shape_grid definition. Useful for debugging and previewing what a pattern call produces. Returns density_warnings if any embedded tables exceed density thresholds."),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name to expand."),
@@ -1278,15 +1279,35 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		return api.MCPDiagnosticsError(diagnostics.FromJoinedError(err, "PATTERN_ERROR")), nil
 	}
 
+	// Run density checks on any tables embedded in the expanded shape grid.
+	var densityWarnings []patternValidationError
+	for rowIdx, row := range grid.Rows {
+		for cellIdx, cell := range row.Cells {
+			if cell != nil && cell.Table != nil {
+				tablePath := fmt.Sprintf("shape_grid.rows[%d].cells[%d].table", rowIdx, cellIdx)
+				for _, ve := range pipeline.DetectTableDensity(cell.Table, tablePath) {
+					densityWarnings = append(densityWarnings, patternValidationError{
+						Field:   ve.Path,
+						Code:    ve.Code,
+						Message: ve.Message,
+						Fix:     ve.Fix,
+					})
+				}
+			}
+		}
+	}
+
 	// Also provide the pattern version for traceability
 	result := struct {
-		Pattern   string                   `json:"pattern"`
-		Version   int                      `json:"version"`
-		ShapeGrid *jsonschema.ShapeGridInput `json:"shape_grid"`
+		Pattern          string                    `json:"pattern"`
+		Version          int                       `json:"version"`
+		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
+		DensityWarnings  []patternValidationError  `json:"density_warnings,omitempty"`
 	}{
-		Pattern:   pat.Name(),
-		Version:   pat.Version(),
-		ShapeGrid: grid,
+		Pattern:         pat.Name(),
+		Version:         pat.Version(),
+		ShapeGrid:       grid,
+		DensityWarnings: densityWarnings,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
