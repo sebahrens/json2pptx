@@ -23,6 +23,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -124,6 +125,8 @@ func runMCP() error {
 	s.AddTool(mcpListIconsTool(), handleListIcons)
 	s.AddTool(mcpTableDensityGuideTool(), mc.handleTableDensityGuide)
 	s.AddTool(mcpResolveThemeTool(), mc.handleResolveTheme)
+	s.AddTool(mcpRenderSlideImageTool(), mc.handleRenderSlideImage)
+	s.AddTool(mcpRenderDeckThumbnailsTool(), mc.handleRenderDeckThumbnails)
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
@@ -1156,6 +1159,143 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcpResult, nil
+}
+
+// --- Render tools ---
+
+func mcpRenderSlideImageTool() mcp.Tool {
+	return mcp.NewTool("render_slide_image",
+		mcp.WithDescription(`Render a single slide from a generated PPTX to a PNG image. Returns base64-encoded PNG data (or a file path if the image exceeds 200KB).
+
+Requires LibreOffice and ImageMagick (magick) on PATH. Use this for detailed visual inspection of a specific slide.
+
+Cost note: a density=100 slide is typically 20-80KB base64. Higher densities produce larger payloads.`),
+		mcp.WithString("pptx_path",
+			mcp.Required(),
+			mcp.Description("Path to the PPTX file to render. Use the output_path from generate_presentation."),
+		),
+		mcp.WithNumber("slide_index",
+			mcp.Description("0-based slide index to render. Default: 0."),
+		),
+		mcp.WithNumber("density",
+			mcp.Description("DPI for rendering. Higher = sharper but larger. Default: 100. Range: 50-300."),
+		),
+	)
+}
+
+func mcpRenderDeckThumbnailsTool() mcp.Tool {
+	return mcp.NewTool("render_deck_thumbnails",
+		mcp.WithDescription(`Render all slides in a PPTX as low-resolution PNG thumbnails. Returns an array of base64-encoded PNGs.
+
+Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visual overview of the entire deck.
+
+Cost note: at density=50, each thumbnail is typically 5-20KB base64. A 10-slide deck is ~100-200KB total.`),
+		mcp.WithString("pptx_path",
+			mcp.Required(),
+			mcp.Description("Path to the PPTX file to render. Use the output_path from generate_presentation."),
+		),
+		mcp.WithNumber("density",
+			mcp.Description("DPI for thumbnails. Lower = smaller payloads. Default: 50. Range: 25-150."),
+		),
+		mcp.WithNumber("max_slides",
+			mcp.Description("Maximum number of slides to render. Default: 50."),
+		),
+	)
+}
+
+func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	pptxPath, err := request.RequireString("pptx_path")
+	if err != nil {
+		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
+	}
+
+	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {
+		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
+	}
+
+	slideIndex := 0
+	if v, ok := request.GetArguments()["slide_index"].(float64); ok {
+		slideIndex = int(v)
+	}
+
+	density := 100
+	if v, ok := request.GetArguments()["density"].(float64); ok {
+		d := int(v)
+		if d < 50 {
+			d = 50
+		} else if d > 300 {
+			d = 300
+		}
+		density = d
+	}
+
+	img, err := render.RenderSlide(pptxPath, slideIndex, density)
+	if err != nil {
+		code := "RENDER_FAILED"
+		if strings.Contains(err.Error(), "not found on PATH") {
+			if strings.Contains(err.Error(), "libreoffice") {
+				code = "LIBREOFFICE_UNAVAILABLE"
+			} else {
+				code = "IMAGEMAGICK_UNAVAILABLE"
+			}
+		}
+		return api.MCPSimpleError(code, err.Error()), nil
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, img)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcpResult, nil
+}
+
+func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	pptxPath, err := request.RequireString("pptx_path")
+	if err != nil {
+		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
+	}
+
+	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {
+		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
+	}
+
+	density := 50
+	if v, ok := request.GetArguments()["density"].(float64); ok {
+		d := int(v)
+		if d < 25 {
+			d = 25
+		} else if d > 150 {
+			d = 150
+		}
+		density = d
+	}
+
+	maxSlides := 50
+	if v, ok := request.GetArguments()["max_slides"].(float64); ok {
+		m := int(v)
+		if m > 0 {
+			maxSlides = m
+		}
+	}
+
+	deckResult, err := render.RenderDeck(pptxPath, density, maxSlides)
+	if err != nil {
+		code := "RENDER_FAILED"
+		if strings.Contains(err.Error(), "not found on PATH") {
+			if strings.Contains(err.Error(), "libreoffice") {
+				code = "LIBREOFFICE_UNAVAILABLE"
+			} else {
+				code = "IMAGEMAGICK_UNAVAILABLE"
+			}
+		}
+		return api.MCPSimpleError(code, err.Error()), nil
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, deckResult)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
