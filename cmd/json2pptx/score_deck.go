@@ -21,8 +21,10 @@ Score formula: 100 - sum(severity_weights × findings). Weights: refuse=25, shri
 
 Use this after generate_presentation to get structured visual feedback without burning vision tokens.`),
 		mcp.WithString("json_input",
-			mcp.Required(),
-			mcp.Description("JSON string containing the presentation definition (same format as generate_presentation json_input). Required for running deterministic checks."),
+			mcp.Description("JSON string containing the presentation definition (same format as generate_presentation json_input). Mutually exclusive with \"presentation\" (object form)."),
+		),
+		mcp.WithObject("presentation",
+			mcp.Description("Structured object form of the presentation definition. Mutually exclusive with \"json_input\" (string form). Same schema as generate_presentation."),
 		),
 		mcp.WithString("template",
 			mcp.Description("Template name override. If omitted, uses the template field from json_input."),
@@ -35,9 +37,12 @@ Use this after generate_presentation to get structured visual feedback without b
 }
 
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, err := request.RequireString("json_input")
-	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "json_input is required"), nil
+	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
+	if ambigErr != nil {
+		return ambigErr, nil
+	}
+	if jsonStr == "" {
+		return api.MCPSimpleError("MISSING_PARAMETER", "json_input or presentation is required"), nil
 	}
 
 	mode := "deterministic"

@@ -434,3 +434,188 @@ func TestStructuredContent_ErrorEnvelopeRoundTrip(t *testing.T) {
 		t.Error("fix not preserved in round-trip")
 	}
 }
+
+// --- Object-form parameter tests ---
+
+func TestHandleGenerate_PresentationObject(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	// Pass presentation as structured object instead of json_input string.
+	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{
+			"template": "midnight-blue",
+			"slides": []any{
+				map[string]any{
+					"layout_id": "slideLayout2",
+					"content": []any{
+						map[string]any{
+							"placeholder_id": "title",
+							"type":           "text",
+							"text_value":     "Object Form Test",
+						},
+					},
+				},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		b, _ := json.Marshal(result.StructuredContent)
+		t.Fatalf("unexpected tool error: %s", string(b))
+	}
+	requireStructuredContent(t, result)
+}
+
+func TestHandleGenerate_AmbiguousInput(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+		"json_input":   `{"template":"midnight-blue","slides":[]}`,
+		"presentation": map[string]any{"template": "midnight-blue"},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	requireStructuredError(t, result, "ambiguous_input")
+}
+
+func TestHandleValidate_PresentationObject(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{
+			"template": "midnight-blue",
+			"slides": []any{
+				map[string]any{
+					"layout_id": "slideLayout2",
+					"content": []any{
+						map[string]any{
+							"placeholder_id": "title",
+							"type":           "text",
+							"text_value":     "Object Form Test",
+						},
+					},
+				},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatal("unexpected error result")
+	}
+	requireStructuredContent(t, result)
+}
+
+func TestHandleValidatePattern_ValuesObject(t *testing.T) {
+	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
+		"name": "kpi-3up",
+		"values_object": []any{
+			map[string]any{"big": "A", "small": "a"},
+			map[string]any{"big": "B", "small": "b"},
+			map[string]any{"big": "C", "small": "c"},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatal("unexpected error result")
+	}
+	requireStructuredContent(t, result)
+
+	b, _ := json.Marshal(result.StructuredContent)
+	var resp struct{ OK bool `json:"ok"` }
+	if err := json.Unmarshal(b, &resp); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !resp.OK {
+		t.Error("expected ok=true for valid values_object")
+	}
+}
+
+func TestHandleValidatePattern_AmbiguousValues(t *testing.T) {
+	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
+		"name":          "kpi-3up",
+		"values":        `[{"big":"A","small":"a"}]`,
+		"values_object": []any{map[string]any{"big": "A", "small": "a"}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	requireStructuredError(t, result, "ambiguous_input")
+}
+
+func TestHandleExpandPattern_ValuesObject(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
+		"name": "kpi-3up",
+		"values_object": []any{
+			map[string]any{"big": "$1.2M", "small": "Revenue"},
+			map[string]any{"big": "+15%", "small": "Growth"},
+			map[string]any{"big": "4.3K", "small": "Users"},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		b, _ := json.Marshal(result.StructuredContent)
+		t.Fatalf("unexpected tool error: %s", string(b))
+	}
+	requireStructuredContent(t, result)
+}
+
+func TestHandleScoreDeck_PresentationObject(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{
+			"template": "midnight-blue",
+			"slides": []any{
+				map[string]any{
+					"layout_id": "slideLayout2",
+					"content": []any{
+						map[string]any{
+							"placeholder_id": "title",
+							"type":           "text",
+							"text_value":     "Score Test",
+						},
+					},
+				},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		b, _ := json.Marshal(result.StructuredContent)
+		t.Fatalf("unexpected tool error: %s", string(b))
+	}
+	requireStructuredContent(t, result)
+}
