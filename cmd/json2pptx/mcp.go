@@ -118,6 +118,7 @@ func runMCP() error {
 	s.AddTool(mcpGetChartCapabilitiesTool(), handleGetChartCapabilities)
 	s.AddTool(mcpGetDiagramCapabilitiesTool(), handleGetDiagramCapabilities)
 	s.AddTool(mcpValidateTool(), mc.handleValidate)
+	s.AddTool(mcpRecommendPatternTool(), mc.handleRecommendPattern)
 	s.AddTool(mcpListPatternsTool(), handleListPatterns)
 	s.AddTool(mcpShowPatternTool(), handleShowPattern)
 	s.AddTool(mcpValidatePatternTool(), handleValidatePattern)
@@ -725,6 +726,19 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 
 // --- Pattern tool definitions ---
 
+func mcpRecommendPatternTool() mcp.Tool {
+	return mcp.NewTool("recommend_pattern",
+		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, and expansion previews. Use this as a starting point when you know what content to show but not which pattern to use."),
+		mcp.WithString("intent",
+			mcp.Required(),
+			mcp.Description("Natural-language description of what the slide should show (e.g., \"show 3 KPIs\", \"compare two options\", \"business model canvas\", \"project roadmap\")."),
+		),
+		mcp.WithObject("content_hints",
+			mcp.Description("Optional structured hints to refine ranking. Properties: item_count (int), has_chart (bool), has_metrics (bool), columns (int)."),
+		),
+	)
+}
+
 func mcpListPatternsTool() mcp.Tool {
 	return mcp.NewTool("list_patterns",
 		mcp.WithDescription("List all available named patterns. Patterns are high-level primitives that expand to shape_grid definitions, replacing ~600 tokens of boilerplate with ~100 tokens."),
@@ -886,6 +900,97 @@ func toPatternValidationError(e error) patternValidationError {
 		Field:   field,
 		Message: msg,
 	}
+}
+
+func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	intent, err := request.RequireString("intent")
+	if err != nil {
+		return api.MCPSimpleError("MISSING_PARAMETER", "intent is required"), nil
+	}
+
+	// Parse optional content_hints.
+	var hints patterns.ContentHints
+	if hintsRaw, ok := request.GetArguments()["content_hints"]; ok && hintsRaw != nil {
+		hintsJSON, err := json.Marshal(hintsRaw)
+		if err == nil {
+			_ = json.Unmarshal(hintsJSON, &hints)
+		}
+	}
+
+	reg := patterns.Default()
+	rec := patterns.Recommend(reg, intent, &hints, 3)
+
+	// Build expansion previews for each candidate using exemplar values.
+	expandCtx := patterns.ExpandContext{
+		SlideWidth:  9144000,
+		SlideHeight: 5143500,
+		LayoutBounds: patterns.LayoutBounds{
+			X: 457200, Y: 457200,
+			Width: 8229600, Height: 4229100,
+		},
+	}
+
+	type candidateResult struct {
+		PatternName      string                    `json:"pattern_name"`
+		Score            float64                   `json:"score"`
+		Rationale        string                    `json:"rationale"`
+		ExpansionPreview *jsonschema.ShapeGridInput `json:"expansion_preview,omitempty"`
+	}
+
+	candidates := make([]candidateResult, len(rec.Candidates))
+	for i, c := range rec.Candidates {
+		candidates[i] = candidateResult{
+			PatternName: c.PatternName,
+			Score:       c.Score,
+			Rationale:   c.Rationale,
+		}
+
+		// Try expanding with exemplar values for a preview.
+		pat, ok := reg.Get(c.PatternName)
+		if !ok {
+			continue
+		}
+		exemplar, ok := pat.(patterns.Exemplar)
+		if !ok {
+			continue
+		}
+		grid, err := pat.Expand(expandCtx, exemplar.ExemplarValues(), nil, nil)
+		if err == nil {
+			candidates[i].ExpansionPreview = grid
+		}
+	}
+
+	result := struct {
+		Candidates      []candidateResult `json:"candidates"`
+		QueryUnderstood string            `json:"query_understood_as"`
+	}{
+		Candidates:      candidates,
+		QueryUnderstood: rec.QueryUnderstood,
+	}
+
+	// When no candidates match, add a suggestion.
+	if len(candidates) == 0 {
+		result := struct {
+			Candidates      []candidateResult `json:"candidates"`
+			QueryUnderstood string            `json:"query_understood_as"`
+			Suggestion      string            `json:"suggestion"`
+		}{
+			Candidates:      candidates,
+			QueryUnderstood: rec.QueryUnderstood,
+			Suggestion:      "No patterns matched this intent. Consider using shape_grid directly to build a custom layout, or try rephrasing with keywords like: kpi, compare, timeline, matrix, bmc, icon, card.",
+		}
+		mcpResult, err := api.MCPSuccessResult(ctx, result)
+		if err != nil {
+			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		}
+		return mcpResult, nil
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcpResult, nil
 }
 
 func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
