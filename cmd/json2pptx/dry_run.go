@@ -412,6 +412,21 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				}
 			}
 
+			// Detect legacy authoring form: "value" field instead of typed fields
+			if item.UsesLegacyValue() {
+				typedField := item.Type + "_value"
+				path := fmt.Sprintf("slides[%d].content[%d]", i, j)
+				output.ValidationWarnings = append(output.ValidationWarnings, &patterns.ValidationError{
+					Path:    path,
+					Code:    "legacy_authoring_form",
+					Message: fmt.Sprintf("slide %d, content %d: uses legacy \"value\" field; prefer \"%s\" for new decks", i+1, j+1, typedField),
+					Fix: &patterns.FixSuggestion{
+						Kind:   "rewrite_field",
+						Params: map[string]any{"from": "value", "to": typedField},
+					},
+				})
+			}
+
 			// Validate chart/diagram data structure via svggen
 			if item.Type == "chart" || item.Type == "diagram" {
 				output.Warnings = append(output.Warnings, validateContentDiagramData(item, i+1, j+1)...)

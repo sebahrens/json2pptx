@@ -28,6 +28,14 @@ type skillInfo struct {
 	PatternsFull     []skillPatternFull     `json:"patterns_full,omitempty"`
 	InputFormats     []string               `json:"input_formats"`
 	OutputFormats    []string               `json:"output_formats"`
+	Deprecations     []skillDeprecation     `json:"deprecations,omitempty"`
+}
+
+// skillDeprecation describes a deprecated feature and its canonical replacement.
+type skillDeprecation struct {
+	Feature     string `json:"feature"`
+	Replacement string `json:"replacement"`
+	Note        string `json:"note"`
 }
 
 // skillPatternCompact is a compact pattern entry (≤ 40 tokens) for default mode.
@@ -225,6 +233,7 @@ func runSkillInfo() error {
 		PatternsFull:    patternsFull,
 		InputFormats:    []string{"json"},
 		OutputFormats:   []string{"pptx"},
+		Deprecations:    buildDeprecations(),
 	}
 
 	if *jsonFlag {
@@ -441,6 +450,22 @@ func buildSupportedTypes() skillSupportedTypes {
 		GridCellTypes:       []string{"shape", "table", "icon", "image"},
 		ShapeGeometries:     buildShapeGeometries(),
 		DataFormatHints:     buildDataFormatHints(),
+	}
+}
+
+// buildDeprecations returns the list of deprecated features with their replacements.
+func buildDeprecations() []skillDeprecation {
+	return []skillDeprecation{
+		{
+			Feature:     "value (untyped content field)",
+			Replacement: "Use typed fields: text_value, bullets_value, table_value, chart_value, diagram_value, image_value, body_and_bullets_value, bullet_groups_value",
+			Note:        "The legacy \"value\" field (json.RawMessage) is still accepted for backward compatibility but should not be used in new decks. Typed fields provide schema validation and clearer intent.",
+		},
+		{
+			Feature:     "Raw template placeholder names (e.g. \"Title 1\", \"Content Placeholder 2\")",
+			Replacement: "Use portable placeholder IDs: title, subtitle, body, body_2",
+			Note:        "Raw OOXML placeholder names are template-specific and resolved via semantic fallback. Portable IDs work across all templates and resolve at the exact tier.",
+		},
 	}
 }
 

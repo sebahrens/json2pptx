@@ -234,6 +234,12 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 					result.Warnings = append(result.Warnings, fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, err))
 				}
 			}
+			// Detect legacy authoring form.
+			if item.UsesLegacyValue() {
+				typedField := item.Type + "_value"
+				result.Warnings = append(result.Warnings,
+					fmt.Sprintf("slide %d, content %d: uses legacy \"value\" field; prefer \"%s\" for new decks", i+1, j+1, typedField))
+			}
 		}
 
 		// Validate shape_grid if present.

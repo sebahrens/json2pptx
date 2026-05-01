@@ -163,6 +163,35 @@ type ContentInput struct {
 	FontSize *float64 `json:"font_size,omitempty"`
 }
 
+// UsesLegacyValue reports whether this content item relies on the legacy
+// "value" field instead of the canonical typed fields (text_value, etc.).
+func (c *ContentInput) UsesLegacyValue() bool {
+	if len(c.Value) == 0 {
+		return false
+	}
+	// If any typed field is set, the legacy field is ignored.
+	switch c.Type {
+	case "text":
+		return c.TextValue == nil
+	case "bullets":
+		return c.BulletsValue == nil
+	case "body_and_bullets":
+		return c.BodyAndBulletsValue == nil
+	case "bullet_groups":
+		return c.BulletGroupsValue == nil
+	case "table":
+		return c.TableValue == nil
+	case "chart":
+		return c.ChartValue == nil
+	case "diagram":
+		return c.DiagramValue == nil
+	case "image":
+		return c.ImageValue == nil
+	default:
+		return false
+	}
+}
+
 // ResolveValue returns the typed value for this content item.
 // Priority: typed field > legacy Value json.RawMessage.
 // Returns (value, error). A nil value with nil error signals
