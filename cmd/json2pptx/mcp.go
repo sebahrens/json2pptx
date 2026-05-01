@@ -691,11 +691,11 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// character limits, content types, chart/diagram data)
 	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
 
-	// Fit report: measure per-cell text overflow when requested.
+	// Fit report: run all fit detectors (text overflow + structural) when requested.
 	if fitReport, ok := request.GetArguments()["fit_report"].(bool); ok && fitReport {
-		findings := generateFitReport(&input)
+		findings := collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight)
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
-		output.FitFindings = budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
+		output.FitFindings = BudgetFitFindings(findings, DefaultFindingBudget, verboseFit)
 	}
 
 	return marshalValidateResult(ctx, output)

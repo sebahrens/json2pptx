@@ -32,7 +32,7 @@ type dryRunOutput struct {
 	Errors             []string                    `json:"errors,omitempty"`
 	Diagnostics        []diagnostics.Diagnostic    `json:"diagnostics,omitempty"`
 	Slides             []dryRunSlide               `json:"slides"`
-	FitFindings        []fitFinding                `json:"fit_findings,omitempty"`
+	FitFindings        []patterns.FitFinding        `json:"fit_findings,omitempty"`
 }
 
 // dryRunSlide describes one slide in the dry-run report.
