@@ -14,13 +14,14 @@ import (
 // Hierarchical unknown-key check for the full PresentationInput tree.
 //
 // Walks raw JSON at every object level and reports unknown fields as
-// ValidationError warnings. Integrated into validate and MCP
-// validate/generate paths as warnings (not errors) for the initial release.
+// ValidationError items. Callers choose the severity: MCP surfaces these as
+// warnings by default (advisory, generation proceeds) and promotes to errors
+// only when strict_unknown_keys=true. CLI treats them as warnings.
 // ---------------------------------------------------------------------------
 
 // checkInputUnknownKeys runs unknown-key detection on the full
-// PresentationInput JSON tree. Returns warnings (not errors) for every
-// unknown field found.
+// PresentationInput JSON tree. Returns a ValidationError for every unknown
+// field found. Callers decide the severity (warning vs error).
 func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 	var warnings []*patterns.ValidationError
 

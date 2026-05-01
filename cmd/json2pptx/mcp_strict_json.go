@@ -88,6 +88,19 @@ func mcpParseError(code, path, message string) *mcp.CallToolResult {
 	return api.MCPDiagnosticsError([]diagnostics.Diagnostic{d})
 }
 
+// unknownKeyDiags runs the unknown-key check and returns diagnostics at the
+// appropriate severity: error when strict is true, warning otherwise.
+func unknownKeyDiags(raw []byte, strict bool) []diagnostics.Diagnostic {
+	ves := checkInputUnknownKeys(raw)
+	if len(ves) == 0 {
+		return nil
+	}
+	if strict {
+		return diagnostics.FromValidationErrors(ves)
+	}
+	return diagnostics.FromValidationWarnings(ves)
+}
+
 // mcpParseErrorWithFix builds a structured MCP error result for JSON parse
 // failures with an attached fix suggestion.
 func mcpParseErrorWithFix(code, path, message string, fix *diagnostics.Fix) *mcp.CallToolResult {

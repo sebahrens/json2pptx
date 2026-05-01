@@ -190,6 +190,9 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 		mcp.WithBoolean("verbose_fit",
 			mcp.Description("When true, return all fit findings without the per-slide budget limit (default: 5 per slide). Default: false."),
 		),
+		mcp.WithBoolean("strict_unknown_keys",
+			mcp.Description("When true, unknown JSON keys are errors that block generation. When false (default), unknown keys are reported as warnings and generation proceeds."),
+		),
 	)
 }
 
@@ -235,6 +238,9 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 		mcp.WithBoolean("verbose_fit",
 			mcp.Description("When true, return all fit findings without the per-slide budget limit (default: 5 per slide). Default: false."),
 		),
+		mcp.WithBoolean("strict_unknown_keys",
+			mcp.Description("When true, unknown JSON keys are errors that block validation. When false (default), unknown keys are reported as warnings."),
+		),
 	)
 }
 
@@ -277,10 +283,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		})
 	}
 
-	// Unknown keys — promoted to errors on the agent path.
-	for _, ve := range checkInputUnknownKeys([]byte(jsonStr)) {
-		boundaryDiags = append(boundaryDiags, diagnostics.FromValidationError(ve))
-	}
+	// Unknown keys — warnings by default, errors when strict_unknown_keys=true.
+	strictUnknownKeys, _ := request.GetArguments()["strict_unknown_keys"].(bool)
+	boundaryDiags = append(boundaryDiags, unknownKeyDiags([]byte(jsonStr), strictUnknownKeys)...)
 
 	// Enum validation — reject unknown values for transition, transition_speed, build, background.fit.
 	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
@@ -399,8 +404,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	duration := time.Since(startTime)
 
-	// Merge input-layer warnings with generation warnings
+	// Merge input-layer warnings with generation warnings.
 	allWarnings := append(inputWarnings, result.Warnings...)
+	// Surface boundary warnings (e.g. unknown keys) in the response.
+	for _, d := range boundaryDiags {
+		if d.Severity == diagnostics.SeverityWarning {
+			allWarnings = append(allWarnings, d.Message)
+		}
+	}
 
 	// Collect fit findings when requested.
 	var fitFindings []patterns.FitFinding
@@ -610,10 +621,18 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// Apply deck-level defaults before validation.
 	applyDefaults(&input)
 
-	// Collect structured diagnostics for unknown keys and enum errors.
+	// Unknown keys — warnings by default, errors when strict_unknown_keys=true.
+	strictUnknownKeys := false
+	if v, err := request.RequireBool("strict_unknown_keys"); err == nil {
+		strictUnknownKeys = v
+	}
 	var boundaryDiags []diagnostics.Diagnostic
-	for _, ve := range checkInputUnknownKeys([]byte(jsonStr)) {
-		boundaryDiags = append(boundaryDiags, diagnostics.FromValidationError(ve))
+	if ukWarns := checkInputUnknownKeys([]byte(jsonStr)); len(ukWarns) > 0 {
+		if strictUnknownKeys {
+			boundaryDiags = append(boundaryDiags, diagnostics.FromValidationErrors(ukWarns)...)
+		} else {
+			boundaryDiags = append(boundaryDiags, diagnostics.FromValidationWarnings(ukWarns)...)
+		}
 	}
 	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
 		boundaryDiags = append(boundaryDiags, diagnostics.FromValidationErrors(enumErrs)...)

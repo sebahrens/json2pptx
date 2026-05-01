@@ -78,6 +78,28 @@ func FromValidationError(ve *patterns.ValidationError) Diagnostic {
 	return d
 }
 
+// FromValidationWarning converts a patterns.ValidationError into a
+// warning-severity Diagnostic. Use for advisory findings (e.g. unknown keys)
+// where generation should proceed.
+func FromValidationWarning(ve *patterns.ValidationError) Diagnostic {
+	d := FromValidationError(ve)
+	d.Severity = SeverityWarning
+	return d
+}
+
+// FromValidationWarnings converts a slice of patterns.ValidationError pointers
+// into warning-severity Diagnostics.
+func FromValidationWarnings(ves []*patterns.ValidationError) []Diagnostic {
+	if len(ves) == 0 {
+		return nil
+	}
+	out := make([]Diagnostic, len(ves))
+	for i, ve := range ves {
+		out[i] = FromValidationWarning(ve)
+	}
+	return out
+}
+
 // FromValidationErrors converts a slice of patterns.ValidationError pointers
 // into a slice of Diagnostics.
 func FromValidationErrors(ves []*patterns.ValidationError) []Diagnostic {

@@ -119,16 +119,42 @@ func TestHandleGenerate_MissingRequired(t *testing.T) {
 	}
 }
 
-func TestHandleGenerate_UnknownKey(t *testing.T) {
+func TestHandleGenerate_UnknownKey_DefaultWarning(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
-	// "tmplate" is a typo for "template".
+	// "tmplate" is a typo for "template". By default, unknown keys are warnings
+	// and generation proceeds.
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 		"json_input": `{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatal("expected IsError=false (unknown keys are warnings by default)")
+	}
+	// The warning should appear in the output warnings.
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "tmplate") {
+		t.Errorf("expected unknown key 'tmplate' in warnings, got: %s", text)
+	}
+}
+
+func TestHandleGenerate_UnknownKey_StrictError(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	// With strict_unknown_keys=true, unknown keys are errors.
+	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+		"json_input":          `{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"strict_unknown_keys": true,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
