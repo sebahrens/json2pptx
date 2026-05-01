@@ -131,6 +131,9 @@ func runMCP() error {
 	s.AddTool(mcpScoreDeckTool(), mc.handleScoreDeck)
 	s.AddTool(mcpPreviewPlanTool(), mc.handlePreviewPlan)
 	s.AddTool(mcpRepairSlideTool(), mc.handleRepairSlide)
+	s.AddTool(mcpListTemplateSettingsTool(), mc.handleListTemplateSettings)
+	s.AddTool(mcpRegisterTemplateSettingTool(), mc.handleRegisterTemplateSetting)
+	s.AddTool(mcpDeleteTemplateSettingTool(), mc.handleDeleteTemplateSetting)
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
@@ -266,6 +269,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(&input)
+
+	// Resolve named style references from template settings (priority 3).
+	mc.resolveInputNamedSettings(&input)
 
 	// Collect all boundary diagnostics before proceeding.
 	var boundaryDiags []diagnostics.Diagnostic
@@ -623,6 +629,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 	// Apply deck-level defaults before validation.
 	applyDefaults(&input)
+
+	// Resolve named style references from template settings (priority 3).
+	mc.resolveInputNamedSettings(&input)
 
 	// Unknown keys — warnings by default, errors when strict_unknown_keys=true.
 	strictUnknownKeys := false

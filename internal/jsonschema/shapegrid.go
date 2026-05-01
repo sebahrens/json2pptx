@@ -59,7 +59,8 @@ type GridCellInput struct {
 	Icon      *IconInput         `json:"icon,omitempty"`
 	Image     *GridImageInput    `json:"image,omitempty"`
 	Diagram   *types.DiagramSpec `json:"diagram,omitempty"` // Chart/diagram rendered via svggen
-	AccentBar *AccentBarInput    `json:"accent_bar,omitempty"` // Optional decorative accent bar
+	AccentBar  *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
+	NamedStyle string              `json:"named_style,omitempty"` // Named cell style reference resolved from template settings
 }
 
 // AccentBarInput defines a decorative accent bar rendered alongside a cell.
