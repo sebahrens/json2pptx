@@ -205,7 +205,7 @@ Response also includes: supported_types (slide/chart/diagram/grid types, shape_g
 
 func mcpGetDataFormatHintsTool() mcp.Tool {
 	return mcp.NewTool("get_data_format_hints",
-		mcp.WithDescription("Fetch the full data_format_hints map for all chart and diagram types. Use the digest from list_templates to avoid refetching when hints haven't changed."),
+		mcp.WithDescription("Fetch the full data_format_hints map for all chart and diagram types. Use the digest from list_templates to avoid refetching when hints haven't changed. Note: list_templates is the canonical bundled discovery tool — it returns templates, supported types, chart/diagram capabilities, and a data_format_hints digest in a single call. Use this tool only when you need to fetch the full hints after a digest change."),
 		mcp.WithString("digest",
 			mcp.Description("Digest from a previous list_templates response. If it matches the current hints, a not_modified response is returned instead of the full map."),
 		),
@@ -535,13 +535,13 @@ func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) 
 
 func mcpGetChartCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_chart_capabilities",
-		mcp.WithDescription("Fetch capability metadata for all chart types. Values are TBD (null) until populated in a future release; the struct shape is stable."),
+		mcp.WithDescription("Fetch capability metadata for all chart types. Values are TBD (null) until populated in a future release; the struct shape is stable. Note: list_templates already includes chart_capabilities in its supported_types response — prefer that single call for initial discovery."),
 	)
 }
 
 func mcpGetDiagramCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_capabilities",
-		mcp.WithDescription("Fetch capability metadata for all diagram types. Values are TBD (null) until populated in a future release; the struct shape is stable."),
+		mcp.WithDescription("Fetch capability metadata for all diagram types. Values are TBD (null) until populated in a future release; the struct shape is stable. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
 	)
 }
 

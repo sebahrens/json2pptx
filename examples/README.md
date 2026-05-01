@@ -73,7 +73,7 @@ The built-in templates are: `midnight-blue`, `forest-green`, `warm-coral`.
 List all available templates (including any installed locally):
 
 ```bash
-json2pptx list-templates
+json2pptx skill-info --mode list
 ```
 
 ### Layout reference
