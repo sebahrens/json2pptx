@@ -167,7 +167,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 

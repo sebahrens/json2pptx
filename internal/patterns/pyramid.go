@@ -121,7 +121,7 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
 	n := len(vals.Tiers)
 

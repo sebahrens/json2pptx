@@ -144,7 +144,7 @@ func (sh *statHero) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	valueSize := ResolveSize(ovr.ValueSize, 120.0)
 	labelSize := ResolveSize(ovr.LabelSize, 18.0)
 	contextSize := ResolveSize(ovr.ContextSize, 14.0)

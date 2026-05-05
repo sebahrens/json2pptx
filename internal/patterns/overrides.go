@@ -1,6 +1,10 @@
 package patterns
 
-import "github.com/sebahrens/json2pptx/internal/types"
+import (
+	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/types"
+)
 
 // TextOverrides contains pattern-level overrides common to patterns with
 // header/body text: accent color, header font size, and body font size.
@@ -20,8 +24,55 @@ var ValidSemanticAccents = map[string]bool{
 	"neutral":  true,
 }
 
+// AccentStrategy controls how the default accent color is chosen for patterns
+// that don't set an explicit accent.
+type AccentStrategy string
+
+const (
+	// AccentStrategyPrimary always uses accent1 (the legacy default).
+	AccentStrategyPrimary AccentStrategy = "primary"
+	// AccentStrategyRotate round-robins through accent1-accent6 by slide index.
+	AccentStrategyRotate AccentStrategy = "rotate"
+	// AccentStrategySectionKeyed assigns one accent per section (wraps at 6).
+	AccentStrategySectionKeyed AccentStrategy = "section-keyed"
+)
+
+// NumAccentSlots is the number of OOXML accent color slots (accent1–accent6).
+const NumAccentSlots = 6
+
+// ValidAccentStrategies is the set of allowed AccentStrategy values.
+var ValidAccentStrategies = []string{
+	string(AccentStrategyPrimary),
+	string(AccentStrategyRotate),
+	string(AccentStrategySectionKeyed),
+}
+
+// IsValidAccentStrategy returns true if s is a recognised accent strategy.
+func IsValidAccentStrategy(s string) bool {
+	for _, v := range ValidAccentStrategies {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
+// AccentForStrategy returns the default accent name (e.g. "accent2") for the
+// given strategy, slide index, and section index. The caller should only use
+// this when no explicit accent or semantic_accent was provided.
+func AccentForStrategy(strategy AccentStrategy, slideIndex, sectionIndex int) string {
+	switch strategy {
+	case AccentStrategyRotate:
+		return fmt.Sprintf("accent%d", (slideIndex%NumAccentSlots)+1)
+	case AccentStrategySectionKeyed:
+		return fmt.Sprintf("accent%d", (sectionIndex%NumAccentSlots)+1)
+	default: // primary or empty
+		return "accent1"
+	}
+}
+
 // ResolveAccent returns the accent color for a pattern invocation.
-// Priority: explicit accent > semantic_accent resolved via metadata > "accent1".
+// Priority: explicit accent > semantic_accent resolved via metadata > strategy-derived default > "accent1".
 func ResolveAccent(accent, semanticAccent string, metadata *types.TemplateMetadata) string {
 	if accent != "" {
 		return accent
@@ -32,6 +83,21 @@ func ResolveAccent(accent, semanticAccent string, metadata *types.TemplateMetada
 		}
 	}
 	return "accent1"
+}
+
+// ResolveAccentWithStrategy is like ResolveAccent but uses the deck-level
+// accent strategy to choose the default when neither explicit accent nor
+// semantic_accent is specified.
+func ResolveAccentWithStrategy(accent, semanticAccent string, metadata *types.TemplateMetadata, strategy AccentStrategy, slideIndex, sectionIndex int) string {
+	if accent != "" {
+		return accent
+	}
+	if semanticAccent != "" && metadata != nil && len(metadata.SemanticAccents) > 0 {
+		if resolved, ok := metadata.SemanticAccents[semanticAccent]; ok {
+			return resolved
+		}
+	}
+	return AccentForStrategy(strategy, slideIndex, sectionIndex)
 }
 
 // ResolveSize returns size if positive, otherwise defaultSize.

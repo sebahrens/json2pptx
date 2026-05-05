@@ -139,7 +139,7 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	quoteSize := ResolveSize(ovr.QuoteSize, 36.0)
 	attrSize := ResolveSize(ovr.AttrSize, 14.0)
 

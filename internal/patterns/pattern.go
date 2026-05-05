@@ -59,11 +59,20 @@ type Pattern interface {
 
 // ExpandContext carries template/slide context needed by Pattern.Expand.
 type ExpandContext struct {
-	Theme        types.ThemeInfo
-	Metadata     *types.TemplateMetadata // optional; nil when template has no metadata
-	SlideWidth   int64                   // EMU
-	SlideHeight  int64                   // EMU
-	LayoutBounds LayoutBounds
+	Theme          types.ThemeInfo
+	Metadata       *types.TemplateMetadata // optional; nil when template has no metadata
+	SlideWidth     int64                   // EMU
+	SlideHeight    int64                   // EMU
+	LayoutBounds   LayoutBounds
+	AccentStrategy AccentStrategy // deck-level accent rotation strategy
+	SlideIndex     int            // zero-based slide position in the deck
+	SectionIndex   int            // zero-based section index (0 when no sections)
+}
+
+// ResolveAccent resolves the accent color for this context, honoring the
+// deck-level accent strategy when no explicit accent is specified.
+func (c ExpandContext) ResolveAccent(accent, semanticAccent string) string {
+	return ResolveAccentWithStrategy(accent, semanticAccent, c.Metadata, c.AccentStrategy, c.SlideIndex, c.SectionIndex)
 }
 
 // LayoutBounds describes the usable content area on a slide in EMU.

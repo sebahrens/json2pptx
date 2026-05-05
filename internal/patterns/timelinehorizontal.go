@@ -197,7 +197,7 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 }
 
 func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)
 	dateSize := ResolveSize(ovr.DateSize, 10.0)
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
@@ -262,7 +262,7 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 // expandChevron renders connected homePlate shapes with a gradient tint across the chain.
 // Label inside chevron, date below in a second row.
 func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	labelSize := ResolveSize(ovr.LabelSize, 12.0)
 	dateSize := ResolveSize(ovr.DateSize, 9.0)
 
@@ -337,7 +337,7 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 // expandGantt renders horizontal bars representing date ranges.
 // Label left-aligned in bar, date range shown as bar width hint.
 func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	labelSize := ResolveSize(ovr.LabelSize, 11.0)
 	dateSize := ResolveSize(ovr.DateSize, 9.0)
 

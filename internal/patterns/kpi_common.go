@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -106,12 +104,12 @@ func applyEmphasis(para map[string]any, emphasis string) {
 	}
 }
 
-// resolveKPIAccent returns the accent color, defaulting to accent1.
-func resolveKPIAccent(ovr *KPIOverrides, metadata *types.TemplateMetadata) string {
+// resolveKPIAccent returns the accent color, honoring the deck-level accent strategy.
+func resolveKPIAccent(ovr *KPIOverrides, ctx ExpandContext) string {
 	if ovr == nil {
-		return "accent1"
+		return AccentForStrategy(ctx.AccentStrategy, ctx.SlideIndex, ctx.SectionIndex)
 	}
-	return ResolveAccent(ovr.Accent, ovr.SemanticAccent, metadata)
+	return ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 }
 
 // resolveKPIBigSize returns the big-number font size, defaulting to 36pt.

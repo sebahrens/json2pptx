@@ -255,7 +255,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)

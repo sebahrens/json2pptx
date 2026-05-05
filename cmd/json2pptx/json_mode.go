@@ -412,7 +412,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 
 	// Convert typed slides to generator specs (uses templateLayouts for auto-layout selection)
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid)
+	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy))
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
 	}
@@ -543,7 +543,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 // This is the primary conversion path that supports both typed fields (text_value,
 // bullets_value, etc.) and legacy json.RawMessage Value field.
 // When layouts is non-empty and a slide omits layout_id, auto-layout selection is used.
-func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
+func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
 	specs := make([]generator.SlideSpec, 0, len(slides))
 
 	// Track layout usage for variety scoring during auto-selection
@@ -574,6 +574,20 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 					TextValue:     &sectionNumStr,
 				})
 			}
+		}
+	}
+
+	// Build per-slide section index for accent-strategy=section-keyed.
+	// Section indices start at 0 and increment each time a "section" slide is seen.
+	// Slides before the first section divider get index 0.
+	sectionIndices := make([]int, len(slides))
+	{
+		secIdx := 0
+		for i := range slides {
+			if i > 0 && inferSlideType(slides[i]) == types.SlideTypeSection {
+				secIdx++
+			}
+			sectionIndices[i] = secIdx
 		}
 	}
 
@@ -673,9 +687,12 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 		// Expand pattern into shape_grid before downstream processing
 		if slide.Pattern != nil {
 			ctx := patterns.ExpandContext{
-				Metadata:    metadata,
-				SlideWidth:  slideWidth,
-				SlideHeight: slideHeight,
+				Metadata:       metadata,
+				SlideWidth:     slideWidth,
+				SlideHeight:    slideHeight,
+				AccentStrategy: accentStrategy,
+				SlideIndex:     i,
+				SectionIndex:   sectionIndices[i],
 			}
 			expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 			if err != nil {

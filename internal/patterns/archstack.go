@@ -160,7 +160,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 14.0)
 	bodySize := ResolveSize(ovr.BodySize, 11.0)
 

@@ -36,6 +36,9 @@ var (
 	allowedDesignModes = []string{
 		"constrained", "free",
 	}
+	allowedAccentStrategies = []string{
+		"primary", "rotate", "section-keyed",
+	}
 )
 
 // checkInputEnumValues validates enum-constrained fields across all slides
@@ -47,6 +50,13 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 	// Top-level design_mode enum
 	if input.DesignMode != "" {
 		if err := checkEnum("design_mode", input.DesignMode, allowedDesignModes); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// Top-level accent_strategy enum
+	if input.AccentStrategy != "" {
+		if err := checkEnum("accent_strategy", input.AccentStrategy, allowedAccentStrategies); err != nil {
 			errs = append(errs, err)
 		}
 	}

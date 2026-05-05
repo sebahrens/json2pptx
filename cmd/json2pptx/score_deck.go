@@ -163,7 +163,7 @@ func (mc *mcpConfig) collectRenderFindings(
 	}
 
 	// Convert slides to generator specs.
-	slideSpecs, err := convertPresentationSlides(input.Slides, layouts, slideWidth, slideHeight, templateMetadata, rhythmGrid)
+	slideSpecs, err := convertPresentationSlides(input.Slides, layouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy))
 	if err != nil {
 		// If conversion fails, skip render findings (static findings still apply).
 		return nil

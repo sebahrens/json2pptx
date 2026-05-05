@@ -252,7 +252,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
 

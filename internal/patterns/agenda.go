@@ -144,7 +144,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	numberSize := ResolveSize(ovr.NumberSize, 20.0)
 	titleSize := ResolveSize(ovr.TitleSize, 14.0)
 

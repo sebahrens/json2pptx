@@ -175,7 +175,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	iconSize := ResolveSize(ovr.IconSize, 28.0)
 	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
 

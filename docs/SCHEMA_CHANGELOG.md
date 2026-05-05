@@ -4,6 +4,16 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 3.3.0 (2026-05-05)
+
+### Added
+
+- `accent_strategy` — top-level field controlling how default accent colors are
+  chosen for patterns that don't specify an explicit `accent` override. Values:
+  `"primary"` (default, always accent1), `"rotate"` (round-robin accent1–accent6
+  by slide index), `"section-keyed"` (one accent per section, wrapping at 6).
+  Existing decks with explicit accent overrides are unchanged.
+
 ## 3.1.0 (2026-05-05)
 
 ### Added

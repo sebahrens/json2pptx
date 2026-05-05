@@ -167,7 +167,7 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 12.0)
 	bodySize := ResolveSize(ovr.BodySize, 11.0)
 

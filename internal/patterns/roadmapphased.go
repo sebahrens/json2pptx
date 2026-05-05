@@ -175,7 +175,7 @@ func (r *roadmapPhased) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 	}
 
-	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 11.0)
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
 

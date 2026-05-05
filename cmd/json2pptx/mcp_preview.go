@@ -246,8 +246,21 @@ func resolvePreviewSlides(input *PresentationInput, tctx *previewTemplateContext
 		usedLayouts = make(map[string]int)
 	}
 
+	// Compute per-slide section indices for accent strategy.
+	sectionIndices := make([]int, len(input.Slides))
+	{
+		secIdx := 0
+		for i := range input.Slides {
+			if i > 0 && inferSlideType(input.Slides[i]) == types.SlideTypeSection {
+				secIdx++
+			}
+			sectionIndices[i] = secIdx
+		}
+	}
+	accentStrategy := patterns.AccentStrategy(input.AccentStrategy)
+
 	for i := range input.Slides {
-		rs := resolveOneSlide(i, &input.Slides[i], input, tctx, usedLayouts, &output)
+		rs := resolveOneSlide(i, &input.Slides[i], input, tctx, usedLayouts, &output, accentStrategy, sectionIndices[i])
 		output.ResolvedSlides = append(output.ResolvedSlides, rs)
 	}
 
@@ -255,7 +268,7 @@ func resolvePreviewSlides(input *PresentationInput, tctx *previewTemplateContext
 }
 
 // resolveOneSlide resolves layout, placeholders, patterns, and shape_grid for a single slide.
-func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *previewTemplateContext, usedLayouts map[string]int, output *previewPlanOutput) resolvedSlide { //nolint:gocognit,gocyclo
+func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *previewTemplateContext, usedLayouts map[string]int, output *previewPlanOutput, accentStrategy patterns.AccentStrategy, sectionIndex int) resolvedSlide { //nolint:gocognit,gocyclo
 	rs := resolvedSlide{
 		SlideIndex:   i,
 		Placeholders: []resolvedPlaceholder{},
@@ -284,7 +297,7 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 
 	// Pattern expansion.
 	if slide.Pattern != nil && slide.ShapeGrid == nil {
-		resolveSlidePattern(i, slide, tctx, output, &rs)
+		resolveSlidePattern(i, slide, tctx, output, &rs, accentStrategy, sectionIndex)
 	}
 
 	// Shape grid virtual layout resolution.
@@ -387,11 +400,14 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 }
 
 // resolveSlidePattern expands a pattern and updates the slide's shape_grid.
-func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide) {
+func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
 	expCtx := patterns.ExpandContext{
-		Metadata:    tctx.metadata,
-		SlideWidth:  tctx.slideWidth,
-		SlideHeight: tctx.slideHeight,
+		Metadata:       tctx.metadata,
+		SlideWidth:     tctx.slideWidth,
+		SlideHeight:    tctx.slideHeight,
+		AccentStrategy: accentStrategy,
+		SlideIndex:     i,
+		SectionIndex:   sectionIndex,
 	}
 	expanded, expandWarnings, err := expandPattern(slide.Pattern, expCtx, patterns.Default())
 	if err != nil {
