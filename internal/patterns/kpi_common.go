@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // ---------------------------------------------------------------------------
@@ -11,10 +12,32 @@ import (
 // ---------------------------------------------------------------------------
 
 // KPICell is a single KPI cell: a big number and a short caption.
+// Supports string shorthand: "Big | Small" unmarshals to {big:"Big", small:"Small"}.
 type KPICell struct {
 	Big   string `json:"big"`
 	Small string `json:"small"`
 	Icon  string `json:"icon,omitempty"` // Bundled icon name (e.g. "trending-up", "filled:users")
+}
+
+// UnmarshalJSON supports string shorthand "Big | Small" or object {big, small}.
+func (c *KPICell) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		parts := strings.SplitN(s, " | ", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("KPICell string must be \"Big | Small\", got %q", s)
+		}
+		c.Big = parts[0]
+		c.Small = parts[1]
+		return nil
+	}
+	type alias KPICell
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("KPICell must be string \"Big | Small\" or {big, small}: %w", err)
+	}
+	*c = KPICell(a)
+	return nil
 }
 
 // KPIOverrides contains pattern-level overrides common to KPI patterns.
@@ -171,15 +194,19 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 }
 
 // kpiCellSchema returns the JSON Schema for a single KPI cell.
+// Accepts either the object form {big, small, icon?} or the shorthand string "Big | Small".
 func kpiCellSchema() *Schema {
-	return ObjectSchema(
-		map[string]*Schema{
-			"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
-			"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
-			"icon":  StringSchema(60).WithDescription("Bundled icon name (e.g. \"trending-up\", \"filled:users\")"),
-		},
-		[]string{"big", "small"},
-	).WithAdditionalProperties(false)
+	return OneOfSchema(
+		StringSchema(0).WithDescription("Shorthand: \"Big | Small\" (e.g. \"$4.2M | ARR\")"),
+		ObjectSchema(
+			map[string]*Schema{
+				"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
+				"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
+				"icon":  StringSchema(60).WithDescription("Bundled icon name (e.g. \"trending-up\", \"filled:users\")"),
+			},
+			[]string{"big", "small"},
+		).WithAdditionalProperties(false),
+	).WithDescription("KPI cell: string \"Big | Small\" or {big, small, icon?}")
 }
 
 

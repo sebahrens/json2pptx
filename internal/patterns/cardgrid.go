@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -200,7 +201,8 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 
 	// Cell count must equal columns × rows (D4: hard error, no truncation)
 	expectedCells := vals.Columns * vals.Rows
-	if expectedCells > 0 && len(vals.Cells) != expectedCells {
+	countMatches := expectedCells > 0 && len(vals.Cells) == expectedCells
+	if expectedCells > 0 && !countMatches {
 		e := errCountMismatch(name, "cells", expectedCells, len(vals.Cells), "")
 		e.Message = fmt.Sprintf("card-grid: cells must contain exactly %d items (columns=%d × rows=%d), got %d",
 			expectedCells, vals.Columns, vals.Rows, len(vals.Cells))
@@ -208,6 +210,14 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 
 		// Reverse-recommend: suggest alternative patterns that accept the actual cell count.
 		if swaps := SuggestSwap(Default(), name, len(vals.Cells), false); len(swaps) > 0 {
+			errs = append(errs, ErrWrongPatternFor(name, len(vals.Cells), swaps))
+		}
+	}
+
+	// When the cell count is valid but all headers look like KPI metrics,
+	// suggest the more specific KPI pattern (fewer tokens, better semantics).
+	if countMatches && len(vals.Cells) > 0 && cellsLookLikeKPIs(vals.Cells) {
+		if swaps := SuggestSwap(Default(), name, len(vals.Cells), true); len(swaps) > 0 {
 			errs = append(errs, ErrWrongPatternFor(name, len(vals.Cells), swaps))
 		}
 	}
@@ -496,4 +506,43 @@ func extractNumberPrefix(header string, fallback int) (badge string, remainder s
 		break
 	}
 	return fmt.Sprintf("%d", fallback), header
+}
+
+// cellsLookLikeKPIs returns true when every cell's header looks like a short
+// metric value (e.g. "$4.2M", "127%", "12d"). The heuristic is: header ≤ 8
+// chars and contains at least one digit.
+func cellsLookLikeKPIs(cells []CardGridCell) bool {
+	for _, cell := range cells {
+		if !looksLikeMetric(cell.Header) {
+			return false
+		}
+	}
+	return true
+}
+
+// looksLikeMetric returns true when s resembles a KPI big number: short (≤ 8
+// chars), starts with a digit or currency/sign prefix followed by a digit, and
+// digits outnumber letters. Examples: "$4.2M", "127%", "12d", "99.9%", "+15%".
+func looksLikeMetric(s string) bool {
+	if len(s) == 0 || len(s) > 8 {
+		return false
+	}
+	runes := []rune(s)
+	// First rune must be a digit or a common metric prefix ($, €, £, +, -, ~).
+	first := runes[0]
+	metricPrefix := first == '$' || first == '€' || first == '£' ||
+		first == '+' || first == '-' || first == '~'
+	if !unicode.IsDigit(first) && !metricPrefix {
+		return false
+	}
+	// Count digits vs letters — metrics are digit-heavy.
+	var digits, letters int
+	for _, ch := range runes {
+		if unicode.IsDigit(ch) {
+			digits++
+		} else if unicode.IsLetter(ch) {
+			letters++
+		}
+	}
+	return digits > 0 && digits >= letters
 }

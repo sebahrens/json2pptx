@@ -8,6 +8,56 @@ import (
 	"testing"
 )
 
+func TestKPICellUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantBig string
+		wantSml string
+		wantErr bool
+	}{
+		{"object_form", `{"big":"$4.2M","small":"ARR"}`, "$4.2M", "ARR", false},
+		{"string_shorthand", `"$4.2M | ARR"`, "$4.2M", "ARR", false},
+		{"shorthand_with_pipe_in_small", `"99% | Win | Loss"`, "99%", "Win | Loss", false},
+		{"string_no_pipe", `"just_a_value"`, "", "", true},
+		{"invalid_json", `[1,2]`, "", "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var cell KPICell
+			err := json.Unmarshal([]byte(tc.input), &cell)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if cell.Big != tc.wantBig {
+				t.Errorf("Big = %q, want %q", cell.Big, tc.wantBig)
+			}
+			if cell.Small != tc.wantSml {
+				t.Errorf("Small = %q, want %q", cell.Small, tc.wantSml)
+			}
+		})
+	}
+
+	// Shorthand values should validate and expand identically to object form.
+	t.Run("shorthand_validate_expand_equivalence", func(t *testing.T) {
+		shorthand := `["$4.2M | ARR", "127% | NRR", "12d | Cycle"]`
+		var cells Kpi3upValues
+		if err := json.Unmarshal([]byte(shorthand), &cells); err != nil {
+			t.Fatalf("unmarshal shorthand: %v", err)
+		}
+		p := &kpi3up{}
+		if err := p.Validate(&cells, nil, nil); err != nil {
+			t.Fatalf("validate shorthand: %v", err)
+		}
+	})
+}
+
 func TestKpi3up(t *testing.T) {
 	p := &kpi3up{}
 

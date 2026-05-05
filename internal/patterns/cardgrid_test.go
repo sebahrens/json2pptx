@@ -322,6 +322,43 @@ func TestCardGrid(t *testing.T) {
 		})
 	}
 
+	// KPI-shaped cells should produce a swap_pattern warning.
+	t.Run("validate_kpi_shaped_3_cells_suggests_swap", func(t *testing.T) {
+		vals := CardGridValues{
+			Columns: 3,
+			Rows:    1,
+			Cells: []CardGridCell{
+				{Header: "$4.2M", Body: "ARR"},
+				{Header: "127%", Body: "NRR"},
+				{Header: "12d", Body: "Sales cycle"},
+			},
+		}
+		err := p.Validate(&vals, nil, nil)
+		if err == nil {
+			t.Fatal("expected swap_pattern warning for KPI-shaped cells, got nil")
+		}
+		if !strings.Contains(err.Error(), "kpi-3up") {
+			t.Errorf("expected suggestion for kpi-3up, got: %v", err)
+		}
+	})
+
+	// Non-metric headers should NOT trigger KPI swap suggestion.
+	t.Run("validate_text_headers_no_swap", func(t *testing.T) {
+		vals := CardGridValues{
+			Columns: 3,
+			Rows:    1,
+			Cells: []CardGridCell{
+				{Header: "Strategy", Body: "Details"},
+				{Header: "Operations", Body: "Details"},
+				{Header: "Finance", Body: "Details"},
+			},
+		}
+		err := p.Validate(&vals, nil, nil)
+		if err != nil {
+			t.Errorf("unexpected error for non-metric headers: %v", err)
+		}
+	})
+
 	// Expand tests
 	t.Run("expand_2x3", func(t *testing.T) {
 		vals := CardGridValues{
