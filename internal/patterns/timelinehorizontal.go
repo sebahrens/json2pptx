@@ -39,9 +39,10 @@ func (th *timelineHorizontal) ExemplarValues() any {
 
 // TimelineStop is a single stop on the timeline: a label, optional date, optional body.
 type TimelineStop struct {
-	Label string `json:"label"`
-	Date  string `json:"date,omitempty"`
-	Body  string `json:"body,omitempty"`
+	Label   string `json:"label"`
+	Date    string `json:"date,omitempty"`
+	EndDate string `json:"end_date,omitempty"` // Only used in gantt style
+	Body    string `json:"body,omitempty"`
 }
 
 // TimelineHorizontalValues is the values type: 3–7 timeline stops.
@@ -55,6 +56,7 @@ type TimelineHorizontalOverrides struct {
 	DateSize       float64 `json:"date_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
 	Connector      string  `json:"connector,omitempty"` // "arrow" or "line" (default: "arrow")
+	Style          string  `json:"style,omitempty"`     // "dots" (default), "chevron", or "gantt"
 }
 
 // TimelineHorizontalCellOverride is an alias for the shared CellOverride struct.
@@ -72,9 +74,10 @@ func (th *timelineHorizontal) NewCellOverride() any { return &TimelineHorizontal
 func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
-			"date":  StringSchema(30).WithDescription("Optional date or time annotation"),
-			"body":  StringSchema(200).WithDescription("Optional body text for the stop"),
+			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
+			"date":     StringSchema(30).WithDescription("Optional date or time annotation"),
+			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
+			"body":     StringSchema(200).WithDescription("Optional body text for the stop"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -91,6 +94,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
 					"connector":       EnumSchema("arrow", "line").WithDescription("Connector style between stops (default: arrow)").WithDefault("arrow"),
+					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default rounded rectangles), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -123,6 +127,14 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 			"reduce values to at most 7 stops"))
 	}
 
+	// Determine style for context-sensitive validation
+	style := "dots"
+	if overrides != nil {
+		if ovr, ok := overrides.(*TimelineHorizontalOverrides); ok && ovr.Style != "" {
+			style = ovr.Style
+		}
+	}
+
 	// Per-stop validation
 	for i, stop := range *stops {
 		labelPath := fmt.Sprintf("values[%d].label", i)
@@ -133,6 +145,14 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 		}
 		if len(stop.Date) > 30 {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].date", i), 30, len(stop.Date)))
+		}
+		if len(stop.EndDate) > 30 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].end_date", i), 30, len(stop.EndDate)))
+		}
+		if stop.EndDate != "" && style != "gantt" {
+			errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].end_date", i), ErrCodeUnknownEnum,
+				"end_date is only valid with style \"gantt\"",
+				"remove end_date or set overrides.style to \"gantt\""))
 		}
 		if len(stop.Body) > 200 {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].body", i), 200, len(stop.Body)))
@@ -161,6 +181,22 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 		}
 	}
 
+	style := ovr.Style
+	if style == "" {
+		style = "dots"
+	}
+
+	switch style {
+	case "chevron":
+		return th.expandChevron(ctx, stops, ovr, cellOverrides)
+	case "gantt":
+		return th.expandGantt(ctx, stops, ovr, cellOverrides)
+	default:
+		return th.expandDots(ctx, stops, ovr, cellOverrides)
+	}
+}
+
+func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)
 	dateSize := ResolveSize(ovr.DateSize, 10.0)
@@ -221,6 +257,210 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 	}
 
 	return grid, nil
+}
+
+// expandChevron renders connected homePlate shapes with a gradient tint across the chain.
+// Label inside chevron, date below in a second row.
+func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	labelSize := ResolveSize(ovr.LabelSize, 12.0)
+	dateSize := ResolveSize(ovr.DateSize, 9.0)
+
+	n := len(*stops)
+
+	// Chevron row: homePlate shapes with gradient tint across the chain
+	chevronCells := make([]*jsonschema.GridCellInput, n)
+	for i, stop := range *stops {
+		// Compute tint for gradient: first stop is darkest (shade), last is lightest (tint)
+		fill := buildChevronGradientFill(accent, i, n)
+
+		// Label (and optionally body) inside the chevron
+		textContent := buildChevronTextContent(stop, labelSize)
+
+		shape := &jsonschema.ShapeSpecInput{
+			Geometry: "homePlate",
+			Fill:     fill,
+			Text:     textContent,
+		}
+
+		gc := &jsonschema.GridCellInput{
+			Shape: shape,
+		}
+
+		// Apply cell overrides
+		if co, ok := cellOverrides[i]; ok {
+			cellOvr, coOk := co.(*TimelineHorizontalCellOverride)
+			if coOk && cellOvr.AccentBar {
+				gc.AccentBar = &jsonschema.AccentBarInput{
+					Position: "top",
+					Color:    accent,
+					Width:    4,
+				}
+			}
+		}
+
+		chevronCells[i] = gc
+	}
+
+	// Date row: text labels below each chevron
+	dateCells := make([]*jsonschema.GridCellInput, n)
+	for i, stop := range *stops {
+		dateText := stop.Date
+		if dateText == "" {
+			dateText = " "
+		}
+		textContent := json.RawMessage(fmt.Sprintf(
+			`{"paragraphs":[{"content":%q,"size":%g,"align":"ctr"}],"align":"ctr","vertical_align":"top"}`,
+			dateText, dateSize,
+		))
+
+		shape := &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Text:     textContent,
+		}
+		dateCells[i] = &jsonschema.GridCellInput{Shape: shape}
+	}
+
+	grid := &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
+		Gap:     0,
+		Rows: []jsonschema.GridRowInput{
+			{Cells: chevronCells, Height: 60},
+			{Cells: dateCells, Height: 24},
+		},
+	}
+
+	return grid, nil
+}
+
+// expandGantt renders horizontal bars representing date ranges.
+// Label left-aligned in bar, date range shown as bar width hint.
+func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
+	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
+	labelSize := ResolveSize(ovr.LabelSize, 11.0)
+	dateSize := ResolveSize(ovr.DateSize, 9.0)
+
+	n := len(*stops)
+
+	// Each stop becomes a row with: label cell (col 1) + bar cell (col 2)
+	rows := make([]jsonschema.GridRowInput, n)
+	for i, stop := range *stops {
+		// Label cell
+		labelText := json.RawMessage(fmt.Sprintf(
+			`{"paragraphs":[{"content":%q,"size":%g,"bold":true,"align":"right"}],"align":"right","vertical_align":"ctr"}`,
+			stop.Label, labelSize,
+		))
+		labelShape := &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Text:     labelText,
+		}
+
+		// Date range text inside bar
+		dateLabel := stop.Date
+		if stop.EndDate != "" {
+			dateLabel = stop.Date + " → " + stop.EndDate
+		}
+		barText := json.RawMessage(fmt.Sprintf(
+			`{"paragraphs":[{"content":%q,"size":%g,"color":"lt1","align":"left"}],"align":"left","vertical_align":"ctr"}`,
+			dateLabel, dateSize,
+		))
+
+		// Tint gradient per row
+		fill := buildChevronGradientFill(accent, i, n)
+
+		barShape := &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     fill,
+			Text:     barText,
+		}
+
+		barCell := &jsonschema.GridCellInput{Shape: barShape}
+
+		// Apply cell overrides
+		if co, ok := cellOverrides[i]; ok {
+			cellOvr, coOk := co.(*TimelineHorizontalCellOverride)
+			if coOk && cellOvr.AccentBar {
+				barCell.AccentBar = &jsonschema.AccentBarInput{
+					Position: "left",
+					Color:    accent,
+					Width:    4,
+				}
+			}
+		}
+
+		rows[i] = jsonschema.GridRowInput{
+			Cells: []*jsonschema.GridCellInput{
+				{Shape: labelShape},
+				barCell,
+			},
+		}
+	}
+
+	grid := &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`[30, 70]`),
+		Gap:     8,
+		Rows:    rows,
+	}
+
+	return grid, nil
+}
+
+// buildChevronGradientFill produces a fill with gradient tint/shade across a chain.
+// First item is darkest (shade 70000), last is lightest (tint 40000), middle interpolates.
+func buildChevronGradientFill(accent string, index, total int) json.RawMessage {
+	if total <= 1 {
+		return json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+	}
+	// Interpolate from shade=70000 (dark) at index 0 to tint=40000 (light) at index n-1.
+	// Midpoint (ratio=0.5) is no modifier (plain accent).
+	ratio := float64(index) / float64(total-1)
+	if ratio < 0.5 {
+		// Shade: 70000 at ratio=0, no shade at ratio=0.5
+		shadeVal := int(70000 * (1.0 - 2.0*ratio))
+		if shadeVal > 0 {
+			return json.RawMessage(fmt.Sprintf(`{"color":%q,"shade":%d}`, accent, shadeVal))
+		}
+	} else if ratio > 0.5 {
+		// Tint: no tint at ratio=0.5, 40000 at ratio=1.0
+		tintVal := int(40000 * (2.0*ratio - 1.0))
+		if tintVal > 0 {
+			return json.RawMessage(fmt.Sprintf(`{"color":%q,"tint":%d}`, accent, tintVal))
+		}
+	}
+	return json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+}
+
+// buildChevronTextContent creates text for inside a chevron shape (label + optional body, no date).
+func buildChevronTextContent(stop TimelineStop, labelSize float64) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Bold    bool    `json:"bold,omitempty"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+
+	paras := []paragraph{
+		{Content: stop.Label, Size: labelSize, Bold: true, Color: "lt1", Align: "ctr"},
+	}
+	if stop.Body != "" {
+		paras = append(paras, paragraph{Content: stop.Body, Size: labelSize - 2, Color: "lt1", Align: "ctr"})
+	}
+
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+	}{
+		Paragraphs:    paras,
+		Align:         "ctr",
+		VerticalAlign: "ctr",
+	}
+
+	data, _ := json.Marshal(textObj)
+	return data
 }
 
 // buildTimelineStopTextContent creates a JSON text object with paragraphs for a timeline stop.

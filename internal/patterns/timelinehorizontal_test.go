@@ -360,6 +360,183 @@ func TestTimelineHorizontal(t *testing.T) {
 		}
 	})
 
+	// Chevron style tests
+	t.Run("expand_chevron_style", func(t *testing.T) {
+		vals := TimelineHorizontalValues{
+			{Label: "Discovery", Date: "30 Apr", Body: "Research"},
+			{Label: "Design", Date: "15 May"},
+			{Label: "Build", Date: "01 Jun"},
+			{Label: "Test", Date: "15 Jul"},
+			{Label: "Launch", Date: "01 Aug"},
+			{Label: "Scale", Date: "30 Sep"},
+		}
+		ovr := &TimelineHorizontalOverrides{Style: "chevron", Accent: "accent2"}
+		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		// Should have 2 rows: chevrons + dates
+		if len(grid.Rows) != 2 {
+			t.Fatalf("expected 2 rows, got %d", len(grid.Rows))
+		}
+		// Chevron row
+		if len(grid.Rows[0].Cells) != 6 {
+			t.Fatalf("expected 6 chevron cells, got %d", len(grid.Rows[0].Cells))
+		}
+		// No connector on chevron row (shapes are connected visually)
+		if grid.Rows[0].Connector != nil {
+			t.Error("chevron style should not have connectors")
+		}
+		// Check geometry is homePlate
+		for i, cell := range grid.Rows[0].Cells {
+			if cell.Shape.Geometry != "homePlate" {
+				t.Errorf("cell[%d] geometry = %q, want homePlate", i, cell.Shape.Geometry)
+			}
+		}
+		// First cell should have shade modifier (gradient)
+		var firstFill struct {
+			Color string `json:"color"`
+			Shade int    `json:"shade"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &firstFill); err != nil {
+			t.Fatalf("first cell fill unmarshal: %v", err)
+		}
+		if firstFill.Color != "accent2" {
+			t.Errorf("first cell fill color = %q, want accent2", firstFill.Color)
+		}
+		if firstFill.Shade == 0 {
+			t.Error("first cell should have shade modifier for gradient")
+		}
+		// Last cell should have tint modifier
+		var lastFill struct {
+			Color string `json:"color"`
+			Tint  int    `json:"tint"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[5].Shape.Fill, &lastFill); err != nil {
+			t.Fatalf("last cell fill unmarshal: %v", err)
+		}
+		if lastFill.Tint == 0 {
+			t.Error("last cell should have tint modifier for gradient")
+		}
+		// Date row cells should have "none" fill
+		for i, cell := range grid.Rows[1].Cells {
+			var fill string
+			if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
+				t.Fatalf("date cell[%d] fill unmarshal: %v", i, err)
+			}
+			if fill != "none" {
+				t.Errorf("date cell[%d] fill = %q, want none", i, fill)
+			}
+		}
+		// Gap should be 0 for chevron style
+		if grid.Gap != 0 {
+			t.Errorf("gap = %g, want 0 for chevron style", grid.Gap)
+		}
+	})
+
+	t.Run("expand_chevron_3_stops_middle_is_plain", func(t *testing.T) {
+		vals := TimelineHorizontalValues{
+			{Label: "Start", Date: "Jan"},
+			{Label: "Middle", Date: "Jun"},
+			{Label: "End", Date: "Dec"},
+		}
+		ovr := &TimelineHorizontalOverrides{Style: "chevron"}
+		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		// Middle cell (index 1) should be plain accent (no modifiers)
+		var midFill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Fill, &midFill); err != nil {
+			t.Fatalf("middle cell fill unmarshal: %v", err)
+		}
+		if midFill != "accent1" {
+			t.Errorf("middle cell fill = %q, want plain \"accent1\"", midFill)
+		}
+	})
+
+	// Gantt style tests
+	t.Run("expand_gantt_style", func(t *testing.T) {
+		vals := TimelineHorizontalValues{
+			{Label: "Discovery", Date: "Apr 30", EndDate: "May 15"},
+			{Label: "Design", Date: "May 15", EndDate: "Jun 01"},
+			{Label: "Build", Date: "Jun 01", EndDate: "Jul 15"},
+		}
+		ovr := &TimelineHorizontalOverrides{Style: "gantt"}
+		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		// Each stop is its own row with 2 cells (label + bar)
+		if len(grid.Rows) != 3 {
+			t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+		}
+		for i, row := range grid.Rows {
+			if len(row.Cells) != 2 {
+				t.Errorf("row[%d] expected 2 cells, got %d", i, len(row.Cells))
+			}
+		}
+		// Columns should be [30, 70]
+		var cols []int
+		if err := json.Unmarshal(grid.Columns, &cols); err != nil {
+			t.Fatalf("columns unmarshal: %v", err)
+		}
+		if len(cols) != 2 || cols[0] != 30 || cols[1] != 70 {
+			t.Errorf("columns = %v, want [30, 70]", cols)
+		}
+		// Bar cell should contain date range in text
+		var barText struct {
+			Paragraphs []struct {
+				Content string `json:"content"`
+			} `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &barText); err != nil {
+			t.Fatalf("bar text unmarshal: %v", err)
+		}
+		if barText.Paragraphs[0].Content != "Apr 30 → May 15" {
+			t.Errorf("bar text = %q, want %q", barText.Paragraphs[0].Content, "Apr 30 → May 15")
+		}
+	})
+
+	t.Run("validate_end_date_only_gantt", func(t *testing.T) {
+		vals := TimelineHorizontalValues{
+			{Label: "Phase 1", Date: "Jan", EndDate: "Feb"},
+			{Label: "Phase 2", Date: "Mar"},
+			{Label: "Phase 3", Date: "May"},
+		}
+		// Without gantt style, end_date should error
+		err := p.Validate(&vals, nil, nil)
+		if err == nil {
+			t.Fatal("expected error for end_date without gantt style")
+		}
+		if !strings.Contains(err.Error(), "end_date is only valid with style \"gantt\"") {
+			t.Errorf("error = %q, want mention of end_date/gantt", err.Error())
+		}
+
+		// With gantt style, it should pass
+		ovr := &TimelineHorizontalOverrides{Style: "gantt"}
+		err = p.Validate(&vals, ovr, nil)
+		if err != nil {
+			t.Errorf("unexpected error with gantt style: %v", err)
+		}
+	})
+
+	t.Run("validate_end_date_maxlen", func(t *testing.T) {
+		vals := TimelineHorizontalValues{
+			{Label: "Phase 1", Date: "Jan", EndDate: strings.Repeat("e", 31)},
+			{Label: "Phase 2"},
+			{Label: "Phase 3"},
+		}
+		ovr := &TimelineHorizontalOverrides{Style: "gantt"}
+		err := p.Validate(&vals, ovr, nil)
+		if err == nil {
+			t.Fatal("expected error for long end_date")
+		}
+		if !strings.Contains(err.Error(), "exceeds maxLength 30") {
+			t.Errorf("error = %q, want maxLength mention", err.Error())
+		}
+	})
+
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := TimelineHorizontalValues{
