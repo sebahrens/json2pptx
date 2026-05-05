@@ -841,6 +841,10 @@ func (ctx *singlePassContext) resolveDiagramWithMetadata(slideNum int, item Cont
 	if len(diagramSpec.Style.Colors) == 0 && len(ctx.themeColors) > 0 {
 		diagramSpec.Style.ThemeColors = ctx.themeColors
 	}
+	// Inject data palette for chart series ordering (from TemplateMetadata)
+	if len(diagramSpec.Style.Colors) == 0 && len(ctx.dataPalette) > 0 {
+		diagramSpec.Style.DataPalette = ctx.dataPalette
+	}
 
 	// Use placeholder-aware dimensions if diagram doesn't have explicit dimensions set.
 	if diagramSpec.Width == 0 || diagramSpec.Height == 0 {

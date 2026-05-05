@@ -44,6 +44,7 @@ type GenerationRequest struct {
 	SyntheticFiles        map[string][]byte   // Synthetic layout files from SynthesisManifest (nil = no synthetic layouts)
 	Footer                *FooterConfig       // Footer configuration (nil = disabled)
 	StrictFit             string              // Text-fit checking mode for charts: "off", "warn", "strict" (default: "warn")
+	DataPalette           []string            // Ordered hex colors for chart series (resolved from TemplateMetadata.DataPalette)
 	ValidateOutput        bool                // When true, run OOXML content validation on generated file
 }
 

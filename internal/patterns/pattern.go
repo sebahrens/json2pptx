@@ -106,6 +106,12 @@ func (c ExpandContext) ResolveAccent(accent, semanticAccent string) string {
 	return ResolveAccentWithStrategy(accent, semanticAccent, c.Metadata, c.AccentStrategy, c.SlideIndex, c.SectionIndex)
 }
 
+// ResolveSurface returns the scheme color name for a surface tint role,
+// falling back to defaultColor if the role is not defined in template metadata.
+func (c ExpandContext) ResolveSurface(role, defaultColor string) string {
+	return ResolveSurface(role, c.Metadata, defaultColor)
+}
+
 // LayoutBounds describes the usable content area on a slide in EMU.
 type LayoutBounds struct {
 	X      int64 // Left offset in EMU

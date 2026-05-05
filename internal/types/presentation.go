@@ -244,6 +244,7 @@ type ChartDiagnostic struct {
 type DiagramStyle struct {
 	Colors      []string     `json:"colors,omitempty" yaml:"colors,omitempty"`           // Hex colors for data series
 	ThemeColors []ThemeColor `json:"-" yaml:"-"`                                         // Theme colors from template (internal use)
+	DataPalette []string     `json:"-" yaml:"-"`                                         // Ordered hex colors for chart series (internal use, from TemplateMetadata)
 	FontFamily  string       `json:"font_family,omitempty" yaml:"font_family,omitempty"` // Font for labels and text
 	ShowLegend  bool         `json:"show_legend,omitempty" yaml:"show_legend,omitempty"` // Display legend
 	ShowValues  bool         `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements

@@ -831,7 +831,47 @@ func StyleGuideFromSpec(spec StyleSpec) *StyleGuide {
 		}
 	}
 
+	// Handle DataPalette — override accent ordering for chart series
+	if len(spec.DataPalette) > 0 {
+		colors := make([]Color, 0, len(spec.DataPalette))
+		for _, hex := range spec.DataPalette {
+			if c, err := ParseColor(hex); err == nil {
+				colors = append(colors, c)
+			}
+		}
+		if len(colors) > 0 {
+			applyDataPalette(guide.Palette, colors)
+		}
+	}
+
 	return guide
+}
+
+// applyDataPalette reorders the accent slots in the palette to match the
+// provided data palette ordering. This ensures chart series colors follow
+// the template's preferred sequence for maximum visual distinctness.
+func applyDataPalette(p *Palette, colors []Color) {
+	if len(colors) >= 1 {
+		p.Accent1 = colors[0]
+		p.Primary = colors[0]
+	}
+	if len(colors) >= 2 {
+		p.Accent2 = colors[1]
+		p.Secondary = colors[1]
+	}
+	if len(colors) >= 3 {
+		p.Accent3 = colors[2]
+		p.Tertiary = colors[2]
+	}
+	if len(colors) >= 4 {
+		p.Accent4 = colors[3]
+	}
+	if len(colors) >= 5 {
+		p.Accent5 = colors[4]
+	}
+	if len(colors) >= 6 {
+		p.Accent6 = colors[5]
+	}
 }
 
 // CustomPalette creates a palette from a slice of colors.

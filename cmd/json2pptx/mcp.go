@@ -440,6 +440,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		ExcludeTemplateSlides: true,
 		SyntheticFiles:        syntheticFiles,
 		StrictFit:             strictFit,
+		DataPalette:           resolveDataPalette(templateMetadata, theme.Colors),
 	}
 
 	// Wire footer/chrome configuration.

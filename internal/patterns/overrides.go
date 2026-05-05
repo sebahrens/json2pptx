@@ -100,6 +100,25 @@ func ResolveAccentWithStrategy(accent, semanticAccent string, metadata *types.Te
 	return AccentForStrategy(strategy, slideIndex, sectionIndex)
 }
 
+// ValidSurfaceTintRoles is the set of recognised surface tint roles.
+var ValidSurfaceTintRoles = map[string]bool{
+	"subtle":   true,
+	"paper":    true,
+	"elevated": true,
+	"inverse":  true,
+}
+
+// ResolveSurface returns the scheme color name for a surface tint role.
+// Falls back to defaultColor if the role is not defined in the template metadata.
+func ResolveSurface(role string, metadata *types.TemplateMetadata, defaultColor string) string {
+	if metadata != nil && len(metadata.SurfaceTints) > 0 {
+		if resolved, ok := metadata.SurfaceTints[role]; ok {
+			return resolved
+		}
+	}
+	return defaultColor
+}
+
 // ResolveSize returns size if positive, otherwise defaultSize.
 func ResolveSize(size, defaultSize float64) float64 {
 	if size > 0 {

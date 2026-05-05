@@ -290,6 +290,7 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	ctx.themeOverride = req.ThemeOverride
 	ctx.footerConfig = req.Footer
 	ctx.strictFit = req.StrictFit
+	ctx.dataPalette = req.DataPalette
 
 	cleanup, err := ctx.initializeContext(req.TemplatePath)
 	if err != nil {

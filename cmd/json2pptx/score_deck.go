@@ -121,7 +121,8 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 
 	// 2. Run actual generation to a temp directory to capture render-time findings
 	//    (contrast swaps, autofit shrink, pagination, clamping).
-	renderFindings := mc.collectRenderFindings(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata)
+	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
+	renderFindings := mc.collectRenderFindings(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
 	findings = append(findings, renderFindings...)
 
 	// 3. Append synthesis findings (template-level).
@@ -155,6 +156,7 @@ func (mc *mcpConfig) collectRenderFindings(
 	slideWidth, slideHeight int64,
 	syntheticFiles map[string][]byte,
 	templateMetadata *types.TemplateMetadata,
+	dataPalette []string,
 ) []patterns.FitFinding {
 	// Resolve deck-level rhythm grid when configured.
 	var rhythmGrid *resolvedGrid
@@ -189,6 +191,7 @@ func (mc *mcpConfig) collectRenderFindings(
 		ExcludeTemplateSlides: true,
 		SyntheticFiles:        syntheticFiles,
 		StrictFit:             "warn",
+		DataPalette:           dataPalette,
 	}
 
 	// Wire footer/chrome configuration.

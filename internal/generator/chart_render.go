@@ -177,6 +177,9 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		if spec.Style.Background != "" {
 			style.Background = spec.Style.Background
 		}
+		if len(spec.Style.DataPalette) > 0 {
+			style.DataPalette = spec.Style.DataPalette
+		}
 	}
 
 	// Build output spec

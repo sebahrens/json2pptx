@@ -8,6 +8,7 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -34,6 +35,10 @@ type templateDef struct {
 	BarSchemeClr string
 	// Bullet character
 	BulletChar string
+	// Surface tints: role -> scheme color name
+	SurfaceTints map[string]string
+	// Data palette: ordered scheme color names for chart series
+	DataPalette []string
 }
 
 var templates = []templateDef{
@@ -50,6 +55,8 @@ var templates = []templateDef{
 		MajorFont:    "Calibri", MinorFont: "Calibri",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u25A0",
+		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
+		DataPalette:  []string{"accent1", "accent2", "accent3", "accent4", "accent6", "accent5"},
 	},
 	{
 		Name:         "forest-green",
@@ -64,6 +71,8 @@ var templates = []templateDef{
 		MajorFont:    "Calibri", MinorFont: "Calibri",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u2022",
+		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
+		DataPalette:  []string{"accent1", "accent3", "accent2", "accent5", "accent4", "accent6"},
 	},
 	{
 		Name:         "warm-coral",
@@ -78,6 +87,8 @@ var templates = []templateDef{
 		MajorFont:    "Gill Sans", MinorFont: "Calibri",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u2013",
+		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
+		DataPalette:  []string{"accent1", "accent4", "accent5", "accent2", "accent6", "accent3"},
 	},
 	{
 		Name:         "pwc-template",
@@ -92,6 +103,8 @@ var templates = []templateDef{
 		MajorFont:    "Georgia", MinorFont: "Arial",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u2022",
+		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
+		DataPalette:  []string{"accent1", "accent2", "accent4", "accent3", "accent5", "accent6"},
 	},
 }
 
@@ -257,7 +270,37 @@ func generateTemplate(def templateDef, outPath string) error {
 		return err
 	}
 
+	// --- Template Metadata (go-slide-creator) ---
+	if err := add("ppt/go-slide-creator-metadata.json", templateMetadataJSON(def)); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// templateMetadataJSON generates the go-slide-creator metadata JSON for embedding.
+func templateMetadataJSON(def templateDef) string {
+	meta := struct {
+		Version        string            `json:"version"`
+		Name           string            `json:"name"`
+		Description    string            `json:"description,omitempty"`
+		SurfaceTints   map[string]string `json:"surface_tints,omitempty"`
+		DataPalette    []string          `json:"data_palette,omitempty"`
+		SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
+	}{
+		Version:      "1.0",
+		Name:         def.DisplayName,
+		Description:  def.Description,
+		SurfaceTints: def.SurfaceTints,
+		DataPalette:  def.DataPalette,
+		SemanticAccents: map[string]string{
+			"positive": "accent4",
+			"negative": "accent2",
+			"neutral":  "accent5",
+		},
+	}
+	data, _ := json.MarshalIndent(meta, "", "  ")
+	return string(data)
 }
 
 func contentTypes(def templateDef) string {
@@ -265,6 +308,7 @@ func contentTypes(def templateDef) string {
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
 		`<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
 		`<Default Extension="xml" ContentType="application/xml"/>` +
+		`<Default Extension="json" ContentType="application/json"/>` +
 		`<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>` +
 		`<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>` +
 		`<Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>` +

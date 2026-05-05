@@ -127,6 +127,11 @@ type ChartContext struct {
 	// Theme colors from template for chart styling
 	themeColors []types.ThemeColor
 
+	// dataPalette is an ordered list of hex colors for chart series.
+	// Resolved from TemplateMetadata.DataPalette (scheme names → hex) at init time.
+	// When non-empty, passed to svggen StyleSpec.DataPalette to override accent ordering.
+	dataPalette []string
+
 	// themeOverride contains per-deck color/font overrides from frontmatter.
 	// Applied after template theme is parsed, before chart rendering.
 	themeOverride *types.ThemeOverride

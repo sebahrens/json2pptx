@@ -52,6 +52,17 @@ type TemplateMetadata struct {
 	// theme accent names (e.g. "accent3"). Patterns that set semantic_accent
 	// resolve through this map; templates without it fall back to accent1.
 	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
+
+	// SurfaceTints maps surface roles to theme color names for tinted backgrounds.
+	// Roles: "subtle" (lightest tint), "paper" (card/panel background),
+	// "elevated" (raised surface), "inverse" (dark surface for contrast).
+	// Values are scheme color names (e.g. "lt2", "accent1").
+	SurfaceTints map[string]string `json:"surface_tints,omitempty"`
+
+	// DataPalette is an ordered list of scheme color names for chart series.
+	// svggen uses this to ensure chart colors match the template's visual identity.
+	// Example: ["accent1", "accent2", "accent5", "accent3", "accent6", "accent4"]
+	DataPalette []string `json:"data_palette,omitempty"`
 }
 
 // LayoutHint provides additional metadata hints for a specific layout.

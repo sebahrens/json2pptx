@@ -126,3 +126,60 @@ func TestExpandContext_ResolveAccent(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveSurface(t *testing.T) {
+	meta := &types.TemplateMetadata{
+		SurfaceTints: map[string]string{
+			"subtle":   "lt2",
+			"paper":    "lt1",
+			"elevated": "accent5",
+			"inverse":  "dk2",
+		},
+	}
+
+	tests := []struct {
+		name         string
+		role         string
+		metadata     *types.TemplateMetadata
+		defaultColor string
+		want         string
+	}{
+		{name: "role found in metadata", role: "subtle", metadata: meta, defaultColor: "lt1", want: "lt2"},
+		{name: "paper role", role: "paper", metadata: meta, defaultColor: "lt2", want: "lt1"},
+		{name: "elevated role", role: "elevated", metadata: meta, defaultColor: "lt2", want: "accent5"},
+		{name: "role not found falls back", role: "unknown", metadata: meta, defaultColor: "dk1", want: "dk1"},
+		{name: "nil metadata falls back", role: "subtle", metadata: nil, defaultColor: "lt1", want: "lt1"},
+		{name: "empty tints falls back", role: "subtle", metadata: &types.TemplateMetadata{}, defaultColor: "lt1", want: "lt1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveSurface(tt.role, tt.metadata, tt.defaultColor)
+			if got != tt.want {
+				t.Errorf("ResolveSurface(%q, meta, %q) = %q, want %q",
+					tt.role, tt.defaultColor, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExpandContext_ResolveSurface(t *testing.T) {
+	ctx := ExpandContext{
+		Metadata: &types.TemplateMetadata{
+			SurfaceTints: map[string]string{
+				"subtle": "accent3",
+				"paper":  "lt2",
+			},
+		},
+	}
+
+	if got := ctx.ResolveSurface("subtle", "lt1"); got != "accent3" {
+		t.Errorf("ctx.ResolveSurface(subtle) = %q, want accent3", got)
+	}
+	if got := ctx.ResolveSurface("paper", "lt1"); got != "lt2" {
+		t.Errorf("ctx.ResolveSurface(paper) = %q, want lt2", got)
+	}
+	if got := ctx.ResolveSurface("inverse", "dk1"); got != "dk1" {
+		t.Errorf("ctx.ResolveSurface(inverse) = %q, want dk1 (fallback)", got)
+	}
+}

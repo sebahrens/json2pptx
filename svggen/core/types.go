@@ -189,6 +189,12 @@ type StyleSpec struct {
 	// carrying the 6 accent hex values.
 	ThemeColors []ThemeColorInput `json:"theme_colors,omitempty" yaml:"theme_colors,omitempty"`
 
+	// DataPalette is an ordered list of hex colors for chart series rendering.
+	// When set, these colors take priority over the accent color order from
+	// ThemeColors, allowing templates to define an optimized series ordering
+	// (e.g. maximizing perceptual distinctness between adjacent series).
+	DataPalette []string `json:"data_palette,omitempty" yaml:"data_palette,omitempty"`
+
 	// ShowLegend enables the legend display.
 	ShowLegend bool `json:"show_legend,omitempty" yaml:"show_legend,omitempty"`
 

@@ -280,7 +280,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		gridCells := make([]*jsonschema.GridCellInput, vals.Columns)
 		for col := 0; col < vals.Columns; col++ {
 			cell := vals.Cells[cellIdx]
-			gc := c.expandCell(cell, cellIdx, style, accent, headerSize, bodySize)
+			gc := c.expandCell(ctx, cell, cellIdx, style, accent, headerSize, bodySize)
 
 			// Apply cell overrides
 			if co, ok := cellOverrides[cellIdx]; ok {
@@ -312,7 +312,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 }
 
 // expandCell produces a single GridCellInput based on the selected visual style.
-func (c *cardGrid) expandCell(cell CardGridCell, idx int, style, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, style, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
 	var gc *jsonschema.GridCellInput
 	switch style {
 	case "accent-stripe":
@@ -322,7 +322,7 @@ func (c *cardGrid) expandCell(cell CardGridCell, idx int, style, accent string, 
 	case "icon-card":
 		gc = c.expandIconCard(cell, accent, headerSize, bodySize)
 	case "tinted":
-		gc = c.expandTinted(cell, idx, accent, headerSize, bodySize)
+		gc = c.expandTinted(ctx, cell, idx, accent, headerSize, bodySize)
 	default: // "filled"
 		gc = c.expandFilled(cell, accent, headerSize, bodySize)
 	}
@@ -396,11 +396,13 @@ func (c *cardGrid) expandIconCard(cell CardGridCell, accent string, headerSize, 
 	}
 }
 
-// expandTinted: alternating lt1 / lt2 card backgrounds with dark text.
-func (c *cardGrid) expandTinted(cell CardGridCell, idx int, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
-	fill := "lt1"
+// expandTinted: alternating surface tint backgrounds with dark text.
+// Uses SurfaceTints from template metadata when available (subtle/paper roles),
+// falling back to lt1/lt2 for templates without surface tint definitions.
+func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	fill := ctx.ResolveSurface("subtle", "lt1")
 	if idx%2 == 1 {
-		fill = "lt2"
+		fill = ctx.ResolveSurface("paper", "lt2")
 	}
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{

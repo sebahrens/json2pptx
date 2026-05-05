@@ -247,16 +247,16 @@ func loadRunConfig(configPath, templatesDir, outputDir string, chartPNG bool) (c
 
 // analyzeTemplateLayouts opens a template, parses layouts, synthesizes missing layouts,
 // normalizes placeholder names, and returns the metadata needed for slide conversion.
-func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64, *types.TemplateMetadata, []patterns.FitFinding) {
+func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64, *types.TemplateMetadata, types.ThemeInfo, []patterns.FitFinding) {
 	reader, err := template.OpenTemplate(templatePath)
 	if err != nil {
-		return nil, nil, 0, 0, nil, nil
+		return nil, nil, 0, 0, nil, types.ThemeInfo{}, nil
 	}
 	defer func() { _ = reader.Close() }()
 
 	layouts, err := template.ParseLayouts(reader)
 	if err != nil {
-		return nil, nil, 0, 0, nil, nil
+		return nil, nil, 0, 0, nil, types.ThemeInfo{}, nil
 	}
 
 	theme := template.ParseTheme(reader)
@@ -291,7 +291,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
 	}
-	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight, metadata, synthesisFindings
+	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight, metadata, theme, synthesisFindings
 }
 
 // runJSONMode processes JSON input and generates PPTX.
@@ -366,7 +366,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	defer templateCleanup()
 
 	// Analyze template for layout metadata, synthetic files, and dimensions
-	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, synthesisFindings := analyzeTemplateLayouts(templatePath)
+	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, templateTheme, synthesisFindings := analyzeTemplateLayouts(templatePath)
 
 	// Resolve canonical layout names (e.g. "title", "content", "closing") to
 	// concrete layout IDs using tag-based matching against the target template.
@@ -440,6 +440,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		ExcludeTemplateSlides: true,
 		SyntheticFiles:        syntheticFiles,
 		StrictFit:             strictFit,
+		DataPalette:           resolveDataPalette(templateMetadata, templateTheme.Colors),
 	}
 
 	// Wire footer/chrome configuration.
