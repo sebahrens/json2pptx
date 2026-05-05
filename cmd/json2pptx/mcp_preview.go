@@ -36,6 +36,14 @@ type resolvedSlide struct {
 	ExpandedPattern     *resolvedPattern      `json:"expanded_pattern,omitempty"`
 	ShapeGridResolution *resolvedShapeGrid    `json:"shape_grid_resolution,omitempty"`
 	AppliedDefaults     *resolvedDefaults     `json:"applied_defaults,omitempty"`
+	Occupancy           *resolvedOccupancy    `json:"occupancy,omitempty"`
+}
+
+// resolvedOccupancy reports grid slot usage for a slide's shape_grid.
+type resolvedOccupancy struct {
+	FilledPct   float64 `json:"filled_pct"`
+	FilledSlots int     `json:"filled_slots"`
+	TotalSlots  int     `json:"total_slots"`
 }
 
 // resolvedPlaceholder describes one content→placeholder mapping after resolution.
@@ -305,6 +313,11 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 		resolveSlideShapeGrid(slide, tctx, &rs)
 	}
 
+	// Grid occupancy for preview response.
+	if slide.ShapeGrid != nil && len(slide.ShapeGrid.Rows) > 0 {
+		rs.Occupancy = computeResolvedOccupancy(slide.ShapeGrid)
+	}
+
 	return rs
 }
 
@@ -449,6 +462,32 @@ func resolveSlideShapeGrid(slide *SlideInput, tctx *previewTemplateContext, rs *
 		}
 	}
 	rs.ShapeGridResolution = sgr
+}
+
+// computeResolvedOccupancy computes grid slot usage for the preview response.
+func computeResolvedOccupancy(grid *ShapeGridInput) *resolvedOccupancy {
+	numCols := inferGridColumns(grid)
+	if numCols <= 0 {
+		return nil
+	}
+	totalSlots := len(grid.Rows) * numCols
+	filledSlots := 0
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil {
+				filledSlots++
+			}
+		}
+	}
+	if totalSlots <= 0 {
+		return nil
+	}
+	filledPct := float64(filledSlots) / float64(totalSlots) * 100.0
+	return &resolvedOccupancy{
+		FilledPct:   filledPct,
+		FilledSlots: filledSlots,
+		TotalSlots:  totalSlots,
+	}
 }
 
 // computePreviewFitFindings runs fit detectors against the resolved plan.

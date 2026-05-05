@@ -36,6 +36,8 @@ const (
 	ErrCodeFooterCollision       = "footer_collision"
 	ErrCodeTitleWraps            = "title_wraps"
 	ErrCodeSparseLayout          = "sparse_layout"
+	ErrCodePatternUnderfilled    = "pattern_underfilled"
+	ErrCodePatternOvercrowded    = "pattern_overcrowded"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced  = "chart_value_coerced"
@@ -87,6 +89,8 @@ var (
 	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
 	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
 	ErrSparseLayout        = errors.New("content occupies less than 40% of bounds height")
+	ErrPatternUnderfilled  = errors.New("pattern grid less than 50% filled")
+	ErrPatternOvercrowded  = errors.New("pattern grid exceeds recommended cell count")
 
 	ErrChartValueCoerced  = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred = errors.New("chart data shape inferred from flat input")
@@ -132,6 +136,8 @@ var codeSentinel = map[string]error{
 	ErrCodeFooterCollision:       ErrFooterCollision,
 	ErrCodeTitleWraps:            ErrTitleWraps,
 	ErrCodeSparseLayout:          ErrSparseLayout,
+	ErrCodePatternUnderfilled:    ErrPatternUnderfilled,
+	ErrCodePatternOvercrowded:    ErrPatternOvercrowded,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,

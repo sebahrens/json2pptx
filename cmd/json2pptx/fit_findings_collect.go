@@ -42,6 +42,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 		}
 	}
 
+	// 4. Grid occupancy: pattern_underfilled / pattern_overcrowded.
+	findings = append(findings, collectGridOccupancyFindings(input)...)
+
 	// Sort by ActionRank desc, then slide index asc.
 	sort.Slice(findings, func(i, j int) bool {
 		ri := patterns.ActionRank(findings[i].Action)
@@ -722,4 +725,110 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 		})
 	}
 	return findings
+}
+
+// patternRecommendedMax maps known patterns to their recommended maximum cell
+// count. Patterns not listed here have no overcrowding limit enforced.
+var patternRecommendedMax = map[string]int{
+	"card-grid":           9,
+	"icon-row":            5,
+	"kpi-3up":             3,
+	"kpi-4up":             4,
+	"matrix-2x2":          4,
+	"timeline-horizontal": 6,
+	"process-flow":        8,
+	"comparison-2col":     8,
+	"before-after":        8,
+}
+
+// collectGridOccupancyFindings checks each slide's shape_grid for underfilled
+// or overcrowded patterns, emitting pattern_underfilled / pattern_overcrowded.
+func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+
+	for si, slide := range input.Slides {
+		grid := slide.ShapeGrid
+		if grid == nil || len(grid.Rows) == 0 {
+			continue
+		}
+
+		// Determine column count.
+		numCols := inferGridColumns(grid)
+
+		// Count filled slots.
+		totalSlots := len(grid.Rows) * numCols
+		filledSlots := 0
+		for _, row := range grid.Rows {
+			for _, cell := range row.Cells {
+				if cell != nil {
+					filledSlots++
+				}
+			}
+		}
+
+		if totalSlots <= 0 {
+			continue
+		}
+
+		// Determine pattern name.
+		patternName := ""
+		if slide.Pattern != nil {
+			patternName = slide.Pattern.Name
+		}
+
+		path := slidepath.ShapeGrid(si)
+
+		// Check underfilled.
+		if f := generator.DetectPatternUnderfilled(generator.GridOccupancyInput{
+			SlideIndex:  si,
+			Path:        path,
+			PatternName: patternName,
+			FilledSlots: filledSlots,
+			TotalSlots:  totalSlots,
+		}); f != nil {
+			findings = append(findings, *f)
+		}
+
+		// Check overcrowded (only for known patterns with a recommended max).
+		recMax := 0
+		if patternName != "" {
+			recMax = patternRecommendedMax[patternName]
+		}
+		if recMax > 0 {
+			if f := generator.DetectPatternOvercrowded(generator.GridOccupancyInput{
+				SlideIndex:     si,
+				Path:           path,
+				PatternName:    patternName,
+				FilledSlots:    filledSlots,
+				TotalSlots:     totalSlots,
+				RecommendedMax: recMax,
+			}); f != nil {
+				findings = append(findings, *f)
+			}
+		}
+	}
+
+	return findings
+}
+
+// inferGridColumns determines the column count from the grid's Columns field
+// or infers from the maximum cells per row.
+func inferGridColumns(grid *ShapeGridInput) int {
+	if len(grid.Columns) > 0 {
+		var n float64
+		if err := json.Unmarshal(grid.Columns, &n); err == nil {
+			return int(n)
+		}
+		var arr []float64
+		if err := json.Unmarshal(grid.Columns, &arr); err == nil {
+			return len(arr)
+		}
+	}
+	numCols := 0
+	for _, row := range grid.Rows {
+		if len(row.Cells) > numCols {
+			numCols = len(row.Cells)
+		}
+	}
+	return numCols
 }
