@@ -33,6 +33,7 @@ const (
 	ErrCodeSlideBoundsOverflow   = "slide_bounds_overflow"
 	ErrCodeFooterCollision       = "footer_collision"
 	ErrCodeTitleWraps            = "title_wraps"
+	ErrCodeSparseLayout          = "sparse_layout"
 
 	// Render-time finding codes (emitted during generation, not pre-flight).
 	ErrCodePlaceholderRemapped   = "placeholder_remapped"
@@ -77,6 +78,7 @@ var (
 	ErrSlideBoundsOverflow = errors.New("shape center falls outside slide bounds")
 	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
 	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
+	ErrSparseLayout        = errors.New("content occupies less than 40% of bounds height")
 
 	ErrPlaceholderRemapped = errors.New("placeholder remapped to fallback target")
 	ErrTextTrimmed         = errors.New("trailing paragraphs trimmed to fit placeholder")
@@ -116,6 +118,7 @@ var codeSentinel = map[string]error{
 	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
 	ErrCodeFooterCollision:       ErrFooterCollision,
 	ErrCodeTitleWraps:            ErrTitleWraps,
+	ErrCodeSparseLayout:          ErrSparseLayout,
 	ErrCodePlaceholderRemapped:   ErrPlaceholderRemapped,
 	ErrCodeTextTrimmed:           ErrTextTrimmed,
 	ErrCodeTextOverflow:          ErrTextOverflow,

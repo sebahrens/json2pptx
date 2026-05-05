@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -346,8 +347,8 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 	return ctx
 }
 
-// checkShapeGridStructural checks shape_grid cells for footer collision and
-// bounds overflow using estimated cell positions.
+// checkShapeGridStructural checks shape_grid cells for footer collision,
+// bounds overflow, and sparse layout using estimated cell positions.
 func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, footerEnabled bool) []patterns.FitFinding {
 	if len(grid.Rows) == 0 {
 		return nil
@@ -371,7 +372,160 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 		}
 	}
 
+	// Sparse layout detection: only for FillHeight grids (pattern-expanded)
+	// where content may occupy a small fraction of the allocated bounds.
+	if grid.FillHeight {
+		if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight); f != nil {
+			findings = append(findings, *f)
+		}
+	}
+
 	return findings
+}
+
+// detectSparseLayoutForGrid estimates the content height of a shape grid and
+// compares it against the bounds height to detect mostly-empty slides.
+func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64) *patterns.FitFinding {
+	boundsH := estimateGridBoundsHeightEMU(grid, slideHeight)
+	if boundsH <= 0 {
+		return nil
+	}
+
+	contentH := estimateGridContentHeightEMU(grid, slideHeight)
+	if contentH <= 0 {
+		return nil
+	}
+
+	path := fmt.Sprintf("slides[%d].shape_grid", slideIdx)
+	return generator.DetectSparseLayout(generator.SparseLayoutInput{
+		SlideIndex:      slideIdx,
+		Path:            path,
+		BoundsHeightEMU: boundsH,
+		ContentHeightEMU: contentH,
+	})
+}
+
+// estimateGridBoundsHeightEMU computes the total allocated bounds height for a grid.
+func estimateGridBoundsHeightEMU(grid *ShapeGridInput, slideHeight int64) int64 {
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
+	}
+	if grid.Bounds != nil && grid.Bounds.Height > 0 {
+		return int64(float64(slideHeight) * grid.Bounds.Height / 100.0)
+	}
+	// Default: ~70% of slide height.
+	return int64(float64(slideHeight) * 0.7)
+}
+
+// estimateGridContentHeightEMU estimates the total content height from row cells.
+// It sums up per-row content estimates (tallest cell in each row) plus gaps.
+func estimateGridContentHeightEMU(grid *ShapeGridInput, slideHeight int64) int64 {
+	numRows := len(grid.Rows)
+	if numRows == 0 {
+		return 0
+	}
+
+	rowGapPt := grid.RowGap
+	if rowGapPt == 0 {
+		rowGapPt = grid.Gap
+	}
+	if rowGapPt == 0 {
+		rowGapPt = 8 // default 8pt
+	}
+	rowGapEMU := int64(rowGapPt * 12700)
+
+	var totalContentH int64
+	for _, row := range grid.Rows {
+		rowH := estimateRowInputContentHeightEMU(row)
+		totalContentH += rowH
+	}
+
+	// Add inter-row gaps.
+	totalContentH += rowGapEMU * int64(numRows-1)
+	return totalContentH
+}
+
+// estimateRowInputContentHeightEMU returns the estimated content height for a
+// GridRowInput based on the tallest cell's content.
+func estimateRowInputContentHeightEMU(row GridRowInput) int64 {
+	var maxH int64
+	for _, cell := range row.Cells {
+		h := estimateCellInputContentHeightEMU(cell)
+		if h > maxH {
+			maxH = h
+		}
+	}
+	if maxH == 0 {
+		maxH = int64(24 * 12700) // 24pt minimum fallback
+	}
+	return maxH
+}
+
+// estimateCellInputContentHeightEMU estimates content height for a single cell.
+func estimateCellInputContentHeightEMU(cell *GridCellInput) int64 {
+	if cell == nil {
+		return 0
+	}
+
+	// Table cells: estimate from row count.
+	if cell.Table != nil {
+		rows := len(cell.Table.Rows)
+		if rows == 0 {
+			rows = 1
+		}
+		// ~20pt per row + 8pt header
+		return int64((float64(rows)*20 + 8) * 12700)
+	}
+
+	// Shape cells: estimate from text content.
+	if cell.Shape != nil && len(cell.Shape.Text) > 0 {
+		return estimateShapeTextHeightEMU(cell.Shape.Text)
+	}
+
+	// Icon/image cells: ~40pt default.
+	if cell.Icon != nil || cell.Image != nil {
+		return int64(40 * 12700)
+	}
+
+	// Diagram cells: ~100pt default.
+	if cell.Diagram != nil {
+		return int64(100 * 12700)
+	}
+
+	return 0
+}
+
+// estimateShapeTextHeightEMU estimates the height of a shape's text content.
+func estimateShapeTextHeightEMU(textRaw json.RawMessage) int64 {
+	// Try string shorthand.
+	var s string
+	if json.Unmarshal(textRaw, &s) == nil {
+		lines := strings.Count(s, "\n") + 1
+		return cellTextHeightEMU(lines, 11)
+	}
+
+	// Try object form.
+	var obj struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+	}
+	if json.Unmarshal(textRaw, &obj) == nil && obj.Content != "" {
+		fontSize := obj.Size
+		if fontSize == 0 {
+			fontSize = 11
+		}
+		lines := strings.Count(obj.Content, "\n") + 1
+		return cellTextHeightEMU(lines, fontSize)
+	}
+
+	return 0
+}
+
+// cellTextHeightEMU computes text height in EMU from line count and font size.
+func cellTextHeightEMU(lines int, fontSizePt float64) int64 {
+	lineHeightPt := fontSizePt * 1.4
+	totalPt := float64(lines)*lineHeightPt + 12 // 12pt for padding
+	return int64(totalPt * 12700)
 }
 
 // checkCellStructural runs bounds overflow and footer collision on one cell.

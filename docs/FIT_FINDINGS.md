@@ -141,6 +141,28 @@ Only fires when the slide's resolved layout declares a footer placeholder (date,
 }
 ```
 
+### `sparse_layout`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `grow_pattern`
+
+Content occupies less than 40% of the available bounds height — the slide is mostly empty. Only fires on `fill_height: true` grids (pattern-expanded). The fix params include `filled_pct`, `bounds_height`, and `content_height`.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "slides[1].shape_grid",
+  "code": "sparse_layout",
+  "message": "content occupies 25% of bounds height (1270000 / 5080000 EMU) — slide is mostly empty",
+  "fix": { "kind": "grow_pattern", "params": { "filled_pct": 0.25, "bounds_height": 5080000, "content_height": 1270000 } },
+  "action": "review",
+  "measured": { "height_emu": 1270000 },
+  "allowed": { "height_emu": 5080000 },
+  "overflow_ratio": 0.25
+}
+```
+
 ### `fit_overflow`
 
 **Action:** `shrink_or_split` (mapped from internal `unfittable`)
@@ -224,6 +246,7 @@ Fit findings are scoped to **JSON-authored content only**. Content inherited fro
 
 - **Layout-inherited shapes** — shapes that come from the template's slide layout or master are never checked. Callers filter these before passing to detectors.
 - **Decorative shapes** — shapes with `role: "background"` or `role: "decor"` are skipped by `slide_bounds_overflow` and `footer_collision`. These are intentionally placed at edges or off-slide.
+- **Non-fill-height grids** — `sparse_layout` only fires on grids with `fill_height: true` (pattern-expanded). User-authored grids with auto-height already shrink to content and are not flagged.
 - **Autofit placeholders** — `placeholder_overflow` is suppressed when the placeholder has `normAutofit` or `spAutoFit` set, because PowerPoint will auto-shrink text to fit.
 - **Layouts without footer** — `footer_collision` only fires when the slide's resolved layout declares a footer placeholder (dt, ftr, or sldNum). No finding is emitted on layouts using heuristic fallback positioning.
 
@@ -239,6 +262,7 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `split_at_row` | `row: int` | Split the table at the suggested row index |
 | `use_one_of` | `available: string`, `did_you_mean?: string` | Replace the value with one of the listed alternatives |
 | `replace_color` | `original_color: string`, `replacement_color: string`, `background_color: string`, `contrast_ratio_before: float`, `contrast_ratio_after: float` | Text color was auto-replaced for WCAG AA contrast compliance |
+| `grow_pattern` | `filled_pct: float`, `bounds_height: int`, `content_height: int` | Content occupies too little of the available bounds — add more content or use a smaller pattern |
 
 ## Per-Slide Finding Budget
 
