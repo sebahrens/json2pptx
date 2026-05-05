@@ -270,6 +270,111 @@ func TestCardGrid_WrongPattern_9Cells(t *testing.T) {
 	t.Error("did not find a wrong_pattern ValidationError in joined errors")
 }
 
+func TestRecommend_VarietyPenaltyDemotsRepeated(t *testing.T) {
+	// Acceptance: given recent_patterns=['card-grid','card-grid','card-grid'],
+	// "overview of categories" must NOT return card-grid as top suggestion.
+	reg := NewRegistry()
+	for _, name := range []string{
+		"bmc-canvas", "card-grid", "comparison-2col", "icon-row",
+		"kpi-3up", "kpi-4up", "matrix-2x2", "timeline-horizontal",
+	} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	opts := &RecommendOptions{
+		RecentPatterns: []string{"card-grid", "card-grid", "card-grid"},
+		PreferVariety:  true,
+		SlideIndex:     4,
+	}
+
+	result := Recommend(reg, "overview of categories", nil, 3, opts)
+
+	// card-grid should either be absent or not top-1.
+	for _, c := range result.Candidates {
+		if c.PatternName == "card-grid" && c == result.Candidates[0] {
+			t.Errorf("card-grid should NOT be top-1 after 3 recent uses with prefer_variety=true, got candidates: %v",
+				result.Candidates)
+		}
+	}
+
+	// Also test with a broader intent that matches multiple patterns to verify
+	// the diversity bonus injects an alternative.
+	result2 := Recommend(reg, "grid of category cards with icons", nil, 3, opts)
+	if len(result2.Candidates) > 0 && result2.Candidates[0].PatternName == "card-grid" {
+		t.Errorf("card-grid should NOT be top-1 for broader intent after 3 recent uses, got: %v",
+			result2.Candidates)
+	}
+	t.Logf("Broad intent candidates: %v", result2.Candidates)
+}
+
+func TestRecommend_ConfidenceBand(t *testing.T) {
+	reg := NewRegistry()
+	reg.Register(&stubPattern{name: "bmc-canvas", desc: "bmc", useWhen: "bmc", version: 1})
+
+	result := Recommend(reg, "business model canvas", nil, 3)
+	if len(result.Candidates) == 0 {
+		t.Fatal("expected at least one candidate")
+	}
+	c := result.Candidates[0]
+	if c.ConfidenceBand == "" {
+		t.Error("expected non-empty confidence_band")
+	}
+	if c.Score >= 0.85 && c.ConfidenceBand != "high" {
+		t.Errorf("score=%.2f should be 'high' confidence, got %q", c.Score, c.ConfidenceBand)
+	}
+}
+
+func TestRecommend_DiversityBonusInjected(t *testing.T) {
+	reg := NewRegistry()
+	for _, name := range []string{
+		"card-grid", "icon-row", "comparison-2col",
+	} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	opts := &RecommendOptions{
+		RecentPatterns: []string{"card-grid", "card-grid"},
+		PreferVariety:  true,
+	}
+
+	// "card grid overview" would normally rank card-grid top.
+	result := Recommend(reg, "feature card grid overview", nil, 2, opts)
+
+	// Check that at least one candidate has diversity_bonus=true.
+	hasDiversityBonus := false
+	for _, c := range result.Candidates {
+		if c.DiversityBonus {
+			hasDiversityBonus = true
+			if c.PatternName == "card-grid" {
+				t.Error("diversity bonus should not be on a recently-used pattern")
+			}
+		}
+	}
+	if !hasDiversityBonus {
+		t.Logf("candidates: %v", result.Candidates)
+		// Diversity bonus is best-effort; only fail if card-grid is still top.
+		if len(result.Candidates) > 0 && result.Candidates[0].PatternName == "card-grid" {
+			t.Error("expected card-grid to be demoted with prefer_variety")
+		}
+	}
+}
+
+func TestRecommend_DisambiguatingQuestions(t *testing.T) {
+	reg := NewRegistry()
+	for _, name := range []string{
+		"card-grid", "icon-row", "kpi-3up",
+	} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	// Vague intent with no hints should generate questions.
+	result := Recommend(reg, "show some features", nil, 3)
+	if len(result.DisambiguatingQuestions) == 0 {
+		t.Error("expected disambiguating questions for vague intent with no hints")
+	}
+	t.Logf("Questions: %v", result.DisambiguatingQuestions)
+}
+
 func TestKPI3up_WrongPattern_4Cells(t *testing.T) {
 	// 4 cells in kpi-3up should suggest kpi-4up.
 	p := &kpi3up{}

@@ -230,13 +230,31 @@ var outputSchemaRecommendPattern = json.RawMessage(`{
           "pattern_name":      {"type": "string"},
           "score":             {"type": "number"},
           "rationale":         {"type": "string"},
+          "confidence_band":   {"type": "string", "enum": ["high", "medium", "low"]},
+          "diversity_bonus":   {"type": "boolean"},
           "expansion_preview": {"type": "object"}
         },
-        "required": ["pattern_name", "score", "rationale"]
+        "required": ["pattern_name", "score", "rationale", "confidence_band"]
       }
     },
     "query_understood_as": {"type": "string"},
-    "suggestion":          {"type": "string"}
+    "suggestion":          {"type": "string"},
+    "near_misses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern_name": {"type": "string"},
+          "score":        {"type": "number"},
+          "would_tip_if": {"type": "string"}
+        },
+        "required": ["pattern_name", "score", "would_tip_if"]
+      }
+    },
+    "disambiguating_questions": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
   },
   "required": ["candidates", "query_understood_as"]
 }`)

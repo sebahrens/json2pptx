@@ -818,7 +818,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
-		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, and expansion previews. Use this as a starting point when you know what content to show but not which pattern to use."),
+		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected."),
 		mcp.WithRawOutputSchema(outputSchemaRecommendPattern),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -826,6 +826,15 @@ func mcpRecommendPatternTool() mcp.Tool {
 		),
 		mcp.WithObject("content_hints",
 			mcp.Description("Optional structured hints to refine ranking. Properties: item_count (int), has_chart (bool), has_metrics (bool), columns (int)."),
+		),
+		mcp.WithArray("recent_patterns",
+			mcp.Description("Pattern names used on preceding slides in this deck, in order. Used with prefer_variety to penalize repeated patterns."),
+		),
+		mcp.WithBoolean("prefer_variety",
+			mcp.Description("When true, apply recency decay penalty to patterns in recent_patterns and inject a diversity bonus candidate."),
+		),
+		mcp.WithNumber("slide_index",
+			mcp.Description("0-based index of the slide being built. Provides context for diversity scoring."),
 		),
 	)
 }
@@ -993,8 +1002,27 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		}
 	}
 
+	// Parse optional variety/diversity parameters.
+	var opts patterns.RecommendOptions
+	if rpRaw, ok := request.GetArguments()["recent_patterns"]; ok && rpRaw != nil {
+		rpJSON, err := json.Marshal(rpRaw)
+		if err == nil {
+			_ = json.Unmarshal(rpJSON, &opts.RecentPatterns)
+		}
+	}
+	if pv, ok := request.GetArguments()["prefer_variety"]; ok {
+		if b, ok := pv.(bool); ok {
+			opts.PreferVariety = b
+		}
+	}
+	if si, ok := request.GetArguments()["slide_index"]; ok {
+		if f, ok := si.(float64); ok {
+			opts.SlideIndex = int(f)
+		}
+	}
+
 	reg := patterns.Default()
-	rec := patterns.Recommend(reg, intent, &hints, 3)
+	rec := patterns.Recommend(reg, intent, &hints, 3, &opts)
 
 	// Build expansion previews for each candidate using exemplar values.
 	expandCtx := patterns.ExpandContext{
@@ -1006,19 +1034,29 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		},
 	}
 
+	type nearMissResult struct {
+		PatternName string  `json:"pattern_name"`
+		Score       float64 `json:"score"`
+		WouldTipIf  string  `json:"would_tip_if"`
+	}
+
 	type candidateResult struct {
 		PatternName      string                    `json:"pattern_name"`
 		Score            float64                   `json:"score"`
 		Rationale        string                    `json:"rationale"`
+		ConfidenceBand   string                    `json:"confidence_band"`
+		DiversityBonus   bool                      `json:"diversity_bonus,omitempty"`
 		ExpansionPreview *jsonschema.ShapeGridInput `json:"expansion_preview,omitempty"`
 	}
 
 	candidates := make([]candidateResult, len(rec.Candidates))
 	for i, c := range rec.Candidates {
 		candidates[i] = candidateResult{
-			PatternName: c.PatternName,
-			Score:       c.Score,
-			Rationale:   c.Rationale,
+			PatternName:    c.PatternName,
+			Score:          c.Score,
+			Rationale:      c.Rationale,
+			ConfidenceBand: c.ConfidenceBand,
+			DiversityBonus: c.DiversityBonus,
 		}
 
 		// Try expanding with exemplar values for a preview.
@@ -1036,30 +1074,33 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		}
 	}
 
-	result := struct {
-		Candidates      []candidateResult `json:"candidates"`
-		QueryUnderstood string            `json:"query_understood_as"`
-	}{
-		Candidates:      candidates,
-		QueryUnderstood: rec.QueryUnderstood,
+	nearMisses := make([]nearMissResult, len(rec.NearMisses))
+	for i, nm := range rec.NearMisses {
+		nearMisses[i] = nearMissResult{
+			PatternName: nm.PatternName,
+			Score:       nm.Score,
+			WouldTipIf:  nm.WouldTipIf,
+		}
+	}
+
+	type resultType struct {
+		Candidates              []candidateResult `json:"candidates"`
+		QueryUnderstood         string            `json:"query_understood_as"`
+		Suggestion              string            `json:"suggestion,omitempty"`
+		NearMisses              []nearMissResult   `json:"near_misses,omitempty"`
+		DisambiguatingQuestions []string           `json:"disambiguating_questions,omitempty"`
+	}
+
+	result := resultType{
+		Candidates:              candidates,
+		QueryUnderstood:         rec.QueryUnderstood,
+		NearMisses:              nearMisses,
+		DisambiguatingQuestions: rec.DisambiguatingQuestions,
 	}
 
 	// When no candidates match, add a suggestion.
 	if len(candidates) == 0 {
-		result := struct {
-			Candidates      []candidateResult `json:"candidates"`
-			QueryUnderstood string            `json:"query_understood_as"`
-			Suggestion      string            `json:"suggestion"`
-		}{
-			Candidates:      candidates,
-			QueryUnderstood: rec.QueryUnderstood,
-			Suggestion:      "No patterns matched this intent. Consider using shape_grid directly to build a custom layout, or try rephrasing with keywords like: kpi, compare, timeline, matrix, bmc, icon, card.",
-		}
-		mcpResult, err := api.MCPSuccessResult(ctx, result)
-		if err != nil {
-			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
-		}
-		return mcpResult, nil
+		result.Suggestion = "No patterns matched this intent. Consider using shape_grid directly to build a custom layout, or try rephrasing with keywords like: kpi, compare, timeline, matrix, bmc, icon, card."
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)

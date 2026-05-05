@@ -16,17 +16,35 @@ type ContentHints struct {
 	Columns    int  `json:"columns,omitempty"`
 }
 
+// RecommendOptions carries diversity and context parameters for Recommend.
+type RecommendOptions struct {
+	RecentPatterns []string `json:"recent_patterns,omitempty"` // patterns used on preceding slides
+	PreferVariety  bool     `json:"prefer_variety,omitempty"`  // apply recency decay penalty
+	SlideIndex     int      `json:"slide_index,omitempty"`     // 0-based position of the slide being built
+}
+
 // Candidate is a single recommendation result.
 type Candidate struct {
-	PatternName string  `json:"pattern_name"`
+	PatternName     string  `json:"pattern_name"`
+	Score           float64 `json:"score"`
+	Rationale       string  `json:"rationale"`
+	ConfidenceBand  string  `json:"confidence_band,omitempty"`  // high, medium, low
+	DiversityBonus  bool    `json:"diversity_bonus,omitempty"`  // true if boosted for variety
+}
+
+// NearMiss describes a candidate that nearly qualified but was edged out.
+type NearMiss struct {
+	PatternName string `json:"pattern_name"`
 	Score       float64 `json:"score"`
-	Rationale   string  `json:"rationale"`
+	WouldTipIf  string `json:"would_tip_if"`
 }
 
 // RecommendResult is the output of Recommend.
 type RecommendResult struct {
-	Candidates      []Candidate `json:"candidates"`
-	QueryUnderstood string      `json:"query_understood_as"`
+	Candidates              []Candidate `json:"candidates"`
+	QueryUnderstood         string      `json:"query_understood_as"`
+	NearMisses              []NearMiss  `json:"near_misses,omitempty"`
+	DisambiguatingQuestions []string    `json:"disambiguating_questions,omitempty"`
 }
 
 // rule maps keywords and content hints to a pattern with a base confidence.
@@ -271,51 +289,44 @@ var rules = []rule{
 // Recommend scores all rules against the given intent and content hints,
 // returning up to maxCandidates results. If no candidate scores above 0.5,
 // an empty candidates list is returned.
-func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates int) RecommendResult {
+//
+// opts may be nil. When opts.PreferVariety is true, patterns appearing in
+// opts.RecentPatterns receive a decay penalty (each occurrence reduces the
+// score by 0.15, cumulative) and a diversity bonus candidate (the strongest
+// unused pattern) is injected if one exists.
+func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates int, opts ...*RecommendOptions) RecommendResult {
 	if maxCandidates <= 0 {
 		maxCandidates = 3
 	}
 	if hints == nil {
 		hints = &ContentHints{}
 	}
+	var options *RecommendOptions
+	if len(opts) > 0 && opts[0] != nil {
+		options = opts[0]
+	}
 
 	intentLower := strings.ToLower(intent)
 
-	// Score each rule.
-	type scored struct {
-		rule  rule
-		score float64
-	}
-	var candidates []scored
-
-	seen := make(map[string]float64) // track best score per pattern
-
-	for _, r := range rules {
-		score := scoreRule(r, intentLower, hints)
-		if score < 0.3 {
-			continue
-		}
-		// Only keep the highest-scoring rule per pattern.
-		if prev, ok := seen[r.pattern]; ok && prev >= score {
-			continue
-		}
-		seen[r.pattern] = score
-		candidates = append(candidates, scored{rule: r, score: score})
-	}
-
-	// De-duplicate: keep only the best rule per pattern.
-	best := make(map[string]scored)
-	for _, c := range candidates {
-		if prev, ok := best[c.rule.pattern]; !ok || c.score > prev.score {
-			best[c.rule.pattern] = c
+	// Build recency count map.
+	recencyCount := make(map[string]int)
+	if options != nil {
+		for _, p := range options.RecentPatterns {
+			recencyCount[p]++
 		}
 	}
 
-	// Flatten and sort by score descending.
-	flat := make([]scored, 0, len(best))
-	for _, c := range best {
-		flat = append(flat, c)
+	applyVariety := options != nil && options.PreferVariety && len(recencyCount) > 0
+
+	// Score and deduplicate rules.
+	flat := scoreAndDedup(intentLower, hints)
+
+	// Apply recency decay penalty when variety is requested.
+	if applyVariety {
+		applyRecencyDecay(flat, recencyCount)
 	}
+
+	// Sort by score descending.
 	sort.Slice(flat, func(i, j int) bool {
 		if flat[i].score != flat[j].score {
 			return flat[i].score > flat[j].score
@@ -323,12 +334,20 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 		return flat[i].rule.pattern < flat[j].rule.pattern
 	})
 
-	// Truncate.
+	// Collect near misses before truncation.
+	nearMisses := collectNearMisses(flat, hints)
+
+	// Find diversity bonus candidate.
+	var diversityCandidate *scored
+	if applyVariety {
+		diversityCandidate = findDiversityCandidate(flat, recencyCount)
+	}
+
+	// Truncate and filter.
 	if len(flat) > maxCandidates {
 		flat = flat[:maxCandidates]
 	}
 
-	// Filter below threshold.
 	result := RecommendResult{
 		QueryUnderstood: summarizeIntent(intentLower, hints),
 	}
@@ -337,13 +356,190 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 			continue
 		}
 		result.Candidates = append(result.Candidates, Candidate{
-			PatternName: c.rule.pattern,
-			Score:       math.Round(c.score*100) / 100,
-			Rationale:   c.rule.rationale,
+			PatternName:    c.rule.pattern,
+			Score:          math.Round(c.score*100) / 100,
+			Rationale:      c.rule.rationale,
+			ConfidenceBand: confidenceBand(c.score),
+			DiversityBonus: c.diversityBonus,
 		})
 	}
 
+	// Inject diversity bonus if not already present.
+	injectDiversityBonus(&result, diversityCandidate)
+
+	if len(nearMisses) > 2 {
+		nearMisses = nearMisses[:2]
+	}
+	result.NearMisses = nearMisses
+	result.DisambiguatingQuestions = suggestDisambiguatingQuestions(hints, intentLower, result.Candidates)
+
 	return result
+}
+
+// scored is a candidate with its computed score.
+type scored struct {
+	rule           rule
+	score          float64
+	preDecayScore  float64
+	diversityBonus bool
+}
+
+// scoreAndDedup evaluates all rules and returns the best-scoring entry per pattern.
+func scoreAndDedup(intentLower string, hints *ContentHints) []scored {
+	seen := make(map[string]float64)
+	var candidates []scored
+
+	for _, r := range rules {
+		score := scoreRule(r, intentLower, hints)
+		if score < 0.3 {
+			continue
+		}
+		if prev, ok := seen[r.pattern]; ok && prev >= score {
+			continue
+		}
+		seen[r.pattern] = score
+		candidates = append(candidates, scored{rule: r, score: score})
+	}
+
+	best := make(map[string]scored)
+	for _, c := range candidates {
+		if prev, ok := best[c.rule.pattern]; !ok || c.score > prev.score {
+			best[c.rule.pattern] = c
+		}
+	}
+
+	flat := make([]scored, 0, len(best))
+	for _, c := range best {
+		flat = append(flat, c)
+	}
+	return flat
+}
+
+// applyRecencyDecay penalizes patterns that appear in the recency map.
+func applyRecencyDecay(flat []scored, recencyCount map[string]int) {
+	for i := range flat {
+		flat[i].preDecayScore = flat[i].score
+		if count, ok := recencyCount[flat[i].rule.pattern]; ok && count > 0 {
+			penalty := 0.15 * float64(count)
+			flat[i].score -= penalty
+			if flat[i].score < 0 {
+				flat[i].score = 0
+			}
+		}
+	}
+}
+
+// collectNearMisses finds patterns scoring between 0.35 and 0.5.
+func collectNearMisses(flat []scored, hints *ContentHints) []NearMiss {
+	var nearMisses []NearMiss
+	for _, c := range flat {
+		if c.score >= 0.35 && c.score < 0.5 {
+			nearMisses = append(nearMisses, NearMiss{
+				PatternName: c.rule.pattern,
+				Score:       math.Round(c.score*100) / 100,
+				WouldTipIf:  inferWouldTipIf(c.rule, hints),
+			})
+		}
+	}
+	return nearMisses
+}
+
+// findDiversityCandidate returns the highest-scoring pattern not in recencyCount.
+func findDiversityCandidate(flat []scored, recencyCount map[string]int) *scored {
+	for i := range flat {
+		if _, used := recencyCount[flat[i].rule.pattern]; !used && flat[i].score >= 0.5 {
+			c := flat[i]
+			c.diversityBonus = true
+			return &c
+		}
+	}
+	return nil
+}
+
+// injectDiversityBonus adds the diversity candidate if not already in results.
+func injectDiversityBonus(result *RecommendResult, dc *scored) {
+	if dc == nil {
+		return
+	}
+	for _, c := range result.Candidates {
+		if c.PatternName == dc.rule.pattern {
+			return
+		}
+	}
+	result.Candidates = append(result.Candidates, Candidate{
+		PatternName:    dc.rule.pattern,
+		Score:          math.Round(dc.score*100) / 100,
+		Rationale:      dc.rule.rationale + " (diversity bonus: unused in recent slides)",
+		ConfidenceBand: confidenceBand(dc.score),
+		DiversityBonus: true,
+	})
+}
+
+// confidenceBand classifies a score into high/medium/low.
+func confidenceBand(score float64) string {
+	switch {
+	case score >= 0.85:
+		return "high"
+	case score >= 0.65:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// inferWouldTipIf describes what change would push a near-miss over the threshold.
+func inferWouldTipIf(r rule, hints *ContentHints) string {
+	if r.needsMetrics && !hints.HasMetrics {
+		return "provide has_metrics=true in content_hints"
+	}
+	if r.needsCols > 0 && hints.Columns == 0 {
+		return fmt.Sprintf("provide columns=%d in content_hints", r.needsCols)
+	}
+	if r.itemMin > 0 && hints.ItemCount == 0 {
+		return fmt.Sprintf("provide item_count (this pattern works best with %d-%d items)", r.itemMin, r.itemMax)
+	}
+	return "rephrase intent with more specific keywords"
+}
+
+// suggestDisambiguatingQuestions returns questions the agent could answer to
+// refine the recommendation.
+func suggestDisambiguatingQuestions(hints *ContentHints, intent string, candidates []Candidate) []string {
+	var qs []string
+
+	if hints.ItemCount == 0 {
+		qs = append(qs, "How many items will this slide contain?")
+	}
+	if !hints.HasMetrics {
+		// Only ask if metrics-oriented patterns are plausible.
+		for _, kw := range []string{"kpi", "metric", "number", "stat", "dashboard"} {
+			if strings.Contains(intent, kw) {
+				qs = append(qs, "Does this slide contain numeric metrics or KPIs?")
+				break
+			}
+		}
+	}
+	if !hints.HasChart {
+		for _, kw := range []string{"chart", "graph", "visualization", "trend"} {
+			if strings.Contains(intent, kw) {
+				qs = append(qs, "Does this slide include a chart or graph?")
+				break
+			}
+		}
+	}
+
+	// If there are multiple close candidates, suggest clarifying.
+	if len(candidates) >= 2 {
+		gap := candidates[0].Score - candidates[1].Score
+		if gap < 0.1 {
+			qs = append(qs, fmt.Sprintf("Did you mean more of a %s or a %s layout?",
+				candidates[0].PatternName, candidates[1].PatternName))
+		}
+	}
+
+	if len(qs) > 3 {
+		qs = qs[:3]
+	}
+	return qs
 }
 
 // scoreRule computes a 0–1 score for a single rule against the intent and hints.
@@ -552,3 +748,4 @@ func summarizeIntent(intent string, hints *ContentHints) string {
 	}
 	return sb.String()
 }
+
