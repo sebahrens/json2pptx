@@ -55,6 +55,7 @@ type BackgroundImage struct {
 type SlideSpec struct {
 	LayoutID        string           // Layout to use (e.g., "slideLayout1")
 	Content         []ContentItem    // Content items to populate
+	Eyebrow         string           // Small-caps label prepended to title placeholder
 	Background      *BackgroundImage // Slide background image (nil = no background image)
 	SpeakerNotes    string           // Speaker notes text (written to notesSlide XML)
 	SourceNote      string           // Source attribution text (rendered as small text at slide bottom)
@@ -107,6 +108,7 @@ const (
 	ContentTitleSlideTitle ContentType = "title_slide_title"   // Title slide ctrTitle (preserves template font/alignment)
 	ContentBullets         ContentType = "bullets"
 	ContentBodyAndBullets  ContentType = "body_and_bullets"    // Body text followed by bullets
+	ContentBodyAndLead     ContentType = "body_and_lead"       // Lead paragraph (16pt bold) followed by supporting bullets (12pt)
 	ContentBulletGroups    ContentType = "bullet_groups"       // Grouped bullets with section headers
 	ContentImage           ContentType = "image"
 	ContentDiagram         ContentType = "diagram"             // Unified diagram type (charts, infographics)
@@ -116,6 +118,7 @@ const (
 func AllContentTypes() []string {
 	return []string{
 		string(ContentBodyAndBullets),
+		string(ContentBodyAndLead),
 		string(ContentBulletGroups),
 		string(ContentBullets),
 		string(ContentDiagram),
@@ -131,6 +134,14 @@ type BodyAndBulletsContent struct {
 	Body         string   // Body text paragraph before bullets (no bullet marker)
 	Bullets      []string // Bullet points (with bullet markers)
 	TrailingBody string   // Body text paragraph after bullets (no bullet marker)
+}
+
+// BodyAndLeadContent represents a lead-in paragraph (thesis statement)
+// followed by supporting bullets (evidence). The lead renders at 16pt bold;
+// supporting bullets at 12pt regular.
+type BodyAndLeadContent struct {
+	Lead    string   // Lead-in paragraph (16pt bold, no bullet marker)
+	Bullets []string // Supporting bullet points (12pt, with bullet markers)
 }
 
 // BulletGroupsContent represents grouped bullets with section headers.
@@ -596,6 +607,7 @@ type runPropertiesXML struct {
 	Bold      string `xml:"b,attr,omitempty"`    // Bold flag: "1" for bold, omit otherwise
 	Italic    string `xml:"i,attr,omitempty"`    // Italic flag: "1" for italic, omit otherwise
 	Underline string `xml:"u,attr,omitempty"`    // Underline style: "sng" for single, omit otherwise
+	Caps      string `xml:"cap,attr,omitempty"`  // Capitalization: "small" for small-caps, "all" for all-caps
 	Inner     string `xml:",innerxml"`           // Child elements (preserved verbatim)
 }
 

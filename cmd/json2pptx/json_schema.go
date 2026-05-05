@@ -120,6 +120,7 @@ func (t *ThemeInput) ToThemeOverride() *types.ThemeOverride {
 type SlideInput struct {
 	LayoutID        string           `json:"layout_id,omitempty"`
 	SlideType       string           `json:"slide_type,omitempty"` // Optional hint: content, title, section, chart, two-column, diagram, image, comparison, blank
+	Eyebrow         string           `json:"eyebrow,omitempty"`    // Small-caps label above title (e.g., "STRATEGY — Market Expansion")
 	Background      *BackgroundInput `json:"background,omitempty"`
 	Content         []ContentInput   `json:"content"`
 	ShapeGrid       *ShapeGridInput  `json:"shape_grid,omitempty"`
@@ -153,6 +154,7 @@ type ContentInput struct {
 	TextValue           *string              `json:"text_value,omitempty"`
 	BulletsValue        *[]string            `json:"bullets_value,omitempty"`
 	BodyAndBulletsValue *BodyAndBulletsInput `json:"body_and_bullets_value,omitempty"`
+	BodyAndLeadValue    *BodyAndLeadInput    `json:"body_and_lead_value,omitempty"`
 	BulletGroupsValue   *BulletGroupsInput   `json:"bullet_groups_value,omitempty"`
 	TableValue          *TableInput          `json:"table_value,omitempty"`
 	ChartValue          *types.ChartSpec     `json:"chart_value,omitempty"` //nolint:staticcheck // ChartSpec is deprecated but still used for backward compat
@@ -178,6 +180,8 @@ func (c *ContentInput) UsesLegacyValue() bool {
 		return c.BulletsValue == nil
 	case "body_and_bullets":
 		return c.BodyAndBulletsValue == nil
+	case "body_and_lead":
+		return c.BodyAndLeadValue == nil
 	case "bullet_groups":
 		return c.BulletGroupsValue == nil
 	case "table":
@@ -238,6 +242,19 @@ func (c *ContentInput) ResolveValue() (any, error) { //nolint:gocognit,gocyclo
 		}
 		return &v, nil
 
+	case "body_and_lead":
+		if c.BodyAndLeadValue != nil {
+			return c.BodyAndLeadValue, nil
+		}
+		if len(c.Value) == 0 {
+			return nil, fmt.Errorf("body_and_lead content requires body_and_lead_value or value")
+		}
+		var v BodyAndLeadInput
+		if err := json.Unmarshal(c.Value, &v); err != nil {
+			return nil, fmt.Errorf("invalid body_and_lead value: %w", err)
+		}
+		return &v, nil
+
 	case "bullet_groups":
 		if c.BulletGroupsValue != nil {
 			return c.BulletGroupsValue, nil
@@ -295,6 +312,12 @@ type BodyAndBulletsInput struct {
 	TrailingBody string   `json:"trailing_body,omitempty"`
 }
 
+// BodyAndLeadInput maps to generator.BodyAndLeadContent.
+type BodyAndLeadInput struct {
+	Lead    string   `json:"lead"`    // Lead-in paragraph (rendered 16pt bold)
+	Bullets []string `json:"bullets"` // Supporting bullets (rendered 12pt)
+}
+
 // BulletGroupsInput maps to generator.BulletGroupsContent.
 type BulletGroupsInput struct {
 	Body         string             `json:"body,omitempty"`
@@ -304,9 +327,10 @@ type BulletGroupsInput struct {
 
 // BulletGroupInput maps to generator.BulletGroup.
 type BulletGroupInput struct {
-	Header  string   `json:"header,omitempty"`
-	Body    string   `json:"body,omitempty"`
-	Bullets []string `json:"bullets"`
+	Header     string   `json:"header,omitempty"`
+	Body       string   `json:"body,omitempty"`
+	Bullets    []string `json:"bullets"`
+	GroupLabel string   `json:"group_label,omitempty"` // Small-caps accent label above header
 }
 
 // ImageInput maps to generator.ImageContent.

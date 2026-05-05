@@ -61,6 +61,7 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 		para := Paragraph{Align: opts.Align}
 
 		isBullet := false
+		isNumberedLine := false
 		if strings.HasPrefix(line, "- ") {
 			run.Text = strings.TrimPrefix(line, "- ")
 			isBullet = true
@@ -71,6 +72,7 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 			if _, rest, ok := ParseNumberedPrefix(line); ok {
 				run.Text = rest
 				isBullet = true
+				isNumberedLine = true
 			}
 		}
 
@@ -78,10 +80,21 @@ func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 			para.MarginL = BulletMarginLeft
 			para.Indent = BulletIndent
 			para.SpaceAfter = opts.SpaceAfter
-			para.Bullet = &BulletDef{
-				Char:  bulletChar,
-				Font:  bulletFont,
-				Color: opts.BulletColor,
+			if opts.DetectNumbered && isNumberedLine {
+				// Use OOXML auto-numbering for numbered lists.
+				// The hanging indent from MarginL+Indent ensures multi-line
+				// wraps align under the text, not under the number.
+				para.Bullet = &BulletDef{
+					AutoNum: "arabicPeriod",
+					Font:    bulletFont,
+					Color:   opts.BulletColor,
+				}
+			} else {
+				para.Bullet = &BulletDef{
+					Char:  bulletChar,
+					Font:  bulletFont,
+					Color: opts.BulletColor,
+				}
 			}
 		}
 

@@ -41,6 +41,8 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 		err = setBulletParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	case ContentBodyAndBullets:
 		err = setBodyAndBulletsParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
+	case ContentBodyAndLead:
+		err = setBodyAndLeadParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	case ContentBulletGroups:
 		err = setBulletGroupsParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	default:
@@ -502,6 +504,81 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 	return nil
 }
 
+// setBodyAndLeadParagraphs renders a lead-in paragraph (thesis) followed by
+// supporting bullets (evidence). The lead renders at 16pt bold with no bullet
+// marker; bullets render at 12pt with standard bullet formatting and hanging indent.
+func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value interface{}, masterBulletLevel int, autofitOpts ...autofitOption) error {
+	content, ok := value.(BodyAndLeadContent)
+	if !ok {
+		return fmt.Errorf("invalid body_and_lead value for placeholder %s", placeholderID)
+	}
+
+	// Extract template styling from existing paragraphs
+	templateStyles := extractBulletTemplateStyles(shape.TextBody.Paragraphs)
+
+	// Determine the bullet level to use
+	bulletLevel := masterBulletLevel
+	if bulletLevel < 0 {
+		bulletLevel = findFirstBulletLevel(templateStyles)
+	}
+	if bulletLevel < 0 {
+		bulletLevel = 0
+	}
+
+	var paragraphs []paragraphXML
+
+	// Lead-in paragraph: 16pt bold, no bullet
+	if content.Lead != "" {
+		_, rProps := getBulletStyleForLevel(templateStyles, 0)
+		runs := createFormattedRuns(content.Lead, rProps)
+		for i := range runs {
+			if runs[i].RunProperties == nil {
+				runs[i].RunProperties = &runPropertiesXML{Lang: "en-US"}
+			}
+			runs[i].RunProperties.Bold = "1"
+			runs[i].RunProperties.FontSize = "1600" // 16pt
+		}
+		paragraphs = append(paragraphs, paragraphXML{
+			Properties: noBulletParagraphProps(`<a:spcAft><a:spcPts val="600"/></a:spcAft>`),
+			Runs:       runs,
+		})
+	}
+
+	// Supporting bullets: 12pt regular with bullet markers
+	for _, bullet := range content.Bullets {
+		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletLevel)
+		runs := createFormattedRuns(bullet, rProps)
+		// Override font size to 12pt for supporting bullets
+		for i := range runs {
+			if runs[i].RunProperties == nil {
+				runs[i].RunProperties = &runPropertiesXML{Lang: "en-US"}
+			}
+			runs[i].RunProperties.FontSize = "1200" // 12pt
+		}
+		paragraphs = append(paragraphs, paragraphXML{
+			Properties: pProps,
+			Runs:       runs,
+		})
+	}
+
+	shape.TextBody.Paragraphs = paragraphs
+
+	// Strip inherited bold and all-caps from lstStyle
+	stripLstStyleBold(shape)
+	stripLstStyleCaps(shape)
+
+	// Cap to 24pt max and 12pt floor
+	capLstStyleFontSizeIfUnset(shape, 2400)
+	floorLstStyleFontSize(shape, 1200)
+
+	// Replace spAutoFit with normAutofit
+	replaceSpAutoFitWithNorm(shape)
+	enforceTextWrap(shape)
+	applySmartAutofitWithOptions(shape, autofitOpts...)
+
+	return nil
+}
+
 // setBulletGroupsParagraphs sets paragraphs for grouped bullets with section headers.
 // Each group's header is rendered at level 0 (no bullet marker), and bullets at level 1+.
 // This preserves the hierarchical structure where bold text serves as section headers.
@@ -641,6 +718,27 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 		}
 	}
 
+	// Group label (small-caps accent text above the header)
+	if group.GroupLabel != "" {
+		_, rProps := getBulletStyleForLevel(templateStyles, 0)
+		runs := createFormattedRuns(group.GroupLabel, rProps)
+		for i := range runs {
+			if runs[i].RunProperties == nil {
+				runs[i].RunProperties = &runPropertiesXML{Lang: "en-US"}
+			}
+			runs[i].RunProperties.FontSize = "1000" // 10pt
+			// Add cap="small" for small-caps rendering
+			runs[i].RunProperties.Inner = stripSelfClosingElement(runs[i].RunProperties.Inner, "a:latin") +
+				`<a:latin typeface="Arial"/>`
+			runs[i].RunProperties.Caps = "small"
+		}
+		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, headerSpcBefVal)
+		paragraphs = append(paragraphs, paragraphXML{
+			Properties: noBulletParagraphProps(spcBef),
+			Runs:       runs,
+		})
+	}
+
 	// Section header (no bullet marker, forced bold for visual hierarchy)
 	if headerText != "" {
 		_, rProps := getBulletStyleForLevel(templateStyles, 0)
@@ -648,7 +746,12 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 		for i := range runs {
 			runs[i].RunProperties.Bold = "1"
 		}
-		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, headerSpcBefVal)
+		// When there's a group label above, use tighter spacing before the header
+		hSpcBef := headerSpcBefVal
+		if group.GroupLabel != "" {
+			hSpcBef = "200" // 2pt — tight coupling between label and header
+		}
+		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, hSpcBef)
 		paragraphs = append(paragraphs, paragraphXML{
 			Properties: noBulletParagraphProps(spcBef),
 			Runs:       runs,
@@ -695,4 +798,38 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 	}
 
 	return paragraphs
+}
+
+// prependEyebrowParagraph inserts a small-caps eyebrow paragraph before the
+// existing title text in a shape. The eyebrow renders as 10pt small-caps
+// in Arial with tight spacing below to visually couple it with the title.
+func prependEyebrowParagraph(shape *shapeXML, eyebrow string) {
+	if shape.TextBody == nil || len(shape.TextBody.Paragraphs) == 0 {
+		return
+	}
+
+	eyebrowRun := runXML{
+		Text: eyebrow,
+		RunProperties: &runPropertiesXML{
+			Lang:     "en-US",
+			FontSize: "1000", // 10pt
+			Caps:     "small",
+			Inner:    `<a:latin typeface="Arial"/>`,
+		},
+	}
+
+	zeroMarL := 0
+	zeroIndent := 0
+	eyebrowPara := paragraphXML{
+		Properties: &paragraphPropertiesXML{
+			MarL:   &zeroMarL,
+			Indent: &zeroIndent,
+			Algn:   "l",
+			Inner:  `<a:buNone/><a:spcAft><a:spcPts val="200"/></a:spcAft>`,
+		},
+		Runs: []runXML{eyebrowRun},
+	}
+
+	// Prepend eyebrow before existing paragraphs
+	shape.TextBody.Paragraphs = append([]paragraphXML{eyebrowPara}, shape.TextBody.Paragraphs...)
 }

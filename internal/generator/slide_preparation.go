@@ -113,7 +113,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 
 	var warnings []string
 	if len(input.slideSpec.Content) > 0 {
-		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex)
+		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)
 	}
 
 	// Enforce WCAG AA text contrast against the layout background.
@@ -421,7 +421,7 @@ func (ctx *singlePassContext) findMaxPresentationRelID() int {
 // populateTextInSlide populates text and bullet content in a slide.
 // Image/chart content is skipped here and handled in prepareImages.
 // layoutID is used to look up the slide master's bullet level configuration.
-func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []ContentItem, layoutID string, slideIndex int) []string {
+func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []ContentItem, layoutID string, slideIndex int, eyebrow string) []string {
 	var warnings []string
 	resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes, layoutID)
 	warnings = append(warnings, resolver.warnings...)
@@ -476,6 +476,11 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			withFindingsCollector(&ctx.fitFindings, findingPath),
 		); err != nil {
 			warnings = append(warnings, err.Error())
+		}
+
+		// Inject eyebrow paragraph above title text
+		if eyebrow != "" && isTitlePlaceholder(item.PlaceholderID) {
+			prependEyebrowParagraph(shape, eyebrow)
 		}
 	}
 

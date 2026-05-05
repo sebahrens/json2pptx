@@ -44,9 +44,10 @@ type Run struct {
 
 // BulletDef defines bullet formatting for a paragraph.
 type BulletDef struct {
-	Char  string // Bullet character (e.g. "•", "–")
-	Font  string // Bullet font family
-	Color Fill   // Bullet color
+	Char    string // Bullet character (e.g. "•", "–")
+	Font    string // Bullet font family
+	Color   Fill   // Bullet color
+	AutoNum string // Auto-numbering type (e.g. "arabicPeriod", "arabicParen"). When set, Char is ignored.
 }
 
 // WriteTo writes the TextBody's DrawingML XML (a:txBody) into buf.
@@ -149,7 +150,9 @@ func (b BulletDef) marshalXML(buf *bytes.Buffer) {
 	if b.Font != "" {
 		fmt.Fprintf(buf, `<a:buFont typeface="%s"/>`, escapeXMLAttr(b.Font))
 	}
-	if b.Char != "" {
+	if b.AutoNum != "" {
+		fmt.Fprintf(buf, `<a:buAutoNum type="%s"/>`, escapeXMLAttr(b.AutoNum))
+	} else if b.Char != "" {
 		fmt.Fprintf(buf, `<a:buChar char="%s"/>`, escapeXMLAttr(b.Char))
 	}
 }

@@ -94,6 +94,7 @@ const (
 	SlotContentText            SlotContentType = "text"
 	SlotContentBullets         SlotContentType = "bullets"
 	SlotContentBodyAndBullets  SlotContentType = "body_and_bullets"
+	SlotContentBodyAndLead     SlotContentType = "body_and_lead"
 	SlotContentBulletGroups    SlotContentType = "bullet_groups"
 	SlotContentTable           SlotContentType = "table"
 	SlotContentChart           SlotContentType = "chart"
@@ -199,9 +200,10 @@ type SlideContent struct {
 //	- Core platform stabilization
 //	- Performance optimization
 type BulletGroup struct {
-	Header  string   // Section header (optional, empty for bullets without a header)
-	Body    string   // Optional body text after the header but before bullets
-	Bullets []string // Bullets under this header
+	Header     string   // Section header (optional, empty for bullets without a header)
+	Body       string   // Optional body text after the header but before bullets
+	Bullets    []string // Bullets under this header
+	GroupLabel string   // Optional label rendered as small-caps accent text above the header
 }
 
 // HasGraphic returns true if the slide content includes any graphical elements

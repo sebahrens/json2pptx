@@ -619,6 +619,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 		spec := generator.SlideSpec{
 			LayoutID:        slide.LayoutID,
 			Content:         contentItems,
+			Eyebrow:         slide.Eyebrow,
 			SpeakerNotes:    slide.SpeakerNotes,
 			SourceNote:      slide.Source,
 			Transition:      slide.Transition,
@@ -841,6 +842,17 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				Body:         input.Body,
 				Bullets:      input.Bullets,
 				TrailingBody: input.TrailingBody,
+			}
+
+		case "body_and_lead":
+			item.Type = generator.ContentBodyAndLead
+			input, ok := resolved.(*BodyAndLeadInput)
+			if !ok {
+				return nil, fmt.Errorf("slide %d, content %d: body_and_lead resolved to %T, want *BodyAndLeadInput", slideNum, j+1, resolved)
+			}
+			item.Value = generator.BodyAndLeadContent{
+				Lead:    input.Lead,
+				Bullets: input.Bullets,
 			}
 
 		case "bullet_groups":
@@ -1243,9 +1255,10 @@ func convertBulletGroupsInput(input *BulletGroupsInput) generator.BulletGroupsCo
 	groups := make([]generator.BulletGroup, len(input.Groups))
 	for i, g := range input.Groups {
 		groups[i] = generator.BulletGroup{
-			Header:  g.Header,
-			Body:    g.Body,
-			Bullets: g.Bullets,
+			Header:     g.Header,
+			Body:       g.Body,
+			Bullets:    g.Bullets,
+			GroupLabel: g.GroupLabel,
 		}
 	}
 	return generator.BulletGroupsContent{

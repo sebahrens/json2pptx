@@ -497,7 +497,7 @@ func TestSinglePassContext_PopulateTextInSlide(t *testing.T) {
 				slide.CommonSlideData.ShapeTree.Shapes[i].TextBody = &textBodyXML{}
 			}
 
-			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1", 0)
+			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1", 0, "")
 
 			if len(warnings) != tt.wantWarnings {
 				t.Errorf("got %d warnings, want %d: %v", len(warnings), tt.wantWarnings, warnings)
@@ -628,7 +628,7 @@ func TestSinglePassContext_PopulateTextInSlide_ByShapeName(t *testing.T) {
 				slide.CommonSlideData.ShapeTree.Shapes[i].TextBody = &textBodyXML{}
 			}
 
-			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1", 0)
+			warnings := ctx.populateTextInSlide(slide, tt.content, "slideLayout1", 0, "")
 
 			if len(warnings) != tt.wantWarnings {
 				t.Errorf("got %d warnings, want %d: %v", len(warnings), tt.wantWarnings, warnings)
@@ -2320,7 +2320,7 @@ func TestPopulateTextInSlide_PlaceholderNotFound_EmitsValidationError(t *testing
 		{PlaceholderID: "sidebar_widget", Type: ContentText, Value: "some text"},
 	}
 
-	warnings := ctx.populateTextInSlide(slide, content, "two-column", 2)
+	warnings := ctx.populateTextInSlide(slide, content, "two-column", 2, "")
 
 	// Should produce a string warning
 	if len(warnings) != 1 {
