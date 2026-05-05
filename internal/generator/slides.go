@@ -39,6 +39,7 @@ type GenerationRequest struct {
 	SyntheticFiles        map[string][]byte   // Synthetic layout files from SynthesisManifest (nil = no synthetic layouts)
 	Footer                *FooterConfig       // Footer configuration (nil = disabled)
 	StrictFit             string              // Text-fit checking mode for charts: "off", "warn", "strict" (default: "warn")
+	ValidateOutput        bool                // When true, run OOXML content validation on generated file
 }
 
 // BackgroundImage specifies a slide background image.
@@ -210,6 +211,13 @@ func Generate(ctx context.Context, req GenerationRequest) (*GenerationResult, er
 	// Set duration (single-pass returns without duration set)
 	result.Duration = time.Since(startTime)
 	result.Warnings = warnings
+
+	// Post-generation OOXML content validation
+	if req.ValidateOutput {
+		if ooxmlErrs := validateOutputOOXML(req.OutputPath); ooxmlErrs != nil {
+			result.Warnings = append(result.Warnings, ooxmlErrs...)
+		}
+	}
 
 	return result, nil
 }

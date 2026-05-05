@@ -50,6 +50,8 @@ func dispatch() error {
 		return runValidate()
 	case "validate-template":
 		return runValidateTemplate()
+	case "validate-output":
+		return runValidateOutput()
 	case "patterns":
 		return runPatterns()
 	case "icons":
@@ -79,6 +81,7 @@ func printUsage() {
 Commands:
   generate           Convert JSON to PPTX (default if omitted)
   validate           Validate input without generating
+  validate-output    Check generated PPTX for OOXML correctness
   validate-template  Check template compatibility
   patterns           Discover, validate, and expand named patterns
   icons              List available icon names
