@@ -486,7 +486,7 @@ func TestHandleGenerate_AmbiguousInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	requireStructuredError(t, result, "ambiguous_input")
+	requireStructuredError(t, result, "AMBIGUOUS_INPUT")
 }
 
 func TestHandleValidate_PresentationObject(t *testing.T) {
@@ -558,7 +558,7 @@ func TestHandleValidatePattern_AmbiguousValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	requireStructuredError(t, result, "ambiguous_input")
+	requireStructuredError(t, result, "AMBIGUOUS_INPUT")
 }
 
 func TestHandleExpandPattern_ValuesObject(t *testing.T) {

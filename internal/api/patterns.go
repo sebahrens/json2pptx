@@ -215,7 +215,7 @@ type patternRequestBody struct {
 // entries in the details map. This mirrors what MCP does via splitValidationErrors
 // so agents get the same machine-readable shape from both transports.
 func writePatternValidationError(w http.ResponseWriter, patternName string, err error) {
-	ds := diagnostics.FromJoinedError(err, "validation_failed")
+	ds := diagnostics.FromJoinedError(err, diagnostics.CodeValidationFailed)
 	entries := make([]map[string]any, len(ds))
 	for i, d := range ds {
 		entry := map[string]any{

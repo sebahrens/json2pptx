@@ -18,7 +18,7 @@ const (
 	ErrCodeHexFillNonBrand    = "hex_fill_non_brand"
 	ErrCodeUnknownLayoutID    = "unknown_layout_id"
 	ErrCodeCalloutUnsupported = "callout_unsupported"
-	ErrCodeUnknownEnum            = "unknown_enum"
+	ErrCodeUnknownEnum            = "UNKNOWN_ENUM"
 	ErrCodePlaceholderNotFound    = "placeholder_not_found"
 	ErrCodeUnknownTableStyleID   = "unknown_table_style_id"
 

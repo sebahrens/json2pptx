@@ -53,7 +53,7 @@ func resolveStringOrObject(request mcp.CallToolRequest, stringParam, objectParam
 	}
 
 	if hasString && hasObject {
-		return "", mcpParseErrorWithFix("ambiguous_input", objectParam,
+		return "", mcpParseErrorWithFix(diagnostics.CodeAmbiguousInput, objectParam,
 			fmt.Sprintf("both %q and %q provided; use one or the other", stringParam, objectParam),
 			&diagnostics.Fix{Kind: "use_one_of", Params: map[string]any{"allowed": []string{stringParam, objectParam}}},
 		)

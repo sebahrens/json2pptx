@@ -489,7 +489,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		case "list", "compact", "full":
 			mode = m
 		default:
-			return mcpParseErrorWithFix("unknown_enum", "mode",
+			return mcpParseErrorWithFix(diagnostics.CodeUnknownEnum, "mode",
 				fmt.Sprintf("invalid mode %q: must be list, compact, or full", m),
 				&diagnostics.Fix{Kind: "use_one_of", Params: map[string]any{"allowed": []string{"list", "compact", "full"}}},
 			), nil

@@ -7,6 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // capabilitiesResponse is the JSON output for the get_capabilities tool.
@@ -16,6 +17,7 @@ type capabilitiesResponse struct {
 	MCPToolsAvailable  []string                     `json:"mcp_tools_available"`
 	DeprecatedFields   []capabilitiesDeprecatedField `json:"deprecated_fields"`
 	Features           capabilitiesFeatures          `json:"features"`
+	ErrorCodes         []string                     `json:"error_codes"`
 }
 
 // capabilitiesDeprecatedField describes a deprecated JSON input field.
@@ -90,6 +92,9 @@ func mcpGetCapabilitiesTool() mcp.Tool {
 }
 
 func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	codes := diagnostics.AllCodes()
+	sort.Strings(codes)
+
 	resp := capabilitiesResponse{
 		SchemaVersion:     SchemaVersion,
 		ToolVersion:       Version,
@@ -103,6 +108,7 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 			NamedPatterns:     true,
 			TemplateSettings:  true,
 		},
+		ErrorCodes: codes,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)

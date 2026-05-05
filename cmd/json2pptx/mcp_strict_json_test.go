@@ -177,7 +177,7 @@ func TestHandleGenerate_UnknownEnum(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	env := parseMCPError(t, result)
-	requireDiagCode(t, env.Diagnostics, "unknown_enum")
+	requireDiagCode(t, env.Diagnostics, "UNKNOWN_ENUM")
 }
 
 func TestHandleGenerate_MissingParam(t *testing.T) {

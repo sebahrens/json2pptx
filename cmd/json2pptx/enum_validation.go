@@ -14,7 +14,7 @@ import (
 // transition types become no-ops, unknown speeds default to "med", unknown
 // build values are ignored, and unknown background.fit values default to
 // "cover". Rather than swallowing bad input, we surface it as a
-// ValidationError with code "unknown_enum" and a fix suggestion listing the
+// ValidationError with code "UNKNOWN_ENUM" and a fix suggestion listing the
 // allowed values.
 // ---------------------------------------------------------------------------
 
@@ -78,7 +78,7 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 }
 
 // checkEnum validates a single value against an allowed set. Returns nil if
-// valid, or a ValidationError with code "unknown_enum" and a fix suggestion.
+// valid, or a ValidationError with code "UNKNOWN_ENUM" and a fix suggestion.
 func checkEnum(path, value string, allowed []string) *patterns.ValidationError {
 	lower := strings.ToLower(value)
 	for _, a := range allowed {
