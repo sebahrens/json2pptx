@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1102,10 +1103,11 @@ func TestSectionHeaderOverflow(t *testing.T) {
 			t.Error("bodyPr should contain normAutofit to shrink text to fit placeholder")
 		}
 
-		// Font size in lstStyle must be capped (35000 -> 4800)
+		// Font size in lstStyle must be preserved (layout declares 35000 intentionally).
+		// normAutofit handles overflow; the generator must not silently rewrite it.
 		lstSz := parseSzAttr(shape.TextBody.ListStyle.Inner)
-		if lstSz > 4800 {
-			t.Errorf("lstStyle font size should be capped to 4800, got %d", lstSz)
+		if lstSz != 35000 {
+			t.Errorf("lstStyle font size should be preserved at 35000 (layout intent), got %d", lstSz)
 		}
 	})
 
@@ -1185,6 +1187,69 @@ func TestSectionHeaderOverflow(t *testing.T) {
 			t.Errorf("short section title font should be >=4000 (40pt+), got %d", lstSz)
 		}
 	})
+}
+
+// TestLayoutDeclaredFontPreserved verifies that when a layout explicitly declares
+// a large font size in lstStyle (e.g., 208pt for a section number placeholder),
+// the generator preserves it rather than capping to 24pt. This is the P0-5 regression test.
+func TestLayoutDeclaredFontPreserved(t *testing.T) {
+	tests := []struct {
+		name        string
+		lstStyleSz  int // declared font size in hundredths of a point
+		contentType string
+	}{
+		{"208pt section number preserved with text", 20800, "text"},
+		{"96pt section divider preserved with text", 9600, "text"},
+		{"48pt large body preserved with text", 4800, "text"},
+		{"96pt section divider preserved with bullets", 9600, "bullets"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shape := &shapeXML{
+				ShapeProperties: shapePropertiesXML{
+					Transform: &transformXML{
+						Offset: offsetXML{X: 0, Y: 0},
+						Extent: extentXML{CX: 5000000, CY: 4000000},
+					},
+				},
+				TextBody: &textBodyXML{
+					BodyProperties: &bodyPropertiesXML{Wrap: "square"},
+					ListStyle: &listStyleXML{
+						Inner: fmt.Sprintf(`<a:lvl1pPr><a:defRPr sz="%d"/></a:lvl1pPr>`, tt.lstStyleSz),
+					},
+					Paragraphs: []paragraphXML{
+						{Runs: []runXML{{RunProperties: &runPropertiesXML{Lang: "en-US"}, Text: "02"}}},
+					},
+				},
+			}
+
+			var item ContentItem
+			if tt.contentType == "text" {
+				item = ContentItem{
+					PlaceholderID: "body",
+					Type:          ContentText,
+					Value:         "02",
+				}
+			} else {
+				item = ContentItem{
+					PlaceholderID: "body",
+					Type:          ContentBullets,
+					Value:         []string{"Item 1", "Item 2"},
+				}
+			}
+
+			err := populateShapeText(shape, item, 0, "")
+			if err != nil {
+				t.Fatalf("populateShapeText() error = %v", err)
+			}
+
+			gotSz := parseSzAttr(shape.TextBody.ListStyle.Inner)
+			if gotSz != tt.lstStyleSz {
+				t.Errorf("lstStyle sz = %d, want %d (layout-declared font must be preserved)", gotSz, tt.lstStyleSz)
+			}
+		})
+	}
 }
 
 func TestBoostSectionTitleFont(t *testing.T) {

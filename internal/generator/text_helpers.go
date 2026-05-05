@@ -489,6 +489,27 @@ func capLstStyleFontSize(shape *shapeXML, maxSizeHPt int) {
 	shape.TextBody.ListStyle.Inner = szRegexp.ReplaceAllString(lstInner, replacement)
 }
 
+// capLstStyleFontSizeIfUnset caps the lstStyle font size only when the layout
+// does NOT explicitly declare one. If the lstStyle already has an explicit sz
+// attribute, the layout designer intentionally chose that size — trust it and
+// let normAutofit handle overflow.
+func capLstStyleFontSizeIfUnset(shape *shapeXML, maxSizeHPt int) {
+	if shape.TextBody == nil || shape.TextBody.ListStyle == nil {
+		return
+	}
+	lstInner := shape.TextBody.ListStyle.Inner
+	if lstInner == "" {
+		return
+	}
+	sz := parseSzAttr(lstInner)
+	if sz > 0 {
+		// Layout explicitly declares a font size — trust it.
+		// normAutofit will handle overflow at the declared size.
+		return
+	}
+	// No explicit sz: nothing to cap (inherited from master at render time).
+}
+
 // minSectionTitleFontForHeight returns the minimum font size (in hundredths of a
 // point) that a section divider title should have given the placeholder height.
 // Section titles are meant to be visually prominent; a tiny font in a large

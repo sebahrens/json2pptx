@@ -32,7 +32,7 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	var err error
 	switch item.Type {
 	case ContentText:
-		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 2400, themeFontName, autofitOpts...) // 24pt cap for body text
+		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 2400, themeFontName, autofitOpts...) // 24pt cap (only if layout has no explicit sz)
 	case ContentSectionTitle:
 		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 0, themeFontName, autofitOpts...) // no cap — normAutofit scales to fill
 	case ContentTitleSlideTitle:
@@ -147,10 +147,11 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	stripLstStyleBold(shape)
 	stripLstStyleCaps(shape)
 
-	// Cap excessively large inherited font sizes.
+	// Cap font sizes only when the layout doesn't explicitly declare one.
+	// If lstStyle has an explicit sz, the layout designer intentionally chose that size;
+	// normAutofit handles overflow. Only cap when no explicit sz exists (bare inherited default).
 	if maxFontSizeHPt > 0 {
-		// Regular body text: hard cap at 24pt to prevent overflow.
-		capLstStyleFontSize(shape, maxFontSizeHPt)
+		capLstStyleFontSizeIfUnset(shape, maxFontSizeHPt)
 	} else {
 		// Section titles (maxFontSizeHPt=0): cap based on placeholder width so that
 		// individual words don't wrap at character boundaries. Templates define large
@@ -326,9 +327,10 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 	stripLstStyleBold(shape)
 	stripLstStyleCaps(shape)
 
-	// Cap excessively large inherited font sizes (e.g. template_2 body placeholder
-	// with 96pt in lstStyle) before calculating autofit.
-	capLstStyleFontSize(shape, 2400) // 24pt max for body text
+	// Cap font sizes only when the layout doesn't explicitly declare one.
+	// If lstStyle has an explicit sz, the layout designer intentionally chose that size;
+	// normAutofit handles overflow.
+	capLstStyleFontSizeIfUnset(shape, 2400) // 24pt max for body text
 
 	// Set a minimum base font size so normAutofit scaling doesn't produce
 	// illegibly small text. Dense lists (12+) use 10pt floor instead of 12pt
@@ -464,8 +466,8 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 	stripLstStyleBold(shape)
 	stripLstStyleCaps(shape)
 
-	// Cap excessively large inherited font sizes before calculating autofit.
-	capLstStyleFontSize(shape, 2400) // 24pt max for body text
+	// Cap font sizes only when the layout doesn't explicitly declare one.
+	capLstStyleFontSizeIfUnset(shape, 2400) // 24pt max for body text
 
 	// Set a minimum base font size for dense lists (see setBulletParagraphs).
 	totalBullets := len(content.Bullets)
@@ -594,9 +596,9 @@ func setBulletGroupsParagraphs(shape *shapeXML, placeholderID string, value inte
 	stripLstStyleBold(shape)
 	stripLstStyleCaps(shape)
 
-	// Cap excessively large inherited font sizes before calculating autofit.
-	capLstStyleFontSize(shape, 2400)   // 24pt max for body text
-	floorLstStyleFontSize(shape, 1200) // 12pt min
+	// Cap font sizes only when the layout doesn't explicitly declare one.
+	capLstStyleFontSizeIfUnset(shape, 2400) // 24pt max for body text
+	floorLstStyleFontSize(shape, 1200)      // 12pt min
 
 	// Replace spAutoFit (grow-box-to-fit-text) with nothing so normAutofit can be applied.
 	replaceSpAutoFitWithNorm(shape)
