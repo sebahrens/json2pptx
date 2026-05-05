@@ -1486,3 +1486,48 @@ func TestResolveShapeGrid_GroupWrapsInGrpSp(t *testing.T) {
 		t.Error("ungrouped cell: expected plain <p:sp>")
 	}
 }
+
+func TestResolveShapeGrid_OverlappingCellsValidationError(t *testing.T) {
+	// Two cells in a 2-column grid both claim col_span=2, but row has 2 cells.
+	// The second cell overlaps columns already occupied by the first.
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`2`),
+		Rows: []GridRowInput{{
+			Cells: []*GridCellInput{
+				{ColSpan: 2, Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`), Text: json.RawMessage(`"Wide"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent2"`), Text: json.RawMessage(`"Overlap"`)}},
+			},
+		}},
+	}
+
+	alloc := newAllocFrom(100)
+	_, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	if err == nil {
+		t.Fatal("expected validation error for overlapping cells, got nil")
+	}
+	if !strings.Contains(err.Error(), "shape_grid validation") {
+		t.Errorf("expected error to mention 'shape_grid validation', got: %s", err.Error())
+	}
+}
+
+func TestResolveShapeGrid_RowSpanExceedsGrid(t *testing.T) {
+	// Single row grid with a cell claiming row_span=3 — exceeds grid height.
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`2`),
+		Rows: []GridRowInput{{
+			Cells: []*GridCellInput{
+				{RowSpan: 3, Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent2"`)}},
+			},
+		}},
+	}
+
+	alloc := newAllocFrom(100)
+	_, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	if err == nil {
+		t.Fatal("expected validation error for row_span exceeding grid, got nil")
+	}
+	if !strings.Contains(err.Error(), "shape_grid validation") {
+		t.Errorf("expected error to mention 'shape_grid validation', got: %s", err.Error())
+	}
+}

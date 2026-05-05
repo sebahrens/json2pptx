@@ -228,6 +228,11 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		FillHeight: input.FillHeight,
 	}
 
+	// Validate grid structure before rendering (catches overlaps, span errors, etc.)
+	if vErr := shapegrid.Validate(grid); vErr != nil {
+		return nil, fmt.Errorf("shape_grid validation: %w", vErr)
+	}
+
 	// Resolve grid into cells with absolute coordinates
 	result, err := shapegrid.Resolve(grid, alloc)
 	if err != nil {
