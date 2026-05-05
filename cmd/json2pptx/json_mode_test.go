@@ -1694,6 +1694,83 @@ func TestValidateSlidesChartData_FlatMapWarnings(t *testing.T) {
 	})
 }
 
+func TestValidateSlidesChartDiagnostics(t *testing.T) {
+	t.Run("chart with string value returns chart_value_coerced finding", func(t *testing.T) {
+		slides := []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						PlaceholderID: "content",
+						Type:          "chart",
+						Value:         json.RawMessage(`{"type":"bar","data":{"A":10,"B":"oops","C":30}}`),
+					},
+				},
+			},
+		}
+		findings := validateSlidesChartDiagnostics(slides)
+		var coerced int
+		for _, f := range findings {
+			if f.Code == "chart_value_coerced" {
+				coerced++
+				if !strings.Contains(f.Message, "oops") {
+					t.Errorf("expected message to mention original value, got %q", f.Message)
+				}
+				if f.Action != "review" {
+					t.Errorf("expected action=review, got %q", f.Action)
+				}
+			}
+		}
+		if coerced != 1 {
+			t.Errorf("expected 1 chart_value_coerced finding, got %d (total: %v)", coerced, findings)
+		}
+	})
+
+	t.Run("empty data returns chart_data_empty finding", func(t *testing.T) {
+		slides := []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						PlaceholderID: "content",
+						Type:          "diagram",
+						Value:         json.RawMessage(`{"type":"bar_chart","data":{}}`),
+					},
+				},
+			},
+		}
+		findings := validateSlidesChartDiagnostics(slides)
+		var empty int
+		for _, f := range findings {
+			if f.Code == "chart_data_empty" {
+				empty++
+				if f.Action != "refuse" {
+					t.Errorf("expected action=refuse, got %q", f.Action)
+				}
+			}
+		}
+		if empty != 1 {
+			t.Errorf("expected 1 chart_data_empty finding, got %d", empty)
+		}
+	})
+
+	t.Run("valid chart produces no diagnostic findings", func(t *testing.T) {
+		slides := []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						PlaceholderID: "content",
+						Type:          "chart",
+						Value:         json.RawMessage(`{"type":"bar","data":{"Q1":10,"Q2":20}}`),
+					},
+				},
+			},
+		}
+		findings := validateSlidesChartDiagnostics(slides)
+		if len(findings) > 0 {
+			t.Errorf("expected no findings for valid bar chart, got %v", findings)
+		}
+	})
+}
+
 func TestBuildSlideResolutions_Basic(t *testing.T) {
 	inputSlides := []SlideInput{
 		{LayoutID: "slideLayout1"},  // explicit

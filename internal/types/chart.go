@@ -309,7 +309,7 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 	}
 
 	// Build data payload based on chart type
-	data, warnings := buildChartData(cs)
+	data, warnings, chartDiags := buildChartData(cs)
 
 	// Convert style
 	var style *DiagramStyle
@@ -333,13 +333,13 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 		Height:   cs.Height,
 		Scale:    cs.Scale,
 		Style:    style,
-		Warnings: warnings,
+		Warnings:         warnings,
+		ChartDiagnostics: chartDiags,
 	}
 }
 
 // toFloat64 safely extracts a float64 from an any value.
 // JSON numbers unmarshal as float64 by default; this also handles int types.
-// toFloat64 converts any value to float64.
 // Non-numeric values (strings, bools, nil) are coerced to 0 with a warning.
 func toFloat64(v any) float64 {
 	switch val := v.(type) {
@@ -356,6 +356,23 @@ func toFloat64(v any) float64 {
 			slog.Warn("non-numeric chart value coerced to zero", "value", v, "type", fmt.Sprintf("%T", v))
 		}
 		return 0
+	}
+}
+
+// toFloat64Tracked works like toFloat64 but also reports whether the value was
+// coerced (non-numeric → 0). The caller uses this to build structured diagnostics.
+func toFloat64Tracked(v any) (float64, bool) {
+	switch val := v.(type) {
+	case float64:
+		return val, false
+	case int:
+		return float64(val), false
+	case int64:
+		return float64(val), false
+	case int32:
+		return float64(val), false
+	default:
+		return 0, v != nil
 	}
 }
 
@@ -449,9 +466,8 @@ func isAlreadySvggenFormat(data map[string]any, chartType ChartType) bool {
 }
 
 // buildChartData constructs the data payload for svggen based on chart type.
-// It returns the data map and any warnings generated during conversion
-// (e.g., when flat-map data is auto-converted to a structured format).
-func buildChartData(spec *ChartSpec) (map[string]any, []string) {
+// It returns the data map, legacy warning strings, and structured diagnostics.
+func buildChartData(spec *ChartSpec) (map[string]any, []string, []ChartDiagnostic) {
 	// TimeData takes precedence over Data when set (for time-series charts).
 	data := spec.Data
 	order := spec.DataOrder
@@ -466,7 +482,7 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 	// value+min+max, points, stages, levels, etc.), pass it through directly.
 	// This avoids mangling data that LLMs produce in the correct output format.
 	if isAlreadySvggenFormat(data, spec.Type) {
-		return data, nil
+		return data, nil, nil
 	}
 
 	// Use order if available, otherwise sort keys for determinism
@@ -486,13 +502,38 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 	// Multi-series chart types (stacked_bar, grouped_bar, stacked_area, scatter, bubble)
 	// may receive data where each key maps to an array of values rather than a single float64.
 	if hasStructuredValues(data) {
-		return buildStructuredChartData(spec, data, keys), nil
+		return buildStructuredChartData(spec, data, keys), nil, nil
 	}
 
-	// Build values array from flat numeric data
+	// Build values array from flat numeric data, tracking coercions.
+	var diags []ChartDiagnostic
 	values := make([]float64, len(keys))
 	for i, k := range keys {
-		values[i] = toFloat64(data[k])
+		val, coerced := toFloat64Tracked(data[k])
+		values[i] = val
+		if coerced {
+			diags = append(diags, ChartDiagnostic{
+				Code:    "chart_value_coerced",
+				Message: fmt.Sprintf("non-numeric value for %q coerced to 0 (was %T: %v)", k, data[k], data[k]),
+				Details: map[string]any{
+					"column":         k,
+					"original_value": fmt.Sprintf("%v", data[k]),
+					"original_type":  fmt.Sprintf("%T", data[k]),
+				},
+			})
+		}
+	}
+
+	// Helper to build a shape-inferred diagnostic.
+	shapeInferred := func(expectedFormat string) ChartDiagnostic {
+		return ChartDiagnostic{
+			Code:    "chart_shape_inferred",
+			Message: fmt.Sprintf("%s chart received flat data; expected %s format", spec.Type, expectedFormat),
+			Details: map[string]any{
+				"chart_type":      string(spec.Type),
+				"expected_format": expectedFormat,
+			},
+		}
 	}
 
 	// Diagram types that need special data formats when coming through ChartSpec.
@@ -503,26 +544,28 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 		for i, k := range keys {
 			levels[i] = map[string]any{"label": k}
 		}
+		diags = append(diags, shapeInferred("{levels: [{label: ...}]}"))
 		return map[string]any{
 			"levels": levels,
-		}, []string{fmt.Sprintf("%s chart received flat data; expected {levels: [{label: ...}]} format", spec.Type)}
+		}, []string{fmt.Sprintf("%s chart received flat data; expected {levels: [{label: ...}]} format", spec.Type)}, diags
 
 	case ChartPie, ChartDonut:
 		return map[string]any{
 			"categories": keys,
 			"values":     values,
-		}, nil
+		}, nil, diags
 
 	case ChartGauge:
 		gaugeValue := 0.0
 		if len(values) > 0 {
 			gaugeValue = values[0]
 		}
+		diags = append(diags, shapeInferred("{value: N, min: N, max: N}"))
 		return map[string]any{
 			"value": gaugeValue,
 			"min":   0.0,
 			"max":   100.0,
-		}, []string{fmt.Sprintf("%s chart received flat data; expected {value: N, min: N, max: N} format", spec.Type)}
+		}, []string{fmt.Sprintf("%s chart received flat data; expected {value: N, min: N, max: N} format", spec.Type)}, diags
 
 	case ChartFunnel:
 		points := make([]map[string]any, len(keys))
@@ -532,9 +575,10 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 				"value": values[i],
 			}
 		}
+		diags = append(diags, shapeInferred("{values: [{label: ..., value: N}]}"))
 		return map[string]any{
 			"values": points,
-		}, []string{fmt.Sprintf("%s chart received flat data; expected {values: [{label: ..., value: N}]} format", spec.Type)}
+		}, []string{fmt.Sprintf("%s chart received flat data; expected {values: [{label: ..., value: N}]} format", spec.Type)}, diags
 
 	case ChartWaterfall:
 		points := make([]map[string]any, len(keys))
@@ -549,9 +593,10 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 				"type":  pointType,
 			}
 		}
+		diags = append(diags, shapeInferred(`{points: [{label: ..., value: N, type: "increase"|"decrease"|"total"}]}`))
 		return map[string]any{
 			"points": points,
-		}, []string{fmt.Sprintf("%s chart received flat data; expected {points: [{label: ..., value: N, type: \"increase\"|\"decrease\"|\"total\"}]} format", spec.Type)}
+		}, []string{fmt.Sprintf("%s chart received flat data; expected {points: [{label: ..., value: N, type: \"increase\"|\"decrease\"|\"total\"}]} format", spec.Type)}, diags
 
 	case ChartTreemap:
 		nodes := make([]map[string]any, len(keys))
@@ -561,9 +606,10 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 				"value": values[i],
 			}
 		}
+		diags = append(diags, shapeInferred("{values: [{label: ..., value: N}]}"))
 		return map[string]any{
 			"values": nodes,
-		}, []string{fmt.Sprintf("%s chart received flat data; expected {values: [{label: ..., value: N}]} format", spec.Type)}
+		}, []string{fmt.Sprintf("%s chart received flat data; expected {values: [{label: ..., value: N}]} format", spec.Type)}, diags
 
 	case ChartScatter:
 		points := make([]map[string]any, len(values))
@@ -582,7 +628,8 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 			},
 		}
 		copyAxisTitles(result, data)
-		return result, []string{fmt.Sprintf("%s chart received flat data; expected {series: [{name: ..., points: [{x: N, y: N}]}]} format", spec.Type)}
+		diags = append(diags, shapeInferred("{series: [{name: ..., points: [{x: N, y: N}]}]}"))
+		return result, []string{fmt.Sprintf("%s chart received flat data; expected {series: [{name: ..., points: [{x: N, y: N}]}]} format", spec.Type)}, diags
 
 	default:
 		// Bar/line/area/radar/stacked_bar expect categories + series format
@@ -596,7 +643,7 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string) {
 			},
 		}
 		copyAxisTitles(result, data)
-		return result, nil
+		return result, nil, diags
 	}
 }
 

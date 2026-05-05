@@ -959,3 +959,82 @@ func TestBuildChartData_StackedBarSeriesLabelsFallback(t *testing.T) {
 		t.Errorf("series[1].name = %q, want %q", series[1]["name"], "Series 2")
 	}
 }
+
+func TestChartDiagnostics_ValueCoerced(t *testing.T) {
+	// A column chart with a string value should produce a chart_value_coerced diagnostic.
+	spec := &ChartSpec{
+		Type: ChartBar,
+		Data: map[string]any{
+			"A": 10.0,
+			"B": "not-a-number",
+			"C": 30.0,
+		},
+		DataOrder: []string{"A", "B", "C"},
+	}
+	ds := spec.ToDiagramSpec()
+	if ds == nil {
+		t.Fatal("ToDiagramSpec returned nil")
+	}
+
+	// Should have exactly one chart_value_coerced diagnostic for key "B".
+	var coerced []ChartDiagnostic
+	for _, d := range ds.ChartDiagnostics {
+		if d.Code == "chart_value_coerced" {
+			coerced = append(coerced, d)
+		}
+	}
+	if len(coerced) != 1 {
+		t.Fatalf("expected 1 chart_value_coerced diagnostic, got %d: %v", len(coerced), ds.ChartDiagnostics)
+	}
+	if col, ok := coerced[0].Details["column"]; !ok || col != "B" {
+		t.Errorf("expected column=B, got %v", coerced[0].Details)
+	}
+	if !strings.Contains(coerced[0].Message, "not-a-number") {
+		t.Errorf("expected message to mention the original value, got %q", coerced[0].Message)
+	}
+}
+
+func TestChartDiagnostics_ShapeInferred(t *testing.T) {
+	// A gauge chart with flat data should produce a chart_shape_inferred diagnostic.
+	spec := &ChartSpec{
+		Type: ChartGauge,
+		Data: map[string]any{
+			"value": 75.0,
+		},
+	}
+	ds := spec.ToDiagramSpec()
+	if ds == nil {
+		t.Fatal("ToDiagramSpec returned nil")
+	}
+
+	var inferred []ChartDiagnostic
+	for _, d := range ds.ChartDiagnostics {
+		if d.Code == "chart_shape_inferred" {
+			inferred = append(inferred, d)
+		}
+	}
+	if len(inferred) != 1 {
+		t.Fatalf("expected 1 chart_shape_inferred diagnostic, got %d", len(inferred))
+	}
+	if !strings.Contains(inferred[0].Message, "gauge") {
+		t.Errorf("expected message to mention gauge, got %q", inferred[0].Message)
+	}
+}
+
+func TestChartDiagnostics_NoFalsePositive(t *testing.T) {
+	// A bar chart with valid numeric data should produce no diagnostics.
+	spec := &ChartSpec{
+		Type: ChartBar,
+		Data: map[string]any{
+			"A": 10.0,
+			"B": 20.0,
+		},
+	}
+	ds := spec.ToDiagramSpec()
+	if ds == nil {
+		t.Fatal("ToDiagramSpec returned nil")
+	}
+	if len(ds.ChartDiagnostics) > 0 {
+		t.Errorf("expected no diagnostics for valid bar chart, got %v", ds.ChartDiagnostics)
+	}
+}

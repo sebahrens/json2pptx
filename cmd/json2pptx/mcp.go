@@ -416,6 +416,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Pre-validate chart/diagram data (unknown keys already caught at boundary).
 	inputWarnings := validateSlidesChartData(input.Slides)
+	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
 	// Determine output filename
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)
@@ -480,6 +481,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Append render-time fit findings from the generator (overflow, truncation, clamping).
 	fitFindings = append(fitFindings, result.FitFindings...)
+
+	// Append chart data diagnostics (coerced values, inferred shapes, empty data).
+	fitFindings = append(fitFindings, chartDiagFindings...)
 
 	// Append contrast auto-fix findings (always emitted, not gated by fit_report).
 	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)

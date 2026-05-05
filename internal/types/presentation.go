@@ -226,7 +226,18 @@ type DiagramSpec struct {
 	Scale   float64        `json:"scale,omitempty" yaml:"scale,omitempty"`       // Resolution scale (default: calculated dynamically, min 2.0)
 	FitMode  string         `json:"fit_mode,omitempty" yaml:"fit_mode,omitempty"` // Fit mode: "stretch" (default), "contain", or "cover"
 	Style    *DiagramStyle  `json:"style,omitempty" yaml:"style,omitempty"`       // Optional styling overrides
-	Warnings []string       `json:"warnings,omitempty" yaml:"-"`                  // Non-fatal warnings (e.g., flat-map auto-conversion)
+	Warnings         []string          `json:"warnings,omitempty" yaml:"-"`                  // Non-fatal warnings (e.g., flat-map auto-conversion)
+	ChartDiagnostics []ChartDiagnostic `json:"-" yaml:"-"`                                   // Structured chart data diagnostics (internal use)
+}
+
+// ChartDiagnostic is a structured diagnostic emitted during chart data
+// conversion (e.g., non-numeric value coerced to zero, shape inferred from
+// flat input). It carries enough context for downstream code to convert it
+// into a FitFinding without depending on internal/patterns.
+type ChartDiagnostic struct {
+	Code    string         // Machine-readable code (e.g., "chart_value_coerced")
+	Message string         // Human-readable description
+	Details map[string]any // Additional context (e.g., row, column, original value)
 }
 
 // DiagramStyle provides styling options for diagram rendering.

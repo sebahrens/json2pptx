@@ -37,6 +37,11 @@ const (
 	ErrCodeTitleWraps            = "title_wraps"
 	ErrCodeSparseLayout          = "sparse_layout"
 
+	// Chart data diagnostic codes (emitted during chart data validation).
+	ErrCodeChartValueCoerced  = "chart_value_coerced"
+	ErrCodeChartShapeInferred = "chart_shape_inferred"
+	ErrCodeChartDataEmpty     = "chart_data_empty"
+
 	// Render-time finding codes (emitted during generation, not pre-flight).
 	ErrCodePlaceholderRemapped   = "placeholder_remapped"
 	ErrCodeTextTrimmed           = "text_trimmed"
@@ -83,6 +88,10 @@ var (
 	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
 	ErrSparseLayout        = errors.New("content occupies less than 40% of bounds height")
 
+	ErrChartValueCoerced  = errors.New("non-numeric chart value coerced to zero")
+	ErrChartShapeInferred = errors.New("chart data shape inferred from flat input")
+	ErrChartDataEmpty     = errors.New("chart data is empty; output will be blank")
+
 	ErrPlaceholderRemapped = errors.New("placeholder remapped to fallback target")
 	ErrTextTrimmed         = errors.New("trailing paragraphs trimmed to fit placeholder")
 	ErrTextOverflow        = errors.New("text overflows placeholder even after trimming")
@@ -123,6 +132,9 @@ var codeSentinel = map[string]error{
 	ErrCodeFooterCollision:       ErrFooterCollision,
 	ErrCodeTitleWraps:            ErrTitleWraps,
 	ErrCodeSparseLayout:          ErrSparseLayout,
+	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
+	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
+	ErrCodeChartDataEmpty:        ErrChartDataEmpty,
 	ErrCodePlaceholderRemapped:   ErrPlaceholderRemapped,
 	ErrCodeTextTrimmed:           ErrTextTrimmed,
 	ErrCodeTextOverflow:          ErrTextOverflow,

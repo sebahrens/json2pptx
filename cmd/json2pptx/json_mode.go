@@ -420,6 +420,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
 	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
+	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
 	// Determine output filename — sanitize to prevent path traversal.
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)
@@ -475,6 +476,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	allFitFindings = append(allFitFindings, synthesisFindings...)
 	allFitFindings = append(allFitFindings, result.FitFindings...)
 	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+	allFitFindings = append(allFitFindings, chartDiagFindings...)
 
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
@@ -1030,6 +1032,120 @@ func validateSlidesChartData(slides []SlideInput) []string {
 		}
 	}
 	return warnings
+}
+
+// validateSlidesChartDiagnostics collects structured chart diagnostics from
+// all chart/diagram content items across all slides. These are returned as
+// FitFinding values suitable for inclusion in the fit_findings response array.
+func validateSlidesChartDiagnostics(slides []SlideInput) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+	for i, slide := range slides {
+		for j, ci := range slide.Content {
+			if ci.Type != "chart" && ci.Type != "diagram" {
+				continue
+			}
+			findings = append(findings, collectChartDiagnostics(ci, i, j)...)
+		}
+	}
+	return findings
+}
+
+// collectChartDiagnostics extracts structured ChartDiagnostic values from a
+// content item's resolved DiagramSpec and converts them to FitFindings.
+func collectChartDiagnostics(ci ContentInput, slideIdx, contentIdx int) []patterns.FitFinding {
+	resolved, err := ci.ResolveValue()
+	if err != nil {
+		return nil
+	}
+
+	var spec *types.DiagramSpec
+
+	switch ci.Type {
+	case "chart":
+		if resolved != nil {
+			chart, ok := resolved.(*types.ChartSpec) //nolint:staticcheck // backward compat
+			if !ok {
+				return nil
+			}
+			spec = chart.ToDiagramSpec()
+		} else if len(ci.Value) > 0 {
+			var chart types.ChartSpec //nolint:staticcheck // backward compat
+			if err := json.Unmarshal(ci.Value, &chart); err != nil {
+				return nil
+			}
+			spec = chart.ToDiagramSpec()
+		}
+	case "diagram":
+		if resolved != nil {
+			diagram, ok := resolved.(*types.DiagramSpec)
+			if !ok {
+				return nil
+			}
+			spec = diagram
+		} else if len(ci.Value) > 0 {
+			var diagram types.DiagramSpec
+			if err := json.Unmarshal(ci.Value, &diagram); err != nil {
+				return nil
+			}
+			spec = &diagram
+		}
+	}
+
+	if spec == nil {
+		return nil
+	}
+
+	var findings []patterns.FitFinding
+	path := fmt.Sprintf("/slides/%d/content/%d", slideIdx, contentIdx)
+
+	// Empty data → chart_data_empty finding.
+	if len(spec.Data) == 0 {
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    path,
+				Code:    patterns.ErrCodeChartDataEmpty,
+				Message: fmt.Sprintf("slide %d, content %d: %s data is empty; output will be blank", slideIdx+1, contentIdx+1, spec.Type),
+				Fix: &patterns.FixSuggestion{
+					Kind: "provide_data",
+					Params: map[string]any{
+						"chart_type": spec.Type,
+					},
+				},
+			},
+			Action: "refuse",
+		})
+	}
+
+	// Convert ChartDiagnostics to FitFindings.
+	for _, cd := range spec.ChartDiagnostics {
+		f := patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    path,
+				Code:    cd.Code,
+				Message: fmt.Sprintf("slide %d, content %d: %s", slideIdx+1, contentIdx+1, cd.Message),
+			},
+			Action: "review",
+		}
+		// Attach fix suggestion based on diagnostic code.
+		switch cd.Code {
+		case patterns.ErrCodeChartValueCoerced:
+			f.Fix = &patterns.FixSuggestion{
+				Kind:   "provide_numeric_value",
+				Params: cd.Details,
+			}
+		case patterns.ErrCodeChartShapeInferred:
+			f.Fix = &patterns.FixSuggestion{
+				Kind:   "provide_native_format",
+				Params: cd.Details,
+			}
+		}
+		if len(cd.Details) > 0 {
+			f.ValidationError.Pattern = spec.Type
+		}
+		findings = append(findings, f)
+	}
+
+	return findings
 }
 
 // validateContentDiagramData resolves a chart/diagram ContentInput to a DiagramSpec
