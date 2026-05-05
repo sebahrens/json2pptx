@@ -465,3 +465,85 @@ func TestResolutionTierString(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveWithFallback_SectionNumberAlias_ByShapeName(t *testing.T) {
+	// Layout with a shape explicitly named "Section Number"
+	idx1 := 1
+	shapes := []shapeXML{
+		makeShape("title", "title", nil, 0, 0, 6000, 1000),
+		makeShape("Section Number", "body", &idx1, 7000, 0, 3000, 3000),
+	}
+
+	resolver := newPlaceholderResolver(shapes, "Section Divider")
+
+	for _, alias := range []string{"section_number", "section_no", "large_number"} {
+		idx, tier, found := resolver.ResolveWithFallback(alias)
+		if !found {
+			t.Fatalf("ResolveWithFallback(%q) not found", alias)
+		}
+		if idx != 1 {
+			t.Errorf("ResolveWithFallback(%q) = %d, want 1", alias, idx)
+		}
+		if tier != TierSemantic {
+			t.Errorf("ResolveWithFallback(%q) tier = %v, want TierSemantic", alias, tier)
+		}
+	}
+}
+
+func TestResolveWithFallback_SectionNumberAlias_FallbackBodyIdx1_SectionLayout(t *testing.T) {
+	// Layout named "Section Header" without a "Section Number" shape,
+	// but with body idx=1.
+	idx1 := 1
+	shapes := []shapeXML{
+		makeShape("title", "title", nil, 0, 0, 6000, 1000),
+		makeShape("body", "body", &idx1, 0, 1000, 9000, 4000),
+	}
+
+	resolver := newPlaceholderResolver(shapes, "Section Header")
+
+	idx, tier, found := resolver.ResolveWithFallback("section_number")
+	if !found {
+		t.Fatal("ResolveWithFallback(section_number) not found")
+	}
+	if idx != 1 {
+		t.Errorf("ResolveWithFallback(section_number) = %d, want 1", idx)
+	}
+	if tier != TierSemantic {
+		t.Errorf("tier = %v, want TierSemantic", tier)
+	}
+}
+
+func TestResolveWithFallback_SectionNumberAlias_FallbackBodyIdx1_NonSectionLayout(t *testing.T) {
+	// Non-section layout — fallback to body idx=1 unconditionally.
+	idx1 := 1
+	shapes := []shapeXML{
+		makeShape("title", "title", nil, 0, 0, 6000, 1000),
+		makeShape("body", "body", &idx1, 0, 1000, 9000, 4000),
+	}
+
+	resolver := newPlaceholderResolver(shapes, "Content Layout")
+
+	idx, _, found := resolver.ResolveWithFallback("section_number")
+	if !found {
+		t.Fatal("ResolveWithFallback(section_number) not found on non-section layout")
+	}
+	if idx != 1 {
+		t.Errorf("ResolveWithFallback(section_number) = %d, want 1", idx)
+	}
+}
+
+func TestIsSectionNumberAlias(t *testing.T) {
+	trueCases := []string{"section_number", "section_no", "large_number"}
+	for _, id := range trueCases {
+		if !IsSectionNumberAlias(id) {
+			t.Errorf("IsSectionNumberAlias(%q) = false, want true", id)
+		}
+	}
+
+	falseCases := []string{"body", "title", "subtitle", "section"}
+	for _, id := range falseCases {
+		if IsSectionNumberAlias(id) {
+			t.Errorf("IsSectionNumberAlias(%q) = true, want false", id)
+		}
+	}
+}

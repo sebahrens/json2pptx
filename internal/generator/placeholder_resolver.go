@@ -9,6 +9,20 @@ import (
 	"strings"
 )
 
+// sectionNumberAliases lists placeholder IDs that resolve to the section number
+// placeholder: a large-font shape intended for decorative numbering ("01", "02", etc.).
+var sectionNumberAliases = map[string]bool{
+	"section_number": true,
+	"section_no":     true,
+	"large_number":   true,
+}
+
+// IsSectionNumberAlias returns true if the given placeholder ID is one of the
+// section_number resolver aliases (section_number, section_no, large_number).
+func IsSectionNumberAlias(placeholderID string) bool {
+	return sectionNumberAliases[strings.ToLower(placeholderID)]
+}
+
 // placeholderResolver provides flexible placeholder lookup by canonical name or
 // OOXML placeholder index. It supports:
 //   - Name-based lookup: "body", "body_2", "title"
@@ -22,15 +36,20 @@ type placeholderResolver struct {
 	warnings []string
 	shapes   []shapeXML
 	roleMap  map[int]PlaceholderSemanticRole // lazily-built semantic role map (see below)
+	layoutID string                          // layout name for context-sensitive resolution
 }
 
 // newPlaceholderResolver builds a resolver from the slide's shape tree.
-func newPlaceholderResolver(shapes []shapeXML) *placeholderResolver {
+// An optional layoutID can be passed for context-sensitive resolution (e.g., section_number alias).
+func newPlaceholderResolver(shapes []shapeXML, layoutID ...string) *placeholderResolver {
 	r := &placeholderResolver{
 		byName:   make(map[string][]int),
 		byIdx:    make(map[int]int),
 		nameUsed: make(map[string]int),
 		shapes:   shapes,
+	}
+	if len(layoutID) > 0 {
+		r.layoutID = layoutID[0]
 	}
 
 	for i, shape := range shapes {
@@ -303,6 +322,34 @@ func buildSemanticRoleMap(shapes []shapeXML) map[int]PlaceholderSemanticRole {
 // Multi-tier Resolution Methods
 // =============================================================================
 
+// resolveSectionNumber resolves section_number aliases using a priority chain:
+//  1. Shape whose cNvPr name equals "Section Number" (case-insensitive)
+//  2. body idx=1 on a layout whose name contains "Section" (case-insensitive)
+//  3. Fallback: body idx=1
+func (r *placeholderResolver) resolveSectionNumber() (int, bool) {
+	// Priority 1: Shape named "Section Number" (case-insensitive)
+	for i := range r.shapes {
+		name := r.shapes[i].NonVisualProperties.ConnectionNonVisual.Name
+		if strings.EqualFold(name, "Section Number") {
+			return i, true
+		}
+	}
+
+	// Priority 2: body idx=1 on a section layout
+	if strings.Contains(strings.ToLower(r.layoutID), "section") {
+		if shapeIdx, ok := r.byIdx[1]; ok {
+			return shapeIdx, true
+		}
+	}
+
+	// Priority 3: body idx=1 unconditionally
+	if shapeIdx, ok := r.byIdx[1]; ok {
+		return shapeIdx, true
+	}
+
+	return 0, false
+}
+
 // ResolveWithFallback looks up a shape index using the full five-tier resolution
 // chain. Returns the shape index, which tier matched, and whether a match was found.
 //
@@ -313,6 +360,13 @@ func buildSemanticRoleMap(shapes []shapeXML) map[int]PlaceholderSemanticRole {
 //  4. Positional: slot-based or position-ordered content placeholders
 //  5. Topmost: for "title" only — picks the placeholder with smallest Y offset
 func (r *placeholderResolver) ResolveWithFallback(placeholderID string) (int, ResolutionTier, bool) {
+	// Section number aliases: resolve via dedicated priority chain.
+	if IsSectionNumberAlias(placeholderID) {
+		if idx, ok := r.resolveSectionNumber(); ok {
+			return idx, TierSemantic, true
+		}
+	}
+
 	// Tier 1: Exact match (existing behavior)
 	if idx, ok := r.Resolve(placeholderID); ok {
 		return idx, TierExact, true

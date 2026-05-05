@@ -804,7 +804,13 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			// Title slide titles use ContentTitleSlideTitle to preserve the
 			// template's ctrTitle font size (typically 40-60pt) and centered
 			// alignment instead of capping to 24pt body-text size.
+			//
+			// Section number aliases (section_number, section_no, large_number)
+			// use ContentSectionTitle to preserve the template's large decorative
+			// font size regardless of slide type.
 			if slideType == types.SlideTypeSection {
+				item.Type = generator.ContentSectionTitle
+			} else if generator.IsSectionNumberAlias(ci.PlaceholderID) {
 				item.Type = generator.ContentSectionTitle
 			} else if slideType == types.SlideTypeTitle && (isTitlePlaceholderID(ci.PlaceholderID) || isLikelySubtitle(ci.PlaceholderID)) {
 				item.Type = generator.ContentTitleSlideTitle
@@ -1129,7 +1135,10 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			// Title slide titles use ContentTitleSlideTitle to preserve the
 			// template's ctrTitle font size (typically 40-60pt) and centered
 			// alignment instead of capping to 24pt body-text size.
-			if slideType == types.SlideTypeTitle && (isTitlePlaceholderID(jsonItem.PlaceholderID) || isLikelySubtitle(jsonItem.PlaceholderID)) {
+			// Section number aliases preserve the template's large decorative font.
+			if generator.IsSectionNumberAlias(jsonItem.PlaceholderID) {
+				item.Type = generator.ContentSectionTitle
+			} else if slideType == types.SlideTypeTitle && (isTitlePlaceholderID(jsonItem.PlaceholderID) || isLikelySubtitle(jsonItem.PlaceholderID)) {
 				item.Type = generator.ContentTitleSlideTitle
 			} else {
 				item.Type = generator.ContentText

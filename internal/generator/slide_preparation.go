@@ -423,7 +423,7 @@ func (ctx *singlePassContext) findMaxPresentationRelID() int {
 // layoutID is used to look up the slide master's bullet level configuration.
 func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []ContentItem, layoutID string, slideIndex int) []string {
 	var warnings []string
-	resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes)
+	resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes, layoutID)
 	warnings = append(warnings, resolver.warnings...)
 
 	// Get the first bullet level from the slide master for this layout

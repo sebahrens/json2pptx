@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -108,6 +109,11 @@ func NormalizePlaceholderNames(shapes []shapeXML) NormalizationResult { //nolint
 		case "subTitle":
 			subtitles = append(subtitles, ref)
 		case "body":
+			// Preserve "Section Number" named shapes — they use a semantic
+			// convention that the resolver recognizes for section_number aliases.
+			if strings.EqualFold(shapes[i].NonVisualProperties.ConnectionNonVisual.Name, "Section Number") {
+				continue
+			}
 			bodies = append(bodies, ref)
 		case "pic":
 			images = append(images, ref)

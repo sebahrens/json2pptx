@@ -316,13 +316,14 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 		layouts := make([]skillLayoutInfo, len(analysis.Layouts))
 		for i, l := range analysis.Layouts {
 			phs := make([]skillPlaceholderInfo, 0, len(l.Placeholders))
+			var sectionNumberPH *skillPlaceholderInfo
 			for _, ph := range l.Placeholders {
 				// Skip internal OOXML metadata placeholders (date, footer, slide number)
 				// that agents should never target.
 				if ph.Type == types.PlaceholderOther {
 					continue
 				}
-				phs = append(phs, skillPlaceholderInfo{
+				info := skillPlaceholderInfo{
 					ID:         ph.ID,
 					Type:       string(ph.Type),
 					MaxChars:   ph.MaxChars,
@@ -333,7 +334,18 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 					FontFamily: ph.FontFamily,
 					FontSize:   ph.FontSize,
 					FontColor:  ph.FontColor,
-				})
+				}
+				phs = append(phs, info)
+				// Track "Section Number" shape to advertise the alias
+				if strings.EqualFold(ph.ID, "Section Number") {
+					alias := info
+					alias.ID = "section_number"
+					alias.Type = "section_number"
+					sectionNumberPH = &alias
+				}
+			}
+			if sectionNumberPH != nil {
+				phs = append(phs, *sectionNumberPH)
 			}
 			tags := l.Tags
 			if tags == nil {
