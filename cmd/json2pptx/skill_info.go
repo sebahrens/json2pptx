@@ -116,11 +116,16 @@ type skillLayoutInfo struct {
 
 // skillPlaceholderInfo describes a placeholder within a layout.
 type skillPlaceholderInfo struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
-	MaxChars int    `json:"max_chars"`
-	Width    int64  `json:"width_emu"`
-	Height   int64  `json:"height_emu"`
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	MaxChars   int    `json:"max_chars"`
+	X          int64  `json:"x_emu"`
+	Y          int64  `json:"y_emu"`
+	Width      int64  `json:"width_emu"`
+	Height     int64  `json:"height_emu"`
+	FontFamily string `json:"font_family,omitempty"`
+	FontSize   int    `json:"font_size_hundredths,omitempty"`
+	FontColor  string `json:"font_color,omitempty"`
 }
 
 // skillCapacity summarizes a layout's content capacity.
@@ -318,11 +323,16 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 					continue
 				}
 				phs = append(phs, skillPlaceholderInfo{
-					ID:       ph.ID,
-					Type:     string(ph.Type),
-					MaxChars: ph.MaxChars,
-					Width:    ph.Bounds.Width,
-					Height:   ph.Bounds.Height,
+					ID:         ph.ID,
+					Type:       string(ph.Type),
+					MaxChars:   ph.MaxChars,
+					X:          ph.Bounds.X,
+					Y:          ph.Bounds.Y,
+					Width:      ph.Bounds.Width,
+					Height:     ph.Bounds.Height,
+					FontFamily: ph.FontFamily,
+					FontSize:   ph.FontSize,
+					FontColor:  ph.FontColor,
 				})
 			}
 			tags := l.Tags
