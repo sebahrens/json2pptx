@@ -2,9 +2,12 @@
 package generator
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -552,6 +555,80 @@ func TestDiagramAltText(t *testing.T) {
 			got := diagramAltText(tt.item)
 			if got != tt.want {
 				t.Errorf("diagramAltText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestProcessImageContent_MissingAltTextWarning verifies that a validation
+// warning is emitted when an image content item has no alt text.
+// This is a focused unit test for the alt-text check at the top of
+// processImageContent — it does not exercise the full media pipeline.
+func TestProcessImageContent_MissingAltTextWarning(t *testing.T) {
+	// Create a temporary PNG file so processImageContent gets past the file check.
+	tmpDir := t.TempDir()
+	imgPath := filepath.Join(tmpDir, "test.png")
+	if err := os.WriteFile(imgPath, transparentPNG1x1, 0o644); err != nil {
+		t.Fatalf("failed to write temp image: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		alt      string
+		wantWarn bool
+	}{
+		{
+			name:     "empty alt emits warning",
+			alt:      "",
+			wantWarn: true,
+		},
+		{
+			name:     "non-empty alt no warning",
+			alt:      "A photo of a sunset",
+			wantWarn: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := &singlePassContext{
+				OutputContext: OutputContext{},
+				SecurityContext: SecurityContext{
+					allowedImagePaths: []string{tmpDir},
+				},
+				MediaContext: MediaContext{
+					media:          pptx.NewMediaAllocator(),
+					mediaFiles:     make(map[string]string),
+					usedExtensions: make(map[string]bool),
+					slideRelUpdates: make(map[int][]mediaRel),
+				},
+			}
+
+			item := ContentItem{
+				Type:          ContentImage,
+				PlaceholderID: "body",
+				Value: ImageContent{
+					Path: imgPath,
+					Alt:  tt.alt,
+				},
+			}
+
+			shape := &shapeXML{}
+			ctx.processImageContent(1, item, shape, 0)
+
+			hasAltWarning := false
+			for _, w := range ctx.warnings {
+				if strings.Contains(w, "no alt text") {
+					hasAltWarning = true
+					break
+				}
+			}
+
+			if tt.wantWarn && !hasAltWarning {
+				t.Errorf("expected alt-text warning, got warnings: %v", ctx.warnings)
+			}
+			if !tt.wantWarn && hasAltWarning {
+				t.Errorf("did not expect alt-text warning, got warnings: %v", ctx.warnings)
 			}
 		})
 	}

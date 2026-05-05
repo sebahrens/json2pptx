@@ -877,6 +877,13 @@ func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem
 		return
 	}
 
+	// Warn when image has no alt-text (accessibility compliance).
+	if imgContent.Alt == "" {
+		ctx.warnings = append(ctx.warnings,
+			fmt.Sprintf("slide %d: image in placeholder %q has no alt text — consider adding alt text for accessibility",
+				slideNum, item.PlaceholderID))
+	}
+
 	imagePath := imgContent.Path
 	bounds := imgContent.Bounds
 

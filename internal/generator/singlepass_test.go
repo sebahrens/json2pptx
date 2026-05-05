@@ -2109,7 +2109,7 @@ func TestProcessImageContent_EdgeCases(t *testing.T) {
 				Type:          ContentImage,
 				Value:         ImageContent{Path: "/nonexistent/image.png"},
 			},
-			wantWarnings: 1,
+			wantWarnings: 2, // alt-text warning + file not found
 		},
 	}
 
