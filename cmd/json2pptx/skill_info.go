@@ -446,6 +446,16 @@ func findColorHex(colors []types.ThemeColor, name string) string {
 	return ""
 }
 
+// readyDiagramTypeNames returns the names of diagram types with Status "ready".
+func readyDiagramTypeNames() []string {
+	caps := svggen.DiagramCapabilitiesReady()
+	names := make([]string, len(caps))
+	for i, c := range caps {
+		names[i] = c.Type
+	}
+	return names
+}
+
 // buildSupportedTypes returns the hardcoded lists of supported types.
 func buildSupportedTypes() skillSupportedTypes {
 	return skillSupportedTypes{
@@ -477,31 +487,9 @@ func buildSupportedTypes() skillSupportedTypes {
 			"gauge",
 			"treemap",
 		},
-		DiagramTypes: []string{
-			"timeline",
-			"process_flow",
-			"pyramid",
-			"venn",
-			"swot",
-			"org_chart",
-			"gantt",
-			"matrix_2x2",
-			"porters_five_forces",
-			"house_diagram",
-			"business_model_canvas",
-			"value_chain",
-			"nine_box_talent",
-			"kpi_dashboard",
-			"heatmap",
-			"fishbone",
-			"pestel",
-			"panel_layout",
-			"icon_columns",
-			"icon_rows",
-			"stat_cards",
-		},
+		DiagramTypes:        readyDiagramTypeNames(),
 		ChartCapabilities:   svggen.ChartCapabilities(),
-		DiagramCapabilities: svggen.DiagramCapabilities(),
+		DiagramCapabilities: svggen.DiagramCapabilitiesReady(),
 		GridCellTypes:       []string{"shape", "table", "icon", "image"},
 		ShapeGeometries:     buildShapeGeometries(),
 		DataFormatHints:     buildDataFormatHints(),

@@ -546,10 +546,10 @@ func TestMCPSupportedTypes_ChartTypesMatchCapabilities(t *testing.T) {
 
 // TestMCPSupportedTypes_DiagramTypesMatchCapabilities verifies that the
 // diagram types advertised by buildSupportedTypes match the runtime
-// DiagramCapabilities registry.
+// DiagramCapabilitiesReady registry (stubs excluded).
 func TestMCPSupportedTypes_DiagramTypesMatchCapabilities(t *testing.T) {
 	st := buildSupportedTypes()
-	caps := svggen.DiagramCapabilities()
+	caps := svggen.DiagramCapabilitiesReady()
 
 	capTypes := make([]string, len(caps))
 	for i, c := range caps {

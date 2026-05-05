@@ -206,8 +206,23 @@ func ChartCapabilities() []ChartCapability {
 	}
 }
 
-// DiagramCapabilities returns capability metadata for all known diagram types.
-// Limits reflect pattern validators, native shape generators, and SVG renderers.
+// DiagramCapabilitiesReady returns capability metadata for diagram types with
+// Status "ready". Stub/experimental types are excluded. Use this for
+// agent-facing surfaces (MCP tools, skill-info) where advertising non-functional
+// types erodes trust.
+func DiagramCapabilitiesReady() []DiagramCapability {
+	all := DiagramCapabilities()
+	ready := make([]DiagramCapability, 0, len(all))
+	for _, d := range all {
+		if d.Status == "ready" {
+			ready = append(ready, d)
+		}
+	}
+	return ready
+}
+
+// DiagramCapabilities returns capability metadata for all known diagram types,
+// including stubs. For agent-facing surfaces, prefer DiagramCapabilitiesReady.
 func DiagramCapabilities() []DiagramCapability {
 	return []DiagramCapability{
 		{
@@ -334,7 +349,7 @@ func DiagramCapabilities() []DiagramCapability {
 			OverflowBehavior: strPtr("card grid layout; font reduction for many metrics"),
 			RequiredFields:   []string{"metrics"},
 			OptionalFields:   []string{"label", "value", "unit", "change", "trend"},
-			Status:           "stub",
+			Status:           "ready",
 		},
 		{
 			Type:             "heatmap",
@@ -343,7 +358,7 @@ func DiagramCapabilities() []DiagramCapability {
 			OverflowBehavior: strPtr("cell labels omitted when cells too small"),
 			RequiredFields:   []string{"values", "row_labels", "col_labels"},
 			OptionalFields:   nil,
-			Status:           "stub",
+			Status:           "ready",
 		},
 		{
 			Type:             "fishbone",
@@ -361,7 +376,7 @@ func DiagramCapabilities() []DiagramCapability {
 			OverflowBehavior: strPtr("fixed 6-segment layout"),
 			RequiredFields:   nil,
 			OptionalFields:   []string{"political", "economic", "social", "technological", "environmental", "legal"},
-			Status:           "stub",
+			Status:           "ready",
 		},
 		{
 			Type:             "panel_layout",
@@ -370,7 +385,7 @@ func DiagramCapabilities() []DiagramCapability {
 			OverflowBehavior: strPtr("font reduction for many panels"),
 			RequiredFields:   []string{"panels"},
 			OptionalFields:   []string{"layout", "title", "body", "icon", "color"},
-			Status:           "stub",
+			Status:           "ready",
 		},
 		{
 			Type:             "icon_columns",

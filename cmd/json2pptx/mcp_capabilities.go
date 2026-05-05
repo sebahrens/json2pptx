@@ -245,8 +245,8 @@ func buildVocabularies() capabilitiesVocabularies {
 	chartTypes := svggen.Types()
 	sort.Strings(chartTypes)
 
-	// Diagram types from svggen capabilities.
-	diagCaps := svggen.DiagramCapabilities()
+	// Diagram types from svggen capabilities (ready only — stubs excluded).
+	diagCaps := svggen.DiagramCapabilitiesReady()
 	diagramTypes := make([]string, 0, len(diagCaps))
 	for _, d := range diagCaps {
 		diagramTypes = append(diagramTypes, d.Type)

@@ -638,6 +638,9 @@ func mcpGetDiagramCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_capabilities",
 		mcp.WithDescription("Fetch capability metadata for all diagram types: node limits, overflow behavior, required/optional fields per diagram type. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
 		mcp.WithRawOutputSchema(outputSchemaGetDiagramCapabilities),
+		mcp.WithBoolean("include_experimental",
+			mcp.Description("Include experimental/stub diagram types that are not yet fully functional. Default false."),
+		),
 	)
 }
 
@@ -662,9 +665,15 @@ func handleGetChartCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mc
 	return mcpResult, nil
 }
 
-func handleGetDiagramCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGetDiagramCapabilities(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	caps := svggen.DiagramCapabilitiesReady()
+	if v, ok := request.GetArguments()["include_experimental"]; ok {
+		if inc, isBool := v.(bool); isBool && inc {
+			caps = svggen.DiagramCapabilities()
+		}
+	}
 	resp := diagramCapabilitiesResponse{
-		DiagramCapabilities: svggen.DiagramCapabilities(),
+		DiagramCapabilities: caps,
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
