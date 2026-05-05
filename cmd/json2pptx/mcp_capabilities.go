@@ -55,12 +55,14 @@ type capabilitiesFitReport struct {
 
 // capabilitiesFeatures describes feature flags the server supports.
 type capabilitiesFeatures struct {
-	StrictFit         []string              `json:"strict_fit"`
-	CompactResponses  bool                  `json:"compact_responses"`
-	FitReport         capabilitiesFitReport `json:"fit_report"`
-	StrictUnknownKeys bool                  `json:"strict_unknown_keys"`
-	NamedPatterns     bool                  `json:"named_patterns"`
-	TemplateSettings  bool                  `json:"template_settings"`
+	StrictFit            []string              `json:"strict_fit"`
+	CompactResponses     bool                  `json:"compact_responses"`
+	FitReport            capabilitiesFitReport `json:"fit_report"`
+	StrictUnknownKeys    bool                  `json:"strict_unknown_keys"`
+	NamedPatterns        bool                  `json:"named_patterns"`
+	TemplateSettings     bool                  `json:"template_settings"`
+	SupportsInlineMarkup []string              `json:"supports_inline_markup"`
+	SupportsSpeakerNotes bool                  `json:"supports_speaker_notes"`
 }
 
 // mcpToolNames returns the sorted list of all registered MCP tool names.
@@ -137,9 +139,11 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 					"generate_presentation":     false,
 				},
 			},
-			StrictUnknownKeys: true,
-			NamedPatterns:     true,
-			TemplateSettings:  true,
+			StrictUnknownKeys:    true,
+			NamedPatterns:        true,
+			TemplateSettings:     true,
+			SupportsInlineMarkup: []string{"b", "i", "u"},
+			SupportsSpeakerNotes: true,
 		},
 		Vocabularies: buildVocabularies(),
 		ErrorCodes:   codes,
