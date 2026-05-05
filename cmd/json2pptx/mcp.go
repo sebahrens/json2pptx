@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1333,13 +1334,116 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	grid.FillHeight = true
 
 	// Run density checks on any tables embedded in the expanded shape grid.
-	var densityWarnings []patternValidationError
+	densityWarnings := collectGridDensityWarnings(grid)
+
+	// Compute occupancy metadata so agents can pre-flight sparseness
+	occupancy := computeGridOccupancy(grid, expandCtx)
+
+	// Also provide the pattern version for traceability
+	result := struct {
+		Pattern          string                    `json:"pattern"`
+		Version          int                       `json:"version"`
+		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
+		Occupancy        gridOccupancy             `json:"occupancy"`
+		DensityWarnings  []patternValidationError  `json:"density_warnings,omitempty"`
+	}{
+		Pattern:         pat.Name(),
+		Version:         pat.Version(),
+		ShapeGrid:       grid,
+		Occupancy:       occupancy,
+		DensityWarnings: densityWarnings,
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcpResult, nil
+}
+
+// gridOccupancy reports how much of the layout a pattern fills.
+type gridOccupancy struct {
+	FilledPct      float64 `json:"filled_pct"`
+	RowsUsed       int     `json:"rows_used"`
+	RowsEmpty      int     `json:"rows_empty"`
+	BoundsHeightPct float64 `json:"bounds_height_pct"`
+}
+
+// computeGridOccupancy calculates occupancy metrics for an expanded shape grid.
+func computeGridOccupancy(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext) gridOccupancy {
+	if grid == nil || len(grid.Rows) == 0 {
+		return gridOccupancy{}
+	}
+
+	// Determine column count from the grid's Columns field or infer from max cells per row
+	numCols := 0
+	if len(grid.Columns) > 0 {
+		var n float64
+		if err := json.Unmarshal(grid.Columns, &n); err == nil {
+			numCols = int(n)
+		} else {
+			var arr []float64
+			if err := json.Unmarshal(grid.Columns, &arr); err == nil {
+				numCols = len(arr)
+			}
+		}
+	}
+	if numCols == 0 {
+		for _, row := range grid.Rows {
+			if len(row.Cells) > numCols {
+				numCols = len(row.Cells)
+			}
+		}
+	}
+
+	totalSlots := len(grid.Rows) * numCols
+	filledSlots := 0
+	rowsUsed := 0
+	rowsEmpty := 0
+
+	for _, row := range grid.Rows {
+		rowHasContent := false
+		for _, cell := range row.Cells {
+			if cell != nil {
+				filledSlots++
+				rowHasContent = true
+			}
+		}
+		if rowHasContent {
+			rowsUsed++
+		} else {
+			rowsEmpty++
+		}
+	}
+
+	filledPct := 0.0
+	if totalSlots > 0 {
+		filledPct = math.Round(float64(filledSlots)/float64(totalSlots)*1000) / 10
+	}
+
+	// bounds_height_pct: percentage of the layout area height the grid occupies
+	boundsHeightPct := 100.0
+	if grid.Bounds != nil && grid.Bounds.Height > 0 {
+		boundsHeightPct = grid.Bounds.Height
+	}
+
+	return gridOccupancy{
+		FilledPct:       filledPct,
+		RowsUsed:        rowsUsed,
+		RowsEmpty:       rowsEmpty,
+		BoundsHeightPct: boundsHeightPct,
+	}
+}
+
+// collectGridDensityWarnings checks tables in the grid for density issues.
+func collectGridDensityWarnings(grid *jsonschema.ShapeGridInput) []patternValidationError {
+	var warnings []patternValidationError
 	for rowIdx, row := range grid.Rows {
 		for cellIdx, cell := range row.Cells {
 			if cell != nil && cell.Table != nil {
 				tablePath := fmt.Sprintf("shape_grid.rows[%d].cells[%d].table", rowIdx, cellIdx)
 				for _, ve := range pipeline.DetectTableDensity(cell.Table, tablePath) {
-					densityWarnings = append(densityWarnings, patternValidationError{
+					warnings = append(warnings, patternValidationError{
 						Field:   ve.Path,
 						Code:    ve.Code,
 						Message: ve.Message,
@@ -1349,25 +1453,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 			}
 		}
 	}
-
-	// Also provide the pattern version for traceability
-	result := struct {
-		Pattern          string                    `json:"pattern"`
-		Version          int                       `json:"version"`
-		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
-		DensityWarnings  []patternValidationError  `json:"density_warnings,omitempty"`
-	}{
-		Pattern:         pat.Name(),
-		Version:         pat.Version(),
-		ShapeGrid:       grid,
-		DensityWarnings: densityWarnings,
-	}
-
-	mcpResult, err := api.MCPSuccessResult(ctx, result)
-	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
-	}
-	return mcpResult, nil
+	return warnings
 }
 
 // --- Icon tool ---

@@ -192,6 +192,16 @@ var outputSchemaExpandPattern = json.RawMessage(`{
     "pattern":           {"type": "string"},
     "version":           {"type": "integer"},
     "shape_grid":        {"type": "object"},
+    "occupancy": {
+      "type": "object",
+      "properties": {
+        "filled_pct":       {"type": "number"},
+        "rows_used":        {"type": "integer"},
+        "rows_empty":       {"type": "integer"},
+        "bounds_height_pct": {"type": "number"}
+      },
+      "required": ["filled_pct", "rows_used", "rows_empty", "bounds_height_pct"]
+    },
     "density_warnings":  {
       "type": "array",
       "items": {
@@ -205,7 +215,7 @@ var outputSchemaExpandPattern = json.RawMessage(`{
       }
     }
   },
-  "required": ["pattern", "version", "shape_grid"]
+  "required": ["pattern", "version", "shape_grid", "occupancy"]
 }`)
 
 // --- recommend_pattern ---
