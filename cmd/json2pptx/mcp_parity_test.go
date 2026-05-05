@@ -222,7 +222,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	})
 
 	// Test that strict mode refuses generation on overflow.
-	t.Run("fit_report=false omits fit_findings", func(t *testing.T) {
+	t.Run("fit_report=false omits content fit_findings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"json_input": deckJSON,
 			"fit_report": false,
@@ -235,8 +235,10 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}
 
 		text := result.Content[0].(mcp.TextContent).Text
-		if strings.Contains(text, "fit_findings") {
-			t.Error("fit_findings should not appear when fit_report=false")
+		// layout_synthesized findings are always emitted (template-level concern),
+		// but content-level findings (fit_overflow, density_exceeded) must not appear.
+		if strings.Contains(text, "fit_overflow") || strings.Contains(text, "density_exceeded") {
+			t.Error("content fit_findings should not appear when fit_report=false")
 		}
 	})
 
@@ -265,7 +267,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		// The important thing is the code path ran without error.
 	})
 
-	t.Run("fit_report absent defaults to no fit_findings", func(t *testing.T) {
+	t.Run("fit_report absent defaults to no content fit_findings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"json_input": deckJSON,
 		}))
@@ -277,8 +279,10 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}
 
 		text := result.Content[0].(mcp.TextContent).Text
-		if strings.Contains(text, "fit_findings") {
-			t.Error("fit_findings should not appear when fit_report is absent")
+		// layout_synthesized findings are always emitted (template-level concern),
+		// but content-level findings must not appear without fit_report.
+		if strings.Contains(text, "fit_overflow") || strings.Contains(text, "density_exceeded") {
+			t.Error("content fit_findings should not appear when fit_report is absent")
 		}
 	})
 
@@ -335,14 +339,22 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 			t.Skip("no fit findings generated — thresholds may need adjustment")
 		}
 
-		// Verify sorting: ActionRank should be non-increasing.
-		for i := 1; i < len(resp.FitFindings); i++ {
-			prev := patterns.ActionRank(resp.FitFindings[i-1].Action)
-			curr := patterns.ActionRank(resp.FitFindings[i].Action)
+		// Verify sorting: ActionRank should be non-increasing among slide-level
+		// findings (template-level findings like layout_synthesized are appended
+		// separately and not subject to per-slide ordering).
+		var slideFindings []patterns.FitFinding
+		for _, f := range resp.FitFindings {
+			if strings.HasPrefix(f.Path, "slides[") {
+				slideFindings = append(slideFindings, f)
+			}
+		}
+		for i := 1; i < len(slideFindings); i++ {
+			prev := patterns.ActionRank(slideFindings[i-1].Action)
+			curr := patterns.ActionRank(slideFindings[i].Action)
 			if curr > prev {
 				t.Errorf("findings not sorted by ActionRank desc: [%d]=%s (rank %d) before [%d]=%s (rank %d)",
-					i-1, resp.FitFindings[i-1].Action, prev,
-					i, resp.FitFindings[i].Action, curr)
+					i-1, slideFindings[i-1].Action, prev,
+					i, slideFindings[i].Action, curr)
 			}
 		}
 	})

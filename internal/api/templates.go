@@ -207,7 +207,7 @@ func (ts *TemplateService) GetOrAnalyzeTemplate(templatePath string) (*types.Tem
 	}
 
 	// Synthesize missing layout capabilities (e.g., two-column)
-	template.SynthesizeIfNeeded(reader, analysis)
+	_ = template.SynthesizeIfNeeded(reader, analysis)
 
 	// Normalize placeholder names to canonical form (title, body, body_2, image, etc.)
 	// This produces modified layout XML bytes stored in SyntheticFiles so the generator

@@ -374,7 +374,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Layouts:      layouts,
 		Theme:        theme,
 	}
-	template.SynthesizeIfNeeded(reader, analysis)
+	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
 	templateLayouts := analysis.Layouts
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
@@ -461,6 +461,10 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Apply per-slide finding budget.
 	verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
 	fitFindings = BudgetFitFindings(fitFindings, DefaultFindingBudget, verboseFit)
+
+	// Append synthesis findings (template-level, always emitted, not subject to
+	// per-slide budget).
+	fitFindings = append(fitFindings, synthesisFindings...)
 
 	// Build response
 	output := JSONOutput{

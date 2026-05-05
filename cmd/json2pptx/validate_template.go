@@ -124,7 +124,7 @@ func runValidateTemplate() error {
 	}
 
 	// Synthesize missing layout capabilities
-	template.SynthesizeIfNeeded(reader, analysis)
+	_ = template.SynthesizeIfNeeded(reader, analysis)
 	layouts = analysis.Layouts
 
 	// Determine capabilities

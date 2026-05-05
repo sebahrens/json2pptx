@@ -213,7 +213,7 @@ func loadPreviewTemplate(templatePath string) (*previewTemplateContext, error) {
 		SlideHeight:  slideHeight,
 		Layouts:      layouts,
 	}
-	template.SynthesizeIfNeeded(reader, analysis)
+	_ = template.SynthesizeIfNeeded(reader, analysis)
 
 	layoutByID := make(map[string]types.LayoutMetadata, len(analysis.Layouts))
 	for _, l := range analysis.Layouts {

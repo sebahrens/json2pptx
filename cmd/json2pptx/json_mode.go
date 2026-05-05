@@ -233,16 +233,16 @@ func loadRunConfig(configPath, templatesDir, outputDir string, chartPNG bool) (c
 
 // analyzeTemplateLayouts opens a template, parses layouts, synthesizes missing layouts,
 // normalizes placeholder names, and returns the metadata needed for slide conversion.
-func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64, *types.TemplateMetadata) {
+func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64, *types.TemplateMetadata, []patterns.FitFinding) {
 	reader, err := template.OpenTemplate(templatePath)
 	if err != nil {
-		return nil, nil, 0, 0, nil
+		return nil, nil, 0, 0, nil, nil
 	}
 	defer func() { _ = reader.Close() }()
 
 	layouts, err := template.ParseLayouts(reader)
 	if err != nil {
-		return nil, nil, 0, 0, nil
+		return nil, nil, 0, 0, nil, nil
 	}
 
 	theme := template.ParseTheme(reader)
@@ -254,7 +254,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 		Layouts:      layouts,
 		Theme:        theme,
 	}
-	template.SynthesizeIfNeeded(reader, analysis)
+	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
 
 	// Parse optional template metadata (for semantic accents, layout hints, etc.)
 	metadata, _ := template.ParseMetadata(reader)
@@ -277,7 +277,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
 	}
-	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight, metadata
+	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight, metadata, synthesisFindings
 }
 
 // runJSONMode processes JSON input and generates PPTX.
@@ -336,7 +336,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	defer templateCleanup()
 
 	// Analyze template for layout metadata, synthetic files, and dimensions
-	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata := analyzeTemplateLayouts(templatePath)
+	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, synthesisFindings := analyzeTemplateLayouts(templatePath)
 
 	// Resolve canonical layout names (e.g. "title", "content", "closing") to
 	// concrete layout IDs using tag-based matching against the target template.
@@ -427,6 +427,12 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	slideErrors := convertMediaFailures(result.MediaFailures)
 
 	// Build success output
+	// Collect fit findings: synthesis + render-time + contrast.
+	var allFitFindings []patterns.FitFinding
+	allFitFindings = append(allFitFindings, synthesisFindings...)
+	allFitFindings = append(allFitFindings, result.FitFindings...)
+	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+
 	output := JSONOutput{
 		Success:          true,
 		OutputPath:       outputPath,
@@ -436,6 +442,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		SlideErrors:      slideErrors,
 		Quality:          computeQualityScore(input.Slides, allWarnings),
 		ValidationErrors: result.ValidationErrors,
+		FitFindings:      allFitFindings,
 	}
 
 	// Write JSON output if requested

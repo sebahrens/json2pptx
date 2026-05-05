@@ -420,13 +420,16 @@ func TestSynthesizeIfNeeded_NativePreserved(t *testing.T) {
 		},
 	}
 
-	SynthesizeIfNeeded(nil, analysis)
+	findings := SynthesizeIfNeeded(nil, analysis)
 
 	if analysis.Synthesis != nil {
 		t.Error("expected nil Synthesis for template with native two-column and blank-title layouts")
 	}
 	if len(analysis.Layouts) != 3 {
 		t.Errorf("layout count = %d, want 3 (no synthetic layouts added)", len(analysis.Layouts))
+	}
+	if len(findings) != 0 {
+		t.Errorf("expected no findings when no synthesis occurs, got %d", len(findings))
 	}
 }
 
@@ -488,11 +491,34 @@ func TestSynthesizeIfNeeded_RealTemplate(t *testing.T) {
 		Layouts:      filtered,
 	}
 
-	SynthesizeIfNeeded(reader, analysis)
+	findings := SynthesizeIfNeeded(reader, analysis)
 
 	// AC15: SynthesisManifest should be populated
 	if analysis.Synthesis == nil {
 		t.Fatal("expected non-nil Synthesis for template without two-column layout")
+	}
+
+	// Verify layout_synthesized findings are emitted
+	if len(findings) == 0 {
+		t.Fatal("expected layout_synthesized findings, got none")
+	}
+	for _, f := range findings {
+		if f.Code != "layout_synthesized" {
+			t.Errorf("unexpected finding code %q, want layout_synthesized", f.Code)
+		}
+		if f.Action != "review" {
+			t.Errorf("finding action = %q, want review", f.Action)
+		}
+		if f.Fix == nil {
+			t.Error("expected fix suggestion with layout_id and base_layout_id")
+		} else {
+			if _, ok := f.Fix.Params["layout_id"]; !ok {
+				t.Error("fix.params missing layout_id")
+			}
+			if _, ok := f.Fix.Params["base_layout_id"]; !ok {
+				t.Error("fix.params missing base_layout_id")
+			}
+		}
 	}
 	if len(analysis.Synthesis.SyntheticFiles) == 0 {
 		t.Fatal("expected SyntheticFiles to be populated")
@@ -593,7 +619,7 @@ func TestSynthesizeBlankTitle(t *testing.T) {
 		},
 	}
 
-	SynthesizeIfNeeded(nil, analysis)
+	_ = SynthesizeIfNeeded(nil, analysis)
 
 	if analysis.Synthesis == nil {
 		t.Fatal("expected non-nil Synthesis")
@@ -761,7 +787,7 @@ func TestSynthesizeTwoColumn_ZeroBoundsProducesContent(t *testing.T) {
 		},
 	}
 
-	SynthesizeIfNeeded(nil, analysis)
+	_ = SynthesizeIfNeeded(nil, analysis)
 
 	if analysis.Synthesis == nil {
 		t.Fatal("expected non-nil Synthesis even with zero-area body placeholder")

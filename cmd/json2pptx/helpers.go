@@ -68,7 +68,7 @@ func getOrAnalyzeTemplate(templatePath string, cache types.TemplateCache) (*type
 	}
 
 	// Synthesize missing layout capabilities (e.g., two-column layouts)
-	template.SynthesizeIfNeeded(reader, analysis)
+	_ = template.SynthesizeIfNeeded(reader, analysis)
 
 	// Normalize placeholder names to canonical form (title, body, body_2, image, etc.)
 	// This produces modified layout XML bytes stored in SyntheticFiles so the generator

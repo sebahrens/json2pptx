@@ -49,7 +49,7 @@ func main() {
 		TemplatePath: templatePath,
 		Layouts:      layouts,
 	}
-	template.SynthesizeIfNeeded(tmpl, analysis)
+	_ = template.SynthesizeIfNeeded(tmpl, analysis)
 	layouts = analysis.Layouts
 
 	// Check capabilities
