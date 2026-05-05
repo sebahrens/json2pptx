@@ -152,15 +152,17 @@ func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte
 
 		// Generate p:pic XML using the pptx package
 		// Relationship IDs were pre-allocated by allocateNativeSVGRelIDs()
-		picXML, err := pptx.GeneratePicWithSVG(
-			svg.shapeID,
-			svg.pngRelID,
-			svg.svgRelID,
-			svg.offsetX,
-			svg.offsetY,
-			svg.extentCX,
-			svg.extentCY,
-		)
+		picXML, err := pptx.GeneratePic(pptx.PicOptions{
+			ID:             svg.shapeID,
+			PNGRelID:       svg.pngRelID,
+			SVGRelID:       svg.svgRelID,
+			Description:    svg.description,
+			OffsetX:        svg.offsetX,
+			OffsetY:        svg.offsetY,
+			ExtentCX:       svg.extentCX,
+			ExtentCY:       svg.extentCY,
+			OmitNamespaces: true,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate p:pic for SVG: %w", err)
 		}

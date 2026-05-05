@@ -375,6 +375,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 				pngData:        transparentPNG1x1,
 				svgMediaFile:   svgMediaFile,
 				pngMediaFile:   pngMediaFile,
+				description:    icon.Alt,
 				offsetX:        icon.OffsetX,
 				offsetY:        icon.OffsetY,
 				extentCX:       icon.ExtentCX,
@@ -408,6 +409,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 					pngData:        transparentPNG1x1,
 					svgMediaFile:   svgMediaFile,
 					pngMediaFile:   pngMediaFile,
+					description:    img.Alt,
 					offsetX:        img.OffsetX,
 					offsetY:        img.OffsetY,
 					extentCX:       img.ExtentCX,
@@ -420,6 +422,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 			ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 				imagePath:      img.Path,
 				mediaFileName:  mediaFileName,
+				description:    img.Alt,
 				offsetX:        img.OffsetX,
 				offsetY:        img.OffsetY,
 				extentCX:       img.ExtentCX,

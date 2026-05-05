@@ -523,3 +523,36 @@ func TestCountFishboneCauses_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+// TestDiagramAltText verifies alt-text generation for diagram content items.
+func TestDiagramAltText(t *testing.T) {
+	tests := []struct {
+		name string
+		item ContentItem
+		want string
+	}{
+		{
+			name: "diagram with title",
+			item: ContentItem{Value: &types.DiagramSpec{Type: "bar_chart", Title: "Revenue Growth"}},
+			want: "Revenue Growth (bar_chart)",
+		},
+		{
+			name: "diagram without title",
+			item: ContentItem{Value: &types.DiagramSpec{Type: "process_flow"}},
+			want: "process flow diagram",
+		},
+		{
+			name: "non-diagram content",
+			item: ContentItem{Value: "just text"},
+			want: "Diagram",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := diagramAltText(tt.item)
+			if got != tt.want {
+				t.Errorf("diagramAltText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

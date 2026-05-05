@@ -233,6 +233,9 @@ type mediaRel struct {
 	mediaFileName string
 	data          []byte // Direct byte data (used for charts, eliminates temp files)
 
+	// Alt text for accessibility (cNvPr/@descr)
+	description string
+
 	// Position/size for p:pic element insertion (from placeholder)
 	offsetX, offsetY   int64
 	extentCX, extentCY int64
@@ -265,6 +268,9 @@ type nativeSVGInsert struct {
 	// Relationship IDs (allocated during writeOutput)
 	svgRelID string
 	pngRelID string
+
+	// Alt text for accessibility (cNvPr/@descr)
+	description string
 
 	// Shape position/size (from placeholder)
 	offsetX, offsetY   int64

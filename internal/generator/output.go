@@ -871,14 +871,16 @@ func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, me
 
 		// Generate p:pic XML using the pptx package
 		// relID is assigned during writeNewSlideRelationships (rId2, rId3, etc.)
-		picXML, err := pptx.GeneratePicSimpleNoNS(
-			mr.shapeID,
-			mr.relID,
-			mr.offsetX,
-			mr.offsetY,
-			mr.extentCX,
-			mr.extentCY,
-		)
+		picXML, err := pptx.GeneratePic(pptx.PicOptions{
+			ID:             mr.shapeID,
+			PNGRelID:       mr.relID,
+			Description:    mr.description,
+			OffsetX:        mr.offsetX,
+			OffsetY:        mr.offsetY,
+			ExtentCX:       mr.extentCX,
+			ExtentCY:       mr.extentCY,
+			OmitNamespaces: true,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate p:pic for media: %w", err)
 		}

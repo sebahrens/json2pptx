@@ -381,6 +381,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			}
 			iconInserts = append(iconInserts, generator.IconInsert{
 				SVGData:  svgData,
+				Alt:      iconAltText(cell.IconSpec),
 				OffsetX:  cell.Bounds.X,
 				OffsetY:  cell.Bounds.Y,
 				ExtentCX: cell.Bounds.CX,
@@ -449,6 +450,7 @@ func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator)
 		}
 		icons = append(icons, generator.IconInsert{
 			SVGData:  svgData,
+			Alt:      iconAltText(cell.IconSpec),
 			OffsetX:  ib.X,
 			OffsetY:  ib.Y,
 			ExtentCX: ib.CX,
@@ -456,6 +458,20 @@ func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator)
 		})
 	}
 	return shapes, icons, nil
+}
+
+// iconAltText returns alt text for an icon based on its name or path.
+func iconAltText(spec *shapegrid.IconSpec) string {
+	if spec == nil {
+		return ""
+	}
+	if spec.Name != "" {
+		return spec.Name + " icon"
+	}
+	if spec.Path != "" {
+		return filepath.Base(spec.Path) + " icon"
+	}
+	return "icon"
 }
 
 // generateImageCellXML produces XML overlays/text and image inserts for an image cell.
@@ -499,8 +515,14 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell) ([]generator.IconIn
 	if len(result.SVG) == 0 {
 		return nil, fmt.Errorf("diagram in grid cell %d: renderer returned empty SVG", cell.ID)
 	}
+	// Build alt-text from diagram type and title
+	alt := strings.ReplaceAll(cell.DiagramSpec.Type, "_", " ") + " diagram"
+	if cell.DiagramSpec.Title != "" {
+		alt = cell.DiagramSpec.Title + " (" + cell.DiagramSpec.Type + ")"
+	}
 	return []generator.IconInsert{{
 		SVGData:  result.SVG,
+		Alt:      alt,
 		OffsetX:  cell.Bounds.X,
 		OffsetY:  cell.Bounds.Y,
 		ExtentCX: cell.Bounds.CX,

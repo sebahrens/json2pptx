@@ -72,6 +72,7 @@ type SlideSpec struct {
 // the necessary relationships.
 type IconInsert struct {
 	SVGData  []byte // Raw SVG content
+	Alt      string // Alt text for accessibility
 	OffsetX  int64  // X position in EMU
 	OffsetY  int64  // Y position in EMU
 	ExtentCX int64  // Width in EMU

@@ -1419,3 +1419,24 @@ func TestResolveShapeGrid_DiagramCell(t *testing.T) {
 		t.Error("diagram icon insert has zero dimensions")
 	}
 }
+
+func TestIconAltText(t *testing.T) {
+	tests := []struct {
+		name string
+		spec *shapegrid.IconSpec
+		want string
+	}{
+		{name: "nil spec", spec: nil, want: ""},
+		{name: "named icon", spec: &shapegrid.IconSpec{Name: "chart-pie"}, want: "chart-pie icon"},
+		{name: "path icon", spec: &shapegrid.IconSpec{Path: "/tmp/icons/logo.svg"}, want: "logo.svg icon"},
+		{name: "empty spec", spec: &shapegrid.IconSpec{}, want: "icon"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := iconAltText(tt.spec)
+			if got != tt.want {
+				t.Errorf("iconAltText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

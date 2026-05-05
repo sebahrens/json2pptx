@@ -444,11 +444,15 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			pngFallback = transparentPNG1x1
 		}
 
+		// Build alt-text for diagrams from type and title
+		diagramAlt := diagramAltText(item)
+
 		ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 			svgData:        renderResult.SVG,
 			pngData:        pngFallback,
 			svgMediaFile:   svgMediaFile,
 			pngMediaFile:   pngMediaFile,
+			description:    diagramAlt,
 			offsetX:        embedX,
 			offsetY:        embedY,
 			extentCX:       embedW,
@@ -461,9 +465,13 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// identically. PNG is rendered at 2x from placeholder-sized SVG.
 		mediaFileName := ctx.allocPNG(fmt.Sprintf("diagram-s%d-x%d", slideNum, removeIdx))
 
+		// Build alt-text for diagrams from type and title
+		diagramAlt := diagramAltText(item)
+
 		ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 			mediaFileName:  mediaFileName,
 			data:           renderResult.PNG,
+			description:    diagramAlt,
 			offsetX:        embedX,
 			offsetY:        embedY,
 			extentCX:       embedW,
@@ -471,6 +479,19 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			placeholderIdx: removeIdx,
 		})
 	}
+}
+
+// diagramAltText builds a human-readable alt-text string for a diagram
+// content item, using the diagram type and optional title.
+func diagramAltText(item ContentItem) string {
+	ds, ok := item.Value.(*types.DiagramSpec)
+	if !ok {
+		return "Diagram"
+	}
+	if ds.Title != "" {
+		return ds.Title + " (" + ds.Type + ")"
+	}
+	return strings.ReplaceAll(ds.Type, "_", " ") + " diagram"
 }
 
 // hasTextCollisionForShape checks if any text content item resolves to the
@@ -892,18 +913,18 @@ func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem
 
 	// Handle SVG files with appropriate strategy
 	if IsSVGFile(imagePath) {
-		ctx.processSVGImage(slideNum, imagePath, placeholderBounds, shape, shapeIdx)
+		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx)
 		return
 	}
 
 	// Process regular (non-SVG) image
-	ctx.processRegularImage(slideNum, imagePath, placeholderBounds, shape, shapeIdx)
+	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx)
 }
 
 // processSVGImage handles SVG files based on the configured conversion strategy.
-func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
+func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
 	if ctx.svgConverter.GetStrategy() == SVGStrategyNative {
-		ctx.processNativeSVG(slideNum, imagePath, placeholderBounds, shapeIdx)
+		ctx.processNativeSVG(slideNum, imagePath, alt, placeholderBounds, shapeIdx)
 		return
 	}
 
@@ -915,11 +936,11 @@ func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, pl
 	}
 
 	// Process as regular image with converted path
-	ctx.processRegularImage(slideNum, convertedPath, placeholderBounds, shape, shapeIdx)
+	ctx.processRegularImage(slideNum, convertedPath, alt, placeholderBounds, shape, shapeIdx)
 }
 
 // processNativeSVG handles native SVG embedding with PNG fallback.
-func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, placeholderBounds types.BoundingBox, shapeIdx int) {
+func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shapeIdx int) {
 	if !ctx.svgConverter.IsPNGAvailable() {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("SVG file %s: rsvg-convert not available, using placeholder", imagePath))
 		ctx.insertSVGFallbackImage(slideNum, placeholderBounds, shapeIdx)
@@ -951,6 +972,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, p
 		pngPath:        pngPath,
 		svgMediaFile:   svgMediaFile,
 		pngMediaFile:   pngMediaFile,
+		description:    alt,
 		offsetX:        scaledBounds.X,
 		offsetY:        scaledBounds.Y,
 		extentCX:       scaledBounds.Width,
@@ -985,7 +1007,7 @@ func (ctx *singlePassContext) convertSVGToRaster(imagePath string, placeholderBo
 }
 
 // processRegularImage handles non-SVG images (PNG, JPG, etc.) or converted SVGs.
-func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
+func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
 	scaledBounds, err := scaleImageToFit(imagePath, placeholderBounds)
 	if err != nil {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to scale image %s: %v", imagePath, err))
@@ -1000,6 +1022,7 @@ func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string
 	ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 		imagePath:      imagePath,
 		mediaFileName:  mediaFileName,
+		description:    alt,
 		offsetX:        scaledBounds.X,
 		offsetY:        scaledBounds.Y,
 		extentCX:       scaledBounds.Width,
