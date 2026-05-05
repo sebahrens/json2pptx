@@ -35,6 +35,16 @@ func SolidLinePoints(widthPt float64, hex string) Line {
 	}
 }
 
+// ResolveColorLinePoints creates a line with width in points and a color string
+// that may be a scheme color name (e.g. "accent1") or a hex color (e.g. "FF0000").
+// Scheme colors emit <a:schemeClr>, hex colors emit <a:srgbClr>.
+func ResolveColorLinePoints(widthPt float64, color string) Line {
+	return Line{
+		Width: int64(widthPt * 12700),
+		Fill:  ResolveColorString(color),
+	}
+}
+
 // WriteTo writes the line's DrawingML XML (a:ln element) into buf.
 func (l Line) WriteTo(buf *bytes.Buffer) {
 	if l.Width > 0 {

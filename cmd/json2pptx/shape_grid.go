@@ -662,7 +662,7 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 		width = 1.0
 	}
 
-	line := pptx.SolidLinePoints(width, color)
+	line := pptx.ResolveColorLinePoints(width, color)
 	if spec.Dash != "" {
 		line.Dash = spec.Dash
 	}

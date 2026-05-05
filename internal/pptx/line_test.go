@@ -56,6 +56,28 @@ func TestLine_WithDashAndCap(t *testing.T) {
 	}
 }
 
+func TestResolveColorLinePoints_SchemeColor(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	ResolveColorLinePoints(1.5, "accent1").WriteTo(&buf)
+	got := buf.String()
+	expected := `<a:ln w="19050"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:ln>`
+	if got != expected {
+		t.Errorf("ResolveColorLinePoints(scheme):\ngot:  %s\nwant: %s", got, expected)
+	}
+}
+
+func TestResolveColorLinePoints_HexColor(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	ResolveColorLinePoints(2.0, "FF0000").WriteTo(&buf)
+	got := buf.String()
+	expected := `<a:ln w="25400"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln>`
+	if got != expected {
+		t.Errorf("ResolveColorLinePoints(hex):\ngot:  %s\nwant: %s", got, expected)
+	}
+}
+
 func TestLine_BevelJoin(t *testing.T) {
 	t.Parallel()
 	l := Line{Width: 12700, Fill: SolidFill("333333"), Join: "bevel"}
