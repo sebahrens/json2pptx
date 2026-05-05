@@ -34,8 +34,8 @@ func TestCheckUnknownKeys_DetectsTypo(t *testing.T) {
 	if ve.Code != patterns.ErrCodeUnknownKey {
 		t.Errorf("code = %q, want %q", ve.Code, patterns.ErrCodeUnknownKey)
 	}
-	if ve.Path != "root.fooo" {
-		t.Errorf("path = %q, want %q", ve.Path, "root.fooo")
+	if ve.Path != "root/fooo" {
+		t.Errorf("path = %q, want %q", ve.Path, "root/fooo")
 	}
 	if !errors.Is(ve, patterns.ErrUnknownKey) {
 		t.Error("expected errors.Is(ve, patterns.ErrUnknownKey)")
@@ -100,7 +100,7 @@ func TestCheckInputUnknownKeys_SlideLevel(t *testing.T) {
 	errs := checkInputUnknownKeys(raw)
 	found := false
 	for _, ve := range errs {
-		if ve.Path == "slides[0].slide_tpye" {
+		if ve.Path == "/slides/0/slide_tpye" {
 			found = true
 			if ve.Fix == nil || ve.Fix.Params["to"] != "slide_type" {
 				t.Errorf("expected did-you-mean 'slide_type', got fix %+v", ve.Fix)
@@ -109,7 +109,7 @@ func TestCheckInputUnknownKeys_SlideLevel(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("expected unknown_key for 'slides[0].slide_tpye', got %v", errs)
+		t.Errorf("expected unknown_key for '/slides/0/slide_tpye', got %v", errs)
 	}
 }
 
@@ -128,7 +128,7 @@ func TestCheckInputUnknownKeys_ContentLevel(t *testing.T) {
 	errs := checkInputUnknownKeys(raw)
 	found := false
 	for _, ve := range errs {
-		if ve.Path == "slides[0].content[0].placeholderId" {
+		if ve.Path == "/slides/0/content/0/placeholderId" {
 			found = true
 			if ve.Fix == nil || ve.Fix.Params["to"] != "placeholder_id" {
 				t.Errorf("expected did-you-mean 'placeholder_id', got fix %+v", ve.Fix)
@@ -137,7 +137,7 @@ func TestCheckInputUnknownKeys_ContentLevel(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("expected unknown_key for 'slides[0].content[0].placeholderId', got %v", errs)
+		t.Errorf("expected unknown_key for '/slides/0/content/0/placeholderId', got %v", errs)
 	}
 }
 
@@ -153,7 +153,7 @@ func TestCheckInputUnknownKeys_BackgroundLevel(t *testing.T) {
 	errs := checkInputUnknownKeys(raw)
 	found := false
 	for _, ve := range errs {
-		if ve.Path == "slides[0].background.img" {
+		if ve.Path == "/slides/0/background/img" {
 			found = true
 			if ve.Fix != nil && ve.Fix.Params["to"] != "image" {
 				t.Errorf("expected did-you-mean 'image', got fix %+v", ve.Fix)
@@ -162,7 +162,7 @@ func TestCheckInputUnknownKeys_BackgroundLevel(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("expected unknown_key for 'slides[0].background.img', got %v", errs)
+		t.Errorf("expected unknown_key for '/slides/0/background/img', got %v", errs)
 	}
 }
 
@@ -208,8 +208,8 @@ func TestCheckRedundantValue_BothChartValueAndValue(t *testing.T) {
 	if found == nil {
 		t.Fatalf("expected redundant_field warning, got %v", errs)
 	}
-	if found.Path != "slides[0].content[0]" {
-		t.Errorf("path = %q, want %q", found.Path, "slides[0].content[0]")
+	if found.Path != "/slides/0/content/0" {
+		t.Errorf("path = %q, want %q", found.Path, "/slides/0/content/0")
 	}
 	if found.Fix == nil || found.Fix.Kind != "remove_field" {
 		t.Errorf("expected remove_field fix, got %+v", found.Fix)

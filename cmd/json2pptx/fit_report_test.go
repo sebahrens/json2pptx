@@ -228,13 +228,13 @@ func TestWriteFitReport_NDJSON(t *testing.T) {
 	findings := []fitFinding{
 		{
 			Code:    patterns.ErrCodeFitOverflow,
-			Path:    "slides[0].content[0].rows[0][0]",
+			Path:    "/slides/0/content/0/rows/0/0",
 			Message: "text needs 3 lines",
 			Fix:     &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": 5}},
 		},
 		{
 			Code:    patterns.ErrCodeDensityExceeded,
-			Path:    "slides[0].content[0]",
+			Path:    "/slides/0/content/0",
 			Message: "table too dense",
 		},
 	}

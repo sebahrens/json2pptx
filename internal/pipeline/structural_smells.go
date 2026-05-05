@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // Threshold constants for structural smell detection.
@@ -85,7 +86,7 @@ func detectStackedTables(grid *jsonschema.ShapeGridInput, slideIdx int) []*patte
 			continue
 		}
 		if gap < minTableGapPt {
-			path := fmt.Sprintf("slides[%d].shape_grid.rows[%d:%d]", slideIdx, i, i+1)
+			path := slidepath.GridRowRange(slideIdx, i, i+1)
 			warnings = append(warnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,
@@ -115,7 +116,7 @@ func detectDividerTooThin(grid *jsonschema.ShapeGridInput, slideIdx int) []*patt
 	// Check row gaps.
 	if gap < minDividerGapPt && len(grid.Rows) > 1 {
 		for i := 0; i < len(grid.Rows)-1; i++ {
-			path := fmt.Sprintf("slides[%d].shape_grid.rows[%d:%d]", slideIdx, i, i+1)
+			path := slidepath.GridRowRange(slideIdx, i, i+1)
 			warnings = append(warnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,
@@ -135,7 +136,7 @@ func detectDividerTooThin(grid *jsonschema.ShapeGridInput, slideIdx int) []*patt
 	// Check for rows with height < minDividerHeightPct (divider-like rows).
 	for i, row := range grid.Rows {
 		if row.Height > 0 && row.Height < minDividerHeightPct {
-			path := fmt.Sprintf("slides[%d].shape_grid.rows[%d]", slideIdx, i)
+			path := slidepath.GridRow(slideIdx, i)
 			warnings = append(warnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,
@@ -188,7 +189,7 @@ func detectMixedFillScheme(grid *jsonschema.ShapeGridInput, slideIdx int) []*pat
 	}
 
 	if hasHex && hasSemantic {
-		path := fmt.Sprintf("slides[%d].shape_grid", slideIdx)
+		path := slidepath.ShapeGrid(slideIdx)
 		return []*patterns.ValidationError{{
 			Pattern: "shape_grid",
 			Path:    path,

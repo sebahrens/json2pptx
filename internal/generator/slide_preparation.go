@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -457,7 +458,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			if item.PlaceholderID == "subtitle" && tier == TierSemantic {
 				ctx.emitFitFinding(patterns.FitFinding{
 					ValidationError: patterns.ValidationError{
-						Path:    fmt.Sprintf("slides[%d].content[%d].placeholder_id", slideIndex, j),
+						Path:    slidepath.ContentField(slideIndex, j, "placeholder_id"),
 						Code:    patterns.ErrCodePlaceholderRemapped,
 						Message: fmt.Sprintf("slide %d: placeholder \"subtitle\" remapped to \"%s\" (layout %q has no subTitle placeholder)", slideIndex+1, resolvedName, layoutID),
 						Fix: &patterns.FixSuggestion{
@@ -471,7 +472,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 		}
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-		findingPath := fmt.Sprintf("slides[%d].content.%s", slideIndex, item.PlaceholderID)
+		findingPath := slidepath.Content(slideIndex, item.PlaceholderID)
 		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName,
 			withFindingsCollector(&ctx.fitFindings, findingPath),
 		); err != nil {
@@ -568,7 +569,7 @@ func (ctx *singlePassContext) clearUnmappedPlaceholders() {
 // emitPlaceholderNotFound constructs and appends a structured ValidationError
 // when a content item targets a placeholder_id that doesn't exist in the layout.
 func (ctx *singlePassContext) emitPlaceholderNotFound(placeholderID, layoutID string, available []string, slideIndex, contentIndex int) {
-	path := fmt.Sprintf("slides[%d].content[%d].placeholder_id", slideIndex, contentIndex)
+	path := slidepath.ContentField(slideIndex, contentIndex, "placeholder_id")
 	msg := fmt.Sprintf("slide %d: %s", slideIndex+1, PlaceholderNotFoundError(placeholderID, layoutID, available))
 
 	fix := &patterns.FixSuggestion{

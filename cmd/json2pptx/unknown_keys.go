@@ -77,7 +77,7 @@ func checkUnknownKeys(raw json.RawMessage, knownKeys []string, path string) []*p
 		if known[key] {
 			continue
 		}
-		fieldPath := path + "." + key
+		fieldPath := path + "/" + key
 		if path == "" {
 			fieldPath = key
 		}

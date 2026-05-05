@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
@@ -77,7 +78,7 @@ func generateFitReport(input *PresentationInput) []fitFinding {
 				continue
 			}
 			findings = append(findings,
-				measureTable(table, fmt.Sprintf("slides[%d].content[%d]", si, ci), si)...)
+				measureTable(table, slidepath.ContentIndex(si, ci), si)...)
 		}
 
 		// Walk shape_grid cells.
@@ -152,7 +153,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 		if !m.Fits {
 			findings = append(findings, fitFinding{
 				Code:             patterns.ErrCodeFitOverflow,
-				Path:             fmt.Sprintf("%s.headers[%d]", pathPrefix, hi),
+				Path:             slidepath.TableHeader(pathPrefix, hi),
 				Message:          fmt.Sprintf("header %q needs %d lines @ %.0fpt; cell allows %d", header, m.Lines, fontPt, maxLines),
 				Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
 				BindingDimension: "height",
@@ -177,7 +178,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 			if !m.Fits {
 				findings = append(findings, fitFinding{
 					Code:             patterns.ErrCodeFitOverflow,
-					Path:             fmt.Sprintf("%s.rows[%d][%d]", pathPrefix, ri, ci),
+					Path:             slidepath.TableCell(pathPrefix, ri, ci),
 					Message:          fmt.Sprintf("text needs %d lines @ %.0fpt; cell allows %d", m.Lines, fontPt, maxLines),
 					Fix:              &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": ri + numRows/2}},
 					BindingDimension: "height",
@@ -242,18 +243,18 @@ func walkShapeGrid(grid *ShapeGridInput, slideIdx int) []fitFinding {
 			if cell == nil {
 				continue
 			}
-			pathPrefix := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d]", slideIdx, ri, ci)
+			pathPrefix := slidepath.GridCell(slideIdx, ri, ci)
 
 			// Embedded table in shape_grid cell.
 			if cell.Table != nil {
 				findings = append(findings,
-					measureTable(cell.Table, pathPrefix+".table", slideIdx)...)
+					measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), slideIdx)...)
 			}
 
 			// Shape with text.
 			if cell.Shape != nil && len(cell.Shape.Text) > 0 {
 				findings = append(findings,
-					measureShapeText(cell.Shape, pathPrefix+".shape", grid, ri, ci)...)
+					measureShapeText(cell.Shape, slidepath.Join(pathPrefix, "shape"), grid, ri, ci)...)
 			}
 		}
 	}
@@ -287,7 +288,7 @@ func measureShapeText(shape *ShapeSpecInput, pathPrefix string, grid *ShapeGridI
 
 	return []fitFinding{{
 		Code:             patterns.ErrCodeFitOverflow,
-		Path:             pathPrefix + ".text",
+		Path:             slidepath.Join(pathPrefix, "text"),
 		Message:          fmt.Sprintf("text needs %d lines @ %.0fpt; cell allows %d", m.Lines, fontPt, maxLines),
 		Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
 		BindingDimension: "height",

@@ -15,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -48,14 +49,16 @@ func mcpRepairSlideTool() mcp.Tool {
 
 Returns the patched deck JSON, a report of which fixes were applied, and post-patch fit findings for the modified slide.
 
+All fix kinds accept an optional "path" parameter (JSON Pointer, RFC 6901) to disambiguate which content element to target. When omitted, the fix applies to the first matching element on the slide.
+
 Supported fix kinds (V1):
-- reduce_text: Truncate bullets/body text. Params: max_items (int, for bullets), max_length (int, for text).
-- shorten_title: Truncate a title to max_length characters. Params: max_length (int).
-- split_at_row: Split a table across pages using the split_slide envelope. Params: row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
+- reduce_text: Truncate bullets/body text. Params: path (string, optional), max_items (int, for bullets), max_length (int, for text).
+- shorten_title: Truncate a title to max_length characters. Params: path (string, optional), max_length (int).
+- split_at_row: Split a table across pages using the split_slide envelope. Params: path (string, optional), row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
 - swap_layout: Change the slide's layout_id. Params: layout_id (string, required).
 - use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
 - replace_color: Replace one color with another in shape_grid fills. Params: from (string, color to find), to (string, replacement color). Also accepts original_color/replacement_color from contrast_autofixed findings.
-- use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, e.g. "slides[0].shape_grid.rows[0].cells[0].shape.fill"), value (string, scheme name e.g. "accent1").
+- use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
@@ -188,14 +191,22 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 }
 
 // applyReduceText truncates bullets or body text on a slide.
+// When params["path"] is set (e.g. "/slides/0/content/body"), only the matching
+// content item is targeted; otherwise all content on the slide is processed.
 func applyReduceText(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := &input.Slides[slideIdx]
 	maxItems := intParam(params, "max_items", 0)
 	maxLength := intParam(params, "max_length", 0)
+	targetPath := stringParam(params, "path", "")
 
 	modified := false
 	for i := range slide.Content {
 		ci := &slide.Content[i]
+
+		// Skip non-matching content when path is specified.
+		if targetPath != "" && !contentMatchesPath(slideIdx, i, ci.PlaceholderID, targetPath) {
+			continue
+		}
 
 		// Truncate bullets.
 		if maxItems > 0 && ci.BulletsValue != nil && len(*ci.BulletsValue) > maxItems {
@@ -231,13 +242,21 @@ func applyReduceText(input *PresentationInput, slideIdx int, params map[string]a
 }
 
 // applyShortenTitle truncates the title placeholder text.
+// When params["path"] is set, the specific placeholder is targeted by path.
 func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := &input.Slides[slideIdx]
 	maxLength := intParam(params, "max_length", 50) // default 50 chars
+	targetPath := stringParam(params, "path", "")
 
 	for i := range slide.Content {
 		ci := &slide.Content[i]
-		if ci.PlaceholderID == "title" && ci.TextValue != nil {
+		if ci.PlaceholderID != "title" {
+			continue
+		}
+		if targetPath != "" && !contentMatchesPath(slideIdx, i, ci.PlaceholderID, targetPath) {
+			continue
+		}
+		if ci.TextValue != nil {
 			if len(*ci.TextValue) > maxLength {
 				truncated := (*ci.TextValue)[:maxLength]
 				ci.TextValue = &truncated
@@ -251,11 +270,23 @@ func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string
 
 // applySplitAtRow wraps the target slide in a split_slide envelope, delegating
 // to the existing split_slide machinery.
+// When params["path"] is set, the specific content-level table is targeted.
 func applySplitAtRow(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := input.Slides[slideIdx]
+	targetPath := stringParam(params, "path", "")
 
-	// Check that the slide has a table.
-	tableIdx, _ := findTableContent(slide.Content)
+	// Check that the slide has a table — use path to disambiguate if given.
+	tableIdx := -1
+	if targetPath != "" {
+		for i := range slide.Content {
+			if slide.Content[i].Type == "table" && contentMatchesPath(slideIdx, i, slide.Content[i].PlaceholderID, targetPath) {
+				tableIdx = i
+				break
+			}
+		}
+	} else {
+		tableIdx, _ = findTableContent(slide.Content)
+	}
 	if tableIdx < 0 {
 		return appliedFix{Kind: "split_at_row", Applied: false, Message: "slide has no table content to split"}
 	}
@@ -462,12 +493,10 @@ func replaceFillColor(shape *ShapeSpecInput, fromNorm, to string) bool {
 }
 
 // setFillAtPath sets the fill color at a specific path like
-// "slides[N].shape_grid.rows[R].cells[C].shape.fill".
+// "/slides/N/shape_grid/rows/R/cells/C/shape/fill".
 func setFillAtPath(grid *ShapeGridInput, slideIdx int, path, value string) bool {
-	// Parse row and cell indices from path.
-	var pathSlideIdx, rowIdx, cellIdx int
-	n, _ := fmt.Sscanf(path, "slides[%d].shape_grid.rows[%d].cells[%d]", &pathSlideIdx, &rowIdx, &cellIdx)
-	if n < 3 {
+	pathSlideIdx, rowIdx, cellIdx, ok := slidepath.ParseGridCell(path)
+	if !ok {
 		return false
 	}
 	// Verify the slide index matches.
@@ -543,6 +572,26 @@ func isHexColor(s string) bool {
 		}
 	}
 	return true
+}
+
+// contentMatchesPath reports whether a content item at the given slide/content
+// index matches the provided JSON Pointer path. Matches by placeholder name
+// (e.g. "/slides/0/content/body") or by array index (e.g. "/slides/0/content/1").
+func contentMatchesPath(slideIdx, contentIdx int, placeholderID, path string) bool {
+	// Match by placeholder name.
+	if path == slidepath.Content(slideIdx, placeholderID) {
+		return true
+	}
+	// Match by array index.
+	if path == slidepath.ContentIndex(slideIdx, contentIdx) {
+		return true
+	}
+	// Also match if path is a sub-path (e.g. "/slides/0/content/body/text").
+	byName := slidepath.Content(slideIdx, placeholderID)
+	if slidepath.HasPrefix(path, byName) {
+		return true
+	}
+	return slidepath.HasPrefix(path, slidepath.ContentIndex(slideIdx, contentIdx))
 }
 
 // --- Helpers ---
@@ -621,10 +670,10 @@ func extractFixes(request mcp.CallToolRequest) ([]repairFixInput, error) {
 
 // filterFindingsForSlide returns findings whose path references the given slide index.
 func filterFindingsForSlide(findings []patterns.FitFinding, slideIdx int) []patterns.FitFinding {
-	prefix := fmt.Sprintf("slides[%d]", slideIdx)
+	prefix := slidepath.Slide(slideIdx)
 	var filtered []patterns.FitFinding
 	for _, f := range findings {
-		if len(f.Path) >= len(prefix) && f.Path[:len(prefix)] == prefix {
+		if slidepath.HasPrefix(f.Path, prefix) {
 			filtered = append(filtered, f)
 		}
 	}

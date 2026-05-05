@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -54,7 +55,7 @@ func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 		var slides []json.RawMessage
 		if json.Unmarshal(slidesRaw, &slides) == nil {
 			for i, slideRaw := range slides {
-				prefix := fmt.Sprintf("slides[%d]", i)
+				prefix := slidepath.Slide(i)
 				warnings = append(warnings, checkSlideUnknownKeys(slideRaw, prefix)...)
 			}
 		}
@@ -83,17 +84,17 @@ func checkSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 
 	// background
 	if v, ok := obj["background"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BackgroundInput{}), path+".background")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BackgroundInput{}), path+"/background")...)
 	}
 
 	// pattern
 	if v, ok := obj["pattern"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(PatternInput{}), path+".pattern")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(PatternInput{}), path+"/pattern")...)
 	}
 
 	// shape_grid
 	if v, ok := obj["shape_grid"]; ok {
-		warnings = append(warnings, checkShapeGridUnknownKeys(v, path+".shape_grid")...)
+		warnings = append(warnings, checkShapeGridUnknownKeys(v, path+"/shape_grid")...)
 	}
 
 	// content[]
@@ -101,7 +102,7 @@ func checkSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 		var items []json.RawMessage
 		if json.Unmarshal(contentRaw, &items) == nil {
 			for j, itemRaw := range items {
-				p := fmt.Sprintf("%s.content[%d]", path, j)
+				p := fmt.Sprintf("%s/content/%d", path, j)
 				warnings = append(warnings, checkContentUnknownKeys(itemRaw, p)...)
 			}
 		}
@@ -120,10 +121,10 @@ func checkSplitSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Va
 		return warnings
 	}
 	if v, ok := obj["split"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(SplitConfig{}), path+".split")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(SplitConfig{}), path+"/split")...)
 	}
 	if v, ok := obj["base"]; ok {
-		warnings = append(warnings, checkSlideUnknownKeys(v, path+".base")...)
+		warnings = append(warnings, checkSlideUnknownKeys(v, path+"/base")...)
 	}
 	return warnings
 }
@@ -142,22 +143,22 @@ func checkContentUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 	warnings = append(warnings, checkRedundantValue(obj, path)...)
 
 	if v, ok := obj["body_and_bullets_value"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BodyAndBulletsInput{}), path+".body_and_bullets_value")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BodyAndBulletsInput{}), path+"/body_and_bullets_value")...)
 	}
 	if v, ok := obj["bullet_groups_value"]; ok {
-		warnings = append(warnings, checkBulletGroupsUnknownKeys(v, path+".bullet_groups_value")...)
+		warnings = append(warnings, checkBulletGroupsUnknownKeys(v, path+"/bullet_groups_value")...)
 	}
 	if v, ok := obj["table_value"]; ok {
-		warnings = append(warnings, checkTableUnknownKeys(v, path+".table_value")...)
+		warnings = append(warnings, checkTableUnknownKeys(v, path+"/table_value")...)
 	}
 	if v, ok := obj["image_value"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ImageInput{}), path+".image_value")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ImageInput{}), path+"/image_value")...)
 	}
 	if v, ok := obj["chart_value"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartSpec{}), path+".chart_value")...) //nolint:staticcheck // ChartSpec is deprecated but still used for backward compat
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartSpec{}), path+"/chart_value")...) //nolint:staticcheck // ChartSpec is deprecated but still used for backward compat
 	}
 	if v, ok := obj["diagram_value"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+".diagram_value")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+"/diagram_value")...)
 	}
 	return warnings
 }
@@ -175,7 +176,7 @@ func checkBulletGroupsUnknownKeys(raw json.RawMessage, path string) []*patterns.
 		var groups []json.RawMessage
 		if json.Unmarshal(groupsRaw, &groups) == nil {
 			for i, g := range groups {
-				p := fmt.Sprintf("%s.groups[%d]", path, i)
+				p := fmt.Sprintf("%s/groups/%d", path, i)
 				warnings = append(warnings, checkUnknownKeysForType(g, reflect.TypeOf(BulletGroupInput{}), p)...)
 			}
 		}
@@ -193,7 +194,7 @@ func checkTableUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 		return warnings
 	}
 	if v, ok := obj["style"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.TableStyleInput{}), path+".style")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.TableStyleInput{}), path+"/style")...)
 	}
 	if rowsRaw, ok := obj["rows"]; ok {
 		var rows []json.RawMessage
@@ -202,7 +203,7 @@ func checkTableUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 				var cells []json.RawMessage
 				if json.Unmarshal(rowRaw, &cells) == nil {
 					for j, cellRaw := range cells {
-						p := fmt.Sprintf("%s.rows[%d][%d]", path, i, j)
+						p := fmt.Sprintf("%s/rows/%d/%d", path, i, j)
 						warnings = append(warnings, checkUnknownKeysForType(cellRaw, reflect.TypeOf(jsonschema.TableCellInput{}), p)...)
 					}
 				}
@@ -222,13 +223,13 @@ func checkShapeGridUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 		return warnings
 	}
 	if v, ok := obj["bounds"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridBoundsInput{}), path+".bounds")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridBoundsInput{}), path+"/bounds")...)
 	}
 	if rowsRaw, ok := obj["rows"]; ok {
 		var rows []json.RawMessage
 		if json.Unmarshal(rowsRaw, &rows) == nil {
 			for i, rowRaw := range rows {
-				p := fmt.Sprintf("%s.rows[%d]", path, i)
+				p := fmt.Sprintf("%s/rows/%d", path, i)
 				warnings = append(warnings, checkGridRowUnknownKeys(rowRaw, p)...)
 			}
 		}
@@ -246,13 +247,13 @@ func checkGridRowUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 		return warnings
 	}
 	if v, ok := obj["connector"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ConnectorSpecInput{}), path+".connector")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ConnectorSpecInput{}), path+"/connector")...)
 	}
 	if cellsRaw, ok := obj["cells"]; ok {
 		var cells []json.RawMessage
 		if json.Unmarshal(cellsRaw, &cells) == nil {
 			for i, cellRaw := range cells {
-				p := fmt.Sprintf("%s.cells[%d]", path, i)
+				p := fmt.Sprintf("%s/cells/%d", path, i)
 				warnings = append(warnings, checkGridCellUnknownKeys(cellRaw, p)...)
 			}
 		}
@@ -270,22 +271,22 @@ func checkGridCellUnknownKeys(raw json.RawMessage, path string) []*patterns.Vali
 		return warnings
 	}
 	if v, ok := obj["shape"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path+".shape")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path+"/shape")...)
 	}
 	if v, ok := obj["table"]; ok {
-		warnings = append(warnings, checkTableUnknownKeys(v, path+".table")...)
+		warnings = append(warnings, checkTableUnknownKeys(v, path+"/table")...)
 	}
 	if v, ok := obj["icon"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.IconInput{}), path+".icon")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.IconInput{}), path+"/icon")...)
 	}
 	if v, ok := obj["image"]; ok {
-		warnings = append(warnings, checkGridImageUnknownKeys(v, path+".image")...)
+		warnings = append(warnings, checkGridImageUnknownKeys(v, path+"/image")...)
 	}
 	if v, ok := obj["accent_bar"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.AccentBarInput{}), path+".accent_bar")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.AccentBarInput{}), path+"/accent_bar")...)
 	}
 	if v, ok := obj["diagram"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+".diagram")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+"/diagram")...)
 	}
 	return warnings
 }
@@ -300,10 +301,10 @@ func checkGridImageUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 		return warnings
 	}
 	if v, ok := obj["overlay"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridOverlayInput{}), path+".overlay")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridOverlayInput{}), path+"/overlay")...)
 	}
 	if v, ok := obj["text"]; ok {
-		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridImageTextInput{}), path+".text")...)
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.GridImageTextInput{}), path+"/text")...)
 	}
 	return warnings
 }

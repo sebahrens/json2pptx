@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // designModeConstrained is the default mode that restricts raw hex colors and
@@ -328,7 +329,7 @@ func checkPatternInput(pattern *PatternInput, slideNum int) []patterns.FitFindin
 // checkContentInput checks a content item for raw hex colors (chart/diagram data).
 func checkContentInput(ci *ContentInput, slideNum, contentNum int) []patterns.FitFinding {
 	var findings []patterns.FitFinding
-	basePath := fmt.Sprintf("slides[%d].content[%d]", slideNum-1, contentNum-1)
+	basePath := slidepath.ContentIndex(slideNum-1, contentNum-1)
 
 	// Check diagram_value style colors
 	if ci.DiagramValue != nil && ci.DiagramValue.Style != nil {

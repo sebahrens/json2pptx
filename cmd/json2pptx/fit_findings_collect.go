@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -41,7 +41,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 		if ri != rj {
 			return ri > rj
 		}
-		return slideIndexFromPath(findings[i].Path) < slideIndexFromPath(findings[j].Path)
+		return slidepath.SlideIndex(findings[i].Path) < slidepath.SlideIndex(findings[j].Path)
 	})
 
 	return findings
@@ -71,7 +71,7 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 	bySlide := map[int]*group{}
 
 	for _, f := range findings {
-		si := slideIndexFromPath(f.Path)
+		si := slidepath.SlideIndex(f.Path)
 		g, ok := bySlide[si]
 		if !ok {
 			g = &group{slideIdx: si}
@@ -109,9 +109,9 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 		}
 		result = append(result, g.items[:budget]...)
 		suppressed := g.items[budget:]
-		path := fmt.Sprintf("slides[%d]", si)
+		path := slidepath.Slide(si)
 		if si < 0 {
-			path = "slides[?]"
+			path = "/slides/?"
 		}
 		topCodes := findingCodeHistogram(suppressed)
 		result = append(result, patterns.FitFinding{
@@ -152,7 +152,7 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 	bySlide := map[int]*group{}
 
 	for _, f := range findings {
-		si := slideIndexFromPath(f.Path)
+		si := slidepath.SlideIndex(f.Path)
 		g, ok := bySlide[si]
 		if !ok {
 			g = &group{slideIdx: si}
@@ -188,9 +188,9 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 		}
 		result = append(result, g.items[:budget]...)
 		suppressed := g.items[budget:]
-		path := fmt.Sprintf("slides[%d]", si)
+		path := slidepath.Slide(si)
 		if si < 0 {
-			path = "slides[?]"
+			path = "/slides/?"
 		}
 		topCodes := localFindingCodeHistogram(suppressed)
 		result = append(result, fitFinding{
@@ -255,7 +255,7 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 					continue
 				}
 
-				path := fmt.Sprintf("slides[%d].content.%s", si, content.PlaceholderID)
+				path := slidepath.Content(si, content.PlaceholderID)
 
 				if ph.Type == types.PlaceholderTitle {
 					if f := generator.DetectTitleWraps(generator.TitleWrapsInput{
@@ -366,7 +366,7 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 			if cell == nil || (cell.Shape == nil && cell.Table == nil) {
 				continue
 			}
-			path := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d]", slideIdx, ri, ci)
+			path := slidepath.GridCell(slideIdx, ri, ci)
 			cellX := ctx.gridX + int64(ci)*cellWidth
 			findings = append(findings, checkCellStructural(path, slideIdx, cellX, cellY, cellWidth, cellHeight, ctx)...)
 		}
@@ -396,7 +396,7 @@ func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, s
 		return nil
 	}
 
-	path := fmt.Sprintf("slides[%d].shape_grid", slideIdx)
+	path := slidepath.ShapeGrid(slideIdx)
 	return generator.DetectSparseLayout(generator.SparseLayoutInput{
 		SlideIndex:      slideIdx,
 		Path:            path,
@@ -632,21 +632,11 @@ func extractContentParagraphs(c *ContentInput) []string {
 	return nil
 }
 
-// slideIndexFromPath extracts the slide index from a JSON path like "slides[3].foo".
+// slideIndexFromPath extracts the slide index from a JSON Pointer path like "/slides/3/foo".
+// Deprecated: use slidepath.SlideIndex directly. Kept as a package-level alias for callers
+// in other files that reference it.
 func slideIndexFromPath(path string) int {
-	if !strings.HasPrefix(path, "slides[") {
-		return -1
-	}
-	rest := path[len("slides["):]
-	bracket := strings.IndexByte(rest, ']')
-	if bracket < 0 {
-		return -1
-	}
-	idx, err := strconv.Atoi(rest[:bracket])
-	if err != nil {
-		return -1
-	}
-	return idx
+	return slidepath.SlideIndex(path)
 }
 
 // findingCodeHistogram builds a sorted "code:count" list from suppressed

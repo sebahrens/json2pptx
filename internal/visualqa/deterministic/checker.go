@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // SeverityWeight maps FitFinding action strings to point deductions.
@@ -158,27 +159,9 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 	}
 }
 
-// slideIndexFromPath extracts the slide index from a JSON path like "slides[3].foo".
+// slideIndexFromPath extracts the slide index from a JSON Pointer path.
 func slideIndexFromPath(path string) int {
-	const prefix = "slides["
-	if len(path) < len(prefix)+2 {
-		return -1
-	}
-	if path[:len(prefix)] != prefix {
-		return -1
-	}
-	rest := path[len(prefix):]
-	idx := 0
-	for i := 0; i < len(rest); i++ {
-		if rest[i] == ']' {
-			return idx
-		}
-		if rest[i] < '0' || rest[i] > '9' {
-			return -1
-		}
-		idx = idx*10 + int(rest[i]-'0')
-	}
-	return -1
+	return slidepath.SlideIndex(path)
 }
 
 // FormatTopCodes returns a concise human-readable summary of the top finding codes.

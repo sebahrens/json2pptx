@@ -213,21 +213,20 @@ func groupBySlide(findings []fitFinding) map[int]SlideFinding {
 	return grouped
 }
 
-// parseSlideIndex extracts the slide index from a path like "slides[3].content[0]".
+// parseSlideIndex extracts the slide index from a JSON Pointer path like "/slides/3/content/0".
 func parseSlideIndex(path string) int {
-	// Find "slides[" and extract the number.
-	const prefix = "slides["
-	idx := strings.Index(path, prefix)
-	if idx < 0 {
+	const prefix = "/slides/"
+	if !strings.HasPrefix(path, prefix) {
 		return -1
 	}
-	rest := path[idx+len(prefix):]
-	end := strings.Index(rest, "]")
-	if end < 0 {
-		return -1
+	rest := path[len(prefix):]
+	end := strings.IndexByte(rest, '/')
+	numStr := rest
+	if end >= 0 {
+		numStr = rest[:end]
 	}
 	var n int
-	if _, err := fmt.Sscanf(rest[:end], "%d", &n); err != nil {
+	if _, err := fmt.Sscanf(numStr, "%d", &n); err != nil {
 		return -1
 	}
 	return n

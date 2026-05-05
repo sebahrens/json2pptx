@@ -32,7 +32,7 @@ func TestScoreFromFindings_WithFindings(t *testing.T) {
 	findings := []patterns.FitFinding{
 		{
 			ValidationError: patterns.ValidationError{
-				Path:    "slides[0].content.body",
+				Path:    "/slides/0/content/body",
 				Code:    "text_overflow",
 				Message: "text overflows placeholder",
 			},
@@ -40,7 +40,7 @@ func TestScoreFromFindings_WithFindings(t *testing.T) {
 		},
 		{
 			ValidationError: patterns.ValidationError{
-				Path:    "slides[0].shape_grid.rows[0].cells[0]",
+				Path:    "/slides/0/shape_grid/rows/0/cells/0",
 				Code:    "footer_collision",
 				Message: "shape collides with footer",
 			},
@@ -48,7 +48,7 @@ func TestScoreFromFindings_WithFindings(t *testing.T) {
 		},
 		{
 			ValidationError: patterns.ValidationError{
-				Path:    "slides[1].content.title",
+				Path:    "/slides/1/content/title",
 				Code:    "title_wraps",
 				Message: "title wraps to second line",
 			},
@@ -56,7 +56,7 @@ func TestScoreFromFindings_WithFindings(t *testing.T) {
 		},
 		{
 			ValidationError: patterns.ValidationError{
-				Path:    "slides[0].content.body",
+				Path:    "/slides/0/content/body",
 				Code:    "contrast_autofixed",
 				Message: "auto-fixed low-contrast text",
 			},
@@ -98,7 +98,7 @@ func TestScoreFromFindings_RefuseClamps(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path:    "slides[0].content.body",
+				Path:    "/slides/0/content/body",
 				Code:    "text_overflow",
 				Message: "overflow",
 			},
@@ -149,9 +149,9 @@ func TestSlideIndexFromPath(t *testing.T) {
 		path string
 		want int
 	}{
-		{"slides[0].content.body", 0},
-		{"slides[12].shape_grid", 12},
-		{"slides[?]", -1},
+		{"/slides/0/content/body", 0},
+		{"/slides/12/shape_grid", 12},
+		{"/slides/?", -1},
 		{"other", -1},
 		{"", -1},
 	}

@@ -601,7 +601,7 @@ func TestRepairSlide_UseSemanticColor_WithPath(t *testing.T) {
 		"fixes": []any{map[string]any{
 			"kind": "use_semantic_color",
 			"params": map[string]any{
-				"path":  "slides[0].shape_grid.rows[0].cells[0].shape.fill",
+				"path":  "/slides/0/shape_grid/rows/0/cells/0/shape/fill",
 				"value": "accent1",
 			},
 		}},

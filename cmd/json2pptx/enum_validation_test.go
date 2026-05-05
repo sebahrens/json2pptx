@@ -50,8 +50,8 @@ func TestCheckInputEnumValues_InvalidTransition(t *testing.T) {
 	if errs[0].Code != patterns.ErrCodeUnknownEnum {
 		t.Errorf("expected code %q, got %q", patterns.ErrCodeUnknownEnum, errs[0].Code)
 	}
-	if errs[0].Path != "slides[0].transition" {
-		t.Errorf("expected path slides[0].transition, got %q", errs[0].Path)
+	if errs[0].Path != "/slides/0/transition" {
+		t.Errorf("expected path /slides/0/transition, got %q", errs[0].Path)
 	}
 	if !errors.Is(errs[0], patterns.ErrUnknownEnum) {
 		t.Error("expected error to wrap ErrUnknownEnum")
@@ -71,8 +71,8 @@ func TestCheckInputEnumValues_InvalidTransitionSpeed(t *testing.T) {
 	if len(errs) != 1 {
 		t.Fatalf("expected 1 error, got %d", len(errs))
 	}
-	if errs[0].Path != "slides[0].transition_speed" {
-		t.Errorf("expected path slides[0].transition_speed, got %q", errs[0].Path)
+	if errs[0].Path != "/slides/0/transition_speed" {
+		t.Errorf("expected path /slides/0/transition_speed, got %q", errs[0].Path)
 	}
 }
 
@@ -86,8 +86,8 @@ func TestCheckInputEnumValues_InvalidBuild(t *testing.T) {
 	if len(errs) != 1 {
 		t.Fatalf("expected 1 error, got %d", len(errs))
 	}
-	if errs[0].Path != "slides[0].build" {
-		t.Errorf("expected path slides[0].build, got %q", errs[0].Path)
+	if errs[0].Path != "/slides/0/build" {
+		t.Errorf("expected path /slides/0/build, got %q", errs[0].Path)
 	}
 }
 
@@ -101,8 +101,8 @@ func TestCheckInputEnumValues_InvalidBackgroundFit(t *testing.T) {
 	if len(errs) != 1 {
 		t.Fatalf("expected 1 error, got %d", len(errs))
 	}
-	if errs[0].Path != "slides[0].background.fit" {
-		t.Errorf("expected path slides[0].background.fit, got %q", errs[0].Path)
+	if errs[0].Path != "/slides/0/background/fit" {
+		t.Errorf("expected path /slides/0/background/fit, got %q", errs[0].Path)
 	}
 }
 

@@ -9,7 +9,7 @@ Every finding is a `FitFinding` (defined in `internal/patterns/fit_finding.go`) 
 ```json
 {
   "pattern": "placeholder",
-  "path": "slides[0].content.body",
+  "path": "/slides/0/content/body",
   "code": "placeholder_overflow",
   "message": "text overflows placeholder by 42% (360pt frame, autofit=none); overflow persists at minimum font scale",
   "fix": { "kind": "reduce_text" },
@@ -25,7 +25,7 @@ Every finding is a `FitFinding` (defined in `internal/patterns/fit_finding.go`) 
 | Field | Type | Description |
 |-------|------|-------------|
 | `pattern` | string | Source context: `"placeholder"`, `"table"`, `"shape_grid"` |
-| `path` | string | JSON path to the offending element, e.g. `slides[2].content.body` |
+| `path` | string | JSON Pointer (RFC 6901) to the offending element, e.g. `/slides/2/content/body`. See [PATH_GRAMMAR.md](PATH_GRAMMAR.md). |
 | `code` | string | Machine-readable code (see catalog below) |
 | `message` | string | Human-readable description |
 | `fix` | object | Structured remediation: `{kind, params?}` |
@@ -64,7 +64,7 @@ Text in a body or content placeholder overflows its frame. Emitted only when all
 ```json
 {
   "pattern": "placeholder",
-  "path": "slides[0].content.body",
+  "path": "/slides/0/content/body",
   "code": "placeholder_overflow",
   "message": "text overflows placeholder by 42% (360pt frame, autofit=none); overflow persists at minimum font scale",
   "fix": { "kind": "reduce_text" },
@@ -86,7 +86,7 @@ Title text wraps to multiple lines within its placeholder. This is common and of
 ```json
 {
   "pattern": "placeholder",
-  "path": "slides[1].content.title",
+  "path": "/slides/1/content/title",
   "code": "title_wraps",
   "message": "title wraps to multiple lines (36pt font, 9.1\" wide placeholder)",
   "fix": { "kind": "shorten_title" },
@@ -108,7 +108,7 @@ A JSON-authored shape's center falls outside the slide rectangle. Uses center-ba
 ```json
 {
   "pattern": "shape_grid",
-  "path": "slides[2].shape_grid.rows[1].cells[0]",
+  "path": "/slides/2/shape_grid/rows/1/cells/0",
   "code": "slide_bounds_overflow",
   "message": "shape center (10058400, 7315200) EMU falls outside slide bounds (9144000 x 6858000) vertically",
   "fix": { "kind": "reposition_shape" },
@@ -131,7 +131,7 @@ Only fires when the slide's resolved layout declares a footer placeholder (date,
 ```json
 {
   "pattern": "shape_grid",
-  "path": "slides[3].shape_grid.rows[2].cells[0]",
+  "path": "/slides/3/shape_grid/rows/2/cells/0",
   "code": "footer_collision",
   "message": "shape bottom edge (6400000 EMU) intrudes 142000 EMU into footer area (top=6258000 EMU)",
   "fix": { "kind": "reposition_shape" },
@@ -152,7 +152,7 @@ Content occupies less than 40% of the available bounds height — the slide is m
 ```json
 {
   "pattern": "shape_grid",
-  "path": "slides[1].shape_grid",
+  "path": "/slides/1/shape_grid",
   "code": "sparse_layout",
   "message": "content occupies 25% of bounds height (1270000 / 5080000 EMU) — slide is mostly empty",
   "fix": { "kind": "grow_pattern", "params": { "filled_pct": 0.25, "bounds_height": 5080000, "content_height": 1270000 } },
@@ -174,7 +174,7 @@ Text in a table cell exceeds the available cell height. The `split_at_row` fix i
 ```json
 {
   "pattern": "table",
-  "path": "slides[0].content[0].rows[3][1]",
+  "path": "/slides/0/content/0/rows/3/1",
   "code": "fit_overflow",
   "message": "text needs 4 lines @ 12pt; cell allows 2",
   "fix": { "kind": "split_at_row", "params": { "row": 4 } },
@@ -196,7 +196,7 @@ Table has more cells than the TDR (Table Density Ratio) ceiling allows for the c
 ```json
 {
   "pattern": "table",
-  "path": "slides[0].content[0]",
+  "path": "/slides/0/content/0",
   "code": "density_exceeded",
   "message": "table has 72 cells (8 rows × 9 cols) at 12pt; TDR ceiling is 60",
   "fix": { "kind": "split_at_row", "params": { "row": 4 } },
@@ -215,7 +215,7 @@ Text color was automatically replaced to meet WCAG AA contrast requirements agai
 ```json
 {
   "pattern": "placeholder",
-  "path": "slides[1].content.body",
+  "path": "/slides/1/content/body",
   "code": "contrast_autofixed",
   "message": "auto-fixed low-contrast text: #FFFFFF → #1A1A1A (on #F5F5F5, ratio 1.3 → 15.2)",
   "fix": {
@@ -275,7 +275,7 @@ When more than 5 findings exist on a slide, the top 5 are returned plus a summar
 
 ```json
 {
-  "path": "slides[2]",
+  "path": "/slides/2",
   "code": "findings_truncated",
   "message": "8 more findings suppressed on this slide; use verbose_fit to see all",
   "action": "info"

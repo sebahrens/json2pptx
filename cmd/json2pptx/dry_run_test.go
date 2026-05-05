@@ -270,8 +270,8 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 		if ve.Code != patterns.ErrCodeUnknownLayoutID {
 			t.Errorf("expected code %q, got %q", patterns.ErrCodeUnknownLayoutID, ve.Code)
 		}
-		if ve.Path != "slides[0].layout_id" {
-			t.Errorf("expected path slides[0].layout_id, got %q", ve.Path)
+		if ve.Path != "/slides/0/layout_id" {
+			t.Errorf("expected path /slides/0/layout_id, got %q", ve.Path)
 		}
 		if ve.Fix == nil {
 			t.Fatal("expected fix suggestion")

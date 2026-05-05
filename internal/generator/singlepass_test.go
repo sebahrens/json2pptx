@@ -2339,8 +2339,8 @@ func TestPopulateTextInSlide_PlaceholderNotFound_EmitsValidationError(t *testing
 	if ve.Code != patterns.ErrCodePlaceholderNotFound {
 		t.Errorf("code = %q, want %q", ve.Code, patterns.ErrCodePlaceholderNotFound)
 	}
-	if ve.Path != "slides[2].content[0].placeholder_id" {
-		t.Errorf("path = %q, want %q", ve.Path, "slides[2].content[0].placeholder_id")
+	if ve.Path != "/slides/2/content/0/placeholder_id" {
+		t.Errorf("path = %q, want %q", ve.Path, "/slides/2/content/0/placeholder_id")
 	}
 	if ve.Fix == nil {
 		t.Fatal("expected Fix to be non-nil")

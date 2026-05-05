@@ -15,12 +15,12 @@ func TestSlideIndexFromPath(t *testing.T) {
 		path string
 		want int
 	}{
-		{"slides[0].content.body", 0},
-		{"slides[3].shape_grid.rows[1].cells[0]", 3},
-		{"slides[12].content[1]", 12},
+		{"/slides/0/content/body", 0},
+		{"/slides/3/shape_grid/rows/1/cells/0", 3},
+		{"/slides/12/content/1", 12},
 		{"other_path", -1},
-		{"slides[]", -1},
-		{"slides[abc]", -1},
+		{"/slides/", -1},
+		{"/slides/abc", -1},
 	}
 	for _, tt := range tests {
 		got := slideIndexFromPath(tt.path)
@@ -164,7 +164,7 @@ func TestContrastSwapsToFindings_Empty(t *testing.T) {
 func makeFinding(slideIdx int, action string, code string, hasFix bool) patterns.FitFinding {
 	f := patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
-			Path:    fmt.Sprintf("slides[%d].content.body", slideIdx),
+			Path:    fmt.Sprintf("/slides/%d/content/body", slideIdx),
 			Code:    code,
 			Message: fmt.Sprintf("finding %s on slide %d", code, slideIdx),
 		},
@@ -314,9 +314,9 @@ func TestBudgetFitFindings_Empty(t *testing.T) {
 
 // --- budgetLocalFindings tests ---
 
-func makeLocalFinding(slideIdx int, action string, code string, hasFix bool) fitFinding {
+func makeLocalFinding(slideIdx int, action, code string, hasFix bool) fitFinding {
 	f := fitFinding{
-		Path:    fmt.Sprintf("slides[%d].content.body", slideIdx),
+		Path:    fmt.Sprintf("/slides/%d/content/body", slideIdx),
 		Code:    code,
 		Message: fmt.Sprintf("finding %s on slide %d", code, slideIdx),
 		Action:  action,

@@ -15,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -286,7 +287,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				fmt.Sprintf("slide %d: layout_id is required", i+1))
 		} else if !layoutFound {
 			output.Valid = false
-			path := fmt.Sprintf("slides[%d].layout_id", i)
+			path := slidepath.SlideField(i, "layout_id")
 			available := make([]string, 0, len(layoutByID))
 			for id := range layoutByID {
 				available = append(available, id)
@@ -331,7 +332,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					for _, ph := range lm.Placeholders {
 						available = append(available, ph.ID)
 					}
-					path := fmt.Sprintf("slides[%d].content[%d].placeholder_id", i, j)
+					path := slidepath.ContentField(i, j, "placeholder_id")
 					msg := fmt.Sprintf("slide %d: %s", i+1, generator.PlaceholderNotFoundError(item.PlaceholderID, slideInput.LayoutID, available))
 					fix := &patterns.FixSuggestion{
 						Kind:   "use_one_of",
@@ -391,7 +392,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					// Density check for content-level table.
 					table := resolveTableFromContent(&item)
 					if table != nil {
-						tablePath := fmt.Sprintf("slides[%d].content[%d]", i, j)
+						tablePath := slidepath.ContentIndex(i, j)
 						output.ValidationWarnings = append(output.ValidationWarnings, pipeline.DetectTableDensity(table, tablePath)...)
 
 						// Warn when both header_background and style_id are explicitly authored.
@@ -427,7 +428,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			// Detect legacy authoring form: "value" field instead of typed fields
 			if item.UsesLegacyValue() {
 				typedField := item.Type + "_value"
-				path := fmt.Sprintf("slides[%d].content[%d]", i, j)
+				path := slidepath.ContentIndex(i, j)
 				output.ValidationWarnings = append(output.ValidationWarnings, &patterns.ValidationError{
 					Path:    path,
 					Code:    "legacy_authoring_form",
@@ -465,7 +466,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			for rowIdx, row := range slideInput.ShapeGrid.Rows {
 				for cellIdx, cell := range row.Cells {
 					if cell != nil && cell.Table != nil {
-						tablePath := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d].table", i, rowIdx, cellIdx)
+						tablePath := slidepath.GridCellField(i, rowIdx, cellIdx, "table")
 						if vw := validateTableStyleID(cell.Table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.ValidationWarnings = append(output.ValidationWarnings, vw)
 						}
@@ -556,7 +557,7 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 				counts.Shapes++
 				counts.Tables++
 				// Density check for embedded table.
-				tablePath := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d].table", slideNum-1, rowIdx, cellIdx)
+				tablePath := slidepath.GridCellField(slideNum-1, rowIdx, cellIdx, "table")
 				valWarnings = append(valWarnings, pipeline.DetectTableDensity(cell.Table, tablePath)...)
 			}
 			if cell.Diagram != nil {
@@ -581,7 +582,7 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 	var valWarnings []*patterns.ValidationError
 	checkHex := func(color string) {
 		if hexColorRe.MatchString(color) && !isAllowlistedHex(color) {
-			path := fmt.Sprintf("slides[%d].shape_grid.rows[%d].cells[%d].shape.fill", slideNum-1, row-1, cell-1)
+			path := slidepath.GridCellField(slideNum-1, row-1, cell-1, "shape/fill")
 			valWarnings = append(valWarnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,

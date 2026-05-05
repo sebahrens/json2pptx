@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // ---------------------------------------------------------------------------
@@ -51,25 +52,25 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 	}
 
 	for i, slide := range input.Slides {
-		prefix := fmt.Sprintf("slides[%d]", i)
+		prefix := slidepath.Slide(i)
 
 		if slide.Transition != "" {
-			if err := checkEnum(prefix+".transition", slide.Transition, allowedTransitions); err != nil {
+			if err := checkEnum(prefix+"/transition", slide.Transition, allowedTransitions); err != nil {
 				errs = append(errs, err)
 			}
 		}
 		if slide.TransitionSpeed != "" {
-			if err := checkEnum(prefix+".transition_speed", slide.TransitionSpeed, allowedTransitionSpeeds); err != nil {
+			if err := checkEnum(prefix+"/transition_speed", slide.TransitionSpeed, allowedTransitionSpeeds); err != nil {
 				errs = append(errs, err)
 			}
 		}
 		if slide.Build != "" {
-			if err := checkEnum(prefix+".build", slide.Build, allowedBuilds); err != nil {
+			if err := checkEnum(prefix+"/build", slide.Build, allowedBuilds); err != nil {
 				errs = append(errs, err)
 			}
 		}
 		if slide.Background != nil && slide.Background.Fit != "" {
-			if err := checkEnum(prefix+".background.fit", slide.Background.Fit, allowedBackgroundFits); err != nil {
+			if err := checkEnum(prefix+"/background/fit", slide.Background.Fit, allowedBackgroundFits); err != nil {
 				errs = append(errs, err)
 			}
 		}
