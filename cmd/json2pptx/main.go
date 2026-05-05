@@ -42,6 +42,8 @@ func dispatch() error {
 	switch subcmd {
 	case "generate":
 		return runGenerate()
+	case "read":
+		return runRead()
 	case "serve":
 		return runServe()
 	case "mcp":
@@ -80,6 +82,7 @@ func printUsage() {
 
 Commands:
   generate           Convert JSON to PPTX (default if omitted)
+  read               Read PPTX and output extracted content as JSON
   validate           Validate input without generating
   validate-output    Check generated PPTX for OOXML correctness
   validate-template  Check template compatibility

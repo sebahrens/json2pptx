@@ -15,8 +15,9 @@ const (
 	CodeInvalidParameter Code = "INVALID_PARAMETER"
 	CodeInvalidJSON      Code = "INVALID_JSON"
 	CodeInvalidKey       Code = "INVALID_KEY"
-	CodeInvalidSlide     Code = "INVALID_SLIDE"
-	CodeAmbiguousInput   Code = "AMBIGUOUS_INPUT"
+	CodeInvalidSlide      Code = "INVALID_SLIDE"
+	CodeInvalidSlideIndex Code = "INVALID_SLIDE_INDEX"
+	CodeAmbiguousInput    Code = "AMBIGUOUS_INPUT"
 	CodeUnsupported      Code = "UNSUPPORTED"
 )
 
@@ -42,6 +43,7 @@ const (
 // Render family — generation and rendering failures.
 const (
 	CodeGenerationFailed       Code = "GENERATION_FAILED"
+	CodeReadFailed             Code = "READ_FAILED"
 	CodeRenderFailed           Code = "RENDER_FAILED"
 	CodeLibreOfficeUnavailable Code = "LIBREOFFICE_UNAVAILABLE"
 	CodeImageMagickUnavailable Code = "IMAGEMAGICK_UNAVAILABLE"
@@ -72,6 +74,7 @@ func AllCodes() []Code {
 		CodeInvalidJSON,
 		CodeInvalidKey,
 		CodeInvalidSlide,
+		CodeInvalidSlideIndex,
 		CodeAmbiguousInput,
 		CodeUnsupported,
 		// Template
@@ -89,6 +92,7 @@ func AllCodes() []Code {
 		CodeIconList,
 		// Render
 		CodeGenerationFailed,
+		CodeReadFailed,
 		CodeRenderFailed,
 		CodeLibreOfficeUnavailable,
 		CodeImageMagickUnavailable,
