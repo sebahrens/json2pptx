@@ -21,6 +21,7 @@ A REST API for converting JSON slide definitions into professional PowerPoint pr
   - [Expand Pattern](#expand-pattern)
 - [Common Use Cases](#common-use-cases)
 - [SDK Examples](#sdk-examples)
+- [MCP Tool Reference Pages](#mcp-tool-reference-pages)
 
 ---
 
@@ -884,6 +885,16 @@ The complete OpenAPI 3.0 specification is available at:
 - **File:** [`openapi.yaml`](./openapi.yaml)
 - **Swagger UI:** Import the spec into [Swagger Editor](https://editor.swagger.io/)
 - **Postman:** Import the OpenAPI spec directly into Postman for interactive testing
+
+---
+
+## MCP Tool Reference Pages
+
+Detailed reference documentation for individual MCP tools:
+
+- [analyze_deck_rhythm](./analyze_deck_rhythm.md) — Analyze visual rhythm, detect monotony, score composition
+- [plan_deck](./plan_deck.md) — Plan a deck outline from a brief with rhythm-aware pattern selection
+- [recommend_pattern](./recommend_pattern.md) — Recommend patterns for a content intent with variety awareness
 
 ---
 
