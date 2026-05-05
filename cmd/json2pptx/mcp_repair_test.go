@@ -452,6 +452,235 @@ func TestRepairSlide_ContractShape(t *testing.T) {
 	}
 }
 
+// --- replace_color tests ---
+
+func shapeGridDeck(fillColor string) string {
+	deck := map[string]any{
+		"template": "midnight-blue",
+		"slides": []map[string]any{
+			{
+				"layout_id": "slideLayout5",
+				"content": []map[string]any{
+					{"placeholder_id": "title", "type": "text", "text_value": "Grid Slide"},
+				},
+				"shape_grid": map[string]any{
+					"rows": []map[string]any{
+						{
+							"cells": []map[string]any{
+								{"shape": map[string]any{"geometry": "rect", "fill": fillColor}},
+								{"shape": map[string]any{"geometry": "rect", "fill": "accent2"}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	b, _ := json.Marshal(deck)
+	return string(b)
+}
+
+func TestRepairSlide_ReplaceColor(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := shapeGridDeck("#FFE8D4")
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"json_input":  deck,
+		"slide_index": float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "replace_color",
+			"params": map[string]any{
+				"from": "#FFE8D4",
+				"to":   "#1A1A1A",
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if len(output.AppliedFixes) != 1 || !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected replace_color applied, got: %+v", output.AppliedFixes)
+	}
+
+	// Verify the color was changed in the patched deck.
+	var patched PresentationInput
+	if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+		t.Fatalf("unmarshal patched deck: %v", err)
+	}
+	fill := patched.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape.Fill
+	var fillStr string
+	if err := json.Unmarshal(fill, &fillStr); err != nil {
+		t.Fatalf("unmarshal fill: %v", err)
+	}
+	if fillStr != "#1A1A1A" {
+		t.Errorf("expected fill to be #1A1A1A, got %q", fillStr)
+	}
+}
+
+func TestRepairSlide_ReplaceColor_ContrastAutoFixedParams(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := shapeGridDeck("#FFE8D4")
+
+	// Use the param names from contrast_autofixed findings.
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"json_input":  deck,
+		"slide_index": float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "replace_color",
+			"params": map[string]any{
+				"original_color":    "#FFE8D4",
+				"replacement_color": "#333333",
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if len(output.AppliedFixes) != 1 || !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected replace_color applied, got: %+v", output.AppliedFixes)
+	}
+}
+
+func TestRepairSlide_ReplaceColor_NotFound(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := shapeGridDeck("accent1")
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"json_input":  deck,
+		"slide_index": float64(0),
+		"fixes": []any{map[string]any{
+			"kind":   "replace_color",
+			"params": map[string]any{"from": "#DEADBE", "to": "#000000"},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if output.AppliedFixes[0].Applied {
+		t.Error("expected replace_color NOT applied when color not found")
+	}
+}
+
+// --- use_semantic_color tests ---
+
+func TestRepairSlide_UseSemanticColor_WithPath(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := shapeGridDeck("#FF0000")
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"json_input":  deck,
+		"slide_index": float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "use_semantic_color",
+			"params": map[string]any{
+				"path":  "slides[0].shape_grid.rows[0].cells[0].shape.fill",
+				"value": "accent1",
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if len(output.AppliedFixes) != 1 || !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected use_semantic_color applied, got: %+v", output.AppliedFixes)
+	}
+
+	// Verify the fill is now "accent1".
+	var patched PresentationInput
+	if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+		t.Fatalf("unmarshal patched deck: %v", err)
+	}
+	fill := patched.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape.Fill
+	var fillStr string
+	if err := json.Unmarshal(fill, &fillStr); err != nil {
+		t.Fatalf("unmarshal fill: %v", err)
+	}
+	if fillStr != "accent1" {
+		t.Errorf("expected fill to be accent1, got %q", fillStr)
+	}
+}
+
+func TestRepairSlide_UseSemanticColor_NoPath_ReplacesAllHex(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := shapeGridDeck("#FF0000")
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"json_input":  deck,
+		"slide_index": float64(0),
+		"fixes": []any{map[string]any{
+			"kind":   "use_semantic_color",
+			"params": map[string]any{"value": "accent3"},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected use_semantic_color applied")
+	}
+
+	// The first cell (#FF0000) should be replaced, the second (accent2) should not.
+	var patched PresentationInput
+	if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+		t.Fatalf("unmarshal patched deck: %v", err)
+	}
+
+	var fill0, fill1 string
+	_ = json.Unmarshal(patched.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape.Fill, &fill0)
+	_ = json.Unmarshal(patched.Slides[0].ShapeGrid.Rows[0].Cells[1].Shape.Fill, &fill1)
+
+	if fill0 != "accent3" {
+		t.Errorf("cell[0] fill should be accent3, got %q", fill0)
+	}
+	if fill1 != "accent2" {
+		t.Errorf("cell[1] fill should remain accent2, got %q", fill1)
+	}
+}
+
 // textContent extracts the text from the first MCP content block.
 func textContent(result *mcp.CallToolResult) string {
 	for _, c := range result.Content {

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -53,6 +54,8 @@ Supported fix kinds (V1):
 - split_at_row: Split a table across pages using the split_slide envelope. Params: row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
 - swap_layout: Change the slide's layout_id. Params: layout_id (string, required).
 - use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
+- replace_color: Replace one color with another in shape_grid fills. Params: from (string, color to find), to (string, replacement color). Also accepts original_color/replacement_color from contrast_autofixed findings.
+- use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, e.g. "slides[0].shape_grid.rows[0].cells[0].shape.fill"), value (string, scheme name e.g. "accent1").
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
@@ -171,6 +174,10 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applySwapLayout(input, slideIdx, fix.Params)
 	case "use_one_of":
 		return applyUseOneOf(input, slideIdx, fix.Params)
+	case "replace_color":
+		return applyReplaceColor(input, slideIdx, fix.Params)
+	case "use_semantic_color":
+		return applyUseSemanticColor(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -341,6 +348,201 @@ func applyUseOneOf(input *PresentationInput, slideIdx int, params map[string]any
 		}
 		return appliedFix{Kind: "use_one_of", Applied: false, Message: fmt.Sprintf("path %q not recognized for slide-level use_one_of", path)}
 	}
+}
+
+// applyReplaceColor replaces occurrences of a specific color in shape_grid fills.
+// Accepts params from contrast_autofixed findings (original_color/replacement_color)
+// or the canonical form (from/to).
+func applyReplaceColor(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	from := stringParam(params, "from", "")
+	to := stringParam(params, "to", "")
+
+	// Also accept the names emitted by contrast_autofixed findings.
+	if from == "" {
+		from = stringParam(params, "original_color", "")
+	}
+	if to == "" {
+		to = stringParam(params, "replacement_color", "")
+	}
+
+	if from == "" || to == "" {
+		return appliedFix{Kind: "replace_color", Applied: false, Message: "from/to (or original_color/replacement_color) parameters are required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.ShapeGrid == nil {
+		return appliedFix{Kind: "replace_color", Applied: false, Message: "slide has no shape_grid"}
+	}
+
+	modified := replaceColorInShapeGrid(slide.ShapeGrid, from, to)
+	if modified {
+		return appliedFix{Kind: "replace_color", Applied: true}
+	}
+	return appliedFix{Kind: "replace_color", Applied: false, Message: fmt.Sprintf("color %q not found in shape_grid fills", from)}
+}
+
+// applyUseSemanticColor replaces a hex fill at a specific path with a semantic
+// scheme color name (e.g. "accent1", "dk1").
+func applyUseSemanticColor(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	value := stringParam(params, "value", "")
+
+	if value == "" {
+		return appliedFix{Kind: "use_semantic_color", Applied: false, Message: "value parameter is required (scheme color name, e.g. accent1)"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.ShapeGrid == nil {
+		return appliedFix{Kind: "use_semantic_color", Applied: false, Message: "slide has no shape_grid"}
+	}
+
+	// If a path is provided, try to resolve it to a specific cell fill.
+	if path != "" {
+		if setFillAtPath(slide.ShapeGrid, slideIdx, path, value) {
+			return appliedFix{Kind: "use_semantic_color", Applied: true}
+		}
+		return appliedFix{Kind: "use_semantic_color", Applied: false, Message: fmt.Sprintf("path %q not found or not a fill field", path)}
+	}
+
+	// Without a path, replace all hex fills on the slide with the semantic color.
+	modified := replaceAllHexFills(slide.ShapeGrid, value)
+	if modified {
+		return appliedFix{Kind: "use_semantic_color", Applied: true}
+	}
+	return appliedFix{Kind: "use_semantic_color", Applied: false, Message: "no hex fills found in shape_grid"}
+}
+
+// replaceColorInShapeGrid walks all cells in a shape grid and replaces fill
+// colors matching `from` with `to`.
+func replaceColorInShapeGrid(grid *ShapeGridInput, from, to string) bool {
+	modified := false
+	fromNorm := normalizeColor(from)
+	for ri := range grid.Rows {
+		for ci := range grid.Rows[ri].Cells {
+			cell := grid.Rows[ri].Cells[ci]
+			if cell == nil || cell.Shape == nil {
+				continue
+			}
+			if replaceFillColor(cell.Shape, fromNorm, to) {
+				modified = true
+			}
+		}
+	}
+	return modified
+}
+
+// replaceFillColor replaces a fill color on a shape spec if it matches fromNorm.
+func replaceFillColor(shape *ShapeSpecInput, fromNorm, to string) bool {
+	if len(shape.Fill) == 0 {
+		return false
+	}
+
+	// Try string form.
+	var s string
+	if err := json.Unmarshal(shape.Fill, &s); err == nil {
+		if normalizeColor(s) == fromNorm {
+			newFill, _ := json.Marshal(to)
+			shape.Fill = newFill
+			return true
+		}
+		return false
+	}
+
+	// Try object form.
+	var obj ShapeFillInput
+	if err := json.Unmarshal(shape.Fill, &obj); err == nil {
+		if normalizeColor(obj.Color) == fromNorm {
+			obj.Color = to
+			newFill, _ := json.Marshal(obj)
+			shape.Fill = newFill
+			return true
+		}
+	}
+	return false
+}
+
+// setFillAtPath sets the fill color at a specific path like
+// "slides[N].shape_grid.rows[R].cells[C].shape.fill".
+func setFillAtPath(grid *ShapeGridInput, slideIdx int, path, value string) bool {
+	// Parse row and cell indices from path.
+	var pathSlideIdx, rowIdx, cellIdx int
+	n, _ := fmt.Sscanf(path, "slides[%d].shape_grid.rows[%d].cells[%d]", &pathSlideIdx, &rowIdx, &cellIdx)
+	if n < 3 {
+		return false
+	}
+	// Verify the slide index matches.
+	if pathSlideIdx != slideIdx {
+		return false
+	}
+	if rowIdx < 0 || rowIdx >= len(grid.Rows) {
+		return false
+	}
+	if cellIdx < 0 || cellIdx >= len(grid.Rows[rowIdx].Cells) {
+		return false
+	}
+	cell := grid.Rows[rowIdx].Cells[cellIdx]
+	if cell == nil || cell.Shape == nil {
+		return false
+	}
+	newFill, _ := json.Marshal(value)
+	cell.Shape.Fill = newFill
+	return true
+}
+
+// replaceAllHexFills replaces all hex fill colors in a shape grid with a semantic color.
+func replaceAllHexFills(grid *ShapeGridInput, semanticColor string) bool {
+	modified := false
+	for ri := range grid.Rows {
+		for ci := range grid.Rows[ri].Cells {
+			cell := grid.Rows[ri].Cells[ci]
+			if cell == nil || cell.Shape == nil || len(cell.Shape.Fill) == 0 {
+				continue
+			}
+			// Check string form.
+			var s string
+			if err := json.Unmarshal(cell.Shape.Fill, &s); err == nil {
+				if isHexColor(s) {
+					newFill, _ := json.Marshal(semanticColor)
+					cell.Shape.Fill = newFill
+					modified = true
+				}
+				continue
+			}
+			// Check object form.
+			var obj ShapeFillInput
+			if err := json.Unmarshal(cell.Shape.Fill, &obj); err == nil {
+				if isHexColor(obj.Color) {
+					obj.Color = semanticColor
+					newFill, _ := json.Marshal(obj)
+					cell.Shape.Fill = newFill
+					modified = true
+				}
+			}
+		}
+	}
+	return modified
+}
+
+// normalizeColor normalizes a color string for comparison by lowercasing and
+// stripping leading "#".
+func normalizeColor(c string) string {
+	c = strings.ToLower(strings.TrimSpace(c))
+	c = strings.TrimPrefix(c, "#")
+	return c
+}
+
+// isHexColor reports whether a string looks like a hex color (#RGB, #RRGGBB, or without #).
+func isHexColor(s string) bool {
+	s = strings.TrimPrefix(s, "#")
+	if len(s) != 3 && len(s) != 6 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // --- Helpers ---

@@ -144,10 +144,12 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 func repairFixKinds() []string {
 	return []string{
 		"reduce_text",
+		"replace_color",
 		"shorten_title",
 		"split_at_row",
 		"swap_layout",
 		"use_one_of",
+		"use_semantic_color",
 	}
 }
 
