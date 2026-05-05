@@ -16,12 +16,13 @@ import (
 
 // ShapeGridInput defines a grid of preset geometry shapes placed on a slide.
 type ShapeGridInput struct {
-	Bounds  *GridBoundsInput `json:"bounds,omitempty"`
-	Gap     float64          `json:"gap,omitempty"`     // Gap in points (default 8pt). Applies to both col and row gaps.
-	ColGap  float64          `json:"col_gap,omitempty"` // Column gap in points (overrides gap)
-	RowGap  float64          `json:"row_gap,omitempty"` // Row gap in points (overrides gap)
-	Columns json.RawMessage  `json:"columns,omitempty"` // number | number[]
-	Rows    []GridRowInput   `json:"rows"`
+	Bounds     *GridBoundsInput `json:"bounds,omitempty"`
+	Gap        float64          `json:"gap,omitempty"`         // Gap in points (default 8pt). Applies to both col and row gaps.
+	ColGap     float64          `json:"col_gap,omitempty"`     // Column gap in points (overrides gap)
+	RowGap     float64          `json:"row_gap,omitempty"`     // Row gap in points (overrides gap)
+	FillHeight bool             `json:"fill_height,omitempty"` // When true, distribute height evenly instead of shrinking to content
+	Columns    json.RawMessage  `json:"columns,omitempty"`     // number | number[]
+	Rows       []GridRowInput   `json:"rows"`
 }
 
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.

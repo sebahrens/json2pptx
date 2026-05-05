@@ -480,6 +480,44 @@ func TestResolve_ExplicitHeights_NoBoundsShrink(t *testing.T) {
 	}
 }
 
+func TestResolve_FillHeight_NoBoundsShrink(t *testing.T) {
+	// When FillHeight is true and all rows have zero height, the grid should
+	// distribute height evenly and NOT shrink bounds to content.
+	grid := &Grid{
+		Bounds:     pptx.RectEmu{X: 0, Y: 0, CX: 8229600, CY: 5000000},
+		Columns:    []float64{50, 50},
+		FillHeight: true,
+		Rows: []Row{
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"Short"`)}},
+				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"A"`)}},
+			}},
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"Short"`)}},
+				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"B"`)}},
+			}},
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"Short"`)}},
+				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"C"`)}},
+			}},
+		},
+	}
+
+	alloc := newAlloc(100)
+	result, err := Resolve(grid, alloc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	// Bounds should remain unchanged (no shrink).
+	if grid.Bounds.CY != 5000000 {
+		t.Errorf("expected grid CY to remain 5000000, got %d", grid.Bounds.CY)
+	}
+}
+
 func TestDistributeEMU_ExactSum(t *testing.T) {
 	// 3 equal rows in a space that isn't evenly divisible by 3
 	pcts := []float64{33.333333, 33.333333, 33.333334}

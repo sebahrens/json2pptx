@@ -220,11 +220,12 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	rows := convertGridRows(input.Rows)
 
 	grid := &shapegrid.Grid{
-		Bounds:  bounds,
-		Columns: colWidths,
-		Rows:    rows,
-		ColGap:  colGap,
-		RowGap:  rowGap,
+		Bounds:     bounds,
+		Columns:    colWidths,
+		Rows:       rows,
+		ColGap:     colGap,
+		RowGap:     rowGap,
+		FillHeight: input.FillHeight,
 	}
 
 	// Resolve grid into cells with absolute coordinates

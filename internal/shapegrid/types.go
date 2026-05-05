@@ -38,11 +38,12 @@ const (
 
 // Grid is the domain representation of a shape grid layout.
 type Grid struct {
-	Bounds  pptx.RectEmu // Absolute bounds in EMU
-	Columns []float64    // Column width percentages (sum to 100)
-	Rows    []Row        // Row definitions
-	ColGap  float64      // Column gap in points (1pt = 12700 EMU)
-	RowGap  float64      // Row gap in points (1pt = 12700 EMU)
+	Bounds     pptx.RectEmu // Absolute bounds in EMU
+	Columns    []float64    // Column width percentages (sum to 100)
+	Rows       []Row        // Row definitions
+	ColGap     float64      // Column gap in points (1pt = 12700 EMU)
+	RowGap     float64      // Row gap in points (1pt = 12700 EMU)
+	FillHeight bool         // When true, distribute height evenly among zero-height rows (skip shrink-to-content)
 }
 
 // Row is a single row in the grid.

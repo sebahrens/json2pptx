@@ -54,8 +54,9 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 
 	// Auto-height: when no row specifies an explicit height, estimate content
 	// heights and shrink grid bounds to fit content instead of stretching to
-	// fill the full content zone.
-	if allRowHeightsZero(grid.Rows) && numRows > 0 {
+	// fill the full content zone. Skip when FillHeight is set (pattern-generated
+	// grids that should fill the available layout area).
+	if allRowHeightsZero(grid.Rows) && numRows > 0 && !grid.FillHeight {
 		var maxContentEMU int64
 		for _, row := range grid.Rows {
 			h := estimateRowContentHeightEMU(row)

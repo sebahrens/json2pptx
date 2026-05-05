@@ -404,6 +404,8 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 		CellsAfterExpansion: cellCount,
 	}
 	output.Warnings = append(output.Warnings, expandWarnings...)
+	// Pattern-generated grids should fill the layout area, not shrink to content.
+	expanded.FillHeight = true
 	slide.ShapeGrid = expanded
 }
 
