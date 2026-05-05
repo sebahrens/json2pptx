@@ -55,6 +55,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 		return slidepath.SlideIndex(findings[i].Path) < slidepath.SlideIndex(findings[j].Path)
 	})
 
+	// Attach next_tool_call to actionable findings.
+	patterns.AttachNextToolCalls(findings, slidepath.SlideIndex)
+
 	return findings
 }
 

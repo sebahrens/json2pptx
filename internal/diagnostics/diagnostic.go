@@ -47,6 +47,11 @@ type Diagnostic struct {
 	// machine-readable kind and parameters.
 	Fix *Fix `json:"fix,omitempty"`
 
+	// NextToolCall is a machine-readable suggestion for the next MCP tool call
+	// that would resolve this issue. Populated when the issue is actionable
+	// via a specific tool.
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
+
 	// Details carries additional context that doesn't fit the other fields.
 	// Preserves raw cause text, overflow ratios, etc.
 	Details map[string]any `json:"details,omitempty"`
@@ -119,6 +124,7 @@ func FromValidationErrors(ves []*patterns.ValidationError) []Diagnostic {
 func FromFitFinding(f patterns.FitFinding) Diagnostic {
 	d := FromValidationError(&f.ValidationError)
 	d.Severity = fitActionToSeverity(f.Action)
+	d.NextToolCall = f.NextToolCall
 	if d.Details == nil {
 		d.Details = make(map[string]any)
 	}

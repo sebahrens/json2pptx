@@ -100,6 +100,54 @@ func TestFromFitFinding(t *testing.T) {
 	}
 }
 
+func TestFromFitFinding_NextToolCall(t *testing.T) {
+	f := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path:    "/slides/2/content/body",
+			Code:    "fit_overflow",
+			Message: "text overflows",
+			Fix:     &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_items": 5}},
+		},
+		Action: "refuse",
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool: "repair_slide",
+			ArgsTemplate: map[string]any{
+				"slide_index": 2,
+				"fixes":       []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": 5}}},
+			},
+		},
+	}
+
+	d := FromFitFinding(f)
+
+	if d.NextToolCall == nil {
+		t.Fatal("NextToolCall is nil, want non-nil")
+	}
+	if d.NextToolCall.Tool != "repair_slide" {
+		t.Errorf("NextToolCall.Tool = %q, want repair_slide", d.NextToolCall.Tool)
+	}
+	if d.NextToolCall.ArgsTemplate["slide_index"] != 2 {
+		t.Errorf("NextToolCall.ArgsTemplate[slide_index] = %v, want 2", d.NextToolCall.ArgsTemplate["slide_index"])
+	}
+}
+
+func TestFromFitFinding_NextToolCallNil(t *testing.T) {
+	f := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path:    "/slides/0/content/body",
+			Code:    "fit_overflow",
+			Message: "text overflows",
+		},
+		Action: "info",
+	}
+
+	d := FromFitFinding(f)
+
+	if d.NextToolCall != nil {
+		t.Errorf("NextToolCall = %+v, want nil for info-action finding", d.NextToolCall)
+	}
+}
+
 func TestFromJoinedError_Mixed(t *testing.T) {
 	ve := &patterns.ValidationError{
 		Pattern: "kpi-grid",
@@ -213,6 +261,9 @@ func TestJSONSerialization_OmitsEmpty(t *testing.T) {
 	}
 	if contains(s, "details") {
 		t.Errorf("JSON contains 'details' but should omit nil: %s", s)
+	}
+	if contains(s, "next_tool_call") {
+		t.Errorf("JSON contains 'next_tool_call' but should omit nil: %s", s)
 	}
 }
 

@@ -80,6 +80,225 @@ func TestFitFindingJSON(t *testing.T) {
 	}
 }
 
+func TestRepairToolCall(t *testing.T) {
+	tests := []struct {
+		name     string
+		fix      *FixSuggestion
+		slideIdx int
+		wantNil  bool
+		wantTool string
+		wantKind string
+	}{
+		{
+			name:     "reduce_text",
+			fix:      &FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_items": 5}},
+			slideIdx: 2,
+			wantTool: "repair_slide",
+			wantKind: "reduce_text",
+		},
+		{
+			name:     "split_at_row",
+			fix:      &FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": 3}},
+			slideIdx: 0,
+			wantTool: "repair_slide",
+			wantKind: "split_at_row",
+		},
+		{
+			name:    "nil fix",
+			fix:     nil,
+			wantNil: true,
+		},
+		{
+			name:    "unknown kind",
+			fix:     &FixSuggestion{Kind: "adopt_pattern"},
+			wantNil: true,
+		},
+		{
+			name:     "no params",
+			fix:      &FixSuggestion{Kind: "shorten_title"},
+			slideIdx: 1,
+			wantTool: "repair_slide",
+			wantKind: "shorten_title",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := RepairToolCall(tt.slideIdx, tt.fix)
+			if tt.wantNil {
+				if got != nil {
+					t.Errorf("want nil, got %+v", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatal("got nil, want non-nil")
+			}
+			if got.Tool != tt.wantTool {
+				t.Errorf("Tool = %q, want %q", got.Tool, tt.wantTool)
+			}
+			fixes, ok := got.ArgsTemplate["fixes"].([]any)
+			if !ok || len(fixes) != 1 {
+				t.Fatalf("ArgsTemplate[fixes] = %v, want 1-element slice", got.ArgsTemplate["fixes"])
+			}
+			fixMap, ok := fixes[0].(map[string]any)
+			if !ok {
+				t.Fatalf("fixes[0] is %T, want map[string]any", fixes[0])
+			}
+			if fixMap["kind"] != tt.wantKind {
+				t.Errorf("fixes[0].kind = %v, want %q", fixMap["kind"], tt.wantKind)
+			}
+			if idx, ok := got.ArgsTemplate["slide_index"].(int); !ok || idx != tt.slideIdx {
+				t.Errorf("slide_index = %v, want %d", got.ArgsTemplate["slide_index"], tt.slideIdx)
+			}
+		})
+	}
+}
+
+func TestAttachNextToolCalls(t *testing.T) {
+	stubSlideIndex := func(path string) int {
+		// Simple stub: extract number after "slides/"
+		if len(path) > 8 && path[:8] == "/slides/" {
+			return int(path[8] - '0')
+		}
+		return 0
+	}
+
+	findings := []FitFinding{
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/2/content/body",
+				Code: ErrCodeFitOverflow,
+				Fix:  &FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_items": 5}},
+			},
+			Action: "refuse",
+		},
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/1/shape_grid",
+				Code: ErrCodeSparseLayout,
+				Fix:  &FixSuggestion{Kind: "adopt_pattern", Params: map[string]any{"filled_slots": 3}},
+			},
+			Action: "review",
+		},
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/0/content/body",
+				Code: ErrCodeFitOverflow,
+			},
+			Action: "info", // should be skipped
+		},
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/3/table",
+				Code: ErrCodeDensityExceeded,
+				Fix:  &FixSuggestion{Kind: "split_at_row", Params: map[string]any{"row": 4}},
+			},
+			Action: "shrink_or_split",
+		},
+	}
+
+	AttachNextToolCalls(findings, stubSlideIndex)
+
+	// Finding 0: refuse + reduce_text → repair_slide
+	if findings[0].NextToolCall == nil {
+		t.Fatal("findings[0].NextToolCall is nil")
+	}
+	if findings[0].NextToolCall.Tool != "repair_slide" {
+		t.Errorf("findings[0] tool = %q, want repair_slide", findings[0].NextToolCall.Tool)
+	}
+
+	// Finding 1: review + adopt_pattern → recommend_pattern
+	if findings[1].NextToolCall == nil {
+		t.Fatal("findings[1].NextToolCall is nil")
+	}
+	if findings[1].NextToolCall.Tool != "recommend_pattern" {
+		t.Errorf("findings[1] tool = %q, want recommend_pattern", findings[1].NextToolCall.Tool)
+	}
+
+	// Finding 2: info → skipped
+	if findings[2].NextToolCall != nil {
+		t.Errorf("findings[2].NextToolCall should be nil for action=info, got %+v", findings[2].NextToolCall)
+	}
+
+	// Finding 3: shrink_or_split + split_at_row → repair_slide
+	if findings[3].NextToolCall == nil {
+		t.Fatal("findings[3].NextToolCall is nil")
+	}
+	if findings[3].NextToolCall.Tool != "repair_slide" {
+		t.Errorf("findings[3] tool = %q, want repair_slide", findings[3].NextToolCall.Tool)
+	}
+}
+
+func TestNextToolCallJSON(t *testing.T) {
+	f := FitFinding{
+		ValidationError: ValidationError{
+			Path:    "/slides/0/content/body",
+			Code:    ErrCodeFitOverflow,
+			Message: "text overflows",
+			Fix:     &FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_items": 5}},
+		},
+		Action: "refuse",
+		NextToolCall: &ToolCallSuggestion{
+			Tool: "repair_slide",
+			ArgsTemplate: map[string]any{
+				"slide_index": 0,
+				"fixes":       []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": 5}}},
+			},
+		},
+	}
+
+	data, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	ntc, ok := m["next_tool_call"].(map[string]any)
+	if !ok {
+		t.Fatal("next_tool_call missing or not an object")
+	}
+	if ntc["tool"] != "repair_slide" {
+		t.Errorf("tool = %v, want repair_slide", ntc["tool"])
+	}
+	args, ok := ntc["args_template"].(map[string]any)
+	if !ok {
+		t.Fatal("args_template missing or not an object")
+	}
+	if args["slide_index"] != float64(0) {
+		t.Errorf("slide_index = %v, want 0", args["slide_index"])
+	}
+}
+
+func TestNextToolCallOmittedWhenNil(t *testing.T) {
+	f := FitFinding{
+		ValidationError: ValidationError{
+			Path:    "/slides/0/content/body",
+			Code:    ErrCodeFitOverflow,
+			Message: "text overflows",
+		},
+		Action: "info",
+	}
+
+	data, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	if _, ok := m["next_tool_call"]; ok {
+		t.Error("nil NextToolCall should be omitted from JSON")
+	}
+}
+
 func TestFitFindingJSONOmitsNilExtents(t *testing.T) {
 	f := FitFinding{
 		ValidationError: ValidationError{

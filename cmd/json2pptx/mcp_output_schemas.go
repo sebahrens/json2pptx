@@ -48,7 +48,15 @@ var outputSchemaGenerate = json.RawMessage(`{
         "path":        {"type": "string"},
         "message":     {"type": "string"},
         "action":      {"type": "string"},
-        "fix":         {"type": "object"}
+        "fix":         {"type": "object"},
+        "next_tool_call": {
+          "type": "object",
+          "properties": {
+            "tool":          {"type": "string"},
+            "args_template": {"type": "object"}
+          },
+          "required": ["tool", "args_template"]
+        }
       },
       "required": ["code", "slide_index", "message", "action"]
     }
@@ -81,7 +89,15 @@ var outputSchemaValidate = json.RawMessage(`{
         "path":     {"type": "string"},
         "message":  {"type": "string"},
         "severity": {"type": "string", "enum": ["error", "warning"]},
-        "fix":      {"type": "object"}
+        "fix":      {"type": "object"},
+        "next_tool_call": {
+          "type": "object",
+          "properties": {
+            "tool":          {"type": "string"},
+            "args_template": {"type": "object"}
+          },
+          "required": ["tool", "args_template"]
+        }
       },
       "required": ["code", "message", "severity"]
     }
