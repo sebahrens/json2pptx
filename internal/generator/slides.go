@@ -23,8 +23,10 @@ import (
 //   - Center: auto-populated with each slide's title text
 //   - Right: auto-incremented slide number
 type FooterConfig struct {
-	Enabled  bool   // Master switch — when false, no footers are injected
-	LeftText string // Left footer text (e.g., "Acme Corp | Confidential")
+	Enabled          bool   // Master switch — when false, no footers are injected
+	LeftText         string // Left footer text (e.g., "Acme Corp | Confidential")
+	PageNumberFormat string // Slide number format (e.g., "{current} / {total}"); empty = plain slide number field
+	TotalSlides      int    // Total slide count, used when PageNumberFormat contains {total}
 }
 
 // GenerationRequest specifies what to generate.
@@ -63,6 +65,7 @@ type SlideSpec struct {
 	TransitionSpeed string           // Transition speed: "slow", "med", "fast" (default: "med")
 	Build           string           // Build animation: "bullets" for one-by-one bullet reveal
 	ContrastCheck   *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
+	SkipFooter      bool             // When true, footer/chrome is suppressed on this slide
 	RawShapeXML     [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
 	IconInserts     []IconInsert     // SVG icon images from shape_grid (require media registration)
 	ImageInserts    []ImageInsert    // Image files from shape_grid (require media registration)

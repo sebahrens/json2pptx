@@ -426,7 +426,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		StrictFit:             strictFit,
 	}
 
-	if input.Footer != nil && input.Footer.Enabled {
+	// Wire footer/chrome configuration.
+	if input.Chrome != nil {
+		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs))
+		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
+	} else if input.Footer != nil && input.Footer.Enabled {
 		genReq.Footer = &generator.FooterConfig{
 			Enabled:  true,
 			LeftText: input.Footer.LeftText,

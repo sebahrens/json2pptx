@@ -16,6 +16,7 @@ type PresentationInput struct {
 	Template       string       `json:"template"`
 	OutputFilename string       `json:"output_filename,omitempty"`
 	Footer         *Footer      `json:"footer,omitempty"`
+	Chrome         *Chrome      `json:"chrome,omitempty"`
 	ThemeOverride  *ThemeInput  `json:"theme_override,omitempty"`
 	Slides         []SlideInput `json:"slides"`
 }
@@ -24,6 +25,23 @@ type PresentationInput struct {
 type Footer struct {
 	Enabled  bool   `json:"enabled"`
 	LeftText string `json:"left_text,omitempty"`
+}
+
+// Chrome mirrors ChromeInput.
+type Chrome struct {
+	Confidentiality string       `json:"confidentiality,omitempty"`
+	ClientName      string       `json:"client_name,omitempty"`
+	ProjectCode     string       `json:"project_code,omitempty"`
+	FooterDate      string       `json:"footer_date,omitempty"`
+	PageNumbers     *PageNumbers `json:"page_numbers,omitempty"`
+	SectionCrumb    bool         `json:"section_crumb,omitempty"`
+}
+
+// PageNumbers mirrors PageNumbersInput.
+type PageNumbers struct {
+	Enabled *bool    `json:"enabled,omitempty"`
+	Format  string   `json:"format,omitempty"`
+	Skip    []string `json:"skip,omitempty"`
 }
 
 // ThemeInput mirrors ThemeInput.

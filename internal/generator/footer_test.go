@@ -21,7 +21,7 @@ func TestGenerateFooterShapes(t *testing.T) {
 		},
 	}
 
-	result := generateFooterShapes(positions, "Acme Corp")
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"})
 
 	// Verify left and right footer shapes are present (no center)
 	if !strings.Contains(result, "Footer Left") {
@@ -86,7 +86,7 @@ func TestGenerateFooterShapes_EmptyLeftAndCenter(t *testing.T) {
 	}
 
 	// No left text — only slide number should appear
-	result := generateFooterShapes(positions, "")
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true})
 
 	if strings.Contains(result, "Footer Left") {
 		t.Error("left footer should not appear when text is empty")
@@ -793,5 +793,118 @@ func TestGenerateFooterShape_XMLEscaping(t *testing.T) {
 
 	if !strings.Contains(result, "A&amp;B &lt;Corp&gt;") {
 		t.Error("expected XML-escaped text in footer shape")
+	}
+}
+
+func TestBuildPageNumberRuns(t *testing.T) {
+	tests := []struct {
+		name        string
+		format      string
+		total       int
+		wantCount   int
+		wantSlideNum bool
+		wantTotal   string
+	}{
+		{
+			name:        "current only",
+			format:      "{current}",
+			total:       30,
+			wantCount:   1,
+			wantSlideNum: true,
+		},
+		{
+			name:        "current / total",
+			format:      "{current} / {total}",
+			total:       30,
+			wantCount:   3, // slidenum field, " / " text, "30" text
+			wantSlideNum: true,
+			wantTotal:   "30",
+		},
+		{
+			name:        "Slide X of Y",
+			format:      "Slide {current} of {total}",
+			total:       15,
+			wantCount:   4, // "Slide " text, slidenum field, " of " text, "15" text
+			wantSlideNum: true,
+			wantTotal:   "15",
+		},
+		{
+			name:      "plain text only",
+			format:    "Page",
+			total:     10,
+			wantCount: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runs := buildPageNumberRuns(tt.format, tt.total)
+			if len(runs) != tt.wantCount {
+				t.Errorf("got %d runs, want %d", len(runs), tt.wantCount)
+			}
+			hasSlideNum := false
+			hasTotal := false
+			for _, r := range runs {
+				if r.FieldType == "slidenum" {
+					hasSlideNum = true
+				}
+				if tt.wantTotal != "" && r.Text == tt.wantTotal {
+					hasTotal = true
+				}
+			}
+			if tt.wantSlideNum && !hasSlideNum {
+				t.Error("expected a slidenum field run")
+			}
+			if tt.wantTotal != "" && !hasTotal {
+				t.Errorf("expected total text run %q", tt.wantTotal)
+			}
+		})
+	}
+}
+
+func TestGenerateFormattedSlideNumShape(t *testing.T) {
+	pos := &transformXML{
+		Offset: offsetXML{X: 8610600, Y: 6492875},
+		Extent: extentXML{CX: 3200400, CY: 365125},
+	}
+
+	result := generateFormattedSlideNumShape(992, "Footer Right", pos, "{current} / {total}", 30)
+
+	if !strings.Contains(result, `type="slidenum"`) {
+		t.Error("expected slidenum field")
+	}
+	if !strings.Contains(result, "30") {
+		t.Error("expected total slide count '30'")
+	}
+}
+
+func TestGenerateFooterShapes_FormattedPageNumbers(t *testing.T) {
+	positions := map[string]*transformXML{
+		"type:dt": {
+			Offset: offsetXML{X: 457200, Y: 6492875},
+			Extent: extentXML{CX: 3200400, CY: 365125},
+		},
+		"type:sldNum": {
+			Offset: offsetXML{X: 8610600, Y: 6492875},
+			Extent: extentXML{CX: 3200400, CY: 365125},
+		},
+	}
+
+	config := &FooterConfig{
+		Enabled:          true,
+		LeftText:         "Confidential",
+		PageNumberFormat: "{current} / {total}",
+		TotalSlides:      30,
+	}
+
+	result := generateFooterShapes(positions, config)
+
+	if !strings.Contains(result, "Confidential") {
+		t.Error("expected left text")
+	}
+	if !strings.Contains(result, `type="slidenum"`) {
+		t.Error("expected slidenum field")
+	}
+	if !strings.Contains(result, "30") {
+		t.Error("expected total slide count")
 	}
 }

@@ -665,9 +665,13 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 	// Remove template footer placeholder shapes (dt, ftr, sldNum).
 	// When our footer feature is enabled, remove ALL footer placeholders
 	// (we inject our own populated footer shapes later as raw XML).
-	// When footers are disabled, remove only EMPTY footer placeholders
-	// to prevent blank shapes from reserving space at the bottom of the slide.
-	if ctx.footerConfig != nil && ctx.footerConfig.Enabled {
+	// When footers are disabled (or skipped for this slide), remove only EMPTY
+	// footer placeholders to prevent blank shapes from reserving space.
+	skipFooterThisSlide := false
+	if spec, ok := ctx.slideContentMap[slideNum]; ok {
+		skipFooterThisSlide = spec.SkipFooter
+	}
+	if ctx.footerConfig != nil && ctx.footerConfig.Enabled && !skipFooterThisSlide {
 		slide = removeFooterPlaceholders(slide)
 		// Remove layout-inherited brand mark shapes that would duplicate LeftText.
 		// Some templates include static brand-mark text shapes in layouts
@@ -748,8 +752,8 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
-	// Insert footer shapes if enabled (positions resolved per-layout)
-	if ctx.footerConfig != nil && ctx.footerConfig.Enabled {
+	// Insert footer shapes if enabled and not skipped for this slide
+	if ctx.footerConfig != nil && ctx.footerConfig.Enabled && !skipFooterThisSlide {
 		var footerPositions map[string]*transformXML
 		if spec, ok := ctx.slideContentMap[slideNum]; ok {
 			footerPositions = ctx.getFooterPositionsForLayout(spec.LayoutID)

@@ -432,8 +432,12 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		StrictFit:             strictFit,
 	}
 
-	// Wire footer configuration
-	if input.Footer != nil && input.Footer.Enabled {
+	// Wire footer/chrome configuration.
+	// Chrome supersedes footer — if both are set, chrome wins.
+	if input.Chrome != nil {
+		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs))
+		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
+	} else if input.Footer != nil && input.Footer.Enabled {
 		genReq.Footer = &generator.FooterConfig{
 			Enabled:  true,
 			LeftText: input.Footer.LeftText,
@@ -1997,4 +2001,87 @@ func findFirstPlaceholder(layout types.LayoutMetadata, phType types.PlaceholderT
 // (e.g., "title", "body", "body_2", "image").
 func placeholderIDStr(ph types.PlaceholderInfo) string {
 	return ph.ID
+}
+
+// chromeToFooterConfig converts a ChromeInput into a generator.FooterConfig.
+// It composes the left footer text from the chrome fields and sets up page
+// number formatting.
+func chromeToFooterConfig(chrome *ChromeInput, totalSlides int) *generator.FooterConfig {
+	cfg := &generator.FooterConfig{
+		Enabled:     true,
+		LeftText:    composeChromeLine(chrome),
+		TotalSlides: totalSlides,
+	}
+	if chrome.PageNumbers != nil {
+		if chrome.PageNumbers.Enabled != nil && !*chrome.PageNumbers.Enabled {
+			// Page numbers explicitly disabled — keep footer but no slide number.
+			cfg.PageNumberFormat = ""
+		} else if chrome.PageNumbers.Format != "" {
+			cfg.PageNumberFormat = chrome.PageNumbers.Format
+		}
+	}
+	return cfg
+}
+
+// composeChromeLine builds the left footer text from chrome fields.
+// Non-empty fields are joined with " | " separators.
+// Example: "Strictly confidential — Project Aurora | Acme Corp | May 2026"
+func composeChromeLine(chrome *ChromeInput) string {
+	var parts []string
+	if chrome.Confidentiality != "" {
+		parts = append(parts, chrome.Confidentiality)
+	}
+	if chrome.ProjectCode != "" {
+		parts = append(parts, "Project "+chrome.ProjectCode)
+	}
+	if chrome.ClientName != "" {
+		parts = append(parts, chrome.ClientName)
+	}
+	if chrome.FooterDate != "" {
+		parts = append(parts, chrome.FooterDate)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	// Use " — " between confidentiality and the rest, " | " within.
+	if chrome.Confidentiality != "" && len(parts) > 1 {
+		return parts[0] + " — " + strings.Join(parts[1:], " | ")
+	}
+	return strings.Join(parts, " | ")
+}
+
+// applyChromeSkip sets SkipFooter=true on slides whose layout tags match the
+// chrome skip list. Default skip list is ["title", "closing"] when page_numbers
+// is unset or has no explicit skip list.
+func applyChromeSkip(specs []generator.SlideSpec, chrome *ChromeInput, slides []SlideInput, layouts []types.LayoutMetadata) {
+	// Build skip set from chrome config.
+	skipTags := map[string]bool{"title-slide": true, "closing": true}
+	if chrome.PageNumbers != nil && chrome.PageNumbers.Skip != nil {
+		skipTags = make(map[string]bool)
+		for _, tag := range chrome.PageNumbers.Skip {
+			// Map user-facing names to internal tag names.
+			switch tag {
+			case "title":
+				skipTags["title-slide"] = true
+			default:
+				skipTags[tag] = true
+			}
+		}
+	}
+
+	// Build layout ID → tags lookup.
+	tagsByLayout := make(map[string][]string, len(layouts))
+	for _, l := range layouts {
+		tagsByLayout[l.ID] = l.Tags
+	}
+
+	for i := range specs {
+		layoutTags := tagsByLayout[specs[i].LayoutID]
+		for _, tag := range layoutTags {
+			if skipTags[tag] {
+				specs[i].SkipFooter = true
+				break
+			}
+		}
+	}
 }

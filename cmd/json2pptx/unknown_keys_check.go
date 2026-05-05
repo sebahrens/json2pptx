@@ -40,6 +40,18 @@ func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(JSONFooter{}), "footer")...)
 	}
 
+	// chrome
+	if v, ok := top["chrome"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ChromeInput{}), "chrome")...)
+		// Check nested page_numbers
+		var chromeObj map[string]json.RawMessage
+		if json.Unmarshal(v, &chromeObj) == nil {
+			if pn, pnOK := chromeObj["page_numbers"]; pnOK {
+				warnings = append(warnings, checkUnknownKeysForType(pn, reflect.TypeOf(PageNumbersInput{}), "chrome.page_numbers")...)
+			}
+		}
+	}
+
 	// theme_override
 	if v, ok := top["theme_override"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(ThemeInput{}), "theme_override")...)

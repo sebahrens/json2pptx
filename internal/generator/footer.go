@@ -1,10 +1,11 @@
 package generator
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/google/uuid"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // Footer shape IDs — high values to avoid conflicts with content shapes and source note (999).
@@ -89,17 +90,21 @@ func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text s
 }
 
 // generateFooterShapes creates the p:sp elements for the footer zones.
-func generateFooterShapes(positions map[string]*transformXML, leftText string) string {
+func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig) string {
 	var shapes []string
 
 	// Left footer (dt position): configurable text
-	if pos, ok := positions["type:dt"]; ok && leftText != "" {
-		shapes = append(shapes, generateFooterShape(footerLeftShapeID, "Footer Left", pos, leftText, "l"))
+	if pos, ok := positions["type:dt"]; ok && config.LeftText != "" {
+		shapes = append(shapes, generateFooterShape(footerLeftShapeID, "Footer Left", pos, config.LeftText, "l"))
 	}
 
 	// Right footer (sldNum position): auto-updating slide number field
 	if pos, ok := positions["type:sldNum"]; ok {
-		shapes = append(shapes, generateSlideNumShape(footerRightShapeID, "Footer Right", pos))
+		if config.PageNumberFormat != "" {
+			shapes = append(shapes, generateFormattedSlideNumShape(footerRightShapeID, "Footer Right", pos, config.PageNumberFormat, config.TotalSlides))
+		} else {
+			shapes = append(shapes, generateSlideNumShape(footerRightShapeID, "Footer Right", pos))
+		}
 	}
 
 	return strings.Join(shapes, "\n")
@@ -139,6 +144,110 @@ func generateSlideNumShape(shapeID uint32, name string, xfrm *transformXML) stri
 	return string(b)
 }
 
+// generateFormattedSlideNumShape creates a footer shape with a formatted page number.
+// The format string may contain {current} (replaced by an auto-updating slidenum field)
+// and {total} (replaced by a static total count). Text segments between fields are
+// emitted as plain-text runs so PowerPoint renders "Slide 3 / 30" correctly.
+func generateFormattedSlideNumShape(shapeID uint32, name string, xfrm *transformXML, format string, totalSlides int) string {
+	runs := buildPageNumberRuns(format, totalSlides)
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     name,
+		Bounds:   pptx.RectEmu{X: xfrm.Offset.X, Y: xfrm.Offset.Y, CX: xfrm.Extent.CX, CY: xfrm.Extent.CY},
+		Geometry: pptx.GeomRect,
+		Fill:     pptx.NoFill(),
+		TxBox:    true,
+		Text: &pptx.TextBody{
+			Wrap:       "square",
+			Anchor:     "ctr",
+			Insets:     [4]int64{91440, 0, 91440, 0},
+			Paragraphs: []pptx.Paragraph{{Align: "r", Runs: runs}},
+		},
+	})
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+// buildPageNumberRuns splits a format string like "{current} / {total}" into
+// pptx.Run slices: {current} becomes a slidenum field, {total} becomes a static
+// text run with the total count, and everything else becomes plain text runs.
+func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
+	var runs []pptx.Run
+	remaining := format
+	for len(remaining) > 0 {
+		// Find the next placeholder
+		currentIdx := strings.Index(remaining, "{current}")
+		totalIdx := strings.Index(remaining, "{total}")
+
+		// Pick the earliest placeholder
+		nextIdx := -1
+		nextLen := 0
+		nextKind := ""
+		if currentIdx >= 0 && (totalIdx < 0 || currentIdx <= totalIdx) {
+			nextIdx = currentIdx
+			nextLen = len("{current}")
+			nextKind = "current"
+		} else if totalIdx >= 0 {
+			nextIdx = totalIdx
+			nextLen = len("{total}")
+			nextKind = "total"
+		}
+
+		if nextIdx < 0 {
+			// No more placeholders — emit the rest as plain text
+			if remaining != "" {
+				runs = append(runs, pptx.Run{
+					Text:     remaining,
+					Lang:     "en-US",
+					FontSize: footerFontSize,
+					Dirty:    true,
+					Color:    pptx.SchemeFill("tx1"),
+				})
+			}
+			break
+		}
+
+		// Emit text before the placeholder
+		if nextIdx > 0 {
+			runs = append(runs, pptx.Run{
+				Text:     remaining[:nextIdx],
+				Lang:     "en-US",
+				FontSize: footerFontSize,
+				Dirty:    true,
+				Color:    pptx.SchemeFill("tx1"),
+			})
+		}
+
+		switch nextKind {
+		case "current":
+			fieldID := "{" + uuid.New().String() + "}"
+			runs = append(runs, pptx.Run{
+				Text:      "\u2039#\u203a",
+				Lang:      "en-US",
+				FontSize:  footerFontSize,
+				Dirty:     true,
+				Color:     pptx.SchemeFill("tx1"),
+				FieldType: "slidenum",
+				FieldID:   fieldID,
+			})
+		case "total":
+			runs = append(runs, pptx.Run{
+				Text:     fmt.Sprintf("%d", totalSlides),
+				Lang:     "en-US",
+				FontSize: footerFontSize,
+				Dirty:    true,
+				Color:    pptx.SchemeFill("tx1"),
+			})
+		}
+
+		remaining = remaining[nextIdx+nextLen:]
+	}
+
+	return runs
+}
+
 // insertFooters inserts footer shapes into slide XML before </p:spTree>.
 func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML) ([]byte, error) {
 	if footerConfig == nil || !footerConfig.Enabled {
@@ -149,7 +258,7 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 		return slideData, nil
 	}
 
-	footerXML := generateFooterShapes(positions, footerConfig.LeftText)
+	footerXML := generateFooterShapes(positions, footerConfig)
 	if footerXML == "" {
 		return slideData, nil
 	}

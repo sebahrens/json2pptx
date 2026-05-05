@@ -33,14 +33,46 @@ type TableStyleInput = jsonschema.TableStyleInput
 // PresentationInput is the top-level typed JSON input.
 // Maps to generator.GenerationRequest.
 type PresentationInput struct {
-	Template       string         `json:"template"`
-	OutputFilename string         `json:"output_filename,omitempty"`
-	DesignMode     string         `json:"design_mode,omitempty"` // "constrained" (default) or "free"
-	Footer         *JSONFooter    `json:"footer,omitempty"`
-	ThemeOverride  *ThemeInput    `json:"theme_override,omitempty"`
-	Defaults       *DefaultsInput `json:"defaults,omitempty"`
+	Template       string          `json:"template"`
+	OutputFilename string          `json:"output_filename,omitempty"`
+	DesignMode     string          `json:"design_mode,omitempty"` // "constrained" (default) or "free"
+	Footer         *JSONFooter     `json:"footer,omitempty"`
+	Chrome         *ChromeInput    `json:"chrome,omitempty"`
+	ThemeOverride  *ThemeInput     `json:"theme_override,omitempty"`
+	Defaults       *DefaultsInput  `json:"defaults,omitempty"`
 	Structure      *StructureInput `json:"structure,omitempty"`
-	Slides         []SlideInput   `json:"slides"`
+	Slides         []SlideInput    `json:"slides"`
+}
+
+// ChromeInput configures deck-level persistent chrome (footers, page numbers,
+// confidentiality marks) that appear on every content slide but are suppressed
+// on title and closing slides.
+type ChromeInput struct {
+	// Confidentiality is a classification stamp (e.g., "Strictly confidential").
+	Confidentiality string `json:"confidentiality,omitempty"`
+	// ClientName is the client or company name (e.g., "Acme Corp").
+	ClientName string `json:"client_name,omitempty"`
+	// ProjectCode is the project identifier (e.g., "Aurora").
+	ProjectCode string `json:"project_code,omitempty"`
+	// FooterDate is the date string shown in the footer (e.g., "May 2026").
+	FooterDate string `json:"footer_date,omitempty"`
+	// PageNumbers controls slide numbering.
+	PageNumbers *PageNumbersInput `json:"page_numbers,omitempty"`
+	// SectionCrumb enables running section title in the footer. Requires
+	// the structure block with named sections to be useful.
+	SectionCrumb bool `json:"section_crumb,omitempty"`
+}
+
+// PageNumbersInput controls slide number display within chrome.
+type PageNumbersInput struct {
+	// Enabled turns page numbers on or off (default: true when chrome is set).
+	Enabled *bool `json:"enabled,omitempty"`
+	// Format is the page number format string. Supports {current} and {total}
+	// placeholders (e.g., "{current} / {total}"). Default: plain slide number.
+	Format string `json:"format,omitempty"`
+	// Skip lists slide types that should not show page numbers (e.g., ["title", "closing"]).
+	// Default: ["title", "closing"].
+	Skip []string `json:"skip,omitempty"`
 }
 
 // StructureInput defines deck-level structural grammar. When present, the
