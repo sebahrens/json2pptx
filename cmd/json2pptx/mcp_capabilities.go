@@ -47,14 +47,20 @@ type capabilitiesDeprecatedField struct {
 	RemovedIn   string `json:"removed_in,omitempty"`
 }
 
+// capabilitiesFitReport describes fit_report support and per-tool defaults.
+type capabilitiesFitReport struct {
+	Supported bool            `json:"supported"`
+	DefaultIn map[string]bool `json:"default_in"`
+}
+
 // capabilitiesFeatures describes feature flags the server supports.
 type capabilitiesFeatures struct {
-	StrictFit        []string `json:"strict_fit"`
-	CompactResponses bool     `json:"compact_responses"`
-	FitReport        bool     `json:"fit_report"`
-	StrictUnknownKeys bool   `json:"strict_unknown_keys"`
-	NamedPatterns    bool     `json:"named_patterns"`
-	TemplateSettings bool     `json:"template_settings"`
+	StrictFit         []string              `json:"strict_fit"`
+	CompactResponses  bool                  `json:"compact_responses"`
+	FitReport         capabilitiesFitReport `json:"fit_report"`
+	StrictUnknownKeys bool                  `json:"strict_unknown_keys"`
+	NamedPatterns     bool                  `json:"named_patterns"`
+	TemplateSettings  bool                  `json:"template_settings"`
 }
 
 // mcpToolNames returns the sorted list of all registered MCP tool names.
@@ -121,9 +127,16 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 		MCPToolsAvailable: mcpToolNames(),
 		DeprecatedFields:  buildDeprecatedFields(),
 		Features: capabilitiesFeatures{
-			StrictFit:         []string{"off", "warn", "strict"},
-			CompactResponses:  true,
-			FitReport:         true,
+			StrictFit:        []string{"off", "warn", "strict"},
+			CompactResponses: true,
+			FitReport: capabilitiesFitReport{
+				Supported: true,
+				DefaultIn: map[string]bool{
+					"validate_input":            true,
+					"preview_presentation_plan": true,
+					"generate_presentation":     false,
+				},
+			},
 			StrictUnknownKeys: true,
 			NamedPatterns:     true,
 			TemplateSettings:  true,

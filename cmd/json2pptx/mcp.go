@@ -194,9 +194,11 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 		mcp.WithString("strict_fit",
 			mcp.Description("Text-fit checking mode: off (skip fit checks), warn (default; report overflow warnings), or strict (refuse generation if any cell overflows)."),
 			mcp.Enum("off", "warn", "strict"),
+			mcp.DefaultString("warn"),
 		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, include fit_findings in the response with text overflow, placeholder overflow, footer collision, and bounds-check findings. Default: false."),
+			mcp.DefaultBool(false),
 		),
 		mcp.WithBoolean("verbose_fit",
 			mcp.Description("When true, return all fit findings without the per-slide budget limit (default: 5 per slide). Default: false."),
@@ -247,7 +249,8 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 			mcp.Description(`Structured object form of the presentation definition to validate. Mutually exclusive with "json_input" (string form). Same schema as generate_presentation.`),
 		),
 		mcp.WithBoolean("fit_report",
-			mcp.Description("When true, run per-cell text overflow measurement and include NDJSON-style fit findings in the result. Default: false."),
+			mcp.Description("When true, run per-cell text overflow measurement and include NDJSON-style fit findings in the result. Default: true."),
+			mcp.DefaultBool(true),
 		),
 		mcp.WithBoolean("verbose_fit",
 			mcp.Description("When true, return all fit findings without the per-slide budget limit (default: 5 per slide). Default: false."),
@@ -753,8 +756,12 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// character limits, content types, chart/diagram data)
 	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
 
-	// Fit report: run all fit detectors (text overflow + structural) when requested.
-	if fitReport, ok := request.GetArguments()["fit_report"].(bool); ok && fitReport {
+	// Fit report: run all fit detectors (default true for validate).
+	fitReport := true
+	if v, ok := request.GetArguments()["fit_report"].(bool); ok {
+		fitReport = v
+	}
+	if fitReport {
 		findings := collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight)
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
 		output.FitFindings = BudgetFitFindings(findings, DefaultFindingBudget, verboseFit)

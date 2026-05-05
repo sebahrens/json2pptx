@@ -90,6 +90,7 @@ Use this to preview what generate_presentation will do: which layout each slide 
 		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, include fit_findings in the response. Default: true."),
+			mcp.DefaultBool(true),
 		),
 		mcp.WithBoolean("verbose_fit",
 			mcp.Description("When true, return all fit findings without the per-slide budget limit. Default: false."),
