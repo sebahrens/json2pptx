@@ -143,8 +143,46 @@ overflow occurs, the fit-report pipeline catches it.
 | icon-row | ✅ 3–5 | ✅ i:20 c:60 | No | None |
 | timeline-horizontal | ✅ 3–7 | ✅ l:60 b:200 | Marginal | None — fit-report covers |
 
-**Conclusion:** The devil's advocate position is confirmed. Every pattern already
-has density-relevant caps via max_items and per-cell max_chars. No pattern
-requires an additional `ErrCodeDensityExceeded` check. The two marginal cases
-(bmc-canvas, timeline-horizontal) are adequately covered by existing item count
-caps plus the fit-report pipeline's render-time overflow detection.
+**Per-pattern conclusion:** Every pattern already has density-relevant caps via
+max_items and per-cell max_chars. No pattern requires an additional
+`ErrCodeDensityExceeded` check. The two marginal cases (bmc-canvas,
+timeline-horizontal) are adequately covered by existing item count caps plus the
+fit-report pipeline's render-time overflow detection.
+
+---
+
+## Deck-level Rhythm Analysis (supersedes "no rhythm measurement needed")
+
+The per-pattern density audit above confirmed that individual slides cannot
+overflow their density caps. However, **deck-level rhythm** — the sequence of
+density classes across slides — was unaddressed until the `analyze_deck_rhythm`
+tool landed (v3.1.0).
+
+### What changed
+
+The `analyze_deck_rhythm` MCP tool and CLI command (`json2pptx analyze-rhythm`)
+now provide static analysis of pattern repetition, density variation, and accent
+usage across an entire deck. This supersedes the earlier conclusion that no
+cross-slide density measurement was needed.
+
+### What analyze_deck_rhythm detects
+
+| Signal | Metric | Action |
+|--------|--------|--------|
+| Pattern monotony | `repetition_index` (0–1) | Recommends breaking runs of repeated patterns |
+| Density uniformity | `density_cv` (coefficient of variation) | Flags when all slides are same density |
+| Accent imbalance | `accent_balance` map | Warns when one accent dominates |
+| Long runs | `longest_run`, `pattern_runs[]` | Specific slide indices for intervention |
+
+### Relationship to per-pattern caps
+
+Per-pattern density caps (this audit) prevent **individual slide overflow**.
+`analyze_deck_rhythm` prevents **deck-level monotony** — a different failure mode
+where every slide is technically valid but the deck feels repetitive. The two
+systems are complementary:
+
+1. Pattern `Validate` → ensures each slide's content fits
+2. `analyze_deck_rhythm` → ensures the deck's visual arc has variety
+3. `recommend_pattern` → uses `PatternTaxonomy.DensityClass` + `PairsWith` to suggest variety-aware choices
+
+See `docs/api/analyze_deck_rhythm.md` for the full tool specification.

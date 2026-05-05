@@ -105,7 +105,11 @@ type Pattern interface {
     Name() string
     Description() string
     UseWhen() string
+    NotWhen() string                                       // contrastive: when NOT to use (wobw contract)
     Version() int
+
+    // Taxonomy returns classification metadata for discovery and deck-arc planning.
+    Taxonomy() PatternTaxonomy
 
     NewValues() any
     NewOverrides() any
@@ -116,8 +120,57 @@ type Pattern interface {
     Schema() *Schema
 
     Validate(values, overrides any, cellOverrides map[int]any) error
+
+    // CellsHint returns a human-readable cell count for compact discovery output.
+    CellsHint() string
+
     Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*ShapeGridInput, error)
 }
+
+// PatternTaxonomy provides compositional metadata for agent-facing discovery.
+type PatternTaxonomy struct {
+    Category      string   `json:"category"`       // "data-display", "narrative", "structural", "hero"
+    NarrativeRole []string `json:"narrative_role"`  // "open", "frame", "evidence", "compare", "conclude"
+    PairsWith     []string `json:"pairs_with"`      // sibling pattern names
+    DensityClass  string   `json:"density_class"`   // "low", "medium", "high"
+    AccentWeight  string   `json:"accent_weight"`   // "subtle", "normal", "strong"
+}
+```
+
+### 3.4 Parametric pattern adapter
+
+For pattern families that differ only by a numeric parameter (e.g. cell count), use a **parametric adapter** instead of separate implementations:
+
+```go
+type KPINupConfig struct {
+    Count        int           // exact cell count (2..6)
+    DensityClass string        // taxonomy density
+    Exemplars    []KPICell     // canonical example values for preview
+}
+
+// NewKPINup creates a Pattern for a kpi-Nup variant from config.
+func NewKPINup(cfg KPINupConfig) Pattern
+```
+
+Registration in `kpi_variants.go`:
+```go
+func init() {
+    for _, cfg := range kpiVariants {
+        Default().Register(NewKPINup(cfg))
+    }
+}
+```
+
+This yields `kpi-2up` through `kpi-6up` from a single implementation file. The naming convention `{noun}-{N}up` signals parametric variants. Adding `kpi-7up` requires only appending a config entry — no new code.
+
+### 3.5 UseWhen / NotWhen contract (wobw)
+
+Every pattern must provide both `UseWhen()` and `NotWhen()` strings:
+
+- **UseWhen**: contrastive — states the specific scenario AND names sibling patterns for adjacent scenarios
+- **NotWhen**: explicit anti-patterns — states when this pattern is wrong, pointing to the correct alternative
+
+Together they form a bidirectional guardrail that prevents misuse by agents and humans. See `docs/PATTERNS.md` for the full writing guide.
 ```
 
 ## 4. Discovery parity
@@ -133,20 +186,36 @@ type Pattern interface {
 
 `cmd/json2pptx/pattern_resolve.go`, called from `convertPresentationToSlideSpecs` (`json_mode.go:561–596`), after JSON unmarshal, before `resolveShapeGrid`. Emits a `*ShapeGridInput`, then existing path runs unchanged. Contrast enforcement (`internal/generator/slide_preparation.go:117–125`) may rewrite pattern-emitted colors; emit a debug log when that happens.
 
-## 6. v1 pattern set
+## 6. Pattern set (current)
 
-| Name | Cells | `use_when` |
-|---|---|---|
-| `kpi-3up` | 3 | Three big-number KPIs with short captions |
-| `kpi-4up` | 4 | Four big-number KPIs |
-| `bmc-canvas` | 9 | Formal Business Model Canvas methodology only — for general feature cards prefer `card-grid` |
-| `matrix-2x2` | 4 + axes | Quadrant/positioning matrix with axis labels |
-| `timeline-horizontal` | N (3–7) | Linear timeline with stops |
-| `card-grid` | rows × cols | N×M titled cards |
-| `icon-row` | 3–5 | Icon + caption row |
-| `comparison-2col` | 2 + header | Two-column compare (pros/cons, before/after) |
+20 patterns registered. All implement the full `Pattern` interface including `Taxonomy()` and `NotWhen()`.
 
-Each pattern's `Values`/`Overrides`/`CellOverride` Go structs and hand-authored JSON Schema are formally specified in the per-pattern PR (acceptance criterion).
+| Name | Cells | Category | Density | `use_when` (abbreviated) |
+|---|---|---|---|---|
+| `agenda` | 2-10 | narrative | low | Numbered agenda / table of contents |
+| `arch-stack` | 3-6 tiers + rails | structural | medium | Architecture layers or technology stack |
+| `before-after` | 2 + header | narrative | medium | Two states showing transformation |
+| `bmc-canvas` | 9 | structural | high | Formal Osterwalder Business Model Canvas |
+| `card-grid` | rows × cols | structural | medium | N×M titled cards with body text |
+| `comparison-2col` | 2 + header | narrative | medium | Two-column compare (pros/cons) |
+| `icon-row` | 3–5 | data-display | low | Icon + caption row |
+| `kpi-2up` | 2 | data-display | low | Two big-number KPIs |
+| `kpi-3up` | 3 | data-display | low | Three big-number KPIs |
+| `kpi-4up` | 4 | data-display | medium | Four big-number KPIs |
+| `kpi-5up` | 5 | data-display | medium | Five big-number KPIs |
+| `kpi-6up` | 6 | data-display | high | Six big-number KPIs |
+| `matrix-2x2` | 4 + axes | structural | medium | Quadrant/positioning matrix |
+| `process-flow` | 3-7 | structural | medium | Sequential process with arrows |
+| `pull-quote` | 1 | hero | low | Attributed quotation / callout |
+| `pyramid` | 3-5 | structural | medium | Narrowing hierarchy (Maslow-style) |
+| `roadmap-phased` | 2-5 phases | structural | medium | Phased plan with items per phase |
+| `stat-hero` | 1 | hero | low | Single dominant metric with context |
+| `swimlane` | 2-4 lanes | structural | high | Cross-functional parallel tracks |
+| `timeline-horizontal` | 3–7 | narrative | medium | Linear timeline with stops |
+
+**Parametric families**: `kpi-2up` through `kpi-6up` share one implementation (`kpi_parametric.go`) via the parametric adapter pattern.
+
+**Aliases**: `timeline` → `timeline-horizontal`, `bmc` → `bmc-canvas`, `matrix` → `matrix-2x2`, `comparison` → `comparison-2col`, `roadmap` → `roadmap-phased`, `architecture` → `arch-stack`, `hero` → `stat-hero`, `quote` → `pull-quote`. Defined in `z_aliases.go`.
 
 ## 7. Work breakdown — atomic beads
 
