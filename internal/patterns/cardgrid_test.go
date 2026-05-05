@@ -295,7 +295,7 @@ func TestCardGrid(t *testing.T) {
 				Rows:    1,
 				Cells:   []CardGridCell{{Header: "A", Body: "B"}},
 			},
-			overrides: &CardGridOverrides{Accent: "accent3"},
+			overrides: &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent3"}},
 			wantNoErr: true,
 		},
 	}
@@ -377,7 +377,7 @@ func TestCardGrid(t *testing.T) {
 			Rows:    1,
 			Cells:   []CardGridCell{{Header: "A", Body: "B"}},
 		}
-		ovr := &CardGridOverrides{Accent: "accent5"}
+		ovr := &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent5"}}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -469,4 +469,175 @@ func TestCardGrid(t *testing.T) {
 			t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
 		}
 	})
+}
+
+func TestCardGridStyles(t *testing.T) {
+	p := &cardGrid{}
+	cells := []CardGridCell{
+		{Header: "Card 1", Body: "Description 1"},
+		{Header: "Card 2", Body: "Description 2"},
+		{Header: "Card 3", Body: "Description 3"},
+		{Header: "Card 4", Body: "Description 4"},
+	}
+	vals := &CardGridValues{Columns: 2, Rows: 2, Cells: cells}
+
+	t.Run("filled_default", func(t *testing.T) {
+		grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "accent1" {
+			t.Errorf("filled: fill = %q, want %q", fill, "accent1")
+		}
+	})
+
+	t.Run("accent_stripe", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "accent-stripe"}
+		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "lt1" {
+			t.Errorf("accent-stripe: fill = %q, want %q", fill, "lt1")
+		}
+		ab := grid.Rows[0].Cells[0].AccentBar
+		if ab == nil {
+			t.Fatal("accent-stripe: expected accent bar")
+		}
+		if ab.Position != "left" {
+			t.Errorf("accent-stripe: accent bar position = %q, want %q", ab.Position, "left")
+		}
+		if ab.Color != "accent1" {
+			t.Errorf("accent-stripe: accent bar color = %q, want %q", ab.Color, "accent1")
+		}
+	})
+
+	t.Run("numbered_badge", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "numbered-badge"}
+		numberedCells := []CardGridCell{
+			{Header: "1. Launch", Body: "Description"},
+			{Header: "2. Growth", Body: "Description"},
+			{Header: "Card 3", Body: "No prefix"},
+			{Header: "Card 4", Body: "No prefix"},
+		}
+		numberedVals := &CardGridValues{Columns: 2, Rows: 2, Cells: numberedCells}
+		grid, err := p.Expand(ExpandContext{}, numberedVals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "lt1" {
+			t.Errorf("numbered-badge: fill = %q, want %q", fill, "lt1")
+		}
+	})
+
+	t.Run("icon_card", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "icon-card"}
+		iconCells := []CardGridCell{
+			{Header: "Launch", Body: "Description", Icon: "\U0001F680"},
+			{Header: "Growth", Body: "Description", Icon: "\U0001F4C8"},
+			{Header: "Revenue", Body: "Description"},
+			{Header: "Target", Body: "Description"},
+		}
+		iconVals := &CardGridValues{Columns: 2, Rows: 2, Cells: iconCells}
+		grid, err := p.Expand(ExpandContext{}, iconVals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "lt1" {
+			t.Errorf("icon-card: fill = %q, want %q", fill, "lt1")
+		}
+		ab := grid.Rows[0].Cells[0].AccentBar
+		if ab == nil {
+			t.Fatal("icon-card: expected accent bar")
+		}
+		if ab.Position != "top" {
+			t.Errorf("icon-card: accent bar position = %q, want %q", ab.Position, "top")
+		}
+		// Cell without icon should get fallback bullet
+		var text map[string]any
+		if err := json.Unmarshal(grid.Rows[1].Cells[0].Shape.Text, &text); err != nil {
+			t.Fatalf("text unmarshal: %v", err)
+		}
+		paras := text["paragraphs"].([]any)
+		iconPara := paras[0].(map[string]any)
+		if iconPara["content"] != "\u2022" {
+			t.Errorf("icon-card fallback: got %q, want bullet", iconPara["content"])
+		}
+	})
+
+	t.Run("tinted", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "tinted"}
+		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill0, fill1 string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill0); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Fill, &fill1); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill0 != "lt1" {
+			t.Errorf("tinted: cell 0 fill = %q, want %q", fill0, "lt1")
+		}
+		if fill1 != "lt2" {
+			t.Errorf("tinted: cell 1 fill = %q, want %q", fill1, "lt2")
+		}
+	})
+
+	t.Run("invalid_style", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "invalid-style"}
+		err := p.Validate(vals, ovr, nil)
+		if err == nil {
+			t.Fatal("expected error for invalid style")
+		}
+		if !strings.Contains(err.Error(), "overrides.style") {
+			t.Errorf("error %q should mention overrides.style", err)
+		}
+	})
+}
+
+func TestExtractNumberPrefix(t *testing.T) {
+	tests := []struct {
+		header        string
+		fallback      int
+		wantBadge     string
+		wantRemainder string
+	}{
+		{"1. Launch", 1, "1", "Launch"},
+		{"2) Growth", 2, "2", "Growth"},
+		{"10. Ten", 10, "10", "Ten"},
+		{"No prefix", 1, "1", "No prefix"},
+		{"", 3, "3", ""},
+		{"1.", 1, "1", "1."},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.header, func(t *testing.T) {
+			badge, remainder := extractNumberPrefix(tc.header, tc.fallback)
+			if badge != tc.wantBadge {
+				t.Errorf("badge = %q, want %q", badge, tc.wantBadge)
+			}
+			if remainder != tc.wantRemainder {
+				t.Errorf("remainder = %q, want %q", remainder, tc.wantRemainder)
+			}
+		})
+	}
 }

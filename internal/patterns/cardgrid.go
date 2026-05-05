@@ -49,9 +49,11 @@ func (c *cardGrid) ExemplarValues() any {
 
 // CardGridCell is a single card with a header and body.
 // Supports string shorthand: "Header | Body" unmarshals to {header:"Header", body:"Body"}.
+// The optional Icon field is used only with the "icon-card" style.
 type CardGridCell struct {
 	Header string `json:"header"`
 	Body   string `json:"body"`
+	Icon   string `json:"icon,omitempty"` // Emoji or short glyph for icon-card style
 }
 
 // UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
@@ -82,8 +84,21 @@ type CardGridValues struct {
 	Cells   []CardGridCell `json:"cells"`
 }
 
-// CardGridOverrides is the standard text overrides (accent, header_size, body_size).
-type CardGridOverrides = TextOverrides
+// CardGridOverrides extends TextOverrides with a Style field for visual variants.
+type CardGridOverrides struct {
+	TextOverrides
+	Style string `json:"style,omitempty"` // "filled" (default), "accent-stripe", "numbered-badge", "icon-card", "tinted"
+}
+
+// validCardGridStyles enumerates the allowed style values.
+var validCardGridStyles = map[string]bool{
+	"":               true, // default = filled
+	"filled":         true,
+	"accent-stripe":  true,
+	"numbered-badge": true,
+	"icon-card":      true,
+	"tinted":         true,
+}
 
 // CardGridCellOverride is an alias for the shared CellOverride struct.
 type CardGridCellOverride = CellOverride
@@ -104,10 +119,11 @@ func (c *cardGrid) Schema() *Schema {
 			map[string]*Schema{
 				"header": StringSchema(80).WithDescription("Card header/title"),
 				"body":   StringSchema(300).WithDescription("Card body content"),
+				"icon":   StringSchema(20).WithDescription("Emoji or short glyph (used with icon-card style)"),
 			},
 			[]string{"header", "body"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Card cell: string \"Header | Body\" or {header, body}")
+	).WithDescription("Card cell: string \"Header | Body\" or {header, body, icon?}")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
@@ -118,10 +134,21 @@ func (c *cardGrid) Schema() *Schema {
 		[]string{"columns", "rows", "cells"},
 	).WithAdditionalProperties(false)
 
+	overridesSchema := ObjectSchema(
+		map[string]*Schema{
+			"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"header_size":     NumberSchema(6, 120).WithDescription("Font size for headers in points"),
+			"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+			"style":           EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (emoji/glyph badge), tinted (alternating lt1/lt2 backgrounds)").WithDefault("filled"),
+		},
+		nil,
+	).WithAdditionalProperties(false)
+
 	return ObjectSchema(
 		map[string]*Schema{
-			"values": valuesSchema,
-			"overrides": textOverridesSchema(),
+			"values":         valuesSchema,
+			"overrides":      overridesSchema,
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -138,6 +165,20 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 
 	const name = "card-grid"
 	var errs []error
+
+	// Validate style enum
+	if overrides != nil {
+		if ovr, ok := overrides.(*CardGridOverrides); ok && ovr.Style != "" {
+			if !validCardGridStyles[ovr.Style] {
+				errs = append(errs, &ValidationError{
+					Pattern: name,
+					Path:    "overrides.style",
+					Code:    "invalid_enum",
+					Message: fmt.Sprintf("card-grid: overrides.style must be one of filled, accent-stripe, numbered-badge, icon-card, tinted; got %q", ovr.Style),
+				})
+			}
+		}
+	}
 
 	// Columns range
 	if vals.Columns < 1 || vals.Columns > 5 {
@@ -204,6 +245,10 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	accent := ResolveAccent(ovr.Accent, ovr.SemanticAccent, ctx.Metadata)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	style := ovr.Style
+	if style == "" {
+		style = "filled"
+	}
 
 	var rows []jsonschema.GridRowInput
 	cellIdx := 0
@@ -212,15 +257,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		gridCells := make([]*jsonschema.GridCellInput, vals.Columns)
 		for col := 0; col < vals.Columns; col++ {
 			cell := vals.Cells[cellIdx]
-			textContent := buildCardGridTextContent(cell.Header, headerSize, cell.Body, bodySize)
-
-			gc := &jsonschema.GridCellInput{
-				Shape: &jsonschema.ShapeSpecInput{
-					Geometry: "roundRect",
-					Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-					Text:     textContent,
-				},
-			}
+			gc := c.expandCell(cell, cellIdx, style, accent, headerSize, bodySize)
 
 			// Apply cell overrides
 			if co, ok := cellOverrides[cellIdx]; ok {
@@ -251,31 +288,194 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	return grid, nil
 }
 
-// buildCardGridTextContent creates a JSON text object with header + body paragraphs.
-// Body text supports inline markdown emphasis (**bold**, *italic*) which is
-// converted to <b>/<i> tags for downstream processing by SplitInlineTags.
-func buildCardGridTextContent(header string, headerSize float64, body string, bodySize float64) json.RawMessage {
-	type paragraph struct {
-		Content string  `json:"content"`
-		Size    float64 `json:"size"`
-		Bold    bool    `json:"bold,omitempty"`
-		Color   string  `json:"color,omitempty"`
-		Align   string  `json:"align,omitempty"`
+// expandCell produces a single GridCellInput based on the selected visual style.
+func (c *cardGrid) expandCell(cell CardGridCell, idx int, style, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	switch style {
+	case "accent-stripe":
+		return c.expandAccentStripe(cell, accent, headerSize, bodySize)
+	case "numbered-badge":
+		return c.expandNumberedBadge(cell, idx, accent, headerSize, bodySize)
+	case "icon-card":
+		return c.expandIconCard(cell, accent, headerSize, bodySize)
+	case "tinted":
+		return c.expandTinted(cell, idx, accent, headerSize, bodySize)
+	default: // "filled"
+		return c.expandFilled(cell, accent, headerSize, bodySize)
 	}
+}
 
-	textObj := struct {
-		Paragraphs    []paragraph `json:"paragraphs"`
-		Align         string      `json:"align"`
-		VerticalAlign string      `json:"vertical_align"`
-	}{
-		Paragraphs: []paragraph{
+// expandFilled is the original style: solid accent fill, white text.
+func (c *cardGrid) expandFilled(cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Text:     buildCardGridTextContent(cell.Header, headerSize, cell.Body, bodySize),
+		},
+	}
+}
+
+// expandAccentStripe: light card with a left-edge accent bar.
+func (c *cardGrid) expandAccentStripe(cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(`"lt1"`),
+			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
+		},
+		AccentBar: &jsonschema.AccentBarInput{
+			Position: "left",
+			Color:    accent,
+			Width:    4,
+		},
+	}
+}
+
+// expandNumberedBadge: extracts leading number from header into a badge paragraph.
+func (c *cardGrid) expandNumberedBadge(cell CardGridCell, idx int, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	badge, header := extractNumberPrefix(cell.Header, idx+1)
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(`"lt1"`),
+			Text:     buildNumberedBadgeTextContent(badge, header, headerSize, cell.Body, bodySize, accent),
+		},
+	}
+}
+
+// expandIconCard: emoji/glyph badge above header text on light card with top accent bar.
+func (c *cardGrid) expandIconCard(cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	icon := cell.Icon
+	if icon == "" {
+		icon = "\u2022" // bullet as fallback
+	}
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(`"lt1"`),
+			Text:     buildIconCardTextContent(icon, cell.Header, headerSize, cell.Body, bodySize, accent),
+		},
+		AccentBar: &jsonschema.AccentBarInput{
+			Position: "top",
+			Color:    accent,
+			Width:    3,
+		},
+	}
+}
+
+// expandTinted: alternating lt1 / lt2 card backgrounds with dark text.
+func (c *cardGrid) expandTinted(cell CardGridCell, idx int, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	fill := "lt1"
+	if idx%2 == 1 {
+		fill = "lt2"
+	}
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Text content builders
+// ---------------------------------------------------------------------------
+
+type cardParagraph struct {
+	Content string  `json:"content"`
+	Size    float64 `json:"size"`
+	Bold    bool    `json:"bold,omitempty"`
+	Color   string  `json:"color,omitempty"`
+	Align   string  `json:"align,omitempty"`
+}
+
+type cardTextObj struct {
+	Paragraphs    []cardParagraph `json:"paragraphs"`
+	Align         string          `json:"align"`
+	VerticalAlign string          `json:"vertical_align"`
+}
+
+func marshalTextObj(obj cardTextObj) json.RawMessage {
+	data, _ := json.Marshal(obj)
+	return data
+}
+
+// buildCardGridTextContent creates a JSON text object with header + body paragraphs
+// using light text (for dark/accent backgrounds).
+func buildCardGridTextContent(header string, headerSize float64, body string, bodySize float64) json.RawMessage {
+	return marshalTextObj(cardTextObj{
+		Paragraphs: []cardParagraph{
 			{Content: header, Size: headerSize, Bold: true, Color: "lt1", Align: "l"},
 			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "lt1", Align: "l"},
 		},
 		Align:         "l",
 		VerticalAlign: "t",
-	}
+	})
+}
 
-	data, _ := json.Marshal(textObj)
-	return data
+// buildCardGridDarkTextContent creates text for light backgrounds: accent-colored header, dk1 body.
+func buildCardGridDarkTextContent(header string, headerSize float64, body string, bodySize float64, accent string) json.RawMessage {
+	return marshalTextObj(cardTextObj{
+		Paragraphs: []cardParagraph{
+			{Content: header, Size: headerSize, Bold: true, Color: accent, Align: "l"},
+			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "dk1", Align: "l"},
+		},
+		Align:         "l",
+		VerticalAlign: "t",
+	})
+}
+
+// buildNumberedBadgeTextContent renders a large number badge, header, and body.
+func buildNumberedBadgeTextContent(badge, header string, headerSize float64, body string, bodySize float64, accent string) json.RawMessage {
+	badgeSize := headerSize * 1.5
+	if badgeSize > 36 {
+		badgeSize = 36
+	}
+	return marshalTextObj(cardTextObj{
+		Paragraphs: []cardParagraph{
+			{Content: badge, Size: badgeSize, Bold: true, Color: accent, Align: "l"},
+			{Content: header, Size: headerSize, Bold: true, Color: "dk1", Align: "l"},
+			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "dk1", Align: "l"},
+		},
+		Align:         "l",
+		VerticalAlign: "t",
+	})
+}
+
+// buildIconCardTextContent renders an icon glyph, header, and body.
+func buildIconCardTextContent(icon, header string, headerSize float64, body string, bodySize float64, accent string) json.RawMessage {
+	iconSize := headerSize * 1.5
+	if iconSize > 36 {
+		iconSize = 36
+	}
+	return marshalTextObj(cardTextObj{
+		Paragraphs: []cardParagraph{
+			{Content: icon, Size: iconSize, Bold: false, Color: accent, Align: "l"},
+			{Content: header, Size: headerSize, Bold: true, Color: "dk1", Align: "l"},
+			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "dk1", Align: "l"},
+		},
+		Align:         "l",
+		VerticalAlign: "t",
+	})
+}
+
+// extractNumberPrefix extracts a leading "N. " or "N) " prefix from header text.
+// If no prefix is found, the fallback number is used (1-based cell index).
+func extractNumberPrefix(header string, fallback int) (badge string, remainder string) {
+	// Try "1. Header" or "1) Header" patterns
+	for i, ch := range header {
+		if ch >= '0' && ch <= '9' {
+			continue
+		}
+		if i > 0 && (ch == '.' || ch == ')') {
+			rest := header[i+1:]
+			rest = strings.TrimLeft(rest, " ")
+			if rest != "" {
+				return header[:i], rest
+			}
+		}
+		break
+	}
+	return fmt.Sprintf("%d", fallback), header
 }
