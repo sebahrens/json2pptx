@@ -346,7 +346,7 @@ func TestMedianInt64(t *testing.T) {
 		{"empty", nil, 0},
 		{"single", []int64{42}, 42},
 		{"odd count", []int64{3, 1, 2}, 2},
-		{"even count", []int64{4, 2, 1, 3}, 3}, // picks upper median
+		{"even count", []int64{4, 2, 1, 3}, 2}, // average of middle pair (2+3)/2
 	}
 
 	for _, tt := range tests {
@@ -418,4 +418,179 @@ func TestGridViolationIsFitFinding(t *testing.T) {
 
 	// Verify it converts cleanly to a Diagnostic.
 	_ = patterns.FitFinding(f)
+}
+
+func TestMedianInt64_EvenAverage(t *testing.T) {
+	// Verify the mid-pair average for even-length slices.
+	got := medianInt64([]int64{100, 200})
+	if got != 150 {
+		t.Errorf("medianInt64([100,200]) = %d, want 150", got)
+	}
+	got = medianInt64([]int64{10, 20, 30, 40})
+	if got != 25 {
+		t.Errorf("medianInt64([10,20,30,40]) = %d, want 25", got)
+	}
+}
+
+func TestExtractLayoutDefaults_ExcludesSectionAndTitle(t *testing.T) {
+	sw := shapegrid.DefaultSlideWidthEMU
+	sh := shapegrid.DefaultSlideHeightEMU
+
+	// A content layout with normal positioning.
+	contentLayout := types.LayoutMetadata{
+		ID:   "content1",
+		Name: "One Content",
+		Tags: []string{"content"},
+		Placeholders: []types.PlaceholderInfo{
+			{
+				Type: types.PlaceholderTitle,
+				Bounds: types.BoundingBox{
+					X: 300000, Y: 200000, Width: 10000000, Height: 400000,
+				},
+			},
+			{
+				Type: types.PlaceholderBody,
+				Bounds: types.BoundingBox{
+					X: 300000, Y: 700000, Width: 10000000, Height: 5000000,
+				},
+			},
+		},
+	}
+
+	// A section header with a centered title at very different Y.
+	sectionLayout := types.LayoutMetadata{
+		ID:   "section1",
+		Name: "Section Header",
+		Tags: []string{"title-slide", "section-header"},
+		Placeholders: []types.PlaceholderInfo{
+			{
+				Type: types.PlaceholderTitle,
+				Bounds: types.BoundingBox{
+					X: 300000, Y: 2000000, Width: 10000000, Height: 2000000,
+				},
+			},
+		},
+	}
+
+	// A closing layout, also excluded.
+	closingLayout := types.LayoutMetadata{
+		ID:   "closing1",
+		Name: "End Slide",
+		Tags: []string{"closing"},
+		Placeholders: []types.PlaceholderInfo{
+			{
+				Type: types.PlaceholderTitle,
+				Bounds: types.BoundingBox{
+					X: 300000, Y: 3000000, Width: 10000000, Height: 1000000,
+				},
+			},
+		},
+	}
+
+	layouts := []types.LayoutMetadata{contentLayout, sectionLayout, closingLayout}
+	titleBottom, contentTop, leftMargin, _ := extractLayoutDefaults(layouts, sw, sh)
+
+	// Only the content layout should contribute.
+	wantTitleBottom := int64(600000) // 200000 + 400000
+	if titleBottom != wantTitleBottom {
+		t.Errorf("titleBottom = %d, want %d (section/title layouts should be excluded)", titleBottom, wantTitleBottom)
+	}
+	wantContentTop := int64(700000)
+	if contentTop != wantContentTop {
+		t.Errorf("contentTop = %d, want %d", contentTop, wantContentTop)
+	}
+	wantLeftMargin := int64(300000)
+	if leftMargin != wantLeftMargin {
+		t.Errorf("leftMargin = %d, want %d", leftMargin, wantLeftMargin)
+	}
+}
+
+func TestDetectGridViolations_NoFalsePositivesForTemplateLayouts(t *testing.T) {
+	// Regression: when grid defaults are derived from template layouts,
+	// slides using those same layouts must not produce grid_violation findings.
+	sw := shapegrid.DefaultSlideWidthEMU
+	sh := shapegrid.DefaultSlideHeightEMU
+
+	contentLayouts := []types.LayoutMetadata{
+		{
+			ID:   "layout-content",
+			Name: "One Content",
+			Tags: []string{"content"},
+			Placeholders: []types.PlaceholderInfo{
+				{
+					ID:   "title",
+					Type: types.PlaceholderTitle,
+					Bounds: types.BoundingBox{
+						X: 305816, Y: 287819, Width: 10181590, Height: 863456,
+					},
+				},
+				{
+					ID:   "body",
+					Type: types.PlaceholderBody,
+					Bounds: types.BoundingBox{
+						X: 305816, Y: 1885212, Width: 10181590, Height: 4749009,
+					},
+				},
+			},
+		},
+		{
+			ID:   "layout-two-col",
+			Name: "Two Column 50/50",
+			Tags: []string{"content", "two-column"},
+			Placeholders: []types.PlaceholderInfo{
+				{
+					ID:   "title",
+					Type: types.PlaceholderTitle,
+					Bounds: types.BoundingBox{
+						X: 305816, Y: 287819, Width: 10181590, Height: 863456,
+					},
+				},
+				{
+					ID:   "body",
+					Type: types.PlaceholderBody,
+					Bounds: types.BoundingBox{
+						X: 305816, Y: 1885212, Width: 4850000, Height: 4749009,
+					},
+				},
+			},
+		},
+	}
+
+	// Include a section-header layout with different positioning
+	// (should be excluded from grid computation).
+	allLayouts := append(contentLayouts, types.LayoutMetadata{
+		ID:   "layout-section",
+		Name: "Section Header",
+		Tags: []string{"title-slide", "section-header"},
+		Placeholders: []types.PlaceholderInfo{
+			{
+				ID:   "title",
+				Type: types.PlaceholderTitle,
+				Bounds: types.BoundingBox{
+					X: 305816, Y: 1885212, Width: 6121971, Height: 4749009,
+				},
+			},
+		},
+	})
+
+	// Derive grid from the layouts (using the same function the production path uses).
+	cfg := &GridConfig{}
+	rg := resolveGrid(cfg, allLayouts, sw, sh)
+
+	// Create slides using each content layout.
+	slides := []SlideInput{
+		{LayoutID: "layout-content"},
+		{LayoutID: "layout-two-col"},
+		{LayoutID: "layout-content"},
+	}
+
+	findings := detectGridViolations(rg, allLayouts, slides)
+
+	// No slide using a content layout that contributed to the grid should
+	// produce a grid_violation.
+	for _, f := range findings {
+		if f.Code == "grid_violation" {
+			t.Errorf("unexpected grid_violation: %s", f.Message)
+		}
+	}
 }

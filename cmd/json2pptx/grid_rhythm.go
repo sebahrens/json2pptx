@@ -96,13 +96,29 @@ func resolveGrid(cfg *GridConfig, layouts []types.LayoutMetadata, slideWidth, sl
 	return rg
 }
 
+// isGridExcludedLayout returns true for layouts that should be excluded from
+// grid baseline computation (title slides, section headers) because they
+// intentionally use different positioning than content layouts.
+func isGridExcludedLayout(layout types.LayoutMetadata) bool {
+	for _, tag := range layout.Tags {
+		switch tag {
+		case "title-slide", "section-header", "closing":
+			return true
+		}
+	}
+	return false
+}
+
 // extractLayoutDefaults scans layout metadata for the most common title bottom,
-// content top, and margin positions across layouts. This gives a representative
-// baseline when no explicit grid config percentages are provided.
+// content top, and margin positions across content layouts. Section headers and
+// title slides are excluded because they intentionally use different positioning.
 func extractLayoutDefaults(layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (titleBottom, contentTop, leftMargin, rightEdge int64) {
 	var titleBottoms, contentTops, leftMargins, rightEdges []int64
 
 	for _, layout := range layouts {
+		if isGridExcludedLayout(layout) {
+			continue
+		}
 		for _, ph := range layout.Placeholders {
 			switch ph.Type {
 			case types.PlaceholderTitle:
@@ -132,7 +148,8 @@ func extractLayoutDefaults(layouts []types.LayoutMetadata, slideWidth, slideHeig
 	return
 }
 
-// medianInt64 returns the median of a sorted int64 slice, or 0 if empty.
+// medianInt64 returns the median of an int64 slice, or 0 if empty.
+// For even-length slices, it returns the average of the two middle values.
 func medianInt64(vals []int64) int64 {
 	if len(vals) == 0 {
 		return 0
@@ -145,7 +162,11 @@ func medianInt64(vals []int64) int64 {
 			sorted[j], sorted[j-1] = sorted[j-1], sorted[j]
 		}
 	}
-	return sorted[len(sorted)/2]
+	mid := len(sorted) / 2
+	if len(sorted)%2 == 0 {
+		return (sorted[mid-1] + sorted[mid]) / 2
+	}
+	return sorted[mid]
 }
 
 // snapBoundsToGrid adjusts shape grid bounds to align with the resolved grid.
