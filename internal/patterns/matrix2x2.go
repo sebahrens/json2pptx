@@ -21,8 +21,13 @@ type matrix2x2 struct{}
 
 func (m *matrix2x2) Name() string        { return "matrix-2x2" }
 func (m *matrix2x2) Description() string { return "2×2 quadrant matrix with axis labels" }
-func (m *matrix2x2) UseWhen() string     { return "Quadrant/positioning matrix with axis labels" }
-func (m *matrix2x2) Version() int        { return 1 }
+func (m *matrix2x2) UseWhen() string {
+	return "Items positioned on two named axes (priority/effort, impact/feasibility); prefer comparison-2col when only one dimension matters, card-grid when items don't map to axes"
+}
+func (m *matrix2x2) NotWhen() string {
+	return "Only one comparison dimension (use comparison-2col), items are unstructured cards (use card-grid), or layout is a standard BMC (use bmc-canvas)"
+}
+func (m *matrix2x2) Version() int { return 1 }
 func (m *matrix2x2) CellsHint() string { return "4 + axes" }
 func (m *matrix2x2) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

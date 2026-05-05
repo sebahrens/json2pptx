@@ -21,8 +21,13 @@ type beforeAfter struct{}
 
 func (b *beforeAfter) Name() string        { return "before-after" }
 func (b *beforeAfter) Description() string { return "Two-column before/after with transition chevron" }
-func (b *beforeAfter) UseWhen() string     { return "Before/after, current vs future state, from→to" }
-func (b *beforeAfter) Version() int        { return 1 }
+func (b *beforeAfter) UseWhen() string {
+	return "Exactly two states showing transformation (before→after, current→future); prefer comparison-2col when comparing options without temporal change"
+}
+func (b *beforeAfter) NotWhen() string {
+	return "Comparing two options without a temporal dimension (use comparison-2col), or more than two states (use process-flow or timeline-horizontal)"
+}
+func (b *beforeAfter) Version() int { return 1 }
 func (b *beforeAfter) CellsHint() string { return "2 + header" }
 func (b *beforeAfter) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

@@ -21,8 +21,13 @@ type swimlane struct{}
 
 func (s *swimlane) Name() string        { return "swimlane" }
 func (s *swimlane) Description() string { return "Horizontal swimlane diagram with actors and steps" }
-func (s *swimlane) UseWhen() string     { return "Cross-functional process, RACI, swimlane diagram" }
-func (s *swimlane) Version() int        { return 1 }
+func (s *swimlane) UseWhen() string {
+	return "Cross-functional process where steps are owned by different actors/roles; prefer process-flow when all steps belong to one actor, roadmap-phased when lanes are workstreams over time"
+}
+func (s *swimlane) NotWhen() string {
+	return "All steps belong to a single actor (use process-flow), lanes represent time-phased workstreams (use roadmap-phased), or responsibilities are a simple list (use card-grid)"
+}
+func (s *swimlane) Version() int { return 1 }
 func (s *swimlane) CellsHint() string { return "lanes × steps" }
 func (s *swimlane) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

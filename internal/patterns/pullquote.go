@@ -20,8 +20,13 @@ type pullQuote struct{}
 
 func (pq *pullQuote) Name() string        { return "pull-quote" }
 func (pq *pullQuote) Description() string { return "Italic quote block with attribution" }
-func (pq *pullQuote) UseWhen() string     { return "Emphasize a single quote or testimonial" }
-func (pq *pullQuote) Version() int        { return 1 }
+func (pq *pullQuote) UseWhen() string {
+	return "Emphasize a single quote or testimonial; prefer stat-hero when the focal point is a number, not words"
+}
+func (pq *pullQuote) NotWhen() string {
+	return "The focal content is a number/metric (use stat-hero), or multiple quotes need comparison (use card-grid)"
+}
+func (pq *pullQuote) Version() int { return 1 }
 func (pq *pullQuote) CellsHint() string { return "1" }
 func (pq *pullQuote) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

@@ -20,8 +20,13 @@ type agenda struct{}
 
 func (a *agenda) Name() string        { return "agenda" }
 func (a *agenda) Description() string { return "Numbered section list for agenda / table-of-contents slides" }
-func (a *agenda) UseWhen() string     { return "Agenda, table of contents, or section overview" }
-func (a *agenda) Version() int        { return 1 }
+func (a *agenda) UseWhen() string {
+	return "Numbered agenda or table of contents listing deck sections; prefer icon-row when items are visual categories, card-grid when items need body text"
+}
+func (a *agenda) NotWhen() string {
+	return "Items are visual categories with icons (use icon-row), items need multi-line descriptions (use card-grid), or content is a sequential process (use process-flow)"
+}
+func (a *agenda) Version() int { return 1 }
 func (a *agenda) CellsHint() string { return "2-10" }
 func (a *agenda) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

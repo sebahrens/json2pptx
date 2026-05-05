@@ -20,8 +20,13 @@ type pyramid struct{}
 
 func (p *pyramid) Name() string        { return "pyramid" }
 func (p *pyramid) Description() string { return "Stacked trapezoid hierarchy (3-5 tiers)" }
-func (p *pyramid) UseWhen() string     { return "Hierarchy, layered model, Maslow-style pyramid" }
-func (p *pyramid) Version() int        { return 1 }
+func (p *pyramid) UseWhen() string {
+	return "Hierarchy that narrows visually top-to-bottom (3-5 tiers, Maslow-style); prefer arch-stack when layers are equal-width technology tiers, process-flow when tiers are sequential"
+}
+func (p *pyramid) NotWhen() string {
+	return "Layers are equal-width technology tiers (use arch-stack), layers are sequential steps (use process-flow), or more than 5 levels needed (use card-grid)"
+}
+func (p *pyramid) Version() int { return 1 }
 func (p *pyramid) CellsHint() string { return "3-5" }
 func (p *pyramid) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

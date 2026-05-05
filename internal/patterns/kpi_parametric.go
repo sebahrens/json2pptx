@@ -38,7 +38,11 @@ func (k *kpiNup) Description() string {
 }
 
 func (k *kpiNup) UseWhen() string {
-	return fmt.Sprintf("%s big-number KPIs with short captions", numberWord(k.cfg.Count))
+	return fmt.Sprintf("Exactly %d big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text", k.cfg.Count)
+}
+
+func (k *kpiNup) NotWhen() string {
+	return "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)"
 }
 
 func (k *kpiNup) Version() int { return 1 }

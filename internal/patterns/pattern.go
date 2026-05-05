@@ -23,6 +23,7 @@ type Pattern interface {
 	Name() string
 	Description() string
 	UseWhen() string
+	NotWhen() string
 	Version() int
 
 	// Taxonomy returns classification metadata for agent-facing discovery:

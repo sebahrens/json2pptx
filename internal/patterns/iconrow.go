@@ -21,8 +21,13 @@ type iconRow struct{}
 
 func (ir *iconRow) Name() string        { return "icon-row" }
 func (ir *iconRow) Description() string { return "Horizontal row of icon+caption pairs" }
-func (ir *iconRow) UseWhen() string     { return "Icon + caption row" }
-func (ir *iconRow) Version() int        { return 1 }
+func (ir *iconRow) UseWhen() string {
+	return "3-6 short labeled icons in a single row; prefer process-flow when steps have sequence, card-grid when items need multi-line body text"
+}
+func (ir *iconRow) NotWhen() string {
+	return "Items are sequential steps (use process-flow), items need body text beyond a caption (use card-grid), or content is a single metric (use stat-hero)"
+}
+func (ir *iconRow) Version() int { return 1 }
 func (ir *iconRow) CellsHint() string { return "3-5" }
 func (ir *iconRow) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

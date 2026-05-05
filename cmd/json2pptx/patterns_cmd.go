@@ -94,6 +94,7 @@ func runPatternsList() error {
 				Name:                     p.Name(),
 				Cells:                    cells,
 				UseWhen:                  p.UseWhen(),
+				NotWhen:                  p.NotWhen(),
 				Category:                 tax.Category,
 				NarrativeRole:            tax.NarrativeRole,
 				PairsWith:                tax.PairsWith,
@@ -158,6 +159,7 @@ func runPatternsShow() error {
 			Name:        pat.Name(),
 			Description: pat.Description(),
 			UseWhen:     pat.UseWhen(),
+			NotWhen:     pat.NotWhen(),
 			Version:     pat.Version(),
 			Schema:      schemaJSON,
 		}
@@ -180,6 +182,7 @@ func runPatternsShow() error {
 	fmt.Printf("Pattern: %s (v%d)\n", pat.Name(), pat.Version())
 	fmt.Printf("Description: %s\n", pat.Description())
 	fmt.Printf("Use when: %s\n", pat.UseWhen())
+	fmt.Printf("Not when: %s\n", pat.NotWhen())
 	fmt.Printf("Cells: %s\n", pat.CellsHint())
 	if cs, ok := pat.(patterns.CalloutSupport); ok && cs.SupportsCallout() {
 		fmt.Printf("Supports callout: yes\n")

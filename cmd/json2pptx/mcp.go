@@ -1143,6 +1143,7 @@ func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallTo
 			Name:            p.Name(),
 			Cells:           p.CellsHint(),
 			UseWhen:         p.UseWhen(),
+			NotWhen:         p.NotWhen(),
 			Category:        tax.Category,
 			NarrativeRole:   tax.NarrativeRole,
 			PairsWith:       tax.PairsWith,
@@ -1202,6 +1203,7 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		Description: pat.Description(),
 		Cells:       "",
 		UseWhen:     pat.UseWhen(),
+		NotWhen:     pat.NotWhen(),
 		Version:     pat.Version(),
 		Schema:      schemaJSON,
 	}

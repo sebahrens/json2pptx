@@ -21,10 +21,15 @@ func init() {
 
 type cardGrid struct{}
 
-func (c *cardGrid) Name() string           { return "card-grid" }
-func (c *cardGrid) Description() string    { return "Parameterized N×M grid of titled cards" }
-func (c *cardGrid) UseWhen() string        { return "N×M titled cards" }
-func (c *cardGrid) Version() int           { return 1 }
+func (c *cardGrid) Name() string        { return "card-grid" }
+func (c *cardGrid) Description() string { return "Parameterized N×M grid of titled cards" }
+func (c *cardGrid) UseWhen() string {
+	return "4-9 freeform titled cards with custom content per cell; prefer kpi-3up for exactly 3 KPIs, comparison-2col for 2-column tradeoffs, bmc-canvas for a 9-block business model"
+}
+func (c *cardGrid) NotWhen() string {
+	return "Exactly 3 numeric KPIs (use kpi-3up), two-column pros/cons (use comparison-2col), standard BMC (use bmc-canvas), or a single hero metric (use stat-hero)"
+}
+func (c *cardGrid) Version() int { return 1 }
 func (c *cardGrid) CellsHint() string { return "rows × cols" }
 func (c *cardGrid) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

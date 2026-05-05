@@ -15,8 +15,8 @@ func TestTimelineHorizontal(t *testing.T) {
 		if p.Name() != "timeline-horizontal" {
 			t.Errorf("Name() = %q, want %q", p.Name(), "timeline-horizontal")
 		}
-		if p.UseWhen() != "Linear timeline with stops" {
-			t.Errorf("UseWhen() = %q, want %q", p.UseWhen(), "Linear timeline with stops")
+		if !strings.Contains(p.UseWhen(), "prefer") {
+			t.Errorf("UseWhen() lacks contrastive language: %q", p.UseWhen())
 		}
 		if p.Version() != 1 {
 			t.Errorf("Version() = %d, want 1", p.Version())

@@ -20,8 +20,13 @@ type timelineHorizontal struct{}
 
 func (th *timelineHorizontal) Name() string        { return "timeline-horizontal" }
 func (th *timelineHorizontal) Description() string { return "Linear horizontal timeline with stops" }
-func (th *timelineHorizontal) UseWhen() string     { return "Linear timeline with stops" }
-func (th *timelineHorizontal) Version() int        { return 1 }
+func (th *timelineHorizontal) UseWhen() string {
+	return "Linear sequence of 3-7 date-based or ordered milestones; prefer roadmap-phased when multiple parallel workstreams exist, process-flow when steps are actions not events"
+}
+func (th *timelineHorizontal) NotWhen() string {
+	return "Multiple parallel workstreams across time (use roadmap-phased), steps are actions/decisions not milestones (use process-flow), or events belong to different actors (use swimlane)"
+}
+func (th *timelineHorizontal) Version() int { return 1 }
 func (th *timelineHorizontal) CellsHint() string { return "3-7" }
 func (th *timelineHorizontal) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

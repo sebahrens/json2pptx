@@ -20,10 +20,15 @@ func init() {
 
 type comparison2col struct{}
 
-func (c *comparison2col) Name() string           { return "comparison-2col" }
-func (c *comparison2col) Description() string    { return "Two-column comparison with optional headers" }
-func (c *comparison2col) UseWhen() string        { return "Two-column compare (pros/cons, vs.)" }
-func (c *comparison2col) Version() int           { return 1 }
+func (c *comparison2col) Name() string        { return "comparison-2col" }
+func (c *comparison2col) Description() string { return "Two-column comparison with optional headers" }
+func (c *comparison2col) UseWhen() string {
+	return "Two options evaluated side-by-side (pros/cons, option A vs B); prefer before-after when showing temporal transformation, card-grid when comparing more than 2 items"
+}
+func (c *comparison2col) NotWhen() string {
+	return "Comparing a temporal before→after state (use before-after), more than 2 items (use card-grid), or positioned on two axes (use matrix-2x2)"
+}
+func (c *comparison2col) Version() int { return 1 }
 func (c *comparison2col) CellsHint() string { return "2 + header" }
 func (c *comparison2col) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

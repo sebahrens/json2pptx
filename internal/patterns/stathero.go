@@ -20,8 +20,13 @@ type statHero struct{}
 
 func (sh *statHero) Name() string        { return "stat-hero" }
 func (sh *statHero) Description() string { return "Single oversized statistic with label and optional context" }
-func (sh *statHero) UseWhen() string     { return "One big number dominates the slide" }
-func (sh *statHero) Version() int        { return 1 }
+func (sh *statHero) UseWhen() string {
+	return "One big number dominates the slide; prefer kpi-3up when showing 3+ metrics side-by-side, pull-quote when the focal content is words not a number"
+}
+func (sh *statHero) NotWhen() string {
+	return "Multiple KPIs need equal weight (use kpi-3up or kpi-4up), or the focal content is a quote (use pull-quote)"
+}
+func (sh *statHero) Version() int { return 1 }
 func (sh *statHero) CellsHint() string { return "1" }
 func (sh *statHero) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

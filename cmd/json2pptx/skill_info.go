@@ -41,16 +41,17 @@ type skillDeprecation struct {
 
 // skillPatternCompact is a compact pattern entry (≤ 40 tokens) for default mode.
 type skillPatternCompact struct {
-	Name                    string   `json:"name"`
-	Cells                   string   `json:"cells"`
-	UseWhen                 string   `json:"use_when"`
-	Category                string   `json:"category"`
-	NarrativeRole           []string `json:"narrative_role"`
-	PairsWith               []string `json:"pairs_with"`
-	DensityClass            string   `json:"density_class"`
-	AccentWeight            string   `json:"accent_weight"`
-	SupportsCallout         bool     `json:"supports_callout"`
-	EstimatedPromptSizeBytes int     `json:"estimated_prompt_size_bytes"`
+	Name                     string   `json:"name"`
+	Cells                    string   `json:"cells"`
+	UseWhen                  string   `json:"use_when"`
+	NotWhen                  string   `json:"not_when"`
+	Category                 string   `json:"category"`
+	NarrativeRole            []string `json:"narrative_role"`
+	PairsWith                []string `json:"pairs_with"`
+	DensityClass             string   `json:"density_class"`
+	AccentWeight             string   `json:"accent_weight"`
+	SupportsCallout          bool     `json:"supports_callout"`
+	EstimatedPromptSizeBytes int      `json:"estimated_prompt_size_bytes"`
 }
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.
@@ -59,6 +60,7 @@ type skillPatternFull struct {
 	Description     string          `json:"description"`
 	Cells           string          `json:"cells"`
 	UseWhen         string          `json:"use_when"`
+	NotWhen         string          `json:"not_when"`
 	SupportsCallout bool            `json:"supports_callout"`
 	Version         int             `json:"version"`
 	Schema          json.RawMessage `json:"schema"`
@@ -730,6 +732,7 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 			Name:                     p.Name(),
 			Cells:                    cells,
 			UseWhen:                  p.UseWhen(),
+			NotWhen:                  p.NotWhen(),
 			Category:                 tax.Category,
 			NarrativeRole:            tax.NarrativeRole,
 			PairsWith:                tax.PairsWith,
@@ -752,6 +755,7 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 			Description:     p.Description(),
 			Cells:           compact[i].Cells,
 			UseWhen:         p.UseWhen(),
+			NotWhen:         p.NotWhen(),
 			SupportsCallout: compact[i].SupportsCallout,
 			Version:         p.Version(),
 			Schema:          schemaJSON,

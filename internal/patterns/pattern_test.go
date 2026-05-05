@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -20,6 +21,7 @@ type stubPattern struct {
 func (s *stubPattern) Name() string        { return s.name }
 func (s *stubPattern) Description() string { return s.desc }
 func (s *stubPattern) UseWhen() string     { return s.useWhen }
+func (s *stubPattern) NotWhen() string     { return "not applicable in tests" }
 func (s *stubPattern) Version() int        { return s.version }
 func (s *stubPattern) NewValues() any      { return nil }
 func (s *stubPattern) NewOverrides() any   { return nil }
@@ -405,4 +407,40 @@ func TestDefaultRegistryAliases(t *testing.T) {
 			t.Errorf("Default().Get(%q).Name() = %q, want %q", tt.alias, p.Name(), tt.canonical)
 		}
 	}
+}
+
+// TestUseWhenContrastive ensures every pattern's UseWhen contains contrastive
+// language that guides agents to choose the right pattern over siblings.
+func TestUseWhenContrastive(t *testing.T) {
+	contrastiveKeywords := []string{"prefer", "instead", "unless", "not", "rather"}
+
+	for _, p := range Default().List() {
+		useWhen := p.UseWhen()
+		found := false
+		for _, kw := range contrastiveKeywords {
+			if containsWord(useWhen, kw) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Pattern %q UseWhen lacks contrastive language (must contain one of %v): %q",
+				p.Name(), contrastiveKeywords, useWhen)
+		}
+	}
+}
+
+// TestNotWhenNonEmpty ensures every pattern provides a non-empty NotWhen.
+func TestNotWhenNonEmpty(t *testing.T) {
+	for _, p := range Default().List() {
+		if p.NotWhen() == "" {
+			t.Errorf("Pattern %q has empty NotWhen()", p.Name())
+		}
+	}
+}
+
+// containsWord checks if s contains word as a case-insensitive substring.
+func containsWord(s, word string) bool {
+	lower := strings.ToLower(s)
+	return strings.Contains(lower, word)
 }

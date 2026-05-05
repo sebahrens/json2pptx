@@ -21,8 +21,13 @@ type archStack struct{}
 
 func (a *archStack) Name() string        { return "arch-stack" }
 func (a *archStack) Description() string { return "Architecture stack diagram with tiers and optional side rails" }
-func (a *archStack) UseWhen() string     { return "Architecture layers, technology stack, layered model" }
-func (a *archStack) Version() int        { return 1 }
+func (a *archStack) UseWhen() string {
+	return "Architecture layers or technology stack with vertical ordering; prefer pyramid when the hierarchy narrows visually, process-flow when layers have sequential flow"
+}
+func (a *archStack) NotWhen() string {
+	return "Hierarchy narrows top-to-bottom like Maslow (use pyramid), or layers are sequential steps (use process-flow)"
+}
+func (a *archStack) Version() int { return 1 }
 func (a *archStack) CellsHint() string { return "3-6 tiers + rails" }
 func (a *archStack) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

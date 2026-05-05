@@ -21,8 +21,13 @@ type roadmapPhased struct{}
 
 func (r *roadmapPhased) Name() string        { return "roadmap-phased" }
 func (r *roadmapPhased) Description() string { return "Phased roadmap with workstreams and time periods" }
-func (r *roadmapPhased) UseWhen() string     { return "Multi-phase roadmap, quarterly plan, release timeline" }
-func (r *roadmapPhased) Version() int        { return 1 }
+func (r *roadmapPhased) UseWhen() string {
+	return "Multi-phase roadmap with workstreams across time columns (quarterly plan, release timeline); prefer timeline-horizontal for a single-track sequence of milestones, swimlane for cross-actor process"
+}
+func (r *roadmapPhased) NotWhen() string {
+	return "Single-track linear milestones without parallel workstreams (use timeline-horizontal), or steps are owned by actors not workstreams (use swimlane)"
+}
+func (r *roadmapPhased) Version() int { return 1 }
 func (r *roadmapPhased) CellsHint() string { return "workstreams × phases" }
 func (r *roadmapPhased) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

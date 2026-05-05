@@ -32,6 +32,7 @@ func (h *PatternsHandler) ListHandler() http.HandlerFunc {
 				Name:        p.Name(),
 				Description: p.Description(),
 				UseWhen:     p.UseWhen(),
+				NotWhen:     p.NotWhen(),
 				Version:     p.Version(),
 			}
 			item.CellsHint = p.CellsHint()
@@ -62,6 +63,7 @@ func (h *PatternsHandler) ShowHandler() http.HandlerFunc {
 			Name:        pat.Name(),
 			Description: pat.Description(),
 			UseWhen:     pat.UseWhen(),
+			NotWhen:     pat.NotWhen(),
 			Version:     pat.Version(),
 			Schema:      patterns.SchemaJSON(pat),
 		}
@@ -173,6 +175,7 @@ type patternListItem struct {
 	Name            string `json:"name"`
 	Description     string `json:"description"`
 	UseWhen         string `json:"use_when"`
+	NotWhen         string `json:"not_when"`
 	Version         int    `json:"version"`
 	CellsHint       string `json:"cells_hint,omitempty"`
 	SupportsCallout bool   `json:"supports_callout"`
@@ -183,13 +186,14 @@ type patternListResponse struct {
 }
 
 type patternShowResponse struct {
-	Name            string           `json:"name"`
-	Description     string           `json:"description"`
-	UseWhen         string           `json:"use_when"`
-	Version         int              `json:"version"`
-	CellsHint       string           `json:"cells_hint,omitempty"`
-	SupportsCallout bool             `json:"supports_callout"`
-	Schema          json.RawMessage  `json:"schema"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description"`
+	UseWhen         string          `json:"use_when"`
+	NotWhen         string          `json:"not_when"`
+	Version         int             `json:"version"`
+	CellsHint       string          `json:"cells_hint,omitempty"`
+	SupportsCallout bool            `json:"supports_callout"`
+	Schema          json.RawMessage `json:"schema"`
 }
 
 type patternValidateResponse struct {

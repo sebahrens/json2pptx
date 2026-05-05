@@ -102,8 +102,8 @@ func TestIconRow(t *testing.T) {
 		if p.Name() != "icon-row" {
 			t.Errorf("Name() = %q, want %q", p.Name(), "icon-row")
 		}
-		if p.UseWhen() != "Icon + caption row" {
-			t.Errorf("UseWhen() = %q, want %q", p.UseWhen(), "Icon + caption row")
+		if !strings.Contains(p.UseWhen(), "prefer") {
+			t.Errorf("UseWhen() lacks contrastive language: %q", p.UseWhen())
 		}
 		if p.Version() != 1 {
 			t.Errorf("Version() = %d, want 1", p.Version())

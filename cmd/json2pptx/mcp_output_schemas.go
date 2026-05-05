@@ -155,10 +155,11 @@ var outputSchemaListPatterns = json.RawMessage(`{
       "name":    {"type": "string"},
       "cells":   {"type": "string"},
       "use_when": {"type": "string"},
+      "not_when": {"type": "string"},
       "supports_callout": {"type": "boolean"},
       "estimated_prompt_size_bytes": {"type": "integer"}
     },
-    "required": ["name", "cells", "use_when"]
+    "required": ["name", "cells", "use_when", "not_when"]
   }
 }`)
 
@@ -170,11 +171,12 @@ var outputSchemaShowPattern = json.RawMessage(`{
     "description": {"type": "string"},
     "cells":       {"type": "string"},
     "use_when":    {"type": "string"},
+    "not_when":    {"type": "string"},
     "supports_callout": {"type": "boolean"},
     "version":     {"type": "integer"},
     "schema":      {"type": "object"}
   },
-  "required": ["name", "description", "use_when", "version", "schema"]
+  "required": ["name", "description", "use_when", "not_when", "version", "schema"]
 }`)
 
 // --- validate_pattern ---
