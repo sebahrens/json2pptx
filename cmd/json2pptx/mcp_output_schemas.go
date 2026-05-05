@@ -629,3 +629,37 @@ var outputSchemaReadPresentation = json.RawMessage(`{
   },
   "required": ["slide_count", "slides"]
 }`)
+
+// --- plan_deck ---
+var outputSchemaPlanDeck = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index":          {"type": "integer"},
+          "narrative_role":       {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "closing"]},
+          "recommended_pattern":  {"type": "string"},
+          "content_seed":         {"type": "string"},
+          "rationale":            {"type": "string"}
+        },
+        "required": ["slide_index", "narrative_role", "recommended_pattern", "content_seed", "rationale"]
+      }
+    },
+    "brief":        {"type": "string"},
+    "slide_budget":  {"type": "integer"},
+    "rhythm_check": {
+      "type": "object",
+      "properties": {
+        "longest_pattern_run": {"type": "integer"},
+        "has_emphasis":        {"type": "boolean"},
+        "emphasis_count":      {"type": "integer"},
+        "pattern_variety":     {"type": "integer"}
+      },
+      "required": ["longest_pattern_run", "has_emphasis", "emphasis_count", "pattern_variety"]
+    }
+  },
+  "required": ["slides", "brief", "slide_budget", "rhythm_check"]
+}`)

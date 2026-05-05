@@ -138,6 +138,7 @@ func runMCP() error {
 	s.AddTool(mcpRegisterTemplateSettingTool(), mc.handleRegisterTemplateSetting)
 	s.AddTool(mcpDeleteTemplateSettingTool(), mc.handleDeleteTemplateSetting)
 	s.AddTool(mcpAnalyzeDeckRhythmTool(), handleAnalyzeDeckRhythm)
+	s.AddTool(mcpPlanDeckTool(), handlePlanDeck)
 	s.AddTool(mcpGetCapabilitiesTool(), handleGetCapabilities)
 	s.AddTool(mcpReadPresentationTool(), handleReadPresentation)
 
