@@ -25,7 +25,7 @@ func testMCPConfig(t *testing.T) *mcpConfig {
 func TestMCPValidateFitReport(t *testing.T) {
 	mc := testMCPConfig(t)
 
-	// A minimal valid deck with a table that will produce fit findings.
+	// A minimal valid deck with no content that would produce fit findings.
 	deckJSON := `{
 		"template": "midnight-blue",
 		"slides": [{
@@ -34,25 +34,7 @@ func TestMCPValidateFitReport(t *testing.T) {
 				"placeholder_id": "title",
 				"type": "text",
 				"text_value": "Test"
-			}],
-			"shape_grid": {
-				"columns": 2,
-				"rows": [{
-					"cells": [{
-						"shape": {
-							"geometry": "rect",
-							"fill": "accent1",
-							"text": "Short"
-						}
-					}, {
-						"shape": {
-							"geometry": "rect",
-							"fill": "accent1",
-							"text": "Short"
-						}
-					}]
-				}]
-			}
+			}]
 		}]
 	}`
 

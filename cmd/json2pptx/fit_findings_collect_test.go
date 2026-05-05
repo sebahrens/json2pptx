@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -430,5 +431,92 @@ func TestBudgetFitFindings_TopCodesHistogram(t *testing.T) {
 	}
 	if total != 5 {
 		t.Errorf("histogram total = %d, want 5", total)
+	}
+}
+
+func TestDetectSparseRawGrid(t *testing.T) {
+	slideHeight := int64(6858000) // standard 7.5 inch slide height
+
+	t.Run("sparse raw grid emits finding", func(t *testing.T) {
+		// Single row, short text, no explicit height → content is tiny
+		// relative to the 70% default layout area.
+		grid := &ShapeGridInput{
+			Columns: json.RawMessage(`2`),
+			Rows: []GridRowInput{
+				{Cells: []*GridCellInput{
+					{Shape: &ShapeSpecInput{Geometry: "rect"}},
+					{Shape: &ShapeSpecInput{Geometry: "rect"}},
+				}},
+			},
+		}
+		f := detectSparseRawGrid(grid, 0, 0, slideHeight)
+		if f == nil {
+			t.Fatal("expected sparse_layout finding for raw grid with tiny content")
+		}
+		if f.Code != patterns.ErrCodeSparseLayout {
+			t.Errorf("code = %q, want %q", f.Code, patterns.ErrCodeSparseLayout)
+		}
+		if f.Action != "review" {
+			t.Errorf("action = %q, want %q", f.Action, "review")
+		}
+		if f.Fix == nil || f.Fix.Kind != "adopt_pattern" {
+			t.Errorf("fix kind = %v, want adopt_pattern", f.Fix)
+		}
+	})
+
+	t.Run("non-sparse raw grid no finding", func(t *testing.T) {
+		// Many rows with multi-line text that fill the layout area.
+		rows := make([]GridRowInput, 10)
+		for i := range rows {
+			rows[i] = GridRowInput{Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`"Line1\nLine2\nLine3\nLine4\nLine5\nLine6\nLine7\nLine8"`)}},
+			}}
+		}
+		grid := &ShapeGridInput{
+			Columns: json.RawMessage(`1`),
+			Rows:    rows,
+		}
+		f := detectSparseRawGrid(grid, 0, 0, slideHeight)
+		if f != nil {
+			t.Errorf("expected nil for dense grid, got finding: %s", f.Message)
+		}
+	})
+
+	t.Run("explicit row height skips detection", func(t *testing.T) {
+		grid := &ShapeGridInput{
+			Columns: json.RawMessage(`2`),
+			Rows: []GridRowInput{
+				{
+					Height: 100,
+					Cells: []*GridCellInput{
+						{Shape: &ShapeSpecInput{Geometry: "rect"}},
+					},
+				},
+			},
+		}
+		if allGridRowHeightsZero(grid.Rows) {
+			t.Error("allGridRowHeightsZero should be false for explicit height")
+		}
+	})
+}
+
+func TestAllGridRowHeightsZero(t *testing.T) {
+	tests := []struct {
+		name string
+		rows []GridRowInput
+		want bool
+	}{
+		{"nil rows", nil, true},
+		{"empty rows", []GridRowInput{}, true},
+		{"zero heights", []GridRowInput{{Height: 0}, {Height: 0}}, true},
+		{"one explicit", []GridRowInput{{Height: 0}, {Height: 50}}, false},
+		{"all explicit", []GridRowInput{{Height: 50}, {Height: 50}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := allGridRowHeightsZero(tt.rows); got != tt.want {
+				t.Errorf("allGridRowHeightsZero = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

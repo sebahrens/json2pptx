@@ -383,10 +383,19 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 		}
 	}
 
-	// Sparse layout detection: only for FillHeight grids (pattern-expanded)
+	// Sparse layout detection for FillHeight grids (pattern-expanded)
 	// where content may occupy a small fraction of the allocated bounds.
 	if grid.FillHeight {
 		if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight); f != nil {
+			findings = append(findings, *f)
+		}
+	}
+
+	// Sparse layout detection for raw grids with all row heights omitted:
+	// the grid shrinks to content, which may occupy very little of the layout
+	// content area. Emit if content < 60% of the full layout area height.
+	if !grid.FillHeight && allGridRowHeightsZero(grid.Rows) {
+		if f := detectSparseRawGrid(grid, slideIdx, slideWidth, slideHeight); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -831,4 +840,74 @@ func inferGridColumns(grid *ShapeGridInput) int {
 		}
 	}
 	return numCols
+}
+
+// allGridRowHeightsZero returns true when no row specifies an explicit height.
+func allGridRowHeightsZero(rows []GridRowInput) bool {
+	for _, r := range rows {
+		if r.Height > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// rawGridSparseThreshold is the minimum ratio of content height to layout area
+// height. Grids occupying less than 60% of the layout content area are sparse.
+const rawGridSparseThreshold = 0.60
+
+// detectSparseRawGrid emits a sparse_layout finding for raw (non-FillHeight)
+// grids whose auto-shrunk content height is less than 60% of the full layout
+// content area height.
+func detectSparseRawGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64) *patterns.FitFinding {
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
+	}
+
+	// The full layout area height is what the grid bounds would be if it
+	// filled the content zone (same logic as estimateGridBoundsHeightEMU).
+	layoutAreaH := estimateGridBoundsHeightEMU(grid, slideHeight)
+	if layoutAreaH <= 0 {
+		return nil
+	}
+
+	// Content height is the actual rendered height after auto-shrink.
+	contentH := estimateGridContentHeightEMU(grid, slideHeight)
+	if contentH <= 0 {
+		return nil
+	}
+
+	ratio := float64(contentH) / float64(layoutAreaH)
+	if ratio >= rawGridSparseThreshold {
+		return nil
+	}
+
+	path := slidepath.ShapeGrid(slideIdx)
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: "shape_grid",
+			Path:    path,
+			Code:    patterns.ErrCodeSparseLayout,
+			Message: fmt.Sprintf(
+				"raw grid content occupies %.0f%% of layout area (%d / %d EMU) — consider explicit row heights or adopting a pattern",
+				ratio*100, contentH, layoutAreaH,
+			),
+			Fix: &patterns.FixSuggestion{
+				Kind: "adopt_pattern",
+				Params: map[string]any{
+					"filled_pct":        ratio,
+					"content_height":    contentH,
+					"layout_area_height": layoutAreaH,
+				},
+			},
+		},
+		Action: "review",
+		Measured: &patterns.Extent{
+			HeightEMU: contentH,
+		},
+		Allowed: &patterns.Extent{
+			HeightEMU: layoutAreaH,
+		},
+		OverflowRatio: ratio,
+	}
 }
