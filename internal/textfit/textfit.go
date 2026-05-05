@@ -83,6 +83,11 @@ const (
 	// still overflows at this floor is trimmed with "..." by
 	// trimOverflowParagraphs rather than shrinking to illegible sizes.
 	minFontScalePct = 60
+	// AbsMinFontPt is the absolute minimum font size in points. No text
+	// should ever render below this size regardless of the percentage-based
+	// floor. This prevents illegible 6-8pt text on slides with smaller base
+	// fonts or aggressive MinFontScalePct overrides.
+	AbsMinFontPt = 10.0
 	// maxLnSpcReductionPct is the maximum line spacing reduction percentage.
 	maxLnSpcReductionPct = 20
 	// fontScaleStep is the decrement step for font scale (percentage points).
@@ -136,6 +141,17 @@ func Calculate(p Params) (FitResult, error) {
 	minScale := minFontScalePct
 	if p.MinFontScalePct > 0 {
 		minScale = p.MinFontScalePct
+	}
+
+	// Enforce absolute minimum font size floor (10pt). If the percentage-based
+	// floor would produce a font smaller than AbsMinFontPt, raise the floor.
+	absMinScalePct := int(math.Ceil(AbsMinFontPt / fontSizePt * 100))
+	if absMinScalePct > minScale {
+		minScale = absMinScalePct
+	}
+	// Clamp to valid range — can't scale above 100%
+	if minScale > 100 {
+		minScale = 100
 	}
 
 	// Try fitting at 100% scale, then reduce

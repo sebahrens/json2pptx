@@ -122,8 +122,14 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		const typicalFitLines = 14
 		if paraCount > typicalFitLines {
 			scalePct := (typicalFitLines * 100) / paraCount
+			// Enforce absolute 10pt floor for dimensionless estimate.
+			// Assume 20pt base font (typical body level 1) when unknown.
+			absFloorPct := int(textfit.AbsMinFontPt / 20.0 * 100) // = 50%
 			if scalePct < 70 {
 				scalePct = 70 // conservative floor for dimensionless estimate
+			}
+			if scalePct < absFloorPct {
+				scalePct = absFloorPct
 			}
 			bp.Inner += fmt.Sprintf(`<a:normAutofit fontScale="%d"/>`, scalePct*1000)
 			// Site 1: warn when zero-dim heuristic is used for dense content.
@@ -324,7 +330,21 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params, cfg *autofit
 		}
 	}
 
-	// Even 2 paragraphs don't fit — apply maximum scaling and accept overflow
+	// Even 2 paragraphs don't fit — apply maximum scaling and accept overflow.
+	// Enforce the absolute 10pt floor: never emit a fontScale that would
+	// produce text smaller than 10pt.
+	fontSizePt := float64(params.FontSizeHPt) / 100.0
+	if fontSizePt <= 0 {
+		fontSizePt = 20.0
+	}
+	floorScale := int(textfit.AbsMinFontPt / fontSizePt * 100)
+	if floorScale > 100 {
+		floorScale = 100
+	}
+	if floorScale < 50 {
+		floorScale = 50 // never go below 50% in the hard-overflow path
+	}
+
 	slog.Warn("text overflow: content does not fit even after trimming",
 		slog.Int("paragraphs", len(params.Paragraphs)))
 
@@ -335,14 +355,14 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params, cfg *autofit
 				Path:    cfg.findingPath,
 				Code:    patterns.ErrCodeTextOverflow,
 				Message: fmt.Sprintf("text overflow: %d paragraphs do not fit even after trimming and maximum font scaling", len(params.Paragraphs)),
-				Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+				Fix:     &patterns.FixSuggestion{Kind: "split_at_row"},
 			},
 			Action: "refuse",
 		})
 	}
 
 	return textfit.FitResult{
-		FontScale:      50000,
+		FontScale:      floorScale * 1000,
 		LnSpcReduction: 20000,
 		Overflow:       true,
 	}

@@ -379,10 +379,46 @@ func TestCalculate_MinFontScalePctUsedInLnSpcReductionPath(t *testing.T) {
 	}
 	// If it overflows entirely, that's also acceptable — the fix ensures the
 	// non-overflow lnSpcReduction path returns the correct scale.
+	// With the absolute 10pt floor enforced, MinFontScalePct=45 on a 20pt
+	// font is clamped to 50% (10pt / 20pt) since 45% would yield 9pt.
 	if result.Overflow {
-		// Overflow return already uses minScale correctly (line 165)
-		if result.FontScale != 45*1000 {
-			t.Errorf("overflow FontScale should use overridden MinFontScalePct (45000), got %d", result.FontScale)
+		// Overflow return uses the clamped minScale (50% for 20pt base font)
+		expectedScale := 50 * 1000 // 10pt / 20pt = 50%
+		if result.FontScale != expectedScale {
+			t.Errorf("overflow FontScale should use absolute 10pt floor (50000 for 20pt font), got %d", result.FontScale)
+		}
+	}
+}
+
+func TestCalculate_AbsoluteMinFontFloor(t *testing.T) {
+	// Verify that the absolute 10pt floor prevents text from being scaled
+	// below 10pt even when MinFontScalePct would allow it.
+	// With a 14pt base font: 10/14 ≈ 72%, so even MinFontScalePct=45 gets
+	// clamped to ~72%.
+	paragraphs := make([]string, 40)
+	for i := range paragraphs {
+		paragraphs[i] = "Dense paragraph content that will overflow the placeholder area"
+	}
+
+	result, err := Calculate(Params{
+		WidthEMU:        2 * 914400,  // 2 inches (narrow)
+		HeightEMU:       1 * 914400,  // 1 inch (short)
+		FontSizeHPt:     1400,        // 14pt base
+		FontName:        "Arial",
+		Paragraphs:      paragraphs,
+		MinFontScalePct: 45, // Would be 6.3pt — must be clamped
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The effective font size should never go below 10pt.
+	// 10pt / 14pt ≈ 71.4% → rounds up to 72%, so FontScale ≥ 72000.
+	if result.FontScale > 0 {
+		effectivePt := 14.0 * float64(result.FontScale) / 100000.0
+		if effectivePt < AbsMinFontPt-0.1 { // small tolerance for rounding
+			t.Errorf("effective font = %.1fpt (FontScale=%d), want >= %.1fpt",
+				effectivePt, result.FontScale, AbsMinFontPt)
 		}
 	}
 }
