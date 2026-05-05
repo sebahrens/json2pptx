@@ -41,6 +41,12 @@ type ChartData struct {
 
 	// Footnote is an optional footnote text.
 	Footnote string
+
+	// Annotations are optional chart overlays (reference lines, trendlines, callouts).
+	Annotations []Annotation
+
+	// DataLabels controls data label formatting and display.
+	DataLabels *DataLabelConfig
 }
 
 // ChartSeries represents a single data series.
@@ -376,6 +382,8 @@ func (bc *BarChart) Draw(data ChartData) error {
 		}
 		// Draw bars using log scale
 		bc.drawBars(displayData, plotArea, xScale, nil, colors)
+
+		// Annotations not supported on log-scale charts (no linear yScale)
 	} else {
 		yScale := NewLinearScale(yMin, yMax)
 		yScale.SetRangeLinear(plotArea.H, 0)
@@ -396,6 +404,11 @@ func (bc *BarChart) Draw(data ChartData) error {
 			bc.drawStackedBars(displayData, plotArea, xScale, yScale, colors)
 		} else {
 			bc.drawBars(displayData, plotArea, xScale, yScale, colors)
+		}
+
+		// Draw annotations (reference lines, trendlines, callouts)
+		if len(data.Annotations) > 0 {
+			DrawAnnotations(b, data.Annotations, plotArea, xScale, yScale, data, colors)
 		}
 	}
 
@@ -1077,6 +1090,11 @@ func (lc *LineChart) Draw(data ChartData) error {
 		drawData.Categories = categories
 	}
 	lc.drawLines(drawData, plotArea, xScale, yScale, colors)
+
+	// Draw annotations (reference lines, trendlines, callouts)
+	if len(data.Annotations) > 0 {
+		DrawAnnotations(b, data.Annotations, plotArea, xScale, yScale, data, colors)
+	}
 
 	// Draw title
 	if lc.config.ShowTitle && data.Title != "" {

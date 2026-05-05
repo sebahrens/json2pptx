@@ -298,6 +298,36 @@ func MonochromePalette() *Palette {
 	}
 }
 
+// ColorblindSafePalette returns a palette optimized for color-vision deficiency.
+// Based on the Wong (2011) palette, widely used in scientific publishing.
+func ColorblindSafePalette() *Palette {
+	return &Palette{
+		Name:      "colorblind-safe",
+		Primary:   MustParseColor("#0072B2"), // Blue
+		Secondary: MustParseColor("#009E73"), // Bluish green
+		Tertiary:  MustParseColor("#D55E00"), // Vermillion
+
+		Accent1: MustParseColor("#0072B2"), // Blue
+		Accent2: MustParseColor("#E69F00"), // Orange
+		Accent3: MustParseColor("#009E73"), // Bluish green
+		Accent4: MustParseColor("#CC79A7"), // Reddish purple
+		Accent5: MustParseColor("#D55E00"), // Vermillion
+		Accent6: MustParseColor("#56B4E9"), // Sky blue
+
+		Success: MustParseColor("#009E73"),
+		Warning: MustParseColor("#E69F00"),
+		Error:   MustParseColor("#D55E00"),
+		Info:    MustParseColor("#0072B2"),
+
+		Background:    MustParseColor("#FFFFFF"),
+		Surface:       MustParseColor("#F8F9FA"),
+		Border:        MustParseColor("#DEE2E6"),
+		TextPrimary:   MustParseColor("#212529"),
+		TextSecondary: MustParseColor("#495057"),
+		TextMuted:     MustParseColor("#6C757D"),
+	}
+}
+
 // GetPaletteByName returns a palette by name.
 func GetPaletteByName(name string) *Palette {
 	switch strings.ToLower(name) {
@@ -309,6 +339,8 @@ func GetPaletteByName(name string) *Palette {
 		return MutedPalette()
 	case "monochrome", "grayscale":
 		return MonochromePalette()
+	case "colorblind-safe", "colorblind", "cb-safe":
+		return ColorblindSafePalette()
 	default:
 		return DefaultPalette()
 	}

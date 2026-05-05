@@ -58,6 +58,9 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 			config.MarginLeft += 20
 		}
 
+		// Apply data_labels config to chart config
+		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
+
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
 			return fmt.Errorf("bar_chart render failed: %w", err)
@@ -150,6 +153,9 @@ func (d *LineChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		if config.YAxisTitle != "" {
 			config.MarginLeft += 20
 		}
+
+		// Apply data_labels config to chart config
+		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
 		chart := NewLineChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -317,6 +323,9 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		if config.YAxisTitle != "" {
 			config.MarginLeft += 20
 		}
+
+		// Apply data_labels config to chart config
+		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
 		chart := NewAreaChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -651,6 +660,9 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 			config.MarginLeft += 20
 		}
 
+		// Apply data_labels config to chart config
+		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
+
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
 			return fmt.Errorf("stacked_bar_chart render failed: %w", err)
@@ -820,7 +832,121 @@ func extractChartData(req *RequestEnvelope) (ChartData, error) {
 		}
 	}
 
+	// Extract annotations
+	chartData.Annotations = extractAnnotations(data)
+
+	// Extract data label config
+	chartData.DataLabels = extractDataLabels(data)
+
 	return chartData, nil
+}
+
+// applyDataLabelsToConfig applies DataLabelConfig to ChartConfig's ShowValues/ValueFormat.
+func applyDataLabelsToConfig(config *ChartConfig, dlc *DataLabelConfig) {
+	if dlc == nil {
+		return
+	}
+	config.ShowValues = true
+	if dlc.Format != "" {
+		config.ValueFormat = dlc.Format
+	}
+}
+
+// extractAnnotations extracts chart annotations from the data map.
+func extractAnnotations(data map[string]any) []Annotation {
+	raw, ok := data["annotations"]
+	if !ok {
+		return nil
+	}
+	annSlice, ok := toAnySlice(raw)
+	if !ok {
+		return nil
+	}
+
+	annotations := make([]Annotation, 0, len(annSlice))
+	for _, item := range annSlice {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		ann := Annotation{}
+
+		if kind, ok := m["kind"].(string); ok {
+			ann.Kind = AnnotationKind(kind)
+		}
+		if axis, ok := m["axis"].(string); ok {
+			ann.Axis = axis
+		}
+		if v, ok := toFloat64Value(m["value"]); ok {
+			ann.Value = v
+		}
+		if label, ok := m["label"].(string); ok {
+			ann.Label = label
+		}
+		if style, ok := m["style"].(string); ok {
+			ann.Style = style
+		}
+		if colorStr, ok := m["color"].(string); ok {
+			if c, err := ParseColor(colorStr); err == nil {
+				ann.Color = &c
+			}
+		}
+		if series, ok := m["series"].(string); ok {
+			ann.Series = series
+		}
+		if method, ok := m["method"].(string); ok {
+			ann.Method = method
+		}
+		if x, ok := toFloat64Value(m["x"]); ok {
+			ann.X = x
+		}
+		if y, ok := toFloat64Value(m["y"]); ok {
+			ann.Y = y
+		}
+		if text, ok := m["text"].(string); ok {
+			ann.Text = text
+		}
+
+		annotations = append(annotations, ann)
+	}
+
+	return annotations
+}
+
+// extractDataLabels extracts data label configuration from the data map.
+func extractDataLabels(data map[string]any) *DataLabelConfig {
+	raw, ok := data["data_labels"]
+	if !ok {
+		return nil
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	dlc := &DataLabelConfig{}
+	if format, ok := m["format"].(string); ok {
+		dlc.Format = format
+	}
+	if showOn, ok := m["show_on"].(string); ok {
+		dlc.ShowOn = showOn
+	}
+	return dlc
+}
+
+// toFloat64Value converts a single interface value to float64.
+func toFloat64Value(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	default:
+		return 0, false
+	}
 }
 
 // toInt64Slice attempts to convert an interface{} to []int64.
