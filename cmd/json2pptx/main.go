@@ -28,7 +28,7 @@ func main() {
 	}
 }
 
-func dispatch() error {
+func dispatch() error { //nolint:gocyclo
 	if len(os.Args) < 2 {
 		printUsage()
 		return nil
@@ -62,6 +62,28 @@ func dispatch() error {
 		return runTables()
 	case "skill-info":
 		return runSkillInfo()
+	case "capabilities":
+		return runCapabilities()
+	case "resolve-theme":
+		return runResolveTheme()
+	case "recommend-pattern":
+		return runRecommendPattern()
+	case "preview":
+		return runPreview()
+	case "repair":
+		return runRepair()
+	case "score":
+		return runScore()
+	case "render-slide":
+		return runRenderSlide()
+	case "render-thumbnails":
+		return runRenderThumbnails()
+	case "template-settings":
+		return runTemplateSettings()
+	case "data-format-hints":
+		return runDataFormatHints()
+	case "shape-catalog":
+		return runShapeCatalog()
 	case "version", "--version", "-V":
 		return runVersion()
 	case "help", "-h", "--help":
@@ -81,19 +103,30 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage: json2pptx <command> [options]
 
 Commands:
-  generate           Convert JSON to PPTX (default if omitted)
-  read               Read PPTX and output extracted content as JSON
-  validate           Validate input without generating
-  validate-output    Check generated PPTX for OOXML correctness
-  validate-template  Check template compatibility
-  patterns           Discover, validate, and expand named patterns
-  icons              List available icon names
-  tables             Table density and sizing reference
-  skill-info         Show template capabilities for Claude Code skill
-  serve              Start HTTP API server
-  mcp                Start MCP (Model Context Protocol) server over stdio
-  version            Show version information
-  help               Show this help
+  generate            Convert JSON to PPTX (default if omitted)
+  read                Read PPTX and output extracted content as JSON
+  validate            Validate input without generating
+  validate-output     Check generated PPTX for OOXML correctness
+  validate-template   Check template compatibility
+  patterns            Discover, validate, and expand named patterns
+  icons               List available icon names
+  tables              Table density and sizing reference
+  skill-info          Show template capabilities for Claude Code skill
+  capabilities        Show schema version, tools, features, and vocabularies
+  resolve-theme       Resolve theme colors and fonts for a template
+  recommend-pattern   Recommend patterns matching an intent
+  preview             Preview generation plan without rendering
+  repair              Apply targeted fixes to a single slide
+  score               Score a presentation for visual quality
+  render-slide        Render a single slide to PNG
+  render-thumbnails   Render all slides as PNG thumbnails
+  template-settings   Manage named styles (list/register/delete)
+  data-format-hints   Show data format hints for chart/diagram types
+  shape-catalog       List available preset geometries
+  serve               Start HTTP API server
+  mcp                 Start MCP (Model Context Protocol) server over stdio
+  version             Show version information
+  help                Show this help
 
 Examples:
   json2pptx generate -json slides.json -template corporate

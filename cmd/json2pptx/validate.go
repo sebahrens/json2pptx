@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
@@ -13,7 +16,7 @@ import (
 // runValidate implements the "validate" subcommand. It validates JSON slide
 // input against the template without generating PPTX output. This delegates
 // to the same validation logic used by the dry-run mode.
-func runValidate() error {
+func runValidate() error { //nolint:gocognit
 	fs := flag.NewFlagSet("validate", flag.ContinueOnError)
 	templateName := fs.String("template", "", "Template name for layout validation (optional)")
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
@@ -21,6 +24,7 @@ func runValidate() error {
 	jsonOutputPath := fs.String("json-output", "", "Write JSON results to file (use - for stdout)")
 	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
+	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate [options] <file.json ...>\n\n")
@@ -34,6 +38,7 @@ func runValidate() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -template corporate slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -fit-report slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate -fit-report -verbose-fit slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate -format=json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json chapter2.json chapter3.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		fs.PrintDefaults()
@@ -47,6 +52,12 @@ func runValidate() error {
 	if len(args) == 0 {
 		fs.Usage()
 		return fmt.Errorf("at least one input file is required")
+	}
+
+	// When -format=json is used, delegate to the MCP validate handler to get
+	// the identical dryRunOutput shape (with structured diagnostics and fit_findings).
+	if *format == "json" || *format == "ndjson" {
+		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, *format)
 	}
 
 	// Suppress unused warnings for flags consumed below.
@@ -347,6 +358,53 @@ func writeValidateJSON(path string, results []validateResult) error {
 	}
 	if err != nil {
 		return fmt.Errorf("failed to write JSON output: %w", err)
+	}
+	return nil
+}
+
+// runValidateMCPFormat delegates to the MCP validate handler to produce output
+// identical to validate_input. This ensures CLI and MCP return the same shape.
+func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string) error {
+	mc := cliMCPConfig(templatesDir, "")
+	hasErrors := false
+
+	for _, filePath := range files {
+		jsonInput, err := readJSONInput(filePath)
+		if err != nil {
+			return err
+		}
+
+		args := map[string]any{
+			"json_input":  jsonInput,
+			"fit_report":  fitReport,
+			"verbose_fit": verboseFit,
+		}
+
+		result, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(args))
+		if err != nil {
+			return fmt.Errorf("validate %s: %w", filePath, err)
+		}
+
+		if result.IsError {
+			hasErrors = true
+		}
+
+		if format == "ndjson" {
+			// NDJSON: one JSON object per line, no indentation.
+			if len(result.Content) > 0 {
+				if tc, ok := result.Content[0].(mcpgo.TextContent); ok {
+					fmt.Println(tc.Text)
+				}
+			}
+		} else {
+			if err := printMCPResultJSON(result); err != nil {
+				hasErrors = true
+			}
+		}
+	}
+
+	if hasErrors {
+		return fmt.Errorf("validation failed")
 	}
 	return nil
 }
