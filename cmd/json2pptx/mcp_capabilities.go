@@ -85,6 +85,7 @@ func buildDeprecatedFields() []capabilitiesDeprecatedField {
 func mcpGetCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_capabilities",
 		mcp.WithDescription("Returns schema version, available MCP tools, deprecated fields, and feature flags. Use this to detect contract drift between sessions without re-reading SKILL.md. Compare schema_version across sessions — a major bump means breaking changes."),
+		mcp.WithRawOutputSchema(outputSchemaGetCapabilities),
 	)
 }
 

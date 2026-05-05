@@ -399,3 +399,81 @@ func TestMCPPatternValidate_ContractShape(t *testing.T) {
 		}
 	}
 }
+
+// TestMCPOutputSchemas_ValidJSON verifies that every output schema constant
+// is valid JSON and has the expected top-level "type" field.
+func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
+	schemas := map[string]json.RawMessage{
+		"generate_presentation":      outputSchemaGenerate,
+		"validate_input":             outputSchemaValidate,
+		"list_templates":             outputSchemaListTemplates,
+		"get_data_format_hints":      outputSchemaGetDataFormatHints,
+		"get_chart_capabilities":     outputSchemaGetChartCapabilities,
+		"get_diagram_capabilities":   outputSchemaGetDiagramCapabilities,
+		"list_patterns":              outputSchemaListPatterns,
+		"show_pattern":               outputSchemaShowPattern,
+		"validate_pattern":           outputSchemaValidatePattern,
+		"expand_pattern":             outputSchemaExpandPattern,
+		"recommend_pattern":          outputSchemaRecommendPattern,
+		"list_icons":                 outputSchemaListIcons,
+		"render_slide_image":         outputSchemaRenderSlideImage,
+		"render_deck_thumbnails":     outputSchemaRenderDeckThumbnails,
+		"score_deck":                 outputSchemaScoreDeck,
+		"preview_presentation_plan":  outputSchemaPreviewPlan,
+		"repair_slide":               outputSchemaRepairSlide,
+		"table_density_guide":        outputSchemaTableDensityGuide,
+		"resolve_theme":              outputSchemaResolveTheme,
+		"list_template_settings":     outputSchemaListTemplateSettings,
+		"register_template_setting":  outputSchemaRegisterTemplateSetting,
+		"delete_template_setting":    outputSchemaDeleteTemplateSetting,
+		"get_capabilities":           outputSchemaGetCapabilities,
+	}
+
+	for name, schema := range schemas {
+		var parsed map[string]any
+		if err := json.Unmarshal(schema, &parsed); err != nil {
+			t.Errorf("%s: output schema is not valid JSON: %v", name, err)
+			continue
+		}
+		// Every schema must have a "type" field at top level.
+		if _, ok := parsed["type"]; !ok {
+			t.Errorf("%s: output schema missing top-level 'type' field", name)
+		}
+	}
+}
+
+// TestMCPOutputSchemas_AllToolsCovered verifies that every registered MCP tool
+// has a corresponding output schema defined.
+func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
+	covered := map[string]bool{
+		"generate_presentation":      true,
+		"validate_input":             true,
+		"list_templates":             true,
+		"get_data_format_hints":      true,
+		"get_chart_capabilities":     true,
+		"get_diagram_capabilities":   true,
+		"list_patterns":              true,
+		"show_pattern":               true,
+		"validate_pattern":           true,
+		"expand_pattern":             true,
+		"recommend_pattern":          true,
+		"list_icons":                 true,
+		"render_slide_image":         true,
+		"render_deck_thumbnails":     true,
+		"score_deck":                 true,
+		"preview_presentation_plan":  true,
+		"repair_slide":               true,
+		"table_density_guide":        true,
+		"resolve_theme":              true,
+		"list_template_settings":     true,
+		"register_template_setting":  true,
+		"delete_template_setting":    true,
+		"get_capabilities":           true,
+	}
+
+	for _, name := range mcpToolNames() {
+		if !covered[name] {
+			t.Errorf("MCP tool %q has no output schema — add one to mcp_output_schemas.go", name)
+		}
+	}
+}

@@ -20,6 +20,7 @@ Deterministic mode (default) runs geometry-based checks: text overflow, placehol
 Score formula: 100 - sum(severity_weights × findings). Weights: refuse=25, shrink_or_split=15, review=5, info=0.
 
 Use this after generate_presentation to get structured visual feedback without burning vision tokens.`),
+		mcp.WithRawOutputSchema(outputSchemaScoreDeck),
 		mcp.WithString("json_input",
 			mcp.Description("JSON string containing the presentation definition (same format as generate_presentation json_input). Mutually exclusive with \"presentation\" (object form)."),
 		),

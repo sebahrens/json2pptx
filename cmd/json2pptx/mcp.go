@@ -151,6 +151,7 @@ func runMCP() error {
 func mcpGenerateTool() mcp.Tool {
 	return mcp.NewTool("generate_presentation",
 		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions. Returns the output file path on success."),
+		mcp.WithRawOutputSchema(outputSchemaGenerate),
 		mcp.WithString("json_input",
 			mcp.Description(`JSON string containing the presentation definition. Mutually exclusive with "presentation" (object form). Use list_templates to discover available template names, layout_ids, and placeholder_ids.
 
@@ -210,6 +211,7 @@ func mcpListTemplatesTool() mcp.Tool {
 
 Response shape per template (compact/full modes): name, aspect_ratio, layout_count, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, layout_names, table_styles [{id,name}]. Full mode adds layouts with placeholders and capacity.
 Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes).`),
+		mcp.WithRawOutputSchema(outputSchemaListTemplates),
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
@@ -223,6 +225,7 @@ Response also includes: supported_types (slide/chart/diagram/grid types, shape_g
 func mcpGetDataFormatHintsTool() mcp.Tool {
 	return mcp.NewTool("get_data_format_hints",
 		mcp.WithDescription("Fetch the full data_format_hints map for all chart and diagram types. Use the digest from list_templates to avoid refetching when hints haven't changed. Note: list_templates is the canonical bundled discovery tool — it returns templates, supported types, chart/diagram capabilities, and a data_format_hints digest in a single call. Use this tool only when you need to fetch the full hints after a digest change."),
+		mcp.WithRawOutputSchema(outputSchemaGetDataFormatHints),
 		mcp.WithString("digest",
 			mcp.Description("Digest from a previous list_templates response. If it matches the current hints, a not_modified response is returned instead of the full map."),
 		),
@@ -232,6 +235,7 @@ func mcpGetDataFormatHintsTool() mcp.Tool {
 func mcpValidateTool() mcp.Tool {
 	return mcp.NewTool("validate_input",
 		mcp.WithDescription("Validate a JSON presentation definition without generating output. Returns validation errors or success. When fit_report is true, also runs per-cell text overflow measurement and includes findings in the result."),
+		mcp.WithRawOutputSchema(outputSchemaValidate),
 		mcp.WithString("json_input",
 			mcp.Description(`JSON string containing the presentation definition to validate. Mutually exclusive with "presentation" (object form). Same format as generate_presentation json_input.
 
@@ -587,12 +591,14 @@ func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) 
 func mcpGetChartCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_chart_capabilities",
 		mcp.WithDescription("Fetch capability metadata for all chart types. Values are TBD (null) until populated in a future release; the struct shape is stable. Note: list_templates already includes chart_capabilities in its supported_types response — prefer that single call for initial discovery."),
+		mcp.WithRawOutputSchema(outputSchemaGetChartCapabilities),
 	)
 }
 
 func mcpGetDiagramCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_capabilities",
 		mcp.WithDescription("Fetch capability metadata for all diagram types. Values are TBD (null) until populated in a future release; the struct shape is stable. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
+		mcp.WithRawOutputSchema(outputSchemaGetDiagramCapabilities),
 	)
 }
 
@@ -776,6 +782,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
 		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, and expansion previews. Use this as a starting point when you know what content to show but not which pattern to use."),
+		mcp.WithRawOutputSchema(outputSchemaRecommendPattern),
 		mcp.WithString("intent",
 			mcp.Required(),
 			mcp.Description("Natural-language description of what the slide should show (e.g., \"show 3 KPIs\", \"compare two options\", \"business model canvas\", \"project roadmap\")."),
@@ -789,12 +796,14 @@ func mcpRecommendPatternTool() mcp.Tool {
 func mcpListPatternsTool() mcp.Tool {
 	return mcp.NewTool("list_patterns",
 		mcp.WithDescription("List all available named patterns. Patterns are high-level primitives that expand to shape_grid definitions, replacing ~600 tokens of boilerplate with ~100 tokens."),
+		mcp.WithRawOutputSchema(outputSchemaListPatterns),
 	)
 }
 
 func mcpShowPatternTool() mcp.Tool {
 	return mcp.NewTool("show_pattern",
 		mcp.WithDescription("Show full details for a named pattern, including its authoritative JSON Schema for values, overrides, and cell_overrides."),
+		mcp.WithRawOutputSchema(outputSchemaShowPattern),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name (e.g., kpi-3up, bmc-canvas, card-grid)."),
@@ -805,6 +814,7 @@ func mcpShowPatternTool() mcp.Tool {
 func mcpValidatePatternTool() mcp.Tool {
 	return mcp.NewTool("validate_pattern",
 		mcp.WithDescription("Validate pattern inputs without expanding. Returns structured errors on failure."),
+		mcp.WithRawOutputSchema(outputSchemaValidatePattern),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name to validate against."),
@@ -839,6 +849,7 @@ func mcpValidatePatternTool() mcp.Tool {
 func mcpExpandPatternTool() mcp.Tool {
 	return mcp.NewTool("expand_pattern",
 		mcp.WithDescription("Expand a named pattern into its full shape_grid definition. Useful for debugging and previewing what a pattern call produces. Returns density_warnings if any embedded tables exceed density thresholds."),
+		mcp.WithRawOutputSchema(outputSchemaExpandPattern),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name to expand."),
@@ -1360,6 +1371,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 func mcpListIconsTool() mcp.Tool {
 	return mcp.NewTool("list_icons",
 		mcp.WithDescription("List available icon names for use in shape_grid cells via {\"icon\":{\"name\":\"icon-name\"}}. Icons are bundled SVGs in two sets: outline (default, stroke-based) and filled (solid). Use set:name syntax (e.g. \"filled:chart-pie\") to select a set; plain names default to outline."),
+		mcp.WithRawOutputSchema(outputSchemaListIcons),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
 			mcp.Enum("outline", "filled"),
@@ -1426,6 +1438,7 @@ Requires LibreOffice and ImageMagick (magick) on PATH. Use this for detailed vis
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
 Cost note: a density=100 slide is typically 20-80KB base64. Higher densities produce larger payloads.`),
+		mcp.WithRawOutputSchema(outputSchemaRenderSlideImage),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
 			mcp.Description("Path to the PPTX file to render. Use the output_path from generate_presentation."),
@@ -1451,6 +1464,7 @@ Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visu
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
 Cost note: at density=50, each thumbnail is typically 5-20KB base64. A 10-slide deck is ~100-200KB total.`),
+		mcp.WithRawOutputSchema(outputSchemaRenderDeckThumbnails),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
 			mcp.Description("Path to the PPTX file to render. Use the output_path from generate_presentation."),

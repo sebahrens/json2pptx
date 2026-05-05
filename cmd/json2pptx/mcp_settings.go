@@ -28,6 +28,7 @@ func settingsWriteAllowed() bool {
 func mcpListTemplateSettingsTool() mcp.Tool {
 	return mcp.NewTool("list_template_settings",
 		mcp.WithDescription("List named table_styles and cell_styles registered for a template. These named styles can be referenced from deck JSON by name instead of repeating full definitions. Read-only — always available."),
+		mcp.WithRawOutputSchema(outputSchemaListTemplateSettings),
 		mcp.WithString("template_name",
 			mcp.Required(),
 			mcp.Description("Template name (e.g., midnight-blue). Use list_templates to discover available names."),
@@ -38,6 +39,7 @@ func mcpListTemplateSettingsTool() mcp.Tool {
 func mcpRegisterTemplateSettingTool() mcp.Tool {
 	return mcp.NewTool("register_template_setting",
 		mcp.WithDescription("Register a named table_style or cell_style for a template. The setting is persisted in a YAML sidecar file and can be referenced by name from deck JSON. Idempotent — re-registering with the same name overwrites. Requires JSON2PPTX_ALLOW_SETTINGS_WRITE=1."),
+		mcp.WithRawOutputSchema(outputSchemaRegisterTemplateSetting),
 		mcp.WithString("template_name",
 			mcp.Required(),
 			mcp.Description("Template name (e.g., midnight-blue)."),
@@ -68,6 +70,7 @@ For cell_styles:
 func mcpDeleteTemplateSettingTool() mcp.Tool {
 	return mcp.NewTool("delete_template_setting",
 		mcp.WithDescription("Delete a named table_style or cell_style from a template's settings. Requires JSON2PPTX_ALLOW_SETTINGS_WRITE=1."),
+		mcp.WithRawOutputSchema(outputSchemaDeleteTemplateSetting),
 		mcp.WithString("template_name",
 			mcp.Required(),
 			mcp.Description("Template name (e.g., midnight-blue)."),

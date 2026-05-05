@@ -55,6 +55,7 @@ Supported fix kinds (V1):
 - use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
+		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
 		mcp.WithString("json_input",
 			mcp.Description(`JSON string containing the full presentation definition. Mutually exclusive with "presentation" (object form).`),
 		),

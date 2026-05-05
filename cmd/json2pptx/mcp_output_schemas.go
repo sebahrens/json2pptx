@@ -1,0 +1,476 @@
+// mcp_output_schemas.go defines JSON Schema output schemas for every MCP tool.
+// These allow MCP clients to validate tool responses deterministically
+// without prose-parsing the description field.
+package main
+
+import "encoding/json"
+
+// Each schema variable is a json.RawMessage containing a valid JSON Schema
+// that describes the tool's success response shape.
+
+// --- generate_presentation ---
+var outputSchemaGenerate = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "success":           {"type": "boolean"},
+    "output_path":       {"type": "string"},
+    "slide_count":       {"type": "integer"},
+    "duration_ms":       {"type": "integer"},
+    "warnings":          {"type": "array", "items": {"type": "string"}},
+    "quality":           {"$ref": "#/$defs/quality_score"},
+    "validation_errors": {"type": "array", "items": {"$ref": "#/$defs/validation_error"}},
+    "fit_findings":      {"type": "array", "items": {"$ref": "#/$defs/fit_finding"}}
+  },
+  "required": ["success"],
+  "$defs": {
+    "quality_score": {
+      "type": "object",
+      "properties": {
+        "overall":    {"type": "integer"},
+        "variety":    {"type": "integer"},
+        "coverage":   {"type": "integer"},
+        "structure":  {"type": "integer"}
+      }
+    },
+    "validation_error": {
+      "type": "object",
+      "properties": {
+        "path":    {"type": "string"},
+        "code":    {"type": "string"},
+        "message": {"type": "string"}
+      }
+    },
+    "fit_finding": {
+      "type": "object",
+      "properties": {
+        "code":        {"type": "string"},
+        "slide_index": {"type": "integer"},
+        "path":        {"type": "string"},
+        "message":     {"type": "string"},
+        "action":      {"type": "string"},
+        "fix":         {"type": "object"}
+      },
+      "required": ["code", "slide_index", "message", "action"]
+    }
+  }
+}`)
+
+// --- validate_input ---
+var outputSchemaValidate = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "valid":               {"type": "boolean"},
+    "slide_count":         {"type": "integer"},
+    "chart_count":         {"type": "integer"},
+    "diagram_count":       {"type": "integer"},
+    "table_count":         {"type": "integer"},
+    "shape_count":         {"type": "integer"},
+    "warnings":            {"type": "array", "items": {"type": "string"}},
+    "validation_warnings": {"type": "array", "items": {"type": "object"}},
+    "errors":              {"type": "array", "items": {"type": "string"}},
+    "diagnostics":         {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+    "slides":              {"type": "array", "items": {"type": "object"}},
+    "fit_findings":        {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["valid"],
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "properties": {
+        "code":     {"type": "string"},
+        "path":     {"type": "string"},
+        "message":  {"type": "string"},
+        "severity": {"type": "string", "enum": ["error", "warning"]},
+        "fix":      {"type": "object"}
+      },
+      "required": ["code", "message", "severity"]
+    }
+  }
+}`)
+
+// --- list_templates ---
+var outputSchemaListTemplates = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "tool":            {"type": "object", "properties": {"name": {"type": "string"}, "version": {"type": "string"}}},
+    "templates":       {"type": "array", "items": {"type": "object"}},
+    "supported_types": {"type": "object"},
+    "input_formats":   {"type": "array", "items": {"type": "string"}},
+    "output_formats":  {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["tool", "templates", "supported_types", "input_formats", "output_formats"]
+}`)
+
+// --- get_data_format_hints ---
+var outputSchemaGetDataFormatHints = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "digest":           {"type": "string"},
+    "not_modified":     {"type": "boolean"},
+    "data_format_hints": {"type": "object"}
+  },
+  "required": ["digest"]
+}`)
+
+// --- get_chart_capabilities ---
+var outputSchemaGetChartCapabilities = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "capabilities_tbd":   {"type": "boolean"},
+    "chart_capabilities": {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["capabilities_tbd", "chart_capabilities"]
+}`)
+
+// --- get_diagram_capabilities ---
+var outputSchemaGetDiagramCapabilities = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "capabilities_tbd":     {"type": "boolean"},
+    "diagram_capabilities": {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["capabilities_tbd", "diagram_capabilities"]
+}`)
+
+// --- list_patterns ---
+var outputSchemaListPatterns = json.RawMessage(`{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name":    {"type": "string"},
+      "cells":   {"type": "string"},
+      "use_when": {"type": "string"},
+      "supports_callout": {"type": "boolean"},
+      "estimated_prompt_size_bytes": {"type": "integer"}
+    },
+    "required": ["name", "cells", "use_when"]
+  }
+}`)
+
+// --- show_pattern ---
+var outputSchemaShowPattern = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "name":        {"type": "string"},
+    "description": {"type": "string"},
+    "cells":       {"type": "string"},
+    "use_when":    {"type": "string"},
+    "supports_callout": {"type": "boolean"},
+    "version":     {"type": "integer"},
+    "schema":      {"type": "object"}
+  },
+  "required": ["name", "description", "use_when", "version", "schema"]
+}`)
+
+// --- validate_pattern ---
+var outputSchemaValidatePattern = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "ok":     {"type": "boolean"},
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field":   {"type": "string"},
+          "code":    {"type": "string"},
+          "message": {"type": "string"},
+          "fix":     {"type": "object"}
+        },
+        "required": ["field", "message"]
+      }
+    }
+  },
+  "required": ["ok"]
+}`)
+
+// --- expand_pattern ---
+var outputSchemaExpandPattern = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "pattern":           {"type": "string"},
+    "version":           {"type": "integer"},
+    "shape_grid":        {"type": "object"},
+    "density_warnings":  {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field":   {"type": "string"},
+          "code":    {"type": "string"},
+          "message": {"type": "string"},
+          "fix":     {"type": "object"}
+        }
+      }
+    }
+  },
+  "required": ["pattern", "version", "shape_grid"]
+}`)
+
+// --- recommend_pattern ---
+var outputSchemaRecommendPattern = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern_name":      {"type": "string"},
+          "score":             {"type": "number"},
+          "rationale":         {"type": "string"},
+          "expansion_preview": {"type": "object"}
+        },
+        "required": ["pattern_name", "score", "rationale"]
+      }
+    },
+    "query_understood_as": {"type": "string"},
+    "suggestion":          {"type": "string"}
+  },
+  "required": ["candidates", "query_understood_as"]
+}`)
+
+// --- list_icons ---
+var outputSchemaListIcons = json.RawMessage(`{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "set":   {"type": "string"},
+      "count": {"type": "integer"},
+      "names": {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["set", "count", "names"]
+  }
+}`)
+
+// --- render_slide_image ---
+var outputSchemaRenderSlideImage = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "index":      {"type": "integer"},
+    "png_base64": {"type": "string"},
+    "path":       {"type": "string"},
+    "width":      {"type": "integer"},
+    "height":     {"type": "integer"},
+    "size_error": {"type": "string"}
+  },
+  "required": ["index"]
+}`)
+
+// --- render_deck_thumbnails ---
+var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index":      {"type": "integer"},
+          "png_base64": {"type": "string"},
+          "path":       {"type": "string"},
+          "width":      {"type": "integer"},
+          "height":     {"type": "integer"}
+        },
+        "required": ["index"]
+      }
+    },
+    "truncated": {"type": "boolean"}
+  },
+  "required": ["slides", "truncated"]
+}`)
+
+// --- score_deck ---
+var outputSchemaScoreDeck = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "overall_score": {"type": "integer"},
+    "per_slide": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index": {"type": "integer"},
+          "score":       {"type": "integer"},
+          "findings":    {"type": "array", "items": {"type": "object"}}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "top_codes":            {"type": "array", "items": {"type": "object"}},
+        "slide_count":          {"type": "integer"},
+        "problem_slides_count": {"type": "integer"}
+      }
+    },
+    "mode_used": {"type": "string"}
+  },
+  "required": ["overall_score", "per_slide", "summary", "mode_used"]
+}`)
+
+// --- preview_presentation_plan ---
+var outputSchemaPreviewPlan = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "resolved_slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index":           {"type": "integer"},
+          "layout_id":             {"type": "string"},
+          "layout_id_source":      {"type": "string"},
+          "layout_name":           {"type": "string"},
+          "slide_type":            {"type": "string"},
+          "placeholders":          {"type": "array", "items": {"type": "object"}},
+          "expanded_pattern":      {"type": "object"},
+          "shape_grid_resolution": {"type": "object"},
+          "applied_defaults":      {"type": "object"}
+        },
+        "required": ["slide_index", "layout_id", "layout_id_source", "placeholders"]
+      }
+    },
+    "warnings":    {"type": "array", "items": {"type": "string"}},
+    "errors":      {"type": "array", "items": {"type": "string"}},
+    "fit_findings": {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["resolved_slides"]
+}`)
+
+// --- repair_slide ---
+var outputSchemaRepairSlide = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "patched_deck": {"type": "object"},
+    "applied_fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind":    {"type": "string"},
+          "applied": {"type": "boolean"},
+          "message": {"type": "string"}
+        },
+        "required": ["kind", "applied"]
+      }
+    },
+    "new_findings": {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["patched_deck", "applied_fixes"]
+}`)
+
+// --- table_density_guide ---
+var outputSchemaTableDensityGuide = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "data_rows":    {"type": "string"},
+          "font_size":    {"type": "string"},
+          "max_columns":  {"type": "integer"},
+          "tdr_ceiling":  {"type": "integer"},
+          "notes":        {"type": "string"}
+        },
+        "required": ["data_rows", "font_size", "max_columns", "tdr_ceiling"]
+      }
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_rows":     {"type": "integer"},
+        "max_columns":  {"type": "integer"},
+        "min_font_pt":  {"type": "integer"},
+        "split_advice": {"type": "string"}
+      }
+    },
+    "multiline_note": {"type": "string"},
+    "table_styles":   {"type": "array", "items": {"type": "object"}},
+    "template":       {"type": "string"}
+  },
+  "required": ["tiers", "limits", "multiline_note"]
+}`)
+
+// --- resolve_theme ---
+var outputSchemaResolveTheme = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "template":     {"type": "string"},
+    "colors":       {"type": "object", "additionalProperties": {"type": "string"}},
+    "color_roles":  {"type": "object"},
+    "fonts": {
+      "type": "object",
+      "properties": {
+        "major": {"type": "object", "properties": {"latin": {"type": "string"}}},
+        "minor": {"type": "object", "properties": {"latin": {"type": "string"}}}
+      }
+    },
+    "resolved_for": {"type": "array", "items": {"type": "string"}},
+    "unknown":      {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["template", "colors", "fonts"]
+}`)
+
+// --- list_template_settings ---
+var outputSchemaListTemplateSettings = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "template":     {"type": "string"},
+    "table_styles": {"type": "object"},
+    "cell_styles":  {"type": "object"}
+  },
+  "required": ["template", "table_styles", "cell_styles"]
+}`)
+
+// --- register_template_setting ---
+var outputSchemaRegisterTemplateSetting = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "written":  {"type": "boolean"},
+    "path":     {"type": "string"},
+    "template": {"type": "string"},
+    "kind":     {"type": "string"},
+    "name":     {"type": "string"}
+  },
+  "required": ["written", "path", "template", "kind", "name"]
+}`)
+
+// --- delete_template_setting ---
+var outputSchemaDeleteTemplateSetting = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "removed":  {"type": "boolean"},
+    "template": {"type": "string"},
+    "kind":     {"type": "string"},
+    "name":     {"type": "string"}
+  },
+  "required": ["removed", "template", "kind", "name"]
+}`)
+
+// --- get_capabilities ---
+var outputSchemaGetCapabilities = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "schema_version":     {"type": "string"},
+    "tool_version":       {"type": "string"},
+    "mcp_tools_available": {"type": "array", "items": {"type": "string"}},
+    "deprecated_fields":  {"type": "array", "items": {"type": "object"}},
+    "features": {
+      "type": "object",
+      "properties": {
+        "strict_fit":          {"type": "array", "items": {"type": "string"}},
+        "compact_responses":   {"type": "boolean"},
+        "fit_report":          {"type": "boolean"},
+        "strict_unknown_keys": {"type": "boolean"},
+        "named_patterns":      {"type": "boolean"},
+        "template_settings":   {"type": "boolean"}
+      }
+    }
+  },
+  "required": ["schema_version", "tool_version", "mcp_tools_available", "features"]
+}`)

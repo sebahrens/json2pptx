@@ -16,6 +16,7 @@ import (
 func mcpTableDensityGuideTool() mcp.Tool {
 	return mcp.NewTool("table_density_guide",
 		mcp.WithDescription("Get table density and sizing recommendations for shape_grid tables. Returns structured density tiers with font sizes, max rows/columns, and TDR ceiling per tier. Optionally scoped to a specific template (includes its table_styles) or style_id."),
+		mcp.WithRawOutputSchema(outputSchemaTableDensityGuide),
 		mcp.WithString("template",
 			mcp.Description("Template name to get template-specific recommendations and table_styles (optional)."),
 		),

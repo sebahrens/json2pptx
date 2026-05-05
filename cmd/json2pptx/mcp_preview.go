@@ -81,6 +81,7 @@ func mcpPreviewPlanTool() mcp.Tool {
 		mcp.WithDescription(`Resolve the full generation plan without rendering a PPTX. Returns per-slide layout selection, placeholder mapping, pattern expansion, and shape_grid resolution — everything the engine decides before rendering.
 
 Use this to preview what generate_presentation will do: which layout each slide gets, how virtual placeholders (title, body, slot1) resolve to actual IDs, what geometry each placeholder has, and what fit findings exist. Fix issues in the plan before paying a full generation round-trip.`),
+		mcp.WithRawOutputSchema(outputSchemaPreviewPlan),
 		mcp.WithString("json_input",
 			mcp.Description(`JSON string containing the presentation definition. Mutually exclusive with "presentation" (object form). Same format as generate_presentation.`),
 		),
