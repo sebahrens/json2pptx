@@ -290,18 +290,28 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 // expandCell produces a single GridCellInput based on the selected visual style.
 func (c *cardGrid) expandCell(cell CardGridCell, idx int, style, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	var gc *jsonschema.GridCellInput
 	switch style {
 	case "accent-stripe":
-		return c.expandAccentStripe(cell, accent, headerSize, bodySize)
+		gc = c.expandAccentStripe(cell, accent, headerSize, bodySize)
 	case "numbered-badge":
-		return c.expandNumberedBadge(cell, idx, accent, headerSize, bodySize)
+		gc = c.expandNumberedBadge(cell, idx, accent, headerSize, bodySize)
 	case "icon-card":
-		return c.expandIconCard(cell, accent, headerSize, bodySize)
+		gc = c.expandIconCard(cell, accent, headerSize, bodySize)
 	case "tinted":
-		return c.expandTinted(cell, idx, accent, headerSize, bodySize)
+		gc = c.expandTinted(cell, idx, accent, headerSize, bodySize)
 	default: // "filled"
-		return c.expandFilled(cell, accent, headerSize, bodySize)
+		gc = c.expandFilled(cell, accent, headerSize, bodySize)
 	}
+	// Add SVG icon overlay when a bundled icon name is provided.
+	if cell.Icon != "" && gc.Shape != nil && gc.Shape.Icon == nil {
+		gc.Shape.Icon = &jsonschema.IconInput{
+			Name:     cell.Icon,
+			Fill:     accent,
+			Position: "top",
+		}
+	}
+	return gc
 }
 
 // expandFilled is the original style: solid accent fill, white text.

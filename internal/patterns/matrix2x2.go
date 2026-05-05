@@ -44,6 +44,7 @@ func (m *matrix2x2) ExemplarValues() any {
 type Matrix2x2Quadrant struct {
 	Header string `json:"header"`
 	Body   string `json:"body,omitempty"`
+	Icon   string `json:"icon,omitempty"` // Bundled icon name (e.g. "star", "filled:trending-up")
 }
 
 // UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
@@ -131,6 +132,7 @@ func (m *matrix2x2) Schema() *Schema {
 		map[string]*Schema{
 			"header": StringSchema(80).WithDescription("Quadrant header text"),
 			"body":   StringSchema(200).WithDescription("Quadrant body text"),
+			"icon":   StringSchema(60).WithDescription("Bundled icon name (e.g. \"star\", \"filled:trending-up\")"),
 		},
 		[]string{"header"},
 	).WithAdditionalProperties(false)
@@ -296,12 +298,20 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	quadrants := []Matrix2x2Quadrant{vals.TopLeft, vals.TopRight, vals.BottomLeft, vals.BottomRight}
 	quadrantCells := make([]*jsonschema.GridCellInput, 4)
 	for i, q := range quadrants {
+		shape := &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"lt1"`),
+			Text:     buildMatrix2x2QuadrantContent(q, headerSize, bodySize, accent),
+		}
+		if q.Icon != "" {
+			shape.Icon = &jsonschema.IconInput{
+				Name:     q.Icon,
+				Fill:     accent,
+				Position: "top",
+			}
+		}
 		quadrantCells[i] = &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt1"`),
-				Text:     buildMatrix2x2QuadrantContent(q, headerSize, bodySize, accent),
-			},
+			Shape: shape,
 		}
 		applyMatrix2x2CellOverride(quadrantCells[i], cellOverrides, i, accent)
 	}

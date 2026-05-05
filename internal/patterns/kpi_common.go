@@ -16,6 +16,7 @@ import (
 type KPICell struct {
 	Big   string `json:"big"`
 	Small string `json:"small"`
+	Icon  string `json:"icon,omitempty"` // Bundled icon name (e.g. "trending-up", "filled:users")
 }
 
 // KPIOverrides contains pattern-level overrides common to KPI patterns.
@@ -176,6 +177,7 @@ func kpiCellSchema() *Schema {
 		map[string]*Schema{
 			"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
 			"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
+			"icon":  StringSchema(60).WithDescription("Bundled icon name (e.g. \"trending-up\", \"filled:users\")"),
 		},
 		[]string{"big", "small"},
 	).WithAdditionalProperties(false)

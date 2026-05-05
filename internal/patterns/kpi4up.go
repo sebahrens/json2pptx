@@ -25,10 +25,10 @@ func (k *kpi4up) CellsHint() string   { return "4" }
 
 func (k *kpi4up) ExemplarValues() any {
 	v := Kpi4upValues{
-		{Big: "$4.2M", Small: "ARR"},
-		{Big: "127%", Small: "NRR"},
-		{Big: "12d", Small: "Sales cycle"},
-		{Big: "98%", Small: "CSAT"},
+		{Big: "$4.2M", Small: "ARR", Icon: "currency-dollar"},
+		{Big: "127%", Small: "NRR", Icon: "trending-up"},
+		{Big: "12d", Small: "Sales cycle", Icon: "clock"},
+		{Big: "98%", Small: "CSAT", Icon: "star"},
 	}
 	return &v
 }
@@ -102,6 +102,13 @@ func (k *kpi4up) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			Geometry: "roundRect",
 			Fill:     fillJSON,
 			Text:     textContent,
+		}
+		if cell.Icon != "" {
+			shape.Icon = &jsonschema.IconInput{
+				Name:     cell.Icon,
+				Fill:     accent,
+				Position: "left",
+			}
 		}
 
 		gc := &jsonschema.GridCellInput{
