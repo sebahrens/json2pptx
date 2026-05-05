@@ -285,11 +285,16 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	}
 
 	// Data rows
+	lastDataRowIdx := len(table.Rows) - 1
+	if summaryRowIdx >= 0 {
+		lastDataRowIdx = summaryRowIdx - 1
+	}
 	for rowIdx, row := range table.Rows {
 		if rowIdx == summaryRowIdx {
 			xml.WriteString(generateSummaryRow(row, rowIdx, rowHeight, config))
 		} else {
-			xml.WriteString(generateDataRow(row, rowIdx, rowHeight, config))
+			isTotals := config.Style.TotalsRow && rowIdx == lastDataRowIdx
+			xml.WriteString(generateDataRow(row, rowIdx, rowHeight, config, isTotals))
 		}
 	}
 
@@ -543,7 +548,7 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 			} else if cell.RowSpan == 0 {
 				overrides := &cellBorderOverrides{suppressTop: true}
 				fmt.Fprintf(&xml, `<a:tc vMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody>%s</a:tc>`,
-					generateCellProperties(config, true, 0, overrides))
+					generateCellProperties(config, true, 0, overrides, colIdx, false, nil))
 			}
 			colIdx++
 			continue
@@ -564,7 +569,7 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 		fmt.Fprintf(&xml, `<a:tc%s>%s%s</a:tc>`,
 			attrs,
 			generateCellContent(cell.Content, true, config, colIdx),
-			generateCellProperties(config, true, 0, overrides),
+			generateCellProperties(config, true, 0, overrides, colIdx, false, nil),
 		)
 		colIdx++
 	}
@@ -577,17 +582,17 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 func generateHeaderCell(text string, colIdx int, config TableRenderConfig) string {
 	return fmt.Sprintf(`<a:tc>%s%s</a:tc>`,
 		generateCellContent(text, true, config, colIdx),
-		generateCellProperties(config, true, 0, nil),
+		generateCellProperties(config, true, 0, nil, colIdx, false, nil),
 	)
 }
 
 // generateDataRow generates a data row XML, handling merges.
-func generateDataRow(row []types.TableCell, rowIdx int, height int64, config TableRenderConfig) string {
+func generateDataRow(row []types.TableCell, rowIdx int, height int64, config TableRenderConfig, isTotalsRow bool) string {
 	var xml strings.Builder
 	fmt.Fprintf(&xml, `<a:tr h="%d">`, height)
 
 	for colIdx, cell := range row {
-		xml.WriteString(generateDataCell(cell, rowIdx, colIdx, config))
+		xml.WriteString(generateDataCell(cell, rowIdx, colIdx, config, isTotalsRow))
 	}
 
 	xml.WriteString(`</a:tr>`)
@@ -602,7 +607,7 @@ func generateSummaryRow(row []types.TableCell, rowIdx int, height int64, config 
 	for colIdx, cell := range row {
 		fmt.Fprintf(&xml, `<a:tc>%s%s</a:tc>`,
 			generateItalicCellContent(cell.Content, config, colIdx),
-			generateCellProperties(config, false, rowIdx, nil),
+			generateCellProperties(config, false, rowIdx, nil, colIdx, false, nil),
 		)
 	}
 
@@ -635,7 +640,7 @@ func generateItalicCellContent(text string, config TableRenderConfig, colIdx int
 }
 
 // generateDataCell generates a single data cell, handling colspan/rowspan.
-func generateDataCell(cell types.TableCell, rowIdx int, colIdx int, config TableRenderConfig) string {
+func generateDataCell(cell types.TableCell, rowIdx int, colIdx int, config TableRenderConfig, isTotalsRow bool) string {
 	// Handle merged cells (part of colspan or rowspan)
 	if cell.IsMerged {
 		if cell.ColSpan == 0 {
@@ -646,7 +651,7 @@ func generateDataCell(cell types.TableCell, rowIdx int, colIdx int, config Table
 			// Vertical merge continuation — suppress top border for visual merge
 			overrides := &cellBorderOverrides{suppressTop: true}
 			return fmt.Sprintf(`<a:tc vMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody>%s</a:tc>`,
-				generateCellProperties(config, false, rowIdx, overrides))
+				generateCellProperties(config, false, rowIdx, overrides, colIdx, isTotalsRow, nil))
 		}
 	}
 
@@ -665,11 +670,17 @@ func generateDataCell(cell types.TableCell, rowIdx int, colIdx int, config Table
 	if cell.RowSpan > 1 {
 		overrides = &cellBorderOverrides{suppressBottom: true}
 	}
+	if isTotalsRow {
+		if overrides == nil {
+			overrides = &cellBorderOverrides{}
+		}
+		overrides.totalsTopBorder = true
+	}
 
 	return fmt.Sprintf(`<a:tc%s>%s%s</a:tc>`,
 		attrs,
-		generateCellContent(cell.Content, false, config, colIdx),
-		generateCellProperties(config, false, rowIdx, overrides),
+		generateDataCellContent(cell, isTotalsRow, config, colIdx),
+		generateCellProperties(config, false, rowIdx, overrides, colIdx, isTotalsRow, cell.Conditional),
 	)
 }
 
@@ -729,15 +740,121 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 	)
 }
 
+// generateDataCellContent generates text body for a data cell with totals row
+// and column type awareness (bold for totals, alignment from column_types).
+func generateDataCellContent(cell types.TableCell, isTotalsRow bool, config TableRenderConfig, colIdx int) string {
+	fontSize := config.DefaultSize
+	bold := "0"
+	if isTotalsRow {
+		bold = "1"
+	}
+
+	// Determine alignment: column_types override column_alignments
+	algn := "l"
+	if colIdx >= 0 && colIdx < len(config.ColumnAlignments) {
+		algn = alignmentToOOXML(config.ColumnAlignments[colIdx])
+	}
+	if colIdx >= 0 && colIdx < len(config.Style.ColumnTypes) {
+		switch config.Style.ColumnTypes[colIdx] {
+		case "number", "currency", "percent", "delta":
+			algn = "r"
+		}
+	}
+
+	// For delta columns, apply red/green text color based on content
+	var fontColorXML string
+	if colIdx >= 0 && colIdx < len(config.Style.ColumnTypes) && config.Style.ColumnTypes[colIdx] == "delta" {
+		fontColorXML = deltaTextColor(cell.Content)
+	}
+
+	if fontColorXML != "" {
+		return fmt.Sprintf(
+			`<a:txBody>`+
+				`<a:bodyPr wrap="square" vert="horz" lIns="%d" rIns="%d" tIns="%d" bIns="%d" spcFirstLastPara="1">`+
+				`<a:normAutofit/>`+
+				`</a:bodyPr>`+
+				`<a:lstStyle/>`+
+				`<a:p><a:pPr algn="%s"/><a:r>`+
+				`<a:rPr lang="en-US" sz="%d" b="%s">%s</a:rPr>`+
+				`<a:t>%s</a:t>`+
+				`</a:r></a:p></a:txBody>`,
+			cellMargin, cellMargin, cellMargin/2, cellMargin/2,
+			algn, fontSize, bold, fontColorXML, escapeXMLText(cell.Content),
+		)
+	}
+
+	return fmt.Sprintf(
+		`<a:txBody>`+
+			`<a:bodyPr wrap="square" vert="horz" lIns="%d" rIns="%d" tIns="%d" bIns="%d" spcFirstLastPara="1">`+
+			`<a:normAutofit/>`+
+			`</a:bodyPr>`+
+			`<a:lstStyle/>`+
+			`<a:p><a:pPr algn="%s"/><a:r>`+
+			`<a:rPr lang="en-US" sz="%d" b="%s"/>`+
+			`<a:t>%s</a:t>`+
+			`</a:r></a:p></a:txBody>`,
+		cellMargin, cellMargin, cellMargin/2, cellMargin/2,
+		algn, fontSize, bold, escapeXMLText(cell.Content),
+	)
+}
+
+// deltaTextColor returns OOXML solidFill XML for delta column cells.
+// Positive values get green, negative values get red.
+func deltaTextColor(content string) string {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" || trimmed == "0" || trimmed == "0%" {
+		return ""
+	}
+	// Check for negative: starts with - or contains negative indicators
+	if strings.HasPrefix(trimmed, "-") || strings.HasPrefix(trimmed, "(") {
+		// Red for negative
+		return `<a:solidFill><a:srgbClr val="CC0000"/></a:solidFill>`
+	}
+	// Check for positive: starts with + or is a number > 0
+	if strings.HasPrefix(trimmed, "+") || (len(trimmed) > 0 && trimmed[0] >= '1' && trimmed[0] <= '9') {
+		// Green for positive
+		return `<a:solidFill><a:srgbClr val="007A33"/></a:solidFill>`
+	}
+	return ""
+}
+
+// resolveConditionalFill returns an OOXML solidFill element for a conditional format rule.
+func resolveConditionalFill(cond *types.ConditionalFormat) string {
+	if cond == nil {
+		return ""
+	}
+	fill := cond.Fill
+	if fill == "" {
+		// Default fills based on rule
+		switch cond.Rule {
+		case "positive":
+			fill = "accent6" // typically green
+		case "negative":
+			fill = "accent2" // typically red/orange
+		default:
+			fill = "accent4"
+		}
+	}
+	// Render as scheme color with a light tint (20% saturation)
+	if pptx.IsSchemeColor(fill) {
+		return fmt.Sprintf(`<a:solidFill><a:schemeClr val="%s"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill>`, fill)
+	}
+	// Hex color fallback
+	return fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, strings.TrimPrefix(fill, "#"))
+}
+
 // cellBorderOverrides controls which borders to suppress for merged cells.
 type cellBorderOverrides struct {
 	suppressTop    bool
 	suppressBottom bool
+	totalsTopBorder bool // When true, render a dk1 top border for totals row
 }
 
 // generateCellProperties generates the <a:tcPr> element with borders and fill.
 // The overrides parameter controls border suppression for merged cells (nil = no overrides).
-func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int, overrides *cellBorderOverrides) string {
+// colIdx, isTotalsRow, and conditional are used for highlight column, totals row,
+// and conditional formatting fills.
+func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int, overrides *cellBorderOverrides, colIdx int, isTotalsRow bool, conditional *types.ConditionalFormat) string {
 	var xml strings.Builder
 	// anchor="ctr" vertically centers text within the cell, which is especially
 	// important for rowspan cells where the merged height is larger than the text.
@@ -749,8 +866,19 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 		// Add borders based on style, with merge overrides
 		xml.WriteString(generateBorderXMLWithOverrides(config.Style.Borders, isHeader, overrides))
 
-		// Add fill for header cells
-		if isHeader {
+		// Determine cell fill — priority: conditional > highlight column > header/stripe
+		fillXML := ""
+		if !isHeader && conditional != nil {
+			fillXML = resolveConditionalFill(conditional)
+		}
+		if fillXML == "" && !isHeader && config.Style.HighlightColumn > 0 && colIdx == config.Style.HighlightColumn-1 {
+			// Highlight column: accent3 at 20% tint
+			fillXML = `<a:solidFill><a:schemeClr val="accent3"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill>`
+		}
+
+		if fillXML != "" {
+			xml.WriteString(fillXML)
+		} else if isHeader {
 			hdrBg := config.Style.HeaderBackground
 			if hdrBg != "none" && hdrBg != "" {
 				fill := pptx.ResolveColorString(hdrBg)
@@ -762,8 +890,6 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 			}
 		} else if (config.Style.Striped == nil || *config.Style.Striped) && rowIdx%2 == 1 {
 			// Use accent1 at 15% saturation for a reliably visible alternating stripe.
-			// The previous bg2 scheme color was visually identical to the slide
-			// background on many templates, making the stripe invisible.
 			xml.WriteString(`<a:solidFill><a:schemeClr val="accent1"><a:lumMod val="15000"/><a:lumOff val="85000"/></a:schemeClr></a:solidFill>`)
 		}
 	}
@@ -780,6 +906,12 @@ func generateBorderXMLWithOverrides(borderStyle string, isHeader bool, overrides
 			`<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`+
 			`</a:ln%s>`, side, borderWidth, side)
 	}
+	// Thicker dk1 border for totals row top
+	totalsBorderLine := func(side string) string {
+		return fmt.Sprintf(`<a:ln%s w="%d" cap="flat" cmpd="sng">`+
+			`<a:solidFill><a:schemeClr val="dk1"/></a:solidFill>`+
+			`</a:ln%s>`, side, borderWidth, side)
+	}
 	noLine := func(side string) string {
 		return fmt.Sprintf(`<a:ln%s w="0"><a:noFill/></a:ln%s>`, side, side)
 	}
@@ -789,6 +921,9 @@ func generateBorderXMLWithOverrides(borderStyle string, isHeader bool, overrides
 		if overrides != nil {
 			if side == "T" && overrides.suppressTop {
 				return noLine(side)
+			}
+			if side == "T" && overrides.totalsTopBorder {
+				return totalsBorderLine(side)
 			}
 			if side == "B" && overrides.suppressBottom {
 				return noLine(side)

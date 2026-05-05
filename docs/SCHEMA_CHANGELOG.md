@@ -4,6 +4,15 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 2.1.0 (2026-05-05)
+
+### Additions
+
+- `table.style.highlight_column` — 1-indexed column to apply accent3 tint fill
+- `table.style.totals_row` — last data row rendered bold with dk1 top border
+- `table.style.column_types` — per-column type (`text`, `number`, `currency`, `percent`, `delta`); drives alignment and delta red/green text color
+- `table.rows[][].conditional` — per-cell conditional formatting rule (`{rule, threshold, fill}`)
+
 ## 2.0.0 (2026-05-05)
 
 **Breaking** — first versioned contract baseline. All prior changes that

@@ -37,6 +37,9 @@ func applyTableStyleDefaults(t *jsonschema.TableInput, def *TableStyleInput) {
 			Striped:          def.Striped,
 			UseTableStyle:    def.UseTableStyle,
 			StyleID:          def.StyleID,
+			HighlightColumn:  def.HighlightColumn,
+			TotalsRow:        def.TotalsRow,
+			ColumnTypes:      def.ColumnTypes,
 		}
 		return
 	}
@@ -55,6 +58,15 @@ func applyTableStyleDefaults(t *jsonschema.TableInput, def *TableStyleInput) {
 	}
 	if t.Style.StyleID == "" && def.StyleID != "" {
 		t.Style.StyleID = def.StyleID
+	}
+	if t.Style.HighlightColumn == 0 && def.HighlightColumn != 0 {
+		t.Style.HighlightColumn = def.HighlightColumn
+	}
+	if !t.Style.TotalsRow && def.TotalsRow {
+		t.Style.TotalsRow = def.TotalsRow
+	}
+	if len(t.Style.ColumnTypes) == 0 && len(def.ColumnTypes) > 0 {
+		t.Style.ColumnTypes = def.ColumnTypes
 	}
 }
 

@@ -41,15 +41,25 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 				ColSpan: cell.ColSpan,
 				RowSpan: cell.RowSpan,
 			}
+			if cell.Conditional != nil {
+				cells[j].Conditional = &types.ConditionalFormat{
+					Rule:      cell.Conditional.Rule,
+					Threshold: cell.Conditional.Threshold,
+					Fill:      cell.Conditional.Fill,
+				}
+			}
 		}
 		spec.Rows = append(spec.Rows, cells)
 	}
 	if t.Style != nil {
 		spec.Style = types.TableStyle{
-			Borders:       t.Style.Borders,
-			Striped:       t.Style.Striped, // nil means unset (default banding on)
-			UseTableStyle: t.Style.UseTableStyle,
-			StyleID:       t.Style.StyleID,
+			Borders:         t.Style.Borders,
+			Striped:         t.Style.Striped, // nil means unset (default banding on)
+			UseTableStyle:   t.Style.UseTableStyle,
+			StyleID:         t.Style.StyleID,
+			HighlightColumn: t.Style.HighlightColumn,
+			TotalsRow:       t.Style.TotalsRow,
+			ColumnTypes:     t.Style.ColumnTypes,
 		}
 		if t.Style.HeaderBackground != nil {
 			spec.Style.HeaderBackground = *t.Style.HeaderBackground
@@ -66,9 +76,10 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 
 // TableCellInput supports both string shorthand and full object form.
 type TableCellInput struct {
-	Content string `json:"content"`
-	ColSpan int    `json:"col_span,omitempty"`
-	RowSpan int    `json:"row_span,omitempty"`
+	Content     string                  `json:"content"`
+	ColSpan     int                     `json:"col_span,omitempty"`
+	RowSpan     int                     `json:"row_span,omitempty"`
+	Conditional *ConditionalFormatInput `json:"conditional,omitempty"`
 }
 
 // UnmarshalJSON supports string shorthand: "cell text" or {"content":"cell text","col_span":2}.
@@ -97,11 +108,21 @@ func (c *TableCellInput) UnmarshalJSON(data []byte) error {
 
 // TableStyleInput maps to types.TableStyle.
 type TableStyleInput struct {
-	HeaderBackground *string `json:"header_background,omitempty"`
-	Borders          string  `json:"borders,omitempty"`
-	Striped          *bool   `json:"striped,omitempty"`
-	UseTableStyle    bool    `json:"use_table_style,omitempty"`
-	StyleID          string  `json:"style_id,omitempty"`
+	HeaderBackground *string  `json:"header_background,omitempty"`
+	Borders          string   `json:"borders,omitempty"`
+	Striped          *bool    `json:"striped,omitempty"`
+	UseTableStyle    bool     `json:"use_table_style,omitempty"`
+	StyleID          string   `json:"style_id,omitempty"`
+	HighlightColumn  int      `json:"highlight_column,omitempty"`
+	TotalsRow        bool     `json:"totals_row,omitempty"`
+	ColumnTypes      []string `json:"column_types,omitempty"`
+}
+
+// ConditionalFormatInput represents a conditional formatting rule for a cell.
+type ConditionalFormatInput struct {
+	Rule      string  `json:"rule"`
+	Threshold float64 `json:"threshold,omitempty"`
+	Fill      string  `json:"fill,omitempty"`
 }
 
 // LogicalRowCount returns the effective row count for this table, accounting

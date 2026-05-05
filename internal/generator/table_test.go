@@ -1922,3 +1922,145 @@ func TestGenerateTableXML_StrictFit_ErrorWrapsErrFitOverflow(t *testing.T) {
 		t.Errorf("expected error to wrap ErrFitOverflow sentinel, got: %v", err)
 	}
 }
+
+func TestGenerateTableXML_HighlightColumn(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Vendor", "Score", "Recommended"},
+		Rows: [][]types.TableCell{
+			{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "8", ColSpan: 1, RowSpan: 1}, {Content: "Yes", ColSpan: 1, RowSpan: 1}},
+			{{Content: "B", ColSpan: 1, RowSpan: 1}, {Content: "6", ColSpan: 1, RowSpan: 1}, {Content: "No", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.TableStyle{
+			Borders:         "all",
+			StyleID:         types.DefaultTableStyleID,
+			HighlightColumn: 3, // "Recommended" column
+		},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 0, Y: 0, Width: 8229600, Height: 4572000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should contain accent3 tint fill for highlighted column cells
+	if !strings.Contains(result.XML, `val="accent3"`) {
+		t.Error("expected highlight column fill with accent3 scheme color")
+	}
+}
+
+func TestGenerateTableXML_TotalsRow(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Item", "Amount"},
+		Rows: [][]types.TableCell{
+			{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "$100", ColSpan: 1, RowSpan: 1}},
+			{{Content: "B", ColSpan: 1, RowSpan: 1}, {Content: "$200", ColSpan: 1, RowSpan: 1}},
+			{{Content: "Total", ColSpan: 1, RowSpan: 1}, {Content: "$300", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.TableStyle{
+			Borders:   "all",
+			StyleID:   types.DefaultTableStyleID,
+			TotalsRow: true,
+		},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 0, Y: 0, Width: 8229600, Height: 4572000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Totals row should have bold text and dk1 top border
+	if !strings.Contains(result.XML, `val="dk1"`) {
+		t.Error("expected totals row to have dk1 top border")
+	}
+	// The last data row should be bold
+	if !strings.Contains(result.XML, `b="1"`) {
+		t.Error("expected totals row cells to be bold")
+	}
+}
+
+func TestGenerateTableXML_ColumnTypes(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Name", "Revenue", "Change"},
+		Rows: [][]types.TableCell{
+			{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "$1M", ColSpan: 1, RowSpan: 1}, {Content: "+15%", ColSpan: 1, RowSpan: 1}},
+			{{Content: "B", ColSpan: 1, RowSpan: 1}, {Content: "$2M", ColSpan: 1, RowSpan: 1}, {Content: "-8%", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.TableStyle{
+			Borders:     "all",
+			StyleID:     types.DefaultTableStyleID,
+			ColumnTypes: []string{"text", "currency", "delta"},
+		},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 0, Y: 0, Width: 8229600, Height: 4572000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Delta column should have green color for +15% and red for -8%
+	if !strings.Contains(result.XML, `007A33`) {
+		t.Error("expected green color for positive delta")
+	}
+	if !strings.Contains(result.XML, `CC0000`) {
+		t.Error("expected red color for negative delta")
+	}
+}
+
+func TestGenerateTableXML_ConditionalFormat(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Metric", "Value"},
+		Rows: [][]types.TableCell{
+			{
+				{Content: "Score", ColSpan: 1, RowSpan: 1},
+				{Content: "95", ColSpan: 1, RowSpan: 1, Conditional: &types.ConditionalFormat{
+					Rule: "positive",
+					Fill: "accent6",
+				}},
+			},
+			{
+				{Content: "Errors", ColSpan: 1, RowSpan: 1},
+				{Content: "12", ColSpan: 1, RowSpan: 1, Conditional: &types.ConditionalFormat{
+					Rule: "negative",
+					Fill: "accent2",
+				}},
+			},
+		},
+		Style: types.TableStyle{
+			Borders: "all",
+			StyleID: types.DefaultTableStyleID,
+		},
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 0, Y: 0, Width: 8229600, Height: 4572000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should contain accent6 and accent2 fills for conditional cells
+	if !strings.Contains(result.XML, `val="accent6"`) {
+		t.Error("expected accent6 fill for positive conditional")
+	}
+	if !strings.Contains(result.XML, `val="accent2"`) {
+		t.Error("expected accent2 fill for negative conditional")
+	}
+}
