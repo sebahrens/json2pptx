@@ -52,6 +52,8 @@ func dispatch() error { //nolint:gocyclo
 		return runValidate()
 	case "validate-template":
 		return runValidateTemplate()
+	case "template-check":
+		return runTemplateCheck()
 	case "validate-output":
 		return runValidateOutput()
 	case "patterns":
@@ -108,6 +110,7 @@ Commands:
   validate            Validate input without generating
   validate-output     Check generated PPTX for OOXML correctness
   validate-template   Check template compatibility
+  template-check      Check template conformance against spec
   patterns            Discover, validate, and expand named patterns
   icons               List available icon names
   tables              Table density and sizing reference
