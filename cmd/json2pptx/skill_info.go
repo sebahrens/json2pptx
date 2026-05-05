@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -101,17 +102,19 @@ type skillColorRoles struct {
 // skillLayoutSummary is a lightweight id+name pair included in compact mode
 // so agents can address layouts by ID without escalating to full mode.
 type skillLayoutSummary struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	PreviewPNGPath string `json:"preview_png_path,omitempty"`
 }
 
 // skillLayoutInfo describes a single layout (only included in full mode).
 type skillLayoutInfo struct {
-	Name         string                   `json:"name"`
-	ID           string                   `json:"id"`
-	Tags         []string                 `json:"tags"`
-	Placeholders []skillPlaceholderInfo   `json:"placeholders"`
-	Capacity     skillCapacity            `json:"capacity"`
+	Name           string                   `json:"name"`
+	ID             string                   `json:"id"`
+	Tags           []string                 `json:"tags"`
+	Placeholders   []skillPlaceholderInfo   `json:"placeholders"`
+	Capacity       skillCapacity            `json:"capacity"`
+	PreviewPNGPath string                   `json:"preview_png_path,omitempty"`
 }
 
 // skillPlaceholderInfo describes a placeholder within a layout.
@@ -302,72 +305,88 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	info.BodyFont = analysis.Theme.BodyFont
 	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 
+	// Generate layout preview PNGs (best-effort, non-blocking)
+	previews, _ := layoutpreview.Generate(templatePath, analysis, nil)
+
 	layoutNames := make([]string, len(analysis.Layouts))
 	layoutSummaries := make([]skillLayoutSummary, len(analysis.Layouts))
 	for i, l := range analysis.Layouts {
 		layoutNames[i] = l.Name
-		layoutSummaries[i] = skillLayoutSummary{ID: l.ID, Name: l.Name}
+		summary := skillLayoutSummary{ID: l.ID, Name: l.Name}
+		if previews != nil {
+			if p, ok := previews.Paths[l.ID]; ok {
+				summary.PreviewPNGPath = p
+			}
+		}
+		layoutSummaries[i] = summary
 	}
 	info.LayoutNames = layoutNames
 	info.LayoutSummaries = layoutSummaries
 
 	if mode == "full" {
-		// Include detailed placeholder information per layout
-		layouts := make([]skillLayoutInfo, len(analysis.Layouts))
-		for i, l := range analysis.Layouts {
-			phs := make([]skillPlaceholderInfo, 0, len(l.Placeholders))
-			var sectionNumberPH *skillPlaceholderInfo
-			for _, ph := range l.Placeholders {
-				// Skip internal OOXML metadata placeholders (date, footer, slide number)
-				// that agents should never target.
-				if ph.Type == types.PlaceholderOther {
-					continue
-				}
-				info := skillPlaceholderInfo{
-					ID:         ph.ID,
-					Type:       string(ph.Type),
-					MaxChars:   ph.MaxChars,
-					X:          ph.Bounds.X,
-					Y:          ph.Bounds.Y,
-					Width:      ph.Bounds.Width,
-					Height:     ph.Bounds.Height,
-					FontFamily: ph.FontFamily,
-					FontSize:   ph.FontSize,
-					FontColor:  ph.FontColor,
-				}
-				phs = append(phs, info)
-				// Track "Section Number" shape to advertise the alias
-				if strings.EqualFold(ph.ID, "Section Number") {
-					alias := info
-					alias.ID = "section_number"
-					alias.Type = "section_number"
-					sectionNumberPH = &alias
-				}
-			}
-			if sectionNumberPH != nil {
-				phs = append(phs, *sectionNumberPH)
-			}
-			tags := l.Tags
-			if tags == nil {
-				tags = []string{}
-			}
-			layouts[i] = skillLayoutInfo{
-				Name: l.Name,
-				ID:   l.ID,
-				Tags: tags,
-				Placeholders: phs,
-				Capacity: skillCapacity{
-					MaxBullets:   l.Capacity.MaxBullets,
-					MaxTextLines: l.Capacity.MaxTextLines,
-					HasImageSlot: l.Capacity.HasImageSlot,
-					HasChartSlot: l.Capacity.HasChartSlot,
-				},
-			}
-		}
-		info.Layouts = layouts
+		info.Layouts = buildFullLayoutInfos(analysis.Layouts, previews)
 	}
 
 	return info, nil
+}
+
+// buildFullLayoutInfos constructs detailed layout info with placeholders and previews.
+func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutpreview.Result) []skillLayoutInfo {
+	result := make([]skillLayoutInfo, len(layouts))
+	for i, l := range layouts {
+		phs := make([]skillPlaceholderInfo, 0, len(l.Placeholders))
+		var sectionNumberPH *skillPlaceholderInfo
+		for _, ph := range l.Placeholders {
+			if ph.Type == types.PlaceholderOther {
+				continue
+			}
+			pi := skillPlaceholderInfo{
+				ID:         ph.ID,
+				Type:       string(ph.Type),
+				MaxChars:   ph.MaxChars,
+				X:          ph.Bounds.X,
+				Y:          ph.Bounds.Y,
+				Width:      ph.Bounds.Width,
+				Height:     ph.Bounds.Height,
+				FontFamily: ph.FontFamily,
+				FontSize:   ph.FontSize,
+				FontColor:  ph.FontColor,
+			}
+			phs = append(phs, pi)
+			if strings.EqualFold(ph.ID, "Section Number") {
+				alias := pi
+				alias.ID = "section_number"
+				alias.Type = "section_number"
+				sectionNumberPH = &alias
+			}
+		}
+		if sectionNumberPH != nil {
+			phs = append(phs, *sectionNumberPH)
+		}
+		tags := l.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+		li := skillLayoutInfo{
+			Name: l.Name,
+			ID:   l.ID,
+			Tags: tags,
+			Placeholders: phs,
+			Capacity: skillCapacity{
+				MaxBullets:   l.Capacity.MaxBullets,
+				MaxTextLines: l.Capacity.MaxTextLines,
+				HasImageSlot: l.Capacity.HasImageSlot,
+				HasChartSlot: l.Capacity.HasChartSlot,
+			},
+		}
+		if previews != nil {
+			if p, ok := previews.Paths[l.ID]; ok {
+				li.PreviewPNGPath = p
+			}
+		}
+		result[i] = li
+	}
+	return result
 }
 
 // buildColorRoles derives color_roles from a template's theme colors.
