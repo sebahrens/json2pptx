@@ -758,18 +758,17 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 }
 
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.
-// It backfills the string Errors/Warnings fields from Diagnostics for
-// backward compatibility with consumers that read those fields.
+// When validation fails (any error-severity diagnostic), it returns IsError=true
+// with the same mcpErrorEnvelope shape that generate_presentation uses. When
+// validation passes, it returns a success envelope with diagnostics[] for
+// warnings/info.
 func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallToolResult, error) {
-	// Backfill string fields from diagnostics so both formats are available.
-	for _, d := range output.Diagnostics {
-		switch d.Severity {
-		case diagnostics.SeverityError:
-			output.Errors = append(output.Errors, d.Message)
-		case diagnostics.SeverityWarning:
-			output.Warnings = append(output.Warnings, d.Message)
-		}
+	if !output.Valid {
+		// Return the same error envelope shape as generate_presentation.
+		return api.MCPDiagnosticsError(output.Diagnostics), nil
 	}
+	// Success path: include diagnostics (warnings/info) but no redundant
+	// string arrays. The Errors/Warnings fields are left nil (omitted from JSON).
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil

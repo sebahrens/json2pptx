@@ -41,13 +41,13 @@ func TestMCPValidateFitReport(t *testing.T) {
 					"cells": [{
 						"shape": {
 							"geometry": "rect",
-							"fill": "#4472C4",
+							"fill": "accent1",
 							"text": "Short"
 						}
 					}, {
 						"shape": {
 							"geometry": "rect",
-							"fill": "#4472C4",
+							"fill": "accent1",
 							"text": "Short"
 						}
 					}]

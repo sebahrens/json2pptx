@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 )
 
@@ -120,15 +121,16 @@ func runValidate() error {
 
 // validateResult holds the structured validation output for a single file.
 type validateResult struct {
-	Valid        bool     `json:"valid"`
-	File         string   `json:"file"`
-	SlideCount   int      `json:"slide_count"`
-	ChartCount   int      `json:"chart_count"`
-	DiagramCount int      `json:"diagram_count"`
-	TableCount   int      `json:"table_count"`
-	ShapeCount   int      `json:"shape_count"`
-	Errors       []string `json:"errors"`
-	Warnings     []string `json:"warnings"`
+	Valid        bool                     `json:"valid"`
+	File         string                   `json:"file"`
+	SlideCount   int                      `json:"slide_count"`
+	ChartCount   int                      `json:"chart_count"`
+	DiagramCount int                      `json:"diagram_count"`
+	TableCount   int                      `json:"table_count"`
+	ShapeCount   int                      `json:"shape_count"`
+	Errors       []string                 `json:"errors"`
+	Warnings     []string                 `json:"warnings"`
+	Diagnostics  []diagnostics.Diagnostic `json:"diagnostics,omitempty"`
 }
 
 // validateJSONFile validates a single JSON input file against the schema and
@@ -145,7 +147,11 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		result.Valid = false
-		result.Errors = append(result.Errors, fmt.Sprintf("failed to read file: %v", err))
+		msg := fmt.Sprintf("failed to read file: %v", err)
+		result.Errors = append(result.Errors, msg)
+		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+			Code: "FILE_READ_ERROR", Message: msg, Severity: diagnostics.SeverityError,
+		})
 		return result
 	}
 
@@ -156,14 +162,22 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 		patched, patchErr := applyPresentationPatch(patchInput)
 		if patchErr != nil {
 			result.Valid = false
-			result.Errors = append(result.Errors, fmt.Sprintf("failed to apply patch: %v", patchErr))
+			msg := fmt.Sprintf("failed to apply patch: %v", patchErr)
+			result.Errors = append(result.Errors, msg)
+			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+				Code: "PATCH_ERROR", Message: msg, Severity: diagnostics.SeverityError,
+			})
 			return result
 		}
 		input = *patched
 	} else {
 		if err := json.Unmarshal(content, &input); err != nil {
 			result.Valid = false
-			result.Errors = append(result.Errors, fmt.Sprintf("failed to parse JSON: %v", err))
+			msg := fmt.Sprintf("failed to parse JSON: %v", err)
+			result.Errors = append(result.Errors, msg)
+			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+				Code: "INVALID_JSON", Message: msg, Severity: diagnostics.SeverityError,
+			})
 			return result
 		}
 	}
@@ -190,6 +204,17 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 		result.Errors = append(result.Errors, "at least one slide is required")
 	}
 	if !result.Valid {
+		// Build diagnostics for early return.
+		for _, e := range result.Errors {
+			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+				Code: "VALIDATION_ERROR", Message: e, Severity: diagnostics.SeverityError,
+			})
+		}
+		for _, w := range result.Warnings {
+			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+				Code: "VALIDATION_WARNING", Message: w, Severity: diagnostics.SeverityWarning,
+			})
+		}
 		return result
 	}
 
@@ -279,6 +304,23 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 				}
 			}
 		}
+	}
+
+	// Build diagnostics from string errors/warnings so CLI -json output
+	// emits the same {code, path, severity, fix} shape as MCP tools.
+	for _, e := range result.Errors {
+		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+			Code:     "VALIDATION_ERROR",
+			Message:  e,
+			Severity: diagnostics.SeverityError,
+		})
+	}
+	for _, w := range result.Warnings {
+		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+			Code:     "VALIDATION_WARNING",
+			Message:  w,
+			Severity: diagnostics.SeverityWarning,
+		})
 	}
 
 	return result

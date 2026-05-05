@@ -221,31 +221,25 @@ func TestHandleValidate_StructuredDiagnostics(t *testing.T) {
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
-	// Unknown key + missing template → structured diagnostics in output.
+	// Unknown key + missing template → IsError=true with diagnostics envelope
+	// (same shape as generate_presentation errors).
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
 		"json_input": `{"tmplate":"typo","slides":[]}`,
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.IsError {
-		t.Fatal("validate should not be IsError — it returns structured output")
+	if !result.IsError {
+		t.Fatal("validate with errors should return IsError=true")
 	}
 
-	text := result.Content[0].(mcp.TextContent).Text
-	var resp dryRunOutput
-	if err := json.Unmarshal([]byte(text), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp.Valid {
-		t.Error("expected valid=false")
-	}
-	if len(resp.Diagnostics) == 0 {
+	// Parse the error envelope — same shape as generate_presentation.
+	env := parseMCPError(t, result)
+	if len(env.Diagnostics) == 0 {
 		t.Fatal("expected non-empty diagnostics array")
 	}
-	// Should also have backfilled string errors.
-	if len(resp.Errors) == 0 {
-		t.Error("expected backfilled errors for backward compat")
+	if env.Summary == "" {
+		t.Error("expected non-empty summary")
 	}
 }
 
