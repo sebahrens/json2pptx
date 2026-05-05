@@ -275,6 +275,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 		ColSpan: c.ColSpan,
 		RowSpan: c.RowSpan,
 		Fit:     shapegrid.FitMode(c.Fit),
+		Group:   c.Group,
 	}
 	if c.Shape != nil {
 		cell.Shape = &shapegrid.ShapeSpec{
@@ -350,14 +351,18 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 	var imageInserts []generator.ImageInsert
 
 	for _, cell := range result.Cells {
+		var cellShapes [][]byte
+		var cellIcons []generator.IconInsert
+		var cellImages []generator.ImageInsert
+
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
 			s, icons, err := generateShapeCellXML(cell, alloc)
 			if err != nil {
 				return nil, err
 			}
-			shapes = append(shapes, s...)
-			iconInserts = append(iconInserts, icons...)
+			cellShapes = append(cellShapes, s...)
+			cellIcons = append(cellIcons, icons...)
 		case shapegrid.CellKindTable:
 			cfg := generator.TableRenderConfig{
 				Bounds: types.BoundingBox{
@@ -373,13 +378,13 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			if err != nil {
 				return nil, fmt.Errorf("table in grid: %w", err)
 			}
-			shapes = append(shapes, []byte(tblResult.XML))
+			cellShapes = append(cellShapes, []byte(tblResult.XML))
 		case shapegrid.CellKindIcon:
 			svgData, err := resolveIconSVG(cell.IconSpec)
 			if err != nil {
 				return nil, fmt.Errorf("icon in grid: %w", err)
 			}
-			iconInserts = append(iconInserts, generator.IconInsert{
+			cellIcons = append(cellIcons, generator.IconInsert{
 				SVGData:  svgData,
 				Alt:      iconAltText(cell.IconSpec),
 				OffsetX:  cell.Bounds.X,
@@ -392,17 +397,35 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			if err != nil {
 				return nil, err
 			}
-			iconInserts = append(iconInserts, icons...)
+			cellIcons = append(cellIcons, icons...)
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {
 				return nil, err
 			}
-			shapes = append(shapes, s...)
-			imageInserts = append(imageInserts, imgs...)
+			cellShapes = append(cellShapes, s...)
+			cellImages = append(cellImages, imgs...)
 		default:
 			return nil, fmt.Errorf("unsupported cell kind: %s", cell.Kind)
 		}
+
+		// Wrap in p:grpSp if group flag is set and there are XML fragments to wrap
+		if cell.Group && len(cellShapes) > 0 {
+			groupID := alloc.Alloc()
+			grpXML, err := pptx.GenerateGroup(pptx.GroupOptions{
+				ID:       groupID,
+				Bounds:   cell.Bounds,
+				Children: cellShapes,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("group for cell id %d: %w", cell.ID, err)
+			}
+			shapes = append(shapes, grpXML)
+		} else {
+			shapes = append(shapes, cellShapes...)
+		}
+		iconInserts = append(iconInserts, cellIcons...)
+		imageInserts = append(imageInserts, cellImages...)
 	}
 
 	// Generate XML for accent bars

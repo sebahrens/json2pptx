@@ -1440,3 +1440,49 @@ func TestIconAltText(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveShapeGrid_GroupWrapsInGrpSp(t *testing.T) {
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`2`),
+		Rows: []GridRowInput{{
+			Cells: []*GridCellInput{
+				{Group: true, Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`), Text: json.RawMessage(`"Grouped"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent2"`), Text: json.RawMessage(`"Ungrouped"`)}},
+			},
+		}},
+	}
+
+	alloc := newAllocFrom(100)
+	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	// Should have 2 top-level fragments: one p:grpSp wrapping the grouped cell, one p:sp for the ungrouped cell
+	if len(result.Shapes) != 2 {
+		t.Fatalf("expected 2 top-level shapes, got %d", len(result.Shapes))
+	}
+
+	// First shape should be a group
+	xml0 := string(result.Shapes[0])
+	if !strings.Contains(xml0, "<p:grpSp>") {
+		t.Error("grouped cell: expected <p:grpSp> wrapper")
+	}
+	if !strings.Contains(xml0, `prst="rect"`) {
+		t.Error("grouped cell: expected child shape with rect geometry inside group")
+	}
+	if !strings.Contains(xml0, "</p:grpSp>") {
+		t.Error("grouped cell: expected closing </p:grpSp>")
+	}
+
+	// Second shape should be a plain shape
+	xml1 := string(result.Shapes[1])
+	if strings.Contains(xml1, "<p:grpSp>") {
+		t.Error("ungrouped cell: should not be wrapped in p:grpSp")
+	}
+	if !strings.Contains(xml1, "<p:sp>") {
+		t.Error("ungrouped cell: expected plain <p:sp>")
+	}
+}

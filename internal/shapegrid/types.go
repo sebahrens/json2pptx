@@ -68,6 +68,7 @@ type Cell struct {
 	ColSpan     int                // Number of columns to span (default 1)
 	RowSpan     int                // Number of rows to span (default 1)
 	Fit         FitMode            // How the shape scales within cell bounds
+	Group       bool               // Wrap cell content in a p:grpSp group shape
 	Shape       *ShapeSpec         // Shape specification (nil = empty cell unless other content set)
 	TableSpec   *types.TableSpec   // Table specification
 	Icon        *IconSpec          // Icon specification
@@ -138,6 +139,7 @@ type ResolvedCell struct {
 	IconBounds  pptx.RectEmu       // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
 	TextInsets  [4]int64           // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
 	ID          uint32
+	Group       bool               // Wrap cell content in a p:grpSp group shape
 	ShapeSpec   *ShapeSpec         // Set when Kind == CellKindShape
 	TableSpec   *types.TableSpec   // Set when Kind == CellKindTable
 	IconSpec    *IconSpec          // Set when Kind == CellKindIcon
