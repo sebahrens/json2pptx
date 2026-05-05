@@ -37,6 +37,7 @@ var mcpToCLI = map[string]string{
 	"get_shape_catalog":          "shape-catalog",
 	"get_chart_capabilities":     "capabilities",
 	"get_diagram_capabilities":   "capabilities",
+	"analyze_deck_rhythm":        "analyze-rhythm",
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server

@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "3.1.0"
+const SchemaVersion = "3.2.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -76,6 +76,8 @@ func dispatch() error { //nolint:gocyclo
 		return runRepair()
 	case "score":
 		return runScore()
+	case "analyze-rhythm":
+		return runAnalyzeRhythm()
 	case "render-slide":
 		return runRenderSlide()
 	case "render-thumbnails":
@@ -121,6 +123,7 @@ Commands:
   preview             Preview generation plan without rendering
   repair              Apply targeted fixes to a single slide
   score               Score a presentation for visual quality
+  analyze-rhythm      Analyze deck visual rhythm and pattern repetition
   render-slide        Render a single slide to PNG
   render-thumbnails   Render all slides as PNG thumbnails
   template-settings   Manage named styles (list/register/delete)

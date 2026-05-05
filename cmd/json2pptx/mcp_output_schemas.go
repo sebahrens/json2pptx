@@ -552,6 +552,63 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
   "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "features"]
 }`)
 
+// --- analyze_deck_rhythm ---
+var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "per_slide": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index":     {"type": "integer"},
+          "pattern":         {"type": "string"},
+          "density_class":   {"type": "string", "enum": ["low", "med", "high"]},
+          "accent_role":     {"type": "string"},
+          "dominant_visual": {"type": "string"}
+        },
+        "required": ["slide_index", "pattern", "density_class", "dominant_visual"]
+      }
+    },
+    "aggregates": {
+      "type": "object",
+      "properties": {
+        "pattern_runs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name":  {"type": "string"},
+              "start": {"type": "integer"},
+              "len":   {"type": "integer"}
+            },
+            "required": ["name", "start", "len"]
+          }
+        },
+        "longest_run":      {"type": "integer"},
+        "repetition_index": {"type": "number"},
+        "accent_balance":   {"type": "object", "additionalProperties": {"type": "number"}},
+        "density_cv":       {"type": "number"}
+      },
+      "required": ["pattern_runs", "longest_run", "repetition_index", "accent_balance", "density_cv"]
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index":               {"type": "integer"},
+          "message":                   {"type": "string"},
+          "recommended_break_patterns": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["slide_index", "message", "recommended_break_patterns"]
+      }
+    },
+    "composition_score": {"type": "integer"}
+  },
+  "required": ["per_slide", "aggregates", "recommendations", "composition_score"]
+}`)
+
 // --- read_presentation ---
 var outputSchemaReadPresentation = json.RawMessage(`{
   "type": "object",
