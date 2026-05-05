@@ -70,6 +70,7 @@ Thumbs.db
 !/templates/forest-green.pptx
 !/templates/warm-coral.pptx
 !/templates/modern-template.pptx
+!/templates/pwc-template.pptx
 
 # Environment
 .env

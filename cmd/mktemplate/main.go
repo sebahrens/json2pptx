@@ -79,6 +79,20 @@ var templates = []templateDef{
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u2013",
 	},
+	{
+		Name:         "pwc-template",
+		DisplayName:  "PwC",
+		Description:  "Professional services template with Georgia headings, Arial body, and orange accents",
+		Dark1:        "000000", Light1: "FFFFFF",
+		Dark2:        "2D2D2D", Light2: "F2F2F2",
+		Accent1:      "DC6900", Accent2: "E0301E",
+		Accent3:      "EB8C00", Accent4: "A32020",
+		Accent5:      "D04A02", Accent6: "602320",
+		Hlink:        "DC6900", FolHlink: "EB8C00",
+		MajorFont:    "Georgia", MinorFont: "Arial",
+		BarSchemeClr: "accent1",
+		BulletChar:   "\u2022",
+	},
 }
 
 var deterministicTime = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -199,6 +213,7 @@ func generateTemplate(def templateDef, outPath string) error {
 		{4, "slideLayout4", sectionLayout},
 		{5, "slideLayout5", closingLayout},
 		{6, "slideLayout6", blankLayout},
+		{7, "slideLayout7", blankTitleLayout},
 	}
 	for _, l := range layouts {
 		path := fmt.Sprintf("ppt/slideLayouts/slideLayout%d.xml", l.idx)
@@ -266,6 +281,7 @@ func contentTypes(def templateDef) string {
 		`<Override PartName="/ppt/slideLayouts/slideLayout4.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>` +
 		`<Override PartName="/ppt/slideLayouts/slideLayout5.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>` +
 		`<Override PartName="/ppt/slideLayouts/slideLayout6.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>` +
+		`<Override PartName="/ppt/slideLayouts/slideLayout7.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>` +
 		`<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>` +
 		`<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>` +
 		`</Types>`
@@ -458,6 +474,7 @@ func slideMaster(def templateDef) string {
 		`<p:sldLayoutId id="2147483652" r:id="rId4"/>` +
 		`<p:sldLayoutId id="2147483653" r:id="rId5"/>` +
 		`<p:sldLayoutId id="2147483654" r:id="rId6"/>` +
+		`<p:sldLayoutId id="2147483655" r:id="rId7"/>` +
 		`</p:sldLayoutIdLst>` +
 		masterTextStyles(def) +
 		`</p:sldMaster>`
@@ -521,7 +538,8 @@ func slideMasterRels(def templateDef) string {
 		`<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout4.xml"/>` +
 		`<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout5.xml"/>` +
 		`<Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout6.xml"/>` +
-		`<Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>` +
+		`<Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/>` +
+		`<Relationship Id="rId8" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>` +
 		`</Relationships>`
 }
 
@@ -669,6 +687,22 @@ func blankLayout(def templateDef) string {
 		`<p:spTree>` +
 		`<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
 		`<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
+		`</p:spTree></p:cSld>` +
+		`<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>` +
+		`</p:sldLayout>`
+}
+
+func blankTitleLayout(def templateDef) string {
+	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" preserve="1" userDrawn="1">` +
+		`<p:cSld name="Blank + Title">` +
+		`<p:spTree>` +
+		`<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
+		`<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
+		// Title only — no body placeholder, so the layout is classified as blank-title
+		`<p:sp><p:nvSpPr><p:cNvPr id="2" name="title"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
+		`<p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr/>` +
+		`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US"/><a:t>Click to edit Master title style</a:t></a:r></a:p></p:txBody></p:sp>` +
 		`</p:spTree></p:cSld>` +
 		`<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>` +
 		`</p:sldLayout>`
