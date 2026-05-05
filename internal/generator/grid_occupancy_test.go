@@ -117,6 +117,17 @@ func TestDetectPatternOvercrowded(t *testing.T) {
 			if f.Fix == nil || f.Fix.Kind != "split_pattern" {
 				t.Errorf("fix kind = %v, want split_pattern", f.Fix)
 			}
+			if f.Fix != nil {
+				if _, ok := f.Fix.Params["first"]; !ok {
+					t.Error("fix params missing 'first'")
+				}
+				if _, ok := f.Fix.Params["second"]; !ok {
+					t.Error("fix params missing 'second'")
+				}
+				if v, _ := f.Fix.Params["title_part_2"].(string); v != "(continued)" {
+					t.Errorf("title_part_2 = %q, want %q", v, "(continued)")
+				}
+			}
 			if f.Action != "review" {
 				t.Errorf("action = %q, want review", f.Action)
 			}

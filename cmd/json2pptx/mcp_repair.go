@@ -183,6 +183,8 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyReplaceColor(input, slideIdx, fix.Params)
 	case "use_semantic_color":
 		return applyUseSemanticColor(input, slideIdx, fix.Params)
+	case "split_pattern":
+		return applySplitPattern(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -712,6 +714,139 @@ func stringParam(params map[string]any, key string, defaultVal string) string {
 		return v
 	}
 	return defaultVal
+}
+
+// applySplitPattern splits a pattern/shape_grid slide into two slides by
+// dividing the grid rows so that roughly "first" cells end up on slide 1
+// and "second" cells on slide 2. The second slide gets a title suffix.
+func applySplitPattern(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	slide := input.Slides[slideIdx]
+	grid := slide.ShapeGrid
+	if grid == nil || len(grid.Rows) == 0 {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: "slide has no shape_grid to split"}
+	}
+
+	firstN := intParam(params, "first", 0)
+	if firstN <= 0 {
+		// Default: split evenly by total filled cells.
+		total := countFilledCells(grid)
+		firstN = (total + 1) / 2
+	}
+	titlePart2 := stringParam(params, "title_part_2", "(continued)")
+
+	// Walk rows, accumulating cells until we reach the split point.
+	splitRow := findSplitRow(grid, firstN)
+	if splitRow <= 0 || splitRow >= len(grid.Rows) {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: "cannot determine a valid row split point"}
+	}
+
+	// Build two slides from the original.
+	slide1 := cloneSlideForSplit(slide, grid.Rows[:splitRow], grid)
+	slide2 := cloneSlideForSplit(slide, grid.Rows[splitRow:], grid)
+
+	// Apply title suffix to slide 2.
+	appendTitleSuffix(slide2.Content, " "+titlePart2)
+
+	// Only first slide gets speaker notes and source.
+	slide2.SpeakerNotes = ""
+	slide2.Source = ""
+
+	// Clear the pattern field on both — the grid is already expanded.
+	slide1.Pattern = nil
+	slide2.Pattern = nil
+
+	// Replace original slide with the two new slides.
+	newSlides := make([]SlideInput, 0, len(input.Slides)+1)
+	newSlides = append(newSlides, input.Slides[:slideIdx]...)
+	newSlides = append(newSlides, slide1, slide2)
+	newSlides = append(newSlides, input.Slides[slideIdx+1:]...)
+	input.Slides = newSlides
+
+	cells1 := countFilledCells(slide1.ShapeGrid)
+	cells2 := countFilledCells(slide2.ShapeGrid)
+	return appliedFix{
+		Kind:    "split_pattern",
+		Applied: true,
+		Message: fmt.Sprintf("split into 2 slides (%d + %d cells)", cells1, cells2),
+	}
+}
+
+// countFilledCells counts non-nil cells in a shape grid.
+func countFilledCells(grid *ShapeGridInput) int {
+	if grid == nil {
+		return 0
+	}
+	n := 0
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// findSplitRow returns the row index at which the cumulative filled cell count
+// reaches or exceeds targetCells. Returns the index of the first row that
+// belongs to slide 2.
+func findSplitRow(grid *ShapeGridInput, targetCells int) int {
+	cumulative := 0
+	for ri, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil {
+				cumulative++
+			}
+		}
+		if cumulative >= targetCells {
+			return ri + 1
+		}
+	}
+	return len(grid.Rows)
+}
+
+// cloneSlideForSplit creates a copy of the slide with the given grid rows.
+func cloneSlideForSplit(src SlideInput, rows []GridRowInput, srcGrid *ShapeGridInput) SlideInput {
+	newGrid := &ShapeGridInput{
+		Bounds:     srcGrid.Bounds,
+		Gap:        srcGrid.Gap,
+		ColGap:     srcGrid.ColGap,
+		RowGap:     srcGrid.RowGap,
+		FillHeight: srcGrid.FillHeight,
+		Columns:    srcGrid.Columns,
+		Rows:       make([]GridRowInput, len(rows)),
+	}
+	copy(newGrid.Rows, rows)
+
+	// Copy content slice.
+	content := make([]ContentInput, len(src.Content))
+	copy(content, src.Content)
+
+	return SlideInput{
+		LayoutID:        src.LayoutID,
+		SlideType:       src.SlideType,
+		Eyebrow:         src.Eyebrow,
+		Background:      src.Background,
+		Content:         content,
+		ShapeGrid:       newGrid,
+		SpeakerNotes:    src.SpeakerNotes,
+		Source:          src.Source,
+		Transition:      src.Transition,
+		TransitionSpeed: src.TransitionSpeed,
+		Build:           src.Build,
+		ContrastCheck:   src.ContrastCheck,
+	}
+}
+
+// appendTitleSuffix appends a suffix to the title content item (if present).
+func appendTitleSuffix(content []ContentInput, suffix string) {
+	for i := range content {
+		if content[i].PlaceholderID == "title" && content[i].Type == "text" && content[i].TextValue != nil {
+			newVal := *content[i].TextValue + suffix
+			content[i].TextValue = &newVal
+			return
+		}
+	}
 }
 
 // boolParam extracts a boolean parameter with a default.

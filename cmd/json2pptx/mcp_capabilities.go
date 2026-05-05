@@ -215,6 +215,7 @@ func repairFixKinds() []string {
 		"replace_color",
 		"shorten_title",
 		"split_at_row",
+		"split_pattern",
 		"swap_layout",
 		"use_one_of",
 		"use_semantic_color",

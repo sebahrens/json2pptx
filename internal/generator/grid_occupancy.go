@@ -80,6 +80,10 @@ func DetectPatternOvercrowded(input GridOccupancyInput) *patterns.FitFinding {
 		patName = "shape_grid"
 	}
 
+	// Compute an even split: first half gets the ceiling, second gets the rest.
+	firstN := (input.FilledSlots + 1) / 2
+	secondN := input.FilledSlots - firstN
+
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: patName,
@@ -94,6 +98,9 @@ func DetectPatternOvercrowded(input GridOccupancyInput) *patterns.FitFinding {
 				Params: map[string]any{
 					"filled_slots":    input.FilledSlots,
 					"recommended_max": input.RecommendedMax,
+					"first":           firstN,
+					"second":          secondN,
+					"title_part_2":    "(continued)",
 				},
 			},
 		},

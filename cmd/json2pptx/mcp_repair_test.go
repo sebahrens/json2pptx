@@ -681,6 +681,143 @@ func TestRepairSlide_UseSemanticColor_NoPath_ReplacesAllHex(t *testing.T) {
 	}
 }
 
+func TestRepairSlide_SplitPattern(t *testing.T) {
+	mc := repairMC(t)
+
+	// Build a deck with one slide containing a 4x3 shape_grid (12 cells).
+	deck := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout2",
+				"content": []any{
+					map[string]any{
+						"placeholder_id": "title",
+						"type":           "text",
+						"text_value":     "Card Grid Overview",
+					},
+				},
+				"shape_grid": map[string]any{
+					"columns": 3,
+					"rows": []any{
+						map[string]any{"cells": []any{
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "A"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "B"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "C"}},
+						}},
+						map[string]any{"cells": []any{
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "D"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "E"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "F"}},
+						}},
+						map[string]any{"cells": []any{
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "G"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "H"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "I"}},
+						}},
+						map[string]any{"cells": []any{
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "J"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "K"}},
+							map[string]any{"shape": map[string]any{"type": "rectangle", "text": "L"}},
+						}},
+					},
+				},
+			},
+		},
+	}
+	deckJSON, _ := json.Marshal(deck)
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(string(deckJSON)),
+		"slide_index":  float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "split_pattern",
+			"params": map[string]any{
+				"first":        float64(6),
+				"second":       float64(6),
+				"title_part_2": "(continued)",
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected split_pattern applied, got: %s", output.AppliedFixes[0].Message)
+	}
+
+	// Verify the deck now has 2 slides.
+	var patched PresentationInput
+	if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+		t.Fatalf("unmarshal patched deck: %v", err)
+	}
+	if len(patched.Slides) != 2 {
+		t.Errorf("expected 2 slides after split, got %d", len(patched.Slides))
+	}
+
+	// Slide 1 should have 2 rows (6 cells), slide 2 should have 2 rows (6 cells).
+	if patched.Slides[0].ShapeGrid == nil {
+		t.Fatal("slide 1 has no shape_grid")
+	}
+	if patched.Slides[1].ShapeGrid == nil {
+		t.Fatal("slide 2 has no shape_grid")
+	}
+	if len(patched.Slides[0].ShapeGrid.Rows) != 2 {
+		t.Errorf("slide 1: expected 2 rows, got %d", len(patched.Slides[0].ShapeGrid.Rows))
+	}
+	if len(patched.Slides[1].ShapeGrid.Rows) != 2 {
+		t.Errorf("slide 2: expected 2 rows, got %d", len(patched.Slides[1].ShapeGrid.Rows))
+	}
+
+	// Slide 2 title should have the "(continued)" suffix.
+	slide2Title := ""
+	for _, ci := range patched.Slides[1].Content {
+		if ci.PlaceholderID == "title" && ci.TextValue != nil {
+			slide2Title = *ci.TextValue
+		}
+	}
+	if slide2Title != "Card Grid Overview (continued)" {
+		t.Errorf("slide 2 title = %q, want %q", slide2Title, "Card Grid Overview (continued)")
+	}
+}
+
+func TestRepairSlide_SplitPattern_NoGrid(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := minimalDeck(map[string]any{
+		"placeholder_id": "title",
+		"type":           "text",
+		"text_value":     "No Grid",
+	})
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "split_pattern", "params": map[string]any{"first": float64(3)}}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if output.AppliedFixes[0].Applied {
+		t.Error("expected split_pattern not applied for slide without shape_grid")
+	}
+}
+
 // textContent extracts the text from the first MCP content block.
 func textContent(result *mcp.CallToolResult) string {
 	for _, c := range result.Content {
