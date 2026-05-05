@@ -1,0 +1,179 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "varied-pitch-deck.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Acme Analytics Platform"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Series B Investor Pitch — Q2 2026"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Today's Agenda"}
+      ],
+      "pattern": {
+        "name": "icon-row",
+        "values": [
+          {"icon": "\ud83d\udcca", "caption": "Opportunity"},
+          {"icon": "\ud83d\udcc8", "caption": "Traction"},
+          {"icon": "\ud83d\udee0\ufe0f", "caption": "Product"},
+          {"icon": "\ud83c\udf10", "caption": "Go-to-Market"},
+          {"icon": "\ud83d\udcb0", "caption": "The Ask"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The Opportunity"}
+      ],
+      "pattern": {
+        "name": "stat-hero",
+        "values": {
+          "value": "$18B",
+          "label": "Total addressable market for real-time analytics by 2028",
+          "source": "Gartner, 2025"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Key Metrics"}
+      ],
+      "pattern": {
+        "name": "kpi-3up",
+        "values": [
+          {"big": "$8.4M", "small": "Annual Recurring Revenue"},
+          {"big": "142%", "small": "Net Revenue Retention"},
+          {"big": "2,100+", "small": "Enterprise Customers"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Why We Win"}
+      ],
+      "pattern": {
+        "name": "before-after",
+        "values": {
+          "before": {
+            "header": "Legacy Analytics",
+            "items": ["Batch processing — hours to insight", "Siloed data across tools", "Manual dashboard building", "Fixed pricing per seat"]
+          },
+          "after": {
+            "header": "Acme Platform",
+            "items": ["Streaming analytics — seconds to insight", "Unified data layer", "AI-generated dashboards", "Usage-based pricing"]
+          }
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "How It Works"}
+      ],
+      "pattern": {
+        "name": "process-flow",
+        "values": {
+          "steps": [
+            {"label": "Ingest", "type": "step"},
+            {"label": "Transform", "type": "step"},
+            {"label": "Validate", "type": "decision"},
+            {"label": "Analyze", "type": "step"},
+            {"label": "Alert", "type": "step"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Product Suite"}
+      ],
+      "pattern": {
+        "name": "card-grid",
+        "values": {
+          "columns": 3,
+          "rows": 1,
+          "cells": [
+            {"header": "Acme Stream", "body": "Real-time event processing with sub-second latency"},
+            {"header": "Acme Insight", "body": "AI-powered dashboards that build themselves"},
+            {"header": "Acme Guard", "body": "Anomaly detection and automated alerting"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Product Roadmap"}
+      ],
+      "pattern": {
+        "name": "timeline-horizontal",
+        "values": [
+          {"label": "Q1 2026", "date": "Jan-Mar", "body": "Enterprise SSO + SOC 2 Type II"},
+          {"label": "Q2 2026", "date": "Apr-Jun", "body": "AI dashboard builder GA"},
+          {"label": "Q3 2026", "date": "Jul-Sep", "body": "Multi-region deployment"},
+          {"label": "Q4 2026", "date": "Oct-Dec", "body": "Marketplace + partner APIs"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Our Moat"}
+      ],
+      "pattern": {
+        "name": "pyramid",
+        "values": {
+          "tiers": ["Proprietary ML Models", "Streaming Engine", "Data Connectors", "Open-Source Community"]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Competitive Landscape"}
+      ],
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "header_left": "Incumbents",
+          "header_right": "Acme",
+          "rows": [
+            {"left": "Batch-only processing", "right": "Real-time streaming"},
+            {"left": "Months to deploy", "right": "Days to deploy"},
+            {"left": "Per-seat licensing", "right": "Usage-based pricing"},
+            {"left": "Manual integrations", "right": "300+ native connectors"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "What Our Customers Say"}
+      ],
+      "pattern": {
+        "name": "pull-quote",
+        "values": {
+          "quote": "Acme cut our time-to-insight from days to seconds. We can't imagine going back.",
+          "attribution": "Sarah Chen",
+          "role": "VP of Data, TechCorp"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The Ask: $25M Series B"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "contact@acme-analytics.com"}
+      ]
+    }
+  ]
+}

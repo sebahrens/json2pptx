@@ -1,0 +1,146 @@
+{
+  "template": "forest-green",
+  "output_filename": "board-deck.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Board of Directors Update"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Q1 2026 — Confidential"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue Highlight"}
+      ],
+      "pattern": {
+        "name": "stat-hero",
+        "values": {
+          "value": "$12.6M",
+          "label": "Q1 revenue — 34% above plan",
+          "context": "Driven by enterprise expansion and upsell motion"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Operating Metrics"}
+      ],
+      "pattern": {
+        "name": "kpi-4up",
+        "values": [
+          {"big": "$8.4M", "small": "ARR"},
+          {"big": "91%", "small": "Gross Margin"},
+          {"big": "18mo", "small": "Payback Period"},
+          {"big": "4.2x", "small": "LTV/CAC"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priorities"}
+      ],
+      "pattern": {
+        "name": "matrix-2x2",
+        "values": {
+          "x_axis_label": "Effort",
+          "y_axis_label": "Impact",
+          "top_left": {"header": "Enterprise Upsell", "body": "Expand seat count in top 20 accounts"},
+          "top_right": {"header": "APAC Launch", "body": "New region requires local data center"},
+          "bottom_left": {"header": "Self-Serve Tier", "body": "PLG motion for SMB segment"},
+          "bottom_right": {"header": "Custom Integrations", "body": "One-off builds for strategic deals"}
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Customer Voice"}
+      ],
+      "pattern": {
+        "name": "pull-quote",
+        "values": {
+          "quote": "The platform paid for itself in the first quarter. Our data team went from reactive to predictive.",
+          "attribution": "James Park",
+          "role": "CTO, GlobalRetail Inc."
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Platform Architecture"}
+      ],
+      "pattern": {
+        "name": "arch-stack",
+        "values": {
+          "tiers": [
+            {"label": "Client Apps", "description": "Web, Mobile, API"},
+            {"label": "API Gateway", "description": "Auth, Rate Limiting, Routing"},
+            {"label": "Core Services", "description": "Analytics Engine, ML Pipeline"},
+            {"label": "Data Layer", "description": "PostgreSQL, Redis, S3"}
+          ],
+          "side_rails": ["Security", "Observability"]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Operational Transformation"}
+      ],
+      "pattern": {
+        "name": "before-after",
+        "values": {
+          "before": {
+            "header": "Last Year",
+            "items": ["Manual customer onboarding", "45-day sales cycle", "Reactive support model"]
+          },
+          "after": {
+            "header": "Today",
+            "items": ["Self-serve onboarding (< 1 day)", "21-day average sales cycle", "Proactive health scoring"]
+          }
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Efficiency Gains"}
+      ],
+      "pattern": {
+        "name": "kpi-2up",
+        "values": [
+          {"big": "63%", "small": "Faster Onboarding"},
+          {"big": "2.1x", "small": "Support Throughput"}
+        ]
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Deal Approval Workflow"}
+      ],
+      "pattern": {
+        "name": "swimlane",
+        "values": {
+          "lanes": [
+            {"actor": "Sales Rep", "steps": ["Qualify lead", "Submit proposal", ""]},
+            {"actor": "Legal", "steps": ["", "Review terms", "Approve contract"]},
+            {"actor": "Finance", "steps": ["", "", "Book revenue"]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout5",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Thank You"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Questions & Discussion"}
+      ]
+    }
+  ]
+}

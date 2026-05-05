@@ -12,7 +12,38 @@ JSON input mode provides direct, programmatic control over slide layout and cont
 | `charts.json` | Chart types: bar, line, pie, donut, area, funnel | forest-green |
 | `diagrams.json` | Advanced chart types: waterfall, radar, gauge, treemap, stacked bar | warm-coral |
 | `full-showcase.json` | All content types combined in a product launch strategy deck | midnight-blue |
+| `varied-pitch-deck.json` | Investor pitch deck demonstrating pattern variety: icon-row, stat-hero, kpi-3up, before-after, process-flow, card-grid, timeline-horizontal, pyramid, comparison-2col, pull-quote | midnight-blue |
+| `board-deck.json` | Executive board update using stat-hero, kpi-4up, matrix-2x2, pull-quote, arch-stack, before-after, kpi-2up, swimlane | forest-green |
 | `patterns-smoke.json` | Pattern library smoke test: one slide per v1 pattern (kpi-3up, kpi-4up, bmc-canvas, matrix-2x2, timeline-horizontal, card-grid, icon-row, comparison-2col) | midnight-blue |
+
+### Pattern coverage
+
+Which examples demonstrate each registered pattern:
+
+| Pattern | `patterns-smoke` | `varied-pitch-deck` | `board-deck` |
+|---------|:-:|:-:|:-:|
+| `arch-stack` | | | x |
+| `before-after` | | x | x |
+| `bmc-canvas` | x | | |
+| `card-grid` | x | x | |
+| `comparison-2col` | x | x | |
+| `icon-row` | x | x | |
+| `kpi-2up` | | | x |
+| `kpi-3up` | x | x | |
+| `kpi-4up` | x | | x |
+| `kpi-5up` | | | |
+| `kpi-6up` | | | |
+| `matrix-2x2` | x | | x |
+| `process-flow` | | x | |
+| `pull-quote` | | x | x |
+| `pyramid` | | x | |
+| `roadmap-phased` | | | |
+| `stat-hero` | | x | x |
+| `swimlane` | | | x |
+| `timeline-horizontal` | x | x | |
+| `agenda` | | | |
+
+Coverage: 17/20 patterns (85%) across all examples.
 
 ### Running a JSON example
 
