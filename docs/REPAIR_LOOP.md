@@ -33,15 +33,70 @@ Each line is a JSON object with these fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `code` | string | `fit_overflow` or `density_exceeded` |
-| `path` | string | JSON path, e.g. `slides[0].content[1].rows[3][2]` |
+| `code` | string | Finding code (see FIT_FINDINGS.md for full catalog) |
+| `path` | string | JSON Pointer (RFC 6901), e.g. `/slides/0/content/body` |
 | `message` | string | Human-readable description |
 | `fix` | object | `{kind, params}` — machine-readable fix suggestion |
 | `action` | string | `refuse` (must fix), `shrink_or_split`, `review`, or `info` (see FIT_FINDINGS.md) |
+| `next_tool_call` | object | `{tool, args_template}` — the MCP tool call that resolves this finding (see FIT_FINDINGS.md § next_tool_call) |
 | `binding_dimension` | string | `height` or `width` |
 | `required_pt` | number | Space needed (points) |
 | `allocated_pt` | number | Space available (points) |
 | `wrap_lines` | int | Lines needed after word-wrap |
+
+## Structural Fix Kinds
+
+Beyond text-shrinking and table-splitting, the repair loop supports structural fix kinds that reshape, swap, or split content at the pattern level:
+
+| Kind | Params | When Emitted | repair_slide Support |
+|------|--------|--------------|---------------------|
+| `swap_pattern` | `filled_pct`, `filled_slots`, `total_slots`, `reason` | `pattern_underfilled` or `wrong_pattern` — content doesn't match the chosen pattern's slot count | No (use `recommend_pattern` tool instead) |
+| `reshape_grid` | (embedded in `swap_pattern` params as `reason`) | `pattern_underfilled` — grid has too few items for the pattern | No (informational — tells agent why `swap_pattern` was suggested) |
+| `split_pattern` | `filled_slots`, `recommended_max`, `first`, `second`, `title_part_2` | `pattern_overcrowded` — grid exceeds the pattern's recommended max | **Yes** — splits grid rows across two slides |
+| `convert_content` | `from_type`, `to_type`, `reason` | Agent-initiated — convert e.g. table to bullets when density is unfixable | Not yet (agent must regenerate the slide) |
+
+### End-to-End Loop Example: wrong_pattern → swap_pattern → regenerate
+
+```
+1. Agent authors slide with pattern "kpi-6up" but provides only 2 KPI items.
+
+2. validate --fit-report emits:
+   {
+     "code": "wrong_pattern",
+     "path": "/slides/1/shape_grid",
+     "message": "kpi-6up: content shape (2 items) matches a different pattern; consider kpi-2up",
+     "fix": { "kind": "swap_pattern", "params": { "suggested": [{"from": "kpi-6up", "to": "kpi-2up"}] } },
+     "action": "review",
+     "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 2 } }
+   }
+
+3. Agent calls recommend_pattern(item_count=2) → gets "kpi-2up" confirmation.
+
+4. Agent regenerates the slide with pattern "kpi-2up" and 2 items.
+
+5. Re-validation passes with no findings for that slide. Loop ends.
+```
+
+### End-to-End Loop Example: pattern_overcrowded → split_pattern → repair_slide
+
+```
+1. Agent authors a card-grid with 12 items (recommended max is 8).
+
+2. validate --fit-report emits:
+   {
+     "code": "pattern_overcrowded",
+     "path": "/slides/3/shape_grid",
+     "fix": { "kind": "split_pattern", "params": { "first": 6, "second": 6, "title_part_2": "(continued)" } },
+     "action": "review",
+     "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 3, "fixes": [{"kind": "split_pattern", "params": {"first": 6}}] } }
+   }
+
+3. Agent calls repair_slide(slide_index=3, fixes=[{kind: "split_pattern", params: {first: 6}}]).
+
+4. Tool returns patched deck with slide 3 split into two (6 + 6 cells), title suffixed with "(continued)" on second slide.
+
+5. Re-validation passes. Loop ends.
+```
 
 ## Integration Recipes
 

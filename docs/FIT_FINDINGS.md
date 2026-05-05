@@ -33,6 +33,36 @@ Every finding is a `FitFinding` (defined in `internal/patterns/fit_finding.go`) 
 | `measured` | object | Actual content extent in EMU (omitted when N/A) |
 | `allowed` | object | Available frame extent in EMU (omitted when N/A) |
 | `overflow_ratio` | float | `measured / allowed` as a fraction (omitted when 0) |
+| `next_tool_call` | object | Machine-readable MCP tool suggestion: `{tool, args_template}` (omitted for `info` findings) |
+
+### `next_tool_call` Envelope
+
+Findings with action `refuse`, `shrink_or_split`, or `review` include a `next_tool_call` object that tells agents exactly which MCP tool to call next, without requiring them to infer the protocol from prose. The envelope has two fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tool` | string | MCP tool name, e.g. `"repair_slide"` or `"recommend_pattern"` |
+| `args_template` | object | Template for the tool arguments — agents can invoke directly or merge with additional context |
+
+Routing logic:
+- Fix kinds in the `repair_slide` vocabulary (`reduce_text`, `split_at_row`, `shorten_title`, `replace_color`, `use_semantic_color`, `split_pattern`, `swap_layout`, `use_one_of`) → `next_tool_call.tool = "repair_slide"`
+- `swap_pattern` and `adopt_pattern` fix kinds → `next_tool_call.tool = "recommend_pattern"`
+- Findings with action `"info"` never have `next_tool_call`
+
+Example:
+
+```json
+{
+  "code": "placeholder_overflow",
+  "path": "/slides/0/content/body",
+  "fix": { "kind": "reduce_text" },
+  "action": "shrink_or_split",
+  "next_tool_call": {
+    "tool": "repair_slide",
+    "args_template": { "slide_index": 0, "fixes": [{ "kind": "reduce_text" }] }
+  }
+}
+```
 
 ## Actions
 
@@ -147,7 +177,12 @@ Only fires when the slide's resolved layout declares a footer placeholder (date,
 **Pattern:** `shape_grid`
 **Fix kind:** `grow_pattern`
 
-Content occupies less than 40% of the available bounds height — the slide is mostly empty. Only fires on `fill_height: true` grids (pattern-expanded). The fix params include `filled_pct`, `bounds_height`, and `content_height`.
+Content occupies less than 40% of the available bounds height — the slide is mostly empty. Fires on two grid types:
+
+1. **`fill_height: true` grids** (pattern-expanded) — when the content extent is under 40% of bounds height.
+2. **Raw (non-fill-height) grids** — when the auto-shrunk content height is under 60% of the full layout content area height.
+
+The fix params include `filled_pct`, `bounds_height`, and `content_height`.
 
 ```json
 {
@@ -160,6 +195,105 @@ Content occupies less than 40% of the available bounds height — the slide is m
   "measured": { "height_emu": 1270000 },
   "allowed": { "height_emu": 5080000 },
   "overflow_ratio": 0.25
+}
+```
+
+### `pattern_underfilled`
+
+**Action:** `review`
+**Pattern:** pattern name (e.g. `kpi-3up`, `card-grid`)
+**Fix kind:** `swap_pattern`
+
+A pattern grid has less than 50% of its slots populated — the content is too sparse for the chosen pattern. The fix suggests using `recommend_pattern` to find a better-fitting pattern for the item count.
+
+```json
+{
+  "pattern": "kpi-3up",
+  "path": "/slides/2/shape_grid",
+  "code": "pattern_underfilled",
+  "message": "kpi-3up: 1 of 3 slots filled (33%) — grid is underpopulated",
+  "fix": { "kind": "swap_pattern", "params": { "filled_pct": 0.33, "filled_slots": 1, "total_slots": 3, "reason": "reshape_grid" } },
+  "action": "review",
+  "overflow_ratio": 0.33,
+  "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 1 } }
+}
+```
+
+### `pattern_overcrowded`
+
+**Action:** `review`
+**Pattern:** pattern name (e.g. `card-grid`, `kpi-4up`)
+**Fix kind:** `split_pattern`
+
+A pattern grid exceeds the pattern's recommended maximum cell count. The fix suggests splitting across two slides using `split_pattern`, with params indicating the recommended split point.
+
+```json
+{
+  "pattern": "card-grid",
+  "path": "/slides/3/shape_grid",
+  "code": "pattern_overcrowded",
+  "message": "card-grid: 12 cells exceeds recommended max of 8 — consider splitting",
+  "fix": { "kind": "split_pattern", "params": { "filled_slots": 12, "recommended_max": 8, "first": 6, "second": 6, "title_part_2": "(continued)" } },
+  "action": "review",
+  "overflow_ratio": 1.5,
+  "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 3, "fixes": [{ "kind": "split_pattern", "params": { "first": 6, "title_part_2": "(continued)" } }] } }
+}
+```
+
+### `chart_value_coerced`
+
+**Action:** `review`
+**Pattern:** chart type (e.g. `bar`, `line`)
+**Fix kind:** `provide_numeric_value`
+
+A non-numeric value in the chart data map was coerced to zero. The finding indicates a likely data error — the original value and its type are included in the fix params.
+
+```json
+{
+  "pattern": "bar",
+  "path": "/slides/0/content/1",
+  "code": "chart_value_coerced",
+  "message": "slide 1, content 2: non-numeric value for \"Revenue\" coerced to 0 (was string: N/A)",
+  "fix": { "kind": "provide_numeric_value", "params": { "column": "Revenue", "original_value": "N/A", "original_type": "string" } },
+  "action": "review"
+}
+```
+
+### `chart_shape_inferred`
+
+**Action:** `review`
+**Pattern:** chart type (e.g. `gauge`, `radar`)
+**Fix kind:** `provide_native_format`
+
+The chart received flat key-value data but expects a structured format (e.g. `series` array for multi-series charts, or nested objects for gauge). The engine inferred the structure, but the result may not be what was intended.
+
+```json
+{
+  "pattern": "gauge",
+  "path": "/slides/1/content/0",
+  "code": "chart_shape_inferred",
+  "message": "slide 2, content 1: gauge chart received flat data; expected gauge format",
+  "fix": { "kind": "provide_native_format", "params": { "chart_type": "gauge", "expected_format": "gauge" } },
+  "action": "review"
+}
+```
+
+### `chart_data_empty`
+
+**Action:** `refuse`
+**Pattern:** chart type
+**Fix kind:** `provide_data`
+
+The chart's data map is empty — the output would be a blank chart placeholder. This is a `refuse`-level finding because a blank chart is never the intended result.
+
+```json
+{
+  "pattern": "bar",
+  "path": "/slides/0/content/0",
+  "code": "chart_data_empty",
+  "message": "slide 1, content 1: bar data is empty; output will be blank",
+  "fix": { "kind": "provide_data", "params": { "chart_type": "bar" } },
+  "action": "refuse"
 }
 ```
 
@@ -246,7 +380,7 @@ Fit findings are scoped to **JSON-authored content only**. Content inherited fro
 
 - **Layout-inherited shapes** — shapes that come from the template's slide layout or master are never checked. Callers filter these before passing to detectors.
 - **Decorative shapes** — shapes with `role: "background"` or `role: "decor"` are skipped by `slide_bounds_overflow` and `footer_collision`. These are intentionally placed at edges or off-slide.
-- **Non-fill-height grids** — `sparse_layout` only fires on grids with `fill_height: true` (pattern-expanded). User-authored grids with auto-height already shrink to content and are not flagged.
+- **Non-fill-height grids (partial)** — `sparse_layout` fires on `fill_height: true` grids (pattern-expanded) at a 40% threshold, and also on raw grids whose auto-shrunk height is under 60% of the layout content area. Grids that exceed both thresholds are not flagged.
 - **Autofit placeholders** — `placeholder_overflow` is suppressed when the placeholder has `normAutofit` or `spAutoFit` set, because PowerPoint will auto-shrink text to fit.
 - **Layouts without footer** — `footer_collision` only fires when the slide's resolved layout declares a footer placeholder (dt, ftr, or sldNum). No finding is emitted on layouts using heuristic fallback positioning.
 
@@ -260,9 +394,14 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `shorten_title` | — | Shorten the title to avoid wrapping |
 | `reposition_shape` | — | Move or resize the shape to stay within bounds |
 | `split_at_row` | `row: int` | Split the table at the suggested row index |
+| `split_pattern` | `filled_slots: int`, `recommended_max: int`, `first: int`, `second: int`, `title_part_2: string` | Split an overcrowded pattern grid across two slides |
+| `swap_pattern` | `filled_pct: float`, `filled_slots: int`, `total_slots: int`, `reason: string` | Switch to a different pattern that better fits the content count |
 | `use_one_of` | `available: string`, `did_you_mean?: string` | Replace the value with one of the listed alternatives |
 | `replace_color` | `original_color: string`, `replacement_color: string`, `background_color: string`, `contrast_ratio_before: float`, `contrast_ratio_after: float` | Text color was auto-replaced for WCAG AA contrast compliance |
 | `grow_pattern` | `filled_pct: float`, `bounds_height: int`, `content_height: int` | Content occupies too little of the available bounds — add more content or use a smaller pattern |
+| `provide_data` | `chart_type: string` | Chart data is empty — provide data values |
+| `provide_numeric_value` | `column: string`, `original_value: string`, `original_type: string` | A non-numeric chart value was coerced to zero — provide a numeric value |
+| `provide_native_format` | `chart_type: string`, `expected_format: string` | Chart data shape was inferred — provide data in the native format |
 
 ## Per-Slide Finding Budget
 
