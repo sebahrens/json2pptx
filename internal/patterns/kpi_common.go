@@ -136,15 +136,16 @@ func resolveKPISmallSize(ovr *KPIOverrides) float64 {
 func validateKPICells(patternName string, cells []KPICell, expectedCount int, siblingHint string, cellOverrides map[int]any) error {
 	var errs []error
 
-	// D4: exact count with sibling hint
+	// D4: exact count with swap suggestion
 	if len(cells) != expectedCount {
-		hint := ""
-		if siblingHint != "" && (len(cells) == expectedCount+1 || len(cells) == expectedCount-1) {
-			hint = fmt.Sprintf(" (hint: use pattern %s for %d KPIs)", siblingHint, len(cells))
-		}
 		errs = append(errs, newValidationError(patternName, "values", ErrCodeCountMismatch,
-			fmt.Sprintf("%s: values must contain exactly %d cells, got %d%s", patternName, expectedCount, len(cells), hint),
+			fmt.Sprintf("%s: values must contain exactly %d cells, got %d", patternName, expectedCount, len(cells)),
 			fmt.Sprintf("provide exactly %d cells in values", expectedCount)))
+
+		// Reverse-recommend: suggest alternative patterns that accept the actual cell count.
+		if swaps := SuggestSwap(Default(), patternName, len(cells), true); len(swaps) > 0 {
+			errs = append(errs, ErrWrongPatternFor(patternName, len(cells), swaps))
+		}
 	}
 
 	// Per-cell validation

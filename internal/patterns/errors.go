@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // Error codes for structured validation errors.
@@ -22,6 +23,7 @@ const (
 	ErrCodeUnknownEnum            = "UNKNOWN_ENUM"
 	ErrCodePlaceholderNotFound    = "placeholder_not_found"
 	ErrCodeUnknownTableStyleID   = "unknown_table_style_id"
+	ErrCodeWrongPattern          = "wrong_pattern"
 
 	// Fit-report error codes.
 	ErrCodeFitOverflow       = "fit_overflow"
@@ -68,6 +70,7 @@ var (
 	ErrUnknownEnum            = errors.New("unknown enum value")
 	ErrPlaceholderNotFound    = errors.New("placeholder_id not found in layout")
 	ErrUnknownTableStyleID   = errors.New("style_id not found in template table styles")
+	ErrWrongPattern          = errors.New("content shape matches a different pattern")
 
 	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
@@ -109,6 +112,7 @@ var codeSentinel = map[string]error{
 	ErrCodeUnknownEnum:            ErrUnknownEnum,
 	ErrCodePlaceholderNotFound:    ErrPlaceholderNotFound,
 	ErrCodeUnknownTableStyleID:   ErrUnknownTableStyleID,
+	ErrCodeWrongPattern:          ErrWrongPattern,
 	ErrCodeFitOverflow:       ErrFitOverflow,
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,
@@ -323,4 +327,52 @@ func newValidationError(pattern, path, code, message, fix string) *ValidationErr
 		Message: message,
 		Fix:     TextFix(fix),
 	}
+}
+
+// ErrWrongPatternFor creates a "wrong_pattern" validation error with a
+// swap_pattern fix suggestion. suggestions carries the alternative patterns
+// that accept the user's content shape.
+func ErrWrongPatternFor(pattern string, itemCount int, suggestions []SwapSuggestion) *ValidationError {
+	// Build target list for human-readable message.
+	names := make([]string, len(suggestions))
+	for i, s := range suggestions {
+		names[i] = s.To
+	}
+
+	msg := fmt.Sprintf("%s: content shape (%d items) matches a different pattern; consider %s",
+		pattern, itemCount, strings.Join(names, " or "))
+
+	// Convert suggestions to []any for JSON serialisation.
+	suggested := make([]any, len(suggestions))
+	for i, s := range suggestions {
+		m := map[string]any{"from": s.From, "to": s.To}
+		if len(s.FieldMapping) > 0 {
+			m["field_mapping"] = s.FieldMapping
+		}
+		if s.Rationale != "" {
+			m["rationale"] = s.Rationale
+		}
+		suggested[i] = m
+	}
+
+	return &ValidationError{
+		Pattern: pattern,
+		Path:    "pattern",
+		Code:    ErrCodeWrongPattern,
+		Message: msg,
+		Fix: &FixSuggestion{
+			Kind: "swap_pattern",
+			Params: map[string]any{
+				"suggested": suggested,
+			},
+		},
+	}
+}
+
+// SwapSuggestion describes an alternative pattern and how to map fields.
+type SwapSuggestion struct {
+	From         string            `json:"from"`
+	To           string            `json:"to"`
+	Rationale    string            `json:"rationale,omitempty"`
+	FieldMapping map[string]string `json:"field_mapping,omitempty"`
 }

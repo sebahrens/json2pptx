@@ -98,6 +98,8 @@ var rules = []rule{
 		keywords:  []string{"bmc", "business model canvas", "osterwalder", "value proposition", "key partners", "key activities", "key resources", "customer segments", "revenue streams", "cost structure", "channels", "customer relationships"},
 		baseScore: 0.95,
 		rationale: "Purpose-built 9-block Business Model Canvas layout",
+		itemMin:   9,
+		itemMax:   9,
 	},
 
 	// Matrix
@@ -403,6 +405,131 @@ func scoreRule(r rule, intentLower string, hints *ContentHints) float64 {
 	}
 
 	return score
+}
+
+// SuggestSwap finds registered patterns whose item-count constraints accept
+// itemCount, excluding currentPattern. It returns swap suggestions sorted by
+// specificity (patterns with tighter itemMin/itemMax first). This is the
+// "reverse recommender" used by validators to attach swap_pattern fixes.
+func SuggestSwap(reg *Registry, currentPattern string, itemCount int, hasMetrics bool) []SwapSuggestion {
+	if reg == nil || itemCount <= 0 {
+		return nil
+	}
+
+	type candidate struct {
+		pattern   string
+		rationale string
+		specificity int // smaller range → more specific
+	}
+
+	seen := make(map[string]candidate)
+
+	for _, r := range rules {
+		if r.pattern == currentPattern {
+			continue
+		}
+		// Must be registered.
+		if _, ok := reg.Get(r.pattern); !ok {
+			continue
+		}
+		// Only consider rules that have item-count constraints — unconstrained
+		// rules are too broad for reverse-recommendation.
+		if r.itemMin == 0 && r.itemMax == 0 {
+			continue
+		}
+		// Must accept this item count.
+		if r.itemMin > 0 && itemCount < r.itemMin {
+			continue
+		}
+		if r.itemMax > 0 && itemCount > r.itemMax {
+			continue
+		}
+		// If needsMetrics and user has no metrics, skip.
+		if r.needsMetrics && !hasMetrics {
+			continue
+		}
+		// Specificity: tighter range = better match.
+		spec := 1000 // unconstrained
+		if r.itemMin > 0 && r.itemMax > 0 {
+			spec = r.itemMax - r.itemMin
+		} else if r.itemMax > 0 {
+			spec = r.itemMax
+		} else if r.itemMin > 0 {
+			spec = 100 - r.itemMin
+		}
+
+		// Keep the most specific rule per pattern.
+		if prev, ok := seen[r.pattern]; ok && prev.specificity <= spec {
+			continue
+		}
+		seen[r.pattern] = candidate{
+			pattern:     r.pattern,
+			rationale:   r.rationale,
+			specificity: spec,
+		}
+	}
+
+	// Sort by specificity ascending (most specific first).
+	flat := make([]candidate, 0, len(seen))
+	for _, c := range seen {
+		flat = append(flat, c)
+	}
+	sort.Slice(flat, func(i, j int) bool {
+		if flat[i].specificity != flat[j].specificity {
+			return flat[i].specificity < flat[j].specificity
+		}
+		return flat[i].pattern < flat[j].pattern
+	})
+
+	// Build suggestions with field mapping hints.
+	out := make([]SwapSuggestion, len(flat))
+	for i, c := range flat {
+		out[i] = SwapSuggestion{
+			From:         currentPattern,
+			To:           c.pattern,
+			Rationale:    c.rationale,
+			FieldMapping: fieldMappingHint(currentPattern, c.pattern),
+		}
+	}
+	return out
+}
+
+// fieldMappingHint returns a best-effort mapping from the source pattern's
+// fields to the target pattern's fields. Returns nil when the patterns share
+// the same schema shape (e.g. both use cells[].header/body).
+func fieldMappingHint(from, to string) map[string]string {
+	// KPI ↔ KPI: identical schema.
+	kpiPatterns := map[string]bool{"kpi-3up": true, "kpi-4up": true}
+	if kpiPatterns[from] && kpiPatterns[to] {
+		return nil // same schema
+	}
+
+	// Card-grid → BMC: cells are compatible (both header+body).
+	cardLike := map[string]bool{"card-grid": true, "bmc-canvas": true}
+	if cardLike[from] && cardLike[to] {
+		return map[string]string{
+			"cells[].header": "cells[].header",
+			"cells[].body":   "cells[].body",
+		}
+	}
+
+	// Card-grid/BMC → KPI: header→small, body→(drop), need big.
+	if cardLike[from] && kpiPatterns[to] {
+		return map[string]string{
+			"cells[].header": "values[].small",
+			"(new)":          "values[].big (required, provide metric value)",
+		}
+	}
+
+	// KPI → card-grid/BMC: big→header, small→body.
+	if kpiPatterns[from] && cardLike[to] {
+		return map[string]string{
+			"values[].big":   "cells[].header",
+			"values[].small": "cells[].body",
+		}
+	}
+
+	return nil
 }
 
 // summarizeIntent creates a human-readable echo of how the query was parsed.

@@ -192,16 +192,15 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	// Cell count must equal columns × rows (D4: hard error, no truncation)
 	expectedCells := vals.Columns * vals.Rows
 	if expectedCells > 0 && len(vals.Cells) != expectedCells {
-		hint := ""
-		if len(vals.Cells) == 9 {
-			hint = "(hint: use pattern bmc-canvas for a 9-cell Business Model Canvas)"
-		}
-		e := errCountMismatch(name, "cells", expectedCells, len(vals.Cells), hint)
-		e.Message = fmt.Sprintf("card-grid: cells must contain exactly %d items (columns=%d × rows=%d), got %d", expectedCells, vals.Columns, vals.Rows, len(vals.Cells))
-		if hint != "" {
-			e.Message += " " + hint
-		}
+		e := errCountMismatch(name, "cells", expectedCells, len(vals.Cells), "")
+		e.Message = fmt.Sprintf("card-grid: cells must contain exactly %d items (columns=%d × rows=%d), got %d",
+			expectedCells, vals.Columns, vals.Rows, len(vals.Cells))
 		errs = append(errs, e)
+
+		// Reverse-recommend: suggest alternative patterns that accept the actual cell count.
+		if swaps := SuggestSwap(Default(), name, len(vals.Cells), false); len(swaps) > 0 {
+			errs = append(errs, ErrWrongPatternFor(name, len(vals.Cells), swaps))
+		}
 	}
 
 	// Per-cell validation
