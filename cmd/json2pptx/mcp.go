@@ -398,8 +398,17 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		}
 	}
 
+	// Resolve deck-level rhythm grid when configured.
+	var rhythmGrid *resolvedGrid
+	if input.Grid != nil {
+		if err := validateGridConfig(input.Grid); err != nil {
+			return api.MCPSimpleError("INVALID_GRID", fmt.Sprintf("grid: %v", err)), nil
+		}
+		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
+	}
+
 	// Convert slides
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata)
+	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid)
 	if err != nil {
 		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}

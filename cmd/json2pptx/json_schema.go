@@ -40,6 +40,7 @@ type PresentationInput struct {
 	Chrome         *ChromeInput    `json:"chrome,omitempty"`
 	ThemeOverride  *ThemeInput     `json:"theme_override,omitempty"`
 	Defaults       *DefaultsInput  `json:"defaults,omitempty"`
+	Grid           *GridConfig     `json:"grid,omitempty"`
 	Structure      *StructureInput `json:"structure,omitempty"`
 	Slides         []SlideInput    `json:"slides"`
 }
@@ -106,6 +107,31 @@ type SectionInput struct {
 type DefaultsInput struct {
 	TableStyle *TableStyleInput            `json:"table_style,omitempty"`
 	CellStyle  *jsonschema.ShapeSpecInput  `json:"cell_style,omitempty"`
+}
+
+// GridConfig specifies a deck-level layout rhythm grid that normalizes content
+// positioning across all slides. When set, the generator snaps shape_grid bounds
+// to the grid, ensuring titles align at the same Y and content regions start at
+// the same Y across the deck.
+type GridConfig struct {
+	// Columns is the number of logical columns (default: 12). Currently
+	// informational — column snapping is a future enhancement.
+	Columns int `json:"columns,omitempty"`
+	// GutterEMU is the gutter width between columns in EMU (default: 228600 = 0.25 inch).
+	GutterEMU int64 `json:"gutter_emu,omitempty"`
+	// TitleBaselinePct is the Y-position of the title baseline as a percentage
+	// of slide height. All title placeholders align to this value (default: derived from template).
+	TitleBaselinePct float64 `json:"title_baseline_pct,omitempty"`
+	// ContentTopPct is the Y-position where content starts as a percentage of
+	// slide height. Shape grids and body placeholders align to this value (default: derived from template).
+	ContentTopPct float64 `json:"content_top_pct,omitempty"`
+	// ContentBottomPct is the Y-position where content ends as a percentage of
+	// slide height. Shape grids do not extend below this line (default: 92).
+	ContentBottomPct float64 `json:"content_bottom_pct,omitempty"`
+	// LeftMarginPct is the left margin as a percentage of slide width (default: derived from template).
+	LeftMarginPct float64 `json:"left_margin_pct,omitempty"`
+	// RightMarginPct is the right margin as a percentage of slide width (default: mirrors left).
+	RightMarginPct float64 `json:"right_margin_pct,omitempty"`
 }
 
 // UnmarshalJSON handles both regular slides and split_slide entries.

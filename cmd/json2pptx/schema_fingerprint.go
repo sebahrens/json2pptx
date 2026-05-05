@@ -23,6 +23,7 @@ func schemaFingerprint() string {
 	writeStructFields(h, reflect.TypeOf(SlideInput{}))
 	writeStructFields(h, reflect.TypeOf(ContentInput{}))
 	writeStructFields(h, reflect.TypeOf(DefaultsInput{}))
+	writeStructFields(h, reflect.TypeOf(GridConfig{}))
 	writeStructFields(h, reflect.TypeOf(jsonschema.ShapeGridInput{}))
 	writeStructFields(h, reflect.TypeOf(jsonschema.GridCellInput{}))
 	writeStructFields(h, reflect.TypeOf(jsonschema.TableInput{}))

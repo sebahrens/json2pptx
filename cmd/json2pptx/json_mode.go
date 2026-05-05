@@ -402,8 +402,17 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		}
 	}
 
+	// Resolve deck-level rhythm grid when configured.
+	var rhythmGrid *resolvedGrid
+	if input.Grid != nil {
+		if err := validateGridConfig(input.Grid); err != nil {
+			return writeJSONError(jsonOutputPath, fmt.Errorf("grid: %w", err))
+		}
+		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
+	}
+
 	// Convert typed slides to generator specs (uses templateLayouts for auto-layout selection)
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata)
+	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
 	}
@@ -534,7 +543,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 // This is the primary conversion path that supports both typed fields (text_value,
 // bullets_value, etc.) and legacy json.RawMessage Value field.
 // When layouts is non-empty and a slide omits layout_id, auto-layout selection is used.
-func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
+func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
 	specs := make([]generator.SlideSpec, 0, len(slides))
 
 	// Track layout usage for variety scoring during auto-selection
@@ -698,6 +707,14 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 						)
 					}
 				}
+			}
+
+			// Rhythm grid: override content zone to enforce consistent positioning.
+			if rhythmGrid != nil {
+				gridZone := gridToContentZone(rhythmGrid)
+				contentZone = gridZone
+				// Clear override bounds — the grid zone takes precedence.
+				overrideBounds = nil
 			}
 
 			// Use a high-start allocator to avoid colliding with template shape IDs.

@@ -62,6 +62,11 @@ func checkInputUnknownKeys(raw json.RawMessage) []*patterns.ValidationError {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(DefaultsInput{}), "defaults")...)
 	}
 
+	// grid
+	if v, ok := top["grid"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(GridConfig{}), "grid")...)
+	}
+
 	// slides[]
 	if slidesRaw, ok := top["slides"]; ok {
 		var slides []json.RawMessage

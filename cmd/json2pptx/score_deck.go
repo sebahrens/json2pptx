@@ -156,8 +156,14 @@ func (mc *mcpConfig) collectRenderFindings(
 	syntheticFiles map[string][]byte,
 	templateMetadata *types.TemplateMetadata,
 ) []patterns.FitFinding {
+	// Resolve deck-level rhythm grid when configured.
+	var rhythmGrid *resolvedGrid
+	if input.Grid != nil {
+		rhythmGrid = resolveGrid(input.Grid, layouts, slideWidth, slideHeight)
+	}
+
 	// Convert slides to generator specs.
-	slideSpecs, err := convertPresentationSlides(input.Slides, layouts, slideWidth, slideHeight, templateMetadata)
+	slideSpecs, err := convertPresentationSlides(input.Slides, layouts, slideWidth, slideHeight, templateMetadata, rhythmGrid)
 	if err != nil {
 		// If conversion fails, skip render findings (static findings still apply).
 		return nil

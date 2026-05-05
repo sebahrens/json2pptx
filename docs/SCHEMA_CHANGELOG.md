@@ -4,6 +4,21 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 3.1.0 (2026-05-05)
+
+### Added
+
+- `grid` — top-level field for deck-level layout rhythm configuration. Specifies
+  `columns`, `gutter_emu`, `title_baseline_pct`, `content_top_pct`,
+  `content_bottom_pct`, `left_margin_pct`, `right_margin_pct`. When set, the
+  generator snaps all shape_grid bounds to the grid, ensuring consistent title
+  and content positioning across the deck.
+- `grid_violation` fit-finding code — emitted when a layout placeholder deviates
+  from the grid configuration beyond the threshold (~0.05 inch). Carries
+  `reposition_shape` fix suggestion with target EMU coordinates.
+- `INVALID_GRID` MCP error code — returned when grid configuration is invalid
+  (out-of-range percentages, contradictory ordering).
+
 ## 3.0.0 (2026-05-05)
 
 **Breaking** — MCP tool parameter surface halved. All string-form JSON parameters

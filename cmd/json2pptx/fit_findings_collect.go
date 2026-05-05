@@ -34,6 +34,14 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings,
 		collectStructuralFindings(input, layouts, slideWidth, slideHeight)...)
 
+	// 3. Grid rhythm violations when a deck-level grid is configured.
+	if input.Grid != nil {
+		if err := validateGridConfig(input.Grid); err == nil {
+			rg := resolveGrid(input.Grid, layouts, slideWidth, slideHeight)
+			findings = append(findings, detectGridViolations(rg, layouts, input.Slides)...)
+		}
+	}
+
 	// Sort by ActionRank desc, then slide index asc.
 	sort.Slice(findings, func(i, j int) bool {
 		ri := patterns.ActionRank(findings[i].Action)

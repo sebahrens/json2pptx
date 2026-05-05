@@ -15,6 +15,7 @@ const (
 	CodeInvalidParameter Code = "INVALID_PARAMETER"
 	CodeInvalidJSON      Code = "INVALID_JSON"
 	CodeInvalidKey       Code = "INVALID_KEY"
+	CodeInvalidGrid       Code = "INVALID_GRID"
 	CodeInvalidSlide      Code = "INVALID_SLIDE"
 	CodeInvalidSlideIndex Code = "INVALID_SLIDE_INDEX"
 	CodeAmbiguousInput    Code = "AMBIGUOUS_INPUT"
@@ -71,6 +72,7 @@ func AllCodes() []Code {
 		// Input
 		CodeMissingParameter,
 		CodeInvalidParameter,
+		CodeInvalidGrid,
 		CodeInvalidJSON,
 		CodeInvalidKey,
 		CodeInvalidSlide,
