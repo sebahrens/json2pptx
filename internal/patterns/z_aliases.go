@@ -20,4 +20,6 @@ func init() {
 	r.RegisterAlias("bmc", "bmc-canvas")
 	r.RegisterAlias("matrix", "matrix-2x2")
 	r.RegisterAlias("comparison", "comparison-2col")
+	r.RegisterAlias("roadmap", "roadmap-phased")
+	r.RegisterAlias("architecture", "arch-stack")
 }

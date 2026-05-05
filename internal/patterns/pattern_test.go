@@ -162,6 +162,12 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 	allowed := map[string]bool{
 		"card-grid":       true,
 		"comparison-2col": true,
+		"pyramid":         true,
+		"before-after":    true,
+		"process-flow":    true,
+		"swimlane":        true,
+		"roadmap-phased":  true,
+		"arch-stack":      true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)

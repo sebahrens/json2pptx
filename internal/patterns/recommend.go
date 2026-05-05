@@ -141,9 +141,98 @@ var rules = []rule{
 	// Timeline
 	{
 		pattern:   "timeline-horizontal",
-		keywords:  []string{"timeline", "roadmap", "milestone", "phase", "chronological", "history", "evolution", "journey", "schedule"},
+		keywords:  []string{"timeline", "milestone", "chronological", "history", "evolution", "journey", "schedule"},
 		baseScore: 0.90,
 		rationale: "Linear horizontal timeline with stops, ideal for roadmaps and milestones",
+	},
+
+	// Pyramid
+	{
+		pattern:   "pyramid",
+		keywords:  []string{"pyramid", "hierarchy", "layer", "maslow", "tiered", "funnel", "levels"},
+		baseScore: 0.90,
+		rationale: "Stacked trapezoid pyramid for hierarchies or layered models",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "pyramid",
+		keywords:  []string{"pyramid", "hierarchy", "tiered"},
+		baseScore: 0.75,
+		rationale: "Pyramid hierarchy; specify item_count for better ranking",
+	},
+
+	// Before/After
+	{
+		pattern:   "before-after",
+		keywords:  []string{"before", "after", "current state", "future state", "from-to", "transformation", "as-is", "to-be"},
+		baseScore: 0.90,
+		rationale: "Two-column before/after with transition chevron, ideal for state transformations",
+		needsCols: 2,
+	},
+	{
+		pattern:   "before-after",
+		keywords:  []string{"before", "after", "transformation"},
+		baseScore: 0.80,
+		rationale: "Before/after comparison layout",
+	},
+
+	// Process flow
+	{
+		pattern:   "process-flow",
+		keywords:  []string{"process", "flow", "workflow", "decision", "flowchart", "procedure", "step-by-step", "pipeline"},
+		baseScore: 0.90,
+		rationale: "Left-to-right process flow with steps and decision diamonds",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern:   "process-flow",
+		keywords:  []string{"process", "workflow", "flowchart"},
+		baseScore: 0.75,
+		rationale: "Process flow diagram",
+	},
+
+	// Swimlane
+	{
+		pattern:   "swimlane",
+		keywords:  []string{"swimlane", "swim lane", "cross-functional", "raci", "handoff", "handover", "actors", "responsibility"},
+		baseScore: 0.90,
+		rationale: "Horizontal swimlane diagram with actors and process steps per lane",
+	},
+	{
+		pattern:   "swimlane",
+		keywords:  []string{"swimlane", "cross-functional"},
+		baseScore: 0.75,
+		rationale: "Cross-functional swimlane process diagram",
+	},
+
+	// Roadmap phased
+	{
+		pattern:   "roadmap-phased",
+		keywords:  []string{"phased", "quarter", "quarterly", "release plan", "workstream", "multi-phase", "gantt"},
+		baseScore: 0.92,
+		rationale: "Phased roadmap with workstreams across time periods, ideal for quarterly planning",
+	},
+	{
+		pattern:   "roadmap-phased",
+		keywords:  []string{"roadmap phased", "phased roadmap", "quarterly roadmap"},
+		baseScore: 0.85,
+		rationale: "Multi-phase roadmap with workstreams",
+	},
+
+	// Architecture stack
+	{
+		pattern:   "arch-stack",
+		keywords:  []string{"architecture", "stack", "layer", "tier", "infrastructure", "tech stack", "platform"},
+		baseScore: 0.90,
+		rationale: "Architecture stack diagram with labeled tiers and optional cross-cutting side rails",
+	},
+	{
+		pattern:   "arch-stack",
+		keywords:  []string{"architecture", "stack"},
+		baseScore: 0.75,
+		rationale: "Layered architecture stack diagram",
 	},
 }
 
