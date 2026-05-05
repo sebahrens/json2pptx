@@ -1,0 +1,38 @@
+{
+  "columns": 1,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "“The best way to predict the future is to invent it.”",
+                  "size": 36,
+                  "italic": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "— Alan Kay, Computer Scientist",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "accent1",
+            "width": 6
+          }
+        }
+      ]
+    }
+  ]
+}

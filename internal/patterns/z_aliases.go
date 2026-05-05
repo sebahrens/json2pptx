@@ -22,4 +22,6 @@ func init() {
 	r.RegisterAlias("comparison", "comparison-2col")
 	r.RegisterAlias("roadmap", "roadmap-phased")
 	r.RegisterAlias("architecture", "arch-stack")
+	r.RegisterAlias("hero", "stat-hero")
+	r.RegisterAlias("quote", "pull-quote")
 }

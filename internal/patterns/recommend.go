@@ -234,6 +234,36 @@ var rules = []rule{
 		baseScore: 0.75,
 		rationale: "Layered architecture stack diagram",
 	},
+
+	// Stat hero — single big number emphasis
+	{
+		pattern:      "stat-hero",
+		keywords:     []string{"hero", "big number", "headline", "stat", "single metric", "tam", "revenue", "total", "highlight"},
+		baseScore:    0.90,
+		rationale:    "Full-bleed single oversized number with one-line context, for maximum emphasis",
+		itemMax:      1,
+		needsMetrics: true,
+	},
+	{
+		pattern:   "stat-hero",
+		keywords:  []string{"hero", "emphasis", "single", "highlight", "one number"},
+		baseScore: 0.75,
+		rationale: "Single-stat hero slide for maximum visual impact",
+	},
+
+	// Pull quote — testimonial or emphasis quote
+	{
+		pattern:   "pull-quote",
+		keywords:  []string{"quote", "testimonial", "pull-quote", "pullquote", "citation", "endorsement", "customer voice", "executive quote"},
+		baseScore: 0.92,
+		rationale: "Italic quote block with attribution, ideal for testimonials or key takeaways",
+	},
+	{
+		pattern:   "pull-quote",
+		keywords:  []string{"quote", "testimonial"},
+		baseScore: 0.80,
+		rationale: "Pull-quote block with attribution line",
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

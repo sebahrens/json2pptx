@@ -1,0 +1,33 @@
+{
+  "columns": 1,
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "$2.4B",
+                  "size": 120,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Addressable AI consulting market by FY27",
+                  "size": 18,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
