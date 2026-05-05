@@ -27,6 +27,15 @@ func (b *bmcCanvas) UseWhen() string {
 }
 func (b *bmcCanvas) Version() int      { return 1 }
 func (b *bmcCanvas) CellsHint() string { return "9" }
+func (b *bmcCanvas) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame"},
+		PairsWith:     []string{"kpi-3up", "card-grid", "pull-quote"},
+		DensityClass:  "high",
+		AccentWeight:  "subtle",
+	}
+}
 
 func (b *bmcCanvas) ExemplarValues() any {
 	return &BMCCanvasValues{

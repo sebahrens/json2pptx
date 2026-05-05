@@ -23,7 +23,16 @@ func (a *archStack) Name() string        { return "arch-stack" }
 func (a *archStack) Description() string { return "Architecture stack diagram with tiers and optional side rails" }
 func (a *archStack) UseWhen() string     { return "Architecture layers, technology stack, layered model" }
 func (a *archStack) Version() int        { return 1 }
-func (a *archStack) CellsHint() string   { return "3-6 tiers + rails" }
+func (a *archStack) CellsHint() string { return "3-6 tiers + rails" }
+func (a *archStack) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame", "evidence"},
+		PairsWith:     []string{"card-grid", "process-flow", "swimlane"},
+		DensityClass:  "medium",
+		AccentWeight:  "normal",
+	}
+}
 func (a *archStack) SupportsCallout() bool        { return true }
 func (a *archStack) SupportsInlineMarkdown() bool { return true }
 

@@ -23,7 +23,16 @@ func (r *roadmapPhased) Name() string        { return "roadmap-phased" }
 func (r *roadmapPhased) Description() string { return "Phased roadmap with workstreams and time periods" }
 func (r *roadmapPhased) UseWhen() string     { return "Multi-phase roadmap, quarterly plan, release timeline" }
 func (r *roadmapPhased) Version() int        { return 1 }
-func (r *roadmapPhased) CellsHint() string   { return "workstreams × phases" }
+func (r *roadmapPhased) CellsHint() string { return "workstreams × phases" }
+func (r *roadmapPhased) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame"},
+		PairsWith:     []string{"kpi-3up", "timeline-horizontal", "card-grid"},
+		DensityClass:  "high",
+		AccentWeight:  "normal",
+	}
+}
 func (r *roadmapPhased) SupportsCallout() bool        { return true }
 func (r *roadmapPhased) SupportsInlineMarkdown() bool { return true }
 

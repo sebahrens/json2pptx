@@ -25,6 +25,10 @@ type Pattern interface {
 	UseWhen() string
 	Version() int
 
+	// Taxonomy returns classification metadata for agent-facing discovery:
+	// category, narrative roles, density, accent weight, and sibling pairings.
+	Taxonomy() PatternTaxonomy
+
 	// NewValues returns a zero-value pointer to the pattern's Values struct,
 	// ready for JSON unmarshalling.
 	NewValues() any
@@ -51,6 +55,32 @@ type Pattern interface {
 
 	// Expand produces a ShapeGridInput from the pattern's typed inputs.
 	Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error)
+}
+
+// ---------------------------------------------------------------------------
+// PatternTaxonomy — classification metadata for discovery and sequencing
+// ---------------------------------------------------------------------------
+
+// PatternTaxonomy provides compositional metadata so agents can plan deck arcs,
+// not just individual slide moments.
+type PatternTaxonomy struct {
+	// Category groups patterns by function: "data-display", "narrative",
+	// "structural", or "hero".
+	Category string `json:"category"`
+
+	// NarrativeRole describes where in a deck arc this pattern fits best.
+	// Values: "open", "frame", "evidence", "compare", "conclude".
+	NarrativeRole []string `json:"narrative_role"`
+
+	// PairsWith lists sibling pattern names that flow well as the next slide.
+	PairsWith []string `json:"pairs_with"`
+
+	// DensityClass describes visual density: "low", "medium", or "high".
+	DensityClass string `json:"density_class"`
+
+	// AccentWeight describes accent color prominence: "subtle", "normal",
+	// or "strong".
+	AccentWeight string `json:"accent_weight"`
 }
 
 // ---------------------------------------------------------------------------

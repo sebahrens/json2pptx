@@ -23,7 +23,16 @@ func (p *processFlow) Name() string        { return "process-flow" }
 func (p *processFlow) Description() string { return "Left-to-right process flow with steps and decision points" }
 func (p *processFlow) UseWhen() string     { return "Process flow, workflow, decision tree, step-by-step" }
 func (p *processFlow) Version() int        { return 1 }
-func (p *processFlow) CellsHint() string   { return "3-8" }
+func (p *processFlow) CellsHint() string { return "3-8" }
+func (p *processFlow) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame", "evidence"},
+		PairsWith:     []string{"kpi-3up", "card-grid", "before-after"},
+		DensityClass:  "medium",
+		AccentWeight:  "normal",
+	}
+}
 func (p *processFlow) SupportsCallout() bool        { return true }
 func (p *processFlow) SupportsInlineMarkdown() bool { return true }
 

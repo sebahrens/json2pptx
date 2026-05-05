@@ -38,23 +38,52 @@ func TestMCPListPatterns(t *testing.T) {
 		t.Fatalf("unexpected tool error: %v", result.Content)
 	}
 
-	// Should return a JSON array
+	// Should return category-grouped JSON array
 	text := result.Content[0].(mcp.TextContent).Text
-	var entries []skillPatternCompact
-	if err := json.Unmarshal([]byte(text), &entries); err != nil {
+	var groups []patternCategoryGroup
+	if err := json.Unmarshal([]byte(text), &groups); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-	if len(entries) == 0 {
-		t.Fatal("expected at least one pattern")
+	if len(groups) == 0 {
+		t.Fatal("expected at least one category group")
 	}
 
-	// Verify kpi-3up is present
+	// Verify groups are in the expected category order.
+	wantOrder := []string{"data-display", "narrative", "structural", "hero"}
+	var gotOrder []string
+	for _, g := range groups {
+		gotOrder = append(gotOrder, g.Category)
+	}
+	if len(gotOrder) != len(wantOrder) {
+		t.Fatalf("got %d categories %v, want %d %v", len(gotOrder), gotOrder, len(wantOrder), wantOrder)
+	}
+	for i, cat := range wantOrder {
+		if gotOrder[i] != cat {
+			t.Errorf("category[%d] = %q, want %q", i, gotOrder[i], cat)
+		}
+	}
+
+	// Verify kpi-3up is present in data-display group with taxonomy.
 	found := false
-	for _, e := range entries {
-		if e.Name == "kpi-3up" {
-			found = true
-			if e.Cells != "3" {
-				t.Errorf("kpi-3up cells = %q, want %q", e.Cells, "3")
+	for _, g := range groups {
+		for _, e := range g.Patterns {
+			if e.Name == "kpi-3up" {
+				found = true
+				if e.Cells != "3" {
+					t.Errorf("kpi-3up cells = %q, want %q", e.Cells, "3")
+				}
+				if e.Category != "data-display" {
+					t.Errorf("kpi-3up category = %q, want %q", e.Category, "data-display")
+				}
+				if e.DensityClass != "low" {
+					t.Errorf("kpi-3up density_class = %q, want %q", e.DensityClass, "low")
+				}
+				if len(e.NarrativeRole) == 0 {
+					t.Error("kpi-3up narrative_role is empty")
+				}
+				if len(e.PairsWith) == 0 {
+					t.Error("kpi-3up pairs_with is empty")
+				}
 			}
 		}
 	}

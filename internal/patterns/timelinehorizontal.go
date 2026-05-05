@@ -22,7 +22,16 @@ func (th *timelineHorizontal) Name() string        { return "timeline-horizontal
 func (th *timelineHorizontal) Description() string { return "Linear horizontal timeline with stops" }
 func (th *timelineHorizontal) UseWhen() string     { return "Linear timeline with stops" }
 func (th *timelineHorizontal) Version() int        { return 1 }
-func (th *timelineHorizontal) CellsHint() string   { return "3-7" }
+func (th *timelineHorizontal) CellsHint() string { return "3-7" }
+func (th *timelineHorizontal) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame", "evidence"},
+		PairsWith:     []string{"kpi-3up", "roadmap-phased", "card-grid"},
+		DensityClass:  "medium",
+		AccentWeight:  "normal",
+	}
+}
 
 func (th *timelineHorizontal) ExemplarValues() any {
 	v := TimelineHorizontalValues{

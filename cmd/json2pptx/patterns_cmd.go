@@ -89,10 +89,16 @@ func runPatternsList() error {
 			if cs, ok := p.(patterns.CalloutSupport); ok {
 				supportsCallout = cs.SupportsCallout()
 			}
+			tax := p.Taxonomy()
 			entries[i] = skillPatternCompact{
 				Name:                     p.Name(),
 				Cells:                    cells,
 				UseWhen:                  p.UseWhen(),
+				Category:                 tax.Category,
+				NarrativeRole:            tax.NarrativeRole,
+				PairsWith:                tax.PairsWith,
+				DensityClass:             tax.DensityClass,
+				AccentWeight:             tax.AccentWeight,
 				SupportsCallout:          supportsCallout,
 				EstimatedPromptSizeBytes: sizeBytes,
 			}

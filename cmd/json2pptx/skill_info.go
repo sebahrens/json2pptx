@@ -41,11 +41,16 @@ type skillDeprecation struct {
 
 // skillPatternCompact is a compact pattern entry (≤ 40 tokens) for default mode.
 type skillPatternCompact struct {
-	Name                   string `json:"name"`
-	Cells                  string `json:"cells"`
-	UseWhen                string `json:"use_when"`
-	SupportsCallout        bool   `json:"supports_callout"`
-	EstimatedPromptSizeBytes int  `json:"estimated_prompt_size_bytes"`
+	Name                    string   `json:"name"`
+	Cells                   string   `json:"cells"`
+	UseWhen                 string   `json:"use_when"`
+	Category                string   `json:"category"`
+	NarrativeRole           []string `json:"narrative_role"`
+	PairsWith               []string `json:"pairs_with"`
+	DensityClass            string   `json:"density_class"`
+	AccentWeight            string   `json:"accent_weight"`
+	SupportsCallout         bool     `json:"supports_callout"`
+	EstimatedPromptSizeBytes int     `json:"estimated_prompt_size_bytes"`
 }
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.
@@ -732,10 +737,16 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 		if cs, ok := p.(patterns.CalloutSupport); ok {
 			supportsCallout = cs.SupportsCallout()
 		}
+		tax := p.Taxonomy()
 		compact[i] = skillPatternCompact{
 			Name:                     p.Name(),
 			Cells:                    cells,
 			UseWhen:                  p.UseWhen(),
+			Category:                 tax.Category,
+			NarrativeRole:            tax.NarrativeRole,
+			PairsWith:                tax.PairsWith,
+			DensityClass:             tax.DensityClass,
+			AccentWeight:             tax.AccentWeight,
 			SupportsCallout:          supportsCallout,
 			EstimatedPromptSizeBytes: sizeBytes,
 		}

@@ -23,7 +23,16 @@ func (b *beforeAfter) Name() string        { return "before-after" }
 func (b *beforeAfter) Description() string { return "Two-column before/after with transition chevron" }
 func (b *beforeAfter) UseWhen() string     { return "Before/after, current vs future state, from→to" }
 func (b *beforeAfter) Version() int        { return 1 }
-func (b *beforeAfter) CellsHint() string   { return "2 + header" }
+func (b *beforeAfter) CellsHint() string { return "2 + header" }
+func (b *beforeAfter) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "narrative",
+		NarrativeRole: []string{"compare"},
+		PairsWith:     []string{"kpi-3up", "process-flow", "pull-quote"},
+		DensityClass:  "medium",
+		AccentWeight:  "normal",
+	}
+}
 func (b *beforeAfter) SupportsCallout() bool        { return true }
 func (b *beforeAfter) SupportsInlineMarkdown() bool { return true }
 

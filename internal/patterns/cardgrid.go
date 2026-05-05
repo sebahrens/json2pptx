@@ -24,7 +24,16 @@ func (c *cardGrid) Name() string           { return "card-grid" }
 func (c *cardGrid) Description() string    { return "Parameterized N×M grid of titled cards" }
 func (c *cardGrid) UseWhen() string        { return "N×M titled cards" }
 func (c *cardGrid) Version() int           { return 1 }
-func (c *cardGrid) CellsHint() string      { return "rows × cols" }
+func (c *cardGrid) CellsHint() string { return "rows × cols" }
+func (c *cardGrid) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "data-display",
+		NarrativeRole: []string{"evidence"},
+		PairsWith:     []string{"kpi-3up", "process-flow", "pull-quote"},
+		DensityClass:  "medium",
+		AccentWeight:  "normal",
+	}
+}
 func (c *cardGrid) SupportsCallout() bool        { return true }
 func (c *cardGrid) SupportsInlineMarkdown() bool { return true }
 

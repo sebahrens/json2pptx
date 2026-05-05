@@ -22,7 +22,16 @@ func (sh *statHero) Name() string        { return "stat-hero" }
 func (sh *statHero) Description() string { return "Single oversized statistic with label and optional context" }
 func (sh *statHero) UseWhen() string     { return "One big number dominates the slide" }
 func (sh *statHero) Version() int        { return 1 }
-func (sh *statHero) CellsHint() string   { return "1" }
+func (sh *statHero) CellsHint() string { return "1" }
+func (sh *statHero) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "hero",
+		NarrativeRole: []string{"open", "evidence"},
+		PairsWith:     []string{"kpi-3up", "card-grid", "process-flow"},
+		DensityClass:  "low",
+		AccentWeight:  "strong",
+	}
+}
 
 func (sh *statHero) SupportsCallout() bool { return false }
 

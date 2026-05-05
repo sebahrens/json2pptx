@@ -26,6 +26,7 @@ func (s *stubPattern) NewOverrides() any   { return nil }
 func (s *stubPattern) NewCellOverride() any { return nil }
 func (s *stubPattern) Schema() *Schema     { return nil }
 func (s *stubPattern) CellsHint() string   { return "" }
+func (s *stubPattern) Taxonomy() PatternTaxonomy { return PatternTaxonomy{Category: "structural"} }
 
 func (s *stubPattern) Validate(_, _ any, _ map[int]any) error { return nil }
 func (s *stubPattern) Expand(_ ExpandContext, _, _ any, _ map[int]any) (*jsonschema.ShapeGridInput, error) {

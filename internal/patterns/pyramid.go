@@ -22,7 +22,16 @@ func (p *pyramid) Name() string        { return "pyramid" }
 func (p *pyramid) Description() string { return "Stacked trapezoid hierarchy (3-5 tiers)" }
 func (p *pyramid) UseWhen() string     { return "Hierarchy, layered model, Maslow-style pyramid" }
 func (p *pyramid) Version() int        { return 1 }
-func (p *pyramid) CellsHint() string   { return "3-5" }
+func (p *pyramid) CellsHint() string { return "3-5" }
+func (p *pyramid) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame"},
+		PairsWith:     []string{"card-grid", "kpi-3up", "icon-row"},
+		DensityClass:  "medium",
+		AccentWeight:  "normal",
+	}
+}
 func (p *pyramid) SupportsCallout() bool        { return true }
 func (p *pyramid) SupportsInlineMarkdown() bool { return true }
 

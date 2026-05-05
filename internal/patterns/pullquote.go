@@ -22,7 +22,16 @@ func (pq *pullQuote) Name() string        { return "pull-quote" }
 func (pq *pullQuote) Description() string { return "Italic quote block with attribution" }
 func (pq *pullQuote) UseWhen() string     { return "Emphasize a single quote or testimonial" }
 func (pq *pullQuote) Version() int        { return 1 }
-func (pq *pullQuote) CellsHint() string   { return "1" }
+func (pq *pullQuote) CellsHint() string { return "1" }
+func (pq *pullQuote) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "hero",
+		NarrativeRole: []string{"open", "conclude"},
+		PairsWith:     []string{"kpi-3up", "card-grid", "before-after"},
+		DensityClass:  "low",
+		AccentWeight:  "subtle",
+	}
+}
 
 func (pq *pullQuote) SupportsCallout() bool { return false }
 

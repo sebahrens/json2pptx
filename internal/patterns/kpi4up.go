@@ -21,7 +21,16 @@ func (k *kpi4up) Name() string        { return "kpi-4up" }
 func (k *kpi4up) Description() string { return "Four big-number KPI cards with short captions" }
 func (k *kpi4up) UseWhen() string     { return "Four big-number KPIs with short captions" }
 func (k *kpi4up) Version() int        { return 1 }
-func (k *kpi4up) CellsHint() string   { return "4" }
+func (k *kpi4up) CellsHint() string { return "4" }
+func (k *kpi4up) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "data-display",
+		NarrativeRole: []string{"evidence"},
+		PairsWith:     []string{"process-flow", "comparison-2col", "card-grid"},
+		DensityClass:  "medium",
+		AccentWeight:  "strong",
+	}
+}
 
 func (k *kpi4up) ExemplarValues() any {
 	v := Kpi4upValues{

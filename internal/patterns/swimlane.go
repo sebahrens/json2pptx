@@ -23,7 +23,16 @@ func (s *swimlane) Name() string        { return "swimlane" }
 func (s *swimlane) Description() string { return "Horizontal swimlane diagram with actors and steps" }
 func (s *swimlane) UseWhen() string     { return "Cross-functional process, RACI, swimlane diagram" }
 func (s *swimlane) Version() int        { return 1 }
-func (s *swimlane) CellsHint() string   { return "lanes × steps" }
+func (s *swimlane) CellsHint() string { return "lanes × steps" }
+func (s *swimlane) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame"},
+		PairsWith:     []string{"kpi-3up", "arch-stack", "process-flow"},
+		DensityClass:  "high",
+		AccentWeight:  "normal",
+	}
+}
 func (s *swimlane) SupportsCallout() bool        { return true }
 func (s *swimlane) SupportsInlineMarkdown() bool { return true }
 

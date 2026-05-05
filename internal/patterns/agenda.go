@@ -22,7 +22,16 @@ func (a *agenda) Name() string        { return "agenda" }
 func (a *agenda) Description() string { return "Numbered section list for agenda / table-of-contents slides" }
 func (a *agenda) UseWhen() string     { return "Agenda, table of contents, or section overview" }
 func (a *agenda) Version() int        { return 1 }
-func (a *agenda) CellsHint() string   { return "2-10" }
+func (a *agenda) CellsHint() string { return "2-10" }
+func (a *agenda) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "narrative",
+		NarrativeRole: []string{"open", "frame"},
+		PairsWith:     []string{"kpi-3up", "card-grid", "stat-hero"},
+		DensityClass:  "low",
+		AccentWeight:  "subtle",
+	}
+}
 
 func (a *agenda) ExemplarValues() any {
 	v := AgendaValues{

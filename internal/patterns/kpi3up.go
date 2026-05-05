@@ -21,7 +21,16 @@ func (k *kpi3up) Name() string        { return "kpi-3up" }
 func (k *kpi3up) Description() string { return "Three big-number KPI cards with short captions" }
 func (k *kpi3up) UseWhen() string     { return "Three big-number KPIs with short captions" }
 func (k *kpi3up) Version() int        { return 1 }
-func (k *kpi3up) CellsHint() string   { return "3" }
+func (k *kpi3up) CellsHint() string { return "3" }
+func (k *kpi3up) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "data-display",
+		NarrativeRole: []string{"evidence"},
+		PairsWith:     []string{"process-flow", "comparison-2col", "card-grid"},
+		DensityClass:  "low",
+		AccentWeight:  "strong",
+	}
+}
 
 func (k *kpi3up) ExemplarValues() any {
 	v := Kpi3upValues{

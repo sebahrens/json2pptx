@@ -23,7 +23,16 @@ func (m *matrix2x2) Name() string        { return "matrix-2x2" }
 func (m *matrix2x2) Description() string { return "2×2 quadrant matrix with axis labels" }
 func (m *matrix2x2) UseWhen() string     { return "Quadrant/positioning matrix with axis labels" }
 func (m *matrix2x2) Version() int        { return 1 }
-func (m *matrix2x2) CellsHint() string   { return "4 + axes" }
+func (m *matrix2x2) CellsHint() string { return "4 + axes" }
+func (m *matrix2x2) Taxonomy() PatternTaxonomy {
+	return PatternTaxonomy{
+		Category:      "structural",
+		NarrativeRole: []string{"frame", "compare"},
+		PairsWith:     []string{"kpi-3up", "card-grid", "pull-quote"},
+		DensityClass:  "medium",
+		AccentWeight:  "subtle",
+	}
+}
 
 func (m *matrix2x2) ExemplarValues() any {
 	return &Matrix2x2Values{

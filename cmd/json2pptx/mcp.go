@@ -1111,20 +1111,51 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 	return mcpResult, nil
 }
 
+// patternCategoryGroup is a category-keyed group of patterns for list_patterns.
+type patternCategoryGroup struct {
+	Category string               `json:"category"`
+	Patterns []skillPatternCompact `json:"patterns"`
+}
+
 func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	reg := patterns.Default()
 	all := reg.List()
 
+	// Build entries with taxonomy.
 	entries := make([]skillPatternCompact, len(all))
 	for i, p := range all {
+		tax := p.Taxonomy()
+		supportsCallout := false
+		if cs, ok := p.(patterns.CalloutSupport); ok {
+			supportsCallout = cs.SupportsCallout()
+		}
 		entries[i] = skillPatternCompact{
-			Name:    p.Name(),
-			Cells:   p.CellsHint(),
-			UseWhen: p.UseWhen(),
+			Name:            p.Name(),
+			Cells:           p.CellsHint(),
+			UseWhen:         p.UseWhen(),
+			Category:        tax.Category,
+			NarrativeRole:   tax.NarrativeRole,
+			PairsWith:       tax.PairsWith,
+			DensityClass:    tax.DensityClass,
+			AccentWeight:    tax.AccentWeight,
+			SupportsCallout: supportsCallout,
 		}
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, entries)
+	// Group by category in a stable order.
+	categoryOrder := []string{"data-display", "narrative", "structural", "hero"}
+	grouped := make(map[string][]skillPatternCompact, len(categoryOrder))
+	for _, e := range entries {
+		grouped[e.Category] = append(grouped[e.Category], e)
+	}
+	var result []patternCategoryGroup
+	for _, cat := range categoryOrder {
+		if pats, ok := grouped[cat]; ok {
+			result = append(result, patternCategoryGroup{Category: cat, Patterns: pats})
+		}
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
