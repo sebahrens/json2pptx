@@ -82,9 +82,10 @@ type skillTemplateInfo struct {
 	ColorRoles   *skillColorRoles         `json:"color_roles,omitempty"`
 	TitleFont    string                   `json:"title_font,omitempty"`
 	BodyFont     string                   `json:"body_font,omitempty"`
-	LayoutNames  []string                 `json:"layout_names,omitempty"`
-	TableStyles  []skillTableStyle        `json:"table_styles"`
-	Layouts      []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
+	LayoutNames     []string                 `json:"layout_names,omitempty"`
+	LayoutSummaries []skillLayoutSummary     `json:"layout_summaries,omitempty"` // compact+full: id+name pairs
+	TableStyles     []skillTableStyle        `json:"table_styles"`
+	Layouts         []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
 }
 
 // skillColorRoles maps design intent to scheme color names for a template.
@@ -95,6 +96,13 @@ type skillColorRoles struct {
 	BodyFill      string   `json:"body_fill"`           // light fill for body/card cells
 	BodyText      string   `json:"body_text"`           // dark text on light backgrounds
 	WhiteTextSafe []string `json:"white_text_safe"`     // all accents passing WCAG AA (≥3.0) against white
+}
+
+// skillLayoutSummary is a lightweight id+name pair included in compact mode
+// so agents can address layouts by ID without escalating to full mode.
+type skillLayoutSummary struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // skillLayoutInfo describes a single layout (only included in full mode).
@@ -290,10 +298,13 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 
 	layoutNames := make([]string, len(analysis.Layouts))
+	layoutSummaries := make([]skillLayoutSummary, len(analysis.Layouts))
 	for i, l := range analysis.Layouts {
 		layoutNames[i] = l.Name
+		layoutSummaries[i] = skillLayoutSummary{ID: l.ID, Name: l.Name}
 	}
 	info.LayoutNames = layoutNames
+	info.LayoutSummaries = layoutSummaries
 
 	if mode == "full" {
 		// Include detailed placeholder information per layout
