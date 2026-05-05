@@ -34,6 +34,7 @@ const (
 	ErrCodeTitleWraps            = "title_wraps"
 
 	// Render-time finding codes (emitted during generation, not pre-flight).
+	ErrCodePlaceholderRemapped   = "placeholder_remapped"
 	ErrCodeTextTrimmed           = "text_trimmed"
 	ErrCodeTextOverflow          = "text_overflow"
 	ErrCodeReadabilityTrimmed    = "readability_trimmed"
@@ -76,6 +77,7 @@ var (
 	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
 	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
 
+	ErrPlaceholderRemapped = errors.New("placeholder remapped to fallback target")
 	ErrTextTrimmed         = errors.New("trailing paragraphs trimmed to fit placeholder")
 	ErrTextOverflow        = errors.New("text overflows placeholder even after trimming")
 	ErrReadabilityTrimmed  = errors.New("paragraphs trimmed for readability")
@@ -113,6 +115,7 @@ var codeSentinel = map[string]error{
 	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
 	ErrCodeFooterCollision:       ErrFooterCollision,
 	ErrCodeTitleWraps:            ErrTitleWraps,
+	ErrCodePlaceholderRemapped:   ErrPlaceholderRemapped,
 	ErrCodeTextTrimmed:           ErrTextTrimmed,
 	ErrCodeTextOverflow:          ErrTextOverflow,
 	ErrCodeReadabilityTrimmed:    ErrReadabilityTrimmed,

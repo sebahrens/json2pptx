@@ -452,6 +452,22 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 		if tier != TierExact {
 			resolvedName := slide.CommonSlideData.ShapeTree.Shapes[shapeIdx].NonVisualProperties.ConnectionNonVisual.Name
 			logFallbackResolution(item.PlaceholderID, resolvedName, tier, layoutID)
+
+			// Emit info-level fit finding when subtitle is remapped to a body placeholder.
+			if item.PlaceholderID == "subtitle" && tier == TierSemantic {
+				ctx.emitFitFinding(patterns.FitFinding{
+					ValidationError: patterns.ValidationError{
+						Path:    fmt.Sprintf("slides[%d].content[%d].placeholder_id", slideIndex, j),
+						Code:    patterns.ErrCodePlaceholderRemapped,
+						Message: fmt.Sprintf("slide %d: placeholder \"subtitle\" remapped to \"%s\" (layout %q has no subTitle placeholder)", slideIndex+1, resolvedName, layoutID),
+						Fix: &patterns.FixSuggestion{
+							Kind:   "remap_placeholder",
+							Params: map[string]any{"from": "subtitle", "to": resolvedName, "available_placeholders": resolver.Keys()},
+						},
+					},
+					Action: "info",
+				})
+			}
 		}
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]

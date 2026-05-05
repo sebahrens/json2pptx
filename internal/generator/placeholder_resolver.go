@@ -346,8 +346,19 @@ func (r *placeholderResolver) ResolveWithFallback(placeholderID string) (int, Re
 	return 0, 0, false
 }
 
+// subtitleFallbackChain defines the role fallback order when "subtitle" is
+// requested but the layout lacks a subTitle-typed placeholder. The chain is:
+// RoleSubtitle → RoleBodySecondary → RoleBodyPrimary.
+var subtitleFallbackChain = []PlaceholderSemanticRole{
+	RoleSubtitle,
+	RoleBodySecondary,
+	RoleBodyPrimary,
+}
+
 // resolveBySemanticRole maps a placeholder ID to a semantic role and then
-// finds the shape with that role.
+// finds the shape with that role. For "subtitle", applies a fallback chain
+// (subTitle → body_2 → body) so that content isn't silently dropped when the
+// layout lacks a dedicated subtitle placeholder.
 func (r *placeholderResolver) resolveBySemanticRole(placeholderID string) (int, bool) {
 	targetRole, ok := semanticAliases[placeholderID]
 	if !ok {
@@ -355,6 +366,19 @@ func (r *placeholderResolver) resolveBySemanticRole(placeholderID string) (int, 
 	}
 
 	roles := r.semanticRoles()
+
+	// For subtitle, try a fallback chain rather than a single role lookup.
+	if targetRole == RoleSubtitle {
+		for _, fallback := range subtitleFallbackChain {
+			for idx, role := range roles {
+				if role == fallback {
+					return idx, true
+				}
+			}
+		}
+		return 0, false
+	}
+
 	for idx, role := range roles {
 		if role == targetRole {
 			return idx, true

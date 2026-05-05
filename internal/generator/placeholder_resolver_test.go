@@ -238,15 +238,84 @@ func TestResolveWithFallback_Tier5_TitleToTopmostBody(t *testing.T) {
 
 func TestResolveWithFallback_Tier5_NotAppliedToNonTitle(t *testing.T) {
 	// The topmost fallback should only trigger for "title" placeholder ID.
+	// "subtitle" uses a semantic fallback chain (subtitle → body_2 → body),
+	// NOT the topmost fallback. With a body placeholder available, subtitle
+	// resolves via semantic tier to the body primary.
 	shapes := []shapeXML{
 		makeShape("body", "body", nil, 300000, 300000, 9000000, 5000000),
 	}
 	r := newPlaceholderResolver(shapes)
 
-	// "subtitle" should not fall back to topmost.
+	// "subtitle" should resolve to body via semantic fallback chain.
+	idx, tier, ok := r.ResolveWithFallback("subtitle")
+	if !ok {
+		t.Fatal("expected subtitle to resolve via semantic fallback to body")
+	}
+	if idx != 0 {
+		t.Errorf("idx = %d, want 0 (body placeholder)", idx)
+	}
+	if tier != TierSemantic {
+		t.Errorf("tier = %v, want TierSemantic", tier)
+	}
+}
+
+func TestResolveWithFallback_SubtitleFallbackChain(t *testing.T) {
+	// Layout with title + body + body_2 but NO subTitle placeholder.
+	// "subtitle" should fall back: RoleSubtitle (miss) → RoleBodySecondary (body_2).
+	shapes := []shapeXML{
+		makeShape("title", "title", nil, 300000, 200000, 8000000, 600000),
+		makeShape("body", "body", nil, 300000, 1200000, 8000000, 4000000),   // larger = primary
+		makeShape("body_2", "body", nil, 300000, 5500000, 8000000, 1000000), // smaller = secondary
+	}
+	r := newPlaceholderResolver(shapes)
+
+	idx, tier, ok := r.ResolveWithFallback("subtitle")
+	if !ok {
+		t.Fatal("expected subtitle to resolve via fallback chain")
+	}
+	// Should pick body_2 (RoleBodySecondary) as first fallback after RoleSubtitle.
+	if idx != 2 {
+		t.Errorf("idx = %d, want 2 (body_2, the secondary body placeholder)", idx)
+	}
+	if tier != TierSemantic {
+		t.Errorf("tier = %v, want TierSemantic", tier)
+	}
+}
+
+func TestResolveWithFallback_SubtitleResolvesToSubTitle(t *testing.T) {
+	// Layout WITH a subTitle-typed placeholder — should resolve directly to it.
+	subTitleType := "subTitle"
+	shapes := []shapeXML{
+		makeShape("title", "title", nil, 300000, 200000, 8000000, 600000),
+		makeShape("subtitle", subTitleType, nil, 300000, 900000, 8000000, 500000),
+		makeShape("body", "body", nil, 300000, 1500000, 8000000, 4000000),
+	}
+	r := newPlaceholderResolver(shapes)
+
+	idx, tier, ok := r.ResolveWithFallback("subtitle")
+	if !ok {
+		t.Fatal("expected subtitle to resolve")
+	}
+	// Should resolve at Tier 1 (exact name match).
+	if idx != 1 {
+		t.Errorf("idx = %d, want 1 (subtitle shape)", idx)
+	}
+	if tier != TierExact {
+		t.Errorf("tier = %v, want TierExact", tier)
+	}
+}
+
+func TestResolveWithFallback_SubtitleNoContentPlaceholders(t *testing.T) {
+	// Layout with no content placeholders — subtitle should fail to resolve.
+	shapes := []shapeXML{
+		makeShape("ftr", "ftr", nil, 0, 6500000, 9144000, 300000),
+		makeShape("sldNum", "sldNum", nil, 8000000, 6500000, 1000000, 300000),
+	}
+	r := newPlaceholderResolver(shapes)
+
 	_, _, ok := r.ResolveWithFallback("subtitle")
 	if ok {
-		t.Error("expected no match for 'subtitle' — topmost fallback is title-only")
+		t.Error("expected no match for subtitle when no content placeholders exist")
 	}
 }
 
