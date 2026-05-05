@@ -255,6 +255,30 @@ var outputSchemaListIcons = json.RawMessage(`{
   }
 }`)
 
+// --- get_shape_catalog ---
+var outputSchemaGetShapeCatalog = json.RawMessage(`{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "category":    {"type": "string"},
+      "description": {"type": "string"},
+      "shapes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name":           {"type": "string"},
+            "adjust_handles": {"type": "array", "items": {"type": "string"}}
+          },
+          "required": ["name"]
+        }
+      }
+    },
+    "required": ["category", "description", "shapes"]
+  }
+}`)
+
 // --- render_slide_image ---
 var outputSchemaRenderSlideImage = json.RawMessage(`{
   "type": "object",

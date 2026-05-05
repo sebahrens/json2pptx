@@ -81,6 +81,7 @@ func mcpToolNames() []string {
 		"validate_pattern",
 		"expand_pattern",
 		"list_icons",
+		"get_shape_catalog",
 		"table_density_guide",
 		"resolve_theme",
 		"render_slide_image",

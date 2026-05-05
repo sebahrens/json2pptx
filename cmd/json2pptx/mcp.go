@@ -126,6 +126,7 @@ func runMCP() error {
 	s.AddTool(mcpValidatePatternTool(), handleValidatePattern)
 	s.AddTool(mcpExpandPatternTool(), mc.handleExpandPattern)
 	s.AddTool(mcpListIconsTool(), handleListIcons)
+	s.AddTool(mcpGetShapeCatalogTool(), handleGetShapeCatalog)
 	s.AddTool(mcpTableDensityGuideTool(), mc.handleTableDensityGuide)
 	s.AddTool(mcpResolveThemeTool(), mc.handleResolveTheme)
 	s.AddTool(mcpRenderSlideImageTool(), mc.handleRenderSlideImage)
