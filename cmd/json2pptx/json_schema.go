@@ -35,6 +35,7 @@ type TableStyleInput = jsonschema.TableStyleInput
 type PresentationInput struct {
 	Template       string         `json:"template"`
 	OutputFilename string         `json:"output_filename,omitempty"`
+	DesignMode     string         `json:"design_mode,omitempty"` // "constrained" (default) or "free"
 	Footer         *JSONFooter    `json:"footer,omitempty"`
 	ThemeOverride  *ThemeInput    `json:"theme_override,omitempty"`
 	Defaults       *DefaultsInput `json:"defaults,omitempty"`

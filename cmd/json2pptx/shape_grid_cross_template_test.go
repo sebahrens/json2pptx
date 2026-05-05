@@ -75,6 +75,7 @@ func TestShapeGridCrossTemplate(t *testing.T) {
 					t.Fatal(err)
 				}
 				input["template"] = tmpl
+				input["design_mode"] = "free" // Fixtures use raw hex colors intentionally
 				outputFilename := fixtureName + "_" + tmpl + ".pptx"
 				input["output_filename"] = outputFilename
 

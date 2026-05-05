@@ -281,7 +281,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string) error {
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// Parse and validate JSON input
@@ -293,6 +293,22 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(input)
+
+	// Enforce design mode constraints — reject raw hex colors and absolute font sizes.
+	if violations := validateDesignMode(input); len(violations) > 0 {
+		msgs := make([]string, 0, len(violations))
+		for _, v := range violations {
+			msg := v.Message
+			if v.Fix != nil {
+				if text, ok := v.Fix.Params["message"].(string); ok {
+				msg += " — fix: " + text
+			}
+			}
+			msgs = append(msgs, msg)
+		}
+		return writeJSONError(jsonOutputPath, fmt.Errorf("design_mode %q violation(s):\n  %s",
+			effectiveDesignMode(input), strings.Join(msgs, "\n  ")))
+	}
 
 	// Run text-fit checking when --strict-fit is warn or strict.
 	if strictFit != "off" {

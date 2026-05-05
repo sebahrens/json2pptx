@@ -254,7 +254,7 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 
 // --- Tool handlers ---
 
-func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo
+func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo,gocognit
 	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
 	if ambigErr != nil {
 		return ambigErr, nil
@@ -301,6 +301,24 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Enum validation — reject unknown values for transition, transition_speed, build, background.fit.
 	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
 		boundaryDiags = append(boundaryDiags, diagnostics.FromValidationErrors(enumErrs)...)
+	}
+
+	// Design mode constraints — reject raw hex colors and absolute sizes in constrained mode.
+	if violations := validateDesignMode(&input); len(violations) > 0 {
+		for _, v := range violations {
+			d := diagnostics.Diagnostic{
+				Code:     "design_mode_violation",
+				Path:     v.Path,
+				Message:  v.Message,
+				Severity: diagnostics.SeverityError,
+			}
+			if v.Fix != nil {
+				if text, ok := v.Fix.Params["message"].(string); ok {
+				d.Fix = &diagnostics.Fix{Kind: "use_scheme_color", Params: map[string]any{"suggestion": text}}
+			}
+			}
+			boundaryDiags = append(boundaryDiags, d)
+		}
 	}
 
 	// Fail fast if any boundary diagnostic is an error.
@@ -650,6 +668,24 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	}
 	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
 		boundaryDiags = append(boundaryDiags, diagnostics.FromValidationErrors(enumErrs)...)
+	}
+
+	// Design mode constraints.
+	if violations := validateDesignMode(&input); len(violations) > 0 {
+		for _, v := range violations {
+			d := diagnostics.Diagnostic{
+				Code:     "design_mode_violation",
+				Path:     v.Path,
+				Message:  v.Message,
+				Severity: diagnostics.SeverityError,
+			}
+			if v.Fix != nil {
+				if text, ok := v.Fix.Params["message"].(string); ok {
+					d.Fix = &diagnostics.Fix{Kind: "use_scheme_color", Params: map[string]any{"suggestion": text}}
+				}
+			}
+			boundaryDiags = append(boundaryDiags, d)
+		}
 	}
 
 	output := dryRunOutput{

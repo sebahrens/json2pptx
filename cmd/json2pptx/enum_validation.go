@@ -32,6 +32,9 @@ var (
 	allowedBackgroundFits = []string{
 		"cover", "stretch", "tile",
 	}
+	allowedDesignModes = []string{
+		"constrained", "free",
+	}
 )
 
 // checkInputEnumValues validates enum-constrained fields across all slides
@@ -39,6 +42,14 @@ var (
 // field with a value not in its allowed set.
 func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError {
 	var errs []*patterns.ValidationError
+
+	// Top-level design_mode enum
+	if input.DesignMode != "" {
+		if err := checkEnum("design_mode", input.DesignMode, allowedDesignModes); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
 	for i, slide := range input.Slides {
 		prefix := fmt.Sprintf("slides[%d]", i)
 
