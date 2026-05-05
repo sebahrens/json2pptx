@@ -374,10 +374,15 @@ func runValidateMCPFormat(files []string, templatesDir string, fitReport, verbos
 			return err
 		}
 
+		var presentation any
+		if err := json.Unmarshal([]byte(jsonInput), &presentation); err != nil {
+			return fmt.Errorf("invalid JSON in %s: %w", filePath, err)
+		}
+
 		args := map[string]any{
-			"json_input":  jsonInput,
-			"fit_report":  fitReport,
-			"verbose_fit": verboseFit,
+			"presentation": presentation,
+			"fit_report":   fitReport,
+			"verbose_fit":  verboseFit,
 		}
 
 		result, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(args))

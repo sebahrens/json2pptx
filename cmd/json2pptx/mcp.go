@@ -155,8 +155,9 @@ func mcpGenerateTool() mcp.Tool {
 	return mcp.NewTool("generate_presentation",
 		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions. Returns the output file path on success."),
 		mcp.WithRawOutputSchema(outputSchemaGenerate),
-		mcp.WithString("json_input",
-			mcp.Description(`JSON string containing the presentation definition. Mutually exclusive with "presentation" (object form). Use list_templates to discover available template names, layout_ids, and placeholder_ids.
+		mcp.WithObject("presentation",
+			mcp.Required(),
+			mcp.Description(`Presentation definition. Use list_templates to discover available template names, layout_ids, and placeholder_ids.
 
 Minimal example:
 {"template":"my-template","slides":[{"layout_id":"slideLayout1","content":[{"placeholder_id":"title","type":"text","text_value":"Hello World"}]}]}
@@ -185,9 +186,10 @@ Optional top-level fields: "output_filename", "defaults":{"table_style":{...},"c
 Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "build".
 
 Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"table.rows","layout_id":"...","content":[...]} auto-paginates overflowing table rows across multiple slides.`),
-		),
-		mcp.WithObject("presentation",
-			mcp.Description(`Structured object form of the presentation definition. Mutually exclusive with "json_input" (string form). Same schema — use this to avoid double-serialization. Example: {"template":"my-template","slides":[...]}`),
+			mcp.Properties(map[string]any{
+				"template": map[string]any{"type": "string", "description": "Template name (use list_templates to discover available names)"},
+				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+			}),
 		),
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: output.pptx). Path components are stripped for safety."),
@@ -241,13 +243,15 @@ func mcpValidateTool() mcp.Tool {
 	return mcp.NewTool("validate_input",
 		mcp.WithDescription("Validate a JSON presentation definition without generating output. Returns validation errors or success. When fit_report is true, also runs per-cell text overflow measurement and includes findings in the result."),
 		mcp.WithRawOutputSchema(outputSchemaValidate),
-		mcp.WithString("json_input",
-			mcp.Description(`JSON string containing the presentation definition to validate. Mutually exclusive with "presentation" (object form). Same format as generate_presentation json_input.
+		mcp.WithObject("presentation",
+			mcp.Required(),
+			mcp.Description(`Presentation definition to validate. Same schema as generate_presentation.
 
 Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","content":[{"placeholder_id":"title","type":"text","text_value":"Hello"}]}]}`),
-		),
-		mcp.WithObject("presentation",
-			mcp.Description(`Structured object form of the presentation definition to validate. Mutually exclusive with "json_input" (string form). Same schema as generate_presentation.`),
+			mcp.Properties(map[string]any{
+				"template": map[string]any{"type": "string", "description": "Template name"},
+				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+			}),
 		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, run per-cell text overflow measurement and include NDJSON-style fit findings in the result. Default: true."),
@@ -265,18 +269,18 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 // --- Tool handlers ---
 
 func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo,gocognit
-	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
-	if ambigErr != nil {
-		return ambigErr, nil
+	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "json_input or presentation is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
 	}
 
 	// Parse JSON input — reject trailing data.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "json_input", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
 
 	// Apply deck-level defaults before any validation or conversion.
@@ -291,7 +295,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Required fields.
 	if input.Template == "" {
 		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required in JSON input",
+			Code: "REQUIRED", Path: "template", Message: "template is required in presentation",
 			Severity: diagnostics.SeverityError,
 			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
 		})
@@ -660,18 +664,18 @@ func handleGetDiagramCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*
 }
 
 func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
-	if ambigErr != nil {
-		return ambigErr, nil
+	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "json_input or presentation is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
 	}
 
 	// Parse JSON input — reject trailing data.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "json_input", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
 
 	// Apply deck-level defaults before validation.
@@ -843,29 +847,18 @@ func mcpValidatePatternTool() mcp.Tool {
 			mcp.Required(),
 			mcp.Description("Pattern name to validate against."),
 		),
-		mcp.WithString("values",
-			mcp.Description("JSON string of the pattern's values. Mutually exclusive with \"values_object\"."),
+		mcp.WithObject("values",
+			mcp.Required(),
+			mcp.Description("Pattern values. Use show_pattern to see the schema for each pattern."),
 		),
-		mcp.WithObject("values_object",
-			mcp.Description("Structured object form of the pattern's values. Mutually exclusive with \"values\" (string form). Use show_pattern to see the schema."),
+		mcp.WithObject("overrides",
+			mcp.Description("Pattern-level overrides (optional). Use show_pattern to see supported override fields."),
 		),
-		mcp.WithString("overrides",
-			mcp.Description("JSON string of pattern-level overrides (optional). Mutually exclusive with \"overrides_object\"."),
+		mcp.WithObject("cell_overrides",
+			mcp.Description("Per-cell overrides keyed by cell index (optional). Example: {\"0\":{\"fill\":\"#FF0000\"}}"),
 		),
-		mcp.WithObject("overrides_object",
-			mcp.Description("Structured object form of pattern-level overrides (optional). Mutually exclusive with \"overrides\" (string form)."),
-		),
-		mcp.WithString("cell_overrides",
-			mcp.Description("JSON string of per-cell overrides keyed by cell index (optional). Mutually exclusive with \"cell_overrides_object\". Example: {\"0\":{\"fill\":\"#FF0000\"}}"),
-		),
-		mcp.WithObject("cell_overrides_object",
-			mcp.Description("Structured object form of per-cell overrides keyed by cell index (optional). Mutually exclusive with \"cell_overrides\" (string form). Example: {\"0\":{\"fill\":\"#FF0000\"}}"),
-		),
-		mcp.WithString("callout",
-			mcp.Description("JSON string of callout band (optional). Mutually exclusive with \"callout_object\". Only supported by some patterns (card-grid, comparison-2col). Example: {\"text\":\"Key takeaway\",\"emphasis\":\"bold\"}"),
-		),
-		mcp.WithObject("callout_object",
-			mcp.Description("Structured object form of callout band (optional). Mutually exclusive with \"callout\" (string form). Only supported by some patterns (card-grid, comparison-2col)."),
+		mcp.WithObject("callout",
+			mcp.Description("Callout band (optional). Only supported by some patterns (card-grid, comparison-2col). Example: {\"text\":\"Key takeaway\",\"emphasis\":\"bold\"}"),
 		),
 	)
 }
@@ -878,23 +871,15 @@ func mcpExpandPatternTool() mcp.Tool {
 			mcp.Required(),
 			mcp.Description("Pattern name to expand."),
 		),
-		mcp.WithString("values",
-			mcp.Description("JSON string of the pattern's values. Mutually exclusive with \"values_object\"."),
+		mcp.WithObject("values",
+			mcp.Required(),
+			mcp.Description("Pattern values. Use show_pattern to see the schema for each pattern."),
 		),
-		mcp.WithObject("values_object",
-			mcp.Description("Structured object form of the pattern's values. Mutually exclusive with \"values\" (string form)."),
+		mcp.WithObject("overrides",
+			mcp.Description("Pattern-level overrides (optional). Use show_pattern to see supported override fields."),
 		),
-		mcp.WithString("overrides",
-			mcp.Description("JSON string of pattern-level overrides (optional). Mutually exclusive with \"overrides_object\"."),
-		),
-		mcp.WithObject("overrides_object",
-			mcp.Description("Structured object form of pattern-level overrides (optional). Mutually exclusive with \"overrides\" (string form)."),
-		),
-		mcp.WithString("cell_overrides",
-			mcp.Description("JSON string of per-cell overrides keyed by cell index (optional). Mutually exclusive with \"cell_overrides_object\"."),
-		),
-		mcp.WithObject("cell_overrides_object",
-			mcp.Description("Structured object form of per-cell overrides keyed by cell index (optional). Mutually exclusive with \"cell_overrides\" (string form)."),
+		mcp.WithObject("cell_overrides",
+			mcp.Description("Per-cell overrides keyed by cell index (optional)."),
 		),
 		mcp.WithString("theme_template",
 			mcp.Description("Template name to use for theme context during expansion. If omitted, a minimal synthesized theme is used."),
@@ -1142,12 +1127,12 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 	if err != nil {
 		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
 	}
-	valuesStr, ambigErr := resolveStringOrObject(request, "values", "values_object")
-	if ambigErr != nil {
-		return ambigErr, nil
+	valuesStr, paramErr := objectParamAsJSON(request, "values")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if valuesStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "values or values_object is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "values is required"), nil
 	}
 
 	reg := patterns.Default()
@@ -1170,9 +1155,9 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 
 	// Unmarshal overrides
 	var overrides any
-	overridesStr, ambigErr2 := resolveStringOrObject(request, "overrides", "overrides_object")
-	if ambigErr2 != nil {
-		return ambigErr2, nil
+	overridesStr, paramErr2 := objectParamAsJSON(request, "overrides")
+	if paramErr2 != nil {
+		return paramErr2, nil
 	}
 	if overridesStr != "" {
 		overrides = pat.NewOverrides()
@@ -1184,9 +1169,9 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 	}
 
 	// Unmarshal cell_overrides
-	coStr, ambigErr3 := resolveStringOrObject(request, "cell_overrides", "cell_overrides_object")
-	if ambigErr3 != nil {
-		return ambigErr3, nil
+	coStr, paramErr3 := objectParamAsJSON(request, "cell_overrides")
+	if paramErr3 != nil {
+		return paramErr3, nil
 	}
 	var cellOverrides map[int]any
 	if coStr != "" {
@@ -1239,9 +1224,9 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 // pattern's CalloutSupport interface. Returns a non-nil result on error,
 // or nil when callout is absent or the pattern supports it.
 func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name string, pat patterns.Pattern) *mcp.CallToolResult {
-	calloutStr, ambigErr := resolveStringOrObject(request, "callout", "callout_object")
-	if ambigErr != nil {
-		return ambigErr
+	calloutStr, paramErr := objectParamAsJSON(request, "callout")
+	if paramErr != nil {
+		return paramErr
 	}
 	if calloutStr == "" {
 		return nil
@@ -1269,12 +1254,12 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	if err != nil {
 		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
 	}
-	valuesStr, ambigErr := resolveStringOrObject(request, "values", "values_object")
-	if ambigErr != nil {
-		return ambigErr, nil
+	valuesStr, paramErr := objectParamAsJSON(request, "values")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if valuesStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "values or values_object is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "values is required"), nil
 	}
 
 	reg := patterns.Default()
@@ -1294,16 +1279,16 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		Name:   name,
 		Values: json.RawMessage(valuesStr),
 	}
-	overridesStr, ambigErr2 := resolveStringOrObject(request, "overrides", "overrides_object")
-	if ambigErr2 != nil {
-		return ambigErr2, nil
+	overridesStr, paramErr2 := objectParamAsJSON(request, "overrides")
+	if paramErr2 != nil {
+		return paramErr2, nil
 	}
 	if overridesStr != "" {
 		pi.Overrides = json.RawMessage(overridesStr)
 	}
-	coStr, ambigErr3 := resolveStringOrObject(request, "cell_overrides", "cell_overrides_object")
-	if ambigErr3 != nil {
-		return ambigErr3, nil
+	coStr, paramErr3 := objectParamAsJSON(request, "cell_overrides")
+	if paramErr3 != nil {
+		return paramErr3, nil
 	}
 	if coStr != "" {
 		var rawCO map[string]json.RawMessage

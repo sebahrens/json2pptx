@@ -128,8 +128,9 @@ func TestHandleGenerate_InvalidJSON_StructuredError(t *testing.T) {
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
+	// Passing a non-object value triggers INVALID_JSON from strictUnmarshalJSON.
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{broken json`,
+		"presentation": "not-an-object",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -145,7 +146,7 @@ func TestHandleGenerate_MissingTemplate_StructuredError(t *testing.T) {
 	}
 
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"nonexistent-template-xyz","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"presentation": mustParseJSON(`{"template":"nonexistent-template-xyz","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -177,7 +178,7 @@ func TestHandleValidatePattern_InvalidValues_StructuredSuccess(t *testing.T) {
 	// (the tool ran successfully, it found validation problems).
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name":   "kpi-3up",
-		"values": `[]`, // empty array — kpi-3up requires 3 items
+		"values": []any{}, // empty array — kpi-3up requires 3 items
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -218,8 +219,8 @@ func TestHandleGenerate_StrictFitRefusal_StructuredError(t *testing.T) {
 	input := `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"body","type":"table","table_value":{"headers":["A","B","C","D"],"rows":[` + rows + `]}}]}]}`
 
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": input,
-		"strict_fit": "strict",
+		"presentation": mustParseJSON(input),
+		"strict_fit":   "strict",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -246,7 +247,7 @@ func TestHandleValidate_MissingTemplate_StructuredDiagnostics(t *testing.T) {
 	}
 
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"nonexistent-xyz","slides":[{"layout_id":"x","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"presentation": mustParseJSON(`{"template":"nonexistent-xyz","slides":[{"layout_id":"x","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -288,7 +289,7 @@ func TestHandleExpandPattern_InvalidValues_StructuredError(t *testing.T) {
 
 	result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
 		"name":   "kpi-3up",
-		"values": `[]`, // empty — should fail
+		"values": []any{}, // empty — should fail
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -472,22 +473,9 @@ func TestHandleGenerate_PresentationObject(t *testing.T) {
 	requireStructuredContent(t, result)
 }
 
-func TestHandleGenerate_AmbiguousInput(t *testing.T) {
-	mc := &mcpConfig{
-		templatesDir: "../../templates",
-		outputDir:    t.TempDir(),
-		cache:        template.NewMemoryCache(24 * time.Hour),
-	}
-
-	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input":   `{"template":"midnight-blue","slides":[]}`,
-		"presentation": map[string]any{"template": "midnight-blue"},
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	requireStructuredError(t, result, "AMBIGUOUS_INPUT")
-}
+// TestHandleGenerate_AmbiguousInput is removed — the dual-parameter pattern
+// (json_input + presentation) has been eliminated. Only presentation (object)
+// is accepted.
 
 func TestHandleValidate_PresentationObject(t *testing.T) {
 	mc := &mcpConfig{
@@ -522,10 +510,10 @@ func TestHandleValidate_PresentationObject(t *testing.T) {
 	requireStructuredContent(t, result)
 }
 
-func TestHandleValidatePattern_ValuesObject(t *testing.T) {
+func TestHandleValidatePattern_Values(t *testing.T) {
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name": "kpi-3up",
-		"values_object": []any{
+		"values": []any{
 			map[string]any{"big": "A", "small": "a"},
 			map[string]any{"big": "B", "small": "b"},
 			map[string]any{"big": "C", "small": "c"},
@@ -545,23 +533,14 @@ func TestHandleValidatePattern_ValuesObject(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	if !resp.OK {
-		t.Error("expected ok=true for valid values_object")
+		t.Error("expected ok=true for valid values")
 	}
 }
 
-func TestHandleValidatePattern_AmbiguousValues(t *testing.T) {
-	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
-		"name":          "kpi-3up",
-		"values":        `[{"big":"A","small":"a"}]`,
-		"values_object": []any{map[string]any{"big": "A", "small": "a"}},
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	requireStructuredError(t, result, "AMBIGUOUS_INPUT")
-}
+// TestHandleValidatePattern_AmbiguousValues is removed — the dual-parameter
+// pattern (values + values_object) has been eliminated.
 
-func TestHandleExpandPattern_ValuesObject(t *testing.T) {
+func TestHandleExpandPattern_Values(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),
@@ -570,7 +549,7 @@ func TestHandleExpandPattern_ValuesObject(t *testing.T) {
 
 	result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
 		"name": "kpi-3up",
-		"values_object": []any{
+		"values": []any{
 			map[string]any{"big": "$1.2M", "small": "Revenue"},
 			map[string]any{"big": "+15%", "small": "Growth"},
 			map[string]any{"big": "4.3K", "small": "Users"},

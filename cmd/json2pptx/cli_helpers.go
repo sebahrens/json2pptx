@@ -99,3 +99,17 @@ func readJSONInput(path string) (string, error) {
 	}
 	return string(data), nil
 }
+
+// readJSONObject reads a JSON file and parses it into an untyped object
+// suitable for passing as an MCP object parameter.
+func readJSONObject(path string) (any, error) {
+	raw, err := readJSONInput(path)
+	if err != nil {
+		return nil, err
+	}
+	var obj any
+	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+		return nil, fmt.Errorf("invalid JSON in %s: %w", path, err)
+	}
+	return obj, nil
+}

@@ -4,6 +4,48 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 3.0.0 (2026-05-05)
+
+**Breaking** — MCP tool parameter surface halved. All string-form JSON parameters
+removed; only structured object parameters remain.
+
+### Removed
+
+- `json_input` (string) parameter from `generate_presentation`, `validate_input`,
+  `repair_slide`, `preview_presentation_plan`, `score_deck`. Use `presentation`
+  (object) instead.
+- `values` (string), `overrides` (string), `cell_overrides` (string), `callout`
+  (string) parameters from `validate_pattern` and `expand_pattern`. Use the
+  corresponding object parameters instead.
+- `values_object`, `overrides_object`, `cell_overrides_object`, `callout_object`
+  parameter names. These are now simply `values`, `overrides`, `cell_overrides`,
+  `callout` (the `_object` suffix was only needed to disambiguate from the
+  now-removed string forms).
+
+### Changed
+
+- `presentation` parameter is now **required** on `generate_presentation`,
+  `validate_input`, `repair_slide`, `preview_presentation_plan`, `score_deck`.
+- `values` parameter is now **required** on `validate_pattern` and `expand_pattern`.
+- All object parameters now advertise JSON Schema properties via the MCP tool
+  schema (previously bare `type: object` with only a description).
+- `resolveStringOrObject` helper removed; replaced by `objectParamAsJSON`.
+
+### Migration guide
+
+Before (2.x):
+```json
+{"name": "generate_presentation", "arguments": {"json_input": "{\"template\":\"midnight-blue\",\"slides\":[...]}"}}
+```
+
+After (3.0):
+```json
+{"name": "generate_presentation", "arguments": {"presentation": {"template":"midnight-blue","slides":[...]}}}
+```
+
+Agents should stop double-serializing JSON — pass the presentation as a
+structured object directly.
+
 ## 2.9.0 (2026-05-05)
 
 ### Additions

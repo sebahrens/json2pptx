@@ -37,7 +37,7 @@ func TestMCPErrorEnvelope_ContractShape(t *testing.T) {
 
 	// Trigger a structured error via invalid JSON.
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{invalid`,
+		"presentation": "not-an-object",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -186,7 +186,7 @@ func TestMCPGenerateSuccess_ContractShape(t *testing.T) {
 	}`
 
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": deckJSON,
+		"presentation": mustParseJSON(deckJSON),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -248,7 +248,7 @@ func TestMCPValidateSuccess_ContractShape(t *testing.T) {
 	}`
 
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-		"json_input": deckJSON,
+		"presentation": mustParseJSON(deckJSON),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -290,7 +290,7 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 
 	// Unknown key should produce diagnostics in the validate output.
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"presentation": mustParseJSON(`{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -333,8 +333,12 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 func TestMCPPatternValidate_ContractShape(t *testing.T) {
 	// Valid input → {ok: true}
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
-		"name":   "kpi-3up",
-		"values": `[{"big":"A","small":"a"},{"big":"B","small":"b"},{"big":"C","small":"c"}]`,
+		"name": "kpi-3up",
+		"values": []any{
+			map[string]any{"big": "A", "small": "a"},
+			map[string]any{"big": "B", "small": "b"},
+			map[string]any{"big": "C", "small": "c"},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -362,7 +366,7 @@ func TestMCPPatternValidate_ContractShape(t *testing.T) {
 	// Invalid input → {ok: false, errors: [...]}
 	result2, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name":   "kpi-3up",
-		"values": `[]`,
+		"values": []any{},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

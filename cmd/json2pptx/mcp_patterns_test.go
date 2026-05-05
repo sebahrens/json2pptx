@@ -19,6 +19,16 @@ func makeRequest(args map[string]any) mcp.CallToolRequest {
 	}
 }
 
+// mustParseJSON parses a JSON string into an untyped value for use as an MCP
+// object parameter in tests. Panics on invalid JSON.
+func mustParseJSON(s string) any {
+	var v any
+	if err := json.Unmarshal([]byte(s), &v); err != nil {
+		panic("mustParseJSON: " + err.Error())
+	}
+	return v
+}
+
 func TestMCPListPatterns(t *testing.T) {
 	result, err := handleListPatterns(context.Background(), makeRequest(nil))
 	if err != nil {
@@ -101,10 +111,9 @@ func TestMCPShowPattern(t *testing.T) {
 
 func TestMCPValidatePattern(t *testing.T) {
 	t.Run("valid input", func(t *testing.T) {
-		values := `[{"big":"$1.2M","small":"Revenue"},{"big":"340","small":"Customers"},{"big":"98%","small":"Uptime"}]`
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":   "kpi-3up",
-			"values": values,
+			"values": mustParseJSON(`[{"big":"$1.2M","small":"Revenue"},{"big":"340","small":"Customers"},{"big":"98%","small":"Uptime"}]`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -126,10 +135,9 @@ func TestMCPValidatePattern(t *testing.T) {
 	})
 
 	t.Run("invalid input - wrong count", func(t *testing.T) {
-		values := `[{"big":"$1.2M","small":"Revenue"}]`
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":   "kpi-3up",
-			"values": values,
+			"values": mustParseJSON(`[{"big":"$1.2M","small":"Revenue"}]`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -157,10 +165,9 @@ func TestMCPValidatePattern(t *testing.T) {
 	t.Run("multiple errors split", func(t *testing.T) {
 		// card-grid with columns=0 + rows=0 produces 2 joined errors;
 		// D10 requires they appear as separate entries.
-		values := `{"columns":0,"rows":0,"cells":[]}`
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":   "card-grid",
-			"values": values,
+			"values": mustParseJSON(`{"columns":0,"rows":0,"cells":[]}`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -188,7 +195,7 @@ func TestMCPValidatePattern(t *testing.T) {
 	t.Run("unknown pattern", func(t *testing.T) {
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":   "nonexistent",
-			"values": "{}",
+			"values": map[string]any{},
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -200,11 +207,10 @@ func TestMCPValidatePattern(t *testing.T) {
 
 	t.Run("callout unsupported pattern", func(t *testing.T) {
 		// matrix-2x2 does not support callout; validate_pattern should reject it
-		values := `{"x_axis_label":"X","y_axis_label":"Y","top_left":{"header":"A"},"top_right":{"header":"B"},"bottom_left":{"header":"C"},"bottom_right":{"header":"D"}}`
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":    "matrix-2x2",
-			"values":  values,
-			"callout": `{"text":"This should fail"}`,
+			"values":  mustParseJSON(`{"x_axis_label":"X","y_axis_label":"Y","top_left":{"header":"A"},"top_right":{"header":"B"},"bottom_left":{"header":"C"},"bottom_right":{"header":"D"}}`),
+			"callout": mustParseJSON(`{"text":"This should fail"}`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -248,11 +254,10 @@ func TestMCPValidatePattern(t *testing.T) {
 	})
 
 	t.Run("callout supported pattern ok", func(t *testing.T) {
-		values := `{"columns":2,"rows":1,"cells":[{"header":"A","body":"B"},{"header":"C","body":"D"}]}`
 		result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 			"name":    "card-grid",
-			"values":  values,
-			"callout": `{"text":"Valid callout"}`,
+			"values":  mustParseJSON(`{"columns":2,"rows":1,"cells":[{"header":"A","body":"B"},{"header":"C","body":"D"}]}`),
+			"callout": mustParseJSON(`{"text":"Valid callout"}`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -281,10 +286,9 @@ func TestMCPExpandPattern(t *testing.T) {
 	}
 
 	t.Run("expand without template", func(t *testing.T) {
-		values := `[{"big":"$1.2M","small":"Revenue"},{"big":"340","small":"Customers"},{"big":"98%","small":"Uptime"}]`
 		result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
 			"name":   "kpi-3up",
-			"values": values,
+			"values": mustParseJSON(`[{"big":"$1.2M","small":"Revenue"},{"big":"340","small":"Customers"},{"big":"98%","small":"Uptime"}]`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -315,10 +319,9 @@ func TestMCPExpandPattern(t *testing.T) {
 	})
 
 	t.Run("expand with template", func(t *testing.T) {
-		values := `[{"big":"$1.2M","small":"Revenue"},{"big":"340","small":"Customers"},{"big":"98%","small":"Uptime"}]`
 		result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
 			"name":           "kpi-3up",
-			"values":         values,
+			"values":         mustParseJSON(`[{"big":"$1.2M","small":"Revenue"},{"big":"340","small":"Customers"},{"big":"98%","small":"Uptime"}]`),
 			"theme_template": "midnight-blue",
 		}))
 		if err != nil {
@@ -333,7 +336,7 @@ func TestMCPExpandPattern(t *testing.T) {
 	t.Run("invalid values", func(t *testing.T) {
 		result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
 			"name":   "kpi-3up",
-			"values": `[{"big":"only one","small":"x"}]`,
+			"values": mustParseJSON(`[{"big":"only one","small":"x"}]`),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

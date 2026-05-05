@@ -137,6 +137,16 @@ func buildDeprecatedFields() []capabilitiesDeprecatedField {
 			Replacement: "Use portable placeholder_id: title, subtitle, body, body_2",
 			RemovedIn:   "3.0.0",
 		},
+		{
+			Path:        "MCP parameter: json_input (string form)",
+			Replacement: "Removed. Use presentation (object form) on generate_presentation, validate_input, repair_slide, preview_presentation_plan, score_deck",
+			RemovedIn:   "2.10.0",
+		},
+		{
+			Path:        "MCP parameter: values/overrides/cell_overrides/callout (string forms) and values_object/overrides_object/cell_overrides_object/callout_object (_object suffix)",
+			Replacement: "Removed. Use object parameters: values, overrides, cell_overrides, callout on validate_pattern, expand_pattern",
+			RemovedIn:   "2.10.0",
+		},
 	}
 }
 

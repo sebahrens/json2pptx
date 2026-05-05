@@ -58,7 +58,7 @@ func TestMCPValidateFitReport(t *testing.T) {
 
 	t.Run("fit_report=false omits findings", func(t *testing.T) {
 		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"fit_report": false,
 		}))
 		if err != nil {
@@ -80,7 +80,7 @@ func TestMCPValidateFitReport(t *testing.T) {
 
 	t.Run("fit_report=true includes findings field", func(t *testing.T) {
 		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"fit_report": true,
 		}))
 		if err != nil {
@@ -102,7 +102,7 @@ func TestMCPValidateFitReport(t *testing.T) {
 
 	t.Run("fit_report absent defaults to no findings", func(t *testing.T) {
 		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -136,7 +136,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 	t.Run("strict_fit=off skips checks", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"strict_fit": "off",
 		}))
 		if err != nil {
@@ -158,7 +158,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 	t.Run("strict_fit=warn generates with warnings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"strict_fit": "warn",
 		}))
 		if err != nil {
@@ -180,7 +180,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 	t.Run("strict_fit=strict succeeds with no overflow", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"strict_fit": "strict",
 		}))
 		if err != nil {
@@ -202,7 +202,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 	t.Run("strict_fit defaults to warn when omitted", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -224,7 +224,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	// Test that strict mode refuses generation on overflow.
 	t.Run("fit_report=false omits content fit_findings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"fit_report": false,
 		}))
 		if err != nil {
@@ -244,7 +244,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 	t.Run("fit_report=true includes fit_findings key", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 			"fit_report": true,
 			"strict_fit": "off",
 		}))
@@ -269,7 +269,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 	t.Run("fit_report absent defaults to no content fit_findings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": deckJSON,
+			"presentation": mustParseJSON(deckJSON),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -316,7 +316,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}`
 
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": overflowJSON,
+			"presentation": mustParseJSON(overflowJSON),
 			"fit_report": true,
 			"strict_fit": "off",
 		}))
@@ -426,7 +426,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}`
 
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"json_input": overflowDeckJSON,
+			"presentation": mustParseJSON(overflowDeckJSON),
 			"strict_fit": "strict",
 		}))
 		if err != nil {

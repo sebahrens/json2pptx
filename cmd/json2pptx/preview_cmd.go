@@ -38,7 +38,7 @@ func runPreview() error {
 		return fmt.Errorf("-json is required")
 	}
 
-	jsonInput, err := readJSONInput(*jsonPath)
+	presentation, err := readJSONObject(*jsonPath)
 	if err != nil {
 		return err
 	}
@@ -46,9 +46,9 @@ func runPreview() error {
 	mc := cliMCPConfig(*templatesDir, "")
 
 	args := map[string]any{
-		"json_input":  jsonInput,
-		"fit_report":  *fitReport,
-		"verbose_fit": *verboseFit,
+		"presentation": presentation,
+		"fit_report":   *fitReport,
+		"verbose_fit":  *verboseFit,
 	}
 
 	result, err := mc.handlePreviewPlan(context.Background(), mcpRequestWithArgs(args))

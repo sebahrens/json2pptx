@@ -54,42 +54,22 @@ func requireDiagCode(t *testing.T, diags []diagnostics.Diagnostic, code string) 
 
 // --- Generate tool typed diagnostics ---
 
-func TestHandleGenerate_MalformedJSON(t *testing.T) {
+func TestHandleGenerate_NonObjectPresentation(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
+	// Passing a string where an object is expected — handler should reject.
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"x" GARBAGE`,
+		"presentation": "not-an-object",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	env := parseMCPError(t, result)
 	requireDiagCode(t, env.Diagnostics, "INVALID_JSON")
-}
-
-func TestHandleGenerate_TrailingJSON(t *testing.T) {
-	mc := &mcpConfig{
-		templatesDir: "../../templates",
-		outputDir:    t.TempDir(),
-		cache:        template.NewMemoryCache(24 * time.Hour),
-	}
-
-	// Valid JSON followed by extra data — should be rejected.
-	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]} {"extra": true}`,
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	env := parseMCPError(t, result)
-	d := requireDiagCode(t, env.Diagnostics, "INVALID_JSON")
-	if !strings.Contains(d.Message, "trailing") {
-		t.Errorf("expected message to mention trailing data, got: %s", d.Message)
-	}
 }
 
 func TestHandleGenerate_MissingRequired(t *testing.T) {
@@ -100,7 +80,7 @@ func TestHandleGenerate_MissingRequired(t *testing.T) {
 	}
 
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{}`,
+		"presentation": map[string]any{},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -129,7 +109,7 @@ func TestHandleGenerate_UnknownKey_DefaultWarning(t *testing.T) {
 	// "tmplate" is a typo for "template". By default, unknown keys are warnings
 	// and generation proceeds.
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"presentation": mustParseJSON(`{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -153,7 +133,7 @@ func TestHandleGenerate_UnknownKey_StrictError(t *testing.T) {
 
 	// With strict_unknown_keys=true, unknown keys are errors.
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input":          `{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"presentation":        mustParseJSON(`{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 		"strict_unknown_keys": true,
 	}))
 	if err != nil {
@@ -171,7 +151,7 @@ func TestHandleGenerate_UnknownEnum(t *testing.T) {
 	}
 
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","transition":"BOGUS","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+		"presentation": mustParseJSON(`{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","transition":"BOGUS","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -197,7 +177,7 @@ func TestHandleGenerate_MissingParam(t *testing.T) {
 
 // --- Validate tool typed diagnostics ---
 
-func TestHandleValidate_MalformedJSON(t *testing.T) {
+func TestHandleValidate_NonObjectPresentation(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),
@@ -205,7 +185,7 @@ func TestHandleValidate_MalformedJSON(t *testing.T) {
 	}
 
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{not valid json`,
+		"presentation": "not-an-object",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -224,7 +204,7 @@ func TestHandleValidate_StructuredDiagnostics(t *testing.T) {
 	// Unknown key + missing template → IsError=true with diagnostics envelope
 	// (same shape as generate_presentation errors).
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
-		"json_input": `{"tmplate":"typo","slides":[]}`,
+		"presentation": mustParseJSON(`{"tmplate":"typo","slides":[]}`),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -257,7 +237,7 @@ func TestHandleValidatePattern_MissingParam(t *testing.T) {
 func TestHandleValidatePattern_UnknownPattern(t *testing.T) {
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name":   "nonexistent-pattern",
-		"values": `{}`,
+		"values": map[string]any{},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -269,26 +249,15 @@ func TestHandleValidatePattern_UnknownPattern(t *testing.T) {
 	}
 }
 
-func TestHandleValidatePattern_InvalidValuesJSON(t *testing.T) {
-	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
-		"name":   "kpi-3up",
-		"values": `{not valid}`,
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	env := parseMCPError(t, result)
-	d := requireDiagCode(t, env.Diagnostics, "INVALID_JSON")
-	if d.Path != "values" {
-		t.Errorf("expected path=values, got %q", d.Path)
-	}
-}
-
 func TestHandleValidatePattern_InvalidCellOverrideKey(t *testing.T) {
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
-		"name":           "kpi-3up",
-		"values":         `[{"big":"A","small":"a"},{"big":"B","small":"b"},{"big":"C","small":"c"}]`,
-		"cell_overrides": `{"abc": {}}`,
+		"name": "kpi-3up",
+		"values": []any{
+			map[string]any{"big": "A", "small": "a"},
+			map[string]any{"big": "B", "small": "b"},
+			map[string]any{"big": "C", "small": "c"},
+		},
+		"cell_overrides": map[string]any{"abc": map[string]any{}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -326,7 +295,7 @@ func TestHandleExpandPattern_UnknownPattern(t *testing.T) {
 
 	result, err := mc.handleExpandPattern(context.Background(), makeRequest(map[string]any{
 		"name":   "does-not-exist",
-		"values": `{}`,
+		"values": map[string]any{},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

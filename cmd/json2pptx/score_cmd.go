@@ -14,7 +14,7 @@ func runScore() error {
 
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	jsonPath := fs.String("json", "", "Path to JSON input file (use - for stdin)")
-	templateName := fs.String("template", "", "Template name override (uses json_input template if omitted)")
+	templateName := fs.String("template", "", "Template name override (uses presentation.template if omitted)")
 	mode := fs.String("mode", "deterministic", "Scoring mode: deterministic or with_heuristics")
 
 	fs.Usage = func() {
@@ -37,7 +37,7 @@ func runScore() error {
 		return fmt.Errorf("-json is required")
 	}
 
-	jsonInput, err := readJSONInput(*jsonPath)
+	presentation, err := readJSONObject(*jsonPath)
 	if err != nil {
 		return err
 	}
@@ -45,8 +45,8 @@ func runScore() error {
 	mc := cliMCPConfig(*templatesDir, "")
 
 	args := map[string]any{
-		"json_input": jsonInput,
-		"mode":       *mode,
+		"presentation": presentation,
+		"mode":         *mode,
 	}
 	if *templateName != "" {
 		args["template"] = *templateName

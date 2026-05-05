@@ -54,10 +54,15 @@ func runRepair() error {
 
 	mc := cliMCPConfig(*templatesDir, "")
 
+	var presentation any
+	if err := json.Unmarshal([]byte(jsonInput), &presentation); err != nil {
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+
 	args := map[string]any{
-		"json_input":  jsonInput,
-		"slide_index": float64(*slideIndex),
-		"fixes":       fixes,
+		"presentation": presentation,
+		"slide_index":  float64(*slideIndex),
+		"fixes":        fixes,
 	}
 
 	result, err := mc.handleRepairSlide(context.Background(), mcpRequestWithArgs(args))

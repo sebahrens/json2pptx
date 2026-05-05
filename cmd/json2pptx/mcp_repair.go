@@ -62,11 +62,13 @@ Supported fix kinds (V1):
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
-		mcp.WithString("json_input",
-			mcp.Description(`JSON string containing the full presentation definition. Mutually exclusive with "presentation" (object form).`),
-		),
 		mcp.WithObject("presentation",
-			mcp.Description(`Structured object form of the presentation definition. Mutually exclusive with "json_input" (string form).`),
+			mcp.Required(),
+			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),
+			mcp.Properties(map[string]any{
+				"template": map[string]any{"type": "string", "description": "Template name"},
+				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+			}),
 		),
 		mcp.WithNumber("slide_index",
 			mcp.Description("0-based index of the slide to repair."),
@@ -82,18 +84,18 @@ Unsupported kinds return {applied: false, message: "kind_not_supported"} — age
 // --- Handler ---
 
 func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
-	if ambigErr != nil {
-		return ambigErr, nil
+	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "json_input or presentation is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
 	}
 
 	// Parse the deck.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "json_input", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
 	applyDefaults(&input)
 

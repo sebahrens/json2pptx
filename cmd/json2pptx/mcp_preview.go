@@ -82,11 +82,13 @@ func mcpPreviewPlanTool() mcp.Tool {
 
 Use this to preview what generate_presentation will do: which layout each slide gets, how virtual placeholders (title, body, slot1) resolve to actual IDs, what geometry each placeholder has, and what fit findings exist. Fix issues in the plan before paying a full generation round-trip.`),
 		mcp.WithRawOutputSchema(outputSchemaPreviewPlan),
-		mcp.WithString("json_input",
-			mcp.Description(`JSON string containing the presentation definition. Mutually exclusive with "presentation" (object form). Same format as generate_presentation.`),
-		),
 		mcp.WithObject("presentation",
-			mcp.Description(`Structured object form of the presentation definition. Mutually exclusive with "json_input" (string form). Same schema as generate_presentation.`),
+			mcp.Required(),
+			mcp.Description(`Presentation definition. Same schema as generate_presentation.`),
+			mcp.Properties(map[string]any{
+				"template": map[string]any{"type": "string", "description": "Template name"},
+				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+			}),
 		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, include fit_findings in the response. Default: true."),
@@ -101,18 +103,18 @@ Use this to preview what generate_presentation will do: which layout each slide 
 // --- Handler ---
 
 func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
-	if ambigErr != nil {
-		return ambigErr, nil
+	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "json_input or presentation is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
 	}
 
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "json_input", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
 
 	// Apply deck-level defaults before resolution.

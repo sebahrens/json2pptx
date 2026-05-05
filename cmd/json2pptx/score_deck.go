@@ -26,14 +26,16 @@ Score formula: 100 - sum(severity_weights × findings). Weights: refuse=25, shri
 
 Use this after generate_presentation to get structured visual feedback without burning vision tokens. The score will differ from a naive static check when generation-time autofix kicked in.`),
 		mcp.WithRawOutputSchema(outputSchemaScoreDeck),
-		mcp.WithString("json_input",
-			mcp.Description("JSON string containing the presentation definition (same format as generate_presentation json_input). Mutually exclusive with \"presentation\" (object form)."),
-		),
 		mcp.WithObject("presentation",
-			mcp.Description("Structured object form of the presentation definition. Mutually exclusive with \"json_input\" (string form). Same schema as generate_presentation."),
+			mcp.Required(),
+			mcp.Description("Presentation definition. Same schema as generate_presentation."),
+			mcp.Properties(map[string]any{
+				"template": map[string]any{"type": "string", "description": "Template name"},
+				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+			}),
 		),
 		mcp.WithString("template",
-			mcp.Description("Template name override. If omitted, uses the template field from json_input."),
+			mcp.Description("Template name override. If omitted, uses the template field from the presentation object."),
 		),
 		mcp.WithString("mode",
 			mcp.Description("Scoring mode: 'deterministic' (default, zero false positives) or 'with_heuristics' (adds vision-model checks, requires ANTHROPIC_API_KEY and rendered images)."),
@@ -43,12 +45,12 @@ Use this after generate_presentation to get structured visual feedback without b
 }
 
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, ambigErr := resolveStringOrObject(request, "json_input", "presentation")
-	if ambigErr != nil {
-		return ambigErr, nil
+	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	if paramErr != nil {
+		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "json_input or presentation is required"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
 	}
 
 	mode := "deterministic"
@@ -59,7 +61,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "json_input", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
 	}
 
 	// Apply deck-level defaults before checks.
@@ -74,10 +76,10 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		templateName = override
 	}
 	if templateName == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template is required (in json_input or as template parameter)"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "template is required (in presentation or as template parameter)"), nil
 	}
 	if len(input.Slides) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "at least one slide is required in json_input"), nil
+		return api.MCPSimpleError("MISSING_PARAMETER", "at least one slide is required in presentation"), nil
 	}
 
 	// Resolve and analyze template.
