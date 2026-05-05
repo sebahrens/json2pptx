@@ -471,6 +471,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// per-slide budget).
 	fitFindings = append(fitFindings, synthesisFindings...)
 
+	// Build per-slide resolution summary
+	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
+
 	// Build response
 	output := JSONOutput{
 		Success:          true,
@@ -482,6 +485,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Quality:          computeQualityScore(input.Slides, allWarnings),
 		ValidationErrors: result.ValidationErrors,
 		FitFindings:      fitFindings,
+		Slides:           slideResolutions,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)

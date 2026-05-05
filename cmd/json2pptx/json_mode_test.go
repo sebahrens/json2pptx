@@ -1693,3 +1693,119 @@ func TestValidateSlidesChartData_FlatMapWarnings(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildSlideResolutions_Basic(t *testing.T) {
+	inputSlides := []SlideInput{
+		{LayoutID: "slideLayout1"},  // explicit
+		{LayoutID: ""},             // auto-selected -> resolved to slideLayout2
+		{LayoutID: "slideLayout99"}, // synthesized
+	}
+
+	specs := []generator.SlideSpec{
+		{
+			LayoutID: "slideLayout1",
+			Content: []generator.ContentItem{
+				{PlaceholderID: "title", Type: generator.ContentText},
+				{PlaceholderID: "body", Type: generator.ContentText},
+			},
+		},
+		{
+			LayoutID: "slideLayout2",
+			Content: []generator.ContentItem{
+				{PlaceholderID: "title", Type: generator.ContentText},
+			},
+		},
+		{
+			LayoutID: "slideLayout99",
+			Content: []generator.ContentItem{
+				{PlaceholderID: "title", Type: generator.ContentText},
+				{PlaceholderID: "body", Type: generator.ContentText},
+				{PlaceholderID: "body_2", Type: generator.ContentText},
+			},
+		},
+	}
+
+	layouts := []types.LayoutMetadata{
+		{
+			ID: "slideLayout1",
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "title"}, {ID: "body"}, {ID: "footer"},
+			},
+		},
+		{
+			ID: "slideLayout2",
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "title"}, {ID: "body"},
+			},
+		},
+		{
+			ID: "slideLayout99",
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "title"}, {ID: "body"}, {ID: "body_2"},
+			},
+		},
+	}
+
+	syntheticFiles := map[string][]byte{
+		"ppt/slideLayouts/slideLayout99.xml": []byte("<xml/>"),
+	}
+
+	resolutions := buildSlideResolutions(inputSlides, specs, layouts, syntheticFiles)
+
+	if len(resolutions) != 3 {
+		t.Fatalf("expected 3 resolutions, got %d", len(resolutions))
+	}
+
+	// Slide 0: explicit layout, not synthesized
+	if resolutions[0].ResolvedLayoutID != "slideLayout1" {
+		t.Errorf("slide 0: expected slideLayout1, got %s", resolutions[0].ResolvedLayoutID)
+	}
+	if resolutions[0].WasAutoSelected {
+		t.Error("slide 0: should not be auto-selected")
+	}
+	if resolutions[0].WasSynthesized {
+		t.Error("slide 0: should not be synthesized")
+	}
+	if resolutions[0].OccupancyPct != 66 { // 2/3 placeholders used
+		t.Errorf("slide 0: expected occupancy 66, got %d", resolutions[0].OccupancyPct)
+	}
+
+	// Slide 1: auto-selected
+	if !resolutions[1].WasAutoSelected {
+		t.Error("slide 1: should be auto-selected")
+	}
+	if resolutions[1].OccupancyPct != 50 { // 1/2 placeholders used
+		t.Errorf("slide 1: expected occupancy 50, got %d", resolutions[1].OccupancyPct)
+	}
+
+	// Slide 2: synthesized
+	if !resolutions[2].WasSynthesized {
+		t.Error("slide 2: should be synthesized")
+	}
+	if resolutions[2].OccupancyPct != 100 { // 3/3 placeholders used
+		t.Errorf("slide 2: expected occupancy 100, got %d", resolutions[2].OccupancyPct)
+	}
+	if len(resolutions[2].PlaceholdersUsed) != 3 {
+		t.Errorf("slide 2: expected 3 placeholders used, got %d", len(resolutions[2].PlaceholdersUsed))
+	}
+}
+
+func TestBuildSlideResolutions_NilSyntheticFiles(t *testing.T) {
+	inputSlides := []SlideInput{{LayoutID: "slideLayout1"}}
+	specs := []generator.SlideSpec{{
+		LayoutID: "slideLayout1",
+		Content:  []generator.ContentItem{{PlaceholderID: "title", Type: generator.ContentText}},
+	}}
+	layouts := []types.LayoutMetadata{{ID: "slideLayout1", Placeholders: []types.PlaceholderInfo{{ID: "title"}}}}
+
+	resolutions := buildSlideResolutions(inputSlides, specs, layouts, nil)
+	if len(resolutions) != 1 {
+		t.Fatalf("expected 1 resolution, got %d", len(resolutions))
+	}
+	if resolutions[0].WasSynthesized {
+		t.Error("should not be synthesized with nil synthetic files")
+	}
+	if resolutions[0].OccupancyPct != 100 {
+		t.Errorf("expected occupancy 100, got %d", resolutions[0].OccupancyPct)
+	}
+}

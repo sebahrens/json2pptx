@@ -110,6 +110,18 @@ type JSONContentItem struct {
 	FontSize *float64 `json:"font_size,omitempty"`
 }
 
+// SlideResolution describes how a single slide was resolved during generation.
+// It tells agents which layout was actually used (after auto-selection / fallback),
+// which placeholders received content, and whether synthesis or pagination applied.
+type SlideResolution struct {
+	Index              int      `json:"index"`
+	ResolvedLayoutID   string   `json:"resolved_layout_id"`
+	PlaceholdersUsed   []string `json:"placeholders_used"`
+	WasSynthesized     bool     `json:"was_synthesized_layout,omitempty"`
+	WasAutoSelected    bool     `json:"was_auto_selected,omitempty"`
+	OccupancyPct       int      `json:"occupancy_pct,omitempty"`
+}
+
 // JSONOutput represents the JSON output for headless mode.
 type JSONOutput struct {
 	Success     bool          `json:"success"`
@@ -123,6 +135,7 @@ type JSONOutput struct {
 	Quality          *QualityScore              `json:"quality,omitempty"`
 	ValidationErrors []*patterns.ValidationError `json:"validation_errors,omitempty"`
 	FitFindings      []patterns.FitFinding       `json:"fit_findings,omitempty"`
+	Slides           []SlideResolution           `json:"slides,omitempty"`
 }
 
 // SlideError describes a render-time failure for a specific slide.
@@ -434,6 +447,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	allFitFindings = append(allFitFindings, result.FitFindings...)
 	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
 
+	// Build per-slide resolution summary
+	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
+
 	output := JSONOutput{
 		Success:          true,
 		OutputPath:       outputPath,
@@ -445,6 +461,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		Quality:          computeQualityScore(input.Slides, allWarnings),
 		ValidationErrors: result.ValidationErrors,
 		FitFindings:      allFitFindings,
+		Slides:           slideResolutions,
 	}
 
 	// Write JSON output if requested
@@ -680,6 +697,72 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	}
 
 	return specs, nil
+}
+
+// buildSlideResolutions constructs per-slide resolution metadata from the original
+// input slides and the resolved generator specs. It reports which layout was chosen,
+// which placeholders received content, whether auto-selection or synthesis was involved,
+// and a rough occupancy estimate.
+func buildSlideResolutions(
+	inputSlides []SlideInput,
+	specs []generator.SlideSpec,
+	layouts []types.LayoutMetadata,
+	syntheticFiles map[string][]byte,
+) []SlideResolution {
+	// Build layout lookup
+	layoutByID := make(map[string]types.LayoutMetadata, len(layouts))
+	for _, l := range layouts {
+		layoutByID[l.ID] = l
+	}
+
+	// Build set of synthetic layout IDs from the file paths in the manifest.
+	// Synthetic files have paths like "ppt/slideLayouts/slideLayout99.xml".
+	syntheticIDs := make(map[string]bool, len(syntheticFiles))
+	for path := range syntheticFiles {
+		// Extract ID from path: "ppt/slideLayouts/slideLayout99.xml" -> "slideLayout99"
+		base := filepath.Base(path)
+		id := strings.TrimSuffix(base, filepath.Ext(base))
+		syntheticIDs[id] = true
+	}
+
+	resolutions := make([]SlideResolution, 0, len(specs))
+	for i, spec := range specs {
+		sr := SlideResolution{
+			Index:            i,
+			ResolvedLayoutID: spec.LayoutID,
+		}
+
+		// Determine if layout was auto-selected (input had empty layout_id)
+		if i < len(inputSlides) && inputSlides[i].LayoutID == "" {
+			sr.WasAutoSelected = true
+		}
+
+		// Check if synthesized layout
+		if syntheticIDs[spec.LayoutID] {
+			sr.WasSynthesized = true
+		}
+
+		// Collect placeholders that received content
+		seen := make(map[string]bool)
+		for _, ci := range spec.Content {
+			if !seen[ci.PlaceholderID] {
+				sr.PlaceholdersUsed = append(sr.PlaceholdersUsed, ci.PlaceholderID)
+				seen[ci.PlaceholderID] = true
+			}
+		}
+
+		// Compute occupancy: placeholders used / total placeholders in layout
+		if lm, ok := layoutByID[spec.LayoutID]; ok && len(lm.Placeholders) > 0 {
+			sr.OccupancyPct = len(sr.PlaceholdersUsed) * 100 / len(lm.Placeholders)
+			if sr.OccupancyPct > 100 {
+				sr.OccupancyPct = 100
+			}
+		}
+
+		resolutions = append(resolutions, sr)
+	}
+
+	return resolutions
 }
 
 // convertPresentationContent converts typed ContentInput items to generator content items.
