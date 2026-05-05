@@ -196,7 +196,6 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 
 		titleText := buildAgendaTitleContent(title, titleSize, titleBold, titleColor)
 		titleCell := &jsonschema.GridCellInput{
-			ColSpan: 5,
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"none"`),
