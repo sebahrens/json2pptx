@@ -51,7 +51,10 @@ func TestKPICellUnmarshalJSON(t *testing.T) {
 		if err := json.Unmarshal([]byte(shorthand), &cells); err != nil {
 			t.Fatalf("unmarshal shorthand: %v", err)
 		}
-		p := &kpi3up{}
+		p, ok := Default().Get("kpi-3up")
+		if !ok {
+			t.Fatal("kpi-3up not registered")
+		}
 		if err := p.Validate(&cells, nil, nil); err != nil {
 			t.Fatalf("validate shorthand: %v", err)
 		}
@@ -59,7 +62,10 @@ func TestKPICellUnmarshalJSON(t *testing.T) {
 }
 
 func TestKpi3up(t *testing.T) {
-	p := &kpi3up{}
+	p, ok := Default().Get("kpi-3up")
+	if !ok {
+		t.Fatal("kpi-3up not registered")
+	}
 
 	t.Run("metadata", func(t *testing.T) {
 		if p.Name() != "kpi-3up" {

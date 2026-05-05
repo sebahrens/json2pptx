@@ -222,3 +222,30 @@ func kpiOverridesSchema() *Schema {
 		nil,
 	).WithAdditionalProperties(false)
 }
+
+// buildKPITextContent creates a JSON text object with paragraphs for a KPI cell.
+func buildKPITextContent(big string, bigSize float64, small string, smallSize float64) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Bold    bool    `json:"bold,omitempty"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+	}{
+		Paragraphs: []paragraph{
+			{Content: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"},
+		},
+		Align:         "ctr",
+		VerticalAlign: "ctr",
+	}
+
+	data, _ := json.Marshal(textObj)
+	return data
+}

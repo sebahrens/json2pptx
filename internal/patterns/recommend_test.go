@@ -377,7 +377,10 @@ func TestRecommend_DisambiguatingQuestions(t *testing.T) {
 
 func TestKPI3up_WrongPattern_4Cells(t *testing.T) {
 	// 4 cells in kpi-3up should suggest kpi-4up.
-	p := &kpi3up{}
+	p, ok := Default().Get("kpi-3up")
+	if !ok {
+		t.Fatal("kpi-3up not registered")
+	}
 	cells := &Kpi3upValues{
 		{Big: "1", Small: "a"},
 		{Big: "2", Small: "b"},

@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// isKPIPattern identifies all parametric kpi-Nup pattern names.
+var isKPIPattern = map[string]bool{
+	"kpi-2up": true, "kpi-3up": true, "kpi-4up": true,
+	"kpi-5up": true, "kpi-6up": true,
+}
+
 // ContentHints carries optional structured hints about the content the agent
 // wants to place on a slide. These refine keyword-based scoring.
 type ContentHints struct {
@@ -62,13 +68,22 @@ type rule struct {
 // rules is the curated recommendation table. Order does not matter — all
 // rules are evaluated and the top candidates are returned.
 var rules = []rule{
-	// KPI patterns — metrics/numbers
+	// KPI patterns — metrics/numbers (parametric: kpi-2up through kpi-6up)
+	{
+		pattern:      "kpi-2up",
+		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		baseScore:    0.85,
+		rationale:    "Best for exactly 2 big-number KPIs with short captions",
+		itemMin:      1,
+		itemMax:      2,
+		needsMetrics: true,
+	},
 	{
 		pattern:      "kpi-3up",
 		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
 		baseScore:    0.90,
 		rationale:    "Best for exactly 3 big-number KPIs with short captions",
-		itemMin:      1,
+		itemMin:      3,
 		itemMax:      3,
 		needsMetrics: true,
 	},
@@ -79,6 +94,24 @@ var rules = []rule{
 		rationale:    "Best for exactly 4 big-number KPIs with short captions",
 		itemMin:      4,
 		itemMax:      4,
+		needsMetrics: true,
+	},
+	{
+		pattern:      "kpi-5up",
+		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		baseScore:    0.85,
+		rationale:    "Best for exactly 5 big-number KPIs with short captions",
+		itemMin:      5,
+		itemMax:      5,
+		needsMetrics: true,
+	},
+	{
+		pattern:      "kpi-6up",
+		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		baseScore:    0.80,
+		rationale:    "Best for exactly 6 big-number KPIs with short captions",
+		itemMin:      6,
+		itemMax:      6,
 		needsMetrics: true,
 	},
 	// Also match KPIs without explicit item count
@@ -695,7 +728,7 @@ func SuggestSwap(reg *Registry, currentPattern string, itemCount int, hasMetrics
 // the same schema shape (e.g. both use cells[].header/body).
 func fieldMappingHint(from, to string) map[string]string {
 	// KPI ↔ KPI: identical schema.
-	kpiPatterns := map[string]bool{"kpi-3up": true, "kpi-4up": true}
+	kpiPatterns := isKPIPattern
 	if kpiPatterns[from] && kpiPatterns[to] {
 		return nil // same schema
 	}

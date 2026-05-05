@@ -9,7 +9,10 @@ import (
 )
 
 func TestKpi4up(t *testing.T) {
-	p := &kpi4up{}
+	p, ok := Default().Get("kpi-4up")
+	if !ok {
+		t.Fatal("kpi-4up not registered")
+	}
 
 	t.Run("metadata", func(t *testing.T) {
 		if p.Name() != "kpi-4up" {

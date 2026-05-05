@@ -9,7 +9,10 @@ import (
 )
 
 func TestSizeMetricFunctions(t *testing.T) {
-	p := &kpi3up{}
+	p, ok := Default().Get("kpi-3up")
+	if !ok {
+		t.Fatal("kpi-3up not registered")
+	}
 	vals := Kpi3upValues{
 		{Big: "$4.2M", Small: "ARR"},
 		{Big: "127%", Small: "NRR"},
