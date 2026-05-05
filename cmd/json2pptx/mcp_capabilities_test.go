@@ -123,6 +123,54 @@ func TestMCPGetCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("changelog_url is set", func(t *testing.T) {
+		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp capabilitiesResponse
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if resp.ChangelogURL == "" {
+			t.Error("expected non-empty changelog_url")
+		}
+	})
+
+	t.Run("every tool has added_in", func(t *testing.T) {
+		catalog := mcpToolCatalog()
+		for _, entry := range catalog {
+			if entry.AddedIn == "" {
+				t.Errorf("tool %q missing added_in", entry.Name)
+			}
+		}
+	})
+
+	t.Run("every deprecation has removed_in", func(t *testing.T) {
+		fields := buildDeprecatedFields()
+		for _, f := range fields {
+			if f.RemovedIn == "" {
+				t.Errorf("deprecated field %q missing removed_in", f.Path)
+			}
+		}
+	})
+
+	t.Run("feature_versions is populated", func(t *testing.T) {
+		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp capabilitiesResponse
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if len(resp.Features.FeatureVersions) == 0 {
+			t.Error("expected non-empty feature_versions")
+		}
+		// Every feature version must be a semver-like string.
+		for k, v := range resp.Features.FeatureVersions {
+			if v == "" {
+				t.Errorf("feature_versions[%q] is empty", k)
+			}
+		}
+	})
+
 	t.Run("repair_fix_kinds matches applyRepairFix switch cases", func(t *testing.T) {
 		// Parse mcp_repair.go and extract case labels from the applyRepairFix switch.
 		fset := token.NewFileSet()
@@ -166,6 +214,41 @@ func TestMCPGetCapabilities(t *testing.T) {
 			if switchCases[i] != advertised[i] {
 				t.Errorf("mismatch at index %d: switch has %q, advertised has %q", i, switchCases[i], advertised[i])
 			}
+		}
+	})
+}
+
+func TestDeprecationWarnings(t *testing.T) {
+	t.Run("fires on legacy value field", func(t *testing.T) {
+		input := &PresentationInput{
+			Slides: []SlideInput{
+				{
+					Content: []ContentInput{
+						{PlaceholderID: "body", Type: "text", Value: json.RawMessage(`"hello"`)},
+					},
+				},
+			},
+		}
+		warnings := deprecationWarnings(input)
+		if len(warnings) == 0 {
+			t.Error("expected deprecation warning for legacy value usage")
+		}
+	})
+
+	t.Run("silent on typed fields", func(t *testing.T) {
+		text := "hello"
+		input := &PresentationInput{
+			Slides: []SlideInput{
+				{
+					Content: []ContentInput{
+						{PlaceholderID: "body", Type: "text", TextValue: &text},
+					},
+				},
+			},
+		}
+		warnings := deprecationWarnings(input)
+		if len(warnings) != 0 {
+			t.Errorf("expected no deprecation warnings, got %v", warnings)
 		}
 	})
 }

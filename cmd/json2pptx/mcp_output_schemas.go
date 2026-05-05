@@ -492,19 +492,67 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
   "properties": {
     "schema_version":     {"type": "string"},
     "tool_version":       {"type": "string"},
-    "mcp_tools_available": {"type": "array", "items": {"type": "string"}},
-    "deprecated_fields":  {"type": "array", "items": {"type": "object"}},
+    "changelog_url":      {"type": "string"},
+    "mcp_tools_available": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":     {"type": "string"},
+          "added_in": {"type": "string"}
+        },
+        "required": ["name", "added_in"]
+      }
+    },
+    "deprecated_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path":        {"type": "string"},
+          "replacement": {"type": "string"},
+          "removed_in":  {"type": "string"}
+        },
+        "required": ["path", "replacement", "removed_in"]
+      }
+    },
     "features": {
       "type": "object",
       "properties": {
-        "strict_fit":          {"type": "array", "items": {"type": "string"}},
-        "compact_responses":   {"type": "boolean"},
-        "fit_report":          {"type": "boolean"},
-        "strict_unknown_keys": {"type": "boolean"},
-        "named_patterns":      {"type": "boolean"},
-        "template_settings":   {"type": "boolean"}
+        "strict_fit":             {"type": "array", "items": {"type": "string"}},
+        "compact_responses":      {"type": "boolean"},
+        "fit_report":             {"type": "boolean"},
+        "strict_unknown_keys":    {"type": "boolean"},
+        "named_patterns":         {"type": "boolean"},
+        "template_settings":      {"type": "boolean"},
+        "supports_inline_markup": {"type": "array", "items": {"type": "string"}},
+        "supports_speaker_notes": {"type": "boolean"},
+        "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
       }
     }
   },
-  "required": ["schema_version", "tool_version", "mcp_tools_available", "features"]
+  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "features"]
+}`)
+
+// --- read_presentation ---
+var outputSchemaReadPresentation = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "slide_count": {"type": "integer"},
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index":          {"type": "integer"},
+          "layout_id":      {"type": "string"},
+          "placeholders":   {"type": "array", "items": {"type": "object"}},
+          "shapes":         {"type": "array", "items": {"type": "object"}},
+          "tables":         {"type": "array", "items": {"type": "object"}},
+          "speaker_notes":  {"type": "string"}
+        }
+      }
+    }
+  },
+  "required": ["slide_count", "slides"]
 }`)

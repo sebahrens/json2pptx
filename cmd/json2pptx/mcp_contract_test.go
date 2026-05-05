@@ -428,6 +428,7 @@ func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
 		"register_template_setting":  outputSchemaRegisterTemplateSetting,
 		"delete_template_setting":    outputSchemaDeleteTemplateSetting,
 		"get_capabilities":           outputSchemaGetCapabilities,
+		"read_presentation":          outputSchemaReadPresentation,
 	}
 
 	for name, schema := range schemas {
@@ -471,6 +472,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"register_template_setting":  true,
 		"delete_template_setting":    true,
 		"get_capabilities":           true,
+		"read_presentation":          true,
 	}
 
 	for _, name := range mcpToolNames() {

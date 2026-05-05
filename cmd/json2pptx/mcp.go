@@ -449,6 +449,8 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Merge input-layer warnings with generation warnings.
 	allWarnings := append(inputWarnings, result.Warnings...)
+	// Surface deprecation warnings for legacy field usage.
+	allWarnings = append(allWarnings, deprecationWarnings(&input)...)
 	// Surface boundary warnings (e.g. unknown keys) in the response.
 	for _, d := range boundaryDiags {
 		if d.Severity == diagnostics.SeverityWarning {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -17,11 +18,18 @@ import (
 type capabilitiesResponse struct {
 	SchemaVersion      string                       `json:"schema_version"`
 	ToolVersion        string                       `json:"tool_version"`
-	MCPToolsAvailable  []string                     `json:"mcp_tools_available"`
+	ChangelogURL       string                       `json:"changelog_url"`
+	MCPToolsAvailable  []mcpToolEntry               `json:"mcp_tools_available"`
 	DeprecatedFields   []capabilitiesDeprecatedField `json:"deprecated_fields"`
 	Features           capabilitiesFeatures          `json:"features"`
 	Vocabularies       capabilitiesVocabularies      `json:"vocabularies"`
 	ErrorCodes         []string                     `json:"error_codes"`
+}
+
+// mcpToolEntry describes an MCP tool with its version metadata.
+type mcpToolEntry struct {
+	Name    string `json:"name"`
+	AddedIn string `json:"added_in"`
 }
 
 // capabilitiesVocabularies exposes categorical enums and vocabularies so agents
@@ -63,38 +71,55 @@ type capabilitiesFeatures struct {
 	TemplateSettings     bool                  `json:"template_settings"`
 	SupportsInlineMarkup []string              `json:"supports_inline_markup"`
 	SupportsSpeakerNotes bool                  `json:"supports_speaker_notes"`
+	FeatureVersions      map[string]string     `json:"feature_versions"`
+}
+
+// mcpToolCatalog returns the full list of MCP tools with version metadata,
+// sorted by name. Keep this in sync with the s.AddTool calls in runMCP.
+func mcpToolCatalog() []mcpToolEntry {
+	entries := []mcpToolEntry{
+		// Tools from 1.0.0
+		{Name: "generate_presentation", AddedIn: "1.0.0"},
+		{Name: "list_templates", AddedIn: "1.0.0"},
+		{Name: "get_data_format_hints", AddedIn: "1.0.0"},
+		{Name: "get_chart_capabilities", AddedIn: "1.0.0"},
+		{Name: "get_diagram_capabilities", AddedIn: "1.0.0"},
+		{Name: "validate_input", AddedIn: "1.0.0"},
+		// Tools from 2.0.0
+		{Name: "recommend_pattern", AddedIn: "2.0.0"},
+		{Name: "list_patterns", AddedIn: "2.0.0"},
+		{Name: "show_pattern", AddedIn: "2.0.0"},
+		{Name: "validate_pattern", AddedIn: "2.0.0"},
+		{Name: "expand_pattern", AddedIn: "2.0.0"},
+		{Name: "list_icons", AddedIn: "2.0.0"},
+		{Name: "table_density_guide", AddedIn: "2.0.0"},
+		{Name: "resolve_theme", AddedIn: "2.0.0"},
+		{Name: "render_slide_image", AddedIn: "2.0.0"},
+		{Name: "render_deck_thumbnails", AddedIn: "2.0.0"},
+		{Name: "score_deck", AddedIn: "2.0.0"},
+		{Name: "preview_presentation_plan", AddedIn: "2.0.0"},
+		{Name: "repair_slide", AddedIn: "2.0.0"},
+		{Name: "list_template_settings", AddedIn: "2.0.0"},
+		{Name: "register_template_setting", AddedIn: "2.0.0"},
+		{Name: "delete_template_setting", AddedIn: "2.0.0"},
+		{Name: "get_capabilities", AddedIn: "2.0.0"},
+		// Tools from 2.4.0
+		{Name: "get_shape_catalog", AddedIn: "2.4.0"},
+		// Tools from 2.8.0
+		{Name: "read_presentation", AddedIn: "2.8.0"},
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	return entries
 }
 
 // mcpToolNames returns the sorted list of all registered MCP tool names.
 // Keep this in sync with the s.AddTool calls in runMCP.
 func mcpToolNames() []string {
-	names := []string{
-		"generate_presentation",
-		"list_templates",
-		"get_data_format_hints",
-		"get_chart_capabilities",
-		"get_diagram_capabilities",
-		"validate_input",
-		"recommend_pattern",
-		"list_patterns",
-		"show_pattern",
-		"validate_pattern",
-		"expand_pattern",
-		"list_icons",
-		"get_shape_catalog",
-		"table_density_guide",
-		"resolve_theme",
-		"render_slide_image",
-		"render_deck_thumbnails",
-		"score_deck",
-		"preview_presentation_plan",
-		"repair_slide",
-		"list_template_settings",
-		"register_template_setting",
-		"delete_template_setting",
-		"get_capabilities",
+	catalog := mcpToolCatalog()
+	names := make([]string, len(catalog))
+	for i, e := range catalog {
+		names[i] = e.Name
 	}
-	sort.Strings(names)
 	return names
 }
 
@@ -105,10 +130,12 @@ func buildDeprecatedFields() []capabilitiesDeprecatedField {
 		{
 			Path:        "slides[].content[].value",
 			Replacement: "Use typed field: text_value, bullets_value, table_value, chart_value, diagram_value, image_value, body_and_bullets_value, or bullet_groups_value",
+			RemovedIn:   "3.0.0",
 		},
 		{
 			Path:        "slides[].content[].placeholder (raw OOXML name)",
 			Replacement: "Use portable placeholder_id: title, subtitle, body, body_2",
+			RemovedIn:   "3.0.0",
 		},
 	}
 }
@@ -127,7 +154,8 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 	resp := capabilitiesResponse{
 		SchemaVersion:     SchemaVersion,
 		ToolVersion:       Version,
-		MCPToolsAvailable: mcpToolNames(),
+		ChangelogURL:      "docs/SCHEMA_CHANGELOG.md",
+		MCPToolsAvailable: mcpToolCatalog(),
 		DeprecatedFields:  buildDeprecatedFields(),
 		Features: capabilitiesFeatures{
 			StrictFit:        []string{"off", "warn", "strict"},
@@ -145,6 +173,16 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 			TemplateSettings:     true,
 			SupportsInlineMarkup: []string{"b", "i", "u"},
 			SupportsSpeakerNotes: true,
+			FeatureVersions: map[string]string{
+				"strict_fit":             "2.0.0",
+				"compact_responses":      "2.0.0",
+				"fit_report":             "2.0.0",
+				"strict_unknown_keys":    "2.0.0",
+				"named_patterns":         "2.0.0",
+				"template_settings":      "2.0.0",
+				"supports_inline_markup": "2.5.0",
+				"supports_speaker_notes": "2.5.0",
+			},
 		},
 		Vocabularies: buildVocabularies(),
 		ErrorCodes:   codes,
@@ -169,6 +207,24 @@ func repairFixKinds() []string {
 		"use_one_of",
 		"use_semantic_color",
 	}
+}
+
+// deprecationWarnings scans a parsed PresentationInput for usage of deprecated
+// fields and returns human-readable warning strings. Agents can use these to
+// migrate decks before the removal version.
+func deprecationWarnings(input *PresentationInput) []string {
+	var warnings []string
+	for i, slide := range input.Slides {
+		for j, ci := range slide.Content {
+			if ci.UsesLegacyValue() {
+				warnings = append(warnings, fmt.Sprintf(
+					"slides[%d].content[%d]: uses deprecated 'value' field (removed in 3.0.0) — use typed field (%s_value) instead",
+					i, j, ci.Type,
+				))
+			}
+		}
+	}
+	return warnings
 }
 
 // buildVocabularies constructs the vocabularies section from authoritative sources.
