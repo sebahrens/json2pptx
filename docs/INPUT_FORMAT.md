@@ -33,6 +33,7 @@ A presentation is defined by a single JSON object with a `template` name and an 
 |--------------------|----------|-----------------|----------------------------------------------------------------|
 | `template`         | Yes      | string          | Template name (without `.pptx` extension)                      |
 | `output_filename`  | No       | string          | Desired output filename (default: `output.pptx`)               |
+| `accent_strategy`  | No       | string          | Accent color rotation: `"primary"` (default), `"rotate"`, `"section-keyed"` |
 | `footer`           | No       | object          | Footer configuration (see below)                               |
 | `theme_override`   | No       | object          | Per-deck color and font overrides (see below)                  |
 | `slides`           | Yes      | array           | Array of slide definitions                                     |
@@ -77,6 +78,26 @@ Override template colors and fonts for the entire deck:
 | `colors`     | map[string]string | Color overrides: `accent1`–`accent6`, `dk1`, `dk2`, `lt1`, `lt2`, `hlink`, `folHlink` |
 | `title_font` | string            | Font name for titles                                          |
 | `body_font`  | string            | Font name for body text                                       |
+
+### Accent Strategy
+
+Controls how the default accent color is chosen for patterns that don't specify an explicit `accent` override:
+
+```json
+{
+  "template": "midnight-blue",
+  "accent_strategy": "rotate",
+  "slides": [ ... ]
+}
+```
+
+| Value            | Behavior                                                                 |
+|------------------|--------------------------------------------------------------------------|
+| `"primary"`      | Always uses `accent1` (the default when omitted)                         |
+| `"rotate"`       | Round-robins through `accent1`–`accent6` by slide index                  |
+| `"section-keyed"`| Assigns one accent per section, wrapping at 6                            |
+
+Patterns with an explicit `accent` or `semantic_accent` override are not affected by this setting.
 
 ---
 

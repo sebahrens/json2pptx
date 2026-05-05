@@ -4,6 +4,21 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 3.4.0 (2026-05-06)
+
+### Added
+
+- `surface_tints` — template metadata field mapping surface roles (`subtle`,
+  `paper`, `elevated`, `inverse`) to scheme color names. Patterns resolve
+  tinted background fills through this map, ensuring visual harmony with the
+  template. All 5 bundled templates now define non-empty `surface_tints`.
+  (Bead: go-slide-creator-avnm)
+- `data_palette` — template metadata field providing an ordered list of scheme
+  color names for chart series coloring. `svggen` uses this instead of fixed
+  `accent1`–`accent6` ordering, letting templates control chart color priority.
+  All 5 bundled templates now define non-empty `data_palette`.
+  (Bead: go-slide-creator-avnm)
+
 ## 3.3.0 (2026-05-05)
 
 ### Added
@@ -13,6 +28,7 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `"primary"` (default, always accent1), `"rotate"` (round-robin accent1–accent6
   by slide index), `"section-keyed"` (one accent per section, wrapping at 6).
   Existing decks with explicit accent overrides are unchanged.
+  (Bead: go-slide-creator-jl9e)
 
 ## 3.1.0 (2026-05-05)
 

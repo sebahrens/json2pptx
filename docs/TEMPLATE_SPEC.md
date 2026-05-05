@@ -103,18 +103,62 @@ Templates may include an embedded metadata file at `ppt/go-slide-creator-metadat
 
 ```json
 {
-  "schema_version": "1.0",
+  "version": "1.0",
   "name": "Template Name",
   "description": "Brief description",
-  "author": "Author Name",
-  "tags": ["professional", "dark"],
-  "aspect_ratio": "16:9",
-  "layout_hints": {},
-  "semantic_accents": {}
+  "surface_tints": {
+    "subtle": "lt2",
+    "paper": "lt1",
+    "elevated": "lt2",
+    "inverse": "dk2"
+  },
+  "data_palette": ["accent1", "accent2", "accent3", "accent4", "accent6", "accent5"],
+  "semantic_accents": {
+    "positive": "accent4",
+    "negative": "accent2",
+    "neutral": "accent5"
+  }
 }
 ```
 
 Metadata is optional. When absent, the engine infers properties from the theme and layout structure.
+
+### SurfaceTints
+
+Maps surface roles to scheme color names. Patterns call `ResolveSurface(role)` to select tinted background fills that harmonize with the template. All four roles should be defined:
+
+| Role       | Purpose                                                | Recommended Values |
+|------------|--------------------------------------------------------|--------------------|
+| `subtle`   | Lightest tint — alternate rows, card backgrounds       | `"lt2"` or a light accent |
+| `paper`    | Card/panel surface — slightly off-white                | `"lt1"` |
+| `elevated` | Raised surface — shadows or slight contrast step       | `"lt2"` or a muted accent |
+| `inverse`  | Dark surface — high-contrast sections, headers         | `"dk2"` |
+
+Values must be valid scheme color names (`dk1`, `dk2`, `lt1`, `lt2`, `accent1`–`accent6`). The engine resolves them through the template's theme at generation time.
+
+When `surface_tints` is absent from metadata, patterns fall back to hardcoded defaults (`"lt1"` / `"lt2"`).
+
+### DataPalette
+
+An ordered list of scheme color names controlling chart series coloring. `svggen` uses this to ensure chart colors match the template's visual identity rather than using a fixed `accent1`–`accent6` ordering.
+
+```json
+"data_palette": ["accent1", "accent2", "accent5", "accent3", "accent6", "accent4"]
+```
+
+The list should contain 6 entries (one per accent slot). The ordering determines which accent is used for the first, second, third (etc.) chart series. Templates can reorder to put their most visually distinct accents first.
+
+When `data_palette` is absent, `svggen` falls back to the fixed order `accent1`–`accent6`.
+
+### Template Conformance Check
+
+Run `json2pptx template-check` to verify metadata completeness:
+
+```bash
+json2pptx template-check templates/midnight-blue.pptx
+```
+
+The checker validates that `surface_tints` defines all four roles and `data_palette` contains valid scheme color names.
 
 ## Conformance Checking
 

@@ -122,6 +122,32 @@ Resolution rules:
 
 The `@template-default` sentinel lives in a separate namespace from user-authored style IDs — there is no collision risk with OOXML GUIDs.
 
+## Template Surface Properties
+
+Templates expose two additional style-related properties via their embedded metadata (`ppt/go-slide-creator-metadata.json`). These are **not** user-settable in the input JSON — they are authored into the template and consumed automatically by the generator and pattern system.
+
+### `surface_tints`
+
+A map of surface roles to scheme color names. Patterns use `ResolveSurface(role)` to pick background fills that harmonize with the template's visual identity.
+
+| Role       | Purpose                                        | Typical Value |
+|------------|------------------------------------------------|---------------|
+| `subtle`   | Lightest tint (alternate row, card background) | `"lt2"`       |
+| `paper`    | Card/panel background                          | `"lt1"`       |
+| `elevated` | Raised surface for contrast                    | `"lt2"`       |
+| `inverse`  | Dark surface for high-contrast sections        | `"dk2"`       |
+
+### `data_palette`
+
+An ordered list of scheme color names for chart series. `svggen` uses this to ensure chart colors match the template's visual identity instead of using a fixed order.
+
+Example (from midnight-blue):
+```json
+["accent1", "accent2", "accent3", "accent4", "accent6", "accent5"]
+```
+
+All 5 bundled templates define both `surface_tints` and `data_palette`.
+
 ## What Is NOT Defaultable
 
 In V1, only `table_style` and `cell_style` are supported. The following are **not** part of the defaults system:
@@ -132,6 +158,7 @@ In V1, only `table_style` and `cell_style` are supported. The following are **no
 - Pattern parameters
 - Footer configuration
 - Theme overrides
+- Surface tints and data palette (template-authored, not user-settable)
 
 ## Example: Multi-Table Deck with Defaults
 
