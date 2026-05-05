@@ -2,9 +2,10 @@
 name: generate-deck
 description: >
   Generate consulting-quality PowerPoint decks from user prompts using json2pptx.
-  Applies constrained generation: 2-stage workflow (outline then fill), pattern-based
-  shape grids, invariant enforcement, and validate-repair loop. Use when the user asks
-  to create, generate, or build a presentation or slide deck.
+  Applies constrained generation: 4-phase workflow (Plan → Vary → Render → Repair),
+  pattern-based shape grids, accent strategy, deck-rhythm analysis, invariant
+  enforcement, and validate-repair loop. Use when the user asks to create, generate,
+  or build a presentation or slide deck.
 ---
 
 # Deck Generation Skill
@@ -13,6 +14,8 @@ You generate structured JSON for the json2pptx engine. Your output must be valid
 for the `generate_presentation` MCP tool (or the CLI `json2pptx generate -json`).
 
 Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (content types, chart types, diagram types, shape grid properties, patch operations). This skill covers the **generation workflow and patterns** — not the field reference.
+
+See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 
 ---
 
@@ -38,6 +41,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
 | Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
 | Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`) | `expand_pattern` | `json2pptx patterns expand` |
+| Analyze deck rhythm — pattern runs, density variation, accent balance, composition score (lightweight, pre-generation) | `analyze_deck_rhythm` | `json2pptx analyze-rhythm` |
 | Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
 | Icon catalog | `list_icons` | `json2pptx icons list` |
 | Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
@@ -60,33 +64,70 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 ---
 
-## Workflow: Plan, Generate, Validate
+## Workflow: Plan → Vary → Render → Repair
 
-### Stage 1: Plan the Deck
+### Phase 1: PLAN — Design the Deck Outline
 
 Before writing any JSON, produce a short outline:
 
 ```
 Deck: [title]
 Template: [template name]
+Accent strategy: [primary | rotate | section-keyed]
 Slides:
-  1. [layout] — [title] — [visual pattern or content type]
-  2. [layout] — [title] — [visual pattern or content type]
+  1. [layout] — [title] — [pattern or content type] — [accent]
+  2. [layout] — [title] — [pattern or content type] — [accent]
   ...
 ```
 
-Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram).
+Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram). Use `recommend_pattern` to pick patterns for intents you're unsure about.
 
-Present the outline to the user. Proceed to Stage 2 only after approval or if the user
-asked for the full deck directly.
+Present the outline to the user. Proceed to Phase 2 only after approval or if the user asked for the full deck directly.
 
-**Narrative coherence matters.** A consulting deck tells a story: situation, complication,
-resolution, evidence, implementation, call to action. The outline is where you design
-the argument arc. Do not fragment this across stages.
+**Narrative coherence matters.** A consulting deck tells a story: situation, complication, resolution, evidence, implementation, call to action. The outline is where you design the argument arc. Do not fragment this across phases.
 
-### Stage 2: Generate Full JSON
+**Cold-start checklist (for decks ≥4 slides):**
+
+1. Pick a template. Call `list_templates` for available options and `color_roles`.
+2. Choose `accent_strategy` — `"rotate"` for multi-section decks, `"section-keyed"` for decks with distinct chapters, `"primary"` only for ≤5-slide decks.
+3. For each slide intent, call `recommend_pattern` to get the best pattern match. Avoid choosing the same pattern more than twice in a row.
+4. Ensure the outline alternates density: high-density slides (tables, grids) should be followed by low-density (stat-hero, pull-quote, section divider). Place a narrative-break pattern (stat-hero, pull-quote) every ~5 slides.
+5. Check the outline against the rhythm rule: no pattern should appear 3+ times consecutively. If it does, swap the middle occurrence for a contrasting pattern from a different visual family.
+
+### Phase 2: VARY — Check Rhythm and Accent Balance
+
+After building the JSON but **before** generating the PPTX, run `analyze_deck_rhythm` to catch monotony and accent imbalance.
+
+```
+analyze_deck_rhythm(presentation: {template: "...", slides: [...]})
+```
+
+Returns:
+- `per_slide` — visual fingerprint per slide (pattern, density_class, accent_role, dominant_visual)
+- `aggregates.longest_run` — longest consecutive run of one pattern (target: ≤2)
+- `aggregates.repetition_index` — 0.0 (all unique) to 1.0 (all same) (target: <0.5)
+- `aggregates.accent_balance` — fraction of slides per accent (target: no single accent >80%)
+- `aggregates.density_cv` — density variation coefficient (target: >0.1 for decks >3 slides)
+- `composition_score` — 0–100 overall quality score
+- `recommendations` — actionable suggestions with `recommended_break_patterns`
+
+**Act on rhythm findings before generating:**
+
+- `longest_run ≥ 3` → swap the middle slide of the run to a `recommended_break_patterns` suggestion
+- `accent_balance` shows one accent at >80% → set `accent_strategy: "rotate"` or manually vary accent fills
+- `density_cv < 0.1` on a 5+ slide deck → insert a low-density narrative break (stat-hero, pull-quote)
+- `composition_score < 70` → iterate on the outline until score ≥ 70
+
+This is a lightweight static check (no PPTX generation cost). Run it iteratively: fix → re-analyze → confirm score improved.
+
+### Phase 3: RENDER — Generate Full JSON and PPTX
 
 Generate the complete JSON in one pass. Use named patterns for shape grid slides — call `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI) for each pattern's value schema, then fill in content. Set the pattern at the slide level via the `pattern` field (XOR with `shape_grid` — never set both).
+
+**Accent strategy.** Set `accent_strategy` at the top level of the presentation JSON:
+- `"primary"` (default) — all slides use the template's primary accent. Good for short decks.
+- `"rotate"` — engine cycles through `accent1`–`accent6` across slides. Use for visual variety.
+- `"section-keyed"` — accents rotate per section (slides between `section` layout slides share an accent).
 
 **Pre-emit checklist (verify BEFORE outputting JSON):**
 
@@ -94,7 +135,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 2. Every fill is semantic (`accent1`, `lt2`, `dk1`, etc.) except documented brand-color allowlist — no mixed hex+semantic on any slide (Rule 12).
 3. No sibling shapes in any `shape_grid` with computed gap < 4pt — no stacked tables separated by hairline dividers.
 
-### Stage 3: Validate, Render, Verify, Repair
+### Phase 4: REPAIR — Validate, Render, Verify, Fix
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
@@ -397,6 +438,29 @@ Good — all semantic:
   ]
 }
 ```
+
+**Pattern monotony (deck-level).** Generating N slides with the same pattern (e.g., 5 card-grids in a row) produces a visually flat deck. The audience cannot distinguish slides. This is the single most common agent mistake.
+
+Bad — monotonous sequence:
+```
+Slide 2: card-grid — "Market Segments"
+Slide 3: card-grid — "Product Lines"
+Slide 4: card-grid — "Competitor Analysis"
+Slide 5: card-grid — "Team Structure"
+```
+
+Good — varied sequence with rhythm breaks:
+```
+Slide 2: card-grid     — "Market Segments"
+Slide 3: comparison-2col — "Product Lines"
+Slide 4: stat-hero     — "Key Differentiator"     ← narrative break
+Slide 5: matrix-2x2    — "Competitor Positioning"
+Slide 6: icon-row      — "Team Strengths"
+```
+
+Rules: no pattern should appear 3+ times consecutively. Insert a narrative-break pattern (stat-hero, pull-quote) every ~5 slides. Use `analyze_deck_rhythm` to detect violations before generating.
+
+**Accent monotony.** Using the default `accent_strategy: "primary"` on a 10+ slide deck makes every shape the same color. Set `"rotate"` or `"section-keyed"` for longer decks, or manually assign different accents to shape fills.
 
 ### Charts: Subtitle vs Footnote
 
