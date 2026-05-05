@@ -1385,6 +1385,8 @@ func mcpRenderSlideImageTool() mcp.Tool {
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Use this for detailed visual inspection of a specific slide.
 
+Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
+
 Cost note: a density=100 slide is typically 20-80KB base64. Higher densities produce larger payloads.`),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
@@ -1396,6 +1398,9 @@ Cost note: a density=100 slide is typically 20-80KB base64. Higher densities pro
 		mcp.WithNumber("density",
 			mcp.Description("DPI for rendering. Higher = sharper but larger. Default: 100. Range: 50-300."),
 		),
+		mcp.WithBoolean("force",
+			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),
+		),
 	)
 }
 
@@ -1404,6 +1409,8 @@ func mcpRenderDeckThumbnailsTool() mcp.Tool {
 		mcp.WithDescription(`Render all slides in a PPTX as low-resolution PNG thumbnails. Returns an array of base64-encoded PNGs.
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visual overview of the entire deck.
+
+Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
 Cost note: at density=50, each thumbnail is typically 5-20KB base64. A 10-slide deck is ~100-200KB total.`),
 		mcp.WithString("pptx_path",
@@ -1415,6 +1422,9 @@ Cost note: at density=50, each thumbnail is typically 5-20KB base64. A 10-slide 
 		),
 		mcp.WithNumber("max_slides",
 			mcp.Description("Maximum number of slides to render. Default: 50."),
+		),
+		mcp.WithBoolean("force",
+			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),
 		),
 	)
 }
@@ -1445,7 +1455,12 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 		density = d
 	}
 
-	img, err := render.RenderSlide(pptxPath, slideIndex, density)
+	force := false
+	if v, ok := request.GetArguments()["force"].(bool); ok {
+		force = v
+	}
+
+	img, err := render.RenderSlideOpts(pptxPath, slideIndex, density, force)
 	if err != nil {
 		code := "RENDER_FAILED"
 		if strings.Contains(err.Error(), "not found on PATH") {
@@ -1494,7 +1509,12 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		}
 	}
 
-	deckResult, err := render.RenderDeck(pptxPath, density, maxSlides)
+	force := false
+	if v, ok := request.GetArguments()["force"].(bool); ok {
+		force = v
+	}
+
+	deckResult, err := render.RenderDeckOpts(pptxPath, density, maxSlides, force)
 	if err != nil {
 		code := "RENDER_FAILED"
 		if strings.Contains(err.Error(), "not found on PATH") {

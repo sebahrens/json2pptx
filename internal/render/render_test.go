@@ -2,7 +2,9 @@ package render
 
 import (
 	"encoding/base64"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -88,6 +90,112 @@ func TestIntegrationRenderSlide(t *testing.T) {
 		// PNG magic bytes
 		if len(data) < 8 || string(data[:4]) != "\x89PNG" {
 			t.Fatal("decoded data is not a valid PNG")
+		}
+	}
+}
+
+func TestCacheKeyDiffersByDensity(t *testing.T) {
+	k1 := cacheKey("abc123", 50)
+	k2 := cacheKey("abc123", 100)
+	if k1 == k2 {
+		t.Fatal("cache keys should differ for different densities")
+	}
+}
+
+func TestCacheKeyDiffersByHash(t *testing.T) {
+	k1 := cacheKey("hash1", 50)
+	k2 := cacheKey("hash2", 50)
+	if k1 == k2 {
+		t.Fatal("cache keys should differ for different hashes")
+	}
+}
+
+func TestHashFile(t *testing.T) {
+	f, err := os.CreateTemp("", "render-hash-*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+
+	if _, err := f.Write([]byte("content A")); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	h1, err := hashFile(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 == "" {
+		t.Fatal("expected non-empty hash")
+	}
+
+	// Same content => same hash
+	h2, err := hashFile(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 != h2 {
+		t.Fatal("same file should produce same hash")
+	}
+
+	// Change content => different hash
+	if err := os.WriteFile(f.Name(), []byte("content B"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	h3, err := hashFile(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 == h3 {
+		t.Fatal("different content should produce different hash")
+	}
+}
+
+func TestGetCachedPNGs_Miss(t *testing.T) {
+	result := getCachedPNGs("nonexistent-key-12345")
+	if result != nil {
+		t.Fatal("expected nil for cache miss")
+	}
+}
+
+func TestStoreCacheAndRetrieve(t *testing.T) {
+	// Create temp PNGs
+	tmpDir, err := os.MkdirTemp("", "cache-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	var pngs []string
+	for i := 0; i < 3; i++ {
+		p := filepath.Join(tmpDir, fmt.Sprintf("slide-%d.png", i))
+		if err := os.WriteFile(p, []byte(fmt.Sprintf("png-data-%d", i)), 0644); err != nil {
+			t.Fatal(err)
+		}
+		pngs = append(pngs, p)
+	}
+
+	key := "test-store-retrieve-key"
+	// Clean up after test
+	defer os.RemoveAll(filepath.Join(cacheDir(), key))
+
+	storeCachePNGs(key, pngs)
+
+	cached := getCachedPNGs(key)
+	if len(cached) != 3 {
+		t.Fatalf("expected 3 cached PNGs, got %d", len(cached))
+	}
+
+	// Verify content
+	for i, path := range cached {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := fmt.Sprintf("png-data-%d", i)
+		if string(data) != expected {
+			t.Errorf("cached file %d: got %q, want %q", i, string(data), expected)
 		}
 	}
 }

@@ -2,7 +2,9 @@
 package render
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,6 +20,54 @@ const maxInlineBytes = 200 * 1024 // 200 KB
 
 // mu serializes LibreOffice invocations (single-threaded per process).
 var mu sync.Mutex
+
+// cacheDir returns the directory used for rendered slide caches.
+func cacheDir() string {
+	return filepath.Join(os.TempDir(), "json2pptx-render-cache")
+}
+
+// hashFile computes the SHA-256 hash of a file's contents.
+func hashFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.Sum256(data)
+	return hex.EncodeToString(h[:]), nil
+}
+
+// cacheKey returns a unique directory name for a given file hash and density.
+func cacheKey(hash string, density int) string {
+	return fmt.Sprintf("%s-d%d", hash, density)
+}
+
+// getCachedPNGs returns cached PNG paths if they exist for the given key.
+// Returns nil if cache miss.
+func getCachedPNGs(key string) []string {
+	dir := filepath.Join(cacheDir(), key)
+	files, err := filepath.Glob(filepath.Join(dir, "slide-*.png"))
+	if err != nil || len(files) == 0 {
+		return nil
+	}
+	sort.Strings(files)
+	return files
+}
+
+// storeCachePNGs copies rendered PNGs into the cache directory for future reuse.
+func storeCachePNGs(key string, pngs []string) {
+	dir := filepath.Join(cacheDir(), key)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return // best-effort caching
+	}
+	for i, src := range pngs {
+		data, err := os.ReadFile(src)
+		if err != nil {
+			continue
+		}
+		dst := filepath.Join(dir, fmt.Sprintf("slide-%d.png", i))
+		_ = os.WriteFile(dst, data, 0644)
+	}
+}
 
 // SlideImage holds the rendered output for a single slide.
 type SlideImage struct {
@@ -114,24 +164,45 @@ func readAsBase64(path string) (string, int, error) {
 // RenderSlide renders a single slide from a PPTX file to a PNG.
 // slideIndex is 0-based.
 func RenderSlide(pptxPath string, slideIndex, density int) (*SlideImage, error) {
+	return RenderSlideOpts(pptxPath, slideIndex, density, false)
+}
+
+// RenderSlideOpts renders a single slide with an option to bypass the cache.
+func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*SlideImage, error) {
 	if err := CheckDependencies(); err != nil {
 		return nil, err
 	}
 
-	tmpDir, err := os.MkdirTemp("", "render-slide-*")
+	hash, err := hashFile(pptxPath)
 	if err != nil {
-		return nil, fmt.Errorf("create temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	pdfPath, err := pptxToPDF(pptxPath, tmpDir)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hash pptx: %w", err)
 	}
 
-	pngs, err := pdfToPNGs(pdfPath, tmpDir, density)
-	if err != nil {
-		return nil, err
+	key := cacheKey(hash, density)
+	var pngs []string
+
+	if !force {
+		pngs = getCachedPNGs(key)
+	}
+
+	if pngs == nil {
+		tmpDir, err := os.MkdirTemp("", "render-slide-*")
+		if err != nil {
+			return nil, fmt.Errorf("create temp dir: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		pdfPath, err := pptxToPDF(pptxPath, tmpDir)
+		if err != nil {
+			return nil, err
+		}
+
+		pngs, err = pdfToPNGs(pdfPath, tmpDir, density)
+		if err != nil {
+			return nil, err
+		}
+
+		storeCachePNGs(key, pngs)
 	}
 
 	if slideIndex < 0 || slideIndex >= len(pngs) {
@@ -161,24 +232,46 @@ func RenderSlide(pptxPath string, slideIndex, density int) (*SlideImage, error) 
 
 // RenderDeck renders all slides in a PPTX to PNG thumbnails.
 func RenderDeck(pptxPath string, density, maxSlides int) (*DeckResult, error) {
+	return RenderDeckOpts(pptxPath, density, maxSlides, false)
+}
+
+// RenderDeckOpts renders all slides with an option to bypass the cache.
+// When force is true, the conversion is re-executed even if a cached result exists.
+func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckResult, error) {
 	if err := CheckDependencies(); err != nil {
 		return nil, err
 	}
 
-	tmpDir, err := os.MkdirTemp("", "render-deck-*")
+	hash, err := hashFile(pptxPath)
 	if err != nil {
-		return nil, fmt.Errorf("create temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	pdfPath, err := pptxToPDF(pptxPath, tmpDir)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hash pptx: %w", err)
 	}
 
-	pngs, err := pdfToPNGs(pdfPath, tmpDir, density)
-	if err != nil {
-		return nil, err
+	key := cacheKey(hash, density)
+	var pngs []string
+
+	if !force {
+		pngs = getCachedPNGs(key)
+	}
+
+	if pngs == nil {
+		tmpDir, err := os.MkdirTemp("", "render-deck-*")
+		if err != nil {
+			return nil, fmt.Errorf("create temp dir: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		pdfPath, err := pptxToPDF(pptxPath, tmpDir)
+		if err != nil {
+			return nil, err
+		}
+
+		pngs, err = pdfToPNGs(pdfPath, tmpDir, density)
+		if err != nil {
+			return nil, err
+		}
+
+		storeCachePNGs(key, pngs)
 	}
 
 	result := &DeckResult{}
@@ -208,4 +301,9 @@ func RenderDeck(pptxPath string, density, maxSlides int) (*DeckResult, error) {
 	}
 
 	return result, nil
+}
+
+// InvalidateCache removes all cached render results.
+func InvalidateCache() error {
+	return os.RemoveAll(cacheDir())
 }
