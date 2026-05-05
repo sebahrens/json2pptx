@@ -60,18 +60,18 @@ Each layout receives classification tags based on its placeholder structure and 
 
 ## Layout-to-Slide-Type Mapping
 
-When choosing a `layout_id`, pick a layout whose tags match your slide type:
+Use the **canonical ID** in `layout_id` — not the display name:
 
-| Slide type | Look for tags | Typical layout names |
+| Slide type | Canonical `layout_id` | Placeholders |
 |---|---|---|
-| Title slide | `title-slide` | "Title Slide" |
-| Content | `content` | "One Content", "Content" |
-| Two-column | `two-column` | "Two Column (50/50)", "Two Content" |
-| Section divider | `section-header` | "Section Divider", "Section Header" |
-| Image slide | `image-left`, `image-right`, `full-image` | "Picture with Caption" |
-| Chart slide | `chart-capable` or any `content` layout | "Content" (charts render as SVG in body) |
-| Closing | `closing` | "Closing", "End Slide" |
-| Blank | `blank` | "Blank" |
+| Title slide | `title` | `title`, `subtitle` |
+| Content | `content` | `title`, `body` |
+| Two-column | `two-column` | `title`, `body`, `body_2` |
+| Section divider | `section` | `title`, `body` |
+| Image slide | `image-left`, `image-right` | `title`, `body` |
+| Chart slide | `content` | `title`, `body` (charts render as SVG in body) |
+| Closing | `closing` | `title`, `subtitle` |
+| Blank | `blank` | `title` only (body goes in `shape_grid`) |
 
 ## Discovering Templates at Runtime
 
@@ -90,28 +90,30 @@ json2pptx skill-info --mode=full --template=midnight-blue
 
 The `full` mode output shows normalized placeholder IDs, character limits, and EMU dimensions for each layout. Use `max_chars` to stay within placeholder capacity.
 
-## Example: Selecting a Layout by Tag
+## Example: Selecting a Layout by Canonical ID
+
+> **Important:** `layout_id` must use canonical IDs (e.g., `"title"`, `"content"`, `"section"`), not display names (e.g., `"Title Slide"`, `"One Content"`). Display names will fail to resolve.
 
 ```json
 {
   "template": "midnight-blue",
   "slides": [
     {
-      "layout_id": "Title Slide",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "value": "Q1 2026 Review"},
         {"placeholder_id": "subtitle", "type": "text", "value": "Strategy Team"}
       ]
     },
     {
-      "layout_id": "One Content",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "value": "Key Metrics"},
         {"placeholder_id": "body", "type": "bullets", "value": ["Revenue +15%", "DAU +22%", "Churn -3%"]}
       ]
     },
     {
-      "layout_id": "Two Column (50/50)",
+      "layout_id": "two-column",
       "content": [
         {"placeholder_id": "title", "type": "text", "value": "Comparison"},
         {"placeholder_id": "body", "type": "bullets", "value": ["Before: manual", "Slow turnaround"]},
@@ -316,13 +318,13 @@ Incrementally modify a presentation without regenerating all slides:
   "base": {
     "template": "midnight-blue",
     "slides": [
-      {"layout_id": "Title Slide", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original Title"}]},
-      {"layout_id": "One Content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}]}
+      {"layout_id": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original Title"}]},
+      {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}]}
     ]
   },
   "operations": [
-    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "Title Slide", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated Title"}]}},
-    {"op": "add", "slide_index": 2, "slide": {"layout_id": "One Content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New Slide"}]}},
+    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated Title"}]}},
+    {"op": "add", "slide_index": 2, "slide": {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New Slide"}]}},
     {"op": "remove", "slide_index": 1}
   ]
 }
@@ -372,7 +374,7 @@ Each row has `cells` (array of cell objects), an optional `height` (percentage o
 | Field   | Type   | Default  | Description |
 |---------|--------|----------|-------------|
 | `style` | string | `"line"` | `"arrow"` (with arrowhead) or `"line"` (plain) |
-| `color` | string | `"000000"` | Hex color or scheme ref (e.g., `"accent1"`) |
+| `color` | string | `"000000"` | Hex color **only** (e.g., `"2E5090"`). ⚠️ Scheme refs (e.g., `"accent1"`) are not yet supported for connector colors and will corrupt the PPTX output (tracked in P0-1). |
 | `width` | number | `1.0` | Line width in points |
 | `dash`  | string | `"solid"` | `"solid"`, `"dash"`, `"dot"`, `"lgDash"`, `"dashDot"` |
 

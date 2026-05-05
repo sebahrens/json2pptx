@@ -99,7 +99,7 @@ Each slide specifies a layout, content items, and optional metadata.
 
 | Field              | Required | Type   | Description                                                        |
 |--------------------|----------|--------|--------------------------------------------------------------------|
-| `layout_id`        | No       | string | Layout identifier (e.g., `"slideLayout1"`, `"Title Slide"`)       |
+| `layout_id`        | No       | string | Layout identifier: canonical ID (e.g., `"title"`, `"content"`, `"section"`) or raw ID (e.g., `"slideLayout1"`). Display names like `"Title Slide"` are not valid. |
 | `slide_type`       | No       | string | Type hint: `content`, `title`, `section`, `chart`, `two-column`, `diagram`, `image`, `comparison`, `blank` |
 | `content`          | Yes      | array  | Array of content items for placeholders                            |
 | `shape_grid`       | No       | object | Grid of preset geometry shapes (see Shape Grid section)            |
@@ -915,13 +915,13 @@ The system supports incremental modifications to a presentation via a patch inpu
   "base": {
     "template": "midnight-blue",
     "slides": [
-      {"layout_id": "Title Slide", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original Title"}]},
-      {"layout_id": "One Content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}]}
+      {"layout_id": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original Title"}]},
+      {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}]}
     ]
   },
   "operations": [
-    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "Title Slide", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated Title"}]}},
-    {"op": "add", "slide_index": 2, "slide": {"layout_id": "One Content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New Slide"}]}},
+    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated Title"}]}},
+    {"op": "add", "slide_index": 2, "slide": {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New Slide"}]}},
     {"op": "remove", "slide_index": 1}
   ]
 }

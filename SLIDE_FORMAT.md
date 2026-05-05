@@ -41,7 +41,7 @@ This document describes the JSON input format for `json2pptx`. JSON input provid
 
 ```json
 {
-  "layout_id": "One Content",
+  "layout_id": "content",
   "slide_type": "content",
   "content": [],
   "speaker_notes": "Talking points for this slide.",
@@ -54,7 +54,7 @@ This document describes the JSON input format for `json2pptx`. JSON input provid
 
 | Field | Required | Description |
 |---|---|---|
-| `layout_id` | No | Layout name (e.g., `"Title Slide"`, `"One Content"`, `"Two Column (50/50)"`) |
+| `layout_id` | No | Canonical layout ID (e.g., `"title"`, `"content"`, `"two-column"`, `"section"`, `"closing"`, `"blank"`). Display names like `"Title Slide"` are **not valid**. |
 | `slide_type` | No | Hint for layout auto-selection: `title`, `content`, `section`, `chart`, `two-column`, `diagram`, `image`, `comparison`, `blank` |
 | `content` | Yes | Array of content items targeting placeholders |
 | `shape_grid` | No | Shape grid definition for custom geometry layouts (see Shape Grid section in README) |
@@ -255,14 +255,14 @@ Image file or URL.
   "output_filename": "q1-review.pptx",
   "slides": [
     {
-      "layout_id": "Title Slide",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Q1 2026 Business Review"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Strategy Team"}
       ]
     },
     {
-      "layout_id": "One Content",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Agenda"},
         {"placeholder_id": "body", "type": "bullets", "bullets_value": [
@@ -275,7 +275,7 @@ Image file or URL.
       "speaker_notes": "Keep this to 30 seconds, just an overview."
     },
     {
-      "layout_id": "One Content",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Revenue by Quarter"},
         {
@@ -296,7 +296,7 @@ Image file or URL.
       ]
     },
     {
-      "layout_id": "Two Column (50/50)",
+      "layout_id": "two-column",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Key Metrics"},
         {
@@ -326,7 +326,7 @@ Image file or URL.
       ]
     },
     {
-      "layout_id": "Section Divider",
+      "layout_id": "section",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Appendix"}
       ]
