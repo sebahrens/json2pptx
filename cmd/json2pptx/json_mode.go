@@ -308,6 +308,22 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(input)
 
+	// Expand structure block into flat slides (mutually exclusive with top-level slides).
+	if input.Structure != nil {
+		if len(input.Slides) > 0 {
+			return writeJSONError(jsonOutputPath, fmt.Errorf("structure and slides are mutually exclusive — use one or the other"))
+		}
+		expanded, err := expandStructure(input.Structure)
+		if err != nil {
+			return writeJSONError(jsonOutputPath, fmt.Errorf("invalid structure: %w", err))
+		}
+		input.Slides = expanded
+	}
+
+	// Check structural grammar (e.g. missing closing slide) and collect warnings.
+	structureWarnings := validateStructure(input)
+	inputWarnings = append(inputWarnings, structureWarnings...)
+
 	// Enforce design mode constraints — reject raw hex colors and absolute font sizes.
 	if violations := validateDesignMode(input); len(violations) > 0 {
 		msgs := make([]string, 0, len(violations))

@@ -39,7 +39,33 @@ type PresentationInput struct {
 	Footer         *JSONFooter    `json:"footer,omitempty"`
 	ThemeOverride  *ThemeInput    `json:"theme_override,omitempty"`
 	Defaults       *DefaultsInput `json:"defaults,omitempty"`
+	Structure      *StructureInput `json:"structure,omitempty"`
 	Slides         []SlideInput   `json:"slides"`
+}
+
+// StructureInput defines deck-level structural grammar. When present, the
+// generator expands sections into a flat slide sequence with auto-generated
+// section dividers and optional agenda slide. Mutually exclusive with top-level
+// slides — if structure is set, slides must be empty.
+type StructureInput struct {
+	// Cover is the opening title slide (placed first in the deck).
+	Cover *SlideInput `json:"cover,omitempty"`
+	// Closing is the closing title slide (placed last in the deck).
+	Closing *SlideInput `json:"closing,omitempty"`
+	// AutoAgenda generates an agenda slide listing all section titles,
+	// inserted after the cover slide. Requires at least 2 sections.
+	AutoAgenda bool `json:"auto_agenda,omitempty"`
+	// Sections defines the content groups. Each section gets an auto-generated
+	// section divider slide before its content slides.
+	Sections []SectionInput `json:"sections"`
+}
+
+// SectionInput defines a single section within the deck structure.
+type SectionInput struct {
+	// Title is the section name, used for the section divider and agenda.
+	Title string `json:"title"`
+	// Slides contains the content slides within this section.
+	Slides []SlideInput `json:"slides"`
 }
 
 // DefaultsInput provides deck-level defaults that are shallow-applied to every
