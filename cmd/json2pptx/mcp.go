@@ -476,6 +476,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Success:          true,
 		OutputPath:       outputPath,
 		SlideCount:       result.SlideCount,
+		ContentHash:      result.ContentHash,
 		DurationMs:       duration.Milliseconds(),
 		Warnings:         allWarnings,
 		Quality:          computeQualityScore(input.Slides, allWarnings),

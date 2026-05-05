@@ -3,8 +3,11 @@ package generator
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -149,6 +152,7 @@ type GenerationResult struct {
 	OutputPath    string         // Path to generated file
 	FileSize      int64          // Size of generated file in bytes
 	SlideCount    int            // Number of slides created
+	ContentHash      string                     // SHA-256 hex digest of the output file
 	Warnings         []string                  // Non-fatal warnings
 	ValidationErrors []*patterns.ValidationError // Structured validation errors (e.g. placeholder_not_found)
 	Duration         time.Duration              // Time taken to generate
@@ -225,6 +229,11 @@ func Generate(ctx context.Context, req GenerationRequest) (*GenerationResult, er
 	result.Duration = time.Since(startTime)
 	result.Warnings = warnings
 
+	// Compute content hash (SHA-256) of the output file for idempotency checks.
+	if hash, hashErr := hashFile(req.OutputPath); hashErr == nil {
+		result.ContentHash = hash
+	}
+
 	// Post-generation OOXML content validation
 	if req.ValidateOutput {
 		if ooxmlErrs := validateOutputOOXML(req.OutputPath); ooxmlErrs != nil {
@@ -233,6 +242,20 @@ func Generate(ctx context.Context, req GenerationRequest) (*GenerationResult, er
 	}
 
 	return result, nil
+}
+
+// hashFile returns the SHA-256 hex digest of the file at path.
+func hashFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // validateRequest checks that the request is valid.

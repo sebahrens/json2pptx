@@ -115,6 +115,7 @@ type JSONOutput struct {
 	Success     bool          `json:"success"`
 	OutputPath  string        `json:"output_path,omitempty"`
 	SlideCount  int           `json:"slide_count,omitempty"`
+	ContentHash string        `json:"content_hash,omitempty"`
 	DurationMs  int64         `json:"duration_ms,omitempty"`
 	Error       string        `json:"error,omitempty"`
 	Warnings    []string      `json:"warnings,omitempty"`
@@ -437,6 +438,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		Success:          true,
 		OutputPath:       outputPath,
 		SlideCount:       result.SlideCount,
+		ContentHash:      result.ContentHash,
 		DurationMs:       time.Since(startTime).Milliseconds(),
 		Warnings:         allWarnings,
 		SlideErrors:      slideErrors,
