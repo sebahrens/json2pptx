@@ -39,6 +39,9 @@ var (
 	allowedAccentStrategies = []string{
 		"primary", "rotate", "section-keyed",
 	}
+	allowedSlideTypes = []string{
+		"title", "content", "two-column", "image", "chart", "comparison", "blank", "section", "diagram",
+	}
 )
 
 // checkInputEnumValues validates enum-constrained fields across all slides
@@ -64,6 +67,11 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 	for i, slide := range input.Slides {
 		prefix := slidepath.Slide(i)
 
+		if slide.SlideType != "" {
+			if err := checkEnum(prefix+"/slide_type", slide.SlideType, allowedSlideTypes); err != nil {
+				errs = append(errs, err)
+			}
+		}
 		if slide.Transition != "" {
 			if err := checkEnum(prefix+"/transition", slide.Transition, allowedTransitions); err != nil {
 				errs = append(errs, err)

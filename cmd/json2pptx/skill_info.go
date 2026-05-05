@@ -144,10 +144,9 @@ type skillSupportedTypes struct {
 	SlideTypes            []string                      `json:"slide_types"`
 	ChartTypes            []string                      `json:"chart_types"`
 	DiagramTypes          []string                      `json:"diagram_types"`
-	ChartCapabilities     []svggen.ChartCapability       `json:"chart_capabilities"`
-	DiagramCapabilities   []svggen.DiagramCapability     `json:"diagram_capabilities"`
-	CapabilitiesTBD       bool                          `json:"capabilities_tbd"`
-	GridCellTypes         []string                      `json:"grid_cell_types"`
+	ChartCapabilities   []svggen.ChartCapability   `json:"chart_capabilities"`
+	DiagramCapabilities []svggen.DiagramCapability `json:"diagram_capabilities"`
+	GridCellTypes       []string                  `json:"grid_cell_types"`
 	ShapeGeometries       []string                      `json:"shape_geometries"`
 	DataFormatHints       map[string]skillDataFormat    `json:"data_format_hints,omitempty"`
 	DataFormatHintsDigest string                        `json:"data_format_hints_digest,omitempty"`
@@ -498,7 +497,6 @@ func buildSupportedTypes() skillSupportedTypes {
 		},
 		ChartCapabilities:   svggen.ChartCapabilities(),
 		DiagramCapabilities: svggen.DiagramCapabilities(),
-		CapabilitiesTBD:     svggen.CapabilitiesTBD(),
 		GridCellTypes:       []string{"shape", "table", "icon", "image"},
 		ShapeGeometries:     buildShapeGeometries(),
 		DataFormatHints:     buildDataFormatHints(),
@@ -663,8 +661,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 			Description:  "roof: string or {label, color}; sections: [{label, items?, color?}]; foundation: string or {label, color}",
 		},
 		"business_model_canvas": {
-			RequiredKeys: []string{},
-			OptionalKeys: []string{"key_partners", "key_activities", "key_resources", "value_proposition", "customer_relationships", "channels", "customer_segments", "cost_structure", "revenue_streams"},
+			RequiredKeys: []string{"key_partners", "key_activities", "key_resources", "value_propositions", "customer_relations", "channels", "customer_segments", "cost_structure", "revenue_streams"},
+			OptionalKeys: []string{},
 			Description:  "9 BMC sections, each a string[] (e.g., key_partners: [\"Partner A\", \"Partner B\"])",
 		},
 		"value_chain": {

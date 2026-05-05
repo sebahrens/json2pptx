@@ -11,6 +11,7 @@ func TestCheckInputEnumValues_ValidValues(t *testing.T) {
 	input := &PresentationInput{
 		Slides: []SlideInput{
 			{
+				SlideType:       "content",
 				Transition:      "fade",
 				TransitionSpeed: "slow",
 				Build:           "bullets",
@@ -139,5 +140,33 @@ func TestCheckInputEnumValues_NoneTransition(t *testing.T) {
 	errs := checkInputEnumValues(input)
 	if len(errs) != 0 {
 		t.Errorf("expected no errors for transition=none, got %d", len(errs))
+	}
+}
+
+func TestCheckInputEnumValues_ValidSlideType(t *testing.T) {
+	for _, st := range []string{"title", "content", "two-column", "image", "chart", "comparison", "blank", "section", "diagram"} {
+		input := &PresentationInput{
+			Slides: []SlideInput{{SlideType: st}},
+		}
+		errs := checkInputEnumValues(input)
+		if len(errs) != 0 {
+			t.Errorf("slide_type %q should be valid, got %d errors", st, len(errs))
+		}
+	}
+}
+
+func TestCheckInputEnumValues_InvalidSlideType(t *testing.T) {
+	input := &PresentationInput{
+		Slides: []SlideInput{{SlideType: "fancy"}},
+	}
+	errs := checkInputEnumValues(input)
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error for invalid slide_type, got %d", len(errs))
+	}
+	if errs[0].Code != patterns.ErrCodeUnknownEnum {
+		t.Errorf("expected code %q, got %q", patterns.ErrCodeUnknownEnum, errs[0].Code)
+	}
+	if errs[0].Path != "/slides/0/slide_type" {
+		t.Errorf("expected path /slides/0/slide_type, got %q", errs[0].Path)
 	}
 }

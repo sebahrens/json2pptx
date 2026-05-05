@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/svggen"
 
 	// Ensure all patterns are registered via init().
 	_ "github.com/sebahrens/json2pptx/internal/patterns"
@@ -485,5 +488,122 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		if !covered[name] {
 			t.Errorf("MCP tool %q has no output schema — add one to mcp_output_schemas.go", name)
 		}
+	}
+}
+
+// mcpAllToolDefs returns all MCP tool definitions by calling their constructors.
+func mcpAllToolDefs() []struct{ Name, Description string } {
+	tools := []struct{ Name, Description string }{
+		func() struct{ Name, Description string } { t := mcpGenerateTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } { t := mcpListTemplatesTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } { t := mcpGetDataFormatHintsTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } { t := mcpGetChartCapabilitiesTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } { t := mcpGetDiagramCapabilitiesTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } { t := mcpValidateTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } { t := mcpRepairSlideTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+	}
+	return tools
+}
+
+// TestMCPDescriptions_NoTBD verifies that no MCP tool description contains
+// "TBD" language that would mislead agents into thinking capabilities are
+// not yet populated.
+func TestMCPDescriptions_NoTBD(t *testing.T) {
+	for _, tool := range mcpAllToolDefs() {
+		if strings.Contains(strings.ToUpper(tool.Description), "TBD") {
+			t.Errorf("tool %q description contains 'TBD': %s", tool.Name, tool.Description)
+		}
+	}
+}
+
+// TestMCPSupportedTypes_ChartTypesMatchCapabilities verifies that the
+// chart types advertised by buildSupportedTypes match the runtime
+// ChartCapabilities registry.
+func TestMCPSupportedTypes_ChartTypesMatchCapabilities(t *testing.T) {
+	st := buildSupportedTypes()
+	caps := svggen.ChartCapabilities()
+
+	capTypes := make([]string, len(caps))
+	for i, c := range caps {
+		capTypes[i] = c.Type
+	}
+	sort.Strings(capTypes)
+
+	advertised := make([]string, len(st.ChartTypes))
+	copy(advertised, st.ChartTypes)
+	sort.Strings(advertised)
+
+	if len(advertised) != len(capTypes) {
+		t.Fatalf("advertised %d chart types but capabilities has %d\nadvertised: %v\ncapabilities: %v",
+			len(advertised), len(capTypes), advertised, capTypes)
+	}
+	for i := range advertised {
+		if advertised[i] != capTypes[i] {
+			t.Errorf("chart type mismatch at [%d]: advertised %q vs capability %q", i, advertised[i], capTypes[i])
+		}
+	}
+}
+
+// TestMCPSupportedTypes_DiagramTypesMatchCapabilities verifies that the
+// diagram types advertised by buildSupportedTypes match the runtime
+// DiagramCapabilities registry.
+func TestMCPSupportedTypes_DiagramTypesMatchCapabilities(t *testing.T) {
+	st := buildSupportedTypes()
+	caps := svggen.DiagramCapabilities()
+
+	capTypes := make([]string, len(caps))
+	for i, c := range caps {
+		capTypes[i] = c.Type
+	}
+	sort.Strings(capTypes)
+
+	advertised := make([]string, len(st.DiagramTypes))
+	copy(advertised, st.DiagramTypes)
+	sort.Strings(advertised)
+
+	if len(advertised) != len(capTypes) {
+		t.Fatalf("advertised %d diagram types but capabilities has %d\nadvertised: %v\ncapabilities: %v",
+			len(advertised), len(capTypes), advertised, capTypes)
+	}
+	for i := range advertised {
+		if advertised[i] != capTypes[i] {
+			t.Errorf("diagram type mismatch at [%d]: advertised %q vs capability %q", i, advertised[i], capTypes[i])
+		}
+	}
+}
+
+// TestMCPDataFormatHints_BMCMatchesCanonicalSchema verifies that the BMC
+// data_format_hints use the same field names and required/optional status
+// as the canonical pattern schema in internal/patterns/bmccanvas.go.
+func TestMCPDataFormatHints_BMCMatchesCanonicalSchema(t *testing.T) {
+	hints := buildDataFormatHints()
+	bmc, ok := hints["business_model_canvas"]
+	if !ok {
+		t.Fatal("business_model_canvas missing from data_format_hints")
+	}
+
+	// Canonical required fields from internal/patterns/bmccanvas.go.
+	canonicalRequired := []string{
+		"key_partners", "key_activities", "key_resources",
+		"value_propositions", "customer_relations", "channels",
+		"customer_segments", "cost_structure", "revenue_streams",
+	}
+	sort.Strings(canonicalRequired)
+
+	got := make([]string, len(bmc.RequiredKeys))
+	copy(got, bmc.RequiredKeys)
+	sort.Strings(got)
+
+	if len(got) != len(canonicalRequired) {
+		t.Fatalf("BMC required keys: got %v, want %v", got, canonicalRequired)
+	}
+	for i := range got {
+		if got[i] != canonicalRequired[i] {
+			t.Errorf("BMC required key [%d]: got %q, want %q", i, got[i], canonicalRequired[i])
+		}
+	}
+
+	if len(bmc.OptionalKeys) != 0 {
+		t.Errorf("BMC should have no optional keys (all are required), got %v", bmc.OptionalKeys)
 	}
 }

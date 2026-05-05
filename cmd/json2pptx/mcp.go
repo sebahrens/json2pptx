@@ -169,8 +169,8 @@ Content types and their value fields:
 - "body_and_bullets": "body_and_bullets_value":{"body":"...","bullets":["..."],"trailing_body":"..."}
 - "bullet_groups": "bullet_groups_value":{"body":"...","groups":[{"header":"...","bullets":["..."]}],"trailing_body":"..."}
 - "table": "table_value":{"headers":["H1","H2"],"rows":[["a","b"],["c","d"]]}
-- "chart": "chart_value":{"type":"bar|line|pie|radar|scatter|bubble|waterfall","title":"...","data":{...}}
-- "diagram": "diagram_value":{"type":"timeline|process_flow|pyramid|venn|swot|org_chart|gantt|matrix_2x2|porters_five_forces|house_diagram|business_model_canvas|value_chain|nine_box_talent|kpi_dashboard|heatmap|fishbone|pestel|panel_layout","title":"...","data":{...}}
+- "chart": "chart_value":{"type":"bar|grouped_bar|stacked_bar|line|area|stacked_area|pie|donut|scatter|bubble|radar|waterfall|funnel|gauge|treemap","title":"...","data":{...}}
+- "diagram": "diagram_value":{"type":"timeline|process_flow|pyramid|venn|swot|org_chart|gantt|matrix_2x2|porters_five_forces|house_diagram|business_model_canvas|value_chain|nine_box_talent|kpi_dashboard|heatmap|fishbone|pestel|panel_layout|icon_columns|icon_rows|stat_cards","title":"...","data":{...}}
 - "image": "image_value":{"path":"/path/to/image.png","alt":"description"}
 
 Named patterns (optional per-slide, XOR with shape_grid): "pattern" expands a named pattern into a shape_grid. Use list_patterns/show_pattern to discover names and schemas.
@@ -629,33 +629,30 @@ func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) 
 
 func mcpGetChartCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_chart_capabilities",
-		mcp.WithDescription("Fetch capability metadata for all chart types. Values are TBD (null) until populated in a future release; the struct shape is stable. Note: list_templates already includes chart_capabilities in its supported_types response — prefer that single call for initial discovery."),
+		mcp.WithDescription("Fetch capability metadata for all chart types: limits, density behavior, label strategy, and supported options per chart type. Note: list_templates already includes chart_capabilities in its supported_types response — prefer that single call for initial discovery."),
 		mcp.WithRawOutputSchema(outputSchemaGetChartCapabilities),
 	)
 }
 
 func mcpGetDiagramCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_capabilities",
-		mcp.WithDescription("Fetch capability metadata for all diagram types. Values are TBD (null) until populated in a future release; the struct shape is stable. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
+		mcp.WithDescription("Fetch capability metadata for all diagram types: node limits, overflow behavior, required/optional fields per diagram type. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
 		mcp.WithRawOutputSchema(outputSchemaGetDiagramCapabilities),
 	)
 }
 
 // chartCapabilitiesResponse is the JSON envelope for get_chart_capabilities.
 type chartCapabilitiesResponse struct {
-	CapabilitiesTBD   bool                      `json:"capabilities_tbd"`
-	ChartCapabilities []svggen.ChartCapability   `json:"chart_capabilities"`
+	ChartCapabilities []svggen.ChartCapability `json:"chart_capabilities"`
 }
 
 // diagramCapabilitiesResponse is the JSON envelope for get_diagram_capabilities.
 type diagramCapabilitiesResponse struct {
-	CapabilitiesTBD       bool                        `json:"capabilities_tbd"`
-	DiagramCapabilities   []svggen.DiagramCapability   `json:"diagram_capabilities"`
+	DiagramCapabilities []svggen.DiagramCapability `json:"diagram_capabilities"`
 }
 
 func handleGetChartCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resp := chartCapabilitiesResponse{
-		CapabilitiesTBD:   svggen.CapabilitiesTBD(),
 		ChartCapabilities: svggen.ChartCapabilities(),
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
@@ -667,7 +664,6 @@ func handleGetChartCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mc
 
 func handleGetDiagramCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resp := diagramCapabilitiesResponse{
-		CapabilitiesTBD:     svggen.CapabilitiesTBD(),
 		DiagramCapabilities: svggen.DiagramCapabilities(),
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)

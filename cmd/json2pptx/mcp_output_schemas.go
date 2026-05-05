@@ -116,20 +116,18 @@ var outputSchemaGetDataFormatHints = json.RawMessage(`{
 var outputSchemaGetChartCapabilities = json.RawMessage(`{
   "type": "object",
   "properties": {
-    "capabilities_tbd":   {"type": "boolean"},
     "chart_capabilities": {"type": "array", "items": {"type": "object"}}
   },
-  "required": ["capabilities_tbd", "chart_capabilities"]
+  "required": ["chart_capabilities"]
 }`)
 
 // --- get_diagram_capabilities ---
 var outputSchemaGetDiagramCapabilities = json.RawMessage(`{
   "type": "object",
   "properties": {
-    "capabilities_tbd":     {"type": "boolean"},
     "diagram_capabilities": {"type": "array", "items": {"type": "object"}}
   },
-  "required": ["capabilities_tbd", "diagram_capabilities"]
+  "required": ["diagram_capabilities"]
 }`)
 
 // --- list_patterns ---

@@ -74,7 +74,7 @@ Unsupported kinds return {applied: false, message: "kind_not_supported"} — age
 			mcp.Description("0-based index of the slide to repair."),
 			mcp.Required(),
 		),
-		mcp.WithObject("fixes",
+		mcp.WithArray("fixes",
 			mcp.Description(`Array of fix directives: [{"kind":"reduce_text","params":{"max_items":5}}, ...]. Each directive has a "kind" (string) and optional "params" (object).`),
 			mcp.Required(),
 		),

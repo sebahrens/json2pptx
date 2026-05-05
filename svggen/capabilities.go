@@ -28,22 +28,6 @@ type DiagramCapability struct {
 	Status           string   `json:"status"`
 }
 
-// CapabilitiesTBD returns true if any chart or diagram capability still
-// has Status "tbd", indicating values have not been researched yet.
-func CapabilitiesTBD() bool {
-	for _, c := range ChartCapabilities() {
-		if c.Status == "tbd" {
-			return true
-		}
-	}
-	for _, d := range DiagramCapabilities() {
-		if d.Status == "tbd" {
-			return true
-		}
-	}
-	return false
-}
-
 // helpers to create pointers for literal values.
 func intPtr(v int) *int       { return &v }
 func boolPtr(v bool) *bool    { return &v }
