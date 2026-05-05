@@ -3,6 +3,7 @@ package generator
 
 import (
 	"bytes"
+	"sort"
 	"strings"
 )
 
@@ -20,6 +21,16 @@ var validTransitions = map[string]bool{
 // IsValidTransition reports whether the given transition name is supported.
 func IsValidTransition(name string) bool {
 	return validTransitions[strings.ToLower(name)]
+}
+
+// ValidTransitionNames returns the sorted list of supported transition names.
+func ValidTransitionNames() []string {
+	names := make([]string, 0, len(validTransitions))
+	for name := range validTransitions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // normalizeTransitionSpeed maps user-friendly speed names to OOXML spd attribute values.

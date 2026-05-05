@@ -108,6 +108,19 @@ const (
 	ContentDiagram         ContentType = "diagram"             // Unified diagram type (charts, infographics)
 )
 
+// AllContentTypes returns the sorted list of user-facing content types.
+func AllContentTypes() []string {
+	return []string{
+		string(ContentBodyAndBullets),
+		string(ContentBulletGroups),
+		string(ContentBullets),
+		string(ContentDiagram),
+		string(ContentImage),
+		string(ContentTable),
+		string(ContentText),
+	}
+}
+
 // BodyAndBulletsContent represents body text followed by bullet points,
 // with optional trailing body text after the bullets.
 type BodyAndBulletsContent struct {

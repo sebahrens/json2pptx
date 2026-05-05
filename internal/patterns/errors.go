@@ -3,6 +3,7 @@ package patterns
 import (
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // Error codes for structured validation errors.
@@ -126,6 +127,17 @@ var codeSentinel = map[string]error{
 	ErrCodeDiagramRenderFailed:   ErrDiagramRenderFailed,
 	ErrCodePaginationDefault:     ErrPaginationDefault,
 	ErrCodeColumnWidthDeficit:    ErrColumnWidthDeficit,
+}
+
+// AllFitFindingCodes returns the sorted list of all fit-finding error codes.
+// Used by get_capabilities to expose the vocabulary programmatically.
+func AllFitFindingCodes() []string {
+	codes := make([]string, 0, len(codeSentinel))
+	for code := range codeSentinel {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+	return codes
 }
 
 // FixSuggestion is a structured fix suggestion with a machine-readable kind

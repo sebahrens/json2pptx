@@ -8,6 +8,9 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // capabilitiesResponse is the JSON output for the get_capabilities tool.
@@ -17,7 +20,24 @@ type capabilitiesResponse struct {
 	MCPToolsAvailable  []string                     `json:"mcp_tools_available"`
 	DeprecatedFields   []capabilitiesDeprecatedField `json:"deprecated_fields"`
 	Features           capabilitiesFeatures          `json:"features"`
+	Vocabularies       capabilitiesVocabularies      `json:"vocabularies"`
 	ErrorCodes         []string                     `json:"error_codes"`
+}
+
+// capabilitiesVocabularies exposes categorical enums and vocabularies so agents
+// can discover valid values programmatically instead of parsing tool descriptions.
+type capabilitiesVocabularies struct {
+	RepairFixKinds       []string            `json:"repair_fix_kinds"`
+	FitFindingCodes      []string            `json:"fit_finding_codes"`
+	ContentTypes         []string            `json:"content_types"`
+	SlideTransitions     []string            `json:"slide_transitions"`
+	TransitionSpeeds     []string            `json:"transition_speeds"`
+	BuildAnimations      []string            `json:"build_animations"`
+	ChartTypes           []string            `json:"chart_types"`
+	DiagramTypes         []string            `json:"diagram_types"`
+	PlaceholderAliases   map[string][]string `json:"placeholder_aliases"`
+	PatternNames         []string            `json:"pattern_names"`
+	PatternAliases       map[string]string   `json:"pattern_aliases"`
 }
 
 // capabilitiesDeprecatedField describes a deprecated JSON input field.
@@ -108,7 +128,8 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 			NamedPatterns:     true,
 			TemplateSettings:  true,
 		},
-		ErrorCodes: codes,
+		Vocabularies: buildVocabularies(),
+		ErrorCodes:   codes,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
@@ -116,4 +137,62 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 		return api.MCPSimpleError("INTERNAL", "failed to marshal capabilities response"), nil
 	}
 	return mcpResult, nil
+}
+
+// repairFixKinds returns the sorted list of fix kinds supported by applyRepairFix.
+// This is derived from the switch statement in mcp_repair.go to stay in sync.
+func repairFixKinds() []string {
+	return []string{
+		"reduce_text",
+		"shorten_title",
+		"split_at_row",
+		"swap_layout",
+		"use_one_of",
+	}
+}
+
+// buildVocabularies constructs the vocabularies section from authoritative sources.
+func buildVocabularies() capabilitiesVocabularies {
+	// Chart types from svggen registry.
+	chartTypes := svggen.Types()
+	sort.Strings(chartTypes)
+
+	// Diagram types from svggen capabilities.
+	diagCaps := svggen.DiagramCapabilities()
+	diagramTypes := make([]string, 0, len(diagCaps))
+	for _, d := range diagCaps {
+		diagramTypes = append(diagramTypes, d.Type)
+	}
+	sort.Strings(diagramTypes)
+
+	// Pattern names and aliases from the default registry.
+	reg := patterns.Default()
+	patternList := reg.List()
+	patternNames := make([]string, 0, len(patternList))
+	for _, p := range patternList {
+		patternNames = append(patternNames, p.Name())
+	}
+
+	// Placeholder aliases grouped by portable name.
+	placeholderAliases := map[string][]string{
+		"title":    {"Title 1", "Title"},
+		"subtitle": {"Subtitle 2", "Subtitle"},
+		"body":     {"Content Placeholder 1", "Text Placeholder 1"},
+		"body_2":   {"Content Placeholder 2", "Text Placeholder 2"},
+		"body_3":   {"Content Placeholder 3", "Text Placeholder 3"},
+	}
+
+	return capabilitiesVocabularies{
+		RepairFixKinds:     repairFixKinds(),
+		FitFindingCodes:    patterns.AllFitFindingCodes(),
+		ContentTypes:       generator.AllContentTypes(),
+		SlideTransitions:   generator.ValidTransitionNames(),
+		TransitionSpeeds:   []string{"slow", "medium", "fast"},
+		BuildAnimations:    []string{"bullets"},
+		ChartTypes:         chartTypes,
+		DiagramTypes:       diagramTypes,
+		PlaceholderAliases: placeholderAliases,
+		PatternNames:       patternNames,
+		PatternAliases:     reg.Aliases(),
+	}
 }
