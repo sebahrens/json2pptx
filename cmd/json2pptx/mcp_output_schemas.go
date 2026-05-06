@@ -628,9 +628,10 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
           "pattern":         {"type": "string"},
           "density_class":   {"type": "string", "enum": ["low", "med", "high"]},
           "accent_role":     {"type": "string"},
-          "dominant_visual": {"type": "string"}
+          "dominant_visual": {"type": "string"},
+          "within_slide_accent_variety": {"type": "integer"}
         },
-        "required": ["slide_index", "pattern", "density_class", "dominant_visual"]
+        "required": ["slide_index", "pattern", "density_class", "dominant_visual", "within_slide_accent_variety"]
       }
     },
     "aggregates": {
@@ -651,9 +652,18 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
         "longest_run":      {"type": "integer"},
         "repetition_index": {"type": "number"},
         "accent_balance":   {"type": "object", "additionalProperties": {"type": "number"}},
-        "density_cv":       {"type": "number"}
+        "density_cv":       {"type": "number"},
+        "density_distribution": {
+          "type": "object",
+          "properties": {
+            "underfilled_cells": {"type": "integer"},
+            "optimal_cells":    {"type": "integer"},
+            "overflow_cells":   {"type": "integer"}
+          },
+          "required": ["underfilled_cells", "optimal_cells", "overflow_cells"]
+        }
       },
-      "required": ["pattern_runs", "longest_run", "repetition_index", "accent_balance", "density_cv"]
+      "required": ["pattern_runs", "longest_run", "repetition_index", "accent_balance", "density_cv", "density_distribution"]
     },
     "recommendations": {
       "type": "array",

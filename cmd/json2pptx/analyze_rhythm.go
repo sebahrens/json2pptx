@@ -10,6 +10,9 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
 )
 
 // --- Tool definition ---
@@ -37,11 +40,13 @@ Returns per-slide fingerprints, pattern run detection, a density coefficient of 
 
 // rhythmSlideInfo describes the visual fingerprint of a single slide.
 type rhythmSlideInfo struct {
-	SlideIndex    int    `json:"slide_index"`
-	Pattern       string `json:"pattern"`        // pattern name, "shape_grid", "content", or slide_type
-	DensityClass  string `json:"density_class"`  // "low", "med", "high"
-	AccentRole    string `json:"accent_role"`     // primary accent color used, or "none"
-	DominantVisual string `json:"dominant_visual"` // "chart", "diagram", "table", "text", "grid", "pattern"
+	SlideIndex              int    `json:"slide_index"`
+	Pattern                 string `json:"pattern"`                    // pattern name, "shape_grid", "content", or slide_type
+	DensityClass            string `json:"density_class"`              // "low", "med", "high"
+	AccentRole              string `json:"accent_role"`                // primary accent color used, or "none"
+	DominantVisual          string `json:"dominant_visual"`            // "chart", "diagram", "table", "text", "grid", "pattern"
+	WithinSlideAccentVariety int   `json:"within_slide_accent_variety"` // distinct accent slots used across cells
+	cellCount                int   // internal: total cells in shape_grid (not serialized)
 }
 
 // patternRun describes a consecutive run of the same pattern.
@@ -54,13 +59,21 @@ type patternRun struct {
 // accentBalance maps accent role names to their usage fraction (0.0–1.0).
 type accentBalance map[string]float64
 
+// densityDistribution counts cells across the deck by textcapacity status.
+type densityDistribution struct {
+	UnderfilledCells int `json:"underfilled_cells"`
+	OptimalCells     int `json:"optimal_cells"`
+	OverflowCells    int `json:"overflow_cells"`
+}
+
 // rhythmAggregates holds deck-level aggregate metrics.
 type rhythmAggregates struct {
-	PatternRuns     []patternRun   `json:"pattern_runs"`
-	LongestRun      int            `json:"longest_run"`
-	RepetitionIndex float64        `json:"repetition_index"` // 0.0 (all unique) to 1.0 (all same)
-	AccentBalance   accentBalance  `json:"accent_balance"`
-	DensityCV       float64        `json:"density_cv"` // coefficient of variation of density scores
+	PatternRuns          []patternRun        `json:"pattern_runs"`
+	LongestRun           int                 `json:"longest_run"`
+	RepetitionIndex      float64             `json:"repetition_index"` // 0.0 (all unique) to 1.0 (all same)
+	AccentBalance        accentBalance       `json:"accent_balance"`
+	DensityCV            float64             `json:"density_cv"` // coefficient of variation of density scores
+	DensityDistribution  densityDistribution `json:"density_distribution"`
 }
 
 // rhythmRecommendation is an actionable suggestion to improve deck rhythm.
@@ -125,18 +138,21 @@ func analyzeDeckRhythm(slides []SlideInput) *rhythmResult {
 		}
 	}
 
+	dd := computeDensityDistribution(slides)
+
 	result := &rhythmResult{
 		PerSlide: perSlide,
 		Aggregates: rhythmAggregates{
-			PatternRuns:     runs,
-			LongestRun:      longestRun,
-			RepetitionIndex: computeRepetitionIndex(perSlide),
-			AccentBalance:   computeAccentBalance(slides),
-			DensityCV:       computeDensityCV(perSlide),
+			PatternRuns:         runs,
+			LongestRun:          longestRun,
+			RepetitionIndex:     computeRepetitionIndex(perSlide),
+			AccentBalance:       computeAccentBalance(slides),
+			DensityCV:           computeDensityCV(perSlide),
+			DensityDistribution: dd,
 		},
 	}
 
-	result.Recommendations = generateRecommendations(perSlide, runs)
+	result.Recommendations = generateRecommendations(perSlide, runs, dd)
 	result.CompositionScore = computeCompositionScore(result)
 
 	return result
@@ -173,6 +189,16 @@ func fingerprint(idx int, s SlideInput) rhythmSlideInfo {
 
 	// Determine accent role — look for the first explicit color reference.
 	info.AccentRole = primaryAccent(s)
+
+	// Count distinct accent slots used across the slide's shape_grid cells.
+	info.WithinSlideAccentVariety = countDistinctAccents(s)
+
+	// Count cells for accent-variety recommendations.
+	if s.ShapeGrid != nil {
+		for _, row := range s.ShapeGrid.Rows {
+			info.cellCount += len(row.Cells)
+		}
+	}
 
 	return info
 }
@@ -289,6 +315,24 @@ func extractAccentFromFill(fill json.RawMessage) string {
 	return ""
 }
 
+// countDistinctAccents counts unique accent color slots across all shape_grid cells on a slide.
+func countDistinctAccents(s SlideInput) int {
+	if s.ShapeGrid == nil {
+		return 0
+	}
+	seen := map[string]bool{}
+	for _, row := range s.ShapeGrid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && cell.Shape != nil {
+				if fill := extractAccentFromFill(cell.Shape.Fill); fill != "" {
+					seen[fill] = true
+				}
+			}
+		}
+	}
+	return len(seen)
+}
+
 // isAccentColor returns true if the color name is a scheme accent.
 func isAccentColor(c string) bool {
 	switch c {
@@ -395,8 +439,83 @@ func computeDensityCV(slides []rhythmSlideInfo) float64 {
 	return math.Round(cv*100) / 100
 }
 
-// generateRecommendations produces actionable suggestions for runs of 3+.
-func generateRecommendations(slides []rhythmSlideInfo, runs []patternRun) []rhythmRecommendation {
+// computeDensityDistribution resolves each slide's shape_grid (if any) and
+// tallies cells by textcapacity status. Slides without a shape_grid are skipped.
+func computeDensityDistribution(slides []SlideInput) densityDistribution {
+	var dd densityDistribution
+	alloc := pptx.NewShapeIDAllocator(nil)
+
+	for _, s := range slides {
+		if s.ShapeGrid == nil || len(s.ShapeGrid.Rows) == 0 {
+			continue
+		}
+
+		colWidths, err := resolveColumnsDTO(s.ShapeGrid.Columns, s.ShapeGrid.Rows)
+		if err != nil {
+			continue
+		}
+
+		colGap := s.ShapeGrid.ColGap
+		if colGap == 0 {
+			colGap = s.ShapeGrid.Gap
+		}
+		rowGap := s.ShapeGrid.RowGap
+		if rowGap == 0 {
+			rowGap = s.ShapeGrid.Gap
+		}
+
+		rows := convertGridRows(s.ShapeGrid.Rows)
+
+		// Use default slide dimensions for bounds resolution.
+		bounds := pptx.RectEmu{
+			X:  457200,                          // 0.5in default
+			Y:  1600200,                         // ~1.26in default
+			CX: shapegrid.DefaultSlideWidthEMU - 2*457200,
+			CY: shapegrid.DefaultSlideHeightEMU - 1600200 - 457200,
+		}
+		if s.ShapeGrid.Bounds != nil {
+			bounds = shapegrid.BoundsFromPercentages(
+				s.ShapeGrid.Bounds.X, s.ShapeGrid.Bounds.Y,
+				s.ShapeGrid.Bounds.Width, s.ShapeGrid.Bounds.Height,
+				shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU,
+			)
+		}
+
+		sgGrid := &shapegrid.Grid{
+			Bounds:  bounds,
+			Columns: colWidths,
+			Rows:    rows,
+			ColGap:  colGap,
+			RowGap:  rowGap,
+		}
+
+		if vErr := shapegrid.Validate(sgGrid); vErr != nil {
+			continue
+		}
+
+		result, err := shapegrid.Resolve(sgGrid, alloc)
+		if err != nil || result == nil {
+			continue
+		}
+
+		densities := textcapacity.ForResolvedGrid(result)
+		for _, d := range densities {
+			switch d.Status {
+			case textcapacity.StatusUnderfilled:
+				dd.UnderfilledCells++
+			case textcapacity.StatusOptimal:
+				dd.OptimalCells++
+			case textcapacity.StatusOverflow:
+				dd.OverflowCells++
+			}
+		}
+	}
+	return dd
+}
+
+// generateRecommendations produces actionable suggestions for runs of 3+,
+// low accent variety, and density distribution imbalance.
+func generateRecommendations(slides []rhythmSlideInfo, runs []patternRun, dd densityDistribution) []rhythmRecommendation {
 	var recs []rhythmRecommendation
 
 	for _, run := range runs {
@@ -413,6 +532,30 @@ func generateRecommendations(slides []rhythmSlideInfo, runs []patternRun) []rhyt
 				SlideIndex:       insertIdx,
 				Message:          fmt.Sprintf("break a %s run (length %d); consider inserting a different pattern at slide %d", run.Name, run.Len, insertIdx),
 				RecommendedBreak: breakPatterns,
+			})
+		}
+	}
+
+	// Rule: slide has 5+ cells AND within_slide_accent_variety == 1 → recommend progressive accent.
+	for _, s := range slides {
+		if s.cellCount >= 5 && s.WithinSlideAccentVariety == 1 {
+			recs = append(recs, rhythmRecommendation{
+				SlideIndex:       s.SlideIndex,
+				Message:          fmt.Sprintf("slide %d has %d cells but only 1 accent — add cell_accent_mode: progressive to the pattern overrides for visual hierarchy", s.SlideIndex, s.cellCount),
+				RecommendedBreak: []string{"cell_accent_mode: progressive"},
+			})
+		}
+	}
+
+	// Rule: >30% underfilled cells across the deck → recommend adding detail or smaller grids.
+	totalCells := dd.UnderfilledCells + dd.OptimalCells + dd.OverflowCells
+	if totalCells > 0 {
+		underfilledPct := float64(dd.UnderfilledCells) / float64(totalCells) * 100
+		if underfilledPct > 30 {
+			recs = append(recs, rhythmRecommendation{
+				SlideIndex:       -1, // deck-level
+				Message:          fmt.Sprintf("%.0f%% of cells (%d/%d) are underfilled — add detail text or use smaller grid patterns", underfilledPct, dd.UnderfilledCells, totalCells),
+				RecommendedBreak: []string{"kpi-3up", "kpi-2up", "comparison-2col"},
 			})
 		}
 	}

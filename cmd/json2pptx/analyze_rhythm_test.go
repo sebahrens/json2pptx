@@ -173,3 +173,120 @@ func TestAnalyzeDeckRhythm_RecommendationIndices(t *testing.T) {
 		t.Errorf("missing recommendation at slide_index=%d", idx)
 	}
 }
+
+func TestAnalyzeDeckRhythm_WithinSlideAccentVariety(t *testing.T) {
+	accent1Fill, _ := json.Marshal("accent1")
+	accent2Fill, _ := json.Marshal("accent2")
+	accent3Fill, _ := json.Marshal("accent3")
+
+	// Slide with 3 distinct accents across cells.
+	slides := []SlideInput{
+		{ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent1Fill}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent2Fill}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent3Fill}},
+			}}},
+		}},
+	}
+
+	result := analyzeDeckRhythm(slides)
+
+	if result.PerSlide[0].WithinSlideAccentVariety != 3 {
+		t.Errorf("expected within_slide_accent_variety=3, got %d", result.PerSlide[0].WithinSlideAccentVariety)
+	}
+}
+
+func TestAnalyzeDeckRhythm_AccentVarietyRecommendation(t *testing.T) {
+	// Slide with 6 cells all using the same accent — should trigger recommendation.
+	accent1Fill, _ := json.Marshal("accent1")
+	cells := make([]*GridCellInput, 6)
+	for i := range cells {
+		cells[i] = &GridCellInput{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent1Fill}}
+	}
+
+	slides := []SlideInput{
+		{ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{
+				{Cells: cells[:3]},
+				{Cells: cells[3:]},
+			},
+		}},
+	}
+
+	result := analyzeDeckRhythm(slides)
+
+	found := false
+	for _, rec := range result.Recommendations {
+		if rec.SlideIndex == 0 && len(rec.RecommendedBreak) > 0 && rec.RecommendedBreak[0] == "cell_accent_mode: progressive" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected accent variety recommendation for 6-cell slide with 1 accent")
+	}
+}
+
+func TestAnalyzeDeckRhythm_NoAccentVarietyRecForFewCells(t *testing.T) {
+	// Slide with 3 cells and 1 accent — should NOT trigger recommendation (< 5 cells).
+	accent1Fill, _ := json.Marshal("accent1")
+	slides := []SlideInput{
+		{ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent1Fill}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent1Fill}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: accent1Fill}},
+			}}},
+		}},
+	}
+
+	result := analyzeDeckRhythm(slides)
+
+	for _, rec := range result.Recommendations {
+		if rec.SlideIndex == 0 && len(rec.RecommendedBreak) > 0 && rec.RecommendedBreak[0] == "cell_accent_mode: progressive" {
+			t.Error("should not recommend accent variety for slide with < 5 cells")
+		}
+	}
+}
+
+func TestAnalyzeDeckRhythm_DensityDistributionZero(t *testing.T) {
+	// Slides with no shape_grid — density distribution should be all zeros.
+	slides := []SlideInput{
+		{Content: []ContentInput{{Type: "text"}}},
+		{Pattern: &PatternInput{Name: "card-grid"}},
+	}
+
+	result := analyzeDeckRhythm(slides)
+
+	dd := result.Aggregates.DensityDistribution
+	if dd.UnderfilledCells != 0 || dd.OptimalCells != 0 || dd.OverflowCells != 0 {
+		t.Errorf("expected all zeros for non-grid slides, got %+v", dd)
+	}
+}
+
+func TestAnalyzeDeckRhythm_DensityDistributionWithGrid(t *testing.T) {
+	// Slide with a shape_grid that has cells — density distribution should be populated.
+	// Use an empty-text cell which will be classified as underfilled.
+	emptyText, _ := json.Marshal("")
+	slides := []SlideInput{
+		{ShapeGrid: &ShapeGridInput{
+			Columns: json.RawMessage(`2`),
+			Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Text: emptyText}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Text: emptyText}},
+			}}},
+		}},
+	}
+
+	result := analyzeDeckRhythm(slides)
+
+	dd := result.Aggregates.DensityDistribution
+	total := dd.UnderfilledCells + dd.OptimalCells + dd.OverflowCells
+	if total != 2 {
+		t.Errorf("expected 2 total cells in density distribution, got %d (%+v)", total, dd)
+	}
+	if dd.UnderfilledCells != 2 {
+		t.Errorf("expected 2 underfilled cells for empty text, got %d", dd.UnderfilledCells)
+	}
+}

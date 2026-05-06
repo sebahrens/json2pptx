@@ -103,11 +103,13 @@ analyze_deck_rhythm(presentation: {template: "...", slides: [...]})
 ```
 
 Returns:
-- `per_slide` — visual fingerprint per slide (pattern, density_class, accent_role, dominant_visual)
+- `per_slide` — visual fingerprint per slide (pattern, density_class, accent_role, dominant_visual, within_slide_accent_variety)
+- `per_slide[].within_slide_accent_variety` — count of distinct accent slots used across the slide's shape_grid cells (0 for non-grid slides)
 - `aggregates.longest_run` — longest consecutive run of one pattern (target: ≤2)
 - `aggregates.repetition_index` — 0.0 (all unique) to 1.0 (all same) (target: <0.5)
 - `aggregates.accent_balance` — fraction of slides per accent (target: no single accent >80%)
 - `aggregates.density_cv` — density variation coefficient (target: >0.1 for decks >3 slides)
+- `aggregates.density_distribution` — `{underfilled_cells, optimal_cells, overflow_cells}` totals across all shape_grid cells in the deck
 - `composition_score` — 0–100 overall quality score
 - `recommendations` — actionable suggestions with `recommended_break_patterns`
 
@@ -116,6 +118,8 @@ Returns:
 - `longest_run ≥ 3` → swap the middle slide of the run to a `recommended_break_patterns` suggestion
 - `accent_balance` shows one accent at >80% → set `accent_strategy: "rotate"` or manually vary accent fills
 - `density_cv < 0.1` on a 5+ slide deck → insert a low-density narrative break (stat-hero, pull-quote)
+- `within_slide_accent_variety == 1` on a slide with 5+ cells → add `cell_accent_mode: progressive` to the pattern overrides
+- `density_distribution.underfilled_cells > 30%` of total → add detail text or switch to smaller grid patterns
 - `composition_score < 70` → iterate on the outline until score ≥ 70
 
 This is a lightweight static check (no PPTX generation cost). Run it iteratively: fix → re-analyze → confirm score improved.
