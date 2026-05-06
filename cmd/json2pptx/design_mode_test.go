@@ -170,6 +170,60 @@ func TestValidateDesignMode_ConstrainedRejectsHexTextColor(t *testing.T) {
 	}
 }
 
+func TestDesignModeDiagnostics_IncludesNextToolCall(t *testing.T) {
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				ShapeGrid: &ShapeGridInput{
+					Rows: []GridRowInput{
+						{
+							Cells: []*GridCellInput{
+								{
+									Shape: &ShapeSpecInput{
+										Geometry: "roundRect",
+										Fill:     json.RawMessage(`"#FF0000"`),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	violations := validateDesignMode(input)
+	if len(violations) == 0 {
+		t.Fatal("expected violations, got none")
+	}
+
+	diags := designModeDiagnostics(violations)
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostics, got none")
+	}
+
+	d := diags[0]
+	if d.Code != "design_mode_violation" {
+		t.Errorf("code = %q, want design_mode_violation", d.Code)
+	}
+	if d.NextToolCall == nil {
+		t.Fatal("NextToolCall is nil, want non-nil")
+	}
+	if d.NextToolCall.Tool != "generate_presentation" {
+		t.Errorf("NextToolCall.Tool = %q, want generate_presentation", d.NextToolCall.Tool)
+	}
+	if dm, ok := d.NextToolCall.ArgsTemplate["design_mode"].(string); !ok || dm != "free" {
+		t.Errorf("NextToolCall.ArgsTemplate[design_mode] = %v, want \"free\"", d.NextToolCall.ArgsTemplate["design_mode"])
+	}
+	if d.Fix == nil {
+		t.Fatal("Fix is nil, want non-nil")
+	}
+	if d.Fix.Kind != "use_scheme_color" {
+		t.Errorf("Fix.Kind = %q, want use_scheme_color", d.Fix.Kind)
+	}
+}
+
 func TestSuggestNearestSchemeColor(t *testing.T) {
 	tests := []struct {
 		hex  string

@@ -4,6 +4,15 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.3.0 (2026-05-06)
+
+### Added
+
+- **`design_mode_violation` diagnostics now include `next_tool_call`** with
+  `{tool: "generate_presentation", args_template: {design_mode: "free"}}`,
+  giving agents a machine-readable escape hatch when raw hex colors are
+  intentional. Emitted from both `validate_input` and `generate_presentation`.
+
 ## 4.2.0 (2026-05-06)
 
 ### Added

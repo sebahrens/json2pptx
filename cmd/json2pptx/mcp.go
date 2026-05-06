@@ -323,20 +323,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Design mode constraints — reject raw hex colors and absolute sizes in constrained mode.
 	if violations := validateDesignMode(&input); len(violations) > 0 {
-		for _, v := range violations {
-			d := diagnostics.Diagnostic{
-				Code:     "design_mode_violation",
-				Path:     v.Path,
-				Message:  v.Message,
-				Severity: diagnostics.SeverityError,
-			}
-			if v.Fix != nil {
-				if text, ok := v.Fix.Params["message"].(string); ok {
-				d.Fix = &diagnostics.Fix{Kind: "use_scheme_color", Params: map[string]any{"suggestion": text}}
-			}
-			}
-			boundaryDiags = append(boundaryDiags, d)
-		}
+		boundaryDiags = append(boundaryDiags, designModeDiagnostics(violations)...)
 	}
 
 	// Fail fast if any boundary diagnostic is an error.
@@ -731,20 +718,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 	// Design mode constraints.
 	if violations := validateDesignMode(&input); len(violations) > 0 {
-		for _, v := range violations {
-			d := diagnostics.Diagnostic{
-				Code:     "design_mode_violation",
-				Path:     v.Path,
-				Message:  v.Message,
-				Severity: diagnostics.SeverityError,
-			}
-			if v.Fix != nil {
-				if text, ok := v.Fix.Params["message"].(string); ok {
-					d.Fix = &diagnostics.Fix{Kind: "use_scheme_color", Params: map[string]any{"suggestion": text}}
-				}
-			}
-			boundaryDiags = append(boundaryDiags, d)
-		}
+		boundaryDiags = append(boundaryDiags, designModeDiagnostics(violations)...)
 	}
 
 	output := dryRunOutput{

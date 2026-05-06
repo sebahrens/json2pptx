@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -482,4 +483,32 @@ func colorDistance(r1, g1, b1, r2, g2, b2 uint8) float64 {
 	dg := float64(g1) - float64(g2)
 	db := float64(b1) - float64(b2)
 	return math.Sqrt(dr*dr + dg*dg + db*db)
+}
+
+// designModeDiagnostics converts design-mode FitFindings into Diagnostics with
+// a next_tool_call hint that tells agents to re-submit with design_mode:"free"
+// if the raw values are intentional.
+func designModeDiagnostics(violations []patterns.FitFinding) []diagnostics.Diagnostic {
+	diags := make([]diagnostics.Diagnostic, 0, len(violations))
+	for _, v := range violations {
+		d := diagnostics.Diagnostic{
+			Code:     "design_mode_violation",
+			Path:     v.Path,
+			Message:  v.Message,
+			Severity: diagnostics.SeverityError,
+			NextToolCall: &patterns.ToolCallSuggestion{
+				Tool: "generate_presentation",
+				ArgsTemplate: map[string]any{
+					"design_mode": "free",
+				},
+			},
+		}
+		if v.Fix != nil {
+			if text, ok := v.Fix.Params["message"].(string); ok {
+				d.Fix = &diagnostics.Fix{Kind: "use_scheme_color", Params: map[string]any{"suggestion": text}}
+			}
+		}
+		diags = append(diags, d)
+	}
+	return diags
 }
