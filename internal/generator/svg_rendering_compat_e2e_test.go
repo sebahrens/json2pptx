@@ -19,7 +19,7 @@ import (
 // 2. Which OOXML structure is incorrect
 // 3. Which fallback scenario failed
 //
-// Reference: specs/19-pptx-svg-compatibility.md
+// Reference: PNG/SVG handling in svggen/ and internal/generator/.
 
 // Test fixtures for SVG and PNG data
 const compatTestSVG = `<?xml version="1.0" encoding="UTF-8"?>

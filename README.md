@@ -783,7 +783,7 @@ internal/
   utils/            Utilities
   visualqa/         Visual QA agent integration (deterministic + screenshot)
 svggen/             SVG chart and diagram generation (separate Go module)
-templates/          Built-in PPTX templates (5)
+templates/          Built-in PPTX templates (4)
 examples/           Example JSON input files (19 + diagrams/ subdirectory)
 docs/               Specs: PATTERNS, FIT_FINDINGS, REPAIR_LOOP, INPUT_FORMAT,
                     STYLE_DEFAULTS, TEMPLATE_SPEC, VISUAL_CRITERIA, ...
@@ -884,7 +884,6 @@ make release         # All platforms (requires clean tree)
 - [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) -- complete JSON schema reference
 - [SLIDE_FORMAT.md](SLIDE_FORMAT.md) -- condensed quick-reference
 - [docs/PATTERNS.md](docs/PATTERNS.md) -- named-pattern authoring guide
-- [docs/PATTERN_LIBRARY_SPEC.md](docs/PATTERN_LIBRARY_SPEC.md) -- full pattern design spec
 - [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) -- fit findings catalog and action semantics
 - [docs/REPAIR_LOOP.md](docs/REPAIR_LOOP.md) -- structured repair workflow
 - [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md) -- defaults block semantics

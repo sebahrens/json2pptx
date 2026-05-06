@@ -3,7 +3,7 @@ package patterns
 // Default aliases for pattern names. Canonical names are preserved;
 // aliases provide shorter or alternative forms for convenience.
 //
-// Naming convention (documented in docs/PATTERN_LIBRARY_SPEC.md §2.1):
+// Naming convention (documented in docs/PATTERNS.md):
 //
 //	Canonical form: {noun}-{qualifier}
 //	  noun      = the layout concept (kpi, card, matrix, timeline, …)

@@ -2,7 +2,7 @@
 // for named slide patterns. Patterns expand to shape_grid definitions at
 // generation time, replacing ~600 tokens of boilerplate with ~100-token calls.
 //
-// See docs/PATTERN_LIBRARY_SPEC.md for the full design (decisions D1–D17).
+// See docs/PATTERNS.md for the authoring guide and contract.
 package patterns
 
 import (

@@ -581,7 +581,7 @@ Diagrams are rendered as SVG images for business visualizations.
 
 ## 6. Shape Grid
 
-The `shape_grid` field on a slide defines a grid of preset geometry shapes for custom layouts. When `shape_grid` is present and no `layout_id` is specified (or `slide_type` is `"blank"` / `"virtual"`), the system automatically selects a suitable blank layout and computes grid bounds from the template's title and footer positions (see [Virtual Layouts](../specs/24-virtual-layouts.md)).
+The `shape_grid` field on a slide defines a grid of preset geometry shapes for custom layouts. When `shape_grid` is present and no `layout_id` is specified (or `slide_type` is `"blank"` / `"virtual"`), the system automatically selects a suitable blank layout and computes grid bounds from the template's title and footer positions.
 
 ### Grid Definition (ShapeGridInput)
 
