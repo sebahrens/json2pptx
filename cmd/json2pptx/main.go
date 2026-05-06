@@ -86,6 +86,8 @@ func dispatch() error { //nolint:gocyclo
 		return runTemplateSettings()
 	case "data-format-hints":
 		return runDataFormatHints()
+	case "preview-patterns":
+		return runPreviewPatterns()
 	case "shape-catalog":
 		return runShapeCatalog()
 	case "version", "--version", "-V":

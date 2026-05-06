@@ -81,6 +81,7 @@ INSTALL_CMDS := json2pptx svggen svggen-server svggen-mcp
         ensure-templates dist-linux dist-windows release-check release \
         check test test-race test-cover test-svg-stress \
         lint vulncheck security fmt fmt-check \
+        preview-patterns \
         run clean ci help
 
 # ─── Build ────────────────────────────────────────────────────────────
@@ -322,6 +323,11 @@ fmt:
 
 fmt-check:
 	@test -z "$$(gofmt -l .)" || (echo "Please run 'make fmt'" && gofmt -l . && exit 1)
+
+# ─── Pattern Previews ─────────────────────────────────────────────────
+
+preview-patterns: build
+	./bin/json2pptx$(EXE) preview-patterns -templates-dir templates -output assets/pattern-previews
 
 # ─── Run / Clean / Release ────────────────────────────────────────────
 

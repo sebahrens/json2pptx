@@ -1060,6 +1060,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		ConfidenceBand   string                    `json:"confidence_band"`
 		DiversityBonus   bool                      `json:"diversity_bonus,omitempty"`
 		ExpansionPreview *jsonschema.ShapeGridInput `json:"expansion_preview,omitempty"`
+		PreviewPNGPaths  []string                  `json:"preview_png_paths,omitempty"`
 	}
 
 	candidates := make([]candidateResult, len(rec.Candidates))
@@ -1085,6 +1086,9 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		if err == nil {
 			candidates[i].ExpansionPreview = grid
 		}
+
+		// Look up pre-generated preview PNGs from assets directory
+		candidates[i].PreviewPNGPaths = findPatternPreviewPNGs(mc.templatesDir, c.PatternName)
 	}
 
 	nearMisses := make([]nearMissResult, len(rec.NearMisses))
