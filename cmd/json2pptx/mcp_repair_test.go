@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -815,6 +816,282 @@ func TestRepairSlide_SplitPattern_NoGrid(t *testing.T) {
 
 	if output.AppliedFixes[0].Applied {
 		t.Error("expected split_pattern not applied for slide without shape_grid")
+	}
+}
+
+// --- reduce_cell_text tests ---
+
+// gridDeck builds a test deck with one slide containing a shape_grid.
+func gridDeck(cellTexts ...any) string {
+	cells := make([]any, len(cellTexts))
+	for i, t := range cellTexts {
+		cells[i] = map[string]any{
+			"shape": map[string]any{
+				"geometry": "rect",
+				"fill":     "accent1",
+				"text":     t,
+			},
+		}
+	}
+	deck := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout2",
+				"content": []any{
+					map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Grid"},
+				},
+				"shape_grid": map[string]any{
+					"columns": len(cellTexts),
+					"rows": []any{
+						map[string]any{"cells": cells},
+					},
+				},
+			},
+		},
+	}
+	b, _ := json.Marshal(deck)
+	return string(b)
+}
+
+func TestReduceCellText_SimpleString(t *testing.T) {
+	mc := repairMC(t)
+	deck := gridDeck("Hello World, this is a long text string")
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "reduce_cell_text",
+			"params": map[string]any{
+				"cell_path": "/slides/0/shape_grid/rows/0/cells/0",
+				"max_chars": float64(10),
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("tool error: %s", textContent(result))
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected applied, got: %s", output.AppliedFixes[0].Message)
+	}
+
+	// Check the patched cell text.
+	var patched PresentationInput
+	if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+		t.Fatalf("unmarshal patched: %v", err)
+	}
+	cell := patched.Slides[0].ShapeGrid.Rows[0].Cells[0]
+	var text string
+	if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+		t.Fatalf("unmarshal text: %v", err)
+	}
+	runes := []rune(text)
+	if len(runes) > 10 {
+		t.Errorf("expected at most 10 runes, got %d: %q", len(runes), text)
+	}
+	if runes[len(runes)-1] != '…' {
+		t.Errorf("expected ellipsis at end, got %q", text)
+	}
+}
+
+func TestReduceCellText_ObjectForm(t *testing.T) {
+	mc := repairMC(t)
+	deck := gridDeck(map[string]any{
+		"content": "This text is quite long and needs truncation",
+		"bold":    true,
+		"size":    float64(14),
+	})
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "reduce_cell_text",
+			"params": map[string]any{
+				"cell_path": "/slides/0/shape_grid/rows/0/cells/0",
+				"max_chars": float64(15),
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !output.AppliedFixes[0].Applied {
+		t.Fatalf("expected applied")
+	}
+
+	var patched PresentationInput
+	if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+		t.Fatalf("unmarshal patched: %v", err)
+	}
+	cell := patched.Slides[0].ShapeGrid.Rows[0].Cells[0]
+	var obj map[string]any
+	if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
+		t.Fatalf("unmarshal text obj: %v", err)
+	}
+	content := obj["content"].(string)
+	if len([]rune(content)) > 15 {
+		t.Errorf("expected at most 15 runes, got %d: %q", len([]rune(content)), content)
+	}
+	// Bold should be preserved.
+	if obj["bold"] != true {
+		t.Error("expected bold to be preserved")
+	}
+}
+
+func TestReduceCellText_MarkdownEmphasisBroken(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		maxChars int
+		wantNo   string // substring that should NOT appear in result
+	}{
+		{
+			name:     "broken bold",
+			input:    "Start **bold text** end",
+			maxChars: 12,
+			wantNo:   "**",
+		},
+		{
+			name:     "broken italic",
+			input:    "Start *italic text* end",
+			maxChars: 10,
+			wantNo:   "*",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncateWithEllipsis(tt.input, tt.maxChars)
+			runes := []rune(result)
+			if len(runes) > tt.maxChars {
+				t.Errorf("length %d exceeds max_chars %d: %q", len(runes), tt.maxChars, result)
+			}
+			// The result should not have orphaned emphasis markers.
+			if tt.wantNo != "" {
+				count := strings.Count(result, tt.wantNo)
+				if tt.wantNo == "*" {
+					// Don't count * that are part of **.
+					count = strings.Count(strings.ReplaceAll(result, "**", ""), "*")
+				}
+				if count%2 != 0 {
+					t.Errorf("orphaned %q marker in result: %q", tt.wantNo, result)
+				}
+			}
+			if runes[len(runes)-1] != '…' {
+				t.Errorf("expected ellipsis at end: %q", result)
+			}
+		})
+	}
+}
+
+
+func TestReduceCellText_AlreadyWithinBudget(t *testing.T) {
+	mc := repairMC(t)
+	deck := gridDeck("Short")
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "reduce_cell_text",
+			"params": map[string]any{
+				"cell_path": "/slides/0/shape_grid/rows/0/cells/0",
+				"max_chars": float64(100),
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if output.AppliedFixes[0].Applied {
+		t.Error("expected not applied when text already within budget")
+	}
+}
+
+func TestReduceCellText_MissingParams(t *testing.T) {
+	mc := repairMC(t)
+	deck := gridDeck("Hello")
+
+	tests := []struct {
+		name   string
+		params map[string]any
+	}{
+		{"no cell_path", map[string]any{"max_chars": float64(5)}},
+		{"no max_chars", map[string]any{"cell_path": "/slides/0/shape_grid/rows/0/cells/0"}},
+		{"max_chars too small", map[string]any{"cell_path": "/slides/0/shape_grid/rows/0/cells/0", "max_chars": float64(1)}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+				"presentation": mustParseJSON(deck),
+				"slide_index":  float64(0),
+				"fixes":        []any{map[string]any{"kind": "reduce_cell_text", "params": tt.params}},
+			}))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			var output repairSlideOutput
+			if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if output.AppliedFixes[0].Applied {
+				t.Error("expected not applied with missing/invalid params")
+			}
+		})
+	}
+}
+
+func TestReduceCellText_NoShapeGrid(t *testing.T) {
+	mc := repairMC(t)
+	deck := minimalDeck(map[string]any{
+		"placeholder_id": "title",
+		"type":           "text",
+		"text_value":     "No Grid",
+	})
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes": []any{map[string]any{
+			"kind": "reduce_cell_text",
+			"params": map[string]any{
+				"cell_path": "/slides/0/shape_grid/rows/0/cells/0",
+				"max_chars": float64(5),
+			},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if output.AppliedFixes[0].Applied {
+		t.Error("expected not applied for slide without shape_grid")
 	}
 }
 

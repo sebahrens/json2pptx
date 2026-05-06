@@ -211,6 +211,7 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 // This is derived from the switch statement in mcp_repair.go to stay in sync.
 func repairFixKinds() []string {
 	return []string{
+		"reduce_cell_text",
 		"reduce_text",
 		"replace_color",
 		"reshape_grid",

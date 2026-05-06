@@ -63,6 +63,7 @@ Supported fix kinds (V1):
 - swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
 - reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
 - set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
+- reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
@@ -195,6 +196,8 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyReshapeGrid(input, slideIdx, fix.Params)
 	case "set_pattern_style":
 		return applySetPatternStyle(input, slideIdx, fix.Params)
+	case "reduce_cell_text":
+		return applyReduceCellText(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -1073,6 +1076,213 @@ func applySetPatternStyle(input *PresentationInput, slideIdx int, params map[str
 	slide.ShapeGrid = nil
 
 	return appliedFix{Kind: "set_pattern_style", Applied: true, Message: fmt.Sprintf("set style to %q", style)}
+}
+
+// applyReduceCellText truncates a shape_grid cell's text to max_chars,
+// appending a single ellipsis character (U+2026). If truncation breaks a
+// markdown emphasis pair (**bold** or *italic*), the orphaned markers are
+// stripped from the truncated output.
+//
+// Agents should prefer pre-generation budget awareness via expand_pattern over
+// post-generation repair.
+func applyReduceCellText(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	cellPath := stringParam(params, "cell_path", "")
+	maxChars := intParam(params, "max_chars", 0)
+
+	if cellPath == "" {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "cell_path parameter is required"}
+	}
+	if maxChars <= 1 {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "max_chars must be > 1"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.ShapeGrid == nil {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "slide has no shape_grid"}
+	}
+
+	pathSlideIdx, rowIdx, cellIdx, ok := slidepath.ParseGridCell(cellPath)
+	if !ok {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: fmt.Sprintf("cannot parse cell path %q", cellPath)}
+	}
+	if pathSlideIdx != slideIdx {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: fmt.Sprintf("cell_path slide index %d does not match slide_index %d", pathSlideIdx, slideIdx)}
+	}
+	if rowIdx < 0 || rowIdx >= len(slide.ShapeGrid.Rows) {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: fmt.Sprintf("row index %d out of range", rowIdx)}
+	}
+	row := &slide.ShapeGrid.Rows[rowIdx]
+	if cellIdx < 0 || cellIdx >= len(row.Cells) {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: fmt.Sprintf("cell index %d out of range", cellIdx)}
+	}
+	cell := row.Cells[cellIdx]
+	if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "cell has no text content"}
+	}
+
+	// Extract text content — handle string form, object form (content field),
+	// and paragraphs form.
+	var s string
+	if err := json.Unmarshal(cell.Shape.Text, &s); err == nil {
+		// Simple string form.
+		truncated := truncateWithEllipsis(s, maxChars)
+		if truncated == s {
+			return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "text already within max_chars"}
+		}
+		newText, _ := json.Marshal(truncated)
+		cell.Shape.Text = newText
+		return appliedFix{Kind: "reduce_cell_text", Applied: true}
+	}
+
+	// Object form with "content" or "paragraphs".
+	var obj map[string]any
+	if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
+		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "cannot parse cell text"}
+	}
+
+	// Paragraphs form: truncate each paragraph's content, distributing budget.
+	if rawParas, ok := obj["paragraphs"]; ok {
+		paras, ok := rawParas.([]any)
+		if !ok || len(paras) == 0 {
+			return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "empty paragraphs array"}
+		}
+		modified := truncateParagraphs(paras, maxChars)
+		if !modified {
+			return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "text already within max_chars"}
+		}
+		obj["paragraphs"] = paras
+		newText, _ := json.Marshal(obj)
+		cell.Shape.Text = newText
+		return appliedFix{Kind: "reduce_cell_text", Applied: true}
+	}
+
+	// Object form with "content" string.
+	if content, ok := obj["content"].(string); ok {
+		truncated := truncateWithEllipsis(content, maxChars)
+		if truncated == content {
+			return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "text already within max_chars"}
+		}
+		obj["content"] = truncated
+		newText, _ := json.Marshal(obj)
+		cell.Shape.Text = newText
+		return appliedFix{Kind: "reduce_cell_text", Applied: true}
+	}
+
+	return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "cell text has no recognizable content"}
+}
+
+// truncateWithEllipsis truncates text to maxChars-1 visible characters plus a
+// single ellipsis (U+2026). If the truncation point falls inside a markdown
+// emphasis span, the orphaned markers are stripped.
+func truncateWithEllipsis(text string, maxChars int) string {
+	runes := []rune(text)
+	if len(runes) <= maxChars {
+		return text
+	}
+
+	// Truncate to maxChars-1 to leave room for ellipsis.
+	cutLen := maxChars - 1
+	if cutLen < 0 {
+		cutLen = 0
+	}
+	truncated := string(runes[:cutLen])
+
+	// Fix broken markdown emphasis before appending ellipsis.
+	truncated = fixBrokenEmphasis(truncated)
+
+	return truncated + "\u2026"
+}
+
+// fixBrokenEmphasis strips orphaned markdown emphasis markers from the end of
+// a truncated string. It handles both ** (bold) and * (italic) markers.
+//
+// The approach: count unmatched opening markers. If the truncated text has an
+// odd number of bold or italic delimiters (meaning one was opened but not
+// closed), remove the opening marker.
+func fixBrokenEmphasis(s string) string {
+	// Process bold (**) first, then italic (*).
+	s = fixEmphasisPair(s, "**")
+	s = fixEmphasisPair(s, "*")
+	return s
+}
+
+// fixEmphasisPair checks if the delimiter has an odd count (meaning an unclosed
+// opening). If so, it removes the last unmatched opening occurrence.
+func fixEmphasisPair(s, delim string) string {
+	count := countNonOverlapping(s, delim)
+	if count%2 == 0 {
+		return s // balanced
+	}
+	// Remove the last occurrence of the delimiter.
+	lastIdx := strings.LastIndex(s, delim)
+	if lastIdx < 0 {
+		return s
+	}
+	return s[:lastIdx] + s[lastIdx+len(delim):]
+}
+
+// countNonOverlapping counts non-overlapping occurrences of substr in s.
+// For "**" counting, we need to handle the nesting: count ** first (consuming
+// chars), then * on the remainder.
+func countNonOverlapping(s, substr string) int {
+	if substr == "*" {
+		// When counting single *, we must not count those that are part of **.
+		// Replace ** with a placeholder, count remaining *, then restore.
+		temp := strings.ReplaceAll(s, "**", "\x00\x00")
+		return strings.Count(temp, "*")
+	}
+	return strings.Count(s, substr)
+}
+
+// truncateParagraphs truncates a paragraphs array so the total content length
+// fits within maxChars. Returns true if any modification was made.
+func truncateParagraphs(paras []any, maxChars int) bool {
+	// Calculate total length across all paragraphs.
+	total := 0
+	for _, p := range paras {
+		pMap, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		if c, ok := pMap["content"].(string); ok {
+			total += len([]rune(c))
+		}
+	}
+	if total <= maxChars {
+		return false
+	}
+
+	// Distribute budget proportionally, truncating from the last paragraph.
+	remaining := maxChars
+	modified := false
+	for i, p := range paras {
+		pMap, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		content, ok := pMap["content"].(string)
+		if !ok {
+			continue
+		}
+		runes := []rune(content)
+		if remaining <= 0 {
+			// No budget left — remove this paragraph's content.
+			pMap["content"] = "\u2026"
+			paras[i] = pMap
+			modified = true
+			remaining -= 1
+			continue
+		}
+		if len(runes) > remaining {
+			pMap["content"] = truncateWithEllipsis(content, remaining)
+			paras[i] = pMap
+			modified = true
+			remaining = 0
+		} else {
+			remaining -= len(runes)
+		}
+	}
+	return modified
 }
 
 // boolParam extracts a boolean parameter with a default.
