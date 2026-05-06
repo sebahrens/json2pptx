@@ -121,6 +121,7 @@ func runMCP() error {
 	s.AddTool(mcpGetDiagramCapabilitiesTool(), handleGetDiagramCapabilities)
 	s.AddTool(mcpValidateTool(), mc.handleValidate)
 	s.AddTool(mcpRecommendPatternTool(), mc.handleRecommendPattern)
+	s.AddTool(mcpRecommendVisualTool(), mc.handleRecommendVisual)
 	s.AddTool(mcpListPatternsTool(), handleListPatterns)
 	s.AddTool(mcpShowPatternTool(), handleShowPattern)
 	s.AddTool(mcpValidatePatternTool(), handleValidatePattern)
@@ -1116,6 +1117,73 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcpResult, nil
+}
+
+func mcpRecommendVisualTool() mcp.Tool {
+	return mcp.NewTool("recommend_visual",
+		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Replaces guesswork — ask this tool first, then use the winning category's tool to build the slide."),
+		mcp.WithRawOutputSchema(outputSchemaRecommendVisual),
+		mcp.WithString("intent",
+			mcp.Required(),
+			mcp.Description("Natural-language description of what the slide should show (e.g., \"show Q3 revenue trend\", \"compare 3 vendors on 5 dimensions\", \"agenda slide with 4 sections\")."),
+		),
+		mcp.WithObject("content_hints",
+			mcp.Description("Optional structured hints to refine ranking. Properties: item_count (int), has_chart (bool), has_metrics (bool), columns (int), data_points (int), series_count (int), audience (string)."),
+		),
+		mcp.WithArray("recent_patterns",
+			mcp.Description("Pattern names used on preceding slides in this deck, in order. Used with prefer_variety to penalize repeated patterns."),
+		),
+		mcp.WithBoolean("prefer_variety",
+			mcp.Description("When true, apply recency decay penalty to patterns in recent_patterns."),
+		),
+		mcp.WithNumber("slide_index",
+			mcp.Description("0-based index of the slide being built."),
+		),
+	)
+}
+
+func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	intent, err := request.RequireString("intent")
+	if err != nil {
+		return api.MCPSimpleError("MISSING_PARAMETER", "intent is required"), nil
+	}
+
+	// Parse optional content_hints.
+	var hints patterns.VisualHints
+	if hintsRaw, ok := request.GetArguments()["content_hints"]; ok && hintsRaw != nil {
+		hintsJSON, err := json.Marshal(hintsRaw)
+		if err == nil {
+			_ = json.Unmarshal(hintsJSON, &hints)
+		}
+	}
+
+	// Parse optional variety/diversity parameters.
+	var opts patterns.RecommendOptions
+	if rpRaw, ok := request.GetArguments()["recent_patterns"]; ok && rpRaw != nil {
+		rpJSON, err := json.Marshal(rpRaw)
+		if err == nil {
+			_ = json.Unmarshal(rpJSON, &opts.RecentPatterns)
+		}
+	}
+	if pv, ok := request.GetArguments()["prefer_variety"]; ok {
+		if b, ok := pv.(bool); ok {
+			opts.PreferVariety = b
+		}
+	}
+	if si, ok := request.GetArguments()["slide_index"]; ok {
+		if f, ok := si.(float64); ok {
+			opts.SlideIndex = int(f)
+		}
+	}
+
+	reg := patterns.Default()
+	rec := patterns.RecommendVisual(reg, intent, &hints, 5, &opts)
+
+	mcpResult, err := api.MCPSuccessResult(ctx, rec)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}

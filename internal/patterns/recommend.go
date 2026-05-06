@@ -325,6 +325,22 @@ var rules = []rule{
 		baseScore: 0.80,
 		rationale: "Pull-quote block with attribution line",
 	},
+
+	// Agenda — table of contents
+	{
+		pattern:   "agenda",
+		keywords:  []string{"agenda", "table of contents", "toc", "outline", "sections", "chapter list"},
+		baseScore: 0.92,
+		rationale: "Numbered section list for agenda or table-of-contents slides",
+		itemMin:   2,
+		itemMax:   10,
+	},
+	{
+		pattern:   "agenda",
+		keywords:  []string{"agenda", "table of contents", "toc"},
+		baseScore: 0.80,
+		rationale: "Agenda slide with numbered sections",
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

@@ -422,6 +422,7 @@ func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
 		"validate_pattern":           outputSchemaValidatePattern,
 		"expand_pattern":             outputSchemaExpandPattern,
 		"recommend_pattern":          outputSchemaRecommendPattern,
+		"recommend_visual":           outputSchemaRecommendVisual,
 		"list_icons":                 outputSchemaListIcons,
 		"get_shape_catalog":          outputSchemaGetShapeCatalog,
 		"render_slide_image":         outputSchemaRenderSlideImage,

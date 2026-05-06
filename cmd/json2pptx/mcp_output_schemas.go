@@ -275,6 +275,34 @@ var outputSchemaRecommendPattern = json.RawMessage(`{
   "required": ["candidates", "query_understood_as"]
 }`)
 
+// --- recommend_visual ---
+var outputSchemaRecommendVisual = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category":         {"type": "string", "enum": ["placeholder_layout", "named_pattern", "chart", "diagram", "raw_shape_grid"]},
+          "name":             {"type": "string"},
+          "score":            {"type": "number"},
+          "rationale":        {"type": "string"},
+          "confidence_band":  {"type": "string", "enum": ["high", "medium", "low"]},
+          "diversity_bonus":  {"type": "boolean"}
+        },
+        "required": ["category", "name", "score", "rationale", "confidence_band"]
+      }
+    },
+    "query_understood_as": {"type": "string"},
+    "disambiguating_questions": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "required": ["candidates", "query_understood_as"]
+}`)
+
 // --- list_icons ---
 var outputSchemaListIcons = json.RawMessage(`{
   "type": "array",
