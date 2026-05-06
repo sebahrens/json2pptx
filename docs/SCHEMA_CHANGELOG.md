@@ -4,6 +4,24 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.5.0 (2026-05-07)
+
+### Added
+
+- **`PatternInput.bounds`** — explicit `GridBoundsInput` override (x, y, width,
+  height as percentages) constraining the expanded grid to a sub-region of the
+  layout area. Fixes density math for patterns that don't fill full content area.
+- **`PatternInput.max_height_pct`** — convenience alias that constrains grid
+  height to a percentage of the content area (equivalent to
+  `bounds:{x:0,y:0,width:100,height:<value>}`).
+- **`expand_pattern` MCP tool** gains `bounds` (object) and `max_height_pct`
+  (number) parameters.
+- **`bounds_assumption` response field** now reports `"explicit_override"` when
+  bounds are applied (previously always `"full_content_area"`).
+- **`capacity_warnings[].next_tool_call`** — underfilled cells now include a
+  machine-readable `next_tool_call` suggesting re-expansion with a recommended
+  `max_height_pct`, eliminating false underfill warnings for short-content grids.
+
 ## 4.4.0 (2026-05-06)
 
 ### Added

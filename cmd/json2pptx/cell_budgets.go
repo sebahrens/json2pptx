@@ -24,11 +24,12 @@ type cellBudgetEntry struct {
 
 // cellDensityWarning flags a cell that is underfilled or overflowing.
 type cellDensityWarning struct {
-	CellIndex int    `json:"cell_index"`
-	Field     string `json:"field"`
-	Actual    int    `json:"actual"`
-	Budget    int    `json:"budget"`
-	Status    string `json:"status"`
+	CellIndex    int                         `json:"cell_index"`
+	Field        string                      `json:"field"`
+	Actual       int                         `json:"actual"`
+	Budget       int                         `json:"budget"`
+	Status       string                      `json:"status"`
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // computeCellBudgets resolves an expanded ShapeGridInput into cell budgets and

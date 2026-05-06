@@ -264,9 +264,25 @@ When `expand_pattern` returns cells outside the optimal band:
 
 3. **Check `layout_suggestions[]`:** When **all** populated cells are consistently suboptimal (all underfilled or all overflowing), `expand_pattern` returns `layout_suggestions[]` — an array of alternative patterns with optional overrides and a `reason` string. Use these as actionable swap recommendations instead of guessing. Suggestions only appear when density is unanimously bad; mixed-density grids (some optimal, some not) produce no suggestions — adjust content manually in that case.
 
+### Bounds Override: `bounds` and `max_height_pct`
+
+When patterns produce oversized cells for short content (e.g., a 3-step process-flow with terse labels), constrain the grid using `bounds` or `max_height_pct`:
+
+- **`max_height_pct`** (number, 1–99): constrains grid height to this percentage of the content area. Equivalent to `bounds: {x:0, y:0, width:100, height:<value>}`.
+- **`bounds`** (object): explicit bounding rectangle as percentages of slide dimensions (`x`, `y`, `width`, `height`). Takes priority over `max_height_pct`.
+
+Pass these as parameters to `expand_pattern` (MCP) or in the slide-level `pattern.bounds`/`pattern.max_height_pct` fields (JSON input). The bounds are applied to the expanded grid, and density math automatically uses the reduced area — eliminating false `cell_underfilled` warnings.
+
+When `capacity_warnings[]` reports underfilled cells without explicit bounds, each warning includes a `next_tool_call` suggesting re-expansion with a recommended `max_height_pct`. Follow the suggestion directly.
+
 ### The `bounds_assumption` Field
 
-`expand_pattern` returns `bounds_assumption: "full_content_area"`, indicating that budgets were computed against the full layout content area (below the title placeholder). When `expand_pattern` is called standalone (outside `compose`), this is always accurate. In a future `compose` context where multiple patterns share a slide, budgets will reflect the composed sub-region — the `bounds_assumption` field will change to indicate the reduced area. Always read this field to understand what the budgets represent.
+`expand_pattern` returns `bounds_assumption` indicating what area the budgets were computed against:
+
+- `"full_content_area"` — budgets reflect the full layout content area (default when no bounds override is provided)
+- `"explicit_override"` — budgets reflect the reduced area specified via `bounds` or `max_height_pct`
+
+Always read this field to understand what the budgets represent.
 
 ### Related Tools
 

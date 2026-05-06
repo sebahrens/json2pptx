@@ -18,6 +18,8 @@ type PatternInput struct {
 	Overrides     json.RawMessage               `json:"overrides,omitempty"`
 	CellOverrides map[string]json.RawMessage     `json:"cell_overrides,omitempty"`
 	Callout       *patterns.PatternCallout       `json:"callout,omitempty"`
+	Bounds        *jsonschema.GridBoundsInput    `json:"bounds,omitempty"`
+	MaxHeightPct  float64                        `json:"max_height_pct,omitempty"`
 }
 
 // expandPattern looks up the named pattern in the registry, unmarshals the
@@ -88,6 +90,13 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	grid, err := pat.Expand(ctx, values, overrides, cellOverrides)
 	if err != nil {
 		return nil, nil, fmt.Errorf("pattern %q: expand failed: %w", p.Name, err)
+	}
+
+	// Apply bounds_override: explicit bounds or max_height_pct convenience alias.
+	// This constrains the grid to a sub-region of the layout area, which also
+	// corrects density math (cell_budgets uses grid.Bounds when present).
+	if b := resolvePatternBounds(p); b != nil {
+		grid.Bounds = b
 	}
 
 	// Post-expand callout decorator (D18): append full-width callout row
@@ -166,4 +175,25 @@ func buildCalloutTextContent(content string, size float64, bold, italic bool, co
 
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// resolvePatternBounds returns a GridBoundsInput from PatternInput's bounds
+// fields, applying the max_height_pct convenience alias. Returns nil if no
+// bounds override was specified.
+func resolvePatternBounds(p *PatternInput) *jsonschema.GridBoundsInput {
+	if p.Bounds != nil {
+		// Explicit bounds take priority — use as-is.
+		return p.Bounds
+	}
+	if p.MaxHeightPct > 0 && p.MaxHeightPct < 100 {
+		// Convenience alias: constrain height while preserving full width.
+		// X/Y/Width default to the layout content area (0,0 = top-left of layout).
+		return &jsonschema.GridBoundsInput{
+			X:      0,
+			Y:      0,
+			Width:  100,
+			Height: p.MaxHeightPct,
+		}
+	}
+	return nil
 }

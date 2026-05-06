@@ -255,6 +255,17 @@ Pattern composition — placing multiple patterns on a single slide via a `compo
 
 Until then, each slide accepts exactly one `pattern` (XOR with `shape_grid`).
 
+## Bounds Override
+
+Patterns assume `full_content_area` by default — the grid fills the entire layout content area. For patterns with short content this produces oversized cells. Constrain the grid with:
+
+- **`max_height_pct`** (number, 1–99): constrains grid height to this percentage of the content area.
+- **`bounds`** (object: `{x, y, width, height}` as percentages of slide dimensions): explicit bounding rectangle.
+
+These fields live on `PatternInput` (slide-level JSON) and on the `expand_pattern` MCP tool parameters. When set, the expanded grid gets a `bounds` field on the `ShapeGridInput`, which the shapegrid resolver and density math respect automatically.
+
+`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default).
+
 ## Expand conventions
 
 - Emit scheme color strings (`"accent1"`, `"dk1"`), never hex values. Theme resolution happens downstream via `pptx.ResolveColorString`.

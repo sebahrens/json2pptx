@@ -895,6 +895,12 @@ func mcpExpandPatternTool() mcp.Tool {
 		mcp.WithString("theme_template",
 			mcp.Description("Template name to use for theme context during expansion. If omitted, a minimal synthesized theme is used."),
 		),
+		mcp.WithObject("bounds",
+			mcp.Description("Explicit bounding rectangle (percentages of slide dimensions: x, y, width, height). Constrains the grid to a sub-region, fixing density math for patterns that don't fill the full content area."),
+		),
+		mcp.WithNumber("max_height_pct",
+			mcp.Description("Convenience alias: constrains grid height to this percentage of the content area (1-99). Equivalent to bounds:{x:0,y:0,width:100,height:<value>}."),
+		),
 	)
 }
 
@@ -1033,6 +1039,42 @@ func attachNextToolCallsToValidationErrors(errs []patternValidationError, patter
 				tc.ArgsTemplate["pattern"] = patternName
 			}
 			e.NextToolCall = tc
+		}
+	}
+}
+
+// attachBoundsHintToCapacityWarnings adds next_tool_call to underfilled capacity
+// warnings, suggesting re-expansion with a recommended max_height_pct. This
+// eliminates false-positive underfill warnings for patterns that genuinely have
+// short content by guiding agents to constrain grid height.
+func attachBoundsHintToCapacityWarnings(warnings []cellDensityWarning, patternName string, pi *PatternInput) {
+	// Only suggest bounds when no explicit bounds were already provided
+	if pi.Bounds != nil || pi.MaxHeightPct > 0 {
+		return
+	}
+	for i := range warnings {
+		if warnings[i].Status != "underfilled" {
+			continue
+		}
+		// Recommend max_height_pct based on actual/budget ratio
+		ratio := float64(warnings[i].Actual) / float64(warnings[i].Budget)
+		if ratio <= 0 || ratio >= 0.6 {
+			continue
+		}
+		// Suggest a height that would make content fill ~70% of the cell
+		suggestedPct := int(ratio / 0.7 * 100)
+		if suggestedPct < 20 {
+			suggestedPct = 20
+		}
+		if suggestedPct > 90 {
+			suggestedPct = 90
+		}
+		warnings[i].NextToolCall = &patterns.ToolCallSuggestion{
+			Tool: "expand_pattern",
+			ArgsTemplate: map[string]any{
+				"name":           patternName,
+				"max_height_pct": suggestedPct,
+			},
 		}
 	}
 }
@@ -1514,6 +1556,26 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		pi.CellOverrides = rawCO
 	}
 
+	// Parse optional bounds override
+	boundsStr, paramErrBounds := objectParamAsJSON(request, "bounds")
+	if paramErrBounds != nil {
+		return paramErrBounds, nil
+	}
+	if boundsStr != "" {
+		var b jsonschema.GridBoundsInput
+		if err := json.Unmarshal([]byte(boundsStr), &b); err != nil {
+			return mcpParseError("INVALID_JSON", "bounds", fmt.Sprintf("invalid bounds JSON: %v", err)), nil
+		}
+		pi.Bounds = &b
+	}
+
+	// Parse optional max_height_pct convenience alias
+	if mhpRaw, ok := request.GetArguments()["max_height_pct"]; ok && mhpRaw != nil {
+		if mhp, ok := mhpRaw.(float64); ok && mhp > 0 {
+			pi.MaxHeightPct = mhp
+		}
+	}
+
 	// Build ExpandContext — use template layout bounds if provided, else defaults
 	var boundsSource string
 	templateName, _ := request.RequireString("theme_template")
@@ -1537,8 +1599,17 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	// Compute cell budgets and capacity-based density warnings
 	cellBudgets, capacityWarnings := computeCellBudgets(grid, expandCtx)
 
+	// Attach next_tool_call to underfill capacity warnings suggesting re-expand with max_height_pct
+	attachBoundsHintToCapacityWarnings(capacityWarnings, name, pi)
+
 	// Suggest alternative layouts when density is consistently suboptimal
 	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)
+
+	// Determine bounds_assumption based on whether bounds were applied
+	boundsAssumption := "full_content_area"
+	if grid.Bounds != nil {
+		boundsAssumption = "explicit_override"
+	}
 
 	// Also provide the pattern version for traceability
 	result := struct {
@@ -1556,7 +1627,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		Pattern:          pat.Name(),
 		Version:         pat.Version(),
 		BoundsSource:    boundsSource,
-		BoundsAssumption: "full_content_area",
+		BoundsAssumption: boundsAssumption,
 		ShapeGrid:       grid,
 		Occupancy:       occupancy,
 		CellBudgets:     cellBudgets,
