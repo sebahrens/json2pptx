@@ -13,9 +13,10 @@ import (
 // on a single slide. Each segment is independently validated and expanded,
 // then the resulting grids are merged into a single ShapeGridInput.
 type ComposeInput struct {
-	Direction string          `json:"direction"`           // "vertical" or "horizontal"
-	Gap       float64         `json:"gap,omitempty"`       // Gap in points between segments (default: 8)
-	Segments  []SegmentInput  `json:"segments"`
+	Direction    string          `json:"direction"`              // "vertical" or "horizontal"
+	Gap          float64         `json:"gap,omitempty"`          // Gap in points between segments (default: 8)
+	SmartCompose bool            `json:"smart_compose,omitempty"` // Auto-balance segment sizes by content density
+	Segments     []SegmentInput  `json:"segments"`
 }
 
 // SegmentInput defines one child within a compose envelope.
@@ -31,9 +32,6 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		return nil, err
 	}
 
-	// Resolve size percentages
-	sizes := resolveSegmentSizes(c.Segments)
-
 	// Expand each segment's pattern
 	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
 	for i, seg := range c.Segments {
@@ -42,6 +40,15 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 			return nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
 		}
 		expandedGrids[i] = grid
+	}
+
+	// Resolve size percentages — smart compose uses content density when
+	// segments have no explicit SizePct.
+	var sizes []float64
+	if c.SmartCompose && allSizesImplicit(c.Segments) {
+		sizes = computeDensitySizes(expandedGrids)
+	} else {
+		sizes = resolveSegmentSizes(c.Segments)
 	}
 
 	// Merge based on direction
@@ -362,4 +369,58 @@ func reconcileCells(cells []*jsonschema.GridCellInput, currentCols, targetCols i
 	result[lastIdx].ColSpan = currentSpan + diff
 
 	return result
+}
+
+// allSizesImplicit returns true when every segment has SizePct == 0
+// (i.e. the caller has not specified explicit sizing).
+func allSizesImplicit(segments []SegmentInput) bool {
+	for _, seg := range segments {
+		if seg.SizePct > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// computeDensitySizes derives proportional sizes from the content weight of
+// each expanded grid. Weight is the total number of non-nil content cells
+// across all rows, giving denser patterns more space. A minimum weight of 1
+// prevents zero-division.
+func computeDensitySizes(grids []*jsonschema.ShapeGridInput) []float64 {
+	weights := make([]float64, len(grids))
+	var totalWeight float64
+
+	for i, g := range grids {
+		w := contentWeight(g)
+		if w < 1 {
+			w = 1
+		}
+		weights[i] = w
+		totalWeight += w
+	}
+
+	sizes := make([]float64, len(grids))
+	for i, w := range weights {
+		sizes[i] = math.Round(w/totalWeight*1000) / 10
+	}
+	return sizes
+}
+
+// contentWeight counts the number of non-nil cells with actual content in the
+// grid. Each filled cell counts as 1; rows with auto_height or explicit
+// heights are scaled proportionally.
+func contentWeight(g *jsonschema.ShapeGridInput) float64 {
+	if g == nil {
+		return 0
+	}
+	var w float64
+	for _, row := range g.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && (cell.Shape != nil || cell.Table != nil ||
+				cell.Icon != nil || cell.Image != nil || cell.Diagram != nil) {
+				w++
+			}
+		}
+	}
+	return w
 }
