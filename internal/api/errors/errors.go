@@ -54,6 +54,9 @@ const (
 	CodePatternValidationFailed = "PATTERN_VALIDATION_FAILED"
 	CodePatternExpandFailed     = "PATTERN_EXPAND_FAILED"
 
+	// Feature boundary errors
+	CodeUnsupportedFeature = "UNSUPPORTED_FEATURE"
+
 	// Server errors
 	CodeInternalError = "INTERNAL_ERROR"
 )

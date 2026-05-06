@@ -181,13 +181,30 @@ func (cs *ConvertService) parseAndValidateRequest(w http.ResponseWriter, r *http
 	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)
 
 	var req ConvertRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		if err.Error() == "http: request body too large" {
 			writeError(w, http.StatusRequestEntityTooLarge, apierrors.CodeRequestTooLarge,
 				fmt.Sprintf("Request body exceeds maximum size of %d bytes", MaxRequestBodySize), nil)
 			return nil, "", err
 		}
 		slog.Warn("failed to parse request", "error", err)
+		// Check for unknown field errors and provide a helpful message
+		if isUnknownFieldError(err) {
+			fieldName := extractUnknownFieldName(err)
+			writeError(w, http.StatusBadRequest, apierrors.CodeUnsupportedFeature,
+				fmt.Sprintf("Field %q is not supported by the HTTP API. "+
+					"For advanced features (shape_grid, pattern, chart_value, diagram_value, etc.), "+
+					"use the MCP or CLI interface instead. "+
+					"See GET /api/v1/capabilities for the HTTP feature boundary.",
+					fieldName),
+				map[string]interface{}{
+					"field":                fieldName,
+					"supported_interfaces": []string{"mcp", "cli"},
+				})
+			return nil, "", err
+		}
 		writeJSONParseError(w, err)
 		return nil, "", err
 	}
@@ -475,4 +492,27 @@ func getSupportedTypeNames() []string {
 		result[i] = string(st.Type)
 	}
 	return result
+}
+
+// isUnknownFieldError checks if a JSON decode error is due to an unknown field
+// (produced by Decoder.DisallowUnknownFields).
+func isUnknownFieldError(err error) bool {
+	return strings.Contains(err.Error(), "unknown field")
+}
+
+// extractUnknownFieldName extracts the field name from a DisallowUnknownFields error.
+// The error format is: json: unknown field "fieldName"
+func extractUnknownFieldName(err error) string {
+	msg := err.Error()
+	const prefix = `unknown field "`
+	idx := strings.Index(msg, prefix)
+	if idx < 0 {
+		return "unknown"
+	}
+	rest := msg[idx+len(prefix):]
+	end := strings.Index(rest, `"`)
+	if end < 0 {
+		return rest
+	}
+	return rest[:end]
 }

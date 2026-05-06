@@ -115,6 +115,168 @@ func TestHTTPConvertSyntaxError_DetailsShape(t *testing.T) {
 	}
 }
 
+// TestHTTPConvertUnsupportedField_RejectsShapeGrid verifies that sending
+// unsupported fields like shape_grid returns UNSUPPORTED_FEATURE, not a
+// silent pass.
+func TestHTTPConvertUnsupportedField_RejectsShapeGrid(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	// JSON with shape_grid — not in APISlide struct, should be rejected.
+	body := `{
+		"template": "test",
+		"slides": [{
+			"type": "content",
+			"title": "Test",
+			"shape_grid": {"rows": []}
+		}]
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("Status = %d, want 400", w.Code)
+	}
+
+	var resp apierrors.Response
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("parse error response: %v", err)
+	}
+
+	if resp.Error.Code != apierrors.CodeUnsupportedFeature {
+		t.Errorf("error.code = %q, want %q", resp.Error.Code, apierrors.CodeUnsupportedFeature)
+	}
+
+	if resp.Error.Details == nil {
+		t.Fatal("expected details to be non-nil")
+	}
+
+	if field, ok := resp.Error.Details["field"]; !ok || field != "shape_grid" {
+		t.Errorf("expected details.field = \"shape_grid\", got %v", resp.Error.Details["field"])
+	}
+
+	// Should mention MCP/CLI as alternatives.
+	if !strings.Contains(resp.Error.Message, "MCP") {
+		t.Errorf("error message should mention MCP, got: %s", resp.Error.Message)
+	}
+}
+
+// TestHTTPConvertUnsupportedField_RejectsPattern verifies pattern field is rejected.
+func TestHTTPConvertUnsupportedField_RejectsPattern(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	body := `{
+		"template": "test",
+		"slides": [{
+			"type": "content",
+			"title": "Test",
+			"pattern": {"name": "kpi-3up"}
+		}]
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("Status = %d, want 400", w.Code)
+	}
+
+	var resp apierrors.Response
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("parse error response: %v", err)
+	}
+
+	if resp.Error.Code != apierrors.CodeUnsupportedFeature {
+		t.Errorf("error.code = %q, want %q", resp.Error.Code, apierrors.CodeUnsupportedFeature)
+	}
+}
+
+// TestHTTPConvertUnsupportedField_RejectsDeckLevelFields verifies deck-level
+// MCP/CLI fields are rejected at the top-level ConvertRequest.
+func TestHTTPConvertUnsupportedField_RejectsDeckLevelFields(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	body := `{
+		"template": "test",
+		"slides": [{"type": "content", "title": "Test"}],
+		"design_mode": "free"
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("Status = %d, want 400", w.Code)
+	}
+
+	var resp apierrors.Response
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("parse error response: %v", err)
+	}
+
+	if resp.Error.Code != apierrors.CodeUnsupportedFeature {
+		t.Errorf("error.code = %q, want %q", resp.Error.Code, apierrors.CodeUnsupportedFeature)
+	}
+}
+
+// TestHTTPCapabilities_ContractShape verifies GET /api/v1/capabilities returns
+// the expected machine-readable feature boundary.
+func TestHTTPCapabilities_ContractShape(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/capabilities", nil)
+	w := httptest.NewRecorder()
+
+	CapabilitiesHandler()(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Status = %d, want 200", w.Code)
+	}
+
+	var resp CapabilitiesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("parse response: %v", err)
+	}
+
+	if resp.Surface != "http" {
+		t.Errorf("surface = %q, want \"http\"", resp.Surface)
+	}
+
+	if len(resp.ConvertCapabilities.SupportedSlideFields) == 0 {
+		t.Error("expected non-empty supported_slide_fields")
+	}
+
+	if len(resp.ConvertCapabilities.SupportedContentFields) == 0 {
+		t.Error("expected non-empty supported_content_fields")
+	}
+
+	if len(resp.ConvertCapabilities.UnsupportedFeatures) == 0 {
+		t.Error("expected non-empty unsupported_features")
+	}
+
+	if len(resp.AvailableEndpoints) == 0 {
+		t.Error("expected non-empty available_endpoints")
+	}
+
+	if len(resp.MCPOnlyFeatures) == 0 {
+		t.Error("expected non-empty mcp_only_features")
+	}
+
+	if resp.RecommendedInterface == "" {
+		t.Error("expected non-empty recommended_interface")
+	}
+}
+
 // TestHTTPPatternValidationFailed_ContractShape verifies the HTTP pattern
 // validation error response includes structured validation_errors.
 func TestHTTPPatternValidationFailed_ContractShape(t *testing.T) {

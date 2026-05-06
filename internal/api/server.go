@@ -78,6 +78,7 @@ func NewServer(cfg ServerConfig) *Server {
 // setupRoutes configures all API routes.
 func (s *Server) setupRoutes() {
 	s.mux.Handle("GET /api/v1/health", s.healthHandler)
+	s.mux.Handle("GET /api/v1/capabilities", CapabilitiesHandler())
 	s.mux.Handle("GET /api/v1/templates", s.templateService.ListTemplatesHandler())
 	s.mux.Handle("GET /api/v1/templates/{name}", s.templateService.GetTemplateDetailsHandler())
 	s.mux.Handle("GET /api/v1/slide-types", SlideTypesHandler())

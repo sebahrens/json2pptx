@@ -308,7 +308,7 @@ func TestServerIntegration_RequestValidation(t *testing.T) {
 			name:        "missing template field",
 			method:      "POST",
 			path:        "/api/v1/convert",
-			body:        `{"markdown": "# Test"}`,
+			body:        `{"slides": [{"type": "content"}]}`,
 			wantStatus:  http.StatusBadRequest,
 			wantErrCode: "INVALID_REQUEST",
 		},

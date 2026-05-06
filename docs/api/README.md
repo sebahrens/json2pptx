@@ -9,6 +9,7 @@ A REST API for converting JSON slide definitions into professional PowerPoint pr
 - [Error Handling](#error-handling)
 - [Endpoints](#endpoints)
   - [Health Check](#health-check)
+  - [Capabilities](#capabilities)
   - [List Templates](#list-templates)
   - [Get Template Details](#get-template-details)
   - [Convert Slides](#convert-slides)
@@ -27,12 +28,18 @@ A REST API for converting JSON slide definitions into professional PowerPoint pr
 
 ## Overview
 
-The Go Slide Creator API enables programmatic generation of PowerPoint presentations from structured JSON slide definitions. The service:
+The Go Slide Creator HTTP API enables programmatic generation of PowerPoint presentations from structured JSON slide definitions. The service:
 
-- Accepts JSON input with typed content items (text, bullets, charts, tables, diagrams, images)
+- Accepts JSON input with **text and bullet content**
 - Analyzes PPTX templates to discover available layouts
-- Automatically selects optimal layouts based on content type
+- Automatically selects optimal layouts based on slide type
 - Generates production-ready PPTX files
+- Provides read-only access to the named pattern library
+
+> **Feature boundary:** The HTTP API supports basic text and bullet slides only.
+> For charts, diagrams, tables, images, shape grids, named patterns, and deck
+> structure features, use the **MCP interface** (`json2pptx mcp`) or the **CLI**
+> (`json2pptx generate`). See `GET /api/v1/capabilities` for the machine-readable boundary.
 
 ## Base URL
 
@@ -66,6 +73,7 @@ All errors follow a consistent JSON structure:
 | `INVALID_TEMPLATE` | 400 | Specified template does not exist |
 | `INVALID_INPUT` | 400 | JSON input validation failed |
 | `TEMPLATE_ERROR` | 500 | Template analysis failed |
+| `UNSUPPORTED_FEATURE` | 400 | Request uses a feature not available on the HTTP surface (use MCP/CLI) |
 | `GENERATION_ERROR` | 500 | PPTX generation failed |
 | `FILE_NOT_FOUND` | 404 | Download file not found or expired |
 | `FILE_ERROR` | 500 | File system access error |
@@ -97,6 +105,25 @@ curl http://localhost:8080/api/v1/health
   "uptime_seconds": 3600
 }
 ```
+
+---
+
+### Capabilities
+
+Get the machine-readable feature boundary of the HTTP API.
+
+**Endpoint:** `GET /api/v1/capabilities`
+
+#### Request
+
+```bash
+curl http://localhost:8080/api/v1/capabilities
+```
+
+#### Response
+
+Returns a JSON object describing supported fields, unsupported features,
+available endpoints, and MCP-only tools. See the OpenAPI spec for the full schema.
 
 ---
 
@@ -223,7 +250,7 @@ Convert JSON slide definitions to a PowerPoint presentation.
 |-------|------|----------|-------------|
 | `type` | string | Yes | Slide type: `title`, `content`, `section`, `two-column`, `chart`, `diagram`, `image`, `comparison`, `blank`. See [List Slide Types](#list-slide-types) for descriptions. |
 | `title` | string | No | Slide title |
-| `content` | object | No | Content with `body` (string) and/or `bullets` (string[]) |
+| `content` | object | No | Content with `body` (string) and/or `bullets` (string[]). **Note:** The HTTP API only supports text/bullet content. For chart data, diagram specs, tables, or images, use MCP or CLI. |
 | `speaker_notes` | string | No | Speaker notes |
 | `source` | string | No | Source attribution |
 

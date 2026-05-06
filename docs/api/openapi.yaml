@@ -7,12 +7,22 @@ info:
     The Go Slide Creator service accepts structured JSON input, selects optimal layouts from
     PPTX templates, and generates production-ready presentations.
 
+    ## HTTP API Feature Boundary
+
+    The HTTP API supports **basic text and bullet slides only**. For advanced features
+    (charts, diagrams, tables, images, shape grids, named patterns, deck structure,
+    theme overrides, accent strategies), use the **MCP interface** (`json2pptx mcp`)
+    or the **CLI** (`json2pptx generate`).
+
+    Use `GET /api/v1/capabilities` for a machine-readable feature boundary.
+
     ## Features
 
     - **Template-based generation**: Leverage existing PPTX templates with multiple layouts
-    - **JSON input**: Structured slide definitions with typed content items
-    - **Layout intelligence**: Automatic layout selection based on content type
+    - **JSON input**: Structured slide definitions with text and bullet content
+    - **Layout intelligence**: Automatic layout selection based on slide type
     - **Multiple output formats**: Download file URL or inline base64 data
+    - **Pattern library**: Browse, validate, and expand named patterns (read-only; use MCP/CLI to generate slides from expanded patterns)
 
   version: 1.0.0
   contact:
@@ -63,6 +73,24 @@ paths:
                 commit_sha: "a1b2c3d"
                 build_time: "2026-01-15T10:30:00Z"
                 uptime_seconds: 3600
+
+  /api/v1/capabilities:
+    get:
+      tags:
+        - Metadata
+      summary: Get HTTP API feature boundary
+      description: |
+        Returns a machine-readable description of what the HTTP API supports
+        and what requires MCP or CLI. Use this to determine whether a given
+        deck can be built via HTTP or needs a richer interface.
+      operationId: getCapabilities
+      responses:
+        '200':
+          description: Feature boundary description
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResponse'
 
   /api/v1/templates:
     get:
@@ -673,6 +701,56 @@ paths:
 
 components:
   schemas:
+    CapabilitiesResponse:
+      type: object
+      required:
+        - surface
+        - version
+        - convert
+        - available_endpoints
+        - mcp_only_features
+        - recommended_interface
+      properties:
+        surface:
+          type: string
+          enum: [http]
+          description: The API surface this describes
+        version:
+          type: string
+          description: API version
+        convert:
+          type: object
+          description: Feature boundary for POST /api/v1/convert
+          properties:
+            supported_slide_fields:
+              type: array
+              items:
+                type: string
+              description: Fields accepted on slide objects
+            supported_content_fields:
+              type: array
+              items:
+                type: string
+              description: Fields accepted on content objects
+            unsupported_features:
+              type: array
+              items:
+                type: string
+              description: Features that require MCP or CLI
+        available_endpoints:
+          type: array
+          items:
+            type: string
+          description: All HTTP endpoints
+        mcp_only_features:
+          type: array
+          items:
+            type: string
+          description: MCP tools not available via HTTP
+        recommended_interface:
+          type: string
+          description: Guidance on when to use MCP/CLI instead
+
     HealthyResponse:
       type: object
       required:
@@ -888,11 +966,17 @@ components:
           type: string
           description: Build animation
           example: bullets
-        shape_grid:
-          $ref: '#/components/schemas/ShapeGridInput'
+        # NOTE: shape_grid, pattern, compose, layout_id, eyebrow, background,
+        # and contrast_check are NOT supported on the HTTP surface.
+        # Use MCP or CLI for these features. Sending unsupported fields
+        # returns a 400 with code UNSUPPORTED_FEATURE.
 
     APIContent:
       type: object
+      description: |
+        Slide content for the HTTP API. Only `body` (plain text) and `bullets`
+        (string array) are supported. For rich content types (charts, diagrams,
+        tables, images, bullet_groups, body_and_bullets), use MCP or CLI.
       properties:
         body:
           type: string
@@ -1271,6 +1355,7 @@ components:
             - PATTERN_NOT_FOUND
             - PATTERN_VALIDATION_FAILED
             - PATTERN_EXPAND_FAILED
+            - UNSUPPORTED_FEATURE
         message:
           type: string
           description: Human-readable error message
