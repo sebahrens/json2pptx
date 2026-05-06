@@ -34,8 +34,9 @@ func (p *processFlow) Taxonomy() PatternTaxonomy {
 		Category:      "structural",
 		NarrativeRole: []string{"frame", "evidence"},
 		PairsWith:     []string{"kpi-3up", "card-grid", "before-after"},
-		DensityClass:  "medium",
-		AccentWeight:  "normal",
+		DensityClass:       "medium",
+		AccentWeight:       "normal",
+		SparseThresholdPct: 15,
 	}
 }
 func (p *processFlow) SupportsCallout() bool        { return true }

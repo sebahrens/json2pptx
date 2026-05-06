@@ -439,6 +439,36 @@ func TestNotWhenNonEmpty(t *testing.T) {
 	}
 }
 
+func TestEffectiveSparseThreshold_Default(t *testing.T) {
+	tax := PatternTaxonomy{Category: "structural"}
+	if got := tax.EffectiveSparseThreshold(20); got != 20 {
+		t.Errorf("expected default 20, got %d", got)
+	}
+}
+
+func TestEffectiveSparseThreshold_Explicit(t *testing.T) {
+	tax := PatternTaxonomy{Category: "structural", SparseThresholdPct: 15}
+	if got := tax.EffectiveSparseThreshold(20); got != 15 {
+		t.Errorf("expected explicit 15, got %d", got)
+	}
+}
+
+func TestSingleRowPatterns_SparseThreshold15(t *testing.T) {
+	reg := Default()
+	singleRow := []string{"process-flow", "kpi-2up", "kpi-3up", "kpi-4up", "kpi-5up", "kpi-6up", "timeline-horizontal", "icon-row"}
+	for _, name := range singleRow {
+		pat, ok := reg.Get(name)
+		if !ok {
+			t.Errorf("expected %q to be registered", name)
+			continue
+		}
+		tax := pat.Taxonomy()
+		if tax.SparseThresholdPct != 15 {
+			t.Errorf("%s: SparseThresholdPct = %d, want 15", name, tax.SparseThresholdPct)
+		}
+	}
+}
+
 // containsWord checks if s contains word as a case-insensitive substring.
 func containsWord(s, word string) bool {
 	lower := strings.ToLower(s)

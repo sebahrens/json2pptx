@@ -145,6 +145,91 @@ func TestComputeCellBudgets_EmptyGrid(t *testing.T) {
 	}
 }
 
+func TestSparseLayoutWarning_ProcessFlowShortSteps(t *testing.T) {
+	// process-flow with very short step labels should trigger sparse_layout.
+	reg := patterns.Default()
+	pat, ok := reg.Get("process-flow")
+	if !ok {
+		t.Skip("process-flow pattern not registered")
+	}
+
+	ctx := patterns.ExpandContext{
+		SlideWidth:  9144000,
+		SlideHeight: 5143500,
+		LayoutBounds: patterns.LayoutBounds{
+			X: 457200, Y: 457200,
+			Width: 8229600, Height: 4229100,
+		},
+	}
+
+	// Expand with 3 short steps (minimal text = low density)
+	values := &patterns.ProcessFlowValues{
+		Steps: []patterns.ProcessFlowStep{
+			{Label: "A", Type: "step"},
+			{Label: "B", Type: "step"},
+			{Label: "C", Type: "step"},
+		},
+	}
+	grid, err := pat.Expand(ctx, values, nil, nil)
+	if err != nil {
+		t.Fatalf("expand failed: %v", err)
+	}
+
+	budgets, _ := computeCellBudgets(grid, ctx)
+	pi := &PatternInput{Name: "process-flow"}
+	warn := sparseLayoutWarning(budgets, pat, "process-flow", pi)
+	if warn == nil {
+		t.Fatal("expected sparse_layout warning for 3 short steps, got nil")
+	}
+	if warn.Status != "sparse_layout" {
+		t.Errorf("expected status sparse_layout, got %q", warn.Status)
+	}
+	if warn.NextToolCall == nil {
+		t.Error("expected NextToolCall, got nil")
+	}
+	if warn.NextToolCall != nil {
+		if warn.NextToolCall.Tool != "expand_pattern" {
+			t.Errorf("expected tool expand_pattern, got %q", warn.NextToolCall.Tool)
+		}
+		if pct, ok := warn.NextToolCall.ArgsTemplate["max_height_pct"]; ok {
+			if p, ok := pct.(int); ok && (p < 20 || p > 90) {
+				t.Errorf("suggested max_height_pct %d out of [20,90]", p)
+			}
+		}
+	}
+}
+
+func TestSparseLayoutWarning_SkippedWhenBoundsProvided(t *testing.T) {
+	// No warning should fire when the caller already provided bounds.
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 5, MaxChars: 500, DensityPct: 1},
+	}
+	reg := patterns.Default()
+	pat, _ := reg.Get("process-flow")
+
+	piWithBounds := &PatternInput{Name: "process-flow", MaxHeightPct: 35}
+	warn := sparseLayoutWarning(budgets, pat, "process-flow", piWithBounds)
+	if warn != nil {
+		t.Error("expected no warning when MaxHeightPct is set, got one")
+	}
+}
+
+func TestSparseLayoutWarning_NormalDensity(t *testing.T) {
+	// A pattern with adequate density should NOT trigger a warning.
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 200, MaxChars: 500, DensityPct: 40},
+		{CellIndex: 1, ActualChars: 250, MaxChars: 500, DensityPct: 50},
+	}
+	reg := patterns.Default()
+	pat, _ := reg.Get("card-grid")
+
+	pi := &PatternInput{Name: "card-grid"}
+	warn := sparseLayoutWarning(budgets, pat, "card-grid", pi)
+	if warn != nil {
+		t.Errorf("expected no warning for adequate density, got %+v", warn)
+	}
+}
+
 func TestComputeCellBudgets_DeterministicAcrossRuns(t *testing.T) {
 	// Verify that budgets are deterministic (same input → same output).
 	reg := patterns.Default()

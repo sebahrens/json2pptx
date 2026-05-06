@@ -82,6 +82,21 @@ type PatternTaxonomy struct {
 	// AccentWeight describes accent color prominence: "subtle", "normal",
 	// or "strong".
 	AccentWeight string `json:"accent_weight"`
+
+	// SparseThresholdPct is the minimum average cell density (0–100) below
+	// which expand_pattern emits a sparse_layout capacity warning. Patterns
+	// leave this at 0 to use the default (20), or set it explicitly. Single-row
+	// patterns that sprawl vertically (process-flow, kpi-Nup) should use 15.
+	SparseThresholdPct int `json:"sparse_threshold_pct,omitempty"`
+}
+
+// EffectiveSparseThreshold returns SparseThresholdPct if set, otherwise the
+// provided default.
+func (t PatternTaxonomy) EffectiveSparseThreshold(defaultPct int) int {
+	if t.SparseThresholdPct > 0 {
+		return t.SparseThresholdPct
+	}
+	return defaultPct
 }
 
 // ---------------------------------------------------------------------------

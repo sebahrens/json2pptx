@@ -33,8 +33,9 @@ func (th *timelineHorizontal) Taxonomy() PatternTaxonomy {
 		Category:      "structural",
 		NarrativeRole: []string{"frame", "evidence"},
 		PairsWith:     []string{"kpi-3up", "roadmap-phased", "card-grid"},
-		DensityClass:  "medium",
-		AccentWeight:  "normal",
+		DensityClass:       "medium",
+		AccentWeight:       "normal",
+		SparseThresholdPct: 15,
 	}
 }
 

@@ -1602,6 +1602,11 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	// Attach next_tool_call to underfill capacity warnings suggesting re-expand with max_height_pct
 	attachBoundsHintToCapacityWarnings(capacityWarnings, name, pi)
 
+	// Check for grid-level sparse layout (average density below pattern threshold)
+	if sparseWarn := sparseLayoutWarning(cellBudgets, pat, name, pi); sparseWarn != nil {
+		capacityWarnings = append(capacityWarnings, *sparseWarn)
+	}
+
 	// Suggest alternative layouts when density is consistently suboptimal
 	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)
 

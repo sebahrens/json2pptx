@@ -148,6 +148,62 @@ func computeCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCont
 	return budgets, warnings
 }
 
+// sparseLayoutWarning checks whether the average cell density across all
+// content-bearing cells is below the pattern's sparse threshold. When it is,
+// the pattern is likely to produce comically tall blocks. Returns nil when
+// density is adequate or there are no content cells to measure.
+func sparseLayoutWarning(budgets []cellBudgetEntry, pat patterns.Pattern, patternName string, pi *PatternInput) *cellDensityWarning {
+	if len(budgets) == 0 {
+		return nil
+	}
+	// Skip if the caller already constrained bounds
+	if pi.Bounds != nil || pi.MaxHeightPct > 0 {
+		return nil
+	}
+
+	// Compute average density across cells that have content
+	var totalDensity, contentCells int
+	for _, b := range budgets {
+		if b.ActualChars > 0 {
+			totalDensity += b.DensityPct
+			contentCells++
+		}
+	}
+	if contentCells == 0 {
+		return nil
+	}
+	avgDensity := totalDensity / contentCells
+
+	threshold := pat.Taxonomy().EffectiveSparseThreshold(20)
+	if avgDensity >= threshold {
+		return nil
+	}
+
+	// Suggest a max_height_pct that would bring content to ~70% fill
+	suggestedPct := int(float64(avgDensity) / 0.7)
+	if suggestedPct < 20 {
+		suggestedPct = 20
+	}
+	if suggestedPct > 90 {
+		suggestedPct = 90
+	}
+
+	return &cellDensityWarning{
+		CellIndex: -1, // grid-level, not cell-specific
+		Field:     "layout",
+		Actual:    avgDensity,
+		Budget:    threshold,
+		Status:    "sparse_layout",
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool: "expand_pattern",
+			ArgsTemplate: map[string]any{
+				"name":           patternName,
+				"max_height_pct": suggestedPct,
+			},
+		},
+	}
+}
+
 // inferCellField examines shape text JSON to determine whether the cell
 // contains a "title", "header", or generic "body" text.
 func inferCellField(text json.RawMessage) string {

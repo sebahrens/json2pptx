@@ -34,8 +34,9 @@ func (ir *iconRow) Taxonomy() PatternTaxonomy {
 		Category:      "data-display",
 		NarrativeRole: []string{"evidence"},
 		PairsWith:     []string{"kpi-3up", "card-grid", "process-flow"},
-		DensityClass:  "low",
-		AccentWeight:  "strong",
+		DensityClass:       "low",
+		AccentWeight:       "strong",
+		SparseThresholdPct: 15,
 	}
 }
 
