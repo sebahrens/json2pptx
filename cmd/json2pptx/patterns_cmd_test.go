@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // buildJSON2PPTX builds the binary once for test use.
@@ -287,4 +289,178 @@ func TestPatternsExpand(t *testing.T) {
 			t.Errorf("expected 'unknown pattern' error, got: %s", out)
 		}
 	})
+
+	t.Run("expand_default_fallback_bounds_source", func(t *testing.T) {
+		out, err := runBin(bin, "patterns", "expand", "kpi-3up", valuesFile)
+		if err != nil {
+			t.Fatalf("exit error: %v\n%s", err, out)
+		}
+		var result struct {
+			BoundsSource string `json:"bounds_source"`
+		}
+		jsonStart := strings.Index(string(out), "{")
+		jsonEnd := strings.LastIndex(string(out), "}") + 1
+		if err := json.Unmarshal(out[jsonStart:jsonEnd], &result); err != nil {
+			t.Fatalf("invalid JSON: %v\n%s", err, out)
+		}
+		if result.BoundsSource != "default_fallback" {
+			t.Errorf("expected bounds_source=default_fallback, got %q", result.BoundsSource)
+		}
+	})
+
+	t.Run("expand_template_bounds_source", func(t *testing.T) {
+		templatesDir := filepath.Join("..", "..", "templates")
+		out, err := runBin(bin, "patterns", "expand", "--templates-dir", templatesDir, "--template", "midnight-blue", "kpi-3up", valuesFile)
+		if err != nil {
+			t.Fatalf("exit error: %v\n%s", err, out)
+		}
+		var result struct {
+			BoundsSource string `json:"bounds_source"`
+		}
+		jsonStart := strings.Index(string(out), "{")
+		jsonEnd := strings.LastIndex(string(out), "}") + 1
+		if err := json.Unmarshal(out[jsonStart:jsonEnd], &result); err != nil {
+			t.Fatalf("invalid JSON: %v\n%s", err, out)
+		}
+		if result.BoundsSource != "template" {
+			t.Errorf("expected bounds_source=template, got %q", result.BoundsSource)
+		}
+	})
+}
+
+// TestResolveExpandContext_Unit tests the resolveExpandContext function directly.
+func TestResolveExpandContext_Unit(t *testing.T) {
+	templatesDir := filepath.Join("..", "..", "templates")
+
+	t.Run("no_template_returns_default_fallback", func(t *testing.T) {
+		ctx, source, err := resolveExpandContext("", templatesDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if source != "default_fallback" {
+			t.Errorf("expected source=default_fallback, got %q", source)
+		}
+		if ctx.SlideWidth != 9144000 {
+			t.Errorf("expected default slide width 9144000, got %d", ctx.SlideWidth)
+		}
+		if ctx.LayoutBounds.X != 457200 {
+			t.Errorf("expected default X=457200, got %d", ctx.LayoutBounds.X)
+		}
+	})
+
+	t.Run("with_template_returns_template_source", func(t *testing.T) {
+		ctx, source, err := resolveExpandContext("midnight-blue", templatesDir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if source != "template" {
+			t.Errorf("expected source=template, got %q", source)
+		}
+		if ctx.SlideWidth <= 0 {
+			t.Error("expected positive slide width from template")
+		}
+		if ctx.LayoutBounds.Width <= 0 {
+			t.Error("expected positive layout bounds width from template")
+		}
+	})
+
+	t.Run("unknown_template_errors", func(t *testing.T) {
+		_, _, err := resolveExpandContext("nonexistent-template-xyz", templatesDir)
+		if err == nil {
+			t.Fatal("expected error for unknown template")
+		}
+	})
+}
+
+// TestExpandCrossTemplate verifies that different templates produce different
+// layout bounds. Iterates over all bundled templates and all registered patterns.
+func TestExpandCrossTemplate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cross-template expand test in short mode")
+	}
+
+	templatesDir := filepath.Join("..", "..", "templates")
+	entries, err := os.ReadDir(templatesDir)
+	if err != nil {
+		t.Fatalf("failed to read templates dir: %v", err)
+	}
+
+	var templateNames []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".pptx") {
+			templateNames = append(templateNames, strings.TrimSuffix(e.Name(), ".pptx"))
+		}
+	}
+	if len(templateNames) < 2 {
+		t.Fatal("need at least 2 templates for cross-template test")
+	}
+
+	// Collect bounds per template
+	type boundsKey struct {
+		X, Y, W, H int64
+	}
+	boundsByTemplate := make(map[string]boundsKey)
+
+	for _, tmpl := range templateNames {
+		ctx, source, err := resolveExpandContext(tmpl, templatesDir)
+		if err != nil {
+			t.Fatalf("template %q: %v", tmpl, err)
+		}
+		if source != "template" {
+			t.Errorf("template %q: expected source=template, got %q", tmpl, source)
+		}
+		if ctx.LayoutBounds.Width <= 0 || ctx.LayoutBounds.Height <= 0 {
+			t.Errorf("template %q: layout bounds have non-positive dimensions: %+v", tmpl, ctx.LayoutBounds)
+		}
+		boundsByTemplate[tmpl] = boundsKey{
+			X: ctx.LayoutBounds.X, Y: ctx.LayoutBounds.Y,
+			W: ctx.LayoutBounds.Width, H: ctx.LayoutBounds.Height,
+		}
+		t.Logf("template %q: bounds X=%d Y=%d W=%d H=%d (slide %dx%d)",
+			tmpl, ctx.LayoutBounds.X, ctx.LayoutBounds.Y,
+			ctx.LayoutBounds.Width, ctx.LayoutBounds.Height,
+			ctx.SlideWidth, ctx.SlideHeight)
+	}
+
+	// Verify that template-resolved bounds differ from the hardcoded defaults
+	// for at least one template (proving template-awareness matters)
+	defaultBounds := boundsKey{X: 457200, Y: 457200, W: 8229600, H: 4229100}
+	allSameAsDefault := true
+	for _, b := range boundsByTemplate {
+		if b != defaultBounds {
+			allSameAsDefault = false
+			break
+		}
+	}
+	if allSameAsDefault {
+		t.Error("all templates produced identical bounds to the hardcoded default — template-aware resolution is not working")
+	}
+
+	// Verify all patterns expand successfully with each template
+	reg := patterns.Default()
+	allPatterns := reg.List()
+
+	for _, tmpl := range templateNames {
+		ctx, _, err := resolveExpandContext(tmpl, templatesDir)
+		if err != nil {
+			t.Fatalf("template %q: %v", tmpl, err)
+		}
+
+		for _, pat := range allPatterns {
+			ex, ok := pat.(patterns.Exemplar)
+			if !ok {
+				continue // skip patterns without exemplar values
+			}
+			t.Run(tmpl+"/"+pat.Name(), func(t *testing.T) {
+				values := ex.ExemplarValues()
+				grid, err := pat.Expand(ctx, values, nil, nil)
+				if err != nil {
+					t.Errorf("expand failed: %v", err)
+				}
+				if grid == nil {
+					t.Error("expand returned nil grid")
+				}
+			})
+		}
+	}
 }

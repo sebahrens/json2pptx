@@ -10,6 +10,9 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // runPatterns implements the "patterns" subcommand with sub-subcommands:
@@ -309,9 +312,11 @@ func runPatternsExpand() error {
 	fs := flag.NewFlagSet("patterns expand", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "Output as JSON (always JSON, flag is for consistency)")
 	_ = jsonOut // expand always outputs JSON; flag accepted for consistency
+	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
+	templateName := fs.String("template", "", "Template name for template-aware bounds resolution")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns expand [--json] <name> <values.json>\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns expand [--json] [--templates-dir DIR] [--template NAME] <name> <values.json>\n\n")
 		fmt.Fprintf(os.Stderr, "Expand a pattern to its shape_grid equivalent.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		fs.PrintDefaults()
@@ -346,14 +351,10 @@ func runPatternsExpand() error {
 		return err
 	}
 
-	// Build a minimal ExpandContext (no template context in CLI)
-	expandCtx := patterns.ExpandContext{
-		SlideWidth:  9144000,
-		SlideHeight: 5143500,
-		LayoutBounds: patterns.LayoutBounds{
-			X: 457200, Y: 457200,
-			Width: 8229600, Height: 4229100,
-		},
+	// Build ExpandContext — template-aware when -template is provided
+	expandCtx, boundsSource, err := resolveExpandContext(*templateName, *templatesDir)
+	if err != nil {
+		return err
 	}
 
 	grid, _, err := expandPattern(pi, expandCtx, reg)
@@ -362,13 +363,15 @@ func runPatternsExpand() error {
 	}
 
 	result := struct {
-		Pattern   string                     `json:"pattern"`
-		Version   int                        `json:"version"`
-		ShapeGrid *jsonschema.ShapeGridInput `json:"shape_grid"`
+		Pattern      string                     `json:"pattern"`
+		Version      int                        `json:"version"`
+		BoundsSource string                     `json:"bounds_source"`
+		ShapeGrid    *jsonschema.ShapeGridInput `json:"shape_grid"`
 	}{
-		Pattern:   pat.Name(),
-		Version:   pat.Version(),
-		ShapeGrid: grid,
+		Pattern:      pat.Name(),
+		Version:      pat.Version(),
+		BoundsSource: boundsSource,
+		ShapeGrid:    grid,
 	}
 
 	data, err := json.MarshalIndent(result, "", "  ")
@@ -377,6 +380,85 @@ func runPatternsExpand() error {
 	}
 	fmt.Println(string(data))
 	return nil
+}
+
+// resolveExpandContext builds an ExpandContext from a template (if provided) or
+// falls back to hardcoded defaults. Returns the context, a bounds_source label,
+// and any error.
+func resolveExpandContext(templateName, templatesDir string) (patterns.ExpandContext, string, error) {
+	// Default fallback
+	defaultCtx := patterns.ExpandContext{
+		SlideWidth:  9144000,
+		SlideHeight: 5143500,
+		LayoutBounds: patterns.LayoutBounds{
+			X: 457200, Y: 457200,
+			Width: 8229600, Height: 4229100,
+		},
+	}
+
+	if templateName == "" {
+		return defaultCtx, "default_fallback", nil
+	}
+
+	templatePath, cleanup, err := resolveTemplatePath(templateName, templatesDir)
+	if err != nil {
+		return patterns.ExpandContext{}, "", fmt.Errorf("template %q not found: %w", templateName, err)
+	}
+	defer cleanup()
+
+	reader, err := template.OpenTemplate(templatePath)
+	if err != nil {
+		return patterns.ExpandContext{}, "", fmt.Errorf("failed to open template %q: %w", templateName, err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	ctx := patterns.ExpandContext{
+		Theme: template.ParseTheme(reader),
+	}
+
+	w, h := template.ParseSlideDimensions(reader)
+	if w > 0 {
+		ctx.SlideWidth = w
+	} else {
+		ctx.SlideWidth = defaultCtx.SlideWidth
+	}
+	if h > 0 {
+		ctx.SlideHeight = h
+	} else {
+		ctx.SlideHeight = defaultCtx.SlideHeight
+	}
+
+	// Resolve layout bounds from template layouts
+	layouts, err := template.ParseLayouts(reader)
+	if err == nil && len(layouts) > 0 {
+		ctx.LayoutBounds = layoutBoundsFromLayouts(layouts, ctx.SlideWidth, ctx.SlideHeight)
+	} else {
+		// Fall back to percentage-based defaults using the template's slide dimensions
+		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
+		ctx.LayoutBounds = patterns.LayoutBounds{
+			X: db.X, Y: db.Y,
+			Width: db.CX, Height: db.CY,
+		}
+	}
+
+	return ctx, "template", nil
+}
+
+// layoutBoundsFromLayouts derives LayoutBounds from parsed template layouts by
+// reusing the same virtual layout resolution logic as the generate path.
+func layoutBoundsFromLayouts(layouts []types.LayoutMetadata, slideWidth, slideHeight int64) patterns.LayoutBounds {
+	if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
+		return patterns.LayoutBounds{
+			X: vl.Bounds.X, Y: vl.Bounds.Y,
+			Width: vl.Bounds.CX, Height: vl.Bounds.CY,
+		}
+	}
+	// No suitable layout found — use percentage-based defaults
+	db := shapegrid.DefaultBounds(slideWidth, slideHeight)
+	return patterns.LayoutBounds{
+		X: db.X, Y: db.Y,
+		Width: db.CX, Height: db.CY,
+	}
 }
 
 // ---------------------------------------------------------------------------

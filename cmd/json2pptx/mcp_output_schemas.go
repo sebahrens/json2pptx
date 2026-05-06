@@ -207,6 +207,7 @@ var outputSchemaExpandPattern = json.RawMessage(`{
   "properties": {
     "pattern":           {"type": "string"},
     "version":           {"type": "integer"},
+    "bounds_source":     {"type": "string", "enum": ["template", "default_fallback"]},
     "shape_grid":        {"type": "object"},
     "occupancy": {
       "type": "object",
@@ -231,7 +232,7 @@ var outputSchemaExpandPattern = json.RawMessage(`{
       }
     }
   },
-  "required": ["pattern", "version", "shape_grid", "occupancy"]
+  "required": ["pattern", "version", "bounds_source", "shape_grid", "occupancy"]
 }`)
 
 // --- recommend_pattern ---

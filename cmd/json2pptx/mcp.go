@@ -1465,35 +1465,12 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		pi.CellOverrides = rawCO
 	}
 
-	// Build ExpandContext — use template theme if provided, else synthesized minimal
-	expandCtx := patterns.ExpandContext{
-		SlideWidth:  9144000, // 10 inches in EMU (standard 16:9)
-		SlideHeight: 5143500, // 7.5 inches in EMU (standard 16:9 adjusted)
-		LayoutBounds: patterns.LayoutBounds{
-			X: 457200, Y: 457200, // 0.5 inch margins
-			Width: 8229600, Height: 4229100,
-		},
-	}
-
-	if templateName, err := request.RequireString("theme_template"); err == nil && templateName != "" {
-		templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
-		if err != nil {
-			return api.MCPSimpleError("TEMPLATE_NOT_FOUND", fmt.Sprintf("template %q not found", templateName)), nil
-		}
-		defer templateCleanup()
-
-		if reader, err := template.OpenTemplate(templatePath); err == nil {
-			defer func() { _ = reader.Close() }()
-			theme := template.ParseTheme(reader)
-			expandCtx.Theme = theme
-			w, h := template.ParseSlideDimensions(reader)
-			if w > 0 {
-				expandCtx.SlideWidth = w
-			}
-			if h > 0 {
-				expandCtx.SlideHeight = h
-			}
-		}
+	// Build ExpandContext — use template layout bounds if provided, else defaults
+	var boundsSource string
+	templateName, _ := request.RequireString("theme_template")
+	expandCtx, boundsSource, err := resolveExpandContext(templateName, mc.templatesDir)
+	if err != nil {
+		return api.MCPSimpleError("TEMPLATE_NOT_FOUND", fmt.Sprintf("template %q: %v", templateName, err)), nil
 	}
 
 	// Use expandPattern helper (which handles unmarshal, validate, expand)
@@ -1511,12 +1488,14 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	result := struct {
 		Pattern          string                    `json:"pattern"`
 		Version          int                       `json:"version"`
+		BoundsSource     string                    `json:"bounds_source"`
 		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
 		Occupancy        gridOccupancy             `json:"occupancy"`
 		DensityWarnings  []patternValidationError  `json:"density_warnings,omitempty"`
 	}{
 		Pattern:         pat.Name(),
 		Version:         pat.Version(),
+		BoundsSource:    boundsSource,
 		ShapeGrid:       grid,
 		Occupancy:       occupancy,
 		DensityWarnings: densityWarnings,
