@@ -266,6 +266,31 @@ Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill 
 
 **Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content).
 
+### Picking a Grid Configuration with `text_budget_guide`
+
+Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `show_pattern` returns a `text_budget_guide` block that tells you how much text fits in each configuration — use it to pick the right grid size **before** writing cell content.
+
+**Response shape** (inside `show_pattern` output):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `text_budget_guide.target_density` | object | Global density thresholds: `min_pct` (60), `ideal_pct` (85), `max_pct` (110) |
+| `text_budget_guide.configurations[]` | array | One entry per supported grid size |
+| `configurations[].columns` | int | Number of columns in this configuration |
+| `configurations[].rows` | int | Number of rows in this configuration |
+| `configurations[].body_max_chars` | int | Maximum body characters per cell (at 12pt) |
+| `configurations[].header_max_chars` | int | Maximum header characters per cell (at 16pt) |
+
+**Workflow — pick the right configuration:**
+
+1. **Estimate** your planned content length per cell (in characters).
+2. **Call `show_pattern`** and read `text_budget_guide.configurations[]`.
+3. **Choose** the configuration whose `body_max_chars` is closest to `planned_chars / 0.85` — this targets ~85% density (the ideal band).
+4. **Write** cell content sized to that budget.
+5. **Verify** post-write by calling `expand_pattern` and checking `cell_budgets[]` — every cell should land in the 60–110% density band.
+
+**Non-grid patterns** (e.g., `pull-quote`, `stat-hero`, single-cell patterns) have no `text_budget_guide`. For those, use per-placeholder budgets from `list_templates` instead. See [Text Capacity Awareness](#text-capacity-awareness) for the full density workflow.
+
 ---
 
 ## Rules
