@@ -144,6 +144,7 @@ examples/         # Example JSON input files (19 decks)
 | `agenda` | Numbered section list for agenda / table-of-contents slides |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
 | `before-after` | Two-column before/after with transition chevron |
+| `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `card-grid` | Parameterized N×M grid of titled cards |
 | `comparison-2col` | Two-column comparison with optional headers |
@@ -153,8 +154,10 @@ examples/         # Example JSON input files (19 decks)
 | `kpi-4up` | Four big-number KPI cards with short captions |
 | `kpi-5up` | Five big-number KPI cards with short captions |
 | `kpi-6up` | Six big-number KPI cards with short captions |
+| `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
 | `process-flow` | Left-to-right process flow with steps and decision points |
+| `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
 | `pull-quote` | Italic quote block with attribution |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |

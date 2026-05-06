@@ -266,7 +266,10 @@ When `expand_pattern` returns cells outside the optimal band:
 
 ### Bounds Override: `bounds` and `max_height_pct`
 
-When patterns produce oversized cells for short content (e.g., a 3-step process-flow with terse labels), constrain the grid using `bounds` or `max_height_pct`:
+When patterns produce oversized cells for short content (e.g., a 3-step process-flow with terse labels), use a compact variant or constrain the grid using `bounds` or `max_height_pct`:
+
+- **Compact variants** (`process-flow-compact`, `before-after-compact`, `kpi-inline`): pre-configured height-capped patterns for short content that leaves room for other content on the slide. Prefer these over manual `max_height_pct` when the content is brief.
+
 
 - **`max_height_pct`** (number, 1–99): constrains grid height to this percentage of the content area. Equivalent to `bounds: {x:0, y:0, width:100, height:<value>}`.
 - **`bounds`** (object): explicit bounding rectangle as percentages of slide dimensions (`x`, `y`, `width`, `height`). Takes priority over `max_height_pct`.

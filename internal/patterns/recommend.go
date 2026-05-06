@@ -136,6 +136,23 @@ var rules = []rule{
 		rationale: "4-up KPI layout; specify item_count for better ranking",
 	},
 
+	// KPI inline — compact horizontal bar for supporting context
+	{
+		pattern:      "kpi-inline",
+		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard", "inline", "compact", "supporting"},
+		baseScore:    0.80,
+		rationale:    "Compact horizontal KPI bar (2-6 metrics) for supporting context, not hero content",
+		itemMin:      2,
+		itemMax:      6,
+		needsMetrics: true,
+	},
+	{
+		pattern:   "kpi-inline",
+		keywords:  []string{"kpi inline", "compact kpi", "small kpi", "supporting metric"},
+		baseScore: 0.85,
+		rationale: "Inline KPI bar for supporting metrics alongside other content",
+	},
+
 	// Comparison
 	{
 		pattern:   "comparison-2col",
@@ -238,6 +255,21 @@ var rules = []rule{
 		rationale: "Before/after comparison layout",
 	},
 
+	// Before/After compact
+	{
+		pattern:   "before-after-compact",
+		keywords:  []string{"before", "after", "compact", "brief", "small", "supporting", "transformation"},
+		baseScore: 0.80,
+		rationale: "Compact before/after at ~60% height for brief transformations alongside other content",
+		needsCols: 2,
+	},
+	{
+		pattern:   "before-after-compact",
+		keywords:  []string{"compact before", "small before", "brief transformation"},
+		baseScore: 0.85,
+		rationale: "Height-capped before/after for supporting context",
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",
@@ -252,6 +284,22 @@ var rules = []rule{
 		keywords:  []string{"process", "workflow", "flowchart"},
 		baseScore: 0.75,
 		rationale: "Process flow diagram",
+	},
+
+	// Process flow compact
+	{
+		pattern:   "process-flow-compact",
+		keywords:  []string{"process", "flow", "workflow", "compact", "small", "supporting", "brief"},
+		baseScore: 0.80,
+		rationale: "Compact process flow at ~35% height for short-label steps alongside other content",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern:   "process-flow-compact",
+		keywords:  []string{"compact process", "small flow", "supporting process"},
+		baseScore: 0.85,
+		rationale: "Height-capped process flow for supporting context",
 	},
 
 	// Swimlane
