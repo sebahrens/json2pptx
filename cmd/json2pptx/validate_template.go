@@ -130,10 +130,14 @@ func runValidateTemplate() error {
 	// Determine capabilities
 	caps := detectCapabilities(layouts, analysis.Synthesis)
 
+	// Run heuristic checks
+	sectionNumberWarnings := checkSectionNumberNaming(layouts)
+
 	// Collect all warnings and errors
 	var warnings []string
 	var errors []string
 	warnings = append(warnings, validationResult.Warnings...)
+	warnings = append(warnings, sectionNumberWarnings...)
 	errors = append(errors, validationResult.Errors...)
 
 	valid := validationResult.Valid
@@ -357,4 +361,64 @@ func boolYesNo(b bool) string {
 		return "yes"
 	}
 	return "no"
+}
+
+// checkSectionNumberNaming inspects section-header layouts for body-typed
+// placeholders that look like decorative number frames but are not named
+// "Section Number". The engine's normalizer (normalizer.go) skips shapes
+// named "Section Number" during body normalization; a misnamed shape gets
+// treated as body text, corrupting the visual.
+//
+// Heuristic thresholds (all must be true to trigger):
+//   - Placeholder type is "body"
+//   - MaxChars < 5  (tiny text capacity — typical of a 1-2 digit number frame)
+//   - FontSize > 4000 (> 40pt in hundredths-of-a-point)
+//   - Y position in upper third of slide (Y < slideHeight/3 ≈ 2_286_000 EMU for 16:9)
+//   - Name is NOT "Section Number" (case-insensitive)
+func checkSectionNumberNaming(layouts []types.LayoutMetadata) []string {
+	const (
+		maxCharsThreshold = 5        // fewer than 5 chars expected
+		minFontSize       = 4000     // 40pt in hundredths-of-a-point
+		upperThirdY       = 2286000  // ~1/3 of 6858000 EMU (16:9 slide height)
+	)
+
+	var warnings []string
+	for _, layout := range layouts {
+		if !hasSectionHeaderTag(layout.Tags) {
+			continue
+		}
+		for _, ph := range layout.Placeholders {
+			if ph.Type != types.PlaceholderBody {
+				continue
+			}
+			if strings.EqualFold(ph.ID, "Section Number") {
+				continue
+			}
+			if ph.MaxChars >= maxCharsThreshold {
+				continue
+			}
+			if ph.FontSize < minFontSize {
+				continue
+			}
+			if ph.Bounds.Y >= upperThirdY {
+				continue
+			}
+			warnings = append(warnings, fmt.Sprintf(
+				"Layout %q has a placeholder that looks like a decorative section number but is named %q. "+
+					"Rename to \"Section Number\" so the engine preserves it correctly.",
+				layout.Name, ph.ID,
+			))
+		}
+	}
+	return warnings
+}
+
+// hasSectionHeaderTag returns true if the tags slice contains "section-header".
+func hasSectionHeaderTag(tags []string) bool {
+	for _, t := range tags {
+		if t == "section-header" {
+			return true
+		}
+	}
+	return false
 }
