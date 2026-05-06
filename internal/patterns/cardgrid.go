@@ -43,6 +43,14 @@ func (c *cardGrid) Taxonomy() PatternTaxonomy {
 func (c *cardGrid) SupportsCallout() bool        { return true }
 func (c *cardGrid) SupportsInlineMarkdown() bool { return true }
 
+func (c *cardGrid) BudgetConfigurations() []BudgetConfig {
+	return []BudgetConfig{
+		{Columns: 2, Rows: 2},
+		{Columns: 3, Rows: 2},
+		{Columns: 2, Rows: 3},
+	}
+}
+
 func (c *cardGrid) ExemplarValues() any {
 	return &CardGridValues{
 		Columns: 3,

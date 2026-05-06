@@ -174,7 +174,35 @@ var outputSchemaShowPattern = json.RawMessage(`{
     "not_when":    {"type": "string"},
     "supports_callout": {"type": "boolean"},
     "version":     {"type": "integer"},
-    "schema":      {"type": "object"}
+    "schema":      {"type": "object"},
+    "text_budget_guide": {
+      "type": "object",
+      "properties": {
+        "target_density": {
+          "type": "object",
+          "properties": {
+            "min_pct":   {"type": "integer"},
+            "ideal_pct": {"type": "integer"},
+            "max_pct":   {"type": "integer"}
+          },
+          "required": ["min_pct", "ideal_pct", "max_pct"]
+        },
+        "configurations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "columns":         {"type": "integer"},
+              "rows":            {"type": "integer"},
+              "body_max_chars":  {"type": "integer"},
+              "header_max_chars": {"type": "integer"}
+            },
+            "required": ["columns", "rows", "body_max_chars", "header_max_chars"]
+          }
+        }
+      },
+      "required": ["target_density", "configurations"]
+    }
   },
   "required": ["name", "description", "use_when", "not_when", "version", "schema"]
 }`)

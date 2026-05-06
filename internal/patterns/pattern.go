@@ -153,6 +153,25 @@ type InlineMarkdownSupport interface {
 }
 
 // ---------------------------------------------------------------------------
+// BudgetConfigProvider — optional interface for text budget guide computation
+// ---------------------------------------------------------------------------
+
+// BudgetConfig describes a single grid configuration for which text budgets
+// should be computed on demand (e.g. 3 columns × 2 rows).
+type BudgetConfig struct {
+	Columns int // grid column count
+	Rows    int // grid row count
+}
+
+// BudgetConfigProvider is an optional interface grid-shaped patterns can
+// implement to declare which column×row configurations should appear in the
+// text_budget_guide returned by show_pattern. Non-grid patterns (pull-quote,
+// stat-hero) should not implement this interface.
+type BudgetConfigProvider interface {
+	BudgetConfigurations() []BudgetConfig
+}
+
+// ---------------------------------------------------------------------------
 // Schema — see schema.go for full implementation (bead 3)
 // ---------------------------------------------------------------------------
 

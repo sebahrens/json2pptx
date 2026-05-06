@@ -159,12 +159,13 @@ func runPatternsShow() error {
 	if *jsonOut {
 		schemaJSON := patterns.SchemaJSON(pat)
 		result := skillPatternFull{
-			Name:        pat.Name(),
-			Description: pat.Description(),
-			UseWhen:     pat.UseWhen(),
-			NotWhen:     pat.NotWhen(),
-			Version:     pat.Version(),
-			Schema:      schemaJSON,
+			Name:            pat.Name(),
+			Description:     pat.Description(),
+			UseWhen:         pat.UseWhen(),
+			NotWhen:         pat.NotWhen(),
+			Version:         pat.Version(),
+			Schema:          schemaJSON,
+			TextBudgetGuide: computeTextBudgetGuide(pat),
 		}
 		result.Cells = pat.CellsHint()
 		if cs, ok := pat.(patterns.CalloutSupport); ok {

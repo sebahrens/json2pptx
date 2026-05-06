@@ -1,0 +1,87 @@
+package main
+
+import (
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
+)
+
+// computeTextBudgetGuide computes on-demand text budgets for a pattern that
+// implements BudgetConfigProvider. Returns nil for non-grid patterns.
+func computeTextBudgetGuide(pat patterns.Pattern) *textcapacity.TextBudgetGuide {
+	bcp, ok := pat.(patterns.BudgetConfigProvider)
+	if !ok {
+		return nil
+	}
+	patConfigs := bcp.BudgetConfigurations()
+	if len(patConfigs) == 0 {
+		return nil
+	}
+
+	// Use default 16:9 slide dimensions and layout bounds (same as
+	// resolveExpandContext fallback) so budgets are template-independent.
+	const (
+		slideWidth  int64 = 9144000
+		slideHeight int64 = 5143500
+	)
+	layoutBounds := pptx.RectEmu{
+		X:  457200,
+		Y:  457200,
+		CX: 8229600,
+		CY: 4229100,
+	}
+
+	expandCtx := patterns.ExpandContext{
+		SlideWidth:  slideWidth,
+		SlideHeight: slideHeight,
+		LayoutBounds: patterns.LayoutBounds{
+			X:      layoutBounds.X,
+			Y:      layoutBounds.Y,
+			Width:  layoutBounds.CX,
+			Height: layoutBounds.CY,
+		},
+	}
+
+	configs := make([]textcapacity.GridBudgetConfig, len(patConfigs))
+	for i, c := range patConfigs {
+		configs[i] = textcapacity.GridBudgetConfig{Columns: c.Columns, Rows: c.Rows}
+	}
+
+	expandFn := func(cols, rows int) (*jsonschema.ShapeGridInput, error) {
+		values := syntheticValues(pat, cols, rows)
+		if values == nil {
+			return nil, nil
+		}
+		return pat.Expand(expandCtx, values, nil, nil)
+	}
+
+	bounds := shapegrid.DefaultBounds(slideWidth, slideHeight)
+
+	return textcapacity.ComputeBudgetGuide(configs, expandFn, bounds, slideWidth, slideHeight)
+}
+
+// syntheticValues creates minimal valid values for a pattern at the given
+// columns×rows configuration. Each pattern type needs its own synthetic
+// generation; unknown types return nil.
+func syntheticValues(pat patterns.Pattern, cols, rows int) any {
+	switch pat.Name() {
+	case "card-grid":
+		n := cols * rows
+		cells := make([]patterns.CardGridCell, n)
+		for i := range cells {
+			cells[i] = patterns.CardGridCell{
+				Header: "Header",
+				Body:   "Body text placeholder",
+			}
+		}
+		return &patterns.CardGridValues{
+			Columns: cols,
+			Rows:    rows,
+			Cells:   cells,
+		}
+	default:
+		return nil
+	}
+}

@@ -1272,13 +1272,14 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	schemaJSON := patterns.SchemaJSON(pat)
 
 	result := skillPatternFull{
-		Name:        pat.Name(),
-		Description: pat.Description(),
-		Cells:       "",
-		UseWhen:     pat.UseWhen(),
-		NotWhen:     pat.NotWhen(),
-		Version:     pat.Version(),
-		Schema:      schemaJSON,
+		Name:            pat.Name(),
+		Description:     pat.Description(),
+		Cells:           "",
+		UseWhen:         pat.UseWhen(),
+		NotWhen:         pat.NotWhen(),
+		Version:         pat.Version(),
+		Schema:          schemaJSON,
+		TextBudgetGuide: computeTextBudgetGuide(pat),
 	}
 	result.Cells = pat.CellsHint()
 

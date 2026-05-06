@@ -16,6 +16,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -56,15 +57,16 @@ type skillPatternCompact struct {
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.
 type skillPatternFull struct {
-	Name            string          `json:"name"`
-	Description     string          `json:"description"`
-	Cells           string          `json:"cells"`
-	UseWhen         string          `json:"use_when"`
-	NotWhen         string          `json:"not_when"`
-	SupportsCallout bool            `json:"supports_callout"`
-	Version         int             `json:"version"`
-	Schema          json.RawMessage `json:"schema"`
-	CalloutSchema   json.RawMessage `json:"callout_schema,omitempty"`
+	Name             string                        `json:"name"`
+	Description      string                        `json:"description"`
+	Cells            string                        `json:"cells"`
+	UseWhen          string                        `json:"use_when"`
+	NotWhen          string                        `json:"not_when"`
+	SupportsCallout  bool                          `json:"supports_callout"`
+	Version          int                           `json:"version"`
+	Schema           json.RawMessage               `json:"schema"`
+	CalloutSchema    json.RawMessage               `json:"callout_schema,omitempty"`
+	TextBudgetGuide  *textcapacity.TextBudgetGuide `json:"text_budget_guide,omitempty"`
 }
 
 // skillToolInfo identifies the tool and its version.
