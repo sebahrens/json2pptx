@@ -109,6 +109,11 @@ func checkSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(PatternInput{}), path+"/pattern")...)
 	}
 
+	// compose
+	if v, ok := obj["compose"]; ok {
+		warnings = append(warnings, checkComposeUnknownKeys(v, path+"/compose")...)
+	}
+
 	// shape_grid
 	if v, ok := obj["shape_grid"]; ok {
 		warnings = append(warnings, checkShapeGridUnknownKeys(v, path+"/shape_grid")...)
@@ -125,6 +130,36 @@ func checkSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 		}
 	}
 
+	return warnings
+}
+
+// checkComposeUnknownKeys checks a compose envelope and its segments.
+func checkComposeUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	var warnings []*patterns.ValidationError
+	warnings = append(warnings, checkUnknownKeysForType(raw, reflect.TypeOf(ComposeInput{}), path)...)
+
+	var composeObj map[string]json.RawMessage
+	if json.Unmarshal(raw, &composeObj) != nil {
+		return warnings
+	}
+	segRaw, ok := composeObj["segments"]
+	if !ok {
+		return warnings
+	}
+	var segs []json.RawMessage
+	if json.Unmarshal(segRaw, &segs) != nil {
+		return warnings
+	}
+	for j, segBytes := range segs {
+		p := fmt.Sprintf("%s/segments/%d", path, j)
+		warnings = append(warnings, checkUnknownKeysForType(segBytes, reflect.TypeOf(SegmentInput{}), p)...)
+		var segObj map[string]json.RawMessage
+		if json.Unmarshal(segBytes, &segObj) == nil {
+			if patRaw, ok := segObj["pattern"]; ok {
+				warnings = append(warnings, checkUnknownKeysForType(patRaw, reflect.TypeOf(PatternInput{}), p+"/pattern")...)
+			}
+		}
+	}
 	return warnings
 }
 

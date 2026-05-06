@@ -169,6 +169,38 @@
       }
     },
     {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Growth at a Glance"}
+      ],
+      "compose": {
+        "direction": "vertical",
+        "segments": [
+          {
+            "size_pct": 40,
+            "pattern": {
+              "name": "stat-hero",
+              "values": {
+                "value": "3.2x",
+                "label": "Year-over-year revenue growth"
+              }
+            }
+          },
+          {
+            "size_pct": 60,
+            "pattern": {
+              "name": "kpi-3up",
+              "values": [
+                {"big": "96%", "small": "Gross Margin"},
+                {"big": "<6mo", "small": "Payback Period"},
+                {"big": "4.8★", "small": "G2 Rating"}
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "layout_id": "slideLayout5",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "The Ask: $25M Series B"},

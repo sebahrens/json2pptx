@@ -150,6 +150,8 @@ func fingerprint(idx int, s SlideInput) rhythmSlideInfo {
 
 	// Determine pattern name.
 	switch {
+	case s.Compose != nil:
+		info.Pattern = "compose"
 	case s.Pattern != nil && s.Pattern.Name != "":
 		info.Pattern = s.Pattern.Name
 	case s.ShapeGrid != nil:
@@ -177,6 +179,9 @@ func fingerprint(idx int, s SlideInput) rhythmSlideInfo {
 
 // dominantVisual returns the primary visual type on a slide.
 func dominantVisual(s SlideInput) string {
+	if s.Compose != nil {
+		return "compose"
+	}
 	if s.Pattern != nil {
 		return "pattern"
 	}
@@ -226,6 +231,9 @@ func densityClass(s SlideInput) string {
 	}
 	if s.Pattern != nil {
 		weight += 3
+	}
+	if s.Compose != nil {
+		weight += 5
 	}
 
 	switch {

@@ -303,6 +303,11 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 	// Placeholder resolution.
 	resolveSlidePlaceholders(slide, tctx, &rs)
 
+	// Compose expansion.
+	if slide.Compose != nil && slide.ShapeGrid == nil {
+		resolveSlideCompose(i, slide, tctx, output, &rs, accentStrategy, sectionIndex)
+	}
+
 	// Pattern expansion.
 	if slide.Pattern != nil && slide.ShapeGrid == nil {
 		resolveSlidePattern(i, slide, tctx, output, &rs, accentStrategy, sectionIndex)
@@ -438,6 +443,26 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 	}
 	output.Warnings = append(output.Warnings, expandWarnings...)
 	// Pattern-generated grids should fill the layout area, not shrink to content.
+	expanded.FillHeight = true
+	slide.ShapeGrid = expanded
+}
+
+// resolveSlideCompose expands a compose envelope and updates the slide's shape_grid.
+func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, _ *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
+	expCtx := patterns.ExpandContext{
+		Metadata:       tctx.metadata,
+		SlideWidth:     tctx.slideWidth,
+		SlideHeight:    tctx.slideHeight,
+		AccentStrategy: accentStrategy,
+		SlideIndex:     i,
+		SectionIndex:   sectionIndex,
+	}
+	expanded, err := expandCompose(slide.Compose, expCtx, patterns.Default())
+	if err != nil {
+		output.Errors = append(output.Errors,
+			fmt.Sprintf("slide %d: compose: %v", i+1, err))
+		return
+	}
 	expanded.FillHeight = true
 	slide.ShapeGrid = expanded
 }

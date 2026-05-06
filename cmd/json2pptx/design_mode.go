@@ -52,6 +52,13 @@ func validateDesignMode(input *PresentationInput) []patterns.FitFinding {
 			findings = append(findings, checkPatternInput(slide.Pattern, slideNum)...)
 		}
 
+		// Check compose segments for pattern overrides.
+		if slide.Compose != nil {
+			for _, seg := range slide.Compose.Segments {
+				findings = append(findings, checkPatternInput(&seg.Pattern, slideNum)...)
+			}
+		}
+
 		// Check content items (chart/diagram colors)
 		for j, ci := range slide.Content {
 			findings = append(findings, checkContentInput(&ci, slideNum, j+1)...)

@@ -45,12 +45,20 @@ type NearMiss struct {
 	WouldTipIf  string `json:"would_tip_if"`
 }
 
+// ComposeSuggestion suggests a compose envelope pairing multiple patterns.
+type ComposeSuggestion struct {
+	Direction string   `json:"direction"`
+	Patterns  []string `json:"patterns"`
+	Rationale string   `json:"rationale"`
+}
+
 // RecommendResult is the output of Recommend.
 type RecommendResult struct {
-	Candidates              []Candidate `json:"candidates"`
-	QueryUnderstood         string      `json:"query_understood_as"`
-	NearMisses              []NearMiss  `json:"near_misses,omitempty"`
-	DisambiguatingQuestions []string    `json:"disambiguating_questions,omitempty"`
+	Candidates              []Candidate         `json:"candidates"`
+	ComposeSuggestions      []ComposeSuggestion `json:"compose_suggestions,omitempty"`
+	QueryUnderstood         string              `json:"query_understood_as"`
+	NearMisses              []NearMiss          `json:"near_misses,omitempty"`
+	DisambiguatingQuestions []string            `json:"disambiguating_questions,omitempty"`
 }
 
 // rule maps keywords and content hints to a pattern with a base confidence.
@@ -406,6 +414,9 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 	result.NearMisses = nearMisses
 	result.DisambiguatingQuestions = suggestDisambiguatingQuestions(hints, intentLower, result.Candidates)
 
+	// Suggest compose pairings for compound intents.
+	result.ComposeSuggestions = suggestCompose(intentLower, hints)
+
 	return result
 }
 
@@ -759,6 +770,73 @@ func fieldMappingHint(from, to string) map[string]string {
 	}
 
 	return nil
+}
+
+// composeRule maps compound intent keywords to compose suggestions.
+type composeRule struct {
+	keywords  []string
+	direction string
+	patterns  []string
+	rationale string
+}
+
+var composeRules = []composeRule{
+	{
+		keywords:  []string{"hero", "kpi", "metrics"},
+		direction: "vertical",
+		patterns:  []string{"stat-hero", "kpi-3up"},
+		rationale: "Hero number on top with supporting KPIs below — strong for investor decks",
+	},
+	{
+		keywords:  []string{"hero", "detail", "breakdown"},
+		direction: "vertical",
+		patterns:  []string{"stat-hero", "icon-row"},
+		rationale: "Lead with a hero metric, support with feature icons",
+	},
+	{
+		keywords:  []string{"compare", "metrics", "side"},
+		direction: "horizontal",
+		patterns:  []string{"stat-hero", "stat-hero"},
+		rationale: "Two hero stats side by side for direct comparison",
+	},
+	{
+		keywords:  []string{"quote", "metrics", "evidence"},
+		direction: "vertical",
+		patterns:  []string{"pull-quote", "kpi-3up"},
+		rationale: "Customer voice above supporting data — testimonial with evidence",
+	},
+	{
+		keywords:  []string{"process", "kpi"},
+		direction: "vertical",
+		patterns:  []string{"process-flow", "kpi-3up"},
+		rationale: "Show the process then its measurable outcomes",
+	},
+}
+
+// suggestCompose returns compose suggestions when the intent matches compound
+// patterns. Returns nil if no compound intent is detected.
+func suggestCompose(intentLower string, _ *ContentHints) []ComposeSuggestion {
+	var suggestions []ComposeSuggestion
+	for _, cr := range composeRules {
+		matchCount := 0
+		for _, kw := range cr.keywords {
+			if strings.Contains(intentLower, kw) {
+				matchCount++
+			}
+		}
+		// Require at least 2 keyword hits for compose suggestions
+		if matchCount >= 2 {
+			suggestions = append(suggestions, ComposeSuggestion{
+				Direction: cr.direction,
+				Patterns:  cr.patterns,
+				Rationale: cr.rationale,
+			})
+		}
+	}
+	if len(suggestions) > 2 {
+		suggestions = suggestions[:2]
+	}
+	return suggestions
 }
 
 // summarizeIntent creates a human-readable echo of how the query was parsed.

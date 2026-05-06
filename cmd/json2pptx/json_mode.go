@@ -682,9 +682,39 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			}
 		}
 
-		// XOR enforcement: pattern and shape_grid are mutually exclusive (D1)
-		if slide.Pattern != nil && slide.ShapeGrid != nil {
-			return nil, fmt.Errorf("slide %d: cannot set both pattern and shape_grid", i+1)
+		// XOR enforcement: pattern, compose, and shape_grid are mutually exclusive (D1)
+		{
+			setCount := 0
+			if slide.Pattern != nil {
+				setCount++
+			}
+			if slide.Compose != nil {
+				setCount++
+			}
+			if slide.ShapeGrid != nil {
+				setCount++
+			}
+			if setCount > 1 {
+				return nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
+			}
+		}
+
+		// Expand compose envelope into shape_grid before downstream processing
+		if slide.Compose != nil {
+			ctx := patterns.ExpandContext{
+				Metadata:       metadata,
+				SlideWidth:     slideWidth,
+				SlideHeight:    slideHeight,
+				AccentStrategy: accentStrategy,
+				SlideIndex:     i,
+				SectionIndex:   sectionIndices[i],
+			}
+			expanded, err := expandCompose(slide.Compose, ctx, patterns.Default())
+			if err != nil {
+				return nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
+			}
+			expanded.FillHeight = true
+			slide.ShapeGrid = expanded
 		}
 
 		// Expand pattern into shape_grid before downstream processing
@@ -1485,7 +1515,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 		var issues []string
 
 		// Check for empty slide (no content items AND no shape_grid/pattern)
-		if len(slide.Content) == 0 && slide.ShapeGrid == nil && slide.Pattern == nil {
+		if len(slide.Content) == 0 && slide.ShapeGrid == nil && slide.Pattern == nil && slide.Compose == nil {
 			slideScore -= 0.5
 			issues = append(issues, "empty slide with no content")
 		}

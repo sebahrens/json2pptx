@@ -4,6 +4,17 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 3.5.0 (2026-05-06)
+
+### Added
+
+- `compose` — slide-level field enabling pattern composition. Arranges 2–4
+  patterns on a single slide via `direction` (`"vertical"` or `"horizontal"`)
+  and `segments[]` with optional `size_pct` allocation. Child patterns validate
+  independently; errors bubble up with `segment[N]` path prefix. The recommend
+  endpoint now returns `compose_suggestions` for compound intents.
+  (Bead: go-slide-creator-pbyh)
+
 ## 3.4.0 (2026-05-06)
 
 ### Added

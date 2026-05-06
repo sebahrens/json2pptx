@@ -786,6 +786,8 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 		patternName := ""
 		if slide.Pattern != nil {
 			patternName = slide.Pattern.Name
+		} else if slide.Compose != nil {
+			patternName = "compose"
 		}
 
 		path := slidepath.ShapeGrid(si)

@@ -103,7 +103,7 @@ func TestConvertPresentationSlides_PatternAndShapeGridXOR(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected XOR error when both pattern and shape_grid set")
 	}
-	if !strings.Contains(err.Error(), "cannot set both pattern and shape_grid") {
+	if !strings.Contains(err.Error(), "only one of pattern, compose, or shape_grid may be set") {
 		t.Errorf("error should mention XOR constraint, got: %v", err)
 	}
 }
