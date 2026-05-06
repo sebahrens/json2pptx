@@ -76,7 +76,7 @@ func TestResolveShapeGrid_Simple3Columns(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(200)
-	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestResolveShapeGrid_ColSpan(t *testing.T) {
 		},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestResolveShapeGrid_NullCells(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestResolveShapeGrid_EmptyCell(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestResolveShapeGrid_RowSpan(t *testing.T) {
 		},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestResolveShapeGrid_ProcessDiagram(t *testing.T) {
 		},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(200), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(200), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestResolveShapeGrid_Rotation(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +278,7 @@ func TestResolveShapeGrid_Adjustments(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestResolveShapeGrid_CustomBounds(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -581,7 +581,7 @@ func TestResolveShapeGrid_OverrideBounds(t *testing.T) {
 	}
 
 	override := &pptx.RectEmu{X: 500000, Y: 600000, CX: 7000000, CY: 4000000}
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), override, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), override, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -611,7 +611,7 @@ func TestResolveShapeGrid_ExplicitBoundsOverrideOverride(t *testing.T) {
 	}
 
 	override := &pptx.RectEmu{X: 500000, Y: 600000, CX: 7000000, CY: 4000000}
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), override, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), override, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestResolveShapeGrid_IconCell(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -686,7 +686,7 @@ func TestResolveShapeGrid_MixedShapesAndIcons(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -868,7 +868,7 @@ func TestResolveShapeGrid_ImageCell(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(input, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(input, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -910,7 +910,7 @@ func TestResolveShapeGrid_ImageWithOverlay(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(input, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(input, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -949,7 +949,7 @@ func TestResolveShapeGrid_ImageWithOverlayAndText(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(input, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(input, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -996,7 +996,7 @@ func TestResolveShapeGrid_ImageStripPattern(t *testing.T) {
 		Rows:    []GridRowInput{{Height: 45, Cells: cells}},
 	}
 
-	result, err := resolveShapeGrid(input, newAllocFrom(1), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(input, newAllocFrom(1), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1036,7 +1036,7 @@ func TestResolveShapeGrid_ImageOnlyGrid(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(input, newAllocFrom(1), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(input, newAllocFrom(1), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1082,7 +1082,7 @@ func TestResolveShapeGrid_SplitColumnImageRowSpan(t *testing.T) {
 		},
 	}
 
-	result, err := resolveShapeGrid(input, newAllocFrom(1), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(input, newAllocFrom(1), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1164,7 +1164,7 @@ func TestResolveShapeGrid_WithConnectors(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(200)
-	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1210,7 +1210,7 @@ func TestResolveShapeGrid_LineConnector(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(1), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(1), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1397,7 +1397,7 @@ func TestResolveShapeGrid_DiagramCell(t *testing.T) {
 		}},
 	}
 
-	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1453,7 +1453,7 @@ func TestResolveShapeGrid_GroupWrapsInGrpSp(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(100)
-	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	result, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1501,7 +1501,7 @@ func TestResolveShapeGrid_OverlappingCellsValidationError(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(100)
-	_, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	_, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0, nil)
 	if err == nil {
 		t.Fatal("expected validation error for overlapping cells, got nil")
 	}
@@ -1523,11 +1523,144 @@ func TestResolveShapeGrid_RowSpanExceedsGrid(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(100)
-	_, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0)
+	_, err := resolveShapeGrid(grid, alloc, nil, nil, 0, 0, nil)
 	if err == nil {
 		t.Fatal("expected validation error for row_span exceeding grid, got nil")
 	}
 	if !strings.Contains(err.Error(), "shape_grid validation") {
 		t.Errorf("expected error to mention 'shape_grid validation', got: %s", err.Error())
+	}
+}
+
+func TestDiagramCellInserts_ThemeColorInjection(t *testing.T) {
+	cell := shapegrid.ResolvedCell{
+		ID:   1,
+		Kind: shapegrid.CellKindDiagram,
+		Bounds: pptx.RectEmu{
+			X: 100000, Y: 100000, CX: 5000000, CY: 3000000,
+		},
+		DiagramSpec: &types.DiagramSpec{
+			Type:  "bar_chart",
+			Title: "Test Chart",
+			Data: map[string]any{
+				"categories": []any{"A", "B"},
+				"series":     []any{map[string]any{"name": "S1", "values": []any{1.0, 2.0}}},
+			},
+		},
+	}
+
+	themeColors := []types.ThemeColor{
+		{Name: "accent1", RGB: "FF0000"},
+		{Name: "accent2", RGB: "00FF00"},
+	}
+	dataPalette := []string{"#FF0000", "#00FF00"}
+	diagCtx := &GridDiagramContext{
+		ThemeColors: themeColors,
+		DataPalette: dataPalette,
+		SlideNum:    1,
+	}
+
+	icons, warnings, err := generateDiagramCellInserts(cell, diagCtx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(icons) != 1 {
+		t.Fatalf("expected 1 icon insert, got %d", len(icons))
+	}
+	if len(icons[0].SVGData) == 0 {
+		t.Error("expected non-empty SVG data")
+	}
+	// After injection, the diagram spec should have theme colors set
+	if len(cell.DiagramSpec.Style.ThemeColors) == 0 {
+		t.Error("expected theme colors to be injected into diagram spec")
+	}
+	if len(cell.DiagramSpec.Style.DataPalette) == 0 {
+		t.Error("expected data palette to be injected into diagram spec")
+	}
+	// No narrow-cell warnings for a 5M EMU wide cell
+	if len(warnings) > 0 {
+		t.Errorf("unexpected warnings: %v", warnings)
+	}
+}
+
+func TestDiagramCellInserts_NarrowCellWarning(t *testing.T) {
+	cell := shapegrid.ResolvedCell{
+		ID:   1,
+		Kind: shapegrid.CellKindDiagram,
+		Bounds: pptx.RectEmu{
+			X: 100000, Y: 100000, CX: 3000000, CY: 3000000, // ~25% of slide width — narrow
+		},
+		DiagramSpec: &types.DiagramSpec{
+			Type:  "org_chart",
+			Title: "Large Org",
+			Data: map[string]any{
+				"root": map[string]any{
+					"name": "CEO",
+					"children": []any{
+						map[string]any{"name": "VP1", "children": []any{
+							map[string]any{"name": "D1"},
+							map[string]any{"name": "D2"},
+							map[string]any{"name": "D3"},
+						}},
+						map[string]any{"name": "VP2", "children": []any{
+							map[string]any{"name": "D4"},
+							map[string]any{"name": "D5"},
+							map[string]any{"name": "D6"},
+						}},
+					},
+				},
+			},
+		},
+	}
+
+	diagCtx := &GridDiagramContext{SlideNum: 3}
+	icons, warnings, err := generateDiagramCellInserts(cell, diagCtx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(icons) != 1 {
+		t.Fatalf("expected 1 icon insert, got %d", len(icons))
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning for complex org_chart in narrow cell, got %d", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "complex org_chart") {
+		t.Errorf("warning should mention complex org_chart, got: %s", warnings[0])
+	}
+	if !strings.Contains(warnings[0], "slide 3") {
+		t.Errorf("warning should mention slide 3, got: %s", warnings[0])
+	}
+	if !strings.Contains(warnings[0], "grid cell 1") {
+		t.Errorf("warning should mention grid cell 1, got: %s", warnings[0])
+	}
+}
+
+func TestDiagramCellInserts_NilContext(t *testing.T) {
+	cell := shapegrid.ResolvedCell{
+		ID:   1,
+		Kind: shapegrid.CellKindDiagram,
+		Bounds: pptx.RectEmu{
+			X: 100000, Y: 100000, CX: 5000000, CY: 3000000,
+		},
+		DiagramSpec: &types.DiagramSpec{
+			Type:  "pie_chart",
+			Title: "Test Pie",
+			Data: map[string]any{
+				"labels": []any{"A", "B"},
+				"values": []any{60.0, 40.0},
+			},
+		},
+	}
+
+	// With nil context, diagram should still render (just without theme colors)
+	icons, warnings, err := generateDiagramCellInserts(cell, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(icons) != 1 {
+		t.Fatalf("expected 1 icon insert, got %d", len(icons))
+	}
+	if len(warnings) != 0 {
+		t.Errorf("expected no warnings with nil context, got: %v", warnings)
 	}
 }

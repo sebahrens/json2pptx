@@ -24,6 +24,16 @@ type ShapeGridResult struct {
 	IconInserts  []generator.IconInsert    // Icon cells requiring media registration in the generator
 	ImageInserts []generator.ImageInsert   // Image cells requiring media registration in the generator
 	RowOverflows []shapegrid.RowOverflow   // Rows whose content exceeded max_height
+	Warnings     []string                  // Quality warnings (e.g. complex diagram in narrow cell)
+}
+
+// GridDiagramContext provides template-level context for rendering diagram cells
+// in a shape_grid. Without this context, grid diagrams render with default colors
+// instead of inheriting the template's theme palette.
+type GridDiagramContext struct {
+	ThemeColors []types.ThemeColor // Template theme colors for chart styling
+	DataPalette []string           // Ordered hex palette for chart series (from TemplateMetadata)
+	SlideNum    int                // 1-based slide number for warning messages
 }
 
 // virtualLayoutResult holds the result of virtual layout resolution.
@@ -180,7 +190,8 @@ func needsVirtualLayout(slide SlideInput) bool {
 // If zone is non-nil, explicit input.Bounds are clamped against it to prevent content
 // from overlapping title or footer chrome.
 // slideWidth and slideHeight are the template's actual slide dimensions in EMU (0 = use 16:9 defaults).
-func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) (*ShapeGridResult, error) {
+// diagCtx provides template theme colors for diagram cells (nil = no theme injection).
+func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, diagCtx *GridDiagramContext) (*ShapeGridResult, error) {
 	if input == nil || len(input.Rows) == 0 {
 		return nil, nil
 	}
@@ -240,7 +251,7 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	}
 
 	// Generate XML fragments, icon inserts, and image inserts from resolved cells
-	return generateGridOutput(result, alloc)
+	return generateGridOutput(result, alloc, diagCtx)
 }
 
 // convertGridRows converts DTO GridRowInput slices into shapegrid.Row domain objects.
@@ -353,10 +364,11 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 }
 
 // generateGridOutput converts resolved grid cells into XML fragments and media inserts.
-func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator) (*ShapeGridResult, error) {
+func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext) (*ShapeGridResult, error) {
 	var shapes [][]byte
 	var iconInserts []generator.IconInsert
 	var imageInserts []generator.ImageInsert
+	var warnings []string
 
 	for _, cell := range result.Cells {
 		var cellShapes [][]byte
@@ -401,11 +413,12 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 				ExtentCY: cell.Bounds.CY,
 			})
 		case shapegrid.CellKindDiagram:
-			icons, err := generateDiagramCellInserts(cell)
+			icons, diagramWarnings, err := generateDiagramCellInserts(cell, diagCtx)
 			if err != nil {
 				return nil, err
 			}
 			cellIcons = append(cellIcons, icons...)
+			warnings = append(warnings, diagramWarnings...)
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {
@@ -460,6 +473,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		IconInserts:  iconInserts,
 		ImageInserts: imageInserts,
 		RowOverflows: result.RowOverflows,
+		Warnings:     warnings,
 	}, nil
 }
 
@@ -539,18 +553,49 @@ func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAlloca
 // generateDiagramCellInserts renders a diagram cell via svggen and returns IconInserts
 // for native SVG embedding. The diagram is rendered as SVG only (no rasterization
 // needed — the singlepass generator uses a 1x1 transparent PNG fallback for native SVG).
-func generateDiagramCellInserts(cell shapegrid.ResolvedCell) ([]generator.IconInsert, error) {
-	result, err := generator.RenderDiagramSpecWithMetadata(cell.DiagramSpec, nil, 0, true)
+//
+// diagCtx provides template theme colors and data palette so grid-cell diagrams
+// inherit the same color scheme as placeholder-based diagrams.
+func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagramContext) ([]generator.IconInsert, []string, error) {
+	diagramSpec := cell.DiagramSpec
+
+	// Inject theme colors if diagram doesn't have explicit Colors set,
+	// mirroring the placeholder-based diagram path in processDiagramContent.
+	if diagramSpec.Style == nil {
+		diagramSpec.Style = &types.DiagramStyle{}
+	}
+	var themeColors []types.ThemeColor
+	if diagCtx != nil {
+		themeColors = diagCtx.ThemeColors
+		if len(diagramSpec.Style.Colors) == 0 && len(diagCtx.ThemeColors) > 0 {
+			diagramSpec.Style.ThemeColors = diagCtx.ThemeColors
+		}
+		if len(diagramSpec.Style.Colors) == 0 && len(diagCtx.DataPalette) > 0 {
+			diagramSpec.Style.DataPalette = diagCtx.DataPalette
+		}
+	}
+
+	result, err := generator.RenderDiagramSpecWithMetadata(diagramSpec, themeColors, 0, true)
 	if err != nil {
-		return nil, fmt.Errorf("diagram in grid cell %d: %w", cell.ID, err)
+		return nil, nil, fmt.Errorf("diagram in grid cell %d: %w", cell.ID, err)
 	}
 	if len(result.SVG) == 0 {
-		return nil, fmt.Errorf("diagram in grid cell %d: renderer returned empty SVG", cell.ID)
+		return nil, nil, fmt.Errorf("diagram in grid cell %d: renderer returned empty SVG", cell.ID)
 	}
+
+	// Check for complex diagram in narrow cell
+	var warnings []string
+	if diagCtx != nil {
+		location := fmt.Sprintf("grid cell %d", cell.ID)
+		if w := generator.CheckDiagramInNarrowBounds(diagramSpec, cell.Bounds.CX, diagCtx.SlideNum, location); w != "" {
+			warnings = append(warnings, w)
+		}
+	}
+
 	// Build alt-text from diagram type and title
-	alt := strings.ReplaceAll(cell.DiagramSpec.Type, "_", " ") + " diagram"
-	if cell.DiagramSpec.Title != "" {
-		alt = cell.DiagramSpec.Title + " (" + cell.DiagramSpec.Type + ")"
+	alt := strings.ReplaceAll(diagramSpec.Type, "_", " ") + " diagram"
+	if diagramSpec.Title != "" {
+		alt = diagramSpec.Title + " (" + diagramSpec.Type + ")"
 	}
 	return []generator.IconInsert{{
 		SVGData:  result.SVG,
@@ -559,7 +604,7 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell) ([]generator.IconIn
 		OffsetY:  cell.Bounds.Y,
 		ExtentCX: cell.Bounds.CX,
 		ExtentCY: cell.Bounds.CY,
-	}}, nil
+	}}, warnings, nil
 }
 
 // resolveColumnsDTO parses the JSON columns field and returns percentage widths.

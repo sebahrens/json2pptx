@@ -639,7 +639,7 @@ The `shape_grid` field on a slide defines a grid of preset geometry shapes for c
 
 ### Grid Cells (GridCellInput)
 
-Each cell holds either a **shape** or a **table** (mutually exclusive).
+Each cell holds exactly one content type (mutually exclusive): **shape**, **table**, **icon**, **image**, or **diagram**.
 
 | Field      | Type    | Required | Default | Description                            |
 |------------|---------|----------|---------|----------------------------------------|
@@ -647,6 +647,9 @@ Each cell holds either a **shape** or a **table** (mutually exclusive).
 | `row_span` | integer | No       | 1       | Number of rows this cell spans         |
 | `shape`    | object  | No       | —       | Preset geometry shape (ShapeSpecInput) |
 | `table`    | object  | No       | —       | Data table (same schema as content type `table`) |
+| `icon`     | object  | No       | —       | SVG icon (`{name, path, url, size, color}`) |
+| `image`    | object  | No       | —       | Image file (`{path, url, alt, fit, overlay, text}`) |
+| `diagram`  | object  | No       | —       | Chart or diagram (`DiagramSpec` — same schema as content type `diagram`) |
 
 ### Shape Specification (ShapeSpecInput)
 

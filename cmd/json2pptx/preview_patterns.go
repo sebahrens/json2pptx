@@ -153,7 +153,7 @@ func generateOnePatternPreview(
 	// Resolve shape_grid to raw XML
 	alloc := &pptx.ShapeIDAllocator{}
 	alloc.SetMinID(200)
-	gridResult, err := resolveShapeGrid(&localGrid, alloc, nil, nil, slideWidth, slideHeight)
+	gridResult, err := resolveShapeGrid(&localGrid, alloc, nil, nil, slideWidth, slideHeight, nil)
 	if err != nil {
 		return fmt.Errorf("resolve grid: %w", err)
 	}

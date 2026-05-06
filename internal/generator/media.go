@@ -567,6 +567,33 @@ func (ctx *singlePassContext) checkDiagramInNarrowPlaceholder(slideNum int, diag
 	)
 }
 
+// CheckDiagramInNarrowBounds checks whether a complex diagram would be illegible
+// when rendered in a narrow area (e.g. a shape_grid cell). Returns a warning
+// message if the diagram is complex enough to warrant concern, or empty string
+// if the diagram is fine at the given width.
+func CheckDiagramInNarrowBounds(diagramSpec *types.DiagramSpec, widthEMU int64, slideNum int, location string) string {
+	if widthEMU > narrowPlaceholderThreshold {
+		return ""
+	}
+	if !complexDiagramTypes[diagramSpec.Type] {
+		return ""
+	}
+	complexity := estimateDiagramComplexity(diagramSpec)
+	if complexity < complexityItemThreshold {
+		return ""
+	}
+	const slideWidthEMU = 12192000
+	widthPct := float64(widthEMU) / float64(slideWidthEMU) * 100
+	return fmt.Sprintf(
+		"slide %d: complex %s diagram (%d items) in narrow %s (width %.0f%% of slide) may be illegible — consider using a wider cell or full-width layout",
+		slideNum,
+		diagramSpec.Type,
+		complexity,
+		location,
+		widthPct,
+	)
+}
+
 // estimateDiagramComplexity estimates the number of visual elements in a diagram
 // based on its type and data payload. This is used to detect diagrams that would
 // be illegible when compressed into narrow placeholders.

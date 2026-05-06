@@ -412,10 +412,15 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 
 	// Convert typed slides to generator specs (uses templateLayouts for auto-layout selection)
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy))
+	diagCtx := &GridDiagramContext{
+		ThemeColors: templateTheme.Colors,
+		DataPalette: resolveDataPalette(templateMetadata, templateTheme.Colors),
+	}
+	slideSpecs, gridDiagWarnings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
 	}
+	inputWarnings = append(inputWarnings, gridDiagWarnings...)
 
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
@@ -546,8 +551,9 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 // This is the primary conversion path that supports both typed fields (text_value,
 // bullets_value, etc.) and legacy json.RawMessage Value field.
 // When layouts is non-empty and a slide omits layout_id, auto-layout selection is used.
-func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy) ([]generator.SlideSpec, error) { //nolint:gocognit,gocyclo
+func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy, diagCtx *GridDiagramContext) ([]generator.SlideSpec, []string, error) { //nolint:gocognit,gocyclo
 	specs := make([]generator.SlideSpec, 0, len(slides))
+	var gridWarnings []string
 
 	// Track layout usage for variety scoring during auto-selection
 	var usedLayouts map[string]int
@@ -597,7 +603,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	for i, slide := range slides {
 		if slide.LayoutID == "" {
 			if len(layouts) == 0 {
-				return nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
+				return nil, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
 			}
 
 			// Auto-select layout using heuristic engine
@@ -617,7 +623,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 
 			result, err := layout.SelectLayout(req)
 			if err != nil {
-				return nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
+				return nil, nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
 			}
 
 			slide.LayoutID = result.LayoutID
@@ -659,7 +665,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 
 		contentItems, err := convertPresentationContent(slide.Content, i+1, inferSlideType(slide))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		spec := generator.SlideSpec{
@@ -695,7 +701,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 				setCount++
 			}
 			if setCount > 1 {
-				return nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
+				return nil, nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
 			}
 		}
 
@@ -711,7 +717,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			}
 			expanded, err := expandCompose(slide.Compose, ctx, patterns.Default())
 			if err != nil {
-				return nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
+				return nil, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
 			}
 			slide.ShapeGrid = expanded
 		}
@@ -728,7 +734,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			}
 			expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 			if err != nil {
-				return nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
+				return nil, nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
 			}
 			slide.ShapeGrid = expanded
 		}
@@ -767,21 +773,31 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			// Use a high-start allocator to avoid colliding with template shape IDs.
 			alloc := &pptx.ShapeIDAllocator{}
 			alloc.SetMinID(200)
-			gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight)
+			// Build per-slide diagram context with the correct slide number.
+			var slideDiagCtx *GridDiagramContext
+			if diagCtx != nil {
+				slideDiagCtx = &GridDiagramContext{
+					ThemeColors: diagCtx.ThemeColors,
+					DataPalette: diagCtx.DataPalette,
+					SlideNum:    i + 1,
+				}
+			}
+			gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight, slideDiagCtx)
 			if err != nil {
-				return nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
+				return nil, nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
 			}
 			if gridResult != nil {
 				spec.RawShapeXML = gridResult.Shapes
 				spec.IconInserts = gridResult.IconInserts
 				spec.ImageInserts = gridResult.ImageInserts
+				gridWarnings = append(gridWarnings, gridResult.Warnings...)
 			}
 		}
 
 		specs = append(specs, spec)
 	}
 
-	return specs, nil
+	return specs, gridWarnings, nil
 }
 
 // buildSlideResolutions constructs per-slide resolution metadata from the original

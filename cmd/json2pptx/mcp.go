@@ -411,13 +411,18 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Convert slides
-	slideSpecs, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy))
+	mcpDiagCtx := &GridDiagramContext{
+		ThemeColors: theme.Colors,
+		DataPalette: resolveDataPalette(templateMetadata, theme.Colors),
+	}
+	slideSpecs, gridDiagWarnings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx)
 	if err != nil {
 		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}
 
 	// Pre-validate chart/diagram data (unknown keys already caught at boundary).
 	inputWarnings := validateSlidesChartData(input.Slides)
+	inputWarnings = append(inputWarnings, gridDiagWarnings...)
 	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
 	// Determine output filename
