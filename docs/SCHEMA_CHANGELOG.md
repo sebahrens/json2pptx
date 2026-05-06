@@ -4,6 +4,22 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.1.0 (2026-05-06)
+
+### Added
+
+- **`plan_deck` and `recommend_visual` added to `mcp_tools_available`** in
+  `get_capabilities`. These tools were registered and functional since 3.1.0
+  but were omitted from the discovery catalog, making them invisible to agents
+  that rely on `get_capabilities` for tool enumeration.
+- **`get_capabilities` output schema** now includes `vocabularies` (enum
+  registries) and `error_codes` fields, and the `features.fit_report` field
+  is corrected from `boolean` to its actual `{supported, default_in}` shape.
+- **`list_patterns` output schema** corrected from flat array to grouped
+  `[{category, patterns}]` shape matching the runtime response.
+- **CLI subcommands `plan-deck` and `recommend-visual`** added for parity
+  with the MCP tools.
+
 ## 4.0.0 (2026-05-06)
 
 ### Breaking

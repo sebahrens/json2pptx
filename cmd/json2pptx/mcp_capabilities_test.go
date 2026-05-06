@@ -218,6 +218,150 @@ func TestMCPGetCapabilities(t *testing.T) {
 	})
 }
 
+// TestMCPToolCatalog_MatchesRegisteredTools parses the s.AddTool calls in mcp.go
+// and verifies every registered tool appears in mcpToolCatalog (and vice versa).
+func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "mcp.go", nil, 0)
+	if err != nil {
+		t.Fatalf("failed to parse mcp.go: %v", err)
+	}
+
+	// Extract tool names from the mcpXxxTool() constructor calls inside runMCP.
+	// Each s.AddTool(mcpFooTool(), ...) call has a first arg that is a call to
+	// a constructor returning a tool with a specific name. We extract names by
+	// looking at the first argument of AddTool calls in the runMCP function.
+	registered := make(map[string]bool)
+
+	ast.Inspect(f, func(n ast.Node) bool {
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != "runMCP" {
+			return true
+		}
+		// Walk the function body to find s.AddTool calls.
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "AddTool" {
+				return true
+			}
+			// The first argument should be a call to a tool constructor.
+			if len(call.Args) < 1 {
+				return true
+			}
+			// Call the constructor at runtime to get the actual tool name.
+			// Instead, we collect the constructor function names and map them.
+			return true
+		})
+		return false
+	})
+
+	// Alternative approach: use the tool constructors test table which is
+	// maintained and lists every constructor. We just need to verify that
+	// mcpToolCatalog covers the same set.
+	// Parse the tool names from AddTool first arg constructor calls.
+	ast.Inspect(f, func(n ast.Node) bool {
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != "runMCP" {
+			return true
+		}
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "AddTool" {
+				return true
+			}
+			if len(call.Args) < 1 {
+				return true
+			}
+			// First arg is a function call — get its name.
+			argCall, ok := call.Args[0].(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			var funcName string
+			switch fn := argCall.Fun.(type) {
+			case *ast.Ident:
+				funcName = fn.Name
+			case *ast.SelectorExpr:
+				funcName = fn.Sel.Name
+			}
+			if funcName != "" {
+				registered[funcName] = true
+			}
+			return true
+		})
+		return false
+	})
+
+	// Now map constructor function names to tool names by calling them.
+	constructors := map[string]func() mcp.Tool{
+		"mcpGenerateTool":              mcpGenerateTool,
+		"mcpListTemplatesTool":         mcpListTemplatesTool,
+		"mcpGetDataFormatHintsTool":    mcpGetDataFormatHintsTool,
+		"mcpGetChartCapabilitiesTool":  mcpGetChartCapabilitiesTool,
+		"mcpGetDiagramCapabilitiesTool": mcpGetDiagramCapabilitiesTool,
+		"mcpValidateTool":             mcpValidateTool,
+		"mcpRecommendPatternTool":     mcpRecommendPatternTool,
+		"mcpRecommendVisualTool":      mcpRecommendVisualTool,
+		"mcpListPatternsTool":         mcpListPatternsTool,
+		"mcpShowPatternTool":          mcpShowPatternTool,
+		"mcpValidatePatternTool":      mcpValidatePatternTool,
+		"mcpExpandPatternTool":        mcpExpandPatternTool,
+		"mcpListIconsTool":            mcpListIconsTool,
+		"mcpGetShapeCatalogTool":      mcpGetShapeCatalogTool,
+		"mcpTableDensityGuideTool":    mcpTableDensityGuideTool,
+		"mcpResolveThemeTool":         mcpResolveThemeTool,
+		"mcpRenderSlideImageTool":     mcpRenderSlideImageTool,
+		"mcpRenderDeckThumbnailsTool": mcpRenderDeckThumbnailsTool,
+		"mcpScoreDeckTool":            mcpScoreDeckTool,
+		"mcpPreviewPlanTool":          mcpPreviewPlanTool,
+		"mcpRepairSlideTool":          mcpRepairSlideTool,
+		"mcpListTemplateSettingsTool":     mcpListTemplateSettingsTool,
+		"mcpRegisterTemplateSettingTool":  mcpRegisterTemplateSettingTool,
+		"mcpDeleteTemplateSettingTool":    mcpDeleteTemplateSettingTool,
+		"mcpAnalyzeDeckRhythmTool":       mcpAnalyzeDeckRhythmTool,
+		"mcpPlanDeckTool":                mcpPlanDeckTool,
+		"mcpGetCapabilitiesTool":         mcpGetCapabilitiesTool,
+		"mcpReadPresentationTool":        mcpReadPresentationTool,
+	}
+
+	// Build the set of tool names that are actually registered in runMCP.
+	registeredToolNames := make(map[string]bool)
+	for funcName := range registered {
+		ctor, ok := constructors[funcName]
+		if !ok {
+			t.Errorf("runMCP registers %q but no constructor mapping exists in test", funcName)
+			continue
+		}
+		tool := ctor()
+		registeredToolNames[tool.Name] = true
+	}
+
+	// Compare against catalog.
+	catalogNames := make(map[string]bool)
+	for _, name := range mcpToolNames() {
+		catalogNames[name] = true
+	}
+
+	for name := range registeredToolNames {
+		if !catalogNames[name] {
+			t.Errorf("tool %q is registered in runMCP but missing from mcpToolCatalog", name)
+		}
+	}
+	for name := range catalogNames {
+		if !registeredToolNames[name] {
+			t.Errorf("tool %q is in mcpToolCatalog but not registered in runMCP", name)
+		}
+	}
+}
+
 func TestDeprecationWarnings(t *testing.T) {
 	t.Run("fires on legacy value field", func(t *testing.T) {
 		input := &PresentationInput{

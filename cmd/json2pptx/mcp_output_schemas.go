@@ -152,14 +152,28 @@ var outputSchemaListPatterns = json.RawMessage(`{
   "items": {
     "type": "object",
     "properties": {
-      "name":    {"type": "string"},
-      "cells":   {"type": "string"},
-      "use_when": {"type": "string"},
-      "not_when": {"type": "string"},
-      "supports_callout": {"type": "boolean"},
-      "estimated_prompt_size_bytes": {"type": "integer"}
+      "category": {"type": "string"},
+      "patterns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name":             {"type": "string"},
+            "cells":            {"type": "string"},
+            "use_when":         {"type": "string"},
+            "not_when":         {"type": "string"},
+            "category":         {"type": "string"},
+            "narrative_role":   {"type": "string"},
+            "pairs_with":       {"type": "array", "items": {"type": "string"}},
+            "density_class":    {"type": "string"},
+            "accent_weight":    {"type": "string"},
+            "supports_callout": {"type": "boolean"}
+          },
+          "required": ["name", "cells", "use_when", "not_when", "category"]
+        }
+      }
     },
-    "required": ["name", "cells", "use_when", "not_when"]
+    "required": ["category", "patterns"]
   }
 }`)
 
@@ -642,7 +656,14 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
       "properties": {
         "strict_fit":             {"type": "array", "items": {"type": "string"}},
         "compact_responses":      {"type": "boolean"},
-        "fit_report":             {"type": "boolean"},
+        "fit_report": {
+          "type": "object",
+          "properties": {
+            "supported":  {"type": "boolean"},
+            "default_in": {"type": "object", "additionalProperties": {"type": "boolean"}}
+          },
+          "required": ["supported", "default_in"]
+        },
         "strict_unknown_keys":    {"type": "boolean"},
         "named_patterns":         {"type": "boolean"},
         "template_settings":      {"type": "boolean"},
@@ -650,9 +671,26 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "supports_speaker_notes": {"type": "boolean"},
         "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
       }
-    }
+    },
+    "vocabularies": {
+      "type": "object",
+      "properties": {
+        "repair_fix_kinds":     {"type": "array", "items": {"type": "string"}},
+        "fit_finding_codes":    {"type": "array", "items": {"type": "string"}},
+        "content_types":        {"type": "array", "items": {"type": "string"}},
+        "slide_transitions":    {"type": "array", "items": {"type": "string"}},
+        "transition_speeds":    {"type": "array", "items": {"type": "string"}},
+        "build_animations":     {"type": "array", "items": {"type": "string"}},
+        "chart_types":          {"type": "array", "items": {"type": "string"}},
+        "diagram_types":        {"type": "array", "items": {"type": "string"}},
+        "placeholder_aliases":  {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+        "pattern_names":        {"type": "array", "items": {"type": "string"}},
+        "pattern_aliases":      {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "error_codes": {"type": "array", "items": {"type": "string"}}
   },
-  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "features"]
+  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "features", "vocabularies", "error_codes"]
 }`)
 
 // --- analyze_deck_rhythm ---
