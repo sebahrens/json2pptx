@@ -394,6 +394,24 @@ var outputSchemaScoreDeck = json.RawMessage(`{
         }
       }
     },
+    "composition": {
+      "type": "object",
+      "description": "Deck-level composition score (rhythm, variety, accent balance). Separate axis from per-slide correctness.",
+      "properties": {
+        "score":       {"type": "integer", "description": "0-100 composition quality score"},
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code":     {"type": "string"},
+              "severity": {"type": "string"},
+              "message":  {"type": "string"}
+            }
+          }
+        }
+      }
+    },
     "summary": {
       "type": "object",
       "properties": {

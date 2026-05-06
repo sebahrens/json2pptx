@@ -41,12 +41,26 @@ type SlideScore struct {
 	Findings []ScoreFinding `json:"findings"`
 }
 
+// CompositionDiagnostic is a single composition-level finding (deck rhythm).
+type CompositionDiagnostic struct {
+	Code     string `json:"code"`
+	Severity string `json:"severity"` // "warning" or "info"
+	Message  string `json:"message"`
+}
+
+// CompositionResult holds the composition axis of the deck score.
+type CompositionResult struct {
+	Score       int                     `json:"score"`       // 0–100
+	Diagnostics []CompositionDiagnostic `json:"diagnostics"` // individual composition issues
+}
+
 // DeckScore is the top-level score_deck response.
 type DeckScore struct {
-	OverallScore int          `json:"overall_score"`
-	PerSlide     []SlideScore `json:"per_slide"`
-	Summary      DeckSummary  `json:"summary"`
-	ModeUsed     string       `json:"mode_used"`
+	OverallScore int                `json:"overall_score"`
+	PerSlide     []SlideScore       `json:"per_slide"`
+	Composition  *CompositionResult `json:"composition,omitempty"`
+	Summary      DeckSummary        `json:"summary"`
+	ModeUsed     string             `json:"mode_used"`
 }
 
 // DeckSummary provides aggregate stats.

@@ -128,8 +128,11 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// 3. Append synthesis findings (template-level).
 	findings = append(findings, synthesisFindings...)
 
-	// Score the combined findings.
+	// Score the combined findings (correctness axis).
 	ds := deterministic.ScoreFromFindings(findings, len(input.Slides))
+
+	// 4. Composition axis — deck-level rhythm analysis.
+	ds.Composition = compositionAxis(input.Slides)
 
 	if mode == "with_heuristics" {
 		// Heuristic mode requires rendered images + API key — not yet wired up.
@@ -218,6 +221,72 @@ func (mc *mcpConfig) collectRenderFindings(
 	renderFindings = append(renderFindings, result.FitFindings...)
 	renderFindings = append(renderFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
 	return renderFindings
+}
+
+// compositionAxis runs analyze_deck_rhythm on the input slides and converts
+// the result into a CompositionResult for the score_deck response.
+func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
+	if len(slides) == 0 {
+		return nil
+	}
+
+	rhythm := analyzeDeckRhythm(slides)
+
+	var diags []deterministic.CompositionDiagnostic
+
+	// Flag long pattern runs (3+).
+	for _, run := range rhythm.Aggregates.PatternRuns {
+		if run.Len >= 3 {
+			diags = append(diags, deterministic.CompositionDiagnostic{
+				Code:     "pattern_run",
+				Severity: "warning",
+				Message:  fmt.Sprintf("pattern %q repeats %d consecutive slides (index %d–%d); vary with a different layout", run.Name, run.Len, run.Start, run.Start+run.Len-1),
+			})
+		}
+	}
+
+	// Flag accent dominance (>80%).
+	for accent, frac := range rhythm.Aggregates.AccentBalance {
+		if frac > 0.8 && len(rhythm.Aggregates.AccentBalance) > 1 {
+			diags = append(diags, deterministic.CompositionDiagnostic{
+				Code:     "accent_dominance",
+				Severity: "warning",
+				Message:  fmt.Sprintf("accent %q dominates %.0f%% of accented slides; consider using more accent colors", accent, frac*100),
+			})
+		}
+	}
+
+	// Flag low density variation.
+	if rhythm.Aggregates.DensityCV < 0.15 && len(slides) > 3 {
+		diags = append(diags, deterministic.CompositionDiagnostic{
+			Code:     "density_monotony",
+			Severity: "info",
+			Message:  fmt.Sprintf("density coefficient of variation is %.2f (low); mix content-heavy and content-light slides", rhythm.Aggregates.DensityCV),
+		})
+	}
+
+	// Flag missing narrative roles — no emphasis slide in 10+ slide decks.
+	if len(slides) >= 10 {
+		hasEmphasis := false
+		for _, si := range rhythm.PerSlide {
+			switch si.Pattern {
+			case "stat-hero", "pull-quote":
+				hasEmphasis = true
+			}
+		}
+		if !hasEmphasis {
+			diags = append(diags, deterministic.CompositionDiagnostic{
+				Code:     "missing_emphasis",
+				Severity: "info",
+				Message:  "deck has 10+ slides but no emphasis slide (stat-hero, pull-quote); consider adding one to break monotony",
+			})
+		}
+	}
+
+	return &deterministic.CompositionResult{
+		Score:       rhythm.CompositionScore,
+		Diagnostics: diags,
+	}
 }
 
 // appendHeuristicNote adds a synthetic code entry indicating heuristic mode
