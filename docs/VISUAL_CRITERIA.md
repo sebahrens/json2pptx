@@ -37,6 +37,19 @@ After running `TEST_MODE=all ./scripts/e2e_visual_test.sh`, review slide images 
 22. Placeholder Utilization — all available placeholders in the layout are used (no empty placeholders visible)
 23. Consulting Standard — slide quality acceptable for professional consulting presentation (McKinsey/BCG level)
 
+## Composition (Deck-Level)
+
+These criteria evaluate the deck as a whole, not individual slides. Use the `analyze_deck_rhythm` MCP tool to compute these metrics programmatically — do not attempt to judge them from screenshots.
+
+| Metric | Threshold | Meaning |
+|--------|-----------|---------|
+| `longest_run` | ≤ 2 | Consecutive slides sharing the same layout or pattern type. Runs of 3+ feel monotonous. |
+| `accent_dominance` | < 0.7 | Fraction of accent-colored elements using the single most-used accent. Above 0.7 = palette underuse. |
+| `density_cv` | ≥ 0.15 | Coefficient of variation of per-slide content density. Below 0.15 = every slide looks the same weight (flat pacing). |
+| `narrative_arc` | present | Deck should have a recognizable opening (title/agenda), evidence body, and closing (summary/CTA). Missing any leg is a composition gap. |
+
+**Rationale**: Per-slide QA catches rendering defects but cannot detect structural monotony, accent imbalance, or missing narrative emphasis. These metrics surface issues that only become visible when considering the deck holistically.
+
 ## Issue Creation
 
 For any defect:

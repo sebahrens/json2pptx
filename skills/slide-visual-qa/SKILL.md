@@ -32,6 +32,30 @@ and use whatever it prints.
 
 ---
 
+## Composition Review (FIRST — before per-slide inspection)
+
+Before opening any slide images, call the `analyze_deck_rhythm` MCP tool on the deck JSON. Its output is **authoritative** for composition issues — do not re-judge these from screenshots.
+
+Report composition findings in a dedicated section at the top of your output:
+
+```
+COMPOSITION (from analyze_deck_rhythm)
+  ⚠ longest_run=3 — slides 4-6 all use the same kpi-3up pattern
+  ⚠ accent_dominance=0.82 — accent1 overused, accent3/accent4 never appear
+  ✓ density_cv=0.21 — adequate pacing variation
+  ⚠ narrative_arc — no closing/summary slide detected
+```
+
+Thresholds (see docs/VISUAL_CRITERIA.md for full rationale):
+- `longest_run` ≤ 2 (runs of 3+ = monotony)
+- `accent_dominance` < 0.7 (above = palette underuse)
+- `density_cv` ≥ 0.15 (below = flat pacing)
+- `narrative_arc` — opening + evidence + closing all present
+
+**Do NOT attempt to detect monotony, accent balance, or pacing from screenshots.** These are structural properties of the deck JSON that the rhythm tool measures precisely. Screenshot-based guessing produces ~60% false positives.
+
+---
+
 ## What to Check on Every Slide
 
 **Layout & Overlap**
@@ -62,9 +86,15 @@ and use whatever it prints.
 
 ## Output Format
 
-Report per slide. For each slide, either list every issue found or explicitly state it looks clean. Be specific — name the element and where on the slide the problem is.
+Report composition first, then per-slide rendering issues. For each slide, either list every issue found or explicitly state it looks clean. Be specific — name the element and where on the slide the problem is.
 
 ```
+COMPOSITION (from analyze_deck_rhythm)
+  ⚠ longest_run=3 — slides 4-6 all use kpi-3up pattern
+  ✓ accent_dominance=0.58 — good palette variety
+  ✓ density_cv=0.22 — adequate pacing
+  ✓ narrative_arc — opening, evidence, and closing present
+
 Slide 1 — Title slide
   ⚠ Title text overflows the bottom of the text box, last word clipped
   ⚠ Subtitle has very low contrast (light gray on off-white background)
@@ -77,7 +107,8 @@ Slide 3 — Key Metrics
   ⚠ Bottom footer overlaps the lowest stat label
 
 SUMMARY
-Total issues: 4 across 2 slides
+Composition issues: 1 (monotony)
+Rendering issues: 4 across 2 slides
 Slides with issues: 1, 3
 ```
 
