@@ -216,6 +216,10 @@ var outputSchemaShowPattern = json.RawMessage(`{
         }
       },
       "required": ["target_density", "configurations"]
+    },
+    "example_values": {
+      "type": "object",
+      "description": "Canonical example values for this pattern. Shows the expected shape and realistic content for the values parameter."
     }
   },
   "required": ["name", "description", "use_when", "not_when", "version", "schema"]

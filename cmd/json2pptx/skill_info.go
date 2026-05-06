@@ -67,6 +67,7 @@ type skillPatternFull struct {
 	Schema           json.RawMessage               `json:"schema"`
 	CalloutSchema    json.RawMessage               `json:"callout_schema,omitempty"`
 	TextBudgetGuide  *textcapacity.TextBudgetGuide `json:"text_budget_guide,omitempty"`
+	ExampleValues    any                           `json:"example_values,omitempty"`
 }
 
 // skillToolInfo identifies the tool and its version.

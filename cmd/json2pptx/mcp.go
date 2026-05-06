@@ -1289,6 +1289,10 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	}
 	result.Cells = pat.CellsHint()
 
+	if ex, ok := pat.(patterns.Exemplar); ok {
+		result.ExampleValues = ex.ExemplarValues()
+	}
+
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
