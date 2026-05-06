@@ -1484,21 +1484,30 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	// Compute occupancy metadata so agents can pre-flight sparseness
 	occupancy := computeGridOccupancy(grid, expandCtx)
 
+	// Compute cell budgets and capacity-based density warnings
+	cellBudgets, capacityWarnings := computeCellBudgets(grid, expandCtx)
+
 	// Also provide the pattern version for traceability
 	result := struct {
-		Pattern          string                    `json:"pattern"`
-		Version          int                       `json:"version"`
-		BoundsSource     string                    `json:"bounds_source"`
-		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
-		Occupancy        gridOccupancy             `json:"occupancy"`
-		DensityWarnings  []patternValidationError  `json:"density_warnings,omitempty"`
+		Pattern            string                    `json:"pattern"`
+		Version            int                       `json:"version"`
+		BoundsSource       string                    `json:"bounds_source"`
+		BoundsAssumption   string                    `json:"bounds_assumption"`
+		ShapeGrid          *jsonschema.ShapeGridInput `json:"shape_grid"`
+		Occupancy          gridOccupancy             `json:"occupancy"`
+		CellBudgets        []cellBudgetEntry         `json:"cell_budgets,omitempty"`
+		DensityWarnings    []patternValidationError  `json:"density_warnings,omitempty"`
+		CapacityWarnings   []cellDensityWarning      `json:"capacity_warnings,omitempty"`
 	}{
-		Pattern:         pat.Name(),
+		Pattern:          pat.Name(),
 		Version:         pat.Version(),
 		BoundsSource:    boundsSource,
+		BoundsAssumption: "full_content_area",
 		ShapeGrid:       grid,
 		Occupancy:       occupancy,
+		CellBudgets:     cellBudgets,
 		DensityWarnings: densityWarnings,
+		CapacityWarnings: capacityWarnings,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)

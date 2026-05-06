@@ -362,16 +362,25 @@ func runPatternsExpand() error {
 		return err
 	}
 
+	// Compute cell budgets and density warnings from the resolved grid
+	cellBudgets, densityWarnings := computeCellBudgets(grid, expandCtx)
+
 	result := struct {
-		Pattern      string                     `json:"pattern"`
-		Version      int                        `json:"version"`
-		BoundsSource string                     `json:"bounds_source"`
-		ShapeGrid    *jsonschema.ShapeGridInput `json:"shape_grid"`
+		Pattern          string                     `json:"pattern"`
+		Version          int                        `json:"version"`
+		BoundsSource     string                     `json:"bounds_source"`
+		BoundsAssumption string                     `json:"bounds_assumption"`
+		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
+		CellBudgets      []cellBudgetEntry          `json:"cell_budgets,omitempty"`
+		DensityWarnings  []cellDensityWarning       `json:"density_warnings,omitempty"`
 	}{
-		Pattern:      pat.Name(),
-		Version:      pat.Version(),
-		BoundsSource: boundsSource,
-		ShapeGrid:    grid,
+		Pattern:          pat.Name(),
+		Version:          pat.Version(),
+		BoundsSource:     boundsSource,
+		BoundsAssumption: "full_content_area",
+		ShapeGrid:        grid,
+		CellBudgets:      cellBudgets,
+		DensityWarnings:  densityWarnings,
 	}
 
 	data, err := json.MarshalIndent(result, "", "  ")
