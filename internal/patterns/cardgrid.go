@@ -85,7 +85,13 @@ func (c *CardGridCell) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err == nil {
 		parts := strings.SplitN(s, " | ", 2)
 		if len(parts) != 2 {
-			return fmt.Errorf("CardGridCell string must be \"Header | Body\", got %q", s)
+			return &ValidationError{
+				Pattern: "card-grid",
+				Path:    "cells[]",
+				Code:    ErrCodeInvalidShape,
+				Message: fmt.Sprintf("CardGridCell string must be \"Header | Body\", got %q", s),
+				Fix:     ReshapeValueFix("cells[]", `string "Header | Body" or {"header": "...", "body": "..."}`, "Header | Body"),
+			}
 		}
 		c.Header = parts[0]
 		c.Body = parts[1]
@@ -94,7 +100,13 @@ func (c *CardGridCell) UnmarshalJSON(data []byte) error {
 	type alias CardGridCell
 	var a alias
 	if err := json.Unmarshal(data, &a); err != nil {
-		return fmt.Errorf("CardGridCell must be string \"Header | Body\" or {header, body}: %w", err)
+		return &ValidationError{
+			Pattern: "card-grid",
+			Path:    "cells[]",
+			Code:    ErrCodeInvalidShape,
+			Message: fmt.Sprintf("CardGridCell must be string \"Header | Body\" or {header, body}: %v", err),
+			Fix:     ReshapeValueFix("cells[]", `string "Header | Body" or {"header": "...", "body": "..."}`, "Header | Body"),
+		}
 	}
 	*c = CardGridCell(a)
 	return nil

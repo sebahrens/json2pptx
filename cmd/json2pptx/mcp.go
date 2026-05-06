@@ -981,6 +981,30 @@ func toPatternValidationError(e error) patternValidationError {
 	}
 }
 
+// unmarshalValidationErrorResult checks if a json.Unmarshal error contains
+// structured *ValidationError(s) from custom UnmarshalJSON methods. If so,
+// it returns a structured validation failure result; otherwise returns nil.
+func unmarshalValidationErrorResult(ctx context.Context, err error, patternName string) *mcp.CallToolResult {
+	errs := splitValidationErrors(err)
+	hasStructured := false
+	for _, e := range errs {
+		if e.Fix != nil {
+			hasStructured = true
+			break
+		}
+	}
+	if !hasStructured {
+		return nil
+	}
+	attachNextToolCallsToValidationErrors(errs, patternName)
+	result := struct {
+		OK     bool                     `json:"ok"`
+		Errors []patternValidationError `json:"errors"`
+	}{OK: false, Errors: errs}
+	mcpResult, _ := api.MCPSuccessResult(ctx, result)
+	return mcpResult
+}
+
 // attachNextToolCallsToValidationErrors populates NextToolCall on each
 // patternValidationError that has a Fix with a recognized kind. Unlike
 // AttachNextToolCalls (which operates on FitFindings with a known slide index),
@@ -1335,6 +1359,9 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 	// Unmarshal values
 	values := pat.NewValues()
 	if err := json.Unmarshal([]byte(valuesStr), values); err != nil {
+		if result := unmarshalValidationErrorResult(ctx, err, name); result != nil {
+			return result, nil
+		}
 		return mcpParseError("INVALID_JSON", "values", fmt.Sprintf("invalid values JSON: %v", err)), nil
 	}
 

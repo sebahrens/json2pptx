@@ -24,6 +24,7 @@ const (
 	ErrCodePlaceholderNotFound    = "placeholder_not_found"
 	ErrCodeUnknownTableStyleID   = "unknown_table_style_id"
 	ErrCodeWrongPattern          = "wrong_pattern"
+	ErrCodeInvalidShape          = "invalid_shape"
 
 	// Fit-report error codes.
 	ErrCodeFitOverflow       = "fit_overflow"
@@ -79,6 +80,7 @@ var (
 	ErrPlaceholderNotFound    = errors.New("placeholder_id not found in layout")
 	ErrUnknownTableStyleID   = errors.New("style_id not found in template table styles")
 	ErrWrongPattern          = errors.New("content shape matches a different pattern")
+	ErrInvalidShape          = errors.New("value has wrong structure")
 
 	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
@@ -128,6 +130,7 @@ var codeSentinel = map[string]error{
 	ErrCodePlaceholderNotFound:    ErrPlaceholderNotFound,
 	ErrCodeUnknownTableStyleID:   ErrUnknownTableStyleID,
 	ErrCodeWrongPattern:          ErrWrongPattern,
+	ErrCodeInvalidShape:          ErrInvalidShape,
 	ErrCodeFitOverflow:       ErrFitOverflow,
 	ErrCodeDensityExceeded:   ErrDensityExceeded,
 	ErrCodeStackedTables:     ErrStackedTables,
@@ -221,6 +224,15 @@ func ReduceItemsFix(path string, maxItems int) *FixSuggestion {
 // UseOneOfFix creates a fix suggestion to replace a value with one of the allowed options.
 func UseOneOfFix(path string, allowed []string) *FixSuggestion {
 	return &FixSuggestion{Kind: "use_one_of", Params: map[string]any{"path": path, "allowed": allowed}}
+}
+
+// ReshapeValueFix creates a fix suggestion to restructure a value to the expected shape.
+func ReshapeValueFix(path, expectedShape, example string) *FixSuggestion {
+	return &FixSuggestion{Kind: "reshape_value", Params: map[string]any{
+		"path":           path,
+		"expected_shape": expectedShape,
+		"example":        example,
+	}}
 }
 
 // RemoveFieldFix creates a fix suggestion to remove a field entirely.

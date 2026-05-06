@@ -34,6 +34,7 @@ var validationOnlyAllowlist = map[string]string{
 	"placeholder_not_found":  "input validation, not a fit-report finding",
 	"unknown_table_style_id": "input validation, not a fit-report finding",
 	"wrong_pattern":          "input validation, not a fit-report finding",
+	"invalid_shape":          "input validation, not a fit-report finding",
 }
 
 // stringLiteralCodes lists finding codes emitted as string literals rather

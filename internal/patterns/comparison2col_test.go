@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -188,6 +189,41 @@ func TestComparison2colRowUnmarshalJSON(t *testing.T) {
 			t.Errorf("expand outputs differ.\nobject: %s\nstring: %s", objOut, strOut)
 		}
 	})
+}
+
+func TestComparison2colRowUnmarshalReturnsValidationError(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"string_no_pipe", `"NoPipe"`},
+		{"array_instead_of_object", `[1,2]`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var r Comparison2colRow
+			err := json.Unmarshal([]byte(tc.input), &r)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			var ve *ValidationError
+			if !errors.As(err, &ve) {
+				t.Fatalf("expected *ValidationError, got %T: %v", err, err)
+			}
+			if ve.Code != ErrCodeInvalidShape {
+				t.Errorf("Code = %q, want %q", ve.Code, ErrCodeInvalidShape)
+			}
+			if ve.Fix == nil {
+				t.Fatal("Fix is nil")
+			}
+			if ve.Fix.Kind != "reshape_value" {
+				t.Errorf("Fix.Kind = %q, want %q", ve.Fix.Kind, "reshape_value")
+			}
+			if ve.Fix.Params["example"] != "left_value | right_value" {
+				t.Errorf("Fix.Params[example] = %v, want %q", ve.Fix.Params["example"], "left_value | right_value")
+			}
+		})
+	}
 }
 
 func TestComparison2col(t *testing.T) {

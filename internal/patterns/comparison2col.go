@@ -69,7 +69,13 @@ func (r *Comparison2colRow) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &s); err == nil {
 		parts := strings.SplitN(s, " | ", 2)
 		if len(parts) != 2 {
-			return fmt.Errorf("Comparison2colRow string must be \"Left | Right\", got %q", s)
+			return &ValidationError{
+				Pattern: "comparison-2col",
+				Path:    "rows[]",
+				Code:    ErrCodeInvalidShape,
+				Message: fmt.Sprintf("Comparison2colRow string must be \"Left | Right\", got %q", s),
+				Fix:     ReshapeValueFix("rows[]", `string "Left | Right" or {"left": "...", "right": "..."}`, "left_value | right_value"),
+			}
 		}
 		r.Left = parts[0]
 		r.Right = parts[1]
@@ -78,7 +84,13 @@ func (r *Comparison2colRow) UnmarshalJSON(data []byte) error {
 	type alias Comparison2colRow
 	var a alias
 	if err := json.Unmarshal(data, &a); err != nil {
-		return fmt.Errorf("Comparison2colRow must be string \"Left | Right\" or {left, right}: %w", err)
+		return &ValidationError{
+			Pattern: "comparison-2col",
+			Path:    "rows[]",
+			Code:    ErrCodeInvalidShape,
+			Message: fmt.Sprintf("Comparison2colRow must be string \"Left | Right\" or {left, right}: %v", err),
+			Fix:     ReshapeValueFix("rows[]", `string "Left | Right" or {"left": "...", "right": "..."}`, "left_value | right_value"),
+		}
 	}
 	*r = Comparison2colRow(a)
 	return nil
