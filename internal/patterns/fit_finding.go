@@ -69,7 +69,9 @@ var repairFixKinds = map[string]bool{
 	"swap_layout":         true,
 	"swap_pattern":        true,
 	"use_one_of":          true,
+	"rename_field":        true,
 	"reshape_grid":        true,
+	"reshape_value":       true,
 	"set_pattern_style":   true,
 }
 

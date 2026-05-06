@@ -238,7 +238,14 @@ var outputSchemaValidatePattern = json.RawMessage(`{
           "field":   {"type": "string"},
           "code":    {"type": "string"},
           "message": {"type": "string"},
-          "fix":     {"type": "object"}
+          "fix":     {
+            "type": "object",
+            "properties": {
+              "kind":   {"type": "string", "description": "Machine-readable fix category (e.g. rename_field, reshape_value, use_one_of)"},
+              "params": {"type": "object", "description": "Kind-specific parameters for the fix"}
+            },
+            "required": ["kind"]
+          }
         },
         "required": ["field", "message"]
       }

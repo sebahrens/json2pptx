@@ -198,6 +198,10 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applySetPatternStyle(input, slideIdx, fix.Params)
 	case "reduce_cell_text":
 		return applyReduceCellText(input, slideIdx, fix.Params)
+	case "rename_field":
+		return applyRenameField(input, slideIdx, fix.Params)
+	case "reshape_value":
+		return applyReshapeValue(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -1283,6 +1287,101 @@ func truncateParagraphs(paras []any, maxChars int) bool {
 		}
 	}
 	return modified
+}
+
+// applyRenameField renames a JSON field on the slide. The fix params contain
+// "from" (the unknown key) and "to" (the correct key). Works at slide level,
+// content level, and pattern values level by re-marshaling the slide JSON.
+func applyRenameField(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	from := stringParam(params, "from", "")
+	to := stringParam(params, "to", "")
+
+	if from == "" || to == "" {
+		return appliedFix{Kind: "rename_field", Applied: false, Message: "from and to parameters are required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+
+	// Try pattern values first.
+	if slide.Pattern != nil && len(slide.Pattern.Values) > 0 {
+		if renamed, ok := renameJSONKey(slide.Pattern.Values, from, to); ok {
+			slide.Pattern.Values = renamed
+			slide.ShapeGrid = nil // force re-expansion
+			return appliedFix{Kind: "rename_field", Applied: true, Message: fmt.Sprintf("renamed %q to %q in pattern values", from, to)}
+		}
+	}
+
+	// Try slide-level fields via round-trip.
+	slideJSON, err := json.Marshal(slide)
+	if err != nil {
+		return appliedFix{Kind: "rename_field", Applied: false, Message: fmt.Sprintf("failed to marshal slide: %v", err)}
+	}
+	if renamed, ok := renameJSONKey(slideJSON, from, to); ok {
+		if err := json.Unmarshal(renamed, slide); err != nil {
+			return appliedFix{Kind: "rename_field", Applied: false, Message: fmt.Sprintf("failed to unmarshal renamed slide: %v", err)}
+		}
+		return appliedFix{Kind: "rename_field", Applied: true, Message: fmt.Sprintf("renamed %q to %q", from, to)}
+	}
+
+	return appliedFix{Kind: "rename_field", Applied: false, Message: fmt.Sprintf("field %q not found on slide", from)}
+}
+
+// renameJSONKey renames a top-level key in a JSON object. Returns the updated
+// JSON and true if the rename occurred.
+func renameJSONKey(raw json.RawMessage, from, to string) (json.RawMessage, bool) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil, false
+	}
+	val, ok := obj[from]
+	if !ok {
+		return nil, false
+	}
+	delete(obj, from)
+	obj[to] = val
+	result, err := json.Marshal(obj)
+	if err != nil {
+		return nil, false
+	}
+	return result, true
+}
+
+// applyReshapeValue replaces a field's value with a restructured version.
+// The fix params contain "path" (the field name) and "value" (the replacement
+// value in the target shape). This is used when a value has the wrong
+// structure (e.g., an array where an object is expected).
+func applyReshapeValue(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	rawValue, hasValue := params["value"]
+
+	if path == "" {
+		return appliedFix{Kind: "reshape_value", Applied: false, Message: "path parameter is required"}
+	}
+	if !hasValue {
+		return appliedFix{Kind: "reshape_value", Applied: false, Message: "value parameter is required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+
+	// Try pattern values first.
+	if slide.Pattern != nil && len(slide.Pattern.Values) > 0 {
+		var valuesMap map[string]any
+		if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+			return appliedFix{Kind: "reshape_value", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+		}
+		if _, exists := valuesMap[path]; exists {
+			valuesMap[path] = rawValue
+			newValues, err := json.Marshal(valuesMap)
+			if err != nil {
+				return appliedFix{Kind: "reshape_value", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+			}
+			slide.Pattern.Values = newValues
+			slide.ShapeGrid = nil // force re-expansion
+			return appliedFix{Kind: "reshape_value", Applied: true, Message: fmt.Sprintf("reshaped %q in pattern values", path)}
+		}
+	}
+
+	return appliedFix{Kind: "reshape_value", Applied: false, Message: fmt.Sprintf("field %q not found in pattern values", path)}
 }
 
 // boolParam extracts a boolean parameter with a default.

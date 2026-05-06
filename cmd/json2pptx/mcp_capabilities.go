@@ -217,8 +217,10 @@ func repairFixKinds() []string {
 	return []string{
 		"reduce_cell_text",
 		"reduce_text",
+		"rename_field",
 		"replace_color",
 		"reshape_grid",
+		"reshape_value",
 		"set_pattern_style",
 		"shorten_title",
 		"split_at_row",

@@ -81,6 +81,7 @@ func fixKindVocabulary() []string {
 		"rename_field",
 		"replace_value",
 		"reposition_shape",
+		"reshape_value",
 	}
 	sort.Strings(kinds)
 	return kinds

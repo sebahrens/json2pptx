@@ -431,7 +431,8 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `replace_value` | Replace an invalid value with a suggested one | `suggestion, allowed?` |
 | `provide_value` | Required field is missing | `field` |
 | `use_one_of` | Value must be one of an allowed set | `allowed` |
-| `rename_field` | Unknown field name close to a known one | `suggestion` |
+| `rename_field` | Unknown field name close to a known one | `from, to` |
+| `reshape_value` | Value has wrong structure (array vs object, etc.) | `path, value` |
 | `remove_field` | Unknown field should be removed | — |
 | `add_detail_or_resize` | Cell is underfilled — add more text or use a smaller grid | `current_density_pct: int` |
 
@@ -444,6 +445,8 @@ Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`,
 | `shorten_title` | Truncate the title placeholder text | `max_length: int` (default 50) |
 | `swap_layout` | Change the slide's `layout_id` | `layout_id: string` (required) |
 | `reduce_cell_text` | Truncate a shape_grid cell's text to fit a character budget (adds ellipsis) | `cell_path: string` (required, JSON Pointer e.g. `"/slides/0/shape_grid/rows/1/cells/2"`), `max_chars: int` (required, > 1). Handles markdown emphasis safely. Prefer rewriting content over truncation — use only when the agent should not rephrase the text. |
+| `rename_field` | Rename an unknown field to the correct name | `from: string` (required), `to: string` (required). Searches pattern values first, then slide-level fields. |
+| `reshape_value` | Replace a field's value with a restructured version | `path: string` (required, field name), `value: any` (required, replacement in correct shape). For pattern values only. |
 
 `repair_slide` also accepts `reduce_text` (`max_items` for bullets, `max_length` for text), `split_at_row` (`row` = rows per page, optional `title_suffix`, `repeat_headers`), and `use_one_of` (`path`, `value`). Unsupported kinds return `{applied: false, message: "kind_not_supported"}`.
 

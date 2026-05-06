@@ -4,6 +4,19 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.4.0 (2026-05-06)
+
+### Added
+
+- **`rename_field` fix kind** now registered in `repair_slide` tool, enabling
+  machine-driven field renames from unknown-key validation errors. Params:
+  `{from, to}`.
+- **`reshape_value` fix kind** added for structural value mismatches (e.g.,
+  array where object expected). Params: `{path, value}`. Registered in
+  `repair_slide` and `fixKindVocabulary`.
+- **`validate_pattern` output schema** now inlines the `fix` object schema
+  with `kind` (required) and `params` fields, replacing the untyped `object`.
+
 ## 4.3.0 (2026-05-06)
 
 ### Added
