@@ -153,7 +153,7 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 		if len(ws.Items) != phaseCount {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("workstreams[%d].items", i), ErrCodeCountMismatch,
 				fmt.Sprintf("roadmap-phased: workstreams[%d].items must have %d items (one per phase), got %d", i, phaseCount, len(ws.Items)),
-				fmt.Sprintf("provide exactly %d items in workstreams[%d].items (use empty string for inactive phases)", phaseCount, i)))
+				ResizeListFix(fmt.Sprintf("workstreams[%d].items", i), phaseCount)))
 		}
 
 		for j, item := range ws.Items {

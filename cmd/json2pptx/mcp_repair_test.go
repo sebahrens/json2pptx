@@ -1095,6 +1095,244 @@ func TestReduceCellText_NoShapeGrid(t *testing.T) {
 	}
 }
 
+// --- Tests for new structured fix kinds ---
+
+func patternSlideInput(patternName string, values map[string]any) PresentationInput {
+	valuesJSON, _ := json.Marshal(values)
+	return PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				LayoutID: "slideLayout2",
+				Pattern:  &PatternInput{Name: patternName, Values: valuesJSON},
+			},
+		},
+	}
+}
+
+func TestRepairProvideValue(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"columns": 2,
+		"rows":    1,
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "provide_value",
+		Params: map[string]any{"path": "title", "value": "My Title"},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]any
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	if vals["title"] != "My Title" {
+		t.Errorf("title = %v, want 'My Title'", vals["title"])
+	}
+}
+
+func TestRepairProvideValue_MissingParams(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{"columns": 2})
+
+	result := applyRepairFix(&input, 0, repairFixInput{Kind: "provide_value", Params: map[string]any{"path": "x"}})
+	if result.Applied {
+		t.Error("expected not applied when value is missing")
+	}
+}
+
+func TestRepairReplaceValue(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"columns": 10,
+		"rows":    1,
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "replace_value",
+		Params: map[string]any{"path": "columns", "value": float64(3)},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]any
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	if vals["columns"] != float64(3) {
+		t.Errorf("columns = %v, want 3", vals["columns"])
+	}
+}
+
+func TestRepairReplaceValue_NotFound(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{"columns": 2})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "replace_value",
+		Params: map[string]any{"path": "nonexistent", "value": 1},
+	})
+	if result.Applied {
+		t.Error("expected not applied for nonexistent field")
+	}
+}
+
+func TestRepairReduceItems(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"cells": []any{"a", "b", "c", "d", "e"},
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "reduce_items",
+		Params: map[string]any{"path": "cells", "max_items": float64(3)},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]any
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	arr := vals["cells"].([]any)
+	if len(arr) != 3 {
+		t.Errorf("cells len = %d, want 3", len(arr))
+	}
+}
+
+func TestRepairReduceItems_AlreadyWithin(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"cells": []any{"a", "b"},
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "reduce_items",
+		Params: map[string]any{"path": "cells", "max_items": float64(5)},
+	})
+	if result.Applied {
+		t.Error("expected not applied when already within limit")
+	}
+}
+
+func TestRepairAddItems(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"cells": []any{"a"},
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "add_items",
+		Params: map[string]any{"path": "cells", "items": []any{"b", "c"}},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]any
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	arr := vals["cells"].([]any)
+	if len(arr) != 3 {
+		t.Errorf("cells len = %d, want 3", len(arr))
+	}
+}
+
+func TestRepairResizeList_Truncate(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"cells": []any{"a", "b", "c", "d"},
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "resize_list",
+		Params: map[string]any{"path": "cells", "count": float64(2)},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]any
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	arr := vals["cells"].([]any)
+	if len(arr) != 2 {
+		t.Errorf("cells len = %d, want 2", len(arr))
+	}
+}
+
+func TestRepairResizeList_TooFew(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"cells": []any{"a"},
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "resize_list",
+		Params: map[string]any{"path": "cells", "count": float64(3)},
+	})
+	if result.Applied {
+		t.Error("expected not applied when list is shorter than target")
+	}
+	if !strings.Contains(result.Message, "add_items") {
+		t.Errorf("message should suggest add_items, got: %s", result.Message)
+	}
+}
+
+func TestRepairRemoveKey(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"columns": 2,
+		"bogus":   "value",
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "remove_key",
+		Params: map[string]any{"key": "bogus"},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]json.RawMessage
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	if _, exists := vals["bogus"]; exists {
+		t.Error("key 'bogus' still present after remove_key")
+	}
+}
+
+func TestRepairRemoveKey_NotFound(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{"columns": 2})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "remove_key",
+		Params: map[string]any{"key": "nonexistent"},
+	})
+	if result.Applied {
+		t.Error("expected not applied for nonexistent key")
+	}
+}
+
+func TestRepairRemoveField(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{
+		"columns":   2,
+		"extra_key": "should_be_removed",
+	})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "remove_field",
+		Params: map[string]any{"path": "extra_key"},
+	})
+	if !result.Applied {
+		t.Fatalf("expected applied, got: %s", result.Message)
+	}
+
+	var vals map[string]json.RawMessage
+	_ = json.Unmarshal(input.Slides[0].Pattern.Values, &vals)
+	if _, exists := vals["extra_key"]; exists {
+		t.Error("field 'extra_key' still present after remove_field")
+	}
+}
+
+func TestRepairRemoveField_NotFound(t *testing.T) {
+	input := patternSlideInput("card-grid", map[string]any{"columns": 2})
+
+	result := applyRepairFix(&input, 0, repairFixInput{
+		Kind:   "remove_field",
+		Params: map[string]any{"path": "nonexistent"},
+	})
+	if result.Applied {
+		t.Error("expected not applied for nonexistent field")
+	}
+}
+
 // textContent extracts the text from the first MCP content block.
 func textContent(result *mcp.CallToolResult) string {
 	for _, c := range result.Content {

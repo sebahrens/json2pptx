@@ -83,7 +83,7 @@ func TestValidationErrorSentinelInJoinedErrors(t *testing.T) {
 }
 
 func TestValidationErrorUnwrapUnknownCode(t *testing.T) {
-	ve := newValidationError("p", "f", "custom_code", "msg", "fix")
+	ve := newValidationError("p", "f", "custom_code", "msg", TextFix("fix"))
 	if ve.Unwrap() != nil {
 		t.Errorf("Unwrap() = %v, want nil for unknown code", ve.Unwrap())
 	}
@@ -143,6 +143,80 @@ func TestValidateProducesStructuredErrors(t *testing.T) {
 	}
 	if !found {
 		t.Error("no *ValidationError found in validation output")
+	}
+}
+
+func TestStructuredFixKinds(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      *ValidationError
+		wantKind string
+		wantKey  string // a key expected in params
+	}{
+		{"required_provides_value", errRequired("p", "title"), "provide_value", "path"},
+		{"max_length_reduces_text", errMaxLength("p", "body", 100, 200), "reduce_text", "max_length"},
+		{"out_of_range_replaces_value", errOutOfRange("p", "cols", 1, 5, 10), "replace_value", "min"},
+		{"unknown_key_removes", errUnknownKey("p", "overrides", "bad", "a, b"), "remove_key", "key"},
+		{"empty_value_provides", errEmptyValue("p", "title"), "provide_value", "path"},
+		{"count_mismatch_resizes", errCountMismatch("p", "cells", 4, 3, ""), "resize_list", "count"},
+		{"min_items_adds", errMinItems("p", "items", 2, 1, ""), "add_items", "min_items"},
+		{"max_items_reduces", errMaxItems("p", "items", 5, 10, ""), "reduce_items", "max_items"},
+		{"cell_override_replaces", errCellOverrideOutOfRange("p", 99, 3, ""), "replace_value", "min"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.err.Fix == nil {
+				t.Fatal("Fix is nil")
+			}
+			if tt.err.Fix.Kind != tt.wantKind {
+				t.Errorf("Fix.Kind = %q, want %q", tt.err.Fix.Kind, tt.wantKind)
+			}
+			if tt.err.Fix.Kind == "text" {
+				t.Error("Fix.Kind is still 'text' — must use a structured kind")
+			}
+			if _, ok := tt.err.Fix.Params[tt.wantKey]; !ok {
+				t.Errorf("Fix.Params missing key %q; got %v", tt.wantKey, tt.err.Fix.Params)
+			}
+		})
+	}
+}
+
+func TestRepairFixKindsIncludesNewKinds(t *testing.T) {
+	requiredKinds := []string{
+		"provide_value", "replace_value", "reduce_items",
+		"add_items", "resize_list", "remove_key", "remove_field",
+	}
+	for _, kind := range requiredKinds {
+		if !repairFixKinds[kind] {
+			t.Errorf("repairFixKinds missing %q", kind)
+		}
+	}
+}
+
+func TestRepairToolCallForNewKinds(t *testing.T) {
+	tests := []struct {
+		kind string
+	}{
+		{"provide_value"},
+		{"replace_value"},
+		{"reduce_items"},
+		{"add_items"},
+		{"resize_list"},
+		{"remove_key"},
+		{"remove_field"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.kind, func(t *testing.T) {
+			fix := &FixSuggestion{Kind: tt.kind, Params: map[string]any{"path": "test"}}
+			tc := RepairToolCall(0, fix)
+			if tc == nil {
+				t.Fatalf("RepairToolCall returned nil for kind %q", tt.kind)
+			}
+			if tc.Tool != "repair_slide" {
+				t.Errorf("Tool = %q, want repair_slide", tc.Tool)
+			}
+		})
 	}
 }
 

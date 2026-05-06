@@ -276,7 +276,6 @@ func checkColorField(color string, slideNum int, path string) *patterns.FitFindi
 	}
 
 	nearest := suggestNearestSchemeColor(hex)
-	suggestion := fmt.Sprintf("use scheme color %q instead of raw hex %q", nearest, color)
 
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
@@ -284,7 +283,10 @@ func checkColorField(color string, slideNum int, path string) *patterns.FitFindi
 			Path:    path,
 			Code:    "design_mode_violation",
 			Message: fmt.Sprintf("slide %d: %s uses raw hex color %q — constrained mode requires scheme colors (accent1-6, dk1, dk2, lt1, lt2, etc.)", slideNum, path, color),
-			Fix:     patterns.TextFix(suggestion),
+			Fix: &patterns.FixSuggestion{
+				Kind:   "use_semantic_color",
+				Params: map[string]any{"path": path, "value": nearest},
+			},
 		},
 		Action: "refuse",
 	}
@@ -300,7 +302,7 @@ func checkAbsoluteSize(size float64, slideNum int, path string) *patterns.FitFin
 			Path:    path,
 			Code:    "design_mode_violation",
 			Message: fmt.Sprintf("slide %d: %s uses absolute font size %.0fpt — constrained mode requires template-managed sizes; remove the size field to use template defaults", slideNum, path, size),
-			Fix:     patterns.TextFix("remove the \"size\" field to use the template's default body text size"),
+			Fix:     patterns.RemoveFieldFix(path),
 		},
 		Action: "refuse",
 	}
@@ -504,9 +506,7 @@ func designModeDiagnostics(violations []patterns.FitFinding) []diagnostics.Diagn
 			},
 		}
 		if v.Fix != nil {
-			if text, ok := v.Fix.Params["message"].(string); ok {
-				d.Fix = &diagnostics.Fix{Kind: "use_scheme_color", Params: map[string]any{"suggestion": text}}
-			}
+			d.Fix = &diagnostics.Fix{Kind: v.Fix.Kind, Params: v.Fix.Params}
 		}
 		diags = append(diags, d)
 	}

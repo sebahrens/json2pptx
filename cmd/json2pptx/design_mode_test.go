@@ -219,8 +219,8 @@ func TestDesignModeDiagnostics_IncludesNextToolCall(t *testing.T) {
 	if d.Fix == nil {
 		t.Fatal("Fix is nil, want non-nil")
 	}
-	if d.Fix.Kind != "use_scheme_color" {
-		t.Errorf("Fix.Kind = %q, want use_scheme_color", d.Fix.Kind)
+	if d.Fix.Kind != "use_semantic_color" {
+		t.Errorf("Fix.Kind = %q, want use_semantic_color", d.Fix.Kind)
 	}
 }
 

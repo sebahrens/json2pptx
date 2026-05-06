@@ -133,7 +133,7 @@ func (pq *pullQuote) Validate(values, overrides any, cellOverrides map[int]any) 
 	if v.AccentSide != "" && v.AccentSide != "left" && v.AccentSide != "right" && v.AccentSide != "none" {
 		errs = append(errs, newValidationError(name, "values.accent_side", ErrCodeUnknownEnum,
 			fmt.Sprintf("pull-quote: values.accent_side must be \"left\", \"right\", or \"none\", got %q", v.AccentSide),
-			"set accent_side to \"left\", \"right\", or \"none\""))
+			UseOneOfFix("values.accent_side", []string{"left", "right", "none"})))
 	}
 
 	return errors.Join(errs...)

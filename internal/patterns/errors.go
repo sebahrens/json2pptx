@@ -177,9 +177,55 @@ type FixSuggestion struct {
 }
 
 // TextFix creates a FixSuggestion with kind "text" wrapping a free-form message.
-// Used for existing pattern validation errors that predate structured fix kinds.
+// Deprecated: use structured fix kinds (provide_value, reduce_items, etc.) instead.
+// Retained only for external callers; internal constructors use structured kinds.
 func TextFix(msg string) *FixSuggestion {
 	return &FixSuggestion{Kind: "text", Params: map[string]any{"message": msg}}
+}
+
+// ProvideValueFix creates a fix suggestion telling the agent to supply a value.
+func ProvideValueFix(path string) *FixSuggestion {
+	return &FixSuggestion{Kind: "provide_value", Params: map[string]any{"path": path}}
+}
+
+// ReduceTextFix creates a fix suggestion to shorten text to a max length.
+func ReduceTextFix(path string, maxLength int) *FixSuggestion {
+	return &FixSuggestion{Kind: "reduce_text", Params: map[string]any{"path": path, "max_length": maxLength}}
+}
+
+// ReplaceValueFix creates a fix suggestion to set a field within bounds.
+func ReplaceValueFix(path string, min, max int) *FixSuggestion {
+	return &FixSuggestion{Kind: "replace_value", Params: map[string]any{"path": path, "min": min, "max": max}}
+}
+
+// RemoveKeyFix creates a fix suggestion to remove an unknown key.
+func RemoveKeyFix(key, path string, allowed []string) *FixSuggestion {
+	return &FixSuggestion{Kind: "remove_key", Params: map[string]any{"key": key, "path": path, "allowed": allowed}}
+}
+
+// ResizeListFix creates a fix suggestion to set a list to an exact count.
+func ResizeListFix(path string, count int) *FixSuggestion {
+	return &FixSuggestion{Kind: "resize_list", Params: map[string]any{"path": path, "count": count}}
+}
+
+// AddItemsFix creates a fix suggestion to add items to meet a minimum.
+func AddItemsFix(path string, minItems int) *FixSuggestion {
+	return &FixSuggestion{Kind: "add_items", Params: map[string]any{"path": path, "min_items": minItems}}
+}
+
+// ReduceItemsFix creates a fix suggestion to remove items to meet a maximum.
+func ReduceItemsFix(path string, maxItems int) *FixSuggestion {
+	return &FixSuggestion{Kind: "reduce_items", Params: map[string]any{"path": path, "max_items": maxItems}}
+}
+
+// UseOneOfFix creates a fix suggestion to replace a value with one of the allowed options.
+func UseOneOfFix(path string, allowed []string) *FixSuggestion {
+	return &FixSuggestion{Kind: "use_one_of", Params: map[string]any{"path": path, "allowed": allowed}}
+}
+
+// RemoveFieldFix creates a fix suggestion to remove a field entirely.
+func RemoveFieldFix(path string) *FixSuggestion {
+	return &FixSuggestion{Kind: "remove_field", Params: map[string]any{"path": path}}
 }
 
 // ValidationError is a structured validation error with a JSON path, error
@@ -212,7 +258,7 @@ func errRequired(pattern, path string) *ValidationError {
 		Path:    path,
 		Code:    ErrCodeRequired,
 		Message: fmt.Sprintf("%s: %s is required", pattern, path),
-		Fix:     TextFix(fmt.Sprintf("provide a non-empty value for %s", path)),
+		Fix:     ProvideValueFix(path),
 	}
 }
 
@@ -223,7 +269,7 @@ func errMaxLength(pattern, path string, maxLen, actualLen int) *ValidationError 
 		Path:    path,
 		Code:    ErrCodeMaxLength,
 		Message: fmt.Sprintf("%s: %s exceeds maxLength %d (%d chars)", pattern, path, maxLen, actualLen),
-		Fix:     TextFix(fmt.Sprintf("shorten %s to at most %d characters", path, maxLen)),
+		Fix:     ReduceTextFix(path, maxLen),
 	}
 }
 
@@ -234,18 +280,19 @@ func errOutOfRange(pattern, path string, min, max, actual int) *ValidationError 
 		Path:    path,
 		Code:    ErrCodeOutOfRange,
 		Message: fmt.Sprintf("%s: %s must be %d–%d, got %d", pattern, path, min, max, actual),
-		Fix:     TextFix(fmt.Sprintf("set %s to a value between %d and %d", path, min, max)),
+		Fix:     ReplaceValueFix(path, min, max),
 	}
 }
 
 // errUnknownKey creates an "unknown_key" validation error for cell_overrides.
 func errUnknownKey(pattern, path, key, allowedList string) *ValidationError {
+	allowed := strings.Split(allowedList, ", ")
 	return &ValidationError{
 		Pattern: pattern,
 		Path:    path,
 		Code:    ErrCodeUnknownKey,
 		Message: fmt.Sprintf("%s: %s contains unknown key %q; allowed keys per D15: %s", pattern, path, key, allowedList),
-		Fix:     TextFix(fmt.Sprintf("remove %q from %s or use one of: %s", key, path, allowedList)),
+		Fix:     RemoveKeyFix(key, path, allowed),
 	}
 }
 
@@ -256,7 +303,7 @@ func errEmptyValue(pattern, path string) *ValidationError {
 		Path:    path,
 		Code:    ErrCodeEmptyValue,
 		Message: fmt.Sprintf("%s: %s must not be empty", pattern, path),
-		Fix:     TextFix(fmt.Sprintf("provide a non-empty value for %s", path)),
+		Fix:     ProvideValueFix(path),
 	}
 }
 
@@ -272,7 +319,7 @@ func errCellOverrideOutOfRange(pattern string, idx, maxIdx int, hint string) *Va
 		Path:    path,
 		Code:    ErrCodeOutOfRange,
 		Message: msg,
-		Fix:     TextFix(fmt.Sprintf("use a cell_overrides key between 0 and %d", maxIdx)),
+		Fix:     ReplaceValueFix(path, 0, maxIdx),
 	}
 }
 
@@ -287,7 +334,7 @@ func errCountMismatch(pattern, path string, expected, actual int, hint string) *
 		Path:    path,
 		Code:    ErrCodeCountMismatch,
 		Message: msg,
-		Fix:     TextFix(fmt.Sprintf("provide exactly %d items in %s", expected, path)),
+		Fix:     ResizeListFix(path, expected),
 	}
 }
 
@@ -302,7 +349,7 @@ func errMinItems(pattern, path string, minCount, actual int, hint string) *Valid
 		Path:    path,
 		Code:    ErrCodeMinItems,
 		Message: msg,
-		Fix:     TextFix(fmt.Sprintf("provide at least %d items in %s", minCount, path)),
+		Fix:     AddItemsFix(path, minCount),
 	}
 }
 
@@ -317,7 +364,7 @@ func errMaxItems(pattern, path string, maxCount, actual int, hint string) *Valid
 		Path:    path,
 		Code:    ErrCodeMaxItems,
 		Message: msg,
-		Fix:     TextFix(fmt.Sprintf("reduce %s to at most %d items", path, maxCount)),
+		Fix:     ReduceItemsFix(path, maxCount),
 	}
 }
 
@@ -340,13 +387,13 @@ func ErrCalloutUnsupportedFor(pattern string, supportedPatterns []string) *Valid
 
 // newValidationError creates a ValidationError with explicit message and fix.
 // Use this when the canned constructors don't match the required message format.
-func newValidationError(pattern, path, code, message, fix string) *ValidationError {
+func newValidationError(pattern, path, code, message string, fix *FixSuggestion) *ValidationError {
 	return &ValidationError{
 		Pattern: pattern,
 		Path:    path,
 		Code:    code,
 		Message: message,
-		Fix:     TextFix(fix),
+		Fix:     fix,
 	}
 }
 

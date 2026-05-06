@@ -214,12 +214,12 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 	if len(vals.Rows) == 0 {
 		errs = append(errs, newValidationError(name, "rows", ErrCodeMinItems,
 			"comparison-2col: rows must contain at least 1 row",
-			"provide at least 1 row in rows"))
+			AddItemsFix("rows", 1)))
 	}
 	if len(vals.Rows) > 10 {
 		errs = append(errs, newValidationError(name, "rows", ErrCodeMaxItems,
 			fmt.Sprintf("comparison-2col: rows must contain at most 10 rows, got %d", len(vals.Rows)),
-			"reduce rows to at most 10"))
+			ReduceItemsFix("rows", 10)))
 	}
 
 	// Per-row validation

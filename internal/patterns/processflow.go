@@ -144,7 +144,7 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 		if step.Type != "" && step.Type != "step" && step.Type != "decision" {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("steps[%d].type", i), ErrCodeUnknownEnum,
 				fmt.Sprintf("process-flow: steps[%d].type must be \"step\" or \"decision\", got %q", i, step.Type),
-				"use \"step\" or \"decision\""))
+				UseOneOfFix(fmt.Sprintf("steps[%d].type", i), []string{"step", "decision"})))
 		}
 	}
 

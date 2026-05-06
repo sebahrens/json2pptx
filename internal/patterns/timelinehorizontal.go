@@ -133,12 +133,12 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 	if len(*stops) < 3 {
 		errs = append(errs, newValidationError(name, "values", ErrCodeMinItems,
 			fmt.Sprintf("timeline-horizontal: values must contain at least 3 stops, got %d (hint: use pattern icon-row for fewer items with icons)", len(*stops)),
-			"provide at least 3 stops in values"))
+			AddItemsFix("values", 3)))
 	}
 	if len(*stops) > 7 {
 		errs = append(errs, newValidationError(name, "values", ErrCodeMaxItems,
 			fmt.Sprintf("timeline-horizontal: values must contain at most 7 stops, got %d (hint: consider splitting across two slides)", len(*stops)),
-			"reduce values to at most 7 stops"))
+			ReduceItemsFix("values", 7)))
 	}
 
 	// Determine style for context-sensitive validation
@@ -166,7 +166,7 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 		if stop.EndDate != "" && style != "gantt" {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].end_date", i), ErrCodeUnknownEnum,
 				"end_date is only valid with style \"gantt\"",
-				"remove end_date or set overrides.style to \"gantt\""))
+				RemoveFieldFix(fmt.Sprintf("values[%d].end_date", i))))
 		}
 		if len(stop.Body) > 200 {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].body", i), 200, len(stop.Body)))

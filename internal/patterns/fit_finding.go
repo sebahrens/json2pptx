@@ -73,6 +73,13 @@ var repairFixKinds = map[string]bool{
 	"reshape_grid":        true,
 	"reshape_value":       true,
 	"set_pattern_style":   true,
+	"provide_value":       true,
+	"replace_value":       true,
+	"reduce_items":        true,
+	"add_items":           true,
+	"resize_list":         true,
+	"remove_key":          true,
+	"remove_field":        true,
 }
 
 // RepairToolCall builds a ToolCallSuggestion for the repair_slide tool from a

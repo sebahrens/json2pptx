@@ -202,6 +202,20 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyRenameField(input, slideIdx, fix.Params)
 	case "reshape_value":
 		return applyReshapeValue(input, slideIdx, fix.Params)
+	case "provide_value":
+		return applyProvideValue(input, slideIdx, fix.Params)
+	case "replace_value":
+		return applyReplaceValue(input, slideIdx, fix.Params)
+	case "reduce_items":
+		return applyReduceItems(input, slideIdx, fix.Params)
+	case "add_items":
+		return applyAddItems(input, slideIdx, fix.Params)
+	case "resize_list":
+		return applyResizeList(input, slideIdx, fix.Params)
+	case "remove_key":
+		return applyRemoveKey(input, slideIdx, fix.Params)
+	case "remove_field":
+		return applyRemoveField(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -1382,6 +1396,299 @@ func applyReshapeValue(input *PresentationInput, slideIdx int, params map[string
 	}
 
 	return appliedFix{Kind: "reshape_value", Applied: false, Message: fmt.Sprintf("field %q not found in pattern values", path)}
+}
+
+// applyProvideValue sets a field in pattern values to a value supplied by the agent.
+func applyProvideValue(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	rawValue, hasValue := params["value"]
+
+	if path == "" {
+		return appliedFix{Kind: "provide_value", Applied: false, Message: "path parameter is required"}
+	}
+	if !hasValue {
+		return appliedFix{Kind: "provide_value", Applied: false, Message: "value parameter is required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern != nil && len(slide.Pattern.Values) > 0 {
+		var valuesMap map[string]any
+		if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+			return appliedFix{Kind: "provide_value", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+		}
+		valuesMap[path] = rawValue
+		newValues, err := json.Marshal(valuesMap)
+		if err != nil {
+			return appliedFix{Kind: "provide_value", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+		}
+		slide.Pattern.Values = newValues
+		slide.ShapeGrid = nil
+		return appliedFix{Kind: "provide_value", Applied: true, Message: fmt.Sprintf("set %q in pattern values", path)}
+	}
+
+	return appliedFix{Kind: "provide_value", Applied: false, Message: "slide has no pattern values to update"}
+}
+
+// applyReplaceValue replaces a field value in pattern values with a new value
+// supplied by the agent (typically to bring it within valid bounds).
+func applyReplaceValue(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	rawValue, hasValue := params["value"]
+
+	if path == "" {
+		return appliedFix{Kind: "replace_value", Applied: false, Message: "path parameter is required"}
+	}
+	if !hasValue {
+		return appliedFix{Kind: "replace_value", Applied: false, Message: "value parameter is required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern != nil && len(slide.Pattern.Values) > 0 {
+		var valuesMap map[string]any
+		if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+			return appliedFix{Kind: "replace_value", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+		}
+		if _, exists := valuesMap[path]; !exists {
+			return appliedFix{Kind: "replace_value", Applied: false, Message: fmt.Sprintf("field %q not found in pattern values", path)}
+		}
+		valuesMap[path] = rawValue
+		newValues, err := json.Marshal(valuesMap)
+		if err != nil {
+			return appliedFix{Kind: "replace_value", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+		}
+		slide.Pattern.Values = newValues
+		slide.ShapeGrid = nil
+		return appliedFix{Kind: "replace_value", Applied: true, Message: fmt.Sprintf("replaced %q in pattern values", path)}
+	}
+
+	return appliedFix{Kind: "replace_value", Applied: false, Message: "slide has no pattern values to update"}
+}
+
+// applyReduceItems truncates an array field in pattern values to max_items.
+func applyReduceItems(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	maxItems := intParam(params, "max_items", 0)
+
+	if path == "" {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: "path parameter is required"}
+	}
+	if maxItems <= 0 {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: "max_items parameter must be > 0"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil || len(slide.Pattern.Values) == 0 {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: "slide has no pattern values"}
+	}
+
+	var valuesMap map[string]any
+	if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+	}
+
+	arr, ok := valuesMap[path].([]any)
+	if !ok {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: fmt.Sprintf("field %q is not an array", path)}
+	}
+	if len(arr) <= maxItems {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: fmt.Sprintf("%q already has %d items (max %d)", path, len(arr), maxItems)}
+	}
+
+	valuesMap[path] = arr[:maxItems]
+	newValues, err := json.Marshal(valuesMap)
+	if err != nil {
+		return appliedFix{Kind: "reduce_items", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+	}
+	slide.Pattern.Values = newValues
+	slide.ShapeGrid = nil
+	return appliedFix{Kind: "reduce_items", Applied: true, Message: fmt.Sprintf("reduced %q from %d to %d items", path, len(arr), maxItems)}
+}
+
+// applyAddItems is a placeholder for the add_items fix kind. Since the repair
+// tool cannot generate content, the agent must supply the items via the "items"
+// param. If not provided, returns applied=false with guidance.
+func applyAddItems(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	rawItems, hasItems := params["items"]
+
+	if path == "" {
+		return appliedFix{Kind: "add_items", Applied: false, Message: "path parameter is required"}
+	}
+	if !hasItems {
+		return appliedFix{Kind: "add_items", Applied: false, Message: "items parameter is required (array of items to append)"}
+	}
+
+	newItems, ok := rawItems.([]any)
+	if !ok {
+		return appliedFix{Kind: "add_items", Applied: false, Message: "items parameter must be an array"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil || len(slide.Pattern.Values) == 0 {
+		return appliedFix{Kind: "add_items", Applied: false, Message: "slide has no pattern values"}
+	}
+
+	var valuesMap map[string]any
+	if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+		return appliedFix{Kind: "add_items", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+	}
+
+	existing, ok := valuesMap[path].([]any)
+	if !ok {
+		existing = []any{}
+	}
+	valuesMap[path] = append(existing, newItems...)
+	newValues, err := json.Marshal(valuesMap)
+	if err != nil {
+		return appliedFix{Kind: "add_items", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+	}
+	slide.Pattern.Values = newValues
+	slide.ShapeGrid = nil
+	return appliedFix{Kind: "add_items", Applied: true, Message: fmt.Sprintf("added %d items to %q", len(newItems), path)}
+}
+
+// applyResizeList adjusts an array field in pattern values to exactly count items.
+// Truncates if too many; returns not-applied if too few (agent must supply items).
+func applyResizeList(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+	count := intParam(params, "count", 0)
+
+	if path == "" {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: "path parameter is required"}
+	}
+	if count <= 0 {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: "count parameter must be > 0"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil || len(slide.Pattern.Values) == 0 {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: "slide has no pattern values"}
+	}
+
+	var valuesMap map[string]any
+	if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+	}
+
+	arr, ok := valuesMap[path].([]any)
+	if !ok {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: fmt.Sprintf("field %q is not an array", path)}
+	}
+
+	if len(arr) == count {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: fmt.Sprintf("%q already has exactly %d items", path, count)}
+	}
+
+	if len(arr) > count {
+		valuesMap[path] = arr[:count]
+	} else {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: fmt.Sprintf("%q has %d items but needs %d; provide additional items via add_items", path, len(arr), count)}
+	}
+
+	newValues, err := json.Marshal(valuesMap)
+	if err != nil {
+		return appliedFix{Kind: "resize_list", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+	}
+	slide.Pattern.Values = newValues
+	slide.ShapeGrid = nil
+	return appliedFix{Kind: "resize_list", Applied: true, Message: fmt.Sprintf("resized %q from %d to %d items", path, len(arr), count)}
+}
+
+// applyRemoveKey removes a key from pattern values or overrides.
+func applyRemoveKey(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	key := stringParam(params, "key", "")
+
+	if key == "" {
+		return appliedFix{Kind: "remove_key", Applied: false, Message: "key parameter is required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+
+	// Try pattern overrides first (cell_overrides keys are typically the target).
+	if slide.Pattern != nil && len(slide.Pattern.Overrides) > 0 {
+		var overridesMap map[string]json.RawMessage
+		if err := json.Unmarshal(slide.Pattern.Overrides, &overridesMap); err == nil {
+			if _, exists := overridesMap[key]; exists {
+				delete(overridesMap, key)
+				newOverrides, err := json.Marshal(overridesMap)
+				if err == nil {
+					slide.Pattern.Overrides = newOverrides
+					slide.ShapeGrid = nil
+					return appliedFix{Kind: "remove_key", Applied: true, Message: fmt.Sprintf("removed %q from pattern overrides", key)}
+				}
+			}
+		}
+	}
+
+	// Try pattern values.
+	if slide.Pattern != nil && len(slide.Pattern.Values) > 0 {
+		var valuesMap map[string]json.RawMessage
+		if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err == nil {
+			if _, exists := valuesMap[key]; exists {
+				delete(valuesMap, key)
+				newValues, err := json.Marshal(valuesMap)
+				if err == nil {
+					slide.Pattern.Values = newValues
+					slide.ShapeGrid = nil
+					return appliedFix{Kind: "remove_key", Applied: true, Message: fmt.Sprintf("removed %q from pattern values", key)}
+				}
+			}
+		}
+	}
+
+	return appliedFix{Kind: "remove_key", Applied: false, Message: fmt.Sprintf("key %q not found in pattern values or overrides", key)}
+}
+
+// applyRemoveField removes a field from the slide's pattern values.
+func applyRemoveField(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	path := stringParam(params, "path", "")
+
+	if path == "" {
+		return appliedFix{Kind: "remove_field", Applied: false, Message: "path parameter is required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+
+	// Try pattern values.
+	if slide.Pattern != nil && len(slide.Pattern.Values) > 0 {
+		if removed, ok := removeJSONKey(slide.Pattern.Values, path); ok {
+			slide.Pattern.Values = removed
+			slide.ShapeGrid = nil
+			return appliedFix{Kind: "remove_field", Applied: true, Message: fmt.Sprintf("removed %q from pattern values", path)}
+		}
+	}
+
+	// Try slide-level removal via round-trip.
+	slideJSON, err := json.Marshal(slide)
+	if err != nil {
+		return appliedFix{Kind: "remove_field", Applied: false, Message: fmt.Sprintf("failed to marshal slide: %v", err)}
+	}
+	if removed, ok := removeJSONKey(slideJSON, path); ok {
+		if err := json.Unmarshal(removed, slide); err != nil {
+			return appliedFix{Kind: "remove_field", Applied: false, Message: fmt.Sprintf("failed to unmarshal slide: %v", err)}
+		}
+		return appliedFix{Kind: "remove_field", Applied: true, Message: fmt.Sprintf("removed %q from slide", path)}
+	}
+
+	return appliedFix{Kind: "remove_field", Applied: false, Message: fmt.Sprintf("field %q not found", path)}
+}
+
+// removeJSONKey removes a top-level key from a JSON object. Returns the updated
+// JSON and true if the key was found and removed.
+func removeJSONKey(raw json.RawMessage, key string) (json.RawMessage, bool) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil, false
+	}
+	if _, ok := obj[key]; !ok {
+		return nil, false
+	}
+	delete(obj, key)
+	result, err := json.Marshal(obj)
+	if err != nil {
+		return nil, false
+	}
+	return result, true
 }
 
 // boolParam extracts a boolean parameter with a default.

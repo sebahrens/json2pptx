@@ -145,7 +145,7 @@ func (s *swimlane) Validate(values, overrides any, cellOverrides map[int]any) er
 		} else if len(lane.Steps) != stepCount {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("lanes[%d].steps", i), ErrCodeCountMismatch,
 				fmt.Sprintf("swimlane: all lanes must have the same number of steps (lane 0 has %d, lane %d has %d)", stepCount, i, len(lane.Steps)),
-				"ensure all lanes have the same number of steps (use empty string for empty cells)"))
+				ResizeListFix(fmt.Sprintf("lanes[%d].steps", i), stepCount)))
 		}
 
 		for j, step := range lane.Steps {

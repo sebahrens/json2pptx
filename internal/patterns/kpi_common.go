@@ -162,7 +162,7 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 	if len(cells) != expectedCount {
 		errs = append(errs, newValidationError(patternName, "values", ErrCodeCountMismatch,
 			fmt.Sprintf("%s: values must contain exactly %d cells, got %d", patternName, expectedCount, len(cells)),
-			fmt.Sprintf("provide exactly %d cells in values", expectedCount)))
+			ResizeListFix("values", expectedCount)))
 
 		// Reverse-recommend: suggest alternative patterns that accept the actual cell count.
 		if swaps := SuggestSwap(Default(), patternName, len(cells), true); len(swaps) > 0 {

@@ -181,11 +181,11 @@ func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) e
 		if len(c.cell.Bullets) == 0 {
 			errs = append(errs, newValidationError(name, bulletsPath, ErrCodeMinItems,
 				fmt.Sprintf("bmc-canvas: %s.bullets must have at least 1 item (hint: use card-grid for cells without bullet lists)", c.cellName),
-				"provide at least 1 bullet in "+bulletsPath))
+				AddItemsFix(bulletsPath, 1)))
 		} else if len(c.cell.Bullets) > 10 {
 			errs = append(errs, newValidationError(name, bulletsPath, ErrCodeMaxItems,
 				fmt.Sprintf("bmc-canvas: %s.bullets exceeds maximum 10 items (%d items)", c.cellName, len(c.cell.Bullets)),
-				"reduce "+bulletsPath+" to at most 10 items"))
+				ReduceItemsFix(bulletsPath, 10)))
 		}
 		for i, bullet := range c.cell.Bullets {
 			bulletPath := fmt.Sprintf("%s.bullets[%d]", c.cellName, i)
