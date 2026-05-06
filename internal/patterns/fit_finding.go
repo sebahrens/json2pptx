@@ -80,6 +80,7 @@ var repairFixKinds = map[string]bool{
 	"resize_list":         true,
 	"remove_key":          true,
 	"remove_field":        true,
+	"autofix_visual":      true,
 }
 
 // RepairToolCall builds a ToolCallSuggestion for the repair_slide tool from a

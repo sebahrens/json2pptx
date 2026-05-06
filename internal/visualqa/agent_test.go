@@ -171,12 +171,13 @@ func TestSchemaErrorMessage(t *testing.T) {
 // TestFinding_ContractShape verifies the JSON field names in Finding are stable.
 func TestFinding_ContractShape(t *testing.T) {
 	f := Finding{
-		SlideIndex:  1,
-		SlideType:   "content",
-		Severity:    SeverityP1,
-		Category:    "text_overflow",
-		Description: "Title extends beyond boundary",
-		Location:    "top-right",
+		SlideIndex:     1,
+		SlideType:      "content",
+		Severity:       SeverityP1,
+		Category:       "text_overflow",
+		Description:    "Title extends beyond boundary",
+		Location:       "top-right",
+		SuggestedFixes: []SuggestedFix{{Kind: "reduce_cell_text"}},
 	}
 
 	b, err := json.Marshal(f)
@@ -415,6 +416,44 @@ func TestInspectAllConcurrent(t *testing.T) {
 	}
 	if report.TotalIssues != 0 {
 		t.Errorf("total issues = %d, want 0", report.TotalIssues)
+	}
+}
+
+func TestParseFindingsPopulatesSuggestedFixes(t *testing.T) {
+	info := SlideInfo{Index: 0, Type: "content", Title: "Test"}
+	text := `[{"severity":"P1","category":"text_overflow","description":"Title overflows","location":"top"}]`
+
+	findings, err := parseFindings(text, info)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("got %d findings, want 1", len(findings))
+	}
+
+	f := findings[0]
+	if len(f.SuggestedFixes) == 0 {
+		t.Fatal("SuggestedFixes not populated for text_overflow category")
+	}
+	if f.SuggestedFixes[0].Kind != "reduce_cell_text" {
+		t.Errorf("first suggested fix = %q, want reduce_cell_text", f.SuggestedFixes[0].Kind)
+	}
+}
+
+func TestParseFindingsNoFixesForUnmappedCategory(t *testing.T) {
+	info := SlideInfo{Index: 0, Type: "content", Title: "Test"}
+	text := `[{"severity":"P2","category":"image_quality","description":"Low res","location":"center"}]`
+
+	findings, err := parseFindings(text, info)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("got %d findings, want 1", len(findings))
+	}
+
+	if len(findings[0].SuggestedFixes) != 0 {
+		t.Errorf("expected no suggested fixes for image_quality, got %d", len(findings[0].SuggestedFixes))
 	}
 }
 

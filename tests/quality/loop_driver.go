@@ -36,6 +36,9 @@ const (
 	ActionForceSplit RepairAction = "force_split"
 	// ActionPass means all cells fit — no repair needed.
 	ActionPass RepairAction = "pass"
+	// ActionVisualQA means repair attempts are exhausted for some slides;
+	// the agent should escalate to visual QA inspection before forcing split.
+	ActionVisualQA RepairAction = "visual_qa"
 )
 
 // LoopConfig controls loop driver behavior.
@@ -45,6 +48,11 @@ type LoopConfig struct {
 	// ForceSplitOnCap controls whether the driver suggests force_split
 	// (true) or returns an error (false) when the repair cap is reached.
 	ForceSplitOnCap bool
+	// EnableVisualQA controls whether the driver escalates to visual QA
+	// inspection before forcing split. When true and repair cap is reached,
+	// the driver returns ActionVisualQA instead of ActionForceSplit on the
+	// first cap hit, giving the agent a chance to run autofix_visual.
+	EnableVisualQA bool
 }
 
 // SlideFinding groups fit findings for a single slide.
@@ -64,12 +72,24 @@ type LoopResult struct {
 
 // LoopState tracks per-slide repair attempt counts across iterations.
 type LoopState struct {
-	Attempts map[int]int // slide index → attempt count
+	Attempts     map[int]int  // slide index → attempt count
+	VisualQADone map[int]bool // slide index → true if visual QA was already attempted
 }
 
 // NewLoopState creates a fresh loop state.
 func NewLoopState() *LoopState {
-	return &LoopState{Attempts: make(map[int]int)}
+	return &LoopState{
+		Attempts:     make(map[int]int),
+		VisualQADone: make(map[int]bool),
+	}
+}
+
+// MarkVisualQADone records that visual QA has been attempted for the given
+// slide indices. After this, the next cap hit will escalate to force_split.
+func (s *LoopState) MarkVisualQADone(slideIndices []int) {
+	for _, idx := range slideIndices {
+		s.VisualQADone[idx] = true
+	}
 }
 
 // RunValidatePass executes json2pptx validate --fit-report on the given
@@ -146,8 +166,30 @@ func EvaluateFindings(findings []fitFinding, state *LoopState, cfg LoopConfig) L
 		}
 	}
 
-	// All failing slides are capped → force split or fail.
+	// All failing slides are capped → try visual QA, then force split or fail.
 	if len(repairSlides) == 0 && len(cappedSlides) > 0 {
+		// If visual QA is enabled and any capped slide hasn't been through
+		// visual QA yet, escalate to visual QA first.
+		if cfg.EnableVisualQA {
+			var needsVQA []int
+			for _, idx := range cappedSlides {
+				if !state.VisualQADone[idx] {
+					needsVQA = append(needsVQA, idx)
+				}
+			}
+			if len(needsVQA) > 0 {
+				return LoopResult{
+					Action:   ActionVisualQA,
+					CappedAt: needsVQA,
+					Message: fmt.Sprintf(
+						"Repair cap (%d attempts) reached for slide(s) %v. "+
+							"Escalating to visual QA inspection before forcing split.",
+						MaxRepairAttempts, needsVQA,
+					),
+				}
+			}
+		}
+
 		action := ActionForceSplit
 		msg := fmt.Sprintf(
 			"Repair cap (%d attempts) reached for slide(s) %v. "+

@@ -216,6 +216,7 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 func repairFixKinds() []string {
 	return []string{
 		"add_items",
+		"autofix_visual",
 		"provide_value",
 		"reduce_cell_text",
 		"reduce_items",

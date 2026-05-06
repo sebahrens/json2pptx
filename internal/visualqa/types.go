@@ -67,14 +67,21 @@ func (e *SchemaError) Error() string {
 	return fmt.Sprintf("schema validation failed: %v", e.Violations)
 }
 
+// SuggestedFix pairs a repair_slide fix kind with optional parameters.
+type SuggestedFix struct {
+	Kind   string         `json:"kind"`
+	Params map[string]any `json:"params,omitempty"`
+}
+
 // Finding represents a single visual defect detected by the QA agent.
 type Finding struct {
-	SlideIndex  int      `json:"slide_index"`
-	SlideType   string   `json:"slide_type"`
-	Severity    Severity `json:"severity"`
-	Category    string   `json:"category"`    // e.g. "text_overflow", "contrast", "alignment"
-	Description string   `json:"description"` // Human-readable description
-	Location    string   `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
+	SlideIndex    int            `json:"slide_index"`
+	SlideType     string         `json:"slide_type"`
+	Severity      Severity       `json:"severity"`
+	Category      string         `json:"category"`    // e.g. "text_overflow", "contrast", "alignment"
+	Description   string         `json:"description"` // Human-readable description
+	Location      string         `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
+	SuggestedFixes []SuggestedFix `json:"suggested_fixes,omitempty"` // Mapped repair_slide fix kinds
 }
 
 // String returns a human-readable representation of the finding.

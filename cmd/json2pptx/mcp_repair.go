@@ -18,6 +18,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/visualqa"
 )
 
 // --- Response types ---
@@ -64,6 +65,7 @@ Supported fix kinds (V1):
 - reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
 - set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
 - reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
+- autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
@@ -216,6 +218,8 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyRemoveKey(input, slideIdx, fix.Params)
 	case "remove_field":
 		return applyRemoveField(input, slideIdx, fix.Params)
+	case "autofix_visual":
+		return applyAutofixVisual(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -627,6 +631,64 @@ func contentMatchesPath(slideIdx, contentIdx int, placeholderID, path string) bo
 		return true
 	}
 	return slidepath.HasPrefix(path, slidepath.ContentIndex(slideIdx, contentIdx))
+}
+
+// applyAutofixVisual accepts a visual QA finding and applies the first
+// successful fix from the category's mapped fix kinds. The params must include
+// "category" (the visual QA finding category). Additional params are forwarded
+// to the underlying fix kind handler.
+func applyAutofixVisual(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	category := stringParam(params, "category", "")
+	if category == "" {
+		return appliedFix{Kind: "autofix_visual", Applied: false, Message: "category parameter is required (visual QA finding category)"}
+	}
+
+	candidates := visualqa.SuggestedFixesForCategory(category)
+	if len(candidates) == 0 {
+		return appliedFix{Kind: "autofix_visual", Applied: false, Message: fmt.Sprintf("no repair mapping for visual QA category %q", category)}
+	}
+
+	// Try each candidate fix kind in order until one succeeds.
+	for _, candidate := range candidates {
+		// Merge candidate params with caller-supplied params (caller wins).
+		mergedParams := make(map[string]any)
+		for k, v := range candidate.Params {
+			mergedParams[k] = v
+		}
+		for k, v := range params {
+			if k == "category" {
+				continue // don't forward the category itself
+			}
+			mergedParams[k] = v
+		}
+
+		result := applyRepairFix(input, slideIdx, repairFixInput{
+			Kind:   candidate.Kind,
+			Params: mergedParams,
+		})
+		if result.Applied {
+			return appliedFix{
+				Kind:    "autofix_visual",
+				Applied: true,
+				Message: fmt.Sprintf("applied %s for %s category", candidate.Kind, category),
+			}
+		}
+	}
+
+	return appliedFix{
+		Kind:    "autofix_visual",
+		Applied: false,
+		Message: fmt.Sprintf("none of the candidate fixes %v succeeded for category %q", fixKindNames(candidates), category),
+	}
+}
+
+// fixKindNames extracts the kind names from a slice of SuggestedFix.
+func fixKindNames(fixes []visualqa.SuggestedFix) []string {
+	names := make([]string, len(fixes))
+	for i, f := range fixes {
+		names[i] = f.Kind
+	}
+	return names
 }
 
 // --- Helpers ---

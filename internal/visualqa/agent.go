@@ -245,12 +245,13 @@ func parseFindings(text string, info SlideInfo) ([]Finding, error) {
 			violations = append(violations, fmt.Sprintf("finding[%d]: unknown category %q", i, r.Category))
 		}
 		f := Finding{
-			SlideIndex:  info.Index,
-			SlideType:   info.Type,
-			Severity:    sev,
-			Category:    r.Category,
-			Description: r.Description,
-			Location:    r.Location,
+			SlideIndex:     info.Index,
+			SlideType:      info.Type,
+			Severity:       sev,
+			Category:       r.Category,
+			Description:    r.Description,
+			Location:       r.Location,
+			SuggestedFixes: SuggestedFixesForCategory(r.Category),
 		}
 		findings = append(findings, f)
 	}
