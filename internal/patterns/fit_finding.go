@@ -68,6 +68,7 @@ var repairFixKinds = map[string]bool{
 	"split_pattern":       true,
 	"swap_layout":         true,
 	"use_one_of":          true,
+	"reshape_grid":        true,
 }
 
 // RepairToolCall builds a ToolCallSuggestion for the repair_slide tool from a

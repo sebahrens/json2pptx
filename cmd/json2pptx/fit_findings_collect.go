@@ -258,54 +258,66 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 
 		// Placeholder overflow and title wraps.
 		if layout != nil {
-			for _, content := range slide.Content {
-				ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
-				if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
-					continue
-				}
-
-				paragraphs := extractContentParagraphs(&content)
-				if len(paragraphs) == 0 {
-					continue
-				}
-
-				path := slidepath.Content(si, content.PlaceholderID)
-
-				if ph.Type == types.PlaceholderTitle {
-					if f := generator.DetectTitleWraps(generator.TitleWrapsInput{
-						SlideIndex:  si,
-						Path:        path,
-						Title:       strings.Join(paragraphs, " "),
-						WidthEMU:    ph.Bounds.Width,
-						HeightEMU:   ph.Bounds.Height,
-						FontSizeHPt: ph.FontSize,
-						FontName:    ph.FontFamily,
-					}); f != nil {
-						findings = append(findings, *f)
-					}
-				} else if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
-					if f := generator.DetectPlaceholderOverflow(generator.PlaceholderOverflowInput{
-						SlideIndex:  si,
-						Path:        path,
-						Paragraphs:  paragraphs,
-						WidthEMU:    ph.Bounds.Width,
-						HeightEMU:   ph.Bounds.Height,
-						FontSizeHPt: ph.FontSize,
-						FontName:    ph.FontFamily,
-					}); f != nil {
-						findings = append(findings, *f)
-					}
-				}
-			}
+			findings = append(findings, checkPlaceholderFindings(&slide, si, layout)...)
 		}
 
 		// Shape grid: footer collision and bounds overflow.
 		if slide.ShapeGrid != nil && layout != nil {
+			patternName := ""
+			if slide.Pattern != nil {
+				patternName = slide.Pattern.Name
+			}
 			findings = append(findings,
-				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, layout, footerEnabled)...)
+				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, layout, footerEnabled, patternName)...)
 		}
 	}
 
+	return findings
+}
+
+// checkPlaceholderFindings checks a slide's content placeholders for title
+// wraps and body overflow.
+func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMetadata) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+	for _, content := range slide.Content {
+		ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
+		if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
+			continue
+		}
+
+		paragraphs := extractContentParagraphs(&content)
+		if len(paragraphs) == 0 {
+			continue
+		}
+
+		path := slidepath.Content(si, content.PlaceholderID)
+
+		if ph.Type == types.PlaceholderTitle {
+			if f := generator.DetectTitleWraps(generator.TitleWrapsInput{
+				SlideIndex:  si,
+				Path:        path,
+				Title:       strings.Join(paragraphs, " "),
+				WidthEMU:    ph.Bounds.Width,
+				HeightEMU:   ph.Bounds.Height,
+				FontSizeHPt: ph.FontSize,
+				FontName:    ph.FontFamily,
+			}); f != nil {
+				findings = append(findings, *f)
+			}
+		} else if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+			if f := generator.DetectPlaceholderOverflow(generator.PlaceholderOverflowInput{
+				SlideIndex:  si,
+				Path:        path,
+				Paragraphs:  paragraphs,
+				WidthEMU:    ph.Bounds.Width,
+				HeightEMU:   ph.Bounds.Height,
+				FontSizeHPt: ph.FontSize,
+				FontName:    ph.FontFamily,
+			}); f != nil {
+				findings = append(findings, *f)
+			}
+		}
+	}
 	return findings
 }
 
@@ -363,7 +375,7 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 
 // checkShapeGridStructural checks shape_grid cells for footer collision,
 // bounds overflow, and sparse layout using estimated cell positions.
-func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, footerEnabled bool) []patterns.FitFinding {
+func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, footerEnabled bool, patternName string) []patterns.FitFinding {
 	if len(grid.Rows) == 0 {
 		return nil
 	}
@@ -389,7 +401,7 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 	// Sparse layout detection for FillHeight grids (pattern-expanded)
 	// where content may occupy a small fraction of the allocated bounds.
 	if grid.FillHeight {
-		if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight); f != nil {
+		if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight, patternName); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -408,7 +420,7 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 
 // detectSparseLayoutForGrid estimates the content height of a shape grid and
 // compares it against the bounds height to detect mostly-empty slides.
-func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64) *patterns.FitFinding {
+func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, patternName string) *patterns.FitFinding {
 	boundsH := estimateGridBoundsHeightEMU(grid, slideHeight)
 	if boundsH <= 0 {
 		return nil
@@ -419,12 +431,28 @@ func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, s
 		return nil
 	}
 
+	// Count filled slots and grid dimensions for reshape recommendation.
+	numCols := inferGridColumns(grid)
+	numRows := len(grid.Rows)
+	filledSlots := 0
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil {
+				filledSlots++
+			}
+		}
+	}
+
 	path := slidepath.ShapeGrid(slideIdx)
 	return generator.DetectSparseLayout(generator.SparseLayoutInput{
-		SlideIndex:      slideIdx,
-		Path:            path,
-		BoundsHeightEMU: boundsH,
+		SlideIndex:       slideIdx,
+		Path:             path,
+		BoundsHeightEMU:  boundsH,
 		ContentHeightEMU: contentH,
+		PatternName:      patternName,
+		FilledSlots:      filledSlots,
+		GridRows:         numRows,
+		GridCols:         numCols,
 	})
 }
 
