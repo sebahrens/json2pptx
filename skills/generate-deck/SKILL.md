@@ -169,7 +169,7 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Rule 16).
    - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Rule 18).
 5. **Repair.** Prefer `repair_slide` (MCP) over hand-editing JSON — it accepts the same `Fix.Kind` vocabulary fit-report emits and patches one slide without regenerating the deck. Pass the deck JSON, the 0-based `slide_index`, and a `fixes` array of `{kind, params}` directives. Returns the patched deck plus post-patch fit findings for the modified slide. Supported `repair_slide` apply-only kinds are a *superset* of the fit-report enum — see "Fix kinds for `repair_slide`" below. Common repairs:
-   - Text clipping or overflow → `repair_slide` with `{kind:"reduce_text", params:{max_items|max_length}}`, `{kind:"shorten_title", params:{max_length}}`, or `{kind:"split_at_row", params:{row}}`. As a last resort, lower font size or increase cell/row allocation in JSON.
+   - Text clipping or overflow → `repair_slide` with `{kind:"reduce_text", params:{max_items|max_length}}`, `{kind:"shorten_title", params:{max_length}}`, or `{kind:"split_at_row", params:{row}}`. For shape_grid cells specifically, `{kind:"reduce_cell_text", params:{cell_path, max_chars}}` truncates a single cell's text to a character budget (with ellipsis). Prefer rewriting content to fit over truncation; use `reduce_cell_text` only when the agent should not rephrase the text (e.g., user-supplied verbatim content). As a last resort, lower font size or increase cell/row allocation in JSON.
    - Wrong layout for the content → `repair_slide` with `{kind:"swap_layout", params:{layout_id}}`.
    - Surprise gray text from contrast auto-fix (visible as a `contrast_autofixed` finding) → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Rule 16).
    - For a no-side-effect dry run before regenerating, call `preview_presentation_plan` to inspect layout selection, placeholder mapping, and fit findings without producing a PPTX.
@@ -211,7 +211,14 @@ Compare your planned content against `max_chars` for each cell. Adjust before re
 
 **Phase 3 RENDER.** The pre-emit checklist (above) includes: *"Every cell at 60–110% density."* Verify this by checking that your text length per cell falls within the `max_chars` range from `expand_pattern`.
 
-**Phase 4 REPAIR.** If `fit_overflow` or `density_exceeded` findings appear after generation, use `repair_slide` with `fix.kind: reduce_text` or `split_at_row` to bring cells back into the optimal band.
+**Phase 4 REPAIR.** If `fit_overflow` or `density_exceeded` findings appear after generation, apply this decision sequence:
+
+1. **Rewrite content** to fit the budget — shorter sentences, fewer bullets, tighter phrasing. This preserves meaning and produces richer output than mechanical truncation.
+2. **Swap layout** — if the content genuinely needs more space, use `repair_slide` with `swap_layout` or switch to a pattern with higher capacity (see `layout_suggestions[]` from `expand_pattern`).
+3. **`reduce_text` / `split_at_row`** — use `repair_slide` with `fix.kind: reduce_text` or `split_at_row` to bring cells back into the optimal band.
+4. **`reduce_cell_text`** — truncates a single shape_grid cell to `max_chars` with an ellipsis. Use only when the agent should not rephrase the text (e.g., user-supplied verbatim content that the agent shouldn't alter). After applying, re-validate with `fit_report: true` to confirm zero residual `cell_overflow` findings.
+
+**Anti-pattern:** do not use `reduce_cell_text` as the default response to overflow. It is a last-resort fallback, not a substitute for the upstream Text Capacity Awareness loop (Phase 2 VARY).
 
 ### Decision Rules
 
@@ -237,7 +244,7 @@ When `expand_pattern` returns cells outside the optimal band:
 
 - **`expand_pattern`** — returns `cell_budgets[]`, `capacity_warnings[]`, and `layout_suggestions[]` for pre-generation density checks and alternative layout recommendations
 - **`validate_input`** (with `fit_report: true`) — post-generation findings including `fit_overflow` and `density_exceeded`
-- **`repair_slide`** — apply `reduce_text` or `split_at_row` fixes to bring cells into the optimal band
+- **`repair_slide`** — apply `reduce_text`, `split_at_row`, or `reduce_cell_text` fixes to bring cells into the optimal band (see Phase 4 REPAIR decision sequence above)
 
 ---
 
@@ -407,6 +414,7 @@ Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`,
 |------|-----------|--------|
 | `shorten_title` | Truncate the title placeholder text | `max_length: int` (default 50) |
 | `swap_layout` | Change the slide's `layout_id` | `layout_id: string` (required) |
+| `reduce_cell_text` | Truncate a shape_grid cell's text to fit a character budget (adds ellipsis) | `cell_path: string` (required, JSON Pointer e.g. `"/slides/0/shape_grid/rows/1/cells/2"`), `max_chars: int` (required, > 1). Handles markdown emphasis safely. Prefer rewriting content over truncation — use only when the agent should not rephrase the text. |
 
 `repair_slide` also accepts `reduce_text` (`max_items` for bullets, `max_length` for text), `split_at_row` (`row` = rows per page, optional `title_suffix`, `repeat_headers`), and `use_one_of` (`path`, `value`). Unsupported kinds return `{applied: false, message: "kind_not_supported"}`.
 
