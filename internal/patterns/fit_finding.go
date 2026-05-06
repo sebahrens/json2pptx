@@ -60,15 +60,17 @@ func ActionRank(action string) int {
 
 // repairFixKinds lists fix kinds that map to the repair_slide tool.
 var repairFixKinds = map[string]bool{
-	"reduce_text":        true,
-	"split_at_row":       true,
-	"shorten_title":      true,
-	"replace_color":      true,
+	"reduce_text":         true,
+	"split_at_row":        true,
+	"shorten_title":       true,
+	"replace_color":       true,
 	"use_semantic_color":  true,
 	"split_pattern":       true,
 	"swap_layout":         true,
+	"swap_pattern":        true,
 	"use_one_of":          true,
 	"reshape_grid":        true,
+	"set_pattern_style":   true,
 }
 
 // RepairToolCall builds a ToolCallSuggestion for the repair_slide tool from a

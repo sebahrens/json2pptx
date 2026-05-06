@@ -14,6 +14,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -59,6 +60,9 @@ Supported fix kinds (V1):
 - use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
 - replace_color: Replace one color with another in shape_grid fills. Params: from (string, color to find), to (string, replacement color). Also accepts original_color/replacement_color from contrast_autofixed findings.
 - use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
+- swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
+- reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
+- set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
 
 Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
@@ -185,6 +189,12 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyUseSemanticColor(input, slideIdx, fix.Params)
 	case "split_pattern":
 		return applySplitPattern(input, slideIdx, fix.Params)
+	case "swap_pattern":
+		return applySwapPattern(input, slideIdx, fix.Params)
+	case "reshape_grid":
+		return applyReshapeGrid(input, slideIdx, fix.Params)
+	case "set_pattern_style":
+		return applySetPatternStyle(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
 			Kind:    fix.Kind,
@@ -847,6 +857,223 @@ func appendTitleSuffix(content []ContentInput, suffix string) {
 			return
 		}
 	}
+}
+
+// applySwapPattern replaces the slide's pattern with a new one, carrying over
+// values from the params. This allows the repair loop to switch e.g. card-grid
+// to kpi-3up without regenerating the entire deck.
+func applySwapPattern(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	to := stringParam(params, "to", "")
+	if to == "" {
+		return appliedFix{Kind: "swap_pattern", Applied: false, Message: "to parameter is required (target pattern name)"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil {
+		return appliedFix{Kind: "swap_pattern", Applied: false, Message: "slide has no pattern to swap"}
+	}
+
+	// Verify target pattern exists in the registry.
+	reg := patterns.Default()
+	if _, ok := reg.Get(to); !ok {
+		msg := fmt.Sprintf("unknown target pattern %q", to)
+		if suggestion, ok := reg.Suggest(to); ok {
+			msg += fmt.Sprintf("; did you mean %q?", suggestion)
+		}
+		return appliedFix{Kind: "swap_pattern", Applied: false, Message: msg}
+	}
+
+	// Update the pattern name.
+	slide.Pattern.Name = to
+
+	// If new values are provided, replace them.
+	if rawValues, ok := params["values"]; ok {
+		valuesJSON, err := json.Marshal(rawValues)
+		if err != nil {
+			return appliedFix{Kind: "swap_pattern", Applied: false, Message: fmt.Sprintf("failed to marshal values: %v", err)}
+		}
+		slide.Pattern.Values = valuesJSON
+	}
+
+	// If new overrides are provided, replace them.
+	if rawOverrides, ok := params["overrides"]; ok {
+		overridesJSON, err := json.Marshal(rawOverrides)
+		if err != nil {
+			return appliedFix{Kind: "swap_pattern", Applied: false, Message: fmt.Sprintf("failed to marshal overrides: %v", err)}
+		}
+		slide.Pattern.Overrides = overridesJSON
+	}
+
+	// If new cell_overrides are provided, replace them.
+	if rawCellOverrides, ok := params["cell_overrides"]; ok {
+		coMap, ok := rawCellOverrides.(map[string]any)
+		if ok {
+			cellOverrides := make(map[string]json.RawMessage, len(coMap))
+			for k, v := range coMap {
+				data, err := json.Marshal(v)
+				if err != nil {
+					continue
+				}
+				cellOverrides[k] = data
+			}
+			slide.Pattern.CellOverrides = cellOverrides
+		}
+	}
+
+	// Clear any pre-expanded shape_grid — the pipeline will re-expand the pattern.
+	slide.ShapeGrid = nil
+
+	return appliedFix{Kind: "swap_pattern", Applied: true, Message: fmt.Sprintf("swapped to pattern %q", to)}
+}
+
+// applyReshapeGrid changes the grid dimensions by adjusting columns and/or
+// redistributing cells into new rows. This allows fixing sparse layouts by
+// changing the grid shape without changing the pattern or content.
+func applyReshapeGrid(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	slide := &input.Slides[slideIdx]
+
+	// If the slide uses a pattern, modify its values to change shape.
+	if slide.Pattern != nil {
+		return reshapePatternValues(slide, params)
+	}
+
+	// If the slide has a raw shape_grid, reshape it directly.
+	if slide.ShapeGrid != nil {
+		return reshapeRawGrid(slide, params)
+	}
+
+	return appliedFix{Kind: "reshape_grid", Applied: false, Message: "slide has no shape_grid or pattern to reshape"}
+}
+
+// reshapePatternValues updates rows/columns fields in the pattern's values JSON.
+func reshapePatternValues(slide *SlideInput, params map[string]any) appliedFix {
+	// Parse current values as a generic map.
+	var valuesMap map[string]any
+	if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+		return appliedFix{Kind: "reshape_grid", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+	}
+
+	modified := false
+
+	// Update rows if specified.
+	if rows := intParam(params, "rows", 0); rows > 0 {
+		valuesMap["rows"] = rows
+		modified = true
+	}
+
+	// Update columns if specified — accept int or []int.
+	if rawCols, ok := params["columns"]; ok {
+		valuesMap["columns"] = rawCols
+		modified = true
+	}
+
+	if !modified {
+		return appliedFix{Kind: "reshape_grid", Applied: false, Message: "rows or columns parameter is required"}
+	}
+
+	newValues, err := json.Marshal(valuesMap)
+	if err != nil {
+		return appliedFix{Kind: "reshape_grid", Applied: false, Message: fmt.Sprintf("failed to marshal updated values: %v", err)}
+	}
+	slide.Pattern.Values = newValues
+
+	// Clear pre-expanded grid so the pipeline re-expands with new dimensions.
+	slide.ShapeGrid = nil
+
+	return appliedFix{Kind: "reshape_grid", Applied: true}
+}
+
+// reshapeRawGrid redistributes cells in an existing shape_grid into new row/column layout.
+func reshapeRawGrid(slide *SlideInput, params map[string]any) appliedFix {
+	grid := slide.ShapeGrid
+	newCols := intParam(params, "columns", 0)
+	newRows := intParam(params, "rows", 0)
+
+	if newCols <= 0 && newRows <= 0 {
+		return appliedFix{Kind: "reshape_grid", Applied: false, Message: "rows or columns parameter is required"}
+	}
+
+	// Collect all non-nil cells from the existing grid.
+	var cells []*jsonschema.GridCellInput
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil {
+				cells = append(cells, cell)
+			}
+		}
+	}
+
+	if len(cells) == 0 {
+		return appliedFix{Kind: "reshape_grid", Applied: false, Message: "grid has no cells to redistribute"}
+	}
+
+	// Determine target layout.
+	if newCols <= 0 {
+		newCols = len(cells) // single row
+		if newRows > 0 {
+			newCols = (len(cells) + newRows - 1) / newRows
+		}
+	}
+	if newRows <= 0 {
+		newRows = (len(cells) + newCols - 1) / newCols
+	}
+
+	// Redistribute cells into new rows.
+	newGridRows := make([]jsonschema.GridRowInput, 0, newRows)
+	cellIdx := 0
+	for r := 0; r < newRows && cellIdx < len(cells); r++ {
+		rowCells := make([]*jsonschema.GridCellInput, newCols)
+		for c := 0; c < newCols && cellIdx < len(cells); c++ {
+			rowCells[c] = cells[cellIdx]
+			cellIdx++
+		}
+		newGridRows = append(newGridRows, jsonschema.GridRowInput{Cells: rowCells})
+	}
+
+	grid.Rows = newGridRows
+
+	// Update the columns field to reflect new column count.
+	colJSON, _ := json.Marshal(newCols)
+	grid.Columns = colJSON
+
+	return appliedFix{Kind: "reshape_grid", Applied: true, Message: fmt.Sprintf("reshaped to %d columns × %d rows", newCols, len(newGridRows))}
+}
+
+// applySetPatternStyle changes the "style" field in a pattern's overrides.
+// This allows switching e.g. timeline-horizontal from "dots" to "chevron"
+// without regenerating the slide content.
+func applySetPatternStyle(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	style := stringParam(params, "style", "")
+	if style == "" {
+		return appliedFix{Kind: "set_pattern_style", Applied: false, Message: "style parameter is required"}
+	}
+
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil {
+		return appliedFix{Kind: "set_pattern_style", Applied: false, Message: "slide has no pattern"}
+	}
+
+	// Parse existing overrides (may be nil/empty).
+	var overridesMap map[string]any
+	if len(slide.Pattern.Overrides) > 0 {
+		if err := json.Unmarshal(slide.Pattern.Overrides, &overridesMap); err != nil {
+			overridesMap = make(map[string]any)
+		}
+	} else {
+		overridesMap = make(map[string]any)
+	}
+
+	overridesMap["style"] = style
+	newOverrides, err := json.Marshal(overridesMap)
+	if err != nil {
+		return appliedFix{Kind: "set_pattern_style", Applied: false, Message: fmt.Sprintf("failed to marshal overrides: %v", err)}
+	}
+	slide.Pattern.Overrides = newOverrides
+
+	// Clear pre-expanded grid so the pipeline re-expands with new style.
+	slide.ShapeGrid = nil
+
+	return appliedFix{Kind: "set_pattern_style", Applied: true, Message: fmt.Sprintf("set style to %q", style)}
 }
 
 // boolParam extracts a boolean parameter with a default.

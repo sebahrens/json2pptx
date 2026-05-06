@@ -213,10 +213,13 @@ func repairFixKinds() []string {
 	return []string{
 		"reduce_text",
 		"replace_color",
+		"reshape_grid",
+		"set_pattern_style",
 		"shorten_title",
 		"split_at_row",
 		"split_pattern",
 		"swap_layout",
+		"swap_pattern",
 		"use_one_of",
 		"use_semantic_color",
 	}
