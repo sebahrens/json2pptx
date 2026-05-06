@@ -69,6 +69,31 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 ## Workflow: Plan → Vary → Render → Repair
 
+### PRECONDITION: Validate Before You Generate
+
+**You MUST NOT call `generate_presentation` until all of the following have succeeded for the current deck:**
+
+1. **Pattern discovery.** For each slide that uses a pattern, call `recommend_pattern` or `list_patterns` to confirm the pattern exists and fits the intent. Do not guess pattern names from memory.
+2. **Schema inspection.** For each chosen pattern, call `show_pattern` to retrieve the value schema and `example_values`. Use these to structure your `values` object — do not invent field names or guess the expected shape.
+3. **Density pre-flight.** For each pattern slide, call `expand_pattern` with your populated values to confirm density is in the 60–110% optimal band. Fix underfilled or overflowing cells before proceeding.
+4. **Input validation.** Once the full deck JSON is assembled, call `validate_input` (with `fit_report: true`) to catch schema errors, unknown keys, scope mistakes, and fit issues. Fix all errors before generating.
+
+**Why this matters.** The six most common first-attempt failures are: wrong content shape for a pattern's values schema, missing geometry fields, misspelled override keys, wrong row format (array vs object), `design_mode`/`contrast_check` scope confusion, and field-name typos that silently pass without `strict_unknown_keys`. Steps 1–4 above catch all six before any PPTX is produced — saving a full generate → render → inspect → repair cycle.
+
+**The sequence in practice:**
+
+```
+list_patterns / recommend_pattern  →  pick patterns
+show_pattern (per pattern)         →  learn value schemas + example_values
+expand_pattern (per pattern slide) →  confirm density, get cell_budgets
+validate_input (full deck JSON)    →  catch schema + fit errors
+generate_presentation              →  only after steps above pass
+```
+
+Skipping these steps and calling `generate_presentation` directly is a workflow violation. If time pressure demands it, at minimum call `validate_input` — it is the cheapest single gate that catches the most errors.
+
+---
+
 ### Phase 1: PLAN — Design the Deck Outline
 
 Before writing any JSON, produce a short outline:
