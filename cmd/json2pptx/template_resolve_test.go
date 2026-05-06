@@ -185,7 +185,6 @@ func TestListAvailableTemplates_IncludesEmbedded(t *testing.T) {
 		"forest-green":    false,
 		"warm-coral":      false,
 		"modern-template": false,
-		"pwc-template":    false,
 	}
 	for _, n := range names {
 		if _, ok := want[n]; ok {

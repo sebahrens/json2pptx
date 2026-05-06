@@ -7,7 +7,7 @@ import (
 )
 
 // Sample template layouts for testing
-var pwcLayouts = []types.LayoutMetadata{
+var consultingLayouts = []types.LayoutMetadata{
 	{ID: "slideLayout1", Name: "Title Slide", Tags: []string{"title-slide"}},
 	{ID: "slideLayout2", Name: "Section Header", Tags: []string{"content", "title-at-bottom", "section-header"}},
 	{ID: "slideLayout3", Name: "One Content", Tags: []string{"content"}},
@@ -37,18 +37,18 @@ var modernLayouts = []types.LayoutMetadata{
 
 func TestResolveCanonicalLayoutID_Passthrough(t *testing.T) {
 	// slideLayoutN passes through unchanged
-	id, ok := ResolveCanonicalLayoutID("slideLayout3", pwcLayouts)
+	id, ok := ResolveCanonicalLayoutID("slideLayout3", consultingLayouts)
 	if !ok || id != "slideLayout3" {
 		t.Errorf("slideLayoutN passthrough: got (%q, %v), want (\"slideLayout3\", true)", id, ok)
 	}
 
 	// Generated layout IDs pass through unchanged
-	id, ok = ResolveCanonicalLayoutID("content-2-50-50", pwcLayouts)
+	id, ok = ResolveCanonicalLayoutID("content-2-50-50", consultingLayouts)
 	if !ok || id != "content-2-50-50" {
 		t.Errorf("generated layout passthrough: got (%q, %v), want (\"content-2-50-50\", true)", id, ok)
 	}
 
-	id, ok = ResolveCanonicalLayoutID("grid-2x2", pwcLayouts)
+	id, ok = ResolveCanonicalLayoutID("grid-2x2", consultingLayouts)
 	if !ok || id != "grid-2x2" {
 		t.Errorf("grid layout passthrough: got (%q, %v), want (\"grid-2x2\", true)", id, ok)
 	}
@@ -67,7 +67,7 @@ func TestResolveCanonicalLayoutID_Aliases(t *testing.T) {
 	}
 }
 
-func TestResolveCanonicalLayoutID_PwCTemplate(t *testing.T) {
+func TestResolveCanonicalLayoutID_ConsultingTemplate(t *testing.T) {
 	tests := []struct {
 		name       string
 		canonical  string
@@ -86,7 +86,7 @@ func TestResolveCanonicalLayoutID_PwCTemplate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			id, ok := ResolveCanonicalLayoutID(tt.canonical, pwcLayouts)
+			id, ok := ResolveCanonicalLayoutID(tt.canonical, consultingLayouts)
 			if id != tt.wantID || ok != tt.wantOK {
 				t.Errorf("ResolveCanonicalLayoutID(%q) = (%q, %v), want (%q, %v)",
 					tt.canonical, id, ok, tt.wantID, tt.wantOK)
@@ -146,19 +146,19 @@ func TestResolveCanonicalLayoutID_Modern(t *testing.T) {
 }
 
 func TestResolveCanonicalLayoutID_CaseInsensitive(t *testing.T) {
-	id, ok := ResolveCanonicalLayoutID("Title", pwcLayouts)
+	id, ok := ResolveCanonicalLayoutID("Title", consultingLayouts)
 	if !ok || id != "slideLayout1" {
 		t.Errorf("case insensitive: got (%q, %v), want (\"slideLayout1\", true)", id, ok)
 	}
 
-	id, ok = ResolveCanonicalLayoutID("CLOSING", pwcLayouts)
+	id, ok = ResolveCanonicalLayoutID("CLOSING", consultingLayouts)
 	if !ok || id != "slideLayout5" {
 		t.Errorf("case insensitive: got (%q, %v), want (\"slideLayout5\", true)", id, ok)
 	}
 }
 
 func TestResolveCanonicalLayoutID_Unknown(t *testing.T) {
-	id, ok := ResolveCanonicalLayoutID("nonexistent", pwcLayouts)
+	id, ok := ResolveCanonicalLayoutID("nonexistent", consultingLayouts)
 	if ok || id != "nonexistent" {
 		t.Errorf("unknown name: got (%q, %v), want (\"nonexistent\", false)", id, ok)
 	}

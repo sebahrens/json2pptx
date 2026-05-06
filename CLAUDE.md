@@ -75,7 +75,7 @@ svggen/           # SVG chart/diagram generation (separate Go module via go.work
   contrast.go     # WCAG contrast calculations
   style.go        # Theme-aware styling
 
-templates/        # PPTX template files (5: forest-green, midnight-blue, modern-template, pwc-template, warm-coral)
+templates/        # PPTX template files (4: forest-green, midnight-blue, modern-template, warm-coral)
 examples/         # Example JSON input files (19 decks)
 ```
 
@@ -99,7 +99,7 @@ examples/         # Example JSON input files (19 decks)
 
 ## Templates
 
-5 bundled templates: `forest-green`, `midnight-blue`, `modern-template`, `pwc-template`, `warm-coral`. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
+4 bundled templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral`. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
 
 ## Common Patterns
 

@@ -90,22 +90,6 @@ var templates = []templateDef{
 		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
 		DataPalette:  []string{"accent1", "accent4", "accent5", "accent2", "accent6", "accent3"},
 	},
-	{
-		Name:         "pwc-template",
-		DisplayName:  "PwC",
-		Description:  "Professional services template with Georgia headings, Arial body, and orange accents",
-		Dark1:        "000000", Light1: "FFFFFF",
-		Dark2:        "2D2D2D", Light2: "F2F2F2",
-		Accent1:      "DC6900", Accent2: "E0301E",
-		Accent3:      "EB8C00", Accent4: "A32020",
-		Accent5:      "D04A02", Accent6: "602320",
-		Hlink:        "DC6900", FolHlink: "EB8C00",
-		MajorFont:    "Georgia", MinorFont: "Arial",
-		BarSchemeClr: "accent1",
-		BulletChar:   "\u2022",
-		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
-		DataPalette:  []string{"accent1", "accent2", "accent4", "accent3", "accent5", "accent6"},
-	},
 }
 
 var deterministicTime = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)

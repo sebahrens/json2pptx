@@ -207,7 +207,7 @@ func TestResolveFooterPositions_FromMaster(t *testing.T) {
 }
 
 func TestResolveFooterPositions_MinSldNumWidth(t *testing.T) {
-	// Narrow sldNum placeholder (like PwC template: cx=298209) should be widened
+	// Narrow sldNum placeholder (cx=298209, as seen in some consulting templates) should be widened
 	// to minSldNumWidth, expanding leftward to keep the right edge fixed.
 	narrowCX := int64(298209)
 	sldNumX := int64(11503818)
