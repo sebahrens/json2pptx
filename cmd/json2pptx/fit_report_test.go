@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -383,6 +384,129 @@ func TestStrictFit_Warn_Succeeds(t *testing.T) {
 	// Warn mode should not fail due to fit issues — generation proceeds.
 	if err != nil {
 		t.Fatalf("warn mode should not error on unfittable content: %v", err)
+	}
+}
+
+func TestGenerateFitReport_CellUnderfilled_DensityBands(t *testing.T) {
+	// Use a large grid cell (wide bounds) so that MaxChars is large,
+	// and vary content length to hit different density bands.
+	// With default bounds and 1 column, cells are very wide — MaxChars will be large.
+	// We use a single cell with known font size to control density precisely.
+
+	tests := []struct {
+		name             string
+		textRepeat       int    // number of "x" chars to place
+		fontSz           float64
+		boundsWidth      float64 // percentage of slide width
+		boundsHeight     float64 // percentage of slide height
+		wantCode         string
+		wantSeverity     string
+		wantNoFinding    bool // expect no cell_underfilled or fit_overflow finding
+	}{
+		{
+			name:         "very_underfilled_warning",
+			textRepeat:   3,
+			fontSz:       11,
+			boundsWidth:  90,
+			boundsHeight: 50,
+			wantCode:     "cell_underfilled",
+			wantSeverity: "warning",
+		},
+		{
+			name:         "underfilled_info",
+			textRepeat:   200,
+			fontSz:       11,
+			boundsWidth:  30,
+			boundsHeight: 10,
+			wantCode:     "cell_underfilled",
+			wantSeverity: "info",
+		},
+		{
+			name:          "optimal_no_finding",
+			textRepeat:    300,
+			fontSz:        11,
+			boundsWidth:   30,
+			boundsHeight:  10,
+			wantNoFinding: true,
+		},
+		{
+			name:         "severe_overflow_error",
+			textRepeat:   2000,
+			fontSz:       14,
+			boundsWidth:  10,
+			boundsHeight: 5,
+			wantCode:     "fit_overflow",
+			wantSeverity: "error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			text := strings.Repeat("x", tt.textRepeat)
+			textJSON := json.RawMessage(fmt.Sprintf(`{"content":"%s","size":%v}`, text, tt.fontSz))
+
+			input := &PresentationInput{
+				Template: "midnight-blue",
+				Slides: []SlideInput{
+					{
+						LayoutID: "blank",
+						ShapeGrid: &ShapeGridInput{
+							Bounds:  &GridBoundsInput{X: 5, Y: 5, Width: tt.boundsWidth, Height: tt.boundsHeight},
+							Columns: json.RawMessage(`1`),
+							Rows: []GridRowInput{
+								{
+									Cells: []*GridCellInput{
+										{Shape: &ShapeSpecInput{
+											Geometry: "rect",
+											Text:     textJSON,
+										}},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			findings := generateFitReport(input)
+
+			if tt.wantNoFinding {
+				for _, f := range findings {
+					if f.Code == patterns.ErrCodeCellUnderfilled || f.Code == patterns.ErrCodeFitOverflow {
+						t.Errorf("expected no cell finding, got code=%s severity=%s density msg=%s", f.Code, f.Severity, f.Message)
+					}
+				}
+				return
+			}
+
+			var found *fitFinding
+			for i, f := range findings {
+				if f.Code == tt.wantCode && strings.Contains(f.Path, "shape_grid") {
+					found = &findings[i]
+					break
+				}
+			}
+			if found == nil {
+				t.Fatalf("expected finding with code=%s, got findings: %v", tt.wantCode, findings)
+			}
+			if found.Severity != tt.wantSeverity {
+				t.Errorf("severity = %q, want %q", found.Severity, tt.wantSeverity)
+			}
+			if found.Fix == nil {
+				t.Error("expected non-nil fix suggestion")
+			}
+			if tt.wantCode == patterns.ErrCodeCellUnderfilled {
+				if found.Fix.Kind != "add_detail_or_resize" {
+					t.Errorf("fix.kind = %q, want %q", found.Fix.Kind, "add_detail_or_resize")
+				}
+				if found.Fix.Params == nil {
+					t.Fatal("expected fix.params to be non-nil")
+				}
+				if _, ok := found.Fix.Params["current_density_pct"]; !ok {
+					t.Error("expected fix.params to contain current_density_pct")
+				}
+			}
+		})
 	}
 }
 

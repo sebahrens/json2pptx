@@ -38,6 +38,7 @@ const (
 	ErrCodeSparseLayout          = "sparse_layout"
 	ErrCodePatternUnderfilled    = "pattern_underfilled"
 	ErrCodePatternOvercrowded    = "pattern_overcrowded"
+	ErrCodeCellUnderfilled       = "cell_underfilled"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced  = "chart_value_coerced"
@@ -91,6 +92,7 @@ var (
 	ErrSparseLayout        = errors.New("content occupies less than 40% of bounds height")
 	ErrPatternUnderfilled  = errors.New("pattern grid less than 50% filled")
 	ErrPatternOvercrowded  = errors.New("pattern grid exceeds recommended cell count")
+	ErrCellUnderfilled     = errors.New("cell content is well below capacity")
 
 	ErrChartValueCoerced  = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred = errors.New("chart data shape inferred from flat input")
@@ -138,6 +140,7 @@ var codeSentinel = map[string]error{
 	ErrCodeSparseLayout:          ErrSparseLayout,
 	ErrCodePatternUnderfilled:    ErrPatternUnderfilled,
 	ErrCodePatternOvercrowded:    ErrPatternOvercrowded,
+	ErrCodeCellUnderfilled:       ErrCellUnderfilled,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,

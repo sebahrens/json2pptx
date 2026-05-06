@@ -22,6 +22,7 @@ import (
 type fitFinding struct {
 	Code             string                  `json:"code"`
 	Path             string                  `json:"path"`
+	Severity         string                  `json:"severity,omitempty"`
 	Message          string                  `json:"message"`
 	Fix              *patterns.FixSuggestion `json:"fix,omitempty"`
 	BindingDimension string                  `json:"binding_dimension,omitempty"`
@@ -44,7 +45,7 @@ func checkStrictFit(input *PresentationInput, mode string) error {
 	if mode == "strict" {
 		hasRefuse := false
 		for _, f := range findings {
-			if f.Action == "refuse" {
+			if f.Action == "refuse" || f.Severity == "error" {
 				hasRefuse = true
 				break
 			}
@@ -320,19 +321,57 @@ func walkShapeGrid(grid *ShapeGridInput, slideIdx int) []fitFinding {
 					measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), slideIdx)...)
 			}
 
-			// Shape text overflow via textcapacity density.
+			// Shape text density via textcapacity.
 			d := densities[cellIdx]
-			if d.Status == textcapacity.StatusOverflow && d.MaxChars > 0 {
-				findings = append(findings, fitFinding{
-					Code:             patterns.ErrCodeFitOverflow,
-					Path:             slidepath.Join(pathPrefix, "shape/text"),
-					Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d", d.ActualChars, d.FontPt, d.MaxChars),
-					Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
-					BindingDimension: "height",
-					RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
-					AllocatedPt:      float64(d.HeightEMU) / 12700.0,
-					Action:           "refuse",
-				})
+			if d.MaxChars > 0 {
+				switch {
+				case d.DensityPct > 130:
+					// Severe overflow — error severity.
+					findings = append(findings, fitFinding{
+						Code:             patterns.ErrCodeFitOverflow,
+						Path:             slidepath.Join(pathPrefix, "shape/text"),
+						Severity:         "error",
+						Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
+						Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
+						BindingDimension: "height",
+						RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
+						AllocatedPt:      float64(d.HeightEMU) / 12700.0,
+						Action:           "refuse",
+					})
+				case d.DensityPct > 110:
+					// Moderate overflow — warning severity.
+					findings = append(findings, fitFinding{
+						Code:             patterns.ErrCodeFitOverflow,
+						Path:             slidepath.Join(pathPrefix, "shape/text"),
+						Severity:         "warning",
+						Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
+						Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
+						BindingDimension: "height",
+						RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
+						AllocatedPt:      float64(d.HeightEMU) / 12700.0,
+						Action:           "review",
+					})
+				case d.DensityPct < 40 && d.ActualChars > 0:
+					// Very underfilled — warning severity.
+					findings = append(findings, fitFinding{
+						Code:     patterns.ErrCodeCellUnderfilled,
+						Path:     slidepath.Join(pathPrefix, "shape/text"),
+						Severity: "warning",
+						Message:  fmt.Sprintf("cell content is %d chars (%d%% of capacity) — consider adding detail or smaller grid", d.ActualChars, d.DensityPct),
+						Fix:      &patterns.FixSuggestion{Kind: "add_detail_or_resize", Params: map[string]any{"current_density_pct": d.DensityPct}},
+						Action:   "review",
+					})
+				case d.DensityPct >= 40 && d.DensityPct < 60 && d.ActualChars > 0:
+					// Underfilled — info severity.
+					findings = append(findings, fitFinding{
+						Code:     patterns.ErrCodeCellUnderfilled,
+						Path:     slidepath.Join(pathPrefix, "shape/text"),
+						Severity: "info",
+						Message:  fmt.Sprintf("cell content is %d chars (%d%% of capacity) — consider adding detail or smaller grid", d.ActualChars, d.DensityPct),
+						Fix:      &patterns.FixSuggestion{Kind: "add_detail_or_resize", Params: map[string]any{"current_density_pct": d.DensityPct}},
+						Action:   "review",
+					})
+				}
 			}
 
 			cellIdx++
