@@ -310,6 +310,24 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `divider_too_thin` | Divider shape height < 4% of slide height | `review` | — |
 | `hex_fill_non_brand` | Non-allowlisted `#RRGGBB` fill on a shape | `review` | `use_semantic_color` |
 | `mixed_fill_scheme` | Slide mixes semantic (`accent1`, `lt2`) and hex fills (hex-fill mix anti-pattern) | `review` | `use_semantic_color` |
+| `cell_underfilled` | Per-cell: text uses <60% of cell character capacity (density bands: <40% = warning, 40-59% = info) | `review` | `add_detail_or_resize` |
+
+**Density-band severity for cell capacity findings** (`fit_overflow` and `cell_underfilled` share the density axis):
+
+| Density band | Code | Severity | Action | Guidance |
+|---|---|---|---|---|
+| >130% | `fit_overflow` | `error` | `refuse` | Must reduce text — blocks under `strict_fit: "strict"` |
+| 110–130% | `fit_overflow` | `warning` | `review` | Should reduce text before shipping |
+| 60–110% | *(none)* | — | — | Healthy range — no finding emitted |
+| 40–59% | `cell_underfilled` | `info` | `review` | Consider adding detail; not blocking |
+| <40% | `cell_underfilled` | `warning` | `review` | Strongly consider adding detail or using a smaller grid |
+
+**How to triage capacity findings:**
+- **`info` severity** — consider acting; not blocking under any `strict_fit` mode
+- **`warning` severity** — should act before shipping; not blocking under `strict_fit: "warn"` or `"off"`
+- **`error` severity** — must act; blocks generation under `strict_fit: "strict"` (MCP returns `IsError=true`)
+
+`strict_fit` interaction: only `error`-severity findings with action `refuse` block generation in strict mode. `cell_underfilled` never blocks because its maximum severity is `warning`.
 
 **Render-time codes** — emitted during `generate_presentation` when the engine adjusted content to fit:
 
@@ -352,6 +370,7 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `use_one_of` | Value must be one of an allowed set | `allowed` |
 | `rename_field` | Unknown field name close to a known one | `suggestion` |
 | `remove_field` | Unknown field should be removed | — |
+| `add_detail_or_resize` | Cell is underfilled — add more text or use a smaller grid | `current_density_pct: int` |
 
 Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`, `explicit_scale`, `truncate_or_split`, `align_series`, `increase_canvas`).
 

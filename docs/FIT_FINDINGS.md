@@ -335,6 +335,39 @@ Table has more cells than the TDR (Table Density Ratio) ceiling allows for the c
 }
 ```
 
+### `cell_underfilled`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `add_detail_or_resize`
+
+A shape-grid cell's text content uses less than 60% of its character capacity. Capacity is computed by the `internal/textcapacity` package, which estimates `MaxChars` from the cell's height, width, and font size.
+
+Two severity bands:
+
+| Density | Severity | Guidance |
+|---------|----------|----------|
+| 40–59% | `info` | Consider adding detail; not blocking |
+| <40% | `warning` | Strongly consider adding detail or using a smaller grid |
+
+The 60–110% range is the healthy zone — no finding is emitted. Above 110%, see `fit_overflow`.
+
+`strict_fit` interaction: `cell_underfilled` never blocks generation. Its maximum severity is `warning` and its action is `review`, which is never promoted to `refuse` regardless of `strict_fit` mode.
+
+See also: [PATTERNS.md Cell Capacity Contract](PATTERNS.md) for pattern-level capacity guidance.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/1/shape_grid/rows/0/cells/0/shape/text",
+  "code": "cell_underfilled",
+  "severity": "warning",
+  "message": "cell content is 12 chars (28% of capacity) — consider adding detail or smaller grid",
+  "fix": { "kind": "add_detail_or_resize", "params": { "current_density_pct": 28 } },
+  "action": "review"
+}
+```
+
 ### `contrast_autofixed`
 
 **Action:** `info`
@@ -399,6 +432,7 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `provide_data` | `chart_type: string` | Chart data is empty — provide data values |
 | `provide_numeric_value` | `column: string`, `original_value: string`, `original_type: string` | A non-numeric chart value was coerced to zero — provide a numeric value |
 | `provide_native_format` | `chart_type: string`, `expected_format: string` | Chart data shape was inferred — provide data in the native format |
+| `add_detail_or_resize` | `current_density_pct: int` | Cell is underfilled — add more text content or use a smaller grid pattern |
 
 ## Per-Slide Finding Budget
 
