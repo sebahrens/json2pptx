@@ -81,6 +81,22 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			Rows:    rows,
 			Cells:   cells,
 		}
+	case "hero-detail":
+		// For hero-detail, cols = number of detail items, rows is always 2
+		details := make([]patterns.HeroDetailItem, cols)
+		for i := range details {
+			details[i] = patterns.HeroDetailItem{
+				Title: "Detail Title",
+				Body:  "Supporting detail text",
+			}
+		}
+		return &patterns.HeroDetailValues{
+			Hero: patterns.HeroDetailHero{
+				Value: "$1.0B",
+				Label: "Metric label placeholder",
+			},
+			Details: details,
+		}
 	default:
 		return nil
 	}

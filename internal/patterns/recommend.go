@@ -312,6 +312,23 @@ var rules = []rule{
 		rationale: "Single-stat hero slide for maximum visual impact",
 	},
 
+	// Hero detail — hero stat + supporting details
+	{
+		pattern:      "hero-detail",
+		keywords:     []string{"hero detail", "hero breakdown", "big number detail", "stat detail", "hero supporting", "headline detail"},
+		baseScore:    0.90,
+		rationale:    "Hero statistic at top with 2-4 supporting detail cards below — ideal for presenting a key metric with context",
+		itemMin:      2,
+		itemMax:      4,
+		needsMetrics: true,
+	},
+	{
+		pattern:   "hero-detail",
+		keywords:  []string{"hero", "detail", "breakdown", "supporting", "context"},
+		baseScore: 0.70,
+		rationale: "Big hero metric with supporting detail cards for breakdown context",
+	},
+
 	// Pull quote — testimonial or emphasis quote
 	{
 		pattern:   "pull-quote",

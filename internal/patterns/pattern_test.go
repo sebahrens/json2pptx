@@ -171,6 +171,7 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"swimlane":        true,
 		"roadmap-phased":  true,
 		"arch-stack":      true,
+		"hero-detail":     true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)

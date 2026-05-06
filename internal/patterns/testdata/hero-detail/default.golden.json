@@ -1,0 +1,115 @@
+{
+  "gap": 10,
+  "columns": 3,
+  "rows": [
+    {
+      "height": 40,
+      "cells": [
+        {
+          "col_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "$2.4B",
+                  "size": 80,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Addressable AI consulting market by FY27",
+                  "size": 16,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Market Growth",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "42% CAGR driven by enterprise adoption",
+                  "size": 11,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Key Segment",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Financial services leads with 35% share",
+                  "size": 11,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Outlook",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                },
+                {
+                  "content": "Projected to reach $5.1B by FY30",
+                  "size": 11,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
