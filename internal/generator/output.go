@@ -726,7 +726,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		// unless the slide opts out via contrast_check: false.
 		if spec.ContrastCheck == nil || *spec.ContrastCheck {
 			var gridSwaps []ContrastSwap
-			shapes, gridSwaps = enforceShapeGridContrast(shapes, ctx.themeColors)
+			shapes, gridSwaps = enforceShapeGridContrast(shapes, ctx.themeColors, ctx.whiteTextSafeHex)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, gridSwaps...)
 		}
 		slideData, err = insertRawShapes(slideData, shapes)

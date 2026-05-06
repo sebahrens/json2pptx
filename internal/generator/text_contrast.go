@@ -167,7 +167,7 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 	if shape.TextBody.ListStyle != nil && shape.TextBody.ListStyle.Inner != "" {
 		shape.TextBody.ListStyle.Inner = fixSchemeColorsForContrast(
 			shape.TextBody.ListStyle.Inner, bgColor, bgHex, themeColors, &swaps,
-			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle",
+			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
 		)
 	}
 
@@ -179,12 +179,50 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 			if run.RunProperties != nil && run.RunProperties.Inner != "" {
 				run.RunProperties.Inner = fixSchemeColorsForContrast(
 					run.RunProperties.Inner, bgColor, bgHex, themeColors, &swaps,
-					shape.NonVisualProperties.ConnectionNonVisual.Name, "run",
+					shape.NonVisualProperties.ConnectionNonVisual.Name, "run", false,
 				)
 			}
 		}
 	}
 	return swaps
+}
+
+// =============================================================================
+// White-Text-Safe Allowlist
+// =============================================================================
+
+// computeWhiteTextSafeHex derives a set of uppercase hex color strings
+// (e.g., "#4472C4") for all accent colors that pass WCAG AA Large (3:1) contrast
+// against white. When a shape fill matches one of these colors and the text
+// foreground is white/lt1, the contrast auto-fix is skipped — the template
+// metadata already certifies that pairing as safe.
+func computeWhiteTextSafeHex(themeColors []types.ThemeColor) map[string]bool {
+	white := svggen.MustParseColor("#FFFFFF")
+	accentNames := []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"}
+	safe := make(map[string]bool)
+
+	for _, name := range accentNames {
+		hex := resolveSchemeColorToHex(name, themeColors)
+		if hex == "" {
+			continue
+		}
+		c, err := svggen.ParseColor(hex)
+		if err != nil {
+			continue
+		}
+		if c.ContrastWith(white) >= svggen.WCAGAALarge {
+			safe[strings.ToUpper(hex)] = true
+		}
+	}
+	return safe
+}
+
+// isWhiteOrLt1 returns true if the given color string is white (#FFFFFF) or the
+// lt1 scheme name. Used to identify text foregrounds that the white_text_safe
+// allowlist should protect from contrast rewriting.
+func isWhiteOrLt1(hexOrScheme string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(hexOrScheme))
+	return upper == "#FFFFFF" || upper == "FFFFFF" || upper == "LT1" || upper == "BG1"
 }
 
 // =============================================================================
@@ -236,13 +274,18 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string
 // semantic scheme color or an explicit hex value. Users who want to preserve
 // exact color choices can opt out via contrast_check: false on the slide.
 //
+// whiteTextSafeHex is an optional allowlist of uppercase hex colors (e.g.,
+// "#4472C4") that the template metadata certifies as safe for white text.
+// When a shape's fill matches one of these colors and the text foreground is
+// white/lt1, the auto-fix is skipped.
+//
 // This is called after the standard enforceTextContrastInSlide pass, which
 // handles parsed slide shapes with template-inherited colors.
-func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor) ([][]byte, []ContrastSwap) {
+func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool) ([][]byte, []ContrastSwap) {
 	var allSwaps []ContrastSwap
 	for i, shape := range shapes {
 		var swaps []ContrastSwap
-		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors)
+		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors, whiteTextSafeHex)
 		allSwaps = append(allSwaps, swaps...)
 	}
 	return shapes, allSwaps
@@ -251,7 +294,11 @@ func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor) (
 // fixShapeXMLContrast fixes low-contrast text in a raw shape XML fragment.
 // It resolves the shape's fill color (scheme or sRGB) to hex, then replaces
 // text colors in the txBody that have insufficient contrast.
-func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor) ([]byte, []ContrastSwap) {
+//
+// When the fill matches a white-text-safe accent (per whiteTextSafeHex) and the
+// text foreground is white/lt1, the fix is skipped — the template metadata
+// certifies that pairing as safe.
+func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool) ([]byte, []ContrastSwap) {
 	fillHex := extractShapeFillHex(shapeXML, themeColors)
 	if fillHex == "" {
 		return shapeXML, nil
@@ -261,6 +308,9 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor) ([]byt
 	if err != nil {
 		return shapeXML, nil
 	}
+
+	// Check if this fill is white-text-safe
+	fillSafe := len(whiteTextSafeHex) > 0 && whiteTextSafeHex[strings.ToUpper(fillHex)]
 
 	// Find txBody section
 	txStart := bytes.Index(shapeXML, []byte("<p:txBody>"))
@@ -274,10 +324,10 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor) ([]byt
 	txBody := string(shapeXML[txStart:txEnd])
 
 	var swaps []ContrastSwap
-	// Fix scheme colors in text
-	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid")
-	// Fix sRGB colors in text
-	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, &swaps)
+	// Fix scheme colors in text (with white-text-safe awareness)
+	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe)
+	// Fix sRGB colors in text (with white-text-safe awareness)
+	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, &swaps, fillSafe)
 
 	if fixed == txBody {
 		return shapeXML, nil // No changes needed
@@ -301,13 +351,22 @@ var srgbClrInFillRegexp = regexp.MustCompile(
 // fixSrgbColorsForContrast scans an XML fragment for sRGB color references
 // inside solidFill elements. For each sRGB color with insufficient contrast
 // against bgColor, it is replaced with a high-contrast color.
-func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, swaps *[]ContrastSwap) string {
+//
+// When fillSafe is true and the foreground color is white (#FFFFFF), the fix
+// is skipped — the template metadata certifies that white text on this fill
+// is safe.
+func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, swaps *[]ContrastSwap, fillSafe bool) string {
 	return srgbClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		submatches := srgbClrInFillRegexp.FindStringSubmatch(match)
 		if len(submatches) < 4 {
 			return match
 		}
 		hexVal := submatches[2]
+
+		// Skip fix for white text on white-text-safe fills
+		if fillSafe && isWhiteOrLt1(hexVal) {
+			return match
+		}
 
 		fgColor, err := svggen.ParseColor("#" + hexVal)
 		if err != nil {
@@ -351,7 +410,11 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 // The replacement color is computed by the existing EnsureContrast algorithm,
 // which darkens or lightens the resolved color just enough to meet the threshold
 // while preserving the hue.
-func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string) string {
+//
+// When fillSafe is true and the foreground scheme color is lt1/bg1 (white),
+// the fix is skipped — the template metadata certifies that white text on
+// this fill is safe.
+func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool) string {
 	return schemeClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		// Extract the scheme color name from the match
 		submatches := schemeClrInFillRegexp.FindStringSubmatch(match)
@@ -359,6 +422,11 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 			return match
 		}
 		schemeName := submatches[2]
+
+		// Skip fix for white/lt1 text on white-text-safe fills
+		if fillSafe && isWhiteOrLt1(schemeName) {
+			return match
+		}
 
 		// Resolve scheme color to hex
 		hexColor := resolveSchemeColorToHex(schemeName, themeColors)

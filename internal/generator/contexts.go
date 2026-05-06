@@ -127,6 +127,12 @@ type ChartContext struct {
 	// Theme colors from template for chart styling
 	themeColors []types.ThemeColor
 
+	// whiteTextSafeHex is the set of uppercase hex colors (e.g., "#4472C4")
+	// for accent colors that the template certifies as safe for white text.
+	// Used by enforceShapeGridContrast to skip auto-fixing white/lt1 text
+	// on these fills.
+	whiteTextSafeHex map[string]bool
+
 	// dataPalette is an ordered list of hex colors for chart series.
 	// Resolved from TemplateMetadata.DataPalette (scheme names → hex) at init time.
 	// When non-empty, passed to svggen StyleSpec.DataPalette to override accent ordering.
