@@ -60,7 +60,7 @@ func (p *processFlow) ExemplarValues() any {
 // ProcessFlowStep is a single step in the process flow.
 type ProcessFlowStep struct {
 	Label string `json:"label"`
-	Type  string `json:"type,omitempty"` // "step" (default) or "decision"
+	Type  string `json:"type,omitempty"` // "step" (default), "decision", "chevron", or "arrow"
 }
 
 // ProcessFlowValues holds the steps for the process flow.
@@ -86,7 +86,7 @@ func (p *processFlow) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
 			"label": StringSchema(80).WithDescription("Step label text"),
-			"type":  EnumSchema("step", "decision").WithDescription("Shape type: rectangle (step) or diamond (decision)").WithDefault("step"),
+			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -142,10 +142,10 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 		} else if len(step.Label) > 80 {
 			errs = append(errs, errMaxLength(name, path, 80, len(step.Label)))
 		}
-		if step.Type != "" && step.Type != "step" && step.Type != "decision" {
+		if step.Type != "" && step.Type != "step" && step.Type != "decision" && step.Type != "chevron" && step.Type != "arrow" {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("steps[%d].type", i), ErrCodeUnknownEnum,
-				fmt.Sprintf("process-flow: steps[%d].type must be \"step\" or \"decision\", got %q", i, step.Type),
-				UseOneOfFix(fmt.Sprintf("steps[%d].type", i), []string{"step", "decision"})))
+				fmt.Sprintf("process-flow: steps[%d].type must be \"step\", \"decision\", \"chevron\", or \"arrow\", got %q", i, step.Type),
+				UseOneOfFix(fmt.Sprintf("steps[%d].type", i), []string{"step", "decision", "chevron", "arrow"})))
 		}
 	}
 
@@ -178,8 +178,13 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	for i, step := range vals.Steps {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		geometry := "roundRect"
-		if step.Type == "decision" {
+		switch step.Type {
+		case "decision":
 			geometry = "diamond"
+		case "chevron":
+			geometry = "chevron"
+		case "arrow":
+			geometry = "rightArrow"
 		}
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)

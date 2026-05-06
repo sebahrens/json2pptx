@@ -794,8 +794,13 @@ func (g *Generator) diagramData(diagType string) map[string]any { //nolint:gocog
 			steps[i] = map[string]any{
 				"label": g.randomWord(),
 			}
-			if g.rng.IntN(3) == 0 {
+			switch g.rng.IntN(6) {
+			case 0:
 				steps[i]["type"] = "decision"
+			case 1:
+				steps[i]["type"] = "chevron"
+			case 2:
+				steps[i]["type"] = "arrow"
 			}
 			// 30% chance of icon on process_flow step
 			if g.rng.IntN(10) < 3 {
