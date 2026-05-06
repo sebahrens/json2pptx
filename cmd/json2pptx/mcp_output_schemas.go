@@ -816,3 +816,14 @@ var outputSchemaPlanDeck = json.RawMessage(`{
   },
   "required": ["slides", "brief", "slide_budget", "rhythm_check"]
 }`)
+
+// --- get_input_schema ---
+var outputSchemaGetInputSchema = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "digest":       {"type": "string"},
+    "not_modified": {"type": "boolean"},
+    "schema":       {"type": "object"}
+  },
+  "required": ["digest"]
+}`)

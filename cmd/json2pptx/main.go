@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.1.0"
+const SchemaVersion = "4.2.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -66,6 +66,8 @@ func dispatch() error { //nolint:gocyclo
 		return runSkillInfo()
 	case "capabilities":
 		return runCapabilities()
+	case "input-schema":
+		return runInputSchema()
 	case "resolve-theme":
 		return runResolveTheme()
 	case "recommend-pattern":

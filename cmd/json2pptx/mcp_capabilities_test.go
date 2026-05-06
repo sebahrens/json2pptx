@@ -329,6 +329,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpAnalyzeDeckRhythmTool":       mcpAnalyzeDeckRhythmTool,
 		"mcpPlanDeckTool":                mcpPlanDeckTool,
 		"mcpGetCapabilitiesTool":         mcpGetCapabilitiesTool,
+		"mcpGetInputSchemaTool":          mcpGetInputSchemaTool,
 		"mcpReadPresentationTool":        mcpReadPresentationTool,
 	}
 

@@ -26,6 +26,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
 | **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags | `get_capabilities` | (CLI inlines) |
+| **Authoritative input schema** — JSON Schema for `PresentationInput` with all nested types, `x-field-scope` annotations, and inline enums. Digest-cacheable. | `get_input_schema` | `json2pptx input-schema` |
 | Introspect templates, patterns, layouts, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
 | Resolve a template's theme colors (semantic name → hex, including tint modifiers) | `resolve_theme` | (CLI inlines) |
@@ -56,7 +57,9 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. Check `get_capabilities().features.template_settings` to confirm support before attempting writes.
 
-**Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`.
+**Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`. The same digest protocol applies to `get_input_schema{digest: "..."}` — cache the digest and skip re-fetching the full JSON Schema when it hasn't changed.
+
+**Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, or `shape`) so you know where to place it in the JSON hierarchy. Enum-constrained fields include inline `enum` arrays. Use this to prevent field-scope mistakes (e.g., putting `contrast_check` on a content item instead of the slide, or `design_mode` inside a slide instead of at deck level).
 
 **Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each entry includes concrete limits (`max_series`, `max_points`, `max_categories` for charts; `max_nodes`, `max_depth` for diagrams), density behavior, and label strategy. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
 

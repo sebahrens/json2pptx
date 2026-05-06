@@ -141,6 +141,7 @@ func runMCP() error {
 	s.AddTool(mcpAnalyzeDeckRhythmTool(), handleAnalyzeDeckRhythm)
 	s.AddTool(mcpPlanDeckTool(), handlePlanDeck)
 	s.AddTool(mcpGetCapabilitiesTool(), handleGetCapabilities)
+	s.AddTool(mcpGetInputSchemaTool(), handleGetInputSchema)
 	s.AddTool(mcpReadPresentationTool(), handleReadPresentation)
 
 	slog.Info("starting json2pptx MCP server",

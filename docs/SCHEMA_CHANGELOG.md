@@ -4,6 +4,15 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.2.0 (2026-05-06)
+
+### Added
+
+- **`get_input_schema` MCP tool** returns the authoritative JSON Schema for
+  `PresentationInput` and all nested types. Includes `x-field-scope`
+  annotations (deck/slide/content/shape) and inline enum values. Supports
+  digest-based caching to avoid redundant fetches.
+
 ## 4.1.0 (2026-05-06)
 
 ### Added
