@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
@@ -235,218 +236,113 @@ func tdrCeilingForFont(fontPt float64) int {
 	}
 }
 
-// walkShapeGrid walks all cells in a shape grid and measures text content.
+// walkShapeGrid resolves a shape grid via shapegrid.Resolve and
+// textcapacity.ForResolvedGrid, then emits fit findings for overflowing cells
+// and row max_height violations.
 func walkShapeGrid(grid *ShapeGridInput, slideIdx int) []fitFinding {
+	// Resolve the grid to get authoritative cell bounds.
+	colWidths, err := resolveColumnsDTO(grid.Columns, grid.Rows)
+	if err != nil {
+		return nil
+	}
+
+	colGap := grid.ColGap
+	if colGap == 0 {
+		colGap = grid.Gap
+	}
+	rowGap := grid.RowGap
+	if rowGap == 0 {
+		rowGap = grid.Gap
+	}
+
+	rows := convertGridRows(grid.Rows)
+
+	// Use default slide dimensions for bounds; apply percentage-based bounds
+	// if specified.
+	bounds := shapegrid.DefaultBounds(shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
+	if grid.Bounds != nil {
+		bounds = shapegrid.BoundsFromPercentages(
+			grid.Bounds.X, grid.Bounds.Y,
+			grid.Bounds.Width, grid.Bounds.Height,
+			shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU,
+		)
+	}
+
+	sgGrid := &shapegrid.Grid{
+		Bounds:  bounds,
+		Columns: colWidths,
+		Rows:    rows,
+		ColGap:  colGap,
+		RowGap:  rowGap,
+	}
+
+	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
+		return nil
+	}
+
+	alloc := pptx.NewShapeIDAllocator(nil)
+	result, err := shapegrid.Resolve(sgGrid, alloc)
+	if err != nil || result == nil {
+		return nil
+	}
+
+	// Compute densities using the single source of truth.
+	densities := textcapacity.ForResolvedGrid(result)
+
 	var findings []fitFinding
 
-	for ri, row := range grid.Rows {
-		// Check row-level max_height overflow.
-		if row.MaxHeight > 0 {
-			if f := checkRowMaxHeightOverflow(grid, slideIdx, ri, row); f != nil {
-				findings = append(findings, *f)
-			}
-		}
+	// Emit row overflow findings from the resolve result.
+	for _, ro := range result.RowOverflows {
+		findings = append(findings, fitFinding{
+			Code:             patterns.ErrCodeFitOverflow,
+			Path:             slidepath.GridRow(slideIdx, ro.RowIndex),
+			Message:          fmt.Sprintf("row content ~%.0fpt exceeds max_height %.0fpt", ro.ContentPt, ro.MaxHeightPt),
+			Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
+			BindingDimension: "height",
+			RequiredPt:       ro.ContentPt,
+			AllocatedPt:      ro.MaxHeightPt,
+			Action:           "refuse",
+		})
+	}
 
+	// Walk cells: emit overflow findings from density and handle embedded tables.
+	cellIdx := 0
+	for ri, row := range grid.Rows {
 		for ci, cell := range row.Cells {
-			if cell == nil {
-				continue
+			if cellIdx >= len(densities) {
+				break
 			}
 			pathPrefix := slidepath.GridCell(slideIdx, ri, ci)
 
 			// Embedded table in shape_grid cell.
-			if cell.Table != nil {
+			if cell != nil && cell.Table != nil {
 				findings = append(findings,
 					measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), slideIdx)...)
 			}
 
-			// Shape with text.
-			if cell.Shape != nil && len(cell.Shape.Text) > 0 {
-				findings = append(findings,
-					measureShapeText(cell.Shape, slidepath.Join(pathPrefix, "shape"), grid, ri, ci)...)
+			// Shape text overflow via textcapacity density.
+			d := densities[cellIdx]
+			if d.Status == textcapacity.StatusOverflow && d.MaxChars > 0 {
+				findings = append(findings, fitFinding{
+					Code:             patterns.ErrCodeFitOverflow,
+					Path:             slidepath.Join(pathPrefix, "shape/text"),
+					Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d", d.ActualChars, d.FontPt, d.MaxChars),
+					Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
+					BindingDimension: "height",
+					RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
+					AllocatedPt:      float64(d.HeightEMU) / 12700.0,
+					Action:           "refuse",
+				})
 			}
+
+			cellIdx++
 		}
 	}
 
 	return findings
 }
 
-// checkRowMaxHeightOverflow detects when a row's estimated content height
-// exceeds its max_height constraint.
-func checkRowMaxHeightOverflow(grid *ShapeGridInput, slideIdx, rowIdx int, row GridRowInput) *fitFinding {
-	// Estimate content height from text in each cell.
-	var maxContentEMU int64
-	for _, cell := range row.Cells {
-		if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
-			continue
-		}
-		text, fontPt := extractShapeTextAndFont(cell.Shape.Text)
-		if text == "" {
-			continue
-		}
-		lines := strings.Count(text, "\n") + 1
-		lineHeightPt := fontPt * 1.4
-		totalPt := float64(lines)*lineHeightPt + 12 // 12pt padding
-		h := int64(totalPt * 12700)
-		if h > maxContentEMU {
-			maxContentEMU = h
-		}
-	}
-	if maxContentEMU == 0 {
-		return nil
-	}
 
-	contentPt := float64(maxContentEMU) / 12700.0
-	if contentPt <= row.MaxHeight {
-		return nil
-	}
-
-	path := slidepath.GridRow(slideIdx, rowIdx)
-	return &fitFinding{
-		Code:             patterns.ErrCodeFitOverflow,
-		Path:             path,
-		Message:          fmt.Sprintf("row content ~%.0fpt exceeds max_height %.0fpt", contentPt, row.MaxHeight),
-		Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
-		BindingDimension: "height",
-		RequiredPt:       contentPt,
-		AllocatedPt:      row.MaxHeight,
-		Action:           "refuse",
-	}
-}
-
-// measureShapeText measures text in a shape-grid shape cell.
-func measureShapeText(shape *ShapeSpecInput, pathPrefix string, grid *ShapeGridInput, rowIdx, cellIdx int) []fitFinding {
-	text, fontPt := extractShapeTextAndFont(shape.Text)
-	if text == "" {
-		return nil
-	}
-
-	// Estimate cell width from grid dimensions.
-	cellWidthEMU := estimateCellWidthEMU(grid, cellIdx)
-
-	// Estimate max lines from cell height.
-	cellHeightEMU := estimateCellHeightEMU(grid, rowIdx)
-	const defaultLineSpacing = 1.2
-	lineHeightPt := fontPt * defaultLineSpacing
-	maxLines := int(float64(cellHeightEMU) / (lineHeightPt * 12700))
-	if maxLines < 1 {
-		maxLines = 1
-	}
-
-	m, err := textfit.MeasureRun(text, "Arial", fontPt, cellWidthEMU, maxLines)
-	if err != nil || m.Fits {
-		return nil
-	}
-
-	return []fitFinding{{
-		Code:             patterns.ErrCodeFitOverflow,
-		Path:             slidepath.Join(pathPrefix, "text"),
-		Message:          fmt.Sprintf("text needs %d lines @ %.0fpt; cell allows %d", m.Lines, fontPt, maxLines),
-		Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
-		BindingDimension: "height",
-		RequiredPt:       float64(m.RequiredEMU) / 12700.0,
-		AllocatedPt:      float64(cellHeightEMU) / 12700.0,
-		WrapLines:        m.Lines,
-		Action:           "refuse",
-	}}
-}
-
-// extractShapeTextAndFont parses the text content and font size from a shape's
-// json.RawMessage Text field. Returns the text and font size in points.
-func extractShapeTextAndFont(raw json.RawMessage) (string, float64) {
-	if len(raw) == 0 {
-		return "", 0
-	}
-
-	// Try string shorthand.
-	var s string
-	if json.Unmarshal(raw, &s) == nil {
-		return s, 14.0 // default shape text size
-	}
-
-	// Try object form.
-	var obj struct {
-		Content    string          `json:"content"`
-		Paragraphs json.RawMessage `json:"paragraphs"`
-		Size       float64         `json:"size"`
-	}
-	if json.Unmarshal(raw, &obj) == nil {
-		fontSize := 14.0
-		if obj.Size > 0 {
-			fontSize = obj.Size
-		}
-		if obj.Content != "" {
-			return obj.Content, fontSize
-		}
-		// Paragraphs form — concatenate text.
-		if len(obj.Paragraphs) > 0 {
-			var paras []struct {
-				Content string `json:"content"`
-			}
-			if json.Unmarshal(obj.Paragraphs, &paras) == nil {
-				var combined string
-				for i, p := range paras {
-					if i > 0 {
-						combined += "\n"
-					}
-					combined += p.Content
-				}
-				return combined, fontSize
-			}
-		}
-	}
-
-	return "", 0
-}
-
-// estimateCellWidthEMU estimates the width of a cell in EMU based on grid config.
-func estimateCellWidthEMU(grid *ShapeGridInput, cellIdx int) int64 {
-	slideWidthEMU := int64(shapegrid.DefaultSlideWidthEMU)
-
-	// Grid typically occupies ~90% of slide width if no bounds specified.
-	gridWidthEMU := int64(float64(slideWidthEMU) * 0.9)
-	if grid.Bounds != nil && grid.Bounds.Width > 0 {
-		gridWidthEMU = int64(float64(slideWidthEMU) * grid.Bounds.Width / 100.0)
-	}
-
-	// Parse column count.
-	numCols := 1
-	if len(grid.Columns) > 0 {
-		var n int
-		if json.Unmarshal(grid.Columns, &n) == nil && n > 0 {
-			numCols = n
-		} else {
-			var arr []float64
-			if json.Unmarshal(grid.Columns, &arr) == nil && len(arr) > 0 {
-				numCols = len(arr)
-			}
-		}
-	}
-
-	return gridWidthEMU / int64(numCols)
-}
-
-// estimateCellHeightEMU estimates the height of a cell in EMU based on grid config.
-func estimateCellHeightEMU(grid *ShapeGridInput, rowIdx int) int64 {
-	slideHeightEMU := int64(shapegrid.DefaultSlideHeightEMU)
-
-	// Grid typically occupies ~70% of slide height if no bounds specified.
-	gridHeightEMU := int64(float64(slideHeightEMU) * 0.7)
-	if grid.Bounds != nil && grid.Bounds.Height > 0 {
-		gridHeightEMU = int64(float64(slideHeightEMU) * grid.Bounds.Height / 100.0)
-	}
-
-	numRows := len(grid.Rows)
-	if numRows == 0 {
-		numRows = 1
-	}
-
-	// Check if the row has a specific height percentage.
-	if rowIdx < len(grid.Rows) && grid.Rows[rowIdx].Height > 0 {
-		return int64(float64(gridHeightEMU) * grid.Rows[rowIdx].Height / 100.0)
-	}
-
-	return gridHeightEMU / int64(numRows)
-}
 
 // writeFitReportNDJSON writes fit findings as NDJSON to the given writer.
 func writeFitReportNDJSON(w io.Writer, findings []fitFinding) {

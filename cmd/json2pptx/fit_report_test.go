@@ -423,29 +423,3 @@ func TestStrictFit_ChartNoFindings_NoRejection(t *testing.T) {
 	}
 }
 
-func TestExtractShapeTextAndFont(t *testing.T) {
-	tests := []struct {
-		name     string
-		raw      json.RawMessage
-		wantText string
-		wantPt   float64
-	}{
-		{"string", json.RawMessage(`"Hello"`), "Hello", 14},
-		{"object", json.RawMessage(`{"content":"World","size":18}`), "World", 18},
-		{"object_default_size", json.RawMessage(`{"content":"NoSize"}`), "NoSize", 14},
-		{"empty", json.RawMessage(`""`), "", 14},
-		{"null", nil, "", 0},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			text, pt := extractShapeTextAndFont(tt.raw)
-			if text != tt.wantText {
-				t.Errorf("text = %q, want %q", text, tt.wantText)
-			}
-			if pt != tt.wantPt {
-				t.Errorf("pt = %v, want %v", pt, tt.wantPt)
-			}
-		})
-	}
-}

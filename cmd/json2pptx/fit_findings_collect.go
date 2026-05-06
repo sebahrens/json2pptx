@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -374,27 +375,37 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 }
 
 // checkShapeGridStructural checks shape_grid cells for footer collision,
-// bounds overflow, and sparse layout using estimated cell positions.
+// bounds overflow, and sparse layout using resolved cell positions from
+// shapegrid.Resolve.
 func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, footerEnabled bool, patternName string) []patterns.FitFinding {
 	if len(grid.Rows) == 0 {
 		return nil
 	}
 
 	ctx := resolveGridContext(grid, layout, slideWidth, slideHeight, footerEnabled)
+
+	// Resolve the grid to get authoritative cell bounds.
+	result := resolveGridForStructural(grid, slideWidth, slideHeight)
+
 	var findings []patterns.FitFinding
 
-	for ri, row := range grid.Rows {
-		cellWidth := estimateCellWidthEMU(grid, 0)
-		cellHeight := estimateCellHeightEMU(grid, ri)
-		cellY := ctx.gridY + int64(ri)*cellHeight
-
-		for ci, cell := range row.Cells {
-			if cell == nil || (cell.Shape == nil && cell.Table == nil) {
-				continue
+	if result != nil {
+		// Walk resolved cells with row/col mapping.
+		cellIdx := 0
+		for ri, row := range grid.Rows {
+			for ci, cell := range row.Cells {
+				if cellIdx >= len(result.Cells) {
+					break
+				}
+				if cell == nil || (cell.Shape == nil && cell.Table == nil) {
+					cellIdx++
+					continue
+				}
+				rc := result.Cells[cellIdx]
+				path := slidepath.GridCell(slideIdx, ri, ci)
+				findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
+				cellIdx++
 			}
-			path := slidepath.GridCell(slideIdx, ri, ci)
-			cellX := ctx.gridX + int64(ci)*cellWidth
-			findings = append(findings, checkCellStructural(path, slideIdx, cellX, cellY, cellWidth, cellHeight, ctx)...)
 		}
 	}
 
@@ -405,6 +416,59 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 	}
 
 	return findings
+}
+
+// resolveGridForStructural builds and resolves a shapegrid.Grid from a
+// ShapeGridInput using default slide dimensions. Returns nil if resolution fails.
+func resolveGridForStructural(grid *ShapeGridInput, slideWidth, slideHeight int64) *shapegrid.ResolveResult {
+	colWidths, err := resolveColumnsDTO(grid.Columns, grid.Rows)
+	if err != nil {
+		return nil
+	}
+
+	colGap := grid.ColGap
+	if colGap == 0 {
+		colGap = grid.Gap
+	}
+	rowGap := grid.RowGap
+	if rowGap == 0 {
+		rowGap = grid.Gap
+	}
+
+	if slideWidth <= 0 {
+		slideWidth = shapegrid.DefaultSlideWidthEMU
+	}
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
+	}
+
+	bounds := shapegrid.DefaultBounds(slideWidth, slideHeight)
+	if grid.Bounds != nil {
+		bounds = shapegrid.BoundsFromPercentages(
+			grid.Bounds.X, grid.Bounds.Y,
+			grid.Bounds.Width, grid.Bounds.Height,
+			slideWidth, slideHeight,
+		)
+	}
+
+	sgGrid := &shapegrid.Grid{
+		Bounds:  bounds,
+		Columns: colWidths,
+		Rows:    convertGridRows(grid.Rows),
+		ColGap:  colGap,
+		RowGap:  rowGap,
+	}
+
+	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
+		return nil
+	}
+
+	alloc := pptx.NewShapeIDAllocator(nil)
+	result, err := shapegrid.Resolve(sgGrid, alloc)
+	if err != nil {
+		return nil
+	}
+	return result
 }
 
 // detectSparseLayoutForGrid estimates the content height of a shape grid and
