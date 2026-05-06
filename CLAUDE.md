@@ -38,6 +38,36 @@ Always run this checklist before declaring work complete:
 3. `go test ./...` -- all tests pass in main module
 4. `cd svggen && go test ./...` -- all tests pass in svggen module
 5. `go build ./cmd/json2pptx` -- binary builds cleanly
+6. **Skill / docs / code sync verified** -- see policy below
+
+## Skill, Docs, and Code Sync (mandatory)
+
+The agent-facing skill (`skills/generate-deck/SKILL.md`) and contributor-facing docs (`docs/FIT_FINDINGS.md`, `docs/PATTERNS.md`, `docs/STYLE_DEFAULTS.md`, `docs/INPUT_FORMAT.md`) are part of this repo. They are not external. Any change that alters an agent-visible or contributor-visible surface MUST update them in the same commit.
+
+**Surfaces that count as agent-facing (require SKILL.md update):**
+
+- CLI / MCP response shapes for `generate`, `validate`, `validate_input`, `expand_pattern`, `show_pattern`, `list_patterns`, `list_templates`, `analyze_deck_rhythm`, `recommend_visual`, `plan_deck`, `repair_slide`
+- Fit-report finding codes, severities, action semantics (`fix.kind` and `params`)
+- JSON-schema additions to slide / pattern / overrides shapes (new fields, new enum values)
+- Template metadata fields readable from the engine (e.g., `accent_usage_guide`, `color_roles`)
+- Recommendation message formats from `analyze_deck_rhythm`
+
+**Surfaces that count as contributor-facing (require `docs/` update):**
+
+- New finding codes -> `docs/FIT_FINDINGS.md`
+- New pattern overrides, new pattern authoring contract rules -> `docs/PATTERNS.md`
+- Deck-level defaults, swap semantics, scope rules -> `docs/STYLE_DEFAULTS.md`
+- Top-level JSON shape changes -> `docs/INPUT_FORMAT.md`
+
+**The rule (symmetric):**
+
+1. Code change to an agent-facing surface without `skills/generate-deck/SKILL.md` update in the same commit is incomplete.
+2. SKILL.md or `docs/` change describing non-existent code is incomplete -- either land the code in the same commit or revert the doc change.
+3. Pre-commit / pre-PR check: open SKILL.md and grep for any string the diff added or removed (finding code, response field, override key). If it should be there and isn't, update SKILL.md before declaring done.
+
+**Exemption:** If a code change is a pure refactor (rename, reorganization) with no agent-visible behavior change, add a commit trailer `Skill-Sync-Exempt: <reason>` (reason ≥ 20 chars). Heuristic CI checks honor the trailer; reviewers verify the claim.
+
+**Why:** drift here is silent. The engine keeps working, but agents stop using new capabilities and start citing removed ones. A single PR that breaks sync costs more to fix later than the seconds it took to update SKILL.md alongside the code.
 
 ## Project Structure
 
