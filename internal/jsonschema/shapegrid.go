@@ -20,7 +20,6 @@ type ShapeGridInput struct {
 	Gap        float64          `json:"gap,omitempty"`         // Gap in points (default 8pt). Applies to both col and row gaps.
 	ColGap     float64          `json:"col_gap,omitempty"`     // Column gap in points (overrides gap)
 	RowGap     float64          `json:"row_gap,omitempty"`     // Row gap in points (overrides gap)
-	FillHeight bool             `json:"fill_height,omitempty"` // When true, distribute height evenly instead of shrinking to content
 	Columns    json.RawMessage  `json:"columns,omitempty"`     // number | number[]
 	Rows       []GridRowInput   `json:"rows"`
 }
@@ -34,11 +33,20 @@ type GridBoundsInput struct {
 }
 
 // GridRowInput defines a single row in the shape grid.
+//
+// Row sizing uses CSS-flex-like semantics:
+//   - height > 0: fixed percentage of grid height
+//   - auto_height: estimate from text content
+//   - flex > 0: proportional share of remaining space (default 1 for unspecified rows)
+//   - min_height / max_height: constraints in points
 type GridRowInput struct {
-	Height     float64             `json:"height,omitempty"`      // Percentage of grid height (0 = equal split)
+	Height     float64             `json:"height,omitempty"`      // Percentage of grid height (0 = flex item)
 	AutoHeight bool                `json:"auto_height,omitempty"` // Estimate height from text content
+	Flex       float64             `json:"flex,omitempty"`        // Flex-grow factor (default 1 when height==0 && !auto_height)
+	MinHeight  float64             `json:"min_height,omitempty"`  // Minimum row height in points (0 = no minimum)
+	MaxHeight  float64             `json:"max_height,omitempty"`  // Maximum row height in points (0 = no maximum)
 	Cells      []*GridCellInput    `json:"cells"`
-	Connector  *ConnectorSpecInput `json:"connector,omitempty"` // Optional connector lines between adjacent cells
+	Connector  *ConnectorSpecInput `json:"connector,omitempty"`   // Optional connector lines between adjacent cells
 }
 
 // ConnectorSpecInput defines the style of connector lines between adjacent cells in a row.

@@ -398,21 +398,10 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 		}
 	}
 
-	// Sparse layout detection for FillHeight grids (pattern-expanded)
-	// where content may occupy a small fraction of the allocated bounds.
-	if grid.FillHeight {
-		if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight, patternName); f != nil {
-			findings = append(findings, *f)
-		}
-	}
-
-	// Sparse layout detection for raw grids with all row heights omitted:
-	// the grid shrinks to content, which may occupy very little of the layout
-	// content area. Emit if content < 60% of the full layout area height.
-	if !grid.FillHeight && allGridRowHeightsZero(grid.Rows) {
-		if f := detectSparseRawGrid(grid, slideIdx, slideWidth, slideHeight); f != nil {
-			findings = append(findings, *f)
-		}
+	// Sparse layout detection: bounds are authoritative (never shrink), so
+	// content may occupy a small fraction of the allocated bounds.
+	if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight, patternName); f != nil {
+		findings = append(findings, *f)
 	}
 
 	return findings
@@ -889,7 +878,7 @@ func allGridRowHeightsZero(rows []GridRowInput) bool {
 // height. Grids occupying less than 60% of the layout content area are sparse.
 const rawGridSparseThreshold = 0.60
 
-// detectSparseRawGrid emits a sparse_layout finding for raw (non-FillHeight)
+// detectSparseRawGrid emits a sparse_layout finding for raw
 // grids whose auto-shrunk content height is less than 60% of the full layout
 // content area height.
 func detectSparseRawGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64) *patterns.FitFinding {

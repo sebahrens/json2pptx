@@ -1501,9 +1501,6 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	if err != nil {
 		return api.MCPDiagnosticsError(diagnostics.FromJoinedError(err, "PATTERN_ERROR")), nil
 	}
-	// Pattern-generated grids should fill the layout area, not shrink to content.
-	grid.FillHeight = true
-
 	// Run density checks on any tables embedded in the expanded shape grid.
 	densityWarnings := collectGridDensityWarnings(grid)
 

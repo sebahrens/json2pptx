@@ -170,10 +170,9 @@ func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap floa
 	}
 
 	merged := &jsonschema.ShapeGridInput{
-		Columns:    json.RawMessage(fmt.Sprintf(`%d`, maxCols)),
-		Rows:       mergedRows,
-		FillHeight: true,
-		RowGap:     resolvedGap,
+		Columns: json.RawMessage(fmt.Sprintf(`%d`, maxCols)),
+		Rows:    mergedRows,
+		RowGap:  resolvedGap,
 	}
 
 	return merged, nil
@@ -227,10 +226,9 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 	}
 
 	merged := &jsonschema.ShapeGridInput{
-		Columns:    colJSON,
-		Rows:       mergedRows,
-		FillHeight: true,
-		ColGap:     resolvedGap,
+		Columns: colJSON,
+		Rows:    mergedRows,
+		ColGap:  resolvedGap,
 	}
 
 	return merged, nil

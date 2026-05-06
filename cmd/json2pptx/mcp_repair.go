@@ -818,13 +818,12 @@ func findSplitRow(grid *ShapeGridInput, targetCells int) int {
 // cloneSlideForSplit creates a copy of the slide with the given grid rows.
 func cloneSlideForSplit(src SlideInput, rows []GridRowInput, srcGrid *ShapeGridInput) SlideInput {
 	newGrid := &ShapeGridInput{
-		Bounds:     srcGrid.Bounds,
-		Gap:        srcGrid.Gap,
-		ColGap:     srcGrid.ColGap,
-		RowGap:     srcGrid.RowGap,
-		FillHeight: srcGrid.FillHeight,
-		Columns:    srcGrid.Columns,
-		Rows:       make([]GridRowInput, len(rows)),
+		Bounds:  srcGrid.Bounds,
+		Gap:     srcGrid.Gap,
+		ColGap:  srcGrid.ColGap,
+		RowGap:  srcGrid.RowGap,
+		Columns: srcGrid.Columns,
+		Rows:    make([]GridRowInput, len(rows)),
 	}
 	copy(newGrid.Rows, rows)
 

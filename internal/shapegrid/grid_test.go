@@ -193,7 +193,7 @@ func TestResolveRowHeights_Mixed(t *testing.T) {
 
 func TestResolveRowHeights_AutoHeight(t *testing.T) {
 	// A header row at 20% + an auto-height content row with short text.
-	// The auto row should fill the remaining 80% since it's the only flexible row.
+	// The auto row gets its estimated content height (not the full remaining space).
 	rows := []Row{
 		{Height: 20},
 		{
@@ -210,15 +210,21 @@ func TestResolveRowHeights_AutoHeight(t *testing.T) {
 	if heights[0] != 20 {
 		t.Errorf("header row: expected 20, got %f", heights[0])
 	}
-	// Auto row gets the full remaining 80% (equal share of remaining space)
-	if heights[1] != 80 {
-		t.Errorf("auto row: expected 80, got %f", heights[1])
+	// Auto row gets its estimated content height (clamped between 8-80%).
+	// With 3 lines of 11pt text + 12pt inset, it should be a small fraction of 5M EMU.
+	if heights[1] < 8 || heights[1] > 80 {
+		t.Errorf("auto row: expected 8-80%%, got %f", heights[1])
+	}
+	// Total should equal header + auto allocation
+	total := heights[0] + heights[1]
+	if total < 20 || total > 100 {
+		t.Errorf("total should be between 20-100%%, got %f", total)
 	}
 }
 
 func TestResolveRowHeights_AutoHeightWithUnspecified(t *testing.T) {
-	// Header at 20%, auto-height row, and an unspecified row.
-	// Both flexible rows should share the remaining 80% equally.
+	// Header at 20%, auto-height row, and an unspecified (flex=1) row.
+	// Auto row gets its content estimate; flex row gets the remainder.
 	rows := []Row{
 		{Height: 20},
 		{
@@ -228,7 +234,7 @@ func TestResolveRowHeights_AutoHeightWithUnspecified(t *testing.T) {
 				Text:     json.RawMessage(`{"content":"Short","size":11}`),
 			}}},
 		},
-		{}, // unspecified
+		{}, // unspecified → flex=1
 	}
 	gridH := int64(5000000)
 	heights := resolveRowHeights(rows, gridH)
@@ -236,13 +242,14 @@ func TestResolveRowHeights_AutoHeightWithUnspecified(t *testing.T) {
 	if heights[0] != 20 {
 		t.Errorf("header row: expected 20, got %f", heights[0])
 	}
-	// Auto row gets at least equal share = 40%
-	if heights[1] != 40 {
-		t.Errorf("auto row: expected 40, got %f", heights[1])
+	// Auto row gets its estimated content height (small for "Short" text)
+	if heights[1] < 8 || heights[1] > 80 {
+		t.Errorf("auto row: expected 8-80%%, got %f", heights[1])
 	}
-	// Unspecified row gets the remaining 40%
-	if heights[2] != 40 {
-		t.Errorf("unspecified row: expected 40, got %f", heights[2])
+	// Flex row gets the remaining space
+	remaining := 100.0 - heights[0] - heights[1]
+	if heights[2] < remaining-0.01 || heights[2] > remaining+0.01 {
+		t.Errorf("flex row: expected ~%.1f%%, got %f", remaining, heights[2])
 	}
 }
 
@@ -419,10 +426,9 @@ func TestResolveRowHeights_TenEqualRows(t *testing.T) {
 	}
 }
 
-func TestResolve_AllZeroHeights_ShrinksBounds(t *testing.T) {
-	// When no row specifies explicit height, the grid should auto-calculate
-	// content-based heights and shrink bounds to fit instead of stretching
-	// to fill the full content zone.
+func TestResolve_AllZeroHeights_BoundsAuthoritative(t *testing.T) {
+	// Bounds are authoritative — they must never shrink even when all rows
+	// have zero height. Rows get flex-distributed shares of the available space.
 	grid := &Grid{
 		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 8229600, CY: 5000000}, // large grid
 		Columns: []float64{50, 50},
@@ -442,7 +448,6 @@ func TestResolve_AllZeroHeights_ShrinksBounds(t *testing.T) {
 		},
 	}
 
-	origCY := grid.Bounds.CY
 	alloc := newAlloc(100)
 	result, err := Resolve(grid, alloc)
 	if err != nil {
@@ -452,9 +457,9 @@ func TestResolve_AllZeroHeights_ShrinksBounds(t *testing.T) {
 		t.Fatal("expected non-nil result")
 	}
 
-	// Grid should have shrunk because content is short relative to the full 5M EMU.
-	if grid.Bounds.CY >= origCY {
-		t.Errorf("expected grid CY to shrink below %d, got %d", origCY, grid.Bounds.CY)
+	// Bounds must remain unchanged (authoritative, never shrink).
+	if grid.Bounds.CY != 5000000 {
+		t.Errorf("expected grid CY to remain 5000000, got %d", grid.Bounds.CY)
 	}
 }
 
@@ -480,13 +485,11 @@ func TestResolve_ExplicitHeights_NoBoundsShrink(t *testing.T) {
 	}
 }
 
-func TestResolve_FillHeight_NoBoundsShrink(t *testing.T) {
-	// When FillHeight is true and all rows have zero height, the grid should
-	// distribute height evenly and NOT shrink bounds to content.
+func TestResolve_FlexRows_EvenDistribution(t *testing.T) {
+	// All rows with zero height (default flex=1) should distribute evenly.
 	grid := &Grid{
-		Bounds:     pptx.RectEmu{X: 0, Y: 0, CX: 8229600, CY: 5000000},
-		Columns:    []float64{50, 50},
-		FillHeight: true,
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 8229600, CY: 5000000},
+		Columns: []float64{50, 50},
 		Rows: []Row{
 			{Cells: []Cell{
 				{Shape: &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`"Short"`)}},
@@ -512,9 +515,184 @@ func TestResolve_FillHeight_NoBoundsShrink(t *testing.T) {
 		t.Fatal("expected non-nil result")
 	}
 
-	// Bounds should remain unchanged (no shrink).
+	// Bounds should remain unchanged (authoritative).
 	if grid.Bounds.CY != 5000000 {
 		t.Errorf("expected grid CY to remain 5000000, got %d", grid.Bounds.CY)
+	}
+
+	// All 3 cells per row should have approximately equal height.
+	if len(result.Cells) >= 3 {
+		h0 := result.Cells[0].Bounds.CY
+		h2 := result.Cells[2].Bounds.CY
+		// Heights should be within 1 EMU of each other (rounding).
+		diff := h0 - h2
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff > 1 {
+			t.Errorf("expected equal row heights, got %d and %d (diff %d)", h0, h2, diff)
+		}
+	}
+}
+
+func TestResolveRowHeights_FlexWeights(t *testing.T) {
+	// Two flex rows with weights 2:1 should get 2/3 and 1/3 of available space.
+	rows := []Row{
+		{Flex: 2}, // 2x weight
+		{Flex: 1}, // 1x weight
+	}
+	gridH := int64(3000000) // 3M EMU
+	heights := resolveRowHeights(rows, gridH)
+
+	// Row 0 should get ~66.67%, row 1 ~33.33%
+	if heights[0] < 66 || heights[0] > 67 {
+		t.Errorf("flex=2 row: expected ~66.67%%, got %f", heights[0])
+	}
+	if heights[1] < 33 || heights[1] > 34 {
+		t.Errorf("flex=1 row: expected ~33.33%%, got %f", heights[1])
+	}
+}
+
+func TestResolveRowHeights_FixedPlusFlexPlusFlex(t *testing.T) {
+	// 30% fixed + two flex rows (default flex=1) should split remaining 70%.
+	rows := []Row{
+		{Height: 30},
+		{}, // flex=1 (default)
+		{}, // flex=1 (default)
+	}
+	gridH := int64(5000000)
+	heights := resolveRowHeights(rows, gridH)
+
+	if heights[0] != 30 {
+		t.Errorf("fixed row: expected 30, got %f", heights[0])
+	}
+	// Each flex row gets 35% of total
+	if heights[1] < 34.9 || heights[1] > 35.1 {
+		t.Errorf("flex row 1: expected ~35%%, got %f", heights[1])
+	}
+	if heights[2] < 34.9 || heights[2] > 35.1 {
+		t.Errorf("flex row 2: expected ~35%%, got %f", heights[2])
+	}
+}
+
+func TestResolveRowHeights_MinHeight(t *testing.T) {
+	// Two flex rows, first with min_height that's larger than its flex share.
+	// 100pt in 2000000 EMU total = 100*12700/2000000 * 100 ≈ 63.5%
+	rows := []Row{
+		{MinHeight: 100}, // min 100pt ≈ 63.5% of 2M EMU
+		{},               // flex=1
+	}
+	gridH := int64(2000000)
+	heights := resolveRowHeights(rows, gridH)
+
+	minPct := (100.0 * 12700) / float64(gridH) * 100.0
+	if heights[0] < minPct-0.1 {
+		t.Errorf("row 0: expected >= %.1f%% (min_height), got %f", minPct, heights[0])
+	}
+}
+
+func TestResolveRowHeights_MaxHeight(t *testing.T) {
+	// Single flex row with max_height constraint.
+	// 50pt in 5000000 EMU = 50*12700/5000000 * 100 ≈ 12.7%
+	rows := []Row{
+		{MaxHeight: 50}, // max 50pt
+		{},              // flex=1 gets the rest
+	}
+	gridH := int64(5000000)
+	heights := resolveRowHeights(rows, gridH)
+
+	maxPct := (50.0 * 12700) / float64(gridH) * 100.0
+	if heights[0] > maxPct+0.1 {
+		t.Errorf("row 0: expected <= %.1f%% (max_height), got %f", maxPct, heights[0])
+	}
+	// Row 1 should get the remaining space
+	if heights[1] < 100-maxPct-0.1 {
+		t.Errorf("row 1: expected ~%.1f%%, got %f", 100-maxPct, heights[1])
+	}
+}
+
+func TestResolve_RowOverflow(t *testing.T) {
+	// A row with max_height = 20pt but content that exceeds it should
+	// report a RowOverflow in the result.
+	grid := &Grid{
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 8229600, CY: 5000000},
+		Columns: []float64{100},
+		Rows: []Row{
+			{
+				MaxHeight: 20, // 20pt max
+				Cells: []Cell{{Shape: &ShapeSpec{
+					Geometry: "rect",
+					// Many lines will exceed 20pt
+					Text: json.RawMessage(`{"content":"Line1\nLine2\nLine3\nLine4\nLine5\nLine6","size":14}`),
+				}}},
+			},
+		},
+	}
+
+	alloc := newAlloc(100)
+	result, err := Resolve(grid, alloc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.RowOverflows) == 0 {
+		t.Error("expected at least one RowOverflow")
+	} else {
+		ov := result.RowOverflows[0]
+		if ov.RowIndex != 0 {
+			t.Errorf("expected RowIndex 0, got %d", ov.RowIndex)
+		}
+		if ov.MaxHeightPt != 20 {
+			t.Errorf("expected MaxHeightPt 20, got %f", ov.MaxHeightPt)
+		}
+		if ov.ContentPt <= 20 {
+			t.Errorf("expected ContentPt > 20, got %f", ov.ContentPt)
+		}
+	}
+}
+
+func TestResolve_NoRowOverflowWhenFits(t *testing.T) {
+	// Content that fits within max_height should not produce an overflow.
+	grid := &Grid{
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 8229600, CY: 5000000},
+		Columns: []float64{100},
+		Rows: []Row{
+			{
+				MaxHeight: 200, // generous max
+				Cells: []Cell{{Shape: &ShapeSpec{
+					Geometry: "rect",
+					Text:     json.RawMessage(`"Short"`),
+				}}},
+			},
+		},
+	}
+
+	alloc := newAlloc(100)
+	result, err := Resolve(grid, alloc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.RowOverflows) != 0 {
+		t.Errorf("expected no RowOverflows, got %d", len(result.RowOverflows))
+	}
+}
+
+func TestPtToPct(t *testing.T) {
+	// 100pt in 5000000 EMU = (100*12700)/5000000 * 100 = 25.4%
+	got := ptToPct(100, 5000000)
+	if got < 25.3 || got > 25.5 {
+		t.Errorf("ptToPct(100, 5000000) = %f, want ~25.4", got)
+	}
+
+	// Zero/negative inputs
+	if ptToPct(0, 5000000) != 0 {
+		t.Error("ptToPct(0, ...) should be 0")
+	}
+	if ptToPct(100, 0) != 0 {
+		t.Error("ptToPct(..., 0) should be 0")
 	}
 }
 

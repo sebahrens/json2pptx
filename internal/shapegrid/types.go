@@ -38,18 +38,27 @@ const (
 
 // Grid is the domain representation of a shape grid layout.
 type Grid struct {
-	Bounds     pptx.RectEmu // Absolute bounds in EMU
-	Columns    []float64    // Column width percentages (sum to 100)
-	Rows       []Row        // Row definitions
-	ColGap     float64      // Column gap in points (1pt = 12700 EMU)
-	RowGap     float64      // Row gap in points (1pt = 12700 EMU)
-	FillHeight bool         // When true, distribute height evenly among zero-height rows (skip shrink-to-content)
+	Bounds  pptx.RectEmu // Absolute bounds in EMU (authoritative — never shrunk)
+	Columns []float64    // Column width percentages (sum to 100)
+	Rows    []Row        // Row definitions
+	ColGap  float64      // Column gap in points (1pt = 12700 EMU)
+	RowGap  float64      // Row gap in points (1pt = 12700 EMU)
 }
 
 // Row is a single row in the grid.
+//
+// Height allocation uses CSS-flex-like semantics:
+//   - Height > 0: fixed percentage of grid height (allocated first)
+//   - AutoHeight: estimate preferred height from text content (allocated second)
+//   - Flex > 0: proportional share of remaining space (default Flex=1 for unspecified rows)
+//
+// MinHeight and MaxHeight (in points) constrain the resolved height.
 type Row struct {
-	Height     float64        // Percentage of grid height (0 = equal split of remaining)
-	AutoHeight bool           // When true, estimate height from text content (overrides Height=0)
+	Height     float64        // Percentage of grid height (0 = flex item)
+	AutoHeight bool           // When true, estimate height from text content
+	Flex       float64        // Flex-grow factor for remaining space distribution (default 1 when Height==0 && !AutoHeight)
+	MinHeight  float64        // Minimum row height in points (0 = no minimum)
+	MaxHeight  float64        // Maximum row height in points (0 = no maximum)
 	Cells      []Cell         // Cells in this row
 	Connector  *ConnectorSpec // Optional connector between adjacent cells in this row
 }
@@ -165,9 +174,18 @@ type ResolvedAccentBar struct {
 	Spec   *AccentBarSpec // Accent bar styling
 }
 
-// ResolveResult holds the output of grid resolution: resolved cells, connectors, and accent bars.
+// RowOverflow records a row whose content exceeds its max_height constraint.
+type RowOverflow struct {
+	RowIndex   int     // Zero-based row index
+	ContentPt  float64 // Estimated content height in points
+	MaxHeightPt float64 // Max height constraint in points
+}
+
+// ResolveResult holds the output of grid resolution: resolved cells, connectors, accent bars,
+// and any row overflow diagnostics.
 type ResolveResult struct {
-	Cells      []ResolvedCell
-	Connectors []ResolvedConnector
-	AccentBars []ResolvedAccentBar
+	Cells        []ResolvedCell
+	Connectors   []ResolvedConnector
+	AccentBars   []ResolvedAccentBar
+	RowOverflows []RowOverflow // Rows whose content exceeded max_height
 }

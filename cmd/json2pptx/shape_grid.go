@@ -19,10 +19,11 @@ import (
 // fragments ready for injection and the resolved cell metadata (bounds, IDs,
 // specs) for downstream processing such as icon insertion or validation.
 type ShapeGridResult struct {
-	Shapes       [][]byte                 // Raw <p:sp>/<p:graphicFrame> XML fragments
-	Cells        []shapegrid.ResolvedCell // Resolved cell metadata with absolute coordinates
-	IconInserts  []generator.IconInsert   // Icon cells requiring media registration in the generator
-	ImageInserts []generator.ImageInsert  // Image cells requiring media registration in the generator
+	Shapes       [][]byte                  // Raw <p:sp>/<p:graphicFrame> XML fragments
+	Cells        []shapegrid.ResolvedCell  // Resolved cell metadata with absolute coordinates
+	IconInserts  []generator.IconInsert    // Icon cells requiring media registration in the generator
+	ImageInserts []generator.ImageInsert   // Image cells requiring media registration in the generator
+	RowOverflows []shapegrid.RowOverflow   // Rows whose content exceeded max_height
 }
 
 // virtualLayoutResult holds the result of virtual layout resolution.
@@ -220,12 +221,11 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	rows := convertGridRows(input.Rows)
 
 	grid := &shapegrid.Grid{
-		Bounds:     bounds,
-		Columns:    colWidths,
-		Rows:       rows,
-		ColGap:     colGap,
-		RowGap:     rowGap,
-		FillHeight: input.FillHeight,
+		Bounds:  bounds,
+		Columns: colWidths,
+		Rows:    rows,
+		ColGap:  colGap,
+		RowGap:  rowGap,
 	}
 
 	// Validate grid structure before rendering (catches overlaps, span errors, etc.)
@@ -267,6 +267,9 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 		rows[i] = shapegrid.Row{
 			Height:     r.Height,
 			AutoHeight: r.AutoHeight,
+			Flex:       r.Flex,
+			MinHeight:  r.MinHeight,
+			MaxHeight:  r.MaxHeight,
 			Cells:      cells,
 			Connector:  connSpec,
 		}
@@ -456,6 +459,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		Cells:        result.Cells,
 		IconInserts:  iconInserts,
 		ImageInserts: imageInserts,
+		RowOverflows: result.RowOverflows,
 	}, nil
 }
 

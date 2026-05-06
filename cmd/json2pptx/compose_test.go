@@ -44,8 +44,7 @@ func TestExpandCompose_Vertical(t *testing.T) {
 		t.Fatal("merged grid has no rows")
 	}
 
-	// Verify FillHeight is not set by expandCompose itself (set by caller)
-	// but the grid should be valid
+	// Verify the merged grid has valid row heights
 	totalHeight := 0.0
 	for _, row := range grid.Rows {
 		totalHeight += row.Height

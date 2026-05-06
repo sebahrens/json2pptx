@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.0.0 (2026-05-06)
+
+### Breaking
+
+- **Removed `fill_height`** from `shape_grid` input. Grid bounds are now
+  authoritative and never shrink. The old "all-zero-heights shrinks bounds"
+  behavior is retired. All grids distribute height using flex-like semantics.
+  Existing decks that relied on `fill_height: true` are unaffected (the
+  behavior is now the default). Decks that relied on implicit bounds-shrinking
+  for raw grids will now fill their allocated layout area instead.
+
+### Added
+
+- `flex` — row-level field for proportional space distribution. Default is 1
+  for rows with no explicit `height` and no `auto_height`. Rows with higher
+  flex values receive proportionally more of the remaining space.
+- `min_height` / `max_height` — row-level constraints in points. Applied
+  after initial allocation with iterative clamping to redistribute overflow.
+
 ## 3.5.0 (2026-05-06)
 
 ### Added

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -239,6 +240,13 @@ func walkShapeGrid(grid *ShapeGridInput, slideIdx int) []fitFinding {
 	var findings []fitFinding
 
 	for ri, row := range grid.Rows {
+		// Check row-level max_height overflow.
+		if row.MaxHeight > 0 {
+			if f := checkRowMaxHeightOverflow(grid, slideIdx, ri, row); f != nil {
+				findings = append(findings, *f)
+			}
+		}
+
 		for ci, cell := range row.Cells {
 			if cell == nil {
 				continue
@@ -260,6 +268,49 @@ func walkShapeGrid(grid *ShapeGridInput, slideIdx int) []fitFinding {
 	}
 
 	return findings
+}
+
+// checkRowMaxHeightOverflow detects when a row's estimated content height
+// exceeds its max_height constraint.
+func checkRowMaxHeightOverflow(grid *ShapeGridInput, slideIdx, rowIdx int, row GridRowInput) *fitFinding {
+	// Estimate content height from text in each cell.
+	var maxContentEMU int64
+	for _, cell := range row.Cells {
+		if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+			continue
+		}
+		text, fontPt := extractShapeTextAndFont(cell.Shape.Text)
+		if text == "" {
+			continue
+		}
+		lines := strings.Count(text, "\n") + 1
+		lineHeightPt := fontPt * 1.4
+		totalPt := float64(lines)*lineHeightPt + 12 // 12pt padding
+		h := int64(totalPt * 12700)
+		if h > maxContentEMU {
+			maxContentEMU = h
+		}
+	}
+	if maxContentEMU == 0 {
+		return nil
+	}
+
+	contentPt := float64(maxContentEMU) / 12700.0
+	if contentPt <= row.MaxHeight {
+		return nil
+	}
+
+	path := slidepath.GridRow(slideIdx, rowIdx)
+	return &fitFinding{
+		Code:             patterns.ErrCodeFitOverflow,
+		Path:             path,
+		Message:          fmt.Sprintf("row content ~%.0fpt exceeds max_height %.0fpt", contentPt, row.MaxHeight),
+		Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
+		BindingDimension: "height",
+		RequiredPt:       contentPt,
+		AllocatedPt:      row.MaxHeight,
+		Action:           "refuse",
+	}
 }
 
 // measureShapeText measures text in a shape-grid shape cell.

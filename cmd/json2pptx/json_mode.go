@@ -713,7 +713,6 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			if err != nil {
 				return nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
 			}
-			expanded.FillHeight = true
 			slide.ShapeGrid = expanded
 		}
 
@@ -731,8 +730,6 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			if err != nil {
 				return nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
 			}
-			// Pattern-generated grids should fill the layout area, not shrink to content.
-			expanded.FillHeight = true
 			slide.ShapeGrid = expanded
 		}
 

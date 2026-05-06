@@ -177,10 +177,7 @@ Only fires when the slide's resolved layout declares a footer placeholder (date,
 **Pattern:** `shape_grid`
 **Fix kind:** `grow_pattern`
 
-Content occupies less than 40% of the available bounds height — the slide is mostly empty. Fires on two grid types:
-
-1. **`fill_height: true` grids** (pattern-expanded) — when the content extent is under 40% of bounds height.
-2. **Raw (non-fill-height) grids** — when the auto-shrunk content height is under 60% of the full layout content area height.
+Content occupies less than 40% of the available bounds height — the slide is mostly empty. Since grid bounds are authoritative (never shrink), this fires when the estimated content extent is under 40% of the allocated bounds height.
 
 The fix params include `filled_pct`, `bounds_height`, and `content_height`.
 
@@ -380,7 +377,7 @@ Fit findings are scoped to **JSON-authored content only**. Content inherited fro
 
 - **Layout-inherited shapes** — shapes that come from the template's slide layout or master are never checked. Callers filter these before passing to detectors.
 - **Decorative shapes** — shapes with `role: "background"` or `role: "decor"` are skipped by `slide_bounds_overflow` and `footer_collision`. These are intentionally placed at edges or off-slide.
-- **Non-fill-height grids (partial)** — `sparse_layout` fires on `fill_height: true` grids (pattern-expanded) at a 40% threshold, and also on raw grids whose auto-shrunk height is under 60% of the layout content area. Grids that exceed both thresholds are not flagged.
+- **Sparse grids** — `sparse_layout` fires when the estimated content extent is under 40% of the grid bounds height. Since bounds are authoritative (never shrink), all grids are checked uniformly.
 - **Autofit placeholders** — `placeholder_overflow` is suppressed when the placeholder has `normAutofit` or `spAutoFit` set, because PowerPoint will auto-shrink text to fit.
 - **Layouts without footer** — `footer_collision` only fires when the slide's resolved layout declares a footer placeholder (dt, ftr, or sldNum). No finding is emitted on layouts using heuristic fallback positioning.
 

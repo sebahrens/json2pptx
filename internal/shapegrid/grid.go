@@ -52,35 +52,28 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 		x += colWidthsEMU[c] + colGapEMU
 	}
 
-	// Auto-height: when no row specifies an explicit height, estimate content
-	// heights and shrink grid bounds to fit content instead of stretching to
-	// fill the full content zone. Skip when FillHeight is set (pattern-generated
-	// grids that should fill the available layout area).
-	if allRowHeightsZero(grid.Rows) && numRows > 0 && !grid.FillHeight {
-		var maxContentEMU int64
-		for _, row := range grid.Rows {
-			h := estimateRowContentHeightEMU(row)
-			if h > maxContentEMU {
-				maxContentEMU = h
-			}
-		}
-		if maxContentEMU > 0 {
-			totalContentH := maxContentEMU*int64(numRows) + totalRowGap
-			if totalContentH < gridH {
-				gridH = totalContentH
-				availH = gridH - totalRowGap
-				grid.Bounds.CY = gridH
-			}
-			// Set uniform percentage so resolveRowHeights treats them as fixed.
-			pctEach := 100.0 / float64(numRows)
-			for i := range grid.Rows {
-				grid.Rows[i].Height = pctEach
-			}
-		}
-	}
+	// Bounds are authoritative — never shrink. Row heights are distributed
+	// using CSS-flex-like semantics within the available height.
 
 	// Resolve row heights
 	rowHeights := resolveRowHeights(grid.Rows, availH)
+
+	// Detect rows whose content exceeds max_height.
+	var rowOverflows []RowOverflow
+	for i, row := range grid.Rows {
+		if row.MaxHeight <= 0 {
+			continue
+		}
+		contentEMU := estimateRowTextHeightEMU(row)
+		contentPt := float64(contentEMU) / 12700.0
+		if contentPt > row.MaxHeight {
+			rowOverflows = append(rowOverflows, RowOverflow{
+				RowIndex:    i,
+				ContentPt:   contentPt,
+				MaxHeightPt: row.MaxHeight,
+			})
+		}
+	}
 
 	// Compute absolute row positions and heights (truncation-safe)
 	rowHeightsEMU := distributeEMU(rowHeights, availH)
@@ -247,9 +240,10 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	}
 
 	return &ResolveResult{
-		Cells:      cells,
-		Connectors: connectors,
-		AccentBars: accentBars,
+		Cells:        cells,
+		Connectors:   connectors,
+		AccentBars:   accentBars,
+		RowOverflows: rowOverflows,
 	}, nil
 }
 
@@ -284,65 +278,177 @@ func ResolveColumns(columns interface{}, rowCellCounts []int) ([]float64, error)
 	}
 }
 
-// resolveRowHeights returns percentage heights for each row, summing to 100.
-// availHeightEMU is the available grid height in EMU (after gaps), used for
-// auto-height estimation.
-func resolveRowHeights(rows []Row, availHeightEMU int64) []float64 {
-	heights := make([]float64, len(rows))
-	var fixedPct float64
-	autoIdxs := []int{}
-	unspecified := 0
+// resolveRowHeights returns percentage heights for each row, summing to ~100.
+// It uses CSS-flex-like semantics:
+//  1. Fixed rows (Height > 0): percentage allocated directly.
+//  2. Auto-height rows (AutoHeight): estimated from content, clamped by min/max.
+//  3. Flex rows (Height == 0, !AutoHeight): remaining space distributed
+//     proportionally by Flex factor (default 1).
+//
+// MinHeight and MaxHeight (in points) are applied after initial allocation.
+// availHeightEMU is the available grid height in EMU (after gaps).
+func resolveRowHeights(rows []Row, availHeightEMU int64) []float64 { //nolint:gocognit
+	n := len(rows)
+	heights := make([]float64, n)
+	if n == 0 || availHeightEMU <= 0 {
+		return heights
+	}
 
-	// Pass 1: assign fixed heights and estimate auto-height rows.
+	classes := classifyRows(rows, heights, availHeightEMU)
+
+	// Apply min/max constraints to auto-height rows.
 	for i, row := range rows {
-		if row.Height > 0 {
-			heights[i] = row.Height
-			fixedPct += row.Height
-		} else if row.AutoHeight {
-			est := estimateRowHeightPct(row, availHeightEMU)
-			heights[i] = est
-			autoIdxs = append(autoIdxs, i)
-		} else {
-			unspecified++
+		if classes[i] == rowClassAuto {
+			heights[i] = clampHeightPct(heights[i], row.MinHeight, row.MaxHeight, availHeightEMU)
 		}
 	}
 
-	// Pass 2: ensure auto-height rows get at least an equal share of the
-	// remaining space (after fixed rows). This prevents tiny panels when
-	// text content is short but plenty of vertical space is available.
-	flexCount := len(autoIdxs) + unspecified
-	if flexCount > 0 {
-		remainingAfterFixed := 100.0 - fixedPct
-		if remainingAfterFixed < 0 {
-			remainingAfterFixed = 0
-		}
-		equalShare := remainingAfterFixed / float64(flexCount)
-		for _, idx := range autoIdxs {
-			if heights[idx] < equalShare {
-				heights[idx] = equalShare
-			}
+	// Sum non-flex allocations.
+	var nonFlexPct float64
+	for i, h := range heights {
+		if classes[i] != rowClassFlex {
+			nonFlexPct += h
 		}
 	}
 
-	// Pass 3: distribute leftover space to unspecified rows.
-	if unspecified > 0 {
-		var usedPct float64
-		for _, h := range heights {
-			usedPct += h
-		}
-		remaining := 100.0 - usedPct
-		if remaining < 0 {
-			remaining = 0
-		}
-		each := remaining / float64(unspecified)
-		for i, row := range rows {
-			if heights[i] == 0 && row.Height == 0 && !row.AutoHeight {
-				heights[i] = each
-			}
-		}
-	}
+	// Distribute remaining space to flex rows proportionally.
+	distributeFlex(rows, classes, heights, 100.0-nonFlexPct)
+
+	// Apply min/max constraints to flex rows with iterative clamping.
+	clampFlexRows(rows, classes, heights, availHeightEMU)
 
 	return heights
+}
+
+// rowClass identifies how a row's height is determined.
+type rowClass int
+
+const (
+	rowClassFixed rowClass = iota
+	rowClassAuto
+	rowClassFlex
+)
+
+// classifyRows assigns a class to each row and sets initial heights.
+func classifyRows(rows []Row, heights []float64, availHeightEMU int64) []rowClass {
+	classes := make([]rowClass, len(rows))
+	for i, row := range rows {
+		switch {
+		case row.Height > 0:
+			classes[i] = rowClassFixed
+			heights[i] = row.Height
+		case row.AutoHeight:
+			classes[i] = rowClassAuto
+			heights[i] = estimateRowHeightPct(row, availHeightEMU)
+		default:
+			classes[i] = rowClassFlex
+		}
+	}
+	return classes
+}
+
+// effectiveFlex returns the flex factor for a row, defaulting to 1.
+func effectiveFlex(row Row) float64 {
+	if row.Flex > 0 {
+		return row.Flex
+	}
+	return 1
+}
+
+// distributeFlex assigns remaining percentage space to flex rows proportionally.
+func distributeFlex(rows []Row, classes []rowClass, heights []float64, remainingPct float64) {
+	if remainingPct < 0 {
+		remainingPct = 0
+	}
+	var totalFlex float64
+	for i := range rows {
+		if classes[i] == rowClassFlex {
+			totalFlex += effectiveFlex(rows[i])
+		}
+	}
+	if totalFlex > 0 {
+		for i := range rows {
+			if classes[i] == rowClassFlex {
+				heights[i] = remainingPct * effectiveFlex(rows[i]) / totalFlex
+			}
+		}
+	}
+}
+
+// clampFlexRows iteratively applies min/max constraints to flex rows,
+// redistributing freed space among unclamped flex rows.
+func clampFlexRows(rows []Row, classes []rowClass, heights []float64, availHeightEMU int64) {
+	for iter := 0; iter < len(rows); iter++ {
+		clamped := false
+		var flexTotal float64
+		for i := range rows {
+			if classes[i] != rowClassFlex {
+				continue
+			}
+			minPct := ptToPct(rows[i].MinHeight, availHeightEMU)
+			maxPct := ptToPct(rows[i].MaxHeight, availHeightEMU)
+			if minPct > 0 && heights[i] < minPct {
+				heights[i] = minPct
+				classes[i] = rowClassFixed
+				clamped = true
+			} else if maxPct > 0 && heights[i] > maxPct {
+				heights[i] = maxPct
+				classes[i] = rowClassFixed
+				clamped = true
+			} else {
+				flexTotal += effectiveFlex(rows[i])
+			}
+		}
+		if !clamped {
+			break
+		}
+		// Recalculate remaining space (only count non-flex rows).
+		var fixedPct float64
+		for i, h := range heights {
+			if classes[i] != rowClassFlex {
+				fixedPct += h
+			}
+		}
+		distributeFlex(rows, classes, heights, 100.0-fixedPct)
+	}
+}
+
+// clampHeightPct applies min/max point constraints to a percentage height.
+func clampHeightPct(pct, minPt, maxPt float64, availHeightEMU int64) float64 {
+	if minPt > 0 {
+		minPct := ptToPct(minPt, availHeightEMU)
+		if pct < minPct {
+			pct = minPct
+		}
+	}
+	if maxPt > 0 {
+		maxPct := ptToPct(maxPt, availHeightEMU)
+		if pct > maxPct {
+			pct = maxPct
+		}
+	}
+	return pct
+}
+
+// ptToPct converts a point value to a percentage of available height.
+func ptToPct(pt float64, availHeightEMU int64) float64 {
+	if pt <= 0 || availHeightEMU <= 0 {
+		return 0
+	}
+	return (pt * 12700) / float64(availHeightEMU) * 100.0
+}
+
+// estimateRowTextHeightEMU returns the maximum text height across all cells
+// in a row, in EMU. Used for overflow detection.
+func estimateRowTextHeightEMU(row Row) int64 {
+	var maxH int64
+	for _, cell := range row.Cells {
+		h := estimateCellTextHeightEMU(cell)
+		if h > maxH {
+			maxH = h
+		}
+	}
+	return maxH
 }
 
 // estimateRowHeightPct estimates the percentage of grid height needed for a row
@@ -416,71 +522,6 @@ func textHeightEMU(lines int, fontSizePt, insetTopPt, insetBottomPt float64) int
 	textPt := float64(lines) * lineHeightPt
 	totalPt := textPt + insetTopPt + insetBottomPt + 12 // 12pt padding for shape border/margin
 	return int64(totalPt * 12700)                        // points to EMU
-}
-
-// allRowHeightsZero returns true when no row in the slice has an explicit height.
-func allRowHeightsZero(rows []Row) bool {
-	for _, row := range rows {
-		if row.Height > 0 {
-			return false
-		}
-	}
-	return true
-}
-
-// estimateRowContentHeightEMU returns the estimated height in EMU needed for a
-// row based on the tallest cell's content. It considers text, icons, and images.
-func estimateRowContentHeightEMU(row Row) int64 {
-	var maxH int64
-	for _, cell := range row.Cells {
-		h := estimateCellHeightEMU(cell)
-		if h > maxH {
-			maxH = h
-		}
-	}
-	if maxH == 0 {
-		maxH = int64(24 * 12700) // 24pt minimum fallback
-	}
-	return maxH
-}
-
-// estimateCellHeightEMU estimates the total height needed for a cell in EMU,
-// including text, icons, and images.
-func estimateCellHeightEMU(cell Cell) int64 {
-	var h int64
-
-	// Text content height
-	textH := estimateCellTextHeightEMU(cell)
-	if textH > h {
-		h = textH
-	}
-
-	// Icon-only cell or icon overlay adds height
-	if cell.Icon != nil && cell.Shape == nil {
-		// Standalone icon: ~40pt default
-		iconH := int64(40 * 12700)
-		if iconH > h {
-			h = iconH
-		}
-	} else if cell.Icon != nil && cell.Shape != nil {
-		// Icon overlay on shape: icon height + text height
-		iconH := int64(28 * 12700) // ~28pt for inline icon
-		if textH > 0 {
-			h = textH + iconH
-		} else if iconH > h {
-			h = iconH
-		}
-	}
-
-	// Image cells: use a reasonable default
-	if cell.Image != nil {
-		imgH := int64(60 * 12700) // 60pt minimum for images
-		if imgH > h {
-			h = imgH
-		}
-	}
-
-	return h
 }
 
 // distributeEMU converts percentage slices into absolute EMU values that sum
