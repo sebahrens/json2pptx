@@ -9,15 +9,16 @@
 
 PowerPoint is a visual tool. You drag boxes, pick fonts, nudge alignment. This works for one-off decks, but it falls apart when presentations need to be generated programmatically, updated from data, or produced at scale.
 
-json2pptx takes the same approach that LaTeX brought to documents: **separate content from presentation.** In LaTeX, you declare `\section{Introduction}` and the typesetter handles margins, fonts, and spacing. In json2pptx, you declare `"type": "chart", "chart_value": {...}` and the engine handles layout selection, SVG rendering, and placement into the right template slot.
+json2pptx takes the same approach that LaTeX brought to documents: **separate content from presentation.** In LaTeX, you declare `\section{Introduction}` and the typesetter handles margins, fonts, and spacing. In json2pptx, you declare `"type": "chart", "chart_value": {...}` -- or `"pattern": {"name": "kpi-3up", ...}` -- and the engine handles layout selection, SVG rendering, shape geometry, contrast correction, and placement.
 
 This is *what you mean is what you get* for presentations:
 
 - You say "bar chart with Q1-Q4 revenue" -- json2pptx picks the layout, renders the chart as SVG, and places it
-- You say "three bullet points" -- json2pptx selects a content layout that fits, applies the template's typography, and handles overflow
-- You say "SWOT analysis" -- json2pptx generates the diagram with proper quadrant geometry and colors from your theme
+- You say "three KPIs across the top" -- a named pattern (`kpi-3up`) expands into a typed shape grid with the right rhythm
+- You say "SWOT analysis" -- the engine generates the diagram with proper quadrant geometry and colors from your theme
+- You say "compose a hero stat over a row of icons" -- the `compose` envelope merges two patterns into one slide
 
-The input is a JSON document. The output is a `.pptx` file that opens in PowerPoint, Keynote, or Google Slides -- no post-editing required. Templates control the visual identity; your JSON controls the content and structure.
+The input is a JSON document. The output is a `.pptx` file that opens in PowerPoint, Keynote, or Google Slides -- no post-editing required. Templates control the visual identity; your JSON controls the content and structure. Generation is deterministic: same JSON + template + binary version -> byte-identical PPTX.
 
 ## How It Works
 
@@ -28,8 +29,8 @@ JSON (content) + Template (.pptx)  -->  json2pptx  -->  Presentation (.pptx)
 ```
 
 1. **Template** -- A real PowerPoint file with pre-designed slide layouts, colors, and fonts (e.g., `midnight-blue.pptx`). You never edit this directly.
-2. **JSON** -- Your content: what goes on each slide, which layout to use, and what type of content (text, bullets, charts, diagrams, tables, shape grids).
-3. **The binary** -- `json2pptx generate` reads both, matches content to template placeholders, and writes the final `.pptx`.
+2. **JSON** -- Your content: what goes on each slide, which layout/pattern to use, and what type of content (text, bullets, charts, diagrams, tables, shape grids, named patterns).
+3. **The binary** -- `json2pptx generate` reads both, matches content to template placeholders, expands patterns, runs fit/contrast checks, and writes the final `.pptx`.
 
 ### Slides, Layouts, and Placeholders
 
@@ -45,52 +46,63 @@ Each slide has a **layout** (picked by `slide_type`) and **content items** targe
 }
 ```
 
-- **`slide_type`** -- semantic hint that picks the right layout: `title`, `content`, `chart`, `section`, `two-column`, `blank`, `diagram`
-- **`placeholder_id`** -- canonical slot name: `title`, `subtitle`, `body`. These are portable across all templates.
-- **`type`** -- what kind of content: `text`, `bullets`, `chart`, `diagram`, `table`, `image`, `body_and_bullets`, `bullet_groups`
+- **`slide_type`** -- semantic hint that picks the right layout: `title`, `content`, `chart`, `section`, `two-column`, `comparison`, `image`, `blank`, `diagram`
+- **`placeholder_id`** -- canonical slot name: `title`, `subtitle`, `body`, `body_2`. Portable across all templates.
+- **`type`** -- what kind of content: `text`, `bullets`, `body_and_bullets`, `body_and_lead`, `bullet_groups`, `table`, `chart`, `diagram`, `image`
 
 You don't need to know internal layout IDs. The system resolves them automatically -- the same JSON works with any template.
+
+### Three Authoring Levels
+
+| Level | When to use | What you write |
+|-------|-------------|----------------|
+| **Placeholders** | Standard slides (title, bullets, single chart) | `content[]` items targeting placeholder IDs |
+| **Named patterns** | Recurring layouts (KPIs, comparisons, BMC, timelines) | `pattern: {name, values, style}` -- expands into a typed shape grid |
+| **Raw shape grid** | Custom geometry the patterns don't cover | `shape_grid: {columns, rows, cells}` with explicit shapes/tables/icons |
+
+You can also combine patterns on one slide with a `compose` envelope (e.g. a hero stat above a row of icons).
 
 ### Two Rendering Paths
 
 | Path | What | How | Result |
 |------|------|-----|--------|
-| **Native OOXML shapes** | SWOT, Porter's, BMC, pyramids, process flows, value chains, heatmaps, and more (12 types) | Generated as real PowerPoint shapes | Editable, crisp at any zoom |
-| **SVG-rendered charts** | Bar, line, pie, radar, waterfall, gauge, treemap, and more (15 types) | Rendered by `svggen` and embedded as images | High-quality visuals in PowerPoint/Keynote |
+| **Native OOXML shapes** | SWOT, Porter's, BMC, pyramids, value chains, panel layouts, KPI dashboards, heatmaps and more | Generated as real PowerPoint shapes | Editable, crisp at any zoom |
+| **SVG-rendered visuals** | 15 chart types and the remaining diagram families | Rendered by the `svggen/` module and embedded as PNG (default), EMF, or native SVG | High-quality visuals in PowerPoint/Keynote |
 
-### Shape Grids
+### Diagnostics & Self-Repair
 
-For custom visual layouts (consulting-style panels, process steps, matrices), `shape_grid` lets you define a grid of shapes directly on a slide. Each cell can hold a shape, table, icon, or image. These render as native OOXML shapes -- fully editable in PowerPoint.
-
-### At a Glance
-
-| Concept | What it does |
-|---------|-------------|
-| Template | Provides design (colors, fonts, layouts) |
-| JSON | Describes content (what goes where) |
-| `slide_type` | Picks the right layout automatically |
-| `placeholder_id` | Targets a slot (`title`, `body`, `subtitle`) |
-| Content `type` | Determines rendering (text, chart, diagram, etc.) |
-| Native shapes | Editable PowerPoint objects for business diagrams |
-| SVG charts | High-quality rendered images for data visualizations |
-| Shape grids | Custom grid layouts with shapes, tables, icons, images |
+Every generation (and every dry-run) emits structured **fit findings** (`code`, `severity`, `action`, `fix`, JSON Pointer path). An agent can call the `repair_slide` MCP tool with a list of typed fixes (`reduce_text`, `swap_layout`, `split_at_row`, `swap_pattern`, `reshape_grid`, `set_pattern_style`, `replace_color`, `use_semantic_color`, ...) to patch a single slide rather than regenerating the whole deck. See [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) and [docs/REPAIR_LOOP.md](docs/REPAIR_LOOP.md).
 
 ## Features
 
-- **JSON-to-PPTX conversion** -- define slides as structured JSON, get polished PowerPoint files
-- **Template-aware layout selection** -- automatically picks the right layout based on your content
-- **15 chart types** -- bar, line, pie, donut, area, radar, scatter, bubble, stacked bar, grouped bar, stacked area, waterfall, funnel, gauge, treemap
-- **18 diagram types** -- SWOT, timeline, process flow, org chart, Gantt, Business Model Canvas, Porter's Five Forces, and more
-- **Shape grid engine** -- consulting-style custom layouts with preset geometry shapes, row/column grids, and cell spanning
-- **Tables** -- data tables with header styling, column alignment, striped rows, and merged cells
+- **JSON-to-PPTX conversion** -- structured slide definitions become polished PowerPoint files
+- **5 bundled templates** -- `forest-green`, `midnight-blue`, `modern-template`, `pwc-template`, `warm-coral` (any `.pptx` works as a template)
+- **Template-aware layout selection** -- picks the right layout based on your content; synthesizes missing standard layouts
+- **15 chart types** -- bar, grouped_bar, stacked_bar, line, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
+- **21 diagram types** -- SWOT, timeline, process flow, pyramid, venn, org chart, Gantt, KPI dashboard, heatmap, fishbone, PESTEL, Porter's Five Forces, value chain, Business Model Canvas, nine box talent, house diagram, panel layout, icon columns/rows, stat cards, matrix 2x2
+- **20 named patterns** -- agenda, arch-stack, before-after, bmc-canvas, card-grid, comparison-2col, icon-row, kpi-2up...kpi-6up (parametric), matrix-2x2, process-flow, pull-quote, pyramid, roadmap-phased, stat-hero, swimlane, timeline-horizontal
+- **Pattern composition** (`compose`) -- 2-4 patterns merged into one slide with vertical/horizontal layout
+- **Shape grid engine** -- consulting-style custom layouts with preset geometries, row/column grids, cell spanning, authoritative bounds
+- **Tables with auto-pagination** (`split_slide`) -- header rows repeat across continuation slides
 - **Inline formatting** -- `<b>bold</b>`, `<i>italic</i>`, `<u>underline</u>` in text and bullets
+- **Constrained vs free authoring** (`design_mode`) -- constrained refuses raw hex and absolute font sizes to keep decks on-brand; `free` unlocks them
+- **Accent rotation strategies** (`accent_strategy`) -- `primary`, `rotate`, or `section-keyed`
+- **Style defaults** -- deck-level `defaults.table_style` / `defaults.cell_style`, swap-only semantics
+- **Deck structure** -- `structure` block with sections, auto-agenda, cover/closing slides
+- **Persistent chrome** -- footer, header, page numbers, with skip rules
 - **Theme overrides** -- per-deck color and font customization
-- **Footer injection** -- configurable left-text footers with slide numbering
-- **Speaker notes and source attribution** -- per-slide metadata
+- **Speaker notes, sources, and alt-text** -- per-slide metadata, accessibility-aware
 - **Slide transitions and build animations** -- fade, push, wipe, cover, cut; bullet-by-bullet reveal
+- **Contrast enforcement** -- WCAG AA auto-fix on layout backgrounds; warn-only on user-specified shape colors
+- **Text fit checking** (`strict_fit`: `off|warn|strict`) -- structured findings; refuse on overflow when strict
+- **Fit findings + repair loop** -- typed diagnostics with JSON Pointer paths; `repair_slide` patches one slide at a time
+- **Deterministic visual scoring** -- `score_deck` runs full generation and grades the output 0-100 with a composition axis
+- **Deck rhythm analysis** -- `analyze_deck_rhythm` flags pattern repetition, accent imbalance, density variance
+- **Deck planning** -- `plan_deck` turns a brief into a structured slide outline with rhythm rules
+- **PPTX read-back** -- `read_presentation` extracts placeholders/shapes/tables from an existing PPTX without LibreOffice
 - **HTTP API** -- REST endpoints for programmatic generation
-- **MCP server** -- Model Context Protocol support for AI-assisted deck creation
-- **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, field reference, and visual QA
+- **MCP server** -- 28 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair
+- **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, template setup, and visual QA
 
 ## Installation
 
@@ -100,17 +112,16 @@ For custom visual layouts (consulting-style panels, process steps, matrices), `s
 - **Git** -- for cloning and version info
 - **Make** -- build automation (see platform notes below)
 - **librsvg** or **resvg** -- for SVG-to-PNG chart/diagram rendering (optional but recommended)
+- **LibreOffice + ImageMagick** -- only required for `pptx2jpg`, `render_slide_image`, and `render_deck_thumbnails`
 
 ### macOS
 
 ```sh
-# Install Go (if not already installed)
 brew install go
+brew install librsvg            # recommended for charts/diagrams
+brew install --cask libreoffice # only needed for slide-image rendering
+brew install imagemagick
 
-# Install SVG converter (recommended for charts/diagrams)
-brew install librsvg
-
-# Clone and install
 git clone https://github.com/sebahrens/json2pptx.git
 cd json2pptx
 make install
@@ -125,34 +136,23 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Linux (including WSL2)
 
 ```sh
-# Install Go (Ubuntu/Debian)
 sudo apt update
-sudo apt install -y golang-go
+sudo apt install -y golang-go make librsvg2-bin
+# Optional: sudo apt install -y libreoffice imagemagick
 
-# Or install the latest Go manually
-wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
-export PATH="/usr/local/go/bin:$PATH"
-
-# Install build tools and SVG converter
-sudo apt install -y make librsvg2-bin
-
-# Clone and install
 git clone https://github.com/sebahrens/json2pptx.git
 cd json2pptx
 make install
 ```
-
-Binaries are installed to `~/.local/bin/`. Add to your PATH if needed:
 
 ```sh
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-> **WSL2 note:** The generated `.pptx` files are regular files accessible from Windows at `\\wsl$\<distro>\home\<user>\...` or via the output directory you specify.
+> **WSL2 note:** Generated `.pptx` files are accessible from Windows at `\\wsl$\<distro>\home\<user>\...` or via the output directory you specify.
 
-### Windows (native PowerShell -- no bash required)
+### Windows (native PowerShell)
 
 Install [Go](https://go.dev/dl/) using the Windows installer, then:
 
@@ -167,28 +167,8 @@ This builds all binaries, installs them to `%LOCALAPPDATA%\json2pptx\bin\`, copi
 ```powershell
 .\install.ps1 -Prefix "C:\tools"     # Custom install prefix
 .\install.ps1 -SkipSkill             # Skip Claude Code skill
-.\install.ps1 -SkipMcp              # Skip MCP config
-.\install.ps1 -SkipTemplates        # Skip template files
-```
-
-### Windows (WSL2)
-
-Follow the Linux instructions above inside your WSL2 distro. Generated `.pptx` files are accessible from Windows at `\\wsl$\<distro>\home\<user>\...`.
-
-### Windows (Git Bash / MSYS2)
-
-If you prefer Make, use Git Bash or MSYS2 which provide the bash shell the Makefile requires:
-
-```sh
-git clone https://github.com/sebahrens/json2pptx.git
-cd json2pptx
-make install
-```
-
-Cross-compile from any platform:
-
-```sh
-make build-windows-amd64    # Creates bin/json2pptx.exe
+.\install.ps1 -SkipMcp               # Skip MCP config
+.\install.ps1 -SkipTemplates         # Skip template files
 ```
 
 ### Quick Install Script (macOS / Linux / WSL2)
@@ -196,22 +176,17 @@ make build-windows-amd64    # Creates bin/json2pptx.exe
 ```sh
 ./install.sh                    # Build + install to ~/.local
 ./install.sh --prefix /usr/local
-./install.sh --skip-skill       # Binary only, no Claude Code skill
+./install.sh --skip-skill       # Binary only, no Claude Code skills
 ```
 
 ### Docker (all platforms)
 
 ```sh
-# Copy and configure environment
 cp .env.example .env
-
-# Build and run with Docker Compose
 docker-compose up --build
 ```
 
-The service will be available at `http://localhost:8080`.
-
-Run without Compose:
+The HTTP API is available at `http://localhost:8080`.
 
 ```sh
 docker run -d \
@@ -225,82 +200,24 @@ docker run -d \
 
 ### CLI Usage
 
-Generate a PPTX from a JSON file:
-
 ```sh
-json2pptx generate -json slides.json -output ./output
-```
-
-Validate without generating (dry-run):
-
-```sh
-json2pptx generate -dry-run -json slides.json
-```
-
-Read from stdin and write structured output:
-
-```sh
-cat slides.json | json2pptx generate -json - -json-output result.json
-```
-
-### HTTP API
-
-Start the server:
-
-```sh
-json2pptx serve
-json2pptx serve --port 3000
-```
-
-Convert JSON to PPTX via the API:
-
-```sh
-curl -X POST http://localhost:8080/api/v1/convert \
-  -H "Content-Type: application/json" \
-  -d '{
-    "template": "midnight-blue",
-    "slides": [
-      {
-        "slide_type": "title",
-        "content": [
-          {"placeholder_id": "title", "type": "text", "text_value": "My Presentation"},
-          {"placeholder_id": "subtitle", "type": "text", "text_value": "Welcome"}
-        ]
-      },
-      {
-        "slide_type": "content",
-        "content": [
-          {"placeholder_id": "title", "type": "text", "text_value": "Key Points"},
-          {"placeholder_id": "body", "type": "bullets", "bullets_value": ["First point", "Second point"]}
-        ]
-      }
-    ]
-  }'
-```
-
-### Running an Example Deck
-
-The repo includes pattern-rich example decks that demonstrate named patterns, charts, shape grids, and multiple slide types. Run the investor pitch deck:
-
-```sh
+# Generate a deck
 json2pptx generate -json examples/varied-pitch-deck.json -output ./output
-```
 
-This uses the `midnight-blue` template (specified inside the JSON) and writes `varied-pitch-deck.pptx` to `./output/`.
+# Validate without generating
+json2pptx validate examples/varied-pitch-deck.json
 
-To use a different built-in template, override it with `-template`:
+# Dry-run: show layout selections + fit findings without writing a file
+json2pptx generate -dry-run -json examples/varied-pitch-deck.json
 
-```sh
+# Read JSON from stdin, write structured result to file
+cat slides.json | json2pptx generate -json - -json-output result.json
+
+# Override the template specified inside the JSON
 json2pptx generate -json examples/varied-pitch-deck.json -template forest-green -output ./output
-```
 
-To use your own external `.pptx` template, point `-templates-dir` at the directory containing it:
-
-```sh
-# Place your template in a directory
-cp /path/to/my-corporate-theme.pptx ./my-templates/
-
-# Reference it by filename (without .pptx extension)
+# Use your own external template
+mkdir my-templates && cp /path/to/my-corporate-theme.pptx my-templates/
 json2pptx generate \
   -json examples/varied-pitch-deck.json \
   -template my-corporate-theme \
@@ -308,15 +225,53 @@ json2pptx generate \
   -output ./output
 ```
 
-Preview what layouts would be selected without generating (dry-run):
+### Example Decks
+
+The repo ships with 19 example decks (and a `diagrams/` subdirectory with one JSON per diagram type). The most useful ones to learn from, in order:
+
+| Example | What it shows |
+|---------|---------------|
+| `examples/basic-deck.json` | Hello-world: title, content, bullets, plain placeholders |
+| `examples/charts.json` | Cleanest reference for `chart_value` syntax across chart types |
+| `examples/shape-grid-panels.json` | Easiest entry point to raw `shape_grid` |
+| `examples/patterns-smoke.json` | Compact tour of named patterns, callouts, and `cell_overrides` |
+| `examples/varied-pitch-deck.json` | Realistic 13-slide pitch -- 10 patterns plus a `compose` slide combining `stat-hero` and `kpi-3up` |
+| `examples/sovereign-ai-strategy.json` | Flagship 25-slide consulting deck (charts + grids + sources + notes) |
+| `examples/business-model-canvas.json` | Raw `shape_grid` BMC with merged rows/columns |
+| `examples/consulting-layouts.json` | Chevron flows, 2x2 matrices, takeaways, side-by-side |
+| `examples/split-slide-vendor-matrix.json` | `split_slide` table pagination with repeated headers |
+| `examples/visual-maturity-stress-test.json` | Comprehensive grid regression coverage |
+| `examples/contrast-fixer-test.json` | Contrast autofix on dark/accent fills |
+| `examples/full-showcase.json` | Mixed traditional slides + several chart types |
+
+### HTTP API
 
 ```sh
-json2pptx generate -dry-run -json examples/varied-pitch-deck.json
+json2pptx serve                  # default port 8080
+json2pptx serve --port 3000
+
+curl -X POST http://localhost:8080/api/v1/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "midnight-blue",
+    "slides": [
+      {"slide_type": "title",
+       "content": [
+         {"placeholder_id": "title",    "type": "text", "text_value": "My Presentation"},
+         {"placeholder_id": "subtitle", "type": "text", "text_value": "Welcome"}
+       ]},
+      {"slide_type": "content",
+       "content": [
+         {"placeholder_id": "title", "type": "text",    "text_value": "Key Points"},
+         {"placeholder_id": "body",  "type": "bullets", "bullets_value": ["First point", "Second point"]}
+       ]}
+    ]
+  }'
 ```
 
 ## Claude Code Integration
 
-json2pptx ships with three Claude Code skills and an MCP server that let an AI agent create, validate, and refine presentations from natural language prompts.
+json2pptx ships with three Claude Code skills and an MCP server that let an AI agent plan, create, validate, score, and repair presentations from natural language prompts.
 
 ### What Gets Installed
 
@@ -325,112 +280,104 @@ json2pptx ships with three Claude Code skills and an MCP server that let an AI a
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | MCP server config | `~/.claude/mcp.json` | Connects Claude Code to json2pptx tools |
-| **generate-deck** skill | `~/.claude/skills/generate-deck/` | Constrained deck generation workflow |
-| **template-deck** skill | `~/.claude/skills/template-deck/` | Complete field reference (layouts, charts, shapes) |
-| **slide-visual-qa** skill | `~/.claude/skills/slide-visual-qa/` | Visual QA for rendered slide images |
+| **generate-deck** skill | `~/.claude/skills/generate-deck/` | 4-phase deck workflow (Plan -> Vary -> Render -> Repair) |
+| **template-deck** skill | `~/.claude/skills/template-deck/` | Template setup and conformance reference |
+| **slide-visual-qa** skill | `~/.claude/skills/slide-visual-qa/` | Composition review + per-slide screenshot inspection |
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
-### MCP Server
+### MCP Server (28 Tools)
 
-The MCP server exposes json2pptx as a set of tools that Claude Code can call directly:
-
-| Tool | Description |
-|------|-------------|
-| `list_templates` | Discover templates, layouts, and placeholder IDs |
-| `validate_input` | Check JSON for errors before generating |
-| `generate_presentation` | Generate a PPTX from JSON input |
-
-Start manually (for debugging):
+Start manually for debugging:
 
 ```sh
 json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
 ```
 
-The installer configures this automatically in `~/.claude/mcp.json`.
+The installer configures this automatically in `~/.claude/mcp.json`. Every MCP tool also has a CLI counterpart so you can drive the same workflows from a shell.
 
-### Using the Generate Deck Skill
+**Generation, validation, read-back**
 
-The `generate-deck` skill (`/generate-deck` in Claude Code) guides the AI through a constrained generation workflow optimized for consulting-quality decks.
+| Tool | Purpose |
+|------|---------|
+| `generate_presentation` | Render a PPTX from JSON; optional `fit_report`, `verbose_fit`, `strict_unknown_keys` |
+| `validate_input` | Schema + static checks, no render |
+| `preview_presentation_plan` | Resolve layouts/placeholders/findings without rendering |
+| `read_presentation` | Extract placeholders/shapes/tables/notes from an existing PPTX (no LibreOffice required) |
 
-**Ask Claude Code to create a deck:**
+**Planning, recommendation, scoring**
 
-```
-Create a 12-slide strategy deck about our cloud migration plan.
-Use the warm-coral template.
-```
+| Tool | Purpose |
+|------|---------|
+| `plan_deck` | Turn a brief into an ordered slide outline with rhythm rules |
+| `recommend_pattern` | Rank named patterns for a slide intent |
+| `recommend_visual` | Unified router across placeholder layouts, patterns, charts, diagrams, raw grids |
+| `score_deck` | Deterministic 0-100 score with composition axis (runs the full pipeline in a tempdir) |
+| `analyze_deck_rhythm` | Pattern repetition, accent balance, density variance, composition score |
+| `repair_slide` | Apply targeted fixes to one slide (11 fix kinds) without regenerating the deck |
 
-**The skill enforces a 3-stage workflow:**
+**Pattern catalog**
 
-1. **Plan** -- Claude produces a slide outline (layout types, visual patterns, narrative arc) and presents it for your approval before writing any JSON.
+| Tool | Purpose |
+|------|---------|
+| `list_patterns` | Catalog of named patterns grouped by category |
+| `show_pattern` | Pattern contract: `use_when`, `not_when`, schema, version |
+| `validate_pattern` | Validate pattern values without expanding |
+| `expand_pattern` | Expand a pattern into a full `shape_grid` |
 
-2. **Generate** -- Claude writes the full JSON in one pass, using proven shape grid patterns (icon rows, card grids, 2x2 matrices, comparison tables) rather than inventing structures from scratch.
+**Templates and assets**
 
-3. **Validate & Repair** -- Claude calls `validate_input` to catch structural errors, then fixes only the failing slides rather than regenerating the entire deck.
+| Tool | Purpose |
+|------|---------|
+| `list_templates` | Discover bundled and external templates and their capabilities |
+| `resolve_theme` | Resolve theme colors and fonts for a template |
+| `list_template_settings` | List template-side named table/cell styles |
+| `register_template_setting` | Persist a named style (gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`) |
+| `delete_template_setting` | Delete a named style (gated) |
 
-**Built-in pattern library:** The skill includes 6 battle-tested shape grid patterns extracted from the `sovereign-ai-strategy` reference deck:
+**Capabilities and catalogs**
 
-| Pattern | Use for |
-|---------|---------|
-| Icon Rows | Agenda items, key points with icons, risk factors |
-| Card Grid | Strategic pillars, capabilities, dimensions |
-| Labeled 2x2 Matrix | Tradeoff analysis, strategic positioning |
-| Two-Column Header + Body | Pros/cons, before/after comparisons |
-| Table in Grid | Data tables, scenario comparisons |
-| Card Grid + Chart | Maturity models, assessments with data |
+| Tool | Purpose |
+|------|---------|
+| `get_capabilities` | Schema version, tool inventory, deprecated fields, feature flags, vocabularies |
+| `get_chart_capabilities` | Per-chart limits and label strategy |
+| `get_diagram_capabilities` | Per-diagram limits and field reference |
+| `get_data_format_hints` | Full chart/diagram data-shape hints (with digest for caching) |
+| `get_shape_catalog` | Preset geometries grouped by use case |
+| `list_icons` | Bundled icon names by set |
+| `table_density_guide` | Table density tiers, hard limits, multiline guidance |
 
-**Invariants are enforced automatically.** The skill encodes rules like "cell col_spans must sum to column count", "chart series values must match categories length", and "use `ctr` not `center` for alignment" -- preventing the most common structural errors.
+**Slide rendering for QA** (require LibreOffice + ImageMagick)
 
-### Using the Template Deck Skill
-
-The `template-deck` skill (`~/.claude/skills/template-deck/TEMPLATE_GUIDE.md` after installation) is the complete field reference for the JSON format. It documents:
-
-- All content types (text, bullets, charts, diagrams, tables, images, body_and_bullets, bullet_groups)
-- All 15 chart types with data format examples
-- All 21 diagram types with data schemas
-- Complete shape grid properties (bounds, columns, rows, cells, shapes, icons, images)
-- Patch operations for incremental slide updates
-- Footer, theme override, and slide-level field reference
-
-The generate-deck skill references this automatically when it needs field details.
-
-### Using the Visual QA Skill
-
-After generating a deck, convert slides to images and run visual QA:
-
-```sh
-# Convert PPTX to images (requires LibreOffice + ImageMagick)
-pptx2jpg -input output/my-deck.pptx -output /tmp/slides/ -density 150
-
-# Then in Claude Code:
-/slide-visual-qa /tmp/slides/
-```
-
-The skill inspects each slide image for layout issues, text overflow, contrast problems, and spacing defects.
+| Tool | Purpose |
+|------|---------|
+| `render_slide_image` | Render one PPTX slide to PNG |
+| `render_deck_thumbnails` | Render all slides to low-res thumbnails |
 
 ### Example Workflow
-
-A typical AI-assisted workflow:
 
 ```
 You:     "Build a board presentation about our Q1 results.
           Include revenue charts, team growth, and strategic priorities.
           Use midnight-blue template, 10 slides."
 
-Claude:  [Plans outline, presents for approval]
-         [Generates JSON using card grids for KPIs, bar charts for revenue]
-         [Validates with validate_input, fixes any errors]
-         [Calls generate_presentation → output/q1-board.pptx]
+Claude:  [calls plan_deck -> structured slide outline]
+         [presents outline for approval]
+         [generates JSON using card grids for KPIs, bar charts for revenue]
+         [calls validate_input -> reads back fit findings]
+         [calls score_deck and analyze_deck_rhythm -> spots monotony]
+         [calls repair_slide on the two flagged slides]
+         [calls generate_presentation -> output/q1-board.pptx]
 
-You:     "The revenue chart should be stacked bar, not regular bar.
-          Also add a 2x2 matrix for strategic priorities."
+You:     "Stacked bar for revenue. Add a 2x2 matrix for priorities."
 
-Claude:  [Patches only the affected slides, regenerates]
+Claude:  [calls repair_slide twice -> patches only the affected slides]
+         [regenerates]
 ```
 
 ## JSON Input Format
 
-The system accepts JSON slide definitions. See [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) for the complete reference, and [SLIDE_FORMAT.md](SLIDE_FORMAT.md) for a condensed quick-reference.
+See [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) for the complete reference, [SLIDE_FORMAT.md](SLIDE_FORMAT.md) for a condensed quick-reference, and [docs/PATTERNS.md](docs/PATTERNS.md) for the named-pattern authoring guide.
 
 ### Top-Level Schema
 
@@ -438,47 +385,113 @@ The system accepts JSON slide definitions. See [docs/INPUT_FORMAT.md](docs/INPUT
 {
   "template": "warm-coral",
   "output_filename": "Q1_Review.pptx",
-  "footer": {
-    "enabled": true,
-    "left_text": "Acme Corp | Confidential"
-  },
+  "design_mode": "constrained",
+  "accent_strategy": "rotate",
+  "footer": {"enabled": true, "left_text": "Acme Corp | Confidential"},
+  "chrome": {"page_numbers": true, "skip": ["title", "section"]},
   "theme_override": {
-    "colors": { "accent1": "#E31837" },
+    "colors": {"accent1": "#E31837"},
     "title_font": "Georgia",
     "body_font": "Arial"
   },
-  "slides": [ ... ]
+  "defaults": {
+    "table_style": {"style_id": "@template-default"},
+    "cell_style": {"font_size": 11}
+  },
+  "structure": {
+    "sections": [{"title": "Strategy", "slides": [/* ... */]}],
+    "auto_agenda": true
+  },
+  "slides": [/* ... */]
 }
 ```
 
+| Top-level field | Purpose |
+|-----------------|---------|
+| `template` | Template name (without `.pptx`) |
+| `design_mode` | `"constrained"` (default, refuses raw hex + absolute font sizes) or `"free"` |
+| `accent_strategy` | `"primary"` (default), `"rotate"`, or `"section-keyed"` |
+| `footer` / `chrome` | Persistent footer/header/page-number chrome with skip rules |
+| `theme_override` | Per-deck color and font overrides resolved against the scheme |
+| `defaults` | Deck-level `table_style` / `cell_style`, swap-only (inline always wins). See [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md) |
+| `structure` | Sections, `auto_agenda`, `cover`, `closing` -- expanded into flat slides |
+| `slides` | Array of slide definitions |
+
 ### Slide Schema
 
-Each slide specifies a `layout_id` (or `slide_type`), content items, and optional metadata:
+A slide can be plain placeholder content, a raw `shape_grid`, a named `pattern`, or a `compose` envelope.
 
 ```json
 {
   "layout_id": "One Content",
   "slide_type": "content",
   "content": [
-    {
-      "placeholder_id": "title",
-      "type": "text",
-      "text_value": "Revenue Overview"
-    },
-    {
-      "placeholder_id": "body",
-      "type": "bullets",
-      "bullets_value": [
-        "Revenue up <b>25%</b> YoY",
-        "Margins improved to 68%",
-        "Customer NPS at all-time high"
-      ]
-    }
+    {"placeholder_id": "title", "type": "text", "text_value": "Revenue Overview"},
+    {"placeholder_id": "body",  "type": "bullets",
+     "bullets_value": ["Revenue up <b>25%</b> YoY", "Margins improved to 68%"]}
   ],
   "speaker_notes": "Emphasize the Q4 recovery.",
   "source": "Company Annual Report, FY2025"
 }
 ```
+
+#### Named Pattern
+
+```json
+{
+  "slide_type": "blank",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Q1 KPIs"}],
+  "pattern": {
+    "name": "kpi-3up",
+    "values": {
+      "kpis": [
+        {"value": "$12M", "label": "Revenue"},
+        {"value": "+25%", "label": "YoY"},
+        {"value": "84%",  "label": "NPS"}
+      ]
+    }
+  }
+}
+```
+
+#### Compose Envelope
+
+```json
+{
+  "slide_type": "blank",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Why now"}],
+  "compose": {
+    "direction": "vertical",
+    "gap": 8,
+    "segments": [
+      {"size_pct": 40, "pattern": {"name": "stat-hero", "values": {"value": "$2.4B", "label": "TAM"}}},
+      {"pattern": {"name": "icon-row", "values": {"items": [/* ... */]}}}
+    ]
+  }
+}
+```
+
+#### Raw Shape Grid
+
+```json
+{
+  "slide_type": "blank",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Process Steps"}],
+  "shape_grid": {
+    "columns": 3, "gap": 2,
+    "rows": [{"cells": [
+      {"shape": {"geometry": "roundRect", "fill": "accent1",
+                 "text": {"content": "Step 1", "size": 14, "bold": true, "color": "lt1"}}},
+      {"shape": {"geometry": "roundRect", "fill": "accent2",
+                 "text": {"content": "Step 2", "size": 14, "color": "lt1"}}},
+      {"shape": {"geometry": "roundRect", "fill": "accent3",
+                 "text": {"content": "Step 3", "size": 14, "color": "lt1"}}}
+    ]}]
+  }
+}
+```
+
+When `shape_grid` is present with `slide_type: "blank"` (or no `layout_id`), the system uses **virtual layout resolution** to derive safe grid bounds from the template's title and footer geometry. You can also supply explicit `bounds` as slide percentages.
 
 ### Content Types
 
@@ -487,80 +500,67 @@ Each slide specifies a `layout_id` (or `slide_type`), content items, and optiona
 | `text` | Plain or formatted text | `text_value` |
 | `bullets` | Bullet point list | `bullets_value` |
 | `body_and_bullets` | Body text followed by bullets | `body_and_bullets_value` |
+| `body_and_lead` | Lead sentence + body paragraph | `body_and_lead_value` |
 | `bullet_groups` | Grouped bullets with headers | `bullet_groups_value` |
-| `table` | Data table | `table_value` |
-| `chart` | SVG chart (bar, line, pie, etc.) | `chart_value` |
-| `diagram` | Business diagram (SWOT, timeline, etc.) | `diagram_value` |
+| `table` | Data table (auto-paginates via `split_slide`) | `table_value` |
+| `chart` | SVG chart (15 types) | `chart_value` |
+| `diagram` | Business diagram (21 types; many native OOXML) | `diagram_value` |
 | `image` | Image file | `image_value` |
 
-### Chart Types
+### Chart Types (15)
 
-`bar`, `line`, `pie`, `donut`, `area`, `radar`, `scatter`, `bubble`, `stacked_bar`, `grouped_bar`, `stacked_area`, `waterfall`, `funnel`, `gauge`, `treemap`
+`bar`, `grouped_bar`, `stacked_bar`, `line`, `area`, `stacked_area`, `pie`, `donut`, `scatter`, `bubble`, `radar`, `waterfall`, `funnel`, `gauge`, `treemap`
 
-### Diagram Types
+### Diagram Types (21)
 
-`swot`, `timeline`, `process_flow`, `matrix_2x2`, `pyramid`, `venn`, `org_chart`, `gantt`, `kpi_dashboard`, `heatmap`, `fishbone`, `pestel`, `porters_five_forces`, `value_chain`, `business_model_canvas`, `nine_box_talent`, `house_diagram`, `panel_layout`
+`swot`, `timeline`, `process_flow`, `pyramid`, `venn`, `org_chart`, `gantt`, `kpi_dashboard`, `heatmap`, `fishbone`, `pestel`, `porters_five_forces`, `value_chain`, `business_model_canvas`, `nine_box_talent`, `house_diagram`, `panel_layout`, `icon_columns`, `icon_rows`, `stat_cards`, `matrix_2x2`
 
-### Shape Grid
+### Named Patterns (20)
 
-Slides can include a `shape_grid` for custom layouts using preset geometry shapes. The grid supports row/column layouts with gap control, cell spanning, and both shape and table cells.
+| Pattern | Description |
+|---------|-------------|
+| `agenda` | Numbered section list for agenda / table-of-contents slides |
+| `arch-stack` | Architecture stack diagram with tiers and optional side rails |
+| `before-after` | Two-column before/after with transition chevron |
+| `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
+| `card-grid` | Parameterized N x M grid of titled cards (with optional icons) |
+| `comparison-2col` | Two-column comparison with optional headers |
+| `icon-row` | Horizontal row of icon+caption pairs |
+| `kpi-2up` ... `kpi-6up` | Big-number KPI cards (parametric: 2-6 cards per row) |
+| `matrix-2x2` | 2x2 quadrant matrix with axis labels |
+| `process-flow` | Left-to-right process flow with steps and decision points |
+| `pull-quote` | Italic quote block with attribution |
+| `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
+| `roadmap-phased` | Phased roadmap with workstreams and time periods |
+| `stat-hero` | Single oversized statistic with label and optional context |
+| `swimlane` | Horizontal swimlane diagram with actors and steps |
+| `timeline-horizontal` | Linear horizontal timeline with stops |
 
-```json
-{
-  "slide_type": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "Process Steps"}
-  ],
-  "shape_grid": {
-    "columns": 3,
-    "gap": 2,
-    "rows": [
-      {
-        "cells": [
-          {"shape": {"geometry": "roundRect", "fill": "#4472C4", "text": {"content": "Step 1", "size": 14, "bold": true, "color": "#FFFFFF"}}},
-          {"shape": {"geometry": "roundRect", "fill": "#5B9BD5", "text": {"content": "Step 2", "size": 14, "color": "#FFFFFF"}}},
-          {"shape": {"geometry": "roundRect", "fill": "#70AD47", "text": {"content": "Step 3", "size": 14, "color": "#FFFFFF"}}}
-        ]
-      }
-    ]
-  }
-}
-```
-
-When `shape_grid` is present with `slide_type: "blank"` (or no `layout_id`), the system uses **virtual layout resolution** to automatically select a blank layout and compute grid bounds from the template's title and footer positions. You can also supply explicit `bounds` as slide percentages. See [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) for the complete shape grid schema.
+Aliases: `timeline`->`timeline-horizontal`, `bmc`->`bmc-canvas`, `matrix`->`matrix-2x2`, `comparison`->`comparison-2col`, `roadmap`->`roadmap-phased`, `architecture`->`arch-stack`, `hero`->`stat-hero`, `quote`->`pull-quote`.
 
 ## Templates
 
-The following templates are included:
-
 | Template | Description |
 |----------|-------------|
-| `midnight-blue` | Professional dark blue theme |
 | `forest-green` | Clean green corporate theme |
+| `midnight-blue` | Professional dark blue theme |
+| `modern-template` | Modern layout with contemporary styling |
+| `pwc-template` | Consulting-style template |
 | `warm-coral` | Warm coral accent theme |
-| `modern-template` | Modern layout template with contemporary styling |
 
-Each template provides six standard layouts: Title Slide, One Content, Two Content, Section Divider, Closing, and Blank. Templates that lack a standard layout (e.g., Two Content) receive one via automatic synthesis at load time.
-
-List available templates:
+Each template provides standard layouts: Title Slide, One Content, Two Content, Section Divider, Closing, and Blank. Missing standard layouts are synthesized at load time.
 
 ```sh
 json2pptx skill-info --mode=list
-```
-
-Get layout details for a template:
-
-```sh
 json2pptx skill-info --mode=full --template=midnight-blue
+json2pptx template-check templates/midnight-blue.pptx     # conformance against docs/TEMPLATE_SPEC.md
 ```
 
 ### Creating a Custom Template
 
-Any `.pptx` file can serve as a template. Open PowerPoint (or Google Slides, Keynote, LibreOffice Impress), design your slides in the **Slide Master** view, and save as `.pptx`. json2pptx analyzes the layouts at runtime and maps your JSON content to the right placeholders.
+Any `.pptx` file can serve as a template. Open PowerPoint (or Keynote, Google Slides, LibreOffice Impress), design your slides in **Slide Master** view, save as `.pptx`. json2pptx analyzes the layouts at runtime and maps your JSON content to the right placeholders.
 
 #### Required Layouts (4 minimum)
-
-Your template must contain at least these 4 slide layouts for json2pptx to work:
 
 | Layout | Purpose | Placeholders | Maps to `slide_type` |
 |--------|---------|--------------|----------------------|
@@ -569,147 +569,113 @@ Your template must contain at least these 4 slide layouts for json2pptx to work:
 | **Section Divider** | Section breaks | Title (+ optional Body) | `section` |
 | **Closing** | Final slide | Title + Subtitle | `blank` (closing tag) |
 
-The layouts are detected by their **placeholder structure**, not by name. A layout with one title and one large body placeholder is classified as "content" regardless of what you call it.
-
-#### Recommended Layouts (6 for full coverage)
-
-For the best experience, also include:
-
-| Layout | Purpose | Placeholders | Maps to `slide_type` |
-|--------|---------|--------------|----------------------|
-| **Two Content** | Side-by-side content | Title + 2 Body placeholders | `two-column`, `comparison` |
-| **Blank** | Empty slide (for shape grids) | None | `blank` |
-
-If these are missing, json2pptx **synthesizes** them automatically from your content layout. A "Blank + Title" layout is also synthesized when needed for shape grid slides.
-
-#### Placeholder Rules
-
-- Each layout should use standard PowerPoint **placeholder types** (Title, Body, Subtitle) -- not plain text boxes
-- The **Title** placeholder is what json2pptx targets with `placeholder_id: "title"`
-- The **Body/Content** placeholder is targeted with `placeholder_id: "body"`
-- The **Subtitle** placeholder is targeted with `placeholder_id: "subtitle"`
-- Placeholder size determines character capacity -- json2pptx calculates `max_chars` from the bounding box
+Layouts are detected by **placeholder structure**, not by name. A "Two Content" layout and a "Blank" layout are synthesized automatically when missing.
 
 #### Theme and Colors
 
-json2pptx extracts your template's **theme colors** (`accent1` through `accent6`, `dk1`, `dk2`, `lt1`, `lt2`) and uses them for:
-- Native diagram shapes (SWOT quadrants, Porter's forces, process flow steps)
-- Chart color palettes
-- Shape grid fills when using scheme references like `"fill": "accent1"`
-- Automatic text contrast correction
-
-Define your colors in the slide master's theme. Per-deck overrides are also supported via `theme_override` in JSON.
-
-#### How to Use Your Template
+json2pptx extracts your template's theme colors (`accent1`-`accent6`, `dk1`, `dk2`, `lt1`, `lt2`) and uses them for native diagram shapes, chart palettes, shape grid fills (via scheme references like `"fill": "accent1"`), and automatic text contrast correction.
 
 ```sh
-# Place your .pptx in a directory
-mkdir my-templates
-cp my-corporate-theme.pptx my-templates/
+mkdir my-templates && cp my-corporate-theme.pptx my-templates/
 
-# Use it (reference by filename without .pptx)
 json2pptx generate -json slides.json -template my-corporate-theme -templates-dir my-templates
-
-# Validate it
 json2pptx validate-template my-templates/my-corporate-theme.pptx
-
-# Inspect detected layouts
 json2pptx skill-info --mode=full --template=my-corporate-theme --templates-dir=my-templates
 ```
 
 #### Tips
 
-- Design in **16:9 aspect ratio** (standard for modern presentations)
-- Use **Slide Master** view in PowerPoint to edit layouts -- don't design on individual slides
-- Keep layout names descriptive (e.g., "One Content", "Two Column") -- json2pptx uses names as classification hints
-- Test with `json2pptx skill-info --mode=full` to see how your layouts are classified and what tags they receive
-- If a layout is misclassified, adjust its placeholder structure (add/remove/resize placeholders)
+- Design in **16:9** aspect ratio
+- Edit in **Slide Master** view, not on individual slides
+- Use standard PowerPoint placeholder types (Title, Body, Subtitle), not plain text boxes
+- Test classification with `json2pptx skill-info --mode=full`
 
-## CLI Tool (json2pptx)
+## CLI
 
-The `json2pptx` binary is the primary CLI tool. It works as a batch converter, HTTP API server, and MCP server.
+The `json2pptx` binary is the primary tool: batch converter, HTTP API server, and MCP server.
 
-### Subcommands
+### Subcommands (25)
 
-| Command              | Description                                                   |
-|----------------------|---------------------------------------------------------------|
-| `generate`           | Convert JSON input to PPTX (default if subcommand is omitted) |
-| `validate`           | Validate JSON input without generating a file (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
-| `validate-template`  | Check template compatibility                                  |
-| `skill-info`         | Show template capabilities for Claude Code skill integration  |
-| `patterns`           | List, show, validate, and expand named shape grid patterns    |
-| `icons`              | List available icon sets and icons                            |
-| `tables`             | Table style guide and density reference                       |
-| `serve`              | Start the HTTP API server                                     |
-| `mcp`                | Start MCP (Model Context Protocol) server over stdio          |
-| `version`            | Show version, commit, and build information                   |
-| `help`               | Show usage help                                               |
-
-### Examples
-
-```sh
-# Convert a JSON file
-json2pptx generate -json input.json -json-output result.json
-
-# Implicit generate (subcommand can be omitted)
-json2pptx -json input.json -json-output result.json
-
-# Validate without generating
-json2pptx validate input.json
-
-# Check template
-json2pptx validate-template templates/midnight-blue.pptx
-
-# Start HTTP server
-json2pptx serve --port 3000
-
-# Start MCP server
-json2pptx mcp --templates-dir ./templates --output ./output
-
-# Show template capabilities (JSON)
-json2pptx skill-info --templates-dir ./templates --mode full
-```
+| Command | Description |
+|---------|-------------|
+| `generate` | Convert JSON input to PPTX (default if subcommand omitted) |
+| `read` | Read PPTX and output extracted content as JSON |
+| `validate` | Validate JSON input without generating (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
+| `validate-output` | Check generated PPTX for OOXML correctness |
+| `validate-template` | Check template compatibility |
+| `template-check` | Check template conformance against `docs/TEMPLATE_SPEC.md` |
+| `patterns` | List, show, validate, and expand named patterns |
+| `icons` | List available icon sets and icons |
+| `tables` | Table style guide and density reference |
+| `skill-info` | Show template capabilities for Claude Code skill integration |
+| `capabilities` | Show schema version, tools, features, and vocabularies |
+| `resolve-theme` | Resolve theme colors and fonts for a template |
+| `recommend-pattern` | Recommend patterns matching an intent |
+| `preview` | Preview generation plan without rendering |
+| `repair` | Apply targeted fixes to a single slide |
+| `score` | Score a presentation for visual quality |
+| `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
+| `render-slide` | Render a single slide to PNG (requires LibreOffice + ImageMagick) |
+| `render-thumbnails` | Render all slides as PNG thumbnails (requires LibreOffice + ImageMagick) |
+| `template-settings` | Manage named styles (list/register/delete) |
+| `data-format-hints` | Show data format hints for chart/diagram types |
+| `shape-catalog` | List available preset geometries |
+| `serve` | Start HTTP API server |
+| `mcp` | Start MCP server over stdio |
+| `version` | Show version, commit, and build information |
 
 ### Generate Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-json` | (required) | Path to JSON input file, or `-` for stdin |
-| `-template` | | Template name (without .pptx extension) |
+| `-template` | | Template name (without `.pptx`) |
 | `-templates-dir` | `./templates` | Directory containing templates |
 | `-output` | `./output` | Output directory for generated PPTX files |
 | `-json-output` | | Path for JSON result output (headless mode) |
 | `-dry-run` / `-n` | `false` | Validate input and show layout selections without generating |
 | `-strict-fit` | `warn` | Text-fit checking mode: `off`, `warn`, or `strict` (refuse on overflow) |
+| `-fit-report` | `false` | Emit structured fit findings |
 | `-verbose` | `false` | Enable verbose output |
 | `-config` | | Path to config file |
 
-## API Endpoints
+### Companion Tools
+
+| Binary | Purpose |
+|--------|---------|
+| `pptx2jpg` | Convert PPTX to JPG/PNG via LibreOffice + ImageMagick |
+| `mktemplate` | Template authoring helper |
+| `templatecaps` | Template capabilities inspector |
+| `debugcolors` | Theme color introspector |
+| `validatepptx` | Standalone PPTX validator |
+| `testrand` | Random deck generator (fuzz harness) |
+
+## HTTP API
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/v1/health` | Health check with version info |
 | `GET` | `/api/v1/templates` | List available templates |
-| `GET` | `/api/v1/templates/{name}` | Get template details (layouts, colors, fonts) |
+| `GET` | `/api/v1/templates/{name}` | Template details (layouts, colors, fonts) |
 | `GET` | `/api/v1/slide-types` | List supported slide types |
 | `POST` | `/api/v1/convert` | Convert JSON slides to PPTX |
-| `GET` | `/api/v1/download/{filename}` | Download generated file (expires after 1 hour) |
-| `GET` | `/api/v1/patterns` | List available named shape grid patterns |
-| `GET` | `/api/v1/patterns/{name}` | Show pattern details and schema |
+| `GET` | `/api/v1/download/{filename}` | Download generated file (expires after 1 hour by default) |
+| `GET` | `/api/v1/patterns` | List available named patterns |
+| `GET` | `/api/v1/patterns/{name}` | Pattern details and schema |
 | `POST` | `/api/v1/patterns/{name}/validate` | Validate input against a pattern's schema |
 | `POST` | `/api/v1/patterns/{name}/expand` | Expand a pattern into a shape grid |
 
-See [docs/api/README.md](docs/api/README.md) for complete API documentation with request/response examples.
+See [docs/api/README.md](docs/api/README.md) for complete API documentation.
 
 ### Convert Request Fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| template | Yes | Template name (without .pptx) |
-| slides | Yes | Array of slide definitions |
-| options.output_format | No | `"file"` or `"base64"` (default: `"file"`) |
-| options.svg_scale | No | SVG render scale factor, 0.5-10.0 (default: 2.0) |
-| options.exclude_template_slides | No | Exclude template's built-in slides from output |
+| `template` | Yes | Template name (without `.pptx`) |
+| `slides` | Yes | Array of slide definitions |
+| `options.output_format` | No | `"file"` or `"base64"` (default: `"file"`) |
+| `options.svg_scale` | No | SVG render scale factor, 0.5-10.0 (default: 2.0) |
+| `options.exclude_template_slides` | No | Exclude template's built-in slides from output |
 
 ### Convert Response
 
@@ -718,33 +684,34 @@ See [docs/api/README.md](docs/api/README.md) for complete API documentation with
   "success": true,
   "file_url": "/api/v1/download/abc123.pptx",
   "expires_at": "2026-01-17T12:00:00Z",
-  "stats": {
-    "slide_count": 10,
-    "processing_time_ms": 1500,
-    "warnings": []
-  }
+  "stats": {"slide_count": 10, "processing_time_ms": 1500, "warnings": []}
 }
 ```
 
 ## Configuration
 
-Environment variables can be set directly or via a `.env` file. See `.env.example` for a complete reference.
-
-### Environment Variables
+Set environment variables directly or via a `.env` file. See `.env.example` for the complete reference.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| PORT | 8080 | Server port |
-| TEMPLATES_DIR | ./templates | Template directory |
-| OUTPUT_DIR | ./output | Output directory |
-| LOG_LEVEL | info | Logging level (debug, info, warn, error) |
-| TEMPLATE_VALIDATION_MODE | soft | Template validation: `strict` or `soft` |
-| TEMP_FILE_MAX_AGE | 3600 | Max age for temp files before cleanup (seconds) |
-| TEMP_CLEANUP_INTERVAL | 300 | Temp file cleanup interval (seconds) |
-| SVG_STRATEGY | png | SVG conversion strategy: `png`, `emf`, or `native` |
-| SVG_SCALE | 2.0 | Scale factor for PNG conversion |
-| SVG_NATIVE_COMPATIBILITY | warn | Native SVG compatibility: `warn`, `fallback`, `strict`, `ignore` |
-| SVG_PNG_CONVERTER | auto | PNG converter: `auto`, `rsvg-convert`, or `resvg` |
+| `PORT` | `8080` | HTTP server port |
+| `TEMPLATES_DIR` | `./templates` | Template directory |
+| `OUTPUT_DIR` | `./output` | Output directory |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `TEMPLATE_VALIDATION_MODE` | `soft` | `strict` or `soft` |
+| `TEMP_FILE_MAX_AGE` | `3600` | Max age for temp files before cleanup (seconds) |
+| `TEMP_CLEANUP_INTERVAL` | `300` | Temp file cleanup interval (seconds) |
+| `SVG_STRATEGY` | `png` | `png`, `emf`, or `native` |
+| `SVG_SCALE` | `2.0` | Scale factor for PNG conversion |
+| `SVG_NATIVE_COMPATIBILITY` | `warn` | `warn`, `fallback`, `strict`, `ignore` |
+| `SVG_PNG_CONVERTER` | `auto` | `auto`, `rsvg-convert`, or `resvg` |
+| `SERVER_AUTH_MODE` | | HTTP API auth mode |
+| `ALLOWED_ORIGINS` | | CORS allowlist |
+| `CONVERT_RATE_LIMIT` | | Rate limit for `/convert` |
+| `CONVERT_TIMEOUT` | | Per-request timeout for `/convert` |
+| `ALLOWED_IMAGE_PATHS` | | Allowed local image roots |
+| `JSON2PPTX_ALLOW_SETTINGS_WRITE` | `0` | Set to `1` to enable `register_template_setting` / `delete_template_setting` |
+| `PPROF_PORT` / `PPROF_BIND` | | pprof endpoint |
 
 ### SVG Conversion Strategies
 
@@ -754,31 +721,24 @@ Environment variables can be set directly or via a `.env` file. See `.env.exampl
 | `emf` | Convert SVG to EMF vector format | Inkscape | PowerPoint 2010+ |
 | `native` | Embed SVG directly with PNG fallback | `rsvg-convert` or `resvg` for fallback | PowerPoint 2016+ |
 
-Install `rsvg-convert` for the default PNG strategy:
-
 ```sh
-brew install librsvg    # macOS
-apt install librsvg2-bin  # Ubuntu/Debian
+brew install librsvg          # macOS
+apt install librsvg2-bin      # Ubuntu/Debian
 ```
 
 ### Config File
-
-Create `config.yaml` for more options:
 
 ```yaml
 server:
   port: 8080
   read_timeout: 30s
   write_timeout: 60s
-
 templates:
   dir: ./templates
   cache_dir: ./cache/templates
-
 storage:
   output_dir: ./output
   file_retention: 1h
-
 svg:
   strategy: png
   scale: 2.0
@@ -790,31 +750,45 @@ svg:
 
 ```
 cmd/
-  json2pptx/         CLI tool (generate, validate, serve, mcp, skill-info, patterns, icons, tables)
-  pptx2jpg/          PPTX to image conversion (visual inspection)
-  debugcolors/       Template color debugging tool
+  json2pptx/        Main CLI + HTTP API + MCP server (25 subcommands, 28 MCP tools)
+  pptx2jpg/         PPTX to image conversion via LibreOffice
+  mktemplate/       Template authoring helper
+  debugcolors/      Theme color debugging tool
+  templatecaps/     Template capabilities inspector
+  validatepptx/     Standalone PPTX validator
+  testrand/         Random deck generator (fuzz harness)
 internal/
-  api/               HTTP API handlers and routing
-  config/            Configuration loading
-  generator/         Core PPTX generation pipeline
-  jsonschema/        JSON Schema validation
-  layout/            Layout selection (heuristic scoring)
-  pagination/        Slide pagination and content splitting
-  patterns/          Named shape grid pattern registry
-  pipeline/          Generation pipeline orchestration
-  pptx/              Low-level OOXML manipulation
-  resource/          Embedded resource handling
-  safeyaml/          Safe YAML parsing
-  shapegrid/         Shape grid layout engine
-  template/          PPTX template analysis and layout classification
-  testrand/          Random test data generation
-  testutil/          Test helpers
-  textfit/           Text fitting and overflow handling
-  types/             Shared data types and input schema
-  utils/             Utilities
-  visualqa/          Visual QA agent integration
-svggen/              SVG chart and diagram generation (separate Go module)
-templates/           Built-in PPTX templates
+  api/              HTTP API handlers and routing
+  config/           Configuration loading
+  diagnostics/      Structured diagnostic envelopes
+  generator/        Core PPTX generation engine, contrast, shapes
+  jsonschema/       JSON Schema validation
+  layout/           Layout selection (heuristic scoring)
+  layoutpreview/    Generation plan previewing
+  pagination/       Slide pagination and content splitting
+  patterns/         Named shape grid pattern registry (20 patterns)
+  pipeline/         Generation pipeline orchestration
+  pptx/             Low-level OOXML manipulation
+  pptxread/         PPTX read-back (for read_presentation)
+  render/           Slide-image rendering
+  resource/         Embedded resource handling
+  safeyaml/         Safe YAML parsing
+  shapegrid/        Shape grid layout engine (flex-like rows, authoritative bounds)
+  slidepath/        JSON Pointer path helpers
+  template/         PPTX template analysis and layout classification
+  templatesettings/ Template-side named style sidecars
+  textfit/          Text fitting and overflow handling
+  testrand/         Random test data generation
+  testutil/         Test helpers
+  types/            Shared data types and input schema
+  utils/            Utilities
+  visualqa/         Visual QA agent integration (deterministic + screenshot)
+svggen/             SVG chart and diagram generation (separate Go module)
+templates/          Built-in PPTX templates (5)
+examples/           Example JSON input files (19 + diagrams/ subdirectory)
+docs/               Specs: PATTERNS, FIT_FINDINGS, REPAIR_LOOP, INPUT_FORMAT,
+                    STYLE_DEFAULTS, TEMPLATE_SPEC, VISUAL_CRITERIA, ...
+skills/             Claude Code skills (3)
 ```
 
 ### Pipeline Flow
@@ -823,21 +797,34 @@ templates/           Built-in PPTX templates
 JSON Input + Template PPTX
         |
         v
-  Parse JSON Input --> Slides[], Template, ThemeOverride
+  Parse JSON Input + apply deck defaults --> Slides[], Template, ThemeOverride, Defaults, Structure
         |
         v
-  Analyze Template --> Layouts[], Placeholders[], ThemeColors
+  Expand structure (sections, auto-agenda, cover/closing) --> flat slide list
         |
         v
-  Select Layouts   --> Layout assignments per slide
+  Validate (schema, unknown keys, design_mode rules)
         |
         v
-  Generate PPTX    --> Populated PPTX file
-    |-- Charts     --> SVG chart rendering
-    |-- Diagrams   --> SVG diagram rendering
-    |-- Tables     --> Table generation
-    |-- Shape Grid --> Custom shape layout
-    '-- Images     --> Image embedding
+  Analyze Template --> Layouts[], Placeholders[], ThemeColors; synthesize missing layouts
+        |
+        v
+  Resolve patterns/compose --> shape_grid; resolve virtual layout bounds
+        |
+        v
+  Select Layouts and map portable placeholders
+        |
+        v
+  Generate PPTX                                        --> Populated PPTX file
+    |-- Charts (svggen)        --> SVG -> PNG/EMF/native
+    |-- Diagrams (svggen + native) --> some intercepted as native OOXML shapes
+    |-- Tables                  --> with auto-pagination via split_slide
+    |-- Shape Grid              --> custom shape layout
+    |-- Images                  --> embedded
+    '-- Contrast + Text Fit     --> auto-fix or report findings
+        |
+        v
+  Result + FitFindings + ContrastSwaps + ContentHash
 ```
 
 ## Development
@@ -864,7 +851,19 @@ make test-race       # Tests with race detector
 make test-cover      # Tests with coverage report
 make check           # Build + test + vet
 make ci              # Full CI pipeline (fmt + lint + test + vulncheck)
+
+# svggen is a separate Go module
+cd svggen && go test ./...
+cd svggen && golangci-lint run ./...
 ```
+
+### Pre-Commit Checklist
+
+1. `golangci-lint run ./...`
+2. `cd svggen && golangci-lint run ./...`
+3. `go test ./...`
+4. `cd svggen && go test ./...`
+5. `go build ./cmd/json2pptx`
 
 ### Integration Tests
 
@@ -880,6 +879,21 @@ make dist-linux      # Linux amd64 tar.gz
 make dist-windows    # Windows amd64 tar.gz
 make release         # All platforms (requires clean tree)
 ```
+
+## Documentation
+
+- [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) -- complete JSON schema reference
+- [SLIDE_FORMAT.md](SLIDE_FORMAT.md) -- condensed quick-reference
+- [docs/PATTERNS.md](docs/PATTERNS.md) -- named-pattern authoring guide
+- [docs/PATTERN_LIBRARY_SPEC.md](docs/PATTERN_LIBRARY_SPEC.md) -- full pattern design spec
+- [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) -- fit findings catalog and action semantics
+- [docs/REPAIR_LOOP.md](docs/REPAIR_LOOP.md) -- structured repair workflow
+- [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md) -- defaults block semantics
+- [docs/TEMPLATE_SPEC.md](docs/TEMPLATE_SPEC.md) -- template conformance spec
+- [docs/VISUAL_CRITERIA.md](docs/VISUAL_CRITERIA.md) -- composition scoring criteria
+- [docs/SCHEMA_CHANGELOG.md](docs/SCHEMA_CHANGELOG.md) -- schema/version history
+- [docs/PATH_GRAMMAR.md](docs/PATH_GRAMMAR.md) -- JSON Pointer path grammar for fit findings
+- [docs/api/README.md](docs/api/README.md) -- HTTP API reference
 
 ## Contributing
 
