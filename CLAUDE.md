@@ -76,7 +76,7 @@ svggen/           # SVG chart/diagram generation (separate Go module via go.work
   style.go        # Theme-aware styling
 
 templates/        # PPTX template files (5: forest-green, midnight-blue, modern-template, pwc-template, warm-coral)
-examples/         # Example JSON input files (14 decks)
+examples/         # Example JSON input files (19 decks)
 ```
 
 ## Key Architectural Decisions
@@ -106,6 +106,42 @@ examples/         # Example JSON input files (14 decks)
 - Slide types: `title`, `content`, `section`, `two-column`, `blank`, `chart`, `diagram`
 - Placeholder IDs: `title`, `subtitle`, `body`, `body_2` (portable across templates)
 - Content types: `text`, `bullets`, `chart`, `diagram`, `table`, `image`, `body_and_bullets`, `bullet_groups`
+
+### Named Patterns (registered in `internal/patterns/`)
+
+| Pattern | Description |
+|---------|-------------|
+| `agenda` | Numbered section list for agenda / table-of-contents slides |
+| `arch-stack` | Architecture stack diagram with tiers and optional side rails |
+| `before-after` | Two-column before/after with transition chevron |
+| `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
+| `card-grid` | Parameterized N×M grid of titled cards |
+| `comparison-2col` | Two-column comparison with optional headers |
+| `icon-row` | Horizontal row of icon+caption pairs |
+| `kpi-2up` | Two big-number KPI cards with short captions |
+| `kpi-3up` | Three big-number KPI cards with short captions |
+| `kpi-4up` | Four big-number KPI cards with short captions |
+| `kpi-5up` | Five big-number KPI cards with short captions |
+| `kpi-6up` | Six big-number KPI cards with short captions |
+| `matrix-2x2` | 2×2 quadrant matrix with axis labels |
+| `process-flow` | Left-to-right process flow with steps and decision points |
+| `pull-quote` | Italic quote block with attribution |
+| `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
+| `roadmap-phased` | Phased roadmap with workstreams and time periods |
+| `stat-hero` | Single oversized statistic with label and optional context |
+| `swimlane` | Horizontal swimlane diagram with actors and steps |
+| `timeline-horizontal` | Linear horizontal timeline with stops |
+
+### Key Top-Level Fields
+
+- `accent_strategy` — controls accent color rotation: `"primary"` (default), `"rotate"`, `"section-keyed"`
+- `compose` — slide-level nested pattern composition envelope (multiple patterns on one slide)
+
+### Composition Awareness
+
+- Use `plan_deck` MCP tool as the recommended entry point for new decks (produces a structured slide plan)
+- Use `analyze_deck_rhythm` MCP tool to detect visual monotony, accent imbalance, and missing emphasis
+- Use `recommend_visual` MCP tool to rank candidate layouts/patterns/charts for a given slide intent
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->

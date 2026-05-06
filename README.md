@@ -278,20 +278,20 @@ curl -X POST http://localhost:8080/api/v1/convert \
   }'
 ```
 
-### Running the Sovereign AI Example
+### Running an Example Deck
 
-The repo includes a full example deck at `examples/sovereign-ai-strategy.json` that demonstrates charts, diagrams, shape grids, and multiple slide types. Run it with a built-in template:
+The repo includes pattern-rich example decks that demonstrate named patterns, charts, shape grids, and multiple slide types. Run the investor pitch deck:
 
 ```sh
-json2pptx generate -json examples/sovereign-ai-strategy.json -output ./output
+json2pptx generate -json examples/varied-pitch-deck.json -output ./output
 ```
 
-This uses the `warm-coral` template (specified inside the JSON) and writes `sovereign-ai-strategy.pptx` to `./output/`.
+This uses the `midnight-blue` template (specified inside the JSON) and writes `varied-pitch-deck.pptx` to `./output/`.
 
 To use a different built-in template, override it with `-template`:
 
 ```sh
-json2pptx generate -json examples/sovereign-ai-strategy.json -template midnight-blue -output ./output
+json2pptx generate -json examples/varied-pitch-deck.json -template forest-green -output ./output
 ```
 
 To use your own external `.pptx` template, point `-templates-dir` at the directory containing it:
@@ -302,7 +302,7 @@ cp /path/to/my-corporate-theme.pptx ./my-templates/
 
 # Reference it by filename (without .pptx extension)
 json2pptx generate \
-  -json examples/sovereign-ai-strategy.json \
+  -json examples/varied-pitch-deck.json \
   -template my-corporate-theme \
   -templates-dir ./my-templates \
   -output ./output
@@ -311,7 +311,7 @@ json2pptx generate \
 Preview what layouts would be selected without generating (dry-run):
 
 ```sh
-json2pptx generate -dry-run -json examples/sovereign-ai-strategy.json
+json2pptx generate -dry-run -json examples/varied-pitch-deck.json
 ```
 
 ## Claude Code Integration

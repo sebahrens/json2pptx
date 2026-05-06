@@ -6,15 +6,29 @@ Ready-to-run input files for `json2pptx`. This directory contains both **Markdow
 
 JSON input mode provides direct, programmatic control over slide layout and content placement. Each slide specifies an exact `layout_id` and maps content to specific `placeholder_id` values from the template.
 
+### Recommended starting points for agents
+
+These pattern-rich decks are the best entry points for AI agents building new decks:
+
+| File | Description | Template |
+|------|-------------|----------|
+| `varied-pitch-deck.json` | Investor pitch deck demonstrating pattern variety: icon-row, stat-hero, kpi-3up, before-after, process-flow, card-grid, timeline-horizontal, pyramid, comparison-2col, pull-quote | midnight-blue |
+| `board-deck.json` | Executive board update using stat-hero, kpi-4up, matrix-2x2, pull-quote, arch-stack, before-after, kpi-2up, swimlane | forest-green |
+
+### Pattern-first examples
+
+| File | Description | Template |
+|------|-------------|----------|
+| `patterns-smoke.json` | Pattern library smoke test: one slide per v1 pattern (kpi-3up, kpi-4up, bmc-canvas, matrix-2x2, timeline-horizontal, card-grid, icon-row, comparison-2col) | midnight-blue |
+
+### Placeholder-first examples
+
 | File | Description | Template |
 |------|-------------|----------|
 | `basic-deck.json` | Text and bullet slides: title, agenda, content, two-column, section divider, closing | midnight-blue |
 | `charts.json` | Chart types: bar, line, pie, donut, area, funnel | forest-green |
 | `diagrams.json` | Advanced chart types: waterfall, radar, gauge, treemap, stacked bar | warm-coral |
 | `full-showcase.json` | All content types combined in a product launch strategy deck | midnight-blue |
-| `varied-pitch-deck.json` | Investor pitch deck demonstrating pattern variety: icon-row, stat-hero, kpi-3up, before-after, process-flow, card-grid, timeline-horizontal, pyramid, comparison-2col, pull-quote | midnight-blue |
-| `board-deck.json` | Executive board update using stat-hero, kpi-4up, matrix-2x2, pull-quote, arch-stack, before-after, kpi-2up, swimlane | forest-green |
-| `patterns-smoke.json` | Pattern library smoke test: one slide per v1 pattern (kpi-3up, kpi-4up, bmc-canvas, matrix-2x2, timeline-horizontal, card-grid, icon-row, comparison-2col) | midnight-blue |
 
 ### Pattern coverage
 
