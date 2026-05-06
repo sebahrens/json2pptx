@@ -118,6 +118,15 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 	const name = "process-flow"
 	var errs []error
 
+	// Validate cell_accent_mode
+	if overrides != nil {
+		if ovr, ok := overrides.(*ProcessFlowOverrides); ok {
+			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
 	if len(vals.Steps) < 3 {
 		errs = append(errs, errMinItems(name, "steps", 3, len(vals.Steps), ""))
 	}
@@ -160,11 +169,13 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	cellAccentMode := ovr.CellAccentMode
 
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
 	for i, step := range vals.Steps {
+		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		geometry := "roundRect"
 		if step.Type == "decision" {
 			geometry = "diamond"

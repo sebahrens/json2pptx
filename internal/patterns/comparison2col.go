@@ -201,6 +201,15 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 	const name = "comparison-2col"
 	var errs []error
 
+	// Validate cell_accent_mode
+	if overrides != nil {
+		if ovr, ok := overrides.(*Comparison2colOverrides); ok {
+			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
 	// Rows required and count check
 	if len(vals.Rows) == 0 {
 		errs = append(errs, newValidationError(name, "rows", ErrCodeMinItems,
@@ -266,9 +275,10 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
+	cellAccentMode := ovr.CellAccentMode
 
 	hasHeaders := vals.HeaderLeft != "" || vals.HeaderRight != ""
 	cellIdx := 0 // running cell index for cell_overrides
@@ -277,27 +287,30 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 	// Header row (optional)
 	if hasHeaders {
+		leftAccent := ResolveCellAccent(baseAccent, 0, cellAccentMode)
+		rightAccent := ResolveCellAccent(baseAccent, 1, cellAccentMode)
+
 		leftHeader := buildComparison2colTextContent(vals.HeaderLeft, headerSize, true, "lt1", "ctr")
 		rightHeader := buildComparison2colTextContent(vals.HeaderRight, headerSize, true, "lt1", "ctr")
 
 		leftCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, leftAccent)),
 				Text:     leftHeader,
 			},
 		}
-		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, accent)
+		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, leftAccent)
 		cellIdx++
 
 		rightCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, rightAccent)),
 				Text:     rightHeader,
 			},
 		}
-		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, accent)
+		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, rightAccent)
 		cellIdx++
 
 		rows = append(rows, jsonschema.GridRowInput{
@@ -317,7 +330,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 				Text:     leftText,
 			},
 		}
-		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, accent)
+		applyComparison2colCellOverride(leftCell, cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 
 		rightCell := &jsonschema.GridCellInput{
@@ -327,7 +340,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 				Text:     rightText,
 			},
 		}
-		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, accent)
+		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 
 		rows = append(rows, jsonschema.GridRowInput{

@@ -116,6 +116,15 @@ func (b *beforeAfter) Validate(values, overrides any, cellOverrides map[int]any)
 	const name = "before-after"
 	var errs []error
 
+	// Validate cell_accent_mode
+	if overrides != nil {
+		if ovr, ok := overrides.(*BeforeAfterOverrides); ok {
+			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
 	// Validate before column
 	if vals.Before.Header == "" {
 		errs = append(errs, errRequired(name, "before.header"))
@@ -181,9 +190,13 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	cellAccentMode := ovr.CellAccentMode
+
+	beforeAccent := ResolveCellAccent(baseAccent, 0, cellAccentMode)
+	afterAccent := ResolveCellAccent(baseAccent, 1, cellAccentMode)
 
 	cellIdx := 0
 
@@ -195,31 +208,31 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, beforeAccent)),
 			Text:     beforeHeader,
 		},
 	}
-	applyBeforeAfterCellOverride(beforeHeaderCell, cellOverrides, cellIdx, accent)
+	applyBeforeAfterCellOverride(beforeHeaderCell, cellOverrides, cellIdx, beforeAccent)
 	cellIdx++
 
 	chevronCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "chevron",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
 			Text:     chevronText,
 		},
 	}
-	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, accent)
+	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 
 	afterHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, afterAccent)),
 			Text:     afterHeader,
 		},
 	}
-	applyBeforeAfterCellOverride(afterHeaderCell, cellOverrides, cellIdx, accent)
+	applyBeforeAfterCellOverride(afterHeaderCell, cellOverrides, cellIdx, afterAccent)
 	cellIdx++
 
 	// Body row: before items | spacer | after items
@@ -233,7 +246,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			Text:     beforeBody,
 		},
 	}
-	applyBeforeAfterCellOverride(beforeBodyCell, cellOverrides, cellIdx, accent)
+	applyBeforeAfterCellOverride(beforeBodyCell, cellOverrides, cellIdx, beforeAccent)
 	cellIdx++
 
 	afterBodyCell := &jsonschema.GridCellInput{
@@ -243,7 +256,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			Text:     afterBody,
 		},
 	}
-	applyBeforeAfterCellOverride(afterBodyCell, cellOverrides, cellIdx, accent)
+	applyBeforeAfterCellOverride(afterBodyCell, cellOverrides, cellIdx, afterAccent)
 
 	// 3-column grid: [45%, 10%, 45%]
 	colsJSON := json.RawMessage(`[45, 10, 45]`)

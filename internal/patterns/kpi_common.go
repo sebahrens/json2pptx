@@ -46,6 +46,7 @@ type KPIOverrides struct {
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
 	BigSize        float64 `json:"big_size,omitempty"`
 	SmallSize      float64 `json:"small_size,omitempty"`
+	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
 }
 
 // KPICellOverride is an alias for the shared CellOverride struct.
@@ -214,10 +215,11 @@ func kpiCellSchema() *Schema {
 func kpiOverridesSchema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"big_size":        NumberSchema(6, 120).WithDescription("Font size for big number in points"),
-			"small_size":      NumberSchema(6, 120).WithDescription("Font size for small caption in points"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"big_size":         NumberSchema(6, 120).WithDescription("Font size for big number in points"),
+			"small_size":       NumberSchema(6, 120).WithDescription("Font size for small caption in points"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 		},
 		nil,
 	).WithAdditionalProperties(false)

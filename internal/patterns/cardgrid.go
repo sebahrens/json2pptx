@@ -151,11 +151,12 @@ func (c *cardGrid) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"header_size":     NumberSchema(6, 120).WithDescription("Font size for headers in points"),
-			"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-			"style":           EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (emoji/glyph badge), tinted (alternating lt1/lt2 backgrounds)").WithDefault("filled"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
+			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+			"style":            EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (emoji/glyph badge), tinted (alternating lt1/lt2 backgrounds)").WithDefault("filled"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -181,19 +182,8 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	const name = "card-grid"
 	var errs []error
 
-	// Validate style enum
-	if overrides != nil {
-		if ovr, ok := overrides.(*CardGridOverrides); ok && ovr.Style != "" {
-			if !validCardGridStyles[ovr.Style] {
-				errs = append(errs, &ValidationError{
-					Pattern: name,
-					Path:    "overrides.style",
-					Code:    "invalid_enum",
-					Message: fmt.Sprintf("card-grid: overrides.style must be one of filled, accent-stripe, numbered-badge, icon-card, tinted; got %q", ovr.Style),
-				})
-			}
-		}
-	}
+	// Validate overrides enums
+	errs = append(errs, validateCardGridOverrides(name, overrides)...)
 
 	// Columns range
 	if vals.Columns < 1 || vals.Columns > 5 {
@@ -265,13 +255,14 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 	style := ovr.Style
 	if style == "" {
 		style = "filled"
 	}
+	cellAccentMode := ovr.CellAccentMode
 
 	var rows []jsonschema.GridRowInput
 	cellIdx := 0
@@ -280,6 +271,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		gridCells := make([]*jsonschema.GridCellInput, vals.Columns)
 		for col := 0; col < vals.Columns; col++ {
 			cell := vals.Cells[cellIdx]
+			accent := ResolveCellAccent(baseAccent, cellIdx, cellAccentMode)
 			gc := c.expandCell(ctx, cell, cellIdx, style, accent, headerSize, bodySize)
 
 			// Apply cell overrides
@@ -411,6 +403,30 @@ func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, a
 			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
 		},
 	}
+}
+
+// validateCardGridOverrides checks card-grid-specific override enums.
+func validateCardGridOverrides(name string, overrides any) []error {
+	if overrides == nil {
+		return nil
+	}
+	ovr, ok := overrides.(*CardGridOverrides)
+	if !ok {
+		return nil
+	}
+	var errs []error
+	if ovr.Style != "" && !validCardGridStyles[ovr.Style] {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "overrides.style",
+			Code:    "invalid_enum",
+			Message: fmt.Sprintf("card-grid: overrides.style must be one of filled, accent-stripe, numbered-badge, icon-card, tinted; got %q", ovr.Style),
+		})
+	}
+	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+		errs = append(errs, err)
+	}
+	return errs
 }
 
 // ---------------------------------------------------------------------------

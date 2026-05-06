@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -97,9 +98,23 @@ func (k *kpiNup) Validate(values, overrides any, cellOverrides map[int]any) erro
 	if !ok || cells == nil {
 		return fmt.Errorf("%s: values must be []KPICell, got %T", name, values)
 	}
+
+	// Validate cell_accent_mode
+	var accentModeErr error
+	if overrides != nil {
+		if ovr, ok := overrides.(*KPIOverrides); ok {
+			accentModeErr = ValidateCellAccentMode(name, ovr.CellAccentMode)
+		}
+	}
+
 	// Find the nearest sibling for swap hints.
 	siblingHint := kpiSiblingHint(k.cfg.Count, len(*cells))
-	return validateKPICells(name, *cells, k.cfg.Count, siblingHint, cellOverrides)
+	cellErr := validateKPICells(name, *cells, k.cfg.Count, siblingHint, cellOverrides)
+
+	if accentModeErr != nil {
+		return errors.Join(accentModeErr, cellErr)
+	}
+	return cellErr
 }
 
 func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -119,12 +134,14 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		}
 	}
 
-	accent := resolveKPIAccent(ovr, ctx)
+	baseAccent := resolveKPIAccent(ovr, ctx)
 	bigSize := resolveKPIBigSize(ovr)
 	smallSize := resolveKPISmallSize(ovr)
+	cellAccentMode := ovr.CellAccentMode
 
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
+		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize)
 		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
 

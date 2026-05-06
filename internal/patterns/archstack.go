@@ -121,6 +121,15 @@ func (a *archStack) Validate(values, overrides any, cellOverrides map[int]any) e
 	const name = "arch-stack"
 	var errs []error
 
+	// Validate cell_accent_mode
+	if overrides != nil {
+		if ovr, ok := overrides.(*ArchStackOverrides); ok {
+			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
 	if len(vals.Tiers) < 3 {
 		errs = append(errs, errMinItems(name, "tiers", 3, len(vals.Tiers), ""))
 	}
@@ -174,9 +183,10 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 14.0)
 	bodySize := ResolveSize(ovr.BodySize, 11.0)
+	cellAccentMode := ovr.CellAccentMode
 
 	hasSideRails := len(vals.SideRails) > 0
 	numRails := len(vals.SideRails)
@@ -213,6 +223,8 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		} else {
 			text = buildArchStackSimpleContent(pptx.ConvertMarkdownEmphasis(tier.Label), headerSize)
 		}
+
+		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 
 		// Vary fill slightly per tier for visual distinction
 		alpha := 100 - i*10

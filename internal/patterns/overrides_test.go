@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -181,5 +182,113 @@ func TestExpandContext_ResolveSurface(t *testing.T) {
 	}
 	if got := ctx.ResolveSurface("inverse", "dk1"); got != "dk1" {
 		t.Errorf("ctx.ResolveSurface(inverse) = %q, want dk1 (fallback)", got)
+	}
+}
+
+func TestResolveCellAccent(t *testing.T) {
+	tests := []struct {
+		name string
+		base string
+		idx  int
+		mode string
+		want string
+	}{
+		// uniform (default)
+		{"uniform explicit", "accent1", 0, "uniform", "accent1"},
+		{"uniform idx=3", "accent3", 3, "uniform", "accent3"},
+		{"empty mode = uniform", "accent2", 5, "", "accent2"},
+
+		// alternate: base, base+1, base, base+1, ...
+		{"alternate idx=0 base=accent1", "accent1", 0, "alternate", "accent1"},
+		{"alternate idx=1 base=accent1", "accent1", 1, "alternate", "accent2"},
+		{"alternate idx=2 base=accent1", "accent1", 2, "alternate", "accent1"},
+		{"alternate idx=3 base=accent1", "accent1", 3, "alternate", "accent2"},
+		{"alternate idx=0 base=accent5", "accent5", 0, "alternate", "accent5"},
+		{"alternate idx=1 base=accent5", "accent5", 1, "alternate", "accent6"},
+		{"alternate idx=0 base=accent6", "accent6", 0, "alternate", "accent6"},
+		{"alternate idx=1 base=accent6 wraps", "accent6", 1, "alternate", "accent1"},
+
+		// progressive: base, base+1, base+2, ...
+		{"progressive idx=0 base=accent1", "accent1", 0, "progressive", "accent1"},
+		{"progressive idx=1 base=accent1", "accent1", 1, "progressive", "accent2"},
+		{"progressive idx=2 base=accent1", "accent1", 2, "progressive", "accent3"},
+		{"progressive idx=5 base=accent1", "accent1", 5, "progressive", "accent6"},
+		{"progressive idx=6 base=accent1 wraps", "accent1", 6, "progressive", "accent1"},
+		{"progressive idx=0 base=accent3", "accent3", 0, "progressive", "accent3"},
+		{"progressive idx=1 base=accent3", "accent3", 1, "progressive", "accent4"},
+		{"progressive idx=4 base=accent3 wraps", "accent3", 4, "progressive", "accent1"},
+		{"progressive idx=5 base=accent3", "accent3", 5, "progressive", "accent2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveCellAccent(tt.base, tt.idx, tt.mode)
+			if got != tt.want {
+				t.Errorf("ResolveCellAccent(%q, %d, %q) = %q, want %q",
+					tt.base, tt.idx, tt.mode, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveCellAccent_WithStrategy(t *testing.T) {
+	// Verify cell_accent_mode operates on top of strategy-resolved base
+	ctx := ExpandContext{
+		AccentStrategy: AccentStrategySectionKeyed,
+		SectionIndex:   2, // -> accent3
+	}
+	base := ctx.ResolveAccent("", "") // accent3
+
+	// Progressive from accent3: accent3, accent4, accent5, accent6, accent1, accent2
+	for i, want := range []string{"accent3", "accent4", "accent5", "accent6", "accent1", "accent2"} {
+		got := ResolveCellAccent(base, i, "progressive")
+		if got != want {
+			t.Errorf("idx=%d: ResolveCellAccent(%q, %d, progressive) = %q, want %q",
+				i, base, i, got, want)
+		}
+	}
+}
+
+func TestValidateCellAccentMode(t *testing.T) {
+	// Valid modes
+	for _, mode := range []string{"", "uniform", "alternate", "progressive"} {
+		if err := ValidateCellAccentMode("test", mode); err != nil {
+			t.Errorf("ValidateCellAccentMode(%q) = %v, want nil", mode, err)
+		}
+	}
+
+	// Invalid mode
+	err := ValidateCellAccentMode("test", "invalid")
+	if err == nil {
+		t.Fatal("ValidateCellAccentMode(invalid) = nil, want error")
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *ValidationError, got %T", err)
+	}
+	if ve.Code != "invalid_enum" {
+		t.Errorf("error code = %q, want invalid_enum", ve.Code)
+	}
+}
+
+func TestAccentNumber(t *testing.T) {
+	tests := []struct {
+		name string
+		want int
+	}{
+		{"accent1", 1},
+		{"accent2", 2},
+		{"accent6", 6},
+		{"accent0", 1},  // out of range, falls back
+		{"accent7", 1},  // out of range, falls back
+		{"dk1", 1},      // wrong format, falls back
+		{"", 1},         // empty, falls back
+		{"accent", 1},   // no digit
+	}
+	for _, tt := range tests {
+		got := accentNumber(tt.name)
+		if got != tt.want {
+			t.Errorf("accentNumber(%q) = %d, want %d", tt.name, got, tt.want)
+		}
 	}
 }

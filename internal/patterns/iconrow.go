@@ -89,6 +89,7 @@ type IconRowOverrides struct {
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
 	IconSize       float64 `json:"icon_size,omitempty"`
 	CaptionSize    float64 `json:"caption_size,omitempty"`
+	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
 }
 
 // IconRowCellOverride is an alias for the shared CellOverride struct.
@@ -121,10 +122,11 @@ func (ir *iconRow) Schema() *Schema {
 			"values": ArraySchema(itemSchema, 3, 5).WithDescription("3–5 icon+caption pairs"),
 			"overrides": ObjectSchema(
 				map[string]*Schema{
-					"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-					"icon_size":       NumberSchema(6, 120).WithDescription("Font size for icon in points"),
-					"caption_size":    NumberSchema(6, 120).WithDescription("Font size for caption in points"),
+					"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+					"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+					"icon_size":        NumberSchema(6, 120).WithDescription("Font size for icon in points"),
+					"caption_size":     NumberSchema(6, 120).WithDescription("Font size for caption in points"),
+					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -144,6 +146,15 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 
 	const name = "icon-row"
 	var errs []error
+
+	// Validate cell_accent_mode
+	if overrides != nil {
+		if ovr, ok := overrides.(*IconRowOverrides); ok {
+			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
 
 	if len(*items) < 3 {
 		errs = append(errs, errMinItems(name, "values", 3, len(*items), "(hint: use pattern kpi-3up for KPI-style cards)"))
@@ -189,12 +200,14 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	iconSize := ResolveSize(ovr.IconSize, 28.0)
 	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
+	cellAccentMode := ovr.CellAccentMode
 
 	gridCells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
+		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		textContent := buildIconRowTextContent(item.Icon, iconSize, item.Caption, captionSize)
 
 		shape := &jsonschema.ShapeSpecInput{

@@ -15,6 +15,7 @@ type TextOverrides struct {
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
 	HeaderSize     float64 `json:"header_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
+	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
 }
 
 // ValidSemanticAccents is the set of recognised semantic accent roles.
@@ -108,6 +109,66 @@ var ValidSurfaceTintRoles = map[string]bool{
 	"inverse":  true,
 }
 
+// CellAccentMode constants control per-cell accent color variation within a
+// grid-shaped pattern.
+const (
+	CellAccentUniform     = "uniform"     // every cell uses the resolved base accent
+	CellAccentAlternate   = "alternate"   // cells alternate base, base+1
+	CellAccentProgressive = "progressive" // cells walk base, base+1, base+2, ...
+)
+
+// ValidCellAccentModes is the set of allowed cell_accent_mode values.
+var ValidCellAccentModes = map[string]bool{
+	"":                    true, // default = uniform
+	CellAccentUniform:     true,
+	CellAccentAlternate:   true,
+	CellAccentProgressive: true,
+}
+
+// ResolveCellAccent returns the accent color for a cell at position idx given the
+// base accent and the cell accent mode. base must be "accent1"–"accent6".
+func ResolveCellAccent(base string, idx int, mode string) string {
+	if mode == "" || mode == CellAccentUniform {
+		return base
+	}
+	baseNum := accentNumber(base)
+	switch mode {
+	case CellAccentAlternate:
+		offset := idx % 2
+		return fmt.Sprintf("accent%d", ((baseNum-1+offset)%NumAccentSlots)+1)
+	case CellAccentProgressive:
+		return fmt.Sprintf("accent%d", ((baseNum-1+idx)%NumAccentSlots)+1)
+	default:
+		return base
+	}
+}
+
+// accentNumber extracts the 1-based number from an accent name like "accent3".
+// Returns 1 if the name doesn't match the expected format.
+func accentNumber(name string) int {
+	if len(name) == 7 && name[:6] == "accent" {
+		n := int(name[6] - '0')
+		if n >= 1 && n <= NumAccentSlots {
+			return n
+		}
+	}
+	return 1
+}
+
+// ValidateCellAccentMode returns a ValidationError if mode is not a valid
+// cell_accent_mode value, or nil if valid.
+func ValidateCellAccentMode(patternName, mode string) error {
+	if ValidCellAccentModes[mode] {
+		return nil
+	}
+	return &ValidationError{
+		Pattern: patternName,
+		Path:    "overrides.cell_accent_mode",
+		Code:    "invalid_enum",
+		Message: fmt.Sprintf("%s: overrides.cell_accent_mode must be one of uniform, alternate, progressive; got %q", patternName, mode),
+	}
+}
+
 // ResolveSurface returns the scheme color name for a surface tint role.
 // Falls back to defaultColor if the role is not defined in the template metadata.
 func ResolveSurface(role string, metadata *types.TemplateMetadata, defaultColor string) string {
@@ -132,10 +193,11 @@ func ResolveSize(size, defaultSize float64) float64 {
 func textOverridesSchema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"header_size":     NumberSchema(6, 120).WithDescription("Font size for headers in points"),
-			"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
+			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
