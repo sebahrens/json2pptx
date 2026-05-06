@@ -529,6 +529,8 @@ func unmarshalCellOverrides(pat patterns.Pattern, rawCO map[string]json.RawMessa
 // signal non-zero exit. In --json mode it uses D10 structured errors.
 func emitValidationResult(name string, jsonMode bool, validationErr error) error {
 	if jsonMode {
+		errs := splitValidationErrors(validationErr)
+		attachNextToolCallsToValidationErrors(errs, name)
 		result := struct {
 			OK      bool                     `json:"ok"`
 			Pattern string                   `json:"pattern"`
@@ -536,7 +538,7 @@ func emitValidationResult(name string, jsonMode bool, validationErr error) error
 		}{
 			OK:      false,
 			Pattern: name,
-			Errors:  splitValidationErrors(validationErr),
+			Errors:  errs,
 		}
 		data, _ := json.MarshalIndent(result, "", "  ")
 		fmt.Println(string(data))

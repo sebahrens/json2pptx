@@ -274,6 +274,31 @@ When `expand_pattern` returns cells outside the optimal band:
 - **`validate_input`** (with `fit_report: true`) — post-generation findings including `fit_overflow` and `density_exceeded`
 - **`repair_slide`** — apply `reduce_text`, `split_at_row`, or `reduce_cell_text` fixes to bring cells into the optimal band (see Phase 4 REPAIR decision sequence above)
 
+### Machine-Actionable `next_tool_call`
+
+Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), and fit-report findings (`validate_input`, `generate_presentation`) include an optional `next_tool_call` field when the error has an actionable fix. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+
+```json
+{
+  "field": "values.title",
+  "code": "unknown_key",
+  "message": "unknown field \"titl\" (did you mean \"title\"?)",
+  "fix": { "kind": "rename_field", "params": { "from": "titl", "to": "title" } },
+  "next_tool_call": {
+    "tool": "repair_slide",
+    "args_template": {
+      "slide_index": -1,
+      "pattern": "card-grid",
+      "fixes": [{ "kind": "rename_field", "params": { "from": "titl", "to": "title" } }]
+    }
+  }
+}
+```
+
+- `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
+- For `swap_pattern` fix kinds, `next_tool_call` points to `recommend_pattern` instead of `repair_slide`.
+- Errors without a recognized fix kind omit `next_tool_call` entirely (the field is absent, not null).
+
 ---
 
 ## Pattern Library

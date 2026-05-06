@@ -902,10 +902,11 @@ func mcpExpandPatternTool() mcp.Tool {
 
 // patternValidationError is a D10 structured error for pattern validation.
 type patternValidationError struct {
-	Field   string                  `json:"field"`
-	Code    string                  `json:"code,omitempty"`
-	Message string                  `json:"message"`
-	Fix     *patterns.FixSuggestion `json:"fix,omitempty"`
+	Field        string                      `json:"field"`
+	Code         string                      `json:"code,omitempty"`
+	Message      string                      `json:"message"`
+	Fix          *patterns.FixSuggestion     `json:"fix,omitempty"`
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // splitValidationErrors converts a (possibly joined) validation error into
@@ -977,6 +978,38 @@ func toPatternValidationError(e error) patternValidationError {
 	return patternValidationError{
 		Field:   field,
 		Message: msg,
+	}
+}
+
+// attachNextToolCallsToValidationErrors populates NextToolCall on each
+// patternValidationError that has a Fix with a recognized kind. Unlike
+// AttachNextToolCalls (which operates on FitFindings with a known slide index),
+// validation errors occur before slide placement, so repair_slide suggestions
+// use a placeholder slide_index of -1 that the agent must replace.
+func attachNextToolCallsToValidationErrors(errs []patternValidationError, patternName string) {
+	for i := range errs {
+		e := &errs[i]
+		if e.Fix == nil || e.NextToolCall != nil {
+			continue
+		}
+		switch e.Fix.Kind {
+		case "swap_pattern":
+			itemCount := 0
+			e.NextToolCall = patterns.RecommendToolCall(itemCount)
+		case "adopt_pattern":
+			itemCount := 0
+			if n, ok := e.Fix.Params["filled_slots"].(int); ok {
+				itemCount = n
+			}
+			e.NextToolCall = patterns.RecommendToolCall(itemCount)
+		default:
+			tc := patterns.RepairToolCall(-1, e.Fix)
+			if tc != nil {
+				// Add pattern name for context — agent needs it for repair_slide.
+				tc.ArgsTemplate["pattern"] = patternName
+			}
+			e.NextToolCall = tc
+		}
 	}
 }
 
@@ -1351,10 +1384,12 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 	// Validate
 	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
 		// Return D10 structured errors — split joined errors into individual entries.
+		errs := splitValidationErrors(err)
+		attachNextToolCallsToValidationErrors(errs, name)
 		result := struct {
 			OK     bool                     `json:"ok"`
 			Errors []patternValidationError `json:"errors"`
-		}{OK: false, Errors: splitValidationErrors(err)}
+		}{OK: false, Errors: errs}
 
 		mcpResult, _ := api.MCPSuccessResult(ctx, result)
 		return mcpResult, nil
@@ -1393,10 +1428,12 @@ func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name
 	}
 	reg := patterns.Default()
 	veErr := patterns.ErrCalloutUnsupportedFor(name, reg.CalloutSupportedPatterns())
+	errs := splitValidationErrors(veErr)
+	attachNextToolCallsToValidationErrors(errs, name)
 	result := struct {
 		OK     bool                     `json:"ok"`
 		Errors []patternValidationError `json:"errors"`
-	}{OK: false, Errors: splitValidationErrors(veErr)}
+	}{OK: false, Errors: errs}
 	mcpResult, _ := api.MCPSuccessResult(ctx, result)
 	return mcpResult
 }
@@ -1465,6 +1502,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	}
 	// Run density checks on any tables embedded in the expanded shape grid.
 	densityWarnings := collectGridDensityWarnings(grid)
+	attachNextToolCallsToValidationErrors(densityWarnings, name)
 
 	// Compute occupancy metadata so agents can pre-flight sparseness
 	occupancy := computeGridOccupancy(grid, expandCtx)
