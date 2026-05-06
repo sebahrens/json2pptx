@@ -145,6 +145,32 @@ Guidelines:
 - **DensityClass**: visual density — affects rhythm analysis and variety recommendations
 - **AccentWeight**: how much accent color this pattern uses — "strong" patterns (KPIs, stat-hero) need breathing room before/after
 
+## Cell Accent Variety (authoring contract)
+
+Grid-shaped patterns — those that emit multiple peer cells through the shape grid engine — must support `cell_accent_mode` in their overrides. The contract:
+
+### Grid-shaped patterns (must expose `cell_accent_mode`)
+
+1. **Embed `TextOverrides`** (or the pattern-specific overrides struct that includes `CellAccentMode string`). The shared `TextOverrides` struct in `overrides.go` carries the `cell_accent_mode` field.
+2. **Validate** by calling `ValidateCellAccentMode(patternName, ovr.CellAccentMode)` in the pattern's `Validate()` method. This rejects unknown modes with a structured `ValidationError`.
+3. **Resolve per-cell accent** by calling `ResolveCellAccent(baseAccent, cellIndex, cellAccentMode)` in the cell-emission loop of `Expand()`. The function returns the accent string for each cell position given the base accent and mode.
+4. **Schema** must include `cell_accent_mode` in the overrides object — use the shared helper: `EnumSchema("uniform", "alternate", "progressive").WithDescription(...)`.
+
+### Non-grid patterns (do not expose `cell_accent_mode`)
+
+These patterns have structurally determined accent logic and do not expose `cell_accent_mode`:
+
+- **Single-cell patterns** (stat-hero, pull-quote): one cell, no variation needed.
+- **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
+- **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
+- **Content-structured layouts** (bmc-canvas, agenda, roadmap-phased, swimlane, timeline-horizontal): cell fills are determined by content structure (lanes, phases, sections) rather than peer ordering.
+
+Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
+
+### Test guidance
+
+Every grid-shaped pattern must include a table-driven test exercising all three modes (`uniform`, `alternate`, `progressive`) against at least two different base accents (e.g., `accent1` and `accent3`). Verify that the emitted cells carry the expected accent strings. See `overrides_test.go::TestResolveCellAccent` for the shared function tests; pattern-level tests should exercise the full `Expand()` path.
+
 ## Composition (planned)
 
 Pattern composition — placing multiple patterns on a single slide via a `compose` envelope — is a planned feature (see bead `go-slide-creator-pbyh`). When it lands, this section will document:
