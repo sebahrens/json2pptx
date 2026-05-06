@@ -291,11 +291,25 @@ func (mc *mcpConfig) handleDeleteTemplateSetting(ctx context.Context, request mc
 // any named style references in the presentation input. Best-effort — if the
 // settings file doesn't exist or template name is empty, this is a no-op.
 func (mc *mcpConfig) resolveInputNamedSettings(input *PresentationInput) {
+	resolveInputNamedSettingsForDir(mc.templatesDir, input)
+}
+
+// resolveInputNamedSettingsForDir is the shared implementation of named-settings
+// resolution used by MCP, CLI, and any other entry point. It resolves the
+// templates directory from the flag value, loads the settings sidecar file,
+// and expands named style references in the input. Best-effort — embedded
+// templates have no sidecar files, and missing settings are silently skipped.
+func resolveInputNamedSettingsForDir(flagTemplatesDir string, input *PresentationInput) {
 	if input == nil || input.Template == "" {
 		return
 	}
-	settingsDir := mc.resolveSettingsDir()
-	settings, err := templatesettings.Load(settingsDir, input.Template)
+	dir, embedded := resolveTemplatesDir(flagTemplatesDir)
+	if embedded {
+		// Embedded templates can't have sidecar settings files — skip entirely
+		// to avoid falling back to the current working directory.
+		return
+	}
+	settings, err := templatesettings.Load(dir, input.Template)
 	if err != nil {
 		return // Best-effort: skip if settings can't be loaded.
 	}
@@ -309,13 +323,11 @@ func (mc *mcpConfig) resolveInputNamedSettings(input *PresentationInput) {
 
 // resolveSettingsDir returns the filesystem directory where settings YAML files
 // should be stored. For on-disk templates it's the templates directory; for
-// embedded templates it's not supported (settings require a writable directory).
+// embedded templates it returns empty string (settings require a writable directory).
 func (mc *mcpConfig) resolveSettingsDir() string {
 	dir, embedded := resolveTemplatesDir(mc.templatesDir)
 	if embedded {
-		// Embedded templates can't have sidecar files, but we still need a
-		// readable path for Load (which returns empty File for missing files).
-		return dir
+		return "" // No sidecar files for embedded templates.
 	}
 	return dir
 }

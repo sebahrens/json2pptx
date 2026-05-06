@@ -100,6 +100,9 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 	}
 	applyDefaults(&input)
 
+	// Resolve named style references from template settings (shared with MCP).
+	resolveInputNamedSettingsForDir(templatesDir, &input)
+
 	// Check for unknown keys (warn severity — additionalProperties:false).
 	for _, ve := range checkInputUnknownKeys(inputData) {
 		output.Warnings = append(output.Warnings, ve.Error())

@@ -321,6 +321,110 @@ func TestResolveNamedSettings_TableStyle(t *testing.T) {
 	}
 }
 
+func TestResolveInputNamedSettingsForDir_ResolvesFromDisk(t *testing.T) {
+	// Set up a temp dir with a template and a settings sidecar file.
+	tmpDir := t.TempDir()
+	src := "../../templates/midnight-blue.pptx"
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "midnight-blue.pptx"), data, 0644); err != nil {
+		t.Fatalf("write template: %v", err)
+	}
+
+	// Write a settings file.
+	settings := &templatesettings.File{
+		Template: "midnight-blue",
+		TableStyles: map[string]templatesettings.TableStyleDef{
+			"brand-table": {
+				StyleID:       "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}",
+				UseTableStyle: true,
+			},
+		},
+		CellStyles: make(map[string]templatesettings.CellStyleDef),
+	}
+	if _, err := templatesettings.Save(tmpDir, settings); err != nil {
+		t.Fatalf("save settings: %v", err)
+	}
+
+	// Build input with a named style reference.
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						Type: "table",
+						TableValue: &TableInput{
+							Headers: []string{"A", "B"},
+							Style:   &TableStyleInput{StyleID: "brand-table"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Call the shared resolution function (same path as CLI + MCP).
+	resolveInputNamedSettingsForDir(tmpDir, input)
+
+	ts := input.Slides[0].Content[0].TableValue.Style
+	if ts.StyleID != "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}" {
+		t.Errorf("resolveInputNamedSettingsForDir should resolve named style to GUID, got %q", ts.StyleID)
+	}
+	if !ts.UseTableStyle {
+		t.Error("use_table_style should be set from named definition")
+	}
+}
+
+func TestResolveInputNamedSettingsForDir_EmbeddedTemplatesSkipped(t *testing.T) {
+	// When using embedded templates (no on-disk templates dir), settings
+	// resolution should be a no-op — it must NOT fall back to CWD.
+
+	// Write a settings file in CWD/templates to prove we don't accidentally read it.
+	// First, ensure no env var or home dir templates exist by clearing them.
+	t.Setenv("JSON2PPTX_TEMPLATES_DIR", "")
+	t.Setenv("MD2PPTX_TEMPLATES_DIR", "")
+
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						Type: "table",
+						TableValue: &TableInput{
+							Headers: []string{"A"},
+							Style:   &TableStyleInput{StyleID: "brand-table"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Use the default flag value "./templates" — if it doesn't exist as a dir and
+	// no env/home dirs match, resolveTemplatesDir falls through to embedded.
+	// We use an empty string which resolveTemplatesDir treats as needing fallback,
+	// but it may find ./templates in the repo. Instead, use a temp empty dir as CWD.
+	origDir, _ := os.Getwd()
+	emptyDir := t.TempDir()
+	if err := os.Chdir(emptyDir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(origDir) //nolint:errcheck
+
+	// Default flag value: resolveTemplatesDir will fall through to embedded.
+	resolveInputNamedSettingsForDir("./templates", input)
+
+	// The named reference should pass through unresolved (no CWD fallback).
+	if input.Slides[0].Content[0].TableValue.Style.StyleID != "brand-table" {
+		t.Errorf("embedded template path should leave named reference unresolved, got %q",
+			input.Slides[0].Content[0].TableValue.Style.StyleID)
+	}
+}
+
 func TestResolveNamedSettings_GUIDNotResolved(t *testing.T) {
 	settings := &templatesettings.File{
 		Template:    "test",

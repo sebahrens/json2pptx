@@ -308,6 +308,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(input)
 
+	// Resolve named style references from template settings (shared with MCP).
+	resolveInputNamedSettingsForDir(templatesDir, input)
+
 	// Expand structure block into flat slides (mutually exclusive with top-level slides).
 	if input.Structure != nil {
 		if len(input.Slides) > 0 {
