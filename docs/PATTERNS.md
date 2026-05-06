@@ -171,6 +171,80 @@ Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code co
 
 Every grid-shaped pattern must include a table-driven test exercising all three modes (`uniform`, `alternate`, `progressive`) against at least two different base accents (e.g., `accent1` and `accent3`). Verify that the emitted cells carry the expected accent strings. See `overrides_test.go::TestResolveCellAccent` for the shared function tests; pattern-level tests should exercise the full `Expand()` path.
 
+## Cell Capacity Contract
+
+The engine computes a deterministic text budget for every shape grid cell. Pattern authors do not implement capacity logic — the `internal/textcapacity` package derives budgets externally from the resolved grid geometry.
+
+### Core rules
+
+1. **`Expand()` must remain pure.** A pattern's `Expand(values, overrides, ctx)` converts structured values into a `*ShapeGridInput`. It must not call `textcapacity` or perform any capacity calculations. Capacity is computed downstream by the expand command or MCP tool after `Expand()` returns.
+
+2. **Budget targets the body paragraph.** When a cell contains multiple paragraphs at different font sizes (e.g., a 16pt header + 11pt body), the budget is calculated against the body paragraph's font size. The header consumes vertical space but the `max_chars` value reflects body-text capacity.
+
+3. **Font precedence.** The font size used for budget computation follows this resolution chain (first non-zero wins):
+   - Paragraph-level `size` in the cell's text content
+   - Shape-level `font_size` on the `ShapeSpecInput`
+   - Pattern override `font_size` (from `cell_overrides` or pattern-level overrides)
+   - Pattern default font size (set in `Expand()`)
+   - Template theme body font size
+
+   Pattern authors control the default by setting `FontSize` on emitted `ShapeSpecInput` structs. If a pattern does not set a font size, the template theme default applies.
+
+4. **Determinism guarantee.** `textcapacity` uses `go-fonts/liberation` embedded metrics — no OS font dependency. Given the same grid geometry, font size, and insets, budgets are identical across macOS, Linux, and CI. This is a hard invariant; if a pattern change causes budget drift in CI, the change is wrong.
+
+5. **Insets matter.** Cell insets (top, bottom, left, right in points) reduce the available text area. Patterns that set tight insets (< 6pt) will produce higher `max_chars` for the same cell size, but risk visual cramming. The recommended range is 6–10pt per side.
+
+### Testing patterns with capacity
+
+When writing or modifying a pattern, verify that the capacity model produces sensible budgets:
+
+```go
+func TestMyPattern_CellBudgets(t *testing.T) {
+    pat, _ := patterns.Default().Get("my-pattern")
+    for _, config := range []struct {
+        name   string
+        values map[string]any
+    }{
+        {"3-cell", map[string]any{"items": threeItems}},
+        {"5-cell", map[string]any{"items": fiveItems}},
+    } {
+        t.Run(config.name, func(t *testing.T) {
+            grid, err := pat.Expand(toJSON(config.values), nil, defaultCtx())
+            require.NoError(t, err)
+
+            result, err := shapegrid.Resolve(gridFromInput(grid), alloc)
+            require.NoError(t, err)
+
+            densities := textcapacity.ForResolvedGrid(result)
+            for i, d := range densities {
+                if d.MaxChars < 10 {
+                    t.Errorf("cell %d: max_chars=%d too small, check insets/font", i, d.MaxChars)
+                }
+                // Budget should be > 0 for text cells
+                if d.Status == textcapacity.StatusOverflow && d.ActualChars > 0 {
+                    t.Logf("cell %d: overflow at %d%% density", i, d.DensityPct)
+                }
+            }
+        })
+    }
+}
+```
+
+Parameterize over grid configurations (different cell counts, column layouts) and assert that:
+- Every text cell has `max_chars > 0`
+- No cell has a budget below a plausible floor (10 chars minimum)
+- Density bands shift as expected when content length varies
+
+### Density bands reference
+
+| Band | Density % | Status string | Agent action |
+|------|-----------|---------------|--------------|
+| Underfilled | < 60% | `"underfilled"` | Add content or pick a smaller grid |
+| Optimal | 60–110% | `"optimal"` | No action needed |
+| Overflow | > 110% | `"overflow"` | Trim content or pick a larger grid |
+
+These thresholds are defined in `internal/textcapacity/textcapacity.go` and are stable — do not hardcode different values in patterns.
+
 ## Composition (planned)
 
 Pattern composition — placing multiple patterns on a single slide via a `compose` envelope — is a planned feature (see bead `go-slide-creator-pbyh`). When it lands, this section will document:

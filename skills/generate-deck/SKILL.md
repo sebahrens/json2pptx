@@ -135,6 +135,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 2. Every fill is semantic (`accent1`, `lt2`, `dk1`, etc.) except documented brand-color allowlist — no mixed hex+semantic on any slide (Rule 12).
 3. No sibling shapes in any `shape_grid` with computed gap < 4pt — no stacked tables separated by hairline dividers.
 4. Patterns with 4+ peer cells use `cell_accent_mode: "progressive"` (or `"alternate"` for paired layouts) unless visual consistency is intentional — see Cell Accent Variety.
+5. Every cell at 60–110% density — compare your text length against `max_chars` from `expand_pattern`'s `cell_budgets[]`. See Text Capacity Awareness.
 
 ### Phase 4: REPAIR — Validate, Render, Verify, Fix
 
@@ -170,6 +171,67 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - For a no-side-effect dry run before regenerating, call `preview_presentation_plan` to inspect layout selection, placeholder mapping, and fit findings without producing a PPTX.
 
 Do not tell the user the deck is done until the checklist passes or you have explicitly flagged what you couldn't verify.
+
+---
+
+## Text Capacity Awareness
+
+Every shape grid cell has a measurable text capacity — the maximum character count that fits at the resolved font size within the cell's physical dimensions. The engine computes this deterministically using embedded font metrics (no OS font dependency). Agent content should target **60–110%** of each cell's capacity.
+
+### Density Bands
+
+| Band | Density % | Status | Severity | Meaning |
+|------|-----------|--------|----------|---------|
+| Underfilled | < 60% | `underfilled` | info | Cell looks sparse; content doesn't justify the allocated space |
+| Optimal | 60–110% | `optimal` | — | Content fits naturally with appropriate whitespace |
+| Overflow | > 110% | `overflow` | warning | Text will clip or require aggressive shrinking to fit |
+
+### Workflow Integration
+
+**Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_pattern` with your content volume in mind.
+
+**Phase 2 VARY.** After building JSON, call `expand_pattern` to read `cell_budgets[]` before generating. Each entry contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cell_index` | int | Zero-based cell position in the grid |
+| `row` | int | Row index |
+| `col` | int | Column index |
+| `max_chars` | int | Maximum characters that fit at the resolved font size |
+| `actual_chars` | int | Characters currently in the cell content |
+| `density_pct` | int | `actual_chars / max_chars × 100` |
+| `status` | string | `"underfilled"`, `"optimal"`, or `"overflow"` |
+| `font_size_pt` | float | Font size used for the budget calculation |
+
+Compare your planned content against `max_chars` for each cell. Adjust before rendering — it's cheaper to rewrite content than to repair after generation.
+
+**Phase 3 RENDER.** The pre-emit checklist (above) includes: *"Every cell at 60–110% density."* Verify this by checking that your text length per cell falls within the `max_chars` range from `expand_pattern`.
+
+**Phase 4 REPAIR.** If `fit_overflow` or `density_exceeded` findings appear after generation, use `repair_slide` with `fix.kind: reduce_text` or `split_at_row` to bring cells back into the optimal band.
+
+### Decision Rules
+
+When `expand_pattern` returns cells outside the optimal band:
+
+1. **Underfilled cells (< 60%):**
+   - Add supporting detail, examples, or context to bring density above 60%.
+   - If content is inherently short (a metric label, a one-word status), switch to a pattern designed for sparse content — e.g., `kpi-3up` instead of `card-grid`.
+   - For a grid where most cells are underfilled, reduce the grid configuration (e.g., 2×2 instead of 3×2) so each cell gets less space.
+
+2. **Overflow cells (> 110%):**
+   - Trim content: shorten sentences, remove low-value bullets, abbreviate labels.
+   - If trimming would lose essential information, switch to a larger grid configuration or a different pattern with more text capacity (e.g., `card-grid` with fewer columns).
+   - As a last resort, split the slide — use `split_at_row` to distribute content across multiple slides.
+
+### The `bounds_assumption` Field
+
+`expand_pattern` returns `bounds_assumption: "full_content_area"`, indicating that budgets were computed against the full layout content area (below the title placeholder). When `expand_pattern` is called standalone (outside `compose`), this is always accurate. In a future `compose` context where multiple patterns share a slide, budgets will reflect the composed sub-region — the `bounds_assumption` field will change to indicate the reduced area. Always read this field to understand what the budgets represent.
+
+### Related Tools
+
+- **`expand_pattern`** — returns `cell_budgets[]` and `capacity_warnings[]` for pre-generation density checks
+- **`validate_input`** (with `fit_report: true`) — post-generation findings including `fit_overflow` and `density_exceeded`
+- **`repair_slide`** — apply `reduce_text` or `split_at_row` fixes to bring cells into the optimal band
 
 ---
 
