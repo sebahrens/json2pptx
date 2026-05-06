@@ -92,10 +92,11 @@ type skillTemplateInfo struct {
 	ColorRoles   *skillColorRoles         `json:"color_roles,omitempty"`
 	TitleFont    string                   `json:"title_font,omitempty"`
 	BodyFont     string                   `json:"body_font,omitempty"`
-	LayoutNames     []string                 `json:"layout_names,omitempty"`
-	LayoutSummaries []skillLayoutSummary     `json:"layout_summaries,omitempty"` // compact+full: id+name pairs
-	TableStyles     []skillTableStyle        `json:"table_styles"`
-	Layouts         []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
+	AccentUsageGuide map[string]string        `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
+	LayoutNames      []string                 `json:"layout_names,omitempty"`
+	LayoutSummaries  []skillLayoutSummary     `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
+	TableStyles      []skillTableStyle        `json:"table_styles"`
+	Layouts          []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
 }
 
 // skillColorRoles maps design intent to scheme color names for a template.
@@ -108,12 +109,22 @@ type skillColorRoles struct {
 	WhiteTextSafe []string `json:"white_text_safe"`     // all accents passing WCAG AA (≥3.0) against white
 }
 
-// skillLayoutSummary is a lightweight id+name pair included in compact mode
-// so agents can address layouts by ID without escalating to full mode.
+// skillLayoutSummary is a lightweight layout entry included in compact mode
+// so agents can address layouts by ID and gauge placeholder capacity without
+// escalating to full mode.
 type skillLayoutSummary struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	PreviewPNGPath string `json:"preview_png_path,omitempty"`
+	ID             string                    `json:"id"`
+	Name           string                    `json:"name"`
+	Placeholders   []skillPlaceholderCompact `json:"placeholders,omitempty"`
+	PreviewPNGPath string                    `json:"preview_png_path,omitempty"`
+}
+
+// skillPlaceholderCompact is the minimal placeholder info surfaced in compact
+// mode — just enough for agents to size content.
+type skillPlaceholderCompact struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	MaxChars int    `json:"max_chars"`
 }
 
 // skillLayoutInfo describes a single layout (only included in full mode).
@@ -313,6 +324,11 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	info.BodyFont = analysis.Theme.BodyFont
 	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 
+	// Surface accent_usage_guide from template metadata when present.
+	if analysis.Metadata != nil && len(analysis.Metadata.AccentUsageGuide) > 0 {
+		info.AccentUsageGuide = analysis.Metadata.AccentUsageGuide
+	}
+
 	// Generate layout preview PNGs (best-effort, non-blocking)
 	previews, _ := layoutpreview.Generate(templatePath, analysis, nil)
 
@@ -321,6 +337,23 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	for i, l := range analysis.Layouts {
 		layoutNames[i] = l.Name
 		summary := skillLayoutSummary{ID: l.ID, Name: l.Name}
+
+		// Compact placeholder entries (id + type + max_chars only)
+		phs := make([]skillPlaceholderCompact, 0, len(l.Placeholders))
+		for _, ph := range l.Placeholders {
+			if ph.Type == types.PlaceholderOther {
+				continue
+			}
+			phs = append(phs, skillPlaceholderCompact{
+				ID:       ph.ID,
+				Type:     string(ph.Type),
+				MaxChars: ph.MaxChars,
+			})
+		}
+		if len(phs) > 0 {
+			summary.Placeholders = phs
+		}
+
 		if previews != nil {
 			if p, ok := previews.Paths[l.ID]; ok {
 				summary.PreviewPNGPath = p

@@ -400,6 +400,84 @@ func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
 	}
 }
 
+func TestAnalyzeTemplateForSkillInfo_CompactPlaceholders(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	if len(info.LayoutSummaries) == 0 {
+		t.Fatal("expected at least one layout summary in compact mode")
+	}
+
+	// At least one layout should have placeholders with id, type, and max_chars.
+	foundPH := false
+	for _, ls := range info.LayoutSummaries {
+		for _, ph := range ls.Placeholders {
+			foundPH = true
+			if ph.ID == "" {
+				t.Errorf("layout %q: placeholder has empty ID", ls.Name)
+			}
+			if ph.Type == "" {
+				t.Errorf("layout %q: placeholder %q has empty type", ls.Name, ph.ID)
+			}
+			if ph.Type == "other" {
+				t.Errorf("layout %q: placeholder %q has type %q; other should be filtered", ls.Name, ph.ID, ph.Type)
+			}
+			if ph.MaxChars <= 0 {
+				t.Errorf("layout %q: placeholder %q has max_chars=%d, want >0", ls.Name, ph.ID, ph.MaxChars)
+			}
+		}
+	}
+	if !foundPH {
+		t.Error("expected at least one placeholder across layout summaries")
+	}
+
+	// Compact placeholders must NOT appear in JSON as the full skillPlaceholderInfo shape
+	// (no x_emu, y_emu, width_emu, height_emu, font_* fields).
+	b, _ := json.Marshal(info.LayoutSummaries[0].Placeholders)
+	raw := string(b)
+	for _, banned := range []string{"x_emu", "y_emu", "width_emu", "height_emu", "font_family", "font_size", "font_color"} {
+		if containsSubstring(raw, banned) {
+			t.Errorf("compact placeholder JSON contains %q, which should only appear in full mode", banned)
+		}
+	}
+}
+
+func TestAnalyzeTemplateForSkillInfo_AccentUsageGuideOmittedWhenAbsent(t *testing.T) {
+	// Bundled templates don't currently ship accent_usage_guide metadata,
+	// so the field should be omitted (nil map → omitempty).
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	if info.AccentUsageGuide != nil {
+		t.Errorf("AccentUsageGuide should be nil when template metadata doesn't supply it, got %v", info.AccentUsageGuide)
+	}
+
+	// Verify it's omitted from JSON output.
+	b, _ := json.Marshal(info)
+	if containsSubstring(string(b), "accent_usage_guide") {
+		t.Error("accent_usage_guide should be omitted from JSON when not supplied by template metadata")
+	}
+}
+
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && stringContains(s, substr))
+}
+
+func stringContains(s, substr string) bool {
+	for i := 0; i+len(substr) <= len(s); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func TestAnalyzeTemplateForSkillInfo_NoColorRolesInListMode(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")

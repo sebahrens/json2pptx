@@ -63,6 +63,12 @@ type TemplateMetadata struct {
 	// svggen uses this to ensure chart colors match the template's visual identity.
 	// Example: ["accent1", "accent2", "accent5", "accent3", "accent6", "accent4"]
 	DataPalette []string `json:"data_palette,omitempty"`
+
+	// AccentUsageGuide maps accent color names to prose descriptions of their
+	// intended visual role (e.g., "accent1": "strong primary headers").
+	// Template authors supply this; the engine never synthesises it.
+	// When present, list_templates surfaces it so agents can pick colours with intent.
+	AccentUsageGuide map[string]string `json:"accent_usage_guide,omitempty"`
 }
 
 // LayoutHint provides additional metadata hints for a specific layout.
