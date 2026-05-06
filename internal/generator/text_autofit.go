@@ -78,23 +78,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	}
 
 	bp := shape.TextBody.BodyProperties
-	// Respect <a:noAutofit/> — the template explicitly opted out of text scaling.
-	if strings.Contains(bp.Inner, "noAutofit") || strings.Contains(bp.Inner, "noAutoFit") {
-		// Site 12: emit hint when noAutofit is active and content may overflow.
-		if cfg.findings != nil {
-			paraCount := len(shape.TextBody.Paragraphs)
-			if paraCount > 6 {
-				*cfg.findings = append(*cfg.findings, patterns.FitFinding{
-					ValidationError: patterns.ValidationError{
-						Path:    cfg.findingPath,
-						Code:    patterns.ErrCodeNoAutofitOverflow,
-						Message: fmt.Sprintf("noAutofit active: %d paragraphs may overflow placeholder (smart autofit suppressed by template)", paraCount),
-						Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
-					},
-					Action: "review",
-				})
-			}
-		}
+	if handleNoAutofitDirective(bp, shape, &cfg) {
 		return
 	}
 	// Strip any existing normAutofit from the template. Our content-aware
@@ -110,43 +94,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// Extract placeholder dimensions from shape transform
 	widthEMU, heightEMU := getShapeDimensions(shape)
 	if widthEMU <= 0 || heightEMU <= 0 {
-		// No dimensions available — estimate a fontScale from paragraph count.
-		// A typical body placeholder (~4.5 inches tall) fits ~14 lines at default
-		// font size (20pt + 1.2× line spacing + spcBef). When there are more
-		// paragraphs, apply proportional scaling to prevent overflow that
-		// rendering engines (LibreOffice) may not auto-shrink well enough.
-		// The floor is 70% (not 60%) because this heuristic can't account for
-		// actual text width/wrapping — being overly aggressive makes dense
-		// content like 4-group bullet layouts illegibly small.
-		paraCount := len(shape.TextBody.Paragraphs)
-		const typicalFitLines = 14
-		if paraCount > typicalFitLines {
-			scalePct := (typicalFitLines * 100) / paraCount
-			// Enforce absolute 10pt floor for dimensionless estimate.
-			// Assume 20pt base font (typical body level 1) when unknown.
-			absFloorPct := int(textfit.AbsMinFontPt / 20.0 * 100) // = 50%
-			if scalePct < 70 {
-				scalePct = 70 // conservative floor for dimensionless estimate
-			}
-			if scalePct < absFloorPct {
-				scalePct = absFloorPct
-			}
-			bp.Inner += fmt.Sprintf(`<a:normAutofit fontScale="%d"/>`, scalePct*1000)
-			// Site 1: warn when zero-dim heuristic is used for dense content.
-			if cfg.findings != nil {
-				*cfg.findings = append(*cfg.findings, patterns.FitFinding{
-					ValidationError: patterns.ValidationError{
-						Path:    cfg.findingPath,
-						Code:    patterns.ErrCodePlaceholderOverflow,
-						Message: fmt.Sprintf("placeholder has no dimensions: %d paragraphs estimated via heuristic (fits ~%d), fontScale=%d%%", paraCount, typicalFitLines, scalePct),
-						Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
-					},
-					Action: "review",
-				})
-			}
-		} else {
-			bp.Inner += `<a:normAutofit/>`
-		}
+		applyZeroDimensionAutofit(bp, shape, &cfg)
 		return
 	}
 
@@ -156,6 +104,110 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		return
 	}
 
+	params := buildTextfitParams(shape, widthEMU, heightEMU, texts, &cfg)
+
+	result, err := textfit.Calculate(params)
+	if err != nil {
+		slog.Warn("textfit: font cache unavailable, skipping autofit", slog.String("err", err.Error()))
+		bp.Inner += `<a:normAutofit/>`
+		return
+	}
+	// Prefer readability over completeness: when font would shrink below the
+	// readability threshold and there are enough paragraphs to trim, remove
+	// trailing paragraphs to keep text at a legible size.
+	// Default threshold is 62500 (62.5% → ~12.5pt for 20pt base font).
+	// Callers can lower this for dense content like 4+ bullet groups where
+	// preserving all authored content is more important than larger font size.
+	if result.FontScale > 0 && result.FontScale < cfg.readabilityMinScale && len(texts) > 6 {
+		result = trimForReadability(shape, params, cfg.readabilityMinScale, &cfg)
+	}
+
+	// When content overflows even at maximum scaling, trim trailing paragraphs
+	// so text is never clipped at the bottom of the placeholder.
+	if result.Overflow {
+		result = trimOverflowParagraphs(shape, params, &cfg)
+	}
+
+	// Always add normAutofit to prevent text clipping. Without it, the empty
+	// <a:bodyPr/> overrides the slide master's normAutofit, disabling LibreOffice's
+	// built-in shrink-to-fit. This is a safety net for cases where our height
+	// estimate is slightly optimistic (e.g., bold text width, inherited marL).
+	bp.Inner += buildNormAutofitElement(result)
+}
+
+// handleNoAutofitDirective respects an explicit <a:noAutofit/> in the template
+// bodyPr. Returns true when the caller should bail out (the directive was set).
+// Emits an ErrCodeNoAutofitOverflow finding when paragraph count is high enough
+// that overflow is likely under the suppressed autofit.
+func handleNoAutofitDirective(bp *bodyPropertiesXML, shape *shapeXML, cfg *autofitConfig) bool {
+	if !strings.Contains(bp.Inner, "noAutofit") && !strings.Contains(bp.Inner, "noAutoFit") {
+		return false
+	}
+	if cfg.findings == nil {
+		return true
+	}
+	paraCount := len(shape.TextBody.Paragraphs)
+	if paraCount <= 6 {
+		return true
+	}
+	*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path:    cfg.findingPath,
+			Code:    patterns.ErrCodeNoAutofitOverflow,
+			Message: fmt.Sprintf("noAutofit active: %d paragraphs may overflow placeholder (smart autofit suppressed by template)", paraCount),
+			Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+		},
+		Action: "review",
+	})
+	return true
+}
+
+// applyZeroDimensionAutofit handles the case where the shape has no usable
+// width/height extent. Falls back to a paragraph-count heuristic, applies a
+// conservative 70% floor (and an absolute 10pt floor at 20pt base size), and
+// emits an ErrCodePlaceholderOverflow finding for dense content.
+func applyZeroDimensionAutofit(bp *bodyPropertiesXML, shape *shapeXML, cfg *autofitConfig) {
+	// A typical body placeholder (~4.5 inches tall) fits ~14 lines at default
+	// font size (20pt + 1.2× line spacing + spcBef). When there are more
+	// paragraphs, apply proportional scaling to prevent overflow that
+	// rendering engines (LibreOffice) may not auto-shrink well enough.
+	// The floor is 70% (not 60%) because this heuristic can't account for
+	// actual text width/wrapping — being overly aggressive makes dense
+	// content like 4-group bullet layouts illegibly small.
+	paraCount := len(shape.TextBody.Paragraphs)
+	const typicalFitLines = 14
+	if paraCount <= typicalFitLines {
+		bp.Inner += `<a:normAutofit/>`
+		return
+	}
+	scalePct := (typicalFitLines * 100) / paraCount
+	// Enforce absolute 10pt floor for dimensionless estimate.
+	// Assume 20pt base font (typical body level 1) when unknown.
+	absFloorPct := int(textfit.AbsMinFontPt / 20.0 * 100) // = 50%
+	if scalePct < 70 {
+		scalePct = 70 // conservative floor for dimensionless estimate
+	}
+	if scalePct < absFloorPct {
+		scalePct = absFloorPct
+	}
+	bp.Inner += fmt.Sprintf(`<a:normAutofit fontScale="%d"/>`, scalePct*1000)
+	if cfg.findings == nil {
+		return
+	}
+	*cfg.findings = append(*cfg.findings, patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path:    cfg.findingPath,
+			Code:    patterns.ErrCodePlaceholderOverflow,
+			Message: fmt.Sprintf("placeholder has no dimensions: %d paragraphs estimated via heuristic (fits ~%d), fontScale=%d%%", paraCount, typicalFitLines, scalePct),
+			Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
+		},
+		Action: "review",
+	})
+}
+
+// buildTextfitParams assembles the textfit.Params for the autofit calculation,
+// including font lookup with theme fallback and master-spacing compensation.
+func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []string, cfg *autofitConfig) textfit.Params {
 	fontSizeHPt := extractFontSizeFromShape(shape)
 	fontName := extractFontNameFromShape(shape)
 	if fontName == "" && cfg.themeFontName != "" {
@@ -179,7 +231,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// Bullet paragraphs inherit left margins that reduce the available width for wrapping.
 	leftMargins := extractParagraphLeftMargins(shape.TextBody.Paragraphs, shape.TextBody.ListStyle)
 
-	params := textfit.Params{
+	return textfit.Params{
 		WidthEMU:        widthEMU,
 		HeightEMU:       heightEMU,
 		FontSizeHPt:     fontSizeHPt,
@@ -190,37 +242,11 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		LeftMarginsPt:   leftMargins,
 		MinFontScalePct: cfg.minFontScalePct,
 	}
+}
 
-	result, err := textfit.Calculate(params)
-	if err != nil {
-		slog.Warn("textfit: font cache unavailable, skipping autofit", slog.String("err", err.Error()))
-		bp.Inner += `<a:normAutofit/>`
-		return
-	}
-	// Prefer readability over completeness: when font would shrink below the
-	// readability threshold and there are enough paragraphs to trim, remove
-	// trailing paragraphs to keep text at a legible size.
-	// Default threshold is 62500 (62.5% → ~12.5pt for 20pt base font).
-	// Callers can lower this for dense content like 4+ bullet groups where
-	// preserving all authored content is more important than larger font size.
-	readabilityMinFontScale := cfg.readabilityMinScale
-	if result.FontScale >= readabilityMinFontScale {
-		// Font scale is acceptable, no trimming needed
-	} else if result.FontScale > 0 && len(texts) > 6 {
-		result = trimForReadability(shape, params, readabilityMinFontScale, &cfg)
-	}
-
-	// When content overflows even at maximum scaling, trim trailing paragraphs
-	// so text is never clipped at the bottom of the placeholder.
-	if result.Overflow {
-		result = trimOverflowParagraphs(shape, params, &cfg)
-	}
-
-	// Always add normAutofit to prevent text clipping. Without it, the empty
-	// <a:bodyPr/> overrides the slide master's normAutofit, disabling LibreOffice's
-	// built-in shrink-to-fit. This is a safety net for cases where our height
-	// estimate is slightly optimistic (e.g., bold text width, inherited marL).
-	// Build normAutofit element with calculated values
+// buildNormAutofitElement renders the OOXML <a:normAutofit/> element from a
+// textfit result, omitting attributes that have a zero (default) value.
+func buildNormAutofitElement(result textfit.FitResult) string {
 	var attrs []string
 	if result.FontScale > 0 {
 		attrs = append(attrs, fmt.Sprintf(`fontScale="%d"`, result.FontScale))
@@ -228,12 +254,10 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	if result.LnSpcReduction > 0 {
 		attrs = append(attrs, fmt.Sprintf(`lnSpcReduction="%d"`, result.LnSpcReduction))
 	}
-
-	if len(attrs) > 0 {
-		bp.Inner += fmt.Sprintf(`<a:normAutofit %s/>`, strings.Join(attrs, " "))
-	} else {
-		bp.Inner += `<a:normAutofit/>`
+	if len(attrs) == 0 {
+		return `<a:normAutofit/>`
 	}
+	return fmt.Sprintf(`<a:normAutofit %s/>`, strings.Join(attrs, " "))
 }
 
 // trimOverflowParagraphs removes trailing paragraphs from the shape until the
