@@ -227,13 +227,15 @@ When `expand_pattern` returns cells outside the optimal band:
    - If trimming would lose essential information, switch to a larger grid configuration or a different pattern with more text capacity (e.g., `card-grid` with fewer columns).
    - As a last resort, split the slide — use `split_at_row` to distribute content across multiple slides.
 
+3. **Check `layout_suggestions[]`:** When **all** populated cells are consistently suboptimal (all underfilled or all overflowing), `expand_pattern` returns `layout_suggestions[]` — an array of alternative patterns with optional overrides and a `reason` string. Use these as actionable swap recommendations instead of guessing. Suggestions only appear when density is unanimously bad; mixed-density grids (some optimal, some not) produce no suggestions — adjust content manually in that case.
+
 ### The `bounds_assumption` Field
 
 `expand_pattern` returns `bounds_assumption: "full_content_area"`, indicating that budgets were computed against the full layout content area (below the title placeholder). When `expand_pattern` is called standalone (outside `compose`), this is always accurate. In a future `compose` context where multiple patterns share a slide, budgets will reflect the composed sub-region — the `bounds_assumption` field will change to indicate the reduced area. Always read this field to understand what the budgets represent.
 
 ### Related Tools
 
-- **`expand_pattern`** — returns `cell_budgets[]` and `capacity_warnings[]` for pre-generation density checks
+- **`expand_pattern`** — returns `cell_budgets[]`, `capacity_warnings[]`, and `layout_suggestions[]` for pre-generation density checks and alternative layout recommendations
 - **`validate_input`** (with `fit_report: true`) — post-generation findings including `fit_overflow` and `density_exceeded`
 - **`repair_slide`** — apply `reduce_text` or `split_at_row` fixes to bring cells into the optimal band
 
@@ -246,7 +248,7 @@ For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-colu
 - **Browse the catalog:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI)
 - **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI). Grid-shaped patterns include a `text_budget_guide` block with per-configuration `body_max_chars` and `header_max_chars` — use these to size content before calling `expand_pattern`.
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI)
-- **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for template-aware layout bounds; the response `bounds_source` field indicates `"template"` or `"default_fallback"`.
+- **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for template-aware layout bounds; the response `bounds_source` field indicates `"template"` or `"default_fallback"`. When all populated cells are consistently suboptimal, the response includes `layout_suggestions[]` with alternative patterns and overrides.
 - **Cold-start helper:** `recommend_pattern` (MCP) returns the top patterns for a stated intent (e.g., "compare two options", "show 3 KPIs"). Use when you don't know the catalog by heart.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):

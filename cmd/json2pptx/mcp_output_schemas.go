@@ -258,6 +258,18 @@ var outputSchemaExpandPattern = json.RawMessage(`{
           "fix":     {"type": "object"}
         }
       }
+    },
+    "layout_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern":   {"type": "string"},
+          "overrides": {"type": "object"},
+          "reason":    {"type": "string"}
+        },
+        "required": ["pattern", "reason"]
+      }
     }
   },
   "required": ["pattern", "version", "bounds_source", "shape_grid", "occupancy"]

@@ -1488,6 +1488,9 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	// Compute cell budgets and capacity-based density warnings
 	cellBudgets, capacityWarnings := computeCellBudgets(grid, expandCtx)
 
+	// Suggest alternative layouts when density is consistently suboptimal
+	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)
+
 	// Also provide the pattern version for traceability
 	result := struct {
 		Pattern            string                    `json:"pattern"`
@@ -1499,6 +1502,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		CellBudgets        []cellBudgetEntry         `json:"cell_budgets,omitempty"`
 		DensityWarnings    []patternValidationError  `json:"density_warnings,omitempty"`
 		CapacityWarnings   []cellDensityWarning      `json:"capacity_warnings,omitempty"`
+		LayoutSuggestions  []layoutSuggestion        `json:"layout_suggestions,omitempty"`
 	}{
 		Pattern:          pat.Name(),
 		Version:         pat.Version(),
@@ -1509,6 +1513,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		CellBudgets:     cellBudgets,
 		DensityWarnings: densityWarnings,
 		CapacityWarnings: capacityWarnings,
+		LayoutSuggestions: layoutSuggestions,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)

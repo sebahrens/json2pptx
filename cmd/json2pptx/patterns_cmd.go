@@ -366,22 +366,27 @@ func runPatternsExpand() error {
 	// Compute cell budgets and density warnings from the resolved grid
 	cellBudgets, densityWarnings := computeCellBudgets(grid, expandCtx)
 
+	// Suggest alternative layouts when density is consistently suboptimal
+	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)
+
 	result := struct {
-		Pattern          string                     `json:"pattern"`
-		Version          int                        `json:"version"`
-		BoundsSource     string                     `json:"bounds_source"`
-		BoundsAssumption string                     `json:"bounds_assumption"`
-		ShapeGrid        *jsonschema.ShapeGridInput `json:"shape_grid"`
-		CellBudgets      []cellBudgetEntry          `json:"cell_budgets,omitempty"`
-		DensityWarnings  []cellDensityWarning       `json:"density_warnings,omitempty"`
+		Pattern            string                     `json:"pattern"`
+		Version            int                        `json:"version"`
+		BoundsSource       string                     `json:"bounds_source"`
+		BoundsAssumption   string                     `json:"bounds_assumption"`
+		ShapeGrid          *jsonschema.ShapeGridInput `json:"shape_grid"`
+		CellBudgets        []cellBudgetEntry          `json:"cell_budgets,omitempty"`
+		DensityWarnings    []cellDensityWarning       `json:"density_warnings,omitempty"`
+		LayoutSuggestions  []layoutSuggestion         `json:"layout_suggestions,omitempty"`
 	}{
-		Pattern:          pat.Name(),
-		Version:          pat.Version(),
-		BoundsSource:     boundsSource,
-		BoundsAssumption: "full_content_area",
-		ShapeGrid:        grid,
-		CellBudgets:      cellBudgets,
-		DensityWarnings:  densityWarnings,
+		Pattern:            pat.Name(),
+		Version:            pat.Version(),
+		BoundsSource:       boundsSource,
+		BoundsAssumption:   "full_content_area",
+		ShapeGrid:          grid,
+		CellBudgets:        cellBudgets,
+		DensityWarnings:    densityWarnings,
+		LayoutSuggestions:  layoutSuggestions,
 	}
 
 	data, err := json.MarshalIndent(result, "", "  ")
