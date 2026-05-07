@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -90,10 +91,8 @@ func (h *PatternsHandler) ValidateHandler() http.HandlerFunc {
 		}
 
 		var body patternRequestBody
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
-				"Failed to parse request body", nil)
-			return
+		if err := decodeJSONBody(w, r, &body); err != nil {
+			return // decodeJSONBody already wrote the error response
 		}
 
 		values, overrides, cellOverrides, err := unmarshalPatternInputs(pat, &body)
@@ -126,10 +125,8 @@ func (h *PatternsHandler) ExpandHandler() http.HandlerFunc {
 		}
 
 		var body patternRequestBody
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
-				"Failed to parse request body", nil)
-			return
+		if err := decodeJSONBody(w, r, &body); err != nil {
+			return // decodeJSONBody already wrote the error response
 		}
 
 		values, overrides, cellOverrides, err := unmarshalPatternInputs(pat, &body)
@@ -213,6 +210,39 @@ type patternRequestBody struct {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// decodeJSONBody validates Content-Type, limits body size, and decodes JSON into
+// dst. It writes an appropriate error response and returns a non-nil error if any
+// check fails; the caller should return without writing further.
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
+	// Validate Content-Type
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "" {
+		mediaType := strings.TrimSpace(strings.Split(contentType, ";")[0])
+		if mediaType != "application/json" {
+			writeError(w, http.StatusUnsupportedMediaType, apierrors.CodeInvalidContentType,
+				"Content-Type must be application/json", nil)
+			return fmt.Errorf("invalid content type")
+		}
+	}
+
+	// Limit request body size
+	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		if err.Error() == "http: request body too large" {
+			writeError(w, http.StatusRequestEntityTooLarge, apierrors.CodeRequestTooLarge,
+				fmt.Sprintf("Request body exceeds maximum size of %d bytes", MaxRequestBodySize), nil)
+			return err
+		}
+		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
+			"Failed to parse request body", nil)
+		return err
+	}
+	return nil
+}
 
 // writePatternValidationError converts a (possibly joined) validation error into
 // structured diagnostics and writes an HTTP error response with the individual

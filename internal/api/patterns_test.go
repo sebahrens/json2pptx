@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
@@ -220,6 +221,95 @@ func TestValidatePattern(t *testing.T) {
 
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("Status = %d, want %d; body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+		}
+	})
+}
+
+func TestValidatePatternContentType(t *testing.T) {
+	h := newTestPatternsHandler()
+
+	t.Run("wrong content type returns 415", func(t *testing.T) {
+		body := `{"values": [{"big":"1","small":"A"},{"big":"2","small":"B"},{"big":"3","small":"C"}]}`
+		req := httptest.NewRequest("POST", "/api/v1/patterns/kpi-3up/validate", bytes.NewBufferString(body))
+		req.SetPathValue("name", "kpi-3up")
+		req.Header.Set("Content-Type", "text/plain")
+		w := httptest.NewRecorder()
+
+		h.ValidateHandler().ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnsupportedMediaType {
+			t.Fatalf("Status = %d, want %d; body: %s", w.Code, http.StatusUnsupportedMediaType, w.Body.String())
+		}
+
+		var errResp apierrors.Response
+		if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
+			t.Fatalf("Failed to decode error response: %v", err)
+		}
+		if errResp.Error.Code != apierrors.CodeInvalidContentType {
+			t.Errorf("Error code = %q, want %q", errResp.Error.Code, apierrors.CodeInvalidContentType)
+		}
+	})
+
+	t.Run("unknown fields rejected", func(t *testing.T) {
+		body := `{"values": [{"big":"1","small":"A"}], "bogus_field": true}`
+		req := httptest.NewRequest("POST", "/api/v1/patterns/kpi-3up/validate", bytes.NewBufferString(body))
+		req.SetPathValue("name", "kpi-3up")
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		h.ValidateHandler().ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("Status = %d, want %d; body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+		}
+
+		var errResp apierrors.Response
+		if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
+			t.Fatalf("Failed to decode error response: %v", err)
+		}
+		if errResp.Error.Code != apierrors.CodeInvalidJSON {
+			t.Errorf("Error code = %q, want %q", errResp.Error.Code, apierrors.CodeInvalidJSON)
+		}
+	})
+
+	t.Run("oversized body returns 413", func(t *testing.T) {
+		// MaxRequestBodySize is 10MB; send just over that
+		huge := `{"values": "` + strings.Repeat("x", MaxRequestBodySize) + `"}`
+		req := httptest.NewRequest("POST", "/api/v1/patterns/kpi-3up/validate", bytes.NewBufferString(huge))
+		req.SetPathValue("name", "kpi-3up")
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		h.ValidateHandler().ServeHTTP(w, req)
+
+		if w.Code != http.StatusRequestEntityTooLarge {
+			t.Fatalf("Status = %d, want %d; body: %s", w.Code, http.StatusRequestEntityTooLarge, w.Body.String())
+		}
+
+		var errResp apierrors.Response
+		if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
+			t.Fatalf("Failed to decode error response: %v", err)
+		}
+		if errResp.Error.Code != apierrors.CodeRequestTooLarge {
+			t.Errorf("Error code = %q, want %q", errResp.Error.Code, apierrors.CodeRequestTooLarge)
+		}
+	})
+}
+
+func TestExpandPatternContentType(t *testing.T) {
+	h := newTestPatternsHandler()
+
+	t.Run("wrong content type returns 415", func(t *testing.T) {
+		body := `{"values": [{"big":"1","small":"A"},{"big":"2","small":"B"},{"big":"3","small":"C"}]}`
+		req := httptest.NewRequest("POST", "/api/v1/patterns/kpi-3up/expand", bytes.NewBufferString(body))
+		req.SetPathValue("name", "kpi-3up")
+		req.Header.Set("Content-Type", "text/xml")
+		w := httptest.NewRecorder()
+
+		h.ExpandHandler().ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnsupportedMediaType {
+			t.Fatalf("Status = %d, want %d; body: %s", w.Code, http.StatusUnsupportedMediaType, w.Body.String())
 		}
 	})
 }
