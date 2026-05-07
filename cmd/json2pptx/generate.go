@@ -22,6 +22,7 @@ func runGenerate() error {
 	dryRun := fs.Bool("dry-run", false, "Validate input and show layout selections without generating output")
 	fs.BoolVar(dryRun, "n", false, "Shorthand for -dry-run")
 	strictFit := fs.String("strict-fit", "warn", "Text-fit checking mode: off, warn (default), or strict (refuse on overflow)")
+	partial := fs.Bool("partial", false, "Enable partial mode: skip failing slides instead of aborting the entire deck")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] -json <file.json>\n\n")
@@ -63,5 +64,5 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templatesDir, *configPath)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit)
+	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial)
 }

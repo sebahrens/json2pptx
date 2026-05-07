@@ -295,7 +295,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string) error { //nolint:gocognit,gocyclo
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// Parse and validate JSON input
@@ -419,7 +419,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		ThemeColors: templateTheme.Colors,
 		DataPalette: resolveDataPalette(templateMetadata, templateTheme.Colors),
 	}
-	slideSpecs, gridDiagWarnings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx)
+	slideSpecs, gridDiagWarnings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx, partial)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
 	}
@@ -554,7 +554,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 // This is the primary conversion path that supports both typed fields (text_value,
 // bullets_value, etc.) and legacy json.RawMessage Value field.
 // When layouts is non-empty and a slide omits layout_id, auto-layout selection is used.
-func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy, diagCtx *GridDiagramContext) ([]generator.SlideSpec, []string, error) { //nolint:gocognit,gocyclo
+func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy, diagCtx *GridDiagramContext, partial bool) ([]generator.SlideSpec, []string, error) { //nolint:gocognit,gocyclo
 	specs := make([]generator.SlideSpec, 0, len(slides))
 	var gridWarnings []string
 
@@ -604,203 +604,238 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	}
 
 	for i, slide := range slides {
-		if slide.LayoutID == "" {
-			if len(layouts) == 0 {
-				return nil, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
-			}
-
-			// Auto-select layout using heuristic engine
-			slideDef := jsonSlideToDefinition(slide)
-			req := layout.SelectionRequest{
-				Slide:   slideDef,
-				Layouts: layouts,
-				Context: layout.SelectionContext{
-					Position:    i,
-					TotalSlides: len(slides),
-					UsedLayouts: usedLayouts,
-				},
-			}
-			if i > 0 {
-				req.Context.PreviousType = specs[i-1].LayoutID
-			}
-
-			result, err := layout.SelectLayout(req)
-			if err != nil {
-				return nil, nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
-			}
-
-			slide.LayoutID = result.LayoutID
-			usedLayouts[result.LayoutID]++
-
-			slog.Info("auto-layout selected",
-				slog.Int("slide", i+1),
-				slog.String("layout_id", result.LayoutID),
-				slog.String("slide_type", string(slideDef.Type)),
-				slog.Float64("confidence", result.Confidence),
-			)
-
-			// Auto-map placeholder IDs for items that don't have one
-			var selectedLayout *types.LayoutMetadata
-			for j := range layouts {
-				if layouts[j].ID == result.LayoutID {
-					selectedLayout = &layouts[j]
-					break
-				}
-			}
-			if selectedLayout != nil {
-				slide.Content = autoMapPlaceholders(slide.Content, *selectedLayout)
-			}
-		} else {
-			if usedLayouts != nil {
-				// Track explicitly-specified layouts too, for variety scoring
-				usedLayouts[slide.LayoutID]++
-			}
-			// Resolve virtual placeholder IDs even for explicit layout IDs
-			if hasVirtualPlaceholders(slide.Content) {
-				for j := range layouts {
-					if layouts[j].ID == slide.LayoutID {
-						slide.Content = autoMapPlaceholders(slide.Content, layouts[j])
-						break
-					}
-				}
-			}
-		}
-
-		contentItems, err := convertPresentationContent(slide.Content, i+1, inferSlideType(slide))
+		spec, slideWarnings, err := convertSinglePresentationSlide(
+			slide, i, slides, specs, layouts, metadata,
+			slideWidth, slideHeight, rhythmGrid, accentStrategy,
+			sectionIndices, usedLayouts, diagCtx,
+		)
+		gridWarnings = append(gridWarnings, slideWarnings...)
 		if err != nil {
-			return nil, nil, err
+			if !partial {
+				return nil, nil, err
+			}
+			// Partial mode: skip the failing slide and record a warning.
+			gridWarnings = append(gridWarnings, fmt.Sprintf("slide %d: skipped (partial mode): %v", i+1, err))
+			continue
 		}
-
-		spec := generator.SlideSpec{
-			LayoutID:        slide.LayoutID,
-			Content:         contentItems,
-			Eyebrow:         slide.Eyebrow,
-			SpeakerNotes:    slide.SpeakerNotes,
-			SourceNote:      slide.Source,
-			Transition:      slide.Transition,
-			TransitionSpeed: slide.TransitionSpeed,
-			Build:           slide.Build,
-			ContrastCheck:   slide.ContrastCheck,
-		}
-
-		// Convert background image spec
-		if slide.Background != nil && slide.Background.Image != "" {
-			spec.Background = &generator.BackgroundImage{
-				Path: slide.Background.Image,
-				Fit:  slide.Background.Fit,
-			}
-		}
-
-		// XOR enforcement: pattern, compose, and shape_grid are mutually exclusive (D1)
-		{
-			setCount := 0
-			if slide.Pattern != nil {
-				setCount++
-			}
-			if slide.Compose != nil {
-				setCount++
-			}
-			if slide.ShapeGrid != nil {
-				setCount++
-			}
-			if setCount > 1 {
-				return nil, nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
-			}
-		}
-
-		// Expand compose envelope into shape_grid before downstream processing
-		if slide.Compose != nil {
-			ctx := patterns.ExpandContext{
-				Metadata:       metadata,
-				SlideWidth:     slideWidth,
-				SlideHeight:    slideHeight,
-				AccentStrategy: accentStrategy,
-				SlideIndex:     i,
-				SectionIndex:   sectionIndices[i],
-			}
-			expanded, err := expandCompose(slide.Compose, ctx, patterns.Default())
-			if err != nil {
-				return nil, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
-			}
-			slide.ShapeGrid = expanded
-		}
-
-		// Expand pattern into shape_grid before downstream processing
-		if slide.Pattern != nil {
-			ctx := patterns.ExpandContext{
-				Metadata:       metadata,
-				SlideWidth:     slideWidth,
-				SlideHeight:    slideHeight,
-				AccentStrategy: accentStrategy,
-				SlideIndex:     i,
-				SectionIndex:   sectionIndices[i],
-			}
-			expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
-			if err != nil {
-				return nil, nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
-			}
-			slide.ShapeGrid = expanded
-		}
-
-		// Resolve shape_grid into raw p:sp XML fragments
-		if slide.ShapeGrid != nil {
-			// Virtual layout resolution: derive layout and bounds from template
-			var overrideBounds *pptx.RectEmu
-			var contentZone *shapegrid.ContentZone
-
-			// Always compute ContentZone from template layouts for shape_grid slides
-			// so that DefaultBounds can respect the actual title height, even when
-			// the slide has an explicit layout_id and doesn't need virtual resolution.
-			if len(layouts) > 0 {
-				if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
-					contentZone = vl.Zone
-					if needsVirtualLayout(slide) {
-						spec.LayoutID = vl.LayoutID
-						overrideBounds = &vl.Bounds
-						slog.Info("virtual layout resolved",
-							slog.Int("slide", i+1),
-							slog.String("layout_id", vl.LayoutID),
-						)
-					}
-				}
-			}
-
-			// Rhythm grid: override content zone to enforce consistent positioning.
-			if rhythmGrid != nil {
-				gridZone := gridToContentZone(rhythmGrid)
-				contentZone = gridZone
-				// Clear override bounds — the grid zone takes precedence.
-				overrideBounds = nil
-			}
-
-			// Use a high-start allocator to avoid colliding with template shape IDs.
-			alloc := &pptx.ShapeIDAllocator{}
-			alloc.SetMinID(200)
-			// Build per-slide diagram context with the correct slide number.
-			var slideDiagCtx *GridDiagramContext
-			if diagCtx != nil {
-				slideDiagCtx = &GridDiagramContext{
-					ThemeColors: diagCtx.ThemeColors,
-					DataPalette: diagCtx.DataPalette,
-					SlideNum:    i + 1,
-				}
-			}
-			gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight, slideDiagCtx)
-			if err != nil {
-				return nil, nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
-			}
-			if gridResult != nil {
-				spec.RawShapeXML = gridResult.Shapes
-				spec.IconInserts = gridResult.IconInserts
-				spec.ImageInserts = gridResult.ImageInserts
-				gridWarnings = append(gridWarnings, gridResult.Warnings...)
-			}
-		}
-
 		specs = append(specs, spec)
 	}
 
 	return specs, gridWarnings, nil
+}
+
+// convertSinglePresentationSlide converts a single slide input into a generator SlideSpec.
+// Returns the spec, any warnings, and an error if the slide cannot be converted.
+func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
+	slide SlideInput,
+	i int,
+	allSlides []SlideInput,
+	existingSpecs []generator.SlideSpec,
+	layouts []types.LayoutMetadata,
+	metadata *types.TemplateMetadata,
+	slideWidth, slideHeight int64,
+	rhythmGrid *resolvedGrid,
+	accentStrategy patterns.AccentStrategy,
+	sectionIndices []int,
+	usedLayouts map[string]int,
+	diagCtx *GridDiagramContext,
+) (generator.SlideSpec, []string, error) {
+	var warnings []string
+
+	if slide.LayoutID == "" {
+		if len(layouts) == 0 {
+			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
+		}
+
+		// Auto-select layout using heuristic engine
+		slideDef := jsonSlideToDefinition(slide)
+		req := layout.SelectionRequest{
+			Slide:   slideDef,
+			Layouts: layouts,
+			Context: layout.SelectionContext{
+				Position:    i,
+				TotalSlides: len(allSlides),
+				UsedLayouts: usedLayouts,
+			},
+		}
+		if i > 0 && len(existingSpecs) > 0 {
+			req.Context.PreviousType = existingSpecs[len(existingSpecs)-1].LayoutID
+		}
+
+		result, err := layout.SelectLayout(req)
+		if err != nil {
+			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
+		}
+
+		slide.LayoutID = result.LayoutID
+		usedLayouts[result.LayoutID]++
+
+		slog.Info("auto-layout selected",
+			slog.Int("slide", i+1),
+			slog.String("layout_id", result.LayoutID),
+			slog.String("slide_type", string(slideDef.Type)),
+			slog.Float64("confidence", result.Confidence),
+		)
+
+		// Auto-map placeholder IDs for items that don't have one
+		var selectedLayout *types.LayoutMetadata
+		for j := range layouts {
+			if layouts[j].ID == result.LayoutID {
+				selectedLayout = &layouts[j]
+				break
+			}
+		}
+		if selectedLayout != nil {
+			slide.Content = autoMapPlaceholders(slide.Content, *selectedLayout)
+		}
+	} else {
+		if usedLayouts != nil {
+			// Track explicitly-specified layouts too, for variety scoring
+			usedLayouts[slide.LayoutID]++
+		}
+		// Resolve virtual placeholder IDs even for explicit layout IDs
+		if hasVirtualPlaceholders(slide.Content) {
+			for j := range layouts {
+				if layouts[j].ID == slide.LayoutID {
+					slide.Content = autoMapPlaceholders(slide.Content, layouts[j])
+					break
+				}
+			}
+		}
+	}
+
+	contentItems, err := convertPresentationContent(slide.Content, i+1, inferSlideType(slide))
+	if err != nil {
+		return generator.SlideSpec{}, nil, err
+	}
+
+	spec := generator.SlideSpec{
+		LayoutID:        slide.LayoutID,
+		Content:         contentItems,
+		Eyebrow:         slide.Eyebrow,
+		SpeakerNotes:    slide.SpeakerNotes,
+		SourceNote:      slide.Source,
+		Transition:      slide.Transition,
+		TransitionSpeed: slide.TransitionSpeed,
+		Build:           slide.Build,
+		ContrastCheck:   slide.ContrastCheck,
+	}
+
+	// Convert background image spec
+	if slide.Background != nil && slide.Background.Image != "" {
+		spec.Background = &generator.BackgroundImage{
+			Path: slide.Background.Image,
+			Fit:  slide.Background.Fit,
+		}
+	}
+
+	// XOR enforcement: pattern, compose, and shape_grid are mutually exclusive (D1)
+	{
+		setCount := 0
+		if slide.Pattern != nil {
+			setCount++
+		}
+		if slide.Compose != nil {
+			setCount++
+		}
+		if slide.ShapeGrid != nil {
+			setCount++
+		}
+		if setCount > 1 {
+			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
+		}
+	}
+
+	// Expand compose envelope into shape_grid before downstream processing
+	if slide.Compose != nil {
+		ctx := patterns.ExpandContext{
+			Metadata:       metadata,
+			SlideWidth:     slideWidth,
+			SlideHeight:    slideHeight,
+			AccentStrategy: accentStrategy,
+			SlideIndex:     i,
+			SectionIndex:   sectionIndices[i],
+		}
+		expanded, err := expandCompose(slide.Compose, ctx, patterns.Default())
+		if err != nil {
+			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
+		}
+		slide.ShapeGrid = expanded
+	}
+
+	// Expand pattern into shape_grid before downstream processing
+	if slide.Pattern != nil {
+		ctx := patterns.ExpandContext{
+			Metadata:       metadata,
+			SlideWidth:     slideWidth,
+			SlideHeight:    slideHeight,
+			AccentStrategy: accentStrategy,
+			SlideIndex:     i,
+			SectionIndex:   sectionIndices[i],
+		}
+		expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
+		if err != nil {
+			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
+		}
+		slide.ShapeGrid = expanded
+	}
+
+	// Resolve shape_grid into raw p:sp XML fragments
+	if slide.ShapeGrid != nil {
+		// Virtual layout resolution: derive layout and bounds from template
+		var overrideBounds *pptx.RectEmu
+		var contentZone *shapegrid.ContentZone
+
+		// Always compute ContentZone from template layouts for shape_grid slides
+		// so that DefaultBounds can respect the actual title height, even when
+		// the slide has an explicit layout_id and doesn't need virtual resolution.
+		if len(layouts) > 0 {
+			if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
+				contentZone = vl.Zone
+				if needsVirtualLayout(slide) {
+					spec.LayoutID = vl.LayoutID
+					overrideBounds = &vl.Bounds
+					slog.Info("virtual layout resolved",
+						slog.Int("slide", i+1),
+						slog.String("layout_id", vl.LayoutID),
+					)
+				}
+			}
+		}
+
+		// Rhythm grid: override content zone to enforce consistent positioning.
+		if rhythmGrid != nil {
+			gridZone := gridToContentZone(rhythmGrid)
+			contentZone = gridZone
+			// Clear override bounds — the grid zone takes precedence.
+			overrideBounds = nil
+		}
+
+		// Use a high-start allocator to avoid colliding with template shape IDs.
+		alloc := &pptx.ShapeIDAllocator{}
+		alloc.SetMinID(200)
+		// Build per-slide diagram context with the correct slide number.
+		var slideDiagCtx *GridDiagramContext
+		if diagCtx != nil {
+			slideDiagCtx = &GridDiagramContext{
+				ThemeColors: diagCtx.ThemeColors,
+				DataPalette: diagCtx.DataPalette,
+				SlideNum:    i + 1,
+			}
+		}
+		gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight, slideDiagCtx)
+		if err != nil {
+			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
+		}
+		if gridResult != nil {
+			spec.RawShapeXML = gridResult.Shapes
+			spec.IconInserts = gridResult.IconInserts
+			spec.ImageInserts = gridResult.ImageInserts
+			warnings = append(warnings, gridResult.Warnings...)
+		}
+	}
+
+	return spec, warnings, nil
 }
 
 // buildSlideResolutions constructs per-slide resolution metadata from the original

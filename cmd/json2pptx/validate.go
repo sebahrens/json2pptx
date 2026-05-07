@@ -25,6 +25,7 @@ func runValidate() error { //nolint:gocognit
 	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
+	_ = fs.Bool("partial", false, "Accepted for CLI compatibility (validation always reports per-slide diagnostics)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate [options] <file.json ...>\n\n")

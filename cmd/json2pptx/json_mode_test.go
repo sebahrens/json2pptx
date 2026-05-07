@@ -1198,7 +1198,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				},
 			},
 		}
-		specs, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil)
+		specs, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1219,7 +1219,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				},
 			},
 		}
-		specs, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil)
+		specs, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1232,9 +1232,49 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 		slides := []SlideInput{
 			{Content: []ContentInput{{Type: "text", TextValue: strPtr("Hi")}}},
 		}
-		_, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil)
+		_, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 		if err == nil {
 			t.Error("expected error when layout_id missing and no layouts, got nil")
+		}
+	})
+
+	t.Run("partial mode skips failing slides", func(t *testing.T) {
+		slides := []SlideInput{
+			// Slide 1: valid
+			{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("OK")}}},
+			// Slide 2: invalid — no layout_id and no layouts for auto-select
+			{Content: []ContentInput{{Type: "text", TextValue: strPtr("Fail")}}},
+			// Slide 3: valid
+			{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Also OK")}}},
+		}
+		specs, warnings, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, true)
+		if err != nil {
+			t.Fatalf("partial mode should not return error, got: %v", err)
+		}
+		if len(specs) != 2 {
+			t.Errorf("expected 2 specs (skipping failed slide), got %d", len(specs))
+		}
+		// Check that a warning was emitted about the skipped slide
+		found := false
+		for _, w := range warnings {
+			if strings.Contains(w, "skipped (partial mode)") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected warning about skipped slide, got warnings: %v", warnings)
+		}
+	})
+
+	t.Run("partial=false aborts on failing slide", func(t *testing.T) {
+		slides := []SlideInput{
+			{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("OK")}}},
+			{Content: []ContentInput{{Type: "text", TextValue: strPtr("Fail")}}},
+		}
+		_, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
+		if err == nil {
+			t.Error("expected error when partial=false and slide fails, got nil")
 		}
 	})
 }
@@ -1262,7 +1302,7 @@ func TestSectionSlideContentType(t *testing.T) {
 		},
 	}
 
-	specs, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil)
+	specs, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1308,7 +1348,7 @@ func TestSectionSlideSharedPlaceholderMerge(t *testing.T) {
 		},
 	}
 
-	specs, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil)
+	specs, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -99,7 +99,7 @@ func TestConvertPresentationSlides_PatternAndShapeGridXOR(t *testing.T) {
 		ShapeGrid: &ShapeGridInput{},
 	}
 
-	_, _, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000, nil, nil, "", nil)
+	_, _, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000, nil, nil, "", nil, false)
 	if err == nil {
 		t.Fatal("expected XOR error when both pattern and shape_grid set")
 	}
@@ -121,7 +121,7 @@ func TestConvertPresentationSlides_PatternExpansion(t *testing.T) {
 		},
 	}
 
-	specs, _, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000, nil, nil, "", nil)
+	specs, _, err := convertPresentationSlides([]SlideInput{slide}, nil, 12192000, 6858000, nil, nil, "", nil, false)
 	if err != nil {
 		t.Fatalf("convertPresentationSlides failed: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestCalloutCrossTemplate(t *testing.T) {
 				}
 
 				jsonResultPath := filepath.Join(outputDir, fixtureName+"_"+tmpl+".result.json")
-				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "", "off")
+				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "", "off", false)
 				if err != nil {
 					t.Fatalf("runJSONMode failed: %v", err)
 				}
