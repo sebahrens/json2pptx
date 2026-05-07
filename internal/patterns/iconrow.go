@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/icons"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
@@ -42,9 +43,9 @@ func (ir *iconRow) Taxonomy() PatternTaxonomy {
 
 func (ir *iconRow) ExemplarValues() any {
 	v := IconRowValues{
-		{Icon: "🚀", Caption: "Launch"},
-		{Icon: "📈", Caption: "Growth"},
-		{Icon: "💰", Caption: "Revenue"},
+		{Icon: "rocket", Caption: "Launch"},
+		{Icon: "trending-up", Caption: "Growth"},
+		{Icon: "currency-dollar", Caption: "Revenue"},
 	}
 	return &v
 }
@@ -91,6 +92,7 @@ type IconRowOverrides struct {
 	IconSize       float64 `json:"icon_size,omitempty"`
 	CaptionSize    float64 `json:"caption_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
+	IconMode       string  `json:"icon_mode,omitempty"`        // text | svg | auto (default auto)
 }
 
 // IconRowCellOverride is an alias for the shared CellOverride struct.
@@ -128,6 +130,7 @@ func (ir *iconRow) Schema() *Schema {
 					"icon_size":        NumberSchema(6, 120).WithDescription("Font size for icon in points"),
 					"caption_size":     NumberSchema(6, 120).WithDescription("Font size for caption in points"),
 					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
+					"icon_mode":        EnumSchema("text", "svg", "auto").WithDescription("Icon rendering mode: text (emoji/glyph in text paragraph), svg (bundled SVG icon overlay), auto (SVG when icon name resolves to a bundled icon, text otherwise). Default: auto.").WithDefault("auto"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -148,11 +151,19 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 	const name = "icon-row"
 	var errs []error
 
-	// Validate cell_accent_mode
+	// Validate overrides
 	if overrides != nil {
 		if ovr, ok := overrides.(*IconRowOverrides); ok {
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
+			}
+			if ovr.IconMode != "" {
+				switch ovr.IconMode {
+				case "text", "svg", "auto":
+					// valid
+				default:
+					errs = append(errs, fmt.Errorf("%s: icon_mode must be \"text\", \"svg\", or \"auto\", got %q", name, ovr.IconMode))
+				}
 			}
 		}
 	}
@@ -205,16 +216,40 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	iconSize := ResolveSize(ovr.IconSize, 28.0)
 	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
 	cellAccentMode := ovr.CellAccentMode
+	iconMode := ovr.IconMode
+	if iconMode == "" {
+		iconMode = "auto"
+	}
 
 	gridCells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildIconRowTextContent(item.Icon, iconSize, item.Caption, captionSize)
 
-		shape := &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     textContent,
+		// Determine whether this icon should render as SVG or text.
+		useSVG := iconMode == "svg" || (iconMode == "auto" && icons.Exists(item.Icon))
+
+		var shape *jsonschema.ShapeSpecInput
+		if useSVG {
+			// SVG icon: caption-only text + icon overlay (same approach as kpi_parametric).
+			captionContent := buildIconRowCaptionOnly(item.Caption, captionSize)
+			shape = &jsonschema.ShapeSpecInput{
+				Geometry: "roundRect",
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Text:     captionContent,
+				Icon: &jsonschema.IconInput{
+					Name:     item.Icon,
+					Fill:     accent,
+					Position: "top",
+				},
+			}
+		} else {
+			// Text/emoji icon: render icon as a text paragraph.
+			textContent := buildIconRowTextContent(item.Icon, iconSize, item.Caption, captionSize)
+			shape = &jsonschema.ShapeSpecInput{
+				Geometry: "roundRect",
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Text:     textContent,
+			}
 		}
 
 		gc := &jsonschema.GridCellInput{
@@ -248,6 +283,31 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	return grid, nil
+}
+
+// buildIconRowCaptionOnly creates a JSON text object with caption only (for SVG icon mode).
+func buildIconRowCaptionOnly(caption string, captionSize float64) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+	}{
+		Paragraphs: []paragraph{
+			{Content: caption, Size: captionSize, Color: "lt1", Align: "ctr"},
+		},
+		Align:         "ctr",
+		VerticalAlign: "bottom",
+	}
+
+	data, _ := json.Marshal(textObj)
+	return data
 }
 
 // buildIconRowTextContent creates a JSON text object with icon and caption paragraphs.

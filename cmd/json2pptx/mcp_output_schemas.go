@@ -220,6 +220,15 @@ var outputSchemaShowPattern = json.RawMessage(`{
     "example_values": {
       "type": "object",
       "description": "Canonical example values for this pattern. Shows the expected shape and realistic content for the values parameter."
+    },
+    "rendering_capabilities": {
+      "type": "object",
+      "description": "Describes how this pattern renders icons and visual elements.",
+      "properties": {
+        "icon_support": {"type": "string", "enum": ["none", "text_only", "svg_only", "svg_and_text"], "description": "What icon rendering modes the pattern supports."},
+        "icon_modes":   {"type": "string", "description": "Available icon_mode override values, if applicable."}
+      },
+      "required": ["icon_support"]
     }
   },
   "required": ["name", "description", "use_when", "not_when", "version", "schema"]

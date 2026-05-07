@@ -1366,11 +1366,34 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		result.ExampleValues = ex.ExemplarValues()
 	}
 
+	result.RenderingCapabilities = patternRenderingCapabilities(pat.Name())
+
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// patternRenderingCapabilities returns rendering capability metadata for a pattern.
+func patternRenderingCapabilities(name string) *renderingCapabilities {
+	switch name {
+	case "icon-row":
+		return &renderingCapabilities{
+			IconSupport: "svg_and_text",
+			IconModes:   "text, svg, auto (default: auto — SVG when icon name resolves to a bundled icon, text otherwise)",
+		}
+	case "kpi-2up", "kpi-3up", "kpi-4up", "kpi-5up", "kpi-6up", "kpi-inline":
+		return &renderingCapabilities{IconSupport: "svg_only"}
+	case "card-grid":
+		return &renderingCapabilities{IconSupport: "svg_and_text"}
+	case "matrix-2x2":
+		return &renderingCapabilities{IconSupport: "svg_only"}
+	case "hero-detail":
+		return &renderingCapabilities{IconSupport: "svg_and_text"}
+	default:
+		return &renderingCapabilities{IconSupport: "none"}
+	}
 }
 
 func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
