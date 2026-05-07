@@ -1198,7 +1198,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				},
 			},
 		}
-		specs, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
+		specs, _, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1219,7 +1219,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				},
 			},
 		}
-		specs, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
+		specs, _, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1232,7 +1232,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 		slides := []SlideInput{
 			{Content: []ContentInput{{Type: "text", TextValue: strPtr("Hi")}}},
 		}
-		_, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
+		_, _, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 		if err == nil {
 			t.Error("expected error when layout_id missing and no layouts, got nil")
 		}
@@ -1247,7 +1247,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 			// Slide 3: valid
 			{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Also OK")}}},
 		}
-		specs, warnings, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, true)
+		specs, warnings, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, true)
 		if err != nil {
 			t.Fatalf("partial mode should not return error, got: %v", err)
 		}
@@ -1272,7 +1272,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 			{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("OK")}}},
 			{Content: []ContentInput{{Type: "text", TextValue: strPtr("Fail")}}},
 		}
-		_, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
+		_, _, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 		if err == nil {
 			t.Error("expected error when partial=false and slide fails, got nil")
 		}
@@ -1302,7 +1302,7 @@ func TestSectionSlideContentType(t *testing.T) {
 		},
 	}
 
-	specs, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
+	specs, _, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1348,7 +1348,7 @@ func TestSectionSlideSharedPlaceholderMerge(t *testing.T) {
 		},
 	}
 
-	specs, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
+	specs, _, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

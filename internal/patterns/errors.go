@@ -46,6 +46,9 @@ const (
 	ErrCodeChartShapeInferred = "chart_shape_inferred"
 	ErrCodeChartDataEmpty     = "chart_data_empty"
 
+	// Grid visual cell finding codes (emitted for diagram/icon/image grid cells).
+	ErrCodeGridDiagramNarrow = "grid_diagram_narrow"
+
 	// Render-time finding codes (emitted during generation, not pre-flight).
 	ErrCodePlaceholderRemapped   = "placeholder_remapped"
 	ErrCodeTextTrimmed           = "text_trimmed"

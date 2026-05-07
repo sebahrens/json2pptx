@@ -594,6 +594,54 @@ func CheckDiagramInNarrowBounds(diagramSpec *types.DiagramSpec, widthEMU int64, 
 	)
 }
 
+// CheckDiagramInNarrowBoundsFinding checks whether a complex diagram would be
+// illegible in a narrow grid cell and returns a structured FitFinding instead of
+// a warning string. Returns nil if the diagram fits fine at the given width.
+func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU int64, path string) *patterns.FitFinding {
+	if widthEMU > narrowPlaceholderThreshold {
+		return nil
+	}
+	if !complexDiagramTypes[diagramSpec.Type] {
+		return nil
+	}
+	complexity := estimateDiagramComplexity(diagramSpec)
+	if complexity < complexityItemThreshold {
+		return nil
+	}
+	const slideWidthEMU = 12192000
+	widthPct := float64(widthEMU) / float64(slideWidthEMU) * 100
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: path,
+			Code: patterns.ErrCodeGridDiagramNarrow,
+			Message: fmt.Sprintf(
+				"complex %s diagram (%d items) in narrow grid cell (width %.0f%% of slide) may be illegible — consider a wider cell or full-width layout",
+				diagramSpec.Type,
+				complexity,
+				widthPct,
+			),
+			Fix: &patterns.FixSuggestion{
+				Kind: "reshape_grid",
+				Params: map[string]any{
+					"diagram_type":    diagramSpec.Type,
+					"complexity":      complexity,
+					"cell_width_pct":  widthPct,
+					"cell_width_emu":  widthEMU,
+					"threshold_emu":   narrowPlaceholderThreshold,
+				},
+			},
+		},
+		Action: "review",
+		Measured: &patterns.Extent{
+			WidthEMU: widthEMU,
+		},
+		Allowed: &patterns.Extent{
+			WidthEMU: narrowPlaceholderThreshold,
+		},
+		OverflowRatio: float64(narrowPlaceholderThreshold) / float64(widthEMU),
+	}
+}
+
 // estimateDiagramComplexity estimates the number of visual elements in a diagram
 // based on its type and data payload. This is used to detect diagrams that would
 // be illegible when compressed into narrow placeholders.

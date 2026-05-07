@@ -148,6 +148,8 @@ type ResolvedCell struct {
 	IconBounds  pptx.RectEmu       // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
 	TextInsets  [4]int64           // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
 	ID          uint32
+	RowIdx      int                // Zero-based row index in the source grid
+	ColIdx      int                // Zero-based column index in the source grid
 	Group       bool               // Wrap cell content in a p:grpSp group shape
 	ShapeSpec   *ShapeSpec         // Set when Kind == CellKindShape
 	TableSpec   *types.TableSpec   // Set when Kind == CellKindTable

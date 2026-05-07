@@ -162,6 +162,8 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				Bounds:     ApplyFitMode(fitMode, cellRect),
 				CellBounds: cellRect,
 				ID:         alloc.Alloc(),
+				RowIdx:     r,
+				ColIdx:     col,
 				Group:      cell.Group,
 			}
 			if cell.Image != nil {

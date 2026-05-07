@@ -237,6 +237,26 @@ A pattern grid exceeds the pattern's recommended maximum cell count. The fix sug
 }
 ```
 
+### `grid_diagram_narrow`
+
+**Action:** `review`
+**Fix kind:** `reshape_grid`
+
+A complex diagram (org_chart, fishbone, swot, heatmap, etc.) is placed in a grid cell whose width is less than 50% of the slide width. At this width, dense diagram labels and structural elements become illegible. The finding is emitted at generation time (not pre-flight) because it requires resolved cell bounds.
+
+```json
+{
+  "path": "/slides/0/shape_grid/rows/0/cells/1/diagram",
+  "code": "grid_diagram_narrow",
+  "message": "complex org_chart diagram (8 items) in narrow grid cell (width 33% of slide) may be illegible — consider a wider cell or full-width layout",
+  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "org_chart", "complexity": 8, "cell_width_pct": 33.3, "cell_width_emu": 4064000, "threshold_emu": 6096000 } },
+  "action": "review",
+  "measured": { "width_emu": 4064000, "height_emu": 0 },
+  "allowed": { "width_emu": 6096000, "height_emu": 0 },
+  "overflow_ratio": 1.5
+}
+```
+
 ### `chart_value_coerced`
 
 **Action:** `review`

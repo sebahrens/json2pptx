@@ -397,7 +397,7 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 				if cellIdx >= len(result.Cells) {
 					break
 				}
-				if cell == nil || (cell.Shape == nil && cell.Table == nil) {
+				if cell == nil || (cell.Shape == nil && cell.Table == nil && cell.Icon == nil && cell.Image == nil && cell.Diagram == nil) {
 					cellIdx++
 					continue
 				}

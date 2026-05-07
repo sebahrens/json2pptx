@@ -9,8 +9,10 @@ import (
 
 	"github.com/sebahrens/json2pptx/icons"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -25,6 +27,7 @@ type ShapeGridResult struct {
 	ImageInserts []generator.ImageInsert   // Image cells requiring media registration in the generator
 	RowOverflows []shapegrid.RowOverflow   // Rows whose content exceeded max_height
 	Warnings     []string                  // Quality warnings (e.g. complex diagram in narrow cell)
+	FitFindings  []patterns.FitFinding     // Structured findings for visual grid cells (diagram, icon, image)
 }
 
 // GridDiagramContext provides template-level context for rendering diagram cells
@@ -250,8 +253,14 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		return nil, err
 	}
 
+	// Derive 0-based slide index from diagCtx.SlideNum (1-based).
+	slideIdx := 0
+	if diagCtx != nil {
+		slideIdx = diagCtx.SlideNum - 1
+	}
+
 	// Generate XML fragments, icon inserts, and image inserts from resolved cells
-	return generateGridOutput(result, alloc, diagCtx)
+	return generateGridOutput(result, alloc, diagCtx, slideIdx)
 }
 
 // convertGridRows converts DTO GridRowInput slices into shapegrid.Row domain objects.
@@ -364,11 +373,13 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 }
 
 // generateGridOutput converts resolved grid cells into XML fragments and media inserts.
-func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext) (*ShapeGridResult, error) {
+// slideIdx is the 0-based slide index used for constructing JSON paths in findings.
+func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (*ShapeGridResult, error) {
 	var shapes [][]byte
 	var iconInserts []generator.IconInsert
 	var imageInserts []generator.ImageInsert
 	var warnings []string
+	var fitFindings []patterns.FitFinding
 
 	for _, cell := range result.Cells {
 		var cellShapes [][]byte
@@ -419,6 +430,11 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			}
 			cellIcons = append(cellIcons, icons...)
 			warnings = append(warnings, diagramWarnings...)
+			// Emit structured finding for narrow-cell diagram legibility.
+			path := slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram")
+			if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path); f != nil {
+				fitFindings = append(fitFindings, *f)
+			}
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {
@@ -474,6 +490,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		ImageInserts: imageInserts,
 		RowOverflows: result.RowOverflows,
 		Warnings:     warnings,
+		FitFindings:  fitFindings,
 	}, nil
 }
 

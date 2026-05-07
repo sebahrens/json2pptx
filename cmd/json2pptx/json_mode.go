@@ -412,12 +412,11 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		ThemeColors: templateTheme.Colors,
 		DataPalette: resolveDataPalette(templateMetadata, templateTheme.Colors),
 	}
-	slideSpecs, gridDiagWarnings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx, partial)
+	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx, partial)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
 	}
 	inputWarnings = append(inputWarnings, gridDiagWarnings...)
-
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
 	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
@@ -499,6 +498,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	allFitFindings = append(allFitFindings, result.FitFindings...)
 	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
 	allFitFindings = append(allFitFindings, chartDiagFindings...)
+	allFitFindings = append(allFitFindings, gridVisualFindings...)
 
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
@@ -568,9 +568,10 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 // This is the primary conversion path that supports both typed fields (text_value,
 // bullets_value, etc.) and legacy json.RawMessage Value field.
 // When layouts is non-empty and a slide omits layout_id, auto-layout selection is used.
-func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy, diagCtx *GridDiagramContext, partial bool) ([]generator.SlideSpec, []string, error) { //nolint:gocognit,gocyclo
+func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, metadata *types.TemplateMetadata, rhythmGrid *resolvedGrid, accentStrategy patterns.AccentStrategy, diagCtx *GridDiagramContext, partial bool) ([]generator.SlideSpec, []string, []patterns.FitFinding, error) { //nolint:gocognit,gocyclo
 	specs := make([]generator.SlideSpec, 0, len(slides))
 	var gridWarnings []string
+	var gridFitFindings []patterns.FitFinding
 
 	// Track layout usage for variety scoring during auto-selection
 	var usedLayouts map[string]int
@@ -618,15 +619,16 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	}
 
 	for i, slide := range slides {
-		spec, slideWarnings, err := convertSinglePresentationSlide(
+		spec, slideWarnings, slideFindings, err := convertSinglePresentationSlide(
 			slide, i, slides, specs, layouts, metadata,
 			slideWidth, slideHeight, rhythmGrid, accentStrategy,
 			sectionIndices, usedLayouts, diagCtx,
 		)
 		gridWarnings = append(gridWarnings, slideWarnings...)
+		gridFitFindings = append(gridFitFindings, slideFindings...)
 		if err != nil {
 			if !partial {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			// Partial mode: skip the failing slide and record a warning.
 			gridWarnings = append(gridWarnings, fmt.Sprintf("slide %d: skipped (partial mode): %v", i+1, err))
@@ -635,11 +637,11 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 		specs = append(specs, spec)
 	}
 
-	return specs, gridWarnings, nil
+	return specs, gridWarnings, gridFitFindings, nil
 }
 
 // convertSinglePresentationSlide converts a single slide input into a generator SlideSpec.
-// Returns the spec, any warnings, and an error if the slide cannot be converted.
+// Returns the spec, any warnings, any structured fit findings, and an error if the slide cannot be converted.
 func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	slide SlideInput,
 	i int,
@@ -653,12 +655,13 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	sectionIndices []int,
 	usedLayouts map[string]int,
 	diagCtx *GridDiagramContext,
-) (generator.SlideSpec, []string, error) {
+) (generator.SlideSpec, []string, []patterns.FitFinding, error) {
 	var warnings []string
+	var slideFitFindings []patterns.FitFinding
 
 	if slide.LayoutID == "" {
 		if len(layouts) == 0 {
-			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)
 		}
 
 		// Auto-select layout using heuristic engine
@@ -678,7 +681,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 
 		result, err := layout.SelectLayout(req)
 		if err != nil {
-			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
 		}
 
 		slide.LayoutID = result.LayoutID
@@ -720,7 +723,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 
 	contentItems, err := convertPresentationContent(slide.Content, i+1, inferSlideType(slide))
 	if err != nil {
-		return generator.SlideSpec{}, nil, err
+		return generator.SlideSpec{}, nil, nil, err
 	}
 
 	spec := generator.SlideSpec{
@@ -756,7 +759,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			setCount++
 		}
 		if setCount > 1 {
-			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: only one of pattern, compose, or shape_grid may be set", i+1)
 		}
 	}
 
@@ -772,7 +775,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		expanded, err := expandCompose(slide.Compose, ctx, patterns.Default())
 		if err != nil {
-			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
 		}
 		slide.ShapeGrid = expanded
 	}
@@ -789,7 +792,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 		if err != nil {
-			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
 		}
 		slide.ShapeGrid = expanded
 	}
@@ -839,17 +842,18 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight, slideDiagCtx)
 		if err != nil {
-			return generator.SlideSpec{}, nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: shape_grid: %w", i+1, err)
 		}
 		if gridResult != nil {
 			spec.RawShapeXML = gridResult.Shapes
 			spec.IconInserts = gridResult.IconInserts
 			spec.ImageInserts = gridResult.ImageInserts
 			warnings = append(warnings, gridResult.Warnings...)
+			slideFitFindings = append(slideFitFindings, gridResult.FitFindings...)
 		}
 	}
 
-	return spec, warnings, nil
+	return spec, warnings, slideFitFindings, nil
 }
 
 // buildSlideResolutions constructs per-slide resolution metadata from the original

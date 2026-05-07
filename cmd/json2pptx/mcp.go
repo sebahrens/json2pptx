@@ -414,7 +414,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		ThemeColors: theme.Colors,
 		DataPalette: resolveDataPalette(templateMetadata, theme.Colors),
 	}
-	slideSpecs, gridDiagWarnings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
+	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
 	if err != nil {
 		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}
@@ -513,6 +513,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Append contrast auto-fix findings (always emitted, not gated by fit_report).
 	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+
+	// Append grid visual findings (diagram narrow-cell, etc.) — always emitted.
+	fitFindings = append(fitFindings, gridVisualFindings...)
 
 	// Apply per-slide finding budget.
 	verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)

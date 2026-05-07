@@ -633,3 +633,102 @@ func TestProcessImageContent_MissingAltTextWarning(t *testing.T) {
 		})
 	}
 }
+
+// TestCheckDiagramInNarrowBoundsFinding_EmitsFinding verifies that a complex
+// diagram in a narrow grid cell produces a structured FitFinding.
+func TestCheckDiagramInNarrowBoundsFinding_EmitsFinding(t *testing.T) {
+	spec := &types.DiagramSpec{
+		Type: "org_chart",
+		Data: map[string]any{
+			"root": map[string]any{
+				"name": "CEO",
+				"children": []any{
+					map[string]any{
+						"name": "VP1",
+						"children": []any{
+							map[string]any{"name": "M1"},
+							map[string]any{"name": "M2"},
+							map[string]any{"name": "M3"},
+						},
+					},
+					map[string]any{
+						"name": "VP2",
+						"children": []any{
+							map[string]any{"name": "M4"},
+							map[string]any{"name": "M5"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	narrowWidth := int64(4000000) // ~33% of slide width
+	path := "/slides/0/shape_grid/rows/0/cells/1/diagram"
+
+	f := CheckDiagramInNarrowBoundsFinding(spec, narrowWidth, path)
+	if f == nil {
+		t.Fatal("expected finding for complex diagram in narrow cell, got nil")
+	}
+	if f.Code != "grid_diagram_narrow" {
+		t.Errorf("Code = %q, want %q", f.Code, "grid_diagram_narrow")
+	}
+	if f.Path != path {
+		t.Errorf("Path = %q, want %q", f.Path, path)
+	}
+	if f.Action != "review" {
+		t.Errorf("Action = %q, want %q", f.Action, "review")
+	}
+	if f.Fix == nil || f.Fix.Kind != "reshape_grid" {
+		t.Error("expected Fix with kind reshape_grid")
+	}
+	if f.Measured == nil || f.Measured.WidthEMU != narrowWidth {
+		t.Errorf("Measured.WidthEMU = %v, want %d", f.Measured, narrowWidth)
+	}
+	if !strings.Contains(f.Message, "org_chart") {
+		t.Errorf("Message should mention diagram type, got: %s", f.Message)
+	}
+}
+
+// TestCheckDiagramInNarrowBoundsFinding_NilForWideCell verifies no finding
+// for a complex diagram in a wide cell.
+func TestCheckDiagramInNarrowBoundsFinding_NilForWideCell(t *testing.T) {
+	spec := &types.DiagramSpec{
+		Type: "org_chart",
+		Data: map[string]any{
+			"root": map[string]any{
+				"name": "CEO",
+				"children": []any{
+					map[string]any{"name": "VP1"},
+					map[string]any{"name": "VP2"},
+					map[string]any{"name": "VP3"},
+					map[string]any{"name": "VP4"},
+					map[string]any{"name": "VP5"},
+				},
+			},
+		},
+	}
+
+	wideWidth := int64(10000000) // ~82% of slide width
+	f := CheckDiagramInNarrowBoundsFinding(spec, wideWidth, "/slides/0/shape_grid/rows/0/cells/0/diagram")
+	if f != nil {
+		t.Errorf("expected nil finding for wide cell, got: %+v", f)
+	}
+}
+
+// TestCheckDiagramInNarrowBoundsFinding_NilForSimpleDiagram verifies no finding
+// for a non-complex diagram type in a narrow cell.
+func TestCheckDiagramInNarrowBoundsFinding_NilForSimpleDiagram(t *testing.T) {
+	spec := &types.DiagramSpec{
+		Type: "cycle",
+		Data: map[string]any{
+			"steps": []any{"A", "B", "C"},
+		},
+	}
+
+	narrowWidth := int64(4000000)
+	f := CheckDiagramInNarrowBoundsFinding(spec, narrowWidth, "/slides/0/shape_grid/rows/0/cells/0/diagram")
+	if f != nil {
+		t.Errorf("expected nil for non-complex diagram type, got: %+v", f)
+	}
+}
