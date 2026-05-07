@@ -380,7 +380,7 @@ Each row has `cells` (array of cell objects), an optional `height` (percentage o
 
 ### Cell Definition
 
-Each cell holds one of `shape`, `table`, `icon`, or `image` (mutually exclusive). Optional `col_span` / `row_span` for merged cells (default 1). Optional `fit` controls shape scaling: `"contain"` (fit in cell preserving 1:1 ratio), `"fit-width"` (match cell width), `"fit-height"` (match cell height), or omit for stretch (default). An empty/null cell leaves the grid position blank.
+Each cell holds one of `shape`, `table`, `icon`, `image`, or `diagram` (mutually exclusive). Optional `col_span` / `row_span` for merged cells (default 1). Optional `fit` controls shape scaling: `"contain"` (fit in cell preserving 1:1 ratio), `"fit-width"` (match cell width), `"fit-height"` (match cell height), or omit for stretch (default). An empty/null cell leaves the grid position blank.
 
 Optional `accent_bar` adds a decorative bar alongside the cell:
 

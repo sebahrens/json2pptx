@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/svggen"
 
@@ -574,6 +575,37 @@ func TestMCPSupportedTypes_DiagramTypesMatchCapabilities(t *testing.T) {
 	for i := range advertised {
 		if advertised[i] != capTypes[i] {
 			t.Errorf("diagram type mismatch at [%d]: advertised %q vs capability %q", i, advertised[i], capTypes[i])
+		}
+	}
+}
+
+// TestMCPSupportedTypes_GridCellTypesMatchShapeGrid verifies that the
+// grid_cell_types advertised by buildSupportedTypes match the CellKind
+// constants defined in the shapegrid package.
+func TestMCPSupportedTypes_GridCellTypesMatchShapeGrid(t *testing.T) {
+	st := buildSupportedTypes()
+
+	// Canonical cell kinds from shapegrid/types.go.
+	canonical := []string{
+		string(shapegrid.CellKindShape),
+		string(shapegrid.CellKindTable),
+		string(shapegrid.CellKindIcon),
+		string(shapegrid.CellKindImage),
+		string(shapegrid.CellKindDiagram),
+	}
+	sort.Strings(canonical)
+
+	advertised := make([]string, len(st.GridCellTypes))
+	copy(advertised, st.GridCellTypes)
+	sort.Strings(advertised)
+
+	if len(advertised) != len(canonical) {
+		t.Fatalf("advertised %d grid cell types but shapegrid has %d\nadvertised: %v\ncanonical: %v",
+			len(advertised), len(canonical), advertised, canonical)
+	}
+	for i := range advertised {
+		if advertised[i] != canonical[i] {
+			t.Errorf("grid cell type mismatch at [%d]: advertised %q vs canonical %q", i, advertised[i], canonical[i])
 		}
 	}
 }

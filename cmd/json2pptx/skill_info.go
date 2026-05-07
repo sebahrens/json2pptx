@@ -535,7 +535,7 @@ func buildSupportedTypes() skillSupportedTypes {
 		DiagramTypes:        readyDiagramTypeNames(),
 		ChartCapabilities:   svggen.ChartCapabilities(),
 		DiagramCapabilities: svggen.DiagramCapabilitiesReady(),
-		GridCellTypes:       []string{"shape", "table", "icon", "image"},
+		GridCellTypes:       []string{"shape", "table", "icon", "image", "diagram"},
 		ShapeGeometries:     buildShapeGeometries(),
 		DataFormatHints:     buildDataFormatHints(),
 	}
