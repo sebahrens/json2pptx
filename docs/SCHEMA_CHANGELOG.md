@@ -4,6 +4,26 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.6.0 (2026-05-08)
+
+### Added
+
+- **`validate_presentation_output` MCP tool** — validates a generated PPTX file
+  using the unified output-validation suite (OPC package integrity + OOXML
+  content checks). Returns structured findings with provenance metadata.
+- **`output_validation` parameter** on `generate_presentation` — staged policy
+  for post-generation PPTX validation: `off` (default, skip), `warn` (include
+  findings in response), or `strict` (fail generation with diagnostics envelope
+  if blocking findings exist).
+- **`--output-validation` CLI flag** on `generate` subcommand — same semantics
+  as the MCP parameter.
+- **`output_validation_findings`** response field on `generate_presentation` —
+  populated when `output_validation` is `warn` or `strict`.
+- **`output_validation` feature flag** in `get_capabilities` features — lists
+  supported policy values (`off`, `warn`, `strict`).
+- **`OUTPUT_VALIDATION_ERROR` error code** — emitted when output validation
+  infrastructure fails (distinct from blocking findings in strict mode).
+
 ## 4.5.0 (2026-05-07)
 
 ### Added

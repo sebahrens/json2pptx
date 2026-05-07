@@ -23,6 +23,7 @@ func runGenerate() error {
 	fs.BoolVar(dryRun, "n", false, "Shorthand for -dry-run")
 	strictFit := fs.String("strict-fit", "warn", "Text-fit checking mode: off, warn (default), or strict (refuse on overflow)")
 	partial := fs.Bool("partial", false, "Enable partial mode: skip failing slides instead of aborting the entire deck")
+	outputValidation := fs.String("output-validation", "off", "Post-generation PPTX validation: off (default), warn (report findings), or strict (fail on blocking findings)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] -json <file.json>\n\n")
@@ -32,7 +33,8 @@ func runGenerate() error {
 		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx generate -json - -json-output result.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -dry-run -json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -n -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -strict-fit=strict -json slides.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate -strict-fit=strict -json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate -output-validation=warn -json slides.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		fs.PrintDefaults()
 	}
@@ -47,6 +49,14 @@ func runGenerate() error {
 		// valid
 	default:
 		return fmt.Errorf("invalid --strict-fit value %q: must be off, warn, or strict", *strictFit)
+	}
+
+	// Validate --output-validation value
+	switch *outputValidation {
+	case "off", "warn", "strict":
+		// valid
+	default:
+		return fmt.Errorf("invalid --output-validation value %q: must be off, warn, or strict", *outputValidation)
 	}
 
 	// JSON input is required
@@ -64,5 +74,5 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templatesDir, *configPath)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial)
+	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation)
 }

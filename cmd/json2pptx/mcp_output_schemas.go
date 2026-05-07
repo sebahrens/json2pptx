@@ -19,7 +19,25 @@ var outputSchemaGenerate = json.RawMessage(`{
     "warnings":          {"type": "array", "items": {"type": "string"}},
     "quality":           {"$ref": "#/$defs/quality_score"},
     "validation_errors": {"type": "array", "items": {"$ref": "#/$defs/validation_error"}},
-    "fit_findings":      {"type": "array", "items": {"$ref": "#/$defs/fit_finding"}}
+    "fit_findings":      {"type": "array", "items": {"$ref": "#/$defs/fit_finding"}},
+    "output_validation_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code":        {"type": "string"},
+          "severity":    {"type": "string", "enum": ["blocking", "warning"]},
+          "path":        {"type": "string"},
+          "message":     {"type": "string"},
+          "phase":       {"type": "string"},
+          "validator":   {"type": "string"},
+          "slide_index": {"type": "integer"},
+          "source_path": {"type": "string"},
+          "scope":       {"type": "string", "enum": ["source", "template", "generator"]}
+        },
+        "required": ["code", "severity", "message", "phase", "validator", "slide_index", "scope"]
+      }
+    }
   },
   "required": ["success"],
   "$defs": {
@@ -685,6 +703,7 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           "required": ["supported", "default_in"]
         },
         "strict_unknown_keys":    {"type": "boolean"},
+        "output_validation":      {"type": "array", "items": {"type": "string"}},
         "named_patterns":         {"type": "boolean"},
         "template_settings":      {"type": "boolean"},
         "supports_inline_markup": {"type": "array", "items": {"type": "string"}},
@@ -835,6 +854,35 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     }
   },
   "required": ["slides", "brief", "slide_budget", "rhythm_check"]
+}`)
+
+// --- validate_presentation_output ---
+var outputSchemaValidateOutput = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "is_valid":  {"type": "boolean"},
+    "file_path": {"type": "string"},
+    "summary":   {"type": "string"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code":        {"type": "string"},
+          "severity":    {"type": "string", "enum": ["blocking", "warning"]},
+          "path":        {"type": "string"},
+          "message":     {"type": "string"},
+          "phase":       {"type": "string"},
+          "validator":   {"type": "string"},
+          "slide_index": {"type": "integer"},
+          "source_path": {"type": "string"},
+          "scope":       {"type": "string", "enum": ["source", "template", "generator"]}
+        },
+        "required": ["code", "severity", "message", "phase", "validator", "slide_index", "scope"]
+      }
+    }
+  },
+  "required": ["is_valid", "file_path", "summary"]
 }`)
 
 // --- get_input_schema ---

@@ -486,7 +486,8 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"analyze_deck_rhythm":        true,
 		"plan_deck":                  true,
 		"recommend_visual":           true,
-		"get_input_schema":           true,
+		"get_input_schema":               true,
+		"validate_presentation_output":   true,
 	}
 
 	for _, name := range mcpToolNames() {

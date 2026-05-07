@@ -132,10 +132,11 @@ type JSONOutput struct {
 	Error       string        `json:"error,omitempty"`
 	Warnings    []string      `json:"warnings,omitempty"`
 	SlideErrors []SlideError  `json:"slide_errors,omitempty"`
-	Quality          *QualityScore              `json:"quality,omitempty"`
-	ValidationErrors []*patterns.ValidationError `json:"validation_errors,omitempty"`
-	FitFindings      []patterns.FitFinding       `json:"fit_findings,omitempty"`
-	Slides           []SlideResolution           `json:"slides,omitempty"`
+	Quality                    *QualityScore              `json:"quality,omitempty"`
+	ValidationErrors           []*patterns.ValidationError `json:"validation_errors,omitempty"`
+	FitFindings                []patterns.FitFinding       `json:"fit_findings,omitempty"`
+	Slides                     []SlideResolution           `json:"slides,omitempty"`
+	OutputValidationFindings   []pptx.Finding              `json:"output_validation_findings,omitempty"`
 }
 
 // SlideError describes a render-time failure for a specific slide.
@@ -295,7 +296,7 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool) error { //nolint:gocognit,gocyclo
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// Parse and validate JSON input
@@ -465,6 +466,26 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return writeJSONError(jsonOutputPath, fmt.Errorf("failed to generate PPTX: %w", err))
 	}
 
+	// Post-generation output validation via --output-validation flag (default: off).
+	var outputValidationFindings []pptx.Finding
+	if outputValidation != "off" {
+		report, valErr := pptx.ValidateOutputFile(outputPath)
+		if valErr != nil {
+			return writeJSONError(jsonOutputPath, fmt.Errorf("output validation failed: %w", valErr))
+		}
+		outputValidationFindings = report.Findings
+
+		// In strict mode, fail if any blocking findings exist.
+		if outputValidation == "strict" && !report.IsValid() {
+			blocking := report.Blocking()
+			msgs := make([]string, 0, len(blocking))
+			for _, f := range blocking {
+				msgs = append(msgs, f.Error())
+			}
+			return writeJSONError(jsonOutputPath, fmt.Errorf("output validation failed (strict): %s", strings.Join(msgs, "; ")))
+		}
+	}
+
 	// Merge input-layer warnings with generation warnings
 	allWarnings := append(inputWarnings, result.Warnings...)
 
@@ -483,17 +504,18 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
 
 	output := JSONOutput{
-		Success:          true,
-		OutputPath:       outputPath,
-		SlideCount:       result.SlideCount,
-		ContentHash:      result.ContentHash,
-		DurationMs:       time.Since(startTime).Milliseconds(),
-		Warnings:         allWarnings,
-		SlideErrors:      slideErrors,
-		Quality:          computeQualityScore(input.Slides, allWarnings),
-		ValidationErrors: result.ValidationErrors,
-		FitFindings:      allFitFindings,
-		Slides:           slideResolutions,
+		Success:                  true,
+		OutputPath:               outputPath,
+		SlideCount:               result.SlideCount,
+		ContentHash:              result.ContentHash,
+		DurationMs:               time.Since(startTime).Milliseconds(),
+		Warnings:                 allWarnings,
+		SlideErrors:              slideErrors,
+		Quality:                  computeQualityScore(input.Slides, allWarnings),
+		ValidationErrors:         result.ValidationErrors,
+		FitFindings:              allFitFindings,
+		Slides:                   slideResolutions,
+		OutputValidationFindings: outputValidationFindings,
 	}
 
 	// Write JSON output if requested

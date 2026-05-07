@@ -71,6 +71,7 @@ type capabilitiesFeatures struct {
 	TemplateSettings     bool                  `json:"template_settings"`
 	SupportsInlineMarkup []string              `json:"supports_inline_markup"`
 	SupportsSpeakerNotes bool                  `json:"supports_speaker_notes"`
+	OutputValidation     []string              `json:"output_validation"`
 	FeatureVersions      map[string]string     `json:"feature_versions"`
 }
 
@@ -113,6 +114,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "recommend_visual", AddedIn: "3.1.0"},
 		// Tools from 4.2.0
 		{Name: "get_input_schema", AddedIn: "4.2.0"},
+		// Tools from 4.6.0
+		{Name: "validate_presentation_output", AddedIn: "4.6.0"},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries
@@ -189,6 +192,7 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 			TemplateSettings:     true,
 			SupportsInlineMarkup: []string{"b", "i", "u"},
 			SupportsSpeakerNotes: true,
+			OutputValidation:     []string{"off", "warn", "strict"},
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -198,6 +202,7 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 				"template_settings":      "2.0.0",
 				"supports_inline_markup": "2.5.0",
 				"supports_speaker_notes": "2.5.0",
+				"output_validation":      "4.6.0",
 			},
 		},
 		Vocabularies: buildVocabularies(),

@@ -40,7 +40,8 @@ var mcpToCLI = map[string]string{
 	"analyze_deck_rhythm":        "analyze-rhythm",
 	"plan_deck":                  "plan-deck",
 	"recommend_visual":           "recommend-visual",
-	"get_input_schema":           "input-schema",
+	"get_input_schema":               "input-schema",
+	"validate_presentation_output":   "validate-output",
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server

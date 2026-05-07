@@ -25,6 +25,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -143,6 +144,7 @@ func runMCP() error {
 	s.AddTool(mcpGetCapabilitiesTool(), handleGetCapabilities)
 	s.AddTool(mcpGetInputSchemaTool(), handleGetInputSchema)
 	s.AddTool(mcpReadPresentationTool(), handleReadPresentation)
+	s.AddTool(mcpValidateOutputTool(), handleValidateOutput)
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
@@ -212,6 +214,11 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 		),
 		mcp.WithBoolean("strict_unknown_keys",
 			mcp.Description("When true, unknown JSON keys are errors that block generation. When false (default), unknown keys are reported as warnings and generation proceeds."),
+		),
+		mcp.WithString("output_validation",
+			mcp.Description("Post-generation PPTX validation policy: off (skip, default), warn (run validation, include findings in response), or strict (fail generation with diagnostics if blocking findings exist)."),
+			mcp.Enum("off", "warn", "strict"),
+			mcp.DefaultString("off"),
 		),
 	)
 }
@@ -462,6 +469,25 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	duration := time.Since(startTime)
 
+	// Post-generation output validation via output_validation parameter (default: off).
+	outputValidation := "off"
+	if ov, ovErr := request.RequireString("output_validation"); ovErr == nil && ov != "" {
+		outputValidation = ov
+	}
+	var outputValidationFindings []pptx.Finding
+	if outputValidation != "off" {
+		report, valErr := pptx.ValidateOutputFile(outputPath)
+		if valErr != nil {
+			return api.MCPSimpleError("OUTPUT_VALIDATION_ERROR", fmt.Sprintf("output validation failed: %v", valErr)), nil
+		}
+		outputValidationFindings = report.Findings
+
+		// In strict mode, fail if any blocking findings exist.
+		if outputValidation == "strict" && !report.IsValid() {
+			return mcpOutputValidationError(report), nil
+		}
+	}
+
 	// Merge input-layer warnings with generation warnings.
 	allWarnings := append(inputWarnings, result.Warnings...)
 	// Surface deprecation warnings for legacy field usage.
@@ -501,16 +527,17 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Build response
 	output := JSONOutput{
-		Success:          true,
-		OutputPath:       outputPath,
-		SlideCount:       result.SlideCount,
-		ContentHash:      result.ContentHash,
-		DurationMs:       duration.Milliseconds(),
-		Warnings:         allWarnings,
-		Quality:          computeQualityScore(input.Slides, allWarnings),
-		ValidationErrors: result.ValidationErrors,
-		FitFindings:      fitFindings,
-		Slides:           slideResolutions,
+		Success:                  true,
+		OutputPath:               outputPath,
+		SlideCount:               result.SlideCount,
+		ContentHash:              result.ContentHash,
+		DurationMs:               duration.Milliseconds(),
+		Warnings:                 allWarnings,
+		Quality:                  computeQualityScore(input.Slides, allWarnings),
+		ValidationErrors:         result.ValidationErrors,
+		FitFindings:              fitFindings,
+		Slides:                   slideResolutions,
+		OutputValidationFindings: outputValidationFindings,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
