@@ -702,6 +702,42 @@ func TestValidateTemplateName(t *testing.T) {
 	}
 }
 
+// TestValidatePptxPath tests PPTX path validation.
+func TestValidatePptxPath(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantError bool
+		errMsg    string
+	}{
+		{name: "valid absolute path", input: "/tmp/output/deck.pptx", wantError: false},
+		{name: "valid relative path", input: "output/deck.pptx", wantError: false},
+		{name: "empty path", input: "", wantError: true, errMsg: "required"},
+		{name: "path traversal", input: "../../etc/passwd.pptx", wantError: true, errMsg: "traversal"},
+		{name: "path traversal absolute", input: "/tmp/../../../etc/passwd.pptx", wantError: true, errMsg: "traversal"},
+		{name: "path traversal mid-path", input: "/tmp/output/../../../secret.pptx", wantError: true, errMsg: "traversal"},
+		{name: "wrong extension", input: "/tmp/output/file.txt", wantError: true, errMsg: "extension"},
+		{name: "no extension", input: "/tmp/output/file", wantError: true, errMsg: "extension"},
+		{name: "uppercase PPTX extension", input: "/tmp/output/deck.PPTX", wantError: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidatePptxPath(tt.input)
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("expected error for input %q, got nil", tt.input)
+				} else if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("error %q should contain %q", err.Error(), tt.errMsg)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error for input %q: %v", tt.input, err)
+				}
+			}
+		})
+	}
+}
+
 // TestGetTemplateDetailsHandler_PathTraversal tests that path traversal is blocked in API.
 func TestGetTemplateDetailsHandler_PathTraversal(t *testing.T) {
 	tests := []struct {

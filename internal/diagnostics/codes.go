@@ -18,6 +18,7 @@ const (
 	CodeInvalidGrid       Code = "INVALID_GRID"
 	CodeInvalidSlide      Code = "INVALID_SLIDE"
 	CodeInvalidSlideIndex Code = "INVALID_SLIDE_INDEX"
+	CodeInvalidPath      Code = "INVALID_PATH"
 	CodeAmbiguousInput    Code = "AMBIGUOUS_INPUT"
 	CodeUnsupported      Code = "UNSUPPORTED"
 )
@@ -77,6 +78,7 @@ func AllCodes() []Code {
 		CodeInvalidKey,
 		CodeInvalidSlide,
 		CodeInvalidSlideIndex,
+		CodeInvalidPath,
 		CodeAmbiguousInput,
 		CodeUnsupported,
 		// Template

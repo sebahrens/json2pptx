@@ -35,6 +35,10 @@ func handleReadPresentation(_ context.Context, request mcp.CallToolRequest) (*mc
 		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
 	}
 
+	if err := api.ValidatePptxPath(pptxPath); err != nil {
+		return api.MCPSimpleError("INVALID_PATH", err.Error()), nil
+	}
+
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {
 		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
 	}

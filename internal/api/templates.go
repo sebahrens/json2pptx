@@ -43,6 +43,28 @@ func ValidateTemplateName(name string) error {
 	return nil
 }
 
+// ValidatePptxPath validates that a PPTX file path is safe.
+// It rejects path traversal attempts (.. components) and requires
+// a .pptx extension. The raw path is checked for ".." before cleaning
+// so that "/tmp/../../../etc/passwd.pptx" is caught even though
+// filepath.Clean resolves it away.
+func ValidatePptxPath(path string) error {
+	if path == "" {
+		return fmt.Errorf("pptx_path is required")
+	}
+	// Check the raw path for any ".." component to catch traversal
+	// before filepath.Clean can resolve it away.
+	for _, part := range strings.FieldsFunc(path, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if part == ".." {
+			return fmt.Errorf("pptx_path contains path traversal")
+		}
+	}
+	if !strings.HasSuffix(strings.ToLower(filepath.Clean(path)), ".pptx") {
+		return fmt.Errorf("pptx_path must have a .pptx extension")
+	}
+	return nil
+}
+
 // TemplateService handles template analysis and caching.
 type TemplateService struct {
 	templatesDir   string

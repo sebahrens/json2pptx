@@ -1892,6 +1892,10 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
 	}
 
+	if err := api.ValidatePptxPath(pptxPath); err != nil {
+		return api.MCPSimpleError("INVALID_PATH", err.Error()), nil
+	}
+
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {
 		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
 	}
@@ -1941,6 +1945,10 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
 		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
+	}
+
+	if err := api.ValidatePptxPath(pptxPath); err != nil {
+		return api.MCPSimpleError("INVALID_PATH", err.Error()), nil
 	}
 
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {

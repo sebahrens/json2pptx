@@ -523,6 +523,56 @@ func TestHandleRenderDeckThumbnails_OptionParsing(t *testing.T) {
 	}
 }
 
+func TestHandleRenderSlideImage_PathTraversal(t *testing.T) {
+	mc := cliMCPConfig("./templates", "./out")
+	res, err := mc.handleRenderSlideImage(context.Background(), makeRequest(map[string]any{
+		"pptx_path": "../../etc/passwd.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatal("expected IsError for path traversal")
+	}
+}
+
+func TestHandleRenderDeckThumbnails_PathTraversal(t *testing.T) {
+	mc := cliMCPConfig("./templates", "./out")
+	res, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
+		"pptx_path": "/tmp/../../../etc/secret.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatal("expected IsError for path traversal")
+	}
+}
+
+func TestHandleReadPresentation_PathTraversal(t *testing.T) {
+	res, err := handleReadPresentation(context.Background(), makeRequest(map[string]any{
+		"pptx_path": "../../../etc/passwd.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatal("expected IsError for path traversal")
+	}
+}
+
+func TestHandleReadPresentation_WrongExtension(t *testing.T) {
+	res, err := handleReadPresentation(context.Background(), makeRequest(map[string]any{
+		"pptx_path": "/tmp/secrets.txt",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatal("expected IsError for wrong extension")
+	}
+}
+
 func TestHandleAnalyzeDeckRhythm_MissingPresentation(t *testing.T) {
 	res, err := handleAnalyzeDeckRhythm(context.Background(), makeRequest(nil))
 	if err != nil {
