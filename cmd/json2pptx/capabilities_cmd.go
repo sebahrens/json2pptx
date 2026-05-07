@@ -23,7 +23,7 @@ func runCapabilities() error {
 		return err
 	}
 
-	result, err := handleGetCapabilities(context.Background(), mcpNoopRequest())
+	result, err := buildCapabilitiesResult(context.Background(), "", "")
 	if err != nil {
 		return fmt.Errorf("capabilities: %w", err)
 	}

@@ -12,21 +12,28 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+// getCapabilitiesResult is a test helper that calls buildCapabilitiesResult
+// with empty dirs (CLI-like invocation).
+func getCapabilitiesResult(t *testing.T) capabilitiesResponse {
+	t.Helper()
+	result, err := buildCapabilitiesResult(context.Background(), "", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %v", result.Content)
+	}
+	text := result.Content[0].(mcp.TextContent).Text
+	var resp capabilitiesResponse
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	return resp
+}
+
 func TestMCPGetCapabilities(t *testing.T) {
 	t.Run("returns valid capabilities", func(t *testing.T) {
-		result, err := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if result.IsError {
-			t.Fatalf("unexpected tool error: %v", result.Content)
-		}
-
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp capabilitiesResponse
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
+		resp := getCapabilitiesResult(t)
 
 		if resp.SchemaVersion == "" {
 			t.Error("expected non-empty schema_version")
@@ -43,12 +50,7 @@ func TestMCPGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("schema_version matches constant", func(t *testing.T) {
-		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp capabilitiesResponse
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
+		resp := getCapabilitiesResult(t)
 		if resp.SchemaVersion != SchemaVersion {
 			t.Errorf("schema_version mismatch: got %q, want %q", resp.SchemaVersion, SchemaVersion)
 		}
@@ -78,24 +80,14 @@ func TestMCPGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("features has strict_fit ladder", func(t *testing.T) {
-		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp capabilitiesResponse
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
+		resp := getCapabilitiesResult(t)
 		if len(resp.Features.StrictFit) != 3 {
 			t.Errorf("expected 3 strict_fit levels, got %d", len(resp.Features.StrictFit))
 		}
 	})
 
 	t.Run("vocabularies are populated", func(t *testing.T) {
-		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp capabilitiesResponse
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
+		resp := getCapabilitiesResult(t)
 		v := resp.Vocabularies
 		if len(v.RepairFixKinds) == 0 {
 			t.Error("expected non-empty repair_fix_kinds")
@@ -124,12 +116,7 @@ func TestMCPGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("changelog_url is set", func(t *testing.T) {
-		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp capabilitiesResponse
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
+		resp := getCapabilitiesResult(t)
 		if resp.ChangelogURL == "" {
 			t.Error("expected non-empty changelog_url")
 		}
@@ -154,12 +141,7 @@ func TestMCPGetCapabilities(t *testing.T) {
 	})
 
 	t.Run("feature_versions is populated", func(t *testing.T) {
-		result, _ := handleGetCapabilities(context.Background(), makeRequest(map[string]any{}))
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp capabilitiesResponse
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
+		resp := getCapabilitiesResult(t)
 		if len(resp.Features.FeatureVersions) == 0 {
 			t.Error("expected non-empty feature_versions")
 		}
@@ -168,6 +150,43 @@ func TestMCPGetCapabilities(t *testing.T) {
 			if v == "" {
 				t.Errorf("feature_versions[%q] is empty", k)
 			}
+		}
+	})
+
+	t.Run("runtime section is populated", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		rt := resp.Runtime
+
+		// schema_fingerprint must be a non-empty hex digest prefix.
+		if rt.SchemaFingerprint == "" {
+			t.Error("expected non-empty schema_fingerprint")
+		}
+		if len(rt.SchemaFingerprint) != 16 {
+			t.Errorf("expected 16-char schema_fingerprint, got %d chars: %q", len(rt.SchemaFingerprint), rt.SchemaFingerprint)
+		}
+
+		// render_missing_commands should be nil/empty when render_available is true,
+		// or non-empty when render_available is false.
+		if rt.RenderAvailable && len(rt.RenderMissingCmds) > 0 {
+			t.Errorf("render_available=true but render_missing_commands=%v", rt.RenderMissingCmds)
+		}
+		if !rt.RenderAvailable && len(rt.RenderMissingCmds) == 0 {
+			t.Error("render_available=false but render_missing_commands is empty")
+		}
+	})
+
+	t.Run("settings_write_enabled reflects env", func(t *testing.T) {
+		// Without the env var set, should be false.
+		resp := getCapabilitiesResult(t)
+		if resp.Runtime.SettingsWriteEnabled {
+			t.Log("settings_write_enabled=true (env var is set in test environment)")
+		}
+
+		// With the env var set, should be true.
+		t.Setenv("JSON2PPTX_ALLOW_SETTINGS_WRITE", "1")
+		resp = getCapabilitiesResult(t)
+		if !resp.Runtime.SettingsWriteEnabled {
+			t.Error("expected settings_write_enabled=true when JSON2PPTX_ALLOW_SETTINGS_WRITE=1")
 		}
 	})
 

@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -22,8 +23,22 @@ type capabilitiesResponse struct {
 	MCPToolsAvailable  []mcpToolEntry               `json:"mcp_tools_available"`
 	DeprecatedFields   []capabilitiesDeprecatedField `json:"deprecated_fields"`
 	Features           capabilitiesFeatures          `json:"features"`
+	Runtime            capabilitiesRuntime           `json:"runtime"`
 	Vocabularies       capabilitiesVocabularies      `json:"vocabularies"`
 	ErrorCodes         []string                     `json:"error_codes"`
+}
+
+// capabilitiesRuntime exposes environment-dependent state that complements
+// the static feature flags: whether write operations are gated on, whether
+// render dependencies are installed, which directories the server uses, and
+// a schema fingerprint that changes when the contract surface changes.
+type capabilitiesRuntime struct {
+	SettingsWriteEnabled bool     `json:"settings_write_enabled"`
+	RenderAvailable      bool     `json:"render_available"`
+	RenderMissingCmds    []string `json:"render_missing_commands"`
+	TemplatesDir         string   `json:"templates_dir"`
+	OutputDir            string   `json:"output_dir"`
+	SchemaFingerprint    string   `json:"schema_fingerprint"`
 }
 
 // mcpToolEntry describes an MCP tool with its version metadata.
@@ -166,9 +181,28 @@ func mcpGetCapabilitiesTool() mcp.Tool {
 	)
 }
 
-func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (mc *mcpConfig) handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return buildCapabilitiesResult(ctx, mc.templatesDir, mc.outputDir)
+}
+
+// buildCapabilitiesResult constructs the full capabilities response. It is
+// shared by the MCP handler and the CLI subcommand.
+func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string) (*mcp.CallToolResult, error) {
 	codes := diagnostics.AllCodes()
 	sort.Strings(codes)
+
+	renderAvail, renderMissing := render.DependencyStatus()
+
+	// Resolve the actual templates directory path for the runtime section.
+	resolvedTemplatesDir := templatesDir
+	if resolvedTemplatesDir != "" {
+		dir, embedded := resolveTemplatesDir(resolvedTemplatesDir)
+		if embedded {
+			resolvedTemplatesDir = "(embedded)"
+		} else {
+			resolvedTemplatesDir = dir
+		}
+	}
 
 	resp := capabilitiesResponse{
 		SchemaVersion:     SchemaVersion,
@@ -204,6 +238,14 @@ func handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Cal
 				"supports_speaker_notes": "2.5.0",
 				"output_validation":      "4.6.0",
 			},
+		},
+		Runtime: capabilitiesRuntime{
+			SettingsWriteEnabled: settingsWriteAllowed(),
+			RenderAvailable:      renderAvail,
+			RenderMissingCmds:    renderMissing,
+			TemplatesDir:         resolvedTemplatesDir,
+			OutputDir:            outputDir,
+			SchemaFingerprint:    schemaFingerprint(),
 		},
 		Vocabularies: buildVocabularies(),
 		ErrorCodes:   codes,

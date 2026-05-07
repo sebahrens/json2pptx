@@ -102,6 +102,17 @@ func CheckDependencies() error {
 	return checkDep("magick")
 }
 
+// DependencyStatus checks each render dependency and returns whether rendering
+// is available and which commands are missing.
+func DependencyStatus() (available bool, missing []string) {
+	for _, cmd := range []string{"libreoffice", "magick"} {
+		if checkDep(cmd) != nil {
+			missing = append(missing, cmd)
+		}
+	}
+	return len(missing) == 0, missing
+}
+
 // pptxToPDF converts a PPTX to PDF via LibreOffice headless.
 // Returns the path to the generated PDF.
 func pptxToPDF(pptxPath, tmpDir string) (string, error) {
