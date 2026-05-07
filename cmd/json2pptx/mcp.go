@@ -591,6 +591,12 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	for _, path := range templatePaths {
 		info, err := analyzeTemplateForSkillInfo(path, mc.cache, mode)
 		if err != nil {
+			name := strings.TrimSuffix(filepath.Base(path), ".pptx")
+			slog.Error("failed to analyze template", "template", name, "error", err)
+			templates = append(templates, skillTemplateInfo{
+				Name:  name,
+				Error: fmt.Sprintf("failed to analyze template: %v", err),
+			})
 			continue
 		}
 		templates = append(templates, info)

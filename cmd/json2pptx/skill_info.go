@@ -97,8 +97,9 @@ type skillTableStyle struct {
 // skillTemplateInfo describes a single available template.
 type skillTemplateInfo struct {
 	Name         string                   `json:"name"`
-	AspectRatio  string                   `json:"aspect_ratio"`
-	LayoutCount  int                      `json:"layout_count"`
+	AspectRatio  string                   `json:"aspect_ratio,omitempty"`
+	LayoutCount  int                      `json:"layout_count,omitempty"`
+	Error        string                   `json:"error,omitempty"`
 	ThemeColors  map[string]string        `json:"theme_colors,omitempty"`
 	ColorRoles   *skillColorRoles         `json:"color_roles,omitempty"`
 	TitleFont    string                   `json:"title_font,omitempty"`

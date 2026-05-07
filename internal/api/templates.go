@@ -103,6 +103,12 @@ func (ts *TemplateService) ListTemplatesHandler() http.HandlerFunc {
 
 			analysis, err := ts.GetOrAnalyzeTemplate(templatePath)
 			if err != nil {
+				slog.Error("failed to analyze template", "template", name, "error", err)
+				templates = append(templates, TemplateInfo{
+					Name:        name,
+					DisplayName: toDisplayName(name),
+					Error:       fmt.Sprintf("failed to analyze template: %v", err),
+				})
 				continue
 			}
 
@@ -333,8 +339,9 @@ type ListTemplatesResponse struct {
 type TemplateInfo struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"display_name"`
-	AspectRatio string `json:"aspect_ratio"`
-	LayoutCount int    `json:"layout_count"`
+	AspectRatio string `json:"aspect_ratio,omitempty"`
+	LayoutCount int    `json:"layout_count,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // TemplateDetailsResponse is the response for GET /api/v1/templates/{name}.

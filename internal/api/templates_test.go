@@ -131,6 +131,47 @@ func TestListTemplatesHandler(t *testing.T) {
 	}
 }
 
+func TestListTemplatesHandler_BrokenTemplate(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a valid .pptx file that is actually just garbage bytes,
+	// so GetOrAnalyzeTemplate will fail to open it as a ZIP.
+	_ = os.WriteFile(filepath.Join(tempDir, "broken.pptx"), []byte("not a zip"), 0644)
+
+	cache := newMockTemplateCache()
+	service := NewTemplateService(tempDir, cache, false)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/templates", nil)
+	w := httptest.NewRecorder()
+
+	handler := service.ListTemplatesHandler()
+	handler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var response ListTemplatesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if len(response.Templates) != 1 {
+		t.Fatalf("expected 1 template entry, got %d", len(response.Templates))
+	}
+
+	tmpl := response.Templates[0]
+	if tmpl.Name != "broken" {
+		t.Errorf("name = %q, want %q", tmpl.Name, "broken")
+	}
+	if tmpl.Error == "" {
+		t.Error("expected error field to be populated for broken template")
+	}
+	if tmpl.AspectRatio != "" {
+		t.Errorf("aspect_ratio should be empty for broken template, got %q", tmpl.AspectRatio)
+	}
+}
+
 func TestGetTemplateDetailsHandler(t *testing.T) {
 	tests := []struct {
 		name          string
