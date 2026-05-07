@@ -15,17 +15,28 @@ type ChartCapability struct {
 	Status            string  `json:"status"`
 }
 
+// DiagramPlacement describes a supported placement context and its render pipeline.
+type DiagramPlacement struct {
+	// Context is "placeholder" (standard content placeholder) or "shape_grid" (grid cell).
+	Context  string `json:"context"`
+	// Pipeline is the render strategy: "native_ooxml" (grouped shapes) or "svg" (SVG/PNG raster).
+	Pipeline string `json:"pipeline"`
+}
+
 // DiagramCapability describes the rendering limits and behavior for a diagram type.
 // Values are derived from the actual pattern validators, shape generators,
 // and SVG renderers across internal/patterns/, internal/generator/, and svggen/.
 type DiagramCapability struct {
-	Type             string   `json:"type"`
-	MaxNodes         *int     `json:"max_nodes"`
-	MaxDepth         *int     `json:"max_depth"`
-	OverflowBehavior *string  `json:"overflow_behavior"`
-	RequiredFields   []string `json:"required_fields"`
-	OptionalFields   []string `json:"optional_fields"`
-	Status           string   `json:"status"`
+	Type             string             `json:"type"`
+	MaxNodes         *int               `json:"max_nodes"`
+	MaxDepth         *int               `json:"max_depth"`
+	OverflowBehavior *string            `json:"overflow_behavior"`
+	RequiredFields   []string           `json:"required_fields"`
+	OptionalFields   []string           `json:"optional_fields"`
+	Status           string             `json:"status"`
+	Placements       []DiagramPlacement `json:"placements,omitempty"`
+	GridCellSupport  *bool              `json:"grid_cell_support,omitempty"`
+	AuthoringSurface *string            `json:"authoring_surface,omitempty"`
 }
 
 // helpers to create pointers for literal values.

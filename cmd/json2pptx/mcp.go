@@ -702,6 +702,8 @@ func handleGetDiagramCapabilities(ctx context.Context, request mcp.CallToolReque
 			caps = svggen.DiagramCapabilities()
 		}
 	}
+	// Merge placement-aware metadata from the canonical registry.
+	caps = generator.ApplyPlacementMetadata(caps)
 	resp := diagramCapabilitiesResponse{
 		DiagramCapabilities: caps,
 	}
