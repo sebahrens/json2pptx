@@ -151,8 +151,12 @@ func (v Comparison2colValues) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rowsOnly{Rows: v.Rows})
 }
 
-// Comparison2colOverrides is the standard text overrides (accent, header_size, body_size).
-type Comparison2colOverrides = TextOverrides
+// Comparison2colOverrides extends TextOverrides with an optional row_fill for
+// body row background color (e.g. "lt2", "#F5F0E8").
+type Comparison2colOverrides struct {
+	TextOverrides
+	RowFill string `json:"row_fill,omitempty"` // scheme color or hex for body row backgrounds (default "lt1")
+}
 
 // Comparison2colCellOverride is an alias for the shared CellOverride struct.
 type Comparison2colCellOverride = CellOverride
@@ -192,10 +196,22 @@ func (c *comparison2col) Schema() *Schema {
 		[]string{"rows"},
 	).WithAdditionalProperties(false)
 
+	overridesSchema := ObjectSchema(
+		map[string]*Schema{
+			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
+			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
+			"row_fill":         StringSchema(0).WithDescription("Background fill color for body rows (scheme name like 'lt2' or hex like '#F5F0E8'; default 'lt1')"),
+		},
+		nil,
+	).WithAdditionalProperties(false)
+
 	return ObjectSchema(
 		map[string]*Schema{
-			"values": valuesSchema,
-			"overrides": textOverridesSchema(),
+			"values":         valuesSchema,
+			"overrides":      overridesSchema,
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -291,6 +307,10 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
 	cellAccentMode := ovr.CellAccentMode
+	rowFill := ovr.RowFill
+	if rowFill == "" {
+		rowFill = "lt1"
+	}
 
 	hasHeaders := vals.HeaderLeft != "" || vals.HeaderRight != ""
 	cellIdx := 0 // running cell index for cell_overrides
@@ -331,6 +351,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	}
 
 	// Body rows — apply inline markdown emphasis (**bold**, *italic*)
+	rowFillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, rowFill))
 	for _, row := range vals.Rows {
 		leftText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, "dk1", "l")
 		rightText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, "dk1", "l")
@@ -338,7 +359,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		leftCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt1"`),
+				Fill:     rowFillJSON,
 				Text:     leftText,
 			},
 		}
@@ -348,7 +369,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		rightCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt1"`),
+				Fill:     rowFillJSON,
 				Text:     rightText,
 			},
 		}

@@ -371,7 +371,7 @@ func TestComparison2col(t *testing.T) {
 					{Left: "A", Right: "B"},
 				},
 			},
-			overrides: &Comparison2colOverrides{Accent: "accent3"},
+			overrides: &Comparison2colOverrides{TextOverrides: TextOverrides{Accent: "accent3"}},
 			wantNoErr: true,
 		},
 	}
@@ -467,7 +467,7 @@ func TestComparison2col(t *testing.T) {
 				{Left: "A", Right: "B"},
 			},
 		}
-		ovr := &Comparison2colOverrides{Accent: "accent5"}
+		ovr := &Comparison2colOverrides{TextOverrides: TextOverrides{Accent: "accent5"}}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -505,6 +505,61 @@ func TestComparison2col(t *testing.T) {
 		// Cell 1 (right) should not
 		if grid.Rows[0].Cells[1].AccentBar != nil {
 			t.Error("cell[1] should not have accent bar")
+		}
+	})
+
+	t.Run("expand_row_fill_override", func(t *testing.T) {
+		vals := Comparison2colValues{
+			HeaderLeft:  "Left",
+			HeaderRight: "Right",
+			Rows: []Comparison2colRow{
+				{Left: "A", Right: "B"},
+				{Left: "C", Right: "D"},
+			},
+		}
+		ovr := &Comparison2colOverrides{RowFill: "lt2"}
+		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		// Header row (index 0) should still use accent fill, not row_fill
+		var headerFill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &headerFill); err != nil {
+			t.Fatalf("header fill unmarshal: %v", err)
+		}
+		if headerFill != "accent1" {
+			t.Errorf("header fill = %q, want %q (row_fill should not affect headers)", headerFill, "accent1")
+		}
+		// Body rows should use lt2
+		for i := 1; i < len(grid.Rows); i++ {
+			for j, cell := range grid.Rows[i].Cells {
+				var fill string
+				if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
+					t.Fatalf("row[%d].cell[%d] fill unmarshal: %v", i, j, err)
+				}
+				if fill != "lt2" {
+					t.Errorf("row[%d].cell[%d] fill = %q, want %q", i, j, fill, "lt2")
+				}
+			}
+		}
+	})
+
+	t.Run("expand_row_fill_default_lt1", func(t *testing.T) {
+		vals := Comparison2colValues{
+			Rows: []Comparison2colRow{
+				{Left: "A", Right: "B"},
+			},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "lt1" {
+			t.Errorf("default body fill = %q, want %q", fill, "lt1")
 		}
 	})
 
