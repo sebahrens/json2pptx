@@ -97,6 +97,29 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			},
 			Details: details,
 		}
+	case "process-flow":
+		// cols = number of steps (3-8), rows is always 1
+		steps := make([]patterns.ProcessFlowStep, cols)
+		for i := range steps {
+			steps[i] = patterns.ProcessFlowStep{
+				Label: "Step",
+				Type:  "step",
+			}
+		}
+		return &patterns.ProcessFlowValues{Steps: steps}
+	case "before-after":
+		// Grid is always 3 columns × 2 rows; items fill the body cells
+		return &patterns.BeforeAfterValues{
+			Before: patterns.BeforeAfterColumn{Header: "Before", Items: []string{"Item one", "Item two", "Item three"}},
+			After:  patterns.BeforeAfterColumn{Header: "After", Items: []string{"Item one", "Item two", "Item three"}},
+		}
+	case "kpi-2up", "kpi-3up", "kpi-4up", "kpi-5up", "kpi-6up":
+		// cols = number of KPI cells, rows is always 1
+		cells := make(patterns.KPINupValues, cols)
+		for i := range cells {
+			cells[i] = patterns.KPICell{Big: "$1.0M", Small: "Metric"}
+		}
+		return &cells
 	default:
 		return nil
 	}

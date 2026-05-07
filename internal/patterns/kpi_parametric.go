@@ -65,6 +65,12 @@ func (k *kpiNup) Taxonomy() PatternTaxonomy {
 	}
 }
 
+func (k *kpiNup) BudgetConfigurations() []BudgetConfig {
+	return []BudgetConfig{
+		{Columns: k.cfg.Count, Rows: 1},
+	}
+}
+
 func (k *kpiNup) ExemplarValues() any {
 	v := make([]KPICell, len(k.cfg.Exemplars))
 	copy(v, k.cfg.Exemplars)

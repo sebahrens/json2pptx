@@ -53,7 +53,7 @@ func TestComputeTextBudgetGuide_CardGrid(t *testing.T) {
 }
 
 func TestComputeTextBudgetGuide_NonGridPatterns(t *testing.T) {
-	nonGrid := []string{"pull-quote", "stat-hero", "kpi-3up", "comparison-2col", "before-after"}
+	nonGrid := []string{"pull-quote", "stat-hero", "comparison-2col"}
 	for _, name := range nonGrid {
 		pat, ok := patterns.Default().Get(name)
 		if !ok {

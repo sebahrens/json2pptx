@@ -41,6 +41,12 @@ func (b *beforeAfter) Taxonomy() PatternTaxonomy {
 func (b *beforeAfter) SupportsCallout() bool        { return true }
 func (b *beforeAfter) SupportsInlineMarkdown() bool { return true }
 
+func (b *beforeAfter) BudgetConfigurations() []BudgetConfig {
+	return []BudgetConfig{
+		{Columns: 3, Rows: 2},
+	}
+}
+
 func (b *beforeAfter) ExemplarValues() any {
 	return &BeforeAfterValues{
 		Before: BeforeAfterColumn{Header: "Current State", Items: []string{"Manual process", "3-day turnaround", "Error-prone"}},

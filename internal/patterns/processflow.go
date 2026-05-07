@@ -42,6 +42,17 @@ func (p *processFlow) Taxonomy() PatternTaxonomy {
 func (p *processFlow) SupportsCallout() bool        { return true }
 func (p *processFlow) SupportsInlineMarkdown() bool { return true }
 
+func (p *processFlow) BudgetConfigurations() []BudgetConfig {
+	return []BudgetConfig{
+		{Columns: 3, Rows: 1},
+		{Columns: 4, Rows: 1},
+		{Columns: 5, Rows: 1},
+		{Columns: 6, Rows: 1},
+		{Columns: 7, Rows: 1},
+		{Columns: 8, Rows: 1},
+	}
+}
+
 func (p *processFlow) ExemplarValues() any {
 	return &ProcessFlowValues{
 		Steps: []ProcessFlowStep{
