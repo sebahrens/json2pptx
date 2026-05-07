@@ -278,6 +278,16 @@ Pass these as parameters to `expand_pattern` (MCP) or in the slide-level `patter
 
 When `capacity_warnings[]` reports underfilled cells without explicit bounds, each warning includes a `next_tool_call` suggesting re-expansion with a recommended `max_height_pct`. Follow the suggestion directly.
 
+#### Density-Class Divergence Warnings
+
+`expand_pattern` checks whether the average cell density matches the pattern's declared `density_class` (from its taxonomy). When a medium-density pattern has <15% avg density, or a high-density pattern has <30% avg density, a `density_class_divergence` capacity warning is emitted. The `next_tool_call` suggests either:
+- A compact variant (e.g., `process-flow-compact`) if one is registered
+- A `max_height_pct` override to reduce the grid area
+
+#### `density_hint` in `recommend_visual` / `recommend_pattern`
+
+Pass `density_hint` ("low", "medium", or "high") in `content_hints` to bias pattern recommendations toward patterns matching the expected content density. Patterns whose `density_class` matches get a scoring boost; distant density classes (e.g., low content on a high-density pattern) receive a penalty. Use this when you already know the content is sparse or dense.
+
 ### The `bounds_assumption` Field
 
 `expand_pattern` returns `bounds_assumption` indicating what area the budgets were computed against:

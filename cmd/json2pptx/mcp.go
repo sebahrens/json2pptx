@@ -1607,6 +1607,11 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 		capacityWarnings = append(capacityWarnings, *sparseWarn)
 	}
 
+	// Check for density-class divergence (content density vs pattern's DensityClass)
+	if dcWarn := densityClassWarning(cellBudgets, pat, name, pi, reg); dcWarn != nil {
+		capacityWarnings = append(capacityWarnings, *dcWarn)
+	}
+
 	// Suggest alternative layouts when density is consistently suboptimal
 	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)
 

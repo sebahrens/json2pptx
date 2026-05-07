@@ -204,6 +204,93 @@ func sparseLayoutWarning(budgets []cellBudgetEntry, pat patterns.Pattern, patter
 	}
 }
 
+// densityClassWarning checks whether the average cell density diverges from
+// the pattern's declared DensityClass. When a medium-density pattern has very
+// sparse content (<15% avg density) or a high-density pattern is underfilled
+// (<30% avg density), it emits a capacity warning with actionable suggestions:
+// compact variant, max_height_pct override, or pattern swap.
+func densityClassWarning(budgets []cellBudgetEntry, pat patterns.Pattern, patternName string, pi *PatternInput, reg *patterns.Registry) *cellDensityWarning {
+	if len(budgets) == 0 {
+		return nil
+	}
+	// Skip if the caller already constrained bounds
+	if pi.Bounds != nil || pi.MaxHeightPct > 0 {
+		return nil
+	}
+
+	tax := pat.Taxonomy()
+	densityClass := tax.DensityClass
+
+	// Only medium and high density patterns have divergence thresholds
+	var threshold int
+	switch densityClass {
+	case "medium":
+		threshold = 15
+	case "high":
+		threshold = 30
+	default:
+		return nil // low-density patterns are expected to be sparse
+	}
+
+	// Compute average density across cells that have content
+	var totalDensity, contentCells int
+	for _, b := range budgets {
+		if b.ActualChars > 0 {
+			totalDensity += b.DensityPct
+			contentCells++
+		}
+	}
+	if contentCells == 0 {
+		return nil
+	}
+	avgDensity := totalDensity / contentCells
+
+	if avgDensity >= threshold {
+		return nil
+	}
+
+	// Build actionable suggestion
+	suggestion := &patterns.ToolCallSuggestion{
+		Tool:         "expand_pattern",
+		ArgsTemplate: map[string]any{"name": patternName},
+	}
+
+	// Check for a compact variant in the registry
+	compactName := patternName + "-compact"
+	if reg != nil {
+		if _, ok := reg.Get(compactName); ok {
+			suggestion.ArgsTemplate["name"] = compactName
+			return &cellDensityWarning{
+				CellIndex: -1,
+				Field:     "density_class",
+				Actual:    avgDensity,
+				Budget:    threshold,
+				Status:    "density_class_divergence",
+				NextToolCall: suggestion,
+			}
+		}
+	}
+
+	// Suggest a max_height_pct that would bring content to ~70% fill
+	suggestedPct := int(float64(avgDensity) / 0.7)
+	if suggestedPct < 20 {
+		suggestedPct = 20
+	}
+	if suggestedPct > 90 {
+		suggestedPct = 90
+	}
+	suggestion.ArgsTemplate["max_height_pct"] = suggestedPct
+
+	return &cellDensityWarning{
+		CellIndex: -1,
+		Field:     "density_class",
+		Actual:    avgDensity,
+		Budget:    threshold,
+		Status:    "density_class_divergence",
+		NextToolCall: suggestion,
+	}
+}
+
 // inferCellField examines shape text JSON to determine whether the cell
 // contains a "title", "header", or generic "body" text.
 func inferCellField(text json.RawMessage) string {

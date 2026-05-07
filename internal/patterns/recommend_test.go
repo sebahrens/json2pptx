@@ -428,3 +428,31 @@ func TestKPI3up_WrongPattern_4Cells(t *testing.T) {
 	t.Error("did not find wrong_pattern ValidationError")
 }
 
+func TestRecommend_DensityHintPreference(t *testing.T) {
+	reg := NewRegistry()
+	reg.Register(&densityStubPattern{name: "kpi-3up", density: "low"})
+	reg.Register(&densityStubPattern{name: "kpi-4up", density: "medium"})
+
+	// With density_hint="low" — kpi-3up (low) should outscore kpi-4up (medium)
+	result := Recommend(reg, "show kpi metrics", &ContentHints{HasMetrics: true, DensityHint: "low"}, 5)
+
+	var kpi3Score, kpi4Score float64
+	for _, c := range result.Candidates {
+		switch c.PatternName {
+		case "kpi-3up":
+			kpi3Score = c.Score
+		case "kpi-4up":
+			kpi4Score = c.Score
+		}
+	}
+	if kpi3Score == 0 {
+		t.Fatal("expected kpi-3up in candidates")
+	}
+	if kpi4Score == 0 {
+		t.Fatal("expected kpi-4up in candidates")
+	}
+	if kpi3Score <= kpi4Score {
+		t.Errorf("with density_hint=low, kpi-3up (low, %.2f) should outscore kpi-4up (medium, %.2f)", kpi3Score, kpi4Score)
+	}
+}
+

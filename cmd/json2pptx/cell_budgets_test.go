@@ -230,6 +230,121 @@ func TestSparseLayoutWarning_NormalDensity(t *testing.T) {
 	}
 }
 
+func TestDensityClassWarning_MediumPatternSparseContent(t *testing.T) {
+	// A medium-density pattern with <15% avg density should trigger a warning.
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 10, MaxChars: 500, DensityPct: 2},
+		{CellIndex: 1, ActualChars: 15, MaxChars: 500, DensityPct: 3},
+		{CellIndex: 2, ActualChars: 12, MaxChars: 500, DensityPct: 2},
+	}
+	reg := patterns.Default()
+	pat, ok := reg.Get("process-flow") // medium density
+	if !ok {
+		t.Skip("process-flow pattern not registered")
+	}
+	if pat.Taxonomy().DensityClass != "medium" {
+		t.Fatalf("expected process-flow DensityClass=medium, got %q", pat.Taxonomy().DensityClass)
+	}
+
+	pi := &PatternInput{Name: "process-flow"}
+	warn := densityClassWarning(budgets, pat, "process-flow", pi, reg)
+	if warn == nil {
+		t.Fatal("expected density_class_divergence warning, got nil")
+	}
+	if warn.Status != "density_class_divergence" {
+		t.Errorf("expected status density_class_divergence, got %q", warn.Status)
+	}
+	// Should suggest compact variant since process-flow-compact exists
+	if warn.NextToolCall == nil {
+		t.Fatal("expected NextToolCall, got nil")
+	}
+	if warn.NextToolCall.ArgsTemplate["name"] != "process-flow-compact" {
+		t.Errorf("expected compact variant suggestion, got name=%v", warn.NextToolCall.ArgsTemplate["name"])
+	}
+}
+
+func TestDensityClassWarning_HighPatternSparseContent(t *testing.T) {
+	// A high-density pattern with <30% avg density should trigger a warning.
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 30, MaxChars: 500, DensityPct: 6},
+		{CellIndex: 1, ActualChars: 40, MaxChars: 500, DensityPct: 8},
+	}
+	reg := patterns.Default()
+	pat, ok := reg.Get("bmc-canvas") // high density
+	if !ok {
+		t.Skip("bmc-canvas pattern not registered")
+	}
+	if pat.Taxonomy().DensityClass != "high" {
+		t.Fatalf("expected bmc-canvas DensityClass=high, got %q", pat.Taxonomy().DensityClass)
+	}
+
+	pi := &PatternInput{Name: "bmc-canvas"}
+	warn := densityClassWarning(budgets, pat, "bmc-canvas", pi, reg)
+	if warn == nil {
+		t.Fatal("expected density_class_divergence warning, got nil")
+	}
+	if warn.Status != "density_class_divergence" {
+		t.Errorf("expected status density_class_divergence, got %q", warn.Status)
+	}
+	// bmc-canvas has no compact variant, so should suggest max_height_pct
+	if warn.NextToolCall == nil {
+		t.Fatal("expected NextToolCall, got nil")
+	}
+	if _, ok := warn.NextToolCall.ArgsTemplate["max_height_pct"]; !ok {
+		t.Error("expected max_height_pct suggestion when no compact variant exists")
+	}
+}
+
+func TestDensityClassWarning_LowPatternNoWarning(t *testing.T) {
+	// Low-density patterns should never trigger a density-class warning.
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 5, MaxChars: 500, DensityPct: 1},
+	}
+	reg := patterns.Default()
+	pat, ok := reg.Get("stat-hero") // low density
+	if !ok {
+		t.Skip("stat-hero pattern not registered")
+	}
+	if pat.Taxonomy().DensityClass != "low" {
+		t.Fatalf("expected stat-hero DensityClass=low, got %q", pat.Taxonomy().DensityClass)
+	}
+
+	pi := &PatternInput{Name: "stat-hero"}
+	warn := densityClassWarning(budgets, pat, "stat-hero", pi, reg)
+	if warn != nil {
+		t.Errorf("expected no warning for low-density pattern, got %+v", warn)
+	}
+}
+
+func TestDensityClassWarning_SkippedWhenBoundsProvided(t *testing.T) {
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 5, MaxChars: 500, DensityPct: 1},
+	}
+	reg := patterns.Default()
+	pat, _ := reg.Get("process-flow")
+
+	pi := &PatternInput{Name: "process-flow", MaxHeightPct: 35}
+	warn := densityClassWarning(budgets, pat, "process-flow", pi, reg)
+	if warn != nil {
+		t.Error("expected no warning when MaxHeightPct is set, got one")
+	}
+}
+
+func TestDensityClassWarning_AdequateDensity(t *testing.T) {
+	// Medium-density pattern with adequate density — no warning.
+	budgets := []cellBudgetEntry{
+		{CellIndex: 0, ActualChars: 200, MaxChars: 500, DensityPct: 40},
+		{CellIndex: 1, ActualChars: 250, MaxChars: 500, DensityPct: 50},
+	}
+	reg := patterns.Default()
+	pat, _ := reg.Get("card-grid") // medium density
+	pi := &PatternInput{Name: "card-grid"}
+	warn := densityClassWarning(budgets, pat, "card-grid", pi, reg)
+	if warn != nil {
+		t.Errorf("expected no warning for adequate density, got %+v", warn)
+	}
+}
+
 func TestComputeCellBudgets_DeterministicAcrossRuns(t *testing.T) {
 	// Verify that budgets are deterministic (same input → same output).
 	reg := patterns.Default()

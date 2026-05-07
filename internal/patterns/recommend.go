@@ -16,10 +16,11 @@ var isKPIPattern = map[string]bool{
 // ContentHints carries optional structured hints about the content the agent
 // wants to place on a slide. These refine keyword-based scoring.
 type ContentHints struct {
-	ItemCount  int  `json:"item_count,omitempty"`
-	HasChart   bool `json:"has_chart,omitempty"`
-	HasMetrics bool `json:"has_metrics,omitempty"`
-	Columns    int  `json:"columns,omitempty"`
+	ItemCount   int    `json:"item_count,omitempty"`
+	HasChart    bool   `json:"has_chart,omitempty"`
+	HasMetrics  bool   `json:"has_metrics,omitempty"`
+	Columns     int    `json:"columns,omitempty"`
+	DensityHint string `json:"density_hint,omitempty"` // "low", "medium", "high" — prefer patterns matching this density class
 }
 
 // RecommendOptions carries diversity and context parameters for Recommend.
@@ -446,6 +447,11 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 	// Apply recency decay penalty when variety is requested.
 	if applyVariety {
 		applyRecencyDecay(flat, recencyCount)
+	}
+
+	// Apply density-class preference when the caller provides a density hint.
+	if hints.DensityHint != "" && reg != nil {
+		applyDensityPreference(flat, reg, hints.DensityHint)
 	}
 
 	// Sort by score descending.

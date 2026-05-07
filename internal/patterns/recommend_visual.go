@@ -241,6 +241,11 @@ func scorePatterns(reg *Registry, intentLower string, hints *ContentHints, recen
 		applyRecencyDecay(flat, recencyCount)
 	}
 
+	// Apply density-class preference when the caller provides a density hint.
+	if hints != nil && hints.DensityHint != "" && reg != nil {
+		applyDensityPreference(flat, reg, hints.DensityHint)
+	}
+
 	var candidates []VisualCandidate
 	for _, c := range flat {
 		if c.score < 0.3 {
@@ -262,6 +267,48 @@ func scorePatterns(reg *Registry, intentLower string, hints *ContentHints, recen
 		})
 	}
 	return candidates
+}
+
+// applyDensityPreference boosts patterns whose DensityClass matches the hint
+// and penalizes those that diverge.
+func applyDensityPreference(flat []scored, reg *Registry, densityHint string) {
+	for i := range flat {
+		pat, ok := reg.Get(flat[i].rule.pattern)
+		if !ok {
+			continue
+		}
+		patDensity := pat.Taxonomy().DensityClass
+		if patDensity == densityHint {
+			flat[i].score += 0.10
+		} else if densityDistance(patDensity, densityHint) > 1 {
+			// Two steps away (low vs high): larger penalty
+			flat[i].score -= 0.15
+		} else {
+			// One step away: small penalty
+			flat[i].score -= 0.05
+		}
+		if flat[i].score > 1.0 {
+			flat[i].score = 1.0
+		}
+		if flat[i].score < 0.0 {
+			flat[i].score = 0.0
+		}
+	}
+}
+
+// densityDistance returns the ordinal distance between two density classes.
+func densityDistance(a, b string) int {
+	ord := map[string]int{"low": 0, "medium": 1, "high": 2}
+	va, oka := ord[a]
+	vb, okb := ord[b]
+	if !oka || !okb {
+		return 0
+	}
+	d := va - vb
+	if d < 0 {
+		return -d
+	}
+	return d
 }
 
 // scoreCharts evaluates chart type rules.
