@@ -1,6 +1,7 @@
 // Command validatepptx validates PPTX structure and embedded media.
 //
-// It performs structural validation and reports statistics about slides,
+// It performs structural and OOXML content validation using the unified
+// output-validation suite and reports statistics about slides,
 // SVG files, PNG files, and chart embedding.
 //
 // Usage:
@@ -31,13 +32,14 @@ import (
 
 // ValidationResult holds the validation outcome.
 type ValidationResult struct {
-	FilePath    string            `json:"file_path"`
-	IsValid     bool              `json:"is_valid"`
-	SlideCount  int               `json:"slide_count"`
-	MediaStats  pptx.MediaStats   `json:"media_stats"`
-	Errors      []string          `json:"errors,omitempty"`
-	Warnings    []string          `json:"warnings,omitempty"`
-	PassMessage string            `json:"pass_message,omitempty"`
+	FilePath    string           `json:"file_path"`
+	IsValid     bool             `json:"is_valid"`
+	SlideCount  int              `json:"slide_count"`
+	MediaStats  pptx.MediaStats  `json:"media_stats"`
+	Findings    []pptx.Finding   `json:"findings,omitempty"`
+	Errors      []string         `json:"errors,omitempty"`
+	Warnings    []string         `json:"warnings,omitempty"`
+	PassMessage string           `json:"pass_message,omitempty"`
 }
 
 func main() {
@@ -86,29 +88,32 @@ func validate(filePath string, requireSVG bool, minSlides int) ValidationResult 
 		return result
 	}
 
-	// Create validator
-	v, err := pptx.NewValidator(data)
+	// Run unified output validation
+	report, err := pptx.ValidateOutputBytes(data)
 	if err != nil {
 		result.IsValid = false
 		result.Errors = append(result.Errors, fmt.Sprintf("Invalid PPTX: %v", err))
 		return result
 	}
 
-	// Run structural validation
-	if err := v.Validate(); err != nil {
-		result.IsValid = false
-		if verrs, ok := err.(pptx.ValidationErrors); ok {
-			for _, verr := range verrs {
-				result.Errors = append(result.Errors, verr.Error())
-			}
+	result.Findings = report.Findings
+
+	// Classify findings into errors/warnings for backwards-compatible output
+	for _, f := range report.Findings {
+		if f.Severity == pptx.SeverityBlocking {
+			result.Errors = append(result.Errors, f.Error())
+			result.IsValid = false
 		} else {
-			result.Errors = append(result.Errors, err.Error())
+			result.Warnings = append(result.Warnings, f.Error())
 		}
 	}
 
-	// Get counts
-	result.SlideCount = v.CountSlides()
-	result.MediaStats = v.MediaStats()
+	// Get media stats via the structural validator for counts
+	sv, err := pptx.NewValidator(data)
+	if err == nil {
+		result.SlideCount = sv.CountSlides()
+		result.MediaStats = sv.MediaStats()
+	}
 
 	// Check requirements
 	if requireSVG && result.MediaStats.SVG == 0 {
@@ -120,12 +125,6 @@ func validate(filePath string, requireSVG bool, minSlides int) ValidationResult 
 		result.IsValid = false
 		result.Errors = append(result.Errors,
 			fmt.Sprintf("Slide count %d is less than minimum %d", result.SlideCount, minSlides))
-	}
-
-	// Add warnings
-	if result.MediaStats.SVG == 0 && result.MediaStats.PNG > 0 {
-		result.Warnings = append(result.Warnings,
-			"PPTX contains PNG files but no SVG files - charts may be rasterized only")
 	}
 
 	if result.IsValid {
