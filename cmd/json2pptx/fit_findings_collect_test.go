@@ -640,3 +640,117 @@ func TestGenerateGridOutput_DiagramNarrowFinding(t *testing.T) {
 		t.Errorf("expected grid_diagram_narrow finding, got: %v", result.FitFindings)
 	}
 }
+
+// TestCheckShapeGridStructural_PreflightDiagramNarrow verifies that the
+// preflight structural check approximates grid_diagram_narrow for a complex
+// diagram in a narrow cell, matching the render-time finding.
+func TestCheckShapeGridStructural_PreflightDiagramNarrow(t *testing.T) {
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`3`),
+		Rows: []GridRowInput{
+			{
+				Cells: []*GridCellInput{
+					{Diagram: &types.DiagramSpec{
+						Type: "org_chart",
+						Data: map[string]any{
+							"root": map[string]any{
+								"name": "CEO",
+								"children": []any{
+									map[string]any{"name": "VP1", "children": []any{
+										map[string]any{"name": "M1"},
+										map[string]any{"name": "M2"},
+										map[string]any{"name": "M3"},
+									}},
+									map[string]any{"name": "VP2", "children": []any{
+										map[string]any{"name": "M4"},
+										map[string]any{"name": "M5"},
+									}},
+								},
+							},
+						},
+					}},
+					nil,
+					nil,
+				},
+			},
+		},
+	}
+
+	slideWidth := int64(12192000)
+	slideHeight := int64(6858000)
+	layout := &types.LayoutMetadata{
+		ID: "blank",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 11277600, Height: 4800600}},
+		},
+	}
+
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+
+	found := false
+	for _, f := range findings {
+		if f.Code == "grid_diagram_narrow" {
+			found = true
+			if !strings.Contains(f.Path, "/diagram") {
+				t.Errorf("finding path should target diagram field, got: %s", f.Path)
+			}
+			if f.Action != "review" {
+				t.Errorf("expected action 'review', got %q", f.Action)
+			}
+			if f.Fix == nil || f.Fix.Kind != "reshape_grid" {
+				t.Error("expected Fix with kind reshape_grid")
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected preflight grid_diagram_narrow finding; got findings: %v", findings)
+	}
+}
+
+// TestCheckShapeGridStructural_NoDiagramNarrowForWideCell verifies that the
+// preflight check does NOT emit grid_diagram_narrow when the diagram cell
+// is wide enough (render-time-only findings are not false-positived).
+func TestCheckShapeGridStructural_NoDiagramNarrowForWideCell(t *testing.T) {
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`1`), // single column = full width
+		Rows: []GridRowInput{
+			{
+				Cells: []*GridCellInput{
+					{Diagram: &types.DiagramSpec{
+						Type: "org_chart",
+						Data: map[string]any{
+							"root": map[string]any{
+								"name": "CEO",
+								"children": []any{
+									map[string]any{"name": "VP1"},
+									map[string]any{"name": "VP2"},
+									map[string]any{"name": "VP3"},
+									map[string]any{"name": "VP4"},
+									map[string]any{"name": "VP5"},
+								},
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	slideWidth := int64(12192000)
+	slideHeight := int64(6858000)
+	layout := &types.LayoutMetadata{
+		ID: "blank",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 11277600, Height: 4800600}},
+		},
+	}
+
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+
+	for _, f := range findings {
+		if f.Code == "grid_diagram_narrow" {
+			t.Errorf("should not emit grid_diagram_narrow for wide cell; got finding at path %s", f.Path)
+		}
+	}
+}

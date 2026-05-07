@@ -375,8 +375,17 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 }
 
 // checkShapeGridStructural checks shape_grid cells for footer collision,
-// bounds overflow, and sparse layout using resolved cell positions from
-// shapegrid.Resolve.
+// bounds overflow, sparse layout, and approximable non-text visual issues
+// using resolved cell positions from shapegrid.Resolve.
+//
+// Non-text grid findings approximable at preflight:
+//   - grid_diagram_narrow: complex diagram in a narrow cell (same logic as render-time)
+//
+// Non-text grid findings that remain render-time-only:
+//   - diagram_clamped: requires actual SVG render to know output dimensions
+//   - diagram_render_failed: only knowable when rendering is attempted
+//   - image file/dimension issues: require filesystem access and image decoding
+//   - icon resolution failures: require loading SVG icons from the registry
 func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, footerEnabled bool, patternName string) []patterns.FitFinding {
 	if len(grid.Rows) == 0 {
 		return nil
@@ -404,6 +413,15 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 				rc := result.Cells[cellIdx]
 				path := slidepath.GridCell(slideIdx, ri, ci)
 				findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
+
+				// Preflight: approximate diagram narrow-cell legibility.
+				if cell.Diagram != nil {
+					diagPath := slidepath.GridCellField(slideIdx, ri, ci, "diagram")
+					if f := generator.CheckDiagramInNarrowBoundsFinding(cell.Diagram, rc.CellBounds.CX, diagPath); f != nil {
+						findings = append(findings, *f)
+					}
+				}
+
 				cellIdx++
 			}
 		}
