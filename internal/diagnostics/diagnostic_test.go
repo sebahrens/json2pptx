@@ -240,6 +240,81 @@ func TestJSONSerialization(t *testing.T) {
 	}
 }
 
+// TestDiagnosticContractShape verifies that json2pptx Diagnostics produce the
+// same JSON field set as the unified contract shared with svggen. This is the
+// json2pptx side of the contract lock; svggen has a matching test in
+// svggen/cmd/svggen-mcp/main_test.go.
+func TestDiagnosticContractShape(t *testing.T) {
+	d := Diagnostic{
+		Code:     "fit_overflow",
+		Message:  "text overflows placeholder",
+		Path:     "slides[0].content.body",
+		Severity: SeverityError,
+		Fix: &Fix{
+			Kind:   "reduce_text",
+			Params: map[string]any{"max_length": 200},
+		},
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool:         "repair_slide",
+			ArgsTemplate: map[string]any{"slide_index": 0},
+		},
+		Details: map[string]any{"pattern": "card-grid", "overflow_ratio": 1.25},
+	}
+
+	data, err := json.Marshal(d)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+
+	// Parse as raw JSON to inspect field names.
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	// Required fields per unified contract.
+	for _, field := range []string{"code", "message", "path", "severity"} {
+		if _, ok := raw[field]; !ok {
+			t.Errorf("diagnostic missing required field %q", field)
+		}
+	}
+
+	// Fix must have "kind".
+	fixMap, ok := raw["fix"].(map[string]any)
+	if !ok {
+		t.Fatal("fix is not an object")
+	}
+	if _, ok := fixMap["kind"]; !ok {
+		t.Error("fix missing required field 'kind'")
+	}
+
+	// next_tool_call must have "tool" and "args_template".
+	ntcMap, ok := raw["next_tool_call"].(map[string]any)
+	if !ok {
+		t.Fatal("next_tool_call is not an object")
+	}
+	if _, ok := ntcMap["tool"]; !ok {
+		t.Error("next_tool_call missing 'tool'")
+	}
+	if _, ok := ntcMap["args_template"]; !ok {
+		t.Error("next_tool_call missing 'args_template'")
+	}
+
+	// details must be a map.
+	details, ok := raw["details"].(map[string]any)
+	if !ok {
+		t.Fatal("details is not an object")
+	}
+	if details["pattern"] != "card-grid" {
+		t.Errorf("details.pattern = %v, want card-grid", details["pattern"])
+	}
+
+	// "pattern" must NOT be a top-level field.
+	if _, ok := raw["pattern"]; ok {
+		t.Error("'pattern' should not be a top-level field; it belongs in details")
+	}
+}
+
 func TestJSONSerialization_OmitsEmpty(t *testing.T) {
 	d := Diagnostic{
 		Code:     "warn",

@@ -137,14 +137,14 @@ func TestHandleValidateDiagramValid(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid  bool      `json:"valid"`
-		Errors []finding `json:"errors"`
+		Valid       bool         `json:"valid"`
+		Diagnostics []diagnostic `json:"diagnostics"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse validation result: %v", err)
 	}
 	if !vr.Valid {
-		t.Fatalf("expected valid, got errors: %v", vr.Errors)
+		t.Fatalf("expected valid, got diagnostics: %v", vr.Diagnostics)
 	}
 }
 
@@ -162,7 +162,7 @@ func TestHandleValidateDiagramInvalid(t *testing.T) {
 }
 
 func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
-	// bar_chart with missing required data fields should return structured findings
+	// bar_chart with missing required data fields should return structured diagnostics
 	result, err := handleValidateDiagram(context.Background(), makeRequest(map[string]any{
 		"type": "bar_chart",
 		"data": map[string]any{},
@@ -171,13 +171,13 @@ func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.IsError {
-		t.Fatalf("expected non-error result with validation findings, got tool error: %v", result.Content)
+		t.Fatalf("expected non-error result with validation diagnostics, got tool error: %v", result.Content)
 	}
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid  bool      `json:"valid"`
-		Errors []finding `json:"errors"`
+		Valid       bool         `json:"valid"`
+		Diagnostics []diagnostic `json:"diagnostics"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse validation result: %v", err)
@@ -185,23 +185,23 @@ func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
 	if vr.Valid {
 		t.Fatal("expected invalid result for empty data")
 	}
-	if len(vr.Errors) == 0 {
-		t.Fatal("expected at least one structured error")
+	if len(vr.Diagnostics) == 0 {
+		t.Fatal("expected at least one diagnostic")
 	}
 
-	// Verify structured shape of first error
-	first := vr.Errors[0]
-	if first.Pattern != "bar_chart" {
-		t.Errorf("expected pattern 'bar_chart', got %q", first.Pattern)
-	}
-	if first.Path == "" {
-		t.Error("expected non-empty path")
-	}
+	// Verify unified diagnostic shape matches internal/diagnostics.Diagnostic
+	first := vr.Diagnostics[0]
 	if first.Code == "" {
 		t.Error("expected non-empty code")
 	}
 	if first.Message == "" {
 		t.Error("expected non-empty message")
+	}
+	if first.Path == "" {
+		t.Error("expected non-empty path")
+	}
+	if first.Severity != "error" {
+		t.Errorf("expected severity 'error', got %q", first.Severity)
 	}
 	// Code should be lowercase_snake, not UPPER_SNAKE
 	for _, c := range first.Code {
@@ -209,6 +209,12 @@ func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
 			t.Errorf("expected lowercase_snake code, got %q", first.Code)
 			break
 		}
+	}
+	// Pattern should be in details, not a top-level field
+	if first.Details == nil {
+		t.Error("expected non-nil details")
+	} else if first.Details["pattern"] != "bar_chart" {
+		t.Errorf("expected details.pattern = 'bar_chart', got %v", first.Details["pattern"])
 	}
 }
 
@@ -222,13 +228,13 @@ func TestHandleValidateDiagramFixSuggestion(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.IsError {
-		t.Fatalf("expected validation findings, got tool error: %v", result.Content)
+		t.Fatalf("expected validation diagnostics, got tool error: %v", result.Content)
 	}
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid  bool      `json:"valid"`
-		Errors []finding `json:"errors"`
+		Valid       bool         `json:"valid"`
+		Diagnostics []diagnostic `json:"diagnostics"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse: %v", err)
@@ -236,16 +242,16 @@ func TestHandleValidateDiagramFixSuggestion(t *testing.T) {
 	if vr.Valid {
 		t.Fatal("expected invalid result")
 	}
-	if len(vr.Errors) == 0 {
-		t.Fatal("expected at least one error")
+	if len(vr.Diagnostics) == 0 {
+		t.Fatal("expected at least one diagnostic")
 	}
 
-	// At least one error should have a fix
+	// At least one diagnostic should have a fix
 	hasFix := false
-	for _, e := range vr.Errors {
-		if e.Fix != nil {
+	for _, d := range vr.Diagnostics {
+		if d.Fix != nil {
 			hasFix = true
-			if e.Fix.Kind == "" {
+			if d.Fix.Kind == "" {
 				t.Error("fix has empty kind")
 			}
 			break
@@ -253,6 +259,90 @@ func TestHandleValidateDiagramFixSuggestion(t *testing.T) {
 	}
 	if !hasFix {
 		t.Log("no fix suggestions generated (acceptable if validator returns plain errors)")
+	}
+}
+
+// TestDiagnosticContractShape verifies that svggen diagnostics produce the
+// same JSON field set as internal/diagnostics.Diagnostic. This locks the
+// unified contract across the two modules.
+func TestDiagnosticContractShape(t *testing.T) {
+	result, err := handleValidateDiagram(context.Background(), makeRequest(map[string]any{
+		"type": "bar_chart",
+		"data": map[string]any{},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+
+	// Parse as raw JSON to inspect field names without struct bias.
+	var raw struct {
+		Valid       bool             `json:"valid"`
+		Diagnostics []map[string]any `json:"diagnostics"`
+	}
+	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+	if len(raw.Diagnostics) == 0 {
+		t.Fatal("expected at least one diagnostic")
+	}
+
+	first := raw.Diagnostics[0]
+
+	// Required fields per unified contract.
+	for _, field := range []string{"code", "message", "path", "severity"} {
+		if _, ok := first[field]; !ok {
+			t.Errorf("diagnostic missing required field %q", field)
+		}
+	}
+
+	// Severity must be one of the canonical values.
+	sev, _ := first["severity"].(string)
+	switch sev {
+	case "error", "warning", "info":
+		// ok
+	default:
+		t.Errorf("severity %q is not a canonical value (error/warning/info)", sev)
+	}
+
+	// Fix, when present, must have "kind".
+	if fixRaw, ok := first["fix"]; ok && fixRaw != nil {
+		fixMap, ok := fixRaw.(map[string]any)
+		if !ok {
+			t.Errorf("fix is not an object: %T", fixRaw)
+		} else if _, ok := fixMap["kind"]; !ok {
+			t.Error("fix missing required field 'kind'")
+		}
+	}
+
+	// next_tool_call, when present, must have "tool" and "args_template".
+	if ntcRaw, ok := first["next_tool_call"]; ok && ntcRaw != nil {
+		ntcMap, ok := ntcRaw.(map[string]any)
+		if !ok {
+			t.Errorf("next_tool_call is not an object: %T", ntcRaw)
+		} else {
+			if _, ok := ntcMap["tool"]; !ok {
+				t.Error("next_tool_call missing 'tool'")
+			}
+			if _, ok := ntcMap["args_template"]; !ok {
+				t.Error("next_tool_call missing 'args_template'")
+			}
+		}
+	}
+
+	// details.pattern must carry the diagram type.
+	if details, ok := first["details"].(map[string]any); ok {
+		if details["pattern"] != "bar_chart" {
+			t.Errorf("details.pattern = %v, want bar_chart", details["pattern"])
+		}
+	} else {
+		t.Error("expected details map with pattern key")
+	}
+
+	// Verify that "pattern" is NOT a top-level field (it's in details now).
+	if _, ok := first["pattern"]; ok {
+		t.Error("'pattern' should not be a top-level field; it belongs in details")
 	}
 }
 

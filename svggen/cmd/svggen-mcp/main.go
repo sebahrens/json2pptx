@@ -198,12 +198,13 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		}
 		var style svggen.StyleSpec
 		if err := json.Unmarshal(styleJSON, &style); err != nil {
-			errResult := finding{
-				Pattern: diagramType,
-				Path:    "style",
-				Code:    "invalid_value",
-				Message: fmt.Sprintf("invalid style payload: %v", err),
-				Fix:     &fixSuggestion{Kind: "replace_value", Params: map[string]any{"field": "style"}},
+			errResult := diagnostic{
+				Code:     "invalid_value",
+				Message:  fmt.Sprintf("invalid style payload: %v", err),
+				Path:     "style",
+				Severity: "error",
+				Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "style"}},
+				Details:  map[string]any{"pattern": diagramType},
 			}
 			output, _ := json.MarshalIndent(errResult, "", "  ")
 			return mcp.NewToolResultError(string(output)), nil
@@ -290,28 +291,29 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 	}
 
 	type validationResult struct {
-		Valid  bool      `json:"valid"`
-		Errors []finding `json:"errors,omitempty"`
+		Valid       bool         `json:"valid"`
+		Diagnostics []diagnostic `json:"diagnostics,omitempty"`
 	}
 
 	// Validate envelope
 	if err := req.Validate(); err != nil {
 		errs := svggen.GetValidationErrors(err)
-		var findings []finding
+		var diags []diagnostic
 		if len(errs) > 0 {
-			findings = convertValidationErrors(diagramType, errs)
+			diags = convertValidationErrors(diagramType, errs)
 		} else {
 			// Non-structured error from envelope validation — wrap it.
-			findings = []finding{{
-				Pattern: diagramType,
-				Path:    "data",
-				Code:    "parse_failed",
-				Message: err.Error(),
+			diags = []diagnostic{{
+				Code:     "parse_failed",
+				Message:  err.Error(),
+				Path:     "data",
+				Severity: "error",
+				Details:  map[string]any{"pattern": diagramType},
 			}}
 		}
 		output, _ := json.MarshalIndent(validationResult{
-			Valid:  false,
-			Errors: findings,
+			Valid:       false,
+			Diagnostics: diags,
 		}, "", "  ")
 		return mcp.NewToolResultText(string(output)), nil
 	}
@@ -319,21 +321,22 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 	// Validate against diagram-specific rules
 	if err := d.Validate(req); err != nil {
 		errs := svggen.GetValidationErrors(err)
-		var findings []finding
+		var diags []diagnostic
 		if len(errs) > 0 {
-			findings = convertValidationErrors(diagramType, errs)
+			diags = convertValidationErrors(diagramType, errs)
 		} else {
 			// Non-structured error — wrap it.
-			findings = []finding{{
-				Pattern: diagramType,
-				Path:    "data",
-				Code:    "invalid_value",
-				Message: err.Error(),
+			diags = []diagnostic{{
+				Code:     "invalid_value",
+				Message:  err.Error(),
+				Path:     "data",
+				Severity: "error",
+				Details:  map[string]any{"pattern": diagramType},
 			}}
 		}
 		output, _ := json.MarshalIndent(validationResult{
-			Valid:  false,
-			Errors: findings,
+			Valid:       false,
+			Diagnostics: diags,
 		}, "", "  ")
 		return mcp.NewToolResultText(string(output)), nil
 	}
@@ -665,22 +668,38 @@ func getSchemaForType(typ string) diagramSchema {
 	}
 }
 
-// --- Structured validation finding types (matches internal/patterns/errors.go shape) ---
+// --- Structured diagnostic types (unified contract with internal/diagnostics) ---
+//
+// The diagnostic struct mirrors internal/diagnostics.Diagnostic so that agents
+// see an identical JSON envelope from svggen and json2pptx surfaces:
+//
+//   { "code", "message", "path", "severity", "fix", "next_tool_call", "details" }
+//
+// Because svggen is a separate Go module that cannot import internal/, the
+// struct is duplicated here at the MCP boundary.
 
-// finding is a structured validation finding matching the patterns.ValidationError shape.
-// It lives at the MCP boundary only — svggen internals are unchanged.
-type finding struct {
-	Pattern string         `json:"pattern"`           // diagram type, e.g. "bar_chart"
-	Path    string         `json:"path"`              // JSON path, e.g. "data.series[0].values"
-	Code    string         `json:"code"`              // lowercase_snake code, e.g. "required"
-	Message string         `json:"message"`           // human-readable description
-	Fix     *fixSuggestion `json:"fix,omitempty"`     // optional structured fix
+// diagnostic is a single machine-readable issue matching the
+// internal/diagnostics.Diagnostic JSON shape.
+type diagnostic struct {
+	Code         string          `json:"code"`                    // lowercase_snake code, e.g. "required"
+	Message      string          `json:"message"`                 // human-readable description
+	Path         string          `json:"path,omitempty"`          // JSON path, e.g. "data.series[0].values"
+	Severity     string          `json:"severity"`                // "error", "warning", "info"
+	Fix          *fix            `json:"fix,omitempty"`           // optional structured remediation
+	NextToolCall *toolCallSugg   `json:"next_tool_call,omitempty"` // machine-readable next MCP tool call
+	Details      map[string]any  `json:"details,omitempty"`       // additional context (pattern, value, etc.)
 }
 
-// fixSuggestion matches patterns.FixSuggestion shape.
-type fixSuggestion struct {
-	Kind   string         `json:"kind"`            // e.g. "replace_value", "align_series"
+// fix matches internal/diagnostics.Fix / patterns.FixSuggestion JSON shape.
+type fix struct {
+	Kind   string         `json:"kind"`            // e.g. "provide_value", "align_series"
 	Params map[string]any `json:"params,omitempty"`
+}
+
+// toolCallSugg matches patterns.ToolCallSuggestion JSON shape.
+type toolCallSugg struct {
+	Tool         string         `json:"tool"`
+	ArgsTemplate map[string]any `json:"args_template"`
 }
 
 // codeMap converts svggen UPPER_SNAKE codes to lowercase_snake codes
@@ -696,9 +715,10 @@ var codeMap = map[string]string{
 	core.ErrCodeUnknownDiagram: "unknown_diagram",
 }
 
-// convertValidationError maps a svggen core.ValidationError to a structured
-// finding at the MCP boundary. The svggen internal type is unchanged.
-func convertValidationError(diagramType string, ve core.ValidationError) finding {
+// convertValidationError maps a svggen core.ValidationError to a diagnostic
+// at the MCP boundary, producing the same JSON shape as
+// internal/diagnostics.Diagnostic. The svggen internal type is unchanged.
+func convertValidationError(diagramType string, ve core.ValidationError) diagnostic {
 	code := strings.ToLower(ve.Code)
 	if mapped, ok := codeMap[ve.Code]; ok {
 		code = mapped
@@ -709,60 +729,84 @@ func convertValidationError(diagramType string, ve core.ValidationError) finding
 		path = "data"
 	}
 
-	f := finding{
-		Pattern: diagramType,
-		Path:    path,
-		Code:    code,
-		Message: ve.Message,
-		Fix:     inferFix(ve),
+	d := diagnostic{
+		Code:     code,
+		Message:  ve.Message,
+		Path:     path,
+		Severity: "error", // all svggen validation failures are errors
+		Fix:      inferFix(ve),
+		Details:  map[string]any{"pattern": diagramType},
 	}
-	return f
+
+	// Attach next_tool_call for structural errors — point the agent at
+	// get_diagram_schema so it can discover the expected shape.
+	if ve.Code == core.ErrCodeRequired || ve.Code == core.ErrCodeInvalidType ||
+		ve.Code == core.ErrCodeInvalidFormat {
+		d.NextToolCall = &toolCallSugg{
+			Tool: "get_diagram_schema",
+			ArgsTemplate: map[string]any{
+				"type": diagramType,
+			},
+		}
+	}
+
+	// Carry the invalid value in details when available.
+	if ve.Value != nil {
+		d.Details["value"] = ve.Value
+	}
+
+	return d
 }
 
 // inferFix derives a structured fix suggestion from the svggen validation error
 // code and field context. Returns nil when no actionable fix can be inferred.
-func inferFix(ve core.ValidationError) *fixSuggestion {
+// Fix kinds use the same vocabulary as internal/patterns (provide_value,
+// replace_value, reduce_items, remove_key, align_series).
+func inferFix(ve core.ValidationError) *fix {
 	switch ve.Code {
 	case core.ErrCodeRequired:
-		return &fixSuggestion{
-			Kind:   "replace_value",
-			Params: map[string]any{"field": ve.Field, "message": "provide the required field"},
+		return &fix{
+			Kind:   "provide_value",
+			Params: map[string]any{"path": ve.Field},
 		}
 	case core.ErrCodeInvalidType, core.ErrCodeInvalidFormat, core.ErrCodeInvalidValue:
-		params := map[string]any{"field": ve.Field}
+		params := map[string]any{"path": ve.Field}
 		if ve.Value != nil {
 			params["invalid_value"] = ve.Value
 		}
-		return &fixSuggestion{Kind: "replace_value", Params: params}
+		return &fix{Kind: "replace_value", Params: params}
 	case core.ErrCodeConstraint:
 		// Constraint violations on series/values fields suggest alignment.
 		if strings.Contains(ve.Field, "series") || strings.Contains(ve.Field, "values") {
-			return &fixSuggestion{
+			return &fix{
 				Kind:   "align_series",
-				Params: map[string]any{"field": ve.Field},
+				Params: map[string]any{"path": ve.Field},
 			}
 		}
 		// Constraint on item counts suggest reducing.
 		if strings.Contains(ve.Field, "items") || strings.Contains(ve.Field, "stages") ||
 			strings.Contains(ve.Field, "slices") || strings.Contains(ve.Field, "layers") {
-			return &fixSuggestion{
+			return &fix{
 				Kind:   "reduce_items",
-				Params: map[string]any{"field": ve.Field},
+				Params: map[string]any{"path": ve.Field},
 			}
 		}
 		return nil
 	case core.ErrCodeUnknownField:
-		return nil // agent should remove the field
+		return &fix{
+			Kind:   "remove_key",
+			Params: map[string]any{"key": ve.Field},
+		}
 	default:
 		return nil
 	}
 }
 
-// convertValidationErrors converts a slice of core.ValidationError into findings.
-func convertValidationErrors(diagramType string, errs []core.ValidationError) []finding {
-	findings := make([]finding, len(errs))
+// convertValidationErrors converts a slice of core.ValidationError into diagnostics.
+func convertValidationErrors(diagramType string, errs []core.ValidationError) []diagnostic {
+	diagnostics := make([]diagnostic, len(errs))
 	for i, ve := range errs {
-		findings[i] = convertValidationError(diagramType, ve)
+		diagnostics[i] = convertValidationError(diagramType, ve)
 	}
-	return findings
+	return diagnostics
 }
