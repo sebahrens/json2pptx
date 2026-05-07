@@ -94,6 +94,97 @@ func TestOutputValidator_StructuralFailure_IsBlocking(t *testing.T) {
 	}
 }
 
+func TestOutputValidator_Provenance_SourceMappableOOXML(t *testing.T) {
+	t.Parallel()
+
+	// Invalid color on slide1 — should map to source slide index 0.
+	files := validPPTXFiles()
+	files["ppt/slides/slide1.xml"] = `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:spTree>
+    <p:sp><p:nvSpPr><p:cNvPr id="1" name="Title"/></p:nvSpPr>
+      <p:spPr><a:solidFill><a:srgbClr val="ZZZZZZ"/></a:solidFill></p:spPr>
+    </p:sp>
+  </p:spTree></p:cSld>
+</p:sld>`
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	warnings := report.Warnings()
+	if len(warnings) == 0 {
+		t.Fatal("expected at least one warning")
+	}
+
+	f := warnings[0]
+	if f.Phase != "ooxml" {
+		t.Errorf("expected phase=ooxml, got %q", f.Phase)
+	}
+	if f.Validator != "ooxml_content" {
+		t.Errorf("expected validator=ooxml_content, got %q", f.Validator)
+	}
+	if f.SlideIndex != 0 {
+		t.Errorf("expected slide_index=0, got %d", f.SlideIndex)
+	}
+	if f.SourcePath != "/slides/0" {
+		t.Errorf("expected source_path=/slides/0, got %q", f.SourcePath)
+	}
+	if f.Scope != RepairScopeSource {
+		t.Errorf("expected scope=source, got %q", f.Scope)
+	}
+}
+
+func TestOutputValidator_Provenance_UnmappablePackageLevel(t *testing.T) {
+	t.Parallel()
+
+	// Missing _rels/.rels — package-level, no slide mapping.
+	files := validPPTXFiles()
+	delete(files, "_rels/.rels")
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	blocking := report.Blocking()
+	if len(blocking) == 0 {
+		t.Fatal("expected at least one blocking finding")
+	}
+
+	// Find the missing rels finding.
+	var found *Finding
+	for i := range blocking {
+		if blocking[i].Code == "OPC_MISSING_PART" && blocking[i].Path == "_rels/.rels" {
+			found = &blocking[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected OPC_MISSING_PART for _rels/.rels, got: %v", blocking)
+	}
+
+	if found.Phase != "opc" {
+		t.Errorf("expected phase=opc, got %q", found.Phase)
+	}
+	if found.Validator != "structural" {
+		t.Errorf("expected validator=structural, got %q", found.Validator)
+	}
+	if found.SlideIndex != -1 {
+		t.Errorf("expected slide_index=-1 for package-level finding, got %d", found.SlideIndex)
+	}
+	if found.SourcePath != "" {
+		t.Errorf("expected empty source_path for package-level finding, got %q", found.SourcePath)
+	}
+	if found.Scope != RepairScopeGenerator {
+		t.Errorf("expected scope=generator, got %q", found.Scope)
+	}
+}
+
 func TestOutputValidator_OOXMLFailure_IsWarning(t *testing.T) {
 	t.Parallel()
 
