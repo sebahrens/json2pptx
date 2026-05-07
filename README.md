@@ -101,7 +101,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **Deck planning** -- `plan_deck` turns a brief into a structured slide outline with rhythm rules
 - **PPTX read-back** -- `read_presentation` extracts placeholders/shapes/tables from an existing PPTX without LibreOffice
 - **HTTP API** -- REST endpoints for programmatic generation
-- **MCP server** -- 28 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair
+- **MCP server** -- 30 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair
 - **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, template setup, and visual QA
 
 ## Installation
@@ -304,6 +304,7 @@ The installer configures this automatically in `~/.claude/mcp.json`. Every MCP t
 | `validate_input` | Schema + static checks, no render |
 | `preview_presentation_plan` | Resolve layouts/placeholders/findings without rendering |
 | `read_presentation` | Extract placeholders/shapes/tables/notes from an existing PPTX (no LibreOffice required) |
+| `validate_presentation_output` | Validate a generated PPTX for structural and OOXML content correctness |
 
 **Planning, recommendation, scoring**
 
@@ -346,6 +347,7 @@ The installer configures this automatically in `~/.claude/mcp.json`. Every MCP t
 | `get_shape_catalog` | Preset geometries grouped by use case |
 | `list_icons` | Bundled icon names by set |
 | `table_density_guide` | Table density tiers, hard limits, multiline guidance |
+| `get_input_schema` | Authoritative JSON Schema for PresentationInput with digest-based caching |
 
 **Slide rendering for QA** (require LibreOffice + ImageMagick)
 
@@ -749,7 +751,7 @@ svg:
 
 ```
 cmd/
-  json2pptx/        Main CLI + HTTP API + MCP server (25 subcommands, 28 MCP tools)
+  json2pptx/        Main CLI + HTTP API + MCP server (25 subcommands, 30 MCP tools)
   pptx2jpg/         PPTX to image conversion via LibreOffice
   mktemplate/       Template authoring helper
   debugcolors/      Theme color debugging tool
