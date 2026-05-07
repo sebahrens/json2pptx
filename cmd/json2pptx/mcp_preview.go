@@ -146,6 +146,10 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	}
 	defer func() { _ = tctx.reader.Close() }()
 
+	// Resolve canonical layout names (e.g. "title", "content", "blank") to
+	// concrete layout IDs before resolution.
+	resolveCanonicalLayoutIDs(input.Slides, tctx.layouts)
+
 	// Resolve all slides.
 	output := resolvePreviewSlides(&input, tctx)
 

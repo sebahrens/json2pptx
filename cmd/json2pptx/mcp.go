@@ -382,6 +382,10 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	templateMetadata, _ = template.ParseMetadata(reader)
 
+	// Resolve canonical layout names (e.g. "title", "content", "blank") to
+	// concrete layout IDs using tag-based matching against the target template.
+	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
+
 	// Resolve relative icon paths against CWD (MCP receives inline JSON, not a file path)
 	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
 		if iconErr := resolveIconPaths(input.Slides, cwd); iconErr != nil {
@@ -769,6 +773,10 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		})
 		return marshalValidateResult(ctx, output)
 	}
+
+	// Resolve canonical layout names before validation so agents can use
+	// stable aliases like "title", "content", "blank".
+	resolveCanonicalLayoutIDs(input.Slides, templateAnalysis.Layouts)
 
 	// Validate slides against template (layout IDs, placeholder IDs,
 	// character limits, content types, chart/diagram data)

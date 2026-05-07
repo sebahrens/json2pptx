@@ -373,15 +373,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 
 	// Resolve canonical layout names (e.g. "title", "content", "closing") to
 	// concrete layout IDs using tag-based matching against the target template.
-	if len(templateLayouts) > 0 {
-		for i := range input.Slides {
-			if input.Slides[i].LayoutID != "" {
-				if resolved, ok := layout.ResolveCanonicalLayoutID(input.Slides[i].LayoutID, templateLayouts); ok {
-					input.Slides[i].LayoutID = resolved
-				}
-			}
-		}
-	}
+	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
 
 	// Resolve any URL references (icon.url, image.url, background.url) by downloading
 	// them to a session-scoped cache with SSRF protection.

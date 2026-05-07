@@ -472,3 +472,96 @@ func TestValidateShapeFillColor_HexWarning(t *testing.T) {
 		})
 	}
 }
+
+// TestResolveCanonicalLayoutIDs_SharedHelper verifies that the shared
+// resolveCanonicalLayoutIDs helper resolves canonical names ("title",
+// "content", "blank") to concrete layout IDs and passes through
+// already-concrete IDs unchanged.
+func TestResolveCanonicalLayoutIDs_SharedHelper(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "slideLayout1", Name: "Title Slide", Tags: []string{"title-slide"}},
+		{ID: "slideLayout2", Name: "Content", Tags: []string{"content"}},
+		{ID: "slideLayout3", Name: "Blank + Title", Tags: []string{"blank-title"}},
+	}
+
+	tests := []struct {
+		name     string
+		layoutID string
+		wantID   string
+	}{
+		{"canonical title resolves", "title", "slideLayout1"},
+		{"canonical content resolves", "content", "slideLayout2"},
+		{"canonical blank resolves", "blank", "slideLayout3"},
+		{"concrete ID passes through", "slideLayout2", "slideLayout2"},
+		{"unknown name passes through", "nonexistent", "nonexistent"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			slides := []SlideInput{{LayoutID: tt.layoutID}}
+			resolveCanonicalLayoutIDs(slides, layouts)
+			if slides[0].LayoutID != tt.wantID {
+				t.Errorf("resolveCanonicalLayoutIDs(%q) = %q, want %q", tt.layoutID, slides[0].LayoutID, tt.wantID)
+			}
+		})
+	}
+}
+
+// TestResolveCanonicalLayoutIDs_ValidationConsistency verifies that
+// canonical layout IDs are resolved before validation, so that
+// validateSlidesAgainstTemplate does not report them as unknown.
+func TestResolveCanonicalLayoutIDs_ValidationConsistency(t *testing.T) {
+	analysis := &types.TemplateAnalysis{
+		Layouts: []types.LayoutMetadata{
+			{
+				ID:   "slideLayout1",
+				Name: "Title Slide",
+				Tags: []string{"title-slide"},
+				Placeholders: []types.PlaceholderInfo{
+					{ID: "title", Type: types.PlaceholderTitle},
+				},
+			},
+			{
+				ID:   "slideLayout2",
+				Name: "Content",
+				Tags: []string{"content"},
+				Placeholders: []types.PlaceholderInfo{
+					{ID: "title", Type: types.PlaceholderTitle},
+					{ID: "body", Type: types.PlaceholderContent},
+				},
+			},
+		},
+	}
+
+	slides := []SlideInput{
+		{
+			LayoutID: "title",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Hello")},
+			},
+		},
+		{
+			LayoutID: "content",
+			Content: []ContentInput{
+				{PlaceholderID: "body", Type: "text", TextValue: strPtr("World")},
+			},
+		},
+	}
+
+	// Resolve canonical names first (as all entry points now do).
+	resolveCanonicalLayoutIDs(slides, analysis.Layouts)
+
+	output := dryRunOutput{
+		Valid:    true,
+		Warnings: []string{},
+		Slides:   []dryRunSlide{},
+	}
+	validateSlidesAgainstTemplate(&output, slides, analysis)
+
+	if !output.Valid {
+		t.Errorf("expected valid=true after canonical resolution, got errors: %v", output.Errors)
+	}
+	if len(output.Errors) > 0 {
+		t.Errorf("expected no errors, got: %v", output.Errors)
+	}
+}

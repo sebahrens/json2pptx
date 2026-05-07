@@ -12,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -158,6 +159,10 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 		return writeDryRunOutput(output)
 	}
 
+	// Resolve canonical layout names before validation so agents can use
+	// stable aliases like "title", "content", "blank" in dry-run mode.
+	resolveCanonicalLayoutIDs(input.Slides, templateAnalysis.Layouts)
+
 	// Validate slides against template
 	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
 
@@ -243,6 +248,23 @@ func validateJSONContentValue(item JSONContentItem, slideNum, contentNum int) st
 		}
 	}
 	return ""
+}
+
+// resolveCanonicalLayoutIDs resolves canonical layout names (e.g. "title",
+// "content", "blank") to concrete slideLayoutN IDs using tag-based matching
+// against the available template layouts. This MUST be called before any
+// validation or generation that compares layout_id values against the template.
+func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetadata) {
+	if len(layouts) == 0 {
+		return
+	}
+	for i := range slides {
+		if slides[i].LayoutID != "" {
+			if resolved, ok := layout.ResolveCanonicalLayoutID(slides[i].LayoutID, layouts); ok {
+				slides[i].LayoutID = resolved
+			}
+		}
+	}
 }
 
 // validateSlidesAgainstTemplate validates the slides in a PresentationInput
