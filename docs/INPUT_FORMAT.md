@@ -33,6 +33,7 @@ A presentation is defined by a single JSON object with a `template` name and an 
 |--------------------|----------|-----------------|----------------------------------------------------------------|
 | `template`         | Yes      | string          | Template name (without `.pptx` extension)                      |
 | `output_filename`  | No       | string          | Desired output filename (default: `output.pptx`)               |
+| `design_mode`      | No       | string          | Generation mode: `"constrained"` (default) or `"free"`. Constrained mode enforces layout rules and fit checks; free mode relaxes them for exploratory/artistic decks. |
 | `accent_strategy`  | No       | string          | Accent color rotation: `"primary"` (default), `"rotate"`, `"section-keyed"` |
 | `footer`           | No       | object          | Footer configuration (see below)                               |
 | `theme_override`   | No       | object          | Per-deck color and font overrides (see below)                  |
@@ -130,6 +131,7 @@ Each slide specifies a layout, content items, and optional metadata.
 | `transition`       | No       | string | Slide transition: `fade`, `push`, `wipe`, `cover`, `cut`, `none`  |
 | `transition_speed` | No       | string | Transition speed: `slow`, `med`, `fast`                            |
 | `build`            | No       | string | Build animation: `"bullets"` for one-by-one bullet reveal          |
+| `contrast_check`   | No       | boolean | WCAG contrast enforcement for this slide. Default `true` — the engine auto-fixes low-contrast text. Set `false` to preserve exact color choices (e.g., artistic overlays on background images). This is a **slide-level** field, not a content-item property. |
 
 Either `layout_id` or `slide_type` (or both) should be provided. `layout_id` takes precedence for layout selection.
 

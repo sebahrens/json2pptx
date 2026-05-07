@@ -19,6 +19,33 @@ See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-p
 
 ---
 
+## Minimum Valid Deck
+
+The smallest complete input showing the content-as-array shape and key deck/slide-level fields:
+
+```json
+{
+  "template": "midnight-blue",
+  "design_mode": "constrained",
+  "slides": [
+    {
+      "layout_id": "title",
+      "contrast_check": true,
+      "content": [
+        { "placeholder_id": "title", "type": "text", "text_value": "Hello World" },
+        { "placeholder_id": "subtitle", "type": "text", "text_value": "A minimal deck" }
+      ]
+    }
+  ]
+}
+```
+
+**Key scope rules:**
+- `design_mode` is **deck-level** (top of the JSON, not inside a slide)
+- `contrast_check` is **slide-level** (inside each slide object, not on a content item)
+
+---
+
 ## MCP Tools (prefer over CLI shell-outs)
 
 When operating through the MCP server, prefer these tools over shelling out to the CLI:
