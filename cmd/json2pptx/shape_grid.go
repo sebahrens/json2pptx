@@ -726,13 +726,17 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
 
 // resolveIconSVG loads SVG bytes for an icon spec, optionally applying a fill color override.
 // For bundled icons (Name set), it looks up from the embedded icon library.
-// For custom icons (Path set), it reads the SVG file from disk. Fill rewrite is skipped for custom SVGs.
+// For custom icons (Path set), it reads the SVG file from disk.
+// Fill color override is applied to both bundled and custom SVG icons.
 func resolveIconSVG(spec *shapegrid.IconSpec) ([]byte, error) {
 	if spec.Path != "" {
 		// Custom SVG from file path (already resolved to absolute path)
 		svgData, err := os.ReadFile(spec.Path)
 		if err != nil {
 			return nil, fmt.Errorf("custom icon %q: %w", spec.Path, err)
+		}
+		if spec.Fill != "" {
+			svgData = applyIconFill(svgData, spec.Fill)
 		}
 		return svgData, nil
 	}

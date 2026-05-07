@@ -112,7 +112,7 @@ type IconInput struct {
 	Name     string `json:"name,omitempty"`      // Bundled icon name (e.g., "chart-pie", "filled:alert-circle")
 	Path     string `json:"path,omitempty"`      // File path to a custom SVG icon (relative to JSON input directory)
 	URL      string `json:"url,omitempty"`       // HTTP/HTTPS URL to download an SVG icon from
-	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Only supported for bundled icons.
+	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons.
 	Position string `json:"position,omitempty"`  // Icon position relative to text: "left", "top", "center". Auto-detected if empty.
 }
 

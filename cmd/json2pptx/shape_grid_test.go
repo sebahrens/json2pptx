@@ -1245,6 +1245,48 @@ func TestResolveIconSVG_CustomPath(t *testing.T) {
 	}
 }
 
+func TestResolveIconSVG_CustomPathFillOverride(t *testing.T) {
+	// Create a temporary SVG file with currentColor attributes
+	tmpDir := t.TempDir()
+	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>`
+	svgPath := filepath.Join(tmpDir, "custom.svg")
+	if err := os.WriteFile(svgPath, []byte(svgContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spec := &shapegrid.IconSpec{Path: svgPath, Fill: "#FF6600"}
+	data, err := resolveIconSVG(spec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	result := string(data)
+	if !strings.Contains(result, `stroke="#FF6600"`) {
+		t.Errorf("expected stroke to be recolored to #FF6600, got: %s", result)
+	}
+	if strings.Contains(result, `stroke="currentColor"`) {
+		t.Errorf("expected currentColor to be replaced, got: %s", result)
+	}
+}
+
+func TestResolveIconSVG_CustomPathNoFill(t *testing.T) {
+	// When Fill is empty, custom SVG should not be modified
+	tmpDir := t.TempDir()
+	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" stroke="currentColor"><circle r="10"/></svg>`
+	svgPath := filepath.Join(tmpDir, "custom.svg")
+	if err := os.WriteFile(svgPath, []byte(svgContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spec := &shapegrid.IconSpec{Path: svgPath}
+	data, err := resolveIconSVG(spec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(data) != svgContent {
+		t.Errorf("expected SVG to be unmodified when Fill is empty, got: %s", string(data))
+	}
+}
+
 func TestResolveIconSVG_CustomPathNotFound(t *testing.T) {
 	spec := &shapegrid.IconSpec{Path: "/nonexistent/path/icon.svg"}
 	_, err := resolveIconSVG(spec)
