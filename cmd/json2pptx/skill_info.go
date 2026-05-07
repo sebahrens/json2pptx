@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -100,9 +103,10 @@ type skillTemplateInfo struct {
 	ColorRoles   *skillColorRoles         `json:"color_roles,omitempty"`
 	TitleFont    string                   `json:"title_font,omitempty"`
 	BodyFont     string                   `json:"body_font,omitempty"`
-	AccentUsageGuide map[string]string        `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
-	LayoutNames      []string                 `json:"layout_names,omitempty"`
-	LayoutSummaries  []skillLayoutSummary     `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
+	AccentUsageGuide    map[string]string        `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
+	CanonicalLayoutIDs  map[string]string        `json:"canonical_layout_ids,omitempty"` // canonical name → concrete layout ID
+	LayoutNames         []string                 `json:"layout_names,omitempty"`
+	LayoutSummaries     []skillLayoutSummary     `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
 	TableStyles      []skillTableStyle        `json:"table_styles"`
 	Layouts          []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
 }
@@ -189,6 +193,15 @@ type skillDataFormat struct {
 
 // runSkillInfo implements the skill-info subcommand.
 func runSkillInfo() error {
+	// Suppress non-essential info/warn logging so stdout stays clean JSON.
+	// Template analysis (synthesis, placeholder resolution) emits slog.Info
+	// that would pollute machine-readable output when stderr is merged.
+	prevLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	})))
+	defer slog.SetDefault(prevLogger)
+
 	fs := flag.NewFlagSet("skill-info", flag.ContinueOnError)
 
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
@@ -369,6 +382,7 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 		}
 		layoutSummaries[i] = summary
 	}
+	info.CanonicalLayoutIDs = layout.ResolveAllCanonicalLayouts(analysis.Layouts)
 	info.LayoutNames = layoutNames
 	info.LayoutSummaries = layoutSummaries
 

@@ -200,3 +200,38 @@ func TestMatchesTags(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveAllCanonicalLayouts(t *testing.T) {
+	got := ResolveAllCanonicalLayouts(warmCoralLayouts)
+
+	// warmCoral has title, content, section, closing, blank, two-column
+	expect := map[string]string{
+		"title":   "slideLayout1",
+		"content": "slideLayout2",
+		"section": "slideLayout4",
+		"closing": "slideLayout5",
+		"blank":   "slideLayout6",
+	}
+	for name, wantID := range expect {
+		if got[name] != wantID {
+			t.Errorf("canonical %q: got %q, want %q", name, got[name], wantID)
+		}
+	}
+
+	// Should not include names that have no matching layout
+	if _, ok := got["agenda"]; ok {
+		t.Error("warmCoral should not resolve 'agenda' (no agenda layout)")
+	}
+
+	// Verify two-column resolves
+	if _, ok := got["two-column"]; !ok {
+		t.Error("warmCoral should resolve 'two-column'")
+	}
+}
+
+func TestResolveAllCanonicalLayouts_Empty(t *testing.T) {
+	got := ResolveAllCanonicalLayouts(nil)
+	if len(got) != 0 {
+		t.Errorf("expected empty map for nil layouts, got %v", got)
+	}
+}

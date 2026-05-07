@@ -68,6 +68,19 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 	return name, false
 }
 
+// ResolveAllCanonicalLayouts resolves every canonical layout name against the
+// given template layouts and returns a map of canonical name → concrete layout ID.
+// Only names that successfully resolve are included in the result.
+func ResolveAllCanonicalLayouts(layouts []types.LayoutMetadata) map[string]string {
+	result := make(map[string]string, len(canonicalNames))
+	for name, rule := range canonicalNames {
+		if id, found := findBestMatch(layouts, rule); found {
+			result[name] = id
+		}
+	}
+	return result
+}
+
 // findBestMatch searches layouts for the best match for a canonical rule.
 func findBestMatch(layouts []types.LayoutMetadata, rule canonicalRule) (string, bool) {
 	var candidates []types.LayoutMetadata
