@@ -48,7 +48,7 @@ Display content in structured card panels with optional icons, values, and callo
 | `panels[].icon` | `string` | - | Icon name |
 | `panels[].body` | `string` | - | Content text |
 | `panels[].value` | `string` | - | Numeric display (for stat cards) |
-| `layout` | `string` | - | `"columns"`, `"rows"`, or `"stat_cards"` (auto-inferred from alias) |
+| `layout` | `string` | - | `"columns"`, `"rows"`, `"stat_cards"`, or `"stylish_panels"` (auto-inferred from alias) |
 | `gap` | `number` | - | Spacing between panels |
 | `corner_radius` | `number` | - | Panel corner radius |
 | `icon_size` | `number` | - | Icon size |
@@ -86,6 +86,23 @@ Display content in structured card panels with optional icons, values, and callo
       {"title": "Upload", "icon": "upload", "body": "Drop your files into the portal"},
       {"title": "Process", "icon": "gear", "body": "AI analyzes and categorizes"},
       {"title": "Review", "icon": "check", "body": "Approve the generated output"}
+    ]
+  }
+}
+```
+
+### Stylish Panels
+
+```json
+{
+  "type": "panel_layout",
+  "title": "Strategic Priorities",
+  "data": {
+    "layout": "stylish_panels",
+    "panels": [
+      {"title": "Growth", "body": "- Market expansion\n- New verticals"},
+      {"title": "Efficiency", "body": "- Process automation\n- Cost reduction"},
+      {"title": "Innovation", "body": "- R&D investment\n- Patent portfolio"}
     ]
   }
 }

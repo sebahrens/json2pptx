@@ -751,7 +751,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"panel_layout": {
 			RequiredKeys: []string{"panels"},
 			OptionalKeys: []string{"layout", "gap", "icon_size"},
-			Description:  "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"",
+			Description:  "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\"",
 		},
 	}
 }

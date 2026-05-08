@@ -74,8 +74,9 @@ type panelShapeInsert struct {
 	swotMode       bool               // True for SWOT 2x2 grid layout (vs column panels)
 	pestelMode     bool               // True for PESTEL 3x2 grid layout
 	nineBoxMode    bool               // True for Nine Box Talent 3x3 grid layout
-	rowsMode       bool               // True for horizontal rows layout
-	statCardsMode  bool               // True for stat_cards grid layout
+	rowsMode          bool               // True for horizontal rows layout
+	statCardsMode     bool               // True for stat_cards grid layout
+	stylishPanelsMode bool               // True for stylish_panels layout
 	valueChainMode   bool               // True for Value Chain diagram layout
 	valueChainMeta   valueChainMeta     // Metadata for value chain layout (primary/support counts, margin)
 	kpiDashboardMode bool               // True for KPI Dashboard grid layout

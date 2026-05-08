@@ -364,7 +364,7 @@ func isPanelNativeLayout(spec *types.DiagramSpec) bool {
 	// (mirrors inferLayout logic in svggen/panel_layout.go).
 	if layout, ok := spec.Data["layout"].(string); ok && layout != "" {
 		switch layout {
-		case "columns", "rows", "stat_cards":
+		case "columns", "rows", "stat_cards", "stylish_panels":
 			return true
 		default:
 			return false
@@ -925,6 +925,10 @@ func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 				inserts[i].groupXML = generateHouseDiagramGroupXML(
 					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].houseDiagramMeta,
 				)
+			case inserts[i].stylishPanelsMode:
+				inserts[i].groupXML = generateStylishPanelsGroupXML(
+					inserts[i].panels, inserts[i].bounds, nextShapeID,
+				)
 			case inserts[i].rowsMode:
 				inserts[i].groupXML = generatePanelRowsGroupXML(
 					inserts[i].panels, inserts[i].bounds, nextShapeID,
@@ -972,6 +976,9 @@ func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 			case inserts[i].houseDiagramMode:
 				// 1 (group) + 1 (roof) + N (floor sections) + 1 (foundation)
 				nextShapeID += houseDiagramEstimateShapeCount(inserts[i].panels)
+			case inserts[i].stylishPanelsMode:
+				// N accents + N bodies + 1 ribbon + N headers + 1 group
+				nextShapeID += stylishPanelsEstimateShapeCount(inserts[i].panels)
 			case inserts[i].statCardsMode, inserts[i].kpiDashboardMode:
 				// 1 (group) + N×1 (single rect per card)
 				nextShapeID += uint32(len(inserts[i].panels) + 1)
@@ -1054,11 +1061,12 @@ func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item Conten
 		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
 
 	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		rowsMode:       layoutMode == "rows",
-		statCardsMode:  layoutMode == "stat_cards",
+		placeholderIdx:    shapeIdx,
+		bounds:            placeholderBounds,
+		panels:            panels,
+		rowsMode:          layoutMode == "rows",
+		statCardsMode:     layoutMode == "stat_cards",
+		stylishPanelsMode: layoutMode == "stylish_panels",
 	})
 }
 

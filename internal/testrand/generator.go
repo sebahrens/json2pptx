@@ -197,8 +197,8 @@ var panelLayoutAliases = []string{
 	"panel", "icon_panel", "number_tiles", "callout_cards",
 }
 
-// panelLayoutModes for the three layout modes.
-var panelLayoutModes = []string{"columns", "rows", "stat_cards"}
+// panelLayoutModes for the four layout modes.
+var panelLayoutModes = []string{"columns", "rows", "stat_cards", "stylish_panels"}
 
 // iconSVGDirSubdirs lists subdirectories under svg/ to sample icons from.
 // Varying sets test different SVG structures, path complexity, and sizes.
