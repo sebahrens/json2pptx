@@ -120,6 +120,16 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			cells[i] = patterns.KPICell{Big: "$1.0M", Small: "Metric"}
 		}
 		return &cells
+	case "stylish-panels":
+		// cols = number of panels, rows is always 2 (header + body)
+		items := make(patterns.StylishPanelsValues, cols)
+		for i := range items {
+			items[i] = patterns.StylishPanelsItem{
+				Title: "Panel Title",
+				Body:  []string{"Bullet one", "Bullet two", "Bullet three"},
+			}
+		}
+		return &items
 	default:
 		return nil
 	}

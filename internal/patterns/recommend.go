@@ -407,6 +407,22 @@ var rules = []rule{
 		baseScore: 0.80,
 		rationale: "Agenda slide with numbered sections",
 	},
+
+	// Stylish panels — pillars, capabilities, workstreams
+	{
+		pattern:   "stylish-panels",
+		keywords:  []string{"pillar", "capability", "workstream", "service", "department", "panel", "stylish"},
+		baseScore: 0.85,
+		rationale: "Accent-banded panels with ribbon headers, ideal for 3-5 pillars, capabilities, or workstreams with bullet details",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "stylish-panels",
+		keywords:  []string{"pillar", "capability", "workstream", "panel"},
+		baseScore: 0.75,
+		rationale: "Stylish panel layout for titled content blocks with bullet lists",
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,
