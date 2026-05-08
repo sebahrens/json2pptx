@@ -12,7 +12,7 @@ A presentation is defined by a single JSON object with a `template` name and an 
   "output_filename": "Q1_Review.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {
           "placeholder_id": "title",
@@ -108,7 +108,7 @@ Each slide specifies a layout, content items, and optional metadata.
 
 ```json
 {
-  "layout_id": "slideLayout2",
+  "layout_id": "content",
   "slide_type": "content",
   "content": [ ... ],
   "speaker_notes": "Emphasize the Q4 recovery.",
@@ -121,7 +121,7 @@ Each slide specifies a layout, content items, and optional metadata.
 
 | Field              | Required | Type   | Description                                                        |
 |--------------------|----------|--------|--------------------------------------------------------------------|
-| `layout_id`        | No       | string | Layout identifier: canonical ID (e.g., `"title"`, `"content"`, `"section"`) or raw ID (e.g., `"slideLayout1"`). Display names like `"Title Slide"` are not valid. |
+| `layout_id`        | No       | string | Layout identifier — use a **canonical ID**: `title`, `content`, `two-column`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda`. Raw IDs like `"slideLayout1"` are accepted for backward compatibility but canonical IDs are strongly preferred — they are stable across templates. Display names like `"Title Slide"` are **not valid**. |
 | `slide_type`       | No       | string | Type hint: `content`, `title`, `section`, `chart`, `two-column`, `diagram`, `image`, `comparison`, `blank` |
 | `content`          | Yes      | array  | Array of content items for placeholders                            |
 | `shape_grid`       | No       | object | Grid of preset geometry shapes (see Shape Grid section)            |
@@ -134,6 +134,15 @@ Each slide specifies a layout, content items, and optional metadata.
 | `contrast_check`   | No       | boolean | WCAG contrast enforcement for this slide. Default `true` — the engine auto-fixes low-contrast text. Set `false` to preserve exact color choices (e.g., artistic overlays on background images). This is a **slide-level** field, not a content-item property. |
 
 Either `layout_id` or `slide_type` (or both) should be provided. `layout_id` takes precedence for layout selection.
+
+**`blank` vs `content` — when to use each:**
+
+| Layout | Placeholders | Use when |
+|--------|-------------|----------|
+| `content` | `title` + `body` | Slide content goes into the body placeholder (text, bullets, charts, tables, diagrams) |
+| `blank` | `title` only | Slide content is a `shape_grid` or `pattern` — there is no body placeholder; all visual content is rendered as positioned shapes below the title |
+
+Use `content` when the engine should populate a body placeholder. Use `blank` (or `slide_type: "blank"`) when the slide's visual content comes from `shape_grid` or `pattern` — the engine auto-selects a blank layout with a title area and computes grid bounds below it.
 
 ### Background
 
@@ -543,7 +552,7 @@ Diagrams are rendered as SVG images for business visualizations.
 | `kpi_dashboard` | KPI metrics grid             | `metrics[].{label, value, delta, trend}`          |
 | `heatmap`       | Heatmap visualization        | `{rows[], columns[], values[][]}`                 |
 | `fishbone`      | Fishbone/Ishikawa diagram    | `{problem, categories[].{name, causes[]}}`        |
-| `panel_layout`  | Panel layout (columns, rows, stat cards) | `{layout, panels[].{title, body, icon}}` |
+| `panel_layout`  | Panel layout (columns, rows, stat cards, stylish panels) | `{layout, panels[].{title, body, icon}}` |
 
 #### Diagram Type Aliases
 
@@ -589,7 +598,7 @@ The `shape_grid` field on a slide defines a grid of preset geometry shapes for c
 
 ```json
 {
-  "layout_id": "slideLayout2",
+  "layout_id": "blank",
   "content": [
     {"placeholder_id": "title", "type": "text", "text_value": "Process Overview"}
   ],

@@ -57,7 +57,8 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
 | Resolve a template's theme colors (semantic name → hex, including tint modifiers) | `resolve_theme` | (CLI inlines) |
-| Recommend a pattern given an intent (cold-start helper) | `recommend_pattern` | (CLI inlines) |
+| **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
+| Recommend a named pattern given an intent (pattern-only subset of recommend_visual) | `recommend_pattern` | (CLI inlines) |
 | Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
 | Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering | `preview_presentation_plan` | (CLI inlines) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
@@ -82,7 +83,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Compact responses (server-driven).** The server unconditionally advertises `experimental.compact_responses: true` in its `initialize` response. There is no client-side opt-in — read the capability after `initialize` if you want to confirm it. Use `get_capabilities` for structural feature discovery.
 
-**Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. Check `get_capabilities().features.template_settings` to confirm support before attempting writes.
+**Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. The runtime gate is the environment variable — `get_capabilities().features.template_settings` reports whether the server has it enabled, so check that capability flag before attempting writes rather than probing the env var directly.
 
 **Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`. The same digest protocol applies to `get_input_schema{digest: "..."}` — cache the digest and skip re-fetching the full JSON Schema when it hasn't changed.
 
@@ -94,13 +95,34 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 ---
 
+## Visual Decision Ladder
+
+When building a slide and unsure which visual approach to use, follow this decision order:
+
+1. **`recommend_visual`** — the unified entry point. Ranks candidates across *all* categories (placeholder layouts, named patterns, charts, diagrams, compose envelopes, raw shape_grid). Start here.
+2. **`recommend_pattern`** — use only when you already know you need a named pattern and want to pick the best one. This is a subset of `recommend_visual` limited to the pattern catalog.
+3. **`list_patterns` / `show_pattern`** — use when you already know the pattern name and need its value schema.
+
+**Do not jump straight to `recommend_pattern`** unless you are certain the slide needs a named pattern. `recommend_visual` may suggest a placeholder layout, chart, or diagram that fits better.
+
+### `blank` vs `content` — Choosing the Right Layout
+
+| Layout | Placeholders | Use when |
+|--------|-------------|----------|
+| `content` | `title` + `body` | Slide content goes into the body placeholder — text, bullets, charts, tables, or diagrams |
+| `blank` | `title` only | Slide content is a `shape_grid` or `pattern` — no body placeholder; all visual content is rendered as positioned shapes below the title |
+
+`content` is body-capable: the engine populates a body placeholder with your content item. `blank` is shape-grid-oriented: there is no body placeholder, so all content must come from `shape_grid` or `pattern`. Setting `slide_type: "blank"` (or omitting `layout_id` when `shape_grid`/`pattern` is present) triggers auto-selection of a blank layout with title and computed grid bounds.
+
+---
+
 ## Workflow: Plan → Vary → Render → Repair
 
 ### PRECONDITION: Validate Before You Generate
 
 **You MUST NOT call `generate_presentation` until all of the following have succeeded for the current deck:**
 
-1. **Pattern discovery.** For each slide that uses a pattern, call `recommend_pattern` or `list_patterns` to confirm the pattern exists and fits the intent. Do not guess pattern names from memory.
+1. **Visual discovery.** For each slide, call `recommend_visual` to determine the best visual approach (placeholder layout, named pattern, chart, diagram, or raw shape_grid). If you already know the slide needs a named pattern, `recommend_pattern` or `list_patterns` is sufficient. Do not guess pattern names from memory.
 2. **Schema inspection.** For each chosen pattern, call `show_pattern` to retrieve the value schema and `example_values`. Use these to structure your `values` object — do not invent field names or guess the expected shape.
 3. **Density pre-flight.** For each pattern slide, call `expand_pattern` with your populated values to confirm density is in the 60–110% optimal band. Fix underfilled or overflowing cells before proceeding.
 4. **Input validation.** Once the full deck JSON is assembled, call `validate_input` (with `fit_report: true`) to catch schema errors, unknown keys, scope mistakes, and fit issues. Fix all errors before generating.
@@ -110,11 +132,11 @@ When operating through the MCP server, prefer these tools over shelling out to t
 **The sequence in practice:**
 
 ```
-list_patterns / recommend_pattern  →  pick patterns
-show_pattern (per pattern)         →  learn value schemas + example_values
-expand_pattern (per pattern slide) →  confirm density, get cell_budgets
-validate_input (full deck JSON)    →  catch schema + fit errors
-generate_presentation              →  only after steps above pass
+recommend_visual (per slide intent) →  pick visual approach (layout, pattern, chart, diagram)
+show_pattern (per pattern)          →  learn value schemas + example_values
+expand_pattern (per pattern slide)  →  confirm density, get cell_budgets
+validate_input (full deck JSON)     →  catch schema + fit errors
+generate_presentation               →  only after steps above pass
 ```
 
 Skipping these steps and calling `generate_presentation` directly is a workflow violation. If time pressure demands it, at minimum call `validate_input` — it is the cheapest single gate that catches the most errors.
@@ -135,7 +157,7 @@ Slides:
   ...
 ```
 
-Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram). Use `recommend_pattern` to pick patterns for intents you're unsure about.
+Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram). Use `recommend_visual` when unsure which visual approach fits a slide intent — it ranks across all categories (layouts, patterns, charts, diagrams). Use `recommend_pattern` only when you already know you need a named pattern.
 
 Present the outline to the user. Proceed to Phase 2 only after approval or if the user asked for the full deck directly.
 
@@ -145,7 +167,7 @@ Present the outline to the user. Proceed to Phase 2 only after approval or if th
 
 1. Pick a template. Call `list_templates` for available options, `canonical_layout_ids`, and `color_roles`. Use `canonical_layout_ids` to map canonical names (`title`, `content`, `blank`, `section`, `closing`, etc.) to concrete layout IDs — do not reverse-engineer raw `slideLayoutN` IDs. The compact response also includes `layout_summaries[]` with per-layout `placeholders[]` (each entry has `id`, `type`, `max_chars`) — use these to rough-size content before calling `expand_pattern`. For full placeholder bounds and font details, switch to full mode.
 2. Choose `accent_strategy` — `"rotate"` for multi-section decks, `"section-keyed"` for decks with distinct chapters, `"primary"` only for ≤5-slide decks.
-3. For each slide intent, call `recommend_pattern` to get the best pattern match. Avoid choosing the same pattern more than twice in a row.
+3. For each slide intent, call `recommend_visual` to determine the best visual approach. It ranks across placeholder layouts, named patterns, charts, diagrams, and compose envelopes — not just patterns. Avoid choosing the same pattern more than twice in a row.
 4. Ensure the outline alternates density: high-density slides (tables, grids) should be followed by low-density (stat-hero, pull-quote, section divider). Place a narrative-break pattern (stat-hero, pull-quote) every ~5 slides.
 5. Check the outline against the rhythm rule: no pattern should appear 3+ times consecutively. If it does, swap the middle occurrence for a contrasting pattern from a different visual family.
 
@@ -359,13 +381,13 @@ Pattern validation errors (`validate_pattern`), density warnings (`expand_patter
 
 ## Pattern Library
 
-For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-column comparisons, use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
+For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, and accent-banded panels (`stylish-panels`), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
 
 - **Browse the catalog:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI)
 - **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI). Grid-shaped patterns include a `text_budget_guide` block with per-configuration `body_max_chars` and `header_max_chars` — use these to size content before calling `expand_pattern`. The response also includes `example_values` — canonical example values showing the expected shape and realistic content for the `values` parameter. Use these as a template when populating pattern values.
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI)
 - **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for template-aware layout bounds; the response `bounds_source` field indicates `"template"` or `"default_fallback"`. When all populated cells are consistently suboptimal, the response includes `layout_suggestions[]` with alternative patterns and overrides.
-- **Cold-start helper:** `recommend_pattern` (MCP) returns the top patterns for a stated intent (e.g., "compare two options", "show 3 KPIs"). Use when you don't know the catalog by heart.
+- **Cold-start helper:** `recommend_visual` (MCP) ranks across all visual categories for a slide intent — use as the primary entry point. `recommend_pattern` is the pattern-only subset if you already know you need a named pattern.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
 

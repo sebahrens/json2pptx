@@ -245,7 +245,7 @@ Native OOXML or SVG diagram rendered into a placeholder. Value: `DiagramSpec` (v
 | `heatmap` | Native OOXML | Color-coded heatmap grid |
 | `fishbone` | SVG | Fishbone/Ishikawa diagram |
 | `pestel` | Native OOXML | PESTEL analysis |
-| `panel_layout` | Native OOXML | Flexible panel layout (set `data.layout` to `"columns"`, `"rows"`, `"stat_cards"`, or `"grid"`) |
+| `panel_layout` | Native OOXML | Flexible panel layout (set `data.layout` to `"columns"`, `"rows"`, `"stat_cards"`, `"stylish_panels"`, or `"grid"`) |
 | `icon_columns` | Native OOXML | Alias for `panel_layout` with `layout: "columns"` |
 | `icon_rows` | Native OOXML | Alias for `panel_layout` with `layout: "rows"` |
 | `stat_cards` | Native OOXML | Alias for `panel_layout` with `layout: "stat_cards"` |

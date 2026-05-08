@@ -93,7 +93,7 @@ json2pptx generate -json examples/basic-deck.json -json-output result.json
   "output_filename": "my-deck.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {
           "placeholder_id": "title",
@@ -123,16 +123,16 @@ json2pptx skill-info --mode list
 
 ### Layout reference
 
-Each built-in template provides six layouts. Use the **portable placeholder IDs** (not raw template names) for cross-template compatibility:
+Each built-in template provides six layouts. Use **canonical layout IDs** (not raw `slideLayoutN` IDs or display names) for cross-template compatibility:
 
-| Layout ID | Name | Portable Placeholder IDs |
-|-----------|------|--------------------------|
-| `slideLayout1` | Title Slide | `title` (center title), `subtitle` (subtitle) |
-| `slideLayout2` | One Content | `title` (title), `body` (body) |
-| `slideLayout3` | Two Content | `title` (title), `body` (left), `body_2` (right) |
-| `slideLayout4` | Section Divider | `title` (section title) |
-| `slideLayout5` | Closing | `title` (closing text), `subtitle` (subtitle) |
-| `slideLayout6` | Blank | (no placeholders) |
+| Canonical `layout_id` | Template Display Name | Placeholders |
+|-----------------------|----------------------|--------------|
+| `title` | Title Slide | `title`, `subtitle` |
+| `content` | One Content | `title`, `body` |
+| `two-column` | Two Content | `title`, `body`, `body_2` |
+| `section` | Section Divider | `title` |
+| `closing` | Closing | `title`, `subtitle` |
+| `blank` | Blank | `title` only (body content via `shape_grid` or `pattern`) |
 
 ### Content types
 

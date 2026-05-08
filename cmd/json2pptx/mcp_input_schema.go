@@ -33,7 +33,7 @@ func mcpGetInputSchemaTool() mcp.Tool {
 	return mcp.NewTool("get_input_schema",
 		mcp.WithDescription(`Returns the authoritative JSON Schema for the PresentationInput object accepted by generate_presentation and validate_input.
 
-Includes all nested types (SlideInput, ContentInput, ShapeGridInput, PatternInput, etc.) as $defs, with inline enum values and field_scope annotations (deck, slide, content, shape) indicating where each field belongs in the hierarchy.
+Includes all nested types (SlideInput, ContentInput, ShapeGridInput, PatternInput, etc.) as $defs, with inline enum values and x-field-scope annotations (deck, slide, content, shape) indicating where each field belongs in the hierarchy.
 
 Use this to discover field names, types, allowed values, and correct nesting — eliminates field-scope confusion (e.g., putting contrast_check on content instead of slide).
 
@@ -227,7 +227,7 @@ func buildInputSchema() map[string]any {
 	return map[string]any{
 		"$schema":     "https://json-schema.org/draft/2020-12/schema",
 		"title":       "PresentationInput",
-		"description": "JSON input schema for generate_presentation and validate_input. Field annotations include field_scope (deck/slide/content/shape) and enum values.",
+		"description": "JSON input schema for generate_presentation and validate_input. Field annotations include x-field-scope (deck/slide/content/shape) and enum values.",
 		"$ref":        "#/$defs/PresentationInput",
 		"$defs":       defs,
 	}
