@@ -382,7 +382,8 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "score":            {"type": "number"},
           "rationale":        {"type": "string"},
           "confidence_band":  {"type": "string", "enum": ["high", "medium", "low"]},
-          "diversity_bonus":  {"type": "boolean"}
+          "diversity_bonus":  {"type": "boolean"},
+          "placement":        {"$ref": "#/$defs/placement_guidance"}
         },
         "required": ["category", "name", "score", "rationale", "confidence_band"]
       }
@@ -393,7 +394,21 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
       "items": {"type": "string"}
     }
   },
-  "required": ["candidates", "query_understood_as"]
+  "required": ["candidates", "query_understood_as"],
+  "$defs": {
+    "placement_guidance": {
+      "type": "object",
+      "description": "Authoring guidance: how and where to place this candidate on a slide.",
+      "properties": {
+        "preferred_placement": {"type": "string", "enum": ["placeholder", "shape_grid", "either"], "description": "Recommended placement context for best fidelity."},
+        "host_strategy":       {"type": "string", "enum": ["placeholder_content", "grid_cell", "pattern_expansion", "standalone_slide"], "description": "How to host this visual in the JSON input."},
+        "grid_embeddable":     {"type": "boolean", "description": "Whether this candidate can be placed inside a shape_grid cell."},
+        "render_pipeline":     {"type": "string", "enum": ["native_ooxml", "svg", "template_driven"], "description": "Render strategy in the preferred placement."},
+        "composable_with":     {"type": "array", "items": {"type": "string"}, "description": "Categories or patterns this composes with on a single slide."}
+      },
+      "required": ["preferred_placement", "host_strategy", "grid_embeddable", "render_pipeline"]
+    }
+  }
 }`)
 
 // --- list_icons ---

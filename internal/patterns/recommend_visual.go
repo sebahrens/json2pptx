@@ -20,6 +20,21 @@ const (
 	VisualCategoryShapeGrid   VisualCategory = "raw_shape_grid"
 )
 
+// PlacementGuidance describes how to author and place a recommended candidate.
+// It helps the agent choose the correct authoring path without guessing.
+type PlacementGuidance struct {
+	// PreferredPlacement is the recommended placement context: "placeholder", "shape_grid", or "either".
+	PreferredPlacement string `json:"preferred_placement"`
+	// HostStrategy describes how to host this visual: "placeholder_content", "grid_cell", "pattern_expansion", or "standalone_slide".
+	HostStrategy string `json:"host_strategy"`
+	// GridEmbeddable indicates whether this candidate can be placed inside a shape_grid cell.
+	GridEmbeddable bool `json:"grid_embeddable"`
+	// RenderPipeline is the render strategy in the preferred placement: "native_ooxml", "svg", or "template_driven".
+	RenderPipeline string `json:"render_pipeline"`
+	// ComposableWith lists categories or patterns this candidate composes with on a single slide.
+	ComposableWith []string `json:"composable_with,omitempty"`
+}
+
 // VisualCandidate is a scored recommendation across all visual types.
 type VisualCandidate struct {
 	Category       VisualCategory `json:"category"`
@@ -28,6 +43,9 @@ type VisualCandidate struct {
 	Rationale      string         `json:"rationale"`
 	ConfidenceBand string         `json:"confidence_band"`
 	DiversityBonus bool           `json:"diversity_bonus,omitempty"`
+	// Placement provides authoring guidance for the agent. Populated by the MCP layer
+	// from capability truth; nil when returned from the pure scoring function.
+	Placement *PlacementGuidance `json:"placement,omitempty"`
 }
 
 // VisualHints extends ContentHints with data-shape information for chart/diagram routing.

@@ -1312,6 +1312,9 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 	reg := patterns.Default()
 	rec := patterns.RecommendVisual(reg, intent, &hints, 5, &opts)
 
+	// Enrich candidates with placement guidance from capability truth.
+	generator.EnrichVisualPlacement(&rec)
+
 	mcpResult, err := api.MCPSuccessResult(ctx, rec)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
