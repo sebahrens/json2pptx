@@ -483,12 +483,12 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `no_autofit_overflow` | Text overflows placeholder that has `noAutofit` set |
 | `table_rows_truncated` | Table rows truncated to fit row height |
 | `table_font_scaled` | Table font scaled down to the minimum floor |
-| `diagram_clamped` | Diagram placeholder dimensions clamped to minimum |
-| `diagram_render_failed` | Diagram render failed; placeholder image inserted |
+| `diagram_clamped` | Diagram placeholder dimensions clamped to minimum. `action: review`, `fix.kind: swap_layout`, `fix.params: {dimension, original_emu, clamped_emu}`. Agent action: switch to a wider layout via `repair_slide` |
+| `diagram_render_failed` | Diagram render failed; placeholder image inserted. `action: review`, `fix.kind: review` (no auto-fix). Agent must inspect diagram data and decide whether to simplify, change type, or regenerate |
 | `column_width_deficit` | Column widths fell back to global floor |
 | `pagination_default_threshold` | Pagination used default threshold (no template capacity available) |
 | `contrast_autofixed` | Text color auto-replaced for WCAG AA. `action: info`, `fix.kind: replace_color`, `fix.params: {original_color, replacement_color, background_color, contrast_ratio_before, contrast_ratio_after}` |
-| `grid_diagram_narrow` | Complex diagram in a narrow grid cell (<50% slide width). `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, complexity, cell_width_pct, cell_width_emu, threshold_emu}`. Path targets the diagram field (e.g. `/slides/0/shape_grid/rows/0/cells/1/diagram`) |
+| `grid_diagram_narrow` | Complex diagram in a narrow grid cell (<50% slide width). `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, complexity, cell_width_pct, cell_width_emu, threshold_emu}`. Path targets the diagram field (e.g. `/slides/0/shape_grid/rows/0/cells/1/diagram`). Agent action: widen cell via `repair_slide` with `reshape_grid` fix |
 
 **Budget summary code** — emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and `verbose_fit:false`:
 

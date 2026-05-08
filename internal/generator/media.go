@@ -312,7 +312,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
 				Code:    patterns.ErrCodeDiagramClamped,
 				Message: fmt.Sprintf("diagram placeholder width clamped: %d EMU → %d EMU minimum", placeholderBounds.Width, minDiagramWidthEMU),
-				Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"dimension": "width", "original_emu": placeholderBounds.Width, "clamped_emu": minDiagramWidthEMU}},
+				Fix: &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "width", "original_emu": placeholderBounds.Width, "clamped_emu": minDiagramWidthEMU}},
 			},
 			Action: "review",
 		})
@@ -329,7 +329,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
 				Code:    patterns.ErrCodeDiagramClamped,
 				Message: fmt.Sprintf("diagram placeholder height clamped: %d EMU → %d EMU minimum", placeholderBounds.Height, minDiagramHeightEMU),
-				Fix:     &patterns.FixSuggestion{Kind: "review", Params: map[string]any{"dimension": "height", "original_emu": placeholderBounds.Height, "clamped_emu": minDiagramHeightEMU}},
+				Fix: &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "height", "original_emu": placeholderBounds.Height, "clamped_emu": minDiagramHeightEMU}},
 			},
 			Action: "review",
 		})
@@ -362,11 +362,18 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			Fallback:      "placeholder_image",
 		})
 		// Site 8: emit finding when diagram render fails and falls back to placeholder.
+		// Fix kind is "review" — no deterministic auto-fix; the agent must
+		// inspect the diagram data and decide whether to simplify, change type,
+		// or regenerate.
 		ctx.emitFitFinding(patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
 				Code:    patterns.ErrCodeDiagramRenderFailed,
 				Message: fmt.Sprintf("diagram render failed, placeholder image inserted: %s", reason),
+				Fix: &patterns.FixSuggestion{
+					Kind:   "review",
+					Params: map[string]any{"diagram_type": diagramType, "reason": reason},
+				},
 			},
 			Action: "review",
 		})

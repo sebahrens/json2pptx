@@ -257,6 +257,43 @@ A complex diagram (org_chart, fishbone, swot, heatmap, etc.) is placed in a grid
 }
 ```
 
+### `diagram_clamped`
+
+**Action:** `review`
+**Fix kind:** `swap_layout`
+**Emitted at:** render time
+
+A diagram placeholder's width or height was below the engine's minimum threshold and was clamped up. The diagram renders but may look different than expected because the original dimensions were too small. The deterministic agent action is to switch to a wider layout via `repair_slide`.
+
+```json
+{
+  "path": "/slides/1/content/body",
+  "code": "diagram_clamped",
+  "message": "diagram placeholder width clamped: 2000000 EMU → 3048000 EMU minimum",
+  "fix": { "kind": "swap_layout", "params": { "dimension": "width", "original_emu": 2000000, "clamped_emu": 3048000 } },
+  "action": "review",
+  "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 1, "fixes": [{ "kind": "swap_layout", "params": { "dimension": "width", "original_emu": 2000000, "clamped_emu": 3048000 } }] } }
+}
+```
+
+### `diagram_render_failed`
+
+**Action:** `review`
+**Fix kind:** `review` (no auto-fix)
+**Emitted at:** render time
+
+Diagram rendering failed entirely; a placeholder image was inserted instead. This is review-only — no deterministic auto-fix is available. The agent must inspect the diagram data and decide whether to simplify the diagram, change its type, or regenerate the slide.
+
+```json
+{
+  "path": "/slides/2/content/body",
+  "code": "diagram_render_failed",
+  "message": "diagram render failed, placeholder image inserted: SVG parse error",
+  "fix": { "kind": "review", "params": { "diagram_type": "org_chart", "reason": "SVG parse error" } },
+  "action": "review"
+}
+```
+
 ### `chart_value_coerced`
 
 **Action:** `review`

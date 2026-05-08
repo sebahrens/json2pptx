@@ -196,6 +196,33 @@ func TestAttachNextToolCalls(t *testing.T) {
 			},
 			Action: "shrink_or_split",
 		},
+		// Non-text grid finding: grid_diagram_narrow with reshape_grid fix.
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/4/shape_grid/rows/0/cells/1/diagram",
+				Code: ErrCodeGridDiagramNarrow,
+				Fix:  &FixSuggestion{Kind: "reshape_grid", Params: map[string]any{"columns": 1}},
+			},
+			Action: "review",
+		},
+		// Render-time finding: diagram_clamped with swap_layout fix.
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/5/content/body",
+				Code: ErrCodeDiagramClamped,
+				Fix:  &FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "width"}},
+			},
+			Action: "review",
+		},
+		// Render-time finding: diagram_render_failed with review fix (no auto-fix).
+		{
+			ValidationError: ValidationError{
+				Path: "/slides/6/content/body",
+				Code: ErrCodeDiagramRenderFailed,
+				Fix:  &FixSuggestion{Kind: "review", Params: map[string]any{"reason": "SVG parse error"}},
+			},
+			Action: "review",
+		},
 	}
 
 	AttachNextToolCalls(findings, stubSlideIndex)
@@ -227,6 +254,28 @@ func TestAttachNextToolCalls(t *testing.T) {
 	}
 	if findings[3].NextToolCall.Tool != "repair_slide" {
 		t.Errorf("findings[3] tool = %q, want repair_slide", findings[3].NextToolCall.Tool)
+	}
+
+	// Finding 4: grid_diagram_narrow + reshape_grid → repair_slide
+	if findings[4].NextToolCall == nil {
+		t.Fatal("findings[4].NextToolCall is nil (grid_diagram_narrow should map to repair_slide)")
+	}
+	if findings[4].NextToolCall.Tool != "repair_slide" {
+		t.Errorf("findings[4] tool = %q, want repair_slide", findings[4].NextToolCall.Tool)
+	}
+
+	// Finding 5: diagram_clamped + swap_layout → repair_slide
+	if findings[5].NextToolCall == nil {
+		t.Fatal("findings[5].NextToolCall is nil (diagram_clamped should map to repair_slide)")
+	}
+	if findings[5].NextToolCall.Tool != "repair_slide" {
+		t.Errorf("findings[5] tool = %q, want repair_slide", findings[5].NextToolCall.Tool)
+	}
+
+	// Finding 6: diagram_render_failed + review fix → no NextToolCall
+	// "review" is not a repair kind, so RepairToolCall returns nil.
+	if findings[6].NextToolCall != nil {
+		t.Errorf("findings[6].NextToolCall should be nil for review-only fix, got %+v", findings[6].NextToolCall)
 	}
 }
 

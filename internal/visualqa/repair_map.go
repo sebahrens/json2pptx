@@ -4,6 +4,12 @@ package visualqa
 // fix kinds, ordered by preference (most targeted first). When the visual QA
 // agent detects a category, these are the fix kinds an agent should try via
 // repair_slide's autofix_visual kind.
+//
+// Categories intentionally absent from this map have no deterministic
+// source-side auto-fix and are review-only:
+//   - image_quality: requires human judgement on image replacement
+//   - aspect_ratio: requires human decision on cropping or source replacement
+//   - border_style: cosmetic; no safe deterministic mutation
 var categoryFixMap = map[string][]string{
 	"text_overflow":     {"reduce_cell_text", "split_at_row", "reshape_grid"},
 	"text_truncation":   {"reduce_cell_text", "split_at_row", "reshape_grid"},
@@ -21,9 +27,18 @@ var categoryFixMap = map[string][]string{
 	"footer_clearance":  {"reshape_grid"},
 }
 
+// ReviewOnlyCategories lists visual QA categories that have no deterministic
+// auto-fix mapping. Agents receiving findings in these categories should
+// present them for human review rather than attempting repair_slide.
+var ReviewOnlyCategories = []string{
+	"image_quality",
+	"aspect_ratio",
+	"border_style",
+}
+
 // SuggestedFixesForCategory returns the candidate repair_slide fix kinds for
 // a visual QA finding category. Returns nil for categories with no mapped
-// fixes (e.g. image_quality, aspect_ratio, border_style).
+// fixes (review-only categories like image_quality, aspect_ratio, border_style).
 func SuggestedFixesForCategory(category string) []SuggestedFix {
 	kinds, ok := categoryFixMap[category]
 	if !ok {
@@ -34,4 +49,14 @@ func SuggestedFixesForCategory(category string) []SuggestedFix {
 		fixes[i] = SuggestedFix{Kind: k}
 	}
 	return fixes
+}
+
+// IsReviewOnly reports whether a visual QA category has no deterministic
+// auto-fix and should be presented for human review only.
+func IsReviewOnly(category string) bool {
+	if _, ok := categoryFixMap[category]; ok {
+		return false
+	}
+	// Valid category with no mapping → review-only.
+	return ValidCategory(category)
 }
