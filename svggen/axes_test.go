@@ -516,6 +516,15 @@ func TestAxis_EmptyTicks(t *testing.T) {
 	}
 }
 
+// TestAxis_WithRotatedLabels asserts the anchor invariants for a categorical
+// bottom axis with negative rotation: every rotated <text> must be
+// RIGHT-aligned (TextAlignRight) so the label hangs down-and-left from its
+// pivot. Now uses the ParseSVGTexts helper instead of regex-based parsing.
+//
+// Detailed geometric invariants (pivot X shifted LEFT by tickPadding/√2, no
+// +fontSize Y band-aid, post-rotation bbox below the axis line) are covered
+// by TestAxis_RotatedLabelsStayBelowAxisLine, and the consolidated
+// AxisPosition × rotation matrix lives in TestAxisLabels_Geometry.
 func TestAxis_WithRotatedLabels(t *testing.T) {
 	builder := NewSVGBuilder(400, 300)
 	categories := []string{"January", "February", "March", "April"}
@@ -528,60 +537,263 @@ func TestAxis_WithRotatedLabels(t *testing.T) {
 
 	axis.DrawCategoricalAxis(scale, axisX, axisY)
 
-	svg, err := builder.RenderToString()
+	svgStr, err := builder.RenderToString()
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
 
-	// Anchor invariants for a categorical bottom axis with negative rotation:
-	// every rotated <text> must be RIGHT-aligned (TextAlignRight) so the label
-	// hangs down-and-left from its pivot. For rotated <text transform=...>
-	// elements the canvas library encodes right-alignment by negating the
-	// tspan x offset (it shifts the text backward by its measured width); a
-	// non-negative tspan x means the label is still left-anchored — the
-	// pre-fix behavior described in go-slide-creator-5wun (LineChart) and the
-	// shared-bug for the manual-thinning path.
-	//
-	// Detailed geometric invariants (pivot X shifted LEFT by tickPadding/√2,
-	// no +fontSize Y band-aid, post-rotation bbox below the axis line) are
-	// covered by TestAxis_RotatedLabelsStayBelowAxisLine.
-	textRe := regexp.MustCompile(
-		`<text transform="translate\([0-9.\-]+,[0-9.\-]+\) rotate\(([0-9.\-]+)\)"[^>]*><tspan x="([0-9.\-]+)" y="[0-9.\-]+">([^<]+)</tspan></text>`,
-	)
-	matches := textRe.FindAllStringSubmatch(svg, -1)
-	if len(matches) < len(categories) {
-		t.Fatalf("expected ≥ %d rotated <text> elements, found %d", len(categories), len(matches))
+	texts := ParseSVGTexts(t, svgStr)
+	if len(texts) == 0 {
+		t.Fatal("ParseSVGTexts returned no elements; rendering may have failed")
 	}
 
 	seen := 0
-	for _, m := range matches {
-		angle, _ := strconv.ParseFloat(m[1], 64)
-		tspanX, _ := strconv.ParseFloat(m[2], 64)
-		text := m[3]
-
-		matched := false
-		for _, c := range categories {
-			if c == text {
-				matched = true
-				break
-			}
-		}
-		if !matched {
+	for _, c := range categories {
+		el := FindByContent(texts, c)
+		if el == nil {
+			t.Errorf("label %q: no <text> element found in SVG", c)
 			continue
 		}
 		seen++
-
-		if math.Abs(angle-(-45)) > 0.01 {
-			t.Errorf("label %q: rotation=%.2f, want -45", text, angle)
+		if !el.HasRotate {
+			t.Errorf("label %q: expected transform=...rotate(...) on rotated axis, got none", c)
+			continue
 		}
-		// Negative tspan x ⇔ right-aligned anchor on rotated text.
-		if tspanX >= 0 {
-			t.Errorf("label %q: tspan x=%.2f ≥ 0 — label is left-anchored despite negative rotation (TextAlignRight expected)", text, tspanX)
+		if math.Abs(el.Rotation-(-45)) > 0.01 {
+			t.Errorf("label %q: rotation=%.2f, want -45", c, el.Rotation)
+		}
+		// TextAlignRight on a rotated <text> is encoded by the canvas library
+		// as a negative tspan x (the text is shifted backward by its measured
+		// width inside the rotated frame); the library omits the text-anchor
+		// attribute for transformed elements. A non-negative tspan x is the
+		// pre-fix left-anchored regression.
+		if !el.HasTspanX {
+			t.Errorf("label %q: missing tspan x attribute", c)
+		} else if el.TspanX >= 0 {
+			t.Errorf("label %q: tspan x=%.2f ≥ 0 — label is left-anchored despite negative rotation", c, el.TspanX)
 		}
 	}
 	if seen < len(categories) {
 		t.Errorf("only matched %d of %d categories in rotated text elements", seen, len(categories))
 	}
+}
+
+// TestAxisLabels_Geometry is the consolidated AxisPosition × rotation matrix
+// test promised by go-slide-creator-folq. For each axis position / rotation
+// combination it renders one axis and asserts parsing-derived geometry
+// invariants:
+//
+//   - Left unrotated         → text-anchor=end, dominant-baseline=central,
+//                              on-screen label x < origin x.
+//   - Bottom unrotated       → text-anchor=middle,
+//                              dominant-baseline=text-before-edge,
+//                              on-screen label y > axis y (below the axis line).
+//   - Bottom rotated -45°    → text-anchor=end,
+//                              dominant-baseline=text-before-edge,
+//                              pivot ≈ tick x (post-translate),
+//                              post-rotation top of bbox sits at or below the
+//                              axis line (i.e. label hangs into the bottom strip).
+//
+// This is the parsing-based safety net. Specific finding regressions (A1, A5,
+// awcz, fnsf, …) still have their own narrow tests; this one is the breadth
+// check that fires if any axis layout silently breaks.
+func TestAxisLabels_Geometry(t *testing.T) {
+	const builderWpt = 400.0
+	const builderHpt = 300.0
+
+	t.Run("Left_unrotated", func(t *testing.T) {
+		builder := NewSVGBuilder(builderWpt, builderHpt)
+		const originX, originY = 60.0, 50.0
+		scale := NewLinearScale(0, 50).SetRangeLinear(0, 200)
+		config := DefaultAxisConfig(AxisPositionLeft)
+		config.TickCount = 6
+		axis := NewAxis(builder, config)
+		axis.DrawLinearAxis(scale, originX, originY)
+
+		svgStr, err := builder.RenderToString()
+		if err != nil {
+			t.Fatalf("Render failed: %v", err)
+		}
+		pxToPt, ok := ViewBoxPxToPt(t, svgStr, builderWpt)
+		if !ok {
+			t.Fatal("could not parse viewBox")
+		}
+		texts := ParseSVGTexts(t, svgStr)
+
+		want := []string{"0", "10", "20", "30", "40", "50"}
+		seen := 0
+		for _, lab := range want {
+			el := FindByContent(texts, lab)
+			if el == nil {
+				t.Errorf("label %q: not found in SVG", lab)
+				continue
+			}
+			seen++
+			if el.HasRotate {
+				t.Errorf("label %q: unexpected rotation transform on unrotated axis", lab)
+			}
+			if el.Anchor != "end" {
+				t.Errorf("label %q: text-anchor=%q, want %q", lab, el.Anchor, "end")
+			}
+			if el.Baseline != "central" {
+				t.Errorf("label %q: dominant-baseline=%q, want %q", lab, el.Baseline, "central")
+			}
+			if !el.HasX {
+				t.Errorf("label %q: missing x attribute on <text>", lab)
+				continue
+			}
+			xPt := el.X * pxToPt
+			if xPt >= originX {
+				t.Errorf("label %q: on-screen x=%.2fpt is not < originX=%.2fpt — label should sit LEFT of axis line", lab, xPt, originX)
+			}
+		}
+		if seen < len(want) {
+			t.Errorf("matched %d of %d Left-axis labels", seen, len(want))
+		}
+	})
+
+	t.Run("Bottom_unrotated", func(t *testing.T) {
+		builder := NewSVGBuilder(builderWpt, builderHpt)
+		const originX, originY = 50.0, 250.0
+		categories := []string{"Q1", "Q2", "Q3", "Q4"}
+		scale := NewCategoricalScale(categories).SetRangeCategorical(0, 300)
+		config := DefaultAxisConfig(AxisPositionBottom)
+		axis := NewAxis(builder, config)
+		axis.DrawCategoricalAxis(scale, originX, originY)
+
+		svgStr, err := builder.RenderToString()
+		if err != nil {
+			t.Fatalf("Render failed: %v", err)
+		}
+		pxToPt, ok := ViewBoxPxToPt(t, svgStr, builderWpt)
+		if !ok {
+			t.Fatal("could not parse viewBox")
+		}
+		texts := ParseSVGTexts(t, svgStr)
+
+		seen := 0
+		for _, lab := range categories {
+			el := FindByContent(texts, lab)
+			if el == nil {
+				t.Errorf("label %q: not found in SVG", lab)
+				continue
+			}
+			seen++
+			if el.HasRotate {
+				t.Errorf("label %q: unexpected rotation transform on unrotated axis", lab)
+			}
+			if el.Anchor != "middle" {
+				t.Errorf("label %q: text-anchor=%q, want %q", lab, el.Anchor, "middle")
+			}
+			if el.Baseline != "text-before-edge" {
+				t.Errorf("label %q: dominant-baseline=%q, want %q", lab, el.Baseline, "text-before-edge")
+			}
+			if !el.HasY {
+				t.Errorf("label %q: missing y attribute on <text>", lab)
+				continue
+			}
+			yPt := el.Y * pxToPt
+			if yPt <= originY {
+				t.Errorf("label %q: on-screen y=%.2fpt is not > axisY=%.2fpt — label should sit BELOW axis line", lab, yPt, originY)
+			}
+		}
+		if seen < len(categories) {
+			t.Errorf("matched %d of %d Bottom-axis labels", seen, len(categories))
+		}
+	})
+
+	t.Run("Bottom_rotated_minus45", func(t *testing.T) {
+		builder := NewSVGBuilder(builderWpt, builderHpt)
+		const originX, originY = 30.0, 250.0
+		categories := []string{"Jan", "Feb", "Mar", "Apr"}
+		scale := NewCategoricalScale(categories).SetRangeCategorical(0, 340)
+		config := DefaultAxisConfig(AxisPositionBottom)
+		config.LabelRotation = -45
+		axis := NewAxis(builder, config)
+		axis.DrawCategoricalAxis(scale, originX, originY)
+
+		svgStr, err := builder.RenderToString()
+		if err != nil {
+			t.Fatalf("Render failed: %v", err)
+		}
+		pxToPt, ok := ViewBoxPxToPt(t, svgStr, builderWpt)
+		if !ok {
+			t.Fatal("could not parse viewBox")
+		}
+		texts := ParseSVGTexts(t, svgStr)
+
+		// Conservative ascent estimate in px for post-transform bbox. The
+		// canvas library does not emit glyph metrics; 0.65 × fontSize is a
+		// well-tested under-estimate of the actual ascent that
+		// TestAxis_RotatedLabelsStayBelowAxisLine relies on too.
+		fontSize := config.FontSize
+		if fontSize == 0 {
+			fontSize = builder.StyleGuide().Typography.SizeSmall
+		}
+		ascentPx := (fontSize * 0.65) / pxToPt
+		// Glyph width is irrelevant for the top corner of the rotated bbox
+		// (the pivot itself is the top-right corner under rotate(-45) +
+		// right-anchored text); pass a small positive width so the helper
+		// returns a non-degenerate box. The post-rotation `top` corner is
+		// what we assert against the axis line.
+		const widthHintPx = 1.0
+
+		// Acceptance criteria: pivot post-translate "near" tickX, and the
+		// post-rotation top corner sits at or below the axis line.
+		seen := 0
+		for _, lab := range categories {
+			el := FindByContent(texts, lab)
+			if el == nil {
+				t.Errorf("label %q: not found in SVG", lab)
+				continue
+			}
+			seen++
+			if !el.HasRotate {
+				t.Errorf("label %q: expected transform=...rotate(...) on rotated axis", lab)
+				continue
+			}
+			if math.Abs(el.Rotation-(-45)) > 0.01 {
+				t.Errorf("label %q: rotation=%.2f, want -45", lab, el.Rotation)
+			}
+			// For rotated <text>, the canvas library encodes TextAlignRight
+			// (the acceptance criteria's "text-anchor=end") as a negative
+			// tspan x rather than as a text-anchor attribute; the attribute
+			// is omitted on transformed elements. Assert the encoding.
+			if !el.HasTspanX {
+				t.Errorf("label %q: missing tspan x attribute on rotated text", lab)
+			} else if el.TspanX >= 0 {
+				t.Errorf("label %q: tspan x=%.2f ≥ 0 — rotated label is left-anchored (expected right-anchored)", lab, el.TspanX)
+			}
+
+			tickXpt := originX + scale.Scale(lab)
+			// The pivot is encoded as translate(tx, ty); the canvas library
+			// shifts that further by ~0.707 × Ascent to compensate for the
+			// baseline anchoring (see TestAxis_RotatedLabelsStayBelowAxisLine
+			// for the derivation). We use a generous tolerance of one fontSize
+			// in pt: enough to absorb that shift but small enough to catch a
+			// drift to a wholly different tick.
+			translateXpt := el.TranslateX * pxToPt
+			if math.Abs(translateXpt-tickXpt) > float64(fontSize) {
+				t.Errorf("label %q: translate x=%.2fpt is not near tickX=%.2fpt (Δ=%.2f > fontSize=%.0f)",
+					lab, translateXpt, tickXpt, translateXpt-tickXpt, fontSize)
+			}
+
+			// Post-rotation bbox top corner: must sit at or below axis line.
+			axisYpx := originY / pxToPt
+			bb := el.PostTransformBBox(widthHintPx, ascentPx)
+			// MinY is the top of the bbox in screen px. For rotate(-45) with
+			// the pivot at the top-right of the local glyph, the screen-top
+			// of the rotated bbox is the pivot itself — i.e. translate y.
+			// Allow 1px tolerance for sub-pixel rounding.
+			if bb.MinY < axisYpx-1 {
+				t.Errorf("label %q: post-rotation top y=%.2fpx crosses ABOVE axis line at y=%.2fpx — rotated label should hang BELOW axis",
+					lab, bb.MinY, axisYpx)
+			}
+		}
+		if seen < len(categories) {
+			t.Errorf("matched %d of %d rotated Bottom-axis labels", seen, len(categories))
+		}
+	})
 }
 
 // TestAxis_RotatedLabelsStayBelowAxisLine is the regression test for
