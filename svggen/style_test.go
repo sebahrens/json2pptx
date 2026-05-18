@@ -1150,6 +1150,116 @@ func TestEnforceAccentContrast_DarkBackground(t *testing.T) {
 	}
 }
 
+// TestNewPaletteFromThemeColorsRaw_PreservesAccents verifies that the Raw
+// variant skips EnforceAccentContrast: a low-contrast palette that the
+// default constructor would mutate must pass through unchanged. This is the
+// regression guard for the native↔svggen palette parity contract — when the
+// caller opts out of enforcement, every accent hex must match the input.
+func TestNewPaletteFromThemeColorsRaw_PreservesAccents(t *testing.T) {
+	lowContrastColors := []ThemeColorInput{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "dk2", RGB: "#000000"},
+		{Name: "lt2", RGB: "#EBEBEB"},
+		{Name: "accent1", RGB: "#FD5108"},
+		{Name: "accent2", RGB: "#FE7C39"},
+		{Name: "accent3", RGB: "#FFAA72"},
+		{Name: "accent4", RGB: "#A1A8B3"},
+		{Name: "accent5", RGB: "#B5BCC4"},
+		{Name: "accent6", RGB: "#CBD1D6"},
+	}
+
+	// Sanity check: the default constructor MUST mutate this palette, otherwise
+	// this test would pass trivially even if the Raw variant were broken.
+	enforced := NewPaletteFromThemeColors(lowContrastColors)
+	if enforced.Accent3.Hex() == "#FFAA72" && enforced.Accent5.Hex() == "#B5BCC4" {
+		t.Fatalf("test precondition failed: NewPaletteFromThemeColors did not mutate a known-low-contrast palette; pick a more aggressive fixture")
+	}
+
+	raw := NewPaletteFromThemeColorsRaw(lowContrastColors)
+
+	wantAccents := []struct {
+		name string
+		got  Color
+		want string
+	}{
+		{"Accent1", raw.Accent1, "#FD5108"},
+		{"Accent2", raw.Accent2, "#FE7C39"},
+		{"Accent3", raw.Accent3, "#FFAA72"},
+		{"Accent4", raw.Accent4, "#A1A8B3"},
+		{"Accent5", raw.Accent5, "#B5BCC4"},
+		{"Accent6", raw.Accent6, "#CBD1D6"},
+	}
+	for _, a := range wantAccents {
+		if a.got.Hex() != a.want {
+			t.Errorf("%s = %s, want %s (Raw variant must not mutate input)", a.name, a.got.Hex(), a.want)
+		}
+	}
+}
+
+// TestStyleGuideFromSpec_DisablePaletteEnforcement verifies that setting the
+// StyleSpec opt-out flag suppresses EnforceAccentContrast and yields accent
+// hexes identical to the input ThemeColors — matching what the native OOXML
+// pipeline would emit for the same scheme tokens.
+func TestStyleGuideFromSpec_DisablePaletteEnforcement(t *testing.T) {
+	themeColors := []ThemeColorInput{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#FD5108"},
+		{Name: "accent2", RGB: "#FE7C39"},
+		{Name: "accent3", RGB: "#FFAA72"},
+		{Name: "accent4", RGB: "#A1A8B3"},
+		{Name: "accent5", RGB: "#B5BCC4"},
+		{Name: "accent6", RGB: "#CBD1D6"},
+	}
+
+	enforcedGuide := StyleGuideFromSpec(StyleSpec{ThemeColors: themeColors})
+	rawGuide := StyleGuideFromSpec(StyleSpec{
+		ThemeColors:               themeColors,
+		DisablePaletteEnforcement: true,
+	})
+
+	// The enforced palette must differ somewhere — proves the spec opt-out is doing real work.
+	enforcedHexes := []string{
+		enforcedGuide.Palette.Accent1.Hex(),
+		enforcedGuide.Palette.Accent2.Hex(),
+		enforcedGuide.Palette.Accent3.Hex(),
+		enforcedGuide.Palette.Accent4.Hex(),
+		enforcedGuide.Palette.Accent5.Hex(),
+		enforcedGuide.Palette.Accent6.Hex(),
+	}
+	inputHexes := []string{"#FD5108", "#FE7C39", "#FFAA72", "#A1A8B3", "#B5BCC4", "#CBD1D6"}
+	allMatch := true
+	for i := range enforcedHexes {
+		if enforcedHexes[i] != inputHexes[i] {
+			allMatch = false
+			break
+		}
+	}
+	if allMatch {
+		t.Fatalf("test precondition failed: enforcement left palette unchanged; pick a more aggressive fixture")
+	}
+
+	wantAccents := []struct {
+		name string
+		got  Color
+		want string
+	}{
+		{"Accent1", rawGuide.Palette.Accent1, "#FD5108"},
+		{"Accent2", rawGuide.Palette.Accent2, "#FE7C39"},
+		{"Accent3", rawGuide.Palette.Accent3, "#FFAA72"},
+		{"Accent4", rawGuide.Palette.Accent4, "#A1A8B3"},
+		{"Accent5", rawGuide.Palette.Accent5, "#B5BCC4"},
+		{"Accent6", rawGuide.Palette.Accent6, "#CBD1D6"},
+	}
+	for _, a := range wantAccents {
+		if a.got.Hex() != a.want {
+			t.Errorf("%s = %s, want %s (DisablePaletteEnforcement must preserve raw schemeClr hex)",
+				a.name, a.got.Hex(), a.want)
+		}
+	}
+}
+
 // TestColorDistanceRGB verifies the euclidean distance calculation.
 func TestColorDistanceRGB(t *testing.T) {
 	tests := []struct {

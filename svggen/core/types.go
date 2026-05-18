@@ -203,6 +203,18 @@ type StyleSpec struct {
 
 	// ShowGrid enables background grid lines.
 	ShowGrid bool `json:"show_grid,omitempty" yaml:"show_grid,omitempty"`
+
+	// DisablePaletteEnforcement, when true, instructs StyleGuideFromSpec to skip
+	// EnforceAccentContrast on the theme-derived palette. By default svggen mutates
+	// accents that fail WCAG 3:1 contrast against Background or that have RGB
+	// distance <55 from an adjacent accent, so that chart series stay legible.
+	// That mutation diverges from the native OOXML pipeline, which emits raw
+	// <a:schemeClr> values unchanged.
+	//
+	// Set this flag when palette parity with the native pipeline matters more
+	// than chart-quality enforcement (e.g. when a shape_grid accent1 fill and an
+	// svggen bar color must render with the same hex on the same slide).
+	DisablePaletteEnforcement bool `json:"disable_palette_enforcement,omitempty" yaml:"disable_palette_enforcement,omitempty"`
 }
 
 // Validate checks that the RequestEnvelope has required fields.

@@ -793,9 +793,16 @@ func DefaultStrokes() *Strokes {
 func StyleGuideFromSpec(spec StyleSpec) *StyleGuide {
 	guide := DefaultStyleGuide()
 
-	// Handle palette — prefer ThemeColors (full-fidelity) over Palette (accent-only)
+	// Handle palette — prefer ThemeColors (full-fidelity) over Palette (accent-only).
+	// When spec.DisablePaletteEnforcement is set, build the palette without the
+	// EnforceAccentContrast mutation so svggen output stays in sync with the
+	// raw schemeClr values emitted by the native OOXML pipeline.
 	if len(spec.ThemeColors) > 0 {
-		guide.Palette = NewPaletteFromThemeColors(spec.ThemeColors)
+		if spec.DisablePaletteEnforcement {
+			guide.Palette = NewPaletteFromThemeColorsRaw(spec.ThemeColors)
+		} else {
+			guide.Palette = NewPaletteFromThemeColors(spec.ThemeColors)
+		}
 	} else if !spec.Palette.IsZero() {
 		if spec.Palette.Name != "" {
 			guide.Palette = GetPaletteByName(spec.Palette.Name)
@@ -1020,7 +1027,32 @@ func (c Color) CSS() string {
 // The function expects colors with names like "accent1", "accent2", etc.
 // If fewer than 6 accent colors are provided, it cycles through available colors.
 // Falls back to DefaultPalette() if no accent colors are found.
+//
+// MUTATION POLICY: This function unconditionally calls EnforceAccentContrast on
+// the resulting palette, which mutates accents that fail WCAG 3:1 contrast against
+// Background or that have RGB distance <55 from an adjacent accent. This guarantees
+// chart-quality output but diverges from the native OOXML pipeline, which emits
+// raw <a:schemeClr> values unchanged. For palette parity with the native pipeline,
+// use NewPaletteFromThemeColorsRaw (or set StyleSpec.DisablePaletteEnforcement=true).
 func NewPaletteFromThemeColors(themeColors []ThemeColorInput) *Palette {
+	return newPaletteFromThemeColors(themeColors, true)
+}
+
+// NewPaletteFromThemeColorsRaw is like NewPaletteFromThemeColors but skips the
+// EnforceAccentContrast mutation step. Use this when palette parity with the
+// native OOXML pipeline matters more than chart-readability enforcement.
+//
+// Charts rendered from the raw palette may have low-contrast series on light
+// backgrounds or visually similar adjacent series; callers accept that trade-off
+// in exchange for matching the schemeClr values emitted by the native side.
+func NewPaletteFromThemeColorsRaw(themeColors []ThemeColorInput) *Palette {
+	return newPaletteFromThemeColors(themeColors, false)
+}
+
+// newPaletteFromThemeColors is the shared builder for the two exported variants.
+// When enforce is true it applies EnforceAccentContrast; when false it returns
+// the raw theme-derived palette so callers can stay aligned with the native pipeline.
+func newPaletteFromThemeColors(themeColors []ThemeColorInput, enforce bool) *Palette {
 	// Start with default palette as base
 	p := DefaultPalette()
 	p.Name = "theme"
@@ -1109,7 +1141,13 @@ func NewPaletteFromThemeColors(themeColors []ThemeColorInput) *Palette {
 	// Some templates define accent colors that are too light or too
 	// similar to each other, making chart series nearly invisible or
 	// indistinguishable on a white background.
-	EnforceAccentContrast(p)
+	//
+	// Skipped when the caller has opted out (see NewPaletteFromThemeColorsRaw
+	// or StyleSpec.DisablePaletteEnforcement) to preserve parity with the
+	// native OOXML pipeline.
+	if enforce {
+		EnforceAccentContrast(p)
+	}
 
 	return p
 }
@@ -1152,6 +1190,23 @@ func colorDistanceRGB(a, b Color) float64 {
 //
 // This function mutates the palette in place and also updates Primary,
 // Secondary, Tertiary to stay in sync with Accent1-3.
+//
+// MUTATION POLICY AND NATIVE-PALETTE DRIFT:
+//
+// The native OOXML pipeline emits <a:schemeClr val="accentN"/> tokens without
+// any equivalent adjustment, so any low-contrast or close-pair template that
+// triggers this enforcement will produce svggen output whose accents do not
+// match the schemeClr values rendered by PowerPoint on the same slide.
+//
+// Callers that need palette parity with the native pipeline (for example, when
+// a shape_grid accent1 fill and an svggen bar series must render with the same
+// hex on one slide) should either:
+//   - call NewPaletteFromThemeColorsRaw instead of NewPaletteFromThemeColors, or
+//   - set StyleSpec.DisablePaletteEnforcement=true before calling StyleGuideFromSpec.
+//
+// Charts produced with enforcement disabled may have low-contrast or visually
+// similar series; that is the explicit trade-off the caller accepts in exchange
+// for color fidelity with native shapes.
 func EnforceAccentContrast(p *Palette) {
 	if p == nil {
 		return
