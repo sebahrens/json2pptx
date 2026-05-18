@@ -950,6 +950,7 @@ func TestGetCapabilities(t *testing.T) {
 			"validate_diagram",
 			"get_diagram_schema",
 			"get_capabilities",
+			"get_started",
 		}
 		got := map[string]bool{}
 		for _, e := range resp.ToolList {

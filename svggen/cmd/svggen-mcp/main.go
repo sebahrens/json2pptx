@@ -5,13 +5,15 @@
 //	svggen-mcp              # Start MCP server over stdio
 //	svggen-mcp --version    # Print version
 //
-// The server exposes five tools:
+// The server exposes six tools:
 //   - render_diagram: Render a diagram to SVG or PNG
 //   - list_diagram_types: List all available diagram types
 //   - validate_diagram: Validate diagram input without rendering
 //   - get_diagram_schema: Get the data schema for a specific diagram type
 //   - get_capabilities: Returns schema_version, tool list, registered chart
 //     and diagram types, deprecations, and feature flags for drift detection
+//   - get_started: Returns the recommended ordered MCP-call sequence for a
+//     stated task (render, preflight-render, embed-in-deck)
 package main
 
 import (
@@ -75,6 +77,7 @@ func run() error {
 	s.AddTool(validateDiagramTool(), handleValidateDiagram)
 	s.AddTool(getDiagramSchemaTool(), handleGetDiagramSchema)
 	s.AddTool(getCapabilitiesTool(), handleGetCapabilities)
+	s.AddTool(getStartedTool(), handleGetStarted)
 
 	slog.Info("starting svggen MCP server", "version", version)
 
@@ -1095,6 +1098,10 @@ func toolCatalog() []capabilitiesToolEntry {
 		{
 			Name:        "get_capabilities",
 			Description: "Returns schema version, tool list, chart/diagram types, deprecations, and feature flags.",
+		},
+		{
+			Name:        "get_started",
+			Description: "Returns the recommended ordered MCP-call sequence for a stated task (render, preflight-render, embed-in-deck).",
 		},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })

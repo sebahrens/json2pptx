@@ -69,6 +69,7 @@ Standalone SVG renderer with its own diagram/chart registry. **Distinct connecta
 | Validate a diagram/chart payload | `validate_diagram` | Same `{valid, errors}` envelope documented under "Isolated diagram validation" below. Use BEFORE `render_diagram` when you want structured errors instead of a render failure. |
 | Get the JSON Schema for a diagram/chart type | `get_diagram_schema` | Returns the input schema for a specific `type` so you can structure `data` correctly. Prefer this over guessing field names from `list_diagram_types`. |
 | Detect svggen-mcp contract drift | `get_capabilities` | Returns `{schema_version, tool_list:[{name, description}], chart_types:[], diagram_types:[], deprecations:[], features:{dry_render, structured_errors}}`. `schema_version` is sourced from the svggen library version (single source). Call once per session and compare `schema_version` to the value you cached; a change means the rendering or validation contract may have shifted. Distinct from `json2pptx-mcp.get_capabilities` — this one is scoped to the svggen registry. |
+| Discover the recommended call sequence for a task | `get_started` | Returns `{task, sequence:[{tool, when_to_call}], available_tasks, notes}`. Pass `task` to scope the sequence: `"render"` (default — one-shot diagram render), `"preflight-render"` (validate before rendering, including a `dry_run` pass), or `"embed-in-deck"` (render SVG markup for inline `shape_grid` `icon.svg_data`). Unknown values fall back to `"render"`. Use this as your first call to avoid reverse-engineering the workflow from SKILL.md. Distinct from `json2pptx-mcp.get_started` — this one is scoped to svggen-mcp's six tools. |
 
 When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
 
@@ -138,7 +139,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (prefer over CLI shell-outs)
 
-When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the five `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
+When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
