@@ -14,11 +14,12 @@ import (
 type CellKind string
 
 const (
-	CellKindShape   CellKind = "shape"
-	CellKindTable   CellKind = "table"
-	CellKindIcon    CellKind = "icon"
-	CellKindImage   CellKind = "image"
-	CellKindDiagram CellKind = "diagram"
+	CellKindShape     CellKind = "shape"
+	CellKindTable     CellKind = "table"
+	CellKindIcon      CellKind = "icon"
+	CellKindImage     CellKind = "image"
+	CellKindDiagram   CellKind = "diagram"
+	CellKindComposite CellKind = "composite"
 )
 
 // FitMode controls how a shape is scaled within its grid cell bounds.

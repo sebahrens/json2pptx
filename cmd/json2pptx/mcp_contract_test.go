@@ -598,6 +598,7 @@ func TestMCPSupportedTypes_GridCellTypesMatchShapeGrid(t *testing.T) {
 		string(shapegrid.CellKindIcon),
 		string(shapegrid.CellKindImage),
 		string(shapegrid.CellKindDiagram),
+		string(shapegrid.CellKindComposite),
 	}
 	sort.Strings(canonical)
 
