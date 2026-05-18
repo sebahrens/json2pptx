@@ -82,6 +82,7 @@ type IconInsert struct {
 	OffsetY  int64  // Y position in EMU
 	ExtentCX int64  // Width in EMU
 	ExtentCY int64  // Height in EMU
+	Group    bool   // When true, wrap the emitted p:pic in a p:grpSp so PowerPoint treats it as a single selection target.
 }
 
 // ImageInsert describes an image file to embed in a slide as a p:pic element.

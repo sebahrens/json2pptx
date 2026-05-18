@@ -166,6 +166,31 @@ func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate p:pic for SVG: %w", err)
 		}
+
+		// Optionally wrap the p:pic in a p:grpSp so PowerPoint treats the
+		// SVG (e.g., a shape_grid diagram cell with cell.Group=true) as a
+		// single selection target. The wrapping group uses the same
+		// slide-space bounds as the picture, so visual placement is unchanged.
+		if svg.group {
+			groupID := nextShapeID
+			nextShapeID++
+			grpXML, err := pptx.GenerateGroup(pptx.GroupOptions{
+				ID:          groupID,
+				Description: svg.description,
+				Bounds: pptx.RectEmu{
+					X:  svg.offsetX,
+					Y:  svg.offsetY,
+					CX: svg.extentCX,
+					CY: svg.extentCY,
+				},
+				Children: [][]byte{picXML},
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate p:grpSp wrapper for SVG: %w", err)
+			}
+			picsToInsert = append(picsToInsert, string(grpXML))
+			continue
+		}
 		picsToInsert = append(picsToInsert, string(picXML))
 	}
 

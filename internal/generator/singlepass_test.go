@@ -700,6 +700,104 @@ func TestSinglePassContext_InsertNativeSVGPics(t *testing.T) {
 	t.Logf("Result length: %d bytes", len(result))
 }
 
+// TestSinglePassContext_InsertNativeSVGPics_Grouped verifies that when
+// nativeSVGInsert.group=true (e.g., a shape_grid diagram cell with
+// cell.Group=true — go-slide-creator-zg8q.10), the emitted p:pic is wrapped
+// in a p:grpSp so PowerPoint treats it as a single selection target.
+func TestSinglePassContext_InsertNativeSVGPics_Grouped(t *testing.T) {
+	slideData := []byte(`<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:sp id="10">existing shape</p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`)
+
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+
+	nativeSVGs := []nativeSVGInsert{
+		{
+			pngRelID: "rId10",
+			svgRelID: "rId11",
+			offsetX:  1000000,
+			offsetY:  2000000,
+			extentCX: 3000000,
+			extentCY: 4000000,
+			group:    true,
+		},
+	}
+
+	result, err := ctx.insertNativeSVGPics(1, slideData, nativeSVGs)
+	if err != nil {
+		t.Fatalf("insertNativeSVGPics failed: %v", err)
+	}
+
+	resultStr := string(result)
+
+	if !strings.Contains(resultStr, "<p:grpSp>") {
+		t.Error("expected p:grpSp wrapper when nativeSVGInsert.group=true")
+	}
+	if !strings.Contains(resultStr, "</p:grpSp>") {
+		t.Error("expected closing </p:grpSp> tag")
+	}
+	if !strings.Contains(resultStr, "p:pic") {
+		t.Error("expected p:pic element to be inserted inside the group")
+	}
+	// The group must enclose the p:pic, not the other way around.
+	grpStart := strings.Index(resultStr, "<p:grpSp>")
+	picStart := strings.Index(resultStr, "<p:pic")
+	grpEnd := strings.Index(resultStr, "</p:grpSp>")
+	if grpStart < 0 || picStart < 0 || grpEnd < 0 {
+		t.Fatalf("missing required markers: grpStart=%d picStart=%d grpEnd=%d", grpStart, picStart, grpEnd)
+	}
+	if !(grpStart < picStart && picStart < grpEnd) {
+		t.Errorf("expected p:pic to be nested inside p:grpSp, got grpStart=%d picStart=%d grpEnd=%d", grpStart, picStart, grpEnd)
+	}
+	// Relationship IDs (referenced by the inner p:pic) must still be present.
+	if !strings.Contains(resultStr, "rId10") || !strings.Contains(resultStr, "rId11") {
+		t.Error("expected relationship IDs to be present inside the grouped p:pic")
+	}
+}
+
+// TestSinglePassContext_InsertNativeSVGPics_NotGrouped is a negative control
+// that verifies inserts without group=true continue to emit a bare p:pic.
+func TestSinglePassContext_InsertNativeSVGPics_NotGrouped(t *testing.T) {
+	slideData := []byte(`<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:sp id="10">existing shape</p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`)
+
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+
+	nativeSVGs := []nativeSVGInsert{
+		{
+			pngRelID: "rId10",
+			svgRelID: "rId11",
+			offsetX:  1000000,
+			offsetY:  2000000,
+			extentCX: 3000000,
+			extentCY: 4000000,
+			group:    false,
+		},
+	}
+
+	result, err := ctx.insertNativeSVGPics(1, slideData, nativeSVGs)
+	if err != nil {
+		t.Fatalf("insertNativeSVGPics failed: %v", err)
+	}
+	if strings.Contains(string(result), "<p:grpSp>") {
+		t.Error("expected no p:grpSp wrapper when group=false")
+	}
+	if !strings.Contains(string(result), "p:pic") {
+		t.Error("expected a bare p:pic element when group=false")
+	}
+}
+
 // TestSinglePassContext_InsertNativeSVGPics_NoSpTreeError tests error when spTree is missing
 func TestSinglePassContext_InsertNativeSVGPics_NoSpTreeError(t *testing.T) {
 	// Slide XML without spTree closing tag

@@ -383,6 +383,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 				extentCX:       icon.ExtentCX,
 				extentCY:       icon.ExtentCY,
 				placeholderIdx: -1, // No placeholder to remove — injected as new p:pic
+				group:          icon.Group,
 			})
 		}
 		// Register image inserts from shape_grid as media relationships

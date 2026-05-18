@@ -293,6 +293,11 @@ type nativeSVGInsert struct {
 
 	// Placeholder to remove from slide
 	placeholderIdx int
+
+	// When true, the emitted p:pic is wrapped in a p:grpSp so PowerPoint treats
+	// the SVG as a single selection target. Set by callers that want grouping
+	// (e.g., shape_grid diagram cells with cell.Group=true).
+	group bool
 }
 
 // transparentPNG1x1 is a minimal 1x1 transparent PNG image (67 bytes).

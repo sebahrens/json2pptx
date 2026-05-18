@@ -1867,6 +1867,48 @@ func TestDiagramCellInserts_ForwardsCellBoundsToDiagramSpec(t *testing.T) {
 	}
 }
 
+// TestDiagramCellInserts_PropagatesGroupFlag is a regression for
+// go-slide-creator-zg8q.10: when cell.Group=true on a diagram cell, the
+// resulting IconInsert must carry Group=true so the singlepass emitter wraps
+// the p:pic in a p:grpSp (single PowerPoint selection target).
+func TestDiagramCellInserts_PropagatesGroupFlag(t *testing.T) {
+	mkCell := func(group bool) shapegrid.ResolvedCell {
+		return shapegrid.ResolvedCell{
+			ID:   1,
+			Kind: shapegrid.CellKindDiagram,
+			Bounds: pptx.RectEmu{
+				X: 100000, Y: 100000, CX: 5000000, CY: 3000000,
+			},
+			Group: group,
+			DiagramSpec: &types.DiagramSpec{
+				Type: "bar_chart",
+				Data: map[string]any{
+					"categories": []any{"A", "B"},
+					"series":     []any{map[string]any{"name": "S1", "values": []any{1.0, 2.0}}},
+				},
+			},
+		}
+	}
+
+	grouped := mkCell(true)
+	icons, _, err := generateDiagramCellInserts(grouped, nil)
+	if err != nil {
+		t.Fatalf("unexpected error (grouped): %v", err)
+	}
+	if len(icons) != 1 || !icons[0].Group {
+		t.Fatalf("expected Group=true on IconInsert when cell.Group=true, got icons=%+v", icons)
+	}
+
+	bare := mkCell(false)
+	icons, _, err = generateDiagramCellInserts(bare, nil)
+	if err != nil {
+		t.Fatalf("unexpected error (bare): %v", err)
+	}
+	if len(icons) != 1 || icons[0].Group {
+		t.Fatalf("expected Group=false on IconInsert when cell.Group=false, got icons=%+v", icons)
+	}
+}
+
 func TestDiagramCellInserts_PreservesExplicitDiagramDimensions(t *testing.T) {
 	// When DiagramSpec.Width/Height are already set, generateDiagramCellInserts
 	// must NOT overwrite them with cell-derived dimensions.

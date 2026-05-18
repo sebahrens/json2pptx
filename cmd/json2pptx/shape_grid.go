@@ -678,6 +678,11 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		OffsetY:  cell.Bounds.Y,
 		ExtentCX: cell.Bounds.CX,
 		ExtentCY: cell.Bounds.CY,
+		// Honor the cell.Group flag for diagram cells: the singlepass
+		// emitter wraps the resulting p:pic in a p:grpSp so PowerPoint
+		// treats the diagram as a single selection target, matching the
+		// behavior of grouped native shape cells (go-slide-creator-zg8q.10).
+		Group: cell.Group,
 	}}, warnings, nil
 }
 
