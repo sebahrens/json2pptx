@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ParseTheme extracts theme information from a PPTX template.
@@ -137,22 +138,27 @@ func normalizeRGB(rgb string) string {
 }
 
 // getDefaultTheme returns a default theme for fallback.
+//
+// Hex values are sourced from svggen.DefaultTheme*Hex so this native OOXML
+// fallback and svggen.DefaultPalette agree on the same colors when the PPTX
+// theme cannot be parsed. Without this shared symbol the two sides silently
+// diverged (Office-2007 accents here vs. Tableau-10 in svggen).
 func getDefaultTheme() types.ThemeInfo {
 	return types.ThemeInfo{
 		Name:      "Default",
 		TitleFont: "Calibri",
 		BodyFont:  "Calibri",
 		Colors: []types.ThemeColor{
-			{Name: "dk1", RGB: "#000000"},
-			{Name: "lt1", RGB: "#FFFFFF"},
-			{Name: "dk2", RGB: "#1F497D"},
-			{Name: "lt2", RGB: "#EEECE1"},
-			{Name: "accent1", RGB: "#4F81BD"},
-			{Name: "accent2", RGB: "#C0504D"},
-			{Name: "accent3", RGB: "#9BBB59"},
-			{Name: "accent4", RGB: "#8064A2"},
-			{Name: "accent5", RGB: "#4BACC6"},
-			{Name: "accent6", RGB: "#F79646"},
+			{Name: "dk1", RGB: svggen.DefaultThemeDK1Hex},
+			{Name: "lt1", RGB: svggen.DefaultThemeLT1Hex},
+			{Name: "dk2", RGB: svggen.DefaultThemeDK2Hex},
+			{Name: "lt2", RGB: svggen.DefaultThemeLT2Hex},
+			{Name: "accent1", RGB: svggen.DefaultThemeAccent1Hex},
+			{Name: "accent2", RGB: svggen.DefaultThemeAccent2Hex},
+			{Name: "accent3", RGB: svggen.DefaultThemeAccent3Hex},
+			{Name: "accent4", RGB: svggen.DefaultThemeAccent4Hex},
+			{Name: "accent5", RGB: svggen.DefaultThemeAccent5Hex},
+			{Name: "accent6", RGB: svggen.DefaultThemeAccent6Hex},
 		},
 	}
 }

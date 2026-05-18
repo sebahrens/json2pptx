@@ -11,6 +11,24 @@ import (
 // rgbRegex matches rgb() and rgba() CSS color functions.
 var rgbRegex = regexp.MustCompile(`rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)`)
 
+// Default theme color hex values used when a PPTX theme cannot be parsed.
+// These constants are the single source of truth for the fallback palette
+// across both svggen.DefaultPalette and the native OOXML theme fallback in
+// internal/template, so a parse failure on either side lands on identical
+// hex values. The accent colors follow the Tableau 10 palette.
+const (
+	DefaultThemeDK1Hex     = "#000000"
+	DefaultThemeLT1Hex     = "#FFFFFF"
+	DefaultThemeDK2Hex     = "#212529"
+	DefaultThemeLT2Hex     = "#F8F9FA"
+	DefaultThemeAccent1Hex = "#4E79A7" // Blue
+	DefaultThemeAccent2Hex = "#F28E2B" // Orange
+	DefaultThemeAccent3Hex = "#E15759" // Red
+	DefaultThemeAccent4Hex = "#76B7B2" // Teal
+	DefaultThemeAccent5Hex = "#59A14F" // Green
+	DefaultThemeAccent6Hex = "#EDC948" // Yellow
+)
+
 // StyleGuide provides a centralized design system for consulting-grade SVG output.
 // It defines palettes, typography, spacing, and stroke configurations that ensure
 // visual consistency across all diagram types.
@@ -183,29 +201,31 @@ func (p *Palette) Clone() *Palette {
 // Built-in palettes.
 
 // DefaultPalette returns the default consulting palette based on Tableau 10.
+// Accent and base colors are sourced from the DefaultTheme* constants so the
+// native OOXML fallback and svggen agree on hex values when a theme fails to parse.
 func DefaultPalette() *Palette {
 	return &Palette{
 		Name:      "corporate",
-		Primary:   MustParseColor("#4E79A7"),
-		Secondary: MustParseColor("#59A14F"),
-		Tertiary:  MustParseColor("#E15759"),
+		Primary:   MustParseColor(DefaultThemeAccent1Hex),
+		Secondary: MustParseColor(DefaultThemeAccent5Hex),
+		Tertiary:  MustParseColor(DefaultThemeAccent3Hex),
 
-		Accent1: MustParseColor("#4E79A7"), // Blue
-		Accent2: MustParseColor("#F28E2B"), // Orange
-		Accent3: MustParseColor("#E15759"), // Red
-		Accent4: MustParseColor("#76B7B2"), // Teal
-		Accent5: MustParseColor("#59A14F"), // Green
-		Accent6: MustParseColor("#EDC948"), // Yellow
+		Accent1: MustParseColor(DefaultThemeAccent1Hex), // Blue
+		Accent2: MustParseColor(DefaultThemeAccent2Hex), // Orange
+		Accent3: MustParseColor(DefaultThemeAccent3Hex), // Red
+		Accent4: MustParseColor(DefaultThemeAccent4Hex), // Teal
+		Accent5: MustParseColor(DefaultThemeAccent5Hex), // Green
+		Accent6: MustParseColor(DefaultThemeAccent6Hex), // Yellow
 
-		Success: MustParseColor("#59A14F"),
-		Warning: MustParseColor("#F28E2B"),
-		Error:   MustParseColor("#E15759"),
-		Info:    MustParseColor("#4E79A7"),
+		Success: MustParseColor(DefaultThemeAccent5Hex),
+		Warning: MustParseColor(DefaultThemeAccent2Hex),
+		Error:   MustParseColor(DefaultThemeAccent3Hex),
+		Info:    MustParseColor(DefaultThemeAccent1Hex),
 
-		Background:    MustParseColor("#FFFFFF"),
-		Surface:       MustParseColor("#F8F9FA"),
+		Background:    MustParseColor(DefaultThemeLT1Hex),
+		Surface:       MustParseColor(DefaultThemeLT2Hex),
 		Border:        MustParseColor("#DEE2E6"),
-		TextPrimary:   MustParseColor("#212529"),
+		TextPrimary:   MustParseColor(DefaultThemeDK2Hex),
 		TextSecondary: MustParseColor("#495057"),
 		TextMuted:     MustParseColor("#6C757D"),
 	}
