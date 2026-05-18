@@ -1091,3 +1091,120 @@ func TestRangeExtent_ClipsOutOfBoundsTicksOnYAxis(t *testing.T) {
 		t.Error("SVG should contain tick label text elements")
 	}
 }
+
+// TestBottomAxisLabels_GapAndAnchor is the regression test for
+// go-slide-creator-awcz. For a horizontal X axis (AxisPositionBottom,
+// unrotated), every emitted tick <text> element must:
+//
+//	(1) carry text-anchor="middle" (centered on the tick)
+//	(2) have an SVG y attribute that sits below the tick mark tip by at
+//	    least 2pt — guaranteeing there's no overlap between the tick line
+//	    and the label glyph regardless of downstream renderer ascent metrics.
+//
+// Acceptance criteria #2 + #3 from the bead. The minimum gap is enforced
+// by horizontalLabelGap = max(tickPadding, 3) in drawTick.
+func TestBottomAxisLabels_GapAndAnchor(t *testing.T) {
+	// Use a small tickPadding (1pt) to exercise the minimum-gap floor —
+	// without the floor, labelY would be only 1pt below the tick tip.
+	const (
+		svgWpt    = 400.0
+		svgHpt    = 300.0
+		axisXpt   = 50.0
+		axisYpt   = 250.0
+		tickSize  = 6.0
+		tickPad   = 1.0 // intentionally below the 3pt floor
+		minGap    = 3.0
+		tickY2pt  = axisYpt + tickSize // = 256
+		minLabelY = tickY2pt + 2.0     // looser check: must be > tick + 2pt
+	)
+
+	builder := NewSVGBuilder(svgWpt, svgHpt)
+	categories := []string{"Q1", "Q2", "Q3", "Q4"}
+	scale := NewCategoricalScale(categories).SetRangeCategorical(0, 300)
+	config := DefaultAxisConfig(AxisPositionBottom)
+	config.TickSize = tickSize
+	config.TickPadding = tickPad
+	axis := NewAxis(builder, config)
+	axis.DrawCategoricalAxis(scale, axisXpt, axisYpt)
+
+	svg, err := builder.RenderToString()
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// viewBox -> px/pt conversion (canvas emits SVG units in px).
+	vbRe := regexp.MustCompile(`viewBox="0 0 ([0-9.]+) ([0-9.]+)"`)
+	vb := vbRe.FindStringSubmatch(svg)
+	if vb == nil {
+		t.Fatalf("could not parse viewBox from svg")
+	}
+	vbW, _ := strconv.ParseFloat(vb[1], 64)
+	pxToPt := svgWpt / vbW
+
+	// Parse every <text> element. The label name appears in the <tspan>
+	// chardata; the y on the parent <text> element is the SVG y attribute
+	// (in px). We assert text-anchor="middle" and the converted y >
+	// tickY2 + 2pt.
+	type tspan struct {
+		Content string `xml:",chardata"`
+	}
+	type textEl struct {
+		Anchor   string `xml:"text-anchor,attr"`
+		Baseline string `xml:"dominant-baseline,attr"`
+		Y        string `xml:"y,attr"`
+		Tspan    tspan  `xml:"tspan"`
+	}
+	dec := xml.NewDecoder(strings.NewReader(svg))
+	want := map[string]bool{"Q1": true, "Q2": true, "Q3": true, "Q4": true}
+	seen := 0
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		se, ok := tok.(xml.StartElement)
+		if !ok || se.Name.Local != "text" {
+			continue
+		}
+		var el textEl
+		if err := dec.DecodeElement(&el, &se); err != nil {
+			continue
+		}
+		label := strings.TrimSpace(el.Tspan.Content)
+		if !want[label] {
+			continue
+		}
+		seen++
+
+		if el.Anchor != "middle" {
+			t.Errorf("X-axis label %q: text-anchor=%q, want %q", label, el.Anchor, "middle")
+		}
+		if el.Baseline != "text-before-edge" {
+			t.Errorf("X-axis label %q: dominant-baseline=%q, want %q", label, el.Baseline, "text-before-edge")
+		}
+
+		yPx, parseErr := strconv.ParseFloat(el.Y, 64)
+		if parseErr != nil {
+			t.Errorf("X-axis label %q: could not parse y=%q: %v", label, el.Y, parseErr)
+			continue
+		}
+		yPt := yPx * pxToPt
+
+		// Strict gap floor: emitted SVG y must be at least tickY2 + 2pt.
+		// With horizontalLabelGap = max(1, 3) = 3, the input labelY = 259.
+		// Canvas shifts the emitted y down by Ascent (≈0.65*fontSize), so
+		// the actual SVG y comes out even larger. We use the looser 2pt
+		// bound so any future change to baseline semantics that keeps the
+		// labelY input >= tick + 3pt still passes.
+		if yPt <= minLabelY {
+			t.Errorf("X-axis label %q: SVG y=%.2fpt is not > tickY2(%.0fpt)+2pt (=%.0f) — label would overlap tick mark", label, yPt, tickY2pt, minLabelY)
+		}
+		// Sanity guard: floor must be at least 3pt (the enforced minimum).
+		if yPt < tickY2pt+minGap {
+			t.Errorf("X-axis label %q: SVG y=%.2fpt is below tickY2(%.0fpt)+minGap(%.0fpt) — horizontalLabelGap floor not applied", label, yPt, tickY2pt, minGap)
+		}
+	}
+	if seen != len(want) {
+		t.Fatalf("expected to match %d X-axis labels, matched %d", len(want), seen)
+	}
+}

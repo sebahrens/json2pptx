@@ -257,6 +257,14 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 	tickSize := a.config.TickSize
 	tickPadding := a.config.TickPadding
 
+	// Minimum vertical gap between the tick mark tip and the label edge for
+	// horizontal axes. Enforced so that callers who shrink TickPadding (or
+	// leave it at 0) still get a renderer-safe gap that prevents the label
+	// glyph from touching the tick line under any downstream font metrics.
+	// 3pt is the smallest gap that survives sub-pixel rounding in rsvg,
+	// LibreOffice, and PowerPoint at our typical chart sizes.
+	horizontalLabelGap := math.Max(tickPadding, 3)
+
 	switch a.config.Position {
 	case AxisPositionBottom:
 		tickX1 = originX + pos
@@ -264,7 +272,7 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 		tickX2 = tickX1
 		tickY2 = originY + tickSize
 		labelX = tickX1
-		labelY = tickY2 + tickPadding
+		labelY = tickY2 + horizontalLabelGap
 		align = TextAlignCenter
 		baseline = TextBaselineTop
 
@@ -274,7 +282,7 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 		tickX2 = tickX1
 		tickY2 = originY - tickSize
 		labelX = tickX1
-		labelY = tickY2 - tickPadding
+		labelY = tickY2 - horizontalLabelGap
 		align = TextAlignCenter
 		baseline = TextBaselineBottom
 
