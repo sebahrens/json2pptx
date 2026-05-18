@@ -482,7 +482,7 @@ func (mc *Matrix2x2Chart) drawPoint(x, y, size float64, color Color, shape Marke
 
 	b.Push()
 	b.SetFillColor(color)
-	b.SetStrokeColor(MustParseColor("#FFFFFF"))
+	b.SetStrokeColor(style.Palette.Background)
 	b.SetStrokeWidth(style.Strokes.WidthNormal)
 
 	switch shape {

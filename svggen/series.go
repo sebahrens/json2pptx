@@ -403,7 +403,7 @@ func DefaultLineSeriesConfig() LineSeriesConfig {
 		MarkerShape:       MarkerCircle,
 		MarkerSize:        8,
 		MarkerFillColor:   MustParseColor("#4E79A7"),
-		MarkerStrokeColor: MustParseColor("#FFFFFF"),
+		MarkerStrokeColor: Color{}, // sentinel: resolved to palette.Background at draw time
 		MarkerStrokeWidth: 2.0,
 		FillArea:          false,
 		FillColor:         MustParseColor("#4E79A7"),
@@ -570,6 +570,17 @@ func (ls *LineSeries) drawAreaFill(coords []Point, baseY float64) {
 	path.Fill()
 }
 
+// resolveMarkerStroke returns the configured marker stroke color, substituting
+// the builder's palette background when the configured value is the zero-Color
+// sentinel (transparent black). This keeps marker outlines aligned with the
+// surrounding theme on dark templates where lt1 is not white.
+func resolveMarkerStroke(b *SVGBuilder, configured Color) Color {
+	if configured == (Color{}) {
+		return b.StyleGuide().Palette.Background
+	}
+	return configured
+}
+
 // ensureAreaFillContrast boosts fill opacity when the composited color would
 // be too close to the background. This prevents area fills from becoming
 // invisible on templates with muted accent palettes (e.g. template_2).
@@ -642,7 +653,7 @@ func (ls *LineSeries) drawMarker(x, y float64) {
 
 	b.Push()
 	b.SetFillColor(ls.config.MarkerFillColor)
-	b.SetStrokeColor(ls.config.MarkerStrokeColor)
+	b.SetStrokeColor(resolveMarkerStroke(b, ls.config.MarkerStrokeColor))
 	b.SetStrokeWidth(ls.config.MarkerStrokeWidth)
 
 	switch ls.config.MarkerShape {
@@ -737,7 +748,7 @@ func DefaultPointSeriesConfig() PointSeriesConfig {
 		Color:       MustParseColor("#4E79A7"),
 		Size:        8,
 		Shape:       MarkerCircle,
-		StrokeColor: MustParseColor("#FFFFFF"),
+		StrokeColor: Color{}, // sentinel: resolved to palette.Background at draw time
 		StrokeWidth: 2.0,
 		Opacity:     0.8,
 		ShowLabels:  false,
@@ -855,7 +866,7 @@ func (ps *PointSeries) drawPoint(x, y, size float64, color Color) {
 
 	b.Push()
 	b.SetFillColor(color)
-	b.SetStrokeColor(ps.config.StrokeColor)
+	b.SetStrokeColor(resolveMarkerStroke(b, ps.config.StrokeColor))
 	b.SetStrokeWidth(ps.config.StrokeWidth)
 
 	switch ps.config.Shape {
@@ -973,7 +984,7 @@ func DefaultArcSeriesConfig(centerX, centerY, radius float64) ArcSeriesConfig {
 		StartAngle:     -90,
 		PadAngle:       1,
 		CornerRadius:   0,
-		StrokeColor:    MustParseColor("#FFFFFF"),
+		StrokeColor:    Color{}, // sentinel: resolved to palette.Background at draw time
 		StrokeWidth:    2,
 		ShowLabels:     true,
 		LabelPosition:  ArcLabelInside,
@@ -1131,7 +1142,7 @@ func (as *ArcSeries) drawArc(centerX, centerY, startAngle, sweepAngle float64, c
 
 	b.SetFillColor(color)
 	if as.config.StrokeWidth > 0 {
-		b.SetStrokeColor(as.config.StrokeColor)
+		b.SetStrokeColor(resolveMarkerStroke(b, as.config.StrokeColor))
 		b.SetStrokeWidth(as.config.StrokeWidth)
 	}
 
