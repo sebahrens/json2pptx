@@ -61,11 +61,16 @@ type SegmentInput struct {
 // ShapeGridInput by expanding each segment's pattern and merging the results.
 // The returned warnings slice carries non-fatal diagnostics (e.g.,
 // COMPOSE_HORIZONTAL_TRUNCATION when a segment's row over-occupies its
-// allocated column range and content must be dropped).
+// allocated column range and content must be dropped, or
+// COMPOSE_SEGMENT_BOUNDS_IGNORED when a segment's PatternInput.Bounds /
+// MaxHeightPct cannot be honored because the merged grid governs segment
+// placement via direction + size_pct).
 func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, []string, error) {
 	if err := validateCompose(c); err != nil {
 		return nil, nil, err
 	}
+
+	var warnings []string
 
 	// Expand each segment's pattern
 	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
@@ -74,6 +79,20 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		if err != nil {
 			return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
 		}
+
+		// Segment-level bounds (PatternInput.Bounds / MaxHeightPct) cannot be
+		// honored inside a compose envelope: the merged grid's region is
+		// governed by compose direction + size_pct, and mergeVertical /
+		// mergeHorizontal build a fresh grid that drops grid.Bounds. Surface
+		// this as a structured warning so agents are not silently misled
+		// (go-slide-creator-f1ic.7).
+		if w := segmentBoundsIgnoredWarning(i, &seg.Pattern); w != "" {
+			warnings = append(warnings, w)
+			// Clear the inherited Bounds so downstream consumers don't see a
+			// value that the merge step will discard anyway.
+			grid.Bounds = nil
+		}
+
 		expandedGrids[i] = grid
 	}
 
@@ -90,12 +109,39 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	switch c.Direction {
 	case "vertical":
 		grid, err := mergeVertical(expandedGrids, sizes, c.Gap)
-		return grid, nil, err
+		return grid, warnings, err
 	case "horizontal":
-		return mergeHorizontal(expandedGrids, sizes, c.Gap)
+		grid, mergeWarnings, err := mergeHorizontal(expandedGrids, sizes, c.Gap)
+		if len(mergeWarnings) > 0 {
+			warnings = append(warnings, mergeWarnings...)
+		}
+		return grid, warnings, err
 	default:
 		return nil, nil, fmt.Errorf("compose: unsupported direction %q", c.Direction)
 	}
+}
+
+// segmentBoundsIgnoredWarning returns a COMPOSE_SEGMENT_BOUNDS_IGNORED warning
+// string when a segment's PatternInput carries explicit Bounds or
+// MaxHeightPct, which cannot be applied inside a compose envelope. Returns
+// the empty string when no bounds override was specified.
+func segmentBoundsIgnoredWarning(segIdx int, p *PatternInput) string {
+	if p == nil {
+		return ""
+	}
+	switch {
+	case p.Bounds != nil:
+		return fmt.Sprintf(
+			"COMPOSE_SEGMENT_BOUNDS_IGNORED: segment[%d] pattern %q sets bounds, but segment placement inside a compose envelope is governed by compose.direction + size_pct; the bounds are dropped during merge",
+			segIdx, p.Name,
+		)
+	case p.MaxHeightPct > 0 && p.MaxHeightPct < 100:
+		return fmt.Sprintf(
+			"COMPOSE_SEGMENT_BOUNDS_IGNORED: segment[%d] pattern %q sets max_height_pct=%.1f, but segment placement inside a compose envelope is governed by compose.direction + size_pct; the height cap is dropped during merge",
+			segIdx, p.Name, p.MaxHeightPct,
+		)
+	}
+	return ""
 }
 
 // validateCompose checks the compose envelope for structural issues.

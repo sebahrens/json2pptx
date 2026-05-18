@@ -546,6 +546,138 @@ func TestExpandCompose_Horizontal_TruncationWarning(t *testing.T) {
 	}
 }
 
+// TestExpandCompose_SegmentBoundsIgnoredWarning is the regression test for
+// go-slide-creator-f1ic.7. Before the fix, PatternInput.Bounds on a compose
+// segment was accepted by the unmarshaler but mergeVertical/mergeHorizontal
+// never referenced it — the bounds were silently dropped during merge. After
+// the fix, expandCompose surfaces COMPOSE_SEGMENT_BOUNDS_IGNORED so agents
+// know the bounds were not honored.
+func TestExpandCompose_SegmentBoundsIgnoredWarning(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "vertical",
+		Segments: []SegmentInput{
+			{
+				SizePct: 50,
+				Pattern: PatternInput{
+					Name:   "stat-hero",
+					Values: json.RawMessage(`{"value": "A", "label": "First"}`),
+				},
+			},
+			{
+				SizePct: 50,
+				Pattern: PatternInput{
+					Name:   "stat-hero",
+					Values: json.RawMessage(`{"value": "B", "label": "Second"}`),
+					// Explicit bounds on a compose segment — cannot be honored.
+					Bounds: &jsonschema.GridBoundsInput{
+						X: 60, Y: 60, Width: 35, Height: 35,
+					},
+				},
+			},
+		},
+	}
+
+	ctx := patterns.ExpandContext{
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
+	}
+
+	grid, warnings, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if grid == nil {
+		t.Fatal("expandCompose returned nil grid")
+	}
+
+	foundBoundsIgnored := false
+	for _, w := range warnings {
+		if contains(w, "COMPOSE_SEGMENT_BOUNDS_IGNORED") && contains(w, "segment[1]") {
+			foundBoundsIgnored = true
+			break
+		}
+	}
+	if !foundBoundsIgnored {
+		t.Errorf("expected COMPOSE_SEGMENT_BOUNDS_IGNORED warning for segment[1], got: %v", warnings)
+	}
+
+	// Sanity: a segment that does NOT set bounds must NOT trigger the warning.
+	for _, w := range warnings {
+		if contains(w, "COMPOSE_SEGMENT_BOUNDS_IGNORED") && contains(w, "segment[0]") {
+			t.Errorf("did not expect warning for segment[0] (no bounds set): %v", w)
+		}
+	}
+}
+
+// TestExpandCompose_SegmentMaxHeightPctIgnoredWarning covers the
+// max_height_pct convenience alias on the same code path: it is a thin
+// shorthand over Bounds and must also surface COMPOSE_SEGMENT_BOUNDS_IGNORED
+// when used inside a compose segment.
+func TestExpandCompose_SegmentMaxHeightPctIgnoredWarning(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "horizontal",
+		Segments: []SegmentInput{
+			{
+				Pattern: PatternInput{
+					Name:         "stat-hero",
+					Values:       json.RawMessage(`{"value": "A", "label": "X"}`),
+					MaxHeightPct: 40,
+				},
+			},
+			{
+				Pattern: PatternInput{
+					Name:   "stat-hero",
+					Values: json.RawMessage(`{"value": "B", "label": "Y"}`),
+				},
+			},
+		},
+	}
+
+	ctx := patterns.ExpandContext{
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
+	}
+
+	_, warnings, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+
+	found := false
+	for _, w := range warnings {
+		if contains(w, "COMPOSE_SEGMENT_BOUNDS_IGNORED") && contains(w, "segment[0]") && contains(w, "max_height_pct") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected COMPOSE_SEGMENT_BOUNDS_IGNORED warning mentioning max_height_pct for segment[0], got: %v", warnings)
+	}
+}
+
+// TestExpandCompose_NoBoundsNoBoundsWarning ensures the bounds-ignored
+// warning is not emitted when no segment sets bounds.
+func TestExpandCompose_NoBoundsNoBoundsWarning(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "vertical",
+		Segments: []SegmentInput{
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "A", "label": "X"}`)}},
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "B", "label": "Y"}`)}},
+		},
+	}
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+
+	_, warnings, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	for _, w := range warnings {
+		if contains(w, "COMPOSE_SEGMENT_BOUNDS_IGNORED") {
+			t.Errorf("did not expect COMPOSE_SEGMENT_BOUNDS_IGNORED warning when no segment sets bounds: %v", w)
+		}
+	}
+}
+
 // cellHasContent reports whether a GridCellInput holds renderable content
 // (used by horizontal-preservation tests to ignore empty padding cells).
 func cellHasContent(c *jsonschema.GridCellInput) bool {
