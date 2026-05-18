@@ -20,6 +20,11 @@ const (
 	CellKindImage     CellKind = "image"
 	CellKindDiagram   CellKind = "diagram"
 	CellKindComposite CellKind = "composite"
+	// CellKindSubGrid is a transparent placeholder cell that reserves bounds
+	// for a recursively rendered sub-grid or expanded nested pattern. The
+	// renderer emits no XML for these cells; the caller is expected to render
+	// the nested content using the resolved cell bounds.
+	CellKindSubGrid CellKind = "subgrid"
 )
 
 // FitMode controls how a shape is scaled within its grid cell bounds.
@@ -76,6 +81,12 @@ type ConnectorSpec struct {
 // Only one of Shape, TableSpec, Icon, Image, DiagramSpec, or Composite should be
 // set per cell. Composite is the sole exception: it bundles a native text shape
 // and an embedded sub-diagram inside the same cell rectangle.
+//
+// Placeholder, when true, marks the cell as a bounds-only reservation for a
+// caller-managed sub-grid: Resolve allocates the cell rectangle and emits a
+// ResolvedCell with Kind=CellKindSubGrid, but no rendering happens at this
+// layer. The caller (cmd/json2pptx) uses the resolved bounds to recursively
+// render a nested grid in place.
 type Cell struct {
 	ColSpan     int                // Number of columns to span (default 1)
 	RowSpan     int                // Number of rows to span (default 1)
@@ -88,6 +99,7 @@ type Cell struct {
 	DiagramSpec *types.DiagramSpec // Diagram/chart specification (rendered via svggen)
 	Composite   *CompositeSpec     // Composite stack: native text + sub-diagram in one cell
 	AccentBar   *AccentBarSpec     // Optional decorative accent bar alongside the cell
+	Placeholder bool               // Reserve bounds for a caller-managed sub-grid (Kind=CellKindSubGrid in result)
 }
 
 // CompositeSpec defines a composite cell that stacks a native text shape and

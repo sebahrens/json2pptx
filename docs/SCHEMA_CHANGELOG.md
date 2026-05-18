@@ -4,6 +4,35 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.16.0 (2026-05-18)
+
+### Added
+
+- **Nested pattern and sub-grid on `GridCellInput`** — `GridCellInput` gains
+  two new fields that let a grid cell host a recursively-rendered nested
+  layout:
+  - `pattern` accepts a `PatternInput` payload (the same shape used at the
+    slide level). At resolution time the pattern is expanded into a
+    `ShapeGridInput` and rendered inside the cell rectangle (with a small
+    4pt inset so the nested grid does not visually butt up against the
+    parent cell edges). Accent inheritance follows the deck's
+    `accent_strategy` — the same `ExpandContext` (slide index, section
+    index) is reused for the nested pattern.
+  - `grid` accepts a raw `ShapeGridInput` (recursive) for cases where the
+    nested layout is hand-crafted rather than pattern-driven.
+  Both fields are mutually exclusive with each other and with the cell's
+  other payload keys (`shape`, `table`, `icon`, `image`, `diagram`,
+  `composite`). At resolution time, cells hosting a nested grid become
+  bounds-only `CellKindSubGrid` placeholders in the parent's `ResolvedCell`
+  list; the renderer emits no XML for the placeholder, and the nested
+  shapes/icons/images are appended to the parent result. The nested cells
+  themselves are also exposed on `ShapeGridResult.Cells` so overlay
+  anchor_cell lookups and fit-finding collectors can introspect them. This
+  unblocks the agent workflow of dropping a `kpi-3up` into a `matrix-2x2`
+  quadrant or an `icon-row` into a `strategy-house` foundation row without
+  switching to the slide-level `compose` envelope. Closes
+  `go-slide-creator-f1ic.9`.
+
 ## 4.15.0 (2026-05-18)
 
 ### Added

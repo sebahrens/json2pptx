@@ -802,6 +802,24 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		slide.ShapeGrid = expanded
 	}
 
+	// Expand any cell-level nested patterns into nested grids. This runs
+	// after slide-level Pattern/Compose expansion so it covers every grid
+	// path. The same ExpandContext (accent strategy, slide/section indices)
+	// is reused, so nested patterns inherit accent rotation from the deck.
+	if slide.ShapeGrid != nil {
+		nestedCtx := patterns.ExpandContext{
+			Metadata:       metadata,
+			SlideWidth:     slideWidth,
+			SlideHeight:    slideHeight,
+			AccentStrategy: accentStrategy,
+			SlideIndex:     i,
+			SectionIndex:   sectionIndices[i],
+		}
+		if err := expandNestedCellPatterns(slide.ShapeGrid, nestedCtx, patterns.Default()); err != nil {
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: nested pattern: %w", i+1, err)
+		}
+	}
+
 	// Resolve shape_grid into raw p:sp XML fragments
 	if slide.ShapeGrid != nil {
 		// Virtual layout resolution: derive layout and bounds from template

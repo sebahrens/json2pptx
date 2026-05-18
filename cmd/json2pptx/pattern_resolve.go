@@ -177,6 +177,55 @@ func buildCalloutTextContent(content string, size float64, bold, italic bool, co
 	return data
 }
 
+// expandNestedCellPatterns walks every cell of grid (and any nested grids)
+// and expands a cell-level Pattern into the cell's Grid field. After this
+// pass, no cell still has a Pattern set; each formerly-pattern cell is
+// represented as a Grid (a ShapeGridInput produced by pattern expansion).
+//
+// Mutual exclusion: a cell may not set both Pattern and Grid; that is rejected
+// as a validation error. A cell that sets Pattern alongside Shape/Table/Icon/
+// Image/Diagram/Composite is also rejected — a nested pattern occupies the
+// whole cell rectangle and is incompatible with sibling content.
+func expandNestedCellPatterns(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, reg *patterns.Registry) error {
+	if grid == nil {
+		return nil
+	}
+	for ri := range grid.Rows {
+		for ci := range grid.Rows[ri].Cells {
+			cell := grid.Rows[ri].Cells[ci]
+			if cell == nil {
+				continue
+			}
+			if len(cell.Pattern) > 0 {
+				if cell.Grid != nil {
+					return fmt.Errorf("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
+				}
+				if cell.Shape != nil || cell.Table != nil || cell.Icon != nil ||
+					cell.Image != nil || cell.Diagram != nil || cell.Composite != nil {
+					return fmt.Errorf("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite)", ri, ci)
+				}
+				var pi PatternInput
+				if err := json.Unmarshal(cell.Pattern, &pi); err != nil {
+					return fmt.Errorf("grid cell row %d col %d: invalid pattern: %w", ri, ci, err)
+				}
+				expanded, _, err := expandPattern(&pi, ctx, reg)
+				if err != nil {
+					return fmt.Errorf("grid cell row %d col %d: %w", ri, ci, err)
+				}
+				cell.Pattern = nil
+				cell.Grid = expanded
+			}
+			// Recurse into nested grids (covers multi-level nesting).
+			if cell.Grid != nil {
+				if err := expandNestedCellPatterns(cell.Grid, ctx, reg); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // resolvePatternBounds returns a GridBoundsInput from PatternInput's bounds
 // fields, applying the max_height_pct convenience alias. Returns nil if no
 // bounds override was specified.

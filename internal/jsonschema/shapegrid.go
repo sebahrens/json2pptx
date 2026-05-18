@@ -58,9 +58,15 @@ type ConnectorSpecInput struct {
 }
 
 // GridCellInput defines a single cell in the shape grid.
-// Only one of Shape, Table, Icon, Image, Diagram, or Composite should be set
-// per cell. Composite is the sole exception: it bundles a native text shape
-// (text) and an embedded chart (sub_diagram) inside the same cell.
+// Only one of Shape, Table, Icon, Image, Diagram, Composite, Pattern, or Grid
+// should be set per cell. Composite is the sole exception to the single-content
+// rule: it bundles a native text shape (text) and an embedded chart
+// (sub_diagram) inside the same cell.
+//
+// Pattern hosts a named pattern (e.g. kpi-3up) nested inside the cell — the
+// pattern is expanded to a sub-grid that renders within the cell rectangle.
+// Grid hosts a raw sub-grid (recursive ShapeGridInput) rendered within the cell.
+// Pattern and Grid are mutually exclusive; setting both is a validation error.
 type GridCellInput struct {
 	ColSpan    int                `json:"col_span,omitempty"`
 	RowSpan    int                `json:"row_span,omitempty"`
@@ -72,6 +78,8 @@ type GridCellInput struct {
 	Image      *GridImageInput    `json:"image,omitempty"`
 	Diagram    *types.DiagramSpec `json:"diagram,omitempty"` // Chart/diagram rendered via svggen
 	Composite  *CompositeInput    `json:"composite,omitempty"` // Composite stack: native text + sub-diagram (KPI + sparkline)
+	Pattern    json.RawMessage    `json:"pattern,omitempty"`     // Nested PatternInput (expanded to a sub-grid before resolution)
+	Grid       *ShapeGridInput    `json:"grid,omitempty"`        // Recursive sub-grid rendered within the cell rectangle
 	AccentBar  *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
 	NamedStyle string             `json:"named_style,omitempty"` // Named cell style reference resolved from template settings
 }

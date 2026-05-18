@@ -106,7 +106,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				break
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil {
+			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil && !cell.Placeholder {
 				col++
 				continue
 			}
@@ -211,7 +211,11 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				ColIdx:     col,
 				Group:      cell.Group,
 			}
-			if cell.Image != nil {
+			if cell.Placeholder {
+				// Bounds-only placeholder for a caller-managed sub-grid.
+				// Emit a ResolvedCell with no spec; renderer skips XML emission.
+				rc.Kind = CellKindSubGrid
+			} else if cell.Image != nil {
 				rc.Kind = CellKindImage
 				rc.ImageSpec = cell.Image
 			} else if cell.DiagramSpec != nil {

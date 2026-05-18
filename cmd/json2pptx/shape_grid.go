@@ -260,7 +260,80 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	}
 
 	// Generate XML fragments, icon inserts, and image inserts from resolved cells
-	return generateGridOutput(result, alloc, diagCtx, slideIdx)
+	out, err := generateGridOutput(result, alloc, diagCtx, slideIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Recursively render any nested sub-grids in this grid. Cells with
+	// Placeholder=true produce CellKindSubGrid ResolvedCells whose bounds
+	// define the sub-grid's render rectangle. The accompanying DTO cell
+	// (input.Rows[r].Cells[c]) supplies the nested ShapeGridInput.
+	if err := renderNestedSubGrids(input, out, alloc, slideWidth, slideHeight, diagCtx); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// subGridInsetEMU is the inset applied to nested sub-grid bounds so the
+// nested grid does not visually butt up against the parent cell edges. Keeps
+// nested patterns visually distinct from neighbouring siblings.
+const subGridInsetEMU int64 = 50800 // 4pt = 4 * 12700
+
+// renderNestedSubGrids walks resolved cells, locates CellKindSubGrid
+// placeholders, and recursively resolves their accompanying sub-grids using
+// the placeholder's bounds (with a small inset). Resulting shapes/icons are
+// appended to out so the caller receives a single unified render result.
+func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pptx.ShapeIDAllocator, slideWidth, slideHeight int64, diagCtx *GridDiagramContext) error {
+	if input == nil || out == nil {
+		return nil
+	}
+	for _, rc := range out.Cells {
+		if rc.Kind != shapegrid.CellKindSubGrid {
+			continue
+		}
+		if rc.RowIdx < 0 || rc.RowIdx >= len(input.Rows) {
+			continue
+		}
+		row := input.Rows[rc.RowIdx]
+		if rc.ColIdx < 0 || rc.ColIdx >= len(row.Cells) {
+			continue
+		}
+		src := row.Cells[rc.ColIdx]
+		if src == nil || src.Grid == nil {
+			continue
+		}
+		inset := pptx.RectEmu{
+			X:  rc.Bounds.X + subGridInsetEMU,
+			Y:  rc.Bounds.Y + subGridInsetEMU,
+			CX: rc.Bounds.CX - 2*subGridInsetEMU,
+			CY: rc.Bounds.CY - 2*subGridInsetEMU,
+		}
+		if inset.CX <= 0 || inset.CY <= 0 {
+			// Cell is too small for inset; fall back to raw bounds.
+			inset = rc.Bounds
+		}
+		sub, err := resolveShapeGrid(src.Grid, alloc, &inset, nil, slideWidth, slideHeight, diagCtx)
+		if err != nil {
+			return fmt.Errorf("nested sub-grid at row %d col %d: %w", rc.RowIdx, rc.ColIdx, err)
+		}
+		if sub == nil {
+			continue
+		}
+		out.Shapes = append(out.Shapes, sub.Shapes...)
+		out.IconInserts = append(out.IconInserts, sub.IconInserts...)
+		out.ImageInserts = append(out.ImageInserts, sub.ImageInserts...)
+		out.RowOverflows = append(out.RowOverflows, sub.RowOverflows...)
+		out.Warnings = append(out.Warnings, sub.Warnings...)
+		out.FitFindings = append(out.FitFindings, sub.FitFindings...)
+		// Expose nested resolved cells on the parent result so consumers
+		// (e.g. overlay anchor_cell, fit_findings) can introspect them. The
+		// nested cells keep their own RowIdx/ColIdx within the sub-grid; the
+		// parent's CellKindSubGrid placeholder remains as the anchor point
+		// for the outer cell coordinate.
+		out.Cells = append(out.Cells, sub.Cells...)
+	}
+	return nil
 }
 
 // convertGridRows converts DTO GridRowInput slices into shapegrid.Row domain objects.
@@ -269,7 +342,23 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 	for i, r := range inputRows {
 		cells := make([]shapegrid.Cell, len(r.Cells))
 		for j, c := range r.Cells {
-			if c == nil || (c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil) {
+			if c == nil {
+				cells[j] = shapegrid.Cell{}
+				continue
+			}
+			// Cells hosting a nested sub-grid become bounds-only placeholders.
+			// The parent resolver allocates their rectangle; the caller
+			// recursively renders the sub-grid using those bounds.
+			if c.Grid != nil {
+				cells[j] = shapegrid.Cell{
+					ColSpan:     c.ColSpan,
+					RowSpan:     c.RowSpan,
+					Group:       c.Group,
+					Placeholder: true,
+				}
+				continue
+			}
+			if c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil && c.Composite == nil {
 				cells[j] = shapegrid.Cell{}
 				continue
 			}
@@ -481,6 +570,11 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			}
 			cellShapes = append(cellShapes, s...)
 			cellImages = append(cellImages, imgs...)
+		case shapegrid.CellKindSubGrid:
+			// Bounds-only placeholder; the parent resolver delegates nested
+			// rendering to its caller, which uses cell.Bounds to recursively
+			// resolve the sub-grid. Skip XML emission here.
+			continue
 		default:
 			return nil, fmt.Errorf("unsupported cell kind: %s", cell.Kind)
 		}
