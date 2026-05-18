@@ -130,6 +130,20 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			}
 		}
 		return &items
+	case "strategy-house":
+		// cols = number of pillar columns (3-5). Rows are roof?/banner/pillars/foundation.
+		pillars := make([]patterns.StrategyHousePillar, cols)
+		for i := range pillars {
+			pillars[i] = patterns.StrategyHousePillar{
+				Title: "Pillar Title",
+				Body:  []string{"Bullet one", "Bullet two"},
+			}
+		}
+		return &patterns.StrategyHouseValues{
+			Objective:  "Strategic objective sentence",
+			Pillars:    pillars,
+			Foundation: "Foundation: people · technology · data",
+		}
 	default:
 		return nil
 	}

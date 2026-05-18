@@ -579,6 +579,7 @@ func suggestBreakPatterns(current string) []string {
 	matrixFamily := map[string]bool{
 		"bmc-canvas": true, "matrix-2x2": true, "comparison-2col": true,
 		"arch-stack": true, "pyramid": true, "before-after": true,
+		"strategy-house": true,
 	}
 
 	families := []map[string]bool{gridFamily, narrativeFamily, structureFamily, matrixFamily}

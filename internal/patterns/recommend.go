@@ -429,6 +429,24 @@ var rules = []rule{
 		baseScore: 0.75,
 		rationale: "Stylish panel layout for titled content blocks with bullet lists",
 	},
+
+	// Strategy house — objective banner + pillars + foundation
+	{
+		pattern:   "strategy-house",
+		keywords:  []string{"strategy house", "house diagram", "strategic house", "pillars and foundation", "objective and pillars", "temple diagram", "mckinsey house"},
+		baseScore: 0.92,
+		rationale: "Strategy house framework with an objective banner, 3-5 pillars, and a foundation row of enablers",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "strategy-house",
+		keywords:  []string{"strategy", "foundation", "objective", "pillar", "pillars", "house"},
+		baseScore: 0.78,
+		rationale: "Strategy-house pattern when content has an objective above pillars above a foundation",
+		itemMin:   3,
+		itemMax:   5,
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

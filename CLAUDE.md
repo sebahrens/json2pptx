@@ -162,6 +162,7 @@ examples/         # Example JSON input files (19 decks)
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `stat-hero` | Single oversized statistic with label and optional context |
+| `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
