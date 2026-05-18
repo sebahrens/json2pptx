@@ -205,6 +205,115 @@ func TestValidate_CombinedSpansValid(t *testing.T) {
 	}
 }
 
+func TestValidate_ShapeAndDiagramBothSet(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Shape:       &ShapeSpec{Geometry: "rect"},
+					DiagramSpec: &types.DiagramSpec{Type: "bar_chart"},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error when both shape and diagram are set")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "shape") || !strings.Contains(msg, "diagram") {
+		t.Errorf("expected error to name both conflicting keys, got: %v", err)
+	}
+}
+
+func TestValidate_DiagramAndImageBothSet(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					DiagramSpec: &types.DiagramSpec{Type: "bar_chart"},
+					Image:       &ImageSpec{Path: "/tmp/x.png"},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error when both diagram and image are set")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "diagram") || !strings.Contains(msg, "image") {
+		t.Errorf("expected error to name both conflicting keys, got: %v", err)
+	}
+}
+
+func TestValidate_IconAndImageBothSet(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Icon:  &IconSpec{Name: "chart-pie"},
+					Image: &ImageSpec{Path: "/tmp/x.png"},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error when both icon and image are set")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "icon") || !strings.Contains(msg, "image") {
+		t.Errorf("expected error to name both conflicting keys, got: %v", err)
+	}
+}
+
+func TestValidate_ShapeIconOverlayPermitted(t *testing.T) {
+	// Legacy carve-out: shape+icon overlay must remain valid.
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Shape: &ShapeSpec{Geometry: "rect"},
+					Icon:  &IconSpec{Name: "chart-pie"},
+				},
+			},
+		}},
+	}
+	if err := Validate(grid); err != nil {
+		t.Errorf("expected no error for legacy shape+icon overlay, got %v", err)
+	}
+}
+
+func TestValidate_ShapeIconImageTrio(t *testing.T) {
+	// Even though shape+icon is permitted, adding a third payload key must
+	// still raise an error naming all three.
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Shape: &ShapeSpec{Geometry: "rect"},
+					Icon:  &IconSpec{Name: "chart-pie"},
+					Image: &ImageSpec{Path: "/tmp/x.png"},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error when shape+icon+image are all set")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "shape") || !strings.Contains(msg, "icon") || !strings.Contains(msg, "image") {
+		t.Errorf("expected error to name all three conflicting keys, got: %v", err)
+	}
+}
+
 func TestValidate_MultipleErrors(t *testing.T) {
 	grid := &Grid{} // no columns AND no rows
 	err := Validate(grid)

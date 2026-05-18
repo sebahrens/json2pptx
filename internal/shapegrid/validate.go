@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Validate checks a Grid for structural errors. It returns a multi-error
@@ -39,8 +40,34 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				col++
 			}
 
-			if cell.Shape != nil && cell.TableSpec != nil {
-				errs = append(errs, fmt.Errorf("row %d col %d: cell has both shape and table (only one allowed); remove either the \"shape\" or \"table\" key from this cell", r, ci))
+			// Enforce payload exclusivity: at most one of {shape, table, icon,
+			// image, diagram} may be set per cell. Legacy carve-out: a cell with
+			// exactly {shape, icon} is permitted (icon-overlay rendering).
+			var present []string
+			if cell.Shape != nil {
+				present = append(present, "shape")
+			}
+			if cell.TableSpec != nil {
+				present = append(present, "table")
+			}
+			if cell.Icon != nil {
+				present = append(present, "icon")
+			}
+			if cell.Image != nil {
+				present = append(present, "image")
+			}
+			if cell.DiagramSpec != nil {
+				present = append(present, "diagram")
+			}
+			isShapeIconOverlay := len(present) == 2 && cell.Shape != nil && cell.Icon != nil
+			if len(present) > 1 && !isShapeIconOverlay {
+				if len(present) == 2 && cell.Shape != nil && cell.TableSpec != nil {
+					// Preserve the historical phrasing for the shape+table case
+					// so existing error consumers and tests keep working.
+					errs = append(errs, fmt.Errorf("row %d col %d: cell has both shape and table (only one allowed); remove either the \"shape\" or \"table\" key from this cell", r, ci))
+				} else {
+					errs = append(errs, fmt.Errorf("row %d col %d: cell has conflicting payload keys (%s); only one of \"shape\", \"table\", \"icon\", \"image\", \"diagram\" may be set per cell (the shape+icon overlay is the sole exception)", r, ci, strings.Join(present, ", ")))
+				}
 			}
 
 			if cell.Fit != "" && cell.Fit != FitContain && cell.Fit != FitWidth && cell.Fit != FitHeight {
