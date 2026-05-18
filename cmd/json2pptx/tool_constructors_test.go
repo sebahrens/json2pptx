@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -399,6 +400,97 @@ func TestHandleRecommendVisual_Success(t *testing.T) {
 	}
 	if res == nil || res.IsError {
 		t.Fatalf("expected non-error result, got %+v", res)
+	}
+}
+
+// TestHandleRecommendPattern_Candidates verifies the MCP handler plumbs the
+// candidates array through to the patterns package and returns every name
+// (no threshold cutoff applied).
+func TestHandleRecommendPattern_Candidates(t *testing.T) {
+	mc := cliMCPConfig("./templates", "./out")
+	res, err := mc.handleRecommendPattern(context.Background(), makeRequest(map[string]any{
+		"intent":     "show key metrics",
+		"candidates": []any{"kpi-3up", "matrix-2x2", "comparison-2col", "card-grid"},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected non-error result, got %+v", res)
+	}
+
+	var output struct {
+		Candidates []struct {
+			PatternName    string  `json:"pattern_name"`
+			Score          float64 `json:"score"`
+			Rationale      string  `json:"rationale"`
+			ConfidenceBand string  `json:"confidence_band"`
+		} `json:"candidates"`
+	}
+	if err := json.Unmarshal([]byte(textContent(res)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(output.Candidates) != 4 {
+		t.Fatalf("expected 4 candidates (one per shortlist name), got %d: %+v",
+			len(output.Candidates), output.Candidates)
+	}
+	for _, c := range output.Candidates {
+		if c.Rationale == "" {
+			t.Errorf("candidate %q: empty rationale", c.PatternName)
+		}
+		if c.ConfidenceBand == "" {
+			t.Errorf("candidate %q: empty confidence_band", c.PatternName)
+		}
+	}
+}
+
+// TestHandleRecommendVisual_Candidates verifies the unified visual handler
+// plumbs candidates through and resolves categories across the catalog.
+func TestHandleRecommendVisual_Candidates(t *testing.T) {
+	mc := cliMCPConfig("./templates", "./out")
+	res, err := mc.handleRecommendVisual(context.Background(), makeRequest(map[string]any{
+		"intent":     "compare quarterly revenue",
+		"candidates": []any{"kpi-3up", "bar", "title", "swot"},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected non-error result, got %+v", res)
+	}
+
+	var output struct {
+		Candidates []struct {
+			Category       string  `json:"category"`
+			Name           string  `json:"name"`
+			Score          float64 `json:"score"`
+			Rationale      string  `json:"rationale"`
+			ConfidenceBand string  `json:"confidence_band"`
+		} `json:"candidates"`
+	}
+	if err := json.Unmarshal([]byte(textContent(res)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(output.Candidates) != 4 {
+		t.Fatalf("expected 4 candidates (one per shortlist name), got %d: %+v",
+			len(output.Candidates), output.Candidates)
+	}
+	wantCat := map[string]string{
+		"kpi-3up": "named_pattern",
+		"bar":     "chart",
+		"title":   "placeholder_layout",
+		"swot":    "diagram",
+	}
+	for _, c := range output.Candidates {
+		if got := wantCat[c.Name]; got != "" && c.Category != got {
+			t.Errorf("candidate %q: got category %q, want %q", c.Name, c.Category, got)
+		}
+		if c.Rationale == "" {
+			t.Errorf("candidate %q: empty rationale", c.Name)
+		}
+		if c.ConfidenceBand == "" {
+			t.Errorf("candidate %q: empty confidence_band", c.Name)
+		}
 	}
 }
 

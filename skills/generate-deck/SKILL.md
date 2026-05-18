@@ -337,6 +337,10 @@ When `capacity_warnings[]` reports underfilled cells without explicit bounds, ea
 
 Pass `density_hint` ("low", "medium", or "high") in `content_hints` to bias pattern recommendations toward patterns matching the expected content density. Patterns whose `density_class` matches get a scoring boost; distant density classes (e.g., low content on a high-density pattern) receive a penalty. Use this when you already know the content is sparse or dense.
 
+#### `candidates:[]` in `recommend_visual` / `recommend_pattern`
+
+Pass `candidates` (array of strings) to rank an **explicit shortlist** instead of the full catalog. Every supplied name is returned with `score`, `rationale`, and `confidence_band` — the 0.5 threshold cutoff, top-K truncation, near-miss collection, and diversity-bonus injection are all bypassed. For `recommend_visual`, the `category` field is auto-resolved from the catalog (placeholder layout / named pattern / chart / diagram / raw_shape_grid); unknown names still appear with score 0 and a rationale noting the miss. Use this when you have 2–8 specific options in mind and want them ranked against your intent rather than re-discovering them from keywords.
+
 ### The `bounds_assumption` Field
 
 `expand_pattern` returns `bounds_assumption` indicating what area the budgets were computed against:

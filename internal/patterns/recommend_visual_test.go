@@ -248,3 +248,87 @@ func newTestRegistry(names ...string) *Registry {
 	}
 	return reg
 }
+
+// TestRecommendVisual_Candidates_RanksMixedCategories verifies that an
+// explicit candidates list spanning pattern + chart + diagram + placeholder
+// categories is fully returned (every name, every category resolved), with
+// rationale and confidence_band populated on each.
+func TestRecommendVisual_Candidates_RanksMixedCategories(t *testing.T) {
+	reg := newTestRegistry("kpi-3up", "matrix-2x2")
+
+	opts := &RecommendOptions{
+		Candidates: []string{
+			"kpi-3up",            // named_pattern
+			"bar",                // chart
+			"pyramid",            // diagram
+			"title",              // placeholder_layout
+			"made-up-thing",      // unknown
+		},
+	}
+	result := RecommendVisual(reg, "compare top KPIs", &VisualHints{
+		ContentHints: ContentHints{ItemCount: 3, HasMetrics: true},
+	}, 5, opts)
+
+	if len(result.Candidates) != 5 {
+		t.Fatalf("expected 5 candidates (one per shortlist name), got %d: %+v",
+			len(result.Candidates), result.Candidates)
+	}
+
+	byName := make(map[string]VisualCandidate)
+	for _, c := range result.Candidates {
+		byName[c.Name] = c
+	}
+
+	wantCategory := map[string]VisualCategory{
+		"kpi-3up":       VisualCategoryPattern,
+		"bar":           VisualCategoryChart,
+		"pyramid":       VisualCategoryDiagram,
+		"title":         VisualCategoryPlaceholder,
+		"made-up-thing": VisualCategoryShapeGrid,
+	}
+	for name, wantCat := range wantCategory {
+		c, ok := byName[name]
+		if !ok {
+			t.Errorf("candidate %q missing from result", name)
+			continue
+		}
+		if c.Category != wantCat {
+			t.Errorf("candidate %q: got category %q, want %q", name, c.Category, wantCat)
+		}
+		if c.Rationale == "" {
+			t.Errorf("candidate %q: empty rationale", name)
+		}
+		if c.ConfidenceBand == "" {
+			t.Errorf("candidate %q: empty confidence_band", name)
+		}
+	}
+
+	// Unknown should have score 0.
+	if byName["made-up-thing"].Score != 0 {
+		t.Errorf("unknown candidate score: got %v, want 0", byName["made-up-thing"].Score)
+	}
+}
+
+// TestRecommendVisual_Candidates_NoThresholdCutoff confirms that low-scoring
+// candidates are NOT filtered out in candidates mode (the threshold cutoff
+// that normally drops sub-0.5 entries is bypassed).
+func TestRecommendVisual_Candidates_NoThresholdCutoff(t *testing.T) {
+	reg := newTestRegistry("kpi-3up")
+
+	// "agenda" intent shouldn't match the chart keyword set well.
+	opts := &RecommendOptions{Candidates: []string{"line", "bar", "scatter"}}
+	result := RecommendVisual(reg, "agenda slide", nil, 5, opts)
+
+	if len(result.Candidates) != 3 {
+		t.Fatalf("expected 3 candidates (all chart names returned), got %d: %+v",
+			len(result.Candidates), result.Candidates)
+	}
+	for _, c := range result.Candidates {
+		if c.Rationale == "" {
+			t.Errorf("candidate %q: empty rationale", c.Name)
+		}
+		if c.ConfidenceBand == "" {
+			t.Errorf("candidate %q: empty confidence_band", c.Name)
+		}
+	}
+}

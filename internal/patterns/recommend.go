@@ -24,10 +24,16 @@ type ContentHints struct {
 }
 
 // RecommendOptions carries diversity and context parameters for Recommend.
+//
+// When Candidates is non-empty, the recommender scores only those names against
+// intent and hints, returning all of them ranked (no threshold cutoff, no
+// truncation, no near-misses, no diversity-bonus injection). This lets agents
+// rank an explicit shortlist instead of querying the full registry.
 type RecommendOptions struct {
 	RecentPatterns []string `json:"recent_patterns,omitempty"` // patterns used on preceding slides
 	PreferVariety  bool     `json:"prefer_variety,omitempty"`  // apply recency decay penalty
 	SlideIndex     int      `json:"slide_index,omitempty"`     // 0-based position of the slide being built
+	Candidates     []string `json:"candidates,omitempty"`      // explicit shortlist to rank; bypasses threshold and truncation when set
 }
 
 // Candidate is a single recommendation result.
@@ -457,6 +463,12 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 
 	applyVariety := options != nil && options.PreferVariety && len(recencyCount) > 0
 
+	// Explicit-candidates mode: rank only the supplied shortlist with no
+	// threshold cutoff, no truncation, no near-misses, no diversity injection.
+	if options != nil && len(options.Candidates) > 0 {
+		return recommendOnlyCandidates(reg, intentLower, hints, options.Candidates, recencyCount, applyVariety)
+	}
+
 	// Score and deduplicate rules.
 	flat := scoreAndDedup(intentLower, hints)
 
@@ -520,6 +532,75 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 	// Suggest compose pairings for compound intents.
 	result.ComposeSuggestions = suggestCompose(intentLower, hints)
 
+	return result
+}
+
+// recommendOnlyCandidates ranks an explicit list of pattern names against the
+// intent/hints. Threshold cutoff, truncation, near-miss collection, and
+// diversity-bonus injection are skipped — every supplied name is returned.
+//
+// Names that match no rule are still returned with score 0 and a
+// rationale noting the absence; this lets agents see "you asked for X but it
+// has no scoring rule" rather than silently dropping the candidate.
+func recommendOnlyCandidates(reg *Registry, intentLower string, hints *ContentHints, names []string, recencyCount map[string]int, applyVariety bool) RecommendResult {
+	flat := make([]scored, 0, len(names))
+	for _, name := range names {
+		var (
+			bestRule  rule
+			bestScore float64
+			haveRule  bool
+		)
+		for i := range rules {
+			r := rules[i]
+			if r.pattern != name {
+				continue
+			}
+			s := scoreRule(r, intentLower, hints)
+			if !haveRule || s > bestScore {
+				bestRule = r
+				bestScore = s
+				haveRule = true
+			}
+		}
+		if !haveRule {
+			flat = append(flat, scored{
+				rule: rule{
+					pattern:   name,
+					rationale: "No scoring rule registered for this pattern name; returned because it was supplied as an explicit candidate.",
+				},
+				score: 0,
+			})
+			continue
+		}
+		flat = append(flat, scored{rule: bestRule, score: bestScore})
+	}
+
+	if applyVariety {
+		applyRecencyDecay(flat, recencyCount)
+	}
+	if hints.DensityHint != "" && reg != nil {
+		applyDensityPreference(flat, reg, hints.DensityHint)
+	}
+
+	sort.Slice(flat, func(i, j int) bool {
+		if flat[i].score != flat[j].score {
+			return flat[i].score > flat[j].score
+		}
+		return flat[i].rule.pattern < flat[j].rule.pattern
+	})
+
+	result := RecommendResult{
+		QueryUnderstood: summarizeIntent(intentLower, hints),
+	}
+	for _, c := range flat {
+		result.Candidates = append(result.Candidates, Candidate{
+			PatternName:    c.rule.pattern,
+			Score:          math.Round(c.score*100) / 100,
+			Rationale:      c.rule.rationale,
+			ConfidenceBand: confidenceBand(c.score),
+			DiversityBonus: c.diversityBonus,
+		})
+	}
 	return result
 }
 

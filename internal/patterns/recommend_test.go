@@ -100,6 +100,94 @@ func TestRecommend_NoMatch(t *testing.T) {
 	}
 }
 
+// TestRecommend_Candidates_RanksOnlyShortlist verifies that when an explicit
+// candidates list is supplied, recommender returns ALL of them ranked with
+// scores, rationales, and confidence bands — even names that would normally
+// score below the 0.5 threshold or wouldn't fit in the top-3.
+func TestRecommend_Candidates_RanksOnlyShortlist(t *testing.T) {
+	reg := NewRegistry()
+	for _, name := range []string{
+		"kpi-3up", "card-grid", "icon-row", "comparison-2col", "matrix-2x2",
+	} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	// Intent matches kpi-3up strongly. card-grid, comparison-2col, matrix-2x2
+	// would normally fall below the 0.5 threshold for this intent.
+	opts := &RecommendOptions{
+		Candidates: []string{"kpi-3up", "card-grid", "comparison-2col", "matrix-2x2"},
+	}
+	result := Recommend(reg, "show 3 KPIs", &ContentHints{ItemCount: 3, HasMetrics: true}, 3, opts)
+
+	if len(result.Candidates) != 4 {
+		t.Fatalf("expected exactly 4 candidates (one per shortlist name), got %d: %+v",
+			len(result.Candidates), result.Candidates)
+	}
+
+	// Every supplied name should appear in the result.
+	got := make(map[string]Candidate)
+	for _, c := range result.Candidates {
+		got[c.PatternName] = c
+	}
+	for _, want := range opts.Candidates {
+		c, ok := got[want]
+		if !ok {
+			t.Errorf("candidate %q missing from ranked result", want)
+			continue
+		}
+		if c.Rationale == "" {
+			t.Errorf("candidate %q: empty rationale", want)
+		}
+		if c.ConfidenceBand == "" {
+			t.Errorf("candidate %q: empty confidence_band", want)
+		}
+	}
+
+	// kpi-3up should rank first (intent + hints favor it).
+	if result.Candidates[0].PatternName != "kpi-3up" {
+		t.Errorf("expected kpi-3up to rank first, got %q (full=%+v)",
+			result.Candidates[0].PatternName, result.Candidates)
+	}
+
+	// Threshold cutoff must NOT apply in candidates mode.
+	if len(result.NearMisses) != 0 {
+		t.Errorf("near_misses should be empty in candidates mode, got %+v", result.NearMisses)
+	}
+}
+
+// TestRecommend_Candidates_UnknownName confirms that an unrecognized pattern
+// name is still returned (with a rationale noting the miss) rather than being
+// silently dropped.
+func TestRecommend_Candidates_UnknownName(t *testing.T) {
+	reg := NewRegistry()
+	reg.Register(&stubPattern{name: "kpi-3up", desc: "kpi", useWhen: "kpi", version: 1})
+
+	opts := &RecommendOptions{Candidates: []string{"kpi-3up", "made-up-pattern"}}
+	result := Recommend(reg, "show KPIs", nil, 3, opts)
+
+	if len(result.Candidates) != 2 {
+		t.Fatalf("expected 2 candidates, got %d: %+v", len(result.Candidates), result.Candidates)
+	}
+	var unknown *Candidate
+	for i := range result.Candidates {
+		if result.Candidates[i].PatternName == "made-up-pattern" {
+			unknown = &result.Candidates[i]
+		}
+	}
+	if unknown == nil {
+		t.Fatalf("made-up-pattern not found in result: %+v", result.Candidates)
+	}
+	if unknown.Rationale == "" {
+		t.Error("unknown candidate should have a non-empty rationale")
+	}
+	if unknown.ConfidenceBand == "" {
+		t.Error("unknown candidate should have a non-empty confidence_band")
+	}
+	if unknown.Score != 0 {
+		t.Errorf("unknown candidate score: got %v, want 0", unknown.Score)
+	}
+}
+
 func TestRecommend_QueryUnderstood(t *testing.T) {
 	reg := NewRegistry()
 	reg.Register(&stubPattern{name: "kpi-3up", desc: "kpi", useWhen: "kpi", version: 1})

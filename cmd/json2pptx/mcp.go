@@ -857,7 +857,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
-		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected."),
+		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses)."),
 		mcp.WithRawOutputSchema(outputSchemaRecommendPattern),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -874,6 +874,9 @@ func mcpRecommendPatternTool() mcp.Tool {
 		),
 		mcp.WithNumber("slide_index",
 			mcp.Description("0-based index of the slide being built. Provides context for diversity scoring."),
+		),
+		mcp.WithArray("candidates",
+			mcp.Description("Explicit shortlist of pattern names to rank against intent/hints. When supplied, ALL listed names are scored and returned ranked (no threshold cutoff, no truncation, no near-misses, no diversity bonus). Names not in the catalog still appear with score 0 and a rationale noting the miss."),
 		),
 	)
 }
@@ -1158,9 +1161,21 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 			opts.SlideIndex = int(f)
 		}
 	}
+	if candsRaw, ok := request.GetArguments()["candidates"]; ok && candsRaw != nil {
+		candsJSON, err := json.Marshal(candsRaw)
+		if err == nil {
+			_ = json.Unmarshal(candsJSON, &opts.Candidates)
+		}
+	}
 
 	reg := patterns.Default()
-	rec := patterns.Recommend(reg, intent, &hints, 3, &opts)
+	// In candidates mode, rank every supplied name regardless of how many — the
+	// agent asked for these specifically, so we don't truncate.
+	maxCands := 3
+	if len(opts.Candidates) > 0 {
+		maxCands = len(opts.Candidates)
+	}
+	rec := patterns.Recommend(reg, intent, &hints, maxCands, &opts)
 
 	// Build expansion previews for each candidate using exemplar values.
 	expandCtx := patterns.ExpandContext{
@@ -1254,7 +1269,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 func mcpRecommendVisualTool() mcp.Tool {
 	return mcp.NewTool("recommend_visual",
-		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Replaces guesswork — ask this tool first, then use the winning category's tool to build the slide."),
+		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Replaces guesswork — ask this tool first, then use the winning category's tool to build the slide. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation); category is auto-resolved from the catalog and unknown names appear with score 0."),
 		mcp.WithRawOutputSchema(outputSchemaRecommendVisual),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -1271,6 +1286,9 @@ func mcpRecommendVisualTool() mcp.Tool {
 		),
 		mcp.WithNumber("slide_index",
 			mcp.Description("0-based index of the slide being built."),
+		),
+		mcp.WithArray("candidates",
+			mcp.Description("Explicit shortlist of candidate names to rank across all visual categories (placeholder layouts, named patterns, chart types, diagram types, or raw_shape_grid). When supplied, ALL listed names are scored and returned ranked (no threshold cutoff, no truncation). Category is auto-resolved from the catalog; unknown names appear with score 0 and a rationale noting the miss."),
 		),
 	)
 }
@@ -1308,9 +1326,20 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 			opts.SlideIndex = int(f)
 		}
 	}
+	if candsRaw, ok := request.GetArguments()["candidates"]; ok && candsRaw != nil {
+		candsJSON, err := json.Marshal(candsRaw)
+		if err == nil {
+			_ = json.Unmarshal(candsJSON, &opts.Candidates)
+		}
+	}
 
 	reg := patterns.Default()
-	rec := patterns.RecommendVisual(reg, intent, &hints, 5, &opts)
+	// In candidates mode, rank every supplied name — never truncate.
+	maxCands := 5
+	if len(opts.Candidates) > 0 {
+		maxCands = len(opts.Candidates)
+	}
+	rec := patterns.RecommendVisual(reg, intent, &hints, maxCands, &opts)
 
 	// Enrich candidates with placement guidance from capability truth.
 	generator.EnrichVisualPlacement(&rec)

@@ -176,6 +176,12 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	}
 	applyVariety := options != nil && options.PreferVariety && len(recencyCount) > 0
 
+	// Explicit-candidates mode: rank only the supplied shortlist across all
+	// visual categories with no threshold cutoff and no truncation.
+	if options != nil && len(options.Candidates) > 0 {
+		return recommendVisualOnlyCandidates(reg, intentLower, hints, options.Candidates, recencyCount, applyVariety)
+	}
+
 	var all []VisualCandidate
 
 	// 1. Score placeholder layouts.
@@ -230,6 +236,203 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	result.DisambiguatingQuestions = suggestVisualQuestions(hints, intentLower, filtered)
 
 	return result
+}
+
+// recommendVisualOnlyCandidates ranks an explicit list of candidate names
+// across all visual categories. Threshold cutoff and truncation are skipped —
+// every supplied name is returned. The category for each name is resolved
+// from the catalogs (placeholder rules, pattern registry, chart capabilities,
+// diagram capabilities); names not found anywhere are returned with category
+// raw_shape_grid and score 0, with a rationale noting the miss.
+func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *VisualHints, names []string, recencyCount map[string]int, applyVariety bool) RecommendVisualResult {
+	placeholderByType := make(map[string]placeholderRule, len(placeholderRules))
+	for _, r := range placeholderRules {
+		placeholderByType[r.slideType] = r
+	}
+	chartByType := make(map[string]chartRule, len(chartRules))
+	for _, r := range chartRules {
+		chartByType[r.chartType] = r
+	}
+	diagramByType := make(map[string]diagramRule, len(diagramRules))
+	for _, r := range diagramRules {
+		diagramByType[r.diagramType] = r
+	}
+	readyCharts := make(map[string]bool)
+	for _, c := range svggen.ChartCapabilities() {
+		if c.Status == "ready" {
+			readyCharts[c.Type] = true
+		}
+	}
+	readyDiagrams := make(map[string]bool)
+	for _, d := range svggen.DiagramCapabilitiesReady() {
+		readyDiagrams[d.Type] = true
+	}
+
+	out := make([]VisualCandidate, 0, len(names))
+	for _, name := range names {
+		out = append(out, scoreVisualCandidate(reg, intentLower, hints, name,
+			placeholderByType, chartByType, diagramByType, readyCharts, readyDiagrams,
+			recencyCount, applyVariety))
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		return out[i].Name < out[j].Name
+	})
+
+	return RecommendVisualResult{
+		Candidates:              out,
+		QueryUnderstood:         summarizeVisualIntent(intentLower, hints),
+		DisambiguatingQuestions: suggestVisualQuestions(hints, intentLower, out),
+	}
+}
+
+// scoreVisualCandidate resolves a single candidate name to its category and
+// score. It returns a VisualCandidate even when the name matches no rule —
+// the caller chose this name and is owed a ranked entry.
+func scoreVisualCandidate(
+	reg *Registry, intentLower string, hints *VisualHints, name string,
+	placeholderByType map[string]placeholderRule,
+	chartByType map[string]chartRule,
+	diagramByType map[string]diagramRule,
+	readyCharts, readyDiagrams map[string]bool,
+	recencyCount map[string]int, applyVariety bool,
+) VisualCandidate {
+	// 1. Placeholder layouts.
+	if pr, ok := placeholderByType[name]; ok {
+		s := scoreKeywords(pr.keywords, intentLower, pr.baseScore)
+		return VisualCandidate{
+			Category:       VisualCategoryPlaceholder,
+			Name:           name,
+			Score:          roundScore(s),
+			Rationale:      pr.rationale,
+			ConfidenceBand: confidenceBand(s),
+		}
+	}
+
+	// 2. Named patterns in the registry.
+	if reg != nil {
+		if _, ok := reg.Get(name); ok {
+			var (
+				bestRule  rule
+				bestScore float64
+				haveRule  bool
+			)
+			for i := range rules {
+				if rules[i].pattern != name {
+					continue
+				}
+				s := scoreRule(rules[i], intentLower, &hints.ContentHints)
+				if !haveRule || s > bestScore {
+					bestRule = rules[i]
+					bestScore = s
+					haveRule = true
+				}
+			}
+			rationale := "Named pattern from the catalog (no scoring rule matched intent keywords)."
+			if haveRule {
+				rationale = bestRule.rationale
+			}
+			// Apply variety / density adjustments inline.
+			if applyVariety {
+				if count, ok := recencyCount[name]; ok && count > 0 {
+					penalty := 0.15 * float64(count)
+					bestScore -= penalty
+					if bestScore < 0 {
+						bestScore = 0
+					}
+				}
+			}
+			if hints.DensityHint != "" && reg != nil {
+				if pat, ok := reg.Get(name); ok {
+					patDensity := pat.Taxonomy().DensityClass
+					switch {
+					case patDensity == hints.DensityHint:
+						bestScore += 0.10
+					case densityDistance(patDensity, hints.DensityHint) > 1:
+						bestScore -= 0.15
+					default:
+						bestScore -= 0.05
+					}
+				}
+				if bestScore > 1.0 {
+					bestScore = 1.0
+				}
+				if bestScore < 0 {
+					bestScore = 0
+				}
+			}
+			return VisualCandidate{
+				Category:       VisualCategoryPattern,
+				Name:           name,
+				Score:          roundScore(bestScore),
+				Rationale:      rationale,
+				ConfidenceBand: confidenceBand(bestScore),
+			}
+		}
+	}
+
+	// 3. Chart types (ready ones only — non-ready charts can't render).
+	if readyCharts[name] {
+		if cr, ok := chartByType[name]; ok {
+			s := scoreKeywords(cr.keywords, intentLower, cr.baseScore)
+			if cr.needsMultiSeries && hints.SeriesCount > 1 {
+				s += 0.05
+			}
+			if cr.needsSingleSeries && hints.SeriesCount > 1 {
+				s -= 0.2
+			}
+			if s > 1.0 {
+				s = 1.0
+			}
+			if s < 0 {
+				s = 0
+			}
+			return VisualCandidate{
+				Category:       VisualCategoryChart,
+				Name:           name,
+				Score:          roundScore(s),
+				Rationale:      cr.rationale,
+				ConfidenceBand: confidenceBand(s),
+			}
+		}
+	}
+
+	// 4. Diagram types (ready ones only).
+	if readyDiagrams[name] {
+		if dr, ok := diagramByType[name]; ok {
+			s := scoreKeywords(dr.keywords, intentLower, dr.baseScore)
+			return VisualCandidate{
+				Category:       VisualCategoryDiagram,
+				Name:           name,
+				Score:          roundScore(s),
+				Rationale:      dr.rationale,
+				ConfidenceBand: confidenceBand(s),
+			}
+		}
+	}
+
+	// 5. Raw shape_grid escape hatch.
+	if name == "raw_shape_grid" {
+		return VisualCandidate{
+			Category:       VisualCategoryShapeGrid,
+			Name:           name,
+			Score:          0.30,
+			Rationale:      "Raw shape_grid for fully custom layouts.",
+			ConfidenceBand: confidenceBand(0.30),
+		}
+	}
+
+	// 6. Unknown candidate — still returned, with rationale noting the miss.
+	return VisualCandidate{
+		Category:       VisualCategoryShapeGrid,
+		Name:           name,
+		Score:          0,
+		Rationale:      "Unknown candidate name; not found in placeholder, pattern, chart, or diagram catalogs.",
+		ConfidenceBand: confidenceBand(0),
+	}
 }
 
 // scorePlaceholders evaluates placeholder layout rules.

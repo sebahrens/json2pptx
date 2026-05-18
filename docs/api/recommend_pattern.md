@@ -19,6 +19,7 @@ Use `plan_deck` instead when you need a full deck outline — it calls `recommen
 | `recent_patterns` | array of strings | No | — | Pattern names used on preceding slides (in order) |
 | `prefer_variety` | boolean | No | false | Penalize patterns in `recent_patterns` and inject diversity bonus candidate |
 | `slide_index` | number | No | — | 0-based index of the slide being built (context for diversity scoring) |
+| `candidates` | array of strings | No | — | Explicit shortlist of pattern names to rank. When supplied, ALL listed names are returned ranked (no threshold cutoff, no truncation, no near-misses, no diversity bonus). Unknown names appear with score 0 and a rationale noting the miss. |
 
 ### content_hints Object
 
@@ -75,6 +76,37 @@ Patterns that almost matched but fell below the threshold. Each includes `would_
 ### Disambiguating Questions
 
 When the intent is ambiguous (multiple patterns could work), questions are returned to help the caller refine. Example: "Are these metrics time-series or point-in-time?"
+
+## Candidates Mode (explicit shortlist)
+
+When `candidates` is supplied, the recommender scores **only** those pattern names against `intent` and `content_hints` — the rest of the catalog is ignored. Every supplied name is returned ranked, with `score`, `rationale`, and `confidence_band` populated:
+
+- The 0.5 threshold cutoff is **bypassed**: low-scoring names still appear.
+- Truncation is **disabled**: if you pass 7 names, you get 7 candidates back.
+- `near_misses`, `diversity_bonus`, and the diversity-bonus injection are **suppressed**.
+- Names not registered in the catalog still appear (score 0, rationale notes the miss) so the agent learns that a typo or removed pattern was used.
+
+Use this when the agent has already narrowed the choice to N specific patterns and needs them ranked by context — for example, after `list_patterns` filtered by category or after a prior `recommend_pattern` call returned several near-equal scores.
+
+```json
+// Request
+{
+  "intent": "show our quarterly highlights",
+  "content_hints": {"item_count": 4, "has_metrics": true},
+  "candidates": ["kpi-4up", "card-grid", "icon-row", "stat-hero"]
+}
+
+// Response — all 4 returned, ranked
+{
+  "candidates": [
+    {"pattern_name": "kpi-4up",    "score": 0.95, "rationale": "Best for exactly 4 big-number KPIs with short captions", "confidence_band": "high"},
+    {"pattern_name": "card-grid",  "score": 0.70, "rationale": "Card grid layout",                                    "confidence_band": "medium"},
+    {"pattern_name": "icon-row",   "score": 0.55, "rationale": "Horizontal row of icon+caption pairs",                "confidence_band": "low"},
+    {"pattern_name": "stat-hero",  "score": 0.40, "rationale": "Single oversized statistic",                          "confidence_band": "low"}
+  ],
+  "query_understood_as": "show quarterly highlights, item_count=4, has_metrics=true"
+}
+```
 
 ## Variety Mode
 
