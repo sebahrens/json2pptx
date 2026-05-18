@@ -1,16 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
@@ -40,6 +44,10 @@ Use this after generate_presentation to get structured visual feedback without b
 		mcp.WithString("mode",
 			mcp.Description("Scoring mode: 'deterministic' (default, zero false positives) or 'with_heuristics' (adds vision-model checks, requires ANTHROPIC_API_KEY and rendered images)."),
 			mcp.Enum("deterministic", "with_heuristics"),
+		),
+		mcp.WithArray("slide_indices",
+			mcp.Description("Optional array of 0-based slide indices to score. When provided, only those slides are rendered + scored — skipping the rest is significantly faster for iterative single-slide refinement. Findings on other slides are omitted; per_slide contains only the requested indices. summary.slide_count still reflects the full deck size. composition is omitted because it only meaningfully scores the full deck."),
+			mcp.Items(map[string]any{"type": "integer", "minimum": 0}),
 		),
 	)
 }
@@ -86,6 +94,13 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return mcpErrorWithNext("MISSING_PARAMETER", "at least one slide is required in presentation", nextCallGetInputSchema()), nil
 	}
 
+	// Optional slide_indices: when provided, only those slides are rendered +
+	// scored, which is significantly faster than rerunning the whole deck.
+	slideIndices, idxErr := extractSlideIndices(request, len(input.Slides))
+	if idxErr != nil {
+		return mcpErrorWithNext("INVALID_PARAMETER", idxErr.Error(), nextCallGetInputSchema()), nil
+	}
+
 	// Resolve and analyze template.
 	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
 	if err != nil {
@@ -124,19 +139,35 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	findings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &analysis.Theme)
 
 	// 2. Run actual generation to a temp directory to capture render-time findings
-	//    (contrast swaps, autofit shrink, pagination, clamping).
+	//    (contrast swaps, autofit shrink, pagination, clamping). When
+	//    slide_indices is set, render only that subset (significantly faster
+	//    for iterative per-slide refinement) and remap finding paths from the
+	//    subset index space back to the original deck index space.
 	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
-	renderFindings := mc.collectRenderFindings(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+	var renderFindings []patterns.FitFinding
+	if len(slideIndices) > 0 {
+		subset, subsetToOrig := buildSlideSubset(&input, slideIndices)
+		renderFindings = mc.collectRenderFindings(ctx, subset, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		renderFindings = remapFindingsSlideIndex(renderFindings, subsetToOrig)
+	} else {
+		renderFindings = mc.collectRenderFindings(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+	}
 	findings = append(findings, renderFindings...)
 
 	// 3. Append synthesis findings (template-level).
 	findings = append(findings, synthesisFindings...)
 
-	// Score the combined findings (correctness axis).
-	ds := deterministic.ScoreFromFindings(findings, len(input.Slides))
-
-	// 4. Composition axis — deck-level rhythm analysis.
-	ds.Composition = compositionAxis(input.Slides)
+	// Score the combined findings (correctness axis). When slide_indices is
+	// set, PerSlide only contains entries for those indices; composition is
+	// omitted because it only meaningfully scores the full deck.
+	var ds *deterministic.DeckScore
+	if len(slideIndices) > 0 {
+		ds = deterministic.ScoreFromFindingsForIndices(findings, len(input.Slides), slideIndices)
+	} else {
+		ds = deterministic.ScoreFromFindings(findings, len(input.Slides))
+		// 4. Composition axis — deck-level rhythm analysis.
+		ds.Composition = compositionAxis(input.Slides)
+	}
 
 	if mode == "with_heuristics" {
 		// Heuristic mode requires rendered images + API key. The canonical
@@ -303,4 +334,96 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 func appendHeuristicNote(codes []deterministic.CodeCount) []deterministic.CodeCount {
 	return codes // no-op for now; heuristic mode is opt-in future work
 }
+
+// extractSlideIndices parses an optional slide_indices array parameter into a
+// validated, sorted, deduplicated slice of 0-based indices. Returns (nil, nil)
+// when the parameter is absent or empty (full-deck scoring). Returns an error
+// when any value is non-numeric or out of range.
+func extractSlideIndices(request mcp.CallToolRequest, slideCount int) ([]int, error) {
+	args := request.GetArguments()
+	raw, ok := args["slide_indices"]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+
+	// Re-marshal/unmarshal so we accept either []float64, []int, or json.Number.
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("slide_indices: %w", err)
+	}
+	if string(data) == "null" {
+		return nil, nil
+	}
+	var arr []json.Number
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&arr); err != nil {
+		return nil, fmt.Errorf("slide_indices must be an array of integers: %v", err)
+	}
+	if len(arr) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(arr))
+	out := make([]int, 0, len(arr))
+	for _, n := range arr {
+		i64, err := n.Int64()
+		if err != nil {
+			return nil, fmt.Errorf("slide_indices must contain integers, got %s", n.String())
+		}
+		idx := int(i64)
+		if idx < 0 || idx >= slideCount {
+			return nil, fmt.Errorf("slide_indices: index %d out of range (deck has %d slides, valid range 0-%d)", idx, slideCount, slideCount-1)
+		}
+		if seen[idx] {
+			continue
+		}
+		seen[idx] = true
+		out = append(out, idx)
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
+// buildSlideSubset returns a shallow copy of input containing only the slides
+// at indices (in ascending order) and a mapping from subset position back to
+// the original index, so finding paths emitted by the renderer can be remapped
+// to the original index space.
+func buildSlideSubset(input *PresentationInput, indices []int) (*PresentationInput, map[int]int) {
+	clone := *input
+	clone.Slides = make([]SlideInput, 0, len(indices))
+	subsetToOrig := make(map[int]int, len(indices))
+	for subsetIdx, origIdx := range indices {
+		clone.Slides = append(clone.Slides, input.Slides[origIdx])
+		subsetToOrig[subsetIdx] = origIdx
+	}
+	return &clone, subsetToOrig
+}
+
+// remapFindingsSlideIndex rewrites the "/slides/{idx}/..." prefix in each
+// finding's Path from the subset (rendered) index back to the original deck
+// index, using subsetToOrig. Findings whose path doesn't begin with "/slides/"
+// or whose subset index isn't in the mapping are returned unchanged.
+func remapFindingsSlideIndex(findings []patterns.FitFinding, subsetToOrig map[int]int) []patterns.FitFinding {
+	if len(findings) == 0 || len(subsetToOrig) == 0 {
+		return findings
+	}
+	out := make([]patterns.FitFinding, len(findings))
+	for i, f := range findings {
+		out[i] = f
+		subsetIdx := slidepath.SlideIndex(f.Path)
+		if subsetIdx < 0 {
+			continue
+		}
+		origIdx, ok := subsetToOrig[subsetIdx]
+		if !ok || origIdx == subsetIdx {
+			continue
+		}
+		oldPrefix := slidepath.Slide(subsetIdx)
+		newPrefix := slidepath.Slide(origIdx)
+		out[i].Path = newPrefix + f.Path[len(oldPrefix):]
+	}
+	return out
+}
+
 

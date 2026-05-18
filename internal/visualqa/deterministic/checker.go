@@ -92,6 +92,103 @@ func actionToSeverity(action string) string {
 	}
 }
 
+// ScoreFromFindingsForIndices computes a DeckScore where PerSlide only contains
+// entries for the slides listed in includedIndices. Findings on slides not in
+// that set are ignored. The summary.slide_count reflects the full-deck size
+// (slideCount); problem_slides_count and overall_score are computed across the
+// included slides only.
+//
+// The returned PerSlide slice is ordered by the values in includedIndices
+// (callers that want sorted order should sort the slice before passing it in).
+// Duplicate indices are dropped.
+func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int, includedIndices []int) *DeckScore {
+	// Build the included set, preserving caller order on first occurrence.
+	seen := make(map[int]bool, len(includedIndices))
+	order := make([]int, 0, len(includedIndices))
+	for _, i := range includedIndices {
+		if i < 0 || i >= slideCount || seen[i] {
+			continue
+		}
+		seen[i] = true
+		order = append(order, i)
+	}
+
+	// Group findings by slide index, but only those whose slide is included.
+	bySlide := map[int][]patterns.FitFinding{}
+	for _, f := range findings {
+		si := slideIndexFromPath(f.Path)
+		if !seen[si] {
+			continue
+		}
+		bySlide[si] = append(bySlide[si], f)
+	}
+
+	perSlide := make([]SlideScore, 0, len(order))
+	codeCounts := map[string]int{}
+	problemSlides := 0
+	total := 0
+
+	for _, i := range order {
+		ffs := bySlide[i]
+		slideScore := 100
+		var scoreFindings []ScoreFinding
+
+		for _, f := range ffs {
+			w := SeverityWeight[f.Action]
+			slideScore -= w
+			codeCounts[f.Code]++
+
+			scoreFindings = append(scoreFindings, ScoreFinding{
+				Code:     f.Code,
+				Severity: actionToSeverity(f.Action),
+				Message:  f.Message,
+				Fix:      f.Fix,
+			})
+		}
+
+		if slideScore < 0 {
+			slideScore = 0
+		}
+		if slideScore < 100 {
+			problemSlides++
+		}
+		total += slideScore
+
+		perSlide = append(perSlide, SlideScore{
+			Index:    i,
+			Score:    slideScore,
+			Findings: scoreFindings,
+		})
+	}
+
+	overall := 100
+	if len(perSlide) > 0 {
+		overall = total / len(perSlide)
+	}
+
+	topCodes := make([]CodeCount, 0, len(codeCounts))
+	for code, count := range codeCounts {
+		topCodes = append(topCodes, CodeCount{Code: code, Count: count})
+	}
+	sort.Slice(topCodes, func(i, j int) bool {
+		return topCodes[i].Count > topCodes[j].Count
+	})
+	if len(topCodes) > 10 {
+		topCodes = topCodes[:10]
+	}
+
+	return &DeckScore{
+		OverallScore: overall,
+		PerSlide:     perSlide,
+		Summary: DeckSummary{
+			TopCodes:           topCodes,
+			SlideCount:         slideCount,
+			ProblemSlidesCount: problemSlides,
+		},
+		ModeUsed: "deterministic",
+	}
+}
+
 // ScoreFromFindings computes a DeckScore from a slice of FitFindings.
 // slideCount is the total number of slides in the deck.
 func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScore {
