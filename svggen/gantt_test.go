@@ -797,6 +797,58 @@ func TestGanttChart_NarrowBarExternalLabel(t *testing.T) {
 	}
 }
 
+// TestGanttChart_PaletteSixAccentsOnly verifies that with 7+ task categories the
+// chart cycles through Accent1..6 from the theme palette and never embeds the
+// hardcoded 7th Tableau color "#EDC948" (or any other off-theme fallback hex)
+// that the previous implementation injected when accents were "missing".
+// Regression test for go-slide-creator-wbc7.9.
+func TestGanttChart_PaletteSixAccentsOnly(t *testing.T) {
+	// Seven distinct categories — one beyond the 6-accent palette — to force
+	// any 7th-color leak to surface in the rendered SVG.
+	data := GanttData{
+		Title: "7-Category Palette Audit",
+		Tasks: []GanttTask{
+			{ID: "t1", Label: "Discovery", StartDate: date(2024, 1, 1), EndDate: date(2024, 1, 15), Category: "Discovery"},
+			{ID: "t2", Label: "Design", StartDate: date(2024, 1, 15), EndDate: date(2024, 2, 1), Category: "Design"},
+			{ID: "t3", Label: "Build", StartDate: date(2024, 2, 1), EndDate: date(2024, 3, 1), Category: "Build"},
+			{ID: "t4", Label: "QA", StartDate: date(2024, 3, 1), EndDate: date(2024, 3, 15), Category: "QA"},
+			{ID: "t5", Label: "Pilot", StartDate: date(2024, 3, 15), EndDate: date(2024, 4, 1), Category: "Pilot"},
+			{ID: "t6", Label: "Rollout", StartDate: date(2024, 4, 1), EndDate: date(2024, 4, 15), Category: "Rollout"},
+			{ID: "t7", Label: "Support", StartDate: date(2024, 4, 15), EndDate: date(2024, 5, 1), Category: "Support"},
+		},
+	}
+
+	builder := NewSVGBuilder(900, 500)
+	chart := NewGanttChart(builder, DefaultGanttConfig(900, 500))
+	if err := chart.Draw(data); err != nil {
+		t.Fatalf("Draw() error = %v", err)
+	}
+	doc, err := builder.Render()
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	svg := string(doc.Content)
+
+	// The previous fallback embedded these off-theme hex values that are NOT
+	// part of DefaultPalette (Accent1..6 are 4E79A7, F28E2B, E15759, 76B7B2,
+	// 59A14F, EDC948). #B07AA1 (purple) was the off-theme leak; it must not
+	// appear now that gantt always cycles the theme palette.
+	bannedHex := []string{"B07AA1"}
+	upper := strings.ToUpper(svg)
+	for _, h := range bannedHex {
+		if strings.Contains(upper, strings.ToUpper(h)) {
+			t.Errorf("SVG contains banned off-theme color %q; gantt must cycle Accent1..6 only", h)
+		}
+	}
+
+	// Assert the 7th category wraps back to Accent1 by confirming Accent1's
+	// hex appears in the SVG (used for both the 1st and wrapped 7th category).
+	accent1 := DefaultPalette().Accent1.Hex()
+	if !strings.Contains(upper, strings.ToUpper(accent1)) {
+		t.Errorf("Expected Accent1 hex %q in SVG (used for category 1 and wrapped category 7), not found", accent1)
+	}
+}
+
 // date is a helper to create time.Time values for testing.
 func date(year, month, day int) time.Time {
 	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)

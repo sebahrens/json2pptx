@@ -1191,19 +1191,10 @@ func (gc *GanttChart) getCategoryColors(data GanttData, style *StyleGuide) map[s
 		}
 	}
 
-	// Use accent colors from style or defaults
+	// Use accent colors from the theme palette. Palette.AccentColors() always
+	// returns 6 entries (Accent1..Accent6); rows beyond 6 wrap via modulo so
+	// gantt never embeds a non-theme 7th color.
 	accents := style.Palette.AccentColors()
-	if len(accents) < 3 {
-		accents = []Color{
-			MustParseColor("#4E79A7"),
-			MustParseColor("#59A14F"),
-			MustParseColor("#F28E2B"),
-			MustParseColor("#E15759"),
-			MustParseColor("#76B7B2"),
-			MustParseColor("#B07AA1"),
-			MustParseColor("#EDC948"),
-		}
-	}
 
 	result := make(map[string]Color)
 	for i, cat := range categories {
