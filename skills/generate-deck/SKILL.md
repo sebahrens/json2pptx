@@ -68,6 +68,7 @@ Standalone SVG renderer with its own diagram/chart registry. **Distinct connecta
 | List all supported diagram/chart types | `list_diagram_types` | Returns the type registry as an array of `{name, aliases?}` objects. `name` is the canonical registered ID (e.g., `bar_chart`, `pie_chart`); `aliases` enumerates other accepted names (e.g., `["bar"]`, `["pie"]`) that resolve to the same renderer. Prefer the canonical `name` in new code; the short aliases (`bar`, `line`, `pie`, etc.) remain accepted everywhere `render_diagram` takes a `type`. Call once per session to discover what `render_diagram` accepts. |
 | Validate a diagram/chart payload | `validate_diagram` | Same `{valid, errors}` envelope documented under "Isolated diagram validation" below. Use BEFORE `render_diagram` when you want structured errors instead of a render failure. |
 | Get the JSON Schema for a diagram/chart type | `get_diagram_schema` | Returns the input schema for a specific `type` so you can structure `data` correctly. Prefer this over guessing field names from `list_diagram_types`. |
+| Detect svggen-mcp contract drift | `get_capabilities` | Returns `{schema_version, tool_list:[{name, description}], chart_types:[], diagram_types:[], deprecations:[], features:{dry_render, structured_errors}}`. `schema_version` is sourced from the svggen library version (single source). Call once per session and compare `schema_version` to the value you cached; a change means the rendering or validation contract may have shifted. Distinct from `json2pptx-mcp.get_capabilities` — this one is scoped to the svggen registry. |
 
 When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
 
@@ -102,7 +103,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (prefer over CLI shell-outs)
 
-When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the four `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
+When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the five `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|

@@ -5,11 +5,13 @@
 //	svggen-mcp              # Start MCP server over stdio
 //	svggen-mcp --version    # Print version
 //
-// The server exposes four tools:
+// The server exposes five tools:
 //   - render_diagram: Render a diagram to SVG or PNG
 //   - list_diagram_types: List all available diagram types
 //   - validate_diagram: Validate diagram input without rendering
 //   - get_diagram_schema: Get the data schema for a specific diagram type
+//   - get_capabilities: Returns schema_version, tool list, registered chart
+//     and diagram types, deprecations, and feature flags for drift detection
 package main
 
 import (
@@ -30,7 +32,10 @@ import (
 	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
-const version = "0.1.0"
+// version is the MCP server version, sourced from the svggen library so the
+// server, the get_capabilities response, and the library all report a single
+// value.
+const version = svggen.Version
 
 func main() {
 	if len(os.Args) > 1 {
@@ -69,6 +74,7 @@ func run() error {
 	s.AddTool(listDiagramTypesTool(), handleListDiagramTypes)
 	s.AddTool(validateDiagramTool(), handleValidateDiagram)
 	s.AddTool(getDiagramSchemaTool(), handleGetDiagramSchema)
+	s.AddTool(getCapabilitiesTool(), handleGetCapabilities)
 
 	slog.Info("starting svggen MCP server", "version", version)
 
@@ -137,6 +143,12 @@ func getDiagramSchemaTool() mcp.Tool {
 			mcp.Required(),
 			mcp.Description("Diagram type to get schema for."),
 		),
+	)
+}
+
+func getCapabilitiesTool() mcp.Tool {
+	return mcp.NewTool("get_capabilities",
+		mcp.WithDescription("Returns this svggen-mcp server's schema version, the live tool list, registered chart and diagram types, deprecations, and feature flags. Use this once per session to detect contract drift without re-reading SKILL.md. Compare schema_version across sessions — a change means the rendering or validation contract may have shifted."),
 	)
 }
 
@@ -1020,4 +1032,124 @@ func convertValidationErrors(diagramType string, errs []core.ValidationError) []
 		diagnostics[i] = convertValidationError(diagramType, ve)
 	}
 	return diagnostics
+}
+
+// --- get_capabilities ---
+
+// capabilitiesToolEntry describes a single MCP tool surfaced in the capabilities response.
+type capabilitiesToolEntry struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// capabilitiesDeprecation describes a deprecated input field, tool, or behavior.
+// The list is empty today; populate it when adding new deprecations so agents
+// can detect them programmatically.
+type capabilitiesDeprecation struct {
+	Path        string `json:"path"`
+	Replacement string `json:"replacement"`
+	RemovedIn   string `json:"removed_in,omitempty"`
+}
+
+// capabilitiesFeatures advertises optional server features so agents can branch
+// on capability rather than version-sniffing.
+type capabilitiesFeatures struct {
+	DryRender        bool `json:"dry_render"`
+	StructuredErrors bool `json:"structured_errors"`
+}
+
+// capabilitiesResponse is the JSON shape returned by handleGetCapabilities.
+// The schema mirrors json2pptx-mcp's get_capabilities at the field level
+// (schema_version, tool list, deprecations, features) so agents can parse
+// both responses uniformly.
+type capabilitiesResponse struct {
+	SchemaVersion string                    `json:"schema_version"`
+	ToolList      []capabilitiesToolEntry   `json:"tool_list"`
+	ChartTypes    []string                  `json:"chart_types"`
+	DiagramTypes  []string                  `json:"diagram_types"`
+	Deprecations  []capabilitiesDeprecation `json:"deprecations"`
+	Features      capabilitiesFeatures      `json:"features"`
+}
+
+// toolCatalog enumerates every tool registered in run() with a one-line
+// description. Keep this in sync with the s.AddTool calls — the
+// TestGetCapabilities_ToolListMatchesRegisteredTools test enforces parity.
+func toolCatalog() []capabilitiesToolEntry {
+	entries := []capabilitiesToolEntry{
+		{
+			Name:        "render_diagram",
+			Description: "Render a diagram or chart to SVG or PNG. Supports dry_run for layout-only findings.",
+		},
+		{
+			Name:        "list_diagram_types",
+			Description: "List all available diagram/chart types with their aliases.",
+		},
+		{
+			Name:        "validate_diagram",
+			Description: "Validate a diagram payload without rendering. Returns structured {valid, errors} envelope.",
+		},
+		{
+			Name:        "get_diagram_schema",
+			Description: "Get the expected data schema and a minimal example for a specific diagram type.",
+		},
+		{
+			Name:        "get_capabilities",
+			Description: "Returns schema version, tool list, chart/diagram types, deprecations, and feature flags.",
+		},
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+	return entries
+}
+
+// classifyRegisteredTypes splits the canonical registered types into chart-
+// style and diagram-style buckets. Canonical names ending in "_chart" (or the
+// historical "waterfall" chart) are charts; everything else is a diagram.
+// Both slices are sorted for stable output.
+func classifyRegisteredTypes() (chartTypes, diagramTypes []string) {
+	all := svggen.Types()
+	for _, t := range all {
+		if isChartType(t) {
+			chartTypes = append(chartTypes, t)
+		} else {
+			diagramTypes = append(diagramTypes, t)
+		}
+	}
+	sort.Strings(chartTypes)
+	sort.Strings(diagramTypes)
+	return chartTypes, diagramTypes
+}
+
+// isChartType reports whether a canonical svggen registry name is a chart
+// (vs. a diagram). The classification mirrors svggen/init.go: anything
+// suffixed "_chart" plus the historical "waterfall" series chart.
+func isChartType(canonicalName string) bool {
+	if strings.HasSuffix(canonicalName, "_chart") {
+		return true
+	}
+	return canonicalName == "waterfall"
+}
+
+func handleGetCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	chartTypes, diagramTypes := classifyRegisteredTypes()
+
+	resp := capabilitiesResponse{
+		SchemaVersion: svggen.Version,
+		ToolList:      toolCatalog(),
+		ChartTypes:    chartTypes,
+		DiagramTypes:  diagramTypes,
+		Deprecations:  []capabilitiesDeprecation{},
+		Features: capabilitiesFeatures{
+			// render_diagram supports dry_run.
+			DryRender: true,
+			// validate_diagram and render_diagram emit unified {code, message,
+			// path, severity, fix, next_tool_call, details} diagnostics.
+			StructuredErrors: true,
+		},
+	}
+
+	out, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal capabilities: %v", err)), nil
+	}
+	return mcp.NewToolResultText(string(out)), nil
 }

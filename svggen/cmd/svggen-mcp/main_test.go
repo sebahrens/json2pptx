@@ -912,3 +912,101 @@ func TestHandleRenderDiagramWithOptions(t *testing.T) {
 		t.Fatal("expected SVG output")
 	}
 }
+
+// TestGetCapabilities verifies the get_capabilities envelope: schema_version
+// is sourced from svggen.Version, the tool_list enumerates every actually
+// registered MCP tool, and chart_types / diagram_types together cover the
+// canonical svggen registry without overlap.
+func TestGetCapabilities(t *testing.T) {
+	result, err := handleGetCapabilities(context.Background(), makeRequest(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error: %v", result.Content)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	var resp capabilitiesResponse
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		t.Fatalf("failed to parse capabilities response: %v", err)
+	}
+
+	t.Run("schema_version_matches_library", func(t *testing.T) {
+		if resp.SchemaVersion == "" {
+			t.Error("expected non-empty schema_version")
+		}
+		// The MCP server's version constant must come from the same source.
+		if resp.SchemaVersion != version {
+			t.Errorf("schema_version %q != server version %q (single-source invariant)", resp.SchemaVersion, version)
+		}
+	})
+
+	t.Run("tool_list_matches_registered_tools", func(t *testing.T) {
+		// Names of every tool the server actually registers via s.AddTool in run().
+		registered := []string{
+			"render_diagram",
+			"list_diagram_types",
+			"validate_diagram",
+			"get_diagram_schema",
+			"get_capabilities",
+		}
+		got := map[string]bool{}
+		for _, e := range resp.ToolList {
+			if e.Name == "" {
+				t.Errorf("tool_list entry has empty name: %+v", e)
+			}
+			if e.Description == "" {
+				t.Errorf("tool_list entry %q missing description", e.Name)
+			}
+			got[e.Name] = true
+		}
+		for _, name := range registered {
+			if !got[name] {
+				t.Errorf("registered tool %q missing from tool_list", name)
+			}
+		}
+		if len(resp.ToolList) != len(registered) {
+			t.Errorf("tool_list size %d != registered tool count %d (tool_list=%v)", len(resp.ToolList), len(registered), resp.ToolList)
+		}
+	})
+
+	t.Run("chart_and_diagram_types_cover_registry", func(t *testing.T) {
+		seen := map[string]int{}
+		for _, ct := range resp.ChartTypes {
+			seen[ct]++
+		}
+		for _, dt := range resp.DiagramTypes {
+			seen[dt]++
+		}
+		for name, count := range seen {
+			if count > 1 {
+				t.Errorf("type %q appears in both chart_types and diagram_types", name)
+			}
+		}
+		// Every registered canonical type must appear in exactly one bucket.
+		for _, typ := range []string{"bar_chart", "pie_chart", "line_chart", "org_chart", "timeline", "venn"} {
+			if seen[typ] == 0 {
+				t.Errorf("registered type %q missing from chart_types/diagram_types", typ)
+			}
+		}
+	})
+
+	t.Run("features_advertised", func(t *testing.T) {
+		// render_diagram supports dry_run, validate_diagram returns structured errors —
+		// both must be advertised so agents can branch on capability.
+		if !resp.Features.DryRender {
+			t.Error("expected features.dry_render = true")
+		}
+		if !resp.Features.StructuredErrors {
+			t.Error("expected features.structured_errors = true")
+		}
+	})
+
+	t.Run("deprecations_is_non_nil", func(t *testing.T) {
+		// Empty is fine; nil would force agents to null-check.
+		if resp.Deprecations == nil {
+			t.Error("expected non-nil deprecations slice (empty is fine)")
+		}
+	})
+}
