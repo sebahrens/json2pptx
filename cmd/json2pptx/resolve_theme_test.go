@@ -339,6 +339,80 @@ func TestResolveTheme_ThemeOverride_InvalidShape(t *testing.T) {
 	}
 }
 
+// TestResolveTheme_ThemeColorsArrayShape verifies the response includes a
+// theme_colors:[{name,rgb}] array that mirrors the colors map, in the shape
+// svggen-mcp's StyleSpec.theme_colors expects. This kills the silent drift
+// between native OOXML and svggen rendering paths by letting an agent copy
+// the array verbatim into render_diagram's style.theme_colors.
+func TestResolveTheme_ThemeColorsArrayShape(t *testing.T) {
+	mc := newResolveThemeMC(t)
+	req := resolveThemeRequest(map[string]any{"template_name": "midnight-blue"})
+	result, err := mc.handleResolveTheme(context.Background(), req)
+	if err != nil || result.IsError {
+		t.Fatalf("unexpected error: err=%v isError=%v", err, result.IsError)
+	}
+	var resp resolveThemeResponse
+	if err := json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	if len(resp.ThemeColors) == 0 {
+		t.Fatal("theme_colors array is empty; expected one entry per theme color")
+	}
+	if len(resp.ThemeColors) != len(resp.Colors) {
+		t.Errorf("theme_colors length (%d) != colors map length (%d)", len(resp.ThemeColors), len(resp.Colors))
+	}
+
+	// Every entry in the array must agree with the colors map exactly — that
+	// is the contract agents rely on when copying the array.
+	seen := make(map[string]bool, len(resp.ThemeColors))
+	for _, e := range resp.ThemeColors {
+		if e.Name == "" {
+			t.Errorf("theme_colors entry has empty name: %+v", e)
+		}
+		if len(e.RGB) != 7 || e.RGB[0] != '#' {
+			t.Errorf("theme_colors entry %q has invalid hex %q", e.Name, e.RGB)
+		}
+		if hex, ok := resp.Colors[e.Name]; !ok {
+			t.Errorf("theme_colors has %q but colors map does not", e.Name)
+		} else if hex != e.RGB {
+			t.Errorf("theme_colors[%q].rgb=%q disagrees with colors[%q]=%q", e.Name, e.RGB, e.Name, hex)
+		}
+		if seen[e.Name] {
+			t.Errorf("theme_colors has duplicate entry for %q", e.Name)
+		}
+		seen[e.Name] = true
+	}
+}
+
+// TestResolveTheme_ThemeColorsFiltered verifies the array tracks the colors
+// map when color_names filters the result, so the one-shot copy semantics
+// hold for filtered requests too.
+func TestResolveTheme_ThemeColorsFiltered(t *testing.T) {
+	mc := newResolveThemeMC(t)
+	req := resolveThemeRequest(map[string]any{
+		"template_name": "midnight-blue",
+		"color_names":   "accent2,accent1",
+	})
+	result, err := mc.handleResolveTheme(context.Background(), req)
+	if err != nil || result.IsError {
+		t.Fatalf("unexpected error: err=%v isError=%v", err, result.IsError)
+	}
+	var resp resolveThemeResponse
+	if err := json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	if len(resp.ThemeColors) != 2 {
+		t.Fatalf("expected 2 theme_colors entries, got %d: %+v", len(resp.ThemeColors), resp.ThemeColors)
+	}
+	// Request order must be preserved.
+	if resp.ThemeColors[0].Name != "accent2" || resp.ThemeColors[1].Name != "accent1" {
+		t.Errorf("theme_colors order = [%q, %q], want [accent2, accent1]",
+			resp.ThemeColors[0].Name, resp.ThemeColors[1].Name)
+	}
+}
+
 func TestResolveTheme_MissingParam(t *testing.T) {
 	mc := newResolveThemeMC(t)
 	req := resolveThemeRequest(map[string]any{})

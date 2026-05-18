@@ -72,6 +72,41 @@ Standalone SVG renderer with its own diagram/chart registry. **Distinct connecta
 
 When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
 
+**Keeping the SVG palette in sync with the deck template (one-shot copy):**
+
+Call `resolve_theme` once per deck and pass its `theme_colors` array straight through to every `render_diagram` call. No hand-pivoting from the `colors` map — typos in scheme names would otherwise be silent.
+
+```jsonc
+// 1) json2pptx-mcp.resolve_theme({"template_name": "midnight-blue"}) →
+{
+  "template": "midnight-blue",
+  "colors": { "accent1": "#1F4E79", "accent2": "#2E75B6", "dk1": "#000000", "lt1": "#FFFFFF", "...": "..." },
+  "theme_colors": [
+    { "name": "accent1", "rgb": "#1F4E79" },
+    { "name": "accent2", "rgb": "#2E75B6" },
+    { "name": "dk1",     "rgb": "#000000" },
+    { "name": "lt1",     "rgb": "#FFFFFF" }
+    // ...
+  ]
+}
+
+// 2) Copy theme_colors verbatim into svggen-mcp.render_diagram:
+{
+  "type": "bar_chart",
+  "data": { /* ... */ },
+  "style": {
+    "theme_colors": [
+      { "name": "accent1", "rgb": "#1F4E79" },
+      { "name": "accent2", "rgb": "#2E75B6" },
+      { "name": "dk1",     "rgb": "#000000" },
+      { "name": "lt1",     "rgb": "#FFFFFF" }
+    ]
+  }
+}
+```
+
+If the deck applies a `theme_override`, pass that same object as `resolve_theme`'s `theme_override` argument so the array reflects the post-override palette.
+
 ---
 
 ## Minimum Valid Deck
@@ -111,7 +146,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | **Authoritative input schema** — JSON Schema for `PresentationInput` with all nested types, `x-field-scope` annotations, and inline enums. Digest-cacheable. | `get_input_schema` | `json2pptx input-schema` |
 | Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
-| Resolve a template's theme colors (semantic name → hex, including tint modifiers). Accepts optional `theme_override` (same shape as frontmatter — `{colors:{accent1:"#…"}, title_font, body_font}`) so the returned palette mirrors what singlepass renders for that deck; unrecognized keys surface in `warnings[]`. | `resolve_theme` | (CLI inlines) |
+| Resolve a template's theme colors (semantic name → hex, including tint modifiers). Returns both `colors` (map for lookups) and `theme_colors` (`[{name,rgb}]` array ready to copy into svggen-mcp's `render_diagram` under `style.theme_colors` — keeps native OOXML and SVG renders on the same palette). Accepts optional `theme_override` (same shape as frontmatter — `{colors:{accent1:"#…"}, title_font, body_font}`) so the returned palette mirrors what singlepass renders for that deck; unrecognized keys surface in `warnings[]`. | `resolve_theme` | (CLI inlines) |
 | **Plan a deck** — given a brief, returns an ordered slide outline with per-slide pattern recommendations, narrative roles (opening / evidence / comparison / emphasis / framework / closing), content seeds, and accent rotation. Enforces rhythm rules (no 3-in-a-row, emphasis slide every ~5). The plan is the recommended starting point before `generate_presentation` for any deck > 4 slides. | `plan_deck` | (CLI inlines) |
 | **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
 | Recommend a named pattern given an intent (pattern-only subset of recommend_visual) — **legacy, prefer `recommend_visual`** for new code; this tool only ranks named patterns and cannot suggest a chart, diagram, or placeholder layout when those would fit better. | `recommend_pattern` | (CLI inlines) |

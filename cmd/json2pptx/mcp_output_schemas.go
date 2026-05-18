@@ -771,7 +771,19 @@ var outputSchemaResolveTheme = json.RawMessage(`{
   "type": "object",
   "properties": {
     "template":     {"type": "string"},
-    "colors":       {"type": "object", "additionalProperties": {"type": "string"}},
+    "colors":       {"type": "object", "additionalProperties": {"type": "string"}, "description": "Map of scheme name → hex (e.g., {\"accent1\":\"#336699\"}). Convenient for lookups."},
+    "theme_colors": {
+      "type": "array",
+      "description": "Same palette as colors, but in the [{name,rgb}] shape svggen-mcp's StyleSpec.theme_colors expects. Copy this array straight into render_diagram's style.theme_colors to keep native OOXML and SVG renders on the same palette.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Scheme color name (accent1..accent6, dk1, dk2, lt1, lt2, hlink, folHlink)."},
+          "rgb":  {"type": "string", "description": "Hex value with leading '#' (e.g., \"#336699\")."}
+        },
+        "required": ["name", "rgb"]
+      }
+    },
     "color_roles":  {"type": "object"},
     "fonts": {
       "type": "object",
@@ -792,7 +804,7 @@ var outputSchemaResolveTheme = json.RawMessage(`{
     },
     "warnings": {"type": "array", "items": {"type": "string"}}
   },
-  "required": ["template", "colors", "fonts"]
+  "required": ["template", "colors", "theme_colors", "fonts"]
 }`)
 
 // --- list_template_settings ---

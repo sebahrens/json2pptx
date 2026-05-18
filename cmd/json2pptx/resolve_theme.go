@@ -33,14 +33,23 @@ func mcpResolveThemeTool() mcp.Tool {
 
 // resolveThemeResponse is the JSON envelope for resolve_theme.
 type resolveThemeResponse struct {
-	Template       string                     `json:"template"`
-	Colors         map[string]string          `json:"colors"`
-	ColorRoles     *skillColorRoles           `json:"color_roles"`
-	Fonts          resolveThemeFonts          `json:"fonts"`
-	ResolvedFor    []string                   `json:"resolved_for,omitempty"`
-	Unknown        []resolveThemeUnknownColor `json:"unknown,omitempty"`
-	AppliedOverride *ThemeInput               `json:"applied_theme_override,omitempty"`
-	Warnings       []string                   `json:"warnings,omitempty"`
+	Template        string                     `json:"template"`
+	Colors          map[string]string          `json:"colors"`
+	ThemeColors     []resolveThemeColorEntry   `json:"theme_colors"`
+	ColorRoles      *skillColorRoles           `json:"color_roles"`
+	Fonts           resolveThemeFonts          `json:"fonts"`
+	ResolvedFor     []string                   `json:"resolved_for,omitempty"`
+	Unknown         []resolveThemeUnknownColor `json:"unknown,omitempty"`
+	AppliedOverride *ThemeInput                `json:"applied_theme_override,omitempty"`
+	Warnings        []string                   `json:"warnings,omitempty"`
+}
+
+// resolveThemeColorEntry mirrors svggen-mcp's StyleSpec.theme_colors entry shape
+// ({name, rgb}) so an agent can copy this slice straight into render_diagram's
+// `style.theme_colors` without pivoting the colors map by hand.
+type resolveThemeColorEntry struct {
+	Name string `json:"name"`
+	RGB  string `json:"rgb"`
 }
 
 // resolveThemeFonts describes the font families in the theme.
@@ -115,6 +124,10 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	colors := allColors
 	var unknown []resolveThemeUnknownColor
 	var resolvedFor []string
+	// themeColors mirrors the colors map as the [{name,rgb}] array that
+	// svggen-mcp's StyleSpec.theme_colors expects. Built in stable order:
+	// theme-defined order when unfiltered, request order when filtered.
+	themeColors := make([]resolveThemeColorEntry, 0, len(theme.Colors))
 
 	if len(requestedNames) > 0 {
 		colors = make(map[string]string, len(requestedNames))
@@ -122,6 +135,7 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 		for _, name := range requestedNames {
 			if hex, ok := allColors[name]; ok {
 				colors[name] = hex
+				themeColors = append(themeColors, resolveThemeColorEntry{Name: name, RGB: hex})
 			} else {
 				entry := resolveThemeUnknownColor{Name: name}
 				if match, _ := generator.ClosestMatch(name, allColorNames, 3); match != "" {
@@ -130,15 +144,20 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 				unknown = append(unknown, entry)
 			}
 		}
+	} else {
+		for _, c := range theme.Colors {
+			themeColors = append(themeColors, resolveThemeColorEntry{Name: c.Name, RGB: c.RGB})
+		}
 	}
 
 	// Strip template name from path.
 	name := strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
 
 	resp := resolveThemeResponse{
-		Template:        name,
-		Colors:          colors,
-		ColorRoles:      buildColorRoles(theme.Colors),
+		Template:    name,
+		Colors:      colors,
+		ThemeColors: themeColors,
+		ColorRoles:  buildColorRoles(theme.Colors),
 		Fonts: resolveThemeFonts{
 			Major: resolveThemeFontEntry{Latin: theme.TitleFont},
 			Minor: resolveThemeFontEntry{Latin: theme.BodyFont},
