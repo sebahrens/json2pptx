@@ -102,6 +102,8 @@ func dispatch() error { //nolint:gocyclo
 		return runPreviewPatterns()
 	case "shape-catalog":
 		return runShapeCatalog()
+	case "audit-palette":
+		return runAuditPalette()
 	case "version", "--version", "-V":
 		return runVersion()
 	case "help", "-h", "--help":
@@ -148,6 +150,7 @@ Commands:
   template-settings   Manage named styles (list/register/delete)
   data-format-hints   Show data format hints for chart/diagram types
   shape-catalog       List available preset geometries
+  audit-palette       Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes
   serve               Start HTTP API server
   mcp                 Start MCP (Model Context Protocol) server over stdio
   version             Show version information

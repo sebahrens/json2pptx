@@ -162,6 +162,39 @@ jobs:
           PALETTE_PARITY_TEST: "1"
         run: go test ./tests/palette_parity/... -v -count=1 -timeout=5m
 
+      - name: Build json2pptx for palette audit smoke check
+        run: go build -o ./bin/json2pptx ./cmd/json2pptx
+
+      - name: Generate smoke deck for palette audit
+        run: |
+          mkdir -p ./smoke
+          ./bin/json2pptx generate \
+            -json ./tests/palette_parity/deck.json \
+            -template midnight-blue \
+            -templates-dir ./templates \
+            -output ./smoke
+
+      - name: Run audit-palette smoke check
+        run: |
+          # Threshold matches the parity test: drift between adjacent native
+          # shapes and embedded svggen pics should be near-zero on a freshly
+          # rendered deck. ΔE ≤ 2 is the same bar the parity test enforces.
+          ./bin/json2pptx audit-palette -format text -max-delta-e 2.0 ./smoke/*.pptx
+
+      - name: Run audit-palette JSON output sanity check
+        run: |
+          # Capture machine-readable output and assert at least one (pic, shape)
+          # pair was scored. Empty pair lists would silently hide drift.
+          ./bin/json2pptx audit-palette -format json -max-delta-e 2.0 \
+            -output ./smoke/audit.json ./smoke/*.pptx > /dev/null
+          PAIRS=$(jq '[.slides[].pair_count] | add' ./smoke/audit.json)
+          if [ "$PAIRS" -lt 1 ]; then
+            echo "::error::audit-palette produced 0 (pic, shape) pairs — smoke deck regressed"
+            cat ./smoke/audit.json
+            exit 1
+          fi
+          echo "audit-palette: $PAIRS pair(s) scored, all within ΔE threshold"
+
       - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v6
@@ -170,6 +203,7 @@ jobs:
           path: |
             /tmp/go-build*/palette_parity*
             /tmp/TestPaletteParity_CrossEngine*
+            ./smoke
 
   pptx-validation:
     runs-on: ubuntu-latest
