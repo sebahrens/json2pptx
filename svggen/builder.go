@@ -136,6 +136,12 @@ type SVGBuilder struct {
 	// trying to infer alignment from the canvas library's emitted geometry
 	// (where center and right both produce text.x > tspan.x).
 	textAligns []TextAlign
+
+	// textBaselines records the vertical baseline of each successfully-drawn
+	// text element in draw order. fixSVGTextAlignment uses it to inject an
+	// explicit dominant-baseline attribute so downstream renderers don't drift
+	// the label up or down based on their own font ascent/descent metrics.
+	textBaselines []TextBaseline
 }
 
 // FontErr returns the first font-related error recorded during text operations,
@@ -292,58 +298,82 @@ func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 // the literal "<text x=" prefix the canvas library always emits.
 var textAnchorRe = regexp.MustCompile(`<text x="([\d.]+)"([^>]*)><tspan x="([\d.]+)"`)
 
-// fixSVGTextAlignment injects an explicit text-anchor on every <text> element
-// emitted by DrawText, using the alignment recorded at draw time.
+// fixSVGTextAlignment injects an explicit text-anchor and dominant-baseline on
+// every <text> element emitted by DrawText, using the alignment and baseline
+// recorded at draw time.
 //
-// The canvas library pre-computes tspan x positions using its own font metrics
-// (Arial), but downstream SVG renderers (rsvg-convert, LibreOffice, browsers,
-// PowerPoint) re-measure text with their own metrics and treat the pre-computed
-// tspan x as a left-edge anchor. Without an explicit text-anchor this causes:
+// The canvas library pre-computes tspan x positions and shifts y by font
+// ascent/descent using its own font metrics (Arial), but downstream SVG
+// renderers (rsvg-convert, LibreOffice, browsers, PowerPoint) re-measure text
+// with their own metrics. Without explicit text-anchor / dominant-baseline this
+// causes:
 //   - center-aligned text to overflow rightward when the fallback font is wider
 //   - right-aligned text (Y-axis tick labels, rotated bottom-axis labels) to
 //     drift right and overlap tick marks (adversarial finding A1).
+//   - axis labels to drift vertically by several px because the renderer's
+//     ascent/descent differs from the canvas library's (adversarial finding A5).
 //
-// We emit text-anchor="middle" / "end" so each renderer aligns text using its
-// own metrics, distributing any width difference around the intended anchor.
-// Left-aligned text is left untouched: tspan.x already equals text.x and the
-// SVG default text-anchor="start" is correct.
+// We emit text-anchor="middle"/"end" so each renderer aligns text using its
+// own metrics. We also emit dominant-baseline="text-before-edge"/"central"/
+// "text-after-edge" for the three non-alphabetic baseline modes so renderers
+// don't have to guess the intended vertical anchor.
+//
+// Left-aligned and alphabetic-baseline text is left untouched: tspan.x already
+// equals text.x, and the SVG defaults (text-anchor="start", alphabetic
+// baseline) are correct.
 //
 // Alignment cannot be reliably inferred from the emitted geometry alone (both
-// center and right produce text.x > tspan.x), so DrawText records the alignment
-// of each draw in b.textAligns; this method walks emitted <text> elements in
-// the same order to pair each match with its alignment.
+// center and right produce text.x > tspan.x), so DrawText records the
+// alignment and baseline of each draw in b.textAligns / b.textBaselines; this
+// method walks emitted <text> elements in the same order to pair each match
+// with its alignment and baseline.
 func (b *SVGBuilder) fixSVGTextAlignment(svgContent []byte) []byte {
 	idx := 0
 	return textAnchorRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
 		i := idx
 		idx++
-		if i >= len(b.textAligns) {
+		if i >= len(b.textAligns) || i >= len(b.textBaselines) {
 			return match
 		}
 		align := b.textAligns[i]
-		if align == TextAlignLeft {
-			return match
-		}
+		baseline := b.textBaselines[i]
 		parts := textAnchorRe.FindSubmatch(match)
 		if len(parts) < 4 {
 			return match
 		}
-		var anchor string
+
+		var anchorAttr string
+		// For center / right, collapse tspan.x to text.x so the renderer
+		// anchors at the recorded text x. (For center, tspan.x was
+		// text.x - width/2; for right, text.x - width. With an explicit
+		// text-anchor the renderer recomputes the effective tspan offset.)
+		tspanX := string(parts[3])
 		switch align {
 		case TextAlignCenter:
-			anchor = "middle"
+			anchorAttr = ` text-anchor="middle"`
+			tspanX = string(parts[1])
 		case TextAlignRight:
-			anchor = "end"
-		default:
+			anchorAttr = ` text-anchor="end"`
+			tspanX = string(parts[1])
+		}
+
+		var baselineAttr string
+		switch baseline {
+		case TextBaselineTop:
+			baselineAttr = ` dominant-baseline="text-before-edge"`
+		case TextBaselineMiddle:
+			baselineAttr = ` dominant-baseline="central"`
+		case TextBaselineBottom:
+			baselineAttr = ` dominant-baseline="text-after-edge"`
+		}
+
+		if anchorAttr == "" && baselineAttr == "" {
 			return match
 		}
-		// Set tspan.x = text.x so the renderer anchors at the recorded text x.
-		// (For center, tspan.x was text.x - width/2; for right, text.x - width.
-		// Either way, with an explicit text-anchor the renderer recomputes the
-		// effective tspan offset, so it's correct to collapse tspan.x to text.x.)
+
 		attrs := string(parts[2])
-		return []byte(fmt.Sprintf(`<text x="%s" text-anchor="%s"%s><tspan x="%s"`,
-			string(parts[1]), anchor, attrs, string(parts[1])))
+		return []byte(fmt.Sprintf(`<text x="%s"%s%s%s><tspan x="%s"`,
+			string(parts[1]), anchorAttr, baselineAttr, attrs, tspanX))
 	})
 }
 
@@ -871,11 +901,13 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	}
 
 	b.ctx.DrawText(xMM, yMM, textLine)
-	// Record the alignment so fixSVGTextAlignment can inject the matching
-	// text-anchor on the corresponding <text> element. We append only after a
-	// successful canvas draw (early-returns above skip the canvas call and
-	// must skip the append) so the index stays in sync with emitted elements.
+	// Record the alignment and baseline so fixSVGTextAlignment can inject the
+	// matching text-anchor and dominant-baseline on the corresponding <text>
+	// element. We append only after a successful canvas draw (early-returns
+	// above skip the canvas call and must skip both appends) so the indexes
+	// stay in sync with emitted elements.
 	b.textAligns = append(b.textAligns, align)
+	b.textBaselines = append(b.textBaselines, baseline)
 	return b
 }
 
