@@ -33,7 +33,15 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
       "narrative_role": "opening",
       "recommended_pattern": "stat-hero",
       "content_seed": "Title and context: Pitch our Series B...",
-      "rationale": "fallback selection for opening"
+      "rationale": "fallback selection for opening",
+      "predicted_cell_budgets": [
+        {"columns": 1, "rows": 1, "body_max_chars": 220, "header_max_chars": 80}
+      ],
+      "predicted_findings": [],
+      "alternatives": [
+        {"pattern_name": "pull-quote", "score": 0.62, "rationale": "narrative open"},
+        {"pattern_name": "agenda", "score": 0.48, "rationale": "taxonomy fallback for opening"}
+      ]
     }
   ],
   "brief": "Pitch our Series B for an AI infra company",
@@ -56,6 +64,11 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 | `recommended_pattern` | string | Pattern name to use (from `list_patterns`) |
 | `content_seed` | string | Brief hint of what content belongs on this slide |
 | `rationale` | string | Why this pattern was selected (e.g., "required by must_include", "rhythm break") |
+| `predicted_cell_budgets` | array | Per-configuration character budgets (body/header) the renderer would impose on this pattern. Empty for non-grid patterns (e.g. `pull-quote`, `stat-hero`). |
+| `predicted_findings` | array | Up to 3 forecast fit-findings the renderer would emit when this pattern is filled with exemplar (role-default) content. Each entry has `code`, `path`, `message`, `action`, and (when applicable) `next_tool_call`. Empty when the pattern declares no exemplar or expansion fails. |
+| `alternatives` | array | Up to 2 next-best ranked patterns for this slot. Each entry has `pattern_name`, `score`, and `rationale`. Includes a taxonomy fallback when the rule-based recommender returns too few. |
+
+> **Note on predictions:** `predicted_cell_budgets` and `predicted_findings` are derived without rendering or template/theme context. Findings that require a parsed template (placeholder overflow, footer collision, contrast prediction) are skipped here — only shape-grid-resident detectors fire (text overflow, sparse layout, pattern occupancy, table preflight).
 
 ### Rhythm Check
 

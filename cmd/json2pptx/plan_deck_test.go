@@ -128,6 +128,101 @@ func TestDistributeRoles(t *testing.T) {
 	}
 }
 
+func TestBuildDeckPlan_AttachesPredictions(t *testing.T) {
+	reg := patterns.Default()
+	result := buildDeckPlan(reg, "Quarterly business review", 10, "executives", nil)
+
+	if len(result.Slides) != 10 {
+		t.Fatalf("expected 10 slides, got %d", len(result.Slides))
+	}
+
+	// Every slide should have alternatives populated (next-best ranked patterns).
+	for i, s := range result.Slides {
+		if len(s.Alternatives) == 0 {
+			t.Errorf("slide %d (%s): expected at least 1 alternative, got 0", i, s.RecommendedPattern)
+		}
+		if len(s.Alternatives) > maxAlternatives {
+			t.Errorf("slide %d: alternatives exceed cap %d, got %d", i, maxAlternatives, len(s.Alternatives))
+		}
+		for _, alt := range s.Alternatives {
+			if alt.PatternName == s.RecommendedPattern {
+				t.Errorf("slide %d: alternative %q matches the recommended pattern", i, alt.PatternName)
+			}
+			if alt.PatternName == "" {
+				t.Errorf("slide %d: empty alternative pattern_name", i)
+			}
+		}
+	}
+
+	// At least one grid-shaped pattern in the deck should have non-empty
+	// predicted_cell_budgets.
+	anyBudgets := false
+	for _, s := range result.Slides {
+		if len(s.PredictedCellBudgets) > 0 {
+			anyBudgets = true
+			break
+		}
+	}
+	if !anyBudgets {
+		t.Error("expected at least one slide to have predicted_cell_budgets")
+	}
+
+	// predicted_findings is capped at maxPredictedFindings.
+	for i, s := range result.Slides {
+		if len(s.PredictedFindings) > maxPredictedFindings {
+			t.Errorf("slide %d: predicted_findings exceeds cap %d, got %d",
+				i, maxPredictedFindings, len(s.PredictedFindings))
+		}
+	}
+}
+
+func TestPredictCellBudgets_CardGrid(t *testing.T) {
+	reg := patterns.Default()
+	budgets := predictCellBudgetsForPattern(reg, "card-grid")
+	if len(budgets) == 0 {
+		t.Fatal("expected card-grid to produce predicted_cell_budgets")
+	}
+	for _, b := range budgets {
+		if b.Columns <= 0 || b.Rows <= 0 {
+			t.Errorf("budget has zero dimensions: %+v", b)
+		}
+		if b.BodyMaxChars <= 0 {
+			t.Errorf("budget has zero body_max_chars: %+v", b)
+		}
+	}
+}
+
+func TestPredictCellBudgets_NonGridPattern(t *testing.T) {
+	reg := patterns.Default()
+	// pull-quote is not grid-shaped; should return nil.
+	budgets := predictCellBudgetsForPattern(reg, "pull-quote")
+	if budgets != nil {
+		t.Errorf("expected nil budgets for pull-quote, got %+v", budgets)
+	}
+}
+
+func TestPredictCellBudgets_UnknownPattern(t *testing.T) {
+	reg := patterns.Default()
+	if got := predictCellBudgetsForPattern(reg, "no-such-pattern"); got != nil {
+		t.Errorf("expected nil for unknown pattern, got %+v", got)
+	}
+}
+
+func TestComputeAlternatives_ExcludesRecommended(t *testing.T) {
+	reg := patterns.Default()
+	slides := []planSlide{
+		{SlideIndex: 0, NarrativeRole: "opening", RecommendedPattern: "stat-hero"},
+		{SlideIndex: 1, NarrativeRole: "evidence", RecommendedPattern: "card-grid"},
+		{SlideIndex: 2, NarrativeRole: "closing", RecommendedPattern: "pull-quote"},
+	}
+	alts := computeAlternativesForSlot(reg, slides, 1, "demo brief", "team")
+	for _, alt := range alts {
+		if alt.PatternName == "card-grid" {
+			t.Errorf("alternatives must not include the recommended pattern: %+v", alts)
+		}
+	}
+}
+
 func TestEnforceRhythm_BreaksLongRuns(t *testing.T) {
 	reg := patterns.Default()
 

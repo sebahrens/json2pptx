@@ -52,6 +52,48 @@ type planSlide struct {
 	RecommendedPattern string `json:"recommended_pattern"`
 	ContentSeed string `json:"content_seed"` // brief hint of what content should go here
 	Rationale   string `json:"rationale"`
+
+	// PredictedCellBudgets reports per-grid-configuration character budgets
+	// derived from the recommended pattern's BudgetConfigProvider. Empty when
+	// the pattern is not grid-shaped or declares no budget configurations.
+	PredictedCellBudgets []predictedCellBudget `json:"predicted_cell_budgets,omitempty"`
+
+	// PredictedFindings lists the top-ranked fit-report predictions that
+	// expanding the recommended pattern with exemplar (role-default) content
+	// would emit. Limited to the top 3 by ActionRank. Empty when the pattern
+	// has no exemplar or expansion fails.
+	PredictedFindings []predictedFinding `json:"predicted_findings,omitempty"`
+
+	// Alternatives are the next-best ranked patterns for this slot, after
+	// the recommended one. Up to 2 entries.
+	Alternatives []plannedAlternative `json:"alternatives,omitempty"`
+}
+
+// predictedCellBudget is a single (columns × rows) configuration with the
+// character budgets the renderer would impose on body and header text.
+type predictedCellBudget struct {
+	Columns        int `json:"columns"`
+	Rows           int `json:"rows"`
+	BodyMaxChars   int `json:"body_max_chars"`
+	HeaderMaxChars int `json:"header_max_chars"`
+}
+
+// predictedFinding is a forecast fit-finding for the planned slide. It is a
+// strict subset of patterns.FitFinding — only the fields agents act on at the
+// planning stage.
+type predictedFinding struct {
+	Code         string `json:"code"`
+	Path         string `json:"path,omitempty"`
+	Message      string `json:"message"`
+	Action       string `json:"action,omitempty"`
+	NextToolCall string `json:"next_tool_call,omitempty"`
+}
+
+// plannedAlternative is a runner-up pattern for the slot.
+type plannedAlternative struct {
+	PatternName string  `json:"pattern_name"`
+	Score       float64 `json:"score"`
+	Rationale   string  `json:"rationale"`
 }
 
 // planDeckResult is the top-level plan_deck response.
@@ -168,7 +210,12 @@ func buildDeckPlan(reg *patterns.Registry, brief string, budget int, audience st
 	// 3. Enforce rhythm rules — break runs of 3+ and inject emphasis.
 	slides = enforceRhythm(reg, slides, brief)
 
-	// 4. Build rhythm check.
+	// 4. Attach per-slot predictions: cell budgets, top-3 fit findings,
+	//    and ranked alternatives. Done after rhythm enforcement so the
+	//    predictions reflect the final pattern choice for each slot.
+	attachSlidePredictions(reg, slides, brief, audience)
+
+	// 5. Build rhythm check.
 	check := computeRhythmCheck(slides)
 
 	return &planDeckResult{
@@ -658,4 +705,236 @@ func containsStr(slice []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// --- Prediction (cell budgets, fit findings, alternatives) ---
+
+// maxPredictedFindings caps the predicted_findings list emitted per slide.
+const maxPredictedFindings = 3
+
+// maxAlternatives caps the alternatives list emitted per slide.
+const maxAlternatives = 2
+
+// attachSlidePredictions enriches each slide in-place with predicted cell
+// budgets, predicted fit findings, and ranked alternative patterns. Pure
+// planning — no render is performed.
+func attachSlidePredictions(reg *patterns.Registry, slides []planSlide, brief, audience string) {
+	for i := range slides {
+		slides[i].PredictedCellBudgets = predictCellBudgetsForPattern(reg, slides[i].RecommendedPattern)
+		slides[i].PredictedFindings = predictFitFindingsForPattern(reg, slides[i].RecommendedPattern, i)
+		slides[i].Alternatives = computeAlternativesForSlot(reg, slides, i, brief, audience)
+	}
+}
+
+// predictCellBudgetsForPattern returns the per-configuration cell budgets the
+// renderer would impose on the pattern. Uses the existing text_budget_guide
+// computation; returns nil for non-grid patterns.
+func predictCellBudgetsForPattern(reg *patterns.Registry, name string) []predictedCellBudget {
+	pat, ok := reg.Get(name)
+	if !ok {
+		return nil
+	}
+	guide := computeTextBudgetGuide(pat)
+	if guide == nil || len(guide.Configurations) == 0 {
+		return nil
+	}
+	out := make([]predictedCellBudget, 0, len(guide.Configurations))
+	for _, c := range guide.Configurations {
+		out = append(out, predictedCellBudget{
+			Columns:        c.Columns,
+			Rows:           c.Rows,
+			BodyMaxChars:   c.BodyMaxChars,
+			HeaderMaxChars: c.HeaderMaxChars,
+		})
+	}
+	return out
+}
+
+// predictFitFindingsForPattern expands a pattern with its declared exemplar
+// values and runs the full fit-finding collector against a synthetic
+// PresentationInput. Returns the top-ranked findings (up to maxPredictedFindings).
+//
+// No template/theme are available at planning time, so structural checks that
+// need a layout (placeholder overflow, footer collision) are skipped and only
+// shape-grid-resident detectors fire (text overflow, sparse layout, pattern
+// occupancy, table preflight). That is intentional — the plan path must not
+// render.
+func predictFitFindingsForPattern(reg *patterns.Registry, name string, slideIdx int) []predictedFinding {
+	pat, ok := reg.Get(name)
+	if !ok {
+		return nil
+	}
+	ex, ok := pat.(patterns.Exemplar)
+	if !ok {
+		return nil
+	}
+	values := ex.ExemplarValues()
+	if values == nil {
+		return nil
+	}
+
+	// Default 16:9 slide bounds, matching computeTextBudgetGuide so budgets
+	// and findings are derived from the same canonical geometry.
+	const (
+		slideWidth  int64 = 9144000
+		slideHeight int64 = 5143500
+	)
+	expandCtx := patterns.ExpandContext{
+		SlideWidth:  slideWidth,
+		SlideHeight: slideHeight,
+		LayoutBounds: patterns.LayoutBounds{
+			X:      457200,
+			Y:      457200,
+			Width:  8229600,
+			Height: 4229100,
+		},
+	}
+
+	grid, err := pat.Expand(expandCtx, values, nil, nil)
+	if err != nil || grid == nil {
+		return nil
+	}
+
+	input := &PresentationInput{
+		Slides: []SlideInput{{
+			ShapeGrid: grid,
+			Pattern:   &PatternInput{Name: name},
+		}},
+	}
+
+	findings := collectFitFindings(input, nil, slideWidth, slideHeight, nil)
+	if len(findings) == 0 {
+		return nil
+	}
+
+	limit := maxPredictedFindings
+	if len(findings) < limit {
+		limit = len(findings)
+	}
+	out := make([]predictedFinding, 0, limit)
+	for i := 0; i < limit; i++ {
+		f := findings[i]
+		nextTool := ""
+		if f.NextToolCall != nil {
+			nextTool = f.NextToolCall.Tool
+		}
+		out = append(out, predictedFinding{
+			Code:         f.Code,
+			Path:         f.Path,
+			Message:      f.Message,
+			Action:       f.Action,
+			NextToolCall: nextTool,
+		})
+	}
+	return out
+}
+
+// computeAlternativesForSlot returns the next-best ranked patterns for this
+// slot after the recommended one, excluding patterns already used on adjacent
+// slides to preserve the rhythm guarantees.
+func computeAlternativesForSlot(reg *patterns.Registry, slides []planSlide, idx int, brief, audience string) []plannedAlternative {
+	if idx < 0 || idx >= len(slides) {
+		return nil
+	}
+	current := slides[idx].RecommendedPattern
+	role := slides[idx].NarrativeRole
+
+	// Build recent-patterns context from neighbors so variety scoring matches
+	// the original placement.
+	recent := make([]string, 0, len(slides))
+	for j, s := range slides {
+		if j == idx {
+			continue
+		}
+		recent = append(recent, s.RecommendedPattern)
+	}
+
+	intent := buildIntent(role, brief, audience)
+	opts := &patterns.RecommendOptions{
+		RecentPatterns: recent,
+		PreferVariety:  true,
+		SlideIndex:     idx,
+	}
+	rec := patterns.Recommend(reg, intent, nil, maxAlternatives+2, opts)
+
+	out := make([]plannedAlternative, 0, maxAlternatives)
+	seen := map[string]bool{current: true}
+	for _, c := range rec.Candidates {
+		if seen[c.PatternName] {
+			continue
+		}
+		seen[c.PatternName] = true
+		out = append(out, plannedAlternative{
+			PatternName: c.PatternName,
+			Score:       c.Score,
+			Rationale:   c.Rationale,
+		})
+		if len(out) >= maxAlternatives {
+			break
+		}
+	}
+
+	// Fall back to taxonomy-matching patterns when Recommend returns too few
+	// candidates (e.g. niche roles where rule-based scoring drops below the
+	// threshold).
+	if len(out) < maxAlternatives {
+		var patternList []patInfo
+		for _, p := range reg.List() {
+			patternList = append(patternList, patInfo{name: p.Name(), taxonomy: p.Taxonomy()})
+		}
+		for _, fallback := range taxonomyFallbackCandidates(role, patternList, recent) {
+			if seen[fallback] {
+				continue
+			}
+			seen[fallback] = true
+			out = append(out, plannedAlternative{
+				PatternName: fallback,
+				Score:       0,
+				Rationale:   "taxonomy fallback for " + role,
+			})
+			if len(out) >= maxAlternatives {
+				break
+			}
+		}
+	}
+	return out
+}
+
+// taxonomyFallbackCandidates returns pattern names that match the narrative
+// role by taxonomy, ranked by freshness (least-used first).
+func taxonomyFallbackCandidates(role string, patternList []patInfo, used []string) []string {
+	taxRoles := narrativeRoleToTaxonomy[role]
+	usedCount := make(map[string]int)
+	for _, u := range used {
+		usedCount[u]++
+	}
+
+	type cand struct {
+		name  string
+		score float64
+	}
+	var cands []cand
+	for _, pi := range patternList {
+		score := 0.0
+		for _, tr := range taxRoles {
+			for _, nr := range pi.taxonomy.NarrativeRole {
+				if tr == nr {
+					score += 1.0
+				}
+			}
+		}
+		if score <= 0 {
+			continue
+		}
+		score -= float64(usedCount[pi.name]) * 0.3
+		cands = append(cands, cand{pi.name, score})
+	}
+	sort.Slice(cands, func(i, j int) bool {
+		return cands[i].score > cands[j].score
+	})
+	names := make([]string, 0, len(cands))
+	for _, c := range cands {
+		names = append(names, c.name)
+	}
+	return names
 }

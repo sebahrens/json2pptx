@@ -886,7 +886,46 @@ var outputSchemaPlanDeck = json.RawMessage(`{
           "narrative_role":       {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "closing"]},
           "recommended_pattern":  {"type": "string"},
           "content_seed":         {"type": "string"},
-          "rationale":            {"type": "string"}
+          "rationale":            {"type": "string"},
+          "predicted_cell_budgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "columns":          {"type": "integer"},
+                "rows":             {"type": "integer"},
+                "body_max_chars":   {"type": "integer"},
+                "header_max_chars": {"type": "integer"}
+              },
+              "required": ["columns", "rows", "body_max_chars", "header_max_chars"]
+            }
+          },
+          "predicted_findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code":           {"type": "string"},
+                "path":           {"type": "string"},
+                "message":        {"type": "string"},
+                "action":         {"type": "string"},
+                "next_tool_call": {"type": "string"}
+              },
+              "required": ["code", "message"]
+            }
+          },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pattern_name": {"type": "string"},
+                "score":        {"type": "number"},
+                "rationale":    {"type": "string"}
+              },
+              "required": ["pattern_name", "score", "rationale"]
+            }
+          }
         },
         "required": ["slide_index", "narrative_role", "recommended_pattern", "content_seed", "rationale"]
       }
