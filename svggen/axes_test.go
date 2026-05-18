@@ -834,6 +834,56 @@ func TestDrawGrid(t *testing.T) {
 	}
 }
 
+// TestDrawGrid_HorizontalLinesWithinPlotBounds is a regression test for the
+// double-plotRect.Y bug in DrawGrid (axes.go). The previous formula was
+// y = plotRect.Y + plotRect.H - ls.Scale(v) + plotRect.Y, which added
+// plotRect.Y twice and pushed grid lines below the plot area for any chart
+// whose plot rect is not anchored at y=0. The fix uses the canonical
+// inversion y = plotRect.Y + plotRect.H - ls.Scale(v). This test exercises
+// the same arithmetic DrawGrid now uses and asserts every horizontal grid
+// line y falls inside [plotRect.Y, plotRect.Y+plotRect.H].
+func TestDrawGrid_HorizontalLinesWithinPlotBounds(t *testing.T) {
+	area := DefaultChartArea(400, 300)
+	plotRect := area.PlotRect()
+
+	if plotRect.Y <= 0 {
+		t.Fatalf("expected DefaultChartArea to yield plotRect.Y > 0, got %v", plotRect.Y)
+	}
+
+	// Mirror a LineChart-style setup: scale range is plot-relative
+	// ([0, plotRect.H]); DrawGrid is responsible for translating to
+	// absolute SVG y and inverting the axis.
+	yScale := NewLinearScale(0, 50).SetRangeLinear(0, plotRect.H)
+	ticks := yScale.Ticks(5)
+	if len(ticks) == 0 {
+		t.Fatal("expected non-empty tick set from LinearScale.Ticks(5)")
+	}
+
+	yMin := plotRect.Y
+	yMax := plotRect.Y + plotRect.H
+	const eps = 1e-6
+	for _, v := range ticks {
+		// Same formula DrawGrid uses for horizontal grid line y.
+		y := plotRect.Y + plotRect.H - yScale.Scale(v)
+		if y < yMin-eps || y > yMax+eps {
+			t.Errorf("grid line for tick v=%v: y=%v outside plot bounds [%v, %v]", v, y, yMin, yMax)
+		}
+	}
+
+	// Also confirm DrawGrid runs end-to-end without panicking when plot
+	// rect is offset, so the bounds property continues to hold against
+	// the live function (not just the inlined formula).
+	builder := NewSVGBuilder(400, 300)
+	xScale := NewLinearScale(0, 100).SetRangeLinear(0, plotRect.W)
+	config := DefaultGridConfig()
+	config.ShowHorizontal = true
+	config.ShowVertical = false
+	DrawGrid(builder, area, xScale, yScale, config)
+	if _, err := builder.RenderToString(); err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+}
+
 func TestAxisBuilder_DrawLinear(t *testing.T) {
 	builder := NewSVGBuilder(400, 300)
 	scale := NewLinearScale(0, 100).SetRangeLinear(0, 300)

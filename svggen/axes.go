@@ -535,9 +535,10 @@ func DrawGrid(b *SVGBuilder, area ChartArea, xScale, yScale Scale, config GridCo
 		if ls, ok := yScale.(*LinearScale); ok {
 			ticks := ls.Ticks(5)
 			for _, v := range ticks {
-				y := ls.Scale(v)
-				// Y scale typically goes from bottom to top, so invert
-				y = plotRect.Y + plotRect.H - y + plotRect.Y
+				// Canonical inversion: callers pass a scale whose range is
+				// plot-relative (e.g. [0, plotRect.H]) and DrawGrid maps to
+				// absolute SVG y, treating low scaled values as top of plot.
+				y := plotRect.Y + plotRect.H - ls.Scale(v)
 				b.DrawLine(plotRect.X, y, plotRect.X+plotRect.W, y)
 			}
 		}
