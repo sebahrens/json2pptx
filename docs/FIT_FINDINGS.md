@@ -526,6 +526,33 @@ Text color was automatically replaced to meet WCAG AA contrast requirements agai
 }
 ```
 
+### `placeholder_remapped`
+
+**Action:** `info`
+**Pattern:** `placeholder`
+**Fix kind:** `remap_placeholder`
+
+A content placeholder ID from the input was resolved to a different placeholder on the layout. This happens when the chosen layout does not declare the requested placeholder (e.g. a `section` layout has no `subtitle` placeholder, so `subtitle` content is remapped onto `body`). The remapping is non-destructive — the content still renders — but agents should consider authoring the resolved ID directly to avoid the implicit rewrite.
+
+Emitted both pre-flight (from `preview_presentation_plan` / `generate_presentation` with `fit_report: true`) and at render time. The pre-flight emission walks every placeholder whose `resolved_id` differs from its `input_id`; the render-time emission fires when the generator's semantic-tier fallback resolves a virtual placeholder ID (today: `subtitle` → body-class placeholder).
+
+```json
+{
+  "pattern": "placeholder",
+  "path": "/slides/2/content/0/placeholder_id",
+  "code": "placeholder_remapped",
+  "message": "slide 3: placeholder \"subtitle\" remapped to \"body\" for layout \"section\"",
+  "fix": {
+    "kind": "remap_placeholder",
+    "params": {
+      "from": "subtitle",
+      "to": "body"
+    }
+  },
+  "action": "info"
+}
+```
+
 ## Scope Rules
 
 Fit findings are scoped to **JSON-authored content only**. Content inherited from template layouts or masters is never checked.
@@ -563,6 +590,7 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 | `provide_numeric_value` | `column: string`, `original_value: string`, `original_type: string` | A non-numeric chart value was coerced to zero — provide a numeric value |
 | `provide_native_format` | `chart_type: string`, `expected_format: string` | Chart data shape was inferred — provide data in the native format |
 | `add_detail_or_resize` | `current_density_pct: int` | Cell is underfilled — add more text content or use a smaller grid pattern |
+| `remap_placeholder` | `from: string`, `to: string` | Author the resolved placeholder ID directly to avoid the engine's implicit remap |
 
 ## Per-Slide Finding Budget
 

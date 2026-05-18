@@ -82,7 +82,6 @@ var knownFitDocDrift = map[string]string{
 	"mixed_fill_scheme":            "pre-flight code, SKILL.md only",
 	"no_autofit_overflow":          "render-time code, SKILL.md only",
 	"pagination_default_threshold": "render-time code, SKILL.md only",
-	"placeholder_remapped":         "render-time code, SKILL.md only",
 	"readability_trimmed":          "render-time code, SKILL.md only",
 	"stacked_tables":               "pre-flight code, SKILL.md only",
 	"table_font_scaled":            "render-time code, SKILL.md only",

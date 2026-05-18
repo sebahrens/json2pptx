@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -589,7 +590,37 @@ func computePreviewFitFindings(input *PresentationInput, output *previewPlanOutp
 	resolvedInput.Slides = resolvedSlides
 
 	findings := collectFitFindings(&resolvedInput, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.theme)
+	findings = append(findings, placeholderRemappedFindings(output.ResolvedSlides)...)
 	return BudgetFitFindings(findings, DefaultFindingBudget, verbose)
+}
+
+// placeholderRemappedFindings emits an info-level fit finding for every
+// resolved placeholder whose virtual placeholder_id was remapped to a concrete
+// layout placeholder. This mirrors the render-time emission in
+// generator/slide_preparation.go so agents iterating fit_findings can see
+// remappings without walking resolved_slides[].placeholders[].remapped.
+func placeholderRemappedFindings(resolvedSlides []resolvedSlide) []patterns.FitFinding {
+	var out []patterns.FitFinding
+	for _, rs := range resolvedSlides {
+		for contentIdx, rp := range rs.Placeholders {
+			if !rp.Remapped {
+				continue
+			}
+			out = append(out, patterns.FitFinding{
+				ValidationError: patterns.ValidationError{
+					Path:    slidepath.ContentField(rs.SlideIndex, contentIdx, "placeholder_id"),
+					Code:    patterns.ErrCodePlaceholderRemapped,
+					Message: fmt.Sprintf("slide %d: placeholder %q remapped to %q for layout %q", rs.SlideIndex+1, rp.InputID, rp.ResolvedID, rs.LayoutID),
+					Fix: &patterns.FixSuggestion{
+						Kind:   "remap_placeholder",
+						Params: map[string]any{"from": rp.InputID, "to": rp.ResolvedID},
+					},
+				},
+				Action: "info",
+			})
+		}
+	}
+	return out
 }
 
 // boundingBoxToGeom converts a BoundingBox to a resolvedGeom.
