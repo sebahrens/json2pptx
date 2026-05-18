@@ -61,6 +61,12 @@ type RecommendVisualResult struct {
 	Candidates             []VisualCandidate `json:"candidates"`
 	QueryUnderstood        string            `json:"query_understood_as"`
 	DisambiguatingQuestions []string          `json:"disambiguating_questions,omitempty"`
+
+	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
+	// response with the field zeroed. Agents may use it as a cache key. The
+	// MCP handler sets this; callers using RecommendVisual directly may leave
+	// it empty.
+	ResponseFingerprint string `json:"response_fingerprint,omitempty"`
 }
 
 // chartRule maps intent keywords to a chart type with scoring.

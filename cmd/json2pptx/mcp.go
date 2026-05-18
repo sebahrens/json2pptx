@@ -854,6 +854,9 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 	}
 	// Success path: include diagnostics (warnings/info) but no redundant
 	// string arrays. The Errors/Warnings fields are left nil (omitted from JSON).
+	if err := api.ComputeResponseFingerprint(&output); err != nil {
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("validate_input", "presentation")), nil
+	}
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("validate_input", "presentation")), nil
@@ -1351,6 +1354,10 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 
 	// Enrich candidates with placement guidance from capability truth.
 	generator.EnrichVisualPlacement(&rec)
+
+	if err := api.ComputeResponseFingerprint(&rec); err != nil {
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("recommend_visual", "intent")), nil
+	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, rec)
 	if err != nil {

@@ -25,6 +25,10 @@ type previewPlanOutput struct {
 	Errors         []string             `json:"errors,omitempty"`
 	FitFindings    []patterns.FitFinding `json:"fit_findings,omitempty"`
 
+	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
+	// response with the field zeroed. Agents may use it as a cache key.
+	ResponseFingerprint string `json:"response_fingerprint,omitempty"`
+
 	// composeFindings holds structured fit findings emitted during
 	// per-segment compose resolution (carrying segment_index). They are
 	// merged into FitFindings during computePreviewFitFindings so they
@@ -222,6 +226,10 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	// Collect boundary warnings.
 	for _, w := range checkInputUnknownKeys([]byte(jsonStr)) {
 		output.Warnings = append(output.Warnings, w.Error())
+	}
+
+	if err := api.ComputeResponseFingerprint(&output); err != nil {
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("preview_presentation_plan", "presentation")), nil
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)

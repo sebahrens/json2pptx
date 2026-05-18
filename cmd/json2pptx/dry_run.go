@@ -35,6 +35,10 @@ type dryRunOutput struct {
 	Diagnostics        []diagnostics.Diagnostic    `json:"diagnostics,omitempty"`
 	Slides             []dryRunSlide               `json:"slides"`
 	FitFindings        []patterns.FitFinding        `json:"fit_findings,omitempty"`
+
+	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
+	// response with the field zeroed. Agents may use it as a cache key.
+	ResponseFingerprint string `json:"response_fingerprint,omitempty"`
 }
 
 // dryRunSlide describes one slide in the dry-run report.

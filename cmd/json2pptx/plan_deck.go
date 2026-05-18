@@ -102,6 +102,10 @@ type planDeckResult struct {
 	Brief           string      `json:"brief"`
 	SlideBudget     int         `json:"slide_budget"`
 	RhythmCheck     rhythmCheck `json:"rhythm_check"`
+
+	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
+	// response with the field zeroed. Agents may use it as a cache key.
+	ResponseFingerprint string `json:"response_fingerprint,omitempty"`
 }
 
 // rhythmCheck summarizes the plan's adherence to rhythm rules.
@@ -157,6 +161,10 @@ func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	result := buildDeckPlan(reg, brief, slideBudget, audience, mustInclude)
+
+	if err := api.ComputeResponseFingerprint(result); err != nil {
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("plan_deck", "brief")), nil
+	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {

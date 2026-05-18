@@ -521,6 +521,10 @@ Boundary-error mappings used by the candidate-decision tools:
 - For `swap_pattern` fix kinds, `next_tool_call` points to `recommend_pattern` instead of `repair_slide`.
 - Internal-only errors (marshal failures, unrecognized fix kinds inside content-finding errors) may omit `next_tool_call` (the field is absent, not null). Boundary errors from candidate-decision tools always carry it.
 
+### `response_fingerprint` — server-side cache key
+
+`validate_input`, `preview_presentation_plan`, `plan_deck`, and `recommend_visual` responses include a top-level `response_fingerprint` field: a sha256 hex digest (64 chars) of the canonical JSON of the response body with the fingerprint field itself zeroed. These four paths are deterministic — identical inputs produce identical fingerprints — so agents may use the fingerprint directly as a memoisation cache key without re-hashing the body. To verify a fingerprint, parse the response, zero `response_fingerprint`, re-marshal canonically, and sha256-hash the result.
+
 ---
 
 ## Pattern Library
