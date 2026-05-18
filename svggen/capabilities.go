@@ -506,3 +506,38 @@ func DiagramCapabilities() []DiagramCapability {
 	}
 	return caps
 }
+
+// naturalDiagramAspects maps non-chart diagram types to their natural width/height
+// ratio (W/H) as defined by the renderer's intrinsic canvas. Only diagrams that
+// use a fixed natural aspect via RenderWithHelperDimensions are listed; chart
+// types that fit their container (via RenderWithHelper) intentionally have no
+// entry because they have no intrinsic aspect to conflict with.
+//
+// Values are sourced from the renderer constants:
+//   - timeline:  RenderWithHelperDimensions(req, 800, 400, ...) → 2.0
+//   - gantt:     RenderWithHelperDimensions(req, 900, 500, ...) → 1.8
+//   - org_chart: RenderWithHelperDimensions(req, 1100, 700, ...) → ~1.57 (data adjusts)
+//
+// Keep this in sync with the per-diagram defaults in svggen/timeline.go,
+// svggen/gantt.go, and svggen/org_chart.go.
+var naturalDiagramAspects = map[string]float64{
+	"timeline":  2.0,
+	"gantt":     1.8,
+	"org_chart": 1100.0 / 700.0,
+}
+
+// NaturalAspect returns the natural width-to-height aspect ratio of a known
+// non-chart diagram type. Returns 0 when the type either fits its container
+// (most charts) or is not recognized. Aliases are resolved before lookup, so
+// "org" and "orgchart" both resolve to the org_chart aspect.
+//
+// Callers use this at validate / preview time to predict whether a target cell
+// or placeholder shape will conflict with a diagram's intrinsic aspect, which
+// lets agents fix the layout before invoking resvg-convert or rasterising.
+func NaturalAspect(diagramType string) float64 {
+	canonical := diagramType
+	if alias, ok := builtinAliases[diagramType]; ok {
+		canonical = alias
+	}
+	return naturalDiagramAspects[canonical]
+}

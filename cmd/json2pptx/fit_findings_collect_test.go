@@ -817,6 +817,69 @@ func TestCheckShapeGridStructural_NoDiagramAspectMismatchWhenAligned(t *testing.
 	}
 }
 
+// TestCheckShapeGridStructural_PreflightDiagramAspectConflict verifies that
+// the preflight structural check emits diagram_aspect_conflict when a grid
+// cell aspect deviates from a non-chart diagram's natural svggen viewBox
+// aspect by more than 30%. Uses a timeline (natural 2:1) in a tall narrow
+// cell — explicit grid bounds force the cell to roughly 1:1, well below the
+// 2:1 natural aspect.
+func TestCheckShapeGridStructural_PreflightDiagramAspectConflict(t *testing.T) {
+	grid := &ShapeGridInput{
+		// Tall narrow grid: width 25% × height 85% of a 16:9 slide → cell
+		// aspect ≈ (0.25*12192000)/(0.85*6858000) ≈ 0.52, vs timeline 2.0
+		// → deviation ~74% > 30% threshold.
+		Bounds:  &GridBoundsInput{X: 5, Y: 5, Width: 25, Height: 85},
+		Columns: json.RawMessage(`1`),
+		Rows: []GridRowInput{
+			{
+				Cells: []*GridCellInput{
+					{Diagram: &types.DiagramSpec{
+						Type: "timeline",
+						Data: map[string]any{
+							"values": []any{"Q1", "Q2", "Q3", "Q4"},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	slideWidth := int64(12192000)
+	slideHeight := int64(6858000)
+	layout := &types.LayoutMetadata{
+		ID: "blank",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 11277600, Height: 4800600}},
+		},
+	}
+
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+
+	found := false
+	for _, f := range findings {
+		if f.Code == "diagram_aspect_conflict" {
+			found = true
+			if !strings.Contains(f.Path, "/diagram") {
+				t.Errorf("finding path should target diagram field, got: %s", f.Path)
+			}
+			if f.Action != "review" {
+				t.Errorf("expected action 'review', got %q", f.Action)
+			}
+			if f.Fix == nil || f.Fix.Kind != "reshape_grid" {
+				t.Error("expected Fix with kind reshape_grid")
+			}
+			break
+		}
+	}
+	if !found {
+		codes := make([]string, 0, len(findings))
+		for _, f := range findings {
+			codes = append(codes, f.Code)
+		}
+		t.Errorf("expected preflight diagram_aspect_conflict finding; got codes: %v", codes)
+	}
+}
+
 // TestCheckShapeGridStructural_NoDiagramNarrowForWideCell verifies that the
 // preflight check does NOT emit grid_diagram_narrow when the diagram cell
 // is wide enough (render-time-only findings are not false-positived).

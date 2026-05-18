@@ -280,6 +280,26 @@ A diagram cell's aspect ratio differs from the rendered SVG's aspect ratio by mo
 }
 ```
 
+### `diagram_aspect_conflict`
+
+**Action:** `review`
+**Fix kind:** `reshape_grid`
+**Emitted at:** preflight + render time
+
+A non-chart diagram cell's aspect ratio differs from the diagram type's natural svggen viewBox aspect by more than 30%. Currently emitted for diagram types whose renderer pins a non-container natural aspect via `svggen.NaturalAspect` — `timeline` (2:1), `gantt` (~1.8:1), and `org_chart` (~1.57:1, baseline before data-driven scaling). The check is silent for chart types (their aspect issues come from svggen dry-render `chart.*` findings) and for diagrams with explicit `DiagramSpec.Width`/`Height` (those are handled by `diagram_aspect_mismatch`). Available at validate and preview time without invoking resvg/inkscape.
+
+```json
+{
+  "path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
+  "code": "diagram_aspect_conflict",
+  "message": "timeline cell aspect 0.52 conflicts with diagram natural aspect 2.00 (deviation 74%) — render will be letterboxed or distorted; resize the cell, set cell.fit, or set explicit diagram.width/height",
+  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "timeline", "natural_aspect": 2.0, "cell_aspect": 0.52, "deviation": 0.74, "cell_width_emu": 3048000, "cell_height_emu": 5829300 } },
+  "action": "review",
+  "measured": { "width_emu": 3048000, "height_emu": 5829300 },
+  "overflow_ratio": 0.26
+}
+```
+
 ### `diagram_clamped`
 
 **Action:** `review`

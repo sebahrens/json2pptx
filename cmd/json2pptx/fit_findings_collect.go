@@ -306,13 +306,22 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 }
 
 // checkPlaceholderFindings checks a slide's content placeholders for title
-// wraps and body overflow.
+// wraps, body overflow, and (for diagram content) intrinsic aspect conflicts.
 func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMetadata) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	for _, content := range slide.Content {
 		ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
 		if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
 			continue
+		}
+
+		// Diagram content placed in a placeholder: predict aspect conflict
+		// against the diagram type's natural viewBox aspect.
+		if content.Type == "diagram" && content.DiagramValue != nil {
+			path := slidepath.Content(si, content.PlaceholderID)
+			if f := generator.CheckDiagramAspectConflictFinding(content.DiagramValue, ph.Bounds.Width, ph.Bounds.Height, path); f != nil {
+				findings = append(findings, *f)
+			}
 		}
 
 		paragraphs := extractContentParagraphs(&content)
@@ -443,16 +452,9 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 				path := slidepath.GridCell(slideIdx, ri, ci)
 				findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
 
-				// Preflight: approximate diagram narrow-cell legibility.
 				if cell.Diagram != nil {
-					diagPath := slidepath.GridCellField(slideIdx, ri, ci, "diagram")
-					if f := generator.CheckDiagramInNarrowBoundsFinding(cell.Diagram, rc.CellBounds.CX, diagPath); f != nil {
-						findings = append(findings, *f)
-					}
-					// Preflight: cell vs. rendered SVG aspect mismatch.
-					if f := generator.CheckDiagramAspectMismatchFinding(cell.Diagram, rc.CellBounds.CX, rc.CellBounds.CY, diagPath); f != nil {
-						findings = append(findings, *f)
-					}
+					findings = append(findings,
+						checkGridDiagramPreflight(cell.Diagram, slideIdx, ri, ci, rc.CellBounds.CX, rc.CellBounds.CY)...)
 				}
 
 				cellIdx++
@@ -466,6 +468,30 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 		findings = append(findings, *f)
 	}
 
+	return findings
+}
+
+// checkGridDiagramPreflight runs the diagram preflight detectors (narrow cell
+// legibility, explicit-spec aspect mismatch, and natural-aspect conflict) for
+// one resolved grid cell carrying a diagram. Extracted from
+// checkShapeGridStructural to keep that function's cognitive complexity under
+// the gocognit lint threshold.
+func checkGridDiagramPreflight(diagram *types.DiagramSpec, slideIdx, ri, ci int, cellCX, cellCY int64) []patterns.FitFinding {
+	if diagram == nil {
+		return nil
+	}
+	diagPath := slidepath.GridCellField(slideIdx, ri, ci, "diagram")
+	var findings []patterns.FitFinding
+	if f := generator.CheckDiagramInNarrowBoundsFinding(diagram, cellCX, diagPath); f != nil {
+		findings = append(findings, *f)
+	}
+	if f := generator.CheckDiagramAspectMismatchFinding(diagram, cellCX, cellCY, diagPath); f != nil {
+		findings = append(findings, *f)
+	}
+	// Non-chart diagrams only — chart aspect issues come from svggen dry-render.
+	if f := generator.CheckDiagramAspectConflictFinding(diagram, cellCX, cellCY, diagPath); f != nil {
+		findings = append(findings, *f)
+	}
 	return findings
 }
 

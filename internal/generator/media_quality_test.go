@@ -813,3 +813,102 @@ func TestCheckDiagramAspectMismatchFinding_NilOnInvalidDims(t *testing.T) {
 		t.Errorf("expected nil for nil spec, got: %+v", f)
 	}
 }
+
+// TestCheckDiagramAspectConflictFinding_FlagsTimelineInTallCell verifies that
+// a timeline diagram (natural aspect 2.0) placed in a near-square cell is
+// flagged with diagram_aspect_conflict via svggen's intrinsic viewBox.
+func TestCheckDiagramAspectConflictFinding_FlagsTimelineInTallCell(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "timeline"}
+	// Cell aspect 1.0 vs timeline natural 2.0 → deviation 50% > 30% threshold.
+	cellW := int64(4000000)
+	cellH := int64(4000000)
+	path := "/slides/0/shape_grid/rows/0/cells/0/diagram"
+
+	f := CheckDiagramAspectConflictFinding(spec, cellW, cellH, path)
+	if f == nil {
+		t.Fatal("expected finding for square cell vs timeline 2:1 natural aspect, got nil")
+	}
+	if f.Code != "diagram_aspect_conflict" {
+		t.Errorf("Code = %q, want %q", f.Code, "diagram_aspect_conflict")
+	}
+	if f.Path != path {
+		t.Errorf("Path = %q, want %q", f.Path, path)
+	}
+	if f.Action != "review" {
+		t.Errorf("Action = %q, want %q", f.Action, "review")
+	}
+	if f.Fix == nil || f.Fix.Kind != "reshape_grid" {
+		t.Error("expected Fix with kind reshape_grid")
+	}
+	if !strings.Contains(f.Message, "timeline") {
+		t.Errorf("Message should mention diagram type, got: %s", f.Message)
+	}
+	if f.Fix != nil {
+		if got, _ := f.Fix.Params["natural_aspect"].(float64); got != 2.0 {
+			t.Errorf("Fix.params.natural_aspect = %v, want 2.0", f.Fix.Params["natural_aspect"])
+		}
+	}
+}
+
+// TestCheckDiagramAspectConflictFinding_SilentForChart verifies that chart
+// types return nil from the conflict check (charts have no fixed natural
+// aspect; their conflicts are covered by svggen dry-render).
+func TestCheckDiagramAspectConflictFinding_SilentForChart(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "bar_chart"}
+	if f := CheckDiagramAspectConflictFinding(spec, 4000000, 4000000, "p"); f != nil {
+		t.Errorf("expected nil for chart type (no natural aspect), got: %+v", f)
+	}
+}
+
+// TestCheckDiagramAspectConflictFinding_DefersWhenExplicitDims verifies that
+// when the spec carries explicit Width/Height, the conflict check defers to
+// the existing diagram_aspect_mismatch detector.
+func TestCheckDiagramAspectConflictFinding_DefersWhenExplicitDims(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "timeline", Width: 1000, Height: 1000}
+	if f := CheckDiagramAspectConflictFinding(spec, 4000000, 4000000, "p"); f != nil {
+		t.Errorf("expected nil when spec has explicit dims, got: %+v", f)
+	}
+}
+
+// TestCheckDiagramAspectConflictFinding_NilForAlignedCell verifies no finding
+// when the cell aspect matches the diagram's natural aspect.
+func TestCheckDiagramAspectConflictFinding_NilForAlignedCell(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "gantt"} // natural 1.8
+	// Cell aspect 1.8 — within 30% threshold.
+	cellW := int64(9000000)
+	cellH := int64(5000000)
+	if f := CheckDiagramAspectConflictFinding(spec, cellW, cellH, "p"); f != nil {
+		t.Errorf("expected nil for aligned aspect, got: %+v", f)
+	}
+}
+
+// TestCheckDiagramAspectConflictFinding_AliasResolved verifies that aliases
+// (e.g. "org" / "orgchart") resolve to the canonical org_chart natural aspect.
+func TestCheckDiagramAspectConflictFinding_AliasResolved(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "org"}
+	// Cell 1:1 vs org_chart natural ~1.57 → deviation ~36% > 30% threshold.
+	cellW := int64(4000000)
+	cellH := int64(4000000)
+	f := CheckDiagramAspectConflictFinding(spec, cellW, cellH, "p")
+	if f == nil {
+		t.Fatal("expected finding for org alias in square cell, got nil")
+	}
+	if f.Code != "diagram_aspect_conflict" {
+		t.Errorf("Code = %q, want %q", f.Code, "diagram_aspect_conflict")
+	}
+}
+
+// TestCheckDiagramAspectConflictFinding_NilOnInvalidDims verifies graceful
+// handling of zero / nil inputs.
+func TestCheckDiagramAspectConflictFinding_NilOnInvalidDims(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "timeline"}
+	if f := CheckDiagramAspectConflictFinding(spec, 0, 1000, "p"); f != nil {
+		t.Errorf("expected nil for zero width, got: %+v", f)
+	}
+	if f := CheckDiagramAspectConflictFinding(spec, 1000, 0, "p"); f != nil {
+		t.Errorf("expected nil for zero height, got: %+v", f)
+	}
+	if f := CheckDiagramAspectConflictFinding(nil, 1000, 1000, "p"); f != nil {
+		t.Errorf("expected nil for nil spec, got: %+v", f)
+	}
+}

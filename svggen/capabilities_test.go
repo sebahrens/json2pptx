@@ -99,3 +99,42 @@ func TestDiagramCapabilities_AllTypesMapped(t *testing.T) {
 		}
 	}
 }
+
+// TestNaturalAspect_KnownDiagrams verifies that the NaturalAspect lookup
+// returns the expected W/H ratio for diagrams that pin a fixed canvas via
+// RenderWithHelperDimensions. These values are part of the agent-facing fit
+// finding contract (diagram_aspect_conflict) — drift would silently change
+// preflight behaviour.
+func TestNaturalAspect_KnownDiagrams(t *testing.T) {
+	cases := map[string]float64{
+		"timeline":  2.0,
+		"gantt":     1.8,
+		"org_chart": 1100.0 / 700.0,
+	}
+	for name, want := range cases {
+		if got := NaturalAspect(name); got != want {
+			t.Errorf("NaturalAspect(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+// TestNaturalAspect_AliasResolved verifies that registered aliases resolve
+// to the canonical diagram type before lookup.
+func TestNaturalAspect_AliasResolved(t *testing.T) {
+	want := 1100.0 / 700.0
+	for _, alias := range []string{"org", "orgchart"} {
+		if got := NaturalAspect(alias); got != want {
+			t.Errorf("NaturalAspect(%q) = %v, want %v", alias, got, want)
+		}
+	}
+}
+
+// TestNaturalAspect_ZeroForContainerFitChartsAndUnknown verifies that chart
+// types (which fit their container) and unknown types both return 0.
+func TestNaturalAspect_ZeroForContainerFitChartsAndUnknown(t *testing.T) {
+	for _, name := range []string{"bar_chart", "pie_chart", "scatter_chart", "made_up_type"} {
+		if got := NaturalAspect(name); got != 0 {
+			t.Errorf("NaturalAspect(%q) = %v, want 0", name, got)
+		}
+	}
+}

@@ -391,6 +391,9 @@ func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []pat
 	if f := generator.CheckDiagramAspectMismatchFinding(cell.DiagramSpec, cell.CellBounds.CX, cell.CellBounds.CY, path); f != nil {
 		findings = append(findings, *f)
 	}
+	if f := generator.CheckDiagramAspectConflictFinding(cell.DiagramSpec, cell.CellBounds.CX, cell.CellBounds.CY, path); f != nil {
+		findings = append(findings, *f)
+	}
 	return findings
 }
 

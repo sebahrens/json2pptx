@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // complexDiagramTypes lists diagram types that are inherently complex and
@@ -728,6 +729,91 @@ func CheckDiagramAspectMismatchFinding(diagramSpec *types.DiagramSpec, cellWidth
 			HeightEMU: int64(svgH),
 		},
 		OverflowRatio: cellAspect / svgAspect,
+	}
+}
+
+// diagramAspectConflictThreshold is the relative aspect-ratio deviation at
+// which a non-chart diagram cell is flagged as conflicting with the diagram
+// type's natural aspect (svggen's intrinsic viewBox aspect). 0.30 means the
+// cell aspect differs from the natural aspect by more than 30%, at which
+// point the diagram will be significantly letterboxed or its proportions
+// distorted relative to what the renderer was designed for. This threshold is
+// looser than diagramAspectMismatchThreshold because the natural aspect is a
+// fixed assumption per type, while the existing mismatch uses the explicit
+// DiagramSpec dimensions when set.
+const diagramAspectConflictThreshold = 0.30
+// CheckDiagramAspectConflictFinding predicts an aspect conflict between a
+// non-chart diagram type's natural viewBox aspect (sourced from svggen.NaturalAspect)
+// and a target cell or placeholder shape. Returns a structured FitFinding when:
+//   - the diagram type has a known natural aspect (currently timeline, gantt,
+//     org_chart — types that use RenderWithHelperDimensions with fixed defaults),
+//   - the diagram has no explicit DiagramSpec.Width/Height (those override the
+//     natural aspect, so the existing diagram_aspect_mismatch check handles them),
+//   - and the cell aspect deviates from the natural aspect by more than the
+//     conflict threshold.
+//
+// Returns nil for chart types and unknown diagram types — chart conflicts are
+// covered by svggen's dry-render path (chart.* findings).
+//
+// The check is available at validate and preview time without invoking
+// resvg/inkscape: it only uses the renderer's natural aspect constant.
+func CheckDiagramAspectConflictFinding(diagramSpec *types.DiagramSpec, cellWidthEMU, cellHeightEMU int64, path string) *patterns.FitFinding {
+	if diagramSpec == nil || cellWidthEMU <= 0 || cellHeightEMU <= 0 {
+		return nil
+	}
+	// If the spec carries explicit dimensions, defer to the existing
+	// diagram_aspect_mismatch check — those dimensions are authoritative.
+	if diagramSpec.Width > 0 && diagramSpec.Height > 0 {
+		return nil
+	}
+
+	natural := svggen.NaturalAspect(diagramSpec.Type)
+	if natural <= 0 {
+		return nil
+	}
+
+	cellAspect := float64(cellWidthEMU) / float64(cellHeightEMU)
+	if cellAspect <= 0 {
+		return nil
+	}
+
+	deviation := (cellAspect - natural) / natural
+	if deviation < 0 {
+		deviation = -deviation
+	}
+	if deviation <= diagramAspectConflictThreshold {
+		return nil
+	}
+
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: path,
+			Code: patterns.ErrCodeDiagramAspectConflict,
+			Message: fmt.Sprintf(
+				"%s cell aspect %.2f conflicts with diagram natural aspect %.2f (deviation %.0f%%) — render will be letterboxed or distorted; resize the cell, set cell.fit, or set explicit diagram.width/height",
+				diagramSpec.Type,
+				cellAspect,
+				natural,
+				deviation*100,
+			),
+			Fix: &patterns.FixSuggestion{
+				Kind: "reshape_grid",
+				Params: map[string]any{
+					"diagram_type":    diagramSpec.Type,
+					"natural_aspect":  natural,
+					"cell_aspect":     cellAspect,
+					"deviation":       deviation,
+					"cell_width_emu":  cellWidthEMU,
+					"cell_height_emu": cellHeightEMU,
+				},
+			},
+		},
+		Action: "review",
+		Measured: &patterns.Extent{
+			WidthEMU:  cellWidthEMU,
+			HeightEMU: cellHeightEMU,
+		},
+		OverflowRatio: cellAspect / natural,
 	}
 }
 
