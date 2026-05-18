@@ -6,21 +6,31 @@ import "github.com/sebahrens/json2pptx/internal/patterns"
 // guidance derived from the canonical diagram placement registry and known facts
 // about chart/pattern/placeholder render paths. This bridges the gap between the
 // category-level recommendation and the authoring path the agent should follow.
+//
+// For named-pattern candidates, ComposableWith is populated from the pattern's
+// PatternTaxonomy.ComposesWith via the default pattern registry, exposing the
+// per-pattern compose-axis to MCP consumers.
 func EnrichVisualPlacement(result *patterns.RecommendVisualResult) {
+	EnrichVisualPlacementWithRegistry(result, patterns.Default())
+}
+
+// EnrichVisualPlacementWithRegistry is like EnrichVisualPlacement but accepts
+// an explicit registry, useful for tests that register synthetic patterns.
+func EnrichVisualPlacementWithRegistry(result *patterns.RecommendVisualResult, reg *patterns.Registry) {
 	for i := range result.Candidates {
 		c := &result.Candidates[i]
-		c.Placement = placementForCandidate(c.Category, c.Name)
+		c.Placement = placementForCandidate(reg, c.Category, c.Name)
 	}
 }
 
-func placementForCandidate(category patterns.VisualCategory, name string) *patterns.PlacementGuidance {
+func placementForCandidate(reg *patterns.Registry, category patterns.VisualCategory, name string) *patterns.PlacementGuidance {
 	switch category {
 	case patterns.VisualCategoryDiagram:
 		return diagramPlacement(name)
 	case patterns.VisualCategoryChart:
 		return chartPlacement()
 	case patterns.VisualCategoryPattern:
-		return patternPlacement()
+		return patternPlacement(reg, name)
 	case patterns.VisualCategoryPlaceholder:
 		return placeholderPlacement()
 	case patterns.VisualCategoryShapeGrid:
@@ -77,15 +87,25 @@ func chartPlacement() *patterns.PlacementGuidance {
 	}
 }
 
-func patternPlacement() *patterns.PlacementGuidance {
+func patternPlacement(reg *patterns.Registry, name string) *patterns.PlacementGuidance {
 	// Named patterns expand into shape_grid; they are the grid themselves.
-	return &patterns.PlacementGuidance{
+	pg := &patterns.PlacementGuidance{
 		PreferredPlacement: "placeholder",
 		HostStrategy:       "pattern_expansion",
 		GridEmbeddable:     false,
 		RenderPipeline:     "native_ooxml",
-		ComposableWith:     []string{"chart", "diagram"},
 	}
+	// Project the pattern's ComposesWith taxonomy axis onto ComposableWith so
+	// agents see the exact sibling pattern names that can share a compose
+	// envelope with this candidate.
+	if reg != nil {
+		if p, ok := reg.Get(name); ok {
+			if cw := p.Taxonomy().ComposesWith; len(cw) > 0 {
+				pg.ComposableWith = append(pg.ComposableWith[:0:0], cw...)
+			}
+		}
+	}
+	return pg
 }
 
 func placeholderPlacement() *patterns.PlacementGuidance {

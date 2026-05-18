@@ -155,15 +155,50 @@ func TestEnrichVisualPlacement_HybridCase(t *testing.T) {
 	if !chartP.GridEmbeddable {
 		t.Error("chart should be grid-embeddable for hybrid composition")
 	}
-	// Pattern declares it composes with charts.
+	// Pattern declares sibling patterns it composes with via PatternTaxonomy.
+	// kpi-3up's taxonomy lists pull-quote as a composable sibling.
 	found := false
 	for _, c := range patternP.ComposableWith {
-		if c == "chart" {
+		if c == "pull-quote" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("pattern should declare composability with 'chart'")
+		t.Errorf("kpi-3up should declare composability with 'pull-quote'; got %v", patternP.ComposableWith)
+	}
+}
+
+// TestEnrichVisualPlacement_PatternComposesWithTaxonomy asserts that a
+// pattern-category candidate's ComposableWith field is populated from its
+// PatternTaxonomy.ComposesWith axis. Concretely: stylish-panels lists
+// pull-quote and arch-stack among the siblings that can share a compose
+// envelope with it.
+func TestEnrichVisualPlacement_PatternComposesWithTaxonomy(t *testing.T) {
+	result := &patterns.RecommendVisualResult{
+		Candidates: []patterns.VisualCandidate{
+			{Category: patterns.VisualCategoryPattern, Name: "stylish-panels", Score: 0.90},
+		},
+	}
+	EnrichVisualPlacement(result)
+
+	p := result.Candidates[0].Placement
+	if p == nil {
+		t.Fatal("expected placement guidance for stylish-panels")
+	}
+	if len(p.ComposableWith) == 0 {
+		t.Fatal("stylish-panels composable_with should be non-empty")
+	}
+
+	want := map[string]bool{"pull-quote": false, "arch-stack": false}
+	for _, c := range p.ComposableWith {
+		if _, ok := want[c]; ok {
+			want[c] = true
+		}
+	}
+	for name, seen := range want {
+		if !seen {
+			t.Errorf("stylish-panels composable_with missing %q; got %v", name, p.ComposableWith)
+		}
 	}
 }
