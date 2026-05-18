@@ -23,7 +23,11 @@ const DefaultFindingBudget = 5
 // overflow, title wraps, footer collision, bounds overflow) and returns sorted
 // findings. The result is sorted by ActionRank descending (most severe first),
 // then by slide index ascending.
-func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
+//
+// When theme is non-nil, preflight predictors that need theme colors run too:
+// currently this gates the contrast_predicted detector. Pass nil to skip
+// those (callers that don't have a parsed template theme).
+func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
 	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid text).
@@ -45,6 +49,19 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 
 	// 4. Grid occupancy: pattern_underfilled / pattern_overcrowded.
 	findings = append(findings, collectGridOccupancyFindings(input)...)
+
+	// 5. Preflight predictions for render-time-only findings: table_font_scaled,
+	// table_rows_truncated, column_width_deficit, text_trimmed,
+	// readability_trimmed. These mirror the renderer's scaling/trimming logic
+	// without rendering.
+	findings = append(findings, collectTablePreflightFindings(input, layouts)...)
+	findings = append(findings, collectTextAutofitPreflightFindings(input, layouts)...)
+
+	// 6. Contrast prediction (contrast_predicted) — runs only when theme
+	// colors are available to resolve scheme references.
+	if theme != nil {
+		findings = append(findings, collectContrastPreflightFindings(input, theme.Colors)...)
+	}
 
 	// Sort by ActionRank desc, then slide index asc.
 	sort.Slice(findings, func(i, j int) bool {
@@ -1014,4 +1031,240 @@ func detectSparseRawGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHe
 		},
 		OverflowRatio: ratio,
 	}
+}
+
+// =============================================================================
+// Preflight predictors for render-time-only findings.
+// =============================================================================
+
+// collectTablePreflightFindings walks all content-level tables and shape_grid
+// embedded tables, predicting render-time scaling/truncation/deficit findings
+// using only the JSON content and template-resolved bounds.
+func collectTablePreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+
+	for si, slide := range input.Slides {
+		layout := findLayoutForSlide(&slide, layouts)
+
+		// Content-level tables: bounds inherit from the placeholder.
+		for ci, content := range slide.Content {
+			if content.Type != "table" {
+				continue
+			}
+			table := resolveTableFromContent(&content)
+			if table == nil {
+				continue
+			}
+			spec := table.ToTableSpec()
+			bounds := tablePlaceholderBounds(content.PlaceholderID, layout)
+			pathPrefix := slidepath.ContentIndex(si, ci)
+			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
+				Path:    pathPrefix,
+				Headers: spec.Headers,
+				Rows:    spec.Rows,
+				Bounds:  bounds,
+			})...)
+		}
+
+		// Shape-grid embedded tables: bounds derived from the resolved grid.
+		if slide.ShapeGrid != nil {
+			findings = append(findings, collectGridTablePreflight(slide.ShapeGrid, si)...)
+		}
+	}
+
+	return findings
+}
+
+// tablePlaceholderBounds returns the bounds for a content-level table by
+// looking up the placeholder in the layout. Returns a zero box when the
+// placeholder can't be found — preflight then skips row/width checks.
+func tablePlaceholderBounds(placeholderID string, layout *types.LayoutMetadata) types.BoundingBox {
+	if layout == nil {
+		return types.BoundingBox{}
+	}
+	if ph := findPlaceholderByID(placeholderID, layout.Placeholders); ph != nil {
+		return ph.Bounds
+	}
+	return types.BoundingBox{}
+}
+
+// collectGridTablePreflight walks shape_grid cells and emits table preflight
+// findings for any embedded tables, using the resolved cell bounds.
+func collectGridTablePreflight(grid *ShapeGridInput, slideIdx int) []patterns.FitFinding {
+	result := resolveGridForStructural(grid, 0, 0)
+	if result == nil {
+		return nil
+	}
+
+	var findings []patterns.FitFinding
+	cellIdx := 0
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cellIdx >= len(result.Cells) {
+				break
+			}
+			if cell == nil {
+				cellIdx++
+				continue
+			}
+			if cell.Table != nil {
+				spec := cell.Table.ToTableSpec()
+				rc := result.Cells[cellIdx]
+				pathPrefix := slidepath.Join(slidepath.GridCell(slideIdx, ri, ci), "table")
+				findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
+					Path:    pathPrefix,
+					Headers: spec.Headers,
+					Rows:    spec.Rows,
+					Bounds: types.BoundingBox{
+						X:      rc.CellBounds.X,
+						Y:      rc.CellBounds.Y,
+						Width:  rc.CellBounds.CX,
+						Height: rc.CellBounds.CY,
+					},
+				})...)
+			}
+			cellIdx++
+		}
+	}
+	return findings
+}
+
+// collectTextAutofitPreflightFindings walks placeholder content (body /
+// content placeholders) and emits text_trimmed / readability_trimmed
+// predictions. Title placeholders are excluded — those have their own
+// DetectTitleWraps detector.
+func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+
+	for si, slide := range input.Slides {
+		layout := findLayoutForSlide(&slide, layouts)
+		if layout == nil {
+			continue
+		}
+		for _, content := range slide.Content {
+			ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
+			if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
+				continue
+			}
+			if ph.Type != types.PlaceholderBody && ph.Type != types.PlaceholderContent {
+				continue
+			}
+			paragraphs := extractContentParagraphs(&content)
+			if len(paragraphs) == 0 {
+				continue
+			}
+			path := slidepath.Content(si, content.PlaceholderID)
+			findings = append(findings, generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
+				Path:        path,
+				Paragraphs:  paragraphs,
+				WidthEMU:    ph.Bounds.Width,
+				HeightEMU:   ph.Bounds.Height,
+				FontSizeHPt: ph.FontSize,
+				FontName:    ph.FontFamily,
+			})...)
+		}
+	}
+
+	return findings
+}
+
+// collectContrastPreflightFindings walks shape_grid cells that author both a
+// fill color and a text color, and emits contrast_predicted findings where
+// the renderer would auto-replace the text color.
+func collectContrastPreflightFindings(input *PresentationInput, themeColors []types.ThemeColor) []patterns.FitFinding {
+	if len(themeColors) == 0 {
+		return nil
+	}
+
+	var pairs []generator.ContrastPreflightPair
+	for si, slide := range input.Slides {
+		if slide.ShapeGrid == nil {
+			continue
+		}
+		for ri, row := range slide.ShapeGrid.Rows {
+			for ci, cell := range row.Cells {
+				if cell == nil || cell.Shape == nil {
+					continue
+				}
+				fill := extractShapeFillColor(cell.Shape.Fill)
+				if fill == "" {
+					continue
+				}
+				for _, tc := range extractShapeTextColors(cell.Shape.Text) {
+					pairs = append(pairs, generator.ContrastPreflightPair{
+						Path:       slidepath.GridCellField(si, ri, ci, "shape/text"),
+						Foreground: tc,
+						Background: fill,
+						Source:     "shape_grid",
+					})
+				}
+			}
+		}
+	}
+
+	return generator.DetectContrastPreflight(pairs, themeColors)
+}
+
+// extractShapeFillColor extracts a color string from a shape fill RawMessage.
+// Returns "" when fill is empty, "none", or unparseable.
+func extractShapeFillColor(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	// String form.
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		s = strings.TrimSpace(s)
+		if s == "" || strings.EqualFold(s, "none") {
+			return ""
+		}
+		return s
+	}
+	// Object form.
+	var obj struct {
+		Color string `json:"color"`
+	}
+	if err := json.Unmarshal(raw, &obj); err == nil && obj.Color != "" {
+		c := strings.TrimSpace(obj.Color)
+		if strings.EqualFold(c, "none") {
+			return ""
+		}
+		return c
+	}
+	return ""
+}
+
+// extractShapeTextColors extracts all authored text colors from a shape text
+// RawMessage. A single object-form text contributes one color (if set); a
+// paragraphs-array form contributes one color per paragraph that sets one.
+// String-form text contributes nothing (no authored color).
+func extractShapeTextColors(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	// String form has no color.
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return nil
+	}
+	// Object / paragraphs-array form.
+	var obj struct {
+		Color      string `json:"color"`
+		Paragraphs []struct {
+			Color string `json:"color"`
+		} `json:"paragraphs"`
+	}
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil
+	}
+	var colors []string
+	if obj.Color != "" {
+		colors = append(colors, obj.Color)
+	}
+	for _, p := range obj.Paragraphs {
+		if p.Color != "" {
+			colors = append(colors, p.Color)
+		}
+	}
+	return colors
 }

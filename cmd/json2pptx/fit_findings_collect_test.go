@@ -70,7 +70,7 @@ func TestCollectFitFindingsSorting(t *testing.T) {
 		Slides:   []SlideInput{{}, {}}, // Empty slides — no findings from here
 	}
 
-	findings := collectFitFindings(input, nil, 9144000, 6858000)
+	findings := collectFitFindings(input, nil, 9144000, 6858000, nil)
 	// With empty slides, expect no findings.
 	if len(findings) != 0 {
 		t.Errorf("expected 0 findings for empty slides, got %d", len(findings))

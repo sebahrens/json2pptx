@@ -144,7 +144,8 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 			layouts, err := template.ParseLayouts(reader)
 			if err == nil {
 				slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-				allFindings := collectFitFindings(&input, layouts, slideWidth, slideHeight)
+				theme := template.ParseTheme(reader)
+				allFindings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &theme)
 				// Filter to only findings for the repaired slide (and any slides
 				// created by split_at_row, which follow the original index).
 				newFindings = filterFindingsForSlide(allFindings, slideIdx)

@@ -502,7 +502,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Collect fit findings when requested.
 	var fitFindings []patterns.FitFinding
 	if fitReport, _ := request.GetArguments()["fit_report"].(bool); fitReport {
-		fitFindings = collectFitFindings(&input, templateLayouts, slideWidth, slideHeight)
+		fitFindings = collectFitFindings(&input, templateLayouts, slideWidth, slideHeight, &analysis.Theme)
 	}
 
 	// Append render-time fit findings from the generator (overflow, truncation, clamping).
@@ -826,7 +826,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		fitReport = v
 	}
 	if fitReport {
-		findings := collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight)
+		findings := collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight, &templateAnalysis.Theme)
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
 		output.FitFindings = BudgetFitFindings(findings, DefaultFindingBudget, verboseFit)
 	}

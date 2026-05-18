@@ -117,7 +117,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	templateMetadata, _ := template.ParseMetadata(reader)
 
 	// 1. Collect static fit findings from input JSON.
-	findings := collectFitFindings(&input, layouts, slideWidth, slideHeight)
+	findings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &analysis.Theme)
 
 	// 2. Run actual generation to a temp directory to capture render-time findings
 	//    (contrast swaps, autofit shrink, pagination, clamping).

@@ -206,6 +206,7 @@ type previewTemplateContext struct {
 	metadata     *types.TemplateMetadata
 	slideWidth   int64
 	slideHeight  int64
+	theme        *types.ThemeInfo
 }
 
 // loadPreviewTemplate opens and analyzes a template for the preview tool.
@@ -236,6 +237,7 @@ func loadPreviewTemplate(templatePath string) (*previewTemplateContext, error) {
 	}
 
 	metadata, _ := template.ParseMetadata(reader)
+	theme := template.ParseTheme(reader)
 
 	return &previewTemplateContext{
 		reader:      reader,
@@ -244,6 +246,7 @@ func loadPreviewTemplate(templatePath string) (*previewTemplateContext, error) {
 		metadata:    metadata,
 		slideWidth:  slideWidth,
 		slideHeight: slideHeight,
+		theme:       &theme,
 	}, nil
 }
 
@@ -532,7 +535,7 @@ func computePreviewFitFindings(input *PresentationInput, output *previewPlanOutp
 	}
 	resolvedInput.Slides = resolvedSlides
 
-	findings := collectFitFindings(&resolvedInput, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+	findings := collectFitFindings(&resolvedInput, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.theme)
 	return BudgetFitFindings(findings, DefaultFindingBudget, verbose)
 }
 

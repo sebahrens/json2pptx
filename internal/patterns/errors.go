@@ -61,6 +61,11 @@ const (
 	ErrCodeDiagramRenderFailed   = "diagram_render_failed"
 	ErrCodePaginationDefault     = "pagination_default_threshold"
 	ErrCodeColumnWidthDeficit    = "column_width_deficit"
+
+	// Preflight predictions for render-time behaviour. These mirror the
+	// render-time codes but are emitted from collectFitFindings using only
+	// template geometry, theme colors, and JSON content — no rendering.
+	ErrCodeContrastPredicted = "contrast_predicted"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -114,6 +119,8 @@ var (
 	ErrDiagramRenderFailed = errors.New("diagram rendering failed, placeholder image inserted")
 	ErrPaginationDefault   = errors.New("pagination using default threshold, no template capacity")
 	ErrColumnWidthDeficit  = errors.New("column widths fell back to global floor")
+
+	ErrContrastPredicted = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -161,6 +168,7 @@ var codeSentinel = map[string]error{
 	ErrCodeDiagramRenderFailed:   ErrDiagramRenderFailed,
 	ErrCodePaginationDefault:     ErrPaginationDefault,
 	ErrCodeColumnWidthDeficit:    ErrColumnWidthDeficit,
+	ErrCodeContrastPredicted:     ErrContrastPredicted,
 }
 
 // AllFitFindingCodes returns the sorted list of all fit-finding error codes.

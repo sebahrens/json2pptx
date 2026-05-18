@@ -425,6 +425,36 @@ See also: [PATTERNS.md Cell Capacity Contract](PATTERNS.md) for pattern-level ca
 }
 ```
 
+### `contrast_predicted`
+
+**Action:** `info`
+**Pattern:** *(none — preflight)*
+**Fix kind:** `replace_color`
+
+Preflight prediction that the renderer's contrast auto-fix pass would replace a text color to meet WCAG AA Large (3:1) contrast against its background. Emitted by `validate` and `preview_presentation_plan` (and downstream tools like `repair_slide` / `score_candidates`) using only theme colors and JSON content — no rendering. When the same input is generated, the corresponding `contrast_autofixed` finding will fire at render time with matching colors.
+
+The detector walks shape-grid cells that author both a fill color (on the shape) and a text color (on `shape.text` or on a paragraph in `shape.text.paragraphs`). Scheme names (`accent1`, `lt1`, …) are resolved against the template theme. Pairs that cannot be parsed are skipped.
+
+```json
+{
+  "path": "/slides/1/shape_grid/rows/0/cells/0/shape/text",
+  "code": "contrast_predicted",
+  "message": "predicted: low-contrast text will be auto-replaced — #FFFFFF → #595959 (on #FFE8D4, ratio 1.3 → 3.0)",
+  "fix": {
+    "kind": "replace_color",
+    "params": {
+      "original_color": "#FFFFFF",
+      "predicted_replacement": "#595959",
+      "background_color": "#FFE8D4",
+      "contrast_ratio_before": 1.3,
+      "contrast_ratio_after": 3.0,
+      "source": "shape_grid"
+    }
+  },
+  "action": "info"
+}
+```
+
 ### `contrast_autofixed`
 
 **Action:** `info`
