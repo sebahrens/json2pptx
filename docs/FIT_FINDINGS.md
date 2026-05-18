@@ -36,6 +36,7 @@ Every finding is a `FitFinding` (defined in `internal/patterns/fit_finding.go`) 
 | `allowed` | object | Available frame extent in EMU (omitted when N/A) |
 | `overflow_ratio` | float | `measured / allowed` as a fraction (omitted when 0) |
 | `next_tool_call` | object | Machine-readable MCP tool suggestion: `{tool, args_template}` (omitted for `info` findings) |
+| `segment_index` | integer | 0-based child segment index inside a compose envelope when the finding is attributable to one (omitted otherwise). Populated for compose-emitted findings (`COMPOSE_HORIZONTAL_TRUNCATION`, `COMPOSE_SEGMENT_BOUNDS_IGNORED`, `COMPOSE_SEGMENT_EXPAND_FAILED`) and for per-cell findings whose merged-grid row/col falls inside a segment's `row_range`/`col_range` (see `preview_presentation_plan` → `resolved_slides[].expanded_compose`). |
 
 ### `next_tool_call` Envelope
 

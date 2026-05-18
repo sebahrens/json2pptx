@@ -24,6 +24,12 @@ type previewPlanOutput struct {
 	Warnings       []string             `json:"warnings,omitempty"`
 	Errors         []string             `json:"errors,omitempty"`
 	FitFindings    []patterns.FitFinding `json:"fit_findings,omitempty"`
+
+	// composeFindings holds structured fit findings emitted during
+	// per-segment compose resolution (carrying segment_index). They are
+	// merged into FitFindings during computePreviewFitFindings so they
+	// participate in the same budgeting pass.
+	composeFindings []patterns.FitFinding `json:"-"`
 }
 
 // resolvedSlide describes the fully resolved plan for one slide.
@@ -35,6 +41,7 @@ type resolvedSlide struct {
 	SlideType           string                `json:"slide_type,omitempty"`
 	Placeholders        []resolvedPlaceholder `json:"placeholders"`
 	ExpandedPattern     *resolvedPattern      `json:"expanded_pattern,omitempty"`
+	ExpandedCompose     *resolvedCompose      `json:"expanded_compose,omitempty"`
 	ShapeGridResolution *resolvedShapeGrid    `json:"shape_grid_resolution,omitempty"`
 	AppliedDefaults     *resolvedDefaults     `json:"applied_defaults,omitempty"`
 	Occupancy           *resolvedOccupancy    `json:"occupancy,omitempty"`
@@ -68,6 +75,36 @@ type resolvedGeom struct {
 type resolvedPattern struct {
 	Name                string `json:"name"`
 	CellsAfterExpansion int    `json:"cells_after_expansion"`
+}
+
+// resolvedCompose describes the per-segment expansion of a compose envelope
+// so agents can see how each child segment was expanded and where it sits
+// within the merged grid without having to re-run expansion themselves.
+type resolvedCompose struct {
+	Direction string                   `json:"direction"`
+	Segments  []resolvedComposeSegment `json:"segments"`
+}
+
+// resolvedComposeSegment is one child segment of a compose envelope after
+// expansion. BoundsPct expresses the segment's rectangle as percentages of
+// the merged grid's region (0..100). RowRange and ColRange give the merged
+// grid's row/col indices the segment occupies (start inclusive, end exclusive).
+type resolvedComposeSegment struct {
+	Index               int                        `json:"index"`
+	Pattern             string                     `json:"pattern"`
+	CellsAfterExpansion int                        `json:"cells_after_expansion"`
+	BoundsPct           resolvedComposeSegmentRect `json:"bounds_pct"`
+	RowRange            [2]int                     `json:"row_range"`
+	ColRange            [2]int                     `json:"col_range"`
+}
+
+// resolvedComposeSegmentRect is a segment's rectangle in compose-merged space,
+// expressed as percentages of the merged grid (0..100).
+type resolvedComposeSegmentRect struct {
+	XPct      float64 `json:"x_pct"`
+	YPct      float64 `json:"y_pct"`
+	WidthPct  float64 `json:"width_pct"`
+	HeightPct float64 `json:"height_pct"`
 }
 
 // resolvedShapeGrid describes virtual layout resolution for shape_grid slides.
@@ -475,8 +512,13 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 	slide.ShapeGrid = expanded
 }
 
-// resolveSlideCompose expands a compose envelope and updates the slide's shape_grid.
-func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, _ *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
+// resolveSlideCompose expands a compose envelope and updates the slide's
+// shape_grid. It also populates rs.ExpandedCompose with per-segment expansion
+// metadata (pattern name, cell count, bounds_pct, and row/col ranges in the
+// merged grid) so agents can attribute findings to a specific segment, and
+// emits structured fit findings carrying segment_index for any
+// compose-time warnings.
+func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
 	expCtx := patterns.ExpandContext{
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
@@ -489,13 +531,27 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 	if err != nil {
 		output.Errors = append(output.Errors,
 			fmt.Sprintf("slide %d: compose: %v", i+1, err))
+		// Even on merge failure, the error itself is segment-attributable
+		// when expandPattern surfaced "compose: segment[N]: ...". Emit a
+		// structured finding so the agent can target the offending segment.
+		if rs != nil {
+			if f := composeErrorAsFinding(i, err); f != nil {
+				output.composeFindings = append(output.composeFindings, *f)
+			}
+		}
 		return
 	}
 	for _, w := range composeWarnings {
 		output.Warnings = append(output.Warnings,
 			fmt.Sprintf("slide %d: %s", i+1, w))
+		if f := composeWarningAsFinding(i, w); f != nil {
+			output.composeFindings = append(output.composeFindings, *f)
+		}
 	}
 	slide.ShapeGrid = expanded
+	if rs != nil {
+		rs.ExpandedCompose = buildExpandedCompose(slide.Compose, expCtx, patterns.Default(), expanded)
+	}
 }
 
 // resolveSlideShapeGrid resolves virtual layout and per-cell wireframe rects
@@ -591,6 +647,12 @@ func computePreviewFitFindings(input *PresentationInput, output *previewPlanOutp
 
 	findings := collectFitFindings(&resolvedInput, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.theme)
 	findings = append(findings, placeholderRemappedFindings(output.ResolvedSlides)...)
+	if len(output.composeFindings) > 0 {
+		findings = append(findings, output.composeFindings...)
+	}
+	// Attribute compose-merged grid cell findings to their originating
+	// segment using ExpandedCompose's per-segment row/col ranges.
+	attachComposeSegmentIndex(findings, output.ResolvedSlides)
 	return BudgetFitFindings(findings, DefaultFindingBudget, verbose)
 }
 

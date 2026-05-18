@@ -38,6 +38,12 @@ type FitFinding struct {
 	// that would resolve this finding. Populated for findings with action
 	// "refuse", "shrink_or_split", or "review".
 	NextToolCall *ToolCallSuggestion `json:"next_tool_call,omitempty"`
+
+	// SegmentIndex is the 0-based child segment index inside a compose envelope
+	// that the finding is attributable to. Nil when the finding is not
+	// segment-scoped (i.e. the slide is not a compose slide or the finding is
+	// emitted against the merged grid rather than a specific segment).
+	SegmentIndex *int `json:"segment_index,omitempty"`
 }
 
 // actionRanks maps action strings to severity ranks. Higher rank = more severe.

@@ -667,6 +667,38 @@ var outputSchemaPreviewPlan = json.RawMessage(`{
           "slide_type":            {"type": "string"},
           "placeholders":          {"type": "array", "items": {"type": "object"}},
           "expanded_pattern":      {"type": "object"},
+          "expanded_compose": {
+            "type": "object",
+            "description": "Per-segment expansion of a compose envelope. Lets agents attribute findings (segment_index) and inspect each child's bounds_pct + row/col ranges in the merged grid.",
+            "properties": {
+              "direction": {"type": "string", "enum": ["vertical", "horizontal"]},
+              "segments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "index":                 {"type": "integer"},
+                    "pattern":               {"type": "string"},
+                    "cells_after_expansion": {"type": "integer"},
+                    "bounds_pct": {
+                      "type": "object",
+                      "properties": {
+                        "x_pct":      {"type": "number"},
+                        "y_pct":      {"type": "number"},
+                        "width_pct":  {"type": "number"},
+                        "height_pct": {"type": "number"}
+                      },
+                      "required": ["x_pct", "y_pct", "width_pct", "height_pct"]
+                    },
+                    "row_range": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+                    "col_range": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2}
+                  },
+                  "required": ["index", "pattern", "cells_after_expansion", "bounds_pct"]
+                }
+              }
+            },
+            "required": ["direction", "segments"]
+          },
           "shape_grid_resolution": {
             "type": "object",
             "properties": {
