@@ -1,0 +1,45 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "palette_parity.pptx",
+  "slides": [
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Palette Parity Test"
+        }
+      ],
+      "shape_grid": {
+        "bounds": { "x": 10, "y": 30, "width": 80, "height": 55 },
+        "gap": 0,
+        "rows": [
+          {
+            "height": 100,
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "rect",
+                  "fill": "accent1",
+                  "line": { "color": "accent1", "width": 0 }
+                }
+              },
+              {
+                "diagram": {
+                  "type": "bar_chart",
+                  "data": {
+                    "categories": ["Single"],
+                    "series": [
+                      { "name": "Value", "values": [100] }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
