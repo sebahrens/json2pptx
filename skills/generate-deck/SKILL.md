@@ -669,7 +669,19 @@ Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`,
 | `remove_field` | Delete a top-level field from pattern values or from the slide (via JSON round-trip) | `path: string` | — |
 | `autofix_visual` | Map a visual-QA finding category to one or more candidate fix kinds and try them in order. Caller-supplied params are forwarded (caller wins). | `category: string` (visual QA finding category) | any params forwarded to the underlying kind |
 
-Unsupported kinds return `{applied: false, message: "kind_not_supported"}`. To discover this list programmatically at runtime, read `get_capabilities().vocabularies.repair_fix_kinds`.
+Unsupported kinds return:
+
+```json
+{
+  "applied": false,
+  "code": "kind_not_supported",
+  "message": "kind_not_supported",
+  "supported_kinds": ["add_items", "autofix_visual", "provide_value", ...],
+  "next_tool_call": {"tool": "get_capabilities", "args_template": {}}
+}
+```
+
+`supported_kinds` is the full authoritative vocabulary inline — recover by retrying with one of those kinds instead of issuing a separate `get_capabilities` call. The `next_tool_call` is still surfaced as a fallback for agents that want to consume the canonical capabilities snapshot. The list is identical to `get_capabilities().vocabularies.repair_fix_kinds` and a compile-time test (`TestBuildCapabilitiesContract/repair_fix_kinds matches applyRepairFix switch cases`) keeps the two in lock-step.
 
 ### Chart Finding Codes
 

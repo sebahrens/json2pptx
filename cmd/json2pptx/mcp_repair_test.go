@@ -280,6 +280,97 @@ func TestRepairSlide_UnsupportedKind(t *testing.T) {
 	if output.AppliedFixes[0].Message != "kind_not_supported" {
 		t.Errorf("expected message 'kind_not_supported', got %q", output.AppliedFixes[0].Message)
 	}
+	if output.AppliedFixes[0].Code != "kind_not_supported" {
+		t.Errorf("expected code 'kind_not_supported', got %q", output.AppliedFixes[0].Code)
+	}
+	// supported_kinds must be the full advertised vocabulary so agents can
+	// recover without a separate get_capabilities round-trip.
+	advertised := repairFixKinds()
+	if len(output.AppliedFixes[0].SupportedKinds) != len(advertised) {
+		t.Fatalf("supported_kinds length = %d, want %d (advertised vocabulary)",
+			len(output.AppliedFixes[0].SupportedKinds), len(advertised))
+	}
+	for i, k := range advertised {
+		if output.AppliedFixes[0].SupportedKinds[i] != k {
+			t.Errorf("supported_kinds[%d] = %q, want %q", i, output.AppliedFixes[0].SupportedKinds[i], k)
+		}
+	}
+	// next_tool_call points the agent at get_capabilities for the authoritative list.
+	if output.AppliedFixes[0].NextToolCall == nil {
+		t.Fatal("expected next_tool_call to be populated")
+	}
+	if output.AppliedFixes[0].NextToolCall.Tool != "get_capabilities" {
+		t.Errorf("expected next_tool_call.tool == 'get_capabilities', got %q", output.AppliedFixes[0].NextToolCall.Tool)
+	}
+}
+
+// TestRepairSlide_UnsupportedKind_MadeUp exercises the acceptance criterion
+// "a request with kind='made_up' returns the full supported list" from issue
+// go-slide-creator-1nsb.
+func TestRepairSlide_UnsupportedKind_MadeUp(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := minimalDeck(
+		map[string]any{
+			"placeholder_id": "title",
+			"type":           "text",
+			"text_value":     "Hello",
+		},
+	)
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "made_up"}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatal("unsupported kind should not be an error, just not applied")
+	}
+
+	// Parse as raw JSON so we exercise the wire-level contract that agents see.
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(textContent(result)), &raw); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	fixes := raw["applied_fixes"].([]any)
+	if len(fixes) != 1 {
+		t.Fatalf("expected 1 applied_fix entry, got %d", len(fixes))
+	}
+	fix := fixes[0].(map[string]any)
+	if fix["applied"] != false {
+		t.Errorf("expected applied=false, got %v", fix["applied"])
+	}
+	if fix["code"] != "kind_not_supported" {
+		t.Errorf("expected code='kind_not_supported', got %v", fix["code"])
+	}
+
+	supported, ok := fix["supported_kinds"].([]any)
+	if !ok {
+		t.Fatalf("supported_kinds missing or not an array: %v", fix["supported_kinds"])
+	}
+	advertised := repairFixKinds()
+	if len(supported) != len(advertised) {
+		t.Fatalf("supported_kinds len=%d, want %d", len(supported), len(advertised))
+	}
+	for i, want := range advertised {
+		if supported[i] != want {
+			t.Errorf("supported_kinds[%d]=%v, want %q", i, supported[i], want)
+		}
+	}
+
+	ntc, ok := fix["next_tool_call"].(map[string]any)
+	if !ok {
+		t.Fatal("next_tool_call missing or not an object")
+	}
+	if ntc["tool"] != "get_capabilities" {
+		t.Errorf("next_tool_call.tool=%v, want 'get_capabilities'", ntc["tool"])
+	}
+	if _, ok := ntc["args_template"].(map[string]any); !ok {
+		t.Errorf("next_tool_call.args_template missing or not an object: %v", ntc["args_template"])
+	}
 }
 
 func TestRepairSlide_InvalidSlideIndex(t *testing.T) {

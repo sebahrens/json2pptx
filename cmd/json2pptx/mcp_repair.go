@@ -35,6 +35,20 @@ type appliedFix struct {
 	Kind    string `json:"kind"`
 	Applied bool   `json:"applied"`
 	Message string `json:"message,omitempty"`
+
+	// Code is a machine-readable error code populated on non-applied results
+	// (e.g. "kind_not_supported"). Empty on success.
+	Code string `json:"code,omitempty"`
+
+	// SupportedKinds is the full list of fix kinds the engine accepts. Populated
+	// only when Code == "kind_not_supported" so agents can recover without a
+	// separate get_capabilities round-trip.
+	SupportedKinds []string `json:"supported_kinds,omitempty"`
+
+	// NextToolCall is a machine-readable suggestion for the agent to recover
+	// from a non-applied result (e.g. call get_capabilities to discover the
+	// current vocabulary). Omitted when there is no actionable next step.
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // repairFixInput is one fix directive from the caller.
@@ -67,7 +81,7 @@ Supported fix kinds (V1):
 - reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
 - autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
 
-Unsupported kinds return {applied: false, message: "kind_not_supported"} — agents can fall back to full regeneration.`),
+Unsupported kinds return {applied: false, code: "kind_not_supported", message: "kind_not_supported", supported_kinds: [...full vocabulary...], next_tool_call: {tool: "get_capabilities", args_template: {}}}. Agents can retry with a kind from supported_kinds or call get_capabilities for the authoritative list.`),
 		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
 		mcp.WithObject("presentation",
 			mcp.Required(),
@@ -223,9 +237,15 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyAutofixVisual(input, slideIdx, fix.Params)
 	default:
 		return appliedFix{
-			Kind:    fix.Kind,
-			Applied: false,
-			Message: "kind_not_supported",
+			Kind:           fix.Kind,
+			Applied:        false,
+			Code:           "kind_not_supported",
+			Message:        "kind_not_supported",
+			SupportedKinds: repairFixKinds(),
+			NextToolCall: &patterns.ToolCallSuggestion{
+				Tool:         "get_capabilities",
+				ArgsTemplate: map[string]any{},
+			},
 		}
 	}
 }

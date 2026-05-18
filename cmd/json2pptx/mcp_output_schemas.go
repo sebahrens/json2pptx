@@ -682,9 +682,19 @@ var outputSchemaRepairSlide = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
-          "kind":    {"type": "string"},
-          "applied": {"type": "boolean"},
-          "message": {"type": "string"}
+          "kind":            {"type": "string"},
+          "applied":         {"type": "boolean"},
+          "message":         {"type": "string"},
+          "code":            {"type": "string"},
+          "supported_kinds": {"type": "array", "items": {"type": "string"}},
+          "next_tool_call": {
+            "type": "object",
+            "properties": {
+              "tool":          {"type": "string"},
+              "args_template": {"type": "object"}
+            },
+            "required": ["tool", "args_template"]
+          }
         },
         "required": ["kind", "applied"]
       }
