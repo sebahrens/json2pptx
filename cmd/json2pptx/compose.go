@@ -9,6 +9,38 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
+// composeMaxSegments is the maximum number of top-level segments allowed in a
+// single compose envelope. Agents that need to arrange more patterns on one
+// slide should nest a compose inside a segment (see go-slide-creator-f1ic.2).
+// The value is surfaced through get_capabilities().features.compose.max_segments
+// so agents can discover it without parsing error messages.
+const composeMaxSegments = 8
+
+// composeDirections enumerates the directions a compose envelope may use.
+// Kept here so capabilities discovery and the validator share one source.
+var composeDirections = []string{"vertical", "horizontal"}
+
+// composeFeatureCapabilities describes the compose feature flags surfaced
+// through get_capabilities().features.compose.
+type composeFeatureCapabilities struct {
+	MaxSegments         int      `json:"max_segments"`
+	Directions          []string `json:"directions"`
+	SupportsSmartCompose bool    `json:"supports_smart_compose"`
+}
+
+// composeCapabilities returns the canonical compose capability descriptor.
+// It is the single source of truth used by both validateCompose and
+// get_capabilities to keep the advertised cap in sync with the enforced cap.
+func composeCapabilities() composeFeatureCapabilities {
+	dirs := make([]string, len(composeDirections))
+	copy(dirs, composeDirections)
+	return composeFeatureCapabilities{
+		MaxSegments:          composeMaxSegments,
+		Directions:           dirs,
+		SupportsSmartCompose: true,
+	}
+}
+
 // ComposeInput defines a composition envelope that arranges multiple patterns
 // on a single slide. Each segment is independently validated and expanded,
 // then the resulting grids are merged into a single ShapeGridInput.
@@ -74,8 +106,12 @@ func validateCompose(c *ComposeInput) error {
 	if len(c.Segments) < 2 {
 		return fmt.Errorf("compose: requires at least 2 segments, got %d", len(c.Segments))
 	}
-	if len(c.Segments) > 4 {
-		return fmt.Errorf("compose: maximum 4 segments allowed, got %d", len(c.Segments))
+	maxSeg := composeCapabilities().MaxSegments
+	if len(c.Segments) > maxSeg {
+		return fmt.Errorf(
+			"compose: maximum %d segments allowed, got %d — for larger arrangements nest a compose envelope inside a segment (see get_capabilities().features.compose.max_segments)",
+			maxSeg, len(c.Segments),
+		)
 	}
 
 	// Validate size_pct values

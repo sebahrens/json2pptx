@@ -141,9 +141,10 @@ func TestExpandCompose_EqualSplit(t *testing.T) {
 
 func TestValidateCompose_Errors(t *testing.T) {
 	tests := []struct {
-		name    string
-		compose ComposeInput
-		wantErr string
+		name      string
+		compose   ComposeInput
+		wantErr   string
+		wantNoErr bool
 	}{
 		{
 			name: "invalid direction",
@@ -176,9 +177,31 @@ func TestValidateCompose_Errors(t *testing.T) {
 					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
 					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
 					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
 				},
 			},
-			wantErr: "maximum 4 segments",
+			wantErr: "maximum 8 segments",
+		},
+		{
+			name: "exactly at cap (8 segments) passes structural checks",
+			compose: ComposeInput{
+				Direction: "vertical",
+				Segments: []SegmentInput{
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+				},
+			},
+			// no wantErr — this is the boundary case
+			wantNoErr: true,
 		},
 		{
 			name: "size exceeds 100",
@@ -196,6 +219,12 @@ func TestValidateCompose_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateCompose(&tt.compose)
+			if tt.wantNoErr {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				return
+			}
 			if err == nil {
 				t.Fatal("expected error")
 			}

@@ -78,16 +78,17 @@ type capabilitiesFitReport struct {
 
 // capabilitiesFeatures describes feature flags the server supports.
 type capabilitiesFeatures struct {
-	StrictFit            []string              `json:"strict_fit"`
-	CompactResponses     bool                  `json:"compact_responses"`
-	FitReport            capabilitiesFitReport `json:"fit_report"`
-	StrictUnknownKeys    bool                  `json:"strict_unknown_keys"`
-	NamedPatterns        bool                  `json:"named_patterns"`
-	TemplateSettings     bool                  `json:"template_settings"`
-	SupportsInlineMarkup []string              `json:"supports_inline_markup"`
-	SupportsSpeakerNotes bool                  `json:"supports_speaker_notes"`
-	OutputValidation     []string              `json:"output_validation"`
-	FeatureVersions      map[string]string     `json:"feature_versions"`
+	StrictFit            []string                   `json:"strict_fit"`
+	CompactResponses     bool                       `json:"compact_responses"`
+	FitReport            capabilitiesFitReport      `json:"fit_report"`
+	StrictUnknownKeys    bool                       `json:"strict_unknown_keys"`
+	NamedPatterns        bool                       `json:"named_patterns"`
+	TemplateSettings     bool                       `json:"template_settings"`
+	SupportsInlineMarkup []string                   `json:"supports_inline_markup"`
+	SupportsSpeakerNotes bool                       `json:"supports_speaker_notes"`
+	OutputValidation     []string                   `json:"output_validation"`
+	Compose              composeFeatureCapabilities `json:"compose"`
+	FeatureVersions      map[string]string          `json:"feature_versions"`
 }
 
 // mcpToolCatalog returns the full list of MCP tools with version metadata,
@@ -233,6 +234,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			SupportsInlineMarkup: []string{"b", "i", "u"},
 			SupportsSpeakerNotes: true,
 			OutputValidation:     []string{"off", "warn", "strict"},
+			Compose:              composeCapabilities(),
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -243,6 +245,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"supports_inline_markup": "2.5.0",
 				"supports_speaker_notes": "2.5.0",
 				"output_validation":      "4.6.0",
+				"compose":                "4.10.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

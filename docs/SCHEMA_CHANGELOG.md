@@ -4,6 +4,19 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.10.0 (2026-05-18)
+
+### Added
+
+- **`get_capabilities().features.compose`** — surfaces the compose envelope
+  capabilities so agents can discover the segment cap without reverse-engineering
+  it from error messages. Returns `{max_segments: int, directions: [string],
+  supports_smart_compose: bool}`. `max_segments` is bumped from 4 → **8** in
+  this release; for larger arrangements nest a compose envelope inside a
+  segment (see `go-slide-creator-f1ic.2`). The validator's error message also
+  now points agents at this capability and the nested-compose escape hatch.
+  Closes `go-slide-creator-f1ic.3`.
+
 ## 4.9.0 (2026-05-18)
 
 ### Added

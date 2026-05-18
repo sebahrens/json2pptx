@@ -153,6 +153,33 @@ func TestMCPGetCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("features.compose advertises the enforced cap", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		c := resp.Features.Compose
+		if c.MaxSegments != composeMaxSegments {
+			t.Errorf("compose.max_segments = %d, want %d (same as enforced cap)", c.MaxSegments, composeMaxSegments)
+		}
+		if len(c.Directions) == 0 {
+			t.Error("compose.directions should be non-empty")
+		}
+		// Directions must match the validator's accepted set.
+		seenVert, seenHoriz := false, false
+		for _, d := range c.Directions {
+			switch d {
+			case "vertical":
+				seenVert = true
+			case "horizontal":
+				seenHoriz = true
+			}
+		}
+		if !seenVert || !seenHoriz {
+			t.Errorf("compose.directions missing vertical/horizontal: %v", c.Directions)
+		}
+		if !c.SupportsSmartCompose {
+			t.Error("compose.supports_smart_compose should be true")
+		}
+	})
+
 	t.Run("runtime section is populated", func(t *testing.T) {
 		resp := getCapabilitiesResult(t)
 		rt := resp.Runtime

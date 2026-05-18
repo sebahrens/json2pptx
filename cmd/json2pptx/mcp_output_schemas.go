@@ -892,6 +892,15 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "template_settings":      {"type": "boolean"},
         "supports_inline_markup": {"type": "array", "items": {"type": "string"}},
         "supports_speaker_notes": {"type": "boolean"},
+        "compose": {
+          "type": "object",
+          "properties": {
+            "max_segments":           {"type": "integer"},
+            "directions":             {"type": "array", "items": {"type": "string"}},
+            "supports_smart_compose": {"type": "boolean"}
+          },
+          "required": ["max_segments", "directions", "supports_smart_compose"]
+        },
         "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
       }
     },
