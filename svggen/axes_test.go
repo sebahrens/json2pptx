@@ -521,19 +521,66 @@ func TestAxis_WithRotatedLabels(t *testing.T) {
 	categories := []string{"January", "February", "March", "April"}
 	scale := NewCategoricalScale(categories).SetRangeCategorical(0, 350)
 
+	const axisX, axisY = 25.0, 250.0
 	config := DefaultAxisConfig(AxisPositionBottom)
 	config.LabelRotation = -45
 	axis := NewAxis(builder, config)
 
-	axis.DrawCategoricalAxis(scale, 25, 250)
+	axis.DrawCategoricalAxis(scale, axisX, axisY)
 
 	svg, err := builder.RenderToString()
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
 
-	if !strings.Contains(svg, "svg") {
-		t.Error("Output should contain svg element")
+	// Anchor invariants for a categorical bottom axis with negative rotation:
+	// every rotated <text> must be RIGHT-aligned (TextAlignRight) so the label
+	// hangs down-and-left from its pivot. For rotated <text transform=...>
+	// elements the canvas library encodes right-alignment by negating the
+	// tspan x offset (it shifts the text backward by its measured width); a
+	// non-negative tspan x means the label is still left-anchored — the
+	// pre-fix behavior described in go-slide-creator-5wun (LineChart) and the
+	// shared-bug for the manual-thinning path.
+	//
+	// Detailed geometric invariants (pivot X shifted LEFT by tickPadding/√2,
+	// no +fontSize Y band-aid, post-rotation bbox below the axis line) are
+	// covered by TestAxis_RotatedLabelsStayBelowAxisLine.
+	textRe := regexp.MustCompile(
+		`<text transform="translate\([0-9.\-]+,[0-9.\-]+\) rotate\(([0-9.\-]+)\)"[^>]*><tspan x="([0-9.\-]+)" y="[0-9.\-]+">([^<]+)</tspan></text>`,
+	)
+	matches := textRe.FindAllStringSubmatch(svg, -1)
+	if len(matches) < len(categories) {
+		t.Fatalf("expected ≥ %d rotated <text> elements, found %d", len(categories), len(matches))
+	}
+
+	seen := 0
+	for _, m := range matches {
+		angle, _ := strconv.ParseFloat(m[1], 64)
+		tspanX, _ := strconv.ParseFloat(m[2], 64)
+		text := m[3]
+
+		matched := false
+		for _, c := range categories {
+			if c == text {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		seen++
+
+		if math.Abs(angle-(-45)) > 0.01 {
+			t.Errorf("label %q: rotation=%.2f, want -45", text, angle)
+		}
+		// Negative tspan x ⇔ right-aligned anchor on rotated text.
+		if tspanX >= 0 {
+			t.Errorf("label %q: tspan x=%.2f ≥ 0 — label is left-anchored despite negative rotation (TextAlignRight expected)", text, tspanX)
+		}
+	}
+	if seen < len(categories) {
+		t.Errorf("only matched %d of %d categories in rotated text elements", seen, len(categories))
 	}
 }
 

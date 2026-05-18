@@ -378,15 +378,21 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 			labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
 
 			if xLabelRotation != 0 {
-				labelY += axisFontSize // offset to avoid overlapping axis line
-				b.Push()
-				b.RotateAround(xLabelRotation, labelX, labelY)
-				// Negative rotation (e.g. -45°): text-anchor:end so label
-				// extends down-left away from the chart area.
+				// Match the unified drawTick geometry: no vertical band-aid;
+				// shift pivot horizontally by tickPadding/√2 and pick rotAlign
+				// by rotation sign so the rotated bbox lands cleanly below the
+				// tick mark. Negative rotation (e.g. -45°) → text-anchor:end
+				// so the label extends down-left away from the chart area.
+				gap := xAxisConfig.TickPadding / math.Sqrt2
 				rotAlign := TextAlignLeft
 				if xLabelRotation < 0 {
+					labelX -= gap
 					rotAlign = TextAlignRight
+				} else {
+					labelX += gap
 				}
+				b.Push()
+				b.RotateAround(xLabelRotation, labelX, labelY)
 				b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
 				b.Pop()
 			} else {

@@ -623,13 +623,20 @@ func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFon
 			labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
 
 			if xLabelRotation != 0 {
-				labelY += axisFontSize // offset to avoid overlapping axis line
-				b.Push()
-				b.RotateAround(xLabelRotation, labelX, labelY)
+				// Match the unified drawTick geometry: no vertical band-aid;
+				// shift pivot horizontally by tickPadding/√2 and pick rotAlign
+				// by rotation sign so the rotated bbox lands cleanly below the
+				// tick mark.
+				gap := xAxisConfig.TickPadding / math.Sqrt2
 				rotAlign := TextAlignLeft
 				if xLabelRotation < 0 {
+					labelX -= gap
 					rotAlign = TextAlignRight
+				} else {
+					labelX += gap
 				}
+				b.Push()
+				b.RotateAround(xLabelRotation, labelX, labelY)
 				b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
 				b.Pop()
 			} else {
@@ -680,13 +687,20 @@ func (bc *BarChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *Li
 			labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
 
 			if xLabelRotation != 0 {
-				labelY += axisFontSize // offset to avoid overlapping axis line
-				b.Push()
-				b.RotateAround(xLabelRotation, labelX, labelY)
+				// Match the unified drawTick geometry: no vertical band-aid;
+				// shift pivot horizontally by tickPadding/√2 and pick rotAlign
+				// by rotation sign so the rotated bbox lands cleanly below the
+				// tick mark.
+				gap := xAxisConfig.TickPadding / math.Sqrt2
 				rotAlign := TextAlignLeft
 				if xLabelRotation < 0 {
+					labelX -= gap
 					rotAlign = TextAlignRight
+				} else {
+					labelX += gap
 				}
+				b.Push()
+				b.RotateAround(xLabelRotation, labelX, labelY)
 				b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
 				b.Pop()
 			} else {
@@ -1321,10 +1335,21 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 				labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
 
 				if xLayout.Rotation != 0 {
-					labelY += xLayout.FontSize * 0.5 // offset to avoid overlapping axis line
+					// Match the unified drawTick geometry: no vertical band-aid;
+					// shift pivot horizontally by tickPadding/√2 and pick rotAlign
+					// by rotation sign so the rotated bbox lands cleanly below the
+					// tick mark (parity with BarChart/Waterfall).
+					gap := xAxisConfig.TickPadding / math.Sqrt2
+					rotAlign := TextAlignLeft
+					if xLayout.Rotation < 0 {
+						labelX -= gap
+						rotAlign = TextAlignRight
+					} else {
+						labelX += gap
+					}
 					b.Push()
 					b.RotateAround(xLayout.Rotation, labelX, labelY)
-					b.DrawText(cat, labelX, labelY, TextAlignLeft, TextBaselineTop)
+					b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
 					b.Pop()
 				} else {
 					b.DrawText(cat, labelX, labelY, TextAlignCenter, TextBaselineTop)

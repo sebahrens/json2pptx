@@ -3,6 +3,8 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -1558,5 +1560,143 @@ func TestRadarChartExceedsMaxValue(t *testing.T) {
 	err := chart.Draw(data)
 	if err != nil {
 		t.Fatalf("Failed to draw radar chart with values exceeding max: %v", err)
+	}
+}
+
+// rotatedLabel captures the SVG anchor of one rotated <text> element. tspanX
+// is the offset of the tspan inside the rotated frame; a negative value means
+// the canvas library shifted the text backward to express right-alignment
+// (TextAlignRight). For left-aligned rotated text tspanX is ≈ 0.
+type rotatedLabel struct {
+	tx, ty, angle, tspanX float64
+}
+
+// rotatedLabelRe matches the canvas library's emission for rotated text:
+//
+//	<text transform="translate(TX,TY) rotate(A)" ...><tspan x="X" y="Y">LABEL</tspan></text>
+var rotatedLabelRe = regexp.MustCompile(
+	`<text transform="translate\(([0-9.\-]+),([0-9.\-]+)\) rotate\(([0-9.\-]+)\)"[^>]*><tspan x="([0-9.\-]+)" y="[0-9.\-]+">([^<]+)</tspan></text>`,
+)
+
+// TestBarLineRotatedLabelParity is the regression test for
+// go-slide-creator-5wun. It renders a BarChart and a LineChart with the same
+// many-long-category data on the same canvas, forcing AdaptXLabels into the
+// manual-thinning + rotation branch in each chart's drawAxes path. It then
+// asserts:
+//
+//  1. Both chart types emit rotated <text> elements for the thinned X-axis
+//     ticks (the manual-thinning branch fired).
+//  2. Both chart types use the SAME rotation angle (driven by the shared
+//     AdaptXLabels output) — neither swings the wrong way.
+//  3. Both chart types right-anchor the rotated labels (tspanX < 0 ⇔
+//     TextAlignRight) — fixes the LineChart "wrong direction" half of the bug.
+//  4. Both chart types apply the SAME post-rotation pivot Y for matched ticks
+//     — the LineChart no longer "rides higher" than the BarChart because the
+//     labelY = tickY2 + tickPadding formula is now shared (no +fontSize*0.5
+//     band-aid). Pivot X cannot be compared absolutely across chart types
+//     because BarChart adds bar-group padding to its categorical scale while
+//     LineChart packs categories without padding.
+func TestBarLineRotatedLabelParity(t *testing.T) {
+	categories := []string{
+		"VeryLongCategoryOne", "VeryLongCategoryTwo", "VeryLongCategoryThree",
+		"VeryLongCategoryFour", "VeryLongCategoryFive", "VeryLongCategorySix",
+		"VeryLongCategorySeven", "VeryLongCategoryEight", "VeryLongCategoryNine",
+		"VeryLongCategoryTen", "VeryLongCategoryEleven", "VeryLongCategoryTwelve",
+		"VeryLongCategoryThirteen", "VeryLongCategoryFourteen", "VeryLongCategoryFifteen",
+		"VeryLongCategorySixteen", "VeryLongCategorySeventeen", "VeryLongCategoryEighteen",
+	}
+	values := make([]float64, len(categories))
+	for i := range values {
+		values[i] = float64(10 + i*3)
+	}
+	data := ChartData{
+		Title:      "Parity",
+		Categories: categories,
+		Series:     []ChartSeries{{Name: "S", Values: values}},
+	}
+
+	// Render BarChart
+	barB := NewSVGBuilder(360, 280)
+	barCfg := DefaultBarChartConfig(360, 280)
+	if err := NewBarChart(barB, barCfg).Draw(data); err != nil {
+		t.Fatalf("BarChart draw: %v", err)
+	}
+	barSVG, err := barB.RenderToString()
+	if err != nil {
+		t.Fatalf("BarChart render: %v", err)
+	}
+
+	// Render LineChart
+	lineB := NewSVGBuilder(360, 280)
+	lineCfg := DefaultLineChartConfig(360, 280)
+	if err := NewLineChart(lineB, lineCfg).Draw(data); err != nil {
+		t.Fatalf("LineChart draw: %v", err)
+	}
+	lineSVG, err := lineB.RenderToString()
+	if err != nil {
+		t.Fatalf("LineChart render: %v", err)
+	}
+
+	// Collect only the rotated <text> elements whose angle matches AdaptXLabels'
+	// X-axis tick rotation range (−45° or −60°). This excludes the rotated
+	// Y-axis title and any other non-tick rotated text from the comparison.
+	// Categories may be truncated by AdaptXLabels' step-4 ellipsis fallback,
+	// so we compare by document order rather than label string.
+	xTickFilterOrdered := func(svg string) []rotatedLabel {
+		out := make([]rotatedLabel, 0)
+		for _, m := range rotatedLabelRe.FindAllStringSubmatch(svg, -1) {
+			tx, _ := strconv.ParseFloat(m[1], 64)
+			ty, _ := strconv.ParseFloat(m[2], 64)
+			ang, _ := strconv.ParseFloat(m[3], 64)
+			tspan, _ := strconv.ParseFloat(m[4], 64)
+			if ang != -45 && ang != -60 {
+				continue
+			}
+			out = append(out, rotatedLabel{tx: tx, ty: ty, angle: ang, tspanX: tspan})
+		}
+		return out
+	}
+
+	barTicks := xTickFilterOrdered(barSVG)
+	lineTicks := xTickFilterOrdered(lineSVG)
+
+	if len(barTicks) == 0 {
+		t.Fatalf("BarChart: expected rotated X-axis tick labels, got 0 — test inputs failed to trigger thinning+rotation")
+	}
+	if len(lineTicks) == 0 {
+		t.Fatalf("LineChart: expected rotated X-axis tick labels, got 0 — test inputs failed to trigger thinning+rotation")
+	}
+
+	// Invariant: both charts right-anchor their rotated X-axis labels.
+	for i, lab := range barTicks {
+		if lab.tspanX >= 0 {
+			t.Errorf("BarChart tick[%d]: tspanX=%.2f ≥ 0 — not right-anchored on negative rotation", i, lab.tspanX)
+		}
+	}
+	for i, lab := range lineTicks {
+		if lab.tspanX >= 0 {
+			t.Errorf("LineChart tick[%d]: tspanX=%.2f ≥ 0 — not right-anchored on negative rotation (LineChart manual-thinning regression)", i, lab.tspanX)
+		}
+	}
+
+	// Invariant: identical rotation angle and identical pivot Y for every
+	// rotated X-tick at the same document position. The BarChart and LineChart
+	// manual-thinning loops iterate categories in the same order after
+	// AdaptXLabels, so a positional pairing is precise. Pivot X is NOT
+	// compared because BarChart adds bar-group padding to its categorical
+	// scale while LineChart does not — the band centres legitimately differ.
+	n := len(barTicks)
+	if len(lineTicks) < n {
+		n = len(lineTicks)
+	}
+	const tolPx = 1.0
+	for i := 0; i < n; i++ {
+		bar, ln := barTicks[i], lineTicks[i]
+		if math.Abs(bar.angle-ln.angle) > 0.01 {
+			t.Errorf("tick[%d]: rotation angle differs Bar=%.2f Line=%.2f", i, bar.angle, ln.angle)
+		}
+		if dy := math.Abs(bar.ty - ln.ty); dy > tolPx {
+			t.Errorf("tick[%d]: pivot Y differs Bar=%.2f Line=%.2f (Δ=%.2fpx) — LineChart \"rides higher\" regression", i, bar.ty, ln.ty, dy)
+		}
 	}
 }
