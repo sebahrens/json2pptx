@@ -931,11 +931,14 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "compose": {
           "type": "object",
           "properties": {
-            "max_segments":           {"type": "integer"},
-            "directions":             {"type": "array", "items": {"type": "string"}},
-            "supports_smart_compose": {"type": "boolean"}
+            "max_segments":            {"type": "integer"},
+            "max_nesting_depth":       {"type": "integer"},
+            "max_leaf_patterns":       {"type": "integer"},
+            "directions":              {"type": "array", "items": {"type": "string"}},
+            "supports_smart_compose":  {"type": "boolean"},
+            "supports_nested_compose": {"type": "boolean"}
           },
-          "required": ["max_segments", "directions", "supports_smart_compose"]
+          "required": ["max_segments", "max_nesting_depth", "max_leaf_patterns", "directions", "supports_smart_compose", "supports_nested_compose"]
         },
         "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
       }

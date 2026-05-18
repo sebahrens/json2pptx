@@ -158,6 +158,11 @@ func checkComposeUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 			if patRaw, ok := segObj["pattern"]; ok {
 				warnings = append(warnings, checkUnknownKeysForType(patRaw, reflect.TypeOf(PatternInput{}), p+"/pattern")...)
 			}
+			// Recurse into a nested compose envelope so unknown keys deep in
+			// the tree still surface with the correct JSON path.
+			if subRaw, ok := segObj["compose"]; ok {
+				warnings = append(warnings, checkComposeUnknownKeys(subRaw, p+"/compose")...)
+			}
 		}
 	}
 	return warnings

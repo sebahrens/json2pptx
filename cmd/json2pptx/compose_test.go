@@ -687,3 +687,232 @@ func cellHasContent(c *jsonschema.GridCellInput) bool {
 	return c.Shape != nil || c.Table != nil || c.Icon != nil ||
 		c.Image != nil || c.Diagram != nil
 }
+
+// TestExpandCompose_NestedVerticalContainingHorizontal verifies that a
+// vertical compose envelope whose middle segment nests a horizontal compose
+// (banner / pillars-row / foundation) expands cleanly and the merged grid
+// preserves every leaf pattern's content cells. This is the canonical use
+// case from go-slide-creator-f1ic.2.
+func TestExpandCompose_NestedVerticalContainingHorizontal(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "vertical",
+		Segments: []SegmentInput{
+			{
+				SizePct: 20,
+				Pattern: PatternInput{
+					Name:   "stat-hero",
+					Values: json.RawMessage(`{"value": "Mission", "label": "Banner"}`),
+				},
+			},
+			{
+				SizePct: 60,
+				Compose: &ComposeInput{
+					Direction: "horizontal",
+					Segments: []SegmentInput{
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "P1", "label": "Pillar A"}`)}},
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "P2", "label": "Pillar B"}`)}},
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "P3", "label": "Pillar C"}`)}},
+					},
+				},
+			},
+			{
+				SizePct: 20,
+				Pattern: PatternInput{
+					Name:   "stat-hero",
+					Values: json.RawMessage(`{"value": "Foundation", "label": "Footer"}`),
+				},
+			},
+		},
+	}
+
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+	grid, warnings, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if grid == nil {
+		t.Fatal("expandCompose returned nil grid")
+	}
+	for _, w := range warnings {
+		if contains(w, "COMPOSE_HORIZONTAL_TRUNCATION") {
+			t.Errorf("nested expansion should not truncate cells: %v", w)
+		}
+	}
+
+	// Count cells with rendered content across the merged grid; every leaf
+	// pattern should contribute at least one content cell, so we expect >=5.
+	var contentCells int
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cellHasContent(cell) {
+				contentCells++
+			}
+		}
+	}
+	if contentCells < 5 {
+		t.Errorf("nested compose should preserve all five leaf patterns' content; got %d content cells", contentCells)
+	}
+
+	// Row heights from the three outer segments should sum to ~100%.
+	totalHeight := 0.0
+	for _, row := range grid.Rows {
+		totalHeight += row.Height
+	}
+	if totalHeight < 99 || totalHeight > 101 {
+		t.Errorf("outer row heights should sum to ~100%%, got %.2f", totalHeight)
+	}
+}
+
+// TestValidateCompose_NestedDepth ensures the validator accepts depth-2
+// envelopes, rejects depth-3 envelopes, and applies the same structural
+// checks (e.g., segment count) inside nested envelopes.
+func TestValidateCompose_NestedDepth(t *testing.T) {
+	makeLeaf := func() SegmentInput {
+		return SegmentInput{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}}
+	}
+
+	t.Run("depth 2 accepted", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "vertical",
+			Segments: []SegmentInput{
+				makeLeaf(),
+				{Compose: &ComposeInput{
+					Direction: "horizontal",
+					Segments:  []SegmentInput{makeLeaf(), makeLeaf()},
+				}},
+			},
+		}
+		if err := validateCompose(c); err != nil {
+			t.Fatalf("expected depth=2 envelope to validate, got %v", err)
+		}
+	})
+
+	t.Run("depth 3 rejected", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "vertical",
+			Segments: []SegmentInput{
+				makeLeaf(),
+				{Compose: &ComposeInput{
+					Direction: "vertical",
+					Segments: []SegmentInput{
+						makeLeaf(),
+						{Compose: &ComposeInput{
+							Direction: "horizontal",
+							Segments:  []SegmentInput{makeLeaf(), makeLeaf()},
+						}},
+					},
+				}},
+			},
+		}
+		err := validateCompose(c)
+		if err == nil || !contains(err.Error(), "nesting depth") {
+			t.Fatalf("expected nesting-depth error, got %v", err)
+		}
+	})
+
+	t.Run("inner envelope must pass structural checks", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "vertical",
+			Segments: []SegmentInput{
+				makeLeaf(),
+				{Compose: &ComposeInput{
+					Direction: "horizontal",
+					Segments:  []SegmentInput{makeLeaf()}, // only 1 — invalid
+				}},
+			},
+		}
+		err := validateCompose(c)
+		if err == nil || !contains(err.Error(), "at least 2 segments") {
+			t.Fatalf("expected inner-envelope min-segments error, got %v", err)
+		}
+	})
+}
+
+// TestValidateCompose_SegmentXOR enforces that each segment carries exactly
+// one of pattern or compose. Specifying both or neither must be rejected
+// because the expansion path is otherwise ambiguous.
+func TestValidateCompose_SegmentXOR(t *testing.T) {
+	leaf := SegmentInput{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}}
+	innerCompose := &ComposeInput{
+		Direction: "horizontal",
+		Segments:  []SegmentInput{leaf, leaf},
+	}
+
+	t.Run("both pattern and compose rejected", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "vertical",
+			Segments: []SegmentInput{
+				leaf,
+				{
+					Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)},
+					Compose: innerCompose,
+				},
+			},
+		}
+		err := validateCompose(c)
+		if err == nil || !contains(err.Error(), "sets both") {
+			t.Fatalf("expected XOR error, got %v", err)
+		}
+	})
+
+	t.Run("neither pattern nor compose rejected", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "vertical",
+			Segments:  []SegmentInput{leaf, {}},
+		}
+		err := validateCompose(c)
+		if err == nil || !contains(err.Error(), "must set exactly one") {
+			t.Fatalf("expected XOR error, got %v", err)
+		}
+	})
+}
+
+// TestValidateCompose_TotalLeafCap caps the total number of leaf patterns
+// across the entire envelope tree so nesting cannot smuggle more patterns
+// past the per-envelope max_segments cap.
+func TestValidateCompose_TotalLeafCap(t *testing.T) {
+	makeLeaf := func() SegmentInput {
+		return SegmentInput{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}}
+	}
+	// Outer (vertical): 2 leaves + 1 nested compose.
+	// Nested (horizontal): max_segments = 8 leaves.
+	// Total leaves = 2 + 8 = 10 (still <= 12). Make outer reach 5 leaves so
+	// total = 5 + 8 = 13 > 12 to trip the cap.
+	outerSegs := []SegmentInput{makeLeaf(), makeLeaf(), makeLeaf(), makeLeaf(), makeLeaf()}
+	inner := &ComposeInput{
+		Direction: "horizontal",
+		Segments: []SegmentInput{
+			makeLeaf(), makeLeaf(), makeLeaf(), makeLeaf(),
+			makeLeaf(), makeLeaf(), makeLeaf(), makeLeaf(),
+		},
+	}
+	outerSegs = append(outerSegs, SegmentInput{Compose: inner})
+	c := &ComposeInput{Direction: "vertical", Segments: outerSegs}
+	err := validateCompose(c)
+	if err == nil || !contains(err.Error(), "total leaf patterns") {
+		t.Fatalf("expected total-leaf-cap error, got %v", err)
+	}
+}
+
+// TestCountComposeLeafPatterns checks the leaf counter walks nested
+// envelopes correctly so the cap enforcement is anchored on the real total.
+func TestCountComposeLeafPatterns(t *testing.T) {
+	makeLeaf := func() SegmentInput {
+		return SegmentInput{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}}
+	}
+	c := &ComposeInput{
+		Direction: "vertical",
+		Segments: []SegmentInput{
+			makeLeaf(),
+			{Compose: &ComposeInput{
+				Direction: "horizontal",
+				Segments:  []SegmentInput{makeLeaf(), makeLeaf(), makeLeaf()},
+			}},
+			makeLeaf(),
+		},
+	}
+	got := countComposeLeafPatterns(c)
+	if got != 5 {
+		t.Errorf("countComposeLeafPatterns = %d, want 5", got)
+	}
+}

@@ -198,7 +198,7 @@ When building a slide and unsure which visual approach to use, follow this decis
 
 1. **`recommend_visual`** — the unified entry point. Ranks candidates across *all* categories (placeholder layouts, named patterns, charts, diagrams, compose envelopes, raw shape_grid). Start here.
 
-   Compose envelopes accept 2 to **N** top-level segments — the enforced cap is published as `get_capabilities().features.compose.max_segments` (default 8) along with the supported `directions` and `supports_smart_compose` flag. For arrangements that exceed the cap, nest a compose envelope inside a segment instead of flattening.
+   Compose envelopes accept 2 to **N** top-level segments — the enforced cap is published as `get_capabilities().features.compose.max_segments` (default 8) along with the supported `directions` and `supports_smart_compose` flag. For arrangements that exceed the cap, nest a compose envelope inside a segment instead of flattening: a `SegmentInput` may set `compose` (XOR with `pattern`) to host a child envelope, expanded recursively and merged into the parent grid. Nesting depth is capped at `get_capabilities().features.compose.max_nesting_depth` (default 2, i.e. one level of nesting) and the total number of leaf patterns across the tree is capped at `get_capabilities().features.compose.max_leaf_patterns` (default 12); the `supports_nested_compose` flag advertises availability.
 2. **`recommend_pattern`** — use only when you already know you need a named pattern and want to pick the best one. This is a subset of `recommend_visual` limited to the pattern catalog.
 3. **`list_patterns` / `show_pattern`** — use when you already know the pattern name and need its value schema.
 

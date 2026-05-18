@@ -16,6 +16,18 @@ import (
 // so agents can discover it without parsing error messages.
 const composeMaxSegments = 8
 
+// composeMaxNestingDepth is the maximum compose envelope nesting depth. A
+// top-level compose is depth 1; a compose nested inside one of its segments
+// is depth 2. Deeper nesting is rejected by validateCompose so a single slide
+// cannot recursively explode the merged grid.
+const composeMaxNestingDepth = 2
+
+// composeMaxLeafPatterns caps the total number of leaf (non-compose) segments
+// summed across the entire envelope tree, so nesting cannot be used to bypass
+// the per-envelope max_segments and pack an unbounded number of patterns onto
+// one slide.
+const composeMaxLeafPatterns = 12
+
 // composeDirections enumerates the directions a compose envelope may use.
 // Kept here so capabilities discovery and the validator share one source.
 var composeDirections = []string{"vertical", "horizontal"}
@@ -23,9 +35,12 @@ var composeDirections = []string{"vertical", "horizontal"}
 // composeFeatureCapabilities describes the compose feature flags surfaced
 // through get_capabilities().features.compose.
 type composeFeatureCapabilities struct {
-	MaxSegments         int      `json:"max_segments"`
-	Directions          []string `json:"directions"`
-	SupportsSmartCompose bool    `json:"supports_smart_compose"`
+	MaxSegments          int      `json:"max_segments"`
+	MaxNestingDepth      int      `json:"max_nesting_depth"`
+	MaxLeafPatterns      int      `json:"max_leaf_patterns"`
+	Directions           []string `json:"directions"`
+	SupportsSmartCompose bool     `json:"supports_smart_compose"`
+	SupportsNestedCompose bool    `json:"supports_nested_compose"`
 }
 
 // composeCapabilities returns the canonical compose capability descriptor.
@@ -35,9 +50,12 @@ func composeCapabilities() composeFeatureCapabilities {
 	dirs := make([]string, len(composeDirections))
 	copy(dirs, composeDirections)
 	return composeFeatureCapabilities{
-		MaxSegments:          composeMaxSegments,
-		Directions:           dirs,
-		SupportsSmartCompose: true,
+		MaxSegments:           composeMaxSegments,
+		MaxNestingDepth:       composeMaxNestingDepth,
+		MaxLeafPatterns:       composeMaxLeafPatterns,
+		Directions:            dirs,
+		SupportsSmartCompose:  true,
+		SupportsNestedCompose: true,
 	}
 }
 
@@ -51,10 +69,24 @@ type ComposeInput struct {
 	Segments     []SegmentInput  `json:"segments"`
 }
 
-// SegmentInput defines one child within a compose envelope.
+// SegmentInput defines one child within a compose envelope. A segment hosts
+// exactly one of `pattern` (a leaf pattern expansion) or `compose` (a nested
+// envelope that recursively expands and merges into the parent grid). The XOR
+// is enforced by validateCompose. Nesting depth is capped at
+// composeMaxNestingDepth and the total number of leaf patterns across the
+// tree is capped at composeMaxLeafPatterns.
 type SegmentInput struct {
-	Pattern  PatternInput `json:"pattern"`
-	SizePct  float64      `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
+	Pattern PatternInput  `json:"pattern,omitempty"`
+	Compose *ComposeInput `json:"compose,omitempty"`
+	SizePct float64       `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
+}
+
+// hasPattern reports whether the segment carries a leaf pattern (non-empty
+// pattern name). An empty Pattern struct is treated as "unset" so the XOR
+// check in validateCompose can distinguish leaves from nested compose
+// segments.
+func (s SegmentInput) hasPattern() bool {
+	return s.Pattern.Name != ""
 }
 
 // expandCompose validates and expands a compose envelope into a single
@@ -72,9 +104,30 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 
 	var warnings []string
 
-	// Expand each segment's pattern
+	// Expand each segment's pattern or nested compose envelope.
 	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
 	for i, seg := range c.Segments {
+		if seg.Compose != nil {
+			// Recursively expand the nested compose envelope into a single
+			// grid, which then participates in the parent merge exactly like
+			// a leaf-pattern segment would. Warnings emitted by the inner
+			// expansion are surfaced verbatim so agents see every diagnostic
+			// in one pass.
+			grid, innerWarnings, err := expandCompose(seg.Compose, ctx, reg)
+			if err != nil {
+				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+			}
+			if len(innerWarnings) > 0 {
+				warnings = append(warnings, innerWarnings...)
+			}
+			// Inner-envelope bounds are governed entirely by the inner
+			// compose's direction/size_pct and the outer segment's slot, so
+			// drop any Bounds the merge step would discard anyway.
+			grid.Bounds = nil
+			expandedGrids[i] = grid
+			continue
+		}
+
 		grid, _, err := expandPattern(&seg.Pattern, ctx, reg)
 		if err != nil {
 			return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
@@ -144,8 +197,39 @@ func segmentBoundsIgnoredWarning(segIdx int, p *PatternInput) string {
 	return ""
 }
 
-// validateCompose checks the compose envelope for structural issues.
+// validateCompose checks the compose envelope for structural issues at the
+// top level. It delegates to validateComposeRec, which walks any nested
+// envelopes and enforces depth + leaf-count caps in addition to the
+// per-envelope structural checks.
 func validateCompose(c *ComposeInput) error {
+	if err := validateComposeRec(c, 1); err != nil {
+		return err
+	}
+	leaves := countComposeLeafPatterns(c)
+	if leaves > composeMaxLeafPatterns {
+		return fmt.Errorf(
+			"compose: total leaf patterns %d exceeds maximum %d — flatten the envelope or split across multiple slides",
+			leaves, composeMaxLeafPatterns,
+		)
+	}
+	return nil
+}
+
+// validateComposeRec performs the per-envelope structural checks at a given
+// nesting depth (1 = top-level). It is recursive so the same validation logic
+// (direction, segment count, size_pct, XOR per segment) applies uniformly to
+// inner envelopes; the depth parameter is used solely to reject overly deep
+// trees.
+func validateComposeRec(c *ComposeInput, depth int) error {
+	if c == nil {
+		return fmt.Errorf("compose: envelope is nil")
+	}
+	if depth > composeMaxNestingDepth {
+		return fmt.Errorf(
+			"compose: nesting depth %d exceeds maximum %d — see get_capabilities().features.compose.max_nesting_depth",
+			depth, composeMaxNestingDepth,
+		)
+	}
 	if c.Direction != "vertical" && c.Direction != "horizontal" {
 		return fmt.Errorf("compose: direction must be \"vertical\" or \"horizontal\", got %q", c.Direction)
 	}
@@ -160,16 +244,34 @@ func validateCompose(c *ComposeInput) error {
 		)
 	}
 
-	// Validate size_pct values
+	// Validate each segment's XOR contract and size_pct value, then recurse
+	// into any nested compose envelopes.
 	var totalPct float64
-	explicitCount := 0
 	for i, seg := range c.Segments {
+		hasPattern := seg.hasPattern()
+		hasCompose := seg.Compose != nil
+		switch {
+		case hasPattern && hasCompose:
+			return fmt.Errorf(
+				"compose: segment[%d] sets both \"pattern\" and \"compose\" — choose exactly one",
+				i,
+			)
+		case !hasPattern && !hasCompose:
+			return fmt.Errorf(
+				"compose: segment[%d] must set exactly one of \"pattern\" or \"compose\"",
+				i,
+			)
+		}
 		if seg.SizePct < 0 {
 			return fmt.Errorf("compose: segment[%d].size_pct must be >= 0", i)
 		}
 		if seg.SizePct > 0 {
 			totalPct += seg.SizePct
-			explicitCount++
+		}
+		if hasCompose {
+			if err := validateComposeRec(seg.Compose, depth+1); err != nil {
+				return fmt.Errorf("compose: segment[%d]: %w", i, err)
+			}
 		}
 	}
 	if totalPct > 100 {
@@ -177,6 +279,27 @@ func validateCompose(c *ComposeInput) error {
 	}
 
 	return nil
+}
+
+// countComposeLeafPatterns sums the number of leaf (pattern-bearing) segments
+// across the entire envelope tree. Nested compose segments are descended
+// into; pattern segments contribute 1 each. Used to enforce
+// composeMaxLeafPatterns globally so nesting cannot smuggle more patterns
+// past the per-envelope max_segments cap.
+func countComposeLeafPatterns(c *ComposeInput) int {
+	if c == nil {
+		return 0
+	}
+	n := 0
+	for _, seg := range c.Segments {
+		switch {
+		case seg.Compose != nil:
+			n += countComposeLeafPatterns(seg.Compose)
+		case seg.hasPattern():
+			n++
+		}
+	}
+	return n
 }
 
 // resolveSegmentSizes converts segment SizePct values to normalized percentages
