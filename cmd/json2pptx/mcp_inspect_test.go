@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,8 +121,8 @@ func TestHandleInspectSlideImages_InvalidBase64(t *testing.T) {
 }
 
 // TestHandleInspectSlideImages_NoAPIKey verifies that when ANTHROPIC_API_KEY is
-// unset, the handler returns INSPECT_DISABLED rather than INTERNAL or a panic.
-// The image source itself must be valid so we get past the parsing stage.
+// unset, the handler degrades to heuristic mode and returns a successful
+// Report tagged with mode="heuristic" — not INSPECT_DISABLED.
 func TestHandleInspectSlideImages_NoAPIKey(t *testing.T) {
 	// Save and clear the env var for this test.
 	saved := os.Getenv("ANTHROPIC_API_KEY")
@@ -129,26 +133,49 @@ func TestHandleInspectSlideImages_NoAPIKey(t *testing.T) {
 		}
 	}()
 
-	// Use base64 source with non-zero bytes (the handler doesn't decode
-	// image content until it reaches the agent).
+	// Build a valid 4x3 white PNG so the heuristic decoder can read it.
+	pngBytes := makeSolidPNG(t, 16, 9, 0xFF, 0xFF, 0xFF)
 	mc := cliMCPConfig("./templates", "./out")
 	res, err := mc.handleInspectSlideImages(context.Background(), makeRequest(map[string]any{
 		"slide_images": []any{
 			map[string]any{
 				"index":      float64(0),
-				"png_base64": base64.StdEncoding.EncodeToString([]byte("fake-png-bytes")),
+				"png_base64": base64.StdEncoding.EncodeToString(pngBytes),
 			},
 		},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if res == nil || !res.IsError {
-		t.Fatal("expected IsError when ANTHROPIC_API_KEY is unset")
+	if res == nil {
+		t.Fatal("expected non-nil result")
 	}
-	if got := textContent(res); !strings.Contains(got, "INSPECT_DISABLED") {
-		t.Errorf("expected INSPECT_DISABLED in error envelope, got: %s", got)
+	if res.IsError {
+		t.Fatalf("expected success result in heuristic fallback, got error: %s", textContent(res))
 	}
+	got := textContent(res)
+	if !strings.Contains(got, `"mode":"heuristic"`) && !strings.Contains(got, `"mode": "heuristic"`) {
+		t.Errorf("expected mode=heuristic in response, got: %s", got)
+	}
+	if strings.Contains(got, "INSPECT_DISABLED") {
+		t.Errorf("did not expect INSPECT_DISABLED in heuristic fallback, got: %s", got)
+	}
+}
+
+// makeSolidPNG returns a single-color PNG of the given dimensions.
+func makeSolidPNG(t *testing.T, w, h int, r, g, b uint8) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.SetRGBA(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode png: %v", err)
+	}
+	return buf.Bytes()
 }
 
 // TestValidateInspectImagePath exercises the path validator directly.

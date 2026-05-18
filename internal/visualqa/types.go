@@ -74,13 +74,19 @@ type SuggestedFix struct {
 }
 
 // Finding represents a single visual defect detected by the QA agent.
+//
+// Source distinguishes vision-backed findings (Claude vision API) from
+// heuristic fallback findings produced when ANTHROPIC_API_KEY is unset.
+// Heuristic findings are advisory only (typically SeverityP3) and may have
+// higher false-positive rates than vision-backed findings.
 type Finding struct {
-	SlideIndex    int            `json:"slide_index"`
-	SlideType     string         `json:"slide_type"`
-	Severity      Severity       `json:"severity"`
-	Category      string         `json:"category"`    // e.g. "text_overflow", "contrast", "alignment"
-	Description   string         `json:"description"` // Human-readable description
-	Location      string         `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
+	SlideIndex     int            `json:"slide_index"`
+	SlideType      string         `json:"slide_type"`
+	Severity       Severity       `json:"severity"`
+	Category       string         `json:"category"`    // e.g. "text_overflow", "contrast", "alignment"
+	Description    string         `json:"description"` // Human-readable description
+	Location       string         `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
+	Source         string         `json:"source,omitempty"`          // "vision" (default) or "heuristic"
 	SuggestedFixes []SuggestedFix `json:"suggested_fixes,omitempty"` // Mapped repair_slide fix kinds
 }
 
@@ -100,8 +106,14 @@ type SlideResult struct {
 }
 
 // Report holds the complete QA results for a presentation.
+//
+// Mode indicates which inspection backend produced the results:
+//   - "vision"     — Claude vision API (requires ANTHROPIC_API_KEY)
+//   - "heuristic"  — pure-Go fallback checks (no API key required); findings
+//     are advisory only and may have higher false-positive rates.
 type Report struct {
 	Template    string        `json:"template"`
+	Mode        string        `json:"mode,omitempty"` // "vision" or "heuristic"
 	SlideCount  int           `json:"slide_count"`
 	Results     []SlideResult `json:"results"`
 	TotalByP0   int           `json:"total_p0"`

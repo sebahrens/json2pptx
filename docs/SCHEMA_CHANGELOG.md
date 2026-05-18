@@ -4,6 +4,33 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.17.0 (2026-05-19)
+
+### Added
+
+- **`inspect_slide_images` heuristic fallback** — when `ANTHROPIC_API_KEY` is
+  unset, the tool no longer fails with `INSPECT_DISABLED`. Instead it runs a
+  deterministic pure-Go pass over the slide images that flags:
+  - `missing_content` — slide is effectively blank
+  - `text_overflow` — one of the 1%-wide edge bands contains a meaningful
+    fraction of non-background pixels
+  - `aspect_ratio` — image dimensions deviate from 16:9 or 4:3
+  All heuristic findings are advisory (severity `P3`).
+- **`Report.mode` field** — `"vision"` when results came from the Claude
+  vision API, `"heuristic"` when they came from the offline fallback.
+- **`Finding.source` field** — `"vision"` or `"heuristic"`, propagated from
+  whichever backend produced the finding. Agents that want vision-only
+  results should filter on this field.
+- Output schema for `inspect_slide_images` documents both new fields.
+
+### Behavior change
+
+- The `INSPECT_DISABLED` error envelope is no longer emitted by
+  `inspect_slide_images`. Callers that branched on it should now branch on
+  `report.mode == "heuristic"` instead. The error code remains in
+  `internal/diagnostics/codes.go` for potential future use but is unused on
+  the inspect path.
+
 ## 4.16.0 (2026-05-18)
 
 ### Added

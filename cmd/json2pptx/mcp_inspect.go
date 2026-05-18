@@ -23,6 +23,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/visualqa"
+	"github.com/sebahrens/json2pptx/internal/visualqa/heuristic"
 )
 
 // --- Input types ---
@@ -56,7 +57,7 @@ This is the canonical entry point for the visual refinement loop:
 
 Each slide_images[] entry must include "index" (0-based) and one of "path" (absolute filesystem path to a .png/.jpg) or "png_base64" (raw base64-encoded image bytes, no data: URL prefix). Optional per-slide "slide_type" (title/content/section/chart/diagram/...) and "title" tune the prompt for that slide.
 
-Requires ANTHROPIC_API_KEY in the server's environment. Returns INSPECT_DISABLED when unset.
+When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision"). When unset, the tool falls back to a deterministic heuristic pass — pure-Go image checks for blank slides, edge-band overflow, and aspect ratio (Report.mode="heuristic", findings tagged source="heuristic", severity P3). Heuristic findings are advisory and may have higher false-positive rates than vision-backed checks.
 
 Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path traversal (..) is rejected. For images already in memory (e.g. just-rendered thumbnails), prefer png_base64 to avoid disk round-trips.`),
 		mcp.WithRawOutputSchema(outputSchemaInspectSlideImages),
@@ -130,20 +131,29 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		slideImages = append(slideImages, visualqa.SlideImage{Info: info, Data: data})
 	}
 
-	// Build agent.
+	// Build agent. If construction fails (e.g. ANTHROPIC_API_KEY unset),
+	// fall back to the deterministic heuristic checker so callers still
+	// get an actionable — if coarser — visual QA pass instead of an
+	// INSPECT_DISABLED error.
 	var opts []visualqa.Option
 	if m, ok := request.GetArguments()["model"].(string); ok && m != "" {
 		opts = append(opts, visualqa.WithModel(m))
 	}
 
-	agent, err := visualqa.NewAgent(opts...)
-	if err != nil {
-		// Most common cause: ANTHROPIC_API_KEY unset. Return a distinct
-		// code so agents can surface "set API key" instead of retrying.
-		return api.MCPSimpleError("INSPECT_DISABLED", err.Error()), nil
+	var report *visualqa.Report
+	if agent, err := visualqa.NewAgent(opts...); err == nil {
+		report = agent.InspectAll(ctx, slideImages)
+		report.Mode = "vision"
+		for ri := range report.Results {
+			for fi := range report.Results[ri].Findings {
+				if report.Results[ri].Findings[fi].Source == "" {
+					report.Results[ri].Findings[fi].Source = "vision"
+				}
+			}
+		}
+	} else {
+		report = heuristic.InspectAll(slideImages)
 	}
-
-	report := agent.InspectAll(ctx, slideImages)
 	report.Template = template
 
 	mcpResult, err := api.MCPSuccessResult(ctx, report)

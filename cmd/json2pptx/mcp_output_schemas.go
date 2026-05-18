@@ -526,6 +526,7 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
   "type": "object",
   "properties": {
     "template":    {"type": "string"},
+    "mode":        {"type": "string", "enum": ["vision", "heuristic"], "description": "Which backend produced the report. 'vision' = Claude vision API; 'heuristic' = pure-Go fallback when ANTHROPIC_API_KEY is unset."},
     "slide_count": {"type": "integer"},
     "results": {
       "type": "array",
@@ -543,10 +544,11 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
               "properties": {
                 "slide_index": {"type": "integer"},
                 "slide_type":  {"type": "string"},
-                "severity":    {"type": "string", "description": "P0 (catastrophic) | P1 (major) | P2 (minor) | P3 (nitpick)"},
+                "severity":    {"type": "string", "description": "P0 (catastrophic) | P1 (major) | P2 (minor) | P3 (nitpick). Heuristic findings are always P3."},
                 "category":    {"type": "string", "description": "text_overflow | text_truncation | contrast | alignment | spacing | overlap | missing_content | font_size | visual_hierarchy | chart_readability | table_readability | image_quality | layout_balance | color_consistency | border_style | footer_clearance | aspect_ratio"},
                 "description": {"type": "string"},
                 "location":    {"type": "string"},
+                "source":      {"type": "string", "enum": ["vision", "heuristic"], "description": "Which checker produced this finding. Heuristic findings are advisory and may have higher false-positive rates."},
                 "suggested_fixes": {
                   "type": "array",
                   "description": "repair_slide fix kinds pre-mapped from category (via SuggestedFixesForCategory). Empty for review-only categories (image_quality, aspect_ratio, border_style).",
