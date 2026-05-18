@@ -322,6 +322,8 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 		cell.Icon = &shapegrid.IconSpec{
 			Name:     c.Icon.Name,
 			Path:     c.Icon.Path,
+			SVGData:  c.Icon.SVGData,
+			Alt:      c.Icon.Alt,
 			Fill:     c.Icon.Fill,
 			Position: c.Icon.Position,
 		}
@@ -331,6 +333,8 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 		cell.Icon = &shapegrid.IconSpec{
 			Name:     c.Shape.Icon.Name,
 			Path:     c.Shape.Icon.Path,
+			SVGData:  c.Shape.Icon.SVGData,
+			Alt:      c.Shape.Icon.Alt,
 			Fill:     c.Shape.Icon.Fill,
 			Position: c.Shape.Icon.Position,
 		}
@@ -537,10 +541,14 @@ func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator)
 	return shapes, icons, nil
 }
 
-// iconAltText returns alt text for an icon based on its name or path.
+// iconAltText returns alt text for an icon. Prefers the explicit Alt field,
+// falling back to a value derived from Name or Path.
 func iconAltText(spec *shapegrid.IconSpec) string {
 	if spec == nil {
 		return ""
+	}
+	if spec.Alt != "" {
+		return spec.Alt
 	}
 	if spec.Name != "" {
 		return spec.Name + " icon"
@@ -702,13 +710,15 @@ func resolveIconPaths(slides []SlideInput, baseDir string) error {
 }
 
 // resolveIconInputPath validates and resolves a single IconInput's path field.
-// Returns an error if more than one of name/path/url is set, or if none is set,
-// or if the path is unsafe (traversal/symlink escape).
+// Returns an error if more than one of name/path/url/svg_data is set, or if none
+// is set, or if the path is unsafe (traversal/symlink escape).
 // URL-based icons are skipped here — they are resolved by resolveURLs.
+// Inline svg_data is also skipped — no disk I/O needed.
 func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
 	hasName := icon.Name != ""
 	hasPath := icon.Path != ""
 	hasURL := icon.URL != ""
+	hasSVGData := icon.SVGData != ""
 
 	set := 0
 	if hasName {
@@ -720,16 +730,19 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
 	if hasURL {
 		set++
 	}
+	if hasSVGData {
+		set++
+	}
 
 	if set > 1 {
-		return fmt.Errorf("slide %d: icon must have exactly one of 'name', 'path', or 'url'", slideNum)
+		return fmt.Errorf("slide %d: icon must have exactly one of 'name', 'path', 'url', or 'svg_data'", slideNum)
 	}
 	if set == 0 {
-		return fmt.Errorf("slide %d: icon must have one of 'name', 'path', or 'url'", slideNum)
+		return fmt.Errorf("slide %d: icon must have one of 'name', 'path', 'url', or 'svg_data'", slideNum)
 	}
 
 	if !hasPath {
-		return nil // bundled icon or URL — no local path resolution needed
+		return nil // bundled icon, URL, or inline svg_data — no local path resolution needed
 	}
 
 	// Resolve relative path against baseDir
@@ -756,10 +769,15 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
 }
 
 // resolveIconSVG loads SVG bytes for an icon spec, optionally applying a fill color override.
+// For inline SVG (SVGData set), the bytes are returned as-is (Fill is ignored).
 // For bundled icons (Name set), it looks up from the embedded icon library.
 // For custom icons (Path set), it reads the SVG file from disk.
 // Fill color override is applied to both bundled and custom SVG icons.
 func resolveIconSVG(spec *shapegrid.IconSpec) ([]byte, error) {
+	if spec.SVGData != "" {
+		// Inline SVG markup — no disk I/O, no fill recolor (agent supplies pre-styled SVG).
+		return []byte(spec.SVGData), nil
+	}
 	if spec.Path != "" {
 		// Custom SVG from file path (already resolved to absolute path)
 		svgData, err := os.ReadFile(spec.Path)

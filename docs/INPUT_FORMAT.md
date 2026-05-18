@@ -658,7 +658,7 @@ Each cell holds exactly one content type (mutually exclusive): **shape**, **tabl
 | `row_span` | integer | No       | 1       | Number of rows this cell spans         |
 | `shape`    | object  | No       | —       | Preset geometry shape (ShapeSpecInput) |
 | `table`    | object  | No       | —       | Data table (same schema as content type `table`) |
-| `icon`     | object  | No       | —       | SVG icon (`{name, path, url, size, color}`) |
+| `icon`     | object  | No       | —       | SVG icon (`{name | path | url | svg_data, alt, fill, position}`) — exactly one of `name`, `path`, `url`, `svg_data`. `svg_data` is inline SVG markup (no disk I/O; `fill` ignored). |
 | `image`    | object  | No       | —       | Image file (`{path, url, alt, fit, overlay, text}`) |
 | `diagram`  | object  | No       | —       | Chart or diagram (`DiagramSpec` — same schema as content type `diagram`) |
 

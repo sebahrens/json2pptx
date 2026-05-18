@@ -93,12 +93,14 @@ type AccentBarSpec struct {
 	Width    float64 // Bar thickness in points. Default: 4.0
 }
 
-// IconSpec defines an embedded SVG icon from the bundled icon library or a custom SVG file.
-// Exactly one of Name or Path should be set.
+// IconSpec defines an embedded SVG icon from the bundled icon library, a custom SVG file,
+// or inline SVG markup. Exactly one of Name, Path, or SVGData should be set.
 type IconSpec struct {
 	Name     string  // Bundled icon name (e.g., "chart-pie", "filled:alert-circle")
 	Path     string  // File path to a custom SVG icon (absolute, resolved from JSON input directory)
-	Fill     string  // Optional fill color override (hex, e.g., "#FF0000"). Applies to both bundled and custom SVG icons.
+	SVGData  string  // Inline SVG markup. When set, no disk I/O is performed and Fill is ignored.
+	Alt      string  // Optional explicit alt text; falls back to a derived value when empty.
+	Fill     string  // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and path-based SVG icons.
 	Scale    float64 // Scale factor 0.0-1.0 for icon sizing (default: 1.0 for standalone, 0.6 for overlay on shape)
 	Position string  // Icon position relative to text: "left", "top", "center". Auto-detected if empty.
 }

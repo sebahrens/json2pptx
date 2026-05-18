@@ -106,13 +106,15 @@ type GridImageTextInput struct {
 	Font          string  `json:"font,omitempty"`           // Font family
 }
 
-// IconInput defines an SVG icon from the bundled icon library, a custom SVG file, or a URL.
-// Exactly one of Name, Path, or URL must be set.
+// IconInput defines an SVG icon from the bundled icon library, a custom SVG file,
+// a URL, or inline SVG markup. Exactly one of Name, Path, URL, or SVGData must be set.
 type IconInput struct {
 	Name     string `json:"name,omitempty"`      // Bundled icon name (e.g., "chart-pie", "filled:alert-circle")
 	Path     string `json:"path,omitempty"`      // File path to a custom SVG icon (relative to JSON input directory)
 	URL      string `json:"url,omitempty"`       // HTTP/HTTPS URL to download an SVG icon from
-	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons.
+	SVGData  string `json:"svg_data,omitempty"`  // Inline SVG markup (e.g., output of svggen-mcp render_diagram). When set, no disk I/O is performed.
+	Alt      string `json:"alt,omitempty"`       // Alt text / description for accessibility. Falls back to name/path/"icon" when empty.
+	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons. Ignored for inline svg_data.
 	Position string `json:"position,omitempty"`  // Icon position relative to text: "left", "top", "center". Auto-detected if empty.
 }
 

@@ -675,6 +675,41 @@ func TestResolveShapeGrid_IconCell(t *testing.T) {
 	}
 }
 
+func TestResolveShapeGrid_InlineSVGDataIconCell(t *testing.T) {
+	// Inline svg_data simulates the agent piping render_diagram output directly
+	// into a grid cell without a filesystem roundtrip.
+	const inlineSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#123456"/></svg>`
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`1`),
+		Rows: []GridRowInput{{
+			Cells: []*GridCellInput{
+				{Icon: &IconInput{SVGData: inlineSVG, Alt: "rendered pie chart"}},
+			},
+		}},
+	}
+
+	result, err := resolveShapeGrid(grid, newAllocFrom(100), nil, nil, 0, 0, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Shapes) != 0 {
+		t.Errorf("expected 0 shapes, got %d", len(result.Shapes))
+	}
+	if len(result.IconInserts) != 1 {
+		t.Fatalf("expected 1 icon insert, got %d", len(result.IconInserts))
+	}
+	ins := result.IconInserts[0]
+	if string(ins.SVGData) != inlineSVG {
+		t.Errorf("inline svg_data not preserved verbatim; got %q", string(ins.SVGData))
+	}
+	if ins.Alt != "rendered pie chart" {
+		t.Errorf("explicit alt not propagated; got %q", ins.Alt)
+	}
+	if ins.ExtentCX <= 0 || ins.ExtentCY <= 0 {
+		t.Errorf("invalid extent: cx=%d cy=%d", ins.ExtentCX, ins.ExtentCY)
+	}
+}
+
 func TestResolveShapeGrid_MixedShapesAndIcons(t *testing.T) {
 	grid := &ShapeGridInput{
 		Columns: json.RawMessage(`2`),
@@ -1284,6 +1319,98 @@ func TestResolveIconSVG_CustomPathNoFill(t *testing.T) {
 	}
 	if string(data) != svgContent {
 		t.Errorf("expected SVG to be unmodified when Fill is empty, got: %s", string(data))
+	}
+}
+
+func TestResolveIconSVG_InlineSVGData(t *testing.T) {
+	// Inline svg_data should pass through verbatim without disk I/O,
+	// and Fill should be ignored (agent supplies pre-styled SVG).
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/></svg>`
+	spec := &shapegrid.IconSpec{SVGData: svg, Fill: "#FF0000"}
+	data, err := resolveIconSVG(spec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(data) != svg {
+		t.Errorf("inline svg_data should pass through unchanged; got %s", string(data))
+	}
+}
+
+func TestIconAltText_PrefersExplicitAlt(t *testing.T) {
+	cases := []struct {
+		name string
+		spec *shapegrid.IconSpec
+		want string
+	}{
+		{"explicit alt wins over name", &shapegrid.IconSpec{Name: "shield", Alt: "Security icon"}, "Security icon"},
+		{"explicit alt for inline svg", &shapegrid.IconSpec{SVGData: "<svg/>", Alt: "Pie chart: A 60%, B 40%"}, "Pie chart: A 60%, B 40%"},
+		{"inline svg without alt falls back", &shapegrid.IconSpec{SVGData: "<svg/>"}, "icon"},
+		{"name-derived alt", &shapegrid.IconSpec{Name: "shield"}, "shield icon"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := iconAltText(tc.spec); got != tc.want {
+				t.Errorf("iconAltText() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveIconPaths_InlineSVGData(t *testing.T) {
+	tmpDir := t.TempDir()
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>`
+
+	t.Run("svg_data alone passes validation", func(t *testing.T) {
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{SVGData: svg, Alt: "inline diagram"},
+					}},
+				}},
+			},
+		}}
+		if err := resolveIconPaths(slides, tmpDir); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if slides[0].ShapeGrid.Rows[0].Cells[0].Icon.SVGData != svg {
+			t.Error("svg_data should be unchanged after path resolution")
+		}
+	})
+
+	t.Run("svg_data with name is rejected", func(t *testing.T) {
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{SVGData: svg, Name: "shield"},
+					}},
+				}},
+			},
+		}}
+		err := resolveIconPaths(slides, tmpDir)
+		if err == nil {
+			t.Fatal("expected error when both svg_data and name are set")
+		}
+		if !strings.Contains(err.Error(), "exactly one") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestConvertGridCell_InlineSVGData(t *testing.T) {
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg"/>`
+	cell := convertGridCell(&GridCellInput{
+		Icon: &IconInput{SVGData: svg, Alt: "alt-text"},
+	})
+	if cell.Icon == nil {
+		t.Fatal("expected Icon to be set")
+	}
+	if cell.Icon.SVGData != svg {
+		t.Errorf("SVGData not propagated: got %q", cell.Icon.SVGData)
+	}
+	if cell.Icon.Alt != "alt-text" {
+		t.Errorf("Alt not propagated: got %q", cell.Icon.Alt)
 	}
 }
 
