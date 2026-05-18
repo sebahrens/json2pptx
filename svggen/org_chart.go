@@ -925,11 +925,11 @@ func (oc *OrgChartRenderer) getColors(style *StyleGuide) []Color {
 	}
 	// Fallback: professional hierarchy colors
 	return []Color{
-		MustParseColor("#4E79A7"), // Blue (top level)
-		MustParseColor("#59A14F"), // Green (second level)
-		MustParseColor("#F28E2B"), // Orange (third level)
-		MustParseColor("#E15759"), // Red (fourth level)
-		MustParseColor("#76B7B2"), // Teal (fifth level)
+		MustParseColor(DefaultThemeAccent1Hex), // Blue (top level)
+		MustParseColor(DefaultThemeAccent5Hex), // Green (second level)
+		MustParseColor(DefaultThemeAccent2Hex), // Orange (third level)
+		MustParseColor(DefaultThemeAccent3Hex), // Red (fourth level)
+		MustParseColor(DefaultThemeAccent4Hex), // Teal (fifth level)
 	}
 }
 

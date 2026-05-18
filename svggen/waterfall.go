@@ -86,10 +86,10 @@ func DefaultWaterfallChartConfig(width, height float64) WaterfallChartConfig {
 
 	return WaterfallChartConfig{
 		ChartConfig:     cfg,
-		IncreaseColor:   MustParseColor("#59A14F"), // Green
-		DecreaseColor:   MustParseColor("#E15759"), // Red
-		TotalColor:      MustParseColor("#4E79A7"), // Blue
-		ConnectorColor:  MustParseColor("#6C757D"), // Gray
+		IncreaseColor:   MustParseColor(DefaultThemeAccent5Hex), // Green
+		DecreaseColor:   MustParseColor(DefaultThemeAccent3Hex), // Red
+		TotalColor:      MustParseColor(DefaultThemeAccent1Hex), // Blue
+		ConnectorColor:  MustParseColor(DefaultThemeTextMutedHex), // Gray
 		ConnectorWidth:  1.5,
 		ConnectorDash:   false,
 		ShowConnectors:  true,

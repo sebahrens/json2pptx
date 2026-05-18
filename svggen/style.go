@@ -27,6 +27,22 @@ const (
 	DefaultThemeAccent4Hex = "#76B7B2" // Teal
 	DefaultThemeAccent5Hex = "#59A14F" // Green
 	DefaultThemeAccent6Hex = "#EDC948" // Yellow
+	// DefaultThemeAccent7Hex is the seventh Tableau-10 accent (Purple).
+	// Charts that need more than 6 series fall back to this before extending
+	// further. Not part of the 6-slot OOXML accent map but kept here so
+	// chart factory defaults stop hard-coding the literal.
+	DefaultThemeAccent7Hex = "#B07AA1" // Purple
+
+	// Neutral fallbacks used by chart and diagram defaults. Centralised here
+	// so factory configs (gantt, timeline, axes, legend, matrix2x2, etc.) can
+	// reference DefaultTheme*Hex instead of repeating literal hex values.
+	DefaultThemeBorderHex        = "#DEE2E6" // Subtle border / divider gray
+	DefaultThemeTextSecondaryHex = "#495057" // Secondary text gray
+	DefaultThemeTextMutedHex     = "#6C757D" // Muted text / connector gray
+	DefaultThemeChartGridHex     = "#E0E0E0" // Chart grid / axis line gray
+	DefaultThemeTimeGridHex      = "#E5E5E5" // Timeline / gantt grid gray
+	DefaultThemeDependencyHex    = "#666666" // Mid-gray for dependency / arrow strokes
+	DefaultThemeSwimlaneBgHex    = "#F8F8F8" // Off-white swimlane background
 )
 
 // StyleGuide provides a centralized design system for consulting-grade SVG output.
@@ -261,10 +277,10 @@ func DefaultPalette() *Palette {
 
 		Background:    MustParseColor(DefaultThemeLT1Hex),
 		Surface:       MustParseColor(DefaultThemeLT2Hex),
-		Border:        MustParseColor("#DEE2E6"),
+		Border:        MustParseColor(DefaultThemeBorderHex),
 		TextPrimary:   MustParseColor(DefaultThemeDK2Hex),
-		TextSecondary: MustParseColor("#495057"),
-		TextMuted:     MustParseColor("#6C757D"),
+		TextSecondary: MustParseColor(DefaultThemeTextSecondaryHex),
+		TextMuted:     MustParseColor(DefaultThemeTextMutedHex),
 	}
 }
 

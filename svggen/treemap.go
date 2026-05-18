@@ -456,7 +456,7 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 	b := tc.builder
 
 	// Determine text color based on background luminance
-	textColor := MustParseColor("#FFFFFF")
+	textColor := MustParseColor(DefaultThemeLT1Hex)
 
 	b.Push()
 	b.SetTextColor(textColor)
@@ -500,7 +500,7 @@ func (tc *TreemapChart) drawAbbreviatedLabel(node *TreemapNode, bounds Rect, sty
 	}
 
 	b := tc.builder
-	textColor := MustParseColor("#FFFFFF")
+	textColor := MustParseColor(DefaultThemeLT1Hex)
 
 	// Abbreviate: use first 2 characters (or full label if shorter).
 	abbrev := node.Label

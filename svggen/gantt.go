@@ -74,14 +74,14 @@ func DefaultGanttConfig(width, height float64) GanttConfig {
 		MilestoneSize:         24,
 		LabelWidth:            math.Max(140, width*0.25),
 		ShowGrid:              true,
-		GridColor:             MustParseColor("#E5E5E5"),
-		DependencyColor:       MustParseColor("#666666"),
+		GridColor:             MustParseColor(DefaultThemeTimeGridHex),
+		DependencyColor:       MustParseColor(DefaultThemeDependencyHex),
 		DependencyStrokeWidth: 2.5,
 		TimeAxisHeight:        28,
 		SwimlaneHeaderWidth:   0,
-		SwimlaneColor:         MustParseColor("#F8F8F8"),
+		SwimlaneColor:         MustParseColor(DefaultThemeSwimlaneBgHex),
 		ShowProgress:          false,
-		ProgressColor:         MustParseColor("#59A14F"),
+		ProgressColor:         MustParseColor(DefaultThemeAccent5Hex),
 	}
 }
 

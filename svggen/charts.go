@@ -2963,7 +2963,7 @@ func (rc *RadarChart) drawSeries(centerX, centerY, radius, maxValue float64, ser
 	if rc.config.ShowPoints {
 		b.Push()
 		b.SetFillColor(color)
-		b.SetStrokeColor(MustParseColor("#FFFFFF"))
+		b.SetStrokeColor(MustParseColor(DefaultThemeLT1Hex))
 		b.SetStrokeWidth(1.5)
 
 		for _, p := range points {

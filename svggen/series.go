@@ -109,7 +109,7 @@ func DefaultBarSeriesConfig() BarSeriesConfig {
 		Orientation:   SeriesVertical,
 		BarWidth:      0, // Auto-calculate
 		BarPadding:    0.1,
-		Color:         MustParseColor("#4E79A7"),
+		Color:         MustParseColor(DefaultThemeAccent1Hex),
 		StrokeColor:   Color{A: 0}, // Transparent
 		StrokeWidth:   0,
 		CornerRadius:  0,
@@ -396,17 +396,17 @@ type LineSeriesConfig struct {
 // DefaultLineSeriesConfig returns default line series configuration.
 func DefaultLineSeriesConfig() LineSeriesConfig {
 	return LineSeriesConfig{
-		Color:             MustParseColor("#4E79A7"),
+		Color:             MustParseColor(DefaultThemeAccent1Hex),
 		StrokeWidth:       3.0,
 		DashPattern:       nil,
 		ShowMarkers:       true,
 		MarkerShape:       MarkerCircle,
 		MarkerSize:        8,
-		MarkerFillColor:   MustParseColor("#4E79A7"),
+		MarkerFillColor:   MustParseColor(DefaultThemeAccent1Hex),
 		MarkerStrokeColor: Color{}, // sentinel: resolved to palette.Background at draw time
 		MarkerStrokeWidth: 2.0,
 		FillArea:          false,
-		FillColor:         MustParseColor("#4E79A7"),
+		FillColor:         MustParseColor(DefaultThemeAccent1Hex),
 		FillOpacity:       0.2,
 		Smooth:            false,
 		Tension:           0.5,
@@ -745,7 +745,7 @@ type PointSeriesConfig struct {
 // DefaultPointSeriesConfig returns default point series configuration.
 func DefaultPointSeriesConfig() PointSeriesConfig {
 	return PointSeriesConfig{
-		Color:       MustParseColor("#4E79A7"),
+		Color:       MustParseColor(DefaultThemeAccent1Hex),
 		Size:        8,
 		Shape:       MarkerCircle,
 		StrokeColor: Color{}, // sentinel: resolved to palette.Background at draw time

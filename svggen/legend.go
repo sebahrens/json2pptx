@@ -466,7 +466,7 @@ func DefaultLegendConfig() LegendConfig {
 		MaxWidth:        0,
 		MaxHeight:       0,
 		ShowBorder:      false,
-		BorderColor:     MustParseColor("#DEE2E6"),
+		BorderColor:     MustParseColor(DefaultThemeBorderHex),
 		// The Go canvas library's MeasureText underestimates text widths by
 		// ~2.5x relative to SVG renderers (rsvg-convert, LibreOffice) due to
 		// internal font-size scaling in the canvas library. This factor

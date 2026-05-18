@@ -756,9 +756,9 @@ func (vc *VennChart) getColors(style *StyleGuide, count int) []Color {
 	}
 	// Fallback: sensible defaults for Venn diagrams
 	return []Color{
-		MustParseColor("#4E79A7"), // Blue
-		MustParseColor("#E15759"), // Red
-		MustParseColor("#59A14F"), // Green
+		MustParseColor(DefaultThemeAccent1Hex), // Blue
+		MustParseColor(DefaultThemeAccent3Hex), // Red
+		MustParseColor(DefaultThemeAccent5Hex), // Green
 	}
 }
 

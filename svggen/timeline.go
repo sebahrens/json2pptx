@@ -158,18 +158,18 @@ func DefaultTimelineConfig(width, height float64) TimelineConfig {
 		BarHeight:           24,
 		BarCornerRadius:     4,
 		MilestoneSize:       16,
-		ActivityFillColor:   MustParseColor("#4E79A7"),
-		ActivityStrokeColor: MustParseColor("#3D5A80"),
-		MilestoneFillColor:  MustParseColor("#E15759"),
-		PhaseFillColor:      MustParseColor("#E8F4FD"),
-		TodayLineColor:      MustParseColor("#E15759"),
+		ActivityFillColor:   MustParseColor(DefaultThemeAccent1Hex),
+		ActivityStrokeColor: MustParseColor(DefaultThemeAccent1Hex).Darken(0.2),
+		MilestoneFillColor:  MustParseColor(DefaultThemeAccent3Hex),
+		PhaseFillColor:      MustParseColor(DefaultThemeAccent1Hex).WithAlpha(0.15),
+		TodayLineColor:      MustParseColor(DefaultThemeAccent3Hex),
 		ShowLabels:          true,
 		LabelPosition:       "inside",
 		ShowProgress:        false,
-		ProgressColor:       MustParseColor("#59A14F"),
+		ProgressColor:       MustParseColor(DefaultThemeAccent5Hex),
 		TimeAxisHeight:      30,
 		ShowTimeGrid:        true,
-		TimeGridColor:       MustParseColor("#E5E5E5"),
+		TimeGridColor:       MustParseColor(DefaultThemeTimeGridHex),
 	}
 }
 
@@ -234,12 +234,12 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	tc.accentColors = style.Palette.AccentColors()
 	if len(tc.accentColors) < 3 {
 		tc.accentColors = []Color{
-			MustParseColor("#4E79A7"),
-			MustParseColor("#59A14F"),
-			MustParseColor("#F28E2B"),
-			MustParseColor("#E15759"),
-			MustParseColor("#76B7B2"),
-			MustParseColor("#B07AA1"),
+			MustParseColor(DefaultThemeAccent1Hex),
+			MustParseColor(DefaultThemeAccent5Hex),
+			MustParseColor(DefaultThemeAccent2Hex),
+			MustParseColor(DefaultThemeAccent3Hex),
+			MustParseColor(DefaultThemeAccent4Hex),
+			MustParseColor(DefaultThemeAccent7Hex),
 		}
 	}
 

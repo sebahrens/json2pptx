@@ -77,10 +77,10 @@ func DefaultMatrix2x2Config(width, height float64) Matrix2x2Config {
 			"Low Value / High Effort",  // bottom-right
 		},
 		QuadrantColors: [4]Color{
-			MustParseColor("#59A14F").WithAlpha(0.30), // Green tint
-			MustParseColor("#EDC948").WithAlpha(0.30), // Yellow tint
-			MustParseColor("#76B7B2").WithAlpha(0.30), // Teal tint
-			MustParseColor("#E15759").WithAlpha(0.30), // Red tint
+			MustParseColor(DefaultThemeAccent5Hex).WithAlpha(0.30), // Green tint
+			MustParseColor(DefaultThemeAccent6Hex).WithAlpha(0.30), // Yellow tint
+			MustParseColor(DefaultThemeAccent4Hex).WithAlpha(0.30), // Teal tint
+			MustParseColor(DefaultThemeAccent3Hex).WithAlpha(0.30), // Red tint
 		},
 		QuadrantOpacity: 0.30,
 		XAxisLabel:      "Effort",
@@ -90,7 +90,7 @@ func DefaultMatrix2x2Config(width, height float64) Matrix2x2Config {
 		YAxisMin:        0,
 		YAxisMax:        100,
 		ShowGridLines:   true,
-		GridLineColor:   MustParseColor("#6C757D"),
+		GridLineColor:   MustParseColor(DefaultThemeTextMutedHex),
 		GridLineWidth:   1.5,
 		GridLineDash:    false,
 		PointSize:       12,

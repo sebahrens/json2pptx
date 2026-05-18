@@ -529,7 +529,7 @@ func DefaultGridConfig() GridConfig {
 	return GridConfig{
 		ShowHorizontal: true,
 		ShowVertical:   false,
-		Color:          MustParseColor("#E0E0E0"),
+		Color:          MustParseColor(DefaultThemeChartGridHex),
 		StrokeWidth:    0.75,
 		DashPattern:    nil, // Solid lines for a clean dashboard look
 	}
