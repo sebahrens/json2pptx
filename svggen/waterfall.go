@@ -350,59 +350,26 @@ func (wc *WaterfallChart) calculateDomain(points []WaterfallDataPoint) (min, max
 func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize float64, xLabelRotation float64, labelStep int, importantLabels map[int]bool) {
 	b := wc.builder
 
-	// X axis — horizontal by default, rotated when labels are dense
+	// X axis — horizontal by default, rotated when labels are dense. Label
+	// thinning (every Nth + last + important totals/subtotals) and rotated
+	// label pivot geometry are owned by the shared AxisConfig / drawTick
+	// pipeline. The first index (i=0) is preserved naturally because
+	// 0 % step == 0 for any step.
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
 	xAxisConfig.Title = wc.config.XAxisTitle
 	xAxisConfig.FontSize = axisFontSize
 	xAxisConfig.LabelRotation = xLabelRotation
-
-	if labelStep > 1 {
-		// Label thinning: hide axis labels, we draw them manually below
-		xAxisConfig.HideLabels = true
+	xAxisConfig.LabelStep = labelStep
+	if labelStep > 1 && len(importantLabels) > 0 {
+		important := make([]int, 0, len(importantLabels))
+		for idx := range importantLabels {
+			important = append(important, idx)
+		}
+		xAxisConfig.ImportantLabels = important
 	}
 
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
-
-	// If thinning, draw every Nth label manually (always show first and last)
-	if labelStep > 1 {
-		style := b.StyleGuide()
-		cats := xScale.Categories()
-		b.Push()
-		b.SetFontSize(axisFontSize)
-		b.SetFontWeight(style.Typography.WeightNormal)
-		lastIdx := len(cats) - 1
-		for i, cat := range cats {
-			if i != 0 && i%labelStep != 0 && i != lastIdx && !importantLabels[i] {
-				continue
-			}
-			labelX := plotArea.X + xScale.Scale(cat)
-			labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
-
-			if xLabelRotation != 0 {
-				// Match the unified drawTick geometry: no vertical band-aid;
-				// shift pivot horizontally by tickPadding/√2 and pick rotAlign
-				// by rotation sign so the rotated bbox lands cleanly below the
-				// tick mark. Negative rotation (e.g. -45°) → text-anchor:end
-				// so the label extends down-left away from the chart area.
-				gap := xAxisConfig.TickPadding / math.Sqrt2
-				rotAlign := TextAlignLeft
-				if xLabelRotation < 0 {
-					labelX -= gap
-					rotAlign = TextAlignRight
-				} else {
-					labelX += gap
-				}
-				b.Push()
-				b.RotateAround(xLabelRotation, labelX, labelY)
-				b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
-				b.Pop()
-			} else {
-				b.DrawText(cat, labelX, labelY, TextAlignCenter, TextBaselineTop)
-			}
-		}
-		b.Pop()
-	}
 
 	// Y axis (shared)
 	DrawCartesianYAxis(b, plotArea, yScale, wc.config.YAxisTitle)

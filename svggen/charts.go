@@ -596,57 +596,16 @@ func (bc *BarChart) drawLogGrid(plotArea Rect) {
 func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFontSize, xLabelRotation float64, labelStep int) {
 	b := bc.builder
 
-	// X axis (same as linear)
+	// X axis (same as linear). Label thinning (every Nth + last) and rotated
+	// label geometry are handled by the shared AxisConfig / drawTick pipeline.
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
 	xAxisConfig.Title = bc.config.XAxisTitle
 	xAxisConfig.FontSize = axisFontSize
 	xAxisConfig.LabelRotation = xLabelRotation
-
-	if labelStep > 1 {
-		xAxisConfig.HideLabels = true
-	}
+	xAxisConfig.LabelStep = labelStep
 
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
-
-	// If thinning, draw every Nth label manually (same as linear path)
-	if labelStep > 1 {
-		style := b.StyleGuide()
-		cats := xScale.Categories()
-		b.Push()
-		b.SetFontSize(axisFontSize)
-		b.SetFontWeight(style.Typography.WeightNormal)
-		lastIdx := len(cats) - 1
-		for i, cat := range cats {
-			if i%labelStep != 0 && i != lastIdx {
-				continue
-			}
-			labelX := plotArea.X + xScale.Scale(cat)
-			labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
-
-			if xLabelRotation != 0 {
-				// Match the unified drawTick geometry: no vertical band-aid;
-				// shift pivot horizontally by tickPadding/√2 and pick rotAlign
-				// by rotation sign so the rotated bbox lands cleanly below the
-				// tick mark.
-				gap := xAxisConfig.TickPadding / math.Sqrt2
-				rotAlign := TextAlignLeft
-				if xLabelRotation < 0 {
-					labelX -= gap
-					rotAlign = TextAlignRight
-				} else {
-					labelX += gap
-				}
-				b.Push()
-				b.RotateAround(xLabelRotation, labelX, labelY)
-				b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
-				b.Pop()
-			} else {
-				b.DrawText(cat, labelX, labelY, TextAlignCenter, TextBaselineTop)
-			}
-		}
-		b.Pop()
-	}
 
 	// Y axis — use log scale labels
 	yAxisConfig := DefaultAxisConfig(AxisPositionLeft)
@@ -659,58 +618,17 @@ func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFon
 func (bc *BarChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize, xLabelRotation float64, labelStep int) {
 	b := bc.builder
 
-	// X axis — with density-adaptive font size and rotation
+	// X axis — with density-adaptive font size and rotation. Label thinning
+	// (every Nth + last) and rotated-label pivot geometry are owned by the
+	// shared AxisConfig / drawTick pipeline.
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
 	xAxisConfig.Title = bc.config.XAxisTitle
 	xAxisConfig.FontSize = axisFontSize
 	xAxisConfig.LabelRotation = xLabelRotation
-
-	if labelStep > 1 {
-		// Label thinning: hide labels on the axis, we draw them manually below
-		xAxisConfig.HideLabels = true
-	}
+	xAxisConfig.LabelStep = labelStep
 
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
-
-	// If thinning, draw every Nth label manually (always show first and last)
-	if labelStep > 1 {
-		style := b.StyleGuide()
-		cats := xScale.Categories()
-		b.Push()
-		b.SetFontSize(axisFontSize)
-		b.SetFontWeight(style.Typography.WeightNormal)
-		lastIdx := len(cats) - 1
-		for i, cat := range cats {
-			if i%labelStep != 0 && i != lastIdx {
-				continue
-			}
-			labelX := plotArea.X + xScale.Scale(cat)
-			labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
-
-			if xLabelRotation != 0 {
-				// Match the unified drawTick geometry: no vertical band-aid;
-				// shift pivot horizontally by tickPadding/√2 and pick rotAlign
-				// by rotation sign so the rotated bbox lands cleanly below the
-				// tick mark.
-				gap := xAxisConfig.TickPadding / math.Sqrt2
-				rotAlign := TextAlignLeft
-				if xLabelRotation < 0 {
-					labelX -= gap
-					rotAlign = TextAlignRight
-				} else {
-					labelX += gap
-				}
-				b.Push()
-				b.RotateAround(xLabelRotation, labelX, labelY)
-				b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
-				b.Pop()
-			} else {
-				b.DrawText(cat, labelX, labelY, TextAlignCenter, TextBaselineTop)
-			}
-		}
-		b.Pop()
-	}
 
 	// Y axis (shared)
 	DrawCartesianYAxis(b, plotArea, yScale, bc.config.YAxisTitle)
@@ -1304,7 +1222,6 @@ func (lc *LineChart) calculateTimeDomain(data ChartData) (min, max int64) {
 // drawAxes draws the chart axes.
 func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, categories []string, xLayout XLabelLayout) {
 	b := lc.builder
-	style := b.StyleGuide()
 
 	// X axis
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
@@ -1312,55 +1229,15 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 
 	switch xs := xScale.(type) {
 	case *CategoricalScale:
-		// Apply adaptive font size and rotation from AdaptXLabels
+		// Apply adaptive font size, rotation, and thinning from AdaptXLabels.
+		// Label thinning (every Nth + last) and rotated-label pivot geometry
+		// are owned by the shared AxisConfig / drawTick pipeline.
 		xAxisConfig.FontSize = xLayout.FontSize
 		xAxisConfig.LabelRotation = xLayout.Rotation
-
-		if xLayout.LabelStep > 1 {
-			// Label thinning: hide labels on the axis, draw them manually
-			xAxisConfig.HideLabels = true
-		}
+		xAxisConfig.LabelStep = xLayout.LabelStep
 
 		xAxis := NewAxis(b, xAxisConfig)
 		xAxis.DrawCategoricalAxis(xs, plotArea.X, plotArea.Y+plotArea.H)
-
-		// If thinning, draw every Nth label manually (always show first and last)
-		if xLayout.LabelStep > 1 {
-			cats := xs.Categories()
-			b.Push()
-			b.SetFontSize(xLayout.FontSize)
-			b.SetFontWeight(style.Typography.WeightNormal)
-			lastIdx := len(cats) - 1
-			for i, cat := range cats {
-				if i%xLayout.LabelStep != 0 && i != lastIdx {
-					continue
-				}
-				labelX := plotArea.X + xs.Scale(cat)
-				labelY := plotArea.Y + plotArea.H + xAxisConfig.TickSize + xAxisConfig.TickPadding
-
-				if xLayout.Rotation != 0 {
-					// Match the unified drawTick geometry: no vertical band-aid;
-					// shift pivot horizontally by tickPadding/√2 and pick rotAlign
-					// by rotation sign so the rotated bbox lands cleanly below the
-					// tick mark (parity with BarChart/Waterfall).
-					gap := xAxisConfig.TickPadding / math.Sqrt2
-					rotAlign := TextAlignLeft
-					if xLayout.Rotation < 0 {
-						labelX -= gap
-						rotAlign = TextAlignRight
-					} else {
-						labelX += gap
-					}
-					b.Push()
-					b.RotateAround(xLayout.Rotation, labelX, labelY)
-					b.DrawText(cat, labelX, labelY, rotAlign, TextBaselineTop)
-					b.Pop()
-				} else {
-					b.DrawText(cat, labelX, labelY, TextAlignCenter, TextBaselineTop)
-				}
-			}
-			b.Pop()
-		}
 	case *LinearScale:
 		xAxis := NewAxis(b, xAxisConfig)
 		xAxis.DrawLinearAxis(xs, plotArea.X, plotArea.Y+plotArea.H)

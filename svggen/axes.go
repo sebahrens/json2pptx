@@ -65,6 +65,19 @@ type AxisConfig struct {
 	// This prevents Nice()-expanded ticks from rendering outside the
 	// plot area.
 	RangeExtent float64
+
+	// LabelStep, when > 1, thins labels so only every Nth label is rendered.
+	// The last label and any index in ImportantLabels are always shown.
+	// Tick marks and grid lines are still drawn at every position; only the
+	// label text is suppressed for skipped indices. When LabelStep > 1 the
+	// axis emits ticks/grid in one pass and labels in a second pass to
+	// preserve byte-compatible SVG element ordering with the previous
+	// per-chart "manual thinning" code paths.
+	LabelStep int
+
+	// ImportantLabels lists tick indices that must always be labeled even
+	// when LabelStep > 1 would otherwise thin them.
+	ImportantLabels []int
 }
 
 // DefaultAxisConfig returns default axis configuration.
@@ -220,9 +233,43 @@ func (a *Axis) drawAxis(positions []float64, labels []string, originX, originY f
 		}
 	}
 
-	// Draw ticks, grid lines, and labels
-	for i, pos := range positions {
-		a.drawTick(pos, originX, originY, labels[i], axisColor, gridColor)
+	// Draw ticks, grid lines, and labels.
+	//
+	// When LabelStep > 1, emit ticks/grid lines in one pass and labels in a
+	// second pass. This preserves the SVG element ordering produced by the
+	// per-chart "manual thinning" code paths that previously hid axis labels
+	// (HideLabels=true) and then drew them in a separate loop. Without the
+	// two-pass split, golden tests would see interleaved <line>/<text> output
+	// instead of all ticks followed by all labels.
+	step := a.config.LabelStep
+	if step < 1 {
+		step = 1
+	}
+	if step > 1 {
+		var important map[int]bool
+		if n := len(a.config.ImportantLabels); n > 0 {
+			important = make(map[int]bool, n)
+			for _, idx := range a.config.ImportantLabels {
+				important[idx] = true
+			}
+		}
+		lastIdx := len(positions) - 1
+
+		// Pass 1: ticks + grid lines for every position.
+		for _, pos := range positions {
+			a.drawTickGeometry(pos, originX, originY, axisColor, gridColor)
+		}
+		// Pass 2: labels at kept positions (every Nth, plus last + important).
+		for i, pos := range positions {
+			if i%step != 0 && i != lastIdx && !important[i] {
+				continue
+			}
+			a.drawTickLabel(pos, originX, originY, labels[i])
+		}
+	} else {
+		for i, pos := range positions {
+			a.drawTick(pos, originX, originY, labels[i], axisColor, gridColor)
+		}
 	}
 
 	// Draw title
@@ -235,6 +282,10 @@ func (a *Axis) drawAxis(positions []float64, labels []string, originX, originY f
 }
 
 // drawTick draws a single tick mark, optional grid line, and label.
+//
+// Equivalent to drawTickGeometry + drawTickLabel called back-to-back for the
+// same position; retained so that the non-thinning code path keeps emitting
+// grid → tick → label per position (matching pre-refactor golden output).
 func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, gridColor Color) {
 	// Skip ticks outside the visible range when RangeExtent is set.
 	if a.config.RangeExtent > 0 {
@@ -243,34 +294,28 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 			return
 		}
 	}
+	a.drawTickGeometry(pos, originX, originY, axisColor, gridColor)
+	a.drawTickLabel(pos, originX, originY, label)
+}
+
+// drawTickGeometry draws the grid line and tick mark for a single position.
+// It is the geometry half of drawTick, factored out so drawAxis can run a
+// dedicated geometry pass when LabelStep > 1 (with labels emitted in a
+// second pass via drawTickLabel).
+func (a *Axis) drawTickGeometry(pos, originX, originY float64, axisColor, gridColor Color) {
+	if a.config.RangeExtent > 0 {
+		const eps = 0.5
+		if pos < -eps || pos > a.config.RangeExtent+eps {
+			return
+		}
+	}
 
 	b := a.builder
 	style := b.StyleGuide()
-
 	isHorizontal := a.config.Position == AxisPositionBottom || a.config.Position == AxisPositionTop
 
-	var tickX1, tickY1, tickX2, tickY2 float64
-	var labelX, labelY float64
-	var align TextAlign
-	var baseline TextBaseline
-
 	tickSize := a.config.TickSize
-	tickPadding := a.config.TickPadding
-
-	// Minimum vertical gap between the tick mark tip and the label edge for
-	// horizontal axes. Enforced so that callers who shrink TickPadding (or
-	// leave it at 0) still get a renderer-safe gap that prevents the label
-	// glyph from touching the tick line under any downstream font metrics.
-	// 3pt is the smallest gap that survives sub-pixel rounding in rsvg,
-	// LibreOffice, and PowerPoint at our typical chart sizes.
-	horizontalLabelGap := math.Max(tickPadding, 3)
-
-	// Minimum horizontal gap between the tick mark tip and the label edge for
-	// vertical (left/right) axes. Mirrors horizontalLabelGap: even when callers
-	// shrink TickPadding to 0, this floor keeps a renderer-safe ≥3pt gap so the
-	// label glyph cannot collide with the tick mark line under downstream font
-	// metrics drift (rsvg / LibreOffice / PowerPoint).
-	verticalLabelGap := math.Max(tickPadding, 3)
+	var tickX1, tickY1, tickX2, tickY2 float64
 
 	switch a.config.Position {
 	case AxisPositionBottom:
@@ -278,40 +323,21 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 		tickY1 = originY
 		tickX2 = tickX1
 		tickY2 = originY + tickSize
-		labelX = tickX1
-		labelY = tickY2 + horizontalLabelGap
-		align = TextAlignCenter
-		baseline = TextBaselineTop
-
 	case AxisPositionTop:
 		tickX1 = originX + pos
 		tickY1 = originY
 		tickX2 = tickX1
 		tickY2 = originY - tickSize
-		labelX = tickX1
-		labelY = tickY2 - horizontalLabelGap
-		align = TextAlignCenter
-		baseline = TextBaselineBottom
-
 	case AxisPositionLeft:
 		tickX1 = originX
 		tickY1 = originY + pos
 		tickX2 = originX - tickSize
 		tickY2 = tickY1
-		labelX = tickX2 - verticalLabelGap
-		labelY = tickY1
-		align = TextAlignRight
-		baseline = TextBaselineMiddle
-
 	case AxisPositionRight:
 		tickX1 = originX
 		tickY1 = originY + pos
 		tickX2 = originX + tickSize
 		tickY2 = tickY1
-		labelX = tickX2 + verticalLabelGap
-		labelY = tickY1
-		align = TextAlignLeft
-		baseline = TextBaselineMiddle
 	}
 
 	// Draw grid line
@@ -346,50 +372,110 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 		b.SetStrokeColor(axisColor).SetStrokeWidth(style.Strokes.WidthThin)
 		b.DrawLine(tickX1, tickY1, tickX2, tickY2)
 	}
+}
 
-	// Draw label
-	if !a.config.HideLabels && label != "" {
-		fontSize := a.config.FontSize
-		if fontSize == 0 {
-			fontSize = style.Typography.SizeSmall
+// drawTickLabel draws the text label for a single position. Honors HideLabels,
+// empty labels, and label rotation. It is the label half of drawTick, factored
+// out so drawAxis can defer label emission to a second pass when LabelStep > 1.
+func (a *Axis) drawTickLabel(pos, originX, originY float64, label string) {
+	if a.config.HideLabels || label == "" {
+		return
+	}
+	if a.config.RangeExtent > 0 {
+		const eps = 0.5
+		if pos < -eps || pos > a.config.RangeExtent+eps {
+			return
 		}
-		b.SetFontSize(fontSize).SetFontWeight(style.Typography.WeightNormal)
+	}
 
-		if a.config.LabelRotation != 0 {
-			// Rotated labels on the bottom axis: anchor the label end at the
-			// tick mark and let the text descend down-left (negative rotation)
-			// or down-right (positive rotation) below the axis. The rotation
-			// pivot is at (labelX, labelY) where labelY = tickY2 + tickPadding
-			// — no extra vertical "+fontSize" offset is needed: with TextAlignRight
-			// + TextBaselineTop, the top-right corner of the rotated bbox lands at
-			// the pivot, and every other corner falls into the strip below.
-			//
-			// To keep a small horizontal gap between the rotated label's right
-			// corner and the tick mark vertical line, we shift the pivot in X
-			// away from the tick by tickPadding/√2 (the natural padding rotated
-			// into the diagonal). For negative rotation (end-anchor) we shift
-			// LEFT; for positive rotation (start-anchor) we shift RIGHT.
-			if a.config.Position == AxisPositionBottom {
-				gap := tickPadding / math.Sqrt2
-				if a.config.LabelRotation < 0 {
-					labelX -= gap
-					align = TextAlignRight
-				} else {
-					labelX += gap
-					align = TextAlignLeft
-				}
-			} else if a.config.LabelRotation < 0 {
+	b := a.builder
+	style := b.StyleGuide()
+
+	tickSize := a.config.TickSize
+	tickPadding := a.config.TickPadding
+
+	// Minimum vertical gap between the tick mark tip and the label edge for
+	// horizontal axes. Enforced so that callers who shrink TickPadding (or
+	// leave it at 0) still get a renderer-safe gap that prevents the label
+	// glyph from touching the tick line under any downstream font metrics.
+	// 3pt is the smallest gap that survives sub-pixel rounding in rsvg,
+	// LibreOffice, and PowerPoint at our typical chart sizes.
+	horizontalLabelGap := math.Max(tickPadding, 3)
+
+	// Minimum horizontal gap between the tick mark tip and the label edge for
+	// vertical (left/right) axes. Mirrors horizontalLabelGap: even when callers
+	// shrink TickPadding to 0, this floor keeps a renderer-safe ≥3pt gap so the
+	// label glyph cannot collide with the tick mark line under downstream font
+	// metrics drift (rsvg / LibreOffice / PowerPoint).
+	verticalLabelGap := math.Max(tickPadding, 3)
+
+	var labelX, labelY float64
+	var align TextAlign
+	var baseline TextBaseline
+
+	switch a.config.Position {
+	case AxisPositionBottom:
+		labelX = originX + pos
+		labelY = (originY + tickSize) + horizontalLabelGap
+		align = TextAlignCenter
+		baseline = TextBaselineTop
+	case AxisPositionTop:
+		labelX = originX + pos
+		labelY = (originY - tickSize) - horizontalLabelGap
+		align = TextAlignCenter
+		baseline = TextBaselineBottom
+	case AxisPositionLeft:
+		labelX = (originX - tickSize) - verticalLabelGap
+		labelY = originY + pos
+		align = TextAlignRight
+		baseline = TextBaselineMiddle
+	case AxisPositionRight:
+		labelX = (originX + tickSize) + verticalLabelGap
+		labelY = originY + pos
+		align = TextAlignLeft
+		baseline = TextBaselineMiddle
+	}
+
+	fontSize := a.config.FontSize
+	if fontSize == 0 {
+		fontSize = style.Typography.SizeSmall
+	}
+	b.SetFontSize(fontSize).SetFontWeight(style.Typography.WeightNormal)
+
+	if a.config.LabelRotation != 0 {
+		// Rotated labels on the bottom axis: anchor the label end at the
+		// tick mark and let the text descend down-left (negative rotation)
+		// or down-right (positive rotation) below the axis. The rotation
+		// pivot is at (labelX, labelY) where labelY = tickY2 + tickPadding
+		// — no extra vertical "+fontSize" offset is needed: with TextAlignRight
+		// + TextBaselineTop, the top-right corner of the rotated bbox lands at
+		// the pivot, and every other corner falls into the strip below.
+		//
+		// To keep a small horizontal gap between the rotated label's right
+		// corner and the tick mark vertical line, we shift the pivot in X
+		// away from the tick by tickPadding/√2 (the natural padding rotated
+		// into the diagonal). For negative rotation (end-anchor) we shift
+		// LEFT; for positive rotation (start-anchor) we shift RIGHT.
+		if a.config.Position == AxisPositionBottom {
+			gap := tickPadding / math.Sqrt2
+			if a.config.LabelRotation < 0 {
+				labelX -= gap
 				align = TextAlignRight
 			} else {
+				labelX += gap
 				align = TextAlignLeft
 			}
-			b.Push()
-			b.RotateAround(a.config.LabelRotation, labelX, labelY)
-			b.DrawText(label, labelX, labelY, align, baseline)
-			b.Pop()
+		} else if a.config.LabelRotation < 0 {
+			align = TextAlignRight
 		} else {
-			b.DrawText(label, labelX, labelY, align, baseline)
+			align = TextAlignLeft
 		}
+		b.Push()
+		b.RotateAround(a.config.LabelRotation, labelX, labelY)
+		b.DrawText(label, labelX, labelY, align, baseline)
+		b.Pop()
+	} else {
+		b.DrawText(label, labelX, labelY, align, baseline)
 	}
 }
 
