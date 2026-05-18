@@ -167,6 +167,24 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		style.ThemeColors = themeInputs
 	}
 
+	// Forward lt1 (background) and lt2 (surface) from the effective theme so
+	// svggen's contrast calculations match native enforceTextContrastInSlide
+	// on templates whose visible slide surface is tinted (not pure white).
+	// Per-spec ThemeColors take priority over caller-supplied themeColors.
+	var effectiveTheme []types.ThemeColor
+	if spec.Style != nil && len(spec.Style.ThemeColors) > 0 {
+		effectiveTheme = spec.Style.ThemeColors
+	} else {
+		effectiveTheme = themeColors
+	}
+	bg, surface := lookupBackgroundAndSurface(effectiveTheme)
+	if surface != "" {
+		style.Surface = surface
+	}
+	if bg != "" {
+		style.Background = bg
+	}
+
 	// Apply other style settings
 	if spec.Style != nil {
 		style.ShowLegend = spec.Style.ShowLegend
@@ -175,6 +193,7 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 			style.FontFamily = spec.Style.FontFamily
 		}
 		if spec.Style.Background != "" {
+			// Explicit per-spec background wins over theme lt1.
 			style.Background = spec.Style.Background
 		}
 		if len(spec.Style.DataPalette) > 0 {
@@ -217,5 +236,20 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		Output:   output,
 		Style:    style,
 	}
+}
+
+// lookupBackgroundAndSurface returns the hex values for the theme's lt1 (slide
+// background) and lt2 (alternate surface) colors. Either return value is "" if
+// the corresponding entry is missing from the input.
+func lookupBackgroundAndSurface(colors []types.ThemeColor) (background, surface string) {
+	for _, c := range colors {
+		switch c.Name {
+		case "lt1":
+			background = c.RGB
+		case "lt2":
+			surface = c.RGB
+		}
+	}
+	return background, surface
 }
 

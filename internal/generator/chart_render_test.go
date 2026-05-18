@@ -110,6 +110,76 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 		})
 	}
 
+	// Verify lt1 (Background) and lt2 (Surface) are forwarded to StyleSpec
+	// so svggen's contrast pipeline matches native enforceTextContrastInSlide
+	// on tinted-surface templates (wbc7.6).
+	t.Run("background_and_surface_forwarded_from_theme", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+		}
+		theme := []types.ThemeColor{
+			{Name: "dk1", RGB: "#000000"},
+			{Name: "lt1", RGB: "#FFFFFF"},
+			{Name: "lt2", RGB: "#F5EFE0"}, // beige surface
+			{Name: "accent1", RGB: "#336699"},
+		}
+		result := diagramSpecToSVGGen(spec, theme, 0, "")
+		if result.Style.Background != "#FFFFFF" {
+			t.Errorf("Background = %q, want %q (lt1)", result.Style.Background, "#FFFFFF")
+		}
+		if result.Style.Surface != "#F5EFE0" {
+			t.Errorf("Surface = %q, want %q (lt2)", result.Style.Surface, "#F5EFE0")
+		}
+	})
+
+	// Explicit spec.Style.Background must still win over theme lt1.
+	t.Run("explicit_style_background_overrides_lt1", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+			Style: &types.DiagramStyle{
+				Background: "#112233",
+			},
+		}
+		theme := []types.ThemeColor{
+			{Name: "lt1", RGB: "#FFFFFF"},
+			{Name: "lt2", RGB: "#F5EFE0"},
+		}
+		result := diagramSpecToSVGGen(spec, theme, 0, "")
+		if result.Style.Background != "#112233" {
+			t.Errorf("Background = %q, want explicit %q", result.Style.Background, "#112233")
+		}
+		if result.Style.Surface != "#F5EFE0" {
+			t.Errorf("Surface = %q, want %q (lt2)", result.Style.Surface, "#F5EFE0")
+		}
+	})
+
+	// Per-spec ThemeColors take priority over caller themeColors.
+	t.Run("spec_theme_colors_take_priority", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+			Style: &types.DiagramStyle{
+				ThemeColors: []types.ThemeColor{
+					{Name: "lt1", RGB: "#101010"},
+					{Name: "lt2", RGB: "#202020"},
+				},
+			},
+		}
+		caller := []types.ThemeColor{
+			{Name: "lt1", RGB: "#FFFFFF"},
+			{Name: "lt2", RGB: "#EEEEEE"},
+		}
+		result := diagramSpecToSVGGen(spec, caller, 0, "")
+		if result.Style.Background != "#101010" {
+			t.Errorf("Background = %q, want %q (spec lt1)", result.Style.Background, "#101010")
+		}
+		if result.Style.Surface != "#202020" {
+			t.Errorf("Surface = %q, want %q (spec lt2)", result.Style.Surface, "#202020")
+		}
+	})
+
 	// Verify StrictFit is threaded to OutputSpec.
 	t.Run("strict_fit_threaded", func(t *testing.T) {
 		spec := &types.DiagramSpec{
