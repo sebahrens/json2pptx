@@ -327,6 +327,37 @@ var outputSchemaExpandPattern = json.RawMessage(`{
   "required": ["pattern", "version", "bounds_source", "shape_grid", "occupancy"]
 }`)
 
+// --- expand_patterns (batch) ---
+var outputSchemaExpandPatterns = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "bounds_source": {"type": "string", "enum": ["template", "default_fallback"]},
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern":       {"type": "string"},
+          "used_exemplar": {"type": "boolean"},
+          "error": {
+            "type": "object",
+            "properties": {
+              "field":   {"type": "string"},
+              "code":    {"type": "string"},
+              "message": {"type": "string"},
+              "fix":     {"type": "object"},
+              "next_tool_call": {"type": "object"}
+            }
+          },
+          "result": {"type": "object"}
+        },
+        "required": ["pattern", "used_exemplar"]
+      }
+    }
+  },
+  "required": ["bounds_source", "results"]
+}`)
+
 // --- recommend_pattern ---
 var outputSchemaRecommendPattern = json.RawMessage(`{
   "type": "object",

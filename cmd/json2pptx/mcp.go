@@ -127,6 +127,7 @@ func runMCP() error {
 	s.AddTool(mcpShowPatternTool(), handleShowPattern)
 	s.AddTool(mcpValidatePatternTool(), handleValidatePattern)
 	s.AddTool(mcpExpandPatternTool(), mc.handleExpandPattern)
+	s.AddTool(mcpExpandPatternsTool(), mc.handleExpandPatterns)
 	s.AddTool(mcpListIconsTool(), handleListIcons)
 	s.AddTool(mcpGetShapeCatalogTool(), handleGetShapeCatalog)
 	s.AddTool(mcpTableDensityGuideTool(), mc.handleTableDensityGuide)
@@ -1623,8 +1624,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	}
 
 	reg := patterns.Default()
-	pat, ok := reg.Get(name)
-	if !ok {
+	if _, ok := reg.Get(name); !ok {
 		msg := fmt.Sprintf("unknown pattern %q", name)
 		fix := &diagnostics.Fix{Kind: "use_one_of"}
 		if suggestion, ok := reg.Suggest(name); ok {
@@ -1679,73 +1679,17 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	}
 
 	// Build ExpandContext — use template layout bounds if provided, else defaults
-	var boundsSource string
 	templateName, _ := request.RequireString("theme_template")
 	expandCtx, boundsSource, err := resolveExpandContext(templateName, mc.templatesDir)
 	if err != nil {
 		return api.MCPSimpleError("TEMPLATE_NOT_FOUND", fmt.Sprintf("template %q: %v", templateName, err)), nil
 	}
 
-	// Use expandPattern helper (which handles unmarshal, validate, expand)
-	grid, _, err := expandPattern(pi, expandCtx, reg)
+	// Use the shared helper so single-pattern and batch (expand_patterns) tools
+	// emit identical per-pattern shapes.
+	result, err := buildPatternExpansionResult(pi, expandCtx, boundsSource, reg)
 	if err != nil {
 		return api.MCPDiagnosticsError(diagnostics.FromJoinedError(err, "PATTERN_ERROR")), nil
-	}
-	// Run density checks on any tables embedded in the expanded shape grid.
-	densityWarnings := collectGridDensityWarnings(grid)
-	attachNextToolCallsToValidationErrors(densityWarnings, name)
-
-	// Compute occupancy metadata so agents can pre-flight sparseness
-	occupancy := computeGridOccupancy(grid, expandCtx)
-
-	// Compute cell budgets and capacity-based density warnings
-	cellBudgets, capacityWarnings := computeCellBudgets(grid, expandCtx)
-
-	// Attach next_tool_call to underfill capacity warnings suggesting re-expand with max_height_pct
-	attachBoundsHintToCapacityWarnings(capacityWarnings, name, pi)
-
-	// Check for grid-level sparse layout (average density below pattern threshold)
-	if sparseWarn := sparseLayoutWarning(cellBudgets, pat, name, pi); sparseWarn != nil {
-		capacityWarnings = append(capacityWarnings, *sparseWarn)
-	}
-
-	// Check for density-class divergence (content density vs pattern's DensityClass)
-	if dcWarn := densityClassWarning(cellBudgets, pat, name, pi, reg); dcWarn != nil {
-		capacityWarnings = append(capacityWarnings, *dcWarn)
-	}
-
-	// Suggest alternative layouts when density is consistently suboptimal
-	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)
-
-	// Determine bounds_assumption based on whether bounds were applied
-	boundsAssumption := "full_content_area"
-	if grid.Bounds != nil {
-		boundsAssumption = "explicit_override"
-	}
-
-	// Also provide the pattern version for traceability
-	result := struct {
-		Pattern            string                    `json:"pattern"`
-		Version            int                       `json:"version"`
-		BoundsSource       string                    `json:"bounds_source"`
-		BoundsAssumption   string                    `json:"bounds_assumption"`
-		ShapeGrid          *jsonschema.ShapeGridInput `json:"shape_grid"`
-		Occupancy          gridOccupancy             `json:"occupancy"`
-		CellBudgets        []cellBudgetEntry         `json:"cell_budgets,omitempty"`
-		DensityWarnings    []patternValidationError  `json:"density_warnings,omitempty"`
-		CapacityWarnings   []cellDensityWarning      `json:"capacity_warnings,omitempty"`
-		LayoutSuggestions  []layoutSuggestion        `json:"layout_suggestions,omitempty"`
-	}{
-		Pattern:          pat.Name(),
-		Version:         pat.Version(),
-		BoundsSource:    boundsSource,
-		BoundsAssumption: boundsAssumption,
-		ShapeGrid:       grid,
-		Occupancy:       occupancy,
-		CellBudgets:     cellBudgets,
-		DensityWarnings: densityWarnings,
-		CapacityWarnings: capacityWarnings,
-		LayoutSuggestions: layoutSuggestions,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)

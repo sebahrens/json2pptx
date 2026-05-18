@@ -4,6 +4,22 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.8.0 (2026-05-18)
+
+### Added
+
+- **`expand_patterns` MCP tool** — batch, content-aware variant of
+  `expand_pattern`. Accepts `names[]`, a single `theme_template`, and a
+  per-pattern `content` map (`{patternName: {values, overrides?,
+  cell_overrides?, bounds?, max_height_pct?}}`) and returns each candidate's
+  full expansion + occupancy + `cell_budgets[]` + `capacity_warnings[]` +
+  `layout_suggestions[]` under a SINGLE template load. Patterns omitted from
+  `content` fall back to exemplar values and are flagged via
+  `used_exemplar=true`. Per-pattern validation/expansion failures surface as
+  per-entry `error` objects without aborting the batch, so agents can compare
+  N candidates head-to-head against their real content in one round-trip
+  instead of N. Closes go-slide-creator-lweh.7.
+
 ## 4.7.0 (2026-05-18)
 
 ### Added

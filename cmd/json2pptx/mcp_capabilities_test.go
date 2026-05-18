@@ -333,6 +333,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpShowPatternTool":          mcpShowPatternTool,
 		"mcpValidatePatternTool":      mcpValidatePatternTool,
 		"mcpExpandPatternTool":        mcpExpandPatternTool,
+		"mcpExpandPatternsTool":       mcpExpandPatternsTool,
 		"mcpListIconsTool":            mcpListIconsTool,
 		"mcpGetShapeCatalogTool":      mcpGetShapeCatalogTool,
 		"mcpTableDensityGuideTool":    mcpTableDensityGuideTool,

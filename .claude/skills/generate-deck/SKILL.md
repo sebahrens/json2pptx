@@ -65,9 +65,10 @@ Standalone SVG renderer with its own diagram/chart registry. **Distinct connecta
 | Purpose | Tool | Notes |
 |---|---|---|
 | Render a diagram or chart to SVG or PNG | `render_diagram` | Requires `type` + `data` (JSON object). Optional `style` (JSON object) and `format` (`"svg"` default or `"png"`). Returns the rendered SVG markup as text or base64 PNG. Use this output as a `shape_grid` cell's `icon.svg_data` for inline embedding. |
-| List all supported diagram/chart types | `list_diagram_types` | Returns the type registry — names, categories, and any `status: "stub"` markers. Call once per session to discover what `render_diagram` accepts. |
+| List all supported diagram/chart types | `list_diagram_types` | Returns the type registry as an array of `{name, aliases?}` objects. `name` is the canonical registered ID (e.g., `bar_chart`, `pie_chart`); `aliases` enumerates other accepted names (e.g., `["bar"]`, `["pie"]`) that resolve to the same renderer. Prefer the canonical `name` in new code; the short aliases (`bar`, `line`, `pie`, etc.) remain accepted everywhere `render_diagram` takes a `type`. Call once per session to discover what `render_diagram` accepts. |
 | Validate a diagram/chart payload | `validate_diagram` | Same `{valid, errors}` envelope documented under "Isolated diagram validation" below. Use BEFORE `render_diagram` when you want structured errors instead of a render failure. |
 | Get the JSON Schema for a diagram/chart type | `get_diagram_schema` | Returns the input schema for a specific `type` so you can structure `data` correctly. Prefer this over guessing field names from `list_diagram_types`. |
+| Detect svggen-mcp contract drift | `get_capabilities` | Returns `{schema_version, tool_list:[{name, description}], chart_types:[], diagram_types:[], deprecations:[], features:{dry_render, structured_errors}}`. `schema_version` is sourced from the svggen library version (single source). Call once per session and compare `schema_version` to the value you cached; a change means the rendering or validation contract may have shifted. Distinct from `json2pptx-mcp.get_capabilities` — this one is scoped to the svggen registry. |
 
 When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
 
@@ -102,7 +103,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (prefer over CLI shell-outs)
 
-When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the four `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
+When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the five `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
@@ -129,6 +130,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
 | Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
 | Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`, `bounds_source`). Pass `theme_template` (MCP) or `--template` (CLI) for template-aware layout bounds. | `expand_pattern` | `json2pptx patterns expand` |
+| **Batch-expand N patterns against the agent's content under a single template load.** Takes `names[]`, a single `theme_template`, and a per-pattern `content` map (`{patternName: {values, overrides?, cell_overrides?, bounds?, max_height_pct?}}`). Returns each candidate's full expansion + `cell_budgets[]` + `capacity_warnings[]` + `layout_suggestions[]`. Patterns missing a content entry fall back to exemplar values and are flagged `used_exemplar=true`. Per-pattern errors surface in the entry's `error` block without aborting the batch. Use after `recommend_pattern` to compare candidates head-to-head with your real content in one round-trip. | `expand_patterns` | (MCP-only; CLI users loop `json2pptx patterns expand`) |
 | Analyze deck rhythm — pattern runs, density variation, accent balance, composition score (lightweight, pre-generation) | `analyze_deck_rhythm` | `json2pptx analyze-rhythm` |
 | Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
 | Icon catalog | `list_icons` | `json2pptx icons list` |
@@ -148,7 +150,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, or `shape`) so you know where to place it in the JSON hierarchy. Enum-constrained fields include inline `enum` arrays. Use this to prevent field-scope mistakes (e.g., putting `contrast_check` on a content item instead of the slide, or `design_mode` inside a slide instead of at deck level).
 
-**Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each entry includes concrete limits (`max_series`, `max_points`, `max_categories` for charts; `max_nodes`, `max_depth` for diagrams), density behavior, and label strategy. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
+**Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each entry includes concrete limits (`max_series`, `max_points`, `max_categories` for charts; `max_nodes`, `max_depth` for diagrams), density behavior, and label strategy. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand. Each capability entry also carries an optional `aliases` array listing the alternate names accepted by `render_diagram` and slide `chart_value.type` (e.g., chart type `bar` advertises `["bar_chart"]`; diagram type `org_chart` advertises `["org", "orgchart"]`). Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
 
 **Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. It returns `{valid: bool, errors?: [{pattern, path, code, message, fix}]}` — note the wrapping `valid`/`errors` envelope (distinct from `expand_pattern`, which returns `{pattern, version, bounds_source, shape_grid, occupancy, density_warnings}`). Per-error `fix.kind` values come from the chart enum: `align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`. Invalid style payloads return a structured rejection instead of being silently ignored. Use when validating a chart/diagram before embedding it into a slide.
 
@@ -311,6 +313,39 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - For a no-side-effect dry run before regenerating, call `preview_presentation_plan` to inspect layout selection, placeholder mapping, and fit findings without producing a PPTX.
 
 Do not tell the user the deck is done until the checklist passes or you have explicitly flagged what you couldn't verify.
+
+### Visual inspection (Claude vision)
+
+Pixels — not JSON — decide whether refinement is acceptable. The `inspect_slide_images` MCP tool exposes the same Claude-vision QA agent that `testrand qa` runs on the CLI: pass an array of rendered slide images, get back structured findings keyed to repair_slide fix kinds.
+
+**When to call it.** After `render_deck_thumbnails` or `render_slide_image`, when (a) the deck has been generated and visually rendered, (b) heuristics on its own pass but the deck still feels off, or (c) the user explicitly asked for a quality pass. Skip it for sub-3-slide drafts and for runs where `ANTHROPIC_API_KEY` is unset (the server returns `INSPECT_DISABLED`).
+
+**Shape of the call.**
+
+```json
+{
+  "slide_images": [
+    {"index": 0, "png_base64": "...", "slide_type": "title",   "title": "..."},
+    {"index": 1, "path": "/tmp/deck/slide-1.png", "slide_type": "content"}
+  ],
+  "deck_metadata": {"template": "midnight-blue"}
+}
+```
+
+Each entry sets exactly one of `path` (absolute, .png/.jpg/.jpeg, no `..`) or `png_base64` (raw base64). Optional `slide_type` and `title` tune the per-slide prompt; supply them when you have them — they materially improve precision.
+
+**How to consume findings.** Each finding's `suggested_fixes[]` is pre-mapped to `repair_slide` fix kinds via `SuggestedFixesForCategory`. The agent-side pipeline is:
+
+```
+findings = inspect_slide_images(...).results[slide].findings
+for f in findings where f.severity in {"P0","P1"}:
+    repair_slide(presentation, slide_index=f.slide_index,
+                 fixes=[{"kind":"autofix_visual","params":{"category":f.category}}])
+```
+
+`autofix_visual` consults the same category→kind map server-side and tries each candidate in order until one succeeds — so a `text_overflow` finding tries `reduce_cell_text`, then `split_at_row`, then `reshape_grid`. Three visual QA categories — `image_quality`, `aspect_ratio`, `border_style` — return empty `suggested_fixes[]` and should be surfaced for human review rather than auto-repaired.
+
+**False-positive policy.** Haiku-vision flags ~60% false positives on layout issues (top-clipping, title-cut) when running on already-correct decks. Treat P2/P3 findings as advisory; only P0/P1 should trigger automatic repair without user confirmation.
 
 ---
 
@@ -639,6 +674,8 @@ Unsupported kinds return `{applied: false, message: "kind_not_supported"}`. To d
 ### Chart Finding Codes
 
 Charts and diagrams emit structured findings at render time, following the same `{path, code, message, fix}` envelope as native layout findings (see `docs/FIT_FINDINGS.md`). Codes use the `chart.*` prefix.
+
+**Dry-render parity:** `validate_input` (with `fit_report: true`) and `preview_presentation_plan` now invoke svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item and merge the resulting `chart.*` findings into `fit_findings`. Agents see `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.label_truncated`, and `chart.scatter_label_skipped` BEFORE calling `generate_presentation` — no full render required. The same strict-fit severity ladder applies. For ad-hoc per-diagram dry-runs use the svggen-mcp `render_diagram` tool with `dry_run: true`.
 
 **Data-integrity codes** — indicate bad input data:
 

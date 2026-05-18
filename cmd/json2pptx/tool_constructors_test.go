@@ -35,6 +35,7 @@ func TestMCPToolConstructors(t *testing.T) {
 		{"show_pattern", mcpShowPatternTool},
 		{"validate_pattern", mcpValidatePatternTool},
 		{"expand_pattern", mcpExpandPatternTool},
+		{"expand_patterns", mcpExpandPatternsTool},
 		{"recommend_visual", mcpRecommendVisualTool},
 		{"list_icons", mcpListIconsTool},
 		{"render_slide_image", mcpRenderSlideImageTool},

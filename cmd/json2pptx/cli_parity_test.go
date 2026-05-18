@@ -20,6 +20,7 @@ var mcpToCLI = map[string]string{
 	"show_pattern":               "patterns show",
 	"validate_pattern":           "patterns validate",
 	"expand_pattern":             "patterns expand",
+	"expand_patterns":            "patterns expand", // batch is an MCP convenience; CLI users loop with the singular subcommand
 	"list_icons":                 "icons",
 	"table_density_guide":        "tables",
 	"get_capabilities":           "capabilities",
