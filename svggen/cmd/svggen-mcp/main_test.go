@@ -409,6 +409,258 @@ func TestHandleGetDiagramSchemaUnknown(t *testing.T) {
 	}
 }
 
+// TestHandleRenderDiagramStructuredErrors verifies that every error return
+// from handleRenderDiagram uses the unified diagnostic envelope rather than
+// a plain "render failed: <go error>" string. Each diagnostic must carry at
+// least code+fix; many also carry next_tool_call. Locks the agent-facing
+// contract for render_diagram error responses.
+func TestHandleRenderDiagramStructuredErrors(t *testing.T) {
+	validBarData := map[string]any{
+		"categories": []any{"A", "B"},
+		"series": []any{
+			map[string]any{"name": "S1", "values": []any{10, 20}},
+		},
+	}
+
+	cases := []struct {
+		name           string
+		args           map[string]any
+		wantCode       string
+		wantFix        bool   // require Fix to be non-nil
+		wantNextTool   string // empty = don't check; otherwise expected tool name
+		wantPathPrefix string // empty = don't check; otherwise diagnostic.Path must start with this
+	}{
+		{
+			name:         "missing_type",
+			args:         map[string]any{"data": map[string]any{}},
+			wantCode:     "required",
+			wantFix:      true,
+			wantNextTool: "list_diagram_types",
+		},
+		{
+			name:         "unknown_diagram_type",
+			args:         map[string]any{"type": "nonexistent_chart", "data": map[string]any{}},
+			wantCode:     "unknown_diagram_type",
+			wantFix:      true,
+			wantNextTool: "list_diagram_types",
+		},
+		{
+			name:         "missing_data",
+			args:         map[string]any{"type": "bar_chart"},
+			wantCode:     "required",
+			wantFix:      true,
+			wantNextTool: "get_diagram_schema",
+		},
+		{
+			name:         "data_not_object",
+			args:         map[string]any{"type": "bar_chart", "data": "not-an-object"},
+			wantCode:     "invalid_type",
+			wantFix:      true,
+			wantNextTool: "get_diagram_schema",
+		},
+		{
+			name: "style_not_object",
+			args: map[string]any{
+				"type":  "bar_chart",
+				"data":  validBarData,
+				"style": "not-an-object",
+			},
+			wantCode:       "invalid_type",
+			wantFix:        true,
+			wantPathPrefix: "style",
+		},
+		{
+			name: "unsupported_format",
+			args: map[string]any{
+				"type":   "bar_chart",
+				"data":   validBarData,
+				"format": "bmp",
+			},
+			wantCode:       "invalid_value",
+			wantFix:        true,
+			wantPathPrefix: "format",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := handleRenderDiagram(context.Background(), makeRequest(tc.args))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !result.IsError {
+				t.Fatalf("expected IsError=true, got result: %+v", result)
+			}
+
+			text := result.Content[0].(mcp.TextContent).Text
+
+			// Must parse as the unified envelope, not a bare string and not
+			// a doubly-encoded JSON-in-a-string.
+			var er struct {
+				Valid       bool             `json:"valid"`
+				Diagnostics []map[string]any `json:"diagnostics"`
+			}
+			if err := json.Unmarshal([]byte(text), &er); err != nil {
+				t.Fatalf("expected JSON envelope, got %q: %v", text, err)
+			}
+			if er.Valid {
+				t.Errorf("expected valid=false, got true")
+			}
+			if len(er.Diagnostics) == 0 {
+				t.Fatal("expected at least one diagnostic")
+			}
+
+			// Every diagnostic must carry code+fix per the unified contract.
+			for i, d := range er.Diagnostics {
+				if code, _ := d["code"].(string); code == "" {
+					t.Errorf("diagnostic[%d] missing code: %+v", i, d)
+				}
+				if tc.wantFix {
+					fixRaw, ok := d["fix"]
+					if !ok || fixRaw == nil {
+						t.Errorf("diagnostic[%d] missing fix: %+v", i, d)
+					} else {
+						fixMap, ok := fixRaw.(map[string]any)
+						if !ok {
+							t.Errorf("diagnostic[%d] fix not object: %T", i, fixRaw)
+						} else if kind, _ := fixMap["kind"].(string); kind == "" {
+							t.Errorf("diagnostic[%d] fix missing kind", i)
+						}
+					}
+				}
+				if sev, _ := d["severity"].(string); sev != "error" {
+					t.Errorf("diagnostic[%d] severity=%q, want \"error\"", i, sev)
+				}
+			}
+
+			first := er.Diagnostics[0]
+			if got, _ := first["code"].(string); got != tc.wantCode {
+				t.Errorf("first diagnostic code=%q, want %q", got, tc.wantCode)
+			}
+			if tc.wantPathPrefix != "" {
+				path, _ := first["path"].(string)
+				if path != tc.wantPathPrefix {
+					t.Errorf("first diagnostic path=%q, want %q", path, tc.wantPathPrefix)
+				}
+			}
+			if tc.wantNextTool != "" {
+				ntcRaw, ok := first["next_tool_call"]
+				if !ok || ntcRaw == nil {
+					t.Errorf("expected next_tool_call=%q, got nil", tc.wantNextTool)
+				} else {
+					ntc, _ := ntcRaw.(map[string]any)
+					tool, _ := ntc["tool"].(string)
+					if tool != tc.wantNextTool {
+						t.Errorf("next_tool_call.tool=%q, want %q", tool, tc.wantNextTool)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestHandleRenderDiagramRenderFailedEnvelope verifies that a renderer-level
+// failure (validation surfaced during render) flows through the unified
+// envelope with structured diagnostics — no plain "render failed: ..." string
+// and no double-encoded JSON-in-a-string.
+func TestHandleRenderDiagramRenderFailedEnvelope(t *testing.T) {
+	// bar_chart with empty data triggers the renderer's own validation pass
+	// (categories+series are required). The error must surface as the unified
+	// envelope, not "render failed: <go error>".
+	result, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
+		"type": "bar_chart",
+		"data": map[string]any{},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error result")
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+
+	// Must NOT be the legacy plain-string format.
+	if strings.HasPrefix(text, "render failed:") {
+		t.Fatalf("legacy plain-string error returned: %q", text)
+	}
+
+	// Must parse as the unified envelope (top level is an object).
+	var er struct {
+		Valid       bool             `json:"valid"`
+		Diagnostics []map[string]any `json:"diagnostics"`
+	}
+	if err := json.Unmarshal([]byte(text), &er); err != nil {
+		t.Fatalf("expected JSON envelope, got %q: %v", text, err)
+	}
+	if er.Valid {
+		t.Error("expected valid=false")
+	}
+	if len(er.Diagnostics) == 0 {
+		t.Fatal("expected at least one diagnostic")
+	}
+
+	// Every diagnostic must carry a non-empty code; check no double-encoding
+	// of the diagnostic body (i.e. message must not itself be a JSON object).
+	for i, d := range er.Diagnostics {
+		code, _ := d["code"].(string)
+		if code == "" {
+			t.Errorf("diagnostic[%d] missing code: %+v", i, d)
+		}
+		msg, _ := d["message"].(string)
+		if strings.HasPrefix(strings.TrimSpace(msg), "{") {
+			t.Errorf("diagnostic[%d] message looks like nested JSON (double-encoded): %q", i, msg)
+		}
+	}
+}
+
+// TestHandleRenderDiagramInvalidStyleEnvelope verifies that the invalid-style
+// path returns the unified envelope (no doubly-encoded JSON string).
+func TestHandleRenderDiagramInvalidStyleEnvelope(t *testing.T) {
+	// style is an object but contains an invalid palette type — triggers the
+	// json.Unmarshal failure path inside the style handling block.
+	result, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
+		"type": "bar_chart",
+		"data": map[string]any{
+			"categories": []any{"A"},
+			"series":     []any{map[string]any{"name": "S", "values": []any{1}}},
+		},
+		"style": map[string]any{"palette": 12345}, // palette expects string/object, not number
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error result for invalid style")
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+
+	// Must parse as the unified envelope at the top level.
+	var er struct {
+		Valid       bool             `json:"valid"`
+		Diagnostics []map[string]any `json:"diagnostics"`
+	}
+	if err := json.Unmarshal([]byte(text), &er); err != nil {
+		t.Fatalf("expected JSON envelope, got %q: %v", text, err)
+	}
+	if er.Valid {
+		t.Error("expected valid=false")
+	}
+	if len(er.Diagnostics) == 0 {
+		t.Fatal("expected at least one diagnostic")
+	}
+
+	// First diagnostic must have a code (not be a bare string in a string).
+	first := er.Diagnostics[0]
+	if code, _ := first["code"].(string); code == "" {
+		t.Errorf("expected diagnostic with code, got %+v", first)
+	}
+	if path, _ := first["path"].(string); path != "style" {
+		t.Errorf("expected path=style, got %q", path)
+	}
+}
+
 func TestHandleRenderDiagramWithOptions(t *testing.T) {
 	result, err := handleRenderDiagram(context.Background(), makeRequest(map[string]any{
 		"type":   "bar_chart",

@@ -142,25 +142,71 @@ func getDiagramSchemaTool() mcp.Tool {
 func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	diagramType, err := request.RequireString("type")
 	if err != nil {
-		return mcp.NewToolResultError("type is required"), nil
+		return emitErrorResult(diagnostic{
+			Code:     "required",
+			Message:  "type is required",
+			Path:     "type",
+			Severity: "error",
+			Fix:      &fix{Kind: "provide_value", Params: map[string]any{"path": "type"}},
+			NextToolCall: &toolCallSugg{
+				Tool:         "list_diagram_types",
+				ArgsTemplate: map[string]any{},
+			},
+		})
 	}
 
 	// Check diagram type exists
 	reg := svggen.DefaultRegistry()
 	d := reg.Get(diagramType)
 	if d == nil {
-		return mcp.NewToolResultError(fmt.Sprintf("unknown diagram type %q — use list_diagram_types to see available types", diagramType)), nil
+		return emitErrorResult(diagnostic{
+			Code:     "unknown_diagram_type",
+			Message:  fmt.Sprintf("unknown diagram type %q — use list_diagram_types to see available types", diagramType),
+			Path:     "type",
+			Severity: "error",
+			Fix: &fix{
+				Kind:   "replace_value",
+				Params: map[string]any{"path": "type", "invalid_value": diagramType},
+			},
+			NextToolCall: &toolCallSugg{
+				Tool:         "list_diagram_types",
+				ArgsTemplate: map[string]any{},
+			},
+			Details: map[string]any{"type": diagramType},
+		})
 	}
 
 	// Extract data
 	args := request.GetArguments()
 	dataRaw, ok := args["data"]
 	if !ok {
-		return mcp.NewToolResultError("data is required"), nil
+		return emitErrorResult(diagnostic{
+			Code:     "required",
+			Message:  "data is required",
+			Path:     "data",
+			Severity: "error",
+			Fix:      &fix{Kind: "provide_value", Params: map[string]any{"path": "data"}},
+			NextToolCall: &toolCallSugg{
+				Tool:         "get_diagram_schema",
+				ArgsTemplate: map[string]any{"type": diagramType},
+			},
+			Details: map[string]any{"pattern": diagramType},
+		})
 	}
 	dataMap, ok := dataRaw.(map[string]any)
 	if !ok {
-		return mcp.NewToolResultError("data must be a JSON object"), nil
+		return emitErrorResult(diagnostic{
+			Code:     "invalid_type",
+			Message:  "data must be a JSON object",
+			Path:     "data",
+			Severity: "error",
+			Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "data"}},
+			NextToolCall: &toolCallSugg{
+				Tool:         "get_diagram_schema",
+				ArgsTemplate: map[string]any{"type": diagramType},
+			},
+			Details: map[string]any{"pattern": diagramType},
+		})
 	}
 
 	// Build request envelope
@@ -190,24 +236,36 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	if styleRaw, ok := args["style"]; ok {
 		styleMap, ok := styleRaw.(map[string]any)
 		if !ok {
-			return mcp.NewToolResultError("style must be a JSON object"), nil
+			return emitErrorResult(diagnostic{
+				Code:     "invalid_type",
+				Message:  "style must be a JSON object",
+				Path:     "style",
+				Severity: "error",
+				Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "style"}},
+				Details:  map[string]any{"pattern": diagramType},
+			})
 		}
 		styleJSON, err := json.Marshal(styleMap)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("style: failed to encode: %v", err)), nil
+			return emitErrorResult(diagnostic{
+				Code:     "invalid_value",
+				Message:  fmt.Sprintf("failed to encode style: %v", err),
+				Path:     "style",
+				Severity: "error",
+				Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "style"}},
+				Details:  map[string]any{"pattern": diagramType, "go_error": err.Error()},
+			})
 		}
 		var style svggen.StyleSpec
 		if err := json.Unmarshal(styleJSON, &style); err != nil {
-			errResult := diagnostic{
+			return emitErrorResult(diagnostic{
 				Code:     "invalid_value",
 				Message:  fmt.Sprintf("invalid style payload: %v", err),
 				Path:     "style",
 				Severity: "error",
 				Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "style"}},
-				Details:  map[string]any{"pattern": diagramType},
-			}
-			output, _ := json.MarshalIndent(errResult, "", "  ")
-			return mcp.NewToolResultError(string(output)), nil
+				Details:  map[string]any{"pattern": diagramType, "go_error": err.Error()},
+			})
 		}
 		req.Style = style
 	}
@@ -221,19 +279,51 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	// Render
 	result, err := svggen.RenderMultiFormat(req, format)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("render failed: %v", err)), nil
+		// Prefer structured validation errors when the renderer surfaces them.
+		if vErrs := svggen.GetValidationErrors(err); len(vErrs) > 0 {
+			return emitErrorResult(convertValidationErrors(diagramType, vErrs)...)
+		}
+		return emitErrorResult(diagnostic{
+			Code:     "render_failed",
+			Message:  fmt.Sprintf("render failed: %v", err),
+			Path:     "data",
+			Severity: "error",
+			Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "data"}},
+			NextToolCall: &toolCallSugg{
+				Tool:         "get_diagram_schema",
+				ArgsTemplate: map[string]any{"type": diagramType},
+			},
+			Details: map[string]any{
+				"pattern":  diagramType,
+				"go_error": err.Error(),
+			},
+		})
 	}
 
 	switch format {
 	case "svg":
 		if result.SVG == nil {
-			return mcp.NewToolResultError("no SVG output generated"), nil
+			return emitErrorResult(diagnostic{
+				Code:     "render_failed",
+				Message:  "no SVG output generated",
+				Path:     "format",
+				Severity: "error",
+				Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "data"}},
+				Details:  map[string]any{"pattern": diagramType, "format": "svg"},
+			})
 		}
 		return mcp.NewToolResultText(string(result.SVG.Content)), nil
 
 	case "png":
 		if result.PNG == nil {
-			return mcp.NewToolResultError("no PNG output generated"), nil
+			return emitErrorResult(diagnostic{
+				Code:     "render_failed",
+				Message:  "no PNG output generated",
+				Path:     "format",
+				Severity: "error",
+				Fix:      &fix{Kind: "replace_value", Params: map[string]any{"path": "data"}},
+				Details:  map[string]any{"pattern": diagramType, "format": "png"},
+			})
 		}
 		encoded := base64.StdEncoding.EncodeToString(result.PNG)
 		return &mcp.CallToolResult{
@@ -247,7 +337,21 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		}, nil
 
 	default:
-		return mcp.NewToolResultError(fmt.Sprintf("unsupported format %q", format)), nil
+		return emitErrorResult(diagnostic{
+			Code:     "invalid_value",
+			Message:  fmt.Sprintf("unsupported format %q", format),
+			Path:     "format",
+			Severity: "error",
+			Fix: &fix{
+				Kind: "replace_value",
+				Params: map[string]any{
+					"path":          "format",
+					"invalid_value": format,
+					"allowed":       []string{"svg", "png"},
+				},
+			},
+			Details: map[string]any{"pattern": diagramType},
+		})
 	}
 }
 
@@ -677,6 +781,23 @@ func getSchemaForType(typ string) diagramSchema {
 //
 // Because svggen is a separate Go module that cannot import internal/, the
 // struct is duplicated here at the MCP boundary.
+
+// errorResult is the unified envelope returned by handlers when one or more
+// structured diagnostics must be surfaced via mcp.NewToolResultError. It is
+// the same shape as the validation result returned by handleValidateDiagram
+// so agents can parse error payloads uniformly across all svggen-mcp tools.
+type errorResult struct {
+	Valid       bool         `json:"valid"`
+	Diagnostics []diagnostic `json:"diagnostics"`
+}
+
+// emitErrorResult marshals one or more diagnostics into the unified envelope
+// and returns it as an MCP tool error. The single-string payload format is
+// the JSON envelope itself — never a doubly-encoded JSON-in-a-string.
+func emitErrorResult(diags ...diagnostic) (*mcp.CallToolResult, error) {
+	output, _ := json.MarshalIndent(errorResult{Valid: false, Diagnostics: diags}, "", "  ")
+	return mcp.NewToolResultError(string(output)), nil
+}
 
 // diagnostic is a single machine-readable issue matching the
 // internal/diagnostics.Diagnostic JSON shape.
