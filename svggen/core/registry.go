@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -113,6 +114,40 @@ func (r *Registry) Types() []string {
 	return types
 }
 
+// Aliases returns all alternative names (excluding name itself) that resolve to
+// the same underlying diagram. The input may be either a canonical registered
+// type ID or an alias. Result is sorted lexicographically.
+//
+// Example: Aliases("bar_chart") -> ["bar"]; Aliases("bar") -> ["bar_chart"].
+// Returns an empty slice when the name is unknown or has no equivalents.
+func (r *Registry) Aliases(name string) []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	// Resolve to the canonical registered type ID.
+	canonical := name
+	if c, ok := r.aliases[name]; ok {
+		canonical = c
+	}
+	// If canonical isn't actually registered, give up.
+	if _, ok := r.diagrams[canonical]; !ok {
+		return []string{}
+	}
+
+	out := make([]string, 0)
+	for alias, target := range r.aliases {
+		if target == canonical && alias != name {
+			out = append(out, alias)
+		}
+	}
+	// If the caller passed an alias, include the canonical registered name.
+	if canonical != name {
+		out = append(out, canonical)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Render dispatches a request to the appropriate diagram renderer.
 func (r *Registry) Render(req *RequestEnvelope) (*SVGDocument, error) {
 	if err := req.Validate(); err != nil {
@@ -161,4 +196,10 @@ func Render(req *RequestEnvelope) (*SVGDocument, error) {
 // Types returns all types in the default registry.
 func Types() []string {
 	return DefaultRegistry().Types()
+}
+
+// Aliases returns alternative names for the given diagram type in the default
+// registry. See (*Registry).Aliases for details.
+func Aliases(name string) []string {
+	return DefaultRegistry().Aliases(name)
 }

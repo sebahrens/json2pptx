@@ -89,6 +89,10 @@ func Render(req *RequestEnvelope) (*SVGDocument, error) { return core.Render(req
 // Types returns all types in the default registry.
 func Types() []string { return core.Types() }
 
+// Aliases returns alternative names that resolve to the same registered
+// diagram as name. See core.Aliases for details.
+func Aliases(name string) []string { return core.Aliases(name) }
+
 // ParseRequest parses a JSON request into a RequestEnvelope.
 func ParseRequest(data []byte) (*RequestEnvelope, error) { return core.ParseRequest(data) }
 

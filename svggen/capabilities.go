@@ -18,6 +18,12 @@ type ChartCapability struct {
 	// (rendered through internal/generator as grouped OOXML shapes). All chart
 	// types currently render via svggen.
 	AuthoringSurface *string `json:"authoring_surface,omitempty"`
+	// Aliases lists other accepted names for this chart type. svggen's
+	// registry resolves any of these to the same underlying renderer (e.g.,
+	// "bar" and "bar_chart" both produce a bar chart). The value in Type is
+	// the form documented in this capabilities response; Aliases enumerates
+	// the equivalents agents may also send.
+	Aliases []string `json:"aliases,omitempty"`
 }
 
 // DiagramPlacement describes a supported placement context and its render pipeline.
@@ -42,6 +48,10 @@ type DiagramCapability struct {
 	Placements       []DiagramPlacement `json:"placements,omitempty"`
 	GridCellSupport  *bool              `json:"grid_cell_support,omitempty"`
 	AuthoringSurface *string            `json:"authoring_surface,omitempty"`
+	// Aliases lists other accepted names for this diagram type registered in
+	// svggen (e.g., "org" / "orgchart" both resolve to "org_chart"). Omitted
+	// for native_ooxml types that don't go through the svggen registry.
+	Aliases []string `json:"aliases,omitempty"`
 }
 
 // helpers to create pointers for literal values.
@@ -226,6 +236,9 @@ func ChartCapabilities() []ChartCapability {
 	}
 	for i := range caps {
 		caps[i].AuthoringSurface = strPtr("svggen")
+		if a := Aliases(caps[i].Type); len(a) > 0 {
+			caps[i].Aliases = a
+		}
 	}
 	return caps
 }
@@ -483,6 +496,12 @@ func DiagramCapabilities() []DiagramCapability {
 		if surface, ok := diagramAuthoringSurface[caps[i].Type]; ok {
 			s := surface
 			caps[i].AuthoringSurface = &s
+		}
+		// Aliases only meaningful for svggen-registered types.
+		if caps[i].AuthoringSurface != nil && *caps[i].AuthoringSurface == "svggen" {
+			if a := Aliases(caps[i].Type); len(a) > 0 {
+				caps[i].Aliases = a
+			}
 		}
 	}
 	return caps

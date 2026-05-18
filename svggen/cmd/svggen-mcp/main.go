@@ -109,7 +109,7 @@ func renderDiagramTool() mcp.Tool {
 
 func listDiagramTypesTool() mcp.Tool {
 	return mcp.NewTool("list_diagram_types",
-		mcp.WithDescription("List all available diagram types that can be rendered."),
+		mcp.WithDescription("List all available diagram types that can be rendered. Returns an array of {name, aliases?} entries — name is the canonical registered ID (e.g., \"bar_chart\"); aliases enumerates other accepted names (e.g., [\"bar\"]) that resolve to the same renderer."),
 	)
 }
 
@@ -355,11 +355,30 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	}
 }
 
+// diagramTypeEntry is the per-type record returned by list_diagram_types.
+// Name is the canonical registered ID; Aliases enumerates other names the
+// registry will also accept (e.g., "bar" for "bar_chart"). Agents should
+// prefer Name in new code; Aliases is provided so existing JSON payloads
+// using the short form continue to be recognized as valid.
+type diagramTypeEntry struct {
+	Name    string   `json:"name"`
+	Aliases []string `json:"aliases,omitempty"`
+}
+
 func handleListDiagramTypes(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	types := svggen.Types()
 	sort.Strings(types)
 
-	output, err := json.MarshalIndent(types, "", "  ")
+	entries := make([]diagramTypeEntry, 0, len(types))
+	for _, t := range types {
+		entry := diagramTypeEntry{Name: t}
+		if aliases := svggen.Aliases(t); len(aliases) > 0 {
+			entry.Aliases = aliases
+		}
+		entries = append(entries, entry)
+	}
+
+	output, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal types: %v", err)), nil
 	}

@@ -31,23 +31,73 @@ func TestHandleListDiagramTypes(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 
-	var types []string
-	if err := json.Unmarshal([]byte(text), &types); err != nil {
-		t.Fatalf("failed to parse types: %v", err)
+	var entries []diagramTypeEntry
+	if err := json.Unmarshal([]byte(text), &entries); err != nil {
+		t.Fatalf("failed to parse entries: %v", err)
 	}
-	if len(types) < 10 {
-		t.Fatalf("expected at least 10 diagram types, got %d", len(types))
+	if len(entries) < 10 {
+		t.Fatalf("expected at least 10 diagram types, got %d", len(entries))
 	}
 
-	// Check a few known types
-	found := map[string]bool{}
-	for _, typ := range types {
-		found[typ] = true
+	// Check a few known canonical names are present.
+	byName := map[string]diagramTypeEntry{}
+	for _, e := range entries {
+		byName[e.Name] = e
 	}
 	for _, expected := range []string{"bar_chart", "pie_chart", "org_chart"} {
-		if !found[expected] {
-			t.Errorf("expected type %q not found", expected)
+		if _, ok := byName[expected]; !ok {
+			t.Errorf("expected canonical name %q not found", expected)
 		}
+	}
+
+	// bar_chart must advertise "bar" as an alias.
+	bar, ok := byName["bar_chart"]
+	if !ok {
+		t.Fatal("bar_chart missing from list_diagram_types response")
+	}
+	hasBarAlias := false
+	for _, a := range bar.Aliases {
+		if a == "bar" {
+			hasBarAlias = true
+			break
+		}
+	}
+	if !hasBarAlias {
+		t.Errorf("bar_chart should advertise %q as an alias; got %v", "bar", bar.Aliases)
+	}
+}
+
+// TestRenderDiagramAcceptsShortAndCanonicalNames verifies the bar/bar_chart
+// aliasing contract: agents may send either form and receive the same chart.
+// Regression test for the bead "unify chart-type vocabulary across json2pptx
+// and svggen-mcp (bar ↔ bar_chart aliasing)".
+func TestRenderDiagramAcceptsShortAndCanonicalNames(t *testing.T) {
+	payload := map[string]any{
+		"data": map[string]any{
+			"categories": []any{"A", "B", "C"},
+			"series": []any{
+				map[string]any{"name": "S1", "values": []any{10, 20, 30}},
+			},
+		},
+	}
+	for _, name := range []string{"bar", "bar_chart"} {
+		t.Run(name, func(t *testing.T) {
+			args := map[string]any{"type": name}
+			for k, v := range payload {
+				args[k] = v
+			}
+			result, err := handleRenderDiagram(context.Background(), makeRequest(args))
+			if err != nil {
+				t.Fatalf("render(%q) returned error: %v", name, err)
+			}
+			if result.IsError {
+				t.Fatalf("render(%q) unexpected error: %v", name, result.Content)
+			}
+			text := result.Content[0].(mcp.TextContent).Text
+			if !strings.Contains(text, "<svg") {
+				t.Fatalf("render(%q) expected SVG output, got: %s", name, text)
+			}
+		})
 	}
 }
 
