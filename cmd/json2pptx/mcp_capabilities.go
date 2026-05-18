@@ -16,16 +16,51 @@ import (
 )
 
 // capabilitiesResponse is the JSON output for the get_capabilities tool.
+//
+// The response carries both the rich json2pptx-specific envelope (runtime,
+// changelog_url, mcp_tools_available, deprecated_fields) and the standardized
+// cross-server envelope (tool_list, registry, deprecations, vocabularies,
+// features) that mirrors svggen-mcp's get_capabilities. Agents can parse
+// either shape; the standardized fields enable drift detection across both
+// MCP servers without server-specific code paths.
 type capabilitiesResponse struct {
-	SchemaVersion      string                       `json:"schema_version"`
-	ToolVersion        string                       `json:"tool_version"`
-	ChangelogURL       string                       `json:"changelog_url"`
-	MCPToolsAvailable  []mcpToolEntry               `json:"mcp_tools_available"`
+	SchemaVersion      string                        `json:"schema_version"`
+	ToolVersion        string                        `json:"tool_version"`
+	ChangelogURL       string                        `json:"changelog_url"`
+	MCPToolsAvailable  []mcpToolEntry                `json:"mcp_tools_available"`
+	// ToolList is the cross-server-aligned tool catalog: each entry carries
+	// {name, description}. Mirrors svggen-mcp's tool_list. Populated by
+	// calling every registered tool's constructor.
+	ToolList           []capabilitiesToolListEntry   `json:"tool_list"`
+	// Registry groups the canonical names of every registered chart, diagram,
+	// and pattern this server can render. Mirrors svggen-mcp's registry block
+	// (which leaves patterns empty since it has no pattern engine).
+	Registry           capabilitiesRegistry          `json:"registry"`
 	DeprecatedFields   []capabilitiesDeprecatedField `json:"deprecated_fields"`
+	// Deprecations is the cross-server-aligned deprecation list. Today it is
+	// the same content as DeprecatedFields; the alias exists so agents can
+	// read a single key name on both MCP servers.
+	Deprecations       []capabilitiesDeprecatedField `json:"deprecations"`
 	Features           capabilitiesFeatures          `json:"features"`
 	Runtime            capabilitiesRuntime           `json:"runtime"`
 	Vocabularies       capabilitiesVocabularies      `json:"vocabularies"`
-	ErrorCodes         []string                     `json:"error_codes"`
+	ErrorCodes         []string                      `json:"error_codes"`
+}
+
+// capabilitiesToolListEntry is the cross-server-aligned tool descriptor used
+// by the standardized `tool_list` field. Mirrors svggen-mcp's tool_list entry.
+type capabilitiesToolListEntry struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// capabilitiesRegistry groups the registered chart, diagram, and pattern
+// names so agents can ask one question to discover what the server can
+// render. Mirrors svggen-mcp's registry block.
+type capabilitiesRegistry struct {
+	Charts   []string `json:"charts"`
+	Diagrams []string `json:"diagrams"`
+	Patterns []string `json:"patterns"`
 }
 
 // capabilitiesRuntime exposes environment-dependent state that complements
@@ -218,12 +253,16 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 		}
 	}
 
+	deprecations := buildDeprecatedFields()
 	resp := capabilitiesResponse{
 		SchemaVersion:     SchemaVersion,
 		ToolVersion:       Version,
 		ChangelogURL:      "docs/SCHEMA_CHANGELOG.md",
 		MCPToolsAvailable: mcpToolCatalog(),
-		DeprecatedFields:  buildDeprecatedFields(),
+		ToolList:          buildToolList(),
+		Registry:          buildRegistry(),
+		DeprecatedFields:  deprecations,
+		Deprecations:      deprecations,
 		Features: capabilitiesFeatures{
 			StrictFit:        []string{"off", "warn", "strict"},
 			CompactResponses: true,
@@ -366,5 +405,91 @@ func buildVocabularies() capabilitiesVocabularies {
 		PlaceholderAliases: placeholderAliases,
 		PatternNames:       patternNames,
 		PatternAliases:     reg.Aliases(),
+	}
+}
+
+// toolConstructors returns every registered MCP tool's constructor keyed by
+// the tool name returned by that constructor. Keep this map in lockstep with
+// the s.AddTool calls in runMCP and the entries in mcpToolCatalog —
+// TestMCPToolList_MatchesCatalog enforces the parity.
+func toolConstructors() map[string]func() mcp.Tool {
+	ctors := []func() mcp.Tool{
+		mcpGenerateTool,
+		mcpListTemplatesTool,
+		mcpGetDataFormatHintsTool,
+		mcpGetChartCapabilitiesTool,
+		mcpGetDiagramCapabilitiesTool,
+		mcpValidateTool,
+		mcpRecommendPatternTool,
+		mcpRecommendVisualTool,
+		mcpListPatternsTool,
+		mcpShowPatternTool,
+		mcpValidatePatternTool,
+		mcpExpandPatternTool,
+		mcpExpandPatternsTool,
+		mcpListIconsTool,
+		mcpGetShapeCatalogTool,
+		mcpTableDensityGuideTool,
+		mcpResolveThemeTool,
+		mcpRenderSlideImageTool,
+		mcpRenderDeckThumbnailsTool,
+		mcpScoreDeckTool,
+		mcpScoreCandidatesTool,
+		mcpInspectSlideImagesTool,
+		mcpPreviewPlanTool,
+		mcpRepairSlideTool,
+		mcpListTemplateSettingsTool,
+		mcpRegisterTemplateSettingTool,
+		mcpDeleteTemplateSettingTool,
+		mcpAnalyzeDeckRhythmTool,
+		mcpPlanDeckTool,
+		mcpGetCapabilitiesTool,
+		mcpGetStartedTool,
+		mcpGetInputSchemaTool,
+		mcpReadPresentationTool,
+		mcpValidateOutputTool,
+	}
+	out := make(map[string]func() mcp.Tool, len(ctors))
+	for _, c := range ctors {
+		t := c()
+		out[t.Name] = c
+	}
+	return out
+}
+
+// buildToolList returns the standardized {name, description} catalog used by
+// the cross-server-aligned tool_list field. Order mirrors mcpToolCatalog (by
+// name) so output is deterministic.
+func buildToolList() []capabilitiesToolListEntry {
+	ctors := toolConstructors()
+	catalog := mcpToolCatalog()
+	out := make([]capabilitiesToolListEntry, 0, len(catalog))
+	for _, e := range catalog {
+		c, ok := ctors[e.Name]
+		if !ok {
+			// Defensive: a name in the catalog without a constructor is a
+			// programmer error. Surface it as an empty description rather
+			// than dropping the entry so the missing tool is visible.
+			out = append(out, capabilitiesToolListEntry{Name: e.Name})
+			continue
+		}
+		t := c()
+		out = append(out, capabilitiesToolListEntry{
+			Name:        t.Name,
+			Description: t.Description,
+		})
+	}
+	return out
+}
+
+// buildRegistry returns the standardized chart/diagram/pattern registry used
+// by the cross-server-aligned registry field. Pulls from the same sources
+// as buildVocabularies so the two cannot drift.
+func buildRegistry() capabilitiesRegistry {
+	voc := buildVocabularies()
+	return capabilitiesRegistry{
+		Charts:   voc.ChartTypes,
+		Diagrams: voc.DiagramTypes,
+		Patterns: voc.PatternNames,
 	}
 }

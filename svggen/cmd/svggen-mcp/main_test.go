@@ -1010,4 +1010,64 @@ func TestGetCapabilities(t *testing.T) {
 			t.Error("expected non-nil deprecations slice (empty is fine)")
 		}
 	})
+
+	t.Run("registry_matches_legacy_chart_diagram_lists", func(t *testing.T) {
+		// The standardized registry block must agree with the legacy
+		// chart_types / diagram_types arrays so agents reading either shape
+		// see the same set of renderable types.
+		if len(resp.Registry.Charts) != len(resp.ChartTypes) {
+			t.Errorf("registry.charts size %d != chart_types size %d",
+				len(resp.Registry.Charts), len(resp.ChartTypes))
+		}
+		for i, c := range resp.Registry.Charts {
+			if i < len(resp.ChartTypes) && c != resp.ChartTypes[i] {
+				t.Errorf("registry.charts[%d]=%q != chart_types[%d]=%q",
+					i, c, i, resp.ChartTypes[i])
+			}
+		}
+		if len(resp.Registry.Diagrams) != len(resp.DiagramTypes) {
+			t.Errorf("registry.diagrams size %d != diagram_types size %d",
+				len(resp.Registry.Diagrams), len(resp.DiagramTypes))
+		}
+		if resp.Registry.Patterns == nil {
+			t.Error("registry.patterns must be a non-nil slice (empty is fine — svggen owns no patterns)")
+		}
+		if len(resp.Registry.Patterns) != 0 {
+			t.Errorf("registry.patterns should be empty for svggen-mcp, got %v", resp.Registry.Patterns)
+		}
+	})
+
+	t.Run("vocabularies_populated", func(t *testing.T) {
+		if len(resp.Vocabularies.FixKinds) == 0 {
+			t.Error("expected non-empty vocabularies.fix_kinds")
+		}
+		if len(resp.Vocabularies.FindingCodes) == 0 {
+			t.Error("expected non-empty vocabularies.finding_codes")
+		}
+		// Every finding code must start with the chart.* prefix used by
+		// svggen's renderer.
+		for _, code := range resp.Vocabularies.FindingCodes {
+			if !strings.HasPrefix(code, "chart.") {
+				t.Errorf("finding_code %q does not start with %q prefix", code, "chart.")
+			}
+		}
+		// fix_kinds must contain the documented chart-finding enum used by
+		// validate_diagram (see SKILL.md).
+		want := map[string]bool{
+			"align_series":      true,
+			"truncate_or_split": true,
+			"replace_value":     true,
+			"explicit_scale":    true,
+			"reduce_items":      true,
+		}
+		got := map[string]bool{}
+		for _, k := range resp.Vocabularies.FixKinds {
+			got[k] = true
+		}
+		for k := range want {
+			if !got[k] {
+				t.Errorf("vocabularies.fix_kinds missing required chart-finding kind %q", k)
+			}
+		}
+	})
 }

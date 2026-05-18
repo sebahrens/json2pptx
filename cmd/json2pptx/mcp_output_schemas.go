@@ -899,7 +899,39 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "required": ["name", "added_in"]
       }
     },
+    "tool_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":        {"type": "string"},
+          "description": {"type": "string"}
+        },
+        "required": ["name", "description"]
+      }
+    },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "charts":   {"type": "array", "items": {"type": "string"}},
+        "diagrams": {"type": "array", "items": {"type": "string"}},
+        "patterns": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": ["charts", "diagrams", "patterns"]
+    },
     "deprecated_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path":        {"type": "string"},
+          "replacement": {"type": "string"},
+          "removed_in":  {"type": "string"}
+        },
+        "required": ["path", "replacement", "removed_in"]
+      }
+    },
+    "deprecations": {
       "type": "array",
       "items": {
         "type": "object",
@@ -976,7 +1008,7 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
     },
     "error_codes": {"type": "array", "items": {"type": "string"}}
   },
-  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "features", "runtime", "vocabularies", "error_codes"]
+  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "tool_list", "registry", "deprecations", "features", "runtime", "vocabularies", "error_codes"]
 }`)
 
 // --- analyze_deck_rhythm ---

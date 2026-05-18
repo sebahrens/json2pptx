@@ -227,6 +227,70 @@ func TestMCPGetCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("standardized tool_list matches catalog", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		// tool_list must include every name in mcp_tools_available, with
+		// non-empty descriptions, and contain no extras.
+		catalogNames := map[string]bool{}
+		for _, e := range resp.MCPToolsAvailable {
+			catalogNames[e.Name] = true
+		}
+		toolListNames := map[string]bool{}
+		for _, e := range resp.ToolList {
+			if e.Name == "" {
+				t.Errorf("tool_list entry has empty name: %+v", e)
+			}
+			if e.Description == "" {
+				t.Errorf("tool_list entry %q missing description (constructor must set mcp.WithDescription)", e.Name)
+			}
+			toolListNames[e.Name] = true
+		}
+		for name := range catalogNames {
+			if !toolListNames[name] {
+				t.Errorf("tool_list missing entry for %q (present in mcp_tools_available)", name)
+			}
+		}
+		for name := range toolListNames {
+			if !catalogNames[name] {
+				t.Errorf("tool_list has %q but it is missing from mcp_tools_available catalog", name)
+			}
+		}
+	})
+
+	t.Run("standardized registry mirrors vocabularies", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		// registry must agree with vocabularies on the canonical name lists.
+		if len(resp.Registry.Charts) != len(resp.Vocabularies.ChartTypes) {
+			t.Errorf("registry.charts size %d != vocabularies.chart_types size %d",
+				len(resp.Registry.Charts), len(resp.Vocabularies.ChartTypes))
+		}
+		if len(resp.Registry.Diagrams) != len(resp.Vocabularies.DiagramTypes) {
+			t.Errorf("registry.diagrams size %d != vocabularies.diagram_types size %d",
+				len(resp.Registry.Diagrams), len(resp.Vocabularies.DiagramTypes))
+		}
+		if len(resp.Registry.Patterns) != len(resp.Vocabularies.PatternNames) {
+			t.Errorf("registry.patterns size %d != vocabularies.pattern_names size %d",
+				len(resp.Registry.Patterns), len(resp.Vocabularies.PatternNames))
+		}
+	})
+
+	t.Run("deprecations alias mirrors deprecated_fields", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		if len(resp.Deprecations) != len(resp.DeprecatedFields) {
+			t.Errorf("deprecations size %d != deprecated_fields size %d (must be the same list)",
+				len(resp.Deprecations), len(resp.DeprecatedFields))
+		}
+		for i := range resp.Deprecations {
+			if i >= len(resp.DeprecatedFields) {
+				break
+			}
+			if resp.Deprecations[i].Path != resp.DeprecatedFields[i].Path {
+				t.Errorf("deprecations[%d].path=%q != deprecated_fields[%d].path=%q",
+					i, resp.Deprecations[i].Path, i, resp.DeprecatedFields[i].Path)
+			}
+		}
+	})
+
 	t.Run("repair_fix_kinds matches applyRepairFix switch cases", func(t *testing.T) {
 		// Parse mcp_repair.go and extract case labels from the applyRepairFix switch.
 		fset := token.NewFileSet()

@@ -1063,15 +1063,92 @@ type capabilitiesFeatures struct {
 
 // capabilitiesResponse is the JSON shape returned by handleGetCapabilities.
 // The schema mirrors json2pptx-mcp's get_capabilities at the field level
-// (schema_version, tool list, deprecations, features) so agents can parse
-// both responses uniformly.
+// (schema_version, tool_list, registry, vocabularies, deprecations, features)
+// so agents can parse both responses uniformly.
+//
+// chart_types / diagram_types are retained for backwards compatibility; new
+// code should read registry.charts and registry.diagrams which carry the
+// same content under the standardized field names.
 type capabilitiesResponse struct {
 	SchemaVersion string                    `json:"schema_version"`
 	ToolList      []capabilitiesToolEntry   `json:"tool_list"`
 	ChartTypes    []string                  `json:"chart_types"`
 	DiagramTypes  []string                  `json:"diagram_types"`
+	// Registry mirrors json2pptx-mcp's registry block. patterns is intentionally
+	// empty because svggen-mcp owns chart/diagram rendering, not pattern
+	// composition — keeping the key present means agents can read the same
+	// shape from both servers.
+	Registry      capabilitiesRegistry      `json:"registry"`
+	// Vocabularies mirrors json2pptx-mcp's vocabularies block. fix_kinds
+	// enumerates the chart-finding remediation enum that validate_diagram and
+	// render_diagram emit; finding_codes enumerates the chart.* finding codes
+	// the renderer can surface.
+	Vocabularies  capabilitiesVocabularies  `json:"vocabularies"`
 	Deprecations  []capabilitiesDeprecation `json:"deprecations"`
 	Features      capabilitiesFeatures      `json:"features"`
+}
+
+// capabilitiesRegistry mirrors json2pptx-mcp's registry block so agents can
+// read one shape across both MCP servers. svggen-mcp leaves patterns empty.
+type capabilitiesRegistry struct {
+	Charts   []string `json:"charts"`
+	Diagrams []string `json:"diagrams"`
+	Patterns []string `json:"patterns"`
+}
+
+// capabilitiesVocabularies advertises the vocabularies that drive svggen-mcp
+// diagnostics: the fix_kinds returned on validation errors and the chart.*
+// finding_codes surfaced during render. Mirrors json2pptx-mcp's vocabularies
+// shape at the field level (subset — json2pptx adds content_types, etc.).
+type capabilitiesVocabularies struct {
+	FixKinds     []string `json:"fix_kinds"`
+	FindingCodes []string `json:"finding_codes"`
+}
+
+// buildSvggenRegistry classifies the live svggen registry into the
+// standardized {charts, diagrams, patterns} shape. Patterns is empty.
+func buildSvggenRegistry() capabilitiesRegistry {
+	charts, diagrams := classifyRegisteredTypes()
+	return capabilitiesRegistry{
+		Charts:   charts,
+		Diagrams: diagrams,
+		Patterns: []string{},
+	}
+}
+
+// buildSvggenVocabularies returns the chart-finding fix kinds and finding
+// codes exposed by svggen. Both slices are sorted for stable output.
+func buildSvggenVocabularies() capabilitiesVocabularies {
+	fixKinds := []string{
+		svggen.FixKindAlignSeries,
+		svggen.FixKindExplicitScale,
+		svggen.FixKindIncreaseCanvas,
+		svggen.FixKindReduceItems,
+		svggen.FixKindReplaceValue,
+		svggen.FixKindTruncateOrSplit,
+	}
+	sort.Strings(fixKinds)
+	findingCodes := []string{
+		svggen.FindingAllZeroSeries,
+		svggen.FindingAutoLogScaleApplied,
+		svggen.FindingCapacityExceeded,
+		svggen.FindingInvalidNumeric,
+		svggen.FindingInvalidTimeFormat,
+		svggen.FindingLabelClipped,
+		svggen.FindingLabelEllipsized,
+		svggen.FindingLabelTruncated,
+		svggen.FindingLegendOverflowDropped,
+		svggen.FindingNegativeOnLog,
+		svggen.FindingOverflowSuppressed,
+		svggen.FindingScatterLabelSkipped,
+		svggen.FindingTickThinned,
+		svggen.FindingZeroSumPie,
+	}
+	sort.Strings(findingCodes)
+	return capabilitiesVocabularies{
+		FixKinds:     fixKinds,
+		FindingCodes: findingCodes,
+	}
 }
 
 // toolCatalog enumerates every tool registered in run() with a one-line
@@ -1144,6 +1221,8 @@ func handleGetCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallT
 		ToolList:      toolCatalog(),
 		ChartTypes:    chartTypes,
 		DiagramTypes:  diagramTypes,
+		Registry:      buildSvggenRegistry(),
+		Vocabularies:  buildSvggenVocabularies(),
 		Deprecations:  []capabilitiesDeprecation{},
 		Features: capabilitiesFeatures{
 			// render_diagram supports dry_run.

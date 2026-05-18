@@ -144,7 +144,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
 | **First call — ordered MCP workflow keyed to your task** (`brief`/`revise`/`validate-only`). Returns `sequence:[{tool, when_to_call}]` so you do not have to derive the workflow from the flat 35+ tool catalog. | `get_started` | `json2pptx get-started` |
-| **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags | `get_capabilities` | (CLI inlines) |
+| **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags. Both `json2pptx-mcp` and `svggen-mcp` expose the same standardized fields (`tool_list`, `registry: {charts, diagrams, patterns}`, `vocabularies: {fix_kinds, finding_codes, ...}`, `deprecations`, `features`) so one parse path detects drift on both servers. | `get_capabilities` | (CLI inlines) |
 | **Authoritative input schema** — JSON Schema for `PresentationInput` with all nested types, `x-field-scope` annotations, and inline enums. Digest-cacheable. | `get_input_schema` | `json2pptx input-schema` |
 | Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |

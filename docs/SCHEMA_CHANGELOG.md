@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.18.0 (2026-05-19)
+
+### Added
+
+- **Standardized `get_capabilities` envelope across `json2pptx-mcp` and
+  `svggen-mcp`** — both servers now expose the same shape so agents can
+  detect cross-server drift with one parse path. The shared fields are:
+  - `tool_list: [{name, description}]` — full tool catalog with the
+    description string each tool advertises via `mcp.WithDescription`.
+  - `registry: {charts: [], diagrams: [], patterns: []}` — canonical names
+    grouped by category. `svggen-mcp` leaves `patterns` empty (it owns no
+    pattern engine); `json2pptx-mcp` populates all three from the same
+    sources `vocabularies` already exposes.
+  - `vocabularies: {fix_kinds, finding_codes, ...}` — `svggen-mcp` newly
+    exposes this block with the chart-finding remediation enum
+    (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`,
+    `reduce_items`, `increase_canvas`) and the `chart.*` finding codes its
+    renderer can surface. `json2pptx-mcp`'s richer vocabularies block is
+    unchanged.
+  - `deprecations: [{path, replacement, removed_in?}]` — `json2pptx-mcp`
+    adds this alias for the existing `deprecated_fields` list; the two
+    arrays carry identical content.
+  `json2pptx-mcp`'s existing rich fields (`mcp_tools_available`, `runtime`,
+  `changelog_url`, `tool_version`, `error_codes`, `deprecated_fields`) and
+  `svggen-mcp`'s `chart_types` / `diagram_types` arrays remain in place for
+  backwards compatibility; new agent code should prefer the standardized
+  fields.
+
 ## 4.17.0 (2026-05-19)
 
 ### Added
