@@ -60,7 +60,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
 | Recommend a named pattern given an intent (pattern-only subset of recommend_visual) | `recommend_pattern` | (CLI inlines) |
 | Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
-| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering | `preview_presentation_plan` | (CLI inlines) |
+| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering. The response's `warnings[]` field surfaces compose-resolution diagnostics — including `COMPOSE_HORIZONTAL_TRUNCATION` when a horizontal compose segment's row over-occupies its allocated column range and excess cells are dropped. | `preview_presentation_plan` | (CLI inlines) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |

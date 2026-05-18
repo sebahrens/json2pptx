@@ -773,9 +773,14 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
 		}
-		expanded, err := expandCompose(slide.Compose, ctx, patterns.Default())
+		expanded, composeWarnings, err := expandCompose(slide.Compose, ctx, patterns.Default())
 		if err != nil {
 			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
+		}
+		for _, w := range composeWarnings {
+			slog.Warn("compose warning",
+				slog.Int("slide", i+1),
+				slog.String("message", w))
 		}
 		slide.ShapeGrid = expanded
 	}

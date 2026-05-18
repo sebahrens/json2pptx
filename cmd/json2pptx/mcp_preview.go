@@ -459,11 +459,15 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 		SlideIndex:     i,
 		SectionIndex:   sectionIndex,
 	}
-	expanded, err := expandCompose(slide.Compose, expCtx, patterns.Default())
+	expanded, composeWarnings, err := expandCompose(slide.Compose, expCtx, patterns.Default())
 	if err != nil {
 		output.Errors = append(output.Errors,
 			fmt.Sprintf("slide %d: compose: %v", i+1, err))
 		return
+	}
+	for _, w := range composeWarnings {
+		output.Warnings = append(output.Warnings,
+			fmt.Sprintf("slide %d: %s", i+1, w))
 	}
 	slide.ShapeGrid = expanded
 }

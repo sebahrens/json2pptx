@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -33,7 +34,7 @@ func TestExpandCompose_Vertical(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	grid, err := expandCompose(compose, ctx, patterns.Default())
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expandCompose failed: %v", err)
 	}
@@ -81,7 +82,7 @@ func TestExpandCompose_Horizontal(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	grid, err := expandCompose(compose, ctx, patterns.Default())
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expandCompose failed: %v", err)
 	}
@@ -123,7 +124,7 @@ func TestExpandCompose_EqualSplit(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	grid, err := expandCompose(compose, ctx, patterns.Default())
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expandCompose failed: %v", err)
 	}
@@ -230,7 +231,7 @@ func TestExpandCompose_SmartCompose_StatHeroKpi3up(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	grid, err := expandCompose(compose, ctx, patterns.Default())
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expandCompose failed: %v", err)
 	}
@@ -302,7 +303,7 @@ func TestExpandCompose_SmartCompose_ExplicitSizePctOverrides(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	grid, err := expandCompose(compose, ctx, patterns.Default())
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expandCompose failed: %v", err)
 	}
@@ -345,7 +346,7 @@ func TestExpandCompose_SmartCompose_FalseUsesEqualSplit(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	grid, err := expandCompose(compose, ctx, patterns.Default())
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expandCompose failed: %v", err)
 	}
@@ -389,7 +390,7 @@ func TestExpandCompose_ChildValidationBubbles(t *testing.T) {
 		SlideHeight: 6858000,
 	}
 
-	_, err := expandCompose(compose, ctx, patterns.Default())
+	_, _, err := expandCompose(compose, ctx, patterns.Default())
 	if err == nil {
 		t.Fatal("expected validation error from child pattern")
 	}
@@ -398,3 +399,130 @@ func TestExpandCompose_ChildValidationBubbles(t *testing.T) {
 	}
 }
 
+// TestExpandCompose_Horizontal_PreservesAllCells is the regression test for
+// the mergeHorizontal silent-data-loss bug (go-slide-creator-f1ic.4). Before
+// the fix, mergeRowCells collapsed each segment row to a single cell, so a
+// horizontal compose of three iconrow/kpi-3up segments dropped 2/3 of every
+// segment's cards. After the fix, the merged grid must contain every input
+// cell — total content-bearing cells must equal the sum of input cells
+// across all segments.
+func TestExpandCompose_Horizontal_PreservesAllCells(t *testing.T) {
+	threeKpiValues := `[{"big": "A", "small": "1"}, {"big": "B", "small": "2"}, {"big": "C", "small": "3"}]`
+	compose := &ComposeInput{
+		Direction: "horizontal",
+		Segments: []SegmentInput{
+			{Pattern: PatternInput{Name: "kpi-3up", Values: json.RawMessage(threeKpiValues)}},
+			{Pattern: PatternInput{Name: "kpi-3up", Values: json.RawMessage(threeKpiValues)}},
+			{Pattern: PatternInput{Name: "kpi-3up", Values: json.RawMessage(threeKpiValues)}},
+		},
+	}
+	ctx := patterns.ExpandContext{
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
+	}
+
+	// Count input content-bearing cells per segment.
+	inputCells := 0
+	for i, seg := range compose.Segments {
+		g, _, err := expandPattern(&seg.Pattern, ctx, patterns.Default())
+		if err != nil {
+			t.Fatalf("segment[%d] expandPattern failed: %v", i, err)
+		}
+		for _, row := range g.Rows {
+			for _, c := range row.Cells {
+				if cellHasContent(c) {
+					inputCells++
+				}
+			}
+		}
+	}
+
+	merged, warnings, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Errorf("expected no truncation warnings, got: %v", warnings)
+	}
+
+	mergedCells := 0
+	for _, row := range merged.Rows {
+		for _, c := range row.Cells {
+			if cellHasContent(c) {
+				mergedCells++
+			}
+		}
+	}
+	if mergedCells != inputCells {
+		t.Errorf("merged cell count %d != sum of input cells %d (silent data loss regression)", mergedCells, inputCells)
+	}
+
+	// Merged grid should expose all 9 columns (3 segments × 3 cols each).
+	var cols []float64
+	if err := json.Unmarshal(merged.Columns, &cols); err != nil {
+		t.Fatalf("merged columns should be array of percentages: %v", err)
+	}
+	if len(cols) != 9 {
+		t.Errorf("expected 9 columns (3 segments × 3 cols), got %d", len(cols))
+	}
+}
+
+// TestExpandCompose_Horizontal_TruncationWarning verifies that when a
+// segment row's ColSpan-weighted occupancy overflows the segment's allocated
+// column range, the dropped excess cells produce a COMPOSE_HORIZONTAL_TRUNCATION
+// warning instead of being silently shed.
+func TestExpandCompose_Horizontal_TruncationWarning(t *testing.T) {
+	// Hand-craft two grids directly so we can force over-occupancy.
+	// Segment 0 reports columns=2 but its row has 3 cells (each ColSpan=1) — overflow by 1.
+	seg0 := &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`2`),
+		Rows: []jsonschema.GridRowInput{{
+			Cells: []*jsonschema.GridCellInput{
+				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect"}},
+				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect"}},
+				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect"}},
+			},
+		}},
+	}
+	seg1 := &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`1`),
+		Rows: []jsonschema.GridRowInput{{
+			Cells: []*jsonschema.GridCellInput{
+				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect"}},
+			},
+		}},
+	}
+
+	merged, warnings, err := mergeHorizontal(
+		[]*jsonschema.ShapeGridInput{seg0, seg1},
+		[]float64{50, 50},
+		0,
+	)
+	if err != nil {
+		t.Fatalf("mergeHorizontal failed: %v", err)
+	}
+	if merged == nil {
+		t.Fatal("mergeHorizontal returned nil grid")
+	}
+
+	foundTruncation := false
+	for _, w := range warnings {
+		if contains(w, "COMPOSE_HORIZONTAL_TRUNCATION") && contains(w, "segment[0]") {
+			foundTruncation = true
+			break
+		}
+	}
+	if !foundTruncation {
+		t.Errorf("expected COMPOSE_HORIZONTAL_TRUNCATION warning for segment[0], got: %v", warnings)
+	}
+}
+
+// cellHasContent reports whether a GridCellInput holds renderable content
+// (used by horizontal-preservation tests to ignore empty padding cells).
+func cellHasContent(c *jsonschema.GridCellInput) bool {
+	if c == nil {
+		return false
+	}
+	return c.Shape != nil || c.Table != nil || c.Icon != nil ||
+		c.Image != nil || c.Diagram != nil
+}

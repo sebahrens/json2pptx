@@ -27,9 +27,12 @@ type SegmentInput struct {
 
 // expandCompose validates and expands a compose envelope into a single
 // ShapeGridInput by expanding each segment's pattern and merging the results.
-func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, error) {
+// The returned warnings slice carries non-fatal diagnostics (e.g.,
+// COMPOSE_HORIZONTAL_TRUNCATION when a segment's row over-occupies its
+// allocated column range and content must be dropped).
+func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, []string, error) {
 	if err := validateCompose(c); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Expand each segment's pattern
@@ -37,7 +40,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	for i, seg := range c.Segments {
 		grid, _, err := expandPattern(&seg.Pattern, ctx, reg)
 		if err != nil {
-			return nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+			return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
 		}
 		expandedGrids[i] = grid
 	}
@@ -54,11 +57,12 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// Merge based on direction
 	switch c.Direction {
 	case "vertical":
-		return mergeVertical(expandedGrids, sizes, c.Gap)
+		grid, err := mergeVertical(expandedGrids, sizes, c.Gap)
+		return grid, nil, err
 	case "horizontal":
 		return mergeHorizontal(expandedGrids, sizes, c.Gap)
 	default:
-		return nil, fmt.Errorf("compose: unsupported direction %q", c.Direction)
+		return nil, nil, fmt.Errorf("compose: unsupported direction %q", c.Direction)
 	}
 }
 
@@ -185,16 +189,37 @@ func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap floa
 	return merged, nil
 }
 
-// mergeHorizontal places grids side by side. Each segment becomes a column
-// (or set of columns) in a single-row grid where cells are nested grids.
-// Since cells can't contain grids, we use explicit bounds on separate grids.
-// For horizontal, we create a multi-column grid with each segment's rows
-// stacked within their allotted columns.
-func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64) (*jsonschema.ShapeGridInput, error) {
-	// For horizontal composition, we create a grid with N columns (one per segment)
-	// and the maximum number of rows across all segments. Each segment's cells
-	// occupy their column(s).
-	totalCols := len(grids)
+// mergeHorizontal places grids side by side by concatenating each segment's
+// columns into a single wide grid. Per-segment column counts are summed to
+// form the merged grid's column count, and each segment's sizes[i] share is
+// distributed across its own columns (preserving the segment's original
+// column-width proportions when an explicit array is provided).
+//
+// For each output row, the segment's row cells (padded with empty cells when
+// the row is under-occupied or absent) are appended in segment order. This
+// preserves every input cell — patterns like kpi-3up keep all three cards
+// instead of being silently collapsed to one.
+//
+// If a segment's row over-occupies its allocated column range (sum of cell
+// ColSpans exceeds the segment's column count), the excess cells are dropped
+// and a COMPOSE_HORIZONTAL_TRUNCATION warning is appended to the returned
+// warnings slice so callers can surface it instead of dropping content
+// silently.
+func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64) (*jsonschema.ShapeGridInput, []string, error) {
+	var warnings []string
+
+	// Determine each segment's column count and distribute its size share
+	// across those columns.
+	segCols := make([]int, len(grids))
+	totalCols := 0
+	colWidths := make([]float64, 0, len(grids))
+	for i, g := range grids {
+		cols := inferColumnCount(g)
+		segCols[i] = cols
+		totalCols += cols
+		colWidths = append(colWidths, allocateSegmentColumns(g, cols, sizes[i])...)
+	}
+	colJSON, _ := json.Marshal(colWidths)
 
 	// Find max row count across all grids
 	maxRows := 0
@@ -204,27 +229,17 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 		}
 	}
 
-	// Build column widths from size percentages
-	colWidths := make([]float64, totalCols)
-	copy(colWidths, sizes)
-	colJSON, _ := json.Marshal(colWidths)
-
-	// Build rows: for each row index, collect one cell from each grid
+	// Build rows: for each row index, concatenate each segment's row cells
+	// (padded with empty cells to fill the segment's column allocation).
 	mergedRows := make([]jsonschema.GridRowInput, maxRows)
 	for rowIdx := 0; rowIdx < maxRows; rowIdx++ {
-		cells := make([]*jsonschema.GridCellInput, totalCols)
-		for colIdx, g := range grids {
-			if rowIdx < len(g.Rows) && len(g.Rows[rowIdx].Cells) > 0 {
-				// Take the first cell from this grid's row (simplified: assumes single-column per segment)
-				cells[colIdx] = mergeRowCells(g.Rows[rowIdx].Cells)
-			} else {
-				// Empty cell placeholder
-				cells[colIdx] = &jsonschema.GridCellInput{}
-			}
+		rowCells := make([]*jsonschema.GridCellInput, 0, totalCols)
+		for segIdx, g := range grids {
+			n := segCols[segIdx]
+			segPart := segmentRowCells(g, rowIdx, n, segIdx, &warnings)
+			rowCells = append(rowCells, segPart...)
 		}
-		mergedRows[rowIdx] = jsonschema.GridRowInput{
-			Cells: cells,
-		}
+		mergedRows[rowIdx] = jsonschema.GridRowInput{Cells: rowCells}
 	}
 
 	resolvedGap := gap
@@ -238,29 +253,83 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 		ColGap:  resolvedGap,
 	}
 
-	return merged, nil
+	return merged, warnings, nil
 }
 
-// mergeRowCells consolidates multiple cells from a pattern row into a single
-// cell for horizontal composition. If the row has one cell, returns it directly.
-// If multiple, returns the first non-nil cell (simplified).
-func mergeRowCells(cells []*jsonschema.GridCellInput) *jsonschema.GridCellInput {
-	if len(cells) == 1 {
-		c := *cells[0]
-		c.ColSpan = 0 // reset span for the merged grid
-		return &c
+// segmentRowCells extracts the cells from grid g at rowIdx and returns
+// exactly n cells, padding under-occupied rows with empty cells and
+// truncating (with a warning appended) when the row's ColSpan-weighted
+// occupancy exceeds n.
+func segmentRowCells(g *jsonschema.ShapeGridInput, rowIdx, n, segIdx int, warnings *[]string) []*jsonschema.GridCellInput {
+	if rowIdx >= len(g.Rows) {
+		// Segment has no row at this index — pad with empty cells.
+		out := make([]*jsonschema.GridCellInput, n)
+		for i := range out {
+			out[i] = &jsonschema.GridCellInput{}
+		}
+		return out
 	}
-	// For multi-cell rows being merged into a single column, take the first cell.
-	// This is a simplification — complex multi-column patterns in horizontal
-	// compose are less common. The vertical direction is the primary use case.
-	for _, c := range cells {
-		if c != nil && (c.Shape != nil || c.Table != nil || c.Icon != nil || c.Image != nil || c.Diagram != nil) {
-			result := *c
-			result.ColSpan = 0
-			return &result
+
+	src := g.Rows[rowIdx].Cells
+	out := make([]*jsonschema.GridCellInput, 0, n)
+	used := 0
+	for _, c := range src {
+		span := 1
+		if c != nil && c.ColSpan > 1 {
+			span = c.ColSpan
+		}
+		if used+span > n {
+			// Over-occupancy: dropping this cell would shed content silently.
+			if warnings != nil {
+				*warnings = append(*warnings, fmt.Sprintf(
+					"COMPOSE_HORIZONTAL_TRUNCATION: segment[%d] row[%d] cells span more columns (%d so far + %d) than the segment's allocated width (%d); excess cells dropped",
+					segIdx, rowIdx, used, span, n))
+			}
+			break
+		}
+		out = append(out, c)
+		used += span
+	}
+	// Pad remaining space with empty cells so the segment occupies exactly n columns.
+	for used < n {
+		out = append(out, &jsonschema.GridCellInput{})
+		used++
+	}
+	return out
+}
+
+// allocateSegmentColumns distributes a segment's percentage share across its
+// columns. When the segment carries an explicit per-column widths array of
+// matching length, those proportions are preserved within the segment's share;
+// otherwise the share is split equally.
+func allocateSegmentColumns(g *jsonschema.ShapeGridInput, cols int, share float64) []float64 {
+	widths := make([]float64, cols)
+	if g != nil && len(g.Columns) > 0 {
+		var arr []float64
+		if err := json.Unmarshal(g.Columns, &arr); err == nil && len(arr) == cols {
+			var sum float64
+			for _, v := range arr {
+				if v > 0 {
+					sum += v
+				}
+			}
+			if sum > 0 {
+				for i, v := range arr {
+					if v > 0 {
+						widths[i] = (v / sum) * share
+					} else {
+						widths[i] = 0
+					}
+				}
+				return widths
+			}
 		}
 	}
-	return &jsonschema.GridCellInput{}
+	per := share / float64(cols)
+	for i := range widths {
+		widths[i] = per
+	}
+	return widths
 }
 
 // inferColumnCount determines the effective column count from a ShapeGridInput.
