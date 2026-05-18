@@ -34,6 +34,8 @@ func (sp *stylishPanels) Taxonomy() PatternTaxonomy {
 		Category:      "structural",
 		NarrativeRole: []string{"frame", "evidence"},
 		PairsWith:     []string{"kpi-3up", "process-flow", "pull-quote"},
+		ComposesWith:  []string{"pull-quote", "kpi-3up", "icon-row", "arch-stack"},
+		RoleOnSlide:   []string{"pillars"},
 		DensityClass:  "medium",
 		AccentWeight:  "strong",
 	}

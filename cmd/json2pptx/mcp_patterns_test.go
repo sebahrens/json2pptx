@@ -83,6 +83,12 @@ func TestMCPListPatterns(t *testing.T) {
 				if len(e.PairsWith) == 0 {
 					t.Error("kpi-3up pairs_with is empty")
 				}
+				if len(e.ComposesWith) == 0 {
+					t.Error("kpi-3up composes_with is empty")
+				}
+				if len(e.RoleOnSlide) == 0 {
+					t.Error("kpi-3up role_on_slide is empty")
+				}
 			}
 		}
 	}

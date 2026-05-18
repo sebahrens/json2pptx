@@ -183,6 +183,8 @@ var outputSchemaListPatterns = json.RawMessage(`{
             "category":         {"type": "string"},
             "narrative_role":   {"type": "string"},
             "pairs_with":       {"type": "array", "items": {"type": "string"}},
+            "composes_with":    {"type": "array", "items": {"type": "string"}},
+            "role_on_slide":    {"type": "array", "items": {"type": "string"}},
             "density_class":    {"type": "string"},
             "accent_weight":    {"type": "string"},
             "supports_callout": {"type": "boolean"}
@@ -207,6 +209,8 @@ var outputSchemaShowPattern = json.RawMessage(`{
     "supports_callout": {"type": "boolean"},
     "version":     {"type": "integer"},
     "schema":      {"type": "object"},
+    "composes_with": {"type": "array", "items": {"type": "string"}},
+    "role_on_slide": {"type": "array", "items": {"type": "string"}},
     "text_budget_guide": {
       "type": "object",
       "properties": {

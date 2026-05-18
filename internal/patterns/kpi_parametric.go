@@ -59,6 +59,8 @@ func (k *kpiNup) Taxonomy() PatternTaxonomy {
 		Category:      "data-display",
 		NarrativeRole: []string{"evidence"},
 		PairsWith:     []string{"process-flow", "comparison-2col", "card-grid"},
+		ComposesWith:  []string{"stylish-panels", "pull-quote", "process-flow", "icon-row"},
+		RoleOnSlide:   []string{"banner", "foundation"},
 		DensityClass:       density,
 		AccentWeight:       "strong",
 		SparseThresholdPct: 15,

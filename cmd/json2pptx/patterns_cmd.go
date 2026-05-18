@@ -101,6 +101,8 @@ func runPatternsList() error {
 				Category:                 tax.Category,
 				NarrativeRole:            tax.NarrativeRole,
 				PairsWith:                tax.PairsWith,
+				ComposesWith:             tax.ComposesWith,
+				RoleOnSlide:              tax.RoleOnSlide,
 				DensityClass:             tax.DensityClass,
 				AccentWeight:             tax.AccentWeight,
 				SupportsCallout:          supportsCallout,

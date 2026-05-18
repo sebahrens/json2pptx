@@ -76,6 +76,19 @@ type PatternTaxonomy struct {
 	// PairsWith lists sibling pattern names that flow well as the next slide.
 	PairsWith []string `json:"pairs_with"`
 
+	// ComposesWith lists sibling pattern names that can coexist on the SAME
+	// slide via a compose envelope. Distinct from PairsWith, which is about
+	// next-slide sequencing. Used by recommend_visual to populate
+	// PlacementGuidance.ComposableWith and by plan_deck to assemble compose
+	// envelopes.
+	ComposesWith []string `json:"composes_with"`
+
+	// RoleOnSlide describes which slot(s) inside a compose envelope this
+	// pattern naturally occupies. Values: "banner", "pillars", "foundation",
+	// "roof", "callout". Empty when the pattern is not intended for
+	// compose-envelope assembly.
+	RoleOnSlide []string `json:"role_on_slide"`
+
 	// DensityClass describes visual density: "low", "medium", or "high".
 	DensityClass string `json:"density_class"`
 

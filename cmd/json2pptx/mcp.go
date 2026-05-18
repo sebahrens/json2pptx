@@ -1380,6 +1380,8 @@ func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallTo
 			Category:        tax.Category,
 			NarrativeRole:   tax.NarrativeRole,
 			PairsWith:       tax.PairsWith,
+			ComposesWith:    tax.ComposesWith,
+			RoleOnSlide:     tax.RoleOnSlide,
 			DensityClass:    tax.DensityClass,
 			AccentWeight:    tax.AccentWeight,
 			SupportsCallout: supportsCallout,
@@ -1431,6 +1433,7 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 
 	schemaJSON := patterns.SchemaJSON(pat)
 
+	tax := pat.Taxonomy()
 	result := skillPatternFull{
 		Name:            pat.Name(),
 		Description:     pat.Description(),
@@ -1440,6 +1443,8 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		Version:         pat.Version(),
 		Schema:          schemaJSON,
 		TextBudgetGuide: computeTextBudgetGuide(pat),
+		ComposesWith:    tax.ComposesWith,
+		RoleOnSlide:     tax.RoleOnSlide,
 	}
 	result.Cells = pat.CellsHint()
 

@@ -52,6 +52,8 @@ type skillPatternCompact struct {
 	Category                 string   `json:"category"`
 	NarrativeRole            []string `json:"narrative_role"`
 	PairsWith                []string `json:"pairs_with"`
+	ComposesWith             []string `json:"composes_with,omitempty"`
+	RoleOnSlide              []string `json:"role_on_slide,omitempty"`
 	DensityClass             string   `json:"density_class"`
 	AccentWeight             string   `json:"accent_weight"`
 	SupportsCallout          bool     `json:"supports_callout"`
@@ -72,6 +74,8 @@ type skillPatternFull struct {
 	TextBudgetGuide         *textcapacity.TextBudgetGuide `json:"text_budget_guide,omitempty"`
 	ExampleValues           any                           `json:"example_values,omitempty"`
 	RenderingCapabilities   *renderingCapabilities        `json:"rendering_capabilities,omitempty"`
+	ComposesWith            []string                      `json:"composes_with,omitempty"`
+	RoleOnSlide             []string                      `json:"role_on_slide,omitempty"`
 }
 
 // renderingCapabilities describes how a pattern renders icons and other visual elements.
@@ -794,6 +798,8 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 			Category:                 tax.Category,
 			NarrativeRole:            tax.NarrativeRole,
 			PairsWith:                tax.PairsWith,
+			ComposesWith:             tax.ComposesWith,
+			RoleOnSlide:              tax.RoleOnSlide,
 			DensityClass:             tax.DensityClass,
 			AccentWeight:             tax.AccentWeight,
 			SupportsCallout:          supportsCallout,
@@ -817,6 +823,8 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 			SupportsCallout: compact[i].SupportsCallout,
 			Version:         p.Version(),
 			Schema:          schemaJSON,
+			ComposesWith:    compact[i].ComposesWith,
+			RoleOnSlide:     compact[i].RoleOnSlide,
 		}
 		if compact[i].SupportsCallout {
 			full[i].CalloutSchema = patternCalloutSchemaJSON()

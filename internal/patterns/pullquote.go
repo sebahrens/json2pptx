@@ -33,6 +33,8 @@ func (pq *pullQuote) Taxonomy() PatternTaxonomy {
 		Category:      "hero",
 		NarrativeRole: []string{"open", "conclude"},
 		PairsWith:     []string{"kpi-3up", "card-grid", "before-after"},
+		ComposesWith:  []string{"stylish-panels", "kpi-3up", "card-grid", "icon-row", "arch-stack"},
+		RoleOnSlide:   []string{"callout", "banner"},
 		DensityClass:  "low",
 		AccentWeight:  "subtle",
 	}

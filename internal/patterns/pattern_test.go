@@ -478,3 +478,50 @@ func containsWord(s, word string) bool {
 	lower := strings.ToLower(s)
 	return strings.Contains(lower, word)
 }
+
+// TestComposesWithTaxonomy verifies that the four patterns called out in the
+// taxonomy axis (pull-quote, stylish-panels, icon-row, kpi-3up) populate
+// ComposesWith and RoleOnSlide so plan_deck and recommend_visual can assemble
+// compose envelopes from this metadata.
+func TestComposesWithTaxonomy(t *testing.T) {
+	cases := []struct {
+		name           string
+		mustHaveCompose string // sibling that must appear in ComposesWith
+		validRoles     map[string]bool
+	}{
+		{name: "pull-quote", mustHaveCompose: "stylish-panels", validRoles: map[string]bool{"banner": true, "pillars": true, "foundation": true, "roof": true, "callout": true}},
+		{name: "stylish-panels", mustHaveCompose: "pull-quote", validRoles: map[string]bool{"banner": true, "pillars": true, "foundation": true, "roof": true, "callout": true}},
+		{name: "icon-row", mustHaveCompose: "stylish-panels", validRoles: map[string]bool{"banner": true, "pillars": true, "foundation": true, "roof": true, "callout": true}},
+		{name: "kpi-3up", mustHaveCompose: "stylish-panels", validRoles: map[string]bool{"banner": true, "pillars": true, "foundation": true, "roof": true, "callout": true}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p, ok := Default().Get(c.name)
+			if !ok {
+				t.Fatalf("pattern %q not registered", c.name)
+			}
+			tax := p.Taxonomy()
+			if len(tax.ComposesWith) == 0 {
+				t.Errorf("%s: ComposesWith is empty", c.name)
+			}
+			found := false
+			for _, s := range tax.ComposesWith {
+				if s == c.mustHaveCompose {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("%s: ComposesWith %v should include %q", c.name, tax.ComposesWith, c.mustHaveCompose)
+			}
+			if len(tax.RoleOnSlide) == 0 {
+				t.Errorf("%s: RoleOnSlide is empty", c.name)
+			}
+			for _, r := range tax.RoleOnSlide {
+				if !c.validRoles[r] {
+					t.Errorf("%s: RoleOnSlide value %q is not in allowed set {banner,pillars,foundation,roof,callout}", c.name, r)
+				}
+			}
+		})
+	}
+}
