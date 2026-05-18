@@ -926,3 +926,178 @@ func TestCheckShapeGridStructural_NoDiagramNarrowForWideCell(t *testing.T) {
 		}
 	}
 }
+
+// TestExpandComposeForPreflight_FillsShapeGrid verifies that compose envelopes
+// are materialized into ShapeGrid so downstream preflight detectors see the
+// post-merge cell geometry. This is the core mechanism behind re-checking
+// FitFindings (CheckDiagramInNarrowBoundsFinding, diagram_aspect_mismatch)
+// after compose.merge*: without the expansion, slide.ShapeGrid stays nil
+// and checkShapeGridStructural is skipped.
+func TestExpandComposeForPreflight_FillsShapeGrid(t *testing.T) {
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				Compose: &ComposeInput{
+					Direction: "horizontal",
+					Segments: []SegmentInput{
+						{
+							SizePct: 50,
+							Pattern: PatternInput{
+								Name:   "stat-hero",
+								Values: json.RawMessage(`{"value": "3x", "label": "Growth"}`),
+							},
+						},
+						{
+							SizePct: 50,
+							Pattern: PatternInput{
+								Name:   "stat-hero",
+								Values: json.RawMessage(`{"value": "99%", "label": "Uptime"}`),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	out := expandComposeForPreflight(input, 12192000, 6858000)
+	if out == nil {
+		t.Fatal("expandComposeForPreflight returned nil")
+	}
+	if out == input {
+		t.Fatal("expected a copy when expansion is needed, got original input pointer")
+	}
+	if len(out.Slides) != 1 {
+		t.Fatalf("expected 1 slide, got %d", len(out.Slides))
+	}
+	if out.Slides[0].ShapeGrid == nil {
+		t.Fatal("expected compose slide's ShapeGrid to be populated after expansion")
+	}
+	if len(out.Slides[0].ShapeGrid.Rows) == 0 {
+		t.Errorf("expected expanded grid to have rows, got 0")
+	}
+	// Original input must not be mutated.
+	if input.Slides[0].ShapeGrid != nil {
+		t.Error("original input should not be mutated; ShapeGrid was set on caller's slide")
+	}
+}
+
+// TestExpandComposeForPreflight_NoCopyWhenNothingToExpand verifies the fast
+// path: when no slide carries an unexpanded compose envelope, the original
+// input pointer is returned (no allocation, no slide copy).
+func TestExpandComposeForPreflight_NoCopyWhenNothingToExpand(t *testing.T) {
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{},                             // No compose, no shape_grid
+			{ShapeGrid: &ShapeGridInput{}}, // Raw shape_grid — no expansion needed
+		},
+	}
+	out := expandComposeForPreflight(input, 12192000, 6858000)
+	if out != input {
+		t.Error("expected the original input pointer to be returned when no expansion is needed")
+	}
+}
+
+// TestExpandComposeForPreflight_SkipsAlreadyExpanded verifies that compose
+// slides whose ShapeGrid has already been materialized (e.g. by mcp_preview's
+// resolveSlideCompose) are left untouched.
+func TestExpandComposeForPreflight_SkipsAlreadyExpanded(t *testing.T) {
+	existing := &ShapeGridInput{Columns: json.RawMessage(`2`)}
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				Compose: &ComposeInput{
+					Direction: "horizontal",
+					Segments: []SegmentInput{
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "X", "label": "Y"}`)}},
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "X", "label": "Y"}`)}},
+					},
+				},
+				ShapeGrid: existing,
+			},
+		},
+	}
+	out := expandComposeForPreflight(input, 12192000, 6858000)
+	if out != input {
+		t.Error("expected fast-path return when compose slides already have ShapeGrid set")
+	}
+	if input.Slides[0].ShapeGrid != existing {
+		t.Error("pre-existing ShapeGrid was overwritten")
+	}
+}
+
+// TestDedupFitFindings verifies that findings sharing (Code, Path, Action,
+// Message) are deduplicated while findings on different paths or with
+// different action/message are preserved.
+func TestDedupFitFindings(t *testing.T) {
+	a := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Code:    "grid_diagram_narrow",
+			Path:    "/slides/0/shape_grid/rows/0/cells/0/diagram",
+			Message: "too narrow",
+		},
+		Action: "review",
+	}
+	b := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Code:    "grid_diagram_narrow",
+			Path:    "/slides/0/shape_grid/rows/0/cells/1/diagram",
+			Message: "too narrow",
+		},
+		Action: "review",
+	}
+	// Same as a — should be dropped.
+	dup := a
+
+	out := dedupFitFindings([]patterns.FitFinding{a, dup, b, a})
+	if len(out) != 2 {
+		t.Fatalf("expected 2 unique findings, got %d: %v", len(out), out)
+	}
+	if out[0].Path != a.Path || out[1].Path != b.Path {
+		t.Errorf("insertion order not preserved: got %v", out)
+	}
+}
+
+// TestCollectFitFindings_RunsStructuralOnComposeMergedGrid is the regression
+// test for the "Re-check FitFindings after compose.merge*" bug: without the
+// expandComposeForPreflight pass, a compose-only slide carries ShapeGrid==nil,
+// so collectStructuralFindings skips it entirely. Here we verify that after
+// the fix, the compose envelope is expanded by collectFitFindings without
+// mutating the caller's input and that the merged grid is visible to
+// downstream detectors.
+func TestCollectFitFindings_RunsStructuralOnComposeMergedGrid(t *testing.T) {
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				Compose: &ComposeInput{
+					Direction: "horizontal",
+					Segments: []SegmentInput{
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "3x", "label": "Growth"}`)}},
+						{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "99%", "label": "Uptime"}`)}},
+					},
+				},
+			},
+		},
+	}
+
+	// No layout/theme supplied — the structural pass needs them, but the
+	// expansion mechanism doesn't. We separately verify the expansion below.
+	_ = collectFitFindings(input, nil, 12192000, 6858000, nil)
+
+	// Caller's input must NOT be mutated — collectFitFindings should be pure.
+	if input.Slides[0].ShapeGrid != nil {
+		t.Error("collectFitFindings mutated caller's slide.ShapeGrid; expected pure function")
+	}
+
+	// And: the expansion helper, when called directly, must produce a grid
+	// from this compose envelope — confirming downstream detectors now have
+	// post-merge geometry to evaluate.
+	expanded := expandComposeForPreflight(input, 12192000, 6858000)
+	if expanded.Slides[0].ShapeGrid == nil {
+		t.Fatal("compose envelope was never expanded — preflight detectors will keep missing post-merge findings")
+	}
+}

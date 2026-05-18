@@ -30,6 +30,13 @@ const DefaultFindingBudget = 5
 func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
+	// Expand compose envelopes into ShapeGrid so downstream detectors evaluate
+	// against post-merge cell geometry. Without this step, a diagram placed in
+	// a horizontally-merged segment would never trip CheckDiagramInNarrowBoundsFinding
+	// or aspect-mismatch findings during preflight — the unexpanded slide
+	// carries ShapeGrid == nil, so checkShapeGridStructural is skipped.
+	input = expandComposeForPreflight(input, slideWidth, slideHeight)
+
 	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid text).
 	for _, tf := range generateFitReport(input) {
 		findings = append(findings, convertTextFitFinding(tf))
@@ -74,6 +81,12 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	}
 	findings = append(findings,
 		collectChartDryRenderFindings(input, chartThemeColors, "warn")...)
+
+	// Deduplicate findings that share (Code, Path, Action, Message). This guards
+	// against the case where a pre-compose detector and the post-compose
+	// structural pass both emit the same diagnostic for one cell — the
+	// post-compose check on the merged grid should not double-surface.
+	findings = dedupFitFindings(findings)
 
 	// Sort by ActionRank desc, then slide index asc.
 	sort.Slice(findings, func(i, j int) bool {
@@ -1309,4 +1322,83 @@ func extractShapeTextColors(raw json.RawMessage) []string {
 		}
 	}
 	return colors
+}
+
+// expandComposeForPreflight returns a shallow copy of input where each slide
+// whose Compose envelope has not yet been materialized into ShapeGrid has its
+// ShapeGrid populated by running the compose merge. This lets preflight
+// detectors (checkShapeGridStructural in particular) see post-merge cell
+// geometry, so a diagram in a horizontally-narrowed compose segment trips
+// grid_diagram_narrow and diagram_aspect_* findings rather than passing
+// silently.
+//
+// The expansion uses a minimal ExpandContext (no template metadata, default
+// accent strategy) because the structural detectors targeted by this pass
+// depend only on cell rectangles. Compose envelopes that fail to expand are
+// left as-is — render-time will surface the parse error separately, and we
+// avoid masking it here.
+//
+// When no slide has an unexpanded compose envelope, the original input is
+// returned unchanged (no allocation).
+func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight int64) *PresentationInput {
+	if input == nil {
+		return nil
+	}
+	needsExpansion := false
+	for i := range input.Slides {
+		s := &input.Slides[i]
+		if s.Compose != nil && s.ShapeGrid == nil {
+			needsExpansion = true
+			break
+		}
+	}
+	if !needsExpansion {
+		return input
+	}
+
+	expanded := *input
+	expanded.Slides = make([]SlideInput, len(input.Slides))
+	copy(expanded.Slides, input.Slides)
+
+	for i := range expanded.Slides {
+		s := &expanded.Slides[i]
+		if s.Compose == nil || s.ShapeGrid != nil {
+			continue
+		}
+		ctx := patterns.ExpandContext{
+			SlideWidth:  slideWidth,
+			SlideHeight: slideHeight,
+			SlideIndex:  i,
+		}
+		eg, _, err := expandCompose(s.Compose, ctx, patterns.Default())
+		if err != nil {
+			continue
+		}
+		s.ShapeGrid = eg
+	}
+	return &expanded
+}
+
+// dedupFitFindings removes findings that share the same
+// (Code, Path, Action, Message) tuple. The first occurrence is kept, preserving
+// caller insertion order. Same-code findings on different paths are kept,
+// since they describe different cells. This guards against double-emission
+// when pre-compose detectors and the post-compose structural pass both
+// surface a finding for the same diagram cell.
+func dedupFitFindings(in []patterns.FitFinding) []patterns.FitFinding {
+	if len(in) <= 1 {
+		return in
+	}
+	type key struct{ code, path, action, msg string }
+	seen := make(map[key]struct{}, len(in))
+	out := make([]patterns.FitFinding, 0, len(in))
+	for _, f := range in {
+		k := key{f.Code, f.Path, f.Action, f.Message}
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, f)
+	}
+	return out
 }
