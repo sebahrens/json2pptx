@@ -619,6 +619,34 @@ var outputSchemaScoreDeck = json.RawMessage(`{
   "required": ["overall_score", "per_slide", "summary", "mode_used"]
 }`)
 
+// --- score_candidates ---
+var outputSchemaScoreCandidates = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "slide_index": {"type": "integer", "description": "0-based slide position the candidates were scored against."},
+    "candidates": {
+      "type": "array",
+      "description": "Candidates ranked best→worst by score; rank is 1-based.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index":          {"type": "integer", "description": "0-based position of this candidate in the request candidates array."},
+          "rank":           {"type": "integer", "description": "1-based rank after sorting (1 = best)."},
+          "score":          {"type": "integer", "description": "Combined deterministic score 0-100 (slide_score - rhythm_penalty)."},
+          "slide_score":    {"type": "integer", "description": "100 - sum(severity weights) of fit findings scoped to the target slide."},
+          "rhythm_penalty": {"type": "integer", "description": "Penalty subtracted for pattern repetition. 0, 5, or 15."},
+          "findings":       {"type": "array", "items": {"type": "object"}, "description": "Deterministic findings (overflow, contrast, occupancy, etc.) scoped to the target slide for this candidate."},
+          "notes":          {"type": "array", "items": {"type": "string"}, "description": "Human-readable rhythm/occupancy notes that explain the rhythm_penalty."},
+          "parse_error":    {"type": "string", "description": "Set when the candidate JSON failed to decode; score will be 0 and the candidate ranks last."}
+        },
+        "required": ["index", "rank", "score", "slide_score", "rhythm_penalty"]
+      }
+    },
+    "mode_used": {"type": "string"}
+  },
+  "required": ["slide_index", "candidates", "mode_used"]
+}`)
+
 // --- preview_presentation_plan ---
 var outputSchemaPreviewPlan = json.RawMessage(`{
   "type": "object",

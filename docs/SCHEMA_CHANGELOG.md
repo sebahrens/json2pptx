@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.9.0 (2026-05-18)
+
+### Added
+
+- **`score_candidates` MCP tool** — predicts per-slot deterministic scores for
+  alternative slide_json candidates without rendering. Accepts `presentation`,
+  `slide_index`, and `candidates[]` (each a slide_json). For each candidate it
+  substitutes at `slide_index`, runs `collectFitFindings` (no tempdir, no
+  generation), and returns a combined score = `slide_score - rhythm_penalty`
+  clamped to [0, 100]:
+  - `slide_score`: 100 minus the sum of fit-finding severity weights for the
+    target slide (occupancy findings such as `pattern_underfilled` and
+    `pattern_overcrowded`, contrast preflight, text overflow, table preflight,
+    etc.).
+  - `rhythm_penalty`: 5 if the candidate would form a length-2 pattern run at
+    that position, 15 if length-3+, 0 otherwise.
+  Candidates are returned sorted best→worst with stable tiebreak by input
+  index. Closes go-slide-creator-lweh.6.
+
 ## 4.8.0 (2026-05-18)
 
 ### Added

@@ -121,6 +121,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
+| **Rank candidate slide_jsons for one slot without rendering** — predicts each candidate's score from static analysis (fit findings sum + occupancy) plus a rhythm penalty for pattern runs at the target slide position. Use to choose between alternative patterns / shape grids / content shapes for a single slot in a deck before committing. No tempdir generation. Returns candidates sorted best→worst with per-candidate `score`, `slide_score`, `rhythm_penalty`, `findings[]`, and `notes[]`. | `score_candidates` | `json2pptx score-candidates` |
 | **Inspect rendered slide images with Claude vision** — returns structured findings `{severity, category, description, location, suggested_fixes}` whose `suggested_fixes[]` are pre-mapped to `repair_slide` fix kinds. Requires `ANTHROPIC_API_KEY` on the server; returns `INSPECT_DISABLED` otherwise. | `inspect_slide_images` | `testrand qa` |
 | Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
@@ -669,7 +670,19 @@ Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`,
 | `remove_field` | Delete a top-level field from pattern values or from the slide (via JSON round-trip) | `path: string` | — |
 | `autofix_visual` | Map a visual-QA finding category to one or more candidate fix kinds and try them in order. Caller-supplied params are forwarded (caller wins). | `category: string` (visual QA finding category) | any params forwarded to the underlying kind |
 
-Unsupported kinds return `{applied: false, message: "kind_not_supported"}`. To discover this list programmatically at runtime, read `get_capabilities().vocabularies.repair_fix_kinds`.
+Unsupported kinds return:
+
+```json
+{
+  "applied": false,
+  "code": "kind_not_supported",
+  "message": "kind_not_supported",
+  "supported_kinds": ["add_items", "autofix_visual", "provide_value", ...],
+  "next_tool_call": {"tool": "get_capabilities", "args_template": {}}
+}
+```
+
+`supported_kinds` is the full authoritative vocabulary inline — recover by retrying with one of those kinds instead of issuing a separate `get_capabilities` call. The `next_tool_call` is still surfaced as a fallback for agents that want to consume the canonical capabilities snapshot. The list is identical to `get_capabilities().vocabularies.repair_fix_kinds` and a compile-time test (`TestBuildCapabilitiesContract/repair_fix_kinds matches applyRepairFix switch cases`) keeps the two in lock-step.
 
 ### Chart Finding Codes
 

@@ -121,6 +121,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
+| **Rank candidate slide_jsons for one slot without rendering** — predicts each candidate's score from static analysis (fit findings sum + occupancy) plus a rhythm penalty for pattern runs at the target slide position. Use to choose between alternative patterns / shape grids / content shapes for a single slot in a deck before committing. No tempdir generation. Returns candidates sorted best→worst with per-candidate `score`, `slide_score`, `rhythm_penalty`, `findings[]`, and `notes[]`. | `score_candidates` | `json2pptx score-candidates` |
 | **Inspect rendered slide images with Claude vision** — returns structured findings `{severity, category, description, location, suggested_fixes}` whose `suggested_fixes[]` are pre-mapped to `repair_slide` fix kinds. Requires `ANTHROPIC_API_KEY` on the server; returns `INSPECT_DISABLED` otherwise. | `inspect_slide_images` | `testrand qa` |
 | Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
