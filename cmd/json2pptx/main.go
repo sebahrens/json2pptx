@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.6.0"
+const SchemaVersion = "4.7.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -78,6 +78,8 @@ func dispatch() error { //nolint:gocyclo
 		return runRepair()
 	case "score":
 		return runScore()
+	case "inspect":
+		return runInspect()
 	case "analyze-rhythm":
 		return runAnalyzeRhythm()
 	case "plan-deck":
@@ -131,6 +133,7 @@ Commands:
   preview             Preview generation plan without rendering
   repair              Apply targeted fixes to a single slide
   score               Score a presentation for visual quality
+  inspect             Run vision-based visual QA on rendered slide images
   analyze-rhythm      Analyze deck visual rhythm and pattern repetition
   plan-deck           Plan a deck outline from a brief
   recommend-visual    Recommend visual approaches for a slide intent

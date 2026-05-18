@@ -62,6 +62,12 @@ const (
 	CodeSettingsWriteDisabled Code = "SETTINGS_WRITE_DISABLED"
 )
 
+// Inspect family — visual QA failures.
+const (
+	CodeInvalidImage    Code = "INVALID_IMAGE"
+	CodeInspectDisabled Code = "INSPECT_DISABLED"
+)
+
 // Internal family — unexpected server-side failures.
 const (
 	CodeInternal Code = "INTERNAL"
@@ -109,6 +115,9 @@ func AllCodes() []Code {
 		// Settings
 		CodeSettingsError,
 		CodeSettingsWriteDisabled,
+		// Inspect
+		CodeInvalidImage,
+		CodeInspectDisabled,
 		// Internal
 		CodeInternal,
 	}

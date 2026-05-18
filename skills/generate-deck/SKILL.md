@@ -120,6 +120,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
+| **Inspect rendered slide images with Claude vision** — returns structured findings `{severity, category, description, location, suggested_fixes}` whose `suggested_fixes[]` are pre-mapped to `repair_slide` fix kinds. Requires `ANTHROPIC_API_KEY` on the server; returns `INSPECT_DISABLED` otherwise. | `inspect_slide_images` | `testrand qa` |
 | Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
 | **Read back a generated PPTX as structured JSON** — best-effort extraction of placeholders, shapes, tables, and speaker notes (no LibreOffice dependency). Use to verify what `generate_presentation` actually produced, detect silent trimming, or confirm idempotency before delivery. | `read_presentation` | (CLI inlines) |
@@ -310,6 +311,39 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - For a no-side-effect dry run before regenerating, call `preview_presentation_plan` to inspect layout selection, placeholder mapping, and fit findings without producing a PPTX.
 
 Do not tell the user the deck is done until the checklist passes or you have explicitly flagged what you couldn't verify.
+
+### Visual inspection (Claude vision)
+
+Pixels — not JSON — decide whether refinement is acceptable. The `inspect_slide_images` MCP tool exposes the same Claude-vision QA agent that `testrand qa` runs on the CLI: pass an array of rendered slide images, get back structured findings keyed to repair_slide fix kinds.
+
+**When to call it.** After `render_deck_thumbnails` or `render_slide_image`, when (a) the deck has been generated and visually rendered, (b) heuristics on its own pass but the deck still feels off, or (c) the user explicitly asked for a quality pass. Skip it for sub-3-slide drafts and for runs where `ANTHROPIC_API_KEY` is unset (the server returns `INSPECT_DISABLED`).
+
+**Shape of the call.**
+
+```json
+{
+  "slide_images": [
+    {"index": 0, "png_base64": "...", "slide_type": "title",   "title": "..."},
+    {"index": 1, "path": "/tmp/deck/slide-1.png", "slide_type": "content"}
+  ],
+  "deck_metadata": {"template": "midnight-blue"}
+}
+```
+
+Each entry sets exactly one of `path` (absolute, .png/.jpg/.jpeg, no `..`) or `png_base64` (raw base64). Optional `slide_type` and `title` tune the per-slide prompt; supply them when you have them — they materially improve precision.
+
+**How to consume findings.** Each finding's `suggested_fixes[]` is pre-mapped to `repair_slide` fix kinds via `SuggestedFixesForCategory`. The agent-side pipeline is:
+
+```
+findings = inspect_slide_images(...).results[slide].findings
+for f in findings where f.severity in {"P0","P1"}:
+    repair_slide(presentation, slide_index=f.slide_index,
+                 fixes=[{"kind":"autofix_visual","params":{"category":f.category}}])
+```
+
+`autofix_visual` consults the same category→kind map server-side and tries each candidate in order until one succeeds — so a `text_overflow` finding tries `reduce_cell_text`, then `split_at_row`, then `reshape_grid`. Three visual QA categories — `image_quality`, `aspect_ratio`, `border_style` — return empty `suggested_fixes[]` and should be surfaced for human review rather than auto-repaired.
+
+**False-positive policy.** Haiku-vision flags ~60% false positives on layout issues (top-clipping, title-cut) when running on already-correct decks. Treat P2/P3 findings as advisory; only P0/P1 should trigger automatic repair without user confirmation.
 
 ---
 

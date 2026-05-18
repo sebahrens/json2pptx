@@ -4,6 +4,22 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.7.0 (2026-05-18)
+
+### Added
+
+- **`inspect_slide_images` MCP tool** — first-class entry point to the
+  Claude-vision visual QA agent. Accepts an array of rendered slide images
+  (filesystem path or base64-encoded PNG) plus optional per-slide metadata,
+  and returns a structured `visualqa.Report` with per-slide findings.
+  Each finding includes `suggested_fixes[]` pre-mapped to `repair_slide`
+  fix kinds via `SuggestedFixesForCategory`, so agents can pipe findings
+  directly into `repair_slide` `{kind: "autofix_visual", params: {category}}`.
+  Requires `ANTHROPIC_API_KEY` on the server; returns `INSPECT_DISABLED` when
+  unset.
+- **`INSPECT_DISABLED` error code** — emitted by `inspect_slide_images` when
+  the Anthropic API key is not configured.
+
 ## 4.6.0 (2026-05-08)
 
 ### Added

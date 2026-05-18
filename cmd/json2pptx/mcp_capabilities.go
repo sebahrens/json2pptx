@@ -131,6 +131,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "get_input_schema", AddedIn: "4.2.0"},
 		// Tools from 4.6.0
 		{Name: "validate_presentation_output", AddedIn: "4.6.0"},
+		// Tools from 4.7.0
+		{Name: "inspect_slide_images", AddedIn: "4.7.0"},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries

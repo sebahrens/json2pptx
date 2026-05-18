@@ -51,6 +51,7 @@ func TestMCPToolConstructors(t *testing.T) {
 		{"repair_slide", mcpRepairSlideTool},
 		{"preview_plan", mcpPreviewPlanTool},
 		{"score_deck", mcpScoreDeckTool},
+		{"inspect_slide_images", mcpInspectSlideImagesTool},
 		{"get_capabilities", mcpGetCapabilitiesTool},
 	}
 

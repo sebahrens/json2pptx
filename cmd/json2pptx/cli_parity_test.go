@@ -28,6 +28,7 @@ var mcpToCLI = map[string]string{
 	"preview_presentation_plan":  "preview",
 	"repair_slide":               "repair",
 	"score_deck":                 "score",
+	"inspect_slide_images":       "inspect",
 	"render_slide_image":         "render-slide",
 	"render_deck_thumbnails":     "render-thumbnails",
 	"list_template_settings":     "template-settings list",

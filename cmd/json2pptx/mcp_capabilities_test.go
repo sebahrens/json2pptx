@@ -340,6 +340,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpRenderSlideImageTool":     mcpRenderSlideImageTool,
 		"mcpRenderDeckThumbnailsTool": mcpRenderDeckThumbnailsTool,
 		"mcpScoreDeckTool":            mcpScoreDeckTool,
+		"mcpInspectSlideImagesTool":   mcpInspectSlideImagesTool,
 		"mcpPreviewPlanTool":          mcpPreviewPlanTool,
 		"mcpRepairSlideTool":          mcpRepairSlideTool,
 		"mcpListTemplateSettingsTool":     mcpListTemplateSettingsTool,

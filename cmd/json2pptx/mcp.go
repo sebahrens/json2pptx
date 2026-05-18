@@ -134,6 +134,7 @@ func runMCP() error {
 	s.AddTool(mcpRenderSlideImageTool(), mc.handleRenderSlideImage)
 	s.AddTool(mcpRenderDeckThumbnailsTool(), mc.handleRenderDeckThumbnails)
 	s.AddTool(mcpScoreDeckTool(), mc.handleScoreDeck)
+	s.AddTool(mcpInspectSlideImagesTool(), mc.handleInspectSlideImages)
 	s.AddTool(mcpPreviewPlanTool(), mc.handlePreviewPlan)
 	s.AddTool(mcpRepairSlideTool(), mc.handleRepairSlide)
 	s.AddTool(mcpListTemplateSettingsTool(), mc.handleListTemplateSettings)

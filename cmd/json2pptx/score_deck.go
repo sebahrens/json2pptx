@@ -135,8 +135,13 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	ds.Composition = compositionAxis(input.Slides)
 
 	if mode == "with_heuristics" {
-		// Heuristic mode requires rendered images + API key — not yet wired up.
-		// Return deterministic results with a note.
+		// Heuristic mode requires rendered images + API key. The canonical
+		// agent-facing entry point for vision-based QA is the
+		// inspect_slide_images MCP tool — agents should call that directly on
+		// just-rendered thumbnails rather than relying on score_deck to also
+		// produce vision findings. score_deck's heuristic mode is reserved
+		// for an internal call into the same visualqa agent and is not yet
+		// wired into the render+inspect pipeline.
 		ds.ModeUsed = "deterministic"
 		ds.Summary.TopCodes = appendHeuristicNote(ds.Summary.TopCodes)
 	}

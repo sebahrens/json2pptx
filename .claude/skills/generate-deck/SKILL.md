@@ -120,6 +120,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
+| **Inspect rendered slide images with Claude vision** — returns structured findings `{severity, category, description, location, suggested_fixes}` whose `suggested_fixes[]` are pre-mapped to `repair_slide` fix kinds. Requires `ANTHROPIC_API_KEY` on the server; returns `INSPECT_DISABLED` otherwise. | `inspect_slide_images` | `testrand qa` |
 | Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
 | **Read back a generated PPTX as structured JSON** — best-effort extraction of placeholders, shapes, tables, and speaker notes (no LibreOffice dependency). Use to verify what `generate_presentation` actually produced, detect silent trimming, or confirm idempotency before delivery. | `read_presentation` | (CLI inlines) |
