@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -914,5 +915,173 @@ func TestCountComposeLeafPatterns(t *testing.T) {
 	got := countComposeLeafPatterns(c)
 	if got != 5 {
 		t.Errorf("countComposeLeafPatterns = %d, want 5", got)
+	}
+}
+
+// TestExpandCompose_Banner verifies that ComposeInput.Banner is rendered as a
+// full-width row prepended to the merged grid, without consuming a segment
+// slot. The banner cell carries the requested accent fill and ColSpan matches
+// the merged grid's column count.
+func TestExpandCompose_Banner(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "horizontal",
+		Segments: []SegmentInput{
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "A", "label": "First"}`)}},
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "B", "label": "Second"}`)}},
+		},
+		Banner: &patterns.BannerSpec{
+			Text:   "Strategic North Star",
+			Accent: "accent2",
+		},
+	}
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if grid == nil || len(grid.Rows) == 0 {
+		t.Fatal("expected non-empty merged grid")
+	}
+
+	banner := grid.Rows[0]
+	if len(banner.Cells) != 1 {
+		t.Fatalf("banner row should have exactly 1 cell, got %d", len(banner.Cells))
+	}
+	cell := banner.Cells[0]
+	if cell == nil || cell.Shape == nil {
+		t.Fatal("banner cell missing shape")
+	}
+	totalCols := inferColumnCount(grid)
+	if cell.ColSpan != totalCols {
+		t.Errorf("banner ColSpan = %d, want %d (full width)", cell.ColSpan, totalCols)
+	}
+	if !banner.AutoHeight {
+		t.Errorf("banner row should use auto_height, got false")
+	}
+	if !bytes.Contains(cell.Shape.Fill, []byte("accent2")) {
+		t.Errorf("banner fill should reference accent2, got %s", string(cell.Shape.Fill))
+	}
+	if !bytes.Contains(cell.Shape.Text, []byte("Strategic North Star")) {
+		t.Errorf("banner text not rendered: %s", string(cell.Shape.Text))
+	}
+}
+
+// TestExpandCompose_Callout verifies that ComposeInput.Callout reuses the
+// existing pattern-level callout decorator, appending a full-width row at
+// the bottom of the merged grid.
+func TestExpandCompose_Callout(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "vertical",
+		Segments: []SegmentInput{
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "A", "label": "First"}`)}},
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "B", "label": "Second"}`)}},
+		},
+		Callout: &patterns.PatternCallout{Text: "Bottom line: ship faster."},
+	}
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if grid == nil || len(grid.Rows) == 0 {
+		t.Fatal("expected non-empty merged grid")
+	}
+
+	last := grid.Rows[len(grid.Rows)-1]
+	if len(last.Cells) != 1 || last.Cells[0] == nil || last.Cells[0].Shape == nil {
+		t.Fatal("callout row missing shape cell")
+	}
+	if !bytes.Contains(last.Cells[0].Shape.Text, []byte("Bottom line")) {
+		t.Errorf("callout text not rendered: %s", string(last.Cells[0].Shape.Text))
+	}
+}
+
+// TestExpandCompose_BannerAndCallout verifies that banner is at row 0 and
+// callout is at the last row when both are set, and that segments occupy the
+// rows in between.
+func TestExpandCompose_BannerAndCallout(t *testing.T) {
+	compose := &ComposeInput{
+		Direction: "vertical",
+		Segments: []SegmentInput{
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "A", "label": "First"}`)}},
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value": "B", "label": "Second"}`)}},
+		},
+		Banner:  &patterns.BannerSpec{Text: "Top band"},
+		Callout: &patterns.PatternCallout{Text: "Bottom band"},
+	}
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if len(grid.Rows) < 3 {
+		t.Fatalf("expected at least banner + segment + callout rows, got %d", len(grid.Rows))
+	}
+
+	first := grid.Rows[0]
+	last := grid.Rows[len(grid.Rows)-1]
+	if first.Cells[0] == nil || first.Cells[0].Shape == nil ||
+		!bytes.Contains(first.Cells[0].Shape.Text, []byte("Top band")) {
+		t.Errorf("banner not at row 0")
+	}
+	if last.Cells[0] == nil || last.Cells[0].Shape == nil ||
+		!bytes.Contains(last.Cells[0].Shape.Text, []byte("Bottom band")) {
+		t.Errorf("callout not at last row")
+	}
+}
+
+// TestValidateCompose_BannerVsBannerLikeFirstSegment verifies that the
+// validator rejects an envelope-level banner when the first segment is itself
+// banner-leading (strategy-house or pull-quote), preventing duplicate banners.
+func TestValidateCompose_BannerVsBannerLikeFirstSegment(t *testing.T) {
+	cases := []struct {
+		name        string
+		firstName   string
+		wantRejected bool
+	}{
+		{"strategy-house first segment is rejected", "strategy-house", true},
+		{"pull-quote first segment is rejected", "pull-quote", true},
+		{"stat-hero first segment is allowed", "stat-hero", false},
+		{"kpi-3up first segment is allowed", "kpi-3up", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &ComposeInput{
+				Direction: "vertical",
+				Banner:    &patterns.BannerSpec{Text: "Top band"},
+				Segments: []SegmentInput{
+					{Pattern: PatternInput{Name: tc.firstName, Values: json.RawMessage(`{}`)}},
+					{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+				},
+			}
+			err := validateCompose(c)
+			if tc.wantRejected && err == nil {
+				t.Errorf("expected validateCompose to reject banner + %s first segment, got nil", tc.firstName)
+			}
+			if !tc.wantRejected && err != nil {
+				t.Errorf("expected validateCompose to accept %s first segment with banner, got %v", tc.firstName, err)
+			}
+		})
+	}
+}
+
+// TestValidateCompose_BannerOnlyChecksFirstSegment verifies that a banner-like
+// pattern in a non-first segment slot does NOT trigger the duplicate-banner
+// rejection — only the first segment governs the visual conflict.
+func TestValidateCompose_BannerOnlyChecksFirstSegment(t *testing.T) {
+	c := &ComposeInput{
+		Direction: "vertical",
+		Banner:    &patterns.BannerSpec{Text: "Top band"},
+		Segments: []SegmentInput{
+			{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}},
+			{Pattern: PatternInput{Name: "pull-quote", Values: json.RawMessage(`{}`)}},
+		},
+	}
+	if err := validateCompose(c); err != nil {
+		t.Errorf("expected validateCompose to accept banner with pull-quote in second slot, got %v", err)
 	}
 }

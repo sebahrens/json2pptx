@@ -62,11 +62,32 @@ func composeCapabilities() composeFeatureCapabilities {
 // ComposeInput defines a composition envelope that arranges multiple patterns
 // on a single slide. Each segment is independently validated and expanded,
 // then the resulting grids are merged into a single ShapeGridInput.
+//
+// Banner and Callout are envelope-level decorations rendered respectively
+// above and below the merged grid. They do NOT consume a segment slot, so
+// agents can add a Strategy-House-style banner without sacrificing a segment
+// budget to a faux-banner pattern like pull-quote.
 type ComposeInput struct {
-	Direction    string          `json:"direction"`              // "vertical" or "horizontal"
-	Gap          float64         `json:"gap,omitempty"`          // Gap in points between segments (default: 8)
-	SmartCompose bool            `json:"smart_compose,omitempty"` // Auto-balance segment sizes by content density
-	Segments     []SegmentInput  `json:"segments"`
+	Direction    string                   `json:"direction"`                // "vertical" or "horizontal"
+	Gap          float64                  `json:"gap,omitempty"`            // Gap in points between segments (default: 8)
+	SmartCompose bool                     `json:"smart_compose,omitempty"`  // Auto-balance segment sizes by content density
+	Segments     []SegmentInput           `json:"segments"`
+	Banner       *patterns.BannerSpec     `json:"banner,omitempty"`         // Optional banner band rendered above the merged grid
+	Callout      *patterns.PatternCallout `json:"callout,omitempty"`        // Optional callout band rendered below the merged grid
+}
+
+// bannerLikePatterns enumerates leaf patterns whose first row is intrinsically
+// a banner. When ComposeInput.Banner is set and the first segment uses one of
+// these patterns, validateCompose rejects the envelope to prevent a duplicate
+// banner stacking on top of the pattern's own banner.
+//
+// - strategy-house: emits an explicit objective banner as its first row.
+// - pull-quote: agents commonly used this as a makeshift banner before the
+//   envelope-level Banner was available; stacking a real banner on top of it
+//   produces visual redundancy.
+var bannerLikePatterns = map[string]bool{
+	"strategy-house": true,
+	"pull-quote":     true,
 }
 
 // SegmentInput defines one child within a compose envelope. A segment hosts
@@ -159,19 +180,93 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	}
 
 	// Merge based on direction
+	var merged *jsonschema.ShapeGridInput
 	switch c.Direction {
 	case "vertical":
-		grid, err := mergeVertical(expandedGrids, sizes, c.Gap)
-		return grid, warnings, err
+		g, err := mergeVertical(expandedGrids, sizes, c.Gap)
+		if err != nil {
+			return nil, warnings, err
+		}
+		merged = g
 	case "horizontal":
-		grid, mergeWarnings, err := mergeHorizontal(expandedGrids, sizes, c.Gap)
+		g, mergeWarnings, err := mergeHorizontal(expandedGrids, sizes, c.Gap)
+		if err != nil {
+			return nil, warnings, err
+		}
 		if len(mergeWarnings) > 0 {
 			warnings = append(warnings, mergeWarnings...)
 		}
-		return grid, warnings, err
+		merged = g
 	default:
 		return nil, nil, fmt.Errorf("compose: unsupported direction %q", c.Direction)
 	}
+
+	// Envelope decorations: banner prepended, callout appended. The callout is
+	// appended first so its column-count inference reads the original merged
+	// row 0 (which may have multiple cells); the banner prepend that follows
+	// uses inferColumnCount so it is robust against single-cell rows.
+	if c.Callout != nil {
+		merged = appendCalloutRow(merged, c.Callout)
+	}
+	if c.Banner != nil {
+		merged = prependBannerRow(merged, c.Banner)
+	}
+
+	return merged, warnings, nil
+}
+
+// prependBannerRow inserts a full-width banner row at the top of the merged
+// grid. The banner cell spans every column (computed via inferColumnCount so
+// existing column-span structure is honored) and is rendered as bold light
+// text on the accent fill, matching the Strategy-House banner styling.
+// Banner cells are NOT addressable via cell_overrides — the band is a fixed
+// envelope decoration, like PatternCallout.
+func prependBannerRow(grid *jsonschema.ShapeGridInput, banner *patterns.BannerSpec) *jsonschema.ShapeGridInput {
+	if grid == nil || banner == nil {
+		return grid
+	}
+
+	numCols := inferColumnCount(grid)
+	if numCols < 1 {
+		numCols = 1
+	}
+
+	accent := "accent1"
+	if banner.Accent != "" {
+		accent = banner.Accent
+	}
+
+	// Default emphasis is bold (banners are headers). Callers can opt into
+	// italic or bold-italic via the same vocabulary as PatternCallout.
+	emphasis := banner.Emphasis
+	if emphasis == "" {
+		emphasis = "bold"
+	}
+	bold := emphasis == "bold" || emphasis == "bold-italic"
+	italic := emphasis == "italic" || emphasis == "bold-italic"
+
+	textContent := buildCalloutTextContent(banner.Text, 16.0, bold, italic, "lt1", "ctr")
+
+	bannerCell := &jsonschema.GridCellInput{
+		ColSpan: numCols,
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Text:     textContent,
+		},
+	}
+
+	bannerRow := jsonschema.GridRowInput{
+		AutoHeight: true,
+		Cells:      []*jsonschema.GridCellInput{bannerCell},
+	}
+
+	// Prepend to grid.Rows.
+	newRows := make([]jsonschema.GridRowInput, 0, len(grid.Rows)+1)
+	newRows = append(newRows, bannerRow)
+	newRows = append(newRows, grid.Rows...)
+	grid.Rows = newRows
+	return grid
 }
 
 // segmentBoundsIgnoredWarning returns a COMPOSE_SEGMENT_BOUNDS_IGNORED warning
@@ -276,6 +371,20 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 	}
 	if totalPct > 100 {
 		return fmt.Errorf("compose: total size_pct exceeds 100%% (got %.1f%%)", totalPct)
+	}
+
+	// Envelope-level Banner cannot stack on top of a first segment whose pattern
+	// already emits its own banner row (strategy-house) or is conventionally
+	// used as a faux banner (pull-quote). This protects against duplicate
+	// banners landing on the same slide.
+	if c.Banner != nil && len(c.Segments) > 0 {
+		first := c.Segments[0]
+		if first.hasPattern() && bannerLikePatterns[first.Pattern.Name] {
+			return fmt.Errorf(
+				"compose: banner conflicts with first segment pattern %q — that pattern already provides a banner-like header row; remove compose.banner or replace the first segment with a non-banner pattern",
+				first.Pattern.Name,
+			)
+		}
 	}
 
 	return nil

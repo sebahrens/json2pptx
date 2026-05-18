@@ -169,6 +169,18 @@ type PatternCallout struct {
 	Accent   string `json:"accent,omitempty"`   // scheme ref, e.g. "accent1"
 }
 
+// BannerSpec is the DTO for an envelope-level banner band rendered above the
+// merged compose grid. Like PatternCallout, it is a plain text row (no nested
+// shape_grid, no bullets) per D15 discipline. Used by ComposeInput.Banner to
+// let agents add a Strategy-House-style banner above an arbitrary segment
+// arrangement without spending a segment slot on a faux-banner pattern such
+// as pull-quote.
+type BannerSpec struct {
+	Text     string `json:"text"`
+	Emphasis string `json:"emphasis,omitempty"` // "bold", "italic", "bold-italic" (default: bold)
+	Accent   string `json:"accent,omitempty"`   // scheme ref, e.g. "accent1" (default: accent1)
+}
+
 // ---------------------------------------------------------------------------
 // InlineMarkdownSupport — optional interface for markdown emphasis in body text
 // ---------------------------------------------------------------------------

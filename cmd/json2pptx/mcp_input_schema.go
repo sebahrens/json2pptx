@@ -215,6 +215,7 @@ func buildInputSchema() map[string]any {
 		{"TableCellInput", reflect.TypeOf(jsonschema.TableCellInput{})},
 		{"TableStyleInput", reflect.TypeOf(jsonschema.TableStyleInput{})},
 		{"PatternCallout", reflect.TypeOf(patterns.PatternCallout{})},
+		{"BannerSpec", reflect.TypeOf(patterns.BannerSpec{})},
 		{"ChartSpec", reflect.TypeOf(types.ChartSpec{})},  //nolint:staticcheck // ChartSpec is deprecated but still part of the input contract
 		{"DiagramSpec", reflect.TypeOf(types.DiagramSpec{})},
 	}
@@ -405,6 +406,7 @@ var knownTypeRefMap = map[reflect.Type]string{
 	reflect.TypeOf(jsonschema.TableCellInput{}):   "#/$defs/TableCellInput",
 	reflect.TypeOf(jsonschema.TableStyleInput{}):  "#/$defs/TableStyleInput",
 	reflect.TypeOf(patterns.PatternCallout{}):      "#/$defs/PatternCallout",
+	reflect.TypeOf(patterns.BannerSpec{}):          "#/$defs/BannerSpec",
 	reflect.TypeOf(types.ChartSpec{}):             "#/$defs/ChartSpec",  //nolint:staticcheck
 	reflect.TypeOf(types.DiagramSpec{}):           "#/$defs/DiagramSpec",
 }

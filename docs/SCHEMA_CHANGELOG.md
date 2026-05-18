@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.12.0 (2026-05-18)
+
+### Added
+
+- **Envelope-level banner and callout on `ComposeInput`** — `ComposeInput`
+  gains two new optional fields, `banner: BannerSpec` and `callout: PatternCallout`,
+  which render full-width decoration bands respectively above and below the
+  merged grid without consuming a segment slot. `BannerSpec` mirrors
+  `PatternCallout` (`text`, optional `emphasis`, optional `accent`); the
+  banner defaults to bold light text on the requested accent (`accent1` if
+  unset). This lets agents add a Strategy-House-style header to arbitrary
+  compose arrangements instead of spending a segment slot on a faux-banner
+  pattern like `pull-quote`. Validation rejects `banner` when the first
+  segment's pattern is itself banner-leading (currently `strategy-house` and
+  `pull-quote`) to prevent duplicate banners. Preview metadata
+  (`expanded_compose.segments[].row_range`) is offset to account for the
+  banner/callout rows so segment-row mapping stays accurate. Closes
+  `go-slide-creator-f1ic.11`.
+
 ## 4.11.0 (2026-05-18)
 
 ### Added

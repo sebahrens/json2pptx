@@ -59,14 +59,19 @@ func buildExpandedCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patt
 // buildVerticalSegments computes per-segment metadata for vertical compose.
 // Each segment owns a contiguous row range of the merged grid spanning all
 // columns; bounds_pct stack from top to bottom by cumulative size_pct.
+// The bannerOffset and calloutOffset arguments account for envelope-level
+// banner/callout rows prepended/appended to the merged grid so segment row
+// ranges remain accurate when those decorations are present.
 func buildVerticalSegments(c *ComposeInput, expandedGrids []*jsonschema.ShapeGridInput, sizes []float64, merged *jsonschema.ShapeGridInput) []resolvedComposeSegment {
 	totalCols := inferColumnCount(merged)
 	if totalCols < 1 {
 		totalCols = 1
 	}
 
+	bannerOffset, _ := composeAuxRowCounts(c)
+
 	segments := make([]resolvedComposeSegment, 0, len(c.Segments))
-	rowCursor := 0
+	rowCursor := bannerOffset
 	yPct := 0.0
 	for i := range c.Segments {
 		segGrid := expandedGrids[i]
@@ -95,11 +100,36 @@ func buildVerticalSegments(c *ComposeInput, expandedGrids []*jsonschema.ShapeGri
 	return segments
 }
 
+// composeAuxRowCounts reports the number of banner rows prepended and callout
+// rows appended to a compose envelope's merged grid. Used by preview metadata
+// to offset segment row ranges so they reference the actual rows the segment
+// owns inside the rendered grid.
+func composeAuxRowCounts(c *ComposeInput) (banner, callout int) {
+	if c == nil {
+		return 0, 0
+	}
+	if c.Banner != nil {
+		banner = 1
+	}
+	if c.Callout != nil {
+		callout = 1
+	}
+	return banner, callout
+}
+
 // buildHorizontalSegments computes per-segment metadata for horizontal
 // compose. Each segment owns a contiguous col range of the merged grid
 // spanning all rows; bounds_pct stack left to right by cumulative size_pct.
 func buildHorizontalSegments(c *ComposeInput, expandedGrids []*jsonschema.ShapeGridInput, sizes []float64, merged *jsonschema.ShapeGridInput) []resolvedComposeSegment {
+	bannerOffset, calloutOffset := composeAuxRowCounts(c)
 	totalRows := len(merged.Rows)
+	// Segments occupy the rows between banner and callout decorations. When a
+	// banner is prepended at row 0 or a callout appended at the last row, the
+	// segments span [bannerOffset, totalRows-calloutOffset).
+	segmentRowEnd := totalRows - calloutOffset
+	if segmentRowEnd < bannerOffset {
+		segmentRowEnd = bannerOffset
+	}
 
 	segments := make([]resolvedComposeSegment, 0, len(c.Segments))
 	colCursor := 0
@@ -121,7 +151,7 @@ func buildHorizontalSegments(c *ComposeInput, expandedGrids []*jsonschema.ShapeG
 				WidthPct:  sizes[i],
 				HeightPct: 100,
 			},
-			RowRange: [2]int{0, totalRows},
+			RowRange: [2]int{bannerOffset, segmentRowEnd},
 			ColRange: [2]int{colCursor, colCursor + segCols},
 		}
 		segments = append(segments, seg)

@@ -49,6 +49,14 @@ type skillComposeEntry struct {
 	MaxLeafPatterns int                `json:"max_leaf_patterns"`
 	SmartCompose   bool               `json:"smart_compose"`
 	NestedCompose  bool               `json:"nested_compose"`
+	// SupportsBanner advertises that ComposeInput.banner is honored: an
+	// envelope-level decoration band rendered above the merged grid that does
+	// not consume a segment slot.
+	SupportsBanner bool `json:"supports_banner"`
+	// SupportsCallout advertises that ComposeInput.callout is honored: an
+	// envelope-level decoration band rendered below the merged grid that does
+	// not consume a segment slot.
+	SupportsCallout bool                  `json:"supports_callout"`
 	Examples        []skillComposeExample `json:"examples"`
 }
 
@@ -616,13 +624,15 @@ func buildComposeEntry() *skillComposeEntry {
   }
 }`)
 	return &skillComposeEntry{
-		Description:     "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern or a nested compose. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose').",
+		Description:     "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern or a nested compose. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
 		Directions:      append([]string(nil), caps.Directions...),
 		MaxSegments:     caps.MaxSegments,
 		MaxNestingDepth: caps.MaxNestingDepth,
 		MaxLeafPatterns: caps.MaxLeafPatterns,
 		SmartCompose:    caps.SupportsSmartCompose,
 		NestedCompose:   caps.SupportsNestedCompose,
+		SupportsBanner:  true,
+		SupportsCallout: true,
 		Examples: []skillComposeExample{
 			{
 				Title:       "Vertical: panels above a pull-quote",
