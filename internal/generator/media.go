@@ -48,7 +48,7 @@ const narrowPlaceholderThreshold int64 = 6096000 // 12192000 * 0.50
 // Simple diagrams (e.g., an org chart with 3 nodes) render fine at half-width.
 const complexityItemThreshold = 8
 
-// getOptimalRenderDimensions determines the best rendering dimensions for a
+// GetOptimalRenderDimensions determines the best rendering dimensions for a
 // diagram/chart based on placeholder size.
 //
 // The SVG is rendered at the placeholder's point dimensions so that the SVG
@@ -62,7 +62,7 @@ const complexityItemThreshold = 8
 // high-resolution raster output independent of the SVG coordinate space.
 //
 // If the diagramSpec already has explicit dimensions set, they are preserved.
-func getOptimalRenderDimensions(diagramSpec *types.DiagramSpec, placeholderBounds types.BoundingBox) (width, height int) {
+func GetOptimalRenderDimensions(diagramSpec *types.DiagramSpec, placeholderBounds types.BoundingBox) (width, height int) {
 	// If explicit dimensions are set, use them
 	if diagramSpec.Width > 0 && diagramSpec.Height > 0 {
 		return diagramSpec.Width, diagramSpec.Height
@@ -1012,7 +1012,7 @@ func (ctx *singlePassContext) resolveDiagramWithMetadata(slideNum int, item Cont
 
 	// Use placeholder-aware dimensions if diagram doesn't have explicit dimensions set.
 	if diagramSpec.Width == 0 || diagramSpec.Height == 0 {
-		diagramSpec.Width, diagramSpec.Height = getOptimalRenderDimensions(diagramSpec, placeholderBounds)
+		diagramSpec.Width, diagramSpec.Height = GetOptimalRenderDimensions(diagramSpec, placeholderBounds)
 	}
 
 	maxPNGWidth := 0

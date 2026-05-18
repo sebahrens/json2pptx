@@ -123,12 +123,12 @@ func TestGetOptimalRenderDimensions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotWidth, gotHeight := getOptimalRenderDimensions(tt.diagramSpec, tt.placeholderBounds)
+			gotWidth, gotHeight := GetOptimalRenderDimensions(tt.diagramSpec, tt.placeholderBounds)
 			if gotWidth != tt.wantWidth {
-				t.Errorf("getOptimalRenderDimensions() width = %d, want %d", gotWidth, tt.wantWidth)
+				t.Errorf("GetOptimalRenderDimensions() width = %d, want %d", gotWidth, tt.wantWidth)
 			}
 			if gotHeight != tt.wantHeight {
-				t.Errorf("getOptimalRenderDimensions() height = %d, want %d", gotHeight, tt.wantHeight)
+				t.Errorf("GetOptimalRenderDimensions() height = %d, want %d", gotHeight, tt.wantHeight)
 			}
 		})
 	}

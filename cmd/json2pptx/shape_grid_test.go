@@ -1804,6 +1804,79 @@ func TestDiagramCellInserts_NarrowCellWarning(t *testing.T) {
 	}
 }
 
+func TestDiagramCellInserts_ForwardsCellBoundsToDiagramSpec(t *testing.T) {
+	// Regression for go-slide-creator-zg8q.4: grid-cell diagrams must forward
+	// the cell's EMU bounds into DiagramSpec.Width/Height so svggen renders
+	// into the target aspect ratio instead of the default 800x600.
+	const cxEMU int64 = 5_000_000 // ~393.7 pt
+	const cyEMU int64 = 1_500_000 // ~118.1 pt (wide non-default aspect)
+	cell := shapegrid.ResolvedCell{
+		ID:   7,
+		Kind: shapegrid.CellKindDiagram,
+		Bounds: pptx.RectEmu{
+			X: 100_000, Y: 100_000, CX: cxEMU, CY: cyEMU,
+		},
+		DiagramSpec: &types.DiagramSpec{
+			Type: "line_chart",
+			Data: map[string]any{
+				"categories": []any{"A", "B", "C"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{1.0, 2.0, 3.0}},
+				},
+			},
+		},
+	}
+
+	if _, _, err := generateDiagramCellInserts(cell, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	wantW := int(cxEMU / int64(types.EMUPerPoint))
+	wantH := int(cyEMU / int64(types.EMUPerPoint))
+	if cell.DiagramSpec.Width != wantW {
+		t.Errorf("expected DiagramSpec.Width = %d (from cell EMU), got %d", wantW, cell.DiagramSpec.Width)
+	}
+	if cell.DiagramSpec.Height != wantH {
+		t.Errorf("expected DiagramSpec.Height = %d (from cell EMU), got %d", wantH, cell.DiagramSpec.Height)
+	}
+
+	// Aspect ratio derived from cell EMU must propagate (not default 4:3 ≈ 1.333).
+	cellAspect := float64(cxEMU) / float64(cyEMU)
+	specAspect := float64(cell.DiagramSpec.Width) / float64(cell.DiagramSpec.Height)
+	if diff := specAspect - cellAspect; diff > 0.02 || diff < -0.02 {
+		t.Errorf("aspect ratio mismatch: cell=%.3f spec=%.3f", cellAspect, specAspect)
+	}
+}
+
+func TestDiagramCellInserts_PreservesExplicitDiagramDimensions(t *testing.T) {
+	// When DiagramSpec.Width/Height are already set, generateDiagramCellInserts
+	// must NOT overwrite them with cell-derived dimensions.
+	cell := shapegrid.ResolvedCell{
+		ID:   8,
+		Kind: shapegrid.CellKindDiagram,
+		Bounds: pptx.RectEmu{
+			X: 0, Y: 0, CX: 5_000_000, CY: 3_000_000,
+		},
+		DiagramSpec: &types.DiagramSpec{
+			Type:   "bar_chart",
+			Width:  640,
+			Height: 480,
+			Data: map[string]any{
+				"categories": []any{"A", "B"},
+				"series":     []any{map[string]any{"name": "S1", "values": []any{1.0, 2.0}}},
+			},
+		},
+	}
+
+	if _, _, err := generateDiagramCellInserts(cell, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cell.DiagramSpec.Width != 640 || cell.DiagramSpec.Height != 480 {
+		t.Errorf("explicit dimensions overwritten: got %dx%d, want 640x480",
+			cell.DiagramSpec.Width, cell.DiagramSpec.Height)
+	}
+}
+
 func TestDiagramCellInserts_NilContext(t *testing.T) {
 	cell := shapegrid.ResolvedCell{
 		ID:   1,

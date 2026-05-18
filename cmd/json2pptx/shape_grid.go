@@ -614,6 +614,20 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		}
 	}
 
+	// Forward cell bounds into svggen's OutputSpec so the rendered SVG matches
+	// the target cell's aspect ratio. Without this, grid-cell diagrams default
+	// to 800x600 and silently letterbox inside non-4:3 cells. The placeholder
+	// path uses the same helper (see media.go processDiagramContent).
+	if diagramSpec.Width == 0 || diagramSpec.Height == 0 {
+		cellBox := types.BoundingBox{
+			X:      cell.Bounds.X,
+			Y:      cell.Bounds.Y,
+			Width:  cell.Bounds.CX,
+			Height: cell.Bounds.CY,
+		}
+		diagramSpec.Width, diagramSpec.Height = generator.GetOptimalRenderDimensions(diagramSpec, cellBox)
+	}
+
 	result, err := generator.RenderDiagramSpecWithMetadata(diagramSpec, themeColors, 0, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("diagram in grid cell %d: %w", cell.ID, err)
