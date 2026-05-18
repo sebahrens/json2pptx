@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // composeMaxSegments is the maximum number of top-level segments allowed in a
@@ -35,12 +36,13 @@ var composeDirections = []string{"vertical", "horizontal"}
 // composeFeatureCapabilities describes the compose feature flags surfaced
 // through get_capabilities().features.compose.
 type composeFeatureCapabilities struct {
-	MaxSegments          int      `json:"max_segments"`
-	MaxNestingDepth      int      `json:"max_nesting_depth"`
-	MaxLeafPatterns      int      `json:"max_leaf_patterns"`
-	Directions           []string `json:"directions"`
-	SupportsSmartCompose bool     `json:"supports_smart_compose"`
-	SupportsNestedCompose bool    `json:"supports_nested_compose"`
+	MaxSegments             int      `json:"max_segments"`
+	MaxNestingDepth         int      `json:"max_nesting_depth"`
+	MaxLeafPatterns         int      `json:"max_leaf_patterns"`
+	Directions              []string `json:"directions"`
+	SupportsSmartCompose    bool     `json:"supports_smart_compose"`
+	SupportsNestedCompose   bool     `json:"supports_nested_compose"`
+	SupportsDiagramSegments bool     `json:"supports_diagram_segments"`
 }
 
 // composeCapabilities returns the canonical compose capability descriptor.
@@ -50,12 +52,13 @@ func composeCapabilities() composeFeatureCapabilities {
 	dirs := make([]string, len(composeDirections))
 	copy(dirs, composeDirections)
 	return composeFeatureCapabilities{
-		MaxSegments:           composeMaxSegments,
-		MaxNestingDepth:       composeMaxNestingDepth,
-		MaxLeafPatterns:       composeMaxLeafPatterns,
-		Directions:            dirs,
-		SupportsSmartCompose:  true,
-		SupportsNestedCompose: true,
+		MaxSegments:             composeMaxSegments,
+		MaxNestingDepth:         composeMaxNestingDepth,
+		MaxLeafPatterns:         composeMaxLeafPatterns,
+		Directions:              dirs,
+		SupportsSmartCompose:    true,
+		SupportsNestedCompose:   true,
+		SupportsDiagramSegments: true,
 	}
 }
 
@@ -91,15 +94,23 @@ var bannerLikePatterns = map[string]bool{
 }
 
 // SegmentInput defines one child within a compose envelope. A segment hosts
-// exactly one of `pattern` (a leaf pattern expansion) or `compose` (a nested
-// envelope that recursively expands and merges into the parent grid). The XOR
-// is enforced by validateCompose. Nesting depth is capped at
-// composeMaxNestingDepth and the total number of leaf patterns across the
-// tree is capped at composeMaxLeafPatterns.
+// exactly one of `pattern` (a leaf pattern expansion), `compose` (a nested
+// envelope that recursively expands and merges into the parent grid), or
+// `diagram` (a standalone svggen-rendered diagram placed in its own region
+// of the merged grid). The XOR is enforced by validateCompose. Nesting depth
+// is capped at composeMaxNestingDepth and the total number of leaf segments
+// (pattern + diagram) across the tree is capped at composeMaxLeafPatterns.
+//
+// Diagram segments are the canonical way to let a native pattern coexist
+// with an svggen chart/diagram on the same slide without flattening the
+// pattern through a single-cell grid: each segment owns its own merged
+// region, and the envelope's gap/gutter applies uniformly across all three
+// segment kinds. See go-slide-creator-zg8q.6.
 type SegmentInput struct {
-	Pattern PatternInput  `json:"pattern,omitempty"`
-	Compose *ComposeInput `json:"compose,omitempty"`
-	SizePct float64       `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
+	Pattern PatternInput       `json:"pattern,omitempty"`
+	Compose *ComposeInput      `json:"compose,omitempty"`
+	Diagram *types.DiagramSpec `json:"diagram,omitempty"`
+	SizePct float64            `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
 }
 
 // hasPattern reports whether the segment carries a leaf pattern (non-empty
@@ -108,6 +119,14 @@ type SegmentInput struct {
 // segments.
 func (s SegmentInput) hasPattern() bool {
 	return s.Pattern.Name != ""
+}
+
+// hasDiagram reports whether the segment carries a standalone diagram.
+// A nil DiagramSpec is treated as "unset" so the XOR check in
+// validateCompose can distinguish diagram segments from pattern / compose
+// segments.
+func (s SegmentInput) hasDiagram() bool {
+	return s.Diagram != nil
 }
 
 // expandCompose validates and expands a compose envelope into a single
@@ -125,7 +144,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 
 	var warnings []string
 
-	// Expand each segment's pattern or nested compose envelope.
+	// Expand each segment's pattern, nested compose envelope, or diagram.
 	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
 	for i, seg := range c.Segments {
 		if seg.Compose != nil {
@@ -146,6 +165,16 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 			// drop any Bounds the merge step would discard anyway.
 			grid.Bounds = nil
 			expandedGrids[i] = grid
+			continue
+		}
+
+		if seg.hasDiagram() {
+			// Diagram segments synthesize a single-cell ShapeGridInput whose
+			// only cell hosts the diagram. The cell participates in the
+			// parent merge identically to a pattern-expanded grid, so
+			// compose.direction + size_pct + gap drive placement and the
+			// gutter rhythm is unified across pattern and diagram segments.
+			expandedGrids[i] = diagramSegmentGrid(seg.Diagram)
 			continue
 		}
 
@@ -269,6 +298,29 @@ func prependBannerRow(grid *jsonschema.ShapeGridInput, banner *patterns.BannerSp
 	return grid
 }
 
+// diagramSegmentGrid builds a single-row, single-cell ShapeGridInput whose
+// only cell carries the supplied DiagramSpec. The resulting grid is used by
+// expandCompose to insert a standalone diagram into the merged grid via the
+// same merge path that pattern-expanded grids take, so compose.direction,
+// size_pct, and gap apply uniformly across pattern and diagram segments.
+//
+// The cell omits col_span / row_span — the merge step honors the segment's
+// share of the parent grid via size_pct, and inferColumnCount sees a single
+// content cell so horizontal merges allocate the diagram's column share via
+// the segment's sizes[i] entry. Bounds are intentionally not set; the
+// envelope governs placement.
+func diagramSegmentGrid(d *types.DiagramSpec) *jsonschema.ShapeGridInput {
+	return &jsonschema.ShapeGridInput{
+		Rows: []jsonschema.GridRowInput{
+			{
+				Cells: []*jsonschema.GridCellInput{
+					{Diagram: d},
+				},
+			},
+		},
+	}
+}
+
 // segmentBoundsIgnoredWarning returns a COMPOSE_SEGMENT_BOUNDS_IGNORED warning
 // string when a segment's PatternInput carries explicit Bounds or
 // MaxHeightPct, which cannot be applied inside a compose envelope. Returns
@@ -340,20 +392,32 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 	}
 
 	// Validate each segment's XOR contract and size_pct value, then recurse
-	// into any nested compose envelopes.
+	// into any nested compose envelopes. A segment must set exactly one of
+	// pattern / compose / diagram.
 	var totalPct float64
 	for i, seg := range c.Segments {
 		hasPattern := seg.hasPattern()
 		hasCompose := seg.Compose != nil
+		hasDiagram := seg.hasDiagram()
+		setCount := 0
+		if hasPattern {
+			setCount++
+		}
+		if hasCompose {
+			setCount++
+		}
+		if hasDiagram {
+			setCount++
+		}
 		switch {
-		case hasPattern && hasCompose:
+		case setCount > 1:
 			return fmt.Errorf(
-				"compose: segment[%d] sets both \"pattern\" and \"compose\" — choose exactly one",
+				"compose: segment[%d] sets more than one of \"pattern\", \"compose\", \"diagram\" — choose exactly one",
 				i,
 			)
-		case !hasPattern && !hasCompose:
+		case setCount == 0:
 			return fmt.Errorf(
-				"compose: segment[%d] must set exactly one of \"pattern\" or \"compose\"",
+				"compose: segment[%d] must set exactly one of \"pattern\", \"compose\", or \"diagram\"",
 				i,
 			)
 		}
@@ -367,6 +431,12 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 			if err := validateComposeRec(seg.Compose, depth+1); err != nil {
 				return fmt.Errorf("compose: segment[%d]: %w", i, err)
 			}
+		}
+		if hasDiagram && seg.Diagram.Type == "" {
+			return fmt.Errorf(
+				"compose: segment[%d].diagram.type is required (e.g. \"bar_chart\", \"process_flow\")",
+				i,
+			)
 		}
 	}
 	if totalPct > 100 {
@@ -390,11 +460,13 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 	return nil
 }
 
-// countComposeLeafPatterns sums the number of leaf (pattern-bearing) segments
-// across the entire envelope tree. Nested compose segments are descended
-// into; pattern segments contribute 1 each. Used to enforce
-// composeMaxLeafPatterns globally so nesting cannot smuggle more patterns
-// past the per-envelope max_segments cap.
+// countComposeLeafPatterns sums the number of leaf (pattern-bearing or
+// diagram-bearing) segments across the entire envelope tree. Nested compose
+// segments are descended into; pattern and diagram segments contribute 1
+// each. Used to enforce composeMaxLeafPatterns globally so nesting cannot
+// smuggle more leaves past the per-envelope max_segments cap. Diagram
+// segments count because they consume slide real-estate the same way a
+// pattern segment does.
 func countComposeLeafPatterns(c *ComposeInput) int {
 	if c == nil {
 		return 0
@@ -405,6 +477,8 @@ func countComposeLeafPatterns(c *ComposeInput) int {
 		case seg.Compose != nil:
 			n += countComposeLeafPatterns(seg.Compose)
 		case seg.hasPattern():
+			n++
+		case seg.hasDiagram():
 			n++
 		}
 	}

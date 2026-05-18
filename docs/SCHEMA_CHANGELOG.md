@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.13.0 (2026-05-18)
+
+### Added
+
+- **Diagram segments on `ComposeInput`** — `SegmentInput` gains a third XOR
+  alternative alongside `pattern` and `compose`: `diagram: types.DiagramSpec`
+  carries a standalone svggen-rendered chart or diagram. Diagram segments
+  synthesize a single-cell grid that participates in the parent merge
+  identically to a pattern-expanded grid, so `compose.direction` +
+  `size_pct` + `gap` drive placement and the gutter rhythm is unified across
+  pattern and diagram segments. This is the canonical way to let a native
+  pattern (e.g. `pyramid`, `kpi-3up`) coexist with an svggen visual
+  (e.g. `process_flow`, `bar_chart`) on the same slide without flattening
+  the pattern through a single cell. Diagram segments count toward
+  `max_leaf_patterns` (they consume slide real-estate the same way pattern
+  segments do). Capability descriptor advertises this via the new
+  `get_capabilities().features.compose.supports_diagram_segments = true`
+  flag. Closes `go-slide-creator-zg8q.6`.
+
 ## 4.12.0 (2026-05-18)
 
 ### Added

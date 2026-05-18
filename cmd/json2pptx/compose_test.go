@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestExpandCompose_Vertical(t *testing.T) {
@@ -851,7 +852,7 @@ func TestValidateCompose_SegmentXOR(t *testing.T) {
 			},
 		}
 		err := validateCompose(c)
-		if err == nil || !contains(err.Error(), "sets both") {
+		if err == nil || !contains(err.Error(), "more than one") {
 			t.Fatalf("expected XOR error, got %v", err)
 		}
 	})
@@ -1083,5 +1084,120 @@ func TestValidateCompose_BannerOnlyChecksFirstSegment(t *testing.T) {
 	}
 	if err := validateCompose(c); err != nil {
 		t.Errorf("expected validateCompose to accept banner with pull-quote in second slot, got %v", err)
+	}
+}
+
+// TestExpandCompose_DiagramSegment exercises the diagram-segment XOR
+// alternative introduced for go-slide-creator-zg8q.6. A native pattern
+// (pyramid) is placed in one half of the merged grid and an svggen
+// process_flow diagram is placed in the other half — without flattening
+// the pattern through a single-cell grid.
+func TestExpandCompose_DiagramSegment(t *testing.T) {
+	diagram := &types.DiagramSpec{
+		Type: "process_flow",
+		Data: map[string]any{"steps": []any{"Plan", "Build", "Ship"}},
+	}
+	compose := &ComposeInput{
+		Direction: "horizontal",
+		Segments: []SegmentInput{
+			{
+				SizePct: 50,
+				Pattern: PatternInput{
+					Name:   "pyramid",
+					Values: json.RawMessage(`{"tiers": ["Top", "Mid", "Base"]}`),
+				},
+			},
+			{
+				SizePct: 50,
+				Diagram: diagram,
+			},
+		},
+	}
+
+	ctx := patterns.ExpandContext{
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
+	}
+	grid, _, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandCompose failed: %v", err)
+	}
+	if grid == nil || len(grid.Rows) == 0 {
+		t.Fatal("expected non-empty merged grid")
+	}
+
+	// Confirm the diagram cell survives the horizontal merge — it should
+	// appear in the rightmost segment's column allocation.
+	var found bool
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && cell.Diagram == diagram {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Errorf("diagram segment payload not present in merged grid cells")
+	}
+
+	// The merged grid must use the compose-level gap as its column gap so
+	// gutter rhythm is unified across pattern and diagram segments.
+	if grid.ColGap == 0 {
+		t.Errorf("expected non-zero ColGap on horizontally-merged grid")
+	}
+}
+
+// TestValidateCompose_DiagramSegmentXOR verifies the 3-way XOR contract
+// between pattern, compose, and diagram segments.
+func TestValidateCompose_DiagramSegmentXOR(t *testing.T) {
+	leaf := SegmentInput{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)}}
+	diagram := &types.DiagramSpec{Type: "bar_chart"}
+
+	t.Run("pattern_and_diagram_rejected", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "horizontal",
+			Segments: []SegmentInput{
+				leaf,
+				{
+					Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{}`)},
+					Diagram: diagram,
+				},
+			},
+		}
+		err := validateCompose(c)
+		if err == nil || !contains(err.Error(), "more than one") {
+			t.Fatalf("expected XOR error, got %v", err)
+		}
+	})
+
+	t.Run("diagram_segment_alone_accepted", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "horizontal",
+			Segments:  []SegmentInput{leaf, {Diagram: diagram}},
+		}
+		if err := validateCompose(c); err != nil {
+			t.Errorf("expected validateCompose to accept diagram segment, got %v", err)
+		}
+	})
+
+	t.Run("diagram_segment_without_type_rejected", func(t *testing.T) {
+		c := &ComposeInput{
+			Direction: "horizontal",
+			Segments:  []SegmentInput{leaf, {Diagram: &types.DiagramSpec{}}},
+		}
+		err := validateCompose(c)
+		if err == nil || !contains(err.Error(), "diagram.type is required") {
+			t.Fatalf("expected diagram.type required error, got %v", err)
+		}
+	})
+}
+
+// TestComposeCapabilities_AdvertisesDiagramSegments verifies that the
+// capability descriptor surfaces the supports_diagram_segments flag so
+// agents can discover the feature without trial-and-error.
+func TestComposeCapabilities_AdvertisesDiagramSegments(t *testing.T) {
+	caps := composeCapabilities()
+	if !caps.SupportsDiagramSegments {
+		t.Error("composeCapabilities().SupportsDiagramSegments must be true")
 	}
 }

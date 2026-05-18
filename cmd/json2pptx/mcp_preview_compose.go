@@ -24,11 +24,25 @@ func buildExpandedCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patt
 
 	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
 	for i, seg := range c.Segments {
-		grid, _, err := expandPattern(&seg.Pattern, ctx, reg)
-		if err != nil {
-			return nil
+		switch {
+		case seg.Compose != nil:
+			// Inner-envelope metadata is summarized through the outer
+			// segment's row/col range; we recurse to produce its merged
+			// grid so the parent merge sees the correct row count.
+			inner, _, err := expandCompose(seg.Compose, ctx, reg)
+			if err != nil {
+				return nil
+			}
+			expandedGrids[i] = inner
+		case seg.hasDiagram():
+			expandedGrids[i] = diagramSegmentGrid(seg.Diagram)
+		default:
+			grid, _, err := expandPattern(&seg.Pattern, ctx, reg)
+			if err != nil {
+				return nil
+			}
+			expandedGrids[i] = grid
 		}
-		expandedGrids[i] = grid
 	}
 
 	// Mirror expandCompose's smart-vs-explicit size resolution so bounds_pct

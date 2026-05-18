@@ -249,15 +249,22 @@ Parameterize over grid configurations (different cell counts, column layouts) an
 
 These thresholds are defined in `internal/textcapacity/textcapacity.go` and are stable — do not hardcode different values in patterns.
 
-## Composition (planned)
+## Composition
 
-Pattern composition — placing multiple patterns on a single slide via a `compose` envelope — is a planned feature (see bead `go-slide-creator-pbyh`). When it lands, this section will document:
+Pattern composition is implemented via the slide-level `compose` envelope (see `cmd/json2pptx/compose.go`). A `ComposeInput` is XOR with `pattern` / `shape_grid` and arranges 2..N segments either vertically or horizontally; each `SegmentInput` carries exactly one of:
 
-- The `compose` envelope grammar (how to nest patterns)
-- Layout splitting rules (how slide area is divided between composed patterns)
-- Interaction with `cell_overrides` (indices are per-pattern, not global)
+- `pattern: PatternInput` — a leaf pattern expansion (legacy behavior).
+- `compose: ComposeInput` — a nested envelope, recursively expanded and merged into the parent grid.
+- `diagram: types.DiagramSpec` — a standalone svggen-rendered diagram or chart. Diagram segments synthesize a single-cell grid that participates in the parent merge identically to a pattern-expanded grid, so `compose.direction` + `size_pct` + `gap` drive placement and the gutter rhythm is unified across pattern and diagram segments. This is the canonical way to let a native pattern (`pyramid`, `kpi-3up`, `card-grid`, …) coexist with an svggen visual (`process_flow`, `bar_chart`, `sparkline`, …) on the same slide without flattening the pattern through a single cell — see `go-slide-creator-zg8q.6`.
 
-Until then, each slide accepts exactly one `pattern` (XOR with `shape_grid`).
+Caps are advertised via `get_capabilities().features.compose`:
+
+- `max_segments` — per-envelope top-level cap (default 8).
+- `max_nesting_depth` — recursive cap on `compose`-inside-`compose` (default 2).
+- `max_leaf_patterns` — global cap on leaf segments (pattern + diagram) across the entire envelope tree (default 12).
+- Flags: `supports_smart_compose`, `supports_nested_compose`, `supports_diagram_segments`.
+
+`cell_overrides` indices remain per-pattern; the merge step does not re-number them.
 
 ## Bounds Override
 

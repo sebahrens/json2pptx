@@ -56,8 +56,13 @@ type skillComposeEntry struct {
 	// SupportsCallout advertises that ComposeInput.callout is honored: an
 	// envelope-level decoration band rendered below the merged grid that does
 	// not consume a segment slot.
-	SupportsCallout bool                  `json:"supports_callout"`
-	Examples        []skillComposeExample `json:"examples"`
+	SupportsCallout bool `json:"supports_callout"`
+	// SupportsDiagramSegments advertises that SegmentInput may carry a
+	// standalone svggen diagram as a third XOR alternative to pattern /
+	// compose, letting a native pattern coexist with a chart/diagram on the
+	// same slide without flattening through a single-cell grid.
+	SupportsDiagramSegments bool                  `json:"supports_diagram_segments"`
+	Examples                []skillComposeExample `json:"examples"`
 }
 
 // skillComposeExample is a worked compose envelope an agent can adapt. The
@@ -623,16 +628,28 @@ func buildComposeEntry() *skillComposeEntry {
     ]
   }
 }`)
+	diagramSegmentExample := json.RawMessage(`{
+  "type": "blank",
+  "compose": {
+    "direction": "horizontal",
+    "gap": 12,
+    "segments": [
+      {"size_pct": 50, "pattern": {"name": "pyramid", "values": {"tiers": ["Strategy", "Tactics", "Operations"]}}},
+      {"size_pct": 50, "diagram": {"type": "process_flow", "data": {"steps": ["Plan", "Build", "Ship"]}}}
+    ]
+  }
+}`)
 	return &skillComposeEntry{
-		Description:     "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern or a nested compose. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
-		Directions:      append([]string(nil), caps.Directions...),
-		MaxSegments:     caps.MaxSegments,
-		MaxNestingDepth: caps.MaxNestingDepth,
-		MaxLeafPatterns: caps.MaxLeafPatterns,
-		SmartCompose:    caps.SupportsSmartCompose,
-		NestedCompose:   caps.SupportsNestedCompose,
-		SupportsBanner:  true,
-		SupportsCallout: true,
+		Description:             "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern, a nested compose, or a standalone svggen diagram. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose'). Optional banner (above) and callout (below) decoration bands attach to the envelope without consuming a segment slot.",
+		Directions:              append([]string(nil), caps.Directions...),
+		MaxSegments:             caps.MaxSegments,
+		MaxNestingDepth:         caps.MaxNestingDepth,
+		MaxLeafPatterns:         caps.MaxLeafPatterns,
+		SmartCompose:            caps.SupportsSmartCompose,
+		NestedCompose:           caps.SupportsNestedCompose,
+		SupportsBanner:          true,
+		SupportsCallout:         true,
+		SupportsDiagramSegments: caps.SupportsDiagramSegments,
 		Examples: []skillComposeExample{
 			{
 				Title:       "Vertical: panels above a pull-quote",
@@ -643,6 +660,11 @@ func buildComposeEntry() *skillComposeEntry {
 				Title:       "Horizontal: KPI strip beside a process flow",
 				Description: "kpi-3up on the left, process-flow on the right, sized by content density.",
 				JSON:        horizontalExample,
+			},
+			{
+				Title:       "Horizontal: native pattern + svggen diagram",
+				Description: "Pyramid (native pattern) on the left, svggen process_flow diagram on the right — diagram segment is a third XOR alternative to pattern/compose, so the native pattern is not flattened through a single-cell grid.",
+				JSON:        diagramSegmentExample,
 			},
 		},
 	}
