@@ -106,7 +106,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				break
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil {
+			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil {
 				col++
 				continue
 			}
@@ -156,6 +156,51 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			hasShapeWithIcon := cell.Shape != nil && cell.Icon != nil
 			if fitMode == FitStretch && !hasShapeWithIcon && (cell.Icon != nil || cell.Image != nil) {
 				fitMode = FitContain
+			}
+
+			if cell.Composite != nil {
+				// Composite cell: split the cell rectangle into a text portion
+				// and a sub-diagram portion. Emit two ResolvedCells sharing the
+				// same RowIdx/ColIdx so downstream consumers can group them.
+				textRect, diagRect := splitCompositeBounds(cellRect, cell.Composite)
+				textRC := ResolvedCell{
+					Kind:       CellKindShape,
+					Bounds:     textRect,
+					CellBounds: textRect,
+					ID:         alloc.Alloc(),
+					RowIdx:     r,
+					ColIdx:     col,
+					Group:      cell.Group,
+					ShapeSpec:  cell.Composite.Text,
+				}
+				diagRC := ResolvedCell{
+					Kind:        CellKindDiagram,
+					Bounds:      diagRect,
+					CellBounds:  diagRect,
+					ID:          alloc.Alloc(),
+					RowIdx:      r,
+					ColIdx:      col,
+					Group:       cell.Group,
+					DiagramSpec: cell.Composite.SubDiagram,
+				}
+				rowCellIDs[r] = append(rowCellIDs[r], len(cells))
+				cells = append(cells, textRC)
+				// The diagram half is appended separately but is not registered
+				// as a separate connector anchor — connector targeting uses the
+				// outer cell index of the composite's text shape.
+				cells = append(cells, diagRC)
+
+				// Generate accent bar relative to the outer cell rect (single bar spans both halves).
+				if cell.AccentBar != nil {
+					accentBars = append(accentBars, ResolvedAccentBar{
+						Bounds: accentBarBounds(cellRect, cell.AccentBar),
+						ID:     alloc.Alloc(),
+						Spec:   cell.AccentBar,
+					})
+				}
+
+				col += colSpan
+				continue
 			}
 
 			rc := ResolvedCell{
@@ -652,6 +697,65 @@ func accentBarBounds(cellBounds pptx.RectEmu, spec *AccentBarSpec) pptx.RectEmu 
 			CY: cellBounds.CY,
 		}
 	}
+}
+
+// splitCompositeBounds divides a composite cell's rectangle into two
+// sub-rectangles: one for the native text shape and one for the embedded
+// sub-diagram. A small inset (2pt = ~25400 EMU) is reserved between the two
+// halves so they don't visually butt against each other.
+//
+// Returns (textRect, diagramRect) — the order of returned rects is determined
+// by the Split value: if Split is "bottom" the text half is at the bottom of
+// the cell, otherwise it is at the top (default).
+func splitCompositeBounds(cell pptx.RectEmu, spec *CompositeSpec) (pptx.RectEmu, pptx.RectEmu) {
+	// Reserve a small inset between the two halves so the text shape and the
+	// sub-diagram don't visually collide. 2pt matches the accent-bar gap.
+	const interInsetEMU = 2 * 12700
+
+	ratio := spec.Ratio
+	if ratio <= 0 || ratio >= 1 {
+		ratio = 0.5
+	}
+
+	totalUsableCY := cell.CY - interInsetEMU
+	if totalUsableCY < 0 {
+		totalUsableCY = cell.CY
+	}
+
+	textCY := int64(float64(totalUsableCY) * ratio)
+	diagCY := totalUsableCY - textCY
+
+	textOnBottom := spec.Split == CompositeSplitBottom
+
+	if textOnBottom {
+		diagRect := pptx.RectEmu{
+			X:  cell.X,
+			Y:  cell.Y,
+			CX: cell.CX,
+			CY: diagCY,
+		}
+		textRect := pptx.RectEmu{
+			X:  cell.X,
+			Y:  cell.Y + diagCY + interInsetEMU,
+			CX: cell.CX,
+			CY: textCY,
+		}
+		return textRect, diagRect
+	}
+
+	textRect := pptx.RectEmu{
+		X:  cell.X,
+		Y:  cell.Y,
+		CX: cell.CX,
+		CY: textCY,
+	}
+	diagRect := pptx.RectEmu{
+		X:  cell.X,
+		Y:  cell.Y + textCY + interInsetEMU,
+		CX: cell.CX,
+		CY: diagCY,
+	}
+	return textRect, diagRect
 }
 
 // ApplyFitMode adjusts shape bounds within cell bounds according to the fit mode.

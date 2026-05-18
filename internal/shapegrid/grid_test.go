@@ -1833,3 +1833,163 @@ func TestResolve_AccentBars(t *testing.T) {
 		t.Errorf("bar X (%d) should be less than cell X (%d)", bar.Bounds.X, result.Cells[0].CellBounds.X)
 	}
 }
+
+func TestResolve_CompositeSplitTopDefault(t *testing.T) {
+	grid := &Grid{
+		Bounds:  DefaultBounds(0, 0),
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text:       &ShapeSpec{Geometry: "rect"},
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+					},
+				},
+			},
+		}},
+	}
+	result, err := Resolve(grid, newAlloc(100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Cells) != 2 {
+		t.Fatalf("expected composite to expand into 2 resolved cells, got %d", len(result.Cells))
+	}
+	text, diag := result.Cells[0], result.Cells[1]
+	if text.Kind != CellKindShape || text.ShapeSpec == nil {
+		t.Errorf("expected first sub-cell to be a shape carrying text, got kind=%s spec=%v", text.Kind, text.ShapeSpec)
+	}
+	if diag.Kind != CellKindDiagram || diag.DiagramSpec == nil {
+		t.Errorf("expected second sub-cell to be a diagram, got kind=%s spec=%v", diag.Kind, diag.DiagramSpec)
+	}
+	// Text on top: text.Y should be <= diag.Y, and the two halves should not overlap.
+	if text.Bounds.Y > diag.Bounds.Y {
+		t.Errorf("expected text on top (text.Y=%d, diag.Y=%d)", text.Bounds.Y, diag.Bounds.Y)
+	}
+	if text.Bounds.Y+text.Bounds.CY > diag.Bounds.Y {
+		t.Errorf("text and diagram halves overlap: text bottom=%d, diag top=%d", text.Bounds.Y+text.Bounds.CY, diag.Bounds.Y)
+	}
+	// Both halves share the cell's RowIdx/ColIdx so downstream code can group them.
+	if text.RowIdx != diag.RowIdx || text.ColIdx != diag.ColIdx {
+		t.Errorf("composite halves should share (row,col): text=(%d,%d) diag=(%d,%d)", text.RowIdx, text.ColIdx, diag.RowIdx, diag.ColIdx)
+	}
+}
+
+func TestResolve_CompositeSplitBottom(t *testing.T) {
+	grid := &Grid{
+		Bounds:  DefaultBounds(0, 0),
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text:       &ShapeSpec{Geometry: "rect"},
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+						Split:      CompositeSplitBottom,
+					},
+				},
+			},
+		}},
+	}
+	result, err := Resolve(grid, newAlloc(100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Cells) != 2 {
+		t.Fatalf("expected 2 resolved cells, got %d", len(result.Cells))
+	}
+	text, diag := result.Cells[0], result.Cells[1]
+	if text.Kind != CellKindShape || diag.Kind != CellKindDiagram {
+		t.Fatalf("unexpected kinds: text=%s diag=%s", text.Kind, diag.Kind)
+	}
+	// Text on bottom: diag.Y should be less than text.Y.
+	if diag.Bounds.Y >= text.Bounds.Y {
+		t.Errorf("expected diagram above text (diag.Y=%d, text.Y=%d)", diag.Bounds.Y, text.Bounds.Y)
+	}
+}
+
+func TestResolve_CompositeRatio(t *testing.T) {
+	grid := &Grid{
+		Bounds:  DefaultBounds(0, 0),
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text:       &ShapeSpec{Geometry: "rect"},
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+						Ratio:      0.25, // text gets 25%, diagram 75%
+					},
+				},
+			},
+		}},
+	}
+	result, err := Resolve(grid, newAlloc(100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Cells) != 2 {
+		t.Fatalf("expected 2 resolved cells, got %d", len(result.Cells))
+	}
+	text, diag := result.Cells[0], result.Cells[1]
+	if text.Bounds.CY >= diag.Bounds.CY {
+		t.Errorf("expected diagram half (CY=%d) larger than text half (CY=%d) at ratio=0.25", diag.Bounds.CY, text.Bounds.CY)
+	}
+}
+
+func TestResolve_CompositeWithAccentBar(t *testing.T) {
+	// A composite cell with an accent_bar should produce exactly one accent bar
+	// spanning the whole outer cell rectangle (not one per sub-half).
+	_ = json.RawMessage("") // silence unused-import warning on encoding/json in narrow builds
+	grid := &Grid{
+		Bounds:  DefaultBounds(0, 0),
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text:       &ShapeSpec{Geometry: "rect"},
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+					},
+					AccentBar: &AccentBarSpec{Position: "left", Color: "accent1", Width: 4},
+				},
+			},
+		}},
+	}
+	result, err := Resolve(grid, newAlloc(100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.AccentBars) != 1 {
+		t.Fatalf("expected exactly 1 accent bar for composite cell, got %d", len(result.AccentBars))
+	}
+	// Bar height should span both halves (≈ full row height, modulo the inter-inset).
+	text, diag := result.Cells[0], result.Cells[1]
+	bar := result.AccentBars[0]
+	combinedSpan := (diag.Bounds.Y + diag.Bounds.CY) - text.Bounds.Y
+	if text.Bounds.Y > diag.Bounds.Y {
+		combinedSpan = (text.Bounds.Y + text.Bounds.CY) - diag.Bounds.Y
+	}
+	if bar.Bounds.CY < combinedSpan-1 {
+		t.Errorf("accent bar should span both halves (CY=%d, combined span=%d)", bar.Bounds.CY, combinedSpan)
+	}
+}
+
+func TestSplitCompositeBounds_Default(t *testing.T) {
+	cell := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 1000000}
+	spec := &CompositeSpec{}
+	textRect, diagRect := splitCompositeBounds(cell, spec)
+	if textRect.Y != 0 {
+		t.Errorf("default split: text should start at Y=0, got %d", textRect.Y)
+	}
+	if diagRect.Y <= textRect.Y+textRect.CY-1 {
+		t.Errorf("default split: diagram should start after text, got text bottom=%d diag top=%d", textRect.Y+textRect.CY, diagRect.Y)
+	}
+	if textRect.X != cell.X || diagRect.X != cell.X {
+		t.Errorf("composite halves should share X with parent cell")
+	}
+	if textRect.CX != cell.CX || diagRect.CX != cell.CX {
+		t.Errorf("composite halves should span the full cell width")
+	}
+}

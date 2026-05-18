@@ -325,3 +325,177 @@ func TestValidate_MultipleErrors(t *testing.T) {
 		t.Errorf("expected errors about both columns and rows, got: %v", err)
 	}
 }
+
+func TestValidate_CompositeValid(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text:       &ShapeSpec{Geometry: "rect"},
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+					},
+				},
+			},
+		}},
+	}
+	if err := Validate(grid); err != nil {
+		t.Errorf("expected no error for valid composite cell, got %v", err)
+	}
+}
+
+func TestValidate_CompositeMissingText(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+					},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error when composite text is missing")
+	}
+	if !strings.Contains(err.Error(), "\"text\"") {
+		t.Errorf("expected error to mention missing text, got: %v", err)
+	}
+}
+
+func TestValidate_CompositeMissingSubDiagram(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text: &ShapeSpec{Geometry: "rect"},
+					},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error when composite sub_diagram is missing")
+	}
+	if !strings.Contains(err.Error(), "\"sub_diagram\"") {
+		t.Errorf("expected error to mention missing sub_diagram, got: %v", err)
+	}
+}
+
+func TestValidate_CompositeWithLegacyKeys(t *testing.T) {
+	cases := []struct {
+		name   string
+		cell   Cell
+		needle string
+	}{
+		{
+			name: "composite+shape",
+			cell: Cell{
+				Composite: &CompositeSpec{
+					Text:       &ShapeSpec{Geometry: "rect"},
+					SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+				},
+				Shape: &ShapeSpec{Geometry: "rect"},
+			},
+			needle: "shape",
+		},
+		{
+			name: "composite+diagram",
+			cell: Cell{
+				Composite: &CompositeSpec{
+					Text:       &ShapeSpec{Geometry: "rect"},
+					SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+				},
+				DiagramSpec: &types.DiagramSpec{Type: "bar_chart"},
+			},
+			needle: "diagram",
+		},
+		{
+			name: "composite+image",
+			cell: Cell{
+				Composite: &CompositeSpec{
+					Text:       &ShapeSpec{Geometry: "rect"},
+					SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+				},
+				Image: &ImageSpec{Path: "/tmp/x.png"},
+			},
+			needle: "image",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			grid := &Grid{
+				Columns: []float64{100},
+				Rows:    []Row{{Cells: []Cell{tc.cell}}},
+			}
+			err := Validate(grid)
+			if err == nil {
+				t.Fatalf("expected error when composite is combined with %s", tc.needle)
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "composite") || !strings.Contains(msg, tc.needle) {
+				t.Errorf("expected error to name composite and %s, got: %v", tc.needle, err)
+			}
+		})
+	}
+}
+
+func TestValidate_CompositeInvalidSplit(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{
+				{
+					Composite: &CompositeSpec{
+						Text:       &ShapeSpec{Geometry: "rect"},
+						SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+						Split:      "middle",
+					},
+				},
+			},
+		}},
+	}
+	err := Validate(grid)
+	if err == nil {
+		t.Fatal("expected error for invalid composite split value")
+	}
+	if !strings.Contains(err.Error(), "split") {
+		t.Errorf("expected error to mention split, got: %v", err)
+	}
+}
+
+func TestValidate_CompositeRatioOutOfRange(t *testing.T) {
+	// 0 is treated as "unset" and defaults to 0.5, so we don't include 0 here.
+	cases := []float64{1.0, 1.5, -0.2}
+	for _, ratio := range cases {
+		grid := &Grid{
+			Columns: []float64{100},
+			Rows: []Row{{
+				Cells: []Cell{
+					{
+						Composite: &CompositeSpec{
+							Text:       &ShapeSpec{Geometry: "rect"},
+							SubDiagram: &types.DiagramSpec{Type: "line_chart"},
+							Ratio:      ratio,
+						},
+					},
+				},
+			}},
+		}
+		err := Validate(grid)
+		if err == nil {
+			t.Errorf("expected error for ratio %g", ratio)
+			continue
+		}
+		if !strings.Contains(err.Error(), "ratio") {
+			t.Errorf("expected error to mention ratio (got %g): %v", ratio, err)
+		}
+	}
+}

@@ -601,7 +601,8 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | 3 | `bounds` uses percentages (0-100), not points or EMU | `{"x": 5, "y": 18, "width": 90, "height": 72}` = 5% from left, 18% from top |
 | 4 | `gap`/`row_gap`/`col_gap` are typographic points, not percentages. Default 8; 1-4 for dense slides | Cumulative: 5-row grid with `row_gap: 10` burns 40pt (~5% height). Tighten gaps before shrinking content |
 | 5 | Row `height` is a percentage of `bounds.height` | Rows without height split remaining space equally |
-| 6 | One content type per cell: `shape`, `table`, `icon`, `image`, or `diagram` | Combining silently drops content |
+| 6 | One content type per cell: `shape`, `table`, `icon`, `image`, `diagram`, or `composite` | Combining silently drops content. `composite` is the sole exception — it bundles a native text shape + sub-diagram inside one cell (see rule 6a) |
+| 6a | `composite: {text: {...shape...}, sub_diagram: {...}, split: "top"\|"bottom", ratio: 0.0–1.0}` packs a native text shape and an embedded chart into one cell, split vertically. Use for KPI + sparkline, headline + mini chart, callout + small diagram. `split` defaults to `"top"` (text on top, diagram below); `ratio` defaults to 0.5 (text portion gets half the cell height). Composite cells must NOT also set `shape`/`table`/`icon`/`image`/`diagram` | Eliminates the "split each KPI into ≥2 adjacent cells with hand-tuned spans" hack. Resolves to two ResolvedCells sharing the same (row,col), so accent_bar/connectors target the pair as one cell |
 | 7 | Body text cells MUST set all 4 insets (6-10pt each) | Without insets, text jams against shape edges |
 
 ### Charts

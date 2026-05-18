@@ -4,6 +4,26 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.14.0 (2026-05-18)
+
+### Added
+
+- **Composite stack cell on `GridCellInput`** — `GridCellInput` gains a new
+  `composite` payload that bundles a native text shape (`text`) and an embedded
+  sub-diagram (`sub_diagram`) inside a single grid cell. The cell is split
+  vertically into two halves; `split: "top" | "bottom"` chooses which half
+  hosts the text shape (default `"top"`) and `ratio` (a float in the open
+  interval (0,1), default 0.5) controls the fraction of cell height allocated
+  to the text portion. A composite cell expands at resolution time into two
+  ResolvedCells sharing the same `(row,col)` index, so downstream consumers
+  (renderer, accent-bar logic, connector targeting) treat the pair as one
+  logical cell. Composite is mutually exclusive with the legacy payload keys
+  (`shape`, `table`, `icon`, `image`, `diagram`); the validator emits a
+  dedicated error listing the conflicting keys. This eliminates the
+  agent-side hack of splitting every KPI into ≥2 adjacent cells with
+  hand-tuned spans when stacking a number on top of a sparkline. Closes
+  `go-slide-creator-zg8q.5`.
+
 ## 4.13.0 (2026-05-18)
 
 ### Added

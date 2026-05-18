@@ -41,8 +41,10 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 			}
 
 			// Enforce payload exclusivity: at most one of {shape, table, icon,
-			// image, diagram} may be set per cell. Legacy carve-out: a cell with
-			// exactly {shape, icon} is permitted (icon-overlay rendering).
+			// image, diagram, composite} may be set per cell. Legacy carve-out:
+			// a cell with exactly {shape, icon} is permitted (icon-overlay
+			// rendering). Composite cells must not be combined with any of the
+			// legacy payload keys.
 			var present []string
 			if cell.Shape != nil {
 				present = append(present, "shape")
@@ -59,14 +61,47 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 			if cell.DiagramSpec != nil {
 				present = append(present, "diagram")
 			}
+			if cell.Composite != nil {
+				present = append(present, "composite")
+			}
 			isShapeIconOverlay := len(present) == 2 && cell.Shape != nil && cell.Icon != nil
 			if len(present) > 1 && !isShapeIconOverlay {
 				if len(present) == 2 && cell.Shape != nil && cell.TableSpec != nil {
 					// Preserve the historical phrasing for the shape+table case
 					// so existing error consumers and tests keep working.
 					errs = append(errs, fmt.Errorf("row %d col %d: cell has both shape and table (only one allowed); remove either the \"shape\" or \"table\" key from this cell", r, ci))
+				} else if cell.Composite != nil {
+					// Highlight composite conflicts explicitly so agents fix the
+					// composite-vs-legacy collision rather than the cosmetic key set.
+					var others []string
+					for _, p := range present {
+						if p != "composite" {
+							others = append(others, p)
+						}
+					}
+					errs = append(errs, fmt.Errorf("row %d col %d: cell has \"composite\" alongside legacy payload keys (%s); composite bundles text + sub_diagram and must not be combined with \"shape\", \"table\", \"icon\", \"image\", or \"diagram\"", r, ci, strings.Join(others, ", ")))
 				} else {
-					errs = append(errs, fmt.Errorf("row %d col %d: cell has conflicting payload keys (%s); only one of \"shape\", \"table\", \"icon\", \"image\", \"diagram\" may be set per cell (the shape+icon overlay is the sole exception)", r, ci, strings.Join(present, ", ")))
+					errs = append(errs, fmt.Errorf("row %d col %d: cell has conflicting payload keys (%s); only one of \"shape\", \"table\", \"icon\", \"image\", \"diagram\", \"composite\" may be set per cell (the shape+icon overlay is the sole exception)", r, ci, strings.Join(present, ", ")))
+				}
+			}
+
+			if cell.Composite != nil {
+				if cell.Composite.Text == nil {
+					errs = append(errs, fmt.Errorf("row %d col %d: composite cell missing \"text\" — composite requires both \"text\" (native text shape) and \"sub_diagram\"", r, ci))
+				}
+				if cell.Composite.SubDiagram == nil {
+					errs = append(errs, fmt.Errorf("row %d col %d: composite cell missing \"sub_diagram\" — composite requires both \"text\" (native text shape) and \"sub_diagram\"", r, ci))
+				}
+				switch cell.Composite.Split {
+				case CompositeSplitDefault, CompositeSplitTop, CompositeSplitBottom:
+					// valid
+				default:
+					errs = append(errs, fmt.Errorf("row %d col %d: composite split %q invalid; valid values are \"top\" (default — text on top) or \"bottom\"", r, ci, cell.Composite.Split))
+				}
+				if cell.Composite.Ratio != 0 {
+					if cell.Composite.Ratio <= 0 || cell.Composite.Ratio >= 1 {
+						errs = append(errs, fmt.Errorf("row %d col %d: composite ratio %g outside (0,1); set ratio between 0 and 1 (e.g. 0.4 = text portion gets 40%% of cell height) or omit for default 0.5", r, ci, cell.Composite.Ratio))
+					}
 				}
 			}
 
@@ -74,7 +109,7 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid fit mode %q; valid values are \"contain\", \"fit-width\", or \"fit-height\" (omit for default stretch behavior)", r, ci, cell.Fit))
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil {
+			if cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil && cell.Composite == nil {
 				col++
 				continue
 			}

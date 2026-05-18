@@ -58,7 +58,9 @@ type ConnectorSpecInput struct {
 }
 
 // GridCellInput defines a single cell in the shape grid.
-// Only one of Shape, Table, Icon, Image, or Diagram should be set per cell.
+// Only one of Shape, Table, Icon, Image, Diagram, or Composite should be set
+// per cell. Composite is the sole exception: it bundles a native text shape
+// (text) and an embedded chart (sub_diagram) inside the same cell.
 type GridCellInput struct {
 	ColSpan    int                `json:"col_span,omitempty"`
 	RowSpan    int                `json:"row_span,omitempty"`
@@ -69,8 +71,22 @@ type GridCellInput struct {
 	Icon       *IconInput         `json:"icon,omitempty"`
 	Image      *GridImageInput    `json:"image,omitempty"`
 	Diagram    *types.DiagramSpec `json:"diagram,omitempty"` // Chart/diagram rendered via svggen
+	Composite  *CompositeInput    `json:"composite,omitempty"` // Composite stack: native text + sub-diagram (KPI + sparkline)
 	AccentBar  *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
 	NamedStyle string             `json:"named_style,omitempty"` // Named cell style reference resolved from template settings
+}
+
+// CompositeInput defines a composite cell that stacks a native text shape and
+// an embedded sub-diagram inside one grid cell. Both Text and SubDiagram are
+// required when Composite is set; legacy mutually-exclusive cell keys (shape,
+// table, icon, image, diagram) must not be set on the same cell.
+//
+// Use cases: KPI + sparkline, headline + mini chart, callout + small diagram.
+type CompositeInput struct {
+	Text       *ShapeSpecInput    `json:"text,omitempty"`        // Native text shape (required)
+	SubDiagram *types.DiagramSpec `json:"sub_diagram,omitempty"` // Sub-diagram (required)
+	Split      string             `json:"split,omitempty"`       // "top" (text on top, default) or "bottom" (text on bottom)
+	Ratio      float64            `json:"ratio,omitempty"`       // Fraction of cell height for the Text portion (0.0–1.0, exclusive). Default: 0.5.
 }
 
 // AccentBarInput defines a decorative accent bar rendered alongside a cell.

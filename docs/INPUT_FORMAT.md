@@ -650,17 +650,53 @@ The `shape_grid` field on a slide defines a grid of preset geometry shapes for c
 
 ### Grid Cells (GridCellInput)
 
-Each cell holds exactly one content type (mutually exclusive): **shape**, **table**, **icon**, **image**, or **diagram**.
+Each cell holds exactly one content type (mutually exclusive): **shape**, **table**, **icon**, **image**, **diagram**, or **composite**.
 
-| Field      | Type    | Required | Default | Description                            |
-|------------|---------|----------|---------|----------------------------------------|
-| `col_span` | integer | No       | 1       | Number of columns this cell spans      |
-| `row_span` | integer | No       | 1       | Number of rows this cell spans         |
-| `shape`    | object  | No       | —       | Preset geometry shape (ShapeSpecInput) |
-| `table`    | object  | No       | —       | Data table (same schema as content type `table`) |
-| `icon`     | object  | No       | —       | SVG icon (`{name | path | url | svg_data, alt, fill, position}`) — exactly one of `name`, `path`, `url`, `svg_data`. `svg_data` is inline SVG markup (no disk I/O; `fill` ignored). |
-| `image`    | object  | No       | —       | Image file (`{path, url, alt, fit, overlay, text}`) |
-| `diagram`  | object  | No       | —       | Chart or diagram (`DiagramSpec` — same schema as content type `diagram`) |
+| Field       | Type    | Required | Default | Description                            |
+|-------------|---------|----------|---------|----------------------------------------|
+| `col_span`  | integer | No       | 1       | Number of columns this cell spans      |
+| `row_span`  | integer | No       | 1       | Number of rows this cell spans         |
+| `shape`     | object  | No       | —       | Preset geometry shape (ShapeSpecInput) |
+| `table`     | object  | No       | —       | Data table (same schema as content type `table`) |
+| `icon`      | object  | No       | —       | SVG icon (`{name | path | url | svg_data, alt, fill, position}`) — exactly one of `name`, `path`, `url`, `svg_data`. `svg_data` is inline SVG markup (no disk I/O; `fill` ignored). |
+| `image`     | object  | No       | —       | Image file (`{path, url, alt, fit, overlay, text}`) |
+| `diagram`   | object  | No       | —       | Chart or diagram (`DiagramSpec` — same schema as content type `diagram`) |
+| `composite` | object  | No       | —       | Composite stack cell — see [Composite Stack Cell](#composite-stack-cell-compositeinput) below |
+
+#### Composite Stack Cell (CompositeInput)
+
+`composite` packs a native text shape and an embedded sub-diagram into a single grid cell, split vertically. Use it for KPI + sparkline, headline + mini chart, callout + small diagram — anywhere you'd otherwise hand-split a cell into two adjacent column entries with brittle spans.
+
+| Field         | Type    | Required | Default  | Description                                                                 |
+|---------------|---------|----------|----------|-----------------------------------------------------------------------------|
+| `text`        | object  | Yes      | —        | Native text shape (ShapeSpecInput) — typically a `roundRect` or `rect` with text content |
+| `sub_diagram` | object  | Yes      | —        | Sub-diagram (DiagramSpec) — e.g., a sparkline `line_chart` or mini `bar_chart` |
+| `split`       | string  | No       | `"top"`  | Which half hosts the text shape: `"top"` (text on top, sub-diagram below) or `"bottom"` (text on bottom, sub-diagram above) |
+| `ratio`       | number  | No       | `0.5`    | Fraction of cell height allocated to the text portion. Must be in the open interval (0, 1). Example: `0.3` = text gets 30%, diagram gets 70% |
+
+**Mutual exclusion.** A composite cell must NOT also set `shape`, `table`, `icon`, `image`, or `diagram`. The validator emits a dedicated error naming the conflicting keys.
+
+**Resolution behavior.** A composite cell expands into two ResolvedCells at grid-resolution time, both sharing the same `(row, col)` index. A single accent_bar (if set on the cell) spans the entire outer rectangle, and connector targeting treats the pair as one logical cell. A small inter-half inset (~2pt) prevents the text shape and the sub-diagram from butting against each other.
+
+**Example — KPI + sparkline.**
+
+```json
+{
+  "composite": {
+    "text": {
+      "geometry": "roundRect",
+      "fill": "accent1",
+      "text": {"content": "$4.2M\nARR", "size": 24, "bold": true, "align": "ctr", "color": "lt1"}
+    },
+    "sub_diagram": {
+      "type": "line_chart",
+      "data": {"categories": ["Jan","Feb","Mar","Apr","May"], "series": [{"name": "ARR", "values": [3.1, 3.3, 3.7, 3.9, 4.2]}]}
+    },
+    "split": "top",
+    "ratio": 0.55
+  }
+}
+```
 
 ### Shape Specification (ShapeSpecInput)
 

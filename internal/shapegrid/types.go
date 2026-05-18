@@ -72,7 +72,9 @@ type ConnectorSpec struct {
 }
 
 // Cell is a single cell in the grid.
-// Only one of Shape, TableSpec, Icon, Image, or DiagramSpec should be set per cell.
+// Only one of Shape, TableSpec, Icon, Image, DiagramSpec, or Composite should be
+// set per cell. Composite is the sole exception: it bundles a native text shape
+// and an embedded sub-diagram inside the same cell rectangle.
 type Cell struct {
 	ColSpan     int                // Number of columns to span (default 1)
 	RowSpan     int                // Number of rows to span (default 1)
@@ -83,8 +85,35 @@ type Cell struct {
 	Icon        *IconSpec          // Icon specification
 	Image       *ImageSpec         // Image specification
 	DiagramSpec *types.DiagramSpec // Diagram/chart specification (rendered via svggen)
+	Composite   *CompositeSpec     // Composite stack: native text + sub-diagram in one cell
 	AccentBar   *AccentBarSpec     // Optional decorative accent bar alongside the cell
 }
+
+// CompositeSpec defines a composite cell that stacks a native text shape and
+// an embedded sub-diagram (chart) inside the same cell rectangle. The cell is
+// vertically split into a "text" portion and a "diagram" portion; Split chooses
+// which portion is on top, and Ratio controls the fraction of cell height
+// allocated to the Text portion.
+//
+// Use cases: KPI + sparkline, headline + mini chart, callout + small diagram.
+type CompositeSpec struct {
+	Text       *ShapeSpec         // Native text shape (required)
+	SubDiagram *types.DiagramSpec // Sub-diagram/chart rendered via svggen (required)
+	Split      CompositeSplit     // Which portion is on top ("top" = text on top, "bottom" = text on bottom). Default: "top".
+	Ratio      float64            // Fraction of cell height for the Text portion (0.0–1.0, exclusive). Default: 0.5.
+}
+
+// CompositeSplit identifies which portion of a composite cell hosts the text shape.
+type CompositeSplit string
+
+const (
+	// CompositeSplitDefault is the unset value; treated as CompositeSplitTop.
+	CompositeSplitDefault CompositeSplit = ""
+	// CompositeSplitTop places the text shape in the top portion, sub-diagram below.
+	CompositeSplitTop CompositeSplit = "top"
+	// CompositeSplitBottom places the text shape in the bottom portion, sub-diagram above.
+	CompositeSplitBottom CompositeSplit = "bottom"
+)
 
 // AccentBarSpec defines a decorative accent bar rendered alongside a cell.
 type AccentBarSpec struct {

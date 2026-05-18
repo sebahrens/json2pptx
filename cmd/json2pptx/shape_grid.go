@@ -366,6 +366,24 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	if c.Diagram != nil {
 		cell.DiagramSpec = c.Diagram
 	}
+	if c.Composite != nil {
+		comp := &shapegrid.CompositeSpec{
+			SubDiagram: c.Composite.SubDiagram,
+			Split:      shapegrid.CompositeSplit(c.Composite.Split),
+			Ratio:      c.Composite.Ratio,
+		}
+		if c.Composite.Text != nil {
+			comp.Text = &shapegrid.ShapeSpec{
+				Geometry:    c.Composite.Text.Geometry,
+				Fill:        c.Composite.Text.Fill,
+				Line:        c.Composite.Text.Line,
+				Text:        c.Composite.Text.Text,
+				Rotation:    c.Composite.Text.Rotation,
+				Adjustments: c.Composite.Text.Adjustments,
+			}
+		}
+		cell.Composite = comp
+	}
 	if c.AccentBar != nil {
 		cell.AccentBar = &shapegrid.AccentBarSpec{
 			Position: c.AccentBar.Position,
@@ -697,7 +715,7 @@ func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, err
 			}
 		}
 		if maxCols == 0 {
-			return nil, fmt.Errorf("shape_grid: no cells defined; add cells with a \"shape\", \"table\", \"icon\", \"image\", or \"diagram\" key to at least one row")
+			return nil, fmt.Errorf("shape_grid: no cells defined; add cells with a \"shape\", \"table\", \"icon\", \"image\", \"diagram\", or \"composite\" key to at least one row")
 		}
 		return shapegrid.ResolveColumns(nil, []int{maxCols})
 	}
