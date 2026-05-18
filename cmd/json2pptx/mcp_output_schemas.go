@@ -549,7 +549,31 @@ var outputSchemaPreviewPlan = json.RawMessage(`{
           "slide_type":            {"type": "string"},
           "placeholders":          {"type": "array", "items": {"type": "object"}},
           "expanded_pattern":      {"type": "object"},
-          "shape_grid_resolution": {"type": "object"},
+          "shape_grid_resolution": {
+            "type": "object",
+            "properties": {
+              "virtual_layout_used": {"type": "boolean"},
+              "layout_id":           {"type": "string"},
+              "geometry":            {"type": "object"},
+              "cells": {
+                "type": "array",
+                "description": "Per-cell wireframe rectangles in EMU (914400 EMU = 1 inch). Resolved from the shape_grid (including patterns/compose) without rendering.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "row":  {"type": "integer"},
+                    "col":  {"type": "integer"},
+                    "x":    {"type": "integer"},
+                    "y":    {"type": "integer"},
+                    "w":    {"type": "integer"},
+                    "h":    {"type": "integer"},
+                    "kind": {"type": "string", "enum": ["shape", "table", "icon", "image", "diagram"]}
+                  },
+                  "required": ["row", "col", "x", "y", "w", "h", "kind"]
+                }
+              }
+            }
+          },
           "applied_defaults":      {"type": "object"}
         },
         "required": ["slide_index", "layout_id", "layout_id_source", "placeholders"]

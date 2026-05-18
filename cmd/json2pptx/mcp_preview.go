@@ -71,9 +71,23 @@ type resolvedPattern struct {
 
 // resolvedShapeGrid describes virtual layout resolution for shape_grid slides.
 type resolvedShapeGrid struct {
-	VirtualLayoutUsed bool          `json:"virtual_layout_used"`
-	LayoutID          string        `json:"layout_id,omitempty"`
-	Geometry          *resolvedGeom `json:"geometry,omitempty"`
+	VirtualLayoutUsed bool                     `json:"virtual_layout_used"`
+	LayoutID          string                   `json:"layout_id,omitempty"`
+	Geometry          *resolvedGeom            `json:"geometry,omitempty"`
+	Cells             []resolvedShapeGridCell  `json:"cells,omitempty"`
+}
+
+// resolvedShapeGridCell is one resolved grid cell rectangle, suitable for
+// wireframe rendering without paying a full PPTX generation round-trip.
+// Coordinates are in EMUs (914400 EMU = 1 inch).
+type resolvedShapeGridCell struct {
+	Row  int    `json:"row"`
+	Col  int    `json:"col"`
+	X    int64  `json:"x"`
+	Y    int64  `json:"y"`
+	W    int64  `json:"w"`
+	H    int64  `json:"h"`
+	Kind string `json:"kind"`
 }
 
 // resolvedDefaults reports which deck-level defaults were applied to this slide.
@@ -320,8 +334,10 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 		resolveSlidePattern(i, slide, tctx, output, &rs, accentStrategy, sectionIndex)
 	}
 
-	// Shape grid virtual layout resolution.
-	if slide.ShapeGrid != nil && len(tctx.layouts) > 0 {
+	// Shape grid resolution: virtual layout (when template layouts are
+	// available) and per-cell wireframe rectangles (whenever the slide has a
+	// resolved grid, including patterns/compose that produced one above).
+	if slide.ShapeGrid != nil {
 		resolveSlideShapeGrid(slide, tctx, &rs)
 	}
 
@@ -475,26 +491,57 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 	slide.ShapeGrid = expanded
 }
 
-// resolveSlideShapeGrid resolves virtual layout for shape_grid slides.
+// resolveSlideShapeGrid resolves virtual layout and per-cell wireframe rects
+// for shape_grid slides.
 func resolveSlideShapeGrid(slide *SlideInput, tctx *previewTemplateContext, rs *resolvedSlide) {
 	sgr := &resolvedShapeGrid{}
-	if vl := resolveVirtualLayout(tctx.layouts, tctx.slideWidth, tctx.slideHeight); vl != nil {
-		if needsVirtualLayout(*slide) {
-			sgr.VirtualLayoutUsed = true
-			sgr.LayoutID = vl.LayoutID
-			sgr.Geometry = &resolvedGeom{
-				X:      vl.Bounds.X,
-				Y:      vl.Bounds.Y,
-				Width:  vl.Bounds.CX,
-				Height: vl.Bounds.CY,
-			}
-			rs.LayoutID = vl.LayoutID
-			if lm, ok := tctx.layoutByID[vl.LayoutID]; ok {
-				rs.LayoutName = lm.Name
+	if len(tctx.layouts) > 0 {
+		if vl := resolveVirtualLayout(tctx.layouts, tctx.slideWidth, tctx.slideHeight); vl != nil {
+			if needsVirtualLayout(*slide) {
+				sgr.VirtualLayoutUsed = true
+				sgr.LayoutID = vl.LayoutID
+				sgr.Geometry = &resolvedGeom{
+					X:      vl.Bounds.X,
+					Y:      vl.Bounds.Y,
+					Width:  vl.Bounds.CX,
+					Height: vl.Bounds.CY,
+				}
+				rs.LayoutID = vl.LayoutID
+				if lm, ok := tctx.layoutByID[vl.LayoutID]; ok {
+					rs.LayoutName = lm.Name
+				}
 			}
 		}
 	}
+	sgr.Cells = collectResolvedGridCells(slide.ShapeGrid, tctx.slideWidth, tctx.slideHeight)
 	rs.ShapeGridResolution = sgr
+}
+
+// collectResolvedGridCells resolves a ShapeGridInput to a slice of wireframe
+// cells (row, col, x, y, w, h, kind) in EMUs. Returns nil when the grid cannot
+// be resolved (e.g. invalid column percentages).
+func collectResolvedGridCells(grid *ShapeGridInput, slideWidth, slideHeight int64) []resolvedShapeGridCell {
+	if grid == nil || len(grid.Rows) == 0 {
+		return nil
+	}
+	result := resolveGridForStructural(grid, slideWidth, slideHeight)
+	if result == nil || len(result.Cells) == 0 {
+		return nil
+	}
+	cells := make([]resolvedShapeGridCell, 0, len(result.Cells))
+	for i := range result.Cells {
+		rc := &result.Cells[i]
+		cells = append(cells, resolvedShapeGridCell{
+			Row:  rc.RowIdx,
+			Col:  rc.ColIdx,
+			X:    rc.CellBounds.X,
+			Y:    rc.CellBounds.Y,
+			W:    rc.CellBounds.CX,
+			H:    rc.CellBounds.CY,
+			Kind: string(rc.Kind),
+		})
+	}
+	return cells
 }
 
 // computeResolvedOccupancy computes grid slot usage for the preview response.
