@@ -4,7 +4,6 @@ go 1.25.0
 
 require (
 	github.com/mark3labs/mcp-go v0.45.0
-	github.com/sebahrens/json2pptx v0.0.0-20260404104345-35483318a4b9
 	github.com/tdewolff/canvas v0.0.0-20260109131636-69e1540379c6
 	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v3 v3.0.1

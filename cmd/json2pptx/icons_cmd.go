@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/icons"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 )
 
 // runIcons implements the "icons" subcommand with sub-subcommands.

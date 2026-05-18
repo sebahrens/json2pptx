@@ -17,7 +17,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/sebahrens/json2pptx/icons"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"

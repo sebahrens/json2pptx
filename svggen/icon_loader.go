@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sebahrens/json2pptx/icons"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/tdewolff/canvas"
 	"github.com/tdewolff/canvas/renderers/rasterizer"
 )

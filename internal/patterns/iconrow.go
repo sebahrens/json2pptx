@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/icons"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
