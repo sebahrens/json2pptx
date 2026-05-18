@@ -8,6 +8,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/svggen/core"
+
 	// Import root package to auto-register all diagram types.
 	_ "github.com/sebahrens/json2pptx/svggen"
 )
@@ -187,14 +189,14 @@ func TestHandleValidateDiagramValid(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid       bool         `json:"valid"`
-		Diagnostics []diagnostic `json:"diagnostics"`
+		Valid  bool         `json:"valid"`
+		Errors []diagnostic `json:"errors"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse validation result: %v", err)
 	}
 	if !vr.Valid {
-		t.Fatalf("expected valid, got diagnostics: %v", vr.Diagnostics)
+		t.Fatalf("expected valid, got errors: %v", vr.Errors)
 	}
 }
 
@@ -226,8 +228,8 @@ func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid       bool         `json:"valid"`
-		Diagnostics []diagnostic `json:"diagnostics"`
+		Valid  bool         `json:"valid"`
+		Errors []diagnostic `json:"errors"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse validation result: %v", err)
@@ -235,12 +237,12 @@ func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
 	if vr.Valid {
 		t.Fatal("expected invalid result for empty data")
 	}
-	if len(vr.Diagnostics) == 0 {
-		t.Fatal("expected at least one diagnostic")
+	if len(vr.Errors) == 0 {
+		t.Fatal("expected at least one error")
 	}
 
 	// Verify unified diagnostic shape matches internal/diagnostics.Diagnostic
-	first := vr.Diagnostics[0]
+	first := vr.Errors[0]
 	if first.Code == "" {
 		t.Error("expected non-empty code")
 	}
@@ -283,8 +285,8 @@ func TestHandleValidateDiagramFixSuggestion(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var vr struct {
-		Valid       bool         `json:"valid"`
-		Diagnostics []diagnostic `json:"diagnostics"`
+		Valid  bool         `json:"valid"`
+		Errors []diagnostic `json:"errors"`
 	}
 	if err := json.Unmarshal([]byte(text), &vr); err != nil {
 		t.Fatalf("failed to parse: %v", err)
@@ -292,13 +294,13 @@ func TestHandleValidateDiagramFixSuggestion(t *testing.T) {
 	if vr.Valid {
 		t.Fatal("expected invalid result")
 	}
-	if len(vr.Diagnostics) == 0 {
-		t.Fatal("expected at least one diagnostic")
+	if len(vr.Errors) == 0 {
+		t.Fatal("expected at least one error")
 	}
 
-	// At least one diagnostic should have a fix
+	// At least one error should have a fix
 	hasFix := false
-	for _, d := range vr.Diagnostics {
+	for _, d := range vr.Errors {
 		if d.Fix != nil {
 			hasFix = true
 			if d.Fix.Kind == "" {
@@ -328,17 +330,17 @@ func TestDiagnosticContractShape(t *testing.T) {
 
 	// Parse as raw JSON to inspect field names without struct bias.
 	var raw struct {
-		Valid       bool             `json:"valid"`
-		Diagnostics []map[string]any `json:"diagnostics"`
+		Valid  bool             `json:"valid"`
+		Errors []map[string]any `json:"errors"`
 	}
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {
 		t.Fatalf("failed to parse: %v", err)
 	}
-	if len(raw.Diagnostics) == 0 {
-		t.Fatal("expected at least one diagnostic")
+	if len(raw.Errors) == 0 {
+		t.Fatal("expected at least one error")
 	}
 
-	first := raw.Diagnostics[0]
+	first := raw.Errors[0]
 
 	// Required fields per unified contract.
 	for _, field := range []string{"code", "message", "path", "severity"} {
@@ -393,6 +395,180 @@ func TestDiagnosticContractShape(t *testing.T) {
 	// Verify that "pattern" is NOT a top-level field (it's in details now).
 	if _, ok := first["pattern"]; ok {
 		t.Error("'pattern' should not be a top-level field; it belongs in details")
+	}
+}
+
+// TestValidateDiagramFixKindEnum locks the contract documented in
+// skills/generate-deck/SKILL.md: every fix.kind returned by validate_diagram
+// must come from the chart-finding enum
+// {align_series, truncate_or_split, replace_value, explicit_scale, reduce_items}.
+//
+// Exercises multiple diagram types and a variety of invalid payloads so that
+// required-field, type-mismatch, and constraint-violation paths through
+// inferFix are all visited.
+func TestValidateDiagramFixKindEnum(t *testing.T) {
+	allowed := map[string]struct{}{
+		"align_series":      {},
+		"truncate_or_split": {},
+		"replace_value":     {},
+		"explicit_scale":    {},
+		"reduce_items":      {},
+	}
+
+	cases := []struct {
+		name string
+		args map[string]any
+	}{
+		{
+			name: "bar_chart empty data (required-field errors)",
+			args: map[string]any{
+				"type": "bar_chart",
+				"data": map[string]any{},
+			},
+		},
+		{
+			name: "pie_chart empty data (required-field errors)",
+			args: map[string]any{
+				"type": "pie_chart",
+				"data": map[string]any{},
+			},
+		},
+		{
+			name: "bar_chart bad series shape (type / value errors)",
+			args: map[string]any{
+				"type": "bar_chart",
+				"data": map[string]any{
+					"categories": []any{"A", "B"},
+					"series":     "not-a-list",
+				},
+			},
+		},
+		{
+			name: "line_chart mismatched series lengths (constraint / alignment)",
+			args: map[string]any{
+				"type": "line_chart",
+				"data": map[string]any{
+					"categories": []any{"A", "B", "C"},
+					"series": []any{
+						map[string]any{"name": "S1", "values": []any{1, 2}},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := handleValidateDiagram(context.Background(), makeRequest(tc.args))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.IsError {
+				// Tool-level errors (unknown type, malformed args) are
+				// outside the validate_diagram envelope contract.
+				t.Skipf("tool-level error, not a validation envelope: %v", result.Content)
+			}
+
+			text := result.Content[0].(mcp.TextContent).Text
+			var vr struct {
+				Valid  bool         `json:"valid"`
+				Errors []diagnostic `json:"errors"`
+			}
+			if err := json.Unmarshal([]byte(text), &vr); err != nil {
+				t.Fatalf("failed to parse: %v", err)
+			}
+
+			for i, d := range vr.Errors {
+				if d.Fix == nil {
+					continue
+				}
+				if _, ok := allowed[d.Fix.Kind]; !ok {
+					t.Errorf("errors[%d]: fix.kind = %q is not in the SKILL.md chart enum (code=%q, path=%q)",
+						i, d.Fix.Kind, d.Code, d.Path)
+				}
+			}
+		})
+	}
+}
+
+// TestInferFixCapacityAndLogScale covers the two new fix.kind branches added
+// to align validate_diagram with the SKILL.md chart-finding enum:
+//   - capacity-class constraints  → truncate_or_split
+//   - log/log-scale  constraints  → explicit_scale
+func TestInferFixCapacityAndLogScale(t *testing.T) {
+	type tc struct {
+		name string
+		ve   core.ValidationError
+		want string
+	}
+
+	cases := []tc{
+		{
+			name: "capacity-class field (items)",
+			ve: core.ValidationError{
+				Code:    core.ErrCodeConstraint,
+				Field:   "data.items",
+				Message: "10 items exceeds maximum of 8",
+			},
+			want: "truncate_or_split",
+		},
+		{
+			name: "capacity-class field (slices)",
+			ve: core.ValidationError{
+				Code:    core.ErrCodeConstraint,
+				Field:   "data.slices",
+				Message: "too many slices",
+			},
+			want: "truncate_or_split",
+		},
+		{
+			name: "capacity-class message (categories)",
+			ve: core.ValidationError{
+				Code:    core.ErrCodeConstraint,
+				Field:   "data.categories",
+				Message: "12 categories exceed renderer limit",
+			},
+			want: "truncate_or_split",
+		},
+		{
+			name: "log-scale field",
+			ve: core.ValidationError{
+				Code:    core.ErrCodeConstraint,
+				Field:   "style.scale",
+				Message: "invalid scale value",
+			},
+			want: "explicit_scale",
+		},
+		{
+			name: "log-scale message",
+			ve: core.ValidationError{
+				Code:    core.ErrCodeConstraint,
+				Field:   "data.values[2]",
+				Message: "negative value not allowed on log scale",
+			},
+			want: "explicit_scale",
+		},
+		{
+			name: "series alignment still maps to align_series",
+			ve: core.ValidationError{
+				Code:    core.ErrCodeConstraint,
+				Field:   "data.series[1].values",
+				Message: "series length mismatch with categories",
+			},
+			want: "align_series",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := inferFix(c.ve)
+			if got == nil {
+				t.Fatalf("expected fix kind %q, got nil", c.want)
+			}
+			if got.Kind != c.want {
+				t.Errorf("inferFix kind = %q, want %q", got.Kind, c.want)
+			}
+		})
 	}
 }
 

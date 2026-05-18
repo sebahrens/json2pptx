@@ -447,9 +447,13 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 		Data: dataMap,
 	}
 
+	// validationResult envelope matches SKILL.md: {valid, errors?: [...]}.
+	// The field is named "errors" (not "diagnostics") to align with
+	// validate_pattern's envelope and avoid collision with the render-time
+	// "diagnostics" channel inside json2pptx.
 	type validationResult struct {
-		Valid       bool         `json:"valid"`
-		Diagnostics []diagnostic `json:"diagnostics,omitempty"`
+		Valid  bool         `json:"valid"`
+		Errors []diagnostic `json:"errors,omitempty"`
 	}
 
 	// Validate envelope
@@ -469,8 +473,8 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 			}}
 		}
 		output, _ := json.MarshalIndent(validationResult{
-			Valid:       false,
-			Diagnostics: diags,
+			Valid:  false,
+			Errors: diags,
 		}, "", "  ")
 		return mcp.NewToolResultText(string(output)), nil
 	}
@@ -492,8 +496,8 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 			}}
 		}
 		output, _ := json.MarshalIndent(validationResult{
-			Valid:       false,
-			Diagnostics: diags,
+			Valid:  false,
+			Errors: diags,
 		}, "", "  ")
 		return mcp.NewToolResultText(string(output)), nil
 	}
@@ -934,13 +938,24 @@ func convertValidationError(diagramType string, ve core.ValidationError) diagnos
 
 // inferFix derives a structured fix suggestion from the svggen validation error
 // code and field context. Returns nil when no actionable fix can be inferred.
-// Fix kinds use the same vocabulary as internal/patterns (provide_value,
-// replace_value, reduce_items, remove_key, align_series).
+//
+// Fix kinds are constrained to the chart-finding enum documented in
+// skills/generate-deck/SKILL.md for validate_diagram:
+//
+//	align_series, truncate_or_split, replace_value, explicit_scale, reduce_items
+//
+// Capacity-class constraint errors (too many items/series/slices/etc.) map to
+// truncate_or_split. Log/log-scale constraint errors map to explicit_scale.
+// Required-field and unknown-field errors that have no natural mapping into
+// the chart enum either fall back to replace_value (when supplying a value at
+// the path is the obvious remediation) or return nil.
 func inferFix(ve core.ValidationError) *fix {
 	switch ve.Code {
 	case core.ErrCodeRequired:
+		// A missing required field can be remediated by supplying a value at
+		// the path — closest match in the chart-finding enum is replace_value.
 		return &fix{
-			Kind:   "provide_value",
+			Kind:   "replace_value",
 			Params: map[string]any{"path": ve.Field},
 		}
 	case core.ErrCodeInvalidType, core.ErrCodeInvalidFormat, core.ErrCodeInvalidValue:
@@ -950,27 +965,49 @@ func inferFix(ve core.ValidationError) *fix {
 		}
 		return &fix{Kind: "replace_value", Params: params}
 	case core.ErrCodeConstraint:
-		// Constraint violations on series/values fields suggest alignment.
-		if strings.Contains(ve.Field, "series") || strings.Contains(ve.Field, "values") {
+		msg := strings.ToLower(ve.Message)
+		field := strings.ToLower(ve.Field)
+
+		// Log/log-scale constraint violations (e.g., negative value on log
+		// scale, monotonic-scale violations) map to explicit_scale.
+		if strings.Contains(field, "scale") || strings.Contains(msg, "log scale") ||
+			strings.Contains(msg, "log-scale") || strings.Contains(msg, "logarithmic") {
+			return &fix{
+				Kind:   "explicit_scale",
+				Params: map[string]any{"path": ve.Field},
+			}
+		}
+
+		// Capacity-class constraints: too many items/series/categories/etc.
+		// We treat both "field is a count-bearing collection" (items, stages,
+		// slices, layers, categories, points) and "message indicates a max
+		// was exceeded" as capacity hits — agents should truncate or split.
+		isCountField := strings.Contains(field, "items") || strings.Contains(field, "stages") ||
+			strings.Contains(field, "slices") || strings.Contains(field, "layers") ||
+			strings.Contains(field, "categories") || strings.Contains(field, "points")
+		isCapacityMsg := strings.Contains(msg, "exceed") || strings.Contains(msg, "too many") ||
+			strings.Contains(msg, "maximum") || strings.Contains(msg, "max ")
+		if isCountField || isCapacityMsg {
+			return &fix{
+				Kind:   "truncate_or_split",
+				Params: map[string]any{"path": ve.Field},
+			}
+		}
+
+		// Series/values length-mismatch constraints map to alignment.
+		if strings.Contains(field, "series") || strings.Contains(field, "values") {
 			return &fix{
 				Kind:   "align_series",
 				Params: map[string]any{"path": ve.Field},
 			}
 		}
-		// Constraint on item counts suggest reducing.
-		if strings.Contains(ve.Field, "items") || strings.Contains(ve.Field, "stages") ||
-			strings.Contains(ve.Field, "slices") || strings.Contains(ve.Field, "layers") {
-			return &fix{
-				Kind:   "reduce_items",
-				Params: map[string]any{"path": ve.Field},
-			}
-		}
+
 		return nil
 	case core.ErrCodeUnknownField:
-		return &fix{
-			Kind:   "remove_key",
-			Params: map[string]any{"key": ve.Field},
-		}
+		// Removing an unknown key has no analogue in the chart-finding enum,
+		// so emit no fix kind. The diagnostic message still identifies the
+		// stray key for the agent.
+		return nil
 	default:
 		return nil
 	}
