@@ -126,9 +126,17 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 }
 
 // renderMultiFormat implements multi-format rendering for a given registry.
+//
+// It delegates to renderMultiFormatWithFindings so that callers using the
+// legacy non-findings entry point still honor strict-fit severity promotion
+// and refuse semantics. Findings are discarded to preserve the legacy return
+// shape, but a strict-mode refusal still surfaces as an error.
 func renderMultiFormat(r *Registry, req *RequestEnvelope, formats ...string) (*RenderResult, error) {
-	result, _, err := renderMultiFormatInternal(r, req, formats...)
-	return result, err
+	out, err := renderMultiFormatWithFindings(r, req, formats...)
+	if out == nil {
+		return nil, err
+	}
+	return out.RenderResult, err
 }
 
 // renderMultiFormatInternal implements multi-format rendering and returns the

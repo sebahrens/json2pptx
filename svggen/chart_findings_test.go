@@ -542,6 +542,50 @@ func TestCapacityExceeded_NoFindingUnderLimit(t *testing.T) {
 	}
 }
 
+// TestRenderMultiFormat_StrictFitRefusal_Parity verifies that the legacy
+// RenderMultiFormat entry point honors strict-fit refusal identically to
+// RenderMultiFormatWithFindings. Regression test for bd
+// go-slide-creator-ehe2: previously renderMultiFormat dropped the builder
+// and bypassed the strict-fit refuse-severity gate, so any caller still on
+// the non-findings API silently received output instead of an error.
+func TestRenderMultiFormat_StrictFitRefusal_Parity(t *testing.T) {
+	// Build a bar_chart request with more than MaxSeries series so the
+	// renderer emits chart.capacity_exceeded, which the strict promotion
+	// table maps to SeverityRefuse.
+	series := make([]any, core.MaxSeries+1)
+	values := []any{1.0, 2.0, 3.0}
+	for i := range series {
+		series[i] = map[string]any{
+			"name":   "S" + string(rune('A'+i%26)),
+			"values": values,
+		}
+	}
+	mkReq := func() *RequestEnvelope {
+		return &RequestEnvelope{
+			Type: "bar_chart",
+			Data: map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3"},
+				"series":     series,
+			},
+			Output: OutputSpec{Width: 800, Height: 600, StrictFit: "strict"},
+		}
+	}
+
+	// Findings variant: must refuse with an error.
+	out, err := RenderMultiFormatWithFindings(mkReq(), "svg")
+	if err == nil {
+		t.Fatalf("RenderMultiFormatWithFindings: expected strict-fit refusal error, got nil (findings=%v)", out.Findings)
+	}
+	if found := findFindingByCode(out.Findings, FindingCapacityExceeded); found == nil || found.Severity != core.SeverityRefuse {
+		t.Fatalf("WithFindings: expected %q at severity %q, got findings=%v", FindingCapacityExceeded, core.SeverityRefuse, out.Findings)
+	}
+
+	// Legacy variant: must also refuse with an error (parity check).
+	if _, err := RenderMultiFormat(mkReq(), "svg"); err == nil {
+		t.Fatal("RenderMultiFormat: expected strict-fit refusal error, got nil")
+	}
+}
+
 // TestGanttOverflow_EmitsOverflowSuppressed verifies that a gantt chart with
 // more rows than fit in the canvas emits a chart.overflow_suppressed finding.
 func TestGanttOverflow_EmitsOverflowSuppressed(t *testing.T) {
