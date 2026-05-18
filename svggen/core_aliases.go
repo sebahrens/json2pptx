@@ -27,6 +27,10 @@ type PaletteSpec = core.PaletteSpec
 // ThemeColorInput carries a single theme color from the PPTX template.
 type ThemeColorInput = core.ThemeColorInput
 
+// RoleMapSpec carries design-intent colors so callers can hand svggen the
+// header / body fill the native skill-info would have chosen.
+type RoleMapSpec = core.RoleMapSpec
+
 // SVGDocument represents a rendered SVG document.
 type SVGDocument = core.SVGDocument
 

@@ -215,6 +215,44 @@ type StyleSpec struct {
 	// than chart-quality enforcement (e.g. when a shape_grid accent1 fill and an
 	// svggen bar color must render with the same hex on the same slide).
 	DisablePaletteEnforcement bool `json:"disable_palette_enforcement,omitempty" yaml:"disable_palette_enforcement,omitempty"`
+
+	// RoleMap carries pre-resolved design-intent colors so diagrams can pick a
+	// header / body fill without iterating accents and re-running WCAG checks.
+	// Mirrors the native skill-info "color_roles" output (PrimaryFill,
+	// SecondaryFill, BodyFill, BodyText, WhiteTextSafe) so an agent that gets
+	// `color_roles` back from json2pptx skill-info can forward the same values
+	// to svggen and have headers come out with the exact hex the native engine
+	// would have chosen.
+	//
+	// When unset, StyleGuideFromSpec auto-derives the roles from ThemeColors
+	// using the same white-contrast (≥3.0) heuristic as the native side.
+	RoleMap RoleMapSpec `json:"role_map,omitempty" yaml:"role_map,omitempty"`
+}
+
+// RoleMapSpec carries design-intent colors as hex strings. Empty fields mean
+// "fall back to the palette's auto-derived role" — partial maps are honored.
+type RoleMapSpec struct {
+	// PrimaryFill is the dark accent used for headers; white text must be readable on it.
+	PrimaryFill string `json:"primary_fill,omitempty" yaml:"primary_fill,omitempty"`
+
+	// SecondaryFill is the second accent used for headers; white text must be readable on it.
+	SecondaryFill string `json:"secondary_fill,omitempty" yaml:"secondary_fill,omitempty"`
+
+	// BodyFill is the light fill used for body/card cells.
+	BodyFill string `json:"body_fill,omitempty" yaml:"body_fill,omitempty"`
+
+	// BodyText is the dark text color used on light backgrounds.
+	BodyText string `json:"body_text,omitempty" yaml:"body_text,omitempty"`
+
+	// WhiteTextSafe lists every accent (in template accent1..accent6 order) that
+	// passes the WCAG AA large-text 3.0 contrast threshold against white.
+	WhiteTextSafe []string `json:"white_text_safe,omitempty" yaml:"white_text_safe,omitempty"`
+}
+
+// IsZero returns true when no role hint was provided.
+func (r RoleMapSpec) IsZero() bool {
+	return r.PrimaryFill == "" && r.SecondaryFill == "" &&
+		r.BodyFill == "" && r.BodyText == "" && len(r.WhiteTextSafe) == 0
 }
 
 // Validate checks that the RequestEnvelope has required fields.

@@ -1548,3 +1548,121 @@ func TestFitDimensions(t *testing.T) {
 		})
 	}
 }
+
+// TestRoleMap_MatchesNativeSkillInfo_MidnightBlue verifies that the role map
+// svggen derives from a template's theme colors matches the color_roles output
+// the native json2pptx skill-info command produces for the same template.
+//
+// midnight-blue's native skill-info reports:
+//
+//	primary_fill   = accent1
+//	secondary_fill = accent2
+//	body_fill      = lt2
+//	body_text      = dk1
+//	white_text_safe = [accent1, accent2, accent4, accent5]
+//
+// The svggen-side RoleMap must end up on the same concrete hex values so an
+// agent that calls svggen-mcp with the midnight-blue theme_colors gets a
+// header fill that exactly equals the one a shape_grid header on the same
+// slide would get from the native pipeline.
+func TestRoleMap_MatchesNativeSkillInfo_MidnightBlue(t *testing.T) {
+	// midnight-blue theme colors (extracted via `json2pptx skill-info`).
+	colors := []ThemeColorInput{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "dk2", RGB: "#1B2A4A"},
+		{Name: "lt2", RGB: "#E8ECF1"},
+		{Name: "accent1", RGB: "#2E5090"},
+		{Name: "accent2", RGB: "#D4463A"},
+		{Name: "accent3", RGB: "#E8A838"},
+		{Name: "accent4", RGB: "#43A047"},
+		{Name: "accent5", RGB: "#5C6BC0"},
+		{Name: "accent6", RGB: "#26A69A"},
+	}
+
+	// Use the Raw variant so EnforceAccentContrast doesn't mutate accents
+	// away from the schemeClr values native shapes will use. That matches the
+	// parity path agents take when they need header colors to line up across
+	// native and svggen on the same slide.
+	p := NewPaletteFromThemeColorsRaw(colors)
+
+	want := map[string]string{
+		"PrimaryFill":   "#2E5090", // accent1
+		"SecondaryFill": "#D4463A", // accent2
+		"BodyFill":      "#E8ECF1", // lt2
+		"BodyText":      "#000000", // dk1
+	}
+	got := map[string]string{
+		"PrimaryFill":   p.Roles.PrimaryFill.Hex(),
+		"SecondaryFill": p.Roles.SecondaryFill.Hex(),
+		"BodyFill":      p.Roles.BodyFill.Hex(),
+		"BodyText":      p.Roles.BodyText.Hex(),
+	}
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("Roles.%s = %s, want %s (native skill-info color_roles)", k, got[k], w)
+		}
+	}
+
+	// Native white_text_safe lists accent1, accent2, accent4, accent5 in that
+	// accent-order order. svggen builds the list in accent1..accent6 order too,
+	// so the resulting hex sequence must match.
+	wantSafe := []string{"#2E5090", "#D4463A", "#43A047", "#5C6BC0"}
+	gotSafe := make([]string, 0, len(p.Roles.WhiteTextSafe))
+	for _, c := range p.Roles.WhiteTextSafe {
+		gotSafe = append(gotSafe, c.Hex())
+	}
+	if len(gotSafe) != len(wantSafe) {
+		t.Fatalf("WhiteTextSafe length = %d (%v), want %d (%v)", len(gotSafe), gotSafe, len(wantSafe), wantSafe)
+	}
+	for i, w := range wantSafe {
+		if gotSafe[i] != w {
+			t.Errorf("WhiteTextSafe[%d] = %s, want %s", i, gotSafe[i], w)
+		}
+	}
+}
+
+// TestStyleGuideFromSpec_RoleMapOverride verifies StyleSpec.RoleMap overrides
+// the auto-derived roles, including partial overlays where empty fields fall
+// through to the theme-derived defaults. This is the path an agent uses when
+// it forwards native skill-info color_roles into svggen.
+func TestStyleGuideFromSpec_RoleMapOverride(t *testing.T) {
+	spec := StyleSpec{
+		ThemeColors: []ThemeColorInput{
+			{Name: "lt1", RGB: "#FFFFFF"},
+			{Name: "lt2", RGB: "#E8ECF1"},
+			{Name: "dk1", RGB: "#000000"},
+			{Name: "accent1", RGB: "#2E5090"},
+			{Name: "accent2", RGB: "#D4463A"},
+		},
+		DisablePaletteEnforcement: true,
+		RoleMap: RoleMapSpec{
+			// Override only PrimaryFill; the rest should keep theme-derived values.
+			PrimaryFill: "#FF00FF",
+		},
+	}
+
+	g := StyleGuideFromSpec(spec)
+
+	if got, want := g.Palette.Roles.PrimaryFill.Hex(), "#FF00FF"; got != want {
+		t.Errorf("PrimaryFill override = %s, want %s", got, want)
+	}
+	// SecondaryFill must fall through to the auto-derived accent2 (#D4463A) because
+	// the override didn't touch it.
+	if got, want := g.Palette.Roles.SecondaryFill.Hex(), "#D4463A"; got != want {
+		t.Errorf("SecondaryFill (untouched by override) = %s, want %s (accent2)", got, want)
+	}
+}
+
+// TestStyleGuideFromSpec_RoleMapPopulatedForNamedPalette verifies that the
+// Roles field gets filled in even when the caller didn't pass theme_colors
+// (so diagrams can always rely on Roles being non-zero without first checking
+// which palette path was taken).
+func TestStyleGuideFromSpec_RoleMapPopulatedForNamedPalette(t *testing.T) {
+	g := StyleGuideFromSpec(StyleSpec{
+		Palette: PaletteSpec{Name: "corporate"},
+	})
+	if g.Palette.Roles.IsZero() {
+		t.Errorf("Roles is zero for named palette; deriveRoleMap should have populated it")
+	}
+}

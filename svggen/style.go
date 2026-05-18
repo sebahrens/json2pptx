@@ -101,6 +101,43 @@ type Palette struct {
 	TextPrimary   Color
 	TextSecondary Color
 	TextMuted     Color
+
+	// Roles maps design intent to concrete colors, mirroring the native
+	// json2pptx skill-info "color_roles" output. Diagrams that need a
+	// header / body fill should consult Roles before iterating Accent1..6
+	// so svggen output stays aligned with what the native engine would pick.
+	Roles RoleMap
+}
+
+// RoleMap exposes design-intent colors a diagram can pick without manually
+// iterating accents and re-running WCAG checks. Populated from theme colors
+// in NewPaletteFromThemeColors using the same white-contrast heuristic as
+// the native skill_info.buildColorRoles, or overridden via StyleSpec.RoleMap.
+type RoleMap struct {
+	// PrimaryFill is the dark accent for headers (white text safe).
+	PrimaryFill Color
+
+	// SecondaryFill is the second accent for headers (white text safe).
+	SecondaryFill Color
+
+	// BodyFill is the light fill for body / card cells.
+	BodyFill Color
+
+	// BodyText is the dark text color used on light backgrounds.
+	BodyText Color
+
+	// WhiteTextSafe lists every accent (in accent1..accent6 order) that passes
+	// WCAG AA large-text contrast (≥3.0) against white. Empty when no accent
+	// qualifies (rare; would only happen on a very light palette).
+	WhiteTextSafe []Color
+}
+
+// IsZero returns true when none of the role colors were populated. Useful so
+// callers can detect "no roles available" without comparing each field.
+func (r RoleMap) IsZero() bool {
+	zero := Color{}
+	return r.PrimaryFill == zero && r.SecondaryFill == zero &&
+		r.BodyFill == zero && r.BodyText == zero && len(r.WhiteTextSafe) == 0
 }
 
 // Color represents an RGBA color.
@@ -871,7 +908,52 @@ func StyleGuideFromSpec(spec StyleSpec) *StyleGuide {
 		}
 	}
 
+	finalizeRoleMap(guide.Palette, spec.RoleMap)
+
 	return guide
+}
+
+// finalizeRoleMap guarantees guide.Palette.Roles is populated (auto-deriving
+// from the accent set when the palette path didn't already do it) and then
+// overlays any caller-supplied RoleMap hints on top. Extracted from
+// StyleGuideFromSpec to keep that function's branching under the gocognit cap.
+func finalizeRoleMap(p *Palette, spec RoleMapSpec) {
+	if p.Roles.IsZero() {
+		p.Roles = deriveRoleMap(p)
+	}
+	if !spec.IsZero() {
+		applyRoleMapSpec(&p.Roles, spec)
+	}
+}
+
+// applyRoleMapSpec overlays caller-supplied role hex values on top of the
+// auto-derived palette roles. Invalid hex values are silently skipped so a
+// single bad entry doesn't poison the rest of the map; this matches the
+// permissive parsing applied to Palette.Colors and DataPalette above.
+func applyRoleMapSpec(dst *RoleMap, spec RoleMapSpec) {
+	if c, err := ParseColor(spec.PrimaryFill); err == nil && spec.PrimaryFill != "" {
+		dst.PrimaryFill = c
+	}
+	if c, err := ParseColor(spec.SecondaryFill); err == nil && spec.SecondaryFill != "" {
+		dst.SecondaryFill = c
+	}
+	if c, err := ParseColor(spec.BodyFill); err == nil && spec.BodyFill != "" {
+		dst.BodyFill = c
+	}
+	if c, err := ParseColor(spec.BodyText); err == nil && spec.BodyText != "" {
+		dst.BodyText = c
+	}
+	if len(spec.WhiteTextSafe) > 0 {
+		parsed := make([]Color, 0, len(spec.WhiteTextSafe))
+		for _, hex := range spec.WhiteTextSafe {
+			if c, err := ParseColor(hex); err == nil {
+				parsed = append(parsed, c)
+			}
+		}
+		if len(parsed) > 0 {
+			dst.WhiteTextSafe = parsed
+		}
+	}
 }
 
 // applyDataPalette reorders the accent slots in the palette to match the
@@ -1169,7 +1251,44 @@ func newPaletteFromThemeColors(themeColors []ThemeColorInput, enforce bool) *Pal
 		EnforceAccentContrast(p)
 	}
 
+	// Populate role mapping using the same white-contrast heuristic as the
+	// native side (skill_info.buildColorRoles). This runs after any accent
+	// mutation so the roles point at the colors charts will actually render.
+	p.Roles = deriveRoleMap(p)
+
 	return p
+}
+
+// deriveRoleMap mirrors skill_info.buildColorRoles: collect accents that pass
+// WCAG AA large-text contrast (≥3.0) against white, then pick the first two
+// as primary / secondary fill. BodyFill falls back to Surface (theme lt2) and
+// BodyText to TextPrimary (theme dk1) so that constrained generation can use
+// the palette role directly without re-reading the theme color list.
+func deriveRoleMap(p *Palette) RoleMap {
+	white := Color{R: 255, G: 255, B: 255, A: 1.0}
+	accents := []Color{p.Accent1, p.Accent2, p.Accent3, p.Accent4, p.Accent5, p.Accent6}
+
+	safe := make([]Color, 0, len(accents))
+	for _, c := range accents {
+		if c.ContrastWith(white) >= WCAGAALarge {
+			safe = append(safe, c)
+		}
+	}
+
+	rm := RoleMap{
+		PrimaryFill:   p.Accent1,
+		SecondaryFill: p.Accent2,
+		BodyFill:      p.Surface,
+		BodyText:      p.TextPrimary,
+		WhiteTextSafe: safe,
+	}
+	if len(safe) >= 1 {
+		rm.PrimaryFill = safe[0]
+	}
+	if len(safe) >= 2 {
+		rm.SecondaryFill = safe[1]
+	}
+	return rm
 }
 
 // ThemeColorInput is now defined in core/types.go and aliased via core_aliases.go.

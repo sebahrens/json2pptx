@@ -339,8 +339,19 @@ func (gc *GaugeChart) drawValueArc(centerX, centerY, outerRadius, innerRadius, s
 		return
 	}
 
+	// Prefer the role-mapped primary fill over a blind Accent1 pick. RoleMap
+	// is populated by deriveRoleMap (or overridden via StyleSpec.RoleMap), so
+	// when the template's accent1 fails WCAG against white the value arc will
+	// land on the first white-text-safe accent instead — matching the native
+	// skill_info "primary_fill" choice and keeping native shapes and svggen
+	// arcs in lockstep.
+	headerFill := style.Palette.Accent1
+	if (style.Palette.Roles.PrimaryFill != Color{}) {
+		headerFill = style.Palette.Roles.PrimaryFill
+	}
+
 	b.Push()
-	b.SetFillColor(style.Palette.Accent1)
+	b.SetFillColor(headerFill)
 	b.SetStrokeWidth(0)
 	gc.drawArc(centerX, centerY, outerRadius, innerRadius, startAngle, valueAngle)
 	b.Pop()
