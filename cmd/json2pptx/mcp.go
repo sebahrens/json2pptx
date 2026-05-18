@@ -729,13 +729,13 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
 	}
 
 	// Parse JSON input — reject trailing data.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
 	}
 
 	// Apply deck-level defaults before validation.
@@ -777,16 +777,18 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 			Code: "REQUIRED", Path: "template", Message: "template is required",
-			Severity: diagnostics.SeverityError,
-			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
+			Severity:     diagnostics.SeverityError,
+			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
+			NextToolCall: nextCallListTemplates(),
 		})
 	}
 	if len(input.Slides) == 0 {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
-			Severity: diagnostics.SeverityError,
-			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
+			Severity:     diagnostics.SeverityError,
+			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
+			NextToolCall: nextCallGetInputSchema(),
 		})
 	}
 	if !output.Valid {
@@ -799,7 +801,8 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 			Code: "TEMPLATE_NOT_FOUND", Path: "template", Message: templateNotFoundError(input.Template, mc.templatesDir),
-			Severity: diagnostics.SeverityError,
+			Severity:     diagnostics.SeverityError,
+			NextToolCall: nextCallListTemplates(),
 		})
 		return marshalValidateResult(ctx, output)
 	}
@@ -810,7 +813,8 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 			Code: "TEMPLATE_ERROR", Path: "template", Message: fmt.Sprintf("template analysis failed: %v", err),
-			Severity: diagnostics.SeverityError,
+			Severity:     diagnostics.SeverityError,
+			NextToolCall: nextCallListTemplates(),
 		})
 		return marshalValidateResult(ctx, output)
 	}
@@ -851,7 +855,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 	// string arrays. The Errors/Warnings fields are left nil (omitted from JSON).
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("validate_input", "presentation")), nil
 	}
 	return mcpResult, nil
 }
@@ -1134,7 +1138,7 @@ func attachBoundsHintToCapacityWarnings(warnings []cellDensityWarning, patternNa
 func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	intent, err := request.RequireString("intent")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "intent is required"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "intent is required", nextCallRetry("recommend_pattern", "intent")), nil
 	}
 
 	// Parse optional content_hints.
@@ -1265,7 +1269,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("recommend_pattern", "intent")), nil
 	}
 	return mcpResult, nil
 }
@@ -1299,7 +1303,7 @@ func mcpRecommendVisualTool() mcp.Tool {
 func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	intent, err := request.RequireString("intent")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "intent is required"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "intent is required", nextCallRetry("recommend_visual", "intent")), nil
 	}
 
 	// Parse optional content_hints.
@@ -1349,7 +1353,7 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 
 	mcpResult, err := api.MCPSuccessResult(ctx, rec)
 	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("recommend_visual", "intent")), nil
 	}
 	return mcpResult, nil
 }

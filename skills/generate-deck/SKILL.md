@@ -490,7 +490,14 @@ Always read this field to understand what the budgets represent.
 
 ### Machine-Actionable `next_tool_call`
 
-Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), and fit-report findings (`validate_input`, `generate_presentation`) include an optional `next_tool_call` field when the error has an actionable fix. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), fit-report findings (`validate_input`, `generate_presentation`), and boundary errors from the candidate-decision tools (`plan_deck`, `recommend_pattern`, `recommend_visual`, `validate_input`, `preview_presentation_plan`, `score_deck`) include an optional `next_tool_call` field when the error has an actionable recovery. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+
+Boundary-error mappings used by the candidate-decision tools:
+
+- `MISSING_PARAMETER` / `INVALID_JSON` on `presentation` → `get_input_schema` (fetch the schema and retry)
+- `MISSING_PARAMETER` on `template` (or `TEMPLATE_NOT_FOUND` / `TEMPLATE_ERROR`) → `list_templates`
+- `MISSING_PARAMETER` on `brief` / `intent` → retry the same tool with the missing argument
+- `INVALID_PARAMETER` for an unknown pattern name → `list_patterns`
 
 ```json
 {
@@ -511,7 +518,7 @@ Pattern validation errors (`validate_pattern`), density warnings (`expand_patter
 
 - `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
 - For `swap_pattern` fix kinds, `next_tool_call` points to `recommend_pattern` instead of `repair_slide`.
-- Errors without a recognized fix kind omit `next_tool_call` entirely (the field is absent, not null).
+- Internal-only errors (marshal failures, unrecognized fix kinds inside content-finding errors) may omit `next_tool_call` (the field is absent, not null). Boundary errors from candidate-decision tools always carry it.
 
 ---
 

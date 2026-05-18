@@ -117,7 +117,7 @@ type rhythmCheck struct {
 func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	brief, err := request.RequireString("brief")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "brief is required"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "brief is required", nextCallRetry("plan_deck", "brief")), nil
 	}
 
 	slideBudget := 10
@@ -152,7 +152,7 @@ func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	reg := patterns.Default()
 	for _, name := range mustInclude {
 		if _, ok := reg.Get(name); !ok {
-			return api.MCPSimpleError("INVALID_PARAMETER", fmt.Sprintf("must_include pattern %q not found; use list_patterns to see available patterns", name)), nil
+			return mcpErrorWithNext("INVALID_PARAMETER", fmt.Sprintf("must_include pattern %q not found; use list_patterns to see available patterns", name), nextCallListPatterns()), nil
 		}
 	}
 
@@ -160,7 +160,7 @@ func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
 	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("plan_deck", "brief")), nil
 	}
 	return mcpResult, nil
 }

@@ -124,19 +124,23 @@ Use this to preview what generate_presentation will do: which layout each slide 
 
 // --- Handler ---
 
+// handlePreviewPlan returns the resolved presentation plan without rendering.
+// All error responses (boundary errors, template lookup, marshal failure) carry
+// a next_tool_call suggestion so the agent can chain forward without having to
+// infer the recovery path from prose.
 func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
 	if paramErr != nil {
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
 	}
 
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
 	}
 
 	// Apply deck-level defaults before resolution.
@@ -150,13 +154,13 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	// Resolve template.
 	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
 	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(input.Template, mc.templatesDir)), nil
+		return mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(input.Template, mc.templatesDir), nextCallListTemplates()), nil
 	}
 	defer templateCleanup()
 
 	tctx, err := loadPreviewTemplate(templatePath)
 	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
+		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
 	}
 	defer func() { _ = tctx.reader.Close() }()
 
@@ -184,7 +188,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("preview_presentation_plan", "presentation")), nil
 	}
 	return mcpResult, nil
 }
@@ -197,13 +201,15 @@ func validatePreviewBoundary(input *PresentationInput) *mcp.CallToolResult {
 	if input.Template == "" {
 		diags = append(diags, diagnostics.Diagnostic{
 			Code: "REQUIRED", Path: "template", Message: "template is required",
-			Severity: diagnostics.SeverityError,
+			Severity:     diagnostics.SeverityError,
+			NextToolCall: nextCallListTemplates(),
 		})
 	}
 	if len(input.Slides) == 0 {
 		diags = append(diags, diagnostics.Diagnostic{
 			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
-			Severity: diagnostics.SeverityError,
+			Severity:     diagnostics.SeverityError,
+			NextToolCall: nextCallGetInputSchema(),
 		})
 	}
 	if diagnostics.HasErrors(diags) {

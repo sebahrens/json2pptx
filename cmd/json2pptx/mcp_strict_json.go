@@ -42,7 +42,10 @@ func objectParamAsJSON(request mcp.CallToolRequest, param string) (string, *mcp.
 	}
 	b, err := json.Marshal(objRaw)
 	if err != nil {
-		return "", mcpParseError("INVALID_JSON", param, fmt.Sprintf("failed to encode %s: %v", param, err))
+		// Attach next_tool_call so the agent can fetch the authoritative
+		// schema and retry — JSON encoding failures here mean the caller's
+		// payload shape was unexpected.
+		return "", mcpParseErrorWithNext("INVALID_JSON", param, fmt.Sprintf("failed to encode %s: %v", param, err), nextCallGetInputSchema())
 	}
 	return string(b), nil
 }

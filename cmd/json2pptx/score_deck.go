@@ -44,13 +44,17 @@ Use this after generate_presentation to get structured visual feedback without b
 	)
 }
 
+// handleScoreDeck renders the deck and returns visual-quality findings. All
+// error responses (missing params, invalid JSON, template lookup, marshal
+// failure) carry a next_tool_call suggestion so the agent can chain to the
+// recovery tool (get_input_schema, list_templates) without inferring it.
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
 	if paramErr != nil {
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
 	}
 
 	mode := "deterministic"
@@ -61,7 +65,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
 	}
 
 	// Apply deck-level defaults before checks.
@@ -76,28 +80,28 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		templateName = override
 	}
 	if templateName == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template is required (in presentation or as template parameter)"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "template is required (in presentation or as template parameter)", nextCallListTemplates()), nil
 	}
 	if len(input.Slides) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "at least one slide is required in presentation"), nil
+		return mcpErrorWithNext("MISSING_PARAMETER", "at least one slide is required in presentation", nextCallGetInputSchema()), nil
 	}
 
 	// Resolve and analyze template.
 	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
 	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir)), nil
+		return mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir), nextCallListTemplates()), nil
 	}
 	defer templateCleanup()
 
 	reader, err := template.OpenTemplate(templatePath)
 	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
+		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
 	}
 	defer func() { _ = reader.Close() }()
 
 	layouts, err := template.ParseLayouts(reader)
 	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
+		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
 	}
 	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
 
@@ -148,7 +152,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 
 	mcpResult, err := api.MCPSuccessResult(ctx, ds)
 	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("score_deck", "presentation")), nil
 	}
 	return mcpResult, nil
 }
