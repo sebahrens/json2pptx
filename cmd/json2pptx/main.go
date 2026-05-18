@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.10.0"
+const SchemaVersion = "4.11.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -66,6 +66,8 @@ func dispatch() error { //nolint:gocyclo
 		return runSkillInfo()
 	case "capabilities":
 		return runCapabilities()
+	case "get-started":
+		return runGetStarted()
 	case "input-schema":
 		return runInputSchema()
 	case "resolve-theme":
@@ -130,6 +132,7 @@ Commands:
   tables              Table density and sizing reference
   skill-info          Show template capabilities for Claude Code skill
   capabilities        Show schema version, tools, features, and vocabularies
+  get-started         Print the recommended MCP-call sequence for a task (brief|revise|validate-only)
   resolve-theme       Resolve theme colors and fonts for a template
   recommend-pattern   Recommend patterns matching an intent
   preview             Preview generation plan without rendering

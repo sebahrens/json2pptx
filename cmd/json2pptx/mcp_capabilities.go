@@ -138,6 +138,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "expand_patterns", AddedIn: "4.8.0"},
 		// Tools from 4.9.0
 		{Name: "score_candidates", AddedIn: "4.9.0"},
+		// Tools from 4.11.0
+		{Name: "get_started", AddedIn: "4.11.0"},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries

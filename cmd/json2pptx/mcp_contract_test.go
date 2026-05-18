@@ -494,6 +494,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"recommend_visual":           true,
 		"get_input_schema":               true,
 		"validate_presentation_output":   true,
+		"get_started":                    true,
 	}
 
 	for _, name := range mcpToolNames() {

@@ -72,6 +72,41 @@ Standalone SVG renderer with its own diagram/chart registry. **Distinct connecta
 
 When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
 
+**Keeping the SVG palette in sync with the deck template (one-shot copy):**
+
+Call `resolve_theme` once per deck and pass its `theme_colors` array straight through to every `render_diagram` call. No hand-pivoting from the `colors` map — typos in scheme names would otherwise be silent.
+
+```jsonc
+// 1) json2pptx-mcp.resolve_theme({"template_name": "midnight-blue"}) →
+{
+  "template": "midnight-blue",
+  "colors": { "accent1": "#1F4E79", "accent2": "#2E75B6", "dk1": "#000000", "lt1": "#FFFFFF", "...": "..." },
+  "theme_colors": [
+    { "name": "accent1", "rgb": "#1F4E79" },
+    { "name": "accent2", "rgb": "#2E75B6" },
+    { "name": "dk1",     "rgb": "#000000" },
+    { "name": "lt1",     "rgb": "#FFFFFF" }
+    // ...
+  ]
+}
+
+// 2) Copy theme_colors verbatim into svggen-mcp.render_diagram:
+{
+  "type": "bar_chart",
+  "data": { /* ... */ },
+  "style": {
+    "theme_colors": [
+      { "name": "accent1", "rgb": "#1F4E79" },
+      { "name": "accent2", "rgb": "#2E75B6" },
+      { "name": "dk1",     "rgb": "#000000" },
+      { "name": "lt1",     "rgb": "#FFFFFF" }
+    ]
+  }
+}
+```
+
+If the deck applies a `theme_override`, pass that same object as `resolve_theme`'s `theme_override` argument so the array reflects the post-override palette.
+
 ---
 
 ## Minimum Valid Deck
@@ -107,17 +142,18 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
+| **First call — ordered MCP workflow keyed to your task** (`brief`/`revise`/`validate-only`). Returns `sequence:[{tool, when_to_call}]` so you do not have to derive the workflow from the flat 35+ tool catalog. | `get_started` | `json2pptx get-started` |
 | **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags | `get_capabilities` | (CLI inlines) |
 | **Authoritative input schema** — JSON Schema for `PresentationInput` with all nested types, `x-field-scope` annotations, and inline enums. Digest-cacheable. | `get_input_schema` | `json2pptx input-schema` |
 | Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
-| Resolve a template's theme colors (semantic name → hex, including tint modifiers) | `resolve_theme` | (CLI inlines) |
+| Resolve a template's theme colors (semantic name → hex, including tint modifiers). Returns both `colors` (map for lookups) and `theme_colors` (`[{name,rgb}]` array ready to copy into svggen-mcp's `render_diagram` under `style.theme_colors` — keeps native OOXML and SVG renders on the same palette). Accepts optional `theme_override` (same shape as frontmatter — `{colors:{accent1:"#…"}, title_font, body_font}`) so the returned palette mirrors what singlepass renders for that deck; unrecognized keys surface in `warnings[]`. | `resolve_theme` | (CLI inlines) |
 | **Plan a deck** — given a brief, returns an ordered slide outline with per-slide pattern recommendations, narrative roles (opening / evidence / comparison / emphasis / framework / closing), content seeds, and accent rotation. Enforces rhythm rules (no 3-in-a-row, emphasis slide every ~5). The plan is the recommended starting point before `generate_presentation` for any deck > 4 slides. | `plan_deck` | (CLI inlines) |
 | **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
 | Recommend a named pattern given an intent (pattern-only subset of recommend_visual) — **legacy, prefer `recommend_visual`** for new code; this tool only ranks named patterns and cannot suggest a chart, diagram, or placeholder layout when those would fit better. | `recommend_pattern` | (CLI inlines) |
 | Discover preset shape geometries (chevron, homePlate, callout, action_button, ...) grouped by category, with optional substring search — use to pick a non-`rect` `shape.type` for `shape_grid` cells | `get_shape_catalog` | (CLI inlines) |
 | Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
-| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering. Each `resolved_slides[].shape_grid_resolution.cells[]` carries the per-cell wireframe rectangle `{row, col, x, y, w, h, kind}` in EMUs (resolved from any pattern/compose expansion), so agents can inspect the layout geometry without invoking LibreOffice. The response's `warnings[]` field surfaces compose-resolution diagnostics — including `COMPOSE_HORIZONTAL_TRUNCATION` when a horizontal compose segment's row over-occupies its allocated column range and excess cells are dropped. | `preview_presentation_plan` | (CLI inlines) |
+| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering. Each `resolved_slides[].shape_grid_resolution.cells[]` carries the per-cell wireframe rectangle `{row, col, x, y, w, h, kind}` in EMUs (resolved from any pattern/compose expansion), so agents can inspect the layout geometry without invoking LibreOffice. For compose slides, `resolved_slides[].expanded_compose` exposes `{direction, segments:[{index, pattern, cells_after_expansion, bounds_pct, row_range, col_range}]}` — `bounds_pct` is the segment's rectangle in compose-merged space (`x_pct/y_pct/width_pct/height_pct`, 0..100), `row_range`/`col_range` are `[start,end)` indices into the merged grid. Fit findings attributable to a child segment (compose-emitted warnings *and* per-cell findings whose row/col falls within a segment) carry `segment_index`. The response's `warnings[]` field surfaces compose-resolution diagnostics — including `COMPOSE_HORIZONTAL_TRUNCATION` when a horizontal compose segment's row over-occupies its allocated column range and excess cells are dropped, and `COMPOSE_SEGMENT_BOUNDS_IGNORED` when a compose segment sets `pattern.bounds` or `pattern.max_height_pct` (segment placement inside a compose envelope is governed by `compose.direction` + `size_pct`; segment-level bounds are dropped during merge — restructure the deck so the bounded pattern is the slide-level pattern instead). Both warnings also appear as structured `fit_findings[]` with `segment_index`. | `preview_presentation_plan` | (CLI inlines) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
@@ -162,6 +198,8 @@ When operating through the MCP server, prefer these tools over shelling out to t
 When building a slide and unsure which visual approach to use, follow this decision order:
 
 1. **`recommend_visual`** — the unified entry point. Ranks candidates across *all* categories (placeholder layouts, named patterns, charts, diagrams, compose envelopes, raw shape_grid). Start here.
+
+   Compose envelopes accept 2 to **N** top-level segments — the enforced cap is published as `get_capabilities().features.compose.max_segments` (default 8) along with the supported `directions` and `supports_smart_compose` flag. For arrangements that exceed the cap, nest a compose envelope inside a segment instead of flattening: a `SegmentInput` may set `compose` (XOR with `pattern`) to host a child envelope, expanded recursively and merged into the parent grid. Nesting depth is capped at `get_capabilities().features.compose.max_nesting_depth` (default 2, i.e. one level of nesting) and the total number of leaf patterns across the tree is capped at `get_capabilities().features.compose.max_leaf_patterns` (default 12); the `supports_nested_compose` flag advertises availability.
 2. **`recommend_pattern`** — use only when you already know you need a named pattern and want to pick the best one. This is a subset of `recommend_visual` limited to the pattern catalog.
 3. **`list_patterns` / `show_pattern`** — use when you already know the pattern name and need its value schema.
 
@@ -453,7 +491,14 @@ Always read this field to understand what the budgets represent.
 
 ### Machine-Actionable `next_tool_call`
 
-Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), and fit-report findings (`validate_input`, `generate_presentation`) include an optional `next_tool_call` field when the error has an actionable fix. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), fit-report findings (`validate_input`, `generate_presentation`), and boundary errors from the candidate-decision tools (`plan_deck`, `recommend_pattern`, `recommend_visual`, `validate_input`, `preview_presentation_plan`, `score_deck`) include an optional `next_tool_call` field when the error has an actionable recovery. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+
+Boundary-error mappings used by the candidate-decision tools:
+
+- `MISSING_PARAMETER` / `INVALID_JSON` on `presentation` → `get_input_schema` (fetch the schema and retry)
+- `MISSING_PARAMETER` on `template` (or `TEMPLATE_NOT_FOUND` / `TEMPLATE_ERROR`) → `list_templates`
+- `MISSING_PARAMETER` on `brief` / `intent` → retry the same tool with the missing argument
+- `INVALID_PARAMETER` for an unknown pattern name → `list_patterns`
 
 ```json
 {
@@ -474,7 +519,7 @@ Pattern validation errors (`validate_pattern`), density warnings (`expand_patter
 
 - `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
 - For `swap_pattern` fix kinds, `next_tool_call` points to `recommend_pattern` instead of `repair_slide`.
-- Errors without a recognized fix kind omit `next_tool_call` entirely (the field is absent, not null).
+- Internal-only errors (marshal failures, unrecognized fix kinds inside content-finding errors) may omit `next_tool_call` (the field is absent, not null). Boundary errors from candidate-decision tools always carry it.
 
 ---
 
@@ -610,8 +655,10 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `pagination_default_threshold` | Pagination used default threshold (no template capacity available) |
 | `contrast_autofixed` | Text color auto-replaced for WCAG AA. `action: info`, `fix.kind: replace_color`, `fix.params: {original_color, replacement_color, background_color, contrast_ratio_before, contrast_ratio_after}` |
 | `contrast_predicted` | Preflight prediction (validate / preview) that a shape-grid text color will be auto-replaced for WCAG AA at render time. Same `fix.kind` (`replace_color`) as `contrast_autofixed`, with `fix.params.predicted_replacement` and `source` (e.g. `shape_grid`). `action: info` |
+| `placeholder_remapped` | A content `placeholder_id` was resolved to a different placeholder on the layout (e.g. `subtitle` → `body` on the `section` layout). Emitted both pre-flight (`preview_presentation_plan` and `generate_presentation` with `fit_report:true` — one finding per `resolved_slides[].placeholders[]` with `remapped:true`) and at render time. `action: info`, `fix.kind: remap_placeholder`, `fix.params: {from, to}`. Path targets `/slides/{i}/content/{j}/placeholder_id`. Agent action: author the resolved id directly to avoid the implicit rewrite |
 | `grid_diagram_narrow` | Complex diagram in a narrow grid cell (<50% slide width). `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, complexity, cell_width_pct, cell_width_emu, threshold_emu}`. Path targets the diagram field (e.g. `/slides/0/shape_grid/rows/0/cells/1/diagram`). Agent action: widen cell via `repair_slide` with `reshape_grid` fix |
 | `diagram_aspect_mismatch` | Diagram cell aspect differs from rendered SVG aspect by >25% (default svggen aspect is 4:3 unless `DiagramSpec.Width/Height` overrides). Chart will be stretched or letterboxed. `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, svg_aspect, cell_aspect, deviation, cell_width_emu, cell_height_emu, svg_width, svg_height}`. Path targets the diagram field. Agent action: resize the cell, set `cell.fit` (`contain`/`fit-width`/`fit-height`), or set explicit `diagram.width`/`diagram.height` matched to the cell |
+| `diagram_aspect_conflict` | Non-chart diagram cell (or placeholder) aspect deviates from the diagram type's natural svggen viewBox aspect by >30%. Emitted for diagrams pinned to fixed natural aspects via `svggen.NaturalAspect` (currently `timeline` 2:1, `gantt` ~1.8:1, `org_chart` ~1.57:1). Silent for chart types (covered by svggen dry-render `chart.*`) and for diagrams with explicit `DiagramSpec.Width/Height` (covered by `diagram_aspect_mismatch`). `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, natural_aspect, cell_aspect, deviation, cell_width_emu, cell_height_emu}`. Path targets the diagram field. Agent action: resize the cell, set `cell.fit`, or set explicit `diagram.width`/`diagram.height`. Available at validate + preview without invoking resvg/inkscape |
 
 **Budget summary code** — emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and `verbose_fit:false`:
 

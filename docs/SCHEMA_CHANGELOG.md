@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.11.0 (2026-05-18)
+
+### Added
+
+- **`get_started` MCP tool / `json2pptx get-started` CLI subcommand** —
+  first-call discovery returning an ordered MCP-call sequence keyed to the
+  agent's stated task. Accepts an optional `task` parameter:
+  - `"brief"` (default): `get_capabilities → list_templates → plan_deck →
+    recommend_visual → preview_presentation_plan → generate_presentation →
+    score_deck`
+  - `"revise"`: `get_capabilities → read_presentation →
+    preview_presentation_plan → repair_slide → generate_presentation →
+    score_deck`
+  - `"validate-only"`: `get_capabilities → list_templates → validate_input →
+    preview_presentation_plan`
+  Each step carries a one-line `when_to_call` hint. The response also echoes
+  `available_tasks` so agents can discover the supported scopes. Unknown task
+  values fall back to `"brief"`. Closes `go-slide-creator-lweh.11`.
+
 ## 4.10.0 (2026-05-18)
 
 ### Added

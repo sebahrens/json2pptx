@@ -1168,6 +1168,28 @@ var outputSchemaValidateOutput = json.RawMessage(`{
   "required": ["is_valid", "file_path", "summary"]
 }`)
 
+// --- get_started ---
+var outputSchemaGetStarted = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "task":            {"type": "string"},
+    "available_tasks": {"type": "array", "items": {"type": "string"}},
+    "sequence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool":         {"type": "string"},
+          "when_to_call": {"type": "string"}
+        },
+        "required": ["tool", "when_to_call"]
+      }
+    },
+    "notes": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["task", "sequence", "available_tasks"]
+}`)
+
 // --- get_input_schema ---
 var outputSchemaGetInputSchema = json.RawMessage(`{
   "type": "object",

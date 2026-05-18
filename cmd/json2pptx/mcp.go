@@ -145,6 +145,7 @@ func runMCP() error {
 	s.AddTool(mcpAnalyzeDeckRhythmTool(), handleAnalyzeDeckRhythm)
 	s.AddTool(mcpPlanDeckTool(), handlePlanDeck)
 	s.AddTool(mcpGetCapabilitiesTool(), mc.handleGetCapabilities)
+	s.AddTool(mcpGetStartedTool(), handleGetStarted)
 	s.AddTool(mcpGetInputSchemaTool(), handleGetInputSchema)
 	s.AddTool(mcpReadPresentationTool(), handleReadPresentation)
 	s.AddTool(mcpValidateOutputTool(), handleValidateOutput)
