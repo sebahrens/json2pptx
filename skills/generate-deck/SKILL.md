@@ -19,6 +19,60 @@ See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-p
 
 ---
 
+## Connected MCP servers
+
+This skill talks to **two** independent MCP servers. Both must be reachable for the workflow described below to function end-to-end.
+
+### `json2pptx-mcp` — deck-level engine
+
+Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. This is the server that exposes every tool listed in the [MCP Tools](#mcp-tools-prefer-over-cli-shell-outs) table below.
+
+- **Binary path:** `cmd/json2pptx/json2pptx` (built via `make` or `go build ./cmd/json2pptx`)
+- **Run as MCP:** `json2pptx mcp [-templates-dir <path>] [-output-dir <path>]`
+- **Use when:** generating, validating, planning, scoring, repairing, or introspecting a full deck or any template / pattern / icon / shape catalog.
+
+```json
+{
+  "mcpServers": {
+    "json2pptx": {
+      "command": "/absolute/path/to/json2pptx",
+      "args": ["mcp", "-templates-dir", "/absolute/path/to/templates"]
+    }
+  }
+}
+```
+
+### `svggen-mcp` — diagram and chart renderer
+
+Standalone SVG renderer with its own diagram/chart registry. **Distinct connectable server** — not a sub-tool of `json2pptx-mcp`. Use it when you want a rendered SVG (or PNG) for a single diagram or chart, or to validate a diagram payload in isolation before embedding it (e.g., via `shape_grid` cell `icon.svg_data` — see [Icon Names](#icon-names)).
+
+- **Binary path:** `svggen/cmd/svggen-mcp/svggen-mcp` (built via `cd svggen && go build ./cmd/svggen-mcp`)
+- **Run as MCP:** `svggen-mcp` (stdio transport, no flags required)
+- **Use when:** rendering or validating an isolated diagram/chart; obtaining raw SVG markup to embed inline in a `shape_grid` cell.
+
+```json
+{
+  "mcpServers": {
+    "svggen": {
+      "command": "/absolute/path/to/svggen-mcp"
+    }
+  }
+}
+```
+
+**`svggen-mcp` tool table** (the only tools served by this binary):
+
+| Purpose | Tool | Notes |
+|---|---|---|
+| Render a diagram or chart to SVG or PNG | `render_diagram` | Requires `type` + `data` (JSON object). Optional `style` (JSON object) and `format` (`"svg"` default or `"png"`). Returns the rendered SVG markup as text or base64 PNG. Use this output as a `shape_grid` cell's `icon.svg_data` for inline embedding. |
+| List all supported diagram/chart types | `list_diagram_types` | Returns the type registry — names, categories, and any `status: "stub"` markers. Call once per session to discover what `render_diagram` accepts. |
+| Validate a diagram/chart payload | `validate_diagram` | Same `{valid, errors}` envelope documented under "Isolated diagram validation" below. Use BEFORE `render_diagram` when you want structured errors instead of a render failure. |
+| Get the JSON Schema for a diagram/chart type | `get_diagram_schema` | Returns the input schema for a specific `type` so you can structure `data` correctly. Prefer this over guessing field names from `list_diagram_types`. |
+
+When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
+
+---
+
 ## Minimum Valid Deck
 
 The smallest complete input showing the content-as-array shape and key deck/slide-level fields:
@@ -48,7 +102,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (prefer over CLI shell-outs)
 
-When operating through the MCP server, prefer these tools over shelling out to the CLI:
+When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the four `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
@@ -57,8 +111,10 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
 | Resolve a template's theme colors (semantic name → hex, including tint modifiers) | `resolve_theme` | (CLI inlines) |
+| **Plan a deck** — given a brief, returns an ordered slide outline with per-slide pattern recommendations, narrative roles (opening / evidence / comparison / emphasis / framework / closing), content seeds, and accent rotation. Enforces rhythm rules (no 3-in-a-row, emphasis slide every ~5). The plan is the recommended starting point before `generate_presentation` for any deck > 4 slides. | `plan_deck` | (CLI inlines) |
 | **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
-| Recommend a named pattern given an intent (pattern-only subset of recommend_visual) | `recommend_pattern` | (CLI inlines) |
+| Recommend a named pattern given an intent (pattern-only subset of recommend_visual) — **legacy, prefer `recommend_visual`** for new code; this tool only ranks named patterns and cannot suggest a chart, diagram, or placeholder layout when those would fit better. | `recommend_pattern` | (CLI inlines) |
+| Discover preset shape geometries (chevron, homePlate, callout, action_button, ...) grouped by category, with optional substring search — use to pick a non-`rect` `shape.type` for `shape_grid` cells | `get_shape_catalog` | (CLI inlines) |
 | Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
 | Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering. Each `resolved_slides[].shape_grid_resolution.cells[]` carries the per-cell wireframe rectangle `{row, col, x, y, w, h, kind}` in EMUs (resolved from any pattern/compose expansion), so agents can inspect the layout geometry without invoking LibreOffice. The response's `warnings[]` field surfaces compose-resolution diagnostics — including `COMPOSE_HORIZONTAL_TRUNCATION` when a horizontal compose segment's row over-occupies its allocated column range and excess cells are dropped. | `preview_presentation_plan` | (CLI inlines) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
@@ -66,6 +122,8 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
 | Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
+| **Read back a generated PPTX as structured JSON** — best-effort extraction of placeholders, shapes, tables, and speaker notes (no LibreOffice dependency). Use to verify what `generate_presentation` actually produced, detect silent trimming, or confirm idempotency before delivery. | `read_presentation` | (CLI inlines) |
+| **Validate a generated PPTX file** — runs OPC package integrity + OOXML content checks against an on-disk `.pptx` and returns structured `findings` (blocking + warning). Use as a final pre-delivery gate after `generate_presentation`. | `validate_presentation_output` | (CLI inlines) |
 | Browse pattern catalog | `list_patterns` | `json2pptx patterns list` |
 | Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
 | Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
@@ -548,17 +606,34 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 
 Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`, `explicit_scale`, `truncate_or_split`, `align_series`, `increase_canvas`).
 
-**Fix kinds for `repair_slide`.** The apply-only superset accepted by `repair_slide` includes two kinds that fit-report does not emit. Agents emit these when they decide a fix themselves:
+**Fix kinds for `repair_slide` — complete table.** The apply-only superset accepted by `repair_slide` is broader than the fit-report `fix.kind` enum: fit-report only emits kinds the engine can derive automatically, while `repair_slide` also accepts kinds the *agent* decides to apply (e.g., `swap_layout`, `swap_pattern`, `autofix_visual`). Every kind in the table below is a `case` in `applyRepairFix` (`cmd/json2pptx/mcp_repair.go`); the drift test `cmd/json2pptx/skill_drift_test.go` enforces this list and the kinds advertised by `get_capabilities().vocabularies.repair_fix_kinds` stay in sync.
 
-| Kind | Semantics | Params |
-|------|-----------|--------|
-| `shorten_title` | Truncate the title placeholder text | `max_length: int` (default 50) |
-| `swap_layout` | Change the slide's `layout_id` | `layout_id: string` (required) |
-| `reduce_cell_text` | Truncate a shape_grid cell's text to fit a character budget (adds ellipsis) | `cell_path: string` (required, JSON Pointer e.g. `"/slides/0/shape_grid/rows/1/cells/2"`), `max_chars: int` (required, > 1). Handles markdown emphasis safely. Prefer rewriting content over truncation — use only when the agent should not rephrase the text. |
-| `rename_field` | Rename an unknown field to the correct name | `from: string` (required), `to: string` (required). Searches pattern values first, then slide-level fields. |
-| `reshape_value` | Replace a field's value with a restructured version | `path: string` (required, field name), `value: any` (required, replacement in correct shape). For pattern values only. |
+| Kind | Semantics | Required params | Optional params |
+|------|-----------|-----------------|-----------------|
+| `reduce_text` | Shorten bullets / body text on a content item | — | `max_items: int` (bullets), `max_length: int` (text), `path: string` (JSON Pointer to one content item) |
+| `shorten_title` | Truncate the title placeholder text | — | `max_length: int` (default 50), `path: string` |
+| `split_at_row` | Wrap the slide in a `split_slide` envelope, distributing table rows across pages | `row: int` (rows per page; alias `group_size`) | `title_suffix: string` (default ` ({page}/{total})`), `repeat_headers: bool` (default true), `path: string` |
+| `swap_layout` | Change the slide's `layout_id` | `layout_id: string` | — |
+| `use_one_of` | Replace a slide-level enum field (`layout_id`, `transition`, `transition_speed`, `build`) or a content `type` with an allowed value | `path: string`, `value: string` | — |
+| `replace_color` | Replace a specific fill color anywhere in `shape_grid` cells (string or object form). Accepts `contrast_autofixed` finding params as aliases. | `from: string` (or `original_color`), `to: string` (or `replacement_color`) | — |
+| `use_semantic_color` | Replace hex fills with a semantic scheme name (`accent1`, `dk1`, ...). With `path` set, targets one cell; without, replaces all hex fills on the slide. | `value: string` (scheme color name) | `path: string` (cell fill path) |
+| `split_pattern` | Split a pattern-driven shape_grid into two slides at a computed row boundary. Useful for overflowing grids without changing the pattern. | — | `first: int` (cells on slide 1; default = half), `title_part_2: string` (suffix; default `"(continued)"`) |
+| `swap_pattern` | Replace the slide's pattern with a different one; optionally replace `values`, `overrides`, `cell_overrides`. Clears any expanded `shape_grid` for re-expansion. | `to: string` (target pattern name) | `values: object`, `overrides: object`, `cell_overrides: object` |
+| `reshape_grid` | Change grid dimensions. For pattern slides, updates `rows`/`columns` in pattern values; for raw `shape_grid` slides, redistributes cells into a new row/column layout. | One of `rows: int` or `columns: int \| [int]` | both |
+| `set_pattern_style` | Set the `style` key in the pattern's `overrides` (e.g., `timeline-horizontal` from `"dots"` to `"chevron"`) and clear expanded grid for re-expansion. | `style: string` | — |
+| `reduce_cell_text` | Truncate one `shape_grid` cell's text to a character budget, appending U+2026 and stripping orphaned markdown emphasis markers. Use only when the agent should not rephrase the text. | `cell_path: string` (JSON Pointer e.g. `"/slides/0/shape_grid/rows/1/cells/2"`), `max_chars: int` (> 1) | — |
+| `rename_field` | Rename a top-level key. Searches pattern values first, then slide-level fields via JSON round-trip. | `from: string`, `to: string` | — |
+| `reshape_value` | Replace a pattern-values field with a restructured replacement (array→object, etc.). | `path: string` (field name), `value: any` | — |
+| `provide_value` | Set a pattern-values field that is missing | `path: string`, `value: any` | — |
+| `replace_value` | Replace an existing pattern-values field with a new value (e.g., to bring it within valid bounds) | `path: string`, `value: any` | — |
+| `reduce_items` | Truncate a pattern-values array field to `max_items` | `path: string`, `max_items: int` (> 0) | — |
+| `add_items` | Append agent-supplied items to a pattern-values array field | `path: string`, `items: array` | — |
+| `resize_list` | Resize a pattern-values array field to exactly `count` items. Truncates if too many; returns not-applied if too few (agent must follow up with `add_items`). | `path: string`, `count: int` (> 0) | — |
+| `remove_key` | Delete a key from the pattern's `overrides` (preferred) or `values` | `key: string` | — |
+| `remove_field` | Delete a top-level field from pattern values or from the slide (via JSON round-trip) | `path: string` | — |
+| `autofix_visual` | Map a visual-QA finding category to one or more candidate fix kinds and try them in order. Caller-supplied params are forwarded (caller wins). | `category: string` (visual QA finding category) | any params forwarded to the underlying kind |
 
-`repair_slide` also accepts `reduce_text` (`max_items` for bullets, `max_length` for text), `split_at_row` (`row` = rows per page, optional `title_suffix`, `repeat_headers`), and `use_one_of` (`path`, `value`). Unsupported kinds return `{applied: false, message: "kind_not_supported"}`.
+Unsupported kinds return `{applied: false, message: "kind_not_supported"}`. To discover this list programmatically at runtime, read `get_capabilities().vocabularies.repair_fix_kinds`.
 
 ### Chart Finding Codes
 

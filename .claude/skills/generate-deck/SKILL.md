@@ -2,9 +2,10 @@
 name: generate-deck
 description: >
   Generate consulting-quality PowerPoint decks from user prompts using json2pptx.
-  Applies constrained generation: 2-stage workflow (outline then fill), pattern-based
-  shape grids, invariant enforcement, and validate-repair loop. Use when the user asks
-  to create, generate, or build a presentation or slide deck.
+  Applies constrained generation: 4-phase workflow (Plan → Vary → Render → Repair),
+  pattern-based shape grids, accent strategy, deck-rhythm analysis, invariant
+  enforcement, and validate-repair loop. Use when the user asks to create, generate,
+  or build a presentation or slide deck.
 ---
 
 # Deck Generation Skill
@@ -14,30 +15,120 @@ for the `generate_presentation` MCP tool (or the CLI `json2pptx generate -json`)
 
 Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (content types, chart types, diagram types, shape grid properties, patch operations). This skill covers the **generation workflow and patterns** — not the field reference.
 
+See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
+
+---
+
+## Connected MCP servers
+
+This skill talks to **two** independent MCP servers. Both must be reachable for the workflow described below to function end-to-end.
+
+### `json2pptx-mcp` — deck-level engine
+
+Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. This is the server that exposes every tool listed in the [MCP Tools](#mcp-tools-prefer-over-cli-shell-outs) table below.
+
+- **Binary path:** `cmd/json2pptx/json2pptx` (built via `make` or `go build ./cmd/json2pptx`)
+- **Run as MCP:** `json2pptx mcp [-templates-dir <path>] [-output-dir <path>]`
+- **Use when:** generating, validating, planning, scoring, repairing, or introspecting a full deck or any template / pattern / icon / shape catalog.
+
+```json
+{
+  "mcpServers": {
+    "json2pptx": {
+      "command": "/absolute/path/to/json2pptx",
+      "args": ["mcp", "-templates-dir", "/absolute/path/to/templates"]
+    }
+  }
+}
+```
+
+### `svggen-mcp` — diagram and chart renderer
+
+Standalone SVG renderer with its own diagram/chart registry. **Distinct connectable server** — not a sub-tool of `json2pptx-mcp`. Use it when you want a rendered SVG (or PNG) for a single diagram or chart, or to validate a diagram payload in isolation before embedding it (e.g., via `shape_grid` cell `icon.svg_data` — see [Icon Names](#icon-names)).
+
+- **Binary path:** `svggen/cmd/svggen-mcp/svggen-mcp` (built via `cd svggen && go build ./cmd/svggen-mcp`)
+- **Run as MCP:** `svggen-mcp` (stdio transport, no flags required)
+- **Use when:** rendering or validating an isolated diagram/chart; obtaining raw SVG markup to embed inline in a `shape_grid` cell.
+
+```json
+{
+  "mcpServers": {
+    "svggen": {
+      "command": "/absolute/path/to/svggen-mcp"
+    }
+  }
+}
+```
+
+**`svggen-mcp` tool table** (the only tools served by this binary):
+
+| Purpose | Tool | Notes |
+|---|---|---|
+| Render a diagram or chart to SVG or PNG | `render_diagram` | Requires `type` + `data` (JSON object). Optional `style` (JSON object) and `format` (`"svg"` default or `"png"`). Returns the rendered SVG markup as text or base64 PNG. Use this output as a `shape_grid` cell's `icon.svg_data` for inline embedding. |
+| List all supported diagram/chart types | `list_diagram_types` | Returns the type registry — names, categories, and any `status: "stub"` markers. Call once per session to discover what `render_diagram` accepts. |
+| Validate a diagram/chart payload | `validate_diagram` | Same `{valid, errors}` envelope documented under "Isolated diagram validation" below. Use BEFORE `render_diagram` when you want structured errors instead of a render failure. |
+| Get the JSON Schema for a diagram/chart type | `get_diagram_schema` | Returns the input schema for a specific `type` so you can structure `data` correctly. Prefer this over guessing field names from `list_diagram_types`. |
+
+When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see [Chart Finding Codes](#chart-finding-codes).
+
+---
+
+## Minimum Valid Deck
+
+The smallest complete input showing the content-as-array shape and key deck/slide-level fields:
+
+```json
+{
+  "template": "midnight-blue",
+  "design_mode": "constrained",
+  "slides": [
+    {
+      "layout_id": "title",
+      "contrast_check": true,
+      "content": [
+        { "placeholder_id": "title", "type": "text", "text_value": "Hello World" },
+        { "placeholder_id": "subtitle", "type": "text", "text_value": "A minimal deck" }
+      ]
+    }
+  ]
+}
+```
+
+**Key scope rules:**
+- `design_mode` is **deck-level** (top of the JSON, not inside a slide)
+- `contrast_check` is **slide-level** (inside each slide object, not on a content item)
+
 ---
 
 ## MCP Tools (prefer over CLI shell-outs)
 
-When operating through the MCP server, prefer these tools over shelling out to the CLI:
+When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the four `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
 
 | Purpose | MCP tool | CLI equivalent |
 |---|---|---|
 | **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags | `get_capabilities` | (CLI inlines) |
-| Introspect templates, patterns, layouts, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
+| **Authoritative input schema** — JSON Schema for `PresentationInput` with all nested types, `x-field-scope` annotations, and inline enums. Digest-cacheable. | `get_input_schema` | `json2pptx input-schema` |
+| Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
 | Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
 | Resolve a template's theme colors (semantic name → hex, including tint modifiers) | `resolve_theme` | (CLI inlines) |
-| Recommend a pattern given an intent (cold-start helper) | `recommend_pattern` | (CLI inlines) |
+| **Plan a deck** — given a brief, returns an ordered slide outline with per-slide pattern recommendations, narrative roles (opening / evidence / comparison / emphasis / framework / closing), content seeds, and accent rotation. Enforces rhythm rules (no 3-in-a-row, emphasis slide every ~5). The plan is the recommended starting point before `generate_presentation` for any deck > 4 slides. | `plan_deck` | (CLI inlines) |
+| **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
+| Recommend a named pattern given an intent (pattern-only subset of recommend_visual) — **legacy, prefer `recommend_visual`** for new code; this tool only ranks named patterns and cannot suggest a chart, diagram, or placeholder layout when those would fit better. | `recommend_pattern` | (CLI inlines) |
+| Discover preset shape geometries (chevron, homePlate, callout, action_button, ...) grouped by category, with optional substring search — use to pick a non-`rect` `shape.type` for `shape_grid` cells | `get_shape_catalog` | (CLI inlines) |
 | Validate input JSON (schema + optional `fit_report`) | `validate_input` | `json2pptx validate [-fit-report]` |
-| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering | `preview_presentation_plan` | (CLI inlines) |
+| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering. Each `resolved_slides[].shape_grid_resolution.cells[]` carries the per-cell wireframe rectangle `{row, col, x, y, w, h, kind}` in EMUs (resolved from any pattern/compose expansion), so agents can inspect the layout geometry without invoking LibreOffice. The response's `warnings[]` field surfaces compose-resolution diagnostics — including `COMPOSE_HORIZONTAL_TRUNCATION` when a horizontal compose segment's row over-occupies its allocated column range and excess cells are dropped. | `preview_presentation_plan` | (CLI inlines) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report`) | `generate_presentation` | `json2pptx generate` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
 | Score a generated deck (0-100 with structured findings) | `score_deck` | (CLI inlines) |
 | Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
+| **Read back a generated PPTX as structured JSON** — best-effort extraction of placeholders, shapes, tables, and speaker notes (no LibreOffice dependency). Use to verify what `generate_presentation` actually produced, detect silent trimming, or confirm idempotency before delivery. | `read_presentation` | (CLI inlines) |
+| **Validate a generated PPTX file** — runs OPC package integrity + OOXML content checks against an on-disk `.pptx` and returns structured `findings` (blocking + warning). Use as a final pre-delivery gate after `generate_presentation`. | `validate_presentation_output` | (CLI inlines) |
 | Browse pattern catalog | `list_patterns` | `json2pptx patterns list` |
 | Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
 | Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
-| Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`) | `expand_pattern` | `json2pptx patterns expand` |
+| Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`, `bounds_source`). Pass `theme_template` (MCP) or `--template` (CLI) for template-aware layout bounds. | `expand_pattern` | `json2pptx patterns expand` |
+| Analyze deck rhythm — pattern runs, density variation, accent balance, composition score (lightweight, pre-generation) | `analyze_deck_rhythm` | `json2pptx analyze-rhythm` |
 | Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
 | Icon catalog | `list_icons` | `json2pptx icons list` |
 | Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
@@ -50,51 +141,142 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Compact responses (server-driven).** The server unconditionally advertises `experimental.compact_responses: true` in its `initialize` response. There is no client-side opt-in — read the capability after `initialize` if you want to confirm it. Use `get_capabilities` for structural feature discovery.
 
-**Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. Check `get_capabilities().features.template_settings` to confirm support before attempting writes.
+**Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. The runtime gate is the environment variable — `get_capabilities().features.template_settings` reports whether the server has it enabled, so check that capability flag before attempting writes rather than probing the env var directly.
 
-**Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`.
+**Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The tool short-circuits on `not_modified`. The same digest protocol applies to `get_input_schema{digest: "..."}` — cache the digest and skip re-fetching the full JSON Schema when it hasn't changed.
+
+**Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, or `shape`) so you know where to place it in the JSON hierarchy. Enum-constrained fields include inline `enum` arrays. Use this to prevent field-scope mistakes (e.g., putting `contrast_check` on a content item instead of the slide, or `design_mode` inside a slide instead of at deck level).
 
 **Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays alongside the existing `chart_types`/`diagram_types` string lists. Each entry includes concrete limits (`max_series`, `max_points`, `max_categories` for charts; `max_nodes`, `max_depth` for diagrams), density behavior, and label strategy. Use `get_chart_capabilities` / `get_diagram_capabilities` for the full arrays on demand. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
 
-**Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. It returns `{valid: bool, errors?: [{pattern, path, code, message, fix}]}` — note the wrapping `valid`/`errors` envelope (distinct from `expand_pattern`, which returns `{pattern, version, shape_grid, density_warnings}`). Per-error `fix.kind` values come from the chart enum: `align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`. Invalid style payloads return a structured rejection instead of being silently ignored. Use when validating a chart/diagram before embedding it into a slide.
+**Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. It returns `{valid: bool, errors?: [{pattern, path, code, message, fix}]}` — note the wrapping `valid`/`errors` envelope (distinct from `expand_pattern`, which returns `{pattern, version, bounds_source, shape_grid, occupancy, density_warnings}`). Per-error `fix.kind` values come from the chart enum: `align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`. Invalid style payloads return a structured rejection instead of being silently ignored. Use when validating a chart/diagram before embedding it into a slide.
 
 ---
 
-## Workflow: Plan, Generate, Validate
+## Visual Decision Ladder
 
-### Stage 1: Plan the Deck
+When building a slide and unsure which visual approach to use, follow this decision order:
+
+1. **`recommend_visual`** — the unified entry point. Ranks candidates across *all* categories (placeholder layouts, named patterns, charts, diagrams, compose envelopes, raw shape_grid). Start here.
+2. **`recommend_pattern`** — use only when you already know you need a named pattern and want to pick the best one. This is a subset of `recommend_visual` limited to the pattern catalog.
+3. **`list_patterns` / `show_pattern`** — use when you already know the pattern name and need its value schema.
+
+**Do not jump straight to `recommend_pattern`** unless you are certain the slide needs a named pattern. `recommend_visual` may suggest a placeholder layout, chart, or diagram that fits better.
+
+### `blank` vs `content` — Choosing the Right Layout
+
+| Layout | Placeholders | Use when |
+|--------|-------------|----------|
+| `content` | `title` + `body` | Slide content goes into the body placeholder — text, bullets, charts, tables, or diagrams |
+| `blank` | `title` only | Slide content is a `shape_grid` or `pattern` — no body placeholder; all visual content is rendered as positioned shapes below the title |
+
+`content` is body-capable: the engine populates a body placeholder with your content item. `blank` is shape-grid-oriented: there is no body placeholder, so all content must come from `shape_grid` or `pattern`. Setting `slide_type: "blank"` (or omitting `layout_id` when `shape_grid`/`pattern` is present) triggers auto-selection of a blank layout with title and computed grid bounds.
+
+---
+
+## Workflow: Plan → Vary → Render → Repair
+
+### PRECONDITION: Validate Before You Generate
+
+**You MUST NOT call `generate_presentation` until all of the following have succeeded for the current deck:**
+
+1. **Visual discovery.** For each slide, call `recommend_visual` to determine the best visual approach (placeholder layout, named pattern, chart, diagram, or raw shape_grid). If you already know the slide needs a named pattern, `recommend_pattern` or `list_patterns` is sufficient. Do not guess pattern names from memory.
+2. **Schema inspection.** For each chosen pattern, call `show_pattern` to retrieve the value schema and `example_values`. Use these to structure your `values` object — do not invent field names or guess the expected shape.
+3. **Density pre-flight.** For each pattern slide, call `expand_pattern` with your populated values to confirm density is in the 60–110% optimal band. Fix underfilled or overflowing cells before proceeding.
+4. **Input validation.** Once the full deck JSON is assembled, call `validate_input` (with `fit_report: true`) to catch schema errors, unknown keys, scope mistakes, and fit issues. Fix all errors before generating.
+
+**Why this matters.** The six most common first-attempt failures are: wrong content shape for a pattern's values schema, missing geometry fields, misspelled override keys, wrong row format (array vs object), `design_mode`/`contrast_check` scope confusion, and field-name typos that silently pass without `strict_unknown_keys`. Steps 1–4 above catch all six before any PPTX is produced — saving a full generate → render → inspect → repair cycle.
+
+**The sequence in practice:**
+
+```
+recommend_visual (per slide intent) →  pick visual approach (layout, pattern, chart, diagram)
+show_pattern (per pattern)          →  learn value schemas + example_values
+expand_pattern (per pattern slide)  →  confirm density, get cell_budgets
+validate_input (full deck JSON)     →  catch schema + fit errors
+generate_presentation               →  only after steps above pass
+```
+
+Skipping these steps and calling `generate_presentation` directly is a workflow violation. If time pressure demands it, at minimum call `validate_input` — it is the cheapest single gate that catches the most errors.
+
+---
+
+### Phase 1: PLAN — Design the Deck Outline
 
 Before writing any JSON, produce a short outline:
 
 ```
 Deck: [title]
 Template: [template name]
+Accent strategy: [primary | rotate | section-keyed]
 Slides:
-  1. [layout] — [title] — [visual pattern or content type]
-  2. [layout] — [title] — [visual pattern or content type]
+  1. [layout] — [title] — [pattern or content type] — [accent]
+  2. [layout] — [title] — [pattern or content type] — [accent]
   ...
 ```
 
-Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram).
+Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram). Use `recommend_visual` when unsure which visual approach fits a slide intent — it ranks across all categories (layouts, patterns, charts, diagrams). Use `recommend_pattern` only when you already know you need a named pattern.
 
-Present the outline to the user. Proceed to Stage 2 only after approval or if the user
-asked for the full deck directly.
+Present the outline to the user. Proceed to Phase 2 only after approval or if the user asked for the full deck directly.
 
-**Narrative coherence matters.** A consulting deck tells a story: situation, complication,
-resolution, evidence, implementation, call to action. The outline is where you design
-the argument arc. Do not fragment this across stages.
+**Narrative coherence matters.** A consulting deck tells a story: situation, complication, resolution, evidence, implementation, call to action. The outline is where you design the argument arc. Do not fragment this across phases.
 
-### Stage 2: Generate Full JSON
+**Cold-start checklist (for decks ≥4 slides):**
+
+1. Pick a template. Call `list_templates` for available options, `canonical_layout_ids`, and `color_roles`. Use `canonical_layout_ids` to map canonical names (`title`, `content`, `blank`, `section`, `closing`, etc.) to concrete layout IDs — do not reverse-engineer raw `slideLayoutN` IDs. The compact response also includes `layout_summaries[]` with per-layout `placeholders[]` (each entry has `id`, `type`, `max_chars`) — use these to rough-size content before calling `expand_pattern`. For full placeholder bounds and font details, switch to full mode.
+2. Choose `accent_strategy` — `"rotate"` for multi-section decks, `"section-keyed"` for decks with distinct chapters, `"primary"` only for ≤5-slide decks.
+3. For each slide intent, call `recommend_visual` to determine the best visual approach. It ranks across placeholder layouts, named patterns, charts, diagrams, and compose envelopes — not just patterns. Avoid choosing the same pattern more than twice in a row.
+4. Ensure the outline alternates density: high-density slides (tables, grids) should be followed by low-density (stat-hero, pull-quote, section divider). Place a narrative-break pattern (stat-hero, pull-quote) every ~5 slides.
+5. Check the outline against the rhythm rule: no pattern should appear 3+ times consecutively. If it does, swap the middle occurrence for a contrasting pattern from a different visual family.
+
+### Phase 2: VARY — Check Rhythm and Accent Balance
+
+After building the JSON but **before** generating the PPTX, run `analyze_deck_rhythm` to catch monotony and accent imbalance.
+
+```
+analyze_deck_rhythm(presentation: {template: "...", slides: [...]})
+```
+
+Returns:
+- `per_slide` — visual fingerprint per slide (pattern, density_class, accent_role, dominant_visual, within_slide_accent_variety)
+- `per_slide[].within_slide_accent_variety` — count of distinct accent slots used across the slide's shape_grid cells (0 for non-grid slides)
+- `aggregates.longest_run` — longest consecutive run of one pattern (target: ≤2)
+- `aggregates.repetition_index` — 0.0 (all unique) to 1.0 (all same) (target: <0.5)
+- `aggregates.accent_balance` — fraction of slides per accent (target: no single accent >80%)
+- `aggregates.density_cv` — density variation coefficient (target: >0.1 for decks >3 slides)
+- `aggregates.density_distribution` — `{underfilled_cells, optimal_cells, overflow_cells}` totals across all shape_grid cells in the deck
+- `composition_score` — 0–100 overall quality score
+- `recommendations` — actionable suggestions with `recommended_break_patterns`
+
+**Act on rhythm findings before generating:**
+
+- `longest_run ≥ 3` → swap the middle slide of the run to a `recommended_break_patterns` suggestion
+- `accent_balance` shows one accent at >80% → set `accent_strategy: "rotate"` or manually vary accent fills
+- `density_cv < 0.1` on a 5+ slide deck → insert a low-density narrative break (stat-hero, pull-quote)
+- `within_slide_accent_variety == 1` on a slide with 5+ cells → add `cell_accent_mode: progressive` to the pattern overrides
+- `density_distribution.underfilled_cells > 30%` of total → add detail text or switch to smaller grid patterns
+- `composition_score < 70` → iterate on the outline until score ≥ 70
+
+This is a lightweight static check (no PPTX generation cost). Run it iteratively: fix → re-analyze → confirm score improved.
+
+### Phase 3: RENDER — Generate Full JSON and PPTX
 
 Generate the complete JSON in one pass. Use named patterns for shape grid slides — call `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI) for each pattern's value schema, then fill in content. Set the pattern at the slide level via the `pattern` field (XOR with `shape_grid` — never set both).
+
+**Accent strategy.** Set `accent_strategy` at the top level of the presentation JSON:
+- `"primary"` (default) — all slides use the template's primary accent. Good for short decks.
+- `"rotate"` — engine cycles through `accent1`–`accent6` across slides. Use for visual variety.
+- `"section-keyed"` — accents rotate per section (slides between `section` layout slides share an accent).
 
 **Pre-emit checklist (verify BEFORE outputting JSON):**
 
 1. Every table: logical rows × cols ≤ TDR ceiling (rows ≤ 7, cols ≤ 6, font ≥ 9pt) — see Rule 20. Count multiline cells as N rows.
 2. Every fill is semantic (`accent1`, `lt2`, `dk1`, etc.) except documented brand-color allowlist — no mixed hex+semantic on any slide (Rule 12).
 3. No sibling shapes in any `shape_grid` with computed gap < 4pt — no stacked tables separated by hairline dividers.
+4. Patterns with 4+ peer cells use `cell_accent_mode: "progressive"` (or `"alternate"` for paired layouts) unless visual consistency is intentional — see Cell Accent Variety.
+5. Every cell at 60–110% density — compare your text length against `max_chars` from `expand_pattern`'s `cell_budgets[]`. See Text Capacity Awareness.
 
-### Stage 3: Validate, Render, Verify, Repair
+### Phase 4: REPAIR — Validate, Render, Verify, Fix
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
@@ -122,7 +304,7 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Rule 16).
    - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Rule 18).
 5. **Repair.** Prefer `repair_slide` (MCP) over hand-editing JSON — it accepts the same `Fix.Kind` vocabulary fit-report emits and patches one slide without regenerating the deck. Pass the deck JSON, the 0-based `slide_index`, and a `fixes` array of `{kind, params}` directives. Returns the patched deck plus post-patch fit findings for the modified slide. Supported `repair_slide` apply-only kinds are a *superset* of the fit-report enum — see "Fix kinds for `repair_slide`" below. Common repairs:
-   - Text clipping or overflow → `repair_slide` with `{kind:"reduce_text", params:{max_items|max_length}}`, `{kind:"shorten_title", params:{max_length}}`, or `{kind:"split_at_row", params:{row}}`. As a last resort, lower font size or increase cell/row allocation in JSON.
+   - Text clipping or overflow → `repair_slide` with `{kind:"reduce_text", params:{max_items|max_length}}`, `{kind:"shorten_title", params:{max_length}}`, or `{kind:"split_at_row", params:{row}}`. For shape_grid cells specifically, `{kind:"reduce_cell_text", params:{cell_path, max_chars}}` truncates a single cell's text to a character budget (with ellipsis). Prefer rewriting content to fit over truncation; use `reduce_cell_text` only when the agent should not rephrase the text (e.g., user-supplied verbatim content). As a last resort, lower font size or increase cell/row allocation in JSON.
    - Wrong layout for the content → `repair_slide` with `{kind:"swap_layout", params:{layout_id}}`.
    - Surprise gray text from contrast auto-fix (visible as a `contrast_autofixed` finding) → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Rule 16).
    - For a no-side-effect dry run before regenerating, call `preview_presentation_plan` to inspect layout selection, placeholder mapping, and fit findings without producing a PPTX.
@@ -131,15 +313,143 @@ Do not tell the user the deck is done until the checklist passes or you have exp
 
 ---
 
+## Text Capacity Awareness
+
+Every shape grid cell has a measurable text capacity — the maximum character count that fits at the resolved font size within the cell's physical dimensions. The engine computes this deterministically using embedded font metrics (no OS font dependency). Agent content should target **60–110%** of each cell's capacity.
+
+### Density Bands
+
+| Band | Density % | Status | Severity | Meaning |
+|------|-----------|--------|----------|---------|
+| Underfilled | < 60% | `underfilled` | info | Cell looks sparse; content doesn't justify the allocated space |
+| Optimal | 60–110% | `optimal` | — | Content fits naturally with appropriate whitespace |
+| Overflow | > 110% | `overflow` | warning | Text will clip or require aggressive shrinking to fit |
+
+### Workflow Integration
+
+**Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_pattern` with your content volume in mind. For a quick capacity check, read `placeholders[].max_chars` from the compact `list_templates` response — this gives a rough character budget per placeholder without needing `expand_pattern`.
+
+**Phase 2 VARY.** After building JSON, call `expand_pattern` to read `cell_budgets[]` before generating. Each entry contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cell_index` | int | Zero-based cell position in the grid |
+| `row` | int | Row index |
+| `col` | int | Column index |
+| `max_chars` | int | Maximum characters that fit at the resolved font size |
+| `actual_chars` | int | Characters currently in the cell content |
+| `density_pct` | int | `actual_chars / max_chars × 100` |
+| `status` | string | `"underfilled"`, `"optimal"`, or `"overflow"` |
+| `font_size_pt` | float | Font size used for the budget calculation |
+
+Compare your planned content against `max_chars` for each cell. Adjust before rendering — it's cheaper to rewrite content than to repair after generation.
+
+**Phase 3 RENDER.** The pre-emit checklist (above) includes: *"Every cell at 60–110% density."* Verify this by checking that your text length per cell falls within the `max_chars` range from `expand_pattern`.
+
+**Phase 4 REPAIR.** If `fit_overflow` or `density_exceeded` findings appear after generation, apply this decision sequence:
+
+1. **Rewrite content** to fit the budget — shorter sentences, fewer bullets, tighter phrasing. This preserves meaning and produces richer output than mechanical truncation.
+2. **Swap layout** — if the content genuinely needs more space, use `repair_slide` with `swap_layout` or switch to a pattern with higher capacity (see `layout_suggestions[]` from `expand_pattern`).
+3. **`reduce_text` / `split_at_row`** — use `repair_slide` with `fix.kind: reduce_text` or `split_at_row` to bring cells back into the optimal band.
+4. **`reduce_cell_text`** — truncates a single shape_grid cell to `max_chars` with an ellipsis. Use only when the agent should not rephrase the text (e.g., user-supplied verbatim content that the agent shouldn't alter). After applying, re-validate with `fit_report: true` to confirm zero residual `cell_overflow` findings.
+
+**Anti-pattern:** do not use `reduce_cell_text` as the default response to overflow. It is a last-resort fallback, not a substitute for the upstream Text Capacity Awareness loop (Phase 2 VARY).
+
+### Decision Rules
+
+When `expand_pattern` returns cells outside the optimal band:
+
+1. **Underfilled cells (< 60%):**
+   - Add supporting detail, examples, or context to bring density above 60%.
+   - If content is inherently short (a metric label, a one-word status), switch to a pattern designed for sparse content — e.g., `kpi-3up` instead of `card-grid`.
+   - For a grid where most cells are underfilled, reduce the grid configuration (e.g., 2×2 instead of 3×2) so each cell gets less space.
+
+2. **Overflow cells (> 110%):**
+   - Trim content: shorten sentences, remove low-value bullets, abbreviate labels.
+   - If trimming would lose essential information, switch to a larger grid configuration or a different pattern with more text capacity (e.g., `card-grid` with fewer columns).
+   - As a last resort, split the slide — use `split_at_row` to distribute content across multiple slides.
+
+3. **Check `layout_suggestions[]`:** When **all** populated cells are consistently suboptimal (all underfilled or all overflowing), `expand_pattern` returns `layout_suggestions[]` — an array of alternative patterns with optional overrides and a `reason` string. Use these as actionable swap recommendations instead of guessing. Suggestions only appear when density is unanimously bad; mixed-density grids (some optimal, some not) produce no suggestions — adjust content manually in that case.
+
+### Bounds Override: `bounds` and `max_height_pct`
+
+When patterns produce oversized cells for short content (e.g., a 3-step process-flow with terse labels), use a compact variant or constrain the grid using `bounds` or `max_height_pct`:
+
+- **Compact variants** (`process-flow-compact`, `before-after-compact`, `kpi-inline`): pre-configured height-capped patterns for short content that leaves room for other content on the slide. Prefer these over manual `max_height_pct` when the content is brief.
+
+
+- **`max_height_pct`** (number, 1–99): constrains grid height to this percentage of the content area. Equivalent to `bounds: {x:0, y:0, width:100, height:<value>}`.
+- **`bounds`** (object): explicit bounding rectangle as percentages of slide dimensions (`x`, `y`, `width`, `height`). Takes priority over `max_height_pct`.
+
+Pass these as parameters to `expand_pattern` (MCP) or in the slide-level `pattern.bounds`/`pattern.max_height_pct` fields (JSON input). The bounds are applied to the expanded grid, and density math automatically uses the reduced area — eliminating false `cell_underfilled` warnings.
+
+When `capacity_warnings[]` reports underfilled cells without explicit bounds, each warning includes a `next_tool_call` suggesting re-expansion with a recommended `max_height_pct`. Follow the suggestion directly.
+
+#### Density-Class Divergence Warnings
+
+`expand_pattern` checks whether the average cell density matches the pattern's declared `density_class` (from its taxonomy). When a medium-density pattern has <15% avg density, or a high-density pattern has <30% avg density, a `density_class_divergence` capacity warning is emitted. The `next_tool_call` suggests either:
+- A compact variant (e.g., `process-flow-compact`) if one is registered
+- A `max_height_pct` override to reduce the grid area
+
+#### `density_hint` in `recommend_visual` / `recommend_pattern`
+
+Pass `density_hint` ("low", "medium", or "high") in `content_hints` to bias pattern recommendations toward patterns matching the expected content density. Patterns whose `density_class` matches get a scoring boost; distant density classes (e.g., low content on a high-density pattern) receive a penalty. Use this when you already know the content is sparse or dense.
+
+#### `candidates:[]` in `recommend_visual` / `recommend_pattern`
+
+Pass `candidates` (array of strings) to rank an **explicit shortlist** instead of the full catalog. Every supplied name is returned with `score`, `rationale`, and `confidence_band` — the 0.5 threshold cutoff, top-K truncation, near-miss collection, and diversity-bonus injection are all bypassed. For `recommend_visual`, the `category` field is auto-resolved from the catalog (placeholder layout / named pattern / chart / diagram / raw_shape_grid); unknown names still appear with score 0 and a rationale noting the miss. Use this when you have 2–8 specific options in mind and want them ranked against your intent rather than re-discovering them from keywords.
+
+### The `bounds_assumption` Field
+
+`expand_pattern` returns `bounds_assumption` indicating what area the budgets were computed against:
+
+- `"full_content_area"` — budgets reflect the full layout content area (default when no bounds override is provided)
+- `"explicit_override"` — budgets reflect the reduced area specified via `bounds` or `max_height_pct`
+
+Always read this field to understand what the budgets represent.
+
+### Related Tools
+
+- **`expand_pattern`** — returns `cell_budgets[]`, `capacity_warnings[]`, and `layout_suggestions[]` for pre-generation density checks and alternative layout recommendations
+- **`validate_input`** (with `fit_report: true`) — post-generation findings including `fit_overflow` and `density_exceeded`
+- **`repair_slide`** — apply `reduce_text`, `split_at_row`, or `reduce_cell_text` fixes to bring cells into the optimal band (see Phase 4 REPAIR decision sequence above)
+
+### Machine-Actionable `next_tool_call`
+
+Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), and fit-report findings (`validate_input`, `generate_presentation`) include an optional `next_tool_call` field when the error has an actionable fix. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+
+```json
+{
+  "field": "values.title",
+  "code": "unknown_key",
+  "message": "unknown field \"titl\" (did you mean \"title\"?)",
+  "fix": { "kind": "rename_field", "params": { "from": "titl", "to": "title" } },
+  "next_tool_call": {
+    "tool": "repair_slide",
+    "args_template": {
+      "slide_index": -1,
+      "pattern": "card-grid",
+      "fixes": [{ "kind": "rename_field", "params": { "from": "titl", "to": "title" } }]
+    }
+  }
+}
+```
+
+- `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
+- For `swap_pattern` fix kinds, `next_tool_call` points to `recommend_pattern` instead of `repair_slide`.
+- Errors without a recognized fix kind omit `next_tool_call` entirely (the field is absent, not null).
+
+---
+
 ## Pattern Library
 
-For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, and two-column comparisons, use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
+For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, accent-banded panels (`stylish-panels`), and strategy-house frameworks (`strategy-house` — objective banner + 3-5 pillars + foundation, with optional roof badges), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
 
 - **Browse the catalog:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI)
-- **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI)
+- **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI). Grid-shaped patterns include a `text_budget_guide` block with per-configuration `body_max_chars` and `header_max_chars` — use these to size content before calling `expand_pattern`. The response also includes `example_values` — canonical example values showing the expected shape and realistic content for the `values` parameter. Use these as a template when populating pattern values.
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI)
-- **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost.
-- **Cold-start helper:** `recommend_pattern` (MCP) returns the top patterns for a stated intent (e.g., "compare two options", "show 3 KPIs"). Use when you don't know the catalog by heart.
+- **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for template-aware layout bounds; the response `bounds_source` field indicates `"template"` or `"default_fallback"`. When all populated cells are consistently suboptimal, the response includes `layout_suggestions[]` with alternative patterns and overrides.
+- **Cold-start helper:** `recommend_visual` (MCP) ranks across all visual categories for a slide intent — use as the primary entry point. `recommend_pattern` is the pattern-only subset if you already know you need a named pattern.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
 
@@ -157,6 +467,32 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
 **Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content).
+
+### Picking a Grid Configuration with `text_budget_guide`
+
+Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `show_pattern` returns a `text_budget_guide` block that tells you how much text fits in each configuration — use it to pick the right grid size **before** writing cell content.
+
+**Response shape** (inside `show_pattern` output):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `example_values` | object | Canonical example values showing expected shape and realistic content for `values` |
+| `text_budget_guide.target_density` | object | Global density thresholds: `min_pct` (60), `ideal_pct` (85), `max_pct` (110) |
+| `text_budget_guide.configurations[]` | array | One entry per supported grid size |
+| `configurations[].columns` | int | Number of columns in this configuration |
+| `configurations[].rows` | int | Number of rows in this configuration |
+| `configurations[].body_max_chars` | int | Maximum body characters per cell (at 12pt) |
+| `configurations[].header_max_chars` | int | Maximum header characters per cell (at 16pt) |
+
+**Workflow — pick the right configuration:**
+
+1. **Estimate** your planned content length per cell (in characters).
+2. **Call `show_pattern`** and read `text_budget_guide.configurations[]`.
+3. **Choose** the configuration whose `body_max_chars` is closest to `planned_chars / 0.85` — this targets ~85% density (the ideal band).
+4. **Write** cell content sized to that budget.
+5. **Verify** post-write by calling `expand_pattern` and checking `cell_budgets[]` — every cell should land in the 60–110% density band.
+
+**Non-grid patterns** (e.g., `pull-quote`, `stat-hero`, single-cell patterns) have no `text_budget_guide`. For those, use per-placeholder budgets from `list_templates` instead. See [Text Capacity Awareness](#text-capacity-awareness) for the full density workflow.
 
 ---
 
@@ -202,6 +538,24 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `divider_too_thin` | Divider shape height < 4% of slide height | `review` | — |
 | `hex_fill_non_brand` | Non-allowlisted `#RRGGBB` fill on a shape | `review` | `use_semantic_color` |
 | `mixed_fill_scheme` | Slide mixes semantic (`accent1`, `lt2`) and hex fills (hex-fill mix anti-pattern) | `review` | `use_semantic_color` |
+| `cell_underfilled` | Per-cell: text uses <60% of cell character capacity (density bands: <40% = warning, 40-59% = info) | `review` | `add_detail_or_resize` |
+
+**Density-band severity for cell capacity findings** (`fit_overflow` and `cell_underfilled` share the density axis):
+
+| Density band | Code | Severity | Action | Guidance |
+|---|---|---|---|---|
+| >130% | `fit_overflow` | `error` | `refuse` | Must reduce text — blocks under `strict_fit: "strict"` |
+| 110–130% | `fit_overflow` | `warning` | `review` | Should reduce text before shipping |
+| 60–110% | *(none)* | — | — | Healthy range — no finding emitted |
+| 40–59% | `cell_underfilled` | `info` | `review` | Consider adding detail; not blocking |
+| <40% | `cell_underfilled` | `warning` | `review` | Strongly consider adding detail or using a smaller grid |
+
+**How to triage capacity findings:**
+- **`info` severity** — consider acting; not blocking under any `strict_fit` mode
+- **`warning` severity** — should act before shipping; not blocking under `strict_fit: "warn"` or `"off"`
+- **`error` severity** — must act; blocks generation under `strict_fit: "strict"` (MCP returns `IsError=true`)
+
+`strict_fit` interaction: only `error`-severity findings with action `refuse` block generation in strict mode. `cell_underfilled` never blocks because its maximum severity is `warning`.
 
 **Render-time codes** — emitted during `generate_presentation` when the engine adjusted content to fit:
 
@@ -213,11 +567,14 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `no_autofit_overflow` | Text overflows placeholder that has `noAutofit` set |
 | `table_rows_truncated` | Table rows truncated to fit row height |
 | `table_font_scaled` | Table font scaled down to the minimum floor |
-| `diagram_clamped` | Diagram placeholder dimensions clamped to minimum |
-| `diagram_render_failed` | Diagram render failed; placeholder image inserted |
+| `diagram_clamped` | Diagram placeholder dimensions clamped to minimum. `action: review`, `fix.kind: swap_layout`, `fix.params: {dimension, original_emu, clamped_emu}`. Agent action: switch to a wider layout via `repair_slide` |
+| `diagram_render_failed` | Diagram render failed; placeholder image inserted. `action: review`, `fix.kind: review` (no auto-fix). Agent must inspect diagram data and decide whether to simplify, change type, or regenerate |
 | `column_width_deficit` | Column widths fell back to global floor |
 | `pagination_default_threshold` | Pagination used default threshold (no template capacity available) |
 | `contrast_autofixed` | Text color auto-replaced for WCAG AA. `action: info`, `fix.kind: replace_color`, `fix.params: {original_color, replacement_color, background_color, contrast_ratio_before, contrast_ratio_after}` |
+| `contrast_predicted` | Preflight prediction (validate / preview) that a shape-grid text color will be auto-replaced for WCAG AA at render time. Same `fix.kind` (`replace_color`) as `contrast_autofixed`, with `fix.params.predicted_replacement` and `source` (e.g. `shape_grid`). `action: info` |
+| `grid_diagram_narrow` | Complex diagram in a narrow grid cell (<50% slide width). `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, complexity, cell_width_pct, cell_width_emu, threshold_emu}`. Path targets the diagram field (e.g. `/slides/0/shape_grid/rows/0/cells/1/diagram`). Agent action: widen cell via `repair_slide` with `reshape_grid` fix |
+| `diagram_aspect_mismatch` | Diagram cell aspect differs from rendered SVG aspect by >25% (default svggen aspect is 4:3 unless `DiagramSpec.Width/Height` overrides). Chart will be stretched or letterboxed. `action: review`, `fix.kind: reshape_grid`, `fix.params: {diagram_type, svg_aspect, cell_aspect, deviation, cell_width_emu, cell_height_emu, svg_width, svg_height}`. Path targets the diagram field. Agent action: resize the cell, set `cell.fit` (`contain`/`fit-width`/`fit-height`), or set explicit `diagram.width`/`diagram.height` matched to the cell |
 
 **Budget summary code** — emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and `verbose_fit:false`:
 
@@ -242,19 +599,41 @@ Native (non-chart) findings emitted by `validate_input` (with `fit_report: true`
 | `replace_value` | Replace an invalid value with a suggested one | `suggestion, allowed?` |
 | `provide_value` | Required field is missing | `field` |
 | `use_one_of` | Value must be one of an allowed set | `allowed` |
-| `rename_field` | Unknown field name close to a known one | `suggestion` |
+| `rename_field` | Unknown field name close to a known one | `from, to` |
+| `reshape_value` | Value has wrong structure (array vs object, etc.) | `path, value` |
 | `remove_field` | Unknown field should be removed | — |
+| `add_detail_or_resize` | Cell is underfilled — add more text or use a smaller grid | `current_density_pct: int` |
 
 Chart/diagram codes below introduce their own `fix.kind` values (`reduce_items`, `explicit_scale`, `truncate_or_split`, `align_series`, `increase_canvas`).
 
-**Fix kinds for `repair_slide`.** The apply-only superset accepted by `repair_slide` includes two kinds that fit-report does not emit. Agents emit these when they decide a fix themselves:
+**Fix kinds for `repair_slide` — complete table.** The apply-only superset accepted by `repair_slide` is broader than the fit-report `fix.kind` enum: fit-report only emits kinds the engine can derive automatically, while `repair_slide` also accepts kinds the *agent* decides to apply (e.g., `swap_layout`, `swap_pattern`, `autofix_visual`). Every kind in the table below is a `case` in `applyRepairFix` (`cmd/json2pptx/mcp_repair.go`); the drift test `cmd/json2pptx/skill_drift_test.go` enforces this list and the kinds advertised by `get_capabilities().vocabularies.repair_fix_kinds` stay in sync.
 
-| Kind | Semantics | Params |
-|------|-----------|--------|
-| `shorten_title` | Truncate the title placeholder text | `max_length: int` (default 50) |
-| `swap_layout` | Change the slide's `layout_id` | `layout_id: string` (required) |
+| Kind | Semantics | Required params | Optional params |
+|------|-----------|-----------------|-----------------|
+| `reduce_text` | Shorten bullets / body text on a content item | — | `max_items: int` (bullets), `max_length: int` (text), `path: string` (JSON Pointer to one content item) |
+| `shorten_title` | Truncate the title placeholder text | — | `max_length: int` (default 50), `path: string` |
+| `split_at_row` | Wrap the slide in a `split_slide` envelope, distributing table rows across pages | `row: int` (rows per page; alias `group_size`) | `title_suffix: string` (default ` ({page}/{total})`), `repeat_headers: bool` (default true), `path: string` |
+| `swap_layout` | Change the slide's `layout_id` | `layout_id: string` | — |
+| `use_one_of` | Replace a slide-level enum field (`layout_id`, `transition`, `transition_speed`, `build`) or a content `type` with an allowed value | `path: string`, `value: string` | — |
+| `replace_color` | Replace a specific fill color anywhere in `shape_grid` cells (string or object form). Accepts `contrast_autofixed` finding params as aliases. | `from: string` (or `original_color`), `to: string` (or `replacement_color`) | — |
+| `use_semantic_color` | Replace hex fills with a semantic scheme name (`accent1`, `dk1`, ...). With `path` set, targets one cell; without, replaces all hex fills on the slide. | `value: string` (scheme color name) | `path: string` (cell fill path) |
+| `split_pattern` | Split a pattern-driven shape_grid into two slides at a computed row boundary. Useful for overflowing grids without changing the pattern. | — | `first: int` (cells on slide 1; default = half), `title_part_2: string` (suffix; default `"(continued)"`) |
+| `swap_pattern` | Replace the slide's pattern with a different one; optionally replace `values`, `overrides`, `cell_overrides`. Clears any expanded `shape_grid` for re-expansion. | `to: string` (target pattern name) | `values: object`, `overrides: object`, `cell_overrides: object` |
+| `reshape_grid` | Change grid dimensions. For pattern slides, updates `rows`/`columns` in pattern values; for raw `shape_grid` slides, redistributes cells into a new row/column layout. | One of `rows: int` or `columns: int \| [int]` | both |
+| `set_pattern_style` | Set the `style` key in the pattern's `overrides` (e.g., `timeline-horizontal` from `"dots"` to `"chevron"`) and clear expanded grid for re-expansion. | `style: string` | — |
+| `reduce_cell_text` | Truncate one `shape_grid` cell's text to a character budget, appending U+2026 and stripping orphaned markdown emphasis markers. Use only when the agent should not rephrase the text. | `cell_path: string` (JSON Pointer e.g. `"/slides/0/shape_grid/rows/1/cells/2"`), `max_chars: int` (> 1) | — |
+| `rename_field` | Rename a top-level key. Searches pattern values first, then slide-level fields via JSON round-trip. | `from: string`, `to: string` | — |
+| `reshape_value` | Replace a pattern-values field with a restructured replacement (array→object, etc.). | `path: string` (field name), `value: any` | — |
+| `provide_value` | Set a pattern-values field that is missing | `path: string`, `value: any` | — |
+| `replace_value` | Replace an existing pattern-values field with a new value (e.g., to bring it within valid bounds) | `path: string`, `value: any` | — |
+| `reduce_items` | Truncate a pattern-values array field to `max_items` | `path: string`, `max_items: int` (> 0) | — |
+| `add_items` | Append agent-supplied items to a pattern-values array field | `path: string`, `items: array` | — |
+| `resize_list` | Resize a pattern-values array field to exactly `count` items. Truncates if too many; returns not-applied if too few (agent must follow up with `add_items`). | `path: string`, `count: int` (> 0) | — |
+| `remove_key` | Delete a key from the pattern's `overrides` (preferred) or `values` | `key: string` | — |
+| `remove_field` | Delete a top-level field from pattern values or from the slide (via JSON round-trip) | `path: string` | — |
+| `autofix_visual` | Map a visual-QA finding category to one or more candidate fix kinds and try them in order. Caller-supplied params are forwarded (caller wins). | `category: string` (visual QA finding category) | any params forwarded to the underlying kind |
 
-`repair_slide` also accepts `reduce_text` (`max_items` for bullets, `max_length` for text), `split_at_row` (`row` = rows per page, optional `title_suffix`, `repeat_headers`), and `use_one_of` (`path`, `value`). Unsupported kinds return `{applied: false, message: "kind_not_supported"}`.
+Unsupported kinds return `{applied: false, message: "kind_not_supported"}`. To discover this list programmatically at runtime, read `get_capabilities().vocabularies.repair_fix_kinds`.
 
 ### Chart Finding Codes
 
@@ -315,13 +694,13 @@ Example chart finding in a fit report:
 
 | # | Rule | Rationale |
 |---|---|---|
-| 11 | `layout_id` must match a name returned by `list_templates` (MCP) or `json2pptx skill-info` (CLI). Common subset: `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda` | Display names like `"Title Slide"` fail to resolve; not every template ships every layout — prefer the authoritative list from introspection |
+| 11 | `layout_id` must be a **canonical ID** — not a display name. Use one of: `title`, `content`, `two-column`, `two-column-wide-narrow`, `two-column-narrow-wide`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda`. Display names like `"Title Slide"` or `"One Content"` are **not valid** `layout_id` values and will fail to resolve | The engine resolves canonical IDs via tag-based matching (see `internal/layout/canonical.go`). Display names returned by `list_templates` `layout_names` are informational only — they show what the template provides, but `layout_id` must use the canonical form |
 | 12 | Semantic fills (`accent1`, `lt2`, `dk1`) required; hex `#RRGGBB` forbidden unless in brand-color allowlist. **Never mix semantic and hex fills on the same slide.** Never use raw names like `"blue"` | Semantic colors adapt to template theme; use `{"color": "accent1", "lumMod": 75000, "lumOff": 25000}` for tints. Mixed hex+semantic on one slide breaks visual consistency and is always a bug |
 | 13 | `align`: `"l"`, `"ctr"`, `"r"`, `"just"` | NOT `"left"`, `"center"`, `"right"` |
 | 14 | `vertical_align`: `"t"`, `"ctr"`, `"b"` | NOT `"top"`, `"middle"`, `"bottom"` |
-| 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect via `list_templates` (MCP) or `json2pptx skill-info` (CLI). Returns `color_roles`, `table_styles[]`, `white_text_safe`, `layout_names`, and `data_format_hints_digest` |
+| 15 | Templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` | Inspect via `list_templates` (MCP) or `json2pptx skill-info` (CLI). Returns `canonical_layout_ids`, `color_roles`, `table_styles[]`, `white_text_safe`, `layout_names`, and `data_format_hints_digest`. Templates that fail analysis appear with an `error` field and no layout/theme data — do not use them for generation |
 
-**`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank` → `title` only (body goes in `shape_grid`); `section` → `title`, `subtitle`.
+**`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank` → `title` only (body goes in `shape_grid`); `section` → `title`, `body` (engine remaps `subtitle` → `body` with a `placeholder_remapped` finding). For authoritative per-template lists, use `json2pptx skill-info` or `list_templates` (MCP).
 
 ### Contrast Auto-Fix
 
@@ -398,6 +777,52 @@ Good — all semantic:
 }
 ```
 
+**Pattern monotony (deck-level).** Generating N slides with the same pattern (e.g., 5 card-grids in a row) produces a visually flat deck. The audience cannot distinguish slides. This is the single most common agent mistake.
+
+Bad — monotonous sequence:
+```
+Slide 2: card-grid — "Market Segments"
+Slide 3: card-grid — "Product Lines"
+Slide 4: card-grid — "Competitor Analysis"
+Slide 5: card-grid — "Team Structure"
+```
+
+Good — varied sequence with rhythm breaks:
+```
+Slide 2: card-grid     — "Market Segments"
+Slide 3: comparison-2col — "Product Lines"
+Slide 4: stat-hero     — "Key Differentiator"     ← narrative break
+Slide 5: matrix-2x2    — "Competitor Positioning"
+Slide 6: icon-row      — "Team Strengths"
+```
+
+Rules: no pattern should appear 3+ times consecutively. Insert a narrative-break pattern (stat-hero, pull-quote) every ~5 slides. Use `analyze_deck_rhythm` to detect violations before generating.
+
+**Accent monotony.** Using the default `accent_strategy: "primary"` on a 10+ slide deck makes every shape the same color. Set `"rotate"` or `"section-keyed"` for longer decks, or manually assign different accents to shape fills.
+
+### Cell Accent Variety
+
+**Why it matters.** When every cell in a multi-cell grid uses the same accent color, the slide reads as a monochrome block — the audience cannot visually parse distinct items. Accent variety within a slide creates hierarchy and makes each cell scannable at presentation-viewing distance.
+
+**The three modes.** Grid-shaped patterns expose a `cell_accent_mode` override that controls per-cell accent color variation. The mode operates on the resolved base accent (after `accent_strategy` has picked the slide-level accent):
+
+| Mode | Behavior | When to use |
+|------|----------|-------------|
+| `uniform` (default) | Every cell uses the same base accent | Timelines, process flows, sequential steps — consistency aids comprehension of order |
+| `alternate` | Cells alternate between base and base+1 (wraps at accent6→accent1) | Paired comparisons, two-tier hierarchies, before/after — distinguishes two groups |
+| `progressive` | Each cell walks base, base+1, base+2, ... (wraps at accent6→accent1) | 4+ peer cells where differentiation matters — feature lists, benefit grids, KPI dashboards |
+
+**Interaction with `accent_strategy`.** The deck-level `accent_strategy` resolves the base accent per slide (e.g., `section-keyed` assigns one accent per section). `cell_accent_mode` then walks *from* that base within the slide. Example: if `section-keyed` resolves slide 5 to `accent3` and `cell_accent_mode` is `progressive`, cells get `accent3`, `accent4`, `accent5`, `accent6`, `accent1`, `accent2`.
+
+**Which patterns support it.** All grid-shaped patterns (those with multiple peer cells rendered by the shape grid engine) support `cell_accent_mode`. Non-grid patterns (single-cell heroes, axis-bound matrices, fixed-progression layouts) do not expose it because their accent logic is structurally determined. Use `show_pattern` or `list_patterns` to check whether a specific pattern's overrides schema includes `cell_accent_mode`.
+
+**Anti-patterns:**
+
+- All cells same accent on a slide with 4+ peer cells → use `progressive` to differentiate items visually.
+- Mixing `alternate` with `section-keyed` accent strategy without validation → verify the result with `analyze_deck_rhythm` to confirm within-slide accent variety reads well against the section-level base.
+
+**Validation loop.** After generating, check `analyze_deck_rhythm` for `within_slide_accent_variety` recommendations. If the tool flags low variety on a grid-heavy slide, set `cell_accent_mode: "progressive"` in the pattern's overrides and re-analyze.
+
 ### Charts: Subtitle vs Footnote
 
 Charts accept both `subtitle` and `footnote` fields. Use `subtitle` for contextual text rendered below the chart title (e.g., "FY2024 Q1-Q4"). Use `footnote` for source attribution rendered at the chart bottom. These are separate fields routed to different render positions — do not use `footnote` when you mean `subtitle`.
@@ -415,6 +840,8 @@ Input JSON is validated with `additionalProperties: false` at every object level
 ## Color Roles
 
 Each template exposes `color_roles` in `list_templates` (MCP) / `json2pptx skill-info` (CLI) output — use `primary_fill` / `secondary_fill` for header cells with white text, `body_fill` + `body_text` for card bodies, and check `white_text_safe` before using any accent with `#FFFFFF` text. For tints, use luminance modifiers: `{"color": "accent1", "lumMod": 20000, "lumOff": 80000}` (20% tint with `dk1` text).
+
+**Template-authored accent guidance (`accent_usage_guide`).** Some templates include an `accent_usage_guide` map in their `list_templates` output. When present, it maps accent color names (e.g. `"accent1"`, `"accent3"`) to prose descriptions of each accent's intended role within that template's visual language. When `accent_usage_guide` is present, defer to the template's role descriptions over generic assumptions — do not assume any accent has a fixed semantic role (positive, negative, neutral, subtle, etc.) unless the guide says so. When absent, fall back to the existing `color_roles` `primary_fill`/`secondary_fill`/`body_fill` semantics above.
 
 ---
 
@@ -458,7 +885,15 @@ Call `table_density_guide` (MCP) or run `json2pptx tables guide` (CLI) for detai
 
 ## Icon Names
 
-Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available names. Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell.
+Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available names. Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell. The `"fill"` color override also works with custom SVG icons specified via `"path"`: `"icon": {"path": "icons/custom.svg", "fill": "#FF6600"}`.
+
+**Inline SVG (`svg_data`).** When you already have SVG markup — e.g. the output of `svggen-mcp.render_diagram` — embed it directly in a cell without a filesystem roundtrip:
+
+```json
+"icon": {"svg_data": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\">…</svg>", "alt": "Pie chart: A 60%, B 40%"}
+```
+
+Exactly one of `name`, `path`, `url`, or `svg_data` must be set per icon. `fill` is ignored for `svg_data` (your SVG is assumed pre-styled). The optional `alt` field sets accessibility text; when omitted, alt falls back to a value derived from `name` or `path`, or `"icon"` for inline SVG.
 
 ---
 
