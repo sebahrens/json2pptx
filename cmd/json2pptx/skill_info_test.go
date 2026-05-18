@@ -478,6 +478,44 @@ func stringContains(s, substr string) bool {
 	return false
 }
 
+func TestBuildComposeEntry_PopulatedWithExamples(t *testing.T) {
+	entry := buildComposeEntry()
+	if entry == nil {
+		t.Fatal("buildComposeEntry returned nil")
+	}
+	if entry.Description == "" {
+		t.Error("compose description should not be empty")
+	}
+	if entry.MaxSegments <= 0 {
+		t.Errorf("max_segments should be > 0, got %d", entry.MaxSegments)
+	}
+	if entry.MaxNestingDepth <= 0 {
+		t.Errorf("max_nesting_depth should be > 0, got %d", entry.MaxNestingDepth)
+	}
+	if len(entry.Directions) < 2 {
+		t.Errorf("compose directions should list vertical and horizontal; got %v", entry.Directions)
+	}
+	if len(entry.Examples) < 2 {
+		t.Fatalf("compose entry should ship ≥2 examples; got %d", len(entry.Examples))
+	}
+	// Each example's JSON must round-trip through json.Unmarshal so consumers
+	// can splice it into a deck without re-quoting.
+	for i, ex := range entry.Examples {
+		if ex.Title == "" {
+			t.Errorf("example[%d] missing title", i)
+		}
+		var raw map[string]any
+		if err := json.Unmarshal(ex.JSON, &raw); err != nil {
+			t.Errorf("example[%d] JSON is not valid: %v", i, err)
+			continue
+		}
+		// Must contain a compose envelope.
+		if _, ok := raw["compose"]; !ok {
+			t.Errorf("example[%d] JSON missing top-level \"compose\" key", i)
+		}
+	}
+}
+
 func TestAnalyzeTemplateForSkillInfo_NoColorRolesInListMode(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")

@@ -19,6 +19,12 @@ func EnrichVisualPlacement(result *patterns.RecommendVisualResult) {
 func EnrichVisualPlacementWithRegistry(result *patterns.RecommendVisualResult, reg *patterns.Registry) {
 	for i := range result.Candidates {
 		c := &result.Candidates[i]
+		// Compose candidates carry their pair-specific ComposableWith population
+		// from the scoring pass — preserve it instead of clobbering with a
+		// generic guidance derived from category alone.
+		if c.Category == patterns.VisualCategoryCompose && c.Placement != nil {
+			continue
+		}
 		c.Placement = placementForCandidate(reg, c.Category, c.Name)
 	}
 }
@@ -35,8 +41,25 @@ func placementForCandidate(reg *patterns.Registry, category patterns.VisualCateg
 		return placeholderPlacement()
 	case patterns.VisualCategoryShapeGrid:
 		return shapeGridPlacement()
+	case patterns.VisualCategoryCompose:
+		// Fallback only — compose candidates emitted by the scorer carry
+		// their pair-specific ComposableWith and bypass this branch.
+		return composePlacement()
 	default:
 		return nil
+	}
+}
+
+func composePlacement() *patterns.PlacementGuidance {
+	// Compose envelopes expand into a single shape_grid (native_ooxml) hosted
+	// in a placeholder. Without a pair-specific population this is the safe
+	// generic guidance.
+	return &patterns.PlacementGuidance{
+		PreferredPlacement: "placeholder",
+		HostStrategy:       "pattern_expansion",
+		GridEmbeddable:     false,
+		RenderPipeline:     "native_ooxml",
+		ComposableWith:     []string{"named_pattern"},
 	}
 }
 

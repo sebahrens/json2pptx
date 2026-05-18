@@ -88,6 +88,11 @@ type capabilitiesFeatures struct {
 	SupportsSpeakerNotes bool                       `json:"supports_speaker_notes"`
 	OutputValidation     []string                   `json:"output_validation"`
 	Compose              composeFeatureCapabilities `json:"compose"`
+	// ComposeEnvelope is a top-level boolean signaling that recommend_visual
+	// can return Category=="compose" candidates and that ComposeInput is a
+	// supported slide-input envelope. Mirrors the detailed Compose struct so
+	// agents can capability-gate without inspecting nested fields.
+	ComposeEnvelope      bool                       `json:"compose_envelope"`
 	FeatureVersions      map[string]string          `json:"feature_versions"`
 }
 
@@ -237,6 +242,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			SupportsSpeakerNotes: true,
 			OutputValidation:     []string{"off", "warn", "strict"},
 			Compose:              composeCapabilities(),
+			ComposeEnvelope:      true,
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -248,6 +254,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"supports_speaker_notes": "2.5.0",
 				"output_validation":      "4.6.0",
 				"compose":                "4.10.0",
+				"compose_envelope":       "4.11.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

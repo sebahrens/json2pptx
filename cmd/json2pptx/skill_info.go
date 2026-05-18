@@ -31,9 +31,33 @@ type skillInfo struct {
 	SupportedTypes   skillSupportedTypes    `json:"supported_types"`
 	PatternsCompact  []skillPatternCompact  `json:"patterns_compact,omitempty"`
 	PatternsFull     []skillPatternFull     `json:"patterns_full,omitempty"`
+	Compose          *skillComposeEntry     `json:"compose,omitempty"`
 	InputFormats     []string               `json:"input_formats"`
 	OutputFormats    []string               `json:"output_formats"`
 	Deprecations     []skillDeprecation     `json:"deprecations,omitempty"`
+}
+
+// skillComposeEntry describes the compose envelope feature for agents browsing
+// skill-info. It surfaces the capability caps, the supported directions, and
+// concrete examples so an agent can author a ComposeInput without reading the
+// raw input schema or the recommend_visual schema first.
+type skillComposeEntry struct {
+	Description     string             `json:"description"`
+	Directions      []string           `json:"directions"`
+	MaxSegments     int                `json:"max_segments"`
+	MaxNestingDepth int                `json:"max_nesting_depth"`
+	MaxLeafPatterns int                `json:"max_leaf_patterns"`
+	SmartCompose   bool               `json:"smart_compose"`
+	NestedCompose  bool               `json:"nested_compose"`
+	Examples        []skillComposeExample `json:"examples"`
+}
+
+// skillComposeExample is a worked compose envelope an agent can adapt. The
+// JSON is intentionally minimal so it fits into a system-prompt-sized hint.
+type skillComposeExample struct {
+	Title       string          `json:"title"`
+	Description string          `json:"description"`
+	JSON        json.RawMessage `json:"json"`
 }
 
 // skillDeprecation describes a deprecated feature and its canonical replacement.
@@ -292,6 +316,7 @@ func runSkillInfo() error {
 		SupportedTypes:  buildSupportedTypes(),
 		PatternsCompact: patternsCompact,
 		PatternsFull:    patternsFull,
+		Compose:         buildComposeEntry(),
 		InputFormats:    []string{"json"},
 		OutputFormats:   []string{"pptx"},
 		Deprecations:    buildDeprecations(),
@@ -557,6 +582,59 @@ func buildSupportedTypes() skillSupportedTypes {
 		GridCellTypes:       []string{"shape", "table", "icon", "image", "diagram"},
 		ShapeGeometries:     buildShapeGeometries(),
 		DataFormatHints:     buildDataFormatHints(),
+	}
+}
+
+// buildComposeEntry returns the compose envelope skill-info descriptor with
+// the capability caps drawn from composeCapabilities() and two hand-authored
+// examples (vertical and horizontal) so an agent can copy-adapt without
+// reading the raw input schema. The caps and the examples are kept in one
+// place to make compose discoverable from a single skill-info read.
+func buildComposeEntry() *skillComposeEntry {
+	caps := composeCapabilities()
+	verticalExample := json.RawMessage(`{
+  "type": "blank",
+  "compose": {
+    "direction": "vertical",
+    "gap": 12,
+    "segments": [
+      {"pattern": {"name": "stylish-panels", "values": {"panels": [{"title": "Pillar A"}, {"title": "Pillar B"}, {"title": "Pillar C"}]}}, "size_pct": 65},
+      {"pattern": {"name": "pull-quote", "values": {"quote": "Strategy is choice.", "attribution": "PM lead"}}, "size_pct": 35}
+    ]
+  }
+}`)
+	horizontalExample := json.RawMessage(`{
+  "type": "blank",
+  "compose": {
+    "direction": "horizontal",
+    "gap": 12,
+    "smart_compose": true,
+    "segments": [
+      {"pattern": {"name": "kpi-3up", "values": {"kpis": [{"value": "42%", "label": "Win rate"}, {"value": "$1.2M", "label": "ARR"}, {"value": "12", "label": "Logos"}]}}},
+      {"pattern": {"name": "process-flow", "values": {"steps": [{"label": "Discover"}, {"label": "Pilot"}, {"label": "Scale"}]}}}
+    ]
+  }
+}`)
+	return &skillComposeEntry{
+		Description:     "Compose envelope: stack two or more sibling patterns on one slide. Each segment hosts a leaf pattern or a nested compose. Direction picks vertical stack or horizontal side-by-side; size_pct controls share (defaults to equal). Use recommend_visual to discover high-affinity pattern pairs (Category=='compose').",
+		Directions:      append([]string(nil), caps.Directions...),
+		MaxSegments:     caps.MaxSegments,
+		MaxNestingDepth: caps.MaxNestingDepth,
+		MaxLeafPatterns: caps.MaxLeafPatterns,
+		SmartCompose:    caps.SupportsSmartCompose,
+		NestedCompose:   caps.SupportsNestedCompose,
+		Examples: []skillComposeExample{
+			{
+				Title:       "Vertical: panels above a pull-quote",
+				Description: "Stylish-panels (65% height) sit above a pull-quote (35%). Common for executive recap slides.",
+				JSON:        verticalExample,
+			},
+			{
+				Title:       "Horizontal: KPI strip beside a process flow",
+				Description: "kpi-3up on the left, process-flow on the right, sized by content density.",
+				JSON:        horizontalExample,
+			},
+		},
 	}
 }
 

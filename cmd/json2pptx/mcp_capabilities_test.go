@@ -180,6 +180,16 @@ func TestMCPGetCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("features.compose_envelope flag advertised", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		if !resp.Features.ComposeEnvelope {
+			t.Error("features.compose_envelope should be true so agents can capability-gate compose without inspecting the nested compose struct")
+		}
+		if _, ok := resp.Features.FeatureVersions["compose_envelope"]; !ok {
+			t.Error("feature_versions should include compose_envelope")
+		}
+	})
+
 	t.Run("runtime section is populated", func(t *testing.T) {
 		resp := getCapabilitiesResult(t)
 		rt := resp.Runtime

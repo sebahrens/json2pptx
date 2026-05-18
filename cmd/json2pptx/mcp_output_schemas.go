@@ -412,7 +412,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
-          "category":         {"type": "string", "enum": ["placeholder_layout", "named_pattern", "chart", "diagram", "raw_shape_grid"]},
+          "category":         {"type": "string", "enum": ["placeholder_layout", "named_pattern", "chart", "diagram", "raw_shape_grid", "compose"]},
           "name":             {"type": "string"},
           "score":            {"type": "number"},
           "rationale":        {"type": "string"},

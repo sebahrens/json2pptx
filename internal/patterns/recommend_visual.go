@@ -18,6 +18,12 @@ const (
 	VisualCategoryChart       VisualCategory = "chart"
 	VisualCategoryDiagram     VisualCategory = "diagram"
 	VisualCategoryShapeGrid   VisualCategory = "raw_shape_grid"
+	// VisualCategoryCompose signals that the slide is best authored as a
+	// compose envelope combining two or more sibling patterns (e.g.,
+	// stylish-panels + pull-quote, kpi-3up + process-flow). Compose candidates
+	// always carry placement.composable_with populated from the high-affinity
+	// pattern pair that triggered the suggestion.
+	VisualCategoryCompose VisualCategory = "compose"
 )
 
 // PlacementGuidance describes how to author and place a recommended candidate.
@@ -202,6 +208,11 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 
 	// 4. Score diagram types.
 	all = append(all, scoreDiagrams(intentLower)...)
+
+	// 5. Score compose envelopes — emitted when the intent suggests combining
+	// multiple patterns on one slide OR when the top pattern candidates have
+	// declared compose-affinity (PatternTaxonomy.ComposesWith).
+	all = append(all, scoreCompose(reg, intentLower, patternCandidates)...)
 
 	// Sort by score descending.
 	sort.Slice(all, func(i, j int) bool {
@@ -663,6 +674,157 @@ func summarizeVisualIntent(intent string, hints *VisualHints) string {
 		sb.WriteString(fmt.Sprintf(", audience=%q", hints.Audience))
 	}
 	return sb.String()
+}
+
+// composeIntentKeywords lists intent fragments that signal the agent is asking
+// for a single slide that combines multiple visual elements. A match boosts
+// the compose envelope candidate so agents discover the feature without
+// reading the raw input schema.
+var composeIntentKeywords = []string{
+	"side by side", "side-by-side", "alongside", "next to",
+	"combine", "combined", "composition", "composed",
+	"compose", "merge", "split layout",
+	"with chart", "with diagram", "with kpi", "with quote", "with sparkline",
+	"kpi and chart", "kpi + chart", "panels and quote",
+	"two patterns", "multi-pattern", "multi pattern",
+	"hybrid layout", "hybrid slide",
+	"one slide showing both", "both on one slide",
+}
+
+// composeNameFor returns the canonical compose-candidate name for the given
+// (left, right) sibling pair. The pair is sorted so "stylish-panels +
+// pull-quote" and "pull-quote + stylish-panels" produce the same name and
+// thus dedupe in the final ranking.
+func composeNameFor(left, right string) string {
+	if left == right {
+		return "compose:" + left
+	}
+	a, b := left, right
+	if a > b {
+		a, b = b, a
+	}
+	return "compose:" + a + "+" + b
+}
+
+// scoreCompose returns compose-envelope candidates. Two signals fire:
+//
+//  1. The intent contains an explicit "combine these two things" keyword
+//     (composeIntentKeywords). In that case the top two ComposesWith-bearing
+//     pattern candidates are paired into a compose suggestion.
+//  2. The top two pattern candidates declare mutual compose-affinity via
+//     PatternTaxonomy.ComposesWith. This surfaces compose even when the user
+//     did not name it, because the underlying patterns are known sibling-
+//     compatible (e.g., stylish-panels ↔ pull-quote).
+//
+// Each compose candidate carries placement.composable_with populated with the
+// pair of sibling pattern names so agents have the exact names to plug into a
+// ComposeInput envelope without a second discovery call.
+func scoreCompose(reg *Registry, intentLower string, patternCandidates []VisualCandidate) []VisualCandidate {
+	if reg == nil || len(patternCandidates) < 2 {
+		return nil
+	}
+
+	// Detect explicit compose intent.
+	explicitIntent := false
+	for _, kw := range composeIntentKeywords {
+		if strings.Contains(intentLower, kw) {
+			explicitIntent = true
+			break
+		}
+	}
+
+	// Find the top two pattern candidates that declare mutual compose-affinity.
+	// patternCandidates is already in registry-scored order; iterate to find
+	// the first pair where each declares the other in its ComposesWith axis.
+	type pairCand struct {
+		left, right string
+		score       float64
+	}
+	var bestPair *pairCand
+
+	for i := 0; i < len(patternCandidates); i++ {
+		pi, ok := reg.Get(patternCandidates[i].Name)
+		if !ok {
+			continue
+		}
+		ciWith := pi.Taxonomy().ComposesWith
+		if len(ciWith) == 0 {
+			continue
+		}
+		for j := i + 1; j < len(patternCandidates); j++ {
+			pj, ok := reg.Get(patternCandidates[j].Name)
+			if !ok {
+				continue
+			}
+			if !sliceContains(ciWith, patternCandidates[j].Name) {
+				// One-way affinity isn't enough — require mutual to avoid
+				// recommending a pair the second pattern doesn't endorse.
+				if !sliceContains(pj.Taxonomy().ComposesWith, patternCandidates[i].Name) {
+					continue
+				}
+			}
+			// Average the two scores so the compose candidate sits between
+			// its constituent patterns (compose is an additional option, not
+			// a replacement for the individual recommendations).
+			combined := (patternCandidates[i].Score + patternCandidates[j].Score) / 2
+			if bestPair == nil || combined > bestPair.score {
+				bestPair = &pairCand{
+					left:  patternCandidates[i].Name,
+					right: patternCandidates[j].Name,
+					score: combined,
+				}
+			}
+			// Stop on the first pair for each i — the candidates are already
+			// score-ordered so the next j only ties or loses.
+			break
+		}
+	}
+
+	if bestPair == nil {
+		return nil
+	}
+
+	// Boost the score when the user explicitly asked for a composed layout.
+	score := bestPair.score
+	rationale := fmt.Sprintf(
+		"Compose envelope combining %q and %q — both patterns declare mutual compose-affinity in their taxonomy.",
+		bestPair.left, bestPair.right,
+	)
+	if explicitIntent {
+		score += 0.10
+		rationale = fmt.Sprintf(
+			"Compose envelope combining %q and %q — the intent requests a multi-pattern layout and the pair declares mutual compose-affinity.",
+			bestPair.left, bestPair.right,
+		)
+	}
+	if score > 1.0 {
+		score = 1.0
+	}
+
+	return []VisualCandidate{{
+		Category:       VisualCategoryCompose,
+		Name:           composeNameFor(bestPair.left, bestPair.right),
+		Score:          roundScore(score),
+		Rationale:      rationale,
+		ConfidenceBand: confidenceBand(score),
+		Placement: &PlacementGuidance{
+			PreferredPlacement: "placeholder",
+			HostStrategy:       "pattern_expansion",
+			GridEmbeddable:     false,
+			RenderPipeline:     "native_ooxml",
+			ComposableWith:     []string{bestPair.left, bestPair.right},
+		},
+	}}
+}
+
+// sliceContains reports whether needle appears anywhere in haystack.
+func sliceContains(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
 }
 
 // suggestVisualQuestions returns clarifying questions to refine the recommendation.

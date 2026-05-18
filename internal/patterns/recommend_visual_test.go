@@ -332,3 +332,48 @@ func TestRecommendVisual_Candidates_NoThresholdCutoff(t *testing.T) {
 		}
 	}
 }
+
+// TestRecommendVisual_ComposeOnExplicitIntent verifies that an explicit
+// "side by side" / "compose" intent surfaces a Category=="compose" candidate
+// with placement.composable_with populated.
+func TestRecommendVisual_ComposeOnExplicitIntent(t *testing.T) {
+	reg := Default()
+	result := RecommendVisual(reg, "panels and quote side by side on one slide", nil, 8)
+
+	var compose *VisualCandidate
+	for i := range result.Candidates {
+		if result.Candidates[i].Category == VisualCategoryCompose {
+			compose = &result.Candidates[i]
+			break
+		}
+	}
+	if compose == nil {
+		t.Fatalf("expected a compose candidate; got %+v", result.Candidates)
+	}
+	if !strings.HasPrefix(compose.Name, "compose:") {
+		t.Errorf("compose candidate name should be prefixed with \"compose:\"; got %q", compose.Name)
+	}
+	if compose.Placement == nil {
+		t.Fatal("compose candidate placement is nil")
+	}
+	if len(compose.Placement.ComposableWith) < 2 {
+		t.Errorf("compose placement.composable_with should list both sibling patterns; got %v", compose.Placement.ComposableWith)
+	}
+	if compose.Placement.HostStrategy != "pattern_expansion" {
+		t.Errorf("compose host_strategy: got %q, want %q", compose.Placement.HostStrategy, "pattern_expansion")
+	}
+}
+
+// TestRecommendVisual_ComposeNameSorted asserts that the compose candidate
+// name is order-independent — the same pair always produces the same name so
+// downstream dedupe works.
+func TestRecommendVisual_ComposeNameSorted(t *testing.T) {
+	got1 := composeNameFor("stylish-panels", "pull-quote")
+	got2 := composeNameFor("pull-quote", "stylish-panels")
+	if got1 != got2 {
+		t.Errorf("composeNameFor should be order-independent: %q vs %q", got1, got2)
+	}
+	if !strings.Contains(got1, "pull-quote") || !strings.Contains(got1, "stylish-panels") {
+		t.Errorf("composeNameFor result missing one of the names: %q", got1)
+	}
+}

@@ -8,6 +8,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Compose envelope MCP discovery** — `recommend_visual` now emits candidates
+  with `category == "compose"` when the intent contains a multi-pattern keyword
+  ("side by side", "panels and quote", etc.) or when the top two pattern
+  candidates declare mutual `PatternTaxonomy.composes_with` affinity. Each
+  compose candidate carries `placement.composable_with` populated with the
+  specific pair of sibling pattern names, so agents can drop them straight into
+  a `ComposeInput.segments[]` without a second discovery call. Capability gate
+  added at `get_capabilities().features.compose_envelope = true` (mirrors the
+  pre-existing detailed `features.compose` struct). `skill-info` JSON now
+  surfaces a top-level `compose` section with cap values and two worked example
+  envelopes (vertical and horizontal). Closes `go-slide-creator-f1ic.5`.
+
 - **`get_started` MCP tool / `json2pptx get-started` CLI subcommand** —
   first-call discovery returning an ordered MCP-call sequence keyed to the
   agent's stated task. Accepts an optional `task` parameter:
