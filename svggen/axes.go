@@ -2,6 +2,7 @@ package svggen
 
 import (
 	"fmt"
+	"math"
 )
 
 // AxisPosition specifies where an axis is placed.
@@ -340,26 +341,35 @@ func (a *Axis) drawTick(pos, originX, originY float64, label string, axisColor, 
 		b.SetFontSize(fontSize).SetFontWeight(style.Typography.WeightNormal)
 
 		if a.config.LabelRotation != 0 {
-			// Rotated labels need a vertical offset on bottom axes to
-			// prevent the rotated text from overlapping the axis line.
-			// The rotation anchor is at (labelX, labelY); without an
-			// offset the text swings upward into the chart area.
+			// Rotated labels on the bottom axis: anchor the label end at the
+			// tick mark and let the text descend down-left (negative rotation)
+			// or down-right (positive rotation) below the axis. The rotation
+			// pivot is at (labelX, labelY) where labelY = tickY2 + tickPadding
+			// — no extra vertical "+fontSize" offset is needed: with TextAlignRight
+			// + TextBaselineTop, the top-right corner of the rotated bbox lands at
+			// the pivot, and every other corner falls into the strip below.
+			//
+			// To keep a small horizontal gap between the rotated label's right
+			// corner and the tick mark vertical line, we shift the pivot in X
+			// away from the tick by tickPadding/√2 (the natural padding rotated
+			// into the diagonal). For negative rotation (end-anchor) we shift
+			// LEFT; for positive rotation (start-anchor) we shift RIGHT.
 			if a.config.Position == AxisPositionBottom {
-				labelY += fontSize
-			}
-			b.Push()
-			b.RotateAround(a.config.LabelRotation, labelX, labelY)
-			// Adjust alignment for rotation on bottom axis:
-			// Negative rotation (e.g. -45°) tilts labels to the left —
-			// text-anchor:end keeps the label end at the tick mark so text
-			// extends down-left away from the chart (standard convention).
-			// Positive rotation tilts labels to the right — text-anchor:start
-			// keeps the label start at the tick mark.
-			if a.config.LabelRotation < 0 {
+				gap := tickPadding / math.Sqrt2
+				if a.config.LabelRotation < 0 {
+					labelX -= gap
+					align = TextAlignRight
+				} else {
+					labelX += gap
+					align = TextAlignLeft
+				}
+			} else if a.config.LabelRotation < 0 {
 				align = TextAlignRight
 			} else {
 				align = TextAlignLeft
 			}
+			b.Push()
+			b.RotateAround(a.config.LabelRotation, labelX, labelY)
 			b.DrawText(label, labelX, labelY, align, baseline)
 			b.Pop()
 		} else {

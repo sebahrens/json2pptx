@@ -2,6 +2,9 @@ package svggen
 
 import (
 	"encoding/xml"
+	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -531,6 +534,137 @@ func TestAxis_WithRotatedLabels(t *testing.T) {
 
 	if !strings.Contains(svg, "svg") {
 		t.Error("Output should contain svg element")
+	}
+}
+
+// TestAxis_RotatedLabelsStayBelowAxisLine is the regression test for
+// go-slide-creator-fnsf. It renders a categorical bottom axis with long
+// labels at -45° rotation and verifies the SVG geometry against the post-fix
+// invariants:
+//
+//   (1) The rotation pivot Y is at labelY = tickY2 + tickPadding — there is
+//       no extra "+fontSize" hack lifting the label far below the tick. The
+//       SVG `translate(tx, ty)` places the baseline-end of the text; for SVG
+//       rotate(-45) the pivot Y satisfies ty_pt = pivot_Y + 0.707*Ascent_pt.
+//       Without the hack the difference (ty_pt - labelY) is one Ascent term
+//       (≈ 0.65 × fontSize); with the hack it would be one Ascent term plus
+//       a full fontSize.
+//
+//   (2) The rotation pivot X is shifted LEFT of the tick mark by tickPadding/√2
+//       so the rotated label's right corner (the post-rotation top-right of
+//       the bbox = pivot) has a clean horizontal gap to the tick mark vertical
+//       line. The SVG translate X reflects this: tx_pt = pivot_X + 0.707*Ascent
+//       where pivot_X = tickX - tickPadding/√2.
+//
+//   (3) Every corner of the rotated glyph bounding box sits at or below the
+//       axis line in screen Y.
+func TestAxis_RotatedLabelsStayBelowAxisLine(t *testing.T) {
+	builder := NewSVGBuilder(600, 400)
+	categories := []string{
+		"VeryLongCategoryOne", "VeryLongCategoryTwo",
+		"VeryLongCategoryThree", "VeryLongCategoryFour",
+	}
+	scale := NewCategoricalScale(categories).SetRangeCategorical(0, 540)
+
+	axisX := 30.0
+	axisY := 280.0 // bottom-axis line screen Y in pt
+
+	config := DefaultAxisConfig(AxisPositionBottom)
+	config.LabelRotation = -45
+	config.FontSize = 14
+	axis := NewAxis(builder, config)
+	axis.DrawCategoricalAxis(scale, axisX, axisY)
+
+	svg, err := builder.RenderToString()
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	vbRe := regexp.MustCompile(`viewBox="0 0 ([0-9.]+) ([0-9.]+)"`)
+	vb := vbRe.FindStringSubmatch(svg)
+	if vb == nil {
+		t.Fatalf("could not parse viewBox from svg")
+	}
+	vbW, _ := strconv.ParseFloat(vb[1], 64)
+	pxToPt := 600.0 / vbW // SVG units are px, builder width is 600pt.
+
+	textRe := regexp.MustCompile(
+		`<text transform="translate\(([0-9.\-]+),([0-9.\-]+)\) rotate\(([0-9.\-]+)\)"[^>]*><tspan x="([0-9.\-]+)" y="[0-9.\-]+">([^<]+)</tspan></text>`,
+	)
+	matches := textRe.FindAllStringSubmatch(svg, -1)
+	if len(matches) < len(categories) {
+		t.Fatalf("expected ≥ %d rotated <text> elements, found %d", len(categories), len(matches))
+	}
+
+	tickPadding := config.TickPadding
+	labelYpt := axisY + config.TickSize + config.TickPadding // 280+6+4 = 290
+	gapPt := tickPadding / math.Sqrt2                        // 2.828
+	// Mid-threshold between fixed and buggy positions, used to discriminate.
+	// With fix: ty_pt - labelY ≈ 0.707*Ascent ≈ 9 (Ascent ≈ 12.7 for 14pt Arial).
+	// With +fontSize band-aid: ty_pt - labelY ≈ 0.707*Ascent + fontSize ≈ 23.
+	// fontSize is the unambiguous midpoint.
+	maxDeltaY := float64(config.FontSize)
+	// With fix: tx_pt - tickX_pt ≈ 0.707*Ascent - gap ≈ 6.
+	// Without fix: tx_pt - tickX_pt ≈ 0.707*Ascent ≈ 9.
+	// Use the gap itself as a discriminator: tx_pt must be < tickX + 0.707*Ascent_estimate.
+	// 0.65*fontSize is a conservative under-estimate of 0.707*Ascent.
+	maxDeltaX := 0.65 * float64(config.FontSize)
+
+	axisYpx := axisY / pxToPt
+	for _, m := range matches {
+		txPx, _ := strconv.ParseFloat(m[1], 64)
+		tyPx, _ := strconv.ParseFloat(m[2], 64)
+		angle, _ := strconv.ParseFloat(m[3], 64)
+		tspanXPx, _ := strconv.ParseFloat(m[4], 64)
+		text := m[5]
+
+		var tickXpt float64
+		matched := false
+		for _, c := range categories {
+			if c == text {
+				tickXpt = axisX + scale.Scale(c)
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+
+		txPt := txPx * pxToPt
+		tyPt := tyPx * pxToPt
+
+		// Invariant (1): ty - labelY < fontSize (no +fontSize hack).
+		if dy := tyPt - labelYpt; dy >= maxDeltaY {
+			t.Errorf("label %q: ty=%.2fpt is at labelY+%.2f >= fontSize=%.0f — +fontSize band-aid not removed",
+				text, tyPt, dy, maxDeltaY)
+		}
+		// Invariant (2): tx is shifted LEFT enough to give horizontal gap.
+		// tx - tickX should be smaller than what it'd be without the gap shift.
+		if dx := txPt - tickXpt; dx >= maxDeltaX {
+			t.Errorf("label %q: tx=%.2fpt is at tickX+%.2f >= %.2f — pivot X not shifted LEFT by tickPadding/√2 (=%.2f)",
+				text, txPt, dx, maxDeltaX, gapPt)
+		}
+
+		// Invariant (3): post-rotation bbox stays below axis line.
+		// Use a conservative ascent estimate (1.2 × fontSize / pxToPt in px).
+		approxAscentPx := config.FontSize * 1.2 / pxToPt
+		theta := angle * math.Pi / 180
+		cos, sin := math.Cos(theta), math.Sin(theta)
+		corners := [4][2]float64{
+			{tspanXPx, -approxAscentPx},
+			{0, -approxAscentPx},
+			{tspanXPx, 0},
+			{0, 0},
+		}
+		for i, c := range corners {
+			sx := cos*c[0] - sin*c[1] + txPx
+			sy := sin*c[0] + cos*c[1] + tyPx
+			if sy < axisYpx-1 {
+				t.Errorf("label %q corner %d at SVG-px (%.2f, %.2f) crosses above axis line (axisY-px=%.2f)",
+					text, i, sx, sy, axisYpx)
+			}
+		}
 	}
 }
 
