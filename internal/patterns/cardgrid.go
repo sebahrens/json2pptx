@@ -73,10 +73,16 @@ func (c *cardGrid) ExemplarValues() any {
 // CardGridCell is a single card with a header and body.
 // Supports string shorthand: "Header | Body" unmarshals to {header:"Header", body:"Body"}.
 // The optional Icon field is used only with the "icon-card" style.
+//
+// The optional Secondary field embeds a small chart (sparkline / bar_chart /
+// line_chart) rendered below the card's title+body via a composite cell. Only
+// one secondary is allowed per card (enforced by the field being a single
+// pointer rather than an array).
 type CardGridCell struct {
-	Header string `json:"header"`
-	Body   string `json:"body"`
-	Icon   string `json:"icon,omitempty"` // Emoji or short glyph for icon-card style
+	Header    string          `json:"header"`
+	Body      string          `json:"body"`
+	Icon      string          `json:"icon,omitempty"`      // Emoji or short glyph for icon-card style
+	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per cell)
 }
 
 // UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
@@ -152,13 +158,14 @@ func (c *cardGrid) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Header | Body\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"header": StringSchema(80).WithDescription("Card header/title"),
-				"body":   StringSchema(300).WithDescription("Card body content"),
-				"icon":   StringSchema(20).WithDescription("Emoji or short glyph (used with icon-card style)"),
+				"header":    StringSchema(80).WithDescription("Card header/title"),
+				"body":      StringSchema(300).WithDescription("Card body content"),
+				"icon":      StringSchema(20).WithDescription("Emoji or short glyph (used with icon-card style)"),
+				"secondary": SecondaryChartSchema(),
 			},
 			[]string{"header", "body"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Card cell: string \"Header | Body\" or {header, body, icon?}")
+	).WithDescription("Card cell: string \"Header | Body\" or {header, body, icon?, secondary?}")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
@@ -250,6 +257,9 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 			errs = append(errs, errRequired(name, bodyPath))
 		} else if len(cell.Body) > 300 {
 			errs = append(errs, errMaxLength(name, bodyPath, 300, len(cell.Body)))
+		}
+		if cell.Secondary != nil {
+			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("cells[%d].secondary", i), cell.Secondary)...)
 		}
 	}
 
@@ -345,6 +355,11 @@ func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, sty
 			Fill:     accent,
 			Position: "top",
 		}
+	}
+	// When a secondary chart is attached, convert the cell to a composite
+	// stack so the existing text shape is rendered on top and the chart below.
+	if cell.Secondary != nil {
+		gc = wrapCellWithSecondary(gc, cell.Secondary, accent)
 	}
 	return gc
 }

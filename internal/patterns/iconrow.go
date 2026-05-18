@@ -58,9 +58,15 @@ func (ir *iconRow) ExemplarValues() any {
 
 // IconRowItem is a single icon+caption pair.
 // Supports string shorthand: "Caption" or "icon | Caption".
+//
+// The optional Secondary field embeds a small chart (sparkline / bar_chart /
+// line_chart) rendered below the caption via a composite cell. Only one
+// secondary is allowed per item (enforced by the field being a single pointer
+// rather than an array).
 type IconRowItem struct {
-	Icon    string `json:"icon"`    // Icon name or hex glyph
-	Caption string `json:"caption"` // Short caption text
+	Icon      string          `json:"icon"`                // Icon name or hex glyph
+	Caption   string          `json:"caption"`             // Short caption text
+	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per item)
 }
 
 // UnmarshalJSON supports string shorthand "Caption" or "icon | Caption", or object {icon, caption}.
@@ -114,12 +120,13 @@ func (ir *iconRow) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Caption\" or \"icon | Caption\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"icon":    StringSchema(20).WithDescription("Icon name or hex glyph (e.g. \"🚀\" or \"rocket\")"),
-				"caption": StringSchema(60).WithDescription("Short caption text"),
+				"icon":      StringSchema(20).WithDescription("Icon name or hex glyph (e.g. \"🚀\" or \"rocket\")"),
+				"caption":   StringSchema(60).WithDescription("Short caption text"),
+				"secondary": SecondaryChartSchema(),
 			},
 			[]string{"icon", "caption"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Item: string \"icon | Caption\" or {icon, caption}")
+	).WithDescription("Item: string \"icon | Caption\" or {icon, caption, secondary?}")
 
 
 	return ObjectSchema(
@@ -189,6 +196,9 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 			errs = append(errs, errRequired(name, captionPath))
 		} else if len(item.Caption) > 60 {
 			errs = append(errs, errMaxLength(name, captionPath, 60, len(item.Caption)))
+		}
+		if item.Secondary != nil {
+			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("values[%d].secondary", i), item.Secondary)...)
 		}
 	}
 
@@ -271,6 +281,13 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 					Width:    4,
 				}
 			}
+		}
+
+		// When a secondary chart is attached, convert the cell to a composite
+		// stack so the existing icon+caption shape is rendered on top and the
+		// chart below.
+		if item.Secondary != nil {
+			gc = wrapCellWithSecondary(gc, item.Secondary, accent)
 		}
 
 		gridCells[i] = gc

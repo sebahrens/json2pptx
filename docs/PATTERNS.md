@@ -266,6 +266,30 @@ Caps are advertised via `get_capabilities().features.compose`:
 
 `cell_overrides` indices remain per-pattern; the merge step does not re-number them.
 
+## Secondary chart slot (card-grid, icon-row)
+
+`card-grid` cells (`CardGridCell`) and `icon-row` items (`IconRowItem`) accept an optional `secondary *SecondaryChart` field that embeds a small chart below the cell's title/body or caption. The field is defined once in `internal/patterns/secondary_chart.go` and reused by both patterns:
+
+```go
+type SecondaryChart struct {
+    Type       string    // "sparkline" | "bar_chart" | "line_chart"
+    Values     []float64 // 2–12 numeric data points
+    Categories []string  // optional x-axis labels; length must match Values when set
+    Color      string    // optional hex/scheme color override
+}
+```
+
+**Caps (enforced by `validateSecondaryChart`):**
+
+- At most one secondary per cell (a single pointer field, not an array).
+- `type` is restricted to `sparkline`, `bar_chart`, `line_chart`.
+- `values` must be 2–12 numbers.
+- `categories`, when set, must have the same length as `values`.
+
+**Expansion.** When `Secondary` is set, the cell's base `Shape` is wrapped via `wrapCellWithSecondary` into a `CompositeInput{Text: <original shape>, SubDiagram: <built diagram>, Split: "top", Ratio: 0.6}` so the existing text+styling renders on top and the chart below. `sparkline` is mapped to a `line_chart` `DiagramSpec` with `Style.ShowLegend = false`; `bar_chart` and `line_chart` pass through.
+
+When adding the same slot to a new grid-shaped pattern, reuse `SecondaryChartSchema()`, `validateSecondaryChart`, and `wrapCellWithSecondary` rather than duplicating their logic.
+
 ## Bounds Override
 
 Patterns assume `full_content_area` by default — the grid fills the entire layout content area. For patterns with short content this produces oversized cells. Constrain the grid with:
