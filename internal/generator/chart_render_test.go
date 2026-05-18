@@ -180,6 +180,59 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 		}
 	})
 
+	// When spec.Style.Colors is supplied, accents must be synthesized as
+	// ThemeColors so svggen still gets dk/lt slots from the effective theme
+	// (wbc7.7). Otherwise svggen took the PaletteSpec.Colors branch and
+	// silently fell back to DefaultPalette for text/bg/surface.
+	t.Run("style_colors_promote_to_theme_colors_with_dk_lt", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+			Style: &types.DiagramStyle{
+				Colors: []string{"#AA0000", "#00AA00", "#0000AA"},
+			},
+		}
+		theme := []types.ThemeColor{
+			{Name: "dk1", RGB: "#111111"},
+			{Name: "dk2", RGB: "#222222"},
+			{Name: "lt1", RGB: "#FAFAFA"},
+			{Name: "lt2", RGB: "#EFEFEF"},
+			{Name: "accent1", RGB: "#998877"}, // must be overridden by spec.Style.Colors[0]
+		}
+		result := diagramSpecToSVGGen(spec, theme, 0, "")
+		if len(result.Style.Palette.Colors) != 0 {
+			t.Errorf("Style.Palette.Colors = %v, want empty (route should use ThemeColors instead)", result.Style.Palette.Colors)
+		}
+		// Build lookup of synthesized ThemeColors.
+		got := map[string]string{}
+		for _, tc := range result.Style.ThemeColors {
+			got[tc.Name] = tc.RGB
+		}
+		wantAccents := map[string]string{
+			"accent1": "#AA0000",
+			"accent2": "#00AA00",
+			"accent3": "#0000AA",
+		}
+		for name, rgb := range wantAccents {
+			if got[name] != rgb {
+				t.Errorf("ThemeColors[%s] = %q, want %q", name, got[name], rgb)
+			}
+		}
+		for _, name := range []string{"dk1", "dk2", "lt1", "lt2"} {
+			if got[name] == "" {
+				t.Errorf("ThemeColors missing %s (must be forwarded from effective theme)", name)
+			}
+		}
+		// And the dedicated Background/Surface fields must still be set by
+		// the lookupBackgroundAndSurface pass so contrast calculations match.
+		if result.Style.Background != "#FAFAFA" {
+			t.Errorf("Background = %q, want %q (lt1)", result.Style.Background, "#FAFAFA")
+		}
+		if result.Style.Surface != "#EFEFEF" {
+			t.Errorf("Surface = %q, want %q (lt2)", result.Style.Surface, "#EFEFEF")
+		}
+	})
+
 	// Verify StrictFit is threaded to OutputSpec.
 	t.Run("strict_fit_threaded", func(t *testing.T) {
 		spec := &types.DiagramSpec{

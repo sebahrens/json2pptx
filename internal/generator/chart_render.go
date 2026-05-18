@@ -141,9 +141,44 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	// Build style spec
 	style := svggen.StyleSpec{}
 
-	// Apply explicit style colors if available
+	// Apply explicit style colors if available.
+	//
+	// When the caller supplies spec.Style.Colors (an accent-only palette), we
+	// must still forward dk1/dk2/lt1/lt2 from the effective theme so
+	// StyleGuideFromSpec can populate TextPrimary/Secondary/Background/Surface
+	// from the real template. Without this, svggen takes the PaletteSpec.Colors
+	// branch and inherits text/bg from DefaultPalette (Tableau-10), which silently
+	// drifts away from the native OOXML pipeline.
+	//
+	// Strategy (wbc7.7): synthesize a ThemeColors slice with accent1..accentN
+	// pulled from spec.Style.Colors plus dk/lt slots from the effective theme,
+	// and route through the ThemeColors branch.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {
-		style.Palette = svggen.PaletteSpec{Colors: spec.Style.Colors}
+		effective := themeColors
+		if len(spec.Style.ThemeColors) > 0 {
+			effective = spec.Style.ThemeColors
+		}
+		// Cap synthesized accent names at 6 (the slots svggen recognizes).
+		// Excess colors still reach the chart series via spec.Style.DataPalette
+		// or by callers passing them through that field directly.
+		accentLimit := len(spec.Style.Colors)
+		if accentLimit > 6 {
+			accentLimit = 6
+		}
+		inputs := make([]svggen.ThemeColorInput, 0, accentLimit+4)
+		for i := 0; i < accentLimit; i++ {
+			inputs = append(inputs, svggen.ThemeColorInput{
+				Name: fmt.Sprintf("accent%d", i+1),
+				RGB:  spec.Style.Colors[i],
+			})
+		}
+		for _, tc := range effective {
+			switch tc.Name {
+			case "dk1", "dk2", "lt1", "lt2":
+				inputs = append(inputs, svggen.ThemeColorInput{Name: tc.Name, RGB: tc.RGB})
+			}
+		}
+		style.ThemeColors = inputs
 	} else if spec.Style != nil && len(spec.Style.ThemeColors) > 0 {
 		// Pass full theme colors so StyleGuideFromSpec can build a complete
 		// palette with semantic colors (Success, Warning, Error, text colors, etc.)
