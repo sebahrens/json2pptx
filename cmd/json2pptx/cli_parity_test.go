@@ -100,6 +100,104 @@ func buildTestBinary(t *testing.T) string {
 	return binary
 }
 
+// TestResolveThemeCLI_OverrideJSON verifies that `resolve-theme -override`
+// accepts inline JSON and forwards it as the resolve_theme MCP tool's
+// `theme_override` parameter — the new CLI surface for the same per-deck
+// override agents already get over MCP.
+func TestResolveThemeCLI_OverrideJSON(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	cmd := exec.Command(binary, "resolve-theme", //nolint:gosec
+		"-template", "midnight-blue",
+		"-templates-dir", "../../templates",
+		"-override", `{"colors":{"accent1":"#336699"}}`,
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("resolve-theme -override failed: %v\n%s", err, out)
+	}
+
+	outStr := string(out)
+	// The applied override echo confirms the flag reached the handler.
+	if !strings.Contains(outStr, `"applied_theme_override"`) {
+		t.Errorf("expected applied_theme_override in output, got: %s", outStr[:min(400, len(outStr))])
+	}
+	// The post-override accent1 must appear in the colors map.
+	if !strings.Contains(strings.ToLower(outStr), "#336699") {
+		t.Errorf("expected #336699 in output (post-override accent1), got: %s", outStr[:min(400, len(outStr))])
+	}
+}
+
+// TestResolveThemeCLI_OverrideFile verifies that -override accepts an @path
+// reference so agents can keep large theme overrides in a file instead of
+// shell-quoting them inline.
+func TestResolveThemeCLI_OverrideFile(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	dir := t.TempDir()
+	overridePath := dir + "/theme.json"
+	if err := os.WriteFile(overridePath, []byte(`{"colors":{"accent1":"#aabbcc"}}`), 0o600); err != nil {
+		t.Fatalf("failed to write override file: %v", err)
+	}
+
+	cmd := exec.Command(binary, "resolve-theme", //nolint:gosec
+		"-template", "midnight-blue",
+		"-templates-dir", "../../templates",
+		"-override", "@"+overridePath,
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("resolve-theme -override @file failed: %v\n%s", err, out)
+	}
+
+	if !strings.Contains(strings.ToLower(string(out)), "#aabbcc") {
+		t.Errorf("expected #aabbcc in output (post-override accent1), got: %s",
+			string(out)[:min(400, len(out))])
+	}
+}
+
+// TestResolveThemeCLI_VariationUnknown verifies that -variation errors with
+// a helpful message when the registry has no matching preset. This guards
+// the extension point: as soon as a built-in variation is registered, the
+// flag works; until then, unknown names produce a clear error rather than
+// silently being ignored.
+func TestResolveThemeCLI_VariationUnknown(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	cmd := exec.Command(binary, "resolve-theme", //nolint:gosec
+		"-template", "midnight-blue",
+		"-templates-dir", "../../templates",
+		"-variation", "no-such-variation",
+	)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected error for unknown variation, got success: %s", string(out))
+	}
+	if !strings.Contains(string(out), "unknown variation") {
+		t.Errorf("expected 'unknown variation' in error, got: %s", string(out))
+	}
+}
+
+// TestResolveThemeCLI_OverrideAndVariationMutuallyExclusive verifies the CLI
+// rejects passing both flags so users don't get a silent winner.
+func TestResolveThemeCLI_OverrideAndVariationMutuallyExclusive(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	cmd := exec.Command(binary, "resolve-theme", //nolint:gosec
+		"-template", "midnight-blue",
+		"-templates-dir", "../../templates",
+		"-override", `{"colors":{"accent1":"#336699"}}`,
+		"-variation", "dark",
+	)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected error when both -override and -variation are set, got success: %s", string(out))
+	}
+	if !strings.Contains(string(out), "mutually exclusive") {
+		t.Errorf("expected 'mutually exclusive' in error, got: %s", string(out))
+	}
+}
+
 // TestValidateFormatJSON verifies that -format=json produces the same
 // dryRunOutput shape as the MCP validate_input tool.
 func TestValidateFormatJSON(t *testing.T) {
