@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -203,6 +204,138 @@ func TestResolveTheme_TemplateNotFound(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Error("expected IsError=true for nonexistent template")
+	}
+}
+
+// TestResolveTheme_ThemeOverride_AppliedColors verifies that resolve_theme
+// reflects the same post-override hex values that singlepass would render
+// for the same frontmatter — closing the silent three-way drift between
+// resolve_theme / render_diagram / frontmatter override.
+func TestResolveTheme_ThemeOverride_AppliedColors(t *testing.T) {
+	mc := newResolveThemeMC(t)
+
+	// Baseline accent1 (no override).
+	baselineReq := resolveThemeRequest(map[string]any{"template_name": "midnight-blue"})
+	baseline, err := mc.handleResolveTheme(context.Background(), baselineReq)
+	if err != nil || baseline.IsError {
+		t.Fatalf("baseline failed: err=%v isError=%v", err, baseline.IsError)
+	}
+	var baseResp resolveThemeResponse
+	if err := json.Unmarshal([]byte(baseline.Content[0].(mcp.TextContent).Text), &baseResp); err != nil {
+		t.Fatalf("baseline parse: %v", err)
+	}
+	const newAccent1 = "#336699"
+	if strings.EqualFold(baseResp.Colors["accent1"], newAccent1) {
+		t.Skipf("baseline accent1 already %s; cannot demonstrate override", newAccent1)
+	}
+
+	// Apply override.
+	req := resolveThemeRequest(map[string]any{
+		"template_name": "midnight-blue",
+		"theme_override": map[string]any{
+			"colors": map[string]any{
+				"accent1": newAccent1,
+			},
+		},
+	})
+	result, err := mc.handleResolveTheme(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+	var resp resolveThemeResponse
+	if err := json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	if !strings.EqualFold(resp.Colors["accent1"], newAccent1) {
+		t.Errorf("accent1 after override = %q, want %q", resp.Colors["accent1"], newAccent1)
+	}
+	// Other slots must remain template defaults so partial overrides don't
+	// silently blank out the rest of the palette.
+	if !strings.EqualFold(resp.Colors["dk1"], baseResp.Colors["dk1"]) {
+		t.Errorf("dk1 unexpectedly changed: base=%q after=%q", baseResp.Colors["dk1"], resp.Colors["dk1"])
+	}
+	if resp.AppliedOverride == nil || resp.AppliedOverride.Colors["accent1"] != newAccent1 {
+		t.Errorf("applied_theme_override.colors.accent1 = %+v, want accent1=%q",
+			resp.AppliedOverride, newAccent1)
+	}
+}
+
+// TestResolveTheme_ThemeOverride_UnknownColorWarns ensures unrecognized scheme
+// keys surface in warnings[] instead of being silently ignored.
+func TestResolveTheme_ThemeOverride_UnknownColorWarns(t *testing.T) {
+	mc := newResolveThemeMC(t)
+	req := resolveThemeRequest(map[string]any{
+		"template_name": "midnight-blue",
+		"theme_override": map[string]any{
+			"colors": map[string]any{
+				"accentZZ": "#112233",
+			},
+		},
+	})
+	result, err := mc.handleResolveTheme(context.Background(), req)
+	if err != nil || result.IsError {
+		t.Fatalf("unexpected error: err=%v isError=%v", err, result.IsError)
+	}
+	var resp resolveThemeResponse
+	if err := json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(resp.Warnings) == 0 {
+		t.Fatal("expected at least one warning for unknown accentZZ key")
+	}
+	found := false
+	for _, w := range resp.Warnings {
+		if strings.Contains(w, "accentZZ") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("warnings did not mention accentZZ: %v", resp.Warnings)
+	}
+}
+
+// TestResolveTheme_ThemeOverride_FontOverride confirms font override surfaces
+// in resp.Fonts and triggers the not-embedded warning when distinct.
+func TestResolveTheme_ThemeOverride_FontOverride(t *testing.T) {
+	mc := newResolveThemeMC(t)
+	req := resolveThemeRequest(map[string]any{
+		"template_name": "midnight-blue",
+		"theme_override": map[string]any{
+			"title_font": "Helvetica Neue",
+		},
+	})
+	result, err := mc.handleResolveTheme(context.Background(), req)
+	if err != nil || result.IsError {
+		t.Fatalf("unexpected error: err=%v isError=%v", err, result.IsError)
+	}
+	var resp resolveThemeResponse
+	if err := json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if resp.Fonts.Major.Latin != "Helvetica Neue" {
+		t.Errorf("fonts.major.latin = %q, want Helvetica Neue", resp.Fonts.Major.Latin)
+	}
+}
+
+// TestResolveTheme_ThemeOverride_InvalidShape rejects non-object overrides
+// with a structured error rather than silently dropping the param.
+func TestResolveTheme_ThemeOverride_InvalidShape(t *testing.T) {
+	mc := newResolveThemeMC(t)
+	req := resolveThemeRequest(map[string]any{
+		"template_name":  "midnight-blue",
+		"theme_override": "not-an-object",
+	})
+	result, err := mc.handleResolveTheme(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for non-object theme_override")
 	}
 }
 

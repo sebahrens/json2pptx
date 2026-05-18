@@ -781,7 +781,16 @@ var outputSchemaResolveTheme = json.RawMessage(`{
       }
     },
     "resolved_for": {"type": "array", "items": {"type": "string"}},
-    "unknown":      {"type": "array", "items": {"type": "object"}}
+    "unknown":      {"type": "array", "items": {"type": "object"}},
+    "applied_theme_override": {
+      "type": "object",
+      "properties": {
+        "colors":     {"type": "object", "additionalProperties": {"type": "string"}},
+        "title_font": {"type": "string"},
+        "body_font":  {"type": "string"}
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}}
   },
   "required": ["template", "colors", "fonts"]
 }`)

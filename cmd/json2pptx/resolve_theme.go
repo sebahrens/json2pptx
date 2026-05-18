@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ import (
 
 func mcpResolveThemeTool() mcp.Tool {
 	return mcp.NewTool("resolve_theme",
-		mcp.WithDescription("Resolve theme colors and fonts for a template. Returns the hex value that each scheme color name (accent1, dk1, lt1, etc.) maps to, plus font families. Use this to preview the palette before authoring slides, avoiding color clashes with the template theme."),
+		mcp.WithDescription("Resolve theme colors and fonts for a template. Returns the hex value that each scheme color name (accent1, dk1, lt1, etc.) maps to, plus font families. Use this to preview the palette before authoring slides, avoiding color clashes with the template theme. Pass theme_override to preview the palette after the same overrides that frontmatter would apply (singlepass parity)."),
 		mcp.WithRawOutputSchema(outputSchemaResolveTheme),
 		mcp.WithString("template_name",
 			mcp.Required(),
@@ -24,17 +25,22 @@ func mcpResolveThemeTool() mcp.Tool {
 		mcp.WithString("color_names",
 			mcp.Description("Comma-separated list of color names to resolve (e.g., \"accent1,accent2,dk1\"). Omit to return all theme colors."),
 		),
+		mcp.WithObject("theme_override",
+			mcp.Description("Optional per-deck overrides applied before resolving — same shape as the frontmatter `theme_override` field. Fields: `colors` (map of scheme name → hex, e.g., {\"accent1\":\"#336699\"}), `title_font` (string), `body_font` (string). Returned colors/fonts reflect the post-override values; unrecognized color keys and non-embedded font swaps surface in `warnings[]`."),
+		),
 	)
 }
 
 // resolveThemeResponse is the JSON envelope for resolve_theme.
 type resolveThemeResponse struct {
-	Template    string                     `json:"template"`
-	Colors      map[string]string          `json:"colors"`
-	ColorRoles  *skillColorRoles           `json:"color_roles"`
-	Fonts       resolveThemeFonts          `json:"fonts"`
-	ResolvedFor []string                   `json:"resolved_for,omitempty"`
-	Unknown     []resolveThemeUnknownColor `json:"unknown,omitempty"`
+	Template       string                     `json:"template"`
+	Colors         map[string]string          `json:"colors"`
+	ColorRoles     *skillColorRoles           `json:"color_roles"`
+	Fonts          resolveThemeFonts          `json:"fonts"`
+	ResolvedFor    []string                   `json:"resolved_for,omitempty"`
+	Unknown        []resolveThemeUnknownColor `json:"unknown,omitempty"`
+	AppliedOverride *ThemeInput               `json:"applied_theme_override,omitempty"`
+	Warnings       []string                   `json:"warnings,omitempty"`
 }
 
 // resolveThemeFonts describes the font families in the theme.
@@ -75,6 +81,17 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	defer func() { _ = reader.Close() }()
 
 	theme := template.ParseTheme(reader)
+
+	// Apply optional theme_override before reading colors/fonts, so the response
+	// mirrors what the singlepass generator would see for the same frontmatter.
+	overrideInput, overrideErr := parseResolveThemeOverride(request)
+	if overrideErr != nil {
+		return api.MCPSimpleError("INVALID_PARAMETER", overrideErr.Error()), nil
+	}
+	var overrideWarnings []string
+	if overrideInput != nil {
+		theme, overrideWarnings = theme.ApplyOverride(overrideInput.ToThemeOverride())
+	}
 
 	// Build full color map.
 	allColors := make(map[string]string, len(theme.Colors))
@@ -119,15 +136,17 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	name := strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
 
 	resp := resolveThemeResponse{
-		Template: name,
-		Colors:   colors,
-		ColorRoles: buildColorRoles(theme.Colors),
+		Template:        name,
+		Colors:          colors,
+		ColorRoles:      buildColorRoles(theme.Colors),
 		Fonts: resolveThemeFonts{
 			Major: resolveThemeFontEntry{Latin: theme.TitleFont},
 			Minor: resolveThemeFontEntry{Latin: theme.BodyFont},
 		},
-		ResolvedFor: resolvedFor,
-		Unknown:     unknown,
+		ResolvedFor:     resolvedFor,
+		Unknown:         unknown,
+		AppliedOverride: overrideInput,
+		Warnings:        overrideWarnings,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
@@ -137,3 +156,32 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	return mcpResult, nil
 }
 
+// parseResolveThemeOverride extracts the optional theme_override argument and
+// decodes it into a ThemeInput. Returns (nil, nil) when the argument is absent
+// or an empty object. Returns an error for malformed shapes so the handler can
+// emit a structured INVALID_PARAMETER response instead of silently dropping it.
+func parseResolveThemeOverride(request mcp.CallToolRequest) (*ThemeInput, error) {
+	raw, ok := request.GetArguments()["theme_override"]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+	obj, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("theme_override: expected object, got %T", raw)
+	}
+	if len(obj) == 0 {
+		return nil, nil
+	}
+	buf, err := json.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("theme_override: %v", err)
+	}
+	var override ThemeInput
+	if err := json.Unmarshal(buf, &override); err != nil {
+		return nil, fmt.Errorf("theme_override: %v", err)
+	}
+	if len(override.Colors) == 0 && override.TitleFont == "" && override.BodyFont == "" {
+		return nil, nil
+	}
+	return &override, nil
+}
