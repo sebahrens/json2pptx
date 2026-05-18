@@ -592,6 +592,22 @@ func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAlloca
 	return shapes, imgs, nil
 }
 
+// cloneDiagramSpecForCell returns a shallow clone of spec with an independent
+// Style so callers can mutate render-time fields (Style.ThemeColors,
+// Style.DataPalette, Width, Height) without altering the caller's struct.
+// Data/Warnings slices are shared by reference because they are read-only
+// inside the cell rendering path.
+func cloneDiagramSpecForCell(spec *types.DiagramSpec) *types.DiagramSpec {
+	specCopy := *spec
+	if spec.Style != nil {
+		styleCopy := *spec.Style
+		specCopy.Style = &styleCopy
+	} else {
+		specCopy.Style = &types.DiagramStyle{}
+	}
+	return &specCopy
+}
+
 // generateDiagramCellInserts renders a diagram cell via svggen and returns IconInserts
 // for native SVG embedding. The diagram is rendered as SVG only (no rasterization
 // needed — the singlepass generator uses a 1x1 transparent PNG fallback for native SVG).
@@ -599,13 +615,15 @@ func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAlloca
 // diagCtx provides template theme colors and data palette so grid-cell diagrams
 // inherit the same color scheme as placeholder-based diagrams.
 func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagramContext) ([]generator.IconInsert, []string, error) {
-	diagramSpec := cell.DiagramSpec
+	// Clone the caller's DiagramSpec before injecting theme/palette state or
+	// defaulting Width/Height. An agent reusing the same DiagramSpec across
+	// cells, slides, or retries must observe byte-identical input on every
+	// call; persisting injected state between calls is hidden, surprising
+	// behavior at the MCP boundary (go-slide-creator-zg8q.7).
+	diagramSpec := cloneDiagramSpecForCell(cell.DiagramSpec)
 
 	// Inject theme colors if diagram doesn't have explicit Colors set,
 	// mirroring the placeholder-based diagram path in processDiagramContent.
-	if diagramSpec.Style == nil {
-		diagramSpec.Style = &types.DiagramStyle{}
-	}
 	var themeColors []types.ThemeColor
 	if diagCtx != nil {
 		themeColors = diagCtx.ThemeColors

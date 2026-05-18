@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1739,12 +1741,12 @@ func TestDiagramCellInserts_ThemeColorInjection(t *testing.T) {
 	if len(icons[0].SVGData) == 0 {
 		t.Error("expected non-empty SVG data")
 	}
-	// After injection, the diagram spec should have theme colors set
-	if len(cell.DiagramSpec.Style.ThemeColors) == 0 {
-		t.Error("expected theme colors to be injected into diagram spec")
-	}
-	if len(cell.DiagramSpec.Style.DataPalette) == 0 {
-		t.Error("expected data palette to be injected into diagram spec")
+	// Theme injection must operate on a local clone — the caller's spec
+	// keeps its original (nil) Style so the same DiagramSpec can be reused
+	// across cells/slides/retries without hidden statefulness
+	// (go-slide-creator-zg8q.7).
+	if cell.DiagramSpec.Style != nil {
+		t.Errorf("caller's DiagramSpec.Style was mutated: %+v (expected nil)", cell.DiagramSpec.Style)
 	}
 	// No narrow-cell warnings for a 5M EMU wide cell
 	if len(warnings) > 0 {
@@ -1806,8 +1808,13 @@ func TestDiagramCellInserts_NarrowCellWarning(t *testing.T) {
 
 func TestDiagramCellInserts_ForwardsCellBoundsToDiagramSpec(t *testing.T) {
 	// Regression for go-slide-creator-zg8q.4: grid-cell diagrams must forward
-	// the cell's EMU bounds into DiagramSpec.Width/Height so svggen renders
-	// into the target aspect ratio instead of the default 800x600.
+	// the cell's EMU bounds into svggen so it renders into the target aspect
+	// ratio instead of the default 800x600.
+	//
+	// Updated for go-slide-creator-zg8q.7: the function now clones the spec
+	// before injecting dimensions, so we verify the aspect ratio reaches the
+	// renderer by parsing the SVG viewBox rather than inspecting the caller's
+	// (now-unmutated) DiagramSpec.
 	const cxEMU int64 = 5_000_000 // ~393.7 pt
 	const cyEMU int64 = 1_500_000 // ~118.1 pt (wide non-default aspect)
 	cell := shapegrid.ResolvedCell{
@@ -1827,24 +1834,36 @@ func TestDiagramCellInserts_ForwardsCellBoundsToDiagramSpec(t *testing.T) {
 		},
 	}
 
-	if _, _, err := generateDiagramCellInserts(cell, nil); err != nil {
+	icons, _, err := generateDiagramCellInserts(cell, nil)
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	wantW := int(cxEMU / int64(types.EMUPerPoint))
-	wantH := int(cyEMU / int64(types.EMUPerPoint))
-	if cell.DiagramSpec.Width != wantW {
-		t.Errorf("expected DiagramSpec.Width = %d (from cell EMU), got %d", wantW, cell.DiagramSpec.Width)
-	}
-	if cell.DiagramSpec.Height != wantH {
-		t.Errorf("expected DiagramSpec.Height = %d (from cell EMU), got %d", wantH, cell.DiagramSpec.Height)
+	if len(icons) != 1 {
+		t.Fatalf("expected 1 icon insert, got %d", len(icons))
 	}
 
-	// Aspect ratio derived from cell EMU must propagate (not default 4:3 ≈ 1.333).
+	// Caller's spec must be byte-identical post-call (no Width/Height mutation).
+	if cell.DiagramSpec.Width != 0 || cell.DiagramSpec.Height != 0 {
+		t.Errorf("caller DiagramSpec dimensions mutated: got %dx%d, want 0x0",
+			cell.DiagramSpec.Width, cell.DiagramSpec.Height)
+	}
+
+	// Aspect ratio derived from cell EMU must propagate into the rendered SVG.
 	cellAspect := float64(cxEMU) / float64(cyEMU)
-	specAspect := float64(cell.DiagramSpec.Width) / float64(cell.DiagramSpec.Height)
-	if diff := specAspect - cellAspect; diff > 0.02 || diff < -0.02 {
-		t.Errorf("aspect ratio mismatch: cell=%.3f spec=%.3f", cellAspect, specAspect)
+	svg := string(icons[0].SVGData)
+	vbRe := regexp.MustCompile(`viewBox="0 0 ([0-9.]+) ([0-9.]+)"`)
+	m := vbRe.FindStringSubmatch(svg)
+	if m == nil {
+		t.Fatalf("could not find viewBox in rendered SVG (first 200 chars): %s", svg[:min(200, len(svg))])
+	}
+	vbW, _ := strconv.ParseFloat(m[1], 64)
+	vbH, _ := strconv.ParseFloat(m[2], 64)
+	if vbH == 0 {
+		t.Fatalf("viewBox height is zero in: %s", m[0])
+	}
+	svgAspect := vbW / vbH
+	if diff := svgAspect - cellAspect; diff > 0.02 || diff < -0.02 {
+		t.Errorf("aspect ratio mismatch: cell=%.3f svg=%.3f (viewBox %.0fx%.0f)", cellAspect, svgAspect, vbW, vbH)
 	}
 }
 
@@ -1904,5 +1923,112 @@ func TestDiagramCellInserts_NilContext(t *testing.T) {
 	}
 	if len(warnings) != 0 {
 		t.Errorf("expected no warnings with nil context, got: %v", warnings)
+	}
+}
+
+// TestDiagramCellInserts_DoesNotMutateCallerSpec is the regression test for
+// go-slide-creator-zg8q.7: reusing the same *types.DiagramSpec across cells
+// with different GridDiagramContext values must produce independent SVGs and
+// must leave the caller's struct byte-identical to the pre-call state. Prior
+// to the fix, the first call's theme colors and EMU-derived dimensions leaked
+// into the spec and silently contaminated subsequent renders.
+func TestDiagramCellInserts_DoesNotMutateCallerSpec(t *testing.T) {
+	sharedSpec := &types.DiagramSpec{
+		Type:  "bar_chart",
+		Title: "Shared",
+		Data: map[string]any{
+			"categories": []any{"A", "B"},
+			"series":     []any{map[string]any{"name": "S1", "values": []any{1.0, 2.0}}},
+		},
+	}
+	// Capture pre-call state for byte-identical comparison.
+	preCall := *sharedSpec
+	preStyle := sharedSpec.Style // nil
+
+	cellA := shapegrid.ResolvedCell{
+		ID:          1,
+		Kind:        shapegrid.CellKindDiagram,
+		Bounds:      pptx.RectEmu{X: 0, Y: 0, CX: 5_000_000, CY: 3_000_000},
+		DiagramSpec: sharedSpec,
+	}
+	ctxA := &GridDiagramContext{
+		ThemeColors: []types.ThemeColor{{Name: "accent1", RGB: "FF0000"}},
+		DataPalette: []string{"#FF0000"},
+		SlideNum:    1,
+	}
+
+	cellB := shapegrid.ResolvedCell{
+		ID:          2,
+		Kind:        shapegrid.CellKindDiagram,
+		Bounds:      pptx.RectEmu{X: 0, Y: 0, CX: 2_000_000, CY: 4_000_000},
+		DiagramSpec: sharedSpec,
+	}
+	ctxB := &GridDiagramContext{
+		ThemeColors: []types.ThemeColor{{Name: "accent1", RGB: "0000FF"}},
+		DataPalette: []string{"#0000FF"},
+		SlideNum:    2,
+	}
+
+	iconsA, _, err := generateDiagramCellInserts(cellA, ctxA)
+	if err != nil {
+		t.Fatalf("cellA render: %v", err)
+	}
+	if len(iconsA) != 1 || len(iconsA[0].SVGData) == 0 {
+		t.Fatalf("cellA: expected one non-empty SVG, got %d icons", len(iconsA))
+	}
+
+	// After the first call, caller's spec must be untouched.
+	if sharedSpec.Style != preStyle {
+		t.Errorf("call A mutated caller's Style: was %v, now %v", preStyle, sharedSpec.Style)
+	}
+	if sharedSpec.Width != preCall.Width || sharedSpec.Height != preCall.Height {
+		t.Errorf("call A mutated caller's Width/Height: was %dx%d, now %dx%d",
+			preCall.Width, preCall.Height, sharedSpec.Width, sharedSpec.Height)
+	}
+
+	iconsB, _, err := generateDiagramCellInserts(cellB, ctxB)
+	if err != nil {
+		t.Fatalf("cellB render: %v", err)
+	}
+	if len(iconsB) != 1 || len(iconsB[0].SVGData) == 0 {
+		t.Fatalf("cellB: expected one non-empty SVG, got %d icons", len(iconsB))
+	}
+
+	// Caller's spec still byte-identical after second call.
+	if sharedSpec.Style != preStyle {
+		t.Errorf("call B mutated caller's Style: was %v, now %v", preStyle, sharedSpec.Style)
+	}
+	if sharedSpec.Width != preCall.Width || sharedSpec.Height != preCall.Height {
+		t.Errorf("call B mutated caller's Width/Height: was %dx%d, now %dx%d",
+			preCall.Width, preCall.Height, sharedSpec.Width, sharedSpec.Height)
+	}
+
+	// The two SVGs must reflect the two cells' independent aspects/palettes.
+	// Different cell bounds produce different viewBox dimensions; without the
+	// clone fix, the second call would inherit dimensions from the first.
+	svgA := string(iconsA[0].SVGData)
+	svgB := string(iconsB[0].SVGData)
+	if svgA == svgB {
+		t.Error("expected independent SVGs for cells with distinct bounds and palettes, got identical output")
+	}
+	vbRe := regexp.MustCompile(`viewBox="0 0 ([0-9.]+) ([0-9.]+)"`)
+	mA := vbRe.FindStringSubmatch(svgA)
+	mB := vbRe.FindStringSubmatch(svgB)
+	if mA == nil || mB == nil {
+		t.Fatalf("missing viewBox in SVG output (A=%v B=%v)", mA != nil, mB != nil)
+	}
+	wA, _ := strconv.ParseFloat(mA[1], 64)
+	hA, _ := strconv.ParseFloat(mA[2], 64)
+	wB, _ := strconv.ParseFloat(mB[1], 64)
+	hB, _ := strconv.ParseFloat(mB[2], 64)
+	aspectA := wA / hA
+	aspectB := wB / hB
+	wantA := 5_000_000.0 / 3_000_000.0
+	wantB := 2_000_000.0 / 4_000_000.0
+	if diff := aspectA - wantA; diff > 0.05 || diff < -0.05 {
+		t.Errorf("cellA SVG aspect %.3f != expected %.3f", aspectA, wantA)
+	}
+	if diff := aspectB - wantB; diff > 0.05 || diff < -0.05 {
+		t.Errorf("cellB SVG aspect %.3f != expected %.3f", aspectB, wantB)
 	}
 }
