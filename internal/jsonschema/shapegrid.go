@@ -150,3 +150,43 @@ type ShapeFillInput struct {
 	Color string  `json:"color"`
 	Alpha float64 `json:"alpha,omitempty"` // 0-100, percentage
 }
+
+// ---------------------------------------------------------------------------
+// Slide-level overlays (free-floating shapes on top of the grid)
+// ---------------------------------------------------------------------------
+
+// OverlayShapeInput defines a free-floating shape rendered on top of the
+// slide's grid (or as the sole content if the slide has no grid). Positioning
+// is by percent-of-slide unless an anchor_cell reference overrides the
+// from/to point.
+//
+// Use cases: diagonal arrows between matrix quadrants, floating "roof" badges
+// labelling a strategy-house tier, callout pointers, watermark stripes.
+//
+// Overlays render *after* the grid so they always appear on top.
+type OverlayShapeInput struct {
+	Kind   string             `json:"kind"`             // "arrow", "line", "badge"
+	From   *OverlayPointInput `json:"from,omitempty"`   // Start point (required for arrow/line; defines top-left for badge)
+	To     *OverlayPointInput `json:"to,omitempty"`     // End point (required for arrow/line; defines bottom-right for badge when set)
+	Color  string             `json:"color,omitempty"`  // Line/arrow stroke color or badge fill (hex or scheme name; default "accent1")
+	Width  float64            `json:"width,omitempty"`  // Line/arrow stroke width in points (default 1.5); badge: width in slide-percent when To is omitted
+	Height float64            `json:"height,omitempty"` // Badge: height in slide-percent when To is omitted (ignored for line/arrow)
+	Dash   string             `json:"dash,omitempty"`   // "solid", "dash", "dot", "lgDash", "dashDot" (line/arrow)
+	Text   string             `json:"text,omitempty"`   // Badge label text
+}
+
+// OverlayPointInput specifies a position via percent-of-slide or via
+// cell-anchor reference. AnchorCell, when set, overrides X/Y.
+type OverlayPointInput struct {
+	X          float64                `json:"x,omitempty"`           // Percent of slide width (0–100)
+	Y          float64                `json:"y,omitempty"`           // Percent of slide height (0–100)
+	AnchorCell *OverlayAnchorCellInput `json:"anchor_cell,omitempty"` // Optional cell reference (overrides x/y)
+}
+
+// OverlayAnchorCellInput references a cell in the slide's shape_grid by
+// 0-based row and column index, and selects a point on its bounds.
+type OverlayAnchorCellInput struct {
+	Row int    `json:"row"`          // 0-based row index in the resolved grid
+	Col int    `json:"col"`          // 0-based column index in the resolved grid
+	At  string `json:"at,omitempty"` // "center" (default), "top-left", "top-right", "bottom-left", "bottom-right", "top", "right", "bottom", "left"
+}

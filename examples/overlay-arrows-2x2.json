@@ -1,0 +1,98 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "overlay-arrows-2x2.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Slide-Level Overlay Demo"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "2x2 matrix with diagonal arrow overlays"
+        }
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Trade-Off Matrix"
+        }
+      ],
+      "shape_grid": {
+        "gap": 12,
+        "columns": 2,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": "Low cost\nLow risk"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent2",
+                  "text": "High cost\nLow risk"
+                }
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": "Low cost\nHigh risk"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent4",
+                  "text": "High cost\nHigh risk"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "overlays": [
+        {
+          "kind": "arrow",
+          "color": "dk1",
+          "width": 3.0,
+          "from": { "anchor_cell": { "row": 0, "col": 0, "at": "center" } },
+          "to":   { "anchor_cell": { "row": 1, "col": 1, "at": "center" } }
+        },
+        {
+          "kind": "arrow",
+          "color": "dk1",
+          "width": 3.0,
+          "dash": "dash",
+          "from": { "anchor_cell": { "row": 0, "col": 1, "at": "center" } },
+          "to":   { "anchor_cell": { "row": 1, "col": 0, "at": "center" } }
+        },
+        {
+          "kind": "badge",
+          "color": "accent6",
+          "text": "RECOMMENDED",
+          "width": 18,
+          "height": 5,
+          "from": { "x": 41, "y": 4 }
+        }
+      ]
+    }
+  ]
+}

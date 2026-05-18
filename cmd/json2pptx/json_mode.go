@@ -856,6 +856,31 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			warnings = append(warnings, gridResult.Warnings...)
 			slideFitFindings = append(slideFitFindings, gridResult.FitFindings...)
 		}
+
+		// Slide-level overlays (arrows, lines, badges) render on top of the
+		// grid. They may reference grid cells by (row, col) via anchor_cell.
+		if len(slide.Overlays) > 0 {
+			overlayAlloc := &pptx.ShapeIDAllocator{}
+			overlayAlloc.SetMinID(400)
+			var cells []shapegrid.ResolvedCell
+			if gridResult != nil {
+				cells = gridResult.Cells
+			}
+			overlayShapes, err := resolveOverlays(slide.Overlays, cells, overlayAlloc, slideWidth, slideHeight)
+			if err != nil {
+				return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
+			}
+			spec.RawShapeXML = append(spec.RawShapeXML, overlayShapes...)
+		}
+	} else if len(slide.Overlays) > 0 {
+		// Allow overlays on slides without a shape_grid (purely floating shapes).
+		overlayAlloc := &pptx.ShapeIDAllocator{}
+		overlayAlloc.SetMinID(400)
+		overlayShapes, err := resolveOverlays(slide.Overlays, nil, overlayAlloc, slideWidth, slideHeight)
+		if err != nil {
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
+		}
+		spec.RawShapeXML = append(spec.RawShapeXML, overlayShapes...)
 	}
 
 	return spec, warnings, slideFitFindings, nil

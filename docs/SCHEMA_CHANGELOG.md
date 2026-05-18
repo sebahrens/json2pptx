@@ -4,6 +4,26 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.15.0 (2026-05-18)
+
+### Added
+
+- **Slide-level `overlays` field on `SlideInput`** — `SlideInput` gains a new
+  `overlays: []OverlayShape` field for free-floating shapes rendered on top
+  of the slide's grid (or as standalone shapes on slides with no grid).
+  Each `OverlayShape` has a `kind` of `"arrow"`, `"line"`, or `"badge"`, plus
+  `from`/`to` endpoints expressed either as `{x, y}` percentages of slide
+  width/height or as `{anchor_cell: {row, col, at}}` references that resolve
+  to a named point on a grid cell (`center`, `top-left`, `top`, `top-right`,
+  `right`, `bottom-right`, `bottom`, `bottom-left`, `left`). Arrows emit a
+  `straightConnector1` with a triangle `tailEnd`; lines omit the arrowhead;
+  badges emit a `roundRect` with optional centered text. Overlays render
+  *after* the grid so they always appear on top. This unblocks the agent
+  workflow of drawing cross-cell arrows on a 2x2 matrix, floating roof
+  badges over strategy-house tiers, and standalone callout pointers without
+  abusing `GridOverlayInput` (which is image-only) or `ShapeSpecInput.Icon`
+  (which is single-cell). Closes `go-slide-creator-f1ic.10`.
+
 ## 4.14.0 (2026-05-18)
 
 ### Added

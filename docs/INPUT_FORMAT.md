@@ -125,6 +125,7 @@ Each slide specifies a layout, content items, and optional metadata.
 | `slide_type`       | No       | string | Type hint: `content`, `title`, `section`, `chart`, `two-column`, `diagram`, `image`, `comparison`, `blank` |
 | `content`          | Yes      | array  | Array of content items for placeholders                            |
 | `shape_grid`       | No       | object | Grid of preset geometry shapes (see Shape Grid section)            |
+| `overlays`         | No       | array  | Slide-level overlay shapes (arrows, lines, badges) rendered on top of the grid. See Overlays section below. |
 | `background`       | No       | object | Slide background image (see Background section below)              |
 | `speaker_notes`    | No       | string | Speaker notes text (not rendered on slide)                         |
 | `source`           | No       | string | Source attribution text (small text at slide bottom)               |
@@ -867,6 +868,78 @@ Use a consistent font size hierarchy across shape grid cells to create professio
   }
 }
 ```
+
+---
+
+## 7. Slide Overlays
+
+The `overlays` field on a slide defines free-floating shapes rendered on top of the grid. Use overlays for things that grid cells can't express on their own: cross-cell arrows on a matrix, floating roof badges over a strategy-house tier, or callout pointers from a chart to a stat hero.
+
+### OverlayShape Fields
+
+| Field    | Required | Type     | Description |
+|----------|----------|----------|-------------|
+| `kind`   | Yes      | string   | `"arrow"` (line with triangle tailEnd), `"line"` (no arrowhead), `"badge"` (roundRect with optional text) |
+| `from`   | Yes      | object   | Start point — see `OverlayPoint` below. For badges, defines the top-left corner. |
+| `to`     | Conditional | object | End point. **Required** for `arrow`/`line`. **Optional** for `badge`: when present, defines bottom-right corner (overrides `width`/`height`). |
+| `color`  | No       | string   | Stroke color (arrow/line) or fill color (badge). Hex (`"FF0000"`) or scheme name (`"accent1"`). Defaults: `"000000"` for arrow/line, `"accent1"` for badge. |
+| `width`  | No       | number   | Arrow/line: stroke thickness in points (default 1.5). Badge (when `to` omitted): width as percent-of-slide-width (default 12). |
+| `height` | No       | number   | Badge (when `to` omitted): height as percent-of-slide-height (default 6). Ignored for arrow/line. |
+| `dash`   | No       | string   | Arrow/line dash style: `"solid"`, `"dash"`, `"dot"`, `"lgDash"`, `"dashDot"`. |
+| `text`   | No       | string   | Badge label text. Rendered centered, 12pt bold white. |
+
+### OverlayPoint
+
+Each `from` / `to` is an `OverlayPoint`. Specify either explicit percent coordinates **or** an `anchor_cell` reference (anchor wins when both are set):
+
+| Field         | Type   | Description |
+|---------------|--------|-------------|
+| `x`           | number | Percent of slide width (0–100). Used when `anchor_cell` is absent. |
+| `y`           | number | Percent of slide height (0–100). |
+| `anchor_cell` | object | Cell reference (overrides `x`/`y`). |
+
+### Anchor Cell
+
+`anchor_cell` references a cell in the slide's `shape_grid` by zero-based indices and selects a named point on its bounds:
+
+| Field | Type   | Description |
+|-------|--------|-------------|
+| `row` | int    | 0-based row index in the resolved grid. |
+| `col` | int    | 0-based column index. |
+| `at`  | string | One of `"center"` (default), `"top-left"`, `"top"`, `"top-right"`, `"right"`, `"bottom-right"`, `"bottom"`, `"bottom-left"`, `"left"`. |
+
+### Example: Diagonal Arrows on a 2x2 Matrix
+
+```json
+{
+  "shape_grid": {
+    "columns": 2,
+    "rows": [
+      { "cells": [
+        {"shape": {"geometry": "roundRect", "fill": "accent1", "text": "Low cost\nLow risk"}},
+        {"shape": {"geometry": "roundRect", "fill": "accent2", "text": "High cost\nLow risk"}}
+      ]},
+      { "cells": [
+        {"shape": {"geometry": "roundRect", "fill": "accent3", "text": "Low cost\nHigh risk"}},
+        {"shape": {"geometry": "roundRect", "fill": "accent4", "text": "High cost\nHigh risk"}}
+      ]}
+    ]
+  },
+  "overlays": [
+    {"kind": "arrow", "color": "dk1", "width": 3,
+     "from": {"anchor_cell": {"row": 0, "col": 0}},
+     "to":   {"anchor_cell": {"row": 1, "col": 1}}},
+    {"kind": "arrow", "color": "dk1", "width": 3, "dash": "dash",
+     "from": {"anchor_cell": {"row": 0, "col": 1}},
+     "to":   {"anchor_cell": {"row": 1, "col": 0}}},
+    {"kind": "badge", "color": "accent6", "text": "RECOMMENDED",
+     "width": 18, "height": 5,
+     "from": {"x": 41, "y": 4}}
+  ]
+}
+```
+
+Overlays render **after** the grid, so they always appear on top. Overlays may be used on slides without `shape_grid` too — in that case only percent-of-slide endpoints are valid (anchor_cell references would error).
 
 ---
 

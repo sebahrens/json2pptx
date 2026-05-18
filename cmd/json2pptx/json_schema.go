@@ -29,6 +29,9 @@ type ShapeFillInput = jsonschema.ShapeFillInput
 type TableInput = jsonschema.TableInput
 type TableCellInput = jsonschema.TableCellInput
 type TableStyleInput = jsonschema.TableStyleInput
+type OverlayShapeInput = jsonschema.OverlayShapeInput
+type OverlayPointInput = jsonschema.OverlayPointInput
+type OverlayAnchorCellInput = jsonschema.OverlayAnchorCellInput
 
 // PresentationInput is the top-level typed JSON input.
 // Maps to generator.GenerationRequest.
@@ -211,6 +214,7 @@ type SlideInput struct {
 	ShapeGrid       *ShapeGridInput  `json:"shape_grid,omitempty"`
 	Pattern         *PatternInput    `json:"pattern,omitempty"`
 	Compose         *ComposeInput    `json:"compose,omitempty"`
+	Overlays        []*OverlayShapeInput `json:"overlays,omitempty"` // Free-floating shapes (arrows, lines, badges) rendered on top of the grid. See OverlayShapeInput for positioning.
 	SpeakerNotes    string           `json:"speaker_notes,omitempty"`
 	Source          string           `json:"source,omitempty"`
 	Transition      string           `json:"transition,omitempty"`
