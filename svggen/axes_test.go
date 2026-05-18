@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"encoding/xml"
 	"strings"
 	"testing"
 )
@@ -145,6 +146,144 @@ func TestDrawLinearAxis_Left(t *testing.T) {
 
 	if !strings.Contains(svg, "svg") {
 		t.Error("Output should contain svg element")
+	}
+}
+
+// TestLeftAxisLabels_TextAnchorEnd is the regression test for adversarial
+// finding A1: Y-axis tick labels (drawn with TextAlignRight) must emit an
+// explicit text-anchor="end" on the <text> element. Without it, downstream
+// renderers (rsvg, LibreOffice, browsers) treat the canvas-precomputed tspan x
+// as a left-edge anchor, causing labels to drift right and overlap the axis.
+//
+// We parse the emitted SVG and assert that every <text> element whose tspan
+// contains a numeric tick label (matching the values we drew) carries
+// text-anchor="end". X-axis labels in the same SVG are left out of the
+// assertion because they are center-aligned (text-anchor="middle").
+func TestLeftAxisLabels_TextAnchorEnd(t *testing.T) {
+	builder := NewSVGBuilder(400, 300)
+	scale := NewLinearScale(0, 50).SetRangeLinear(0, 200)
+
+	config := DefaultAxisConfig(AxisPositionLeft)
+	config.TickCount = 6
+	axis := NewAxis(builder, config)
+	axis.DrawLinearAxis(scale, 60, 50)
+
+	svgStr, err := builder.RenderToString()
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// Parse all <text> elements. Wrap in a synthetic root so xml.Decoder
+	// treats the SVG as a stream of siblings even when the canvas library
+	// emits inline <style> alongside text.
+	type tspan struct {
+		Content string `xml:",chardata"`
+	}
+	type textEl struct {
+		Anchor string `xml:"text-anchor,attr"`
+		Tspan  tspan  `xml:"tspan"`
+	}
+	dec := xml.NewDecoder(strings.NewReader(svgStr))
+	var ticks []textEl
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		se, ok := tok.(xml.StartElement)
+		if !ok || se.Name.Local != "text" {
+			continue
+		}
+		var el textEl
+		// Re-decode this element including children into our struct.
+		if err := dec.DecodeElement(&el, &se); err != nil {
+			continue
+		}
+		// Skip elements with no tspan content (titles, empty).
+		if strings.TrimSpace(el.Tspan.Content) == "" {
+			continue
+		}
+		ticks = append(ticks, el)
+	}
+
+	if len(ticks) == 0 {
+		t.Fatal("no <text> elements parsed from SVG; rendering may have failed")
+	}
+
+	// Expected Y-axis tick labels for scale 0..50, 6 ticks => 0, 10, 20, 30, 40, 50.
+	wantLabels := map[string]bool{
+		"0": true, "10": true, "20": true, "30": true, "40": true, "50": true,
+	}
+	var sawAny bool
+	for _, el := range ticks {
+		label := strings.TrimSpace(el.Tspan.Content)
+		if !wantLabels[label] {
+			continue
+		}
+		sawAny = true
+		if el.Anchor != "end" {
+			t.Errorf("Y-axis label %q: text-anchor = %q, want %q (right-aligned tick label must anchor at end)",
+				label, el.Anchor, "end")
+		}
+	}
+	if !sawAny {
+		t.Fatalf("did not find any expected Y-axis tick labels in SVG; got %d <text> elements", len(ticks))
+	}
+}
+
+// TestDrawText_TextAnchorByAlignment exercises the three TextAlign values
+// directly through the builder and asserts that the emitted SVG carries the
+// expected text-anchor attribute. This pins the contract that DrawText emits
+// text-anchor="end" for TextAlignRight, "middle" for TextAlignCenter, and no
+// text-anchor (i.e. SVG default "start") for TextAlignLeft.
+func TestDrawText_TextAnchorByAlignment(t *testing.T) {
+	b := NewSVGBuilder(200, 100)
+	b.DrawText("right", 150, 20, TextAlignRight, TextBaselineTop)
+	b.DrawText("center", 150, 50, TextAlignCenter, TextBaselineTop)
+	b.DrawText("left", 150, 80, TextAlignLeft, TextBaselineTop)
+
+	svgStr, err := b.RenderToString()
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	type tspan struct {
+		Content string `xml:",chardata"`
+	}
+	type textEl struct {
+		Anchor string `xml:"text-anchor,attr"`
+		Tspan  tspan  `xml:"tspan"`
+	}
+
+	dec := xml.NewDecoder(strings.NewReader(svgStr))
+	got := map[string]string{}
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		se, ok := tok.(xml.StartElement)
+		if !ok || se.Name.Local != "text" {
+			continue
+		}
+		var el textEl
+		if err := dec.DecodeElement(&el, &se); err != nil {
+			continue
+		}
+		got[strings.TrimSpace(el.Tspan.Content)] = el.Anchor
+	}
+
+	cases := map[string]string{
+		"right":  "end",
+		"center": "middle",
+		"left":   "", // no text-anchor attribute -> SVG default "start"
+	}
+	for label, want := range cases {
+		if anchor, ok := got[label]; !ok {
+			t.Errorf("missing <text> element for label %q", label)
+		} else if anchor != want {
+			t.Errorf("label %q: text-anchor = %q, want %q", label, anchor, want)
+		}
 	}
 }
 

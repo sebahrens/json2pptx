@@ -8,7 +8,6 @@ import (
 	"image/png"
 	"math"
 	"regexp"
-	"strconv"
 
 	"github.com/sebahrens/json2pptx/svggen/core"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
@@ -130,6 +129,13 @@ type SVGBuilder struct {
 	// and diagram renderers during drawing. Retrieved via Findings() after
 	// the build is complete.
 	findings []core.Finding
+
+	// textAligns records the alignment of each successfully-drawn text element
+	// in draw order. fixSVGTextAlignment iterates emitted <text> elements in
+	// the same order and applies the appropriate text-anchor. This avoids
+	// trying to infer alignment from the canvas library's emitted geometry
+	// (where center and right both produce text.x > tspan.x).
+	textAligns []TextAlign
 }
 
 // FontErr returns the first font-related error recorded during text operations,
@@ -281,41 +287,63 @@ func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 	})
 }
 
-// textAnchorRe matches <text x="X1" ...><tspan x="X2" ...> patterns to detect
-// center-aligned text that needs text-anchor="middle" for cross-renderer compatibility.
+// textAnchorRe matches <text x="X1" ...><tspan x="X2" ...> patterns so we can
+// inject text-anchor for center- and right-aligned text. The regex anchors on
+// the literal "<text x=" prefix the canvas library always emits.
 var textAnchorRe = regexp.MustCompile(`<text x="([\d.]+)"([^>]*)><tspan x="([\d.]+)"`)
 
-// fixSVGTextAlignment adds text-anchor="middle" to center-aligned text elements.
+// fixSVGTextAlignment injects an explicit text-anchor on every <text> element
+// emitted by DrawText, using the alignment recorded at draw time.
 //
-// The canvas library pre-computes tspan x positions for center alignment using its
-// own font metrics, but SVG renderers (rsvg-convert, LibreOffice) use different
-// (often wider) fonts. Without text-anchor, the renderer treats the pre-computed
-// tspan x as a left-aligned starting point, causing bold/wide text to overflow
-// rightward past the canvas edge. Adding text-anchor="middle" lets each renderer
-// center text using its own metrics, distributing any width difference equally
-// on both sides instead of pushing overflow to the right.
-func fixSVGTextAlignment(svgContent []byte) []byte {
+// The canvas library pre-computes tspan x positions using its own font metrics
+// (Arial), but downstream SVG renderers (rsvg-convert, LibreOffice, browsers,
+// PowerPoint) re-measure text with their own metrics and treat the pre-computed
+// tspan x as a left-edge anchor. Without an explicit text-anchor this causes:
+//   - center-aligned text to overflow rightward when the fallback font is wider
+//   - right-aligned text (Y-axis tick labels, rotated bottom-axis labels) to
+//     drift right and overlap tick marks (adversarial finding A1).
+//
+// We emit text-anchor="middle" / "end" so each renderer aligns text using its
+// own metrics, distributing any width difference around the intended anchor.
+// Left-aligned text is left untouched: tspan.x already equals text.x and the
+// SVG default text-anchor="start" is correct.
+//
+// Alignment cannot be reliably inferred from the emitted geometry alone (both
+// center and right produce text.x > tspan.x), so DrawText records the alignment
+// of each draw in b.textAligns; this method walks emitted <text> elements in
+// the same order to pair each match with its alignment.
+func (b *SVGBuilder) fixSVGTextAlignment(svgContent []byte) []byte {
+	idx := 0
 	return textAnchorRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
+		i := idx
+		idx++
+		if i >= len(b.textAligns) {
+			return match
+		}
+		align := b.textAligns[i]
+		if align == TextAlignLeft {
+			return match
+		}
 		parts := textAnchorRe.FindSubmatch(match)
 		if len(parts) < 4 {
 			return match
 		}
-		textX, err1 := strconv.ParseFloat(string(parts[1]), 64)
-		tspanX, err2 := strconv.ParseFloat(string(parts[3]), 64)
-		if err1 != nil || err2 != nil {
+		var anchor string
+		switch align {
+		case TextAlignCenter:
+			anchor = "middle"
+		case TextAlignRight:
+			anchor = "end"
+		default:
 			return match
 		}
-
-		// Center-aligned text: canvas shifted tspan left by half the measured
-		// text width, so text.x > tspan.x. Threshold of 0.5mm avoids matching
-		// left-aligned text where the difference is just floating-point noise.
-		if textX-tspanX > 0.5 {
-			attrs := string(parts[2])
-			return []byte(fmt.Sprintf(`<text x="%s" text-anchor="middle"%s><tspan x="%s"`,
-				string(parts[1]), attrs, string(parts[1])))
-		}
-
-		return match
+		// Set tspan.x = text.x so the renderer anchors at the recorded text x.
+		// (For center, tspan.x was text.x - width/2; for right, text.x - width.
+		// Either way, with an explicit text-anchor the renderer recomputes the
+		// effective tspan offset, so it's correct to collapse tspan.x to text.x.)
+		attrs := string(parts[2])
+		return []byte(fmt.Sprintf(`<text x="%s" text-anchor="%s"%s><tspan x="%s"`,
+			string(parts[1]), anchor, attrs, string(parts[1])))
 	})
 }
 
@@ -843,6 +871,11 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	}
 
 	b.ctx.DrawText(xMM, yMM, textLine)
+	// Record the alignment so fixSVGTextAlignment can inject the matching
+	// text-anchor on the corresponding <text> element. We append only after a
+	// successful canvas draw (early-returns above skip the canvas call and
+	// must skip the append) so the index stays in sync with emitted elements.
+	b.textAligns = append(b.textAligns, align)
 	return b
 }
 
@@ -1083,9 +1116,11 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	// form BEFORE pixel scaling so translate values get scaled correctly.
 	content = fixSVGMatrixRotations(content)
 
-	// Fix text alignment: add text-anchor="middle" to center-aligned text.
-	// Must run BEFORE pixel scaling so the 0.5mm threshold works correctly.
-	content = fixSVGTextAlignment(content)
+	// Fix text alignment: add explicit text-anchor for center- and right-aligned
+	// text. Walks emitted <text> elements in draw order and uses the alignment
+	// recorded by DrawText. Must run before pixel scaling so it operates on the
+	// same coordinate space the canvas library produced.
+	content = b.fixSVGTextAlignment(content)
 
 	// Scale all SVG coordinates from mm to CSS pixels. LibreOffice and PowerPoint
 	// misinterpret font-size "px" values when the viewBox uses mm-scale coordinates,
