@@ -300,6 +300,11 @@ func (bc *BarChart) Draw(data ChartData) error {
 		})
 	}
 
+	// Calculate domain early so we can probe y-axis label widths and grow
+	// MarginLeft before layout if labels would clip into the title/legend area.
+	yMin, yMax := bc.calculateDomain(data)
+	EnsureYAxisFits(b, &bc.config.ChartConfig, yMin, yMax)
+
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(bc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
 	plotArea := layout.PlotArea
@@ -310,9 +315,6 @@ func (bc *BarChart) Draw(data ChartData) error {
 	if bc.config.ShowLegend {
 		RefineLegendHeight(b, style, data.Series, &plotArea, &legendHeight)
 	}
-
-	// Calculate domain
-	yMin, yMax := bc.calculateDomain(data)
 
 	// Detect all-zero series: flat/blank chart.
 	if yMin == 0 && yMax == 0 {
@@ -1005,6 +1007,11 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 
+	// Calculate y-axis domain early so we can probe label widths and grow
+	// MarginLeft before layout if labels would clip into the title/legend area.
+	yMin, yMax := lc.calculateYDomain(data)
+	EnsureYAxisFits(b, &lc.config.ChartConfig, yMin, yMax)
+
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(lc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
 	plotArea := layout.PlotArea
@@ -1015,9 +1022,6 @@ func (lc *LineChart) Draw(data ChartData) error {
 	if lc.config.ShowLegend {
 		RefineLegendHeight(b, style, data.Series, &plotArea, &legendHeight)
 	}
-
-	// Calculate domains
-	yMin, yMax := lc.calculateYDomain(data)
 
 	// Check if data is time-series
 	isTimeSeries := lc.hasTimeSeriesData(data)
@@ -1663,6 +1667,12 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 		b.AddFinding(f)
 	}
 
+	// Calculate domains early so we can probe y-axis label widths and grow
+	// MarginLeft before layout if labels would clip into the title/legend area.
+	xMin, xMax := sc.calculateXDomain(data)
+	yMin, yMax := sc.calculateYDomain(data)
+	EnsureYAxisFits(b, &sc.config.ChartConfig, yMin, yMax)
+
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(sc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
 	plotArea := layout.PlotArea
@@ -1673,10 +1683,6 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 	if sc.config.ShowLegend {
 		RefineLegendHeight(b, style, data.Series, &plotArea, &legendHeight)
 	}
-
-	// Calculate domains
-	xMin, xMax := sc.calculateXDomain(data)
-	yMin, yMax := sc.calculateYDomain(data)
 
 	// Create scales
 	xScale := NewLinearScale(xMin, xMax)

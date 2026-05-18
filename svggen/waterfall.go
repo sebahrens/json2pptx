@@ -185,13 +185,15 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 		wc.config.MarginBottom += xLayout.ExtraBottomMargin
 	}
 
+	// Calculate domain early so we can probe y-axis label widths and grow
+	// MarginLeft before layout if labels would clip into the title/legend area.
+	yMin, yMax := wc.calculateDomain(data.Points)
+	EnsureYAxisFits(b, &wc.config.ChartConfig, yMin, yMax)
+
 	// Calculate layout (shared across Cartesian chart types; fixes missing footerHeight)
 	layout := ComputeCartesianLayout(wc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, 1)
 	plotArea := layout.PlotArea
 	headerHeight := layout.HeaderHeight
-
-	// Calculate domain
-	yMin, yMax := wc.calculateDomain(data.Points)
 
 	// Create scales
 	xScale := NewCategoricalScale(categories)

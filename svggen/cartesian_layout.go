@@ -1,6 +1,9 @@
 package svggen
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // =============================================================================
 // Cartesian Layout — shared layout computation for Cartesian chart types
@@ -150,6 +153,159 @@ func DrawCartesianYAxis(b *SVGBuilder, plotArea Rect, yScale *LinearScale, title
 	yAxisConfig.RangeExtent = plotArea.H
 	yAxis := NewAxis(b, yAxisConfig)
 	yAxis.DrawLinearAxis(yScale, plotArea.X, plotArea.Y)
+}
+
+// =============================================================================
+// Adaptive Y-Axis Label Layout
+// =============================================================================
+
+// AdaptYLabelsResult holds the result of measuring linear-scale y-axis labels
+// and deciding whether MarginLeft must grow to fit them.
+type AdaptYLabelsResult struct {
+	// WidestLabel is the measured width of the widest formatted tick label,
+	// including a 1.1x safety factor for inter-character spacing variance
+	// (same factor used by AdaptXLabels).
+	WidestLabel float64
+
+	// ExtraLeftMargin is the additional MarginLeft needed so the widest label
+	// fits in the area to the left of tick marks. Zero when the existing
+	// MarginLeft already accommodates the labels.
+	ExtraLeftMargin float64
+
+	// Clipped is true when the existing MarginLeft was insufficient — caller
+	// should emit a chart.label_clipped finding.
+	Clipped bool
+}
+
+// AdaptYLabels measures the widest formatted y-axis tick label for a linear
+// scale and reports how much MarginLeft must grow to keep the label fully
+// inside the chart viewBox. This mirrors AdaptXLabels.ExtraBottomMargin for
+// the bottom axis.
+//
+// Label formatting replicates DrawLinearAxis exactly: TickFormat is used by
+// default, switching to FormatCompact when any tick magnitude exceeds 9999.
+//
+// Parameters:
+//   - b: SVGBuilder for text measurement.
+//   - domainMin, domainMax: y-axis domain (used to generate ticks).
+//   - tickCount: requested number of ticks (typically 5).
+//   - fontSize: label font size (typically style.Typography.SizeSmall).
+//   - tickSize: tick mark length (typically 6pt).
+//   - tickPadding: label-to-tick gap (drawTick floors this to 3pt).
+//   - hasTitle: true if an axis title is also drawn (consumes additional
+//     horizontal space because the title is rotated 90°).
+//   - titleFontSize: axis-title font size (only used when hasTitle is true).
+//   - marginLeft: current MarginLeft to check against.
+func AdaptYLabels(b *SVGBuilder, domainMin, domainMax float64, tickCount int, fontSize, tickSize, tickPadding float64, hasTitle bool, titleFontSize, marginLeft float64) AdaptYLabelsResult {
+	if tickCount <= 0 {
+		tickCount = 5
+	}
+	scale := NewLinearScale(domainMin, domainMax)
+	ticks := scale.Ticks(tickCount)
+	if len(ticks) == 0 {
+		return AdaptYLabelsResult{}
+	}
+
+	// Choose format and compact mode the same way DrawLinearAxis does so the
+	// measured labels match what is actually rendered.
+	format := scale.TickFormat(tickCount)
+	useCompact := false
+	for _, v := range ticks {
+		if v > 9999 || v < -9999 {
+			useCompact = true
+			break
+		}
+	}
+
+	labels := make([]string, len(ticks))
+	for i, v := range ticks {
+		if useCompact {
+			labels[i] = FormatCompact(v)
+		} else {
+			labels[i] = fmt.Sprintf(format, v)
+		}
+	}
+
+	// Measure widest with 1.1x safety factor (matches AdaptXLabels).
+	b.Push()
+	b.SetFontSize(fontSize)
+	var maxW float64
+	for _, label := range labels {
+		w, _ := b.MeasureText(label)
+		if w > maxW {
+			maxW = w
+		}
+	}
+	b.Pop()
+	widest := maxW * 1.1
+
+	// Required left space: rotated title strip (when present) + label width +
+	// tick mark + min label-to-tick gap (mirrors drawTick's verticalLabelGap).
+	verticalLabelGap := math.Max(tickPadding, 3)
+	required := widest + tickSize + verticalLabelGap
+	if hasTitle {
+		// The vertical axis title is rotated 90° and centered along the axis,
+		// so its horizontal footprint is ~one line of titleFontSize, plus a
+		// small gap between title and label column.
+		required += titleFontSize + verticalLabelGap
+	}
+
+	// 1pt of viewBox slack so the widest label edge isn't flush with the SVG
+	// boundary (matches the strict no-overlap unit-test budget).
+	required += 1
+
+	res := AdaptYLabelsResult{WidestLabel: widest}
+	if required > marginLeft {
+		res.ExtraLeftMargin = required - marginLeft
+		res.Clipped = true
+	}
+	return res
+}
+
+// EnsureYAxisFits measures linear-scale y-axis labels and, if necessary, grows
+// config.MarginLeft so the widest label is fully visible. When an adjustment
+// is made, a chart.label_clipped finding is emitted with the widest measured
+// label width and the applied extra margin.
+//
+// Callers should invoke this BEFORE ComputeCartesianLayout so the layout
+// reflects the adjusted margins. Charts that use a non-linear y-axis (e.g.
+// log scale) should skip this call — DrawLogAxis uses different label
+// formatting that isn't covered here.
+func EnsureYAxisFits(b *SVGBuilder, config *ChartConfig, domainMin, domainMax float64) AdaptYLabelsResult {
+	style := b.StyleGuide()
+	fontSize := style.Typography.SizeSmall
+	res := AdaptYLabels(
+		b,
+		domainMin, domainMax,
+		5,
+		fontSize,
+		6, // matches DefaultAxisConfig.TickSize
+		4, // matches DefaultAxisConfig.TickPadding
+		config.YAxisTitle != "",
+		style.Typography.SizeBody,
+		config.MarginLeft,
+	)
+	if res.ExtraLeftMargin > 0 {
+		config.MarginLeft += res.ExtraLeftMargin
+		b.AddFinding(Finding{
+			Field: "y_axis.labels",
+			Code:  FindingLabelClipped,
+			Message: fmt.Sprintf(
+				"y-axis label width %.1fpt exceeded available MarginLeft — grew left margin by %.1fpt",
+				res.WidestLabel, res.ExtraLeftMargin,
+			),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				Kind: FixKindIncreaseCanvas,
+				Params: map[string]any{
+					"axis":                 "y",
+					"widest_label_pt":      res.WidestLabel,
+					"extra_left_margin_pt": res.ExtraLeftMargin,
+				},
+			},
+		})
+	}
+	return res
 }
 
 // =============================================================================

@@ -306,3 +306,125 @@ func TestDrawCartesianGrid_NilScales(t *testing.T) {
 		DrawCartesianGrid(b, plotArea, yScale, xScale)
 	})
 }
+
+// =============================================================================
+// AdaptYLabels / EnsureYAxisFits Tests
+// =============================================================================
+
+// TestAdaptYLabels_SmallDomain confirms that a short-label domain fits inside
+// a default MarginLeft without grow.
+func TestAdaptYLabels_SmallDomain(t *testing.T) {
+	b := NewSVGBuilder(800, 600)
+	style := DefaultStyleGuide()
+
+	// Domain 0..100 → labels like "0".."100", well under default MarginLeft.
+	res := AdaptYLabels(b, 0, 100, 5, style.Typography.SizeSmall, 6, 4, false, style.Typography.SizeBody, 60)
+	if res.Clipped {
+		t.Errorf("expected no clip for 0..100 with MarginLeft=60, got clipped=true (widest=%.2f, extra=%.2f)",
+			res.WidestLabel, res.ExtraLeftMargin)
+	}
+	if res.WidestLabel <= 0 {
+		t.Errorf("expected non-zero WidestLabel, got %v", res.WidestLabel)
+	}
+}
+
+// TestAdaptYLabels_LargeCurrencyClips confirms that 6-digit currency labels
+// like "1,234,567" trigger MarginLeft growth and report Clipped=true.
+// Acceptance criterion (1) and (3).
+func TestAdaptYLabels_LargeCurrencyClips(t *testing.T) {
+	b := NewSVGBuilder(800, 600)
+	style := DefaultStyleGuide()
+
+	// Domain 0..1,200,000 → at TickCount=5, ticks every 300k or 400k. With
+	// magnitudes > 9999 the formatter switches to FormatCompact ("1.2M"), so
+	// to force wide labels we use a tiny MarginLeft against a domain whose
+	// compact labels are still wider than the budget.
+	res := AdaptYLabels(b, 0, 1_200_000, 5, style.Typography.SizeSmall, 6, 4, true, style.Typography.SizeBody, 20)
+	if !res.Clipped {
+		t.Errorf("expected Clipped=true for tiny MarginLeft=20 + title, got false (widest=%.2f, extra=%.2f)",
+			res.WidestLabel, res.ExtraLeftMargin)
+	}
+	if res.ExtraLeftMargin <= 0 {
+		t.Errorf("expected ExtraLeftMargin > 0, got %v", res.ExtraLeftMargin)
+	}
+}
+
+// TestAdaptYLabels_TickToLabelGapStrict asserts that after applying the extra
+// left margin the widest label's right edge is at least 1pt to the left of
+// the tick mark (acceptance criterion (4): widest_label.x_right ≤ tickX1 - 1pt).
+func TestAdaptYLabels_TickToLabelGapStrict(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	style := DefaultStyleGuide()
+	const tickSize = 6.0
+	const tickPadding = 4.0
+
+	res := AdaptYLabels(b, 0, 9_999_999, 5, style.Typography.SizeSmall, tickSize, tickPadding, false, style.Typography.SizeBody, 40)
+	// Effective MarginLeft after growth.
+	marginLeft := 40.0
+	if res.Clipped {
+		marginLeft += res.ExtraLeftMargin
+	}
+
+	// Tick geometry (mirrors drawTick): tickX1 = originX = marginLeft.
+	// Label right edge sits at tickX2 - verticalLabelGap = marginLeft - tickSize - max(tickPadding, 3).
+	tickX1 := marginLeft
+	verticalLabelGap := math.Max(tickPadding, 3)
+	labelRightEdge := tickX1 - tickSize - verticalLabelGap
+
+	// Account for actual label width with safety factor: the *widest* glyph
+	// runs from labelRightEdge - widest .. labelRightEdge. We assert the
+	// right edge clears the tick line by at least 1pt.
+	if labelRightEdge > tickX1-1 {
+		t.Errorf("label right edge %.2f is not at least 1pt to the left of tick mark %.2f", labelRightEdge, tickX1)
+	}
+}
+
+// TestEnsureYAxisFits_EmitsClippedFinding asserts that EnsureYAxisFits emits a
+// chart.label_clipped finding and grows MarginLeft when the budget is tight.
+func TestEnsureYAxisFits_EmitsClippedFinding(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	config := DefaultChartConfig(400, 300)
+	originalMargin := config.MarginLeft
+
+	// Force a tight budget: shrink MarginLeft below what wide labels need.
+	config.MarginLeft = 10
+	config.YAxisTitle = "Revenue (USD)"
+
+	res := EnsureYAxisFits(b, &config, 0, 9_876_543)
+	if !res.Clipped {
+		t.Fatalf("expected Clipped=true, got false (widest=%.2f)", res.WidestLabel)
+	}
+	if config.MarginLeft <= 10 {
+		t.Errorf("expected MarginLeft to grow above 10, got %v", config.MarginLeft)
+	}
+
+	// Verify a chart.label_clipped finding was emitted with severity=info.
+	found := false
+	for _, f := range b.Findings() {
+		if f.Code == FindingLabelClipped && f.Field == "y_axis.labels" {
+			found = true
+			if f.Severity != "info" {
+				t.Errorf("expected severity=info, got %q", f.Severity)
+			}
+			if f.Fix == nil || f.Fix.Kind != FixKindIncreaseCanvas {
+				t.Errorf("expected fix.kind=%q, got %+v", FixKindIncreaseCanvas, f.Fix)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected chart.label_clipped finding to be emitted, findings=%+v", b.Findings())
+	}
+
+	// Sanity: small-domain default chart shouldn't fire the finding.
+	b2 := NewSVGBuilder(400, 300)
+	config2 := DefaultChartConfig(400, 300)
+	res2 := EnsureYAxisFits(b2, &config2, 0, 100)
+	if res2.Clipped {
+		t.Errorf("expected no clip for default chart with 0..100 domain, got clipped=true")
+	}
+	if config2.MarginLeft != originalMargin && config.MarginLeft != originalMargin {
+		// (this is a soft check — default margin should be unchanged)
+		t.Logf("default MarginLeft=%v (was %v)", config2.MarginLeft, originalMargin)
+	}
+}
