@@ -257,6 +257,27 @@ A complex diagram (org_chart, fishbone, swot, heatmap, etc.) is placed in a grid
 }
 ```
 
+### `diagram_aspect_mismatch`
+
+**Action:** `review`
+**Fix kind:** `reshape_grid`
+**Emitted at:** preflight + render time
+
+A diagram cell's aspect ratio differs from the rendered SVG's aspect ratio by more than 25% (the default svggen output is 4:3 — 800×600 — unless `DiagramSpec.Width`/`Height` overrides it). At that point, the chart is either stretched (when svggen ignores aspect) or letterboxed inside the cell, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or pass explicit `diagram.width` / `diagram.height` matched to the cell.
+
+```json
+{
+  "path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
+  "code": "diagram_aspect_mismatch",
+  "message": "diagram cell aspect 0.50 differs from rendered bar_chart SVG aspect 1.33 by 62% — chart will be stretched or letterboxed; resize the cell, set cell.fit, or set explicit diagram.width/height",
+  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "bar_chart", "svg_aspect": 1.333, "cell_aspect": 0.5, "deviation": 0.625, "cell_width_emu": 3000000, "cell_height_emu": 6000000, "svg_width": 800, "svg_height": 600 } },
+  "action": "review",
+  "measured": { "width_emu": 3000000, "height_emu": 6000000 },
+  "allowed": { "width_emu": 800, "height_emu": 600 },
+  "overflow_ratio": 0.375
+}
+```
+
 ### `diagram_clamped`
 
 **Action:** `review`

@@ -437,6 +437,10 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 					if f := generator.CheckDiagramInNarrowBoundsFinding(cell.Diagram, rc.CellBounds.CX, diagPath); f != nil {
 						findings = append(findings, *f)
 					}
+					// Preflight: cell vs. rendered SVG aspect mismatch.
+					if f := generator.CheckDiagramAspectMismatchFinding(cell.Diagram, rc.CellBounds.CX, rc.CellBounds.CY, diagPath); f != nil {
+						findings = append(findings, *f)
+					}
 				}
 
 				cellIdx++

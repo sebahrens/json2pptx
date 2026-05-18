@@ -47,7 +47,8 @@ const (
 	ErrCodeChartDataEmpty     = "chart_data_empty"
 
 	// Grid visual cell finding codes (emitted for diagram/icon/image grid cells).
-	ErrCodeGridDiagramNarrow = "grid_diagram_narrow"
+	ErrCodeGridDiagramNarrow      = "grid_diagram_narrow"
+	ErrCodeDiagramAspectMismatch  = "diagram_aspect_mismatch"
 
 	// Render-time finding codes (emitted during generation, not pre-flight).
 	ErrCodePlaceholderRemapped   = "placeholder_remapped"
@@ -121,6 +122,8 @@ var (
 	ErrColumnWidthDeficit  = errors.New("column widths fell back to global floor")
 
 	ErrContrastPredicted = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
+
+	ErrDiagramAspectMismatch = errors.New("diagram cell aspect differs from rendered SVG aspect")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -169,6 +172,7 @@ var codeSentinel = map[string]error{
 	ErrCodePaginationDefault:     ErrPaginationDefault,
 	ErrCodeColumnWidthDeficit:    ErrColumnWidthDeficit,
 	ErrCodeContrastPredicted:     ErrContrastPredicted,
+	ErrCodeDiagramAspectMismatch: ErrDiagramAspectMismatch,
 }
 
 // AllFitFindingCodes returns the sorted list of all fit-finding error codes.

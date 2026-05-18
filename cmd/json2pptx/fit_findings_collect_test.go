@@ -708,6 +708,115 @@ func TestCheckShapeGridStructural_PreflightDiagramNarrow(t *testing.T) {
 	}
 }
 
+// TestCheckShapeGridStructural_PreflightDiagramAspectMismatch verifies that
+// the preflight structural check emits diagram_aspect_mismatch when a grid
+// cell's aspect differs from the diagram's rendered SVG aspect by more than
+// 25% (default svggen aspect is 4:3 unless DiagramSpec.Width/Height override).
+func TestCheckShapeGridStructural_PreflightDiagramAspectMismatch(t *testing.T) {
+	// Grid has 4 narrow columns; the diagram cell occupies one column, giving
+	// a tall narrow cell aspect that is well below the SVG's default 4:3.
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`4`),
+		Rows: []GridRowInput{
+			{
+				Height: 100,
+				Cells: []*GridCellInput{
+					{Diagram: &types.DiagramSpec{
+						Type: "bar_chart",
+						Data: map[string]any{
+							"categories": []any{"A", "B"},
+							"series":     []any{map[string]any{"name": "S", "values": []any{1.0, 2.0}}},
+						},
+					}},
+					nil,
+					nil,
+					nil,
+				},
+			},
+		},
+	}
+
+	slideWidth := int64(12192000)
+	slideHeight := int64(6858000)
+	layout := &types.LayoutMetadata{
+		ID: "blank",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 11277600, Height: 4800600}},
+		},
+	}
+
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+
+	found := false
+	for _, f := range findings {
+		if f.Code == "diagram_aspect_mismatch" {
+			found = true
+			if !strings.Contains(f.Path, "/diagram") {
+				t.Errorf("finding path should target diagram field, got: %s", f.Path)
+			}
+			if f.Action != "review" {
+				t.Errorf("expected action 'review', got %q", f.Action)
+			}
+			if f.Fix == nil || f.Fix.Kind != "reshape_grid" {
+				t.Error("expected Fix with kind reshape_grid")
+			}
+			break
+		}
+	}
+	if !found {
+		codes := make([]string, 0, len(findings))
+		for _, f := range findings {
+			codes = append(codes, f.Code)
+		}
+		t.Errorf("expected preflight diagram_aspect_mismatch finding; got codes: %v", codes)
+	}
+}
+
+// TestCheckShapeGridStructural_NoDiagramAspectMismatchWhenAligned verifies the
+// preflight check does NOT emit diagram_aspect_mismatch when the cell aspect
+// is within 25% of the rendered SVG aspect.
+func TestCheckShapeGridStructural_NoDiagramAspectMismatchWhenAligned(t *testing.T) {
+	// Explicit grid bounds yield a deterministic cell aspect. The 16:9 slide
+	// (12192000 × 6858000 EMU) is wider than tall, so we scale width/height
+	// percentages so that the resulting cell is ~2:1. wPct/hPct ≈ 1.125
+	// cancels the 16:9 ratio to give cell aspect ≈ 2.0.
+	grid := &ShapeGridInput{
+		Bounds:  &GridBoundsInput{X: 5, Y: 10, Width: 90, Height: 80},
+		Columns: json.RawMessage(`1`),
+		Rows: []GridRowInput{
+			{
+				Cells: []*GridCellInput{
+					{Diagram: &types.DiagramSpec{
+						Type:   "bar_chart",
+						Width:  1000,
+						Height: 500, // 2:1, aligned with cell
+						Data: map[string]any{
+							"categories": []any{"A", "B"},
+							"series":     []any{map[string]any{"name": "S", "values": []any{1.0, 2.0}}},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	slideWidth := int64(12192000)
+	slideHeight := int64(6858000)
+	layout := &types.LayoutMetadata{
+		ID: "blank",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 11277600, Height: 4800600}},
+		},
+	}
+
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	for _, f := range findings {
+		if f.Code == "diagram_aspect_mismatch" {
+			t.Errorf("should not emit diagram_aspect_mismatch for aligned aspect; got finding: %s", f.Message)
+		}
+	}
+}
+
 // TestCheckShapeGridStructural_NoDiagramNarrowForWideCell verifies that the
 // preflight check does NOT emit grid_diagram_narrow when the diagram cell
 // is wide enough (render-time-only findings are not false-positived).

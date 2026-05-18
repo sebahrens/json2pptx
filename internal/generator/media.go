@@ -649,6 +649,88 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 	}
 }
 
+// diagramAspectMismatchThreshold is the relative aspect-ratio deviation at
+// which a diagram cell is flagged as a mismatch with its rendered SVG aspect.
+// 0.25 means the cell aspect differs from the SVG aspect by more than 25%
+// (in either direction), at which point svggen's internal preserveAspectRatio
+// behavior can cause noticeable letterboxing or stretching of chart content.
+const diagramAspectMismatchThreshold = 0.25
+
+// CheckDiagramAspectMismatchFinding compares a grid cell's aspect ratio against
+// the diagram's rendered SVG aspect ratio (from DiagramSpec.Width/Height, or
+// the default chart dimensions when unset). If the relative deviation exceeds
+// 25%, it returns a structured FitFinding so agents can either widen/shorten
+// the cell, switch cell.fit, or pass explicit DiagramSpec dimensions. Returns
+// nil when dimensions are non-positive or aspects align closely.
+func CheckDiagramAspectMismatchFinding(diagramSpec *types.DiagramSpec, cellWidthEMU, cellHeightEMU int64, path string) *patterns.FitFinding {
+	if diagramSpec == nil || cellWidthEMU <= 0 || cellHeightEMU <= 0 {
+		return nil
+	}
+
+	svgW := diagramSpec.Width
+	svgH := diagramSpec.Height
+	if svgW <= 0 {
+		svgW = types.DefaultChartWidth
+	}
+	if svgH <= 0 {
+		svgH = types.DefaultChartHeight
+	}
+	if svgW <= 0 || svgH <= 0 {
+		return nil
+	}
+
+	svgAspect := float64(svgW) / float64(svgH)
+	cellAspect := float64(cellWidthEMU) / float64(cellHeightEMU)
+	if svgAspect <= 0 || cellAspect <= 0 {
+		return nil
+	}
+
+	deviation := (cellAspect - svgAspect) / svgAspect
+	if deviation < 0 {
+		deviation = -deviation
+	}
+	if deviation <= diagramAspectMismatchThreshold {
+		return nil
+	}
+
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: path,
+			Code: patterns.ErrCodeDiagramAspectMismatch,
+			Message: fmt.Sprintf(
+				"diagram cell aspect %.2f differs from rendered %s SVG aspect %.2f by %.0f%% — chart will be stretched or letterboxed; resize the cell, set cell.fit, or set explicit diagram.width/height",
+				cellAspect,
+				diagramSpec.Type,
+				svgAspect,
+				deviation*100,
+			),
+			Fix: &patterns.FixSuggestion{
+				Kind: "reshape_grid",
+				Params: map[string]any{
+					"diagram_type":    diagramSpec.Type,
+					"svg_aspect":      svgAspect,
+					"cell_aspect":     cellAspect,
+					"deviation":       deviation,
+					"cell_width_emu":  cellWidthEMU,
+					"cell_height_emu": cellHeightEMU,
+					"svg_width":       svgW,
+					"svg_height":      svgH,
+				},
+			},
+		},
+		Action: "review",
+		Measured: &patterns.Extent{
+			WidthEMU:  cellWidthEMU,
+			HeightEMU: cellHeightEMU,
+		},
+		Allowed: &patterns.Extent{
+			WidthEMU:  int64(svgW),
+			HeightEMU: int64(svgH),
+		},
+		OverflowRatio: cellAspect / svgAspect,
+	}
+}
+
 // estimateDiagramComplexity estimates the number of visual elements in a diagram
 // based on its type and data payload. This is used to detect diagrams that would
 // be illegible when compressed into narrow placeholders.

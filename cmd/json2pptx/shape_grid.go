@@ -372,6 +372,24 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	return cell
 }
 
+// collectDiagramCellFindings emits render-time fit findings for a resolved
+// diagram cell: narrow-cell legibility and cell/SVG aspect mismatch. The
+// narrow-cell check uses the post-fit Bounds.CX (matching the actual rendered
+// width), while the aspect-mismatch check uses CellBounds (the authoritative
+// grid allocation) so the finding reflects the original cell aspect, not the
+// post-FitMode adjustment.
+func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []patterns.FitFinding {
+	path := slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram")
+	var findings []patterns.FitFinding
+	if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path); f != nil {
+		findings = append(findings, *f)
+	}
+	if f := generator.CheckDiagramAspectMismatchFinding(cell.DiagramSpec, cell.CellBounds.CX, cell.CellBounds.CY, path); f != nil {
+		findings = append(findings, *f)
+	}
+	return findings
+}
+
 // generateGridOutput converts resolved grid cells into XML fragments and media inserts.
 // slideIdx is the 0-based slide index used for constructing JSON paths in findings.
 func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllocator, diagCtx *GridDiagramContext, slideIdx int) (*ShapeGridResult, error) {
@@ -430,11 +448,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			}
 			cellIcons = append(cellIcons, icons...)
 			warnings = append(warnings, diagramWarnings...)
-			// Emit structured finding for narrow-cell diagram legibility.
-			path := slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram")
-			if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path); f != nil {
-				fitFindings = append(fitFindings, *f)
-			}
+			fitFindings = append(fitFindings, collectDiagramCellFindings(cell, slideIdx)...)
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {

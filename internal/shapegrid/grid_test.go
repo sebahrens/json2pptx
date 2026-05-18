@@ -1127,6 +1127,62 @@ func TestResolve_FitContain(t *testing.T) {
 	}
 }
 
+// TestResolve_DiagramRespectsExplicitFit verifies that diagram cells round-trip
+// user-specified cell.fit values through ApplyFitMode, just like icons and
+// images. Unlike icons/images, diagrams do NOT auto-switch to FitContain — the
+// default remains FitStretch so the chart fills the full cell.
+func TestResolve_DiagramRespectsExplicitFit(t *testing.T) {
+	tests := []struct {
+		name        string
+		fit         FitMode
+		wantCX      int64
+		wantCY      int64
+		wantX       int64
+		wantY       int64
+	}{
+		{name: "default stretch", fit: FitStretch, wantCX: 4000, wantCY: 2000, wantX: 0, wantY: 0},
+		{name: "explicit contain", fit: FitContain, wantCX: 2000, wantCY: 2000, wantX: 1000, wantY: 0},
+		{name: "explicit fit-width", fit: FitWidth, wantCX: 4000, wantCY: 4000, wantX: 0, wantY: -1000},
+		{name: "explicit fit-height", fit: FitHeight, wantCX: 2000, wantCY: 2000, wantX: 1000, wantY: 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			grid := &Grid{
+				Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 4000, CY: 2000},
+				Columns: []float64{100},
+				Rows: []Row{{
+					Cells: []Cell{
+						{Fit: tc.fit, DiagramSpec: &types.DiagramSpec{Type: "bar_chart"}},
+					},
+				}},
+			}
+
+			result, err := Resolve(grid, newAlloc(1))
+			if err != nil {
+				t.Fatalf("Resolve failed: %v", err)
+			}
+			if len(result.Cells) != 1 {
+				t.Fatalf("expected 1 cell, got %d", len(result.Cells))
+			}
+			c := result.Cells[0]
+			if c.Kind != CellKindDiagram {
+				t.Errorf("kind = %q, want %q", c.Kind, CellKindDiagram)
+			}
+			// CellBounds is always the original cell rect; Bounds is post-fit.
+			if c.CellBounds.CX != 4000 || c.CellBounds.CY != 2000 {
+				t.Errorf("CellBounds = %dx%d, want 4000x2000", c.CellBounds.CX, c.CellBounds.CY)
+			}
+			if c.Bounds.CX != tc.wantCX || c.Bounds.CY != tc.wantCY {
+				t.Errorf("Bounds size = %dx%d, want %dx%d", c.Bounds.CX, c.Bounds.CY, tc.wantCX, tc.wantCY)
+			}
+			if c.Bounds.X != tc.wantX || c.Bounds.Y != tc.wantY {
+				t.Errorf("Bounds origin = (%d,%d), want (%d,%d)", c.Bounds.X, c.Bounds.Y, tc.wantX, tc.wantY)
+			}
+		})
+	}
+}
+
 func TestResolve_IconDefaultContain(t *testing.T) {
 	// Icons should default to contain mode even without explicit fit setting.
 	// Wide cell (4000x2000) with icon should produce 2000x2000 centered.
