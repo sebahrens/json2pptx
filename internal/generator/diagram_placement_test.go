@@ -18,8 +18,8 @@ func TestDiagramPlacementFor_NativeIntercept(t *testing.T) {
 	if info.GridCellPipeline != "svg" {
 		t.Errorf("grid cell pipeline = %q, want svg", info.GridCellPipeline)
 	}
-	if info.AuthoringSurface != "internal/generator" {
-		t.Errorf("authoring surface = %q, want internal/generator", info.AuthoringSurface)
+	if info.AuthoringSurface != "native_ooxml" {
+		t.Errorf("authoring surface = %q, want native_ooxml", info.AuthoringSurface)
 	}
 }
 

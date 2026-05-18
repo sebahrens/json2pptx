@@ -13,6 +13,11 @@ type ChartCapability struct {
 	LabelStrategy     *string `json:"label_strategy"`
 	DensityBehavior   *string `json:"density_behavior"`
 	Status            string  `json:"status"`
+	// AuthoringSurface is the pipeline that owns this type's implementation:
+	// "svggen" (rendered through the svggen registry) or "native_ooxml"
+	// (rendered through internal/generator as grouped OOXML shapes). All chart
+	// types currently render via svggen.
+	AuthoringSurface *string `json:"authoring_surface,omitempty"`
 }
 
 // DiagramPlacement describes a supported placement context and its render pipeline.
@@ -47,8 +52,12 @@ func strPtr(v string) *string { return &v }
 // ChartCapabilities returns capability metadata for all known chart types.
 // Limits reflect core/limits.go constants (MaxSeries=50, MaxCategories=200,
 // MaxPoints=5000) and per-chart renderer behavior.
+//
+// Every entry has AuthoringSurface set to "svggen" — chart rendering lives in
+// the svggen registry. Use this metadata to predict whether a chart type is
+// reachable without round-tripping through render.
 func ChartCapabilities() []ChartCapability {
-	return []ChartCapability{
+	caps := []ChartCapability{
 		{
 			Type:              "bar",
 			MaxSeries:         intPtr(50),
@@ -215,6 +224,10 @@ func ChartCapabilities() []ChartCapability {
 			Status:            "ready",
 		},
 	}
+	for i := range caps {
+		caps[i].AuthoringSurface = strPtr("svggen")
+	}
+	return caps
 }
 
 // DiagramCapabilitiesReady returns capability metadata for diagram types with
@@ -232,10 +245,50 @@ func DiagramCapabilitiesReady() []DiagramCapability {
 	return ready
 }
 
+// diagramAuthoringSurface maps each known diagram type to the pipeline that
+// owns its implementation. "svggen" types are registered in the svggen
+// registry (svggen/init.go) and render as SVG. "native_ooxml" types are
+// implemented in internal/generator/ as grouped OOXML shapes.
+//
+// Keep this map in sync with svggen/init.go (builtinDiagrams) and
+// internal/generator/diagram_placement.go (diagramPlacementRegistry). The
+// table-driven test in capabilities_test.go enforces the svggen side of this
+// invariant: every "svggen" entry must resolve in DefaultRegistry().Get(); no
+// "native_ooxml" entry may resolve there.
+var diagramAuthoringSurface = map[string]string{
+	"timeline":              "svggen",
+	"venn":                  "svggen",
+	"org_chart":             "svggen",
+	"gantt":                 "svggen",
+	"matrix_2x2":            "svggen",
+	"fishbone":              "svggen",
+	"process_flow":          "native_ooxml",
+	"pyramid":               "native_ooxml",
+	"swot":                  "native_ooxml",
+	"porters_five_forces":   "native_ooxml",
+	"house_diagram":         "native_ooxml",
+	"business_model_canvas": "native_ooxml",
+	"value_chain":           "native_ooxml",
+	"nine_box_talent":       "native_ooxml",
+	"kpi_dashboard":         "native_ooxml",
+	"heatmap":               "native_ooxml",
+	"pestel":                "native_ooxml",
+	"panel_layout":          "native_ooxml",
+	// icon_columns / icon_rows / stat_cards are layout-mode aliases for
+	// panel_layout. Their implementation lives in internal/generator/panel_shapes.go.
+	"icon_columns": "native_ooxml",
+	"icon_rows":    "native_ooxml",
+	"stat_cards":   "native_ooxml",
+}
+
 // DiagramCapabilities returns capability metadata for all known diagram types,
 // including stubs. For agent-facing surfaces, prefer DiagramCapabilitiesReady.
+//
+// Every entry has AuthoringSurface populated from diagramAuthoringSurface; an
+// unmapped entry triggers a panic at init time via the table-driven test, so
+// adding a new diagram type forces a deliberate authoring-surface choice.
 func DiagramCapabilities() []DiagramCapability {
-	return []DiagramCapability{
+	caps := []DiagramCapability{
 		{
 			Type:             "timeline",
 			MaxNodes:         intPtr(7),
@@ -426,4 +479,11 @@ func DiagramCapabilities() []DiagramCapability {
 			Status:           "ready",
 		},
 	}
+	for i := range caps {
+		if surface, ok := diagramAuthoringSurface[caps[i].Type]; ok {
+			s := surface
+			caps[i].AuthoringSurface = &s
+		}
+	}
+	return caps
 }

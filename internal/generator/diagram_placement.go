@@ -15,8 +15,12 @@ type DiagramPlacementInfo struct {
 	// shape_grid cell. Empty string means the diagram is not supported in grid cells.
 	GridCellPipeline string
 
-	// AuthoringSurface describes where the primary implementation lives:
-	// "internal/generator" for native OOXML, "svggen" for SVG renderers.
+	// AuthoringSurface describes which pipeline owns the implementation:
+	// "native_ooxml" (rendered through internal/generator as grouped OOXML
+	// shapes) or "svggen" (rendered through the svggen registry as SVG).
+	// This mirrors the values exposed on svggen.DiagramCapability /
+	// svggen.ChartCapability so agents see a consistent vocabulary across
+	// list_templates, get_diagram_capabilities, and get_chart_capabilities.
 	AuthoringSurface string
 }
 
@@ -32,29 +36,31 @@ type DiagramPlacementInfo struct {
 // SVG-only types: these always render via svggen, both in placeholders and grid cells.
 var diagramPlacementRegistry = map[string]DiagramPlacementInfo{
 	// --- Native-intercepted in placeholder, SVG in grid cells ---
-	"panel_layout":          {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"swot":                  {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"pestel":                {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"nine_box_talent":       {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"value_chain":           {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"kpi_dashboard":         {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"porters_five_forces":   {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"business_model_canvas": {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"process_flow":          {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"heatmap":               {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"pyramid":               {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
-	"house_diagram":         {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "internal/generator"},
+	"panel_layout":          {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"swot":                  {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"pestel":                {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"nine_box_talent":       {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"value_chain":           {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"kpi_dashboard":         {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"porters_five_forces":   {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"business_model_canvas": {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"process_flow":          {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"heatmap":               {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"pyramid":               {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"house_diagram":         {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	// icon_columns / icon_rows / stat_cards are layout-mode aliases for
+	// panel_layout; their implementation lives in panel_shapes.go (native_ooxml).
+	"icon_columns": {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"icon_rows":    {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
+	"stat_cards":   {PlaceholderPipeline: "native_ooxml", GridCellPipeline: "svg", AuthoringSurface: "native_ooxml"},
 
 	// --- SVG-only in both placements ---
-	"timeline":     {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"venn":         {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"org_chart":    {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"gantt":        {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"matrix_2x2":   {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"fishbone":     {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"icon_columns": {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"icon_rows":    {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
-	"stat_cards":   {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+	"timeline":   {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+	"venn":       {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+	"org_chart":  {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+	"gantt":      {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+	"matrix_2x2": {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
+	"fishbone":   {PlaceholderPipeline: "svg", GridCellPipeline: "svg", AuthoringSurface: "svggen"},
 }
 
 // DiagramPlacementFor returns the placement info for a diagram type, or nil if unknown.
