@@ -104,6 +104,9 @@ func renderDiagramTool() mcp.Tool {
 		mcp.WithObject("style",
 			mcp.Description("Optional style overrides. Supports palette (name or custom colors), font settings, etc."),
 		),
+		mcp.WithBoolean("dry_run",
+			mcp.Description("When true, run the diagram's layout and labeling pass and return ONLY structured findings (chart.tick_thinned, chart.label_clipped, chart.legend_overflow_dropped, chart.label_truncated, chart.scatter_label_skipped, etc.) without producing SVG or PNG bytes. Useful for preview-time visual feedback before committing to a full render. Output is JSON {valid:bool, findings:[...]}."),
+		),
 	)
 }
 
@@ -139,6 +142,7 @@ func getDiagramSchemaTool() mcp.Tool {
 
 // --- Tool handlers ---
 
+//nolint:gocyclo // structured error envelopes per parameter inflate branch count
 func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	diagramType, err := request.RequireString("type")
 	if err != nil {
@@ -276,6 +280,11 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		format = f
 	}
 
+	// Dry-run path: run layout/labeling but return only findings.
+	if dryRun, _ := args["dry_run"].(bool); dryRun {
+		return runDryRender(req)
+	}
+
 	// Render
 	result, err := svggen.RenderMultiFormat(req, format)
 	if err != nil {
@@ -363,6 +372,31 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 type diagramTypeEntry struct {
 	Name    string   `json:"name"`
 	Aliases []string `json:"aliases,omitempty"`
+}
+
+// runDryRender executes svggen's layout/labeling pass and returns the
+// findings as JSON {valid, findings, error?}. It is the dry_run handler for
+// render_diagram, factored out so handleRenderDiagram stays within gocognit
+// limits.
+func runDryRender(req *svggen.RequestEnvelope) (*mcp.CallToolResult, error) {
+	findings, dryErr := svggen.DryRender(req)
+	type dryRunResult struct {
+		Valid    bool             `json:"valid"`
+		Findings []svggen.Finding `json:"findings"`
+		Error    string           `json:"error,omitempty"`
+	}
+	res := dryRunResult{
+		Valid:    dryErr == nil,
+		Findings: findings,
+	}
+	if dryErr != nil {
+		res.Error = dryErr.Error()
+	}
+	out, mErr := json.MarshalIndent(res, "", "  ")
+	if mErr != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal dry_run result: %v", mErr)), nil
+	}
+	return mcp.NewToolResultText(string(out)), nil
 }
 
 func handleListDiagramTypes(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {

@@ -68,14 +68,11 @@ var knownFitDocDrift = map[string]string{
 	"chart.capacity_exceeded":       "chart code, documented in SKILL.md only",
 	"chart.invalid_numeric":         "chart code, documented in SKILL.md only",
 	"chart.invalid_time_format":     "chart code, documented in SKILL.md only",
-	"chart.label_clipped":           "chart code, documented in SKILL.md only",
 	"chart.label_ellipsized":        "chart code, documented in SKILL.md only",
 	"chart.label_truncated":         "chart code, documented in SKILL.md only",
-	"chart.legend_overflow_dropped": "chart code, documented in SKILL.md only",
 	"chart.negative_on_log":         "chart code, documented in SKILL.md only",
 	"chart.overflow_suppressed":     "chart code, documented in SKILL.md only",
 	"chart.scatter_label_skipped":   "chart code, documented in SKILL.md only",
-	"chart.tick_thinned":            "chart code, documented in SKILL.md only",
 	"chart.zero_sum_pie":            "chart code, documented in SKILL.md only",
 	// Render-time codes — documented in SKILL.md table but missing from
 	// FIT_FINDINGS.md.

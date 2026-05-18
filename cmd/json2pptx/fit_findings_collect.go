@@ -63,6 +63,18 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 		findings = append(findings, collectContrastPreflightFindings(input, theme.Colors)...)
 	}
 
+	// 7. Chart / diagram dry-render findings (chart.tick_thinned,
+	// chart.label_clipped, chart.legend_overflow_dropped, etc.) — runs
+	// svggen's layout/labeling pass per chart/diagram content item and
+	// surfaces render-only findings at validate/preview time, closing the
+	// validate → preview → generate feedback loop for visual chart issues.
+	var chartThemeColors []types.ThemeColor
+	if theme != nil {
+		chartThemeColors = theme.Colors
+	}
+	findings = append(findings,
+		collectChartDryRenderFindings(input, chartThemeColors, "warn")...)
+
 	// Sort by ActionRank desc, then slide index asc.
 	sort.Slice(findings, func(i, j int) bool {
 		ri := patterns.ActionRank(findings[i].Action)

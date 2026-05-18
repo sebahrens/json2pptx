@@ -45,6 +45,43 @@ func RegistryRenderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, fo
 	return renderMultiFormatWithFindings(r, req, formats...)
 }
 
+// DryRender executes the diagram's layout and labeling pass and returns the
+// structured findings WITHOUT emitting SVG/PNG/PDF bytes to the caller. It is
+// intended for validate-time and preview-time previews of render-only findings
+// (chart.tick_thinned, chart.label_clipped, chart.legend_overflow_dropped,
+// chart.label_truncated, chart.scatter_label_skipped, etc.) so agents can
+// surface visual issues before paying the cost of a full generate.
+//
+// The findings slice is always non-nil (empty when no findings). Strict-fit
+// severity promotion (via req.Output.StrictFit) is applied identically to the
+// generate path, so warn/strict refusals manifest in dry-run as well.
+//
+// Implementation note: today this currently runs the full render pipeline and
+// discards the rendered bytes. Diagram-specific layout/labeling can be split
+// from byte emission in a follow-up — the public contract is byte-free output.
+func DryRender(req *RequestEnvelope) ([]Finding, error) {
+	return RegistryDryRender(DefaultRegistry(), req)
+}
+
+// RegistryDryRender is like DryRender but uses a specific registry instance.
+func RegistryDryRender(r *Registry, req *RequestEnvelope) ([]Finding, error) {
+	out, err := renderMultiFormatWithFindings(r, req, "svg")
+	if err != nil {
+		// Even on render failure surface any findings collected so far so
+		// validate-time callers can show partial diagnostics. out may still
+		// be non-nil under strict-fit refusal.
+		if out != nil {
+			return out.Findings, err
+		}
+		return nil, err
+	}
+	findings := out.Findings
+	if findings == nil {
+		findings = []Finding{}
+	}
+	return findings, nil
+}
+
 // renderMultiFormatWithFindings wraps renderMultiFormatInternal and promotes the
 // result into a RenderOutput with findings from clamping and rendering.
 func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
