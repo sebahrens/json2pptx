@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -1924,5 +1925,117 @@ func TestBuildSlideResolutions_NilSyntheticFiles(t *testing.T) {
 	}
 	if resolutions[0].OccupancyPct != 100 {
 		t.Errorf("expected occupancy 100, got %d", resolutions[0].OccupancyPct)
+	}
+}
+
+// TestRunJSONMode_RelativeAssetPathsResolved is the CLI parity test for
+// go-slide-creator-tigj: relative paths in image_value, GridImageInput,
+// background.image, and icons must all resolve against the JSON input
+// directory. Before this change, only icons were resolved — relative
+// image / background paths produced "file not found" at generate time
+// whenever CWD did not match the JSON's parent directory.
+//
+// The test writes a deck JSON and matching asset files into a tmp dir,
+// then invokes resolveLocalAssetPaths (the helper json_mode.go calls
+// after loading the deck) with the input directory. All four surfaces
+// must resolve to absolute paths rooted under tmpDir, with no findings.
+func TestRunJSONMode_RelativeAssetPathsResolved(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Materialize the four asset files alongside the deck JSON so each
+	// surface has a real file to resolve against. The relative path
+	// stored in the deck is the bare filename — resolveLocalAssetPaths
+	// joins it against tmpDir.
+	files := map[string]string{
+		"bg.jpg":    "ignored bytes",
+		"photo.png": "ignored bytes",
+		"icon.svg":  "<svg/>",
+		"grid.jpg":  "ignored bytes",
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte(body), 0644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	// Build a SlideInput with every asset surface using relative paths.
+	slides := []SlideInput{{
+		Background: &BackgroundInput{Image: "bg.jpg"},
+		Content: []ContentInput{
+			{PlaceholderID: "body", Type: "image", ImageValue: &ImageInput{Path: "photo.png", Alt: "ph"}},
+		},
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{
+					{Icon: &IconInput{Path: "icon.svg"}},
+					{Image: &GridImageInput{Path: "grid.jpg", Alt: "grid"}},
+				},
+			}},
+		},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, tmpDir)
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings with all assets present in tmpDir, got %d: %+v", len(findings), findings)
+	}
+
+	// Each field must now hold an absolute path that EvalSymlinks-resolves
+	// to a file in tmpDir (handles /var → /private/var on macOS).
+	resolvedOf := func(name string) string {
+		r, _ := filepath.EvalSymlinks(filepath.Join(tmpDir, name))
+		return r
+	}
+	gotBg := slides[0].Background.Image
+	if gotBg != resolvedOf("bg.jpg") {
+		t.Errorf("background.image: got %q, want %q", gotBg, resolvedOf("bg.jpg"))
+	}
+	gotImg := slides[0].Content[0].ImageValue.Path
+	if gotImg != resolvedOf("photo.png") {
+		t.Errorf("image_value.path: got %q, want %q", gotImg, resolvedOf("photo.png"))
+	}
+	gotIcon := slides[0].ShapeGrid.Rows[0].Cells[0].Icon.Path
+	if gotIcon != resolvedOf("icon.svg") {
+		t.Errorf("icon.path: got %q, want %q", gotIcon, resolvedOf("icon.svg"))
+	}
+	gotGrid := slides[0].ShapeGrid.Rows[0].Cells[1].Image.Path
+	if gotGrid != resolvedOf("grid.jpg") {
+		t.Errorf("grid image.path: got %q, want %q", gotGrid, resolvedOf("grid.jpg"))
+	}
+}
+
+// TestRunJSONMode_MissingAssetReturnsAggregatedError verifies that
+// localAssetFindingsToError flattens per-asset findings into a single
+// CLI error message (the legacy text-error envelope) with one line per
+// broken asset. The CLI cannot emit a structured diagnostics envelope
+// like MCP, so this aggregation is the only way agents see every broken
+// reference in one pass.
+func TestRunJSONMode_MissingAssetReturnsAggregatedError(t *testing.T) {
+	tmpDir := t.TempDir()
+	slides := []SlideInput{{
+		Background: &BackgroundInput{Image: "missing-bg.jpg"},
+		Content: []ContentInput{
+			{PlaceholderID: "body", Type: "image", ImageValue: &ImageInput{Path: "missing-photo.png"}},
+		},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, tmpDir)
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d: %+v", len(findings), findings)
+	}
+	err := iconFindingsToError(findings)
+	if err == nil {
+		t.Fatal("expected aggregated error, got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "BACKGROUND_IMAGE_PATH") {
+		t.Errorf("expected error to mention BACKGROUND_IMAGE_PATH, got: %s", msg)
+	}
+	if !strings.Contains(msg, "IMAGE_PATH") {
+		t.Errorf("expected error to mention IMAGE_PATH, got: %s", msg)
+	}
+	if !strings.Contains(msg, "/slides/0/background/image") {
+		t.Errorf("expected error to mention background json_path, got: %s", msg)
+	}
+	if !strings.Contains(msg, "/slides/0/content/0/image_value/path") {
+		t.Errorf("expected error to mention image_value json_path, got: %s", msg)
 	}
 }

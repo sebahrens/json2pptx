@@ -1804,6 +1804,206 @@ func jsonPointerResolve(root any, pointer string) (any, error) {
 	return cur, nil
 }
 
+// TestResolveLocalAssetPaths_AllSurfaces verifies that the unified walker
+// rewrites every supported relative asset reference (icon, content
+// image_value, shape_grid cell image, slide background) to its absolute
+// resolved form when the underlying files exist beneath baseDir. This is
+// the acceptance test for go-slide-creator-tigj — agents that supply
+// relative paths must see them resolve against base_dir on both CLI and
+// MCP entry points.
+func TestResolveLocalAssetPaths_AllSurfaces(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Materialize one file per asset surface so we exercise the full
+	// resolve + symlink + traversal pipeline (not just the early
+	// "missing field" exits).
+	iconFile := filepath.Join(tmpDir, "icon.svg")
+	imageFile := filepath.Join(tmpDir, "photo.png")
+	gridImageFile := filepath.Join(tmpDir, "grid.jpg")
+	bgFile := filepath.Join(tmpDir, "bg.jpg")
+	for _, p := range []string{iconFile, imageFile, gridImageFile, bgFile} {
+		if err := os.WriteFile(p, []byte("x"), 0644); err != nil {
+			t.Fatalf("write %s: %v", p, err)
+		}
+	}
+
+	slides := []SlideInput{{
+		Background: &BackgroundInput{Image: "bg.jpg"},
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{Path: "photo.png", Alt: "ph"},
+		}},
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{
+					{Icon: &IconInput{Path: "icon.svg"}},
+					{Image: &GridImageInput{Path: "grid.jpg", Alt: "grid"}},
+				},
+			}},
+		},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, tmpDir)
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings for valid relative paths, got %d: %+v", len(findings), findings)
+	}
+
+	// Every Path/Image field must have been rewritten to an absolute path
+	// rooted under tmpDir (allowing for /private symlink on macOS).
+	wantResolved := func(p string) string {
+		res, _ := filepath.EvalSymlinks(p)
+		return res
+	}
+	if got := slides[0].Background.Image; got != wantResolved(bgFile) {
+		t.Errorf("background: got %q, want %q", got, wantResolved(bgFile))
+	}
+	if got := slides[0].Content[0].ImageValue.Path; got != wantResolved(imageFile) {
+		t.Errorf("image_value: got %q, want %q", got, wantResolved(imageFile))
+	}
+	if got := slides[0].ShapeGrid.Rows[0].Cells[0].Icon.Path; got != wantResolved(iconFile) {
+		t.Errorf("icon: got %q, want %q", got, wantResolved(iconFile))
+	}
+	if got := slides[0].ShapeGrid.Rows[0].Cells[1].Image.Path; got != wantResolved(gridImageFile) {
+		t.Errorf("grid image: got %q, want %q", got, wantResolved(gridImageFile))
+	}
+}
+
+// TestResolveLocalAssetPaths_PerSurfaceFindings verifies that each missing
+// asset surface emits its own structured finding with the correct
+// diagnostic code and json_path so agents can locate and fix each broken
+// reference independently.
+func TestResolveLocalAssetPaths_PerSurfaceFindings(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	slides := []SlideInput{{
+		Background: &BackgroundInput{Image: "missing-bg.jpg"},
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{Path: "missing-photo.png"},
+		}},
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{
+					{Icon: &IconInput{Path: "missing-icon.svg"}},
+					{Image: &GridImageInput{Path: "missing-grid.jpg"}},
+				},
+			}},
+		},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, tmpDir)
+	if len(findings) != 4 {
+		t.Fatalf("expected 4 findings (icon, content image, grid image, background), got %d: %+v", len(findings), findings)
+	}
+
+	want := map[string]string{
+		"/slides/0/shape_grid/rows/0/cells/0/icon":       "ICON_PATH",
+		"/slides/0/content/0/image_value/path":           "IMAGE_PATH",
+		"/slides/0/shape_grid/rows/0/cells/1/image/path": "IMAGE_PATH",
+		"/slides/0/background/image":                     "BACKGROUND_IMAGE_PATH",
+	}
+	got := make(map[string]string, len(findings))
+	for _, d := range findings {
+		got[d.Path] = d.Code
+		if d.Severity != "error" {
+			t.Errorf("path %q: expected error severity, got %s", d.Path, d.Severity)
+		}
+		if d.Details["input_value"] == nil {
+			t.Errorf("path %q: expected input_value in details, got nil", d.Path)
+		}
+		if d.Details["slide_index"] != 0 {
+			t.Errorf("path %q: expected slide_index 0, got %v", d.Path, d.Details["slide_index"])
+		}
+	}
+	for path, code := range want {
+		if got[path] != code {
+			t.Errorf("path %q: expected %s, got %s", path, code, got[path])
+		}
+	}
+}
+
+// TestResolveLocalAssetPaths_ExtensionAllowlist confirms that image and
+// background paths with unsupported extensions are rejected before disk
+// I/O. This catches agent typos like `path: "report.pdf"` early instead of
+// returning a confusing "file not found" later.
+func TestResolveLocalAssetPaths_ExtensionAllowlist(t *testing.T) {
+	tmpDir := t.TempDir()
+	// File exists, but the extension is wrong.
+	bad := filepath.Join(tmpDir, "report.pdf")
+	if err := os.WriteFile(bad, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	slides := []SlideInput{{
+		Background: &BackgroundInput{Image: "report.pdf"},
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{Path: "report.pdf"},
+		}},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, tmpDir)
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings (background + image_value with bad ext), got %d: %+v", len(findings), findings)
+	}
+	for _, d := range findings {
+		if !strings.Contains(d.Message, "unsupported extension") && !strings.Contains(d.Message, ".pdf") {
+			t.Errorf("expected extension error for %q, got %s", d.Path, d.Message)
+		}
+	}
+}
+
+// TestResolveLocalAssetPaths_AbsolutePathsPassThrough verifies that
+// pre-resolved absolute paths skip the baseDir join but still pass through
+// symlink + traversal + extension validation.
+func TestResolveLocalAssetPaths_AbsolutePathsPassThrough(t *testing.T) {
+	tmpDir := t.TempDir()
+	absImage := filepath.Join(tmpDir, "abs.png")
+	if err := os.WriteFile(absImage, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	slides := []SlideInput{{
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{Path: absImage},
+		}},
+	}}
+
+	// baseDir is intentionally an unrelated path — absolute paths must not
+	// be re-rooted under baseDir.
+	otherDir := t.TempDir()
+	findings := resolveLocalAssetPaths(slides, otherDir)
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings for valid absolute path, got %d: %+v", len(findings), findings)
+	}
+	resolved, _ := filepath.EvalSymlinks(absImage)
+	if got := slides[0].Content[0].ImageValue.Path; got != resolved {
+		t.Errorf("expected %s, got %s", resolved, got)
+	}
+}
+
+// TestResolveLocalAssetPaths_SkipsURLOnlyImage confirms that an image_value
+// with only URL set (Path empty) is left alone — resolveURLs handles
+// remote fetches before the local-asset pass runs.
+func TestResolveLocalAssetPaths_SkipsURLOnlyImage(t *testing.T) {
+	tmpDir := t.TempDir()
+	slides := []SlideInput{{
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{URL: "https://example.com/img.png"},
+		}},
+	}}
+	findings := resolveLocalAssetPaths(slides, tmpDir)
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings for URL-only image (Path empty), got: %+v", findings)
+	}
+}
+
 func TestResolveShapeGrid_DiagramCell(t *testing.T) {
 	grid := &ShapeGridInput{
 		Columns: json.RawMessage(`2`),

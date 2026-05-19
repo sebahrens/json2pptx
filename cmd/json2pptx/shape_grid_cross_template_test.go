@@ -55,6 +55,25 @@ func TestShapeGridCrossTemplate(t *testing.T) {
 	// Create temp output directory
 	outputDir := t.TempDir()
 
+	// Stage a real placeholder image so fixtures that reference image paths
+	// (e.g. 75_sg_split_column_image.json) survive the local-asset preflight
+	// added in go-slide-creator-tigj. The bytes below are a valid 1x1 PNG.
+	placeholderPNG := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+		0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+		0x42, 0x60, 0x82,
+	}
+	placeholderPath := filepath.Join(outputDir, "_placeholder.png")
+	if err := os.WriteFile(placeholderPath, placeholderPNG, 0644); err != nil {
+		t.Fatalf("write placeholder image: %v", err)
+	}
+
 	for _, fixture := range matches {
 		fixtureName := strings.TrimSuffix(filepath.Base(fixture), ".json")
 
@@ -83,6 +102,13 @@ func TestShapeGridCrossTemplate(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+
+				// Replace legacy `/nonexistent/...` placeholders with the
+				// staged real PNG so the local-asset preflight passes. We
+				// keep the fixtures readable (they still document the
+				// intended subject); only test-time bytes change.
+				modifiedJSON = []byte(strings.ReplaceAll(string(modifiedJSON), "/nonexistent/ocean-waves.jpg", placeholderPath))
+				modifiedJSON = []byte(strings.ReplaceAll(string(modifiedJSON), "/nonexistent/city-skyline.jpg", placeholderPath))
 
 				// Write modified fixture to temp file
 				tmpJSON := filepath.Join(outputDir, fixtureName+"_"+tmpl+".json")

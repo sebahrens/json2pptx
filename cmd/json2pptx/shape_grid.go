@@ -832,6 +832,21 @@ func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, err
 	return shapegrid.ResolveColumns(arr, nil)
 }
 
+// imageAssetExtensions lists allowed extensions for image_value, GridImageInput,
+// and slide background.image fields. Compared case-insensitively against the
+// file extension (including the leading dot).
+var imageAssetExtensions = map[string]bool{
+	".png":  true,
+	".jpg":  true,
+	".jpeg": true,
+	".gif":  true,
+	".svg":  true,
+	".bmp":  true,
+	".tiff": true,
+	".tif":  true,
+	".webp": true,
+}
+
 // resolveIconPaths resolves and validates icon.path fields across all slides.
 // Relative paths are resolved against baseDir (the directory containing the JSON input file).
 // Each path is cleaned, converted to absolute form, evaluated for symlinks, and validated
@@ -842,6 +857,9 @@ func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, err
 // the first error. On success the slice is empty (nil). Per-icon JSON Pointer
 // paths (RFC 6901) and the input value are recorded so agents can locate and
 // repair each broken icon.
+//
+// Prefer resolveLocalAssetPaths in new callers — it walks all local-asset
+// surfaces (icon, image, background) in one pass.
 func resolveIconPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnostic {
 	var findings []diagnostics.Diagnostic
 	for i := range slides {
@@ -868,6 +886,174 @@ func resolveIconPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnos
 		}
 	}
 	return findings
+}
+
+// resolveLocalAssetPaths walks every slide and rewrites all relative
+// local-asset paths to absolute, symlink-evaluated form. This covers:
+//
+//   - icon.path on shape_grid cells (cell.Icon, cell.Shape.Icon) — same
+//     semantics as resolveIconPaths.
+//   - image_value.path on content items (slide.content[].image_value.path).
+//   - GridImageInput.path on shape_grid cells (cell.Image.Path).
+//   - slide.background.image on the slide-level Background.
+//
+// Failures are collected as structured diagnostics — one per offending field —
+// so callers see every broken asset in one pass instead of bailing on the
+// first error. Each diagnostic carries an "asset_kind" detail
+// ("icon" / "image" / "background") plus the offending input value and a
+// JSON Pointer path, so agents can locate and repair each asset
+// independently.
+//
+// URL-only and inline-svg fields are skipped — they are resolved elsewhere
+// (resolveURLs for URLs; inline svg_data needs no resolution).
+func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
+	// Reuse the existing icon walker so its tests stay authoritative.
+	findings = append(findings, resolveIconPaths(slides, baseDir)...)
+	for i := range slides {
+		// Slide-level background image.
+		if bg := slides[i].Background; bg != nil && bg.Image != "" {
+			path := slidepath.SlideField(i, "background/image")
+			resolved, diag := resolveLocalAssetPath(bg.Image, baseDir, imageAssetExtensions,
+				diagnostics.CodeBackgroundImagePath, "background", i, path)
+			if diag != nil {
+				findings = append(findings, *diag)
+			} else {
+				bg.Image = resolved
+			}
+		}
+
+		// Content-level image_value paths.
+		for j := range slides[i].Content {
+			c := &slides[i].Content[j]
+			if c.Type != "image" || c.ImageValue == nil || c.ImageValue.Path == "" {
+				continue
+			}
+			path := slidepath.ContentField(i, j, "image_value/path")
+			resolved, diag := resolveLocalAssetPath(c.ImageValue.Path, baseDir, imageAssetExtensions,
+				diagnostics.CodeImagePath, "image", i, path)
+			if diag != nil {
+				findings = append(findings, *diag)
+			} else {
+				c.ImageValue.Path = resolved
+			}
+		}
+
+		// Shape-grid image cells.
+		if slides[i].ShapeGrid == nil {
+			continue
+		}
+		for j := range slides[i].ShapeGrid.Rows {
+			for k := range slides[i].ShapeGrid.Rows[j].Cells {
+				cell := slides[i].ShapeGrid.Rows[j].Cells[k]
+				if cell == nil || cell.Image == nil || cell.Image.Path == "" {
+					continue
+				}
+				path := slidepath.GridCellField(i, j, k, "image/path")
+				resolved, diag := resolveLocalAssetPath(cell.Image.Path, baseDir, imageAssetExtensions,
+					diagnostics.CodeImagePath, "image", i, path)
+				if diag != nil {
+					findings = append(findings, *diag)
+				} else {
+					cell.Image.Path = resolved
+				}
+			}
+		}
+	}
+	return findings
+}
+
+// resolveLocalAssetPath validates a single asset path field (image or
+// background) and returns either the resolved absolute path or a single
+// diagnostic describing the problem. The caller is responsible for writing
+// the resolved value back to the input struct.
+//
+// Validation pipeline (mirrors resolveIconInputPath):
+//  1. Extension allow-list (assetKindExtensions).
+//  2. Relative-to-absolute resolution against baseDir.
+//  3. filepath.EvalSymlinks (catches missing files and symlink loops).
+//  4. utils.ValidatePath (catches ".." traversal).
+//
+// code is the diagnostic Code emitted on failure; assetKind is recorded in
+// the Details map so callers can group / filter by kind without parsing
+// codes.
+func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool, code diagnostics.Code, assetKind string, slideIdx int, jsonPath string) (string, *diagnostics.Diagnostic) {
+	// Extension allow-list check (case-insensitive).
+	ext := strings.ToLower(filepath.Ext(rawPath))
+	if !allowedExts[ext] {
+		return "", &diagnostics.Diagnostic{
+			Code:     code,
+			Message:  fmt.Sprintf("%s path %q: unsupported extension %q", assetKind, rawPath, ext),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  assetKind,
+				"input_value": rawPath,
+				"remediation": "use a supported file extension: " + joinSortedExts(allowedExts),
+			},
+		}
+	}
+
+	// Resolve relative paths against baseDir.
+	p := filepath.FromSlash(rawPath)
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(baseDir, p)
+	}
+	p = filepath.Clean(p)
+
+	// Evaluate symlinks for security (also catches missing files).
+	resolved, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return "", &diagnostics.Diagnostic{
+			Code:     code,
+			Message:  fmt.Sprintf("%s path %q: %v", assetKind, rawPath, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  assetKind,
+				"input_value": rawPath,
+				"remediation": "verify the file exists relative to the JSON input directory (CLI) or base_dir (MCP)",
+			},
+		}
+	}
+
+	// Validate against path traversal.
+	if err := utils.ValidatePath(resolved, nil); err != nil {
+		return "", &diagnostics.Diagnostic{
+			Code:     code,
+			Message:  fmt.Sprintf("%s path %q: %v", assetKind, rawPath, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  assetKind,
+				"input_value": rawPath,
+				"remediation": "use a path that does not escape the base directory",
+			},
+		}
+	}
+
+	return resolved, nil
+}
+
+// joinSortedExts returns a stable, comma-separated string of allowed
+// extensions for inclusion in diagnostic remediation messages. Sorting keeps
+// the message deterministic across runs (Go map iteration order is random).
+func joinSortedExts(exts map[string]bool) string {
+	keys := make([]string, 0, len(exts))
+	for k := range exts {
+		keys = append(keys, k)
+	}
+	// Simple insertion sort — set is small (<10 entries) so this is cheap and
+	// avoids pulling in sort just for the side effect.
+	for i := 1; i < len(keys); i++ {
+		for j := i; j > 0 && keys[j-1] > keys[j]; j-- {
+			keys[j-1], keys[j] = keys[j], keys[j-1]
+		}
+	}
+	return strings.Join(keys, ", ")
 }
 
 // resolveIconInputPath validates and resolves a single IconInput's path field.
@@ -937,6 +1123,23 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 		return nil // URL or inline svg_data — no local path resolution needed
 	}
 
+	// Icons must be SVG — catches agents passing PNGs to icon.path before
+	// disk I/O so the failure is deterministic and the remediation obvious.
+	if ext := strings.ToLower(filepath.Ext(icon.Path)); ext != ".svg" {
+		return []diagnostics.Diagnostic{{
+			Code:     diagnostics.CodeIconPath,
+			Message:  fmt.Sprintf("icon path %q: unsupported extension %q (icons must be .svg)", icon.Path, ext),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  "icon",
+				"input_value": icon.Path,
+				"remediation": "use a .svg file; for raster images use image_value or shape_grid image cells instead",
+			},
+		}}
+	}
+
 	// Resolve relative path against baseDir
 	p := filepath.FromSlash(icon.Path)
 	if !filepath.IsAbs(p) {
@@ -954,6 +1157,7 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
 				"slide_index": slideIdx,
+				"asset_kind":  "icon",
 				"input_value": icon.Path,
 				"remediation": "verify the file exists; switch to a bundled icon via 'name' or supply 'svg_data'",
 			},
@@ -969,6 +1173,7 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
 				"slide_index": slideIdx,
+				"asset_kind":  "icon",
 				"input_value": icon.Path,
 				"remediation": "use a path that does not escape the base directory",
 			},
@@ -1008,8 +1213,10 @@ func buildBundledIconNameFinding(name string, slideIdx int, jsonPath string) dia
 	}
 }
 
-// iconFindingsToError aggregates icon-resolution diagnostics into a single error
-// suitable for CLI callers. Returns nil when findings is empty.
+// iconFindingsToError aggregates local-asset-resolution diagnostics into a
+// single error suitable for CLI callers. Returns nil when findings is empty.
+// Despite the historical name, it now handles icon, image, and background
+// findings emitted by resolveLocalAssetPaths.
 func iconFindingsToError(findings []diagnostics.Diagnostic) error {
 	if len(findings) == 0 {
 		return nil
@@ -1018,7 +1225,7 @@ func iconFindingsToError(findings []diagnostics.Diagnostic) error {
 	for _, d := range findings {
 		parts = append(parts, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
 	}
-	return fmt.Errorf("icon path errors (%d):\n  - %s", len(findings), strings.Join(parts, "\n  - "))
+	return fmt.Errorf("asset path errors (%d):\n  - %s", len(findings), strings.Join(parts, "\n  - "))
 }
 
 // resolveIconSVG loads SVG bytes for an icon spec, optionally applying a fill color override.

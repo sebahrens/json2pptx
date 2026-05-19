@@ -378,6 +378,16 @@ Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available ic
 
 **Bundled name preflight.** `validate_input` and `generate_presentation` preflight every `icon.name` against the bundled registry. Unknown names emit `ICON_BUNDLED_NAME_UNKNOWN` (severity: error) with `details.suggestions` — a ranked list of Levenshtein-closest matches (or qualified cross-set forms when the bare base name only resolves in the non-default set). Use `suggestions[0]` to repair the name without a separate `list_icons` round-trip.
 
+**Local asset path preflight.** `validate_input` and `generate_presentation` resolve every relative local asset path against the JSON input directory (CLI) or server CWD (MCP) before generation. Coverage spans `icon.path` (shape grid icons), `image_value.path` (content images), `cells[].image.path` (shape grid cell images), and `background.image` (slide background). Each broken reference becomes its own structured finding so agents see every failure in one pass:
+
+| Code | Surface |
+|---|---|
+| `ICON_PATH` | `icon.path` resolution failure (missing file, symlink escape, traversal) |
+| `IMAGE_PATH` | `image_value.path` or shape-grid cell `image.path` resolution failure |
+| `BACKGROUND_IMAGE_PATH` | `slide.background.image` resolution failure |
+
+All findings carry `details.input_value`, `details.slide_index`, and a JSON Pointer `path` (e.g. `/slides/0/content/0/image_value/path`) so the offending node round-trips through jq/jsonpath. Unsupported extensions (anything outside `.png .jpg .jpeg .gif .svg .bmp .tiff .tif .webp` for images; `.svg` for icons) are rejected before disk I/O. Use absolute paths if your asset lives outside the input directory.
+
 **Accepted `IconInput` sources (exactly one per icon).** Set exactly one of:
 
 | Source | Field | Example |

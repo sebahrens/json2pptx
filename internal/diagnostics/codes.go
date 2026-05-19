@@ -43,6 +43,8 @@ const (
 	CodeIconMissing            Code = "ICON_MISSING"
 	CodeIconList               Code = "ICON_LIST"
 	CodeIconBundledNameUnknown Code = "ICON_BUNDLED_NAME_UNKNOWN"
+	CodeImagePath              Code = "IMAGE_PATH"
+	CodeBackgroundImagePath    Code = "BACKGROUND_IMAGE_PATH"
 )
 
 // Render family — generation and rendering failures.
@@ -108,6 +110,8 @@ func AllCodes() []Code {
 		CodeIconMissing,
 		CodeIconList,
 		CodeIconBundledNameUnknown,
+		CodeImagePath,
+		CodeBackgroundImagePath,
 		// Render
 		CodeGenerationFailed,
 		CodeReadFailed,

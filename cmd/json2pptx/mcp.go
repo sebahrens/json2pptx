@@ -429,13 +429,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// concrete layout IDs using tag-based matching against the target template.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
 
-	// Resolve relative icon paths against CWD (MCP receives inline JSON, not a file path).
-	// All per-icon failures are collected into structured diagnostics so the
-	// caller can fix each broken icon independently instead of seeing one bag-
-	// of-strings ICON_PATH error.
+	// Resolve relative asset paths (icons, content images, grid images,
+	// background images) against CWD (MCP receives inline JSON, not a file
+	// path). All per-asset failures are collected into structured
+	// diagnostics so the caller can fix each broken reference independently
+	// instead of seeing one bag-of-strings error.
 	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
-		if iconFindings := resolveIconPaths(input.Slides, cwd); len(iconFindings) > 0 {
-			return api.MCPDiagnosticsError(iconFindings), nil
+		if assetFindings := resolveLocalAssetPaths(input.Slides, cwd); len(assetFindings) > 0 {
+			return api.MCPDiagnosticsError(assetFindings), nil
 		}
 	}
 
@@ -837,13 +838,15 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
 	}
 
-	// Icon preflight: validate bundled icon names (catches typos and missing
-	// "filled:" prefix) and resolve any icon.path fields against the server's
-	// CWD. Mirrors the handleGenerate preflight so agents catch broken icons
-	// in validate_input instead of burning a generate call.
+	// Asset preflight: validate bundled icon names (catches typos and
+	// missing "filled:" prefix), resolve icon.path fields, and resolve
+	// content image_value, shape_grid cell image, and slide background
+	// image paths against the server's CWD. Mirrors the handleGenerate
+	// preflight so agents catch broken references in validate_input instead
+	// of burning a generate call.
 	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
-		if iconFindings := resolveIconPaths(input.Slides, cwd); len(iconFindings) > 0 {
-			boundaryDiags = append(boundaryDiags, iconFindings...)
+		if assetFindings := resolveLocalAssetPaths(input.Slides, cwd); len(assetFindings) > 0 {
+			boundaryDiags = append(boundaryDiags, assetFindings...)
 		}
 	}
 

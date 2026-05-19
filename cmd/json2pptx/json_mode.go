@@ -477,12 +477,14 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		}
 	}
 
-	// Resolve relative icon paths (icon.path fields) against the JSON input directory.
-	// This must happen before convertPresentationSlides so that IconSpec.Path is absolute.
+	// Resolve relative asset paths (icon.path, content image_value.path,
+	// shape_grid cell image.path, slide background.image) against the JSON
+	// input directory. This must happen before convertPresentationSlides so
+	// that downstream specs see absolute paths.
 	if jsonPath != "-" {
 		inputDir := filepath.Dir(jsonPath)
-		if iconFindings := resolveIconPaths(input.Slides, inputDir); len(iconFindings) > 0 {
-			return writeJSONError(jsonOutputPath, iconFindingsToError(iconFindings))
+		if assetFindings := resolveLocalAssetPaths(input.Slides, inputDir); len(assetFindings) > 0 {
+			return writeJSONError(jsonOutputPath, iconFindingsToError(assetFindings))
 		}
 	}
 
