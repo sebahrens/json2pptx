@@ -11,6 +11,7 @@ bin/
 # Root-level Go binaries (built without -o flag)
 /json2pptx
 /pptx2jpg
+/svggen-mcp
 /server
 /slide-server
 /svgserver
