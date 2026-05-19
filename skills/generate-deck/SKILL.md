@@ -208,6 +208,13 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Pagination (discovery tools).** `list_templates`, `list_patterns`, and `list_icons` accept optional `cursor` and `page_size` arguments (default 50, max 200). The response envelope echoes `total_count`, `page_size`, and `next_cursor` when more entries remain.
 
+**Field projection + filter (discovery tools).** The same three tools accept `fields` (`"compact"` | `"full"`) and `filter` (case-insensitive substring on entity name) for agent token economy:
+
+- `fields="compact"` — `list_patterns` returns only `{name, category, cells, use_when, supports_callout}` per pattern; `list_templates` drops `theme_colors` / `color_roles` / `layout_summaries`; `list_icons` drops the redundant `sets[].icons[]` dual array (synthesize `qualified_name` as `set + ":" + name`).
+- `fields="full"` — explicit legacy payload (silences the deprecation hint).
+- `fields` omitted — current legacy payload PLUS a deprecation hint in `warnings[]`; future releases will flip the default to `compact`.
+- `filter="kpi"` (or `filter="midnight"`, `filter="arrow"`) — substring trims the catalog before pagination, so `total_count` reflects the filtered universe. `list_icons` keeps the legacy `search` alias; when both are set, `filter` wins.
+
 **Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, `shape`, or `split`). Enum-constrained fields include inline `enum` arrays. The `slides[]` item schema is a `oneOf` between a regular `SlideInput` and a `SplitSlideInput` envelope (discriminator: `type == "split_slide"`), so agents can author either variant directly from schema output. `SlideInput` also carries type-level `anyOf` (`layout_id` OR `slide_type` is required) and `allOf` (`pattern` / `shape_grid` / `compose` are mutually exclusive visual-envelope alternatives). `ContentInput` encodes the typed-value discriminator as an `allOf` of `if`/`then` branches: setting `type` to `text` requires `text_value` and forbids the other typed `*_value` fields; `type: bullets` requires `bullets_value`; and so on through `body_and_bullets`, `body_and_lead`, `bullet_groups`, `table`, `chart`, `diagram`, and `image`. The legacy raw `value` field remains accepted for backward compatibility and is unconstrained by the discriminator.
 
 **Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays. Each entry carries an optional `aliases` array listing alternate names. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.

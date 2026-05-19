@@ -274,14 +274,25 @@ func mcpListTemplatesTool() mcp.Tool {
 Response shape per template (compact/full modes): name, aspect_ratio, layout_count, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, layout_names, table_styles [{id,name}]. Full mode adds layouts with placeholders and capacity.
 Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes).
 
-Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.`),
+Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.
+
+Projection (token-economy): pass fields="compact" to suppress per-template detail (theme_colors / color_roles / layouts) and keep only names + aspect_ratio + layout_count + table_styles. Pass fields="full" for the legacy full payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
+
+Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`),
 		mcp.WithRawOutputSchema(outputSchemaListTemplates),
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
 		mcp.WithString("mode",
-			mcp.Description("Detail level: list (names only), compact (names + theme), or full (all placeholders)."),
+			mcp.Description("Legacy detail level: list (names only), compact (names + theme), or full (all placeholders). Prefer fields=compact|full; mode is honored when fields is unset."),
 			mcp.Enum("list", "compact", "full"),
+		),
+		mcp.WithString("fields",
+			mcp.Description("Field projection: compact (slim — name, aspect_ratio, layout_count, table_styles) or full (current full payload). When omitted, behavior matches mode (or full when neither is set) and a deprecation hint is returned in warnings[]."),
+			mcp.Enum(listFieldsCompact, listFieldsFull),
+		),
+		mcp.WithString("filter",
+			mcp.Description("Case-insensitive substring filter on template name. Applied before pagination."),
 		),
 		mcp.WithString("cursor",
 			mcp.Description("Opaque continuation token from a previous response's next_cursor. Omit or pass empty for the first page."),
@@ -671,11 +682,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 }
 
 func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Legacy `mode` parameter — accepted for backward compatibility.
 	mode := "compact"
+	modeExplicit := false
 	if m, err := request.RequireString("mode"); err == nil && m != "" {
 		switch m {
 		case "list", "compact", "full":
 			mode = m
+			modeExplicit = true
 		default:
 			return mcpParseErrorWithFix(diagnostics.CodeUnknownEnum, "mode",
 				fmt.Sprintf("invalid mode %q: must be list, compact, or full", m),
@@ -684,7 +698,30 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		}
 	}
 
+	// New `fields` parameter — preferred over `mode`. When both are provided,
+	// fields wins. The two surfaces use different vocabularies on purpose:
+	//
+	//   fields=compact -> mode="list" (slim: name + aspect_ratio + layout_count + table_styles)
+	//   fields=full    -> mode="full" (every per-template detail incl. layouts)
+	//
+	// The legacy mode flag still reaches the intermediate "compact" detail level
+	// (theme + layout_summaries, no placeholder geometry); agents that want it
+	// must pin mode=compact explicitly.
+	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
+	if fErrMsg != "" {
+		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
+	}
+	if fieldsExplicit {
+		switch fieldsMode {
+		case listFieldsCompact:
+			mode = "list"
+		case listFieldsFull:
+			mode = "full"
+		}
+	}
+
 	templateName, _ := request.RequireString("template")
+	filterStr := listFilterParam(request)
 
 	// Parse pagination parameters (cursor, page_size). Invalid input is
 	// surfaced as a structured INVALID_PARAMETER error.
@@ -702,6 +739,19 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	} else {
 		templateNames = listAvailableTemplates(mc.templatesDir)
 		sort.Strings(templateNames)
+	}
+
+	// Apply name filter before resolution so we don't pay for analyses we'll
+	// discard. The single-template path (templateName != "") is exempt — the
+	// caller already named the target explicitly.
+	if filterStr != "" && templateName == "" {
+		filtered := make([]string, 0, len(templateNames))
+		for _, n := range templateNames {
+			if strings.Contains(strings.ToLower(n), filterStr) {
+				filtered = append(filtered, n)
+			}
+		}
+		templateNames = filtered
 	}
 
 	type resolvedTemplate struct {
@@ -759,6 +809,14 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		TotalCount:     totalCount,
 		PageSize:       pageSize,
 		NextCursor:     nextCursor,
+	}
+
+	// Deprecation hint: nudge callers that did not pick a projection so a
+	// future release can flip the default to compact without surprising them.
+	// `mode` is the historical surface — callers who pinned it already made an
+	// explicit choice and don't need the hint.
+	if !fieldsExplicit && !modeExplicit {
+		output.Warnings = append(output.Warnings, defaultFieldsDeprecation)
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
@@ -1076,8 +1134,19 @@ func mcpListPatternsTool() mcp.Tool {
 	return mcp.NewTool("list_patterns",
 		mcp.WithDescription(`List all available named patterns. Patterns are high-level primitives that expand to shape_grid definitions, replacing ~600 tokens of boilerplate with ~100 tokens.
 
-Pagination: response is an object {groups, total_count, page_size, next_cursor?}. Patterns are flattened across categories for paging; categories are rebuilt for each page in the canonical order. Use cursor + page_size to iterate.`),
+Pagination: response is an object {groups, total_count, page_size, next_cursor?}. Patterns are flattened across categories for paging; categories are rebuilt for each page in the canonical order. Use cursor + page_size to iterate.
+
+Projection (token-economy): pass fields="compact" to receive only {name, category, cells, use_when, supports_callout} per pattern. Pass fields="full" for the legacy taxonomy payload (narrative_role, pairs_with, composes_with, role_on_slide, density_class, accent_weight, estimated_prompt_size_bytes). Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
+
+Filtering: pass filter="<substring>" to limit the response to patterns whose name contains the substring (case-insensitive). Applied before pagination.`),
 		mcp.WithRawOutputSchema(outputSchemaListPatterns),
+		mcp.WithString("fields",
+			mcp.Description("Field projection: compact (slim — name, category, cells, use_when, supports_callout) or full (legacy taxonomy detail). When omitted, behavior matches full and a deprecation hint is returned in warnings[]."),
+			mcp.Enum(listFieldsCompact, listFieldsFull),
+		),
+		mcp.WithString("filter",
+			mcp.Description("Case-insensitive substring filter on pattern name. Applied before pagination."),
+		),
 		mcp.WithString("cursor",
 			mcp.Description("Opaque continuation token from a previous response's next_cursor. Omit or pass empty for the first page."),
 		),
@@ -1568,6 +1637,9 @@ type listPatternsResponse struct {
 	TotalCount int                    `json:"total_count"`
 	PageSize   int                    `json:"page_size"`
 	NextCursor string                 `json:"next_cursor,omitempty"`
+	// Warnings carries advisory hints for the call — currently used to surface
+	// the deprecation notice when the caller did not pass `fields`.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -1576,31 +1648,50 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
 	}
 
+	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
+	if fErrMsg != "" {
+		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
+	}
+	if !fieldsExplicit {
+		// Legacy behavior — full payload. A deprecation hint is emitted below.
+		fieldsMode = listFieldsFull
+	}
+
+	filterStr := listFilterParam(request)
+
 	reg := patterns.Default()
 	all := reg.List()
 
-	// Build entries with taxonomy.
-	entries := make([]skillPatternCompact, len(all))
-	for i, p := range all {
+	// Build entries with taxonomy. In compact mode, leave optional fields
+	// zero/empty so they drop from the wire via omitempty.
+	entries := make([]skillPatternCompact, 0, len(all))
+	for _, p := range all {
+		name := p.Name()
+		if filterStr != "" && !strings.Contains(strings.ToLower(name), filterStr) {
+			continue
+		}
 		tax := p.Taxonomy()
 		supportsCallout := false
 		if cs, ok := p.(patterns.CalloutSupport); ok {
 			supportsCallout = cs.SupportsCallout()
 		}
-		entries[i] = skillPatternCompact{
-			Name:            p.Name(),
+		entry := skillPatternCompact{
+			Name:            name,
+			Category:        tax.Category,
 			Cells:           p.CellsHint(),
 			UseWhen:         p.UseWhen(),
-			NotWhen:         p.NotWhen(),
-			Category:        tax.Category,
-			NarrativeRole:   tax.NarrativeRole,
-			PairsWith:       tax.PairsWith,
-			ComposesWith:    tax.ComposesWith,
-			RoleOnSlide:     tax.RoleOnSlide,
-			DensityClass:    tax.DensityClass,
-			AccentWeight:    tax.AccentWeight,
 			SupportsCallout: supportsCallout,
 		}
+		if fieldsMode == listFieldsFull {
+			entry.NotWhen = p.NotWhen()
+			entry.NarrativeRole = tax.NarrativeRole
+			entry.PairsWith = tax.PairsWith
+			entry.ComposesWith = tax.ComposesWith
+			entry.RoleOnSlide = tax.RoleOnSlide
+			entry.DensityClass = tax.DensityClass
+			entry.AccentWeight = tax.AccentWeight
+		}
+		entries = append(entries, entry)
 	}
 
 	// Reorder entries so that category-grouped pagination produces stable,
@@ -1636,6 +1727,9 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 		TotalCount: totalCount,
 		PageSize:   pageSize,
 		NextCursor: nextCursor,
+	}
+	if !fieldsExplicit {
+		resp.Warnings = append(resp.Warnings, defaultFieldsDeprecation)
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
@@ -2044,14 +2138,25 @@ func mcpListIconsTool() mcp.Tool {
 
 Canonical identifier: each set entry returns both a legacy bare-name array (sets[].names) and a structured sets[].icons array. Each entry in sets[].icons has {name, qualified_name}; qualified_name is always "<set>:<name>" (e.g. "filled:chart-pie", "outline:chart-pie") and is the canonical token to drop into icon.name — required for filled icons, since a bare name alone resolves to the outline set.
 
-Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icons that fall within the slice. count on each set entry reflects icons in that slice, not the full set size; use total_count for the corpus total.`),
+Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icons that fall within the slice. count on each set entry reflects icons in that slice, not the full set size; use total_count for the corpus total.
+
+Projection (token-economy): pass fields="compact" to drop the redundant sets[].icons[] dual array (qualified_name is always "<set>:<name>", easy to synthesize). Pass fields="full" for the legacy payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
+
+Filtering: filter (preferred) and search (legacy alias) both apply a case-insensitive substring filter on the icon name. Applied before pagination.`),
 		mcp.WithRawOutputSchema(outputSchemaListIcons),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
 			mcp.Enum("outline", "filled"),
 		),
 		mcp.WithString("search",
-			mcp.Description("Substring filter applied to icon names. Case-insensitive. Example: \"chart\" returns chart-pie, chart-bar, etc."),
+			mcp.Description("Legacy alias for filter. Substring filter applied to icon names. Case-insensitive. Example: \"chart\" returns chart-pie, chart-bar, etc."),
+		),
+		mcp.WithString("filter",
+			mcp.Description("Case-insensitive substring filter on icon name. Equivalent to search; when both are set, filter wins."),
+		),
+		mcp.WithString("fields",
+			mcp.Description("Field projection: compact (slim — drop redundant icons[] dual array) or full (legacy payload). When omitted, behavior matches full and a deprecation hint is returned in warnings[]."),
+			mcp.Enum(listFieldsCompact, listFieldsFull),
 		),
 		mcp.WithString("cursor",
 			mcp.Description("Opaque continuation token from a previous response's next_cursor. Omit or pass empty for the first page."),
@@ -2076,11 +2181,15 @@ type iconEntry struct {
 // the full set size; the envelope's total_count covers the entire filtered
 // corpus. `names` is preserved for backward compatibility; new consumers
 // should use `icons[].qualified_name`.
+//
+// The structured `icons[]` array carries omitempty so the compact projection
+// (fields="compact") can drop it from the wire; callers can still synthesize
+// qualified_name as `set + ":" + name` on demand.
 type iconSetResult struct {
 	Set   string      `json:"set"`
 	Count int         `json:"count"`
 	Names []string    `json:"names"`
-	Icons []iconEntry `json:"icons"`
+	Icons []iconEntry `json:"icons,omitempty"`
 }
 
 // listIconsResponse is the paginated envelope for list_icons.
@@ -2089,6 +2198,9 @@ type listIconsResponse struct {
 	TotalCount int             `json:"total_count"`
 	PageSize   int             `json:"page_size"`
 	NextCursor string          `json:"next_cursor,omitempty"`
+	// Warnings carries advisory hints (currently: deprecation notice when
+	// `fields` is omitted).
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -2097,13 +2209,26 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
 	}
 
+	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
+	if fErrMsg != "" {
+		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
+	}
+	if !fieldsExplicit {
+		fieldsMode = listFieldsFull
+	}
+
 	sets := []string{"outline", "filled"}
 	if s, err := request.RequireString("set"); err == nil && s != "" {
 		sets = []string{s}
 	}
 
-	search, _ := request.RequireString("search")
-	search = strings.ToLower(strings.TrimSpace(search))
+	// `filter` is the canonical name; `search` is the legacy alias. When both
+	// are supplied, filter wins. Trim+lower once for the inner loop.
+	filterStr := listFilterParam(request)
+	if filterStr == "" {
+		s, _ := request.RequireString("search")
+		filterStr = strings.ToLower(strings.TrimSpace(s))
+	}
 
 	// Flatten (set, name) pairs across all requested sets, applying the
 	// search filter as we go. Preserves intra-set ordering and overall
@@ -2118,7 +2243,7 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 			return api.MCPSimpleError("ICON_LIST", fmt.Sprintf("listing %s icons: %v", s, err)), nil
 		}
 		for _, n := range names {
-			if search == "" || strings.Contains(strings.ToLower(n), search) {
+			if filterStr == "" || strings.Contains(strings.ToLower(n), filterStr) {
 				flat = append(flat, setName{set: s, name: n})
 			}
 		}
@@ -2136,16 +2261,19 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	pageSets := make([]iconSetResult, 0, len(sets))
 	for _, s := range sets {
 		if names, ok := pageBySet[s]; ok {
-			entries := make([]iconEntry, len(names))
-			for i, n := range names {
-				entries[i] = iconEntry{Name: n, QualifiedName: s + ":" + n}
-			}
-			pageSets = append(pageSets, iconSetResult{
+			entry := iconSetResult{
 				Set:   s,
 				Count: len(names),
 				Names: names,
-				Icons: entries,
-			})
+			}
+			if fieldsMode == listFieldsFull {
+				entries := make([]iconEntry, len(names))
+				for i, n := range names {
+					entries[i] = iconEntry{Name: n, QualifiedName: s + ":" + n}
+				}
+				entry.Icons = entries
+			}
+			pageSets = append(pageSets, entry)
 		}
 	}
 
@@ -2154,6 +2282,9 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		TotalCount: totalCount,
 		PageSize:   pageSize,
 		NextCursor: nextCursor,
+	}
+	if !fieldsExplicit {
+		resp.Warnings = append(resp.Warnings, defaultFieldsDeprecation)
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)

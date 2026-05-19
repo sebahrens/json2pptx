@@ -50,6 +50,10 @@ type skillInfo struct {
 	// template entries remain after the current page; pass it back as the
 	// `cursor` argument to retrieve the next slice.
 	NextCursor string `json:"next_cursor,omitempty"`
+	// Warnings carries per-call advisory hints (e.g. deprecation notices
+	// when an agent calls list_templates without the new `fields` projection
+	// parameter). It is not a validation/error channel.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // skillComposeEntry describes the compose envelope feature for agents browsing
@@ -108,20 +112,25 @@ type skillDeprecation struct {
 }
 
 // skillPatternCompact is a compact pattern entry (≤ 40 tokens) for default mode.
+//
+// Optional descriptive fields carry `omitempty` so the same struct can serve
+// both list_patterns projections: in `fields=compact` they are left unset and
+// drop from the wire; in `fields=full` (or the legacy default) they are
+// populated as before. Tests targeting full mode see no shape change.
 type skillPatternCompact struct {
 	Name                     string   `json:"name"`
-	Cells                    string   `json:"cells"`
-	UseWhen                  string   `json:"use_when"`
-	NotWhen                  string   `json:"not_when"`
+	Cells                    string   `json:"cells,omitempty"`
+	UseWhen                  string   `json:"use_when,omitempty"`
+	NotWhen                  string   `json:"not_when,omitempty"`
 	Category                 string   `json:"category"`
-	NarrativeRole            []string `json:"narrative_role"`
-	PairsWith                []string `json:"pairs_with"`
+	NarrativeRole            []string `json:"narrative_role,omitempty"`
+	PairsWith                []string `json:"pairs_with,omitempty"`
 	ComposesWith             []string `json:"composes_with,omitempty"`
 	RoleOnSlide              []string `json:"role_on_slide,omitempty"`
-	DensityClass             string   `json:"density_class"`
-	AccentWeight             string   `json:"accent_weight"`
-	SupportsCallout          bool     `json:"supports_callout"`
-	EstimatedPromptSizeBytes int      `json:"estimated_prompt_size_bytes"`
+	DensityClass             string   `json:"density_class,omitempty"`
+	AccentWeight             string   `json:"accent_weight,omitempty"`
+	SupportsCallout          bool     `json:"supports_callout,omitempty"`
+	EstimatedPromptSizeBytes int      `json:"estimated_prompt_size_bytes,omitempty"`
 }
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.

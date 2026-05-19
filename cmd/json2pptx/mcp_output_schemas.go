@@ -131,9 +131,10 @@ var outputSchemaListTemplates = json.RawMessage(`{
     "supported_types": {"type": "object"},
     "input_formats":   {"type": "array", "items": {"type": "string"}},
     "output_formats":  {"type": "array", "items": {"type": "string"}},
-    "total_count":     {"type": "integer", "description": "Total number of templates discovered, irrespective of the current page."},
+    "total_count":     {"type": "integer", "description": "Total number of templates discovered (after filter), irrespective of the current page."},
     "page_size":       {"type": "integer", "description": "Maximum number of template entries in this page."},
-    "next_cursor":     {"type": "string", "description": "Opaque continuation token. Pass back as cursor on the next call. Absent on the last page."}
+    "next_cursor":     {"type": "string", "description": "Opaque continuation token. Pass back as cursor on the next call. Absent on the last page."},
+    "warnings":        {"type": "array", "items": {"type": "string"}, "description": "Advisory hints (e.g. deprecation notice when fields is omitted)."}
   },
   "required": ["tool", "templates", "supported_types", "input_formats", "output_formats"]
 }`)
@@ -187,7 +188,7 @@ var outputSchemaListPatterns = json.RawMessage(`{
                 "use_when":         {"type": "string"},
                 "not_when":         {"type": "string"},
                 "category":         {"type": "string"},
-                "narrative_role":   {"type": "string"},
+                "narrative_role":   {"type": "array", "items": {"type": "string"}},
                 "pairs_with":       {"type": "array", "items": {"type": "string"}},
                 "composes_with":    {"type": "array", "items": {"type": "string"}},
                 "role_on_slide":    {"type": "array", "items": {"type": "string"}},
@@ -195,16 +196,17 @@ var outputSchemaListPatterns = json.RawMessage(`{
                 "accent_weight":    {"type": "string"},
                 "supports_callout": {"type": "boolean"}
               },
-              "required": ["name", "cells", "use_when", "not_when", "category"]
+              "required": ["name", "category"]
             }
           }
         },
         "required": ["category", "patterns"]
       }
     },
-    "total_count": {"type": "integer", "description": "Total number of patterns across all categories."},
+    "total_count": {"type": "integer", "description": "Total number of patterns across all categories (after filter)."},
     "page_size":   {"type": "integer", "description": "Maximum number of pattern entries per page."},
-    "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."}
+    "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."},
+    "warnings":    {"type": "array", "items": {"type": "string"}, "description": "Advisory hints (e.g. deprecation notice when fields is omitted)."}
   },
   "required": ["groups", "total_count", "page_size"]
 }`)
@@ -468,10 +470,10 @@ var outputSchemaListIcons = json.RawMessage(`{
         "properties": {
           "set":   {"type": "string"},
           "count": {"type": "integer", "description": "Number of icons from this set included on the current page."},
-          "names": {"type": "array", "items": {"type": "string"}, "description": "Legacy bare-name list (no set prefix). Kept for backward compatibility; new consumers should use icons[].qualified_name."},
+          "names": {"type": "array", "items": {"type": "string"}, "description": "Bare-name list (no set prefix). Always present; in fields=compact this is the only payload (qualified_name can be synthesized as set + ':' + name)."},
           "icons": {
             "type": "array",
-            "description": "Per-icon entries with the canonical authoring identifier.",
+            "description": "Per-icon entries with the canonical authoring identifier. Omitted when fields=compact.",
             "items": {
               "type": "object",
               "properties": {
@@ -482,12 +484,13 @@ var outputSchemaListIcons = json.RawMessage(`{
             }
           }
         },
-        "required": ["set", "count", "names", "icons"]
+        "required": ["set", "count", "names"]
       }
     },
     "total_count": {"type": "integer", "description": "Total number of icons across all requested sets (after the search filter)."},
     "page_size":   {"type": "integer", "description": "Maximum number of icons per page."},
-    "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."}
+    "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."},
+    "warnings":    {"type": "array", "items": {"type": "string"}, "description": "Advisory hints (e.g. deprecation notice when fields is omitted)."}
   },
   "required": ["sets", "total_count", "page_size"]
 }`)
