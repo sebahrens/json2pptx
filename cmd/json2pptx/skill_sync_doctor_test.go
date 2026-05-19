@@ -105,7 +105,7 @@ func TestSkillSyncDoctor_FindingCodes(t *testing.T) {
 		fitCodes = append(fitCodes, code)
 	}
 
-	skillText := readFile(t, "../../skills/generate-deck/SKILL.md")
+	skillText := readSkillDirBundle(t, "../../skills/generate-deck")
 	fitDocText := readFile(t, "../../docs/FIT_FINDINGS.md")
 
 	// Direction 1a: code → SKILL.md
@@ -233,12 +233,12 @@ func TestSkillSyncDoctor_OverridesFields(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSkillSyncDoctor_ChartPromotionTable(t *testing.T) {
-	skillText := readFile(t, "../../skills/generate-deck/SKILL.md")
+	skillText := readSkillDirBundle(t, "../../skills/generate-deck")
 
 	for _, code := range allChartFindingCodes() {
 		t.Run(code, func(t *testing.T) {
 			if !strings.Contains(skillText, code) {
-				t.Errorf("chart code %q not documented in SKILL.md", code)
+				t.Errorf("chart code %q not documented in the skill bundle (SKILL.md or sub-files)", code)
 			}
 
 			base := core.Finding{Code: code, Severity: core.SeverityWarning}
@@ -356,6 +356,36 @@ func readFile(t *testing.T, path string) string {
 		t.Fatalf("cannot read %s: %v", path, err)
 	}
 	return string(data)
+}
+
+// readSkillDirBundle concatenates every .md file in the skill directory. The
+// generate-deck skill was split out of a 1000+ line SKILL.md into focused
+// sub-files (WORKFLOW.md, FINDINGS.md, RULES.md, PATTERNS.md); any of them
+// counts as "documented in the skill" for drift purposes.
+func readSkillDirBundle(t *testing.T, dir string) string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("cannot read dir %s: %v", dir, err)
+	}
+	var mdFiles []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		mdFiles = append(mdFiles, e.Name())
+	}
+	sort.Strings(mdFiles)
+	var b strings.Builder
+	for _, name := range mdFiles {
+		data, err := os.ReadFile(dir + "/" + name)
+		if err != nil {
+			t.Fatalf("cannot read %s/%s: %v", dir, name, err)
+		}
+		b.Write(data)
+		b.WriteByte('\n')
+	}
+	return b.String()
 }
 
 func toSet(items []string) map[string]bool {
