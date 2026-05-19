@@ -401,7 +401,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			return writeJSONError(jsonOutputPath, fmt.Errorf(
 				"design_mode %q violation(s):\n  %s\n\n"+
 					"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
-					"or set \"design_mode\": \"free\" in the JSON input.",
+					"or set \"design_mode\": \"free\" in the JSON input",
 				effectiveDesignMode(input), strings.Join(msgs, "\n  ")))
 		}
 	}

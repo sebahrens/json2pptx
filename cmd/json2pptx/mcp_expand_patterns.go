@@ -138,7 +138,7 @@ type batchExpansionResponse struct {
 	Results      []batchExpansionEntry `json:"results"`
 }
 
-func (mc *mcpConfig) handleExpandPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (mc *mcpConfig) handleExpandPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocognit
 	// --- names[] (required) ---
 	namesRaw, ok := request.GetArguments()["names"]
 	if !ok || namesRaw == nil {

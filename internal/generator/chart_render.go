@@ -137,7 +137,7 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 // diagramSpecToSVGGen converts a types.DiagramSpec to an svggen.RequestEnvelope.
 // maxPNGWidth caps the PNG output width (0 = no cap).
 // strictFit is threaded to OutputSpec.StrictFit for future severity promotion.
-func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope {
+func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope { //nolint:gocognit
 	// Build style spec
 	style := svggen.StyleSpec{}
 

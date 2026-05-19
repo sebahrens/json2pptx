@@ -390,7 +390,7 @@ func buildInputSchema() map[string]any {
 }
 
 // reflectStructSchema generates a JSON Schema object for a Go struct type.
-func reflectStructSchema(typeName string, t reflect.Type) map[string]any {
+func reflectStructSchema(typeName string, t reflect.Type) map[string]any { //nolint:gocognit
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}

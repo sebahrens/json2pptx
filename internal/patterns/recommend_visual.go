@@ -309,7 +309,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 // scoreVisualCandidate resolves a single candidate name to its category and
 // score. It returns a VisualCandidate even when the name matches no rule —
 // the caller chose this name and is owed a ranked entry.
-func scoreVisualCandidate(
+func scoreVisualCandidate( //nolint:gocognit,gocyclo
 	reg *Registry, intentLower string, hints *VisualHints, name string,
 	placeholderByType map[string]placeholderRule,
 	chartByType map[string]chartRule,

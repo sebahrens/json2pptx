@@ -143,7 +143,7 @@ type auditReport struct {
 
 // --- Top-level driver -------------------------------------------------------
 
-func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) {
+func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) { //nolint:gocognit,gocyclo
 	abs, err := filepath.Abs(pptxPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve pptx path: %w", err)
