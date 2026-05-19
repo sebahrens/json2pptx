@@ -160,6 +160,7 @@ func runPatternsShow() error {
 
 	if *jsonOut {
 		schemaJSON := patterns.SchemaJSON(pat)
+		tax := pat.Taxonomy()
 		result := skillPatternFull{
 			Name:            pat.Name(),
 			Description:     pat.Description(),
@@ -168,6 +169,8 @@ func runPatternsShow() error {
 			Version:         pat.Version(),
 			Schema:          schemaJSON,
 			TextBudgetGuide: computeTextBudgetGuide(pat),
+			ComposesWith:    tax.ComposesWith,
+			RoleOnSlide:     tax.RoleOnSlide,
 		}
 		result.Cells = pat.CellsHint()
 		if cs, ok := pat.(patterns.CalloutSupport); ok {
@@ -176,6 +179,10 @@ func runPatternsShow() error {
 				result.CalloutSchema = patternCalloutSchemaJSON()
 			}
 		}
+		if ex, ok := pat.(patterns.Exemplar); ok {
+			result.ExampleValues = ex.ExemplarValues()
+		}
+		result.RenderingCapabilities = patternRenderingCapabilities(pat.Name())
 		data, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
