@@ -27,18 +27,18 @@ func runResolveTheme() error {
 	templateName := fs.String("template", "", "Template name (required)")
 	colorNames := fs.String("colors", "", "Comma-separated list of color names to resolve (omit for all)")
 	override := fs.String("override", "", "Theme override as inline JSON or @path/to/file.json (same shape as frontmatter theme_override: {colors, title_font, body_font})")
-	variation := fs.String("variation", "", "Named theme variation preset (reserved for future built-in variants like 'dark', 'high-contrast'); use -override for custom JSON")
+	variation := fs.String("variation", "", "Named theme variation preset (reserved for future built-in variants like 'dark', 'high-contrast'); use --override for custom JSON")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx resolve-theme -template <name> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx resolve-theme --template <name> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Resolve theme colors and fonts for a template.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme -template midnight-blue\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme -template midnight-blue -colors accent1,accent2,dk1\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme -template midnight-blue -override '{\"colors\":{\"accent1\":\"#336699\"}}'\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme -template midnight-blue -override @theme.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme --template midnight-blue\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme --template midnight-blue --colors accent1,accent2,dk1\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme --template midnight-blue --override '{\"colors\":{\"accent1\":\"#336699\"}}'\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx resolve-theme --template midnight-blue --override @theme.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -47,11 +47,11 @@ func runResolveTheme() error {
 
 	if *templateName == "" {
 		fs.Usage()
-		return fmt.Errorf("-template is required")
+		return fmt.Errorf("--template is required")
 	}
 
 	if *override != "" && *variation != "" {
-		return fmt.Errorf("-override and -variation are mutually exclusive; pass only one")
+		return fmt.Errorf("--override and --variation are mutually exclusive; pass only one")
 	}
 
 	themeOverride, err := buildThemeOverrideArg(*override, *variation)
@@ -90,7 +90,7 @@ func buildThemeOverrideArg(overrideArg, variationArg string) (map[string]any, er
 	case variationArg != "":
 		preset, ok := builtinThemeVariations[variationArg]
 		if !ok {
-			return nil, fmt.Errorf("-variation: unknown variation %q (known: %s); use -override for custom JSON",
+			return nil, fmt.Errorf("--variation: unknown variation %q (known: %s); use --override for custom JSON",
 				variationArg, formatKnownVariations())
 		}
 		// Return a shallow copy so callers cannot mutate the registry entry.

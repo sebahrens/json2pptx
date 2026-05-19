@@ -18,15 +18,15 @@ func runPreview() error {
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without budget limit")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview -json <file.json> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview --json <file.json> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Preview the full generation plan without rendering a PPTX.\n")
 		fmt.Fprintf(os.Stderr, "Shows per-slide layout selection, placeholder mapping, and fit findings.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx preview -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx preview -json slides.json -fit-report=false\n")
-		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx preview -json -\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx preview --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx preview --json slides.json --fit-report=false\n")
+		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx preview --json -\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

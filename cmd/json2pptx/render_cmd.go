@@ -21,14 +21,14 @@ func runRenderSlide() error {
 	force := fs.Bool("force", false, "Bypass render cache")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide -pptx <file.pptx> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide --pptx <file.pptx> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render a single slide from a PPTX to a PNG image.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-slide -pptx output/deck.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-slide -pptx output/deck.pptx -slide-index 3 -density 200\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-slide --pptx output/deck.pptx\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-slide --pptx output/deck.pptx --slide-index 3 --density 200\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -70,14 +70,14 @@ func runRenderSlideFromJSON() error {
 	overlay := fs.Bool("overlay", false, "Composite shape_grid cell bounds + fit-finding badges onto the rendered PNG")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide-from-json -template <name> -slide <file.json> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide-from-json --template <name> --slide <file.json> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render a single slide directly from JSON to a PNG, without generating the full deck.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-slide-from-json -template midnight-blue -slide slide.json\n")
-		fmt.Fprintf(os.Stderr, "  cat slide.json | json2pptx render-slide-from-json -template midnight-blue -slide -\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-slide-from-json --template midnight-blue --slide slide.json\n")
+		fmt.Fprintf(os.Stderr, "  cat slide.json | json2pptx render-slide-from-json --template midnight-blue --slide -\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -139,14 +139,14 @@ func runRenderThumbnails() error {
 	force := fs.Bool("force", false, "Bypass render cache")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-thumbnails -pptx <file.pptx> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-thumbnails --pptx <file.pptx> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render all slides in a PPTX as low-resolution PNG thumbnails.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails -pptx output/deck.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails -pptx output/deck.pptx -density 100 -max-slides 10\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx --density 100 --max-slides 10\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

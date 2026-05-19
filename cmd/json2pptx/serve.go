@@ -35,7 +35,7 @@ func runServe() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx serve --config config.yaml --port 8080\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx serve --templates-dir /usr/share/templates\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

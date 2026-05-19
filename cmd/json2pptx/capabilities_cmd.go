@@ -16,7 +16,7 @@ func runCapabilities() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx capabilities\n\n")
 		fmt.Fprintf(os.Stderr, "Show schema version, available MCP tools, deprecated fields, and feature flags.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

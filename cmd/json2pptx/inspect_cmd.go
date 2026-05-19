@@ -21,14 +21,14 @@ func runInspect() error {
 	model := fs.String("model", "", "Claude model override (default: claude-haiku-4-5-20251001)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx inspect -images <dir> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx inspect --images <dir> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Run vision-based visual QA on rendered slide images.\n\n")
 		fmt.Fprintf(os.Stderr, "Requires ANTHROPIC_API_KEY in the environment.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx inspect -images /tmp/slides/\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx inspect -images /tmp/slides/ -template midnight-blue\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx inspect --images /tmp/slides/\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx inspect --images /tmp/slides/ --template midnight-blue\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

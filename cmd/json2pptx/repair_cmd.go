@@ -19,13 +19,13 @@ func runRepair() error {
 	fixesStr := fs.String("fixes", "", `JSON array of fix directives, e.g. '[{"kind":"reduce_text","params":{"max_items":5}}]'`)
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx repair -json <file.json> -fixes <json-array> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx repair --json <file.json> --fixes <json-array> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Apply targeted fixes to a single slide without regenerating the entire deck.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx repair -json deck.json -slide-index 2 -fixes '[{\"kind\":\"reduce_text\",\"params\":{\"max_items\":5}}]'\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx repair -json deck.json -slide-index 0 -fixes '[{\"kind\":\"swap_layout\",\"params\":{\"layout_id\":\"slideLayout3\"}}]'\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx repair --json deck.json --slide-index 2 --fixes '[{\"kind\":\"reduce_text\",\"params\":{\"max_items\":5}}]'\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx repair --json deck.json --slide-index 0 --fixes '[{\"kind\":\"swap_layout\",\"params\":{\"layout_id\":\"slideLayout3\"}}]'\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

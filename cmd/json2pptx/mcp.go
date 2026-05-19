@@ -53,7 +53,7 @@ func runMCP() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx mcp [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Start an MCP (Model Context Protocol) server over stdio.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

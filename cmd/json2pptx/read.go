@@ -22,7 +22,7 @@ func runRead() error {
 		fmt.Fprintf(os.Stderr, "tables, and speaker notes found in the file. It does not require\n")
 		fmt.Fprintf(os.Stderr, "LibreOffice or any external dependencies.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

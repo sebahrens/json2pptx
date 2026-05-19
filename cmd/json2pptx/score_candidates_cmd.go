@@ -20,13 +20,13 @@ func runScoreCandidates() error {
 	slideIndex := fs.Int("slide-index", -1, "0-based index of the slide slot to score candidates against (required)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx score-candidates -json <deck.json> -candidates <candidates.json> -slide-index N [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx score-candidates --json <deck.json> --candidates <candidates.json> --slide-index N [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Score multiple candidate slide_json values for one slot in a deck without rendering.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score-candidates -json deck.json -candidates cands.json -slide-index 2\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score-candidates -json deck.json -candidates - -slide-index 0 < cands.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx score-candidates --json deck.json --candidates cands.json --slide-index 2\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx score-candidates --json deck.json --candidates - --slide-index 0 < cands.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

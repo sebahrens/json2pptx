@@ -22,9 +22,9 @@ func runValidateOutput() error {
 		fmt.Fprintf(os.Stderr, "Checks package integrity, color values, shape ID uniqueness, table structure, etc.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate-output presentation.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx validate-output -json presentation.pptx\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate-output --json presentation.pptx\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

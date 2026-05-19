@@ -174,14 +174,15 @@ CLI parity gaps (CLI accepts a subset of the matching MCP tool's parameters):
                       and candidates (explicit shortlist) — call via 'json2pptx mcp'.
 
 Examples:
-  json2pptx generate -json slides.json -template corporate
-  json2pptx -json slides.json -template corporate     (implicit generate)
+  json2pptx generate --json slides.json --template corporate
+  json2pptx --json slides.json --template corporate     (implicit generate)
   json2pptx validate slides.json
   json2pptx validate-template templates/corporate.pptx
   json2pptx skill-info --templates-dir ./templates
   json2pptx serve --port 3000
   json2pptx mcp --templates-dir ./templates --output ./output
 
+Flags accept both --flag and -flag (single-dash kept for back-compat).
 Run 'json2pptx <command> -h' for command-specific help.
 `)
 }

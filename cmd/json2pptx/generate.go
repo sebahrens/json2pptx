@@ -20,23 +20,23 @@ func runGenerate() error {
 	jsonOutput := fs.String("json-output", "", "Path for JSON result output (headless mode)")
 	chartPNG := fs.Bool("chart-png", false, "DEPRECATED: Use PNG instead of native SVG for charts. Native SVG is now the default and recommended strategy.")
 	dryRun := fs.Bool("dry-run", false, "Validate input and show layout selections without generating output")
-	fs.BoolVar(dryRun, "n", false, "Shorthand for -dry-run")
+	fs.BoolVar(dryRun, "n", false, "Shorthand for --dry-run")
 	strictFit := fs.String("strict-fit", "warn", "Text-fit checking mode: off, warn (default), or strict (refuse on overflow)")
 	partial := fs.Bool("partial", false, "Enable partial mode: skip failing slides instead of aborting the entire deck")
 	outputValidation := fs.String("output-validation", "off", "Post-generation PPTX validation: off (default), warn (report findings), or strict (fail on blocking findings)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] -json <file.json>\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] --json <file.json>\n\n")
 		fmt.Fprintf(os.Stderr, "Convert JSON slide descriptions to PowerPoint presentations.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -json slides.json -output ./output\n")
-		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx generate -json - -json-output result.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -dry-run -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -n -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -strict-fit=strict -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate -output-validation=warn -json slides.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --json slides.json --output ./output\n")
+		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx generate --json - --json-output result.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --dry-run --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate -n --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --strict-fit=strict --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --output-validation=warn --json slides.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -62,7 +62,7 @@ func runGenerate() error {
 	// JSON input is required
 	if *jsonInput == "" {
 		fs.Usage()
-		return fmt.Errorf("JSON input is required: use -json <file.json> or -json - for stdin")
+		return fmt.Errorf("JSON input is required: use --json <file.json> or --json - for stdin")
 	}
 
 	// Fail fast if the font subsystem is broken — this prevents silent

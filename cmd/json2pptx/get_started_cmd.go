@@ -18,7 +18,7 @@ func runGetStarted() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx get-started [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Print the recommended ordered MCP-call sequence for a stated task.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

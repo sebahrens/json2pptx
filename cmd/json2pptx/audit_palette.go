@@ -47,9 +47,9 @@ func runAuditPalette() error {
 		fmt.Fprintf(os.Stderr, "Render a PPTX to PNG and report CIE76 ΔE between every embedded\n")
 		fmt.Fprintf(os.Stderr, "chart/picture region and every native solid-filled shape region per slide.\n\n")
 		fmt.Fprintf(os.Stderr, "Requires `libreoffice` and `pdftoppm` on PATH.\n\n")
-		fmt.Fprintf(os.Stderr, "Exit code is non-zero when any pair exceeds -max-delta-e.\n\n")
+		fmt.Fprintf(os.Stderr, "Exit code is non-zero when any pair exceeds --max-delta-e.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

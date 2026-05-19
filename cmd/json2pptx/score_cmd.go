@@ -18,14 +18,14 @@ func runScore() error {
 	mode := fs.String("mode", "deterministic", "Scoring mode: deterministic or with_heuristics")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx score -json <file.json> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx score --json <file.json> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Score a presentation for visual quality using deterministic rules.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score -json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score -json slides.json -template midnight-blue\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score -json slides.json -mode with_heuristics\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json --template midnight-blue\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json --mode with_heuristics\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

@@ -18,7 +18,7 @@ func runShapeCatalog() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx shape-catalog [options]\n\n")
 		fmt.Fprintf(os.Stderr, "List available preset geometries for shapes.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

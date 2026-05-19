@@ -199,7 +199,7 @@ func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, []st
 	}
 
 	if input.Template == "" {
-		return nil, nil, fmt.Errorf("template is required: use -template flag or set \"template\" in JSON input")
+		return nil, nil, fmt.Errorf("template is required: use --template flag or set \"template\" in JSON input")
 	}
 	if len(input.Slides) == 0 {
 		return nil, nil, fmt.Errorf("at least one slide is required")

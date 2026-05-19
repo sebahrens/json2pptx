@@ -14,12 +14,12 @@ func runAnalyzeRhythm() error {
 	jsonPath := fs.String("json", "", "Path to JSON input file (use - for stdin)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx analyze-rhythm -json <file.json>\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx analyze-rhythm --json <file.json>\n\n")
 		fmt.Fprintf(os.Stderr, "Analyze deck visual rhythm — pattern runs, density variation, accent balance.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx analyze-rhythm -json slides.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx analyze-rhythm --json slides.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

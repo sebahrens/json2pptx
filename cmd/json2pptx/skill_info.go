@@ -270,7 +270,7 @@ func runSkillInfo() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx skill-info [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Show template capabilities for Claude Code skill integration.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

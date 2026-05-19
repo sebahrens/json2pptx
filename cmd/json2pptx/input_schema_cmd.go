@@ -16,7 +16,7 @@ func runInputSchema() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx input-schema\n\n")
 		fmt.Fprintf(os.Stderr, "Print the authoritative JSON Schema for PresentationInput.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

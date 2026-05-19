@@ -70,7 +70,7 @@ func runPatternsList() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns list [--json]\n\n")
 		fmt.Fprintf(os.Stderr, "List all available named patterns.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -138,7 +138,7 @@ func runPatternsShow() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns show [--json] <name>\n\n")
 		fmt.Fprintf(os.Stderr, "Show full schema and details for a named pattern.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -225,7 +225,7 @@ func runPatternsValidate() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns validate [--json] <name> <values.json>\n\n")
 		fmt.Fprintf(os.Stderr, "Validate pattern values without generating a deck.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -322,7 +322,7 @@ func runPatternsExpand() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns expand [--json] [--templates-dir DIR] [--template NAME] <name> <values.json>\n\n")
 		fmt.Fprintf(os.Stderr, "Expand a pattern to its shape_grid equivalent.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

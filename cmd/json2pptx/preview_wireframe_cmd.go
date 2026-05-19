@@ -26,18 +26,18 @@ func runPreviewWireframe() error {
 	slideIdx := fs.Int("slide", 0, "0-based slide index to render")
 	format := fs.String("format", "svg", "Output format: svg, png, or both")
 	widthPx := fs.Int("width-px", 960, "Canvas width in pixels (clamped 320..2400)")
-	outPath := fs.String("out", "", "Output path; when set with -format=svg|png, writes the raw bytes to this file. Ignored for -format=both.")
+	outPath := fs.String("out", "", "Output path; when set with --format=svg|png, writes the raw bytes to this file. Ignored for --format=both.")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview-wireframe -json <file.json> -slide <n> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview-wireframe --json <file.json> --slide <n> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render an annotated wireframe of one slide's resolved plan as SVG / PNG.\n")
 		fmt.Fprintf(os.Stderr, "No LibreOffice / ImageMagick required — rendered in-process via svggen.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx preview-wireframe -json slides.json -slide 0 > slide0.svg\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx preview-wireframe -json slides.json -slide 2 -format png -out slide2.png\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx preview-wireframe -json slides.json -slide 1 -format both\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx preview-wireframe --json slides.json --slide 0 > slide0.svg\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx preview-wireframe --json slides.json --slide 2 --format png --out slide2.png\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx preview-wireframe --json slides.json --slide 1 --format both\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

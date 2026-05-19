@@ -33,7 +33,7 @@ func runPreviewPatterns() error {
 		fmt.Fprintf(os.Stderr, "Output structure:\n")
 		fmt.Fprintf(os.Stderr, "  <output>/<template-name>/<pattern-name>.png\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
-		fs.PrintDefaults()
+		printDoubleDashUsage(fs)
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {

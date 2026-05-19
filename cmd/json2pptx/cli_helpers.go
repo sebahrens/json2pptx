@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -11,6 +13,79 @@ import (
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
+
+// printDoubleDashUsage prints flag defaults in GNU style (--flag) to fs.Output(),
+// matching flag.PrintDefaults() output but with a double-dash prefix. Use this
+// in subcommand Usage callbacks so help text presents the canonical --flag form.
+//
+// Both -flag and --flag syntax are accepted at parse time (Go's flag package
+// supports both), so existing scripts using single-dash continue to work.
+func printDoubleDashUsage(fs *flag.FlagSet) {
+	out := fs.Output()
+	fs.VisitAll(func(f *flag.Flag) {
+		var b strings.Builder
+		// Single-letter names keep the GNU short-flag prefix (-x); long names
+		// get the double-dash form (--name).
+		prefix := "--"
+		if len(f.Name) == 1 {
+			prefix = "-"
+		}
+		fmt.Fprintf(&b, "  %s%s", prefix, f.Name)
+		name, usage := flag.UnquoteUsage(f)
+		if name != "" {
+			b.WriteString(" ")
+			b.WriteString(name)
+		}
+		// Mirror flag.PrintDefaults heuristic: short signatures get inline tab,
+		// longer ones break to a new line. The "5" accounts for two-space
+		// indent + "--" + one-character flag name.
+		if b.Len() <= 5 {
+			b.WriteString("\t")
+		} else {
+			b.WriteString("\n    \t")
+		}
+		b.WriteString(strings.ReplaceAll(usage, "\n", "\n    \t"))
+		if showFlagDefault(f) {
+			if isStringFlag(f) {
+				fmt.Fprintf(&b, " (default %q)", f.DefValue)
+			} else {
+				fmt.Fprintf(&b, " (default %s)", f.DefValue)
+			}
+		}
+		fmt.Fprintln(out, b.String())
+	})
+}
+
+// showFlagDefault reports whether PrintDefaults would include a "(default ...)"
+// trailer for f. Mirrors the unexported flag.isZeroValue check using the
+// public surface (defaults that are the zero value for the underlying type
+// are omitted).
+func showFlagDefault(f *flag.Flag) bool {
+	if f.DefValue == "" {
+		return false
+	}
+	if getter, ok := f.Value.(flag.Getter); ok {
+		switch v := getter.Get().(type) {
+		case bool:
+			return v
+		case string:
+			return v != ""
+		case int, int64, uint, uint64, float64:
+			return f.DefValue != "0"
+		}
+	}
+	return f.DefValue != "" && f.DefValue != "0" && f.DefValue != "false"
+}
+
+// isStringFlag returns true when f wraps a string value; used to quote the
+// default in usage output, matching flag.PrintDefaults behavior.
+func isStringFlag(f *flag.Flag) bool {
+	if getter, ok := f.Value.(flag.Getter); ok {
+		_, ok := getter.Get().(string)
+		return ok
+	}
+	return false
+}
 
 // cliMCPConfig builds an mcpConfig from common CLI flags.
 func cliMCPConfig(templatesDir, outputDir string) *mcpConfig {
