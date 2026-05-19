@@ -1,0 +1,94 @@
+{
+  "_skeleton": "process-roadmap",
+  "_description": "Process and phased roadmap deck: 6 slides. Structure: title, end-to-end process, swimlane responsibilities, phased roadmap timeline, success metrics, closing.",
+  "_instructions": "Replace every __FILL_*__ token. Keep the swimlane step count consistent across lanes (use empty string '' for lanes that have no step in that column). Delete this and the _* keys before validating.",
+  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "design_mode": "constrained",
+  "accent_strategy": "rotate",
+  "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_DECK_TITLE__ (e.g. 'Q3 program roadmap')"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_DECK_SUBTITLE__ (workstream + sponsor)"}
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_PROCESS_TITLE__ (e.g. 'End-to-end customer journey')"}
+      ],
+      "pattern": {
+        "name": "process-flow",
+        "values": {
+          "steps": [
+            {"label": "__FILL_STEP_1__", "type": "step"},
+            {"label": "__FILL_STEP_2__", "type": "step"},
+            {"label": "__FILL_DECISION__", "type": "decision"},
+            {"label": "__FILL_STEP_4__", "type": "step"},
+            {"label": "__FILL_STEP_5__", "type": "step"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_SWIMLANE_TITLE__ (e.g. 'Roles & handoffs')"}
+      ],
+      "pattern": {
+        "name": "swimlane",
+        "values": {
+          "lanes": [
+            {"actor": "__FILL_LANE_1_ACTOR__", "steps": ["__FILL_LANE_1_STEP_1__", "__FILL_LANE_1_STEP_2__", ""]},
+            {"actor": "__FILL_LANE_2_ACTOR__", "steps": ["", "__FILL_LANE_2_STEP_2__", "__FILL_LANE_2_STEP_3__"]},
+            {"actor": "__FILL_LANE_3_ACTOR__", "steps": ["", "", "__FILL_LANE_3_STEP_3__"]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_ROADMAP_TITLE__ (e.g. 'Delivery roadmap, FY26')"}
+      ],
+      "pattern": {
+        "name": "timeline-horizontal",
+        "values": [
+          {"label": "__FILL_PHASE_1_LABEL__", "date": "__FILL_PHASE_1_DATE__", "body": "__FILL_PHASE_1_BODY__"},
+          {"label": "__FILL_PHASE_2_LABEL__", "date": "__FILL_PHASE_2_DATE__", "body": "__FILL_PHASE_2_BODY__"},
+          {"label": "__FILL_PHASE_3_LABEL__", "date": "__FILL_PHASE_3_DATE__", "body": "__FILL_PHASE_3_BODY__"},
+          {"label": "__FILL_PHASE_4_LABEL__", "date": "__FILL_PHASE_4_DATE__", "body": "__FILL_PHASE_4_BODY__"}
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_METRICS_TITLE__ (e.g. 'How we will measure success')"}
+      ],
+      "pattern": {
+        "name": "kpi-3up",
+        "values": [
+          {"big": "__FILL_METRIC1_BIG__", "small": "__FILL_METRIC1_SMALL__"},
+          {"big": "__FILL_METRIC2_BIG__", "small": "__FILL_METRIC2_SMALL__"},
+          {"big": "__FILL_METRIC3_BIG__", "small": "__FILL_METRIC3_SMALL__"}
+        ]
+      }
+    },
+    {
+      "layout_id": "closing",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_CLOSING_TITLE__ (e.g. 'Next 30 days')"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_CLOSING_SUBTITLE__ (commitments + owners)"}
+      ]
+    }
+  ]
+}

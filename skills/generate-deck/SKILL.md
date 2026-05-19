@@ -26,6 +26,16 @@ Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (cont
 
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 
+**Start from a skeleton, not a blank slate.** Five canonical fillable JSON skeletons live in [`examples/skeletons/`](examples/skeletons/README.md) — pick the one matching your deck archetype, copy it, and replace the `__FILL_*__` tokens. Skeletons pre-encode the rhythm rules, accent strategy, and required `takeaway` fields so you do not re-derive them per deck.
+
+| Archetype | Skeleton | When to reach for it |
+|---|---|---|
+| Board / executive update | [`exec-summary.json`](examples/skeletons/exec-summary.json) | Headline number → evidence → decision → close (6 slides) |
+| QBR / performance review | [`data-heavy.json`](examples/skeletons/data-heavy.json) | Chart-dominant; each chart slide carries a takeaway (7 slides) |
+| Today-vs-target / vendor selection | [`comparison.json`](examples/skeletons/comparison.json) | Three comparison frames: transformation, capability table, 2x2 (5 slides) |
+| Program walkthrough / delivery plan | [`process-roadmap.json`](examples/skeletons/process-roadmap.json) | Process flow + swimlane + phased timeline + metrics (6 slides) |
+| Investor / sales pitch | [`pitch.json`](examples/skeletons/pitch.json) | Problem → solution → traction → ask, classic arc (9 slides) |
+
 ---
 
 ## Connected MCP servers

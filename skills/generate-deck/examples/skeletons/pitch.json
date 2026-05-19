@@ -1,0 +1,156 @@
+{
+  "_skeleton": "pitch",
+  "_description": "Investor / sales pitch: 9 slides. Classic arc: cover, agenda, problem/opportunity, solution, traction, product, moat, social proof, the ask.",
+  "_instructions": "Replace every __FILL_*__ token. Keep icons from the bundled set (call list_icons / json2pptx icons list — never use emoji). Delete this and the _* keys before validating.",
+  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "design_mode": "constrained",
+  "accent_strategy": "rotate",
+  "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_COMPANY_OR_DECK_TITLE__"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_TAGLINE__ (e.g. 'Series B pitch — Q2 2026')"}
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Today's agenda"}
+      ],
+      "pattern": {
+        "name": "icon-row",
+        "values": [
+          {"icon": "__FILL_ICON_1__ (bundled icon name, e.g. 'target')", "caption": "__FILL_AGENDA_1__"},
+          {"icon": "__FILL_ICON_2__ (e.g. 'trending-up')", "caption": "__FILL_AGENDA_2__"},
+          {"icon": "__FILL_ICON_3__ (e.g. 'tool')", "caption": "__FILL_AGENDA_3__"},
+          {"icon": "__FILL_ICON_4__ (e.g. 'world')", "caption": "__FILL_AGENDA_4__"},
+          {"icon": "__FILL_ICON_5__ (e.g. 'currency-dollar')", "caption": "__FILL_AGENDA_5__"}
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_OPPORTUNITY_TITLE__ (e.g. 'The opportunity')"}
+      ],
+      "pattern": {
+        "name": "stat-hero",
+        "values": {
+          "value": "__FILL_TAM_STAT__ (e.g. '$18B')",
+          "label": "__FILL_TAM_LABEL__ (one sentence — what the number sizes)",
+          "source": "__FILL_TAM_SOURCE__ (e.g. 'Gartner, 2025' — no 'Source:' prefix)"
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_DIFFERENTIATION_TITLE__ (e.g. 'Why we win')"}
+      ],
+      "pattern": {
+        "name": "before-after",
+        "values": {
+          "before": {
+            "header": "__FILL_INCUMBENT_HEADER__ (e.g. 'Legacy tools')",
+            "items": [
+              "__FILL_INCUMBENT_PAIN_1__",
+              "__FILL_INCUMBENT_PAIN_2__",
+              "__FILL_INCUMBENT_PAIN_3__",
+              "__FILL_INCUMBENT_PAIN_4__"
+            ]
+          },
+          "after": {
+            "header": "__FILL_OUR_HEADER__ (e.g. 'Our platform')",
+            "items": [
+              "__FILL_OUR_WIN_1__",
+              "__FILL_OUR_WIN_2__",
+              "__FILL_OUR_WIN_3__",
+              "__FILL_OUR_WIN_4__"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_TRACTION_TITLE__ (e.g. 'Key metrics')"}
+      ],
+      "pattern": {
+        "name": "kpi-3up",
+        "values": [
+          {"big": "__FILL_TRACTION_1_BIG__", "small": "__FILL_TRACTION_1_SMALL__"},
+          {"big": "__FILL_TRACTION_2_BIG__", "small": "__FILL_TRACTION_2_SMALL__"},
+          {"big": "__FILL_TRACTION_3_BIG__", "small": "__FILL_TRACTION_3_SMALL__"}
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_PRODUCT_TITLE__ (e.g. 'Product suite')"}
+      ],
+      "pattern": {
+        "name": "card-grid",
+        "values": {
+          "columns": 3,
+          "rows": 1,
+          "cells": [
+            {"header": "__FILL_PRODUCT_1_HEADER__", "body": "__FILL_PRODUCT_1_BODY__"},
+            {"header": "__FILL_PRODUCT_2_HEADER__", "body": "__FILL_PRODUCT_2_BODY__"},
+            {"header": "__FILL_PRODUCT_3_HEADER__", "body": "__FILL_PRODUCT_3_BODY__"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_MOAT_TITLE__ (e.g. 'Our moat')"}
+      ],
+      "pattern": {
+        "name": "pyramid",
+        "values": {
+          "tiers": [
+            "__FILL_MOAT_TOP__ (most defensible / proprietary)",
+            "__FILL_MOAT_UPPER_MID__",
+            "__FILL_MOAT_LOWER_MID__",
+            "__FILL_MOAT_BASE__ (the broad foundation)"
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_QUOTE_TITLE__ (e.g. 'What customers say')"}
+      ],
+      "pattern": {
+        "name": "pull-quote",
+        "values": {
+          "quote": "__FILL_QUOTE__ (one or two sentences, a real customer voice)",
+          "attribution": "__FILL_ATTRIBUTION_NAME__",
+          "role": "__FILL_ATTRIBUTION_ROLE__"
+        }
+      }
+    },
+    {
+      "layout_id": "closing",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_ASK_TITLE__ (e.g. 'The ask: $25M Series B')"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_CONTACT__ (e.g. 'contact@company.com')"}
+      ]
+    }
+  ]
+}

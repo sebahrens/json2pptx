@@ -1,0 +1,96 @@
+{
+  "_skeleton": "comparison",
+  "_description": "Comparison-driven deck: 5 slides. Structure: title, before/after transformation, head-to-head capability table, 2x2 positioning, closing. The matrix slide carries a takeaway (Rule 11a).",
+  "_instructions": "Replace every __FILL_*__ token. Keep before/after rows aligned (same number of items left and right). Delete this and the _* keys before validating.",
+  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "design_mode": "constrained",
+  "accent_strategy": "rotate",
+  "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_DECK_TITLE__ (e.g. 'Operating model: today vs. target')"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_DECK_SUBTITLE__ (audience + scope)"}
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_BEFORE_AFTER_TITLE__ (e.g. 'From manual to automated')"}
+      ],
+      "pattern": {
+        "name": "before-after",
+        "values": {
+          "before": {
+            "header": "__FILL_BEFORE_HEADER__ (e.g. 'Today')",
+            "items": [
+              "__FILL_BEFORE_ITEM_1__",
+              "__FILL_BEFORE_ITEM_2__",
+              "__FILL_BEFORE_ITEM_3__",
+              "__FILL_BEFORE_ITEM_4__"
+            ]
+          },
+          "after": {
+            "header": "__FILL_AFTER_HEADER__ (e.g. 'Target state')",
+            "items": [
+              "__FILL_AFTER_ITEM_1__",
+              "__FILL_AFTER_ITEM_2__",
+              "__FILL_AFTER_ITEM_3__",
+              "__FILL_AFTER_ITEM_4__"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_HEAD_TO_HEAD_TITLE__ (e.g. 'Capability comparison')"}
+      ],
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "header_left": "__FILL_LEFT_HEADER__ (e.g. 'Incumbent')",
+          "header_right": "__FILL_RIGHT_HEADER__ (e.g. 'Our approach')",
+          "rows": [
+            {"left": "__FILL_ROW1_LEFT__", "right": "__FILL_ROW1_RIGHT__"},
+            {"left": "__FILL_ROW2_LEFT__", "right": "__FILL_ROW2_RIGHT__"},
+            {"left": "__FILL_ROW3_LEFT__", "right": "__FILL_ROW3_RIGHT__"},
+            {"left": "__FILL_ROW4_LEFT__", "right": "__FILL_ROW4_RIGHT__"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "takeaway": "__FILL_MATRIX_TAKEAWAY__ (one sentence — which quadrant we are in / aiming for)",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_MATRIX_TITLE__ (e.g. 'Competitive positioning')"}
+      ],
+      "pattern": {
+        "name": "matrix-2x2",
+        "values": {
+          "x_axis_label": "__FILL_X_AXIS__",
+          "y_axis_label": "__FILL_Y_AXIS__",
+          "top_left": {"header": "__FILL_TL_HEADER__", "body": "__FILL_TL_BODY__"},
+          "top_right": {"header": "__FILL_TR_HEADER__", "body": "__FILL_TR_BODY__"},
+          "bottom_left": {"header": "__FILL_BL_HEADER__", "body": "__FILL_BL_BODY__"},
+          "bottom_right": {"header": "__FILL_BR_HEADER__", "body": "__FILL_BR_BODY__"}
+        }
+      }
+    },
+    {
+      "layout_id": "closing",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_CLOSING_TITLE__ (e.g. 'The choice')"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_CLOSING_SUBTITLE__ (the recommendation + owner)"}
+      ]
+    }
+  ]
+}

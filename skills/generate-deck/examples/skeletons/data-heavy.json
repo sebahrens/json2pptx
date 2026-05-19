@@ -1,0 +1,130 @@
+{
+  "_skeleton": "data-heavy",
+  "_description": "Chart-driven deck: 7 slides. Each chart slide carries a takeaway (Rule 11a). Rhythm: title, trend, breakdown, table evidence, distribution, KPI scorecard, closing.",
+  "_instructions": "Replace every __FILL_*__ token. For each chart slide, write a takeaway that states the answer — never let a chart speak for itself. Delete this and the _* keys before validating.",
+  "template": "__FILL_TEMPLATE_NAME__ (one of: midnight-blue, forest-green, modern-template, warm-coral)",
+  "design_mode": "constrained",
+  "accent_strategy": "rotate",
+  "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_DECK_TITLE__"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_DECK_SUBTITLE__ (audience + reporting period)"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "contrast_check": true,
+      "takeaway": "__FILL_TREND_TAKEAWAY__ (one sentence — what the trend tells the reader)",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_TREND_TITLE__ (e.g. 'Quarterly revenue trend')"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "line",
+            "title": "__FILL_TREND_CHART_TITLE__ (units in parens, e.g. 'Revenue ($M)')",
+            "data": {
+              "__FILL_PERIOD_1__": 0,
+              "__FILL_PERIOD_2__": 0,
+              "__FILL_PERIOD_3__": 0,
+              "__FILL_PERIOD_4__": 0,
+              "__FILL_PERIOD_5__": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "contrast_check": true,
+      "takeaway": "__FILL_BREAKDOWN_TAKEAWAY__ (one sentence — where the value concentrates)",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_BREAKDOWN_TITLE__ (e.g. 'Revenue by segment')"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "bar",
+            "title": "__FILL_BREAKDOWN_CHART_TITLE__",
+            "data": {
+              "__FILL_CATEGORY_1__": 0,
+              "__FILL_CATEGORY_2__": 0,
+              "__FILL_CATEGORY_3__": 0,
+              "__FILL_CATEGORY_4__": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_TABLE_TITLE__ (e.g. 'Performance vs. plan')"},
+        {
+          "placeholder_id": "body",
+          "type": "table",
+          "table_value": {
+            "headers": ["__FILL_COL_1__", "__FILL_COL_2__", "__FILL_COL_3__", "__FILL_COL_4__"],
+            "rows": [
+              ["__FILL_R1_C1__", "__FILL_R1_C2__", "__FILL_R1_C3__", "__FILL_R1_C4__"],
+              ["__FILL_R2_C1__", "__FILL_R2_C2__", "__FILL_R2_C3__", "__FILL_R2_C4__"],
+              ["__FILL_R3_C1__", "__FILL_R3_C2__", "__FILL_R3_C3__", "__FILL_R3_C4__"],
+              ["__FILL_R4_C1__", "__FILL_R4_C2__", "__FILL_R4_C3__", "__FILL_R4_C4__"]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "contrast_check": true,
+      "takeaway": "__FILL_DISTRIBUTION_TAKEAWAY__ (one sentence — what the mix reveals)",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_DISTRIBUTION_TITLE__ (e.g. 'Spend mix this quarter')"},
+        {
+          "placeholder_id": "body",
+          "type": "chart",
+          "chart_value": {
+            "type": "donut",
+            "title": "__FILL_DISTRIBUTION_CHART_TITLE__",
+            "data": {
+              "__FILL_SLICE_1__": 0,
+              "__FILL_SLICE_2__": 0,
+              "__FILL_SLICE_3__": 0,
+              "__FILL_SLICE_4__": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_SCORECARD_TITLE__ (e.g. 'Quarter scorecard')"}
+      ],
+      "pattern": {
+        "name": "kpi-4up",
+        "values": [
+          {"big": "__FILL_KPI1_BIG__", "small": "__FILL_KPI1_SMALL__"},
+          {"big": "__FILL_KPI2_BIG__", "small": "__FILL_KPI2_SMALL__"},
+          {"big": "__FILL_KPI3_BIG__", "small": "__FILL_KPI3_SMALL__"},
+          {"big": "__FILL_KPI4_BIG__", "small": "__FILL_KPI4_SMALL__"}
+        ]
+      }
+    },
+    {
+      "layout_id": "closing",
+      "contrast_check": true,
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "__FILL_CLOSING_TITLE__ (e.g. 'Headline + decision')"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL_CLOSING_SUBTITLE__ (single sentence — the answer the data points to)"}
+      ]
+    }
+  ]
+}
