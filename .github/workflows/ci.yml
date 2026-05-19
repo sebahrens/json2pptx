@@ -379,3 +379,26 @@ jobs:
             echo "::error::LibreOffice conformance check failed. Generated PPTX cannot be opened by presentation software."
           fi
           exit 1
+
+  corpus-headless:
+    # Generates every examples/*.json against every bundled template and
+    # round-trips each output through headless LibreOffice. Asserts that
+    # soffice emits no repair/corruption/invalid/malformed warnings — the
+    # "zero needs repair" guarantee tracked by go-slide-creator-0myv.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install fonts and LibreOffice
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-liberation fonts-dejavu-core \
+            libreoffice-impress libreoffice-common librsvg2-bin
+
+      - name: Run corpus headless round-trip
+        run: go test -tags=integration ./cmd/json2pptx/... -run Corpus -count=1 -timeout=30m -v
