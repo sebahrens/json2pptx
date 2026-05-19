@@ -117,6 +117,17 @@ var fieldScopeMap = map[string]map[string]string{
 		"build":             "slide",
 		"contrast_check":    "slide",
 	},
+	"SplitSlideInput": {
+		"type":  "slide",
+		"base":  "slide",
+		"split": "slide",
+	},
+	"SplitConfig": {
+		"by":             "split",
+		"group_size":     "split",
+		"title_suffix":   "split",
+		"repeat_headers": "split",
+	},
 	"ContentInput": {
 		"placeholder_id":         "content",
 		"type":                   "content",
@@ -167,6 +178,63 @@ var enumMap = map[string]map[string][]string{
 	"ComposeInput": {
 		"direction": {"vertical", "horizontal"},
 	},
+	"SplitSlideInput": {
+		"type": {"split_slide"},
+	},
+	"SplitConfig": {
+		"by": {"table.rows"},
+	},
+}
+
+// propertyOverrides allows specific (typeName, jsonName) pairs to replace the
+// reflection-derived property schema wholesale. Use for fields that need
+// discriminator-style oneOf branches or other shapes reflection cannot infer.
+var propertyOverrides = map[string]map[string]map[string]any{
+	"PresentationInput": {
+		"slides": {
+			"type":        "array",
+			"description": "Ordered list of slides. Each item is either a regular SlideInput or a SplitSlideInput envelope (discriminated by the optional \"type\": \"split_slide\" field). split_slide expands at parse time into N regular slides by windowing a base slide's table rows across pages.",
+			"items": map[string]any{
+				"oneOf": []any{
+					map[string]any{
+						"title":       "split_slide",
+						"description": "Declarative envelope that windows a table-bearing slide across N pages. Discriminator: type == \"split_slide\".",
+						"$ref":        "#/$defs/SplitSlideInput",
+					},
+					map[string]any{
+						"title":       "regular_slide",
+						"description": "Standard slide. Must NOT set type to \"split_slide\".",
+						"$ref":        "#/$defs/SlideInput",
+					},
+				},
+			},
+		},
+	},
+}
+
+// typeOverrides applies whole-object schema additions to specific $defs
+// entries (descriptions, type-level anyOf/allOf/oneOf constraints). These
+// express semantics that reflection cannot infer, like required-alternative
+// groups or mutually exclusive branches.
+var typeOverrides = map[string]map[string]any{
+	"SlideInput": {
+		"description": "A regular slide. For table-windowing slides, use the SplitSlideInput branch of slides[] instead.\n\nAlternatives:\n- layout_id (pins a specific template layout) OR slide_type (hint for auto-selection) — at least one is required.\n- pattern, shape_grid, compose — at most one of these visual-envelope fields may be set (mutually exclusive). content[] may coexist with any of them or stand alone.",
+		"anyOf": []any{
+			map[string]any{"required": []any{"layout_id"}},
+			map[string]any{"required": []any{"slide_type"}},
+		},
+		"allOf": []any{
+			map[string]any{"not": map[string]any{"required": []any{"pattern", "shape_grid"}}},
+			map[string]any{"not": map[string]any{"required": []any{"pattern", "compose"}}},
+			map[string]any{"not": map[string]any{"required": []any{"shape_grid", "compose"}}},
+		},
+	},
+	"SplitSlideInput": {
+		"description": "Declarative envelope that expands into N regular slides by windowing the base slide's table rows. Only \"table.rows\" splitting is supported. Use this for the one painful case — large tables that need identical chrome (title, headers, footer) repeated on each page. For heterogeneous multi-slide narratives, author sibling SlideInput entries directly.",
+	},
+	"SplitConfig": {
+		"description": "Configures how a split_slide base table is windowed across pages.",
+	},
 }
 
 // buildInputSchema builds a complete JSON Schema for PresentationInput
@@ -181,6 +249,8 @@ func buildInputSchema() map[string]any {
 	}{
 		{"PresentationInput", reflect.TypeOf(PresentationInput{})},
 		{"SlideInput", reflect.TypeOf(SlideInput{})},
+		{"SplitSlideInput", reflect.TypeOf(SplitSlideInput{})},
+		{"SplitConfig", reflect.TypeOf(SplitConfig{})},
 		{"ContentInput", reflect.TypeOf(ContentInput{})},
 		{"BackgroundInput", reflect.TypeOf(BackgroundInput{})},
 		{"ChromeInput", reflect.TypeOf(ChromeInput{})},
@@ -224,6 +294,17 @@ func buildInputSchema() map[string]any {
 		defs[entry.name] = reflectStructSchema(entry.name, entry.typ)
 	}
 
+	// Apply type-level overrides (descriptions, anyOf/allOf/oneOf constraints).
+	for typeName, overrides := range typeOverrides {
+		def, ok := defs[typeName].(map[string]any)
+		if !ok {
+			continue
+		}
+		for k, v := range overrides {
+			def[k] = v
+		}
+	}
+
 	// Root schema references PresentationInput.
 	return map[string]any{
 		"$schema":     "https://json-schema.org/draft/2020-12/schema",
@@ -248,6 +329,7 @@ func reflectStructSchema(typeName string, t reflect.Type) map[string]any {
 
 	scopes := fieldScopeMap[typeName]
 	enums := enumMap[typeName]
+	overrides := propertyOverrides[typeName]
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -269,25 +351,43 @@ func reflectStructSchema(typeName string, t reflect.Type) map[string]any {
 			}
 		}
 
-		prop := reflectFieldSchema(f.Type)
+		var prop map[string]any
+		if overrides != nil {
+			if ov, ok := overrides[jsonName]; ok {
+				// Clone to avoid mutating the shared override map.
+				prop = make(map[string]any, len(ov))
+				for k, v := range ov {
+					prop[k] = v
+				}
+			}
+		}
+		if prop == nil {
+			prop = reflectFieldSchema(f.Type)
+		}
 
-		// Add field_scope annotation.
+		// Add field_scope annotation (preserve override if it set one).
 		if scopes != nil {
 			if scope, ok := scopes[jsonName]; ok {
-				prop["x-field-scope"] = scope
+				if _, exists := prop["x-field-scope"]; !exists {
+					prop["x-field-scope"] = scope
+				}
 			}
 		}
 
 		// Add enum annotation.
 		if enums != nil {
 			if vals, ok := enums[jsonName]; ok {
-				prop["enum"] = vals
+				if _, exists := prop["enum"]; !exists {
+					prop["enum"] = vals
+				}
 			}
 		}
 
 		// Add description from struct tag if available.
 		if desc := extractDescription(f); desc != "" {
-			prop["description"] = desc
+			if _, exists := prop["description"]; !exists {
+				prop["description"] = desc
+			}
 		}
 
 		properties[jsonName] = prop
@@ -372,6 +472,8 @@ func reflectFieldSchema(t reflect.Type) map[string]any {
 var knownTypeRefMap = map[reflect.Type]string{
 	reflect.TypeOf(PresentationInput{}):          "#/$defs/PresentationInput",
 	reflect.TypeOf(SlideInput{}):                 "#/$defs/SlideInput",
+	reflect.TypeOf(SplitSlideInput{}):            "#/$defs/SplitSlideInput",
+	reflect.TypeOf(SplitConfig{}):                "#/$defs/SplitConfig",
 	reflect.TypeOf(ContentInput{}):               "#/$defs/ContentInput",
 	reflect.TypeOf(BackgroundInput{}):            "#/$defs/BackgroundInput",
 	reflect.TypeOf(ChromeInput{}):                "#/$defs/ChromeInput",

@@ -143,6 +143,138 @@ func TestGetInputSchema(t *testing.T) {
 		}
 	})
 
+	t.Run("split_slide variants are exposed in slides.items", func(t *testing.T) {
+		schema := buildInputSchema()
+		defs := schema["$defs"].(map[string]any)
+
+		// SplitSlideInput and SplitConfig must be registered as $defs.
+		if _, ok := defs["SplitSlideInput"]; !ok {
+			t.Fatal("missing $defs/SplitSlideInput")
+		}
+		if _, ok := defs["SplitConfig"]; !ok {
+			t.Fatal("missing $defs/SplitConfig")
+		}
+
+		// PresentationInput.slides.items must be a oneOf of SplitSlideInput
+		// and SlideInput so agents can author either variant from schema alone.
+		pi := defs["PresentationInput"].(map[string]any)
+		props := pi["properties"].(map[string]any)
+		slides := props["slides"].(map[string]any)
+		if slides["type"] != "array" {
+			t.Errorf("expected slides.type=array, got %v", slides["type"])
+		}
+		items, ok := slides["items"].(map[string]any)
+		if !ok {
+			t.Fatal("expected slides.items to be an object")
+		}
+		oneOf, ok := items["oneOf"].([]any)
+		if !ok {
+			t.Fatalf("expected slides.items.oneOf to be a list, got %T", items["oneOf"])
+		}
+		if len(oneOf) != 2 {
+			t.Fatalf("expected exactly 2 oneOf branches (split_slide, regular_slide), got %d", len(oneOf))
+		}
+		refs := map[string]bool{}
+		for _, branch := range oneOf {
+			bm := branch.(map[string]any)
+			if r, ok := bm["$ref"].(string); ok {
+				refs[r] = true
+			}
+		}
+		if !refs["#/$defs/SplitSlideInput"] {
+			t.Error("expected slides.items.oneOf to include $ref to SplitSlideInput")
+		}
+		if !refs["#/$defs/SlideInput"] {
+			t.Error("expected slides.items.oneOf to include $ref to SlideInput")
+		}
+	})
+
+	t.Run("SplitSlideInput pins type discriminator", func(t *testing.T) {
+		schema := buildInputSchema()
+		defs := schema["$defs"].(map[string]any)
+		ss, ok := defs["SplitSlideInput"].(map[string]any)
+		if !ok {
+			t.Fatal("missing $defs/SplitSlideInput")
+		}
+		ssProps := ss["properties"].(map[string]any)
+		typeProp, ok := ssProps["type"].(map[string]any)
+		if !ok {
+			t.Fatal("SplitSlideInput.properties.type missing")
+		}
+		if got := enumStrings(typeProp["enum"]); len(got) != 1 || got[0] != "split_slide" {
+			t.Errorf("expected SplitSlideInput.type enum=[\"split_slide\"], got %v", typeProp["enum"])
+		}
+
+		// SplitConfig.by must be pinned to "table.rows".
+		sc := defs["SplitConfig"].(map[string]any)
+		scProps := sc["properties"].(map[string]any)
+		byProp := scProps["by"].(map[string]any)
+		if got := enumStrings(byProp["enum"]); len(got) != 1 || got[0] != "table.rows" {
+			t.Errorf("expected SplitConfig.by enum=[\"table.rows\"], got %v", byProp["enum"])
+		}
+	})
+
+	t.Run("SlideInput expresses slide-level alternatives", func(t *testing.T) {
+		schema := buildInputSchema()
+		defs := schema["$defs"].(map[string]any)
+		si := defs["SlideInput"].(map[string]any)
+
+		// anyOf must capture the "layout_id OR slide_type required" rule.
+		anyOf, ok := si["anyOf"].([]any)
+		if !ok {
+			t.Fatal("expected SlideInput.anyOf to express layout_id/slide_type alternative")
+		}
+		seen := map[string]bool{}
+		for _, branch := range anyOf {
+			bm := branch.(map[string]any)
+			req, ok := bm["required"].([]any)
+			if !ok || len(req) != 1 {
+				continue
+			}
+			if name, ok := req[0].(string); ok {
+				seen[name] = true
+			}
+		}
+		if !seen["layout_id"] || !seen["slide_type"] {
+			t.Errorf("expected SlideInput.anyOf to require layout_id or slide_type, got %v", anyOf)
+		}
+
+		// allOf must express mutual exclusion among pattern/shape_grid/compose.
+		allOf, ok := si["allOf"].([]any)
+		if !ok {
+			t.Fatal("expected SlideInput.allOf to express pattern/shape_grid/compose mutual exclusion")
+		}
+		excluded := map[string]bool{}
+		for _, branch := range allOf {
+			bm := branch.(map[string]any)
+			not, ok := bm["not"].(map[string]any)
+			if !ok {
+				continue
+			}
+			req, ok := not["required"].([]any)
+			if !ok {
+				continue
+			}
+			if len(req) == 2 {
+				if a, ok := req[0].(string); ok {
+					if b, ok := req[1].(string); ok {
+						pair := a + "|" + b
+						if b < a {
+							pair = b + "|" + a
+						}
+						excluded[pair] = true
+					}
+				}
+			}
+		}
+		wantedPairs := []string{"pattern|shape_grid", "compose|pattern", "compose|shape_grid"}
+		for _, p := range wantedPairs {
+			if !excluded[p] {
+				t.Errorf("expected allOf to exclude pair %q, missing", p)
+			}
+		}
+	})
+
 	t.Run("$refs resolve to $defs entries", func(t *testing.T) {
 		schema := buildInputSchema()
 		defs := schema["$defs"].(map[string]any)
@@ -160,6 +292,25 @@ func TestGetInputSchema(t *testing.T) {
 			}
 		}
 	})
+}
+
+// enumStrings normalizes an enum value (which may be []string from the builder
+// or []any after JSON roundtrip) into []string for assertion convenience.
+func enumStrings(v any) []string {
+	switch s := v.(type) {
+	case []string:
+		return s
+	case []any:
+		out := make([]string, 0, len(s))
+		for _, x := range s {
+			if str, ok := x.(string); ok {
+				out = append(out, str)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 // checkRef recursively validates that any $ref in a property schema points to an existing $defs entry.

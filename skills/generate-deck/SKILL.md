@@ -197,7 +197,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Pagination (discovery tools).** `list_templates`, `list_patterns`, and `list_icons` accept optional `cursor` and `page_size` arguments (default 50, max 200). The response envelope echoes `total_count`, `page_size`, and `next_cursor` when more entries remain.
 
-**Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, or `shape`). Enum-constrained fields include inline `enum` arrays.
+**Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, `shape`, or `split`). Enum-constrained fields include inline `enum` arrays. The `slides[]` item schema is a `oneOf` between a regular `SlideInput` and a `SplitSlideInput` envelope (discriminator: `type == "split_slide"`), so agents can author either variant directly from schema output. `SlideInput` also carries type-level `anyOf` (`layout_id` OR `slide_type` is required) and `allOf` (`pattern` / `shape_grid` / `compose` are mutually exclusive visual-envelope alternatives).
 
 **Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays. Each entry carries an optional `aliases` array listing alternate names. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
 
