@@ -102,6 +102,63 @@ func buildTestBinary(t *testing.T) string {
 	return binary
 }
 
+// TestHelpListsMCPOnlyTools verifies that `json2pptx help` advertises an
+// "MCP-only" section so agents shelling out to the CLI know which capabilities
+// require the MCP server. Currently expand_patterns (batch) is the only true
+// MCP-only entry, and recommend-visual has documented CLI parity gaps.
+func TestHelpListsMCPOnlyTools(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	cmd := exec.Command(binary, "help") //nolint:gosec
+	cmd.Env = append(os.Environ(), "HOME=/tmp")
+	out, _ := cmd.CombinedOutput()
+	outStr := string(out)
+
+	mustContain := []string{
+		"MCP-only tools",
+		"expand_patterns",
+		"[MCP-only]",
+		"CLI parity gaps",
+		"recommend-visual",
+	}
+	for _, want := range mustContain {
+		if !strings.Contains(outStr, want) {
+			t.Errorf("help output missing %q\n--- output ---\n%s", want, outStr)
+		}
+	}
+}
+
+// TestHelpListsAllDispatchableSubcommands ensures every CLI subcommand
+// recognized by the dispatcher is also documented in the Commands section of
+// `json2pptx help`. Subcommands missing from help are invisible to agents that
+// scan help text for available commands.
+func TestHelpListsAllDispatchableSubcommands(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	cmd := exec.Command(binary, "help") //nolint:gosec
+	cmd.Env = append(os.Environ(), "HOME=/tmp")
+	out, _ := cmd.CombinedOutput()
+	outStr := string(out)
+
+	// Top-level CLI commands wired in main.dispatch (excluding aliases for
+	// version/help and the implicit-generate flag fallback).
+	subcommands := []string{
+		"generate", "read", "serve", "mcp", "validate", "validate-template",
+		"template-check", "validate-output", "patterns", "icons", "tables",
+		"skill-info", "capabilities", "get-started", "input-schema",
+		"resolve-theme", "recommend-pattern", "preview", "preview-wireframe",
+		"repair", "score", "score-candidates", "inspect", "analyze-rhythm",
+		"plan-deck", "recommend-visual", "render-slide", "render-slide-from-json",
+		"render-thumbnails", "template-settings", "data-format-hints",
+		"preview-patterns", "shape-catalog", "audit-palette", "version",
+	}
+	for _, sub := range subcommands {
+		if !strings.Contains(outStr, sub) {
+			t.Errorf("help output omits subcommand %q (must be listed so agents discover it)\n--- output ---\n%s", sub, outStr)
+		}
+	}
+}
+
 // TestResolveThemeCLI_OverrideJSON verifies that `resolve-theme -override`
 // accepts inline JSON and forwards it as the resolve_theme MCP tool's
 // `theme_override` parameter — the new CLI surface for the same per-deck

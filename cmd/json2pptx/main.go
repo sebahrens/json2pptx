@@ -139,9 +139,12 @@ Commands:
   skill-info          Show template capabilities for Claude Code skill
   capabilities        Show schema version, tools, features, and vocabularies
   get-started         Print the recommended MCP-call sequence for a task (brief|revise|validate-only)
+  input-schema        Print the JSON input schema (full or compact)
   resolve-theme       Resolve theme colors and fonts for a template
   recommend-pattern   Recommend patterns matching an intent
   preview             Preview generation plan without rendering
+  preview-wireframe   Render a slide-plan wireframe (PNG) before generating
+  preview-patterns    Pre-render PNG previews for every named pattern
   repair              Apply targeted fixes to a single slide
   score               Score a presentation for visual quality
   score-candidates    Rank candidate slides for one slot without rendering
@@ -160,6 +163,15 @@ Commands:
   mcp                 Start MCP (Model Context Protocol) server over stdio
   version             Show version information
   help                Show this help
+
+MCP-only tools (no direct CLI subcommand — use 'json2pptx mcp'):
+  expand_patterns     [MCP-only] Batch-expand multiple patterns under one template load.
+                      CLI workaround: loop 'json2pptx patterns expand' per pattern.
+
+CLI parity gaps (CLI accepts a subset of the matching MCP tool's parameters):
+  recommend-visual    CLI takes -intent only. MCP recommend_visual also accepts
+                      content_hints, recent_patterns, prefer_variety, slide_index,
+                      and candidates (explicit shortlist) — call via 'json2pptx mcp'.
 
 Examples:
   json2pptx generate -json slides.json -template corporate
