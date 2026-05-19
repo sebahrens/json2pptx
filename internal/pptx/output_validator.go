@@ -118,11 +118,22 @@ var opcCodeMap = map[string]string{
 
 // ooxmlCodeMap maps OOXML ValidationError codes to stable OOXML_ prefixed codes.
 var ooxmlCodeMap = map[string]string{
-	ErrCodeInvalidColor:  "OOXML_INVALID_COLOR",
-	ErrCodeInvalidScheme: "OOXML_INVALID_SCHEME",
-	ErrCodeDuplicateID:   "OOXML_DUPLICATE_ID",
-	ErrCodeInvalidTable:  "OOXML_INVALID_TABLE",
-	ErrCodeZeroExtent:    "OOXML_ZERO_EXTENT",
+	ErrCodeInvalidColor:   "OOXML_INVALID_COLOR",
+	ErrCodeInvalidScheme:  "OOXML_INVALID_SCHEME",
+	ErrCodeDuplicateID:    "OOXML_DUPLICATE_ID",
+	ErrCodeInvalidTable:   "OOXML_INVALID_TABLE",
+	ErrCodeZeroExtent:     "OOXML_ZERO_EXTENT",
+	ErrCodeIllegalXMLChar: "OOXML_ILLEGAL_XML_CHAR",
+	ErrCodeSlideMismatch:  "OOXML_SLIDE_COUNT_MISMATCH",
+}
+
+// blockingOOXMLCodes holds OOXML finding codes that indicate structural
+// corruption rather than advisory rendering issues. Office will show the
+// repair prompt on any of these; they must block output acceptance like
+// OPC errors do.
+var blockingOOXMLCodes = map[string]bool{
+	"OOXML_ILLEGAL_XML_CHAR":    true,
+	"OOXML_SLIDE_COUNT_MISMATCH": true,
 }
 
 // OutputValidator runs both structural (OPC) and content-level (OOXML) validation
@@ -207,17 +218,25 @@ func (ov *OutputValidator) Validate() *Report {
 		if code == "" {
 			code = "OOXML_" + ve.Code // Fallback for unknown codes
 		}
+		// Structural corruption codes (illegal XML chars, slide count mismatch)
+		// are blocking even though they originate in OOXML content validation.
+		severity := SeverityWarning
+		scope := RepairScopeSource // OOXML content issues originate from generated content
+		if blockingOOXMLCodes[code] {
+			severity = SeverityBlocking
+			scope = RepairScopeGenerator // structural corruption is an engine bug
+		}
 		slideIdx := slideIndexFromPart(ve.Path)
 		report.Findings = append(report.Findings, Finding{
 			Code:       code,
-			Severity:   SeverityWarning,
+			Severity:   severity,
 			Path:       ve.Path,
 			Message:    ve.Message,
 			Phase:      "ooxml",
 			Validator:  "ooxml_content",
 			SlideIndex: slideIdx,
 			SourcePath: sourcePathFromSlideIndex(slideIdx),
-			Scope:      RepairScopeSource, // OOXML content issues originate from generated content
+			Scope:      scope,
 		})
 	}
 

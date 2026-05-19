@@ -407,6 +407,78 @@ func TestReport_HelperMethods(t *testing.T) {
 	}
 }
 
+func TestOutputValidator_IllegalXMLChar_IsBlocking(t *testing.T) {
+	t.Parallel()
+
+	files := validPPTXFiles()
+	// Embed a 0x01 control char in slide text — illegal in XML 1.0.
+	files["ppt/slides/slide1.xml"] = "<?xml version=\"1.0\"?>\n" +
+		"<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\"" +
+		" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">" +
+		"<p:cSld><p:spTree><p:sp><p:nvSpPr><p:cNvPr id=\"1\" name=\"S\"/></p:nvSpPr>" +
+		"<p:spPr/><p:txBody><a:p><a:r><a:t>bad\x01char</a:t></a:r></a:p></p:txBody>" +
+		"</p:sp></p:spTree></p:cSld></p:sld>"
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	if report.IsValid() {
+		t.Fatal("expected invalid report: illegal XML char should be blocking")
+	}
+
+	var found *Finding
+	for i := range report.Blocking() {
+		f := report.Blocking()[i]
+		if f.Code == "OOXML_ILLEGAL_XML_CHAR" {
+			found = &f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected OOXML_ILLEGAL_XML_CHAR blocking finding, got: %v", report.Findings)
+	}
+	if found.Scope != RepairScopeGenerator {
+		t.Errorf("expected scope=generator for illegal XML char, got %q", found.Scope)
+	}
+}
+
+func TestOutputValidator_SlideCountMismatch_IsBlocking(t *testing.T) {
+	t.Parallel()
+
+	// presentation.xml registers 1 slide ID, but the package has no slide file.
+	files := validPPTXFiles()
+	delete(files, "ppt/slides/slide1.xml")
+	// Also remove the rels entry pointing to the missing slide so it doesn't
+	// produce a separate OPC_DANGLING_REL finding that obscures our check.
+	files["ppt/_rels/presentation.xml.rels"] = `<?xml version="1.0"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	var found *Finding
+	for i := range report.Findings {
+		f := report.Findings[i]
+		if f.Code == "OOXML_SLIDE_COUNT_MISMATCH" {
+			found = &f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected OOXML_SLIDE_COUNT_MISMATCH finding, got: %v", report.Findings)
+	}
+	if found.Severity != SeverityBlocking {
+		t.Errorf("expected blocking severity, got %q", found.Severity)
+	}
+}
+
 func TestFinding_ErrorFormat(t *testing.T) {
 	t.Parallel()
 

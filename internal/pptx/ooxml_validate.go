@@ -15,11 +15,13 @@ type OOXMLValidator struct {
 
 // OOXML validation error codes.
 const (
-	ErrCodeInvalidColor  = "INVALID_COLOR"
-	ErrCodeInvalidScheme = "INVALID_SCHEME"
-	ErrCodeDuplicateID   = "DUPLICATE_ID"
-	ErrCodeInvalidTable  = "INVALID_TABLE"
-	ErrCodeZeroExtent    = "ZERO_EXTENT"
+	ErrCodeInvalidColor   = "INVALID_COLOR"
+	ErrCodeInvalidScheme  = "INVALID_SCHEME"
+	ErrCodeDuplicateID    = "DUPLICATE_ID"
+	ErrCodeInvalidTable   = "INVALID_TABLE"
+	ErrCodeZeroExtent     = "ZERO_EXTENT"
+	ErrCodeIllegalXMLChar = "ILLEGAL_XML_CHAR"   // XML 1.0 illegal control chars → Office repair prompt
+	ErrCodeSlideMismatch  = "SLIDE_COUNT_MISMATCH" // sldIdLst count ≠ slide file count
 )
 
 // validSchemeColors is the set of valid DrawingML scheme color names.
@@ -52,6 +54,11 @@ var (
 	tblGridColRegex = regexp.MustCompile(`<a:gridCol\b`)
 	tcRegex         = regexp.MustCompile(`<a:tc\b`)
 	extCXRegex      = regexp.MustCompile(`<a:ext\s+cx="(\d+)"\s+cy="(\d+)"`)
+	// illegalXMLCharRegex matches bytes forbidden by the XML 1.0 spec §2.2.
+	// Allowed controls: 0x09 (tab), 0x0A (LF), 0x0D (CR). Everything else
+	// in 0x01-0x1F is illegal and causes Office to show the repair prompt.
+	illegalXMLCharRegex = regexp.MustCompile("[\x01-\x08\x0B\x0C\x0E-\x1F]")
+	sldIDInListRegex    = regexp.MustCompile(`<p:sldId\b`)
 )
 
 // NewOOXMLValidator creates an OOXML content validator from PPTX bytes.
@@ -72,7 +79,10 @@ func NewOOXMLValidatorFromPackage(pkg *Package) *OOXMLValidator {
 func (v *OOXMLValidator) Validate() error {
 	v.errors = nil
 
-	// Validate all slide XML files
+	// Presentation-level structural invariants.
+	v.validateSlideCount()
+
+	// Validate all slide XML files.
 	for _, entry := range v.pkg.Entries() {
 		if strings.HasPrefix(entry, "ppt/slides/slide") &&
 			strings.HasSuffix(entry, ".xml") &&
@@ -82,6 +92,18 @@ func (v *OOXMLValidator) Validate() error {
 				continue
 			}
 			v.validateSlideContent(entry, data)
+		}
+	}
+
+	// Validate chart XML files (control chars + chart-specific rules).
+	for _, entry := range v.pkg.Entries() {
+		if strings.HasPrefix(entry, "ppt/charts/chart") && strings.HasSuffix(entry, ".xml") {
+			data, err := v.pkg.ReadEntry(entry)
+			if err != nil {
+				continue
+			}
+			v.validateXMLChars(entry, data)
+			v.ValidateChartXML(entry, data)
 		}
 	}
 
@@ -106,11 +128,50 @@ func (v *OOXMLValidator) addError(path, code, message string) {
 
 // validateSlideContent checks OOXML content rules on a single slide.
 func (v *OOXMLValidator) validateSlideContent(path string, data []byte) {
+	v.validateXMLChars(path, data)
 	v.validateSrgbColors(path, data)
 	v.validateSchemeColors(path, data)
 	v.validateUniqueShapeIDs(path, data)
 	v.validateTableGrid(path, data)
 	v.validateExtents(path, data)
+}
+
+// validateXMLChars reports any XML 1.0 illegal control characters in data.
+// These bytes (0x01-0x08, 0x0B, 0x0C, 0x0E-0x1F) cause the XML parser to
+// reject the file, which triggers PowerPoint's "we found a problem" repair prompt.
+func (v *OOXMLValidator) validateXMLChars(path string, data []byte) {
+	if illegalXMLCharRegex.Match(data) {
+		v.addError(path, ErrCodeIllegalXMLChar,
+			"file contains XML 1.0 illegal control characters (U+0001–U+0008, U+000B, U+000C, U+000E–U+001F); these cause Office to show the repair prompt")
+	}
+}
+
+// validateSlideCount checks that the number of <p:sldId> entries in
+// presentation.xml equals the number of slide files in the package.
+// A mismatch (e.g. slide file present but not registered, or vice versa)
+// is a reliable Office repair trigger.
+func (v *OOXMLValidator) validateSlideCount() {
+	const presPath = "ppt/presentation.xml"
+	data, err := v.pkg.ReadEntry(presPath)
+	if err != nil {
+		return // Missing presentation.xml is caught by the OPC structural validator.
+	}
+
+	sldIDCount := len(sldIDInListRegex.FindAll(data, -1))
+
+	slideFileCount := 0
+	for _, entry := range v.pkg.Entries() {
+		if strings.HasPrefix(entry, "ppt/slides/slide") &&
+			strings.HasSuffix(entry, ".xml") &&
+			!strings.Contains(entry, "_rels") {
+			slideFileCount++
+		}
+	}
+
+	if sldIDCount != slideFileCount {
+		v.addError(presPath, ErrCodeSlideMismatch,
+			fmt.Sprintf("presentation.xml registers %d slide ID(s) but package contains %d slide file(s)", sldIDCount, slideFileCount))
+	}
 }
 
 // validateSrgbColors checks that all srgbClr val attributes are valid 6-char hex.

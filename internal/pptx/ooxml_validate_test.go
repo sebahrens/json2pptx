@@ -252,3 +252,111 @@ func TestOOXMLValidator_P0_1_Regression_SchemeNameInSrgbClr(t *testing.T) {
 		t.Errorf("expected INVALID_COLOR, got %s", errs[0].Code)
 	}
 }
+
+func TestOOXMLValidator_IllegalXMLChar(t *testing.T) {
+	// 0x01 is illegal in XML 1.0; Office shows the repair prompt when it encounters it.
+	slideXML := "<?xml version=\"1.0\"?>\n<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\">" +
+		"<p:cSld><p:spTree><p:sp><p:nvSpPr><p:cNvPr id=\"1\" name=\"S\"/></p:nvSpPr>" +
+		"<p:txBody><a:p xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:r><a:t>hello\x01world</a:t></a:r></a:p></p:txBody>" +
+		"</p:sp></p:spTree></p:cSld></p:sld>"
+
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml":   `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": slideXML,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for illegal XML control character")
+	}
+
+	found := false
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeIllegalXMLChar {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected ILLEGAL_XML_CHAR error, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_LegalXMLChars_NoFalsePositive(t *testing.T) {
+	// Tab (0x09), newline (0x0A), CR (0x0D) are legal in XML 1.0.
+	slideXML := "<?xml version=\"1.0\"?>\n<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\">" +
+		"<p:cSld><p:spTree>\t\n\r</p:spTree></p:cSld></p:sld>"
+
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml":   `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": slideXML,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err != nil {
+		for _, e := range v.Errors() {
+			if e.Code == ErrCodeIllegalXMLChar {
+				t.Errorf("false positive: tab/newline/CR flagged as illegal XML char")
+			}
+		}
+	}
+}
+
+func TestOOXMLValidator_SlideCountMismatch(t *testing.T) {
+	// presentation.xml lists 1 slide but no slide file exists in the package.
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/presentation.xml": `<?xml version="1.0"?><p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
+			`<p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst></p:presentation>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for slide count mismatch")
+	}
+
+	found := false
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeSlideMismatch {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected SLIDE_COUNT_MISMATCH error, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_SlideCountMatch_NoError(t *testing.T) {
+	slideXML := `<?xml version="1.0"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree/></p:cSld></p:sld>`
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/presentation.xml": `<?xml version="1.0"?><p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
+			`<p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst></p:presentation>`,
+		"ppt/slides/slide1.xml": slideXML,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	_ = v.Validate()
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeSlideMismatch {
+			t.Errorf("false positive: slide count matched but SLIDE_COUNT_MISMATCH emitted")
+		}
+	}
+}
