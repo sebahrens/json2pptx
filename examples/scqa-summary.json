@@ -1,0 +1,58 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "scqa-summary.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cloud Cost Crisis: An Executive Brief"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "SCQA framing for the FY26 strategy review"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Why we are recommending a FinOps reset"}
+      ],
+      "pattern": {
+        "name": "scqa-summary",
+        "values": {
+          "situation": "Cloud spend grew 38% YoY across the portfolio in FY25.",
+          "complication": [
+            "Unit economics flattened as workloads scaled, eroding gross margin.",
+            "Finance projects an additional 22% increase if usage trends hold."
+          ],
+          "questions": [
+            "Which workloads drive disproportionate spend?",
+            "Where can we reclaim margin without slowing the roadmap?",
+            "What governance keeps the savings durable?"
+          ],
+          "answer": [
+            "Right-size the top 10 workloads to recover 14% of FY26 spend.",
+            "Stand up a FinOps council with monthly accountability reviews.",
+            "Reinvest 30% of the savings into platform reliability."
+          ]
+        },
+        "callout": {
+          "text": "Target: $4.8M FY26 run-rate savings, locked in by Q1 close.",
+          "emphasis": "bold"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "All-string minimal form"}
+      ],
+      "pattern": {
+        "name": "scqa-summary",
+        "values": {
+          "situation": "The team ships weekly with high quality.",
+          "complication": "Customer onboarding has not kept pace.",
+          "questions": ["Where is the bottleneck?", "What can scale onboarding?"],
+          "answer": ["Hire 2 implementation engineers.", "Productise the top 5 integration patterns."]
+        }
+      }
+    }
+  ]
+}

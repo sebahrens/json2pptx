@@ -163,6 +163,7 @@ examples/         # Example JSON input files (19 decks)
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
+| `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
 | `stat-hero` | Single oversized statistic with label and optional context |
 | `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |

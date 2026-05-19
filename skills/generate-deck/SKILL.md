@@ -285,9 +285,11 @@ For the `repair_slide` fix-kind vocabulary, finding-code catalog, and strict-fit
 
 ## Pattern Library (overview)
 
-For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, accent-banded panels (`stylish-panels`), strategy-house frameworks, and chart-with-takeaway layouts (`chart-insights-split`), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
+For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, accent-banded panels (`stylish-panels`), strategy-house frameworks, executive SCQA summaries (`scqa-summary`), and chart-with-takeaway layouts (`chart-insights-split`), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
 
 **Tip — chart + narrative on the same slide.** `chart-insights-split` is the canonical "data on the left, interpretation on the right" consulting layout: pass a `chart` (any `types.DiagramSpec` shape) plus 1–6 `insights` bullets. If you ship the pattern without a `chart`, the engine renders insights full-width and emits `CHART_PLACEHOLDER_EMPTY` (`action: review`) so you know the panel collapsed — supply a chart or swap to an insights-only pattern.
+
+**Tip — executive problem framing.** `scqa-summary` lays out the classic consulting Situation / Complication / Questions / Answer arc as a 4-row, 20%/80% split. Each row's body accepts either a string or a 1–4 item array of bullets, so the same pattern works for both terse one-liners and dense multi-bullet content.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
 

@@ -484,6 +484,20 @@ var rules = []rule{
 		itemMax:      6,
 		needsMetrics: true,
 	},
+
+	// SCQA executive summary — 4-row Situation/Complication/Questions/Answer
+	{
+		pattern:   "scqa-summary",
+		keywords:  []string{"scqa", "situation complication", "executive summary", "problem framing", "minto", "pyramid principle", "mckinsey summary"},
+		baseScore: 0.92,
+		rationale: "Four-row Situation / Complication / Questions / Answer executive summary",
+	},
+	{
+		pattern:   "scqa-summary",
+		keywords:  []string{"summary", "framing", "situation", "complication", "question", "answer", "narrative arc"},
+		baseScore: 0.74,
+		rationale: "SCQA pattern when the slide opens with situation/complication and resolves with questions/answer",
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

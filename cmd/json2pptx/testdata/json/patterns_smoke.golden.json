@@ -89,5 +89,15 @@
       2,
       2
     ]
+  },
+  {
+    "pattern_name": "scqa-summary",
+    "row_count": 4,
+    "cell_counts": [
+      2,
+      2,
+      2,
+      2
+    ]
   }
 ]

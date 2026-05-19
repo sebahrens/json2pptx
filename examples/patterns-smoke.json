@@ -205,6 +205,30 @@
           "source": "Source: Internal finance (FY25)"
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "FY26 Strategy: Executive Summary"}
+      ],
+      "pattern": {
+        "name": "scqa-summary",
+        "values": {
+          "situation": "Cloud spend grew 38% YoY across the portfolio in FY25.",
+          "complication": [
+            "Unit economics flattened as workloads scaled, eroding gross margin.",
+            "Finance projects an additional 22% increase if usage trends hold."
+          ],
+          "questions": [
+            "Which workloads drive disproportionate spend?",
+            "Where can we reclaim margin without slowing the roadmap?"
+          ],
+          "answer": [
+            "Right-size the top 10 workloads to recover 14% of FY26 spend.",
+            "Stand up a FinOps council with monthly accountability reviews."
+          ]
+        }
+      }
     }
   ]
 }
