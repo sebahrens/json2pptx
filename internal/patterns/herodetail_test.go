@@ -176,6 +176,36 @@ func TestHeroDetail(t *testing.T) {
 		}
 	})
 
+	t.Run("validate_rejects_emoji_icon", func(t *testing.T) {
+		v := &HeroDetailValues{
+			Hero: HeroDetailHero{Value: "$1B", Label: "TAM"},
+			Details: []HeroDetailItem{
+				{Icon: "🚀", Title: "A"},
+				{Title: "B"},
+			},
+		}
+		err := p.Validate(v, nil, nil)
+		if err == nil {
+			t.Fatal("expected error for emoji icon, got nil")
+		}
+		if !strings.Contains(err.Error(), "details[0].icon") {
+			t.Errorf("error %q does not mention details[0].icon", err)
+		}
+	})
+
+	t.Run("validate_accepts_bundled_icon", func(t *testing.T) {
+		v := &HeroDetailValues{
+			Hero: HeroDetailHero{Value: "$1B", Label: "TAM"},
+			Details: []HeroDetailItem{
+				{Icon: "rocket", Title: "A"},
+				{Icon: "trending-up", Title: "B"},
+			},
+		}
+		if err := p.Validate(v, nil, nil); err != nil {
+			t.Errorf("unexpected error for bundled icons: %v", err)
+		}
+	})
+
 	t.Run("expand_cards_style", func(t *testing.T) {
 		v := &HeroDetailValues{
 			Hero: HeroDetailHero{Value: "$2.4B", Label: "Addressable market"},

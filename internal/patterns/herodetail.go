@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -77,7 +78,7 @@ type HeroDetailHero struct {
 
 // HeroDetailItem is a single detail card (bottom row).
 type HeroDetailItem struct {
-	Icon  string `json:"icon,omitempty"`  // Emoji or bundled icon name
+	Icon  string `json:"icon,omitempty"`  // Bundled SVG icon name or user-provided icon (URL / data URI / inline SVG / file path). Emoji glyphs are rejected.
 	Title string `json:"title"`          // Card title
 	Body  string `json:"body,omitempty"` // Card body text
 }
@@ -129,7 +130,7 @@ func (hd *heroDetail) Schema() *Schema {
 
 	detailSchema := ObjectSchema(
 		map[string]*Schema{
-			"icon":  StringSchema(60).WithDescription("Emoji or bundled icon name"),
+			"icon":  StringSchema(60).WithDescription("Bundled SVG icon name or user-provided icon (URL / data URI / inline SVG / file path)"),
 			"title": StringSchema(60).WithDescription("Detail card title"),
 			"body":  StringSchema(200).WithDescription("Detail card body text"),
 		},
@@ -210,6 +211,15 @@ func (hd *heroDetail) Validate(values, overrides any, cellOverrides map[int]any)
 		if d.Body != "" && len(d.Body) > 200 {
 			bodyPath := fmt.Sprintf("details[%d].body", i)
 			errs = append(errs, errMaxLength(name, bodyPath, 200, len(d.Body)))
+		}
+		if d.Icon != "" && svggen.ClassifyIcon(d.Icon) == svggen.IconKindEmpty {
+			iconPath := fmt.Sprintf("details[%d].icon", i)
+			errs = append(errs, &ValidationError{
+				Pattern: name,
+				Path:    iconPath,
+				Code:    ErrCodeInvalidShape,
+				Message: fmt.Sprintf("%s: %s must be a bundled icon name (e.g. \"rocket\"), inline SVG, data: URI, https URL, or local image path; emoji glyphs and unknown names are rejected, got %q", name, iconPath, d.Icon),
+			})
 		}
 	}
 
