@@ -55,6 +55,8 @@ Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts
 
 Standalone SVG renderer with its own diagram/chart registry. **Distinct connectable server** — not a sub-tool of `json2pptx-mcp`. Use it when you want a rendered SVG (or PNG) for a single diagram or chart, or to validate a diagram payload in isolation before embedding it (e.g., via `shape_grid` cell `icon.svg_data` — see [Icon Names](#icon-names)).
 
+> **Standalone use:** if the consumer is a raw SVG/PNG and not a PPTX, load the focused [`../render-diagram/SKILL.md`](../render-diagram/SKILL.md) instead — it covers the six svggen-mcp tools, the `validate → dry_run → render` flow, the `theme_colors` copy contract, and the error envelopes without the deck-level surface area below.
+
 - **Binary path:** `svggen/cmd/svggen-mcp/svggen-mcp` (built via `cd svggen && go build ./cmd/svggen-mcp`)
 - **Run as MCP:** `svggen-mcp` (stdio transport, no flags required)
 - **Use when:** rendering or validating an isolated diagram/chart; obtaining raw SVG markup to embed inline in a `shape_grid` cell.
