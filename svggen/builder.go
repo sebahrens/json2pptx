@@ -266,26 +266,40 @@ func fixSVGMatrixRotations(svgContent []byte) []byte {
 // already contain a comma (i.e., already have fallbacks).
 var fontFamilyInStyleRe = regexp.MustCompile(`(font:\s*(?:\w+\s+)*[\d.]+px\s+)([\w-]+)([;"])`)
 
-// fixSVGFontFamilyFallbacks adds generic font-family fallbacks to CSS font
-// shorthand declarations in SVG text elements. LibreOffice's SVG renderer may
-// fail to load embedded @font-face fonts, and without fallback families the text
-// renders with an incorrect default font, causing visual corruption in PDF export.
+// fixSVGFontFamilyFallbacks rewrites CSS font shorthand declarations in SVG
+// text elements so they (a) include generic font-family fallbacks and (b) also
+// emit an explicit `font-family` declaration alongside the shorthand.
+//
+// The explicit declaration is required because LibreOffice's SVG renderer and
+// some PowerPoint SVG handlers do not reliably parse the CSS `font` shorthand
+// inside a `style` attribute: they ignore the embedded family name and fall
+// back to the renderer's default font (typically Times New Roman on macOS
+// LibreOffice). The result is that chart axis tick labels, category labels,
+// and chart titles render in a serif font even though the slide template is
+// sans-serif. Emitting `font-family:` as a discrete declaration is parsed
+// reliably across renderers and wins via CSS cascade for those that also
+// parse the shorthand.
 //
 // Before: font: 13.33px Arial;fill:#212529
-// After:  font: 13.33px Arial, Helvetica, sans-serif;fill:#212529
+// After:  font: 13.33px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#212529
 func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 	return fontFamilyInStyleRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
 		parts := fontFamilyInStyleRe.FindSubmatch(match)
 		if len(parts) < 4 {
 			return match
 		}
-		prefix := parts[1]   // "font: [weight] Npx "
-		family := parts[2]   // "Arial"
+		prefix := parts[1]     // "font: [weight] Npx "
+		family := parts[2]     // "Arial"
 		terminator := parts[3] // ";" or "\""
 
-		// Build replacement with fallbacks
+		// Build replacement: shorthand with fallbacks + explicit font-family
+		// declaration so LibreOffice/PowerPoint (which ignore the shorthand)
+		// still render the correct sans-serif family.
 		var buf bytes.Buffer
 		buf.Write(prefix)
+		buf.Write(family)
+		buf.WriteString(", Helvetica, sans-serif")
+		buf.WriteString(";font-family:")
 		buf.Write(family)
 		buf.WriteString(", Helvetica, sans-serif")
 		buf.Write(terminator)

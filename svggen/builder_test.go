@@ -1012,27 +1012,27 @@ func TestFixSVGFontFamilyFallbacks(t *testing.T) {
 		{
 			name:     "basic font declaration",
 			input:    `<text style="font: 13.33px Arial;fill:#212529">`,
-			expected: `<text style="font: 13.33px Arial, Helvetica, sans-serif;fill:#212529">`,
+			expected: `<text style="font: 13.33px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#212529">`,
 		},
 		{
 			name:     "font with weight",
 			input:    `<text style="font: 700 24px Arial;fill:#212529">`,
-			expected: `<text style="font: 700 24px Arial, Helvetica, sans-serif;fill:#212529">`,
+			expected: `<text style="font: 700 24px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#212529">`,
 		},
 		{
 			name:     "font at end of style (no semicolon)",
 			input:    `<text style="font: 10px Arial">`,
-			expected: `<text style="font: 10px Arial, Helvetica, sans-serif">`,
+			expected: `<text style="font: 10px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif">`,
 		},
 		{
 			name:     "multiple text elements",
 			input:    `<text style="font: 12px Arial;fill:#000"><tspan>A</tspan></text><text style="font: 700 18px Arial;fill:#333"><tspan>B</tspan></text>`,
-			expected: `<text style="font: 12px Arial, Helvetica, sans-serif;fill:#000"><tspan>A</tspan></text><text style="font: 700 18px Arial, Helvetica, sans-serif;fill:#333"><tspan>B</tspan></text>`,
+			expected: `<text style="font: 12px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#000"><tspan>A</tspan></text><text style="font: 700 18px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#333"><tspan>B</tspan></text>`,
 		},
 		{
 			name:     "non-Arial font gets fallbacks too",
 			input:    `<text style="font: 14px Roboto;fill:#000">`,
-			expected: `<text style="font: 14px Roboto, Helvetica, sans-serif;fill:#000">`,
+			expected: `<text style="font: 14px Roboto, Helvetica, sans-serif;font-family:Roboto, Helvetica, sans-serif;fill:#000">`,
 		},
 		{
 			name:     "does not affect @font-face",
@@ -1047,7 +1047,7 @@ func TestFixSVGFontFamilyFallbacks(t *testing.T) {
 		{
 			name:     "decimal font size with weight",
 			input:    `<text style="font: 500 9.5px DejaVu-Sans;fill:#000">`,
-			expected: `<text style="font: 500 9.5px DejaVu-Sans, Helvetica, sans-serif;fill:#000">`,
+			expected: `<text style="font: 500 9.5px DejaVu-Sans, Helvetica, sans-serif;font-family:DejaVu-Sans, Helvetica, sans-serif;fill:#000">`,
 		},
 	}
 
@@ -1076,6 +1076,14 @@ func TestRenderSVGFontFamilyFallbacks(t *testing.T) {
 	svgStr := doc.String()
 	if !strings.Contains(svgStr, "Helvetica, sans-serif") {
 		t.Errorf("SVG output should contain font-family fallbacks for LibreOffice compatibility:\n%s", svgStr[:min(len(svgStr), 500)])
+	}
+	// Regression for go-slide-creator-o6uy: LibreOffice (and some PowerPoint
+	// SVG handlers) ignore the CSS `font:` shorthand inside style attributes
+	// and fall back to Times New Roman for chart axis labels. The renderer
+	// must emit an explicit `font-family:` declaration alongside the
+	// shorthand so axis tick labels render in the requested sans-serif.
+	if !strings.Contains(svgStr, "font-family:") {
+		t.Errorf("SVG output must contain explicit font-family: declaration (LibreOffice ignores CSS `font:` shorthand):\n%s", svgStr[:min(len(svgStr), 500)])
 	}
 }
 
