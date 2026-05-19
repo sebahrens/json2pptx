@@ -308,6 +308,12 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		},
 	}
 
+	// Default quadrant cell border: subtle dk1-tinted stroke so the four
+	// quadrants read as a proper 2×2 matrix with a visible crossing axis,
+	// rather than four floating cells on the slide background. Authors can
+	// override via cell_overrides if desired.
+	const matrix2x2CellBorderJSON = `{"color":"dk1","width":0.75,"lumMod":50000,"lumOff":50000}`
+
 	// Quadrant cells: cell index 0=TL, 1=TR, 2=BL, 3=BR
 	quadrants := []Matrix2x2Quadrant{vals.TopLeft, vals.TopRight, vals.BottomLeft, vals.BottomRight}
 	quadrantCells := make([]*jsonschema.GridCellInput, 4)
@@ -315,6 +321,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"lt1"`),
+			Line:     json.RawMessage(matrix2x2CellBorderJSON),
 			Text:     buildMatrix2x2QuadrantContent(q, headerSize, bodySize, accent),
 		}
 		if q.Icon != "" {
