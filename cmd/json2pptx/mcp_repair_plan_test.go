@@ -496,3 +496,83 @@ func TestProposeRepairs_RegisteredInCatalog(t *testing.T) {
 	}
 	t.Fatalf("propose_repairs not present in mcpToolCatalog()")
 }
+
+// TestProposeRepairs_IconFindingsHandledAsUnmapped verifies that the
+// structured per-icon findings emitted by resolveIconPaths flow through
+// propose_repairs without crashing. ICON_* codes don't yet map to a
+// repair_slide fix kind (the broken icon needs an agent decision: bundled
+// name, alternate path, URL, or inline svg_data), so they should appear in
+// the `unmapped` bucket with their slide_index, code, path, and message
+// preserved so the agent can act on each one individually.
+func TestProposeRepairs_IconFindingsHandledAsUnmapped(t *testing.T) {
+	mc := proposeMC(t)
+
+	deck := minimalDeck(
+		map[string]any{"placeholder_id": "title", "type": "text", "text_value": "T"},
+	)
+
+	findings := []any{
+		map[string]any{
+			"path":     "/slides/0/shape_grid/rows/0/cells/0/icon",
+			"code":     "ICON_PATH",
+			"message":  `icon path "missing.svg": no such file`,
+			"severity": "error",
+		},
+		map[string]any{
+			"path":     "/slides/0/shape_grid/rows/0/cells/1/icon",
+			"code":     "ICON_AMBIGUOUS",
+			"message":  "icon must have exactly one of 'name', 'path', 'url', or 'svg_data'",
+			"severity": "error",
+		},
+		map[string]any{
+			"path":     "/slides/0/shape_grid/rows/0/cells/2/icon",
+			"code":     "ICON_MISSING",
+			"message":  "icon must have one of 'name', 'path', 'url', or 'svg_data'",
+			"severity": "error",
+		},
+	}
+
+	result, err := mc.handleProposeRepairs(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"findings":     findings,
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var out proposeRepairsOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if out.Summary.TotalFindings != 3 {
+		t.Errorf("expected 3 total findings, got %d", out.Summary.TotalFindings)
+	}
+	if out.Summary.UnmappedFindings != 3 {
+		t.Errorf("expected 3 unmapped findings, got %d", out.Summary.UnmappedFindings)
+	}
+	if out.Summary.MappedFindings != 0 {
+		t.Errorf("expected 0 mapped findings, got %d", out.Summary.MappedFindings)
+	}
+	if len(out.Unmapped) != 3 {
+		t.Fatalf("expected 3 entries in unmapped, got %d", len(out.Unmapped))
+	}
+
+	for _, u := range out.Unmapped {
+		if !strings.HasPrefix(u.Code, "ICON_") {
+			t.Errorf("expected ICON_* code, got %q", u.Code)
+		}
+		if u.Path == "" {
+			t.Errorf("expected non-empty path for code %s", u.Code)
+		}
+		if u.SlideIndex == nil || *u.SlideIndex != 0 {
+			t.Errorf("expected slide_index=0 in unmapped entry for %s, got %v", u.Code, u.SlideIndex)
+		}
+		if u.Reason != "no_fix_attached" {
+			t.Errorf("expected reason=no_fix_attached, got %q", u.Reason)
+		}
+	}
+}

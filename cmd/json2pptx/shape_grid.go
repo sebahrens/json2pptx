@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/svggen/icons"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -835,7 +836,14 @@ func resolveColumnsDTO(raw json.RawMessage, rows []GridRowInput) ([]float64, err
 // Relative paths are resolved against baseDir (the directory containing the JSON input file).
 // Each path is cleaned, converted to absolute form, evaluated for symlinks, and validated
 // against path traversal attacks.
-func resolveIconPaths(slides []SlideInput, baseDir string) error {
+//
+// All failures are collected as structured diagnostics — one per offending icon —
+// so callers can surface the full set in a single pass instead of stopping at
+// the first error. On success the slice is empty (nil). Per-icon JSON Pointer
+// paths (RFC 6901) and the input value are recorded so agents can locate and
+// repair each broken icon.
+func resolveIconPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
 	for i := range slides {
 		if slides[i].ShapeGrid == nil {
 			continue
@@ -848,28 +856,29 @@ func resolveIconPaths(slides []SlideInput, baseDir string) error {
 				}
 				// Resolve icon on cell
 				if cell.Icon != nil {
-					if err := resolveIconInputPath(cell.Icon, baseDir, i+1); err != nil {
-						return err
-					}
+					path := slidepath.GridCellField(i, j, k, "icon")
+					findings = append(findings, resolveIconInputPath(cell.Icon, baseDir, i, path)...)
 				}
 				// Resolve icon nested inside shape
 				if cell.Shape != nil && cell.Shape.Icon != nil {
-					if err := resolveIconInputPath(cell.Shape.Icon, baseDir, i+1); err != nil {
-						return err
-					}
+					path := slidepath.GridCellField(i, j, k, "shape/icon")
+					findings = append(findings, resolveIconInputPath(cell.Shape.Icon, baseDir, i, path)...)
 				}
 			}
 		}
 	}
-	return nil
+	return findings
 }
 
 // resolveIconInputPath validates and resolves a single IconInput's path field.
-// Returns an error if more than one of name/path/url/svg_data is set, or if none
-// is set, or if the path is unsafe (traversal/symlink escape).
+// Returns a slice of diagnostics describing any problems found. Returns nil on
+// success (in which case icon.Path is rewritten to the resolved absolute form).
 // URL-based icons are skipped here — they are resolved by resolveURLs.
 // Inline svg_data is also skipped — no disk I/O needed.
-func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
+//
+// jsonPath is the RFC 6901 pointer to the icon node, used so callers can map
+// each finding back to the exact JSON location.
+func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPath string) []diagnostics.Diagnostic {
 	hasName := icon.Name != ""
 	hasPath := icon.Path != ""
 	hasURL := icon.URL != ""
@@ -890,10 +899,28 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
 	}
 
 	if set > 1 {
-		return fmt.Errorf("slide %d: icon must have exactly one of 'name', 'path', 'url', or 'svg_data'", slideNum)
+		return []diagnostics.Diagnostic{{
+			Code:     diagnostics.CodeIconAmbiguous,
+			Message:  "icon must have exactly one of 'name', 'path', 'url', or 'svg_data'",
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"remediation": "remove all but one of 'name', 'path', 'url', or 'svg_data'",
+			},
+		}}
 	}
 	if set == 0 {
-		return fmt.Errorf("slide %d: icon must have one of 'name', 'path', 'url', or 'svg_data'", slideNum)
+		return []diagnostics.Diagnostic{{
+			Code:     diagnostics.CodeIconMissing,
+			Message:  "icon must have one of 'name', 'path', 'url', or 'svg_data'",
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"remediation": "set one of 'name' (bundled icon), 'path' (filesystem), 'url' (remote), or 'svg_data' (inline)",
+			},
+		}}
 	}
 
 	if !hasPath {
@@ -910,17 +937,50 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideNum int) error {
 	// Evaluate symlinks for security
 	resolved, err := filepath.EvalSymlinks(p)
 	if err != nil {
-		return fmt.Errorf("slide %d: icon path %q: %w", slideNum, icon.Path, err)
+		return []diagnostics.Diagnostic{{
+			Code:     diagnostics.CodeIconPath,
+			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"input_value": icon.Path,
+				"remediation": "verify the file exists; switch to a bundled icon via 'name' or supply 'svg_data'",
+			},
+		}}
 	}
 
 	// Validate against path traversal
 	if err := utils.ValidatePath(resolved, nil); err != nil {
-		return fmt.Errorf("slide %d: icon path %q: %w", slideNum, icon.Path, err)
+		return []diagnostics.Diagnostic{{
+			Code:     diagnostics.CodeIconPath,
+			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"input_value": icon.Path,
+				"remediation": "use a path that does not escape the base directory",
+			},
+		}}
 	}
 
 	// Update the path to the resolved absolute path
 	icon.Path = resolved
 	return nil
+}
+
+// iconFindingsToError aggregates icon-resolution diagnostics into a single error
+// suitable for CLI callers. Returns nil when findings is empty.
+func iconFindingsToError(findings []diagnostics.Diagnostic) error {
+	if len(findings) == 0 {
+		return nil
+	}
+	parts := make([]string, 0, len(findings))
+	for _, d := range findings {
+		parts = append(parts, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
+	}
+	return fmt.Errorf("icon path errors (%d):\n  - %s", len(findings), strings.Join(parts, "\n  - "))
 }
 
 // resolveIconSVG loads SVG bytes for an icon spec, optionally applying a fill color override.

@@ -1376,8 +1376,8 @@ func TestResolveIconPaths_InlineSVGData(t *testing.T) {
 				}},
 			},
 		}}
-		if err := resolveIconPaths(slides, tmpDir); err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("unexpected findings: %+v", findings)
 		}
 		if slides[0].ShapeGrid.Rows[0].Cells[0].Icon.SVGData != svg {
 			t.Error("svg_data should be unchanged after path resolution")
@@ -1394,12 +1394,15 @@ func TestResolveIconPaths_InlineSVGData(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err == nil {
-			t.Fatal("expected error when both svg_data and name are set")
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding when both svg_data and name are set, got %d: %+v", len(findings), findings)
 		}
-		if !strings.Contains(err.Error(), "exactly one") {
-			t.Errorf("unexpected error: %v", err)
+		if findings[0].Code != "ICON_AMBIGUOUS" {
+			t.Errorf("expected ICON_AMBIGUOUS, got %s", findings[0].Code)
+		}
+		if !strings.Contains(findings[0].Message, "exactly one") {
+			t.Errorf("unexpected message: %s", findings[0].Message)
 		}
 	})
 }
@@ -1445,12 +1448,18 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err == nil {
-			t.Fatal("expected error when both name and path are set")
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding when both name and path are set, got %d: %+v", len(findings), findings)
 		}
-		if !strings.Contains(err.Error(), "exactly one") {
-			t.Errorf("unexpected error: %v", err)
+		if findings[0].Code != "ICON_AMBIGUOUS" {
+			t.Errorf("expected ICON_AMBIGUOUS, got %s", findings[0].Code)
+		}
+		if !strings.Contains(findings[0].Message, "exactly one") {
+			t.Errorf("unexpected message: %s", findings[0].Message)
+		}
+		if want := "/slides/0/shape_grid/rows/0/cells/0/icon"; findings[0].Path != want {
+			t.Errorf("expected path %q, got %q", want, findings[0].Path)
 		}
 	})
 
@@ -1464,9 +1473,12 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err == nil {
-			t.Fatal("expected error when neither name nor path is set")
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding when neither name nor path is set, got %d", len(findings))
+		}
+		if findings[0].Code != "ICON_MISSING" {
+			t.Errorf("expected ICON_MISSING, got %s", findings[0].Code)
 		}
 	})
 
@@ -1480,9 +1492,8 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("unexpected findings: %+v", findings)
 		}
 		resolved := slides[0].ShapeGrid.Rows[0].Cells[0].Icon.Path
 		if !filepath.IsAbs(resolved) {
@@ -1506,9 +1517,8 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("unexpected findings: %+v", findings)
 		}
 		if slides[0].ShapeGrid.Rows[0].Cells[0].Icon.Name != "shield" {
 			t.Error("name should be unchanged")
@@ -1525,9 +1535,15 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err == nil {
-			t.Fatal("expected error for nonexistent file")
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for nonexistent file, got %d", len(findings))
+		}
+		if findings[0].Code != "ICON_PATH" {
+			t.Errorf("expected ICON_PATH, got %s", findings[0].Code)
+		}
+		if got := findings[0].Details["input_value"]; got != "nonexistent.svg" {
+			t.Errorf("expected input_value to round-trip, got %v", got)
 		}
 	})
 
@@ -1544,15 +1560,172 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 				}},
 			},
 		}}
-		err := resolveIconPaths(slides, tmpDir)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("unexpected findings: %+v", findings)
 		}
 		resolved := slides[0].ShapeGrid.Rows[0].Cells[0].Shape.Icon.Path
 		if !filepath.IsAbs(resolved) {
 			t.Errorf("expected absolute path, got: %s", resolved)
 		}
 	})
+}
+
+// TestResolveIconPaths_CollectsPerIconFindings verifies that a deck with
+// multiple broken icons emits one structured finding per broken icon (not a
+// single aggregated error), so agents can fix each one independently.
+//
+// Each finding's Path is a RFC 6901 JSON Pointer that resolves directly to
+// the offending icon node.
+func TestResolveIconPaths_CollectsPerIconFindings(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Deck with three broken icons across two slides:
+	//  - slide 0, row 0, cell 0: ambiguous (both name+path)
+	//  - slide 0, row 1, cell 1: missing (no fields set), nested inside shape
+	//  - slide 1, row 0, cell 0: nonexistent file
+	slides := []SlideInput{
+		{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{
+					{Cells: []*GridCellInput{{Icon: &IconInput{Name: "shield", Path: "x.svg"}}}},
+					{Cells: []*GridCellInput{
+						nil,
+						{Shape: &ShapeSpecInput{Geometry: "rect", Icon: &IconInput{}}},
+					}},
+				},
+			},
+		},
+		{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{
+					{Cells: []*GridCellInput{{Icon: &IconInput{Path: "missing.svg"}}}},
+				},
+			},
+		},
+	}
+
+	findings := resolveIconPaths(slides, tmpDir)
+	if len(findings) != 3 {
+		t.Fatalf("expected 3 findings for 3 broken icons, got %d: %+v", len(findings), findings)
+	}
+
+	wantByPath := map[string]struct {
+		code       string
+		slideIndex int
+	}{
+		"/slides/0/shape_grid/rows/0/cells/0/icon":       {code: "ICON_AMBIGUOUS", slideIndex: 0},
+		"/slides/0/shape_grid/rows/1/cells/1/shape/icon": {code: "ICON_MISSING", slideIndex: 0},
+		"/slides/1/shape_grid/rows/0/cells/0/icon":       {code: "ICON_PATH", slideIndex: 1},
+	}
+	seen := make(map[string]bool)
+	for _, d := range findings {
+		want, ok := wantByPath[d.Path]
+		if !ok {
+			t.Errorf("unexpected finding path %q (code=%s): %s", d.Path, d.Code, d.Message)
+			continue
+		}
+		if seen[d.Path] {
+			t.Errorf("duplicate finding for path %q", d.Path)
+		}
+		seen[d.Path] = true
+		if d.Code != want.code {
+			t.Errorf("path %q: expected code %s, got %s", d.Path, want.code, d.Code)
+		}
+		if d.Severity != "error" {
+			t.Errorf("path %q: expected error severity, got %s", d.Path, d.Severity)
+		}
+		if idx, ok := d.Details["slide_index"].(int); !ok || idx != want.slideIndex {
+			t.Errorf("path %q: expected slide_index %d, got %v", d.Path, want.slideIndex, d.Details["slide_index"])
+		}
+	}
+	for p := range wantByPath {
+		if !seen[p] {
+			t.Errorf("missing finding for path %q", p)
+		}
+	}
+}
+
+// TestResolveIconPaths_JSONPathRoundTrip verifies each finding's json_path
+// can be used to locate the exact icon node by walking the marshaled deck JSON.
+// This is the test for the acceptance criterion "Each finding's json_path
+// round-trips through jq/jsonpath to the exact icon node".
+func TestResolveIconPaths_JSONPathRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	slides := []SlideInput{{
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{
+				{Cells: []*GridCellInput{
+					{Icon: &IconInput{Path: "nope.svg"}},
+					{Shape: &ShapeSpecInput{Geometry: "rect", Icon: &IconInput{Path: "also-nope.svg"}}},
+				}},
+			},
+		},
+	}}
+
+	findings := resolveIconPaths(slides, tmpDir)
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(findings))
+	}
+
+	deckJSON, err := json.Marshal(map[string]any{"slides": slides})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var deck any
+	if err := json.Unmarshal(deckJSON, &deck); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	for _, d := range findings {
+		node, err := jsonPointerResolve(deck, d.Path)
+		if err != nil {
+			t.Errorf("path %q failed to resolve: %v", d.Path, err)
+			continue
+		}
+		obj, ok := node.(map[string]any)
+		if !ok {
+			t.Errorf("path %q: expected object node, got %T", d.Path, node)
+			continue
+		}
+		if _, hasPath := obj["path"]; !hasPath {
+			t.Errorf("path %q: resolved node missing 'path' field — does not point at icon: %v", d.Path, obj)
+		}
+	}
+}
+
+// jsonPointerResolve resolves a minimal RFC 6901 JSON Pointer against a
+// decoded JSON value. Test helper — handles only the subset of pointers
+// produced by resolveIconPaths (object keys and integer array indices).
+func jsonPointerResolve(root any, pointer string) (any, error) {
+	if pointer == "" {
+		return root, nil
+	}
+	if pointer[0] != '/' {
+		return nil, fmt.Errorf("pointer must start with '/'")
+	}
+	parts := strings.Split(pointer[1:], "/")
+	cur := root
+	for _, raw := range parts {
+		// Unescape per RFC 6901: ~1 -> /, ~0 -> ~
+		tok := strings.ReplaceAll(strings.ReplaceAll(raw, "~1", "/"), "~0", "~")
+		switch v := cur.(type) {
+		case map[string]any:
+			next, ok := v[tok]
+			if !ok {
+				return nil, fmt.Errorf("key %q not found at %q", tok, pointer)
+			}
+			cur = next
+		case []any:
+			idx, err := strconv.Atoi(tok)
+			if err != nil || idx < 0 || idx >= len(v) {
+				return nil, fmt.Errorf("invalid array index %q at %q", tok, pointer)
+			}
+			cur = v[idx]
+		default:
+			return nil, fmt.Errorf("cannot traverse %q into %T at %q", tok, cur, pointer)
+		}
+	}
+	return cur, nil
 }
 
 func TestResolveShapeGrid_DiagramCell(t *testing.T) {

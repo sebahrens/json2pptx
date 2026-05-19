@@ -39,6 +39,8 @@ const (
 	CodeUnknownPattern      Code = "UNKNOWN_PATTERN"
 	CodeUnknownEnum         Code = "UNKNOWN_ENUM"
 	CodeIconPath            Code = "ICON_PATH"
+	CodeIconAmbiguous       Code = "ICON_AMBIGUOUS"
+	CodeIconMissing         Code = "ICON_MISSING"
 	CodeIconList            Code = "ICON_LIST"
 )
 
@@ -101,6 +103,8 @@ func AllCodes() []Code {
 		CodeUnknownPattern,
 		CodeUnknownEnum,
 		CodeIconPath,
+		CodeIconAmbiguous,
+		CodeIconMissing,
 		CodeIconList,
 		// Render
 		CodeGenerationFailed,

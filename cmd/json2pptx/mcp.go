@@ -429,10 +429,13 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// concrete layout IDs using tag-based matching against the target template.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
 
-	// Resolve relative icon paths against CWD (MCP receives inline JSON, not a file path)
+	// Resolve relative icon paths against CWD (MCP receives inline JSON, not a file path).
+	// All per-icon failures are collected into structured diagnostics so the
+	// caller can fix each broken icon independently instead of seeing one bag-
+	// of-strings ICON_PATH error.
 	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
-		if iconErr := resolveIconPaths(input.Slides, cwd); iconErr != nil {
-			return api.MCPSimpleError("ICON_PATH", fmt.Sprintf("icon path error: %v", iconErr)), nil
+		if iconFindings := resolveIconPaths(input.Slides, cwd); len(iconFindings) > 0 {
+			return api.MCPDiagnosticsError(iconFindings), nil
 		}
 	}
 

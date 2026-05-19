@@ -481,8 +481,8 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// This must happen before convertPresentationSlides so that IconSpec.Path is absolute.
 	if jsonPath != "-" {
 		inputDir := filepath.Dir(jsonPath)
-		if err := resolveIconPaths(input.Slides, inputDir); err != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("icon path error: %w", err))
+		if iconFindings := resolveIconPaths(input.Slides, inputDir); len(iconFindings) > 0 {
+			return writeJSONError(jsonOutputPath, iconFindingsToError(iconFindings))
 		}
 	}
 
