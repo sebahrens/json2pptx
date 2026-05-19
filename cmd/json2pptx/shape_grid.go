@@ -513,6 +513,18 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 	var warnings []string
 	var fitFindings []patterns.FitFinding
 
+	// Connectors are emitted FIRST so they render BEHIND the cells they
+	// connect; otherwise a horizontal arrow drawn between adjacent cells
+	// shows through (and overlays) the cell fills and labels (e.g.
+	// process-flow, timeline-horizontal).
+	for _, conn := range result.Connectors {
+		xml, err := generateConnectorXML(conn)
+		if err != nil {
+			return nil, fmt.Errorf("connector id %d: %w", conn.ID, err)
+		}
+		shapes = append(shapes, xml)
+	}
+
 	for _, cell := range result.Cells {
 		var cellShapes [][]byte
 		var cellIcons []generator.IconInsert
@@ -603,15 +615,6 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		xml, err := shapegrid.GenerateAccentBarXML(&bar)
 		if err != nil {
 			return nil, fmt.Errorf("accent bar id %d: %w", bar.ID, err)
-		}
-		shapes = append(shapes, xml)
-	}
-
-	// Generate XML for connectors between cells
-	for _, conn := range result.Connectors {
-		xml, err := generateConnectorXML(conn)
-		if err != nil {
-			return nil, fmt.Errorf("connector id %d: %w", conn.ID, err)
 		}
 		shapes = append(shapes, xml)
 	}

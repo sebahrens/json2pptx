@@ -1213,8 +1213,9 @@ func TestResolveShapeGrid_WithConnectors(t *testing.T) {
 		t.Fatalf("expected 5 shapes (3 cells + 2 connectors), got %d", len(result.Shapes))
 	}
 
-	// Last two shapes should be connectors (p:cxnSp)
-	for i := 3; i < 5; i++ {
+	// Connectors are emitted FIRST so they render BEHIND cell shapes in spTree
+	// (otherwise the connector line shows through cell fills and labels).
+	for i := 0; i < 2; i++ {
 		xml := string(result.Shapes[i])
 		if !strings.Contains(xml, "<p:cxnSp>") {
 			t.Errorf("shape %d: expected p:cxnSp connector element, got:\n%s", i, xml)
@@ -1225,7 +1226,7 @@ func TestResolveShapeGrid_WithConnectors(t *testing.T) {
 	}
 
 	// First connector should have arrow tail end
-	xml := string(result.Shapes[3])
+	xml := string(result.Shapes[0])
 	if !strings.Contains(xml, `<a:tailEnd type="triangle"`) {
 		t.Errorf("first connector: expected triangle arrowhead, got:\n%s", xml)
 	}
@@ -1256,8 +1257,11 @@ func TestResolveShapeGrid_LineConnector(t *testing.T) {
 		t.Fatalf("expected 3 shapes (2 cells + 1 connector), got %d", len(result.Shapes))
 	}
 
-	// Line style should NOT have arrowhead
-	xml := string(result.Shapes[2])
+	// Connector is emitted first (z-order: behind cells); line style should NOT have arrowhead.
+	xml := string(result.Shapes[0])
+	if !strings.Contains(xml, "<p:cxnSp>") {
+		t.Errorf("expected first shape to be the connector p:cxnSp, got:\n%s", xml)
+	}
 	if strings.Contains(xml, "a:tailEnd") {
 		t.Errorf("line connector should not have tailEnd arrowhead, got:\n%s", xml)
 	}
