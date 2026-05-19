@@ -226,6 +226,64 @@ func isWhiteOrLt1(hexOrScheme string) bool {
 }
 
 // =============================================================================
+// Flip-to-extreme helper
+// =============================================================================
+
+// pickFlippedTextColor returns a clean high-contrast replacement for white/black
+// text against bg using the theme's dk1/lt1 colors (falling back to pure black
+// or white). Used when the original foreground is a semantic "neutral" color
+// (white, black, lt1, dk1): rather than lerping to an intermediate gray, we
+// snap to whichever extreme yields better contrast. This produces visually
+// clean accessibility fixes — e.g. white text on light yellow → black text,
+// instead of the previous behavior of darkening to a muddy mid-gray that
+// barely clears the 3:1 threshold.
+//
+// The returned hex string is upper-case with a leading "#".
+func pickFlippedTextColor(bg svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string) {
+	dk1Hex := resolveSchemeColorToHex("dk1", themeColors)
+	lt1Hex := resolveSchemeColorToHex("lt1", themeColors)
+	if dk1Hex == "" {
+		dk1Hex = "#000000"
+	}
+	if lt1Hex == "" {
+		lt1Hex = "#FFFFFF"
+	}
+	dk1, dkErr := svggen.ParseColor(dk1Hex)
+	lt1, ltErr := svggen.ParseColor(lt1Hex)
+	if dkErr != nil {
+		dk1 = svggen.MustParseColor("#000000")
+		dk1Hex = "#000000"
+	}
+	if ltErr != nil {
+		lt1 = svggen.MustParseColor("#FFFFFF")
+		lt1Hex = "#FFFFFF"
+	}
+	if dk1.ContrastWith(bg) >= lt1.ContrastWith(bg) {
+		return dk1, strings.ToUpper(dk1Hex)
+	}
+	return lt1, strings.ToUpper(lt1Hex)
+}
+
+// isNeutralExtremeHex reports whether a 6-hex color value is pure white or
+// pure black — the two foregrounds for which a clean flip (rather than a
+// lerped gray) is the correct contrast fix.
+func isNeutralExtremeHex(hex string) bool {
+	upper := strings.ToUpper(strings.TrimPrefix(hex, "#"))
+	return upper == "FFFFFF" || upper == "000000"
+}
+
+// isNeutralExtremeScheme reports whether a scheme color name refers to one of
+// the theme's pure-neutral text colors (lt1/bg1 = white, dk1/tx1 = black) for
+// which a clean flip is preferable to a lerped gray.
+func isNeutralExtremeScheme(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "lt1", "bg1", "dk1", "tx1":
+		return true
+	}
+	return false
+}
+
+// =============================================================================
 // Shape Grid Contrast Enforcement
 // =============================================================================
 
@@ -327,7 +385,7 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	// Fix scheme colors in text (with white-text-safe awareness)
 	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe)
 	// Fix sRGB colors in text (with white-text-safe awareness)
-	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, &swaps, fillSafe)
+	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe)
 
 	if fixed == txBody {
 		return shapeXML, nil // No changes needed
@@ -355,7 +413,12 @@ var srgbClrInFillRegexp = regexp.MustCompile(
 // When fillSafe is true and the foreground color is white (#FFFFFF), the fix
 // is skipped — the template metadata certifies that white text on this fill
 // is safe.
-func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, swaps *[]ContrastSwap, fillSafe bool) string {
+//
+// When the original foreground is a pure neutral (white or black), the fix
+// snaps to dk1/lt1 (clean flip) instead of lerping to an intermediate gray.
+// This avoids the muddy-gray-on-light-yellow result that the binary-search
+// EnsureContrast produces when both fg and target are close to one extreme.
+func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, fillSafe bool) string {
 	return srgbClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		submatches := srgbClrInFillRegexp.FindStringSubmatch(match)
 		if len(submatches) < 4 {
@@ -378,7 +441,12 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 			return match // Contrast is adequate (large text threshold: 3:1)
 		}
 
-		fixedColor := svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge)
+		var fixedColor svggen.Color
+		if isNeutralExtremeHex(hexVal) {
+			fixedColor, _ = pickFlippedTextColor(bgColor, themeColors)
+		} else {
+			fixedColor = svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge)
+		}
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Info("text contrast fix: replacing low-contrast sRGB color",
@@ -447,8 +515,16 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 			return match // Contrast is adequate (large text threshold: 3:1)
 		}
 
-		// Compute a high-contrast replacement color
-		fixedColor := svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge)
+		// Compute a high-contrast replacement color. For pure-neutral scheme
+		// foregrounds (lt1/bg1/dk1/tx1) snap to the opposite theme extreme
+		// rather than lerping into a muddy gray — this fixes the white-on-
+		// light-yellow case where EnsureContrast otherwise produces ~#606060.
+		var fixedColor svggen.Color
+		if isNeutralExtremeScheme(schemeName) {
+			fixedColor, _ = pickFlippedTextColor(bgColor, themeColors)
+		} else {
+			fixedColor = svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge)
+		}
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Info("text contrast fix: replacing low-contrast scheme color",

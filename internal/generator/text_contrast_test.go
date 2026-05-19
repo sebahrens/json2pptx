@@ -527,7 +527,7 @@ func TestFixSrgbColorsForContrast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var srgbSwaps []ContrastSwap
-			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", &srgbSwaps, false)
+			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", nil, &srgbSwaps, false)
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
 				t.Errorf("changed = %v, want %v\n  input:  %s\n  output: %s", changed, tt.wantChange, tt.xmlIn, got)
@@ -780,6 +780,89 @@ func TestEnforceShapeGridContrast_WhiteTextSafe(t *testing.T) {
 		}
 		if string(result[0]) == string(shapeDarkText) {
 			t.Error("expected dark text on dark fill to be modified")
+		}
+	})
+}
+
+// TestEnforceShapeGridContrast_FlipsWhiteOnLightFill is a regression test for
+// go-slide-creator-8kwd. The before-after pattern's "After" header puts white
+// text on an accent fill; when the template's accent resolves to a light
+// yellow/orange (e.g. midnight-blue accent3 = #E8A838), contrast fails AA Large
+// (3:1). The fix must FLIP the text to dark (dk1) rather than lerping to a
+// mid-gray like #606060.
+func TestEnforceShapeGridContrast_FlipsWhiteOnLightFill(t *testing.T) {
+	// Mirror the midnight-blue accent3 light-yellow case.
+	tc := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent3", RGB: "#E8A838"}, // light yellow/orange
+	}
+
+	cases := []struct {
+		name  string
+		shape []byte
+	}{
+		{
+			name:  "scheme_lt1_fg",
+			shape: []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent3"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Future State</a:t></a:r></a:p></p:txBody></p:sp>`),
+		},
+		{
+			name:  "srgb_white_fg",
+			shape: []byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="E8A838"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>Future State</a:t></a:r></a:p></p:txBody></p:sp>`),
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			shapes := [][]byte{append([]byte{}, tt.shape...)}
+			result, swaps := enforceShapeGridContrast(shapes, tc, nil)
+
+			if len(swaps) == 0 {
+				t.Fatalf("expected a contrast swap for white text on light-yellow fill")
+			}
+			got := string(result[0])
+			// Replacement must be pure dk1 (#000000), not an intermediate gray.
+			if !strings.Contains(strings.ToUpper(got), `VAL="000000"`) {
+				t.Errorf("expected white text to flip to #000000 (dk1), got: %s", got)
+			}
+			// Defensive: the muddy mid-gray produced by the prior lerp behavior
+			// (~#606060) must not appear in the output.
+			if strings.Contains(strings.ToUpper(got), `VAL="606060"`) {
+				t.Errorf("white text was lerped to mid-gray instead of flipping to dk1: %s", got)
+			}
+		})
+	}
+}
+
+// TestPickFlippedTextColor exercises the helper that snaps neutral foreground
+// colors to dk1/lt1 based on background luminance.
+func TestPickFlippedTextColor(t *testing.T) {
+	tc := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+	}
+
+	t.Run("light_bg_picks_dk1", func(t *testing.T) {
+		bg := svggen.MustParseColor("#E8A838") // light yellow
+		_, hex := pickFlippedTextColor(bg, tc)
+		if hex != "#000000" {
+			t.Errorf("expected dk1 (#000000) for light bg, got %s", hex)
+		}
+	})
+
+	t.Run("dark_bg_picks_lt1", func(t *testing.T) {
+		bg := svggen.MustParseColor("#1B2A4A") // dark navy
+		_, hex := pickFlippedTextColor(bg, tc)
+		if hex != "#FFFFFF" {
+			t.Errorf("expected lt1 (#FFFFFF) for dark bg, got %s", hex)
+		}
+	})
+
+	t.Run("empty_theme_falls_back_to_pure_extremes", func(t *testing.T) {
+		bg := svggen.MustParseColor("#E8A838")
+		_, hex := pickFlippedTextColor(bg, nil)
+		if hex != "#000000" {
+			t.Errorf("expected fallback #000000 with nil theme, got %s", hex)
 		}
 	})
 }
