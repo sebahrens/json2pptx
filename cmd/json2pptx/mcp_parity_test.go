@@ -13,6 +13,16 @@ import (
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
+// fitFindingCodes returns the codes of the given findings, for diagnostic
+// messages in test failures.
+func fitFindingCodes(findings []patterns.FitFinding) []string {
+	out := make([]string, 0, len(findings))
+	for _, f := range findings {
+		out = append(out, f.Code)
+	}
+	return out
+}
+
 func testMCPConfig(t *testing.T) *mcpConfig {
 	t.Helper()
 	return &mcpConfig{
@@ -360,6 +370,82 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}
 		if resp.SupportedTypes.DataFormatHints != nil {
 			t.Error("expected data_format_hints to be omitted from list_templates response")
+		}
+	})
+
+	t.Run("strict_fit=warn surfaces structured findings without fit_report", func(t *testing.T) {
+		// Regression: previously, warn-mode strict_fit findings were only
+		// written to stderr by checkStrictFit. MCP clients had no structured
+		// channel for them unless they separately passed fit_report=true.
+		longText := strings.Repeat("This is a very long cell that overflows ", 10)
+		row := make([]map[string]string, 10)
+		for i := range row {
+			row[i] = map[string]string{"content": "x"}
+		}
+		row[0] = map[string]string{"content": longText}
+		rowJSON, _ := json.Marshal(row)
+		shortRow := make([]map[string]string, 10)
+		for i := range shortRow {
+			shortRow[i] = map[string]string{"content": "x"}
+		}
+		shortRowJSON, _ := json.Marshal(shortRow)
+
+		var rows []string
+		rows = append(rows, string(rowJSON))
+		for i := 0; i < 14; i++ {
+			rows = append(rows, string(shortRowJSON))
+		}
+
+		overflowDeckJSON := `{
+			"template": "midnight-blue",
+			"slides": [{
+				"layout_id": "slideLayout2",
+				"content": [{
+					"placeholder_id": "title",
+					"type": "text",
+					"text_value": "Warn Test"
+				}, {
+					"placeholder_id": "body",
+					"type": "table",
+					"table_value": {
+						"headers": ["A","B","C","D","E","F","G","H","I","J"],
+						"rows": [` + strings.Join(rows, ",") + `]
+					}
+				}]
+			}]
+		}`
+
+		// fit_report is intentionally NOT set; strict_fit defaults to "warn".
+		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(overflowDeckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("warn mode should not refuse; got tool error: %v", result.Content)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp JSONOutput
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if !resp.Success {
+			t.Error("expected success=true in warn mode")
+		}
+		// Look for a fit-overflow or density-exceeded finding — these come
+		// from strict_fit warn-mode evaluation.
+		sawFitFinding := false
+		for _, f := range resp.FitFindings {
+			if f.Code == patterns.ErrCodeFitOverflow || f.Code == patterns.ErrCodeDensityExceeded {
+				sawFitFinding = true
+				break
+			}
+		}
+		if !sawFitFinding {
+			t.Errorf("strict_fit=warn should surface fit_overflow/density_exceeded in fit_findings; got %d findings, codes: %v",
+				len(resp.FitFindings), fitFindingCodes(resp.FitFindings))
 		}
 	})
 

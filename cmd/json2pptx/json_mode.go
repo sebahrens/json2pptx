@@ -376,9 +376,22 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 
 	// Run text-fit checking when --strict-fit is warn or strict.
+	// Findings from warn mode are merged into the structured fit_findings
+	// output below so JSON consumers see them without having to separately
+	// pass --fit-report. Strict mode still aborts on refuse-class findings,
+	// and the stderr NDJSON dump is preserved for log-tail parity.
+	var strictFitFindings []patterns.FitFinding
 	if strictFit != "off" {
-		if err := checkStrictFit(input, strictFit); err != nil {
-			return writeJSONError(jsonOutputPath, err)
+		rawFindings, refuseErr := evaluateStrictFit(input, strictFit)
+		if refuseErr != nil {
+			enc := json.NewEncoder(os.Stderr)
+			for _, f := range rawFindings {
+				_ = enc.Encode(f)
+			}
+			return writeJSONError(jsonOutputPath, refuseErr)
+		}
+		for _, f := range rawFindings {
+			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
 		}
 	}
 
@@ -530,6 +543,10 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
 	allFitFindings = append(allFitFindings, chartDiagFindings...)
 	allFitFindings = append(allFitFindings, gridVisualFindings...)
+	// Append strict_fit findings collected before generation so CLI JSON
+	// consumers see warn-mode overflow diagnostics in the structured response.
+	allFitFindings = append(allFitFindings, strictFitFindings...)
+	allFitFindings = dedupFitFindings(allFitFindings)
 
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)

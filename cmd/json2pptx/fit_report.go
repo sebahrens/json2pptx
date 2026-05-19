@@ -32,14 +32,15 @@ type fitFinding struct {
 	Action           string                  `json:"action,omitempty"`
 }
 
-// checkStrictFit runs the fit report and applies the given mode's policy.
-// In "warn" mode, findings are printed to stderr but nil is returned.
-// In "strict" mode, an error is returned if any finding has action=refuse,
-// and the full NDJSON report is written to stderr.
-func checkStrictFit(input *PresentationInput, mode string) error {
+// evaluateStrictFit runs the fit report and applies the given mode's policy
+// without any stderr side effects. It returns the raw findings and, in strict
+// mode, a refuse error when any finding's action is "refuse" or severity is
+// "error". Callers are responsible for deciding how to surface findings
+// (structured response, stderr, etc.).
+func evaluateStrictFit(input *PresentationInput, mode string) ([]fitFinding, error) {
 	findings := generateFitReport(input)
 	if len(findings) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	if mode == "strict" {
@@ -51,17 +52,11 @@ func checkStrictFit(input *PresentationInput, mode string) error {
 			}
 		}
 		if hasRefuse {
-			enc := json.NewEncoder(os.Stderr)
-			for _, f := range findings {
-				_ = enc.Encode(f)
-			}
-			return fmt.Errorf("strict-fit: %d finding(s), generation refused", len(findings))
+			return findings, fmt.Errorf("strict-fit: %d finding(s), generation refused", len(findings))
 		}
 	}
 
-	// warn mode (or strict with no refuse): emit summary to stderr.
-	printFitReportSummary(findings)
-	return nil
+	return findings, nil
 }
 
 // generateFitReport walks all tables and shape-grid text cells in the
@@ -408,19 +403,6 @@ func writeFitReport(path string, findings []fitFinding) error {
 
 	writeFitReportNDJSON(w, findings)
 	return nil
-}
-
-// printFitReportSummary prints a human-readable summary of fit findings to stderr.
-func printFitReportSummary(findings []fitFinding) {
-	if len(findings) == 0 {
-		fmt.Fprintln(os.Stderr, "Fit report: no issues found")
-		return
-	}
-
-	fmt.Fprintf(os.Stderr, "Fit report: %d issue(s) found\n", len(findings))
-	for _, f := range findings {
-		fmt.Fprintf(os.Stderr, "  [%s] %s: %s\n", f.Code, f.Path, f.Message)
-	}
 }
 
 // printFitFindingsBySlide prints fit findings grouped by slide index to stderr.

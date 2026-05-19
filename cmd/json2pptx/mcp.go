@@ -353,13 +353,27 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Text-fit checking via strict_fit parameter (default: warn).
+	// In warn mode, findings are collected here and merged into the structured
+	// fit_findings response below so MCP clients see them without having to
+	// separately pass fit_report=true. In strict mode, refuse-class findings
+	// abort generation with a diagnostics error.
 	strictFit := "warn"
 	if sf, err := request.RequireString("strict_fit"); err == nil && sf != "" {
 		strictFit = sf
 	}
+	var strictFitFindings []patterns.FitFinding
 	if strictFit != "off" {
-		if err := checkStrictFit(&input, strictFit); err != nil {
-			return api.MCPDiagnosticsError(diagnostics.FromJoinedError(err, "STRICT_FIT")), nil
+		rawFindings, refuseErr := evaluateStrictFit(&input, strictFit)
+		if refuseErr != nil {
+			// Preserve historical stderr NDJSON dump on refuse for CLI/log parity.
+			enc := json.NewEncoder(os.Stderr)
+			for _, f := range rawFindings {
+				_ = enc.Encode(f)
+			}
+			return api.MCPDiagnosticsError(diagnostics.FromJoinedError(refuseErr, "STRICT_FIT")), nil
+		}
+		for _, f := range rawFindings {
+			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
 		}
 	}
 
@@ -530,6 +544,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Append grid visual findings (diagram narrow-cell, etc.) — always emitted.
 	fitFindings = append(fitFindings, gridVisualFindings...)
+
+	// Append strict_fit findings unconditionally so MCP clients see warn-mode
+	// overflow diagnostics without needing to separately pass fit_report=true.
+	// When fit_report=true also collected text-fit findings via
+	// collectFitFindings, dedupFitFindings removes the duplicates by
+	// (Code, Path, Action, Message).
+	fitFindings = append(fitFindings, strictFitFindings...)
+	fitFindings = dedupFitFindings(fitFindings)
 
 	// Apply per-slide finding budget.
 	verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
