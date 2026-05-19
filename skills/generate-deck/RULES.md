@@ -17,6 +17,20 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | 6c | A grid cell may host a nested layout via `pattern: {name, values, overrides?, cell_overrides?}` (the same payload used at the slide level) or via `grid: {…ShapeGridInput…}` (a recursive sub-grid). The nested layout is rendered inside the cell rectangle with a small 4pt inset. `pattern` and `grid` are mutually exclusive with each other and with `shape`/`table`/`icon`/`image`/`diagram`/`composite` on the same cell. Accent inheritance follows the deck's `accent_strategy` — nested patterns see the same slide/section index as the parent. Example: a `matrix-2x2` with `pattern: {name: "kpi-3up", values: [...]}` in its bottom-right cell | Lets agents drop a `kpi-3up` into a quadrant or an `icon-row` into a `strategy-house` foundation row without escalating to slide-level `compose`. Cells hosting a nested layout become bounds-only `subgrid` placeholders; the nested cells are appended to the parent `ResolvedCell` list so overlay `anchor_cell` lookups still work |
 | 7 | Body text cells MUST set all 4 insets (6-10pt each) | Without insets, text jams against shape edges |
 
+## Typography Hierarchy (shape_grid)
+
+Do not invent font sizes. When generating `shape_grid` JSON, use these consistent sizes — they're the authoritative cross-pattern defaults and match what the engine and built-in patterns expect:
+
+| Role               | Size    | Weight  | Notes                                       |
+|--------------------|---------|---------|---------------------------------------------|
+| Grid header/banner | 14-18pt | Bold    | White on accent fill, full-width            |
+| Card title         | 12-14pt | Bold    | First line, separated by `\n`               |
+| Card body          | 9-11pt  | Regular | 11pt for 3-4 cols, 10pt for 5+              |
+| Step number        | 20-24pt | Bold    | White on accent, narrow column              |
+| Footnote/source    | 7-8pt   | Regular | Grey (#666666)                              |
+
+Always set text insets (6-12pt) on body cells. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
+
 ## Charts
 
 | # | Rule | Rationale |

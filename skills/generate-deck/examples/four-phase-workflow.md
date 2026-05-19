@@ -13,19 +13,21 @@ list_templates() → choose "midnight-blue" (professional, dark backgrounds)
 accent_strategy: "rotate" (10 slides, want visual variety)
 ```
 
-**Step 2 — Build outline using `recommend_pattern` for each intent:**
+**Step 2 — Build outline using `recommend_visual` for each intent:**
+
+`recommend_visual` is the primary entry point — it ranks across all visual categories (placeholder layouts, named patterns, charts, diagrams). `recommend_pattern` is the pattern-only subset and should only be used when you already know the slide needs a named pattern.
 
 ```
-recommend_pattern("title slide opening")        → title (layout)
-recommend_pattern("3 key metrics KPIs")          → kpi-3up
-recommend_pattern("market opportunity size")     → stat-hero
-recommend_pattern("product architecture layers") → arch-stack
-recommend_pattern("competitive comparison")      → comparison-2col
-recommend_pattern("growth trajectory chart")     → content (chart slide)
-recommend_pattern("team leadership grid")        → card-grid
-recommend_pattern("financial projections table") → content (table slide)
-recommend_pattern("implementation roadmap")      → roadmap-phased
-recommend_pattern("call to action closing")      → closing (layout)
+recommend_visual("title slide opening")        → title (layout)
+recommend_visual("3 key metrics KPIs")          → kpi-3up
+recommend_visual("market opportunity size")     → stat-hero
+recommend_visual("product architecture layers") → arch-stack
+recommend_visual("competitive comparison")      → comparison-2col
+recommend_visual("growth trajectory chart")     → content (chart slide)
+recommend_visual("team leadership grid")        → card-grid
+recommend_visual("financial projections table") → content (table slide)
+recommend_visual("implementation roadmap")      → roadmap-phased
+recommend_visual("call to action closing")      → closing (layout)
 ```
 
 **Step 3 — Check outline against rhythm rules:**
