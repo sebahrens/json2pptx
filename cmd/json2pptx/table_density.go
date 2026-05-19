@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"os"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -80,10 +78,11 @@ func (mc *mcpConfig) handleTableDensityGuide(ctx context.Context, request mcp.Ca
 	if templateName != "" {
 		resp.Template = templateName
 
-		path := filepath.Join(mc.templatesDir, templateName+".pptx")
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		path, cleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
+		if err != nil {
 			return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir)), nil
 		}
+		defer cleanup()
 
 		reader, err := template.OpenTemplate(path)
 		if err != nil {

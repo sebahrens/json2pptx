@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -318,6 +319,54 @@ func TestHandleListTemplates_MissingTemplate_IsError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	requireStructuredError(t, result, "TEMPLATE_NOT_FOUND")
+}
+
+// TestHandleListTemplates_EmbeddedFallback verifies that template discovery
+// succeeds when the on-disk templates dir is missing, falling through to
+// embedded templates — matching the resolution semantics generation uses.
+// Regression for go-slide-creator-xvm3.
+func TestHandleListTemplates_EmbeddedFallback(t *testing.T) {
+	withClearedTemplateEnv(t)
+	mc := &mcpConfig{
+		templatesDir: filepath.Join(t.TempDir(), "no-such-dir"),
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	// Discovery without a specific template should still find the embedded
+	// templates that ship with the binary.
+	result, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"mode":      "list",
+		"page_size": float64(200),
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %v", result.Content)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	var resp skillInfo
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp.TotalCount == 0 || len(resp.Templates) == 0 {
+		t.Errorf("expected embedded templates to be discovered, got total=%d len=%d",
+			resp.TotalCount, len(resp.Templates))
+	}
+
+	// A specific embedded template name should resolve too.
+	scoped, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"template": "midnight-blue",
+		"mode":     "list",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error (scoped): %v", err)
+	}
+	if scoped.IsError {
+		t.Fatalf("unexpected tool error (scoped): %v", scoped.Content)
+	}
 }
 
 // TestHandleListTemplates_Pagination verifies cursor + page_size iteration

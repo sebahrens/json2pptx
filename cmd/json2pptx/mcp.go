@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -611,38 +612,46 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
 	}
 
-	// Discover templates
-	var templatePaths []string
+	// Discover templates using the shared resolution path (flag → env → user
+	// home → ./templates → embedded), so discovery succeeds in the same
+	// environments where generation does — including embedded-only mode.
+	var templateNames []string
 	if templateName != "" {
-		path := filepath.Join(mc.templatesDir, templateName+".pptx")
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir)), nil
-		}
-		templatePaths = []string{path}
+		templateNames = []string{templateName}
 	} else {
-		entries, err := os.ReadDir(mc.templatesDir)
-		if err != nil {
-			return api.MCPSimpleError("TEMPLATES_DIR", fmt.Sprintf("failed to read templates directory: %v", err)), nil
-		}
-		for _, e := range entries {
-			if !e.IsDir() && filepath.Ext(e.Name()) == ".pptx" {
-				templatePaths = append(templatePaths, filepath.Join(mc.templatesDir, e.Name()))
-			}
-		}
+		templateNames = listAvailableTemplates(mc.templatesDir)
+		sort.Strings(templateNames)
 	}
 
-	totalCount := len(templatePaths)
+	type resolvedTemplate struct {
+		name string
+		path string
+	}
+	var resolved []resolvedTemplate
+	for _, name := range templateNames {
+		path, cleanup, err := resolveTemplatePath(name, mc.templatesDir)
+		if err != nil {
+			if templateName != "" {
+				return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(name, mc.templatesDir)), nil
+			}
+			slog.Warn("failed to resolve template", "template", name, "error", err)
+			continue
+		}
+		defer cleanup()
+		resolved = append(resolved, resolvedTemplate{name: name, path: path})
+	}
+
+	totalCount := len(resolved)
 	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
-	pagedPaths := templatePaths[start:end]
+	pagedTemplates := resolved[start:end]
 
 	var templates []skillTemplateInfo
-	for _, path := range pagedPaths {
-		info, err := analyzeTemplateForSkillInfo(path, mc.cache, mode)
+	for _, rt := range pagedTemplates {
+		info, err := analyzeTemplateForSkillInfo(rt.path, mc.cache, mode)
 		if err != nil {
-			name := strings.TrimSuffix(filepath.Base(path), ".pptx")
-			slog.Error("failed to analyze template", "template", name, "error", err)
+			slog.Error("failed to analyze template", "template", rt.name, "error", err)
 			templates = append(templates, skillTemplateInfo{
-				Name:  name,
+				Name:  rt.name,
 				Error: fmt.Sprintf("failed to analyze template: %v", err),
 			})
 			continue
