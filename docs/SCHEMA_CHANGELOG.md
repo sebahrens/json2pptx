@@ -4,6 +4,20 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.25.0 (2026-05-19)
+
+### Added
+
+- **Canonical icon identifiers in `list_icons` / `icons list --json`** — each
+  `sets[]` entry now also returns an `icons` array of
+  `{name, qualified_name}` objects. `qualified_name` is always in
+  `"<set>:<name>"` form (e.g. `"filled:chart-pie"`, `"outline:chart-pie"`)
+  and is the canonical authoring token to drop directly into `icon.name`.
+  This removes the inference burden agents previously carried for filled
+  icons, where bare names resolved to the outline set. The legacy
+  `sets[].names` bare-name array is unchanged and remains supported. CLI
+  table output (`json2pptx icons list`) now prints qualified identifiers.
+
 ## 4.24.0 (2026-05-19)
 
 ### Added

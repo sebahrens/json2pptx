@@ -68,17 +68,33 @@ func runIconsListTable(sets []string) error {
 		if err != nil {
 			return fmt.Errorf("listing %s icons: %w", s, err)
 		}
-		fmt.Fprintf(os.Stdout, "%s (%d icons):\n", s, len(names))
-		fmt.Fprintln(os.Stdout, "  "+strings.Join(names, ", "))
+		fmt.Fprintf(os.Stdout, "%s (%d icons; use as %s:<name>):\n", s, len(names), s)
+		qualified := make([]string, len(names))
+		for i, n := range names {
+			qualified[i] = s + ":" + n
+		}
+		fmt.Fprintln(os.Stdout, "  "+strings.Join(qualified, ", "))
 		fmt.Fprintln(os.Stdout)
 	}
 	return nil
 }
 
+// iconEntryJSON is the per-icon record in the CLI JSON output. qualified_name
+// is the canonical authoring identifier (always "<set>:<name>") suitable for
+// dropping into icon.name in deck JSON.
+type iconEntryJSON struct {
+	Name          string `json:"name"`
+	QualifiedName string `json:"qualified_name"`
+}
+
+// iconSetJSON is the per-set JSON shape from `icons list --json`. `names` is
+// preserved for backward compatibility; new consumers should use
+// icons[].qualified_name.
 type iconSetJSON struct {
-	Set   string   `json:"set"`
-	Count int      `json:"count"`
-	Names []string `json:"names"`
+	Set   string          `json:"set"`
+	Count int             `json:"count"`
+	Names []string        `json:"names"`
+	Icons []iconEntryJSON `json:"icons"`
 }
 
 func runIconsListJSON(sets []string) error {
@@ -88,10 +104,15 @@ func runIconsListJSON(sets []string) error {
 		if err != nil {
 			return fmt.Errorf("listing %s icons: %w", s, err)
 		}
+		entries := make([]iconEntryJSON, len(names))
+		for i, n := range names {
+			entries[i] = iconEntryJSON{Name: n, QualifiedName: s + ":" + n}
+		}
 		result = append(result, iconSetJSON{
 			Set:   s,
 			Count: len(names),
 			Names: names,
+			Icons: entries,
 		})
 	}
 	enc := json.NewEncoder(os.Stdout)

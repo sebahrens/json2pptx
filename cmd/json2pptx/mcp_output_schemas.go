@@ -467,14 +467,26 @@ var outputSchemaListIcons = json.RawMessage(`{
         "type": "object",
         "properties": {
           "set":   {"type": "string"},
-          "count": {"type": "integer", "description": "Number of names from this set included on the current page."},
-          "names": {"type": "array", "items": {"type": "string"}}
+          "count": {"type": "integer", "description": "Number of icons from this set included on the current page."},
+          "names": {"type": "array", "items": {"type": "string"}, "description": "Legacy bare-name list (no set prefix). Kept for backward compatibility; new consumers should use icons[].qualified_name."},
+          "icons": {
+            "type": "array",
+            "description": "Per-icon entries with the canonical authoring identifier.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name":           {"type": "string", "description": "Bare icon name without the set prefix."},
+                "qualified_name": {"type": "string", "description": "Canonical authoring identifier in '<set>:<name>' form (e.g. 'filled:chart-pie', 'outline:chart-pie'). Drop directly into icon.name."}
+              },
+              "required": ["name", "qualified_name"]
+            }
+          }
         },
-        "required": ["set", "count", "names"]
+        "required": ["set", "count", "names", "icons"]
       }
     },
-    "total_count": {"type": "integer", "description": "Total number of icon names across all requested sets (after the search filter)."},
-    "page_size":   {"type": "integer", "description": "Maximum number of icon names per page."},
+    "total_count": {"type": "integer", "description": "Total number of icons across all requested sets (after the search filter)."},
+    "page_size":   {"type": "integer", "description": "Maximum number of icons per page."},
     "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."}
   },
   "required": ["sets", "total_count", "page_size"]

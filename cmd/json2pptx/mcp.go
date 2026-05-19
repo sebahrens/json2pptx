@@ -1909,7 +1909,9 @@ func mcpListIconsTool() mcp.Tool {
 	return mcp.NewTool("list_icons",
 		mcp.WithDescription(`List available icon names for use in shape_grid cells via {"icon":{"name":"icon-name"}}. Icons are bundled SVGs in two sets: outline (default, stroke-based) and filled (solid). Use set:name syntax (e.g. "filled:chart-pie") to select a set; plain names default to outline.
 
-Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icon names that fall within the slice. count on each set entry reflects names in that slice, not the full set size; use total_count for the corpus total.`),
+Canonical identifier: each set entry returns both a legacy bare-name array (sets[].names) and a structured sets[].icons array. Each entry in sets[].icons has {name, qualified_name}; qualified_name is always "<set>:<name>" (e.g. "filled:chart-pie", "outline:chart-pie") and is the canonical token to drop into icon.name — required for filled icons, since a bare name alone resolves to the outline set.
+
+Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icons that fall within the slice. count on each set entry reflects icons in that slice, not the full set size; use total_count for the corpus total.`),
 		mcp.WithRawOutputSchema(outputSchemaListIcons),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
@@ -1927,14 +1929,25 @@ Pagination: response is an object {sets, total_count, page_size, next_cursor?}. 
 	)
 }
 
+// iconEntry is the per-icon record returned by list_icons. qualified_name is
+// the canonical authoring identifier (always "<set>:<name>") that agents can
+// drop directly into an `icon.name` field — including for filled icons where
+// the bare name alone would resolve to the outline set.
+type iconEntry struct {
+	Name          string `json:"name"`
+	QualifiedName string `json:"qualified_name"`
+}
+
 // iconSetResult is the JSON shape for each icon set in the list_icons response.
-// When paginated, count reflects the names included on the current page, not
+// When paginated, count reflects the icons included on the current page, not
 // the full set size; the envelope's total_count covers the entire filtered
-// corpus.
+// corpus. `names` is preserved for backward compatibility; new consumers
+// should use `icons[].qualified_name`.
 type iconSetResult struct {
-	Set   string   `json:"set"`
-	Count int      `json:"count"`
-	Names []string `json:"names"`
+	Set   string      `json:"set"`
+	Count int         `json:"count"`
+	Names []string    `json:"names"`
+	Icons []iconEntry `json:"icons"`
 }
 
 // listIconsResponse is the paginated envelope for list_icons.
@@ -1990,10 +2003,15 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	pageSets := make([]iconSetResult, 0, len(sets))
 	for _, s := range sets {
 		if names, ok := pageBySet[s]; ok {
+			entries := make([]iconEntry, len(names))
+			for i, n := range names {
+				entries[i] = iconEntry{Name: n, QualifiedName: s + ":" + n}
+			}
 			pageSets = append(pageSets, iconSetResult{
 				Set:   s,
 				Count: len(names),
 				Names: names,
+				Icons: entries,
 			})
 		}
 	}

@@ -737,6 +737,56 @@ func TestHandleListIcons_BadSet(t *testing.T) {
 	}
 }
 
+// TestHandleListIcons_QualifiedName verifies that every set entry exposes a
+// parallel icons[] array whose qualified_name field is in canonical
+// "<set>:<name>" form — the authoring token agents drop into icon.name.
+func TestHandleListIcons_QualifiedName(t *testing.T) {
+	res, err := handleListIcons(context.Background(), makeRequest(map[string]any{
+		"page_size": float64(200),
+	}))
+	if err != nil || res.IsError {
+		t.Fatalf("unexpected failure: err=%v result=%+v", err, res)
+	}
+	var resp listIconsResponse
+	if err := json.Unmarshal([]byte(res.Content[0].(mcpgo.TextContent).Text), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(resp.Sets) == 0 {
+		t.Fatal("expected at least one set in response")
+	}
+	for _, s := range resp.Sets {
+		if len(s.Icons) != len(s.Names) {
+			t.Errorf("set %q: icons length %d != names length %d", s.Set, len(s.Icons), len(s.Names))
+		}
+		for i, entry := range s.Icons {
+			want := s.Set + ":" + entry.Name
+			if entry.QualifiedName != want {
+				t.Errorf("set %q icon %d: qualified_name = %q, want %q", s.Set, i, entry.QualifiedName, want)
+			}
+			if i < len(s.Names) && entry.Name != s.Names[i] {
+				t.Errorf("set %q icon %d: name = %q, want %q (must match parallel names[])", s.Set, i, entry.Name, s.Names[i])
+			}
+		}
+	}
+	// Filled icons must use the qualified form — verify there is at least one
+	// filled icon and its qualified_name starts with "filled:".
+	var filledOK bool
+	for _, s := range resp.Sets {
+		if s.Set != "filled" {
+			continue
+		}
+		for _, entry := range s.Icons {
+			if !strings.HasPrefix(entry.QualifiedName, "filled:") {
+				t.Errorf("filled icon %q: qualified_name = %q, want prefix \"filled:\"", entry.Name, entry.QualifiedName)
+			}
+			filledOK = true
+		}
+	}
+	if !filledOK {
+		t.Skip("no filled icons in response — cannot verify filled: prefix")
+	}
+}
+
 // TestHandleListIcons_Pagination verifies cursor + page_size iteration covers
 // the full icon corpus without duplicates and emits next_cursor only when
 // more entries remain.
