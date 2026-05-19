@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // expandStructure converts a StructureInput into a flat []SlideInput.
@@ -139,6 +141,47 @@ func buildAgendaSlide(sections []SectionInput) (SlideInput, error) {
 // AgendaPatternValues matches the agenda pattern's values schema.
 type AgendaPatternValues struct {
 	Items []string `json:"items"`
+}
+
+// applyStructureExpansion mirrors the CLI's structure-expansion step for MCP
+// handlers. If the input has a structure block it is expanded into a flat
+// slide list. When both structure and top-level slides are set, this returns
+// a mutual-exclusivity diagnostic without mutating the input. When the
+// structure block is malformed, expansion errors are surfaced as structured
+// diagnostics so agents can repair the payload.
+//
+// Returns nil when there is nothing to expand or expansion succeeded.
+func applyStructureExpansion(input *PresentationInput) []diagnostics.Diagnostic {
+	if input == nil || input.Structure == nil {
+		return nil
+	}
+	if len(input.Slides) > 0 {
+		return []diagnostics.Diagnostic{{
+			Code:     "STRUCTURE_AND_SLIDES",
+			Path:     "structure",
+			Message:  "structure and slides are mutually exclusive — use one or the other",
+			Severity: diagnostics.SeverityError,
+			Fix: &diagnostics.Fix{
+				Kind:   "remove_field",
+				Params: map[string]any{"field": "slides"},
+			},
+		}}
+	}
+	expanded, err := expandStructure(input.Structure)
+	if err != nil {
+		return []diagnostics.Diagnostic{{
+			Code:     "INVALID_STRUCTURE",
+			Path:     "structure",
+			Message:  fmt.Sprintf("invalid structure: %v", err),
+			Severity: diagnostics.SeverityError,
+			Fix: &diagnostics.Fix{
+				Kind:   "fix_structure",
+				Params: map[string]any{"error": err.Error()},
+			},
+		}}
+	}
+	input.Slides = expanded
+	return nil
 }
 
 // validateStructure checks for structural grammar issues and returns warnings.

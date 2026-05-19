@@ -191,6 +191,13 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	// Apply deck-level defaults before resolution.
 	applyDefaults(&input)
 
+	// Expand structure block into flat slides (mutually exclusive with
+	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
+	// effective slide list before boundary validation runs.
+	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
+
 	// Boundary validation.
 	if errResult := validatePreviewBoundary(&input); errResult != nil {
 		return errResult, nil

@@ -923,3 +923,222 @@ func TestMCPGetDataFormatHints(t *testing.T) {
 		}
 	})
 }
+
+// structureOnlyDeckJSON returns a deck payload whose slides are defined
+// entirely via the structure block (cover + sections + closing), exercising
+// the expansion path that previously only ran in the CLI.
+func structureOnlyDeckJSON() string {
+	return `{
+		"template": "midnight-blue",
+		"structure": {
+			"cover": {
+				"slide_type": "title",
+				"content": [{"placeholder_id": "title", "type": "text", "text_value": "Structure Deck"}]
+			},
+			"closing": {
+				"slide_type": "title",
+				"content": [{"placeholder_id": "title", "type": "text", "text_value": "Thank You"}]
+			},
+			"auto_agenda": true,
+			"sections": [
+				{
+					"title": "Section A",
+					"slides": [{
+						"layout_id": "slideLayout2",
+						"content": [{"placeholder_id": "title", "type": "text", "text_value": "A1"}]
+					}]
+				},
+				{
+					"title": "Section B",
+					"slides": [{
+						"layout_id": "slideLayout2",
+						"content": [{"placeholder_id": "title", "type": "text", "text_value": "B1"}]
+					}]
+				}
+			]
+		}
+	}`
+}
+
+// TestMCPStructureExpansionParity exercises the structure expansion path
+// across every MCP handler that previously short-circuited on
+// len(input.Slides) == 0. A valid structure-only payload must succeed via
+// generate_presentation, validate_input, preview_presentation_plan, and
+// score_deck — matching CLI behavior.
+//
+// Regression for go-slide-creator-41g5: MCP handlers used to reject
+// structure-only payloads because they checked the unexpanded slides count.
+func TestMCPStructureExpansionParity(t *testing.T) {
+	deckJSON := structureOnlyDeckJSON()
+
+	t.Run("generate_presentation accepts structure-only", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			text := result.Content[0].(mcp.TextContent).Text
+			t.Fatalf("expected success for structure-only payload, got error: %s", text)
+		}
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp JSONOutput
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if !resp.Success {
+			t.Error("expected success=true for structure-only payload")
+		}
+	})
+
+	t.Run("validate_input accepts structure-only", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			text := result.Content[0].(mcp.TextContent).Text
+			t.Fatalf("expected success for structure-only payload, got error: %s", text)
+		}
+	})
+
+	t.Run("preview_presentation_plan accepts structure-only", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		result, err := mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			text := result.Content[0].(mcp.TextContent).Text
+			t.Fatalf("expected success for structure-only payload, got error: %s", text)
+		}
+		// Preview should expose the expanded slides: cover + agenda + 2 dividers + 2 content + closing = 7.
+		text := result.Content[0].(mcp.TextContent).Text
+		var resp previewPlanOutput
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse preview response: %v", err)
+		}
+		const wantSlides = 7
+		if len(resp.ResolvedSlides) != wantSlides {
+			t.Errorf("expected %d expanded slides in preview, got %d", wantSlides, len(resp.ResolvedSlides))
+		}
+	})
+
+	t.Run("score_deck accepts structure-only", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			text := result.Content[0].(mcp.TextContent).Text
+			t.Fatalf("expected success for structure-only payload, got error: %s", text)
+		}
+	})
+}
+
+// TestMCPStructureSlidesMutuallyExclusive verifies that passing BOTH a
+// structure block and top-level slides produces a STRUCTURE_AND_SLIDES
+// diagnostic on every MCP handler (mirroring the CLI error). Without this,
+// an agent could accidentally double-author and have one silently win.
+func TestMCPStructureSlidesMutuallyExclusive(t *testing.T) {
+	deckJSON := `{
+		"template": "midnight-blue",
+		"structure": {
+			"sections": [
+				{
+					"title": "S1",
+					"slides": [{
+						"layout_id": "slideLayout2",
+						"content": [{"placeholder_id": "title", "type": "text", "text_value": "S1"}]
+					}]
+				}
+			]
+		},
+		"slides": [{
+			"layout_id": "slideLayout2",
+			"content": [{"placeholder_id": "title", "type": "text", "text_value": "Conflict"}]
+		}]
+	}`
+
+	expectMutualExclusivity := func(t *testing.T, text string) {
+		t.Helper()
+		var envelope struct {
+			Diagnostics []map[string]any `json:"diagnostics"`
+		}
+		if err := json.Unmarshal([]byte(text), &envelope); err != nil {
+			t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
+		}
+		var found bool
+		for _, d := range envelope.Diagnostics {
+			if d["code"] == "STRUCTURE_AND_SLIDES" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected STRUCTURE_AND_SLIDES diagnostic, got: %s", text)
+		}
+	}
+
+	handlers := []struct {
+		name string
+		call func(*mcpConfig) (*mcp.CallToolResult, error)
+	}{
+		{
+			name: "generate_presentation",
+			call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+				return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+					"presentation": mustParseJSON(deckJSON),
+				}))
+			},
+		},
+		{
+			name: "validate_input",
+			call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+				return mc.handleValidate(context.Background(), makeRequest(map[string]any{
+					"presentation": mustParseJSON(deckJSON),
+				}))
+			},
+		},
+		{
+			name: "preview_presentation_plan",
+			call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+				return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
+					"presentation": mustParseJSON(deckJSON),
+				}))
+			},
+		},
+		{
+			name: "score_deck",
+			call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+				return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+					"presentation": mustParseJSON(deckJSON),
+				}))
+			},
+		},
+	}
+
+	for _, h := range handlers {
+		t.Run(h.name, func(t *testing.T) {
+			mc := testMCPConfig(t)
+			result, err := h.call(mc)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !result.IsError {
+				t.Fatalf("expected IsError=true for structure+slides conflict, got success: %v", result.Content)
+			}
+			expectMutualExclusivity(t, result.Content[0].(mcp.TextContent).Text)
+		})
+	}
+}

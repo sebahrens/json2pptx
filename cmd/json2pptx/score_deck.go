@@ -82,6 +82,13 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// Resolve named style references from template settings.
 	mc.resolveInputNamedSettings(&input)
 
+	// Expand structure block into flat slides (mutually exclusive with
+	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
+	// effective slide list before slide-count checks.
+	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
+
 	// Resolve template name.
 	templateName := input.Template
 	if override, err := request.RequireString("template"); err == nil && override != "" {

@@ -316,6 +316,13 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Resolve named style references from template settings (priority 3).
 	mc.resolveInputNamedSettings(&input)
 
+	// Expand structure block into flat slides (mutually exclusive with
+	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
+	// effective slide list before any slide-count checks.
+	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
+
 	// Collect all boundary diagnostics before proceeding.
 	var boundaryDiags []diagnostics.Diagnostic
 
@@ -810,6 +817,13 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 	// Resolve named style references from template settings (priority 3).
 	mc.resolveInputNamedSettings(&input)
+
+	// Expand structure block into flat slides (mutually exclusive with
+	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
+	// effective slide list before slide-level diagnostics run.
+	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
+		return api.MCPDiagnosticsError(structDiags), nil
+	}
 
 	// Unknown keys — warnings by default, errors when strict_unknown_keys=true.
 	strictUnknownKeys := false
