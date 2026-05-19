@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/sebahrens/json2pptx/internal/template"
 )
 
 func callGetStarted(t *testing.T, task string) getStartedResponse {
@@ -39,6 +44,7 @@ func TestGetStartedBriefSequence(t *testing.T) {
 		"list_templates",
 		"plan_deck",
 		"recommend_visual",
+		"validate_input",
 		"preview_presentation_plan",
 		"generate_presentation",
 		"score_deck",
@@ -64,6 +70,7 @@ func TestGetStartedReviseSequence(t *testing.T) {
 	want := []string{
 		"get_capabilities",
 		"read_presentation",
+		"validate_input",
 		"preview_presentation_plan",
 		"repair_slide",
 		"generate_presentation",
@@ -153,5 +160,196 @@ func TestGetStartedToolIsInCapabilities(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected get_started in mcpToolCatalog()")
+	}
+}
+
+// TestGetStartedSequences_Executable proves every step in every published
+// get_started sequence can actually be invoked end-to-end against a fixture
+// deck — no hidden human translation required between consecutive tools.
+//
+// The test wires outputs from prior steps into the inputs of later steps the
+// same way an agent would: the deck JSON authored after recommend_visual is
+// the same object passed to validate_input, preview_presentation_plan,
+// repair_slide, generate_presentation, and score_deck; the pptx produced by
+// generate_presentation is what read_presentation reads back.
+func TestGetStartedSequences_Executable(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	ctx := context.Background()
+
+	// Fixture deck — minimal but valid PresentationInput, used as the
+	// authoritative deck JSON the agent already holds in memory. The same
+	// object is passed to every downstream tool, including in the revise
+	// flow (because read_presentation does NOT produce a PresentationInput).
+	fixtureDeck := mustParseJSON(`{
+		"template": "midnight-blue",
+		"slides": [
+			{
+				"layout_id": "slideLayout2",
+				"content": [
+					{"placeholder_id": "title", "type": "text", "text_value": "Quarterly Review"},
+					{"placeholder_id": "body", "type": "bullets", "bullets_value": ["Revenue up 12%", "Margin steady", "New market entry on track"]}
+				]
+			}
+		]
+	}`)
+
+	// runStep dispatches one sequence step against the fixture. It returns
+	// any side-effect the step produced (currently: generated pptx path).
+	runStep := func(t *testing.T, tool string, generatedPath string) string {
+		t.Helper()
+		var result *mcp.CallToolResult
+		var err error
+		switch tool {
+		case "get_capabilities":
+			result, err = mc.handleGetCapabilities(ctx, makeRequest(map[string]any{}))
+		case "list_templates":
+			result, err = mc.handleListTemplates(ctx, makeRequest(map[string]any{}))
+		case "plan_deck":
+			result, err = handlePlanDeck(ctx, makeRequest(map[string]any{
+				"brief": "Quarterly review for the leadership team",
+			}))
+		case "recommend_visual":
+			result, err = mc.handleRecommendVisual(ctx, makeRequest(map[string]any{
+				"intent": "summarize the quarter's key results",
+			}))
+		case "validate_input":
+			result, err = mc.handleValidate(ctx, makeRequest(map[string]any{
+				"presentation": fixtureDeck,
+				"fit_report":   true,
+			}))
+		case "preview_presentation_plan":
+			result, err = mc.handlePreviewPlan(ctx, makeRequest(map[string]any{
+				"presentation": fixtureDeck,
+			}))
+		case "generate_presentation":
+			result, err = mc.handleGenerate(ctx, makeRequest(map[string]any{
+				"presentation": fixtureDeck,
+			}))
+			if err == nil && result != nil && !result.IsError {
+				var out JSONOutput
+				if jerr := json.Unmarshal([]byte(textContent(result)), &out); jerr == nil {
+					generatedPath = out.OutputPath
+				}
+			}
+		case "read_presentation":
+			if generatedPath == "" {
+				t.Fatalf("read_presentation requires a generated pptx — none available; sequence ordering bug")
+			}
+			result, err = handleReadPresentation(ctx, makeRequest(map[string]any{
+				"pptx_path": generatedPath,
+			}))
+		case "repair_slide":
+			result, err = mc.handleRepairSlide(ctx, makeRequest(map[string]any{
+				"presentation": fixtureDeck,
+				"slide_index":  float64(0),
+				"fixes":        []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": float64(2)}}},
+			}))
+		case "score_deck":
+			result, err = mc.handleScoreDeck(ctx, makeRequest(map[string]any{
+				"presentation": fixtureDeck,
+			}))
+		default:
+			t.Fatalf("integration test does not know how to invoke tool %q — add a case to runStep", tool)
+		}
+		if err != nil {
+			t.Fatalf("tool %q returned transport error: %v", tool, err)
+		}
+		if result == nil {
+			t.Fatalf("tool %q returned nil result", tool)
+		}
+		if result.IsError {
+			t.Fatalf("tool %q returned IsError result: %s", tool, textContent(result))
+		}
+		return generatedPath
+	}
+
+	// For the revise flow the agent is editing a deck that has already been
+	// rendered, so read_presentation has something to read. Pre-generate a
+	// pptx from the same fixture and seed it as the starting "generated"
+	// artifact for that task.
+	preGenerate := func(t *testing.T) string {
+		t.Helper()
+		result, err := mc.handleGenerate(ctx, makeRequest(map[string]any{
+			"presentation": fixtureDeck,
+		}))
+		if err != nil {
+			t.Fatalf("pre-generate transport error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("pre-generate IsError: %s", textContent(result))
+		}
+		var out JSONOutput
+		if jerr := json.Unmarshal([]byte(textContent(result)), &out); jerr != nil {
+			t.Fatalf("pre-generate parse: %v", jerr)
+		}
+		if out.OutputPath == "" {
+			t.Fatal("pre-generate produced empty output_path")
+		}
+		return out.OutputPath
+	}
+
+	for _, task := range getStartedAvailableTasks() {
+		task := task
+		t.Run(task, func(t *testing.T) {
+			resp := callGetStarted(t, task)
+			if len(resp.Sequence) == 0 {
+				t.Fatalf("task=%q returned empty sequence", task)
+			}
+			var generatedPath string
+			if task == "revise" {
+				generatedPath = preGenerate(t)
+				defer os.Remove(generatedPath)
+			}
+			for _, step := range resp.Sequence {
+				step := step
+				t.Run(step.Tool, func(t *testing.T) {
+					generatedPath = runStep(t, step.Tool, generatedPath)
+				})
+			}
+			if generatedPath != "" {
+				_ = os.Remove(generatedPath)
+			}
+		})
+	}
+}
+
+// TestGetStartedRevise_RequiresGenerateBeforeRead documents the invariant
+// the revise sequence is built around: read_presentation is inspection-only
+// and cannot serve as the source of the deck JSON the downstream editing
+// tools (preview/repair/generate) require. If a future edit reorders revise
+// so read_presentation precedes any downstream tool without a separate deck
+// JSON source, this test will surface the silent contract violation.
+func TestGetStartedRevise_ReadPresentationIsInspectionOnly(t *testing.T) {
+	resp := callGetStarted(t, "revise")
+	readIdx := -1
+	for i, step := range resp.Sequence {
+		if step.Tool == "read_presentation" {
+			readIdx = i
+			break
+		}
+	}
+	if readIdx == -1 {
+		t.Fatal("expected read_presentation in revise sequence")
+	}
+	hint := resp.Sequence[readIdx].WhenToCall
+	for _, must := range []string{"Inspection-only", "NOT a PresentationInput"} {
+		if !strings.Contains(hint, must) {
+			t.Errorf("read_presentation when_to_call must contain %q to prevent agents from feeding its output downstream; got: %s", must, hint)
+		}
+	}
+	// Agents are warned in notes that they must supply the deck JSON themselves.
+	noteHit := false
+	for _, n := range resp.Notes {
+		if strings.Contains(n, "authoritative deck JSON") {
+			noteHit = true
+			break
+		}
+	}
+	if !noteHit {
+		t.Error("revise notes must explicitly require the agent to supply the deck JSON")
 	}
 }
