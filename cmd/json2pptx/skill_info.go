@@ -274,8 +274,12 @@ func runSkillInfo() error {
 
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	templateName := fs.String("template", "", "Analyze a single template by name (optional)")
-	mode := fs.String("mode", "compact", "Output mode: list, compact, or full")
-	includeFullSchemas := fs.Bool("include-full-schemas", false, "Include full JSON schemas for all patterns (large; ~39K tokens)")
+	mode := fs.String("mode", "compact", "Output mode: list, compact, or full (full emits patterns_full with JSON schemas; ~39K tokens)")
+	// Deprecated: --mode=full now always includes full pattern schemas. The flag
+	// is accepted for backward compatibility but has no effect; agents should
+	// drop it. Kept here so existing callers don't break with an "unknown flag"
+	// error on upgrade.
+	includeFullSchemas := fs.Bool("include-full-schemas", false, "(Deprecated; --mode=full already includes full pattern schemas)")
 	jsonFlag := fs.Bool("json", true, "Output as JSON (default: true)")
 
 	fs.Usage = func() {
@@ -332,15 +336,14 @@ func runSkillInfo() error {
 		templates = append(templates, info)
 	}
 
-	// Build pattern entries (compact for list/compact mode, full only when explicitly requested)
+	// Build pattern entries. In "full" mode we always emit patterns_full with
+	// full JSON schemas — no silent downgrade. The legacy --include-full-schemas
+	// flag is a deprecated no-op and is intentionally not consulted here.
+	_ = includeFullSchemas
 	var patternsCompact []skillPatternCompact
 	var patternsFull []skillPatternFull
 	if *mode != "list" {
-		effectiveMode := *mode
-		if effectiveMode == "full" && !*includeFullSchemas {
-			effectiveMode = "compact"
-		}
-		patternsCompact, patternsFull = buildPatternEntries(effectiveMode)
+		patternsCompact, patternsFull = buildPatternEntries(*mode)
 	}
 
 	// Build output

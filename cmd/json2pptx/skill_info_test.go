@@ -200,43 +200,21 @@ func TestBuildPatternEntries_FullMode(t *testing.T) {
 	}
 }
 
-func TestBuildPatternEntries_FullModeWithoutFlag_OmitsFull(t *testing.T) {
-	// Simulates the effective-mode logic in runSkillInfo: when mode=full but
-	// includeFullSchemas=false, buildPatternEntries receives "compact".
-	includeFullSchemas := false
-	mode := "full"
-
-	effectiveMode := mode
-	if effectiveMode == "full" && !includeFullSchemas {
-		effectiveMode = "compact"
-	}
-
-	compact, full := buildPatternEntries(effectiveMode)
-	if len(compact) < 8 {
-		t.Fatalf("expected at least 8 compact patterns, got %d", len(compact))
-	}
-	if full != nil {
-		t.Errorf("expected nil patterns_full when includeFullSchemas=false, got %d entries", len(full))
-	}
-}
-
-func TestBuildPatternEntries_FullModeWithFlag_IncludesFull(t *testing.T) {
-	// Simulates the effective-mode logic in runSkillInfo: when mode=full and
-	// includeFullSchemas=true, buildPatternEntries receives "full".
-	includeFullSchemas := true
-	mode := "full"
-
-	effectiveMode := mode
-	if effectiveMode == "full" && !includeFullSchemas {
-		effectiveMode = "compact"
-	}
-
-	compact, full := buildPatternEntries(effectiveMode)
+func TestBuildPatternEntries_FullMode_AlwaysIncludesFullSchemas(t *testing.T) {
+	// Regression: --mode=full must never silently downgrade to compact. The
+	// legacy --include-full-schemas flag is a no-op; mode=full alone must
+	// produce patterns_full with full JSON schemas.
+	compact, full := buildPatternEntries("full")
 	if len(compact) < 8 {
 		t.Fatalf("expected at least 8 compact patterns, got %d", len(compact))
 	}
 	if len(full) < 8 {
-		t.Fatalf("expected at least 8 full patterns when includeFullSchemas=true, got %d", len(full))
+		t.Fatalf("expected at least 8 full patterns in mode=full, got %d", len(full))
+	}
+	for _, f := range full {
+		if len(f.Schema) == 0 {
+			t.Errorf("full entry %q has empty schema in mode=full", f.Name)
+		}
 	}
 }
 
