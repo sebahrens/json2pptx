@@ -93,6 +93,20 @@ type RenderWireframeOptions struct {
 	IncludeSVG bool
 	IncludePNG bool
 	PNGScale   float64 // multiplier passed to SVGBuilder.RenderPNG; defaults to 1.0
+
+	// OverlayOnly, when true, produces a transparent-background overlay
+	// sized exactly to the slide frame (no header strip, footer strip, or
+	// outer margin). The output canvas has the same aspect ratio as
+	// SlideWidth/SlideHeight, so it can be composited 1:1 over a rendered
+	// slide image (e.g. a LibreOffice raster).
+	//
+	// Cell rectangles are tinted by the severity of any attached fit
+	// finding (info=blue, review=amber, shrink_or_split=orange, refuse=red)
+	// using a semi-transparent fill, so the "density bands" of the slide
+	// are immediately visible. Cells without findings are outlined only.
+	// Off-cell findings are summarised as small badges in the top-right
+	// corner since there is no footer strip in this mode.
+	OverlayOnly bool
 }
 
 // RenderWireframe builds an annotated SVG + optional PNG showing the
@@ -111,6 +125,10 @@ func RenderWireframe(req *WireframeRequest, opts RenderWireframeOptions) (*Wiref
 	}
 	if req.SlideWidth <= 0 || req.SlideHeight <= 0 {
 		return nil, fmt.Errorf("wireframe: invalid slide dimensions %v x %v", req.SlideWidth, req.SlideHeight)
+	}
+
+	if opts.OverlayOnly {
+		return renderWireframeOverlay(req, opts)
 	}
 
 	// Default canvas dimensions. The header strip adds a fixed vertical
@@ -416,6 +434,168 @@ func shortAction(action string) string {
 	default:
 		return "FND"
 	}
+}
+
+// renderWireframeOverlay renders a transparent-background overlay sized
+// exactly to the slide frame. Use for compositing on top of a rasterised
+// slide image (e.g. LibreOffice PNG output). See OverlayOnly docs on
+// RenderWireframeOptions for behaviour.
+func renderWireframeOverlay(req *WireframeRequest, opts RenderWireframeOptions) (*WireframeOutput, error) {
+	canvasW := req.OutputWidthPx
+	if canvasW <= 0 {
+		canvasW = 960
+	}
+	aspect := req.SlideHeight / req.SlideWidth
+	canvasH := canvasW * aspect
+
+	b := NewSVGBuilder(canvasW, canvasH)
+
+	// No background fill — leave the canvas transparent so the underlying
+	// raster shows through when composited.
+
+	labelDark := Color{R: 0x1f, G: 0x29, B: 0x37, A: 1.0}
+	cellBorder := Color{R: 0x4b, G: 0x55, B: 0x63, A: 1.0}
+
+	// Scale factor from input units (EMUs) to canvas points. Origin is the
+	// top-left of the slide.
+	sx := canvasW / req.SlideWidth
+	sy := canvasH / req.SlideHeight
+
+	// Index findings by cell so we can both colour-tint the cell and stack
+	// badges on it.
+	cellFindings := map[[2]int][]WireframeFinding{}
+	for _, f := range req.Findings {
+		if !f.HasCell {
+			continue
+		}
+		k := [2]int{f.Row, f.Col}
+		cellFindings[k] = append(cellFindings[k], f)
+	}
+
+	// Cells in deterministic row-major order.
+	cells := append([]WireframeCell(nil), req.Cells...)
+	sort.SliceStable(cells, func(i, j int) bool {
+		if cells[i].Row != cells[j].Row {
+			return cells[i].Row < cells[j].Row
+		}
+		return cells[i].Col < cells[j].Col
+	})
+
+	for _, c := range cells {
+		r := scaleRect(c.Rect, sx, sy, 0, 0)
+		// Density-band tint based on the most severe attached finding.
+		marks := cellFindings[[2]int{c.Row, c.Col}]
+		if tint, ok := overlayCellTint(marks); ok {
+			b.SetFillColor(tint).FillRect(r)
+		}
+		b.SetStrokeColor(cellBorder).SetStrokeWidth(0.75).StrokeRect(r)
+
+		// Row/col tag in the top-left corner for orientation.
+		tag := fmt.Sprintf("r%d,c%d", c.Row, c.Col)
+		if r.W >= 30 && r.H >= 14 {
+			b.SetFontSize(9).SetFontWeight(700).SetTextColor(labelDark).
+				DrawText(tag, r.X+4, r.Y+8, TextAlignLeft, TextBaselineMiddle)
+		}
+
+		if len(marks) > 0 {
+			drawCellFindingBadges(b, r, marks)
+		}
+	}
+
+	// Off-cell findings: stack small badges in the top-right of the canvas
+	// so the overlay still surfaces them.
+	if off := offCellFindings(req.Findings); len(off) > 0 {
+		x := canvasW - 6
+		y := 4.0
+		for _, m := range off {
+			bw := 28.0
+			bh := 12.0
+			bx := x - bw
+			by := y
+			b.SetFillColor(severityColor(m.Action))
+			b.SetStrokeColor(Color{R: 0, G: 0, B: 0, A: 1.0}).SetStrokeWidth(0.25)
+			b.DrawRoundedRect(Rect{X: bx, Y: by, W: bw, H: bh}, 2)
+			b.SetFontSize(8).SetFontWeight(700).
+				SetTextColor(Color{R: 0xff, G: 0xff, B: 0xff, A: 1.0}).
+				DrawText(shortAction(m.Action), bx+bw/2, by+bh/2, TextAlignCenter, TextBaselineMiddle)
+			y += bh + 2
+		}
+	}
+
+	out := &WireframeOutput{
+		Width:  int(math.Round(canvasW * mmToPxFactor * ptToMM)),
+		Height: int(math.Round(canvasH * mmToPxFactor * ptToMM)),
+	}
+	if opts.IncludeSVG {
+		svgBytes, err := b.RenderToBytes()
+		if err != nil {
+			return nil, fmt.Errorf("wireframe: render svg: %w", err)
+		}
+		out.SVG = svgBytes
+	}
+	if opts.IncludePNG {
+		scale := opts.PNGScale
+		if scale <= 0 {
+			scale = 1.0
+		}
+		pngBytes, err := b.RenderPNG(scale)
+		if err != nil {
+			return nil, fmt.Errorf("wireframe: render png: %w", err)
+		}
+		out.PNG = pngBytes
+	}
+	return out, nil
+}
+
+// overlayCellTint returns a semi-transparent severity colour for tinting
+// a cell that has at least one finding, or false if no tint should be
+// applied. The most severe attached finding wins.
+func overlayCellTint(marks []WireframeFinding) (Color, bool) {
+	if len(marks) == 0 {
+		return Color{}, false
+	}
+	worst := worstAction(marks)
+	base := severityColor(worst)
+	base.A = 0.22
+	return base, true
+}
+
+// worstAction picks the most severe action across a set of findings.
+func worstAction(marks []WireframeFinding) string {
+	rank := func(a string) int {
+		switch a {
+		case "refuse":
+			return 4
+		case "shrink_or_split":
+			return 3
+		case "review":
+			return 2
+		case "info":
+			return 1
+		default:
+			return 0
+		}
+	}
+	best := ""
+	bestR := -1
+	for _, m := range marks {
+		if r := rank(m.Action); r > bestR {
+			bestR = r
+			best = m.Action
+		}
+	}
+	return best
+}
+
+// offCellFindings returns findings without an attached cell.
+func offCellFindings(findings []WireframeFinding) []WireframeFinding {
+	out := make([]WireframeFinding, 0, len(findings))
+	for _, f := range findings {
+		if !f.HasCell {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // emuToInch converts English Metric Units to inches (914400 EMU per inch).

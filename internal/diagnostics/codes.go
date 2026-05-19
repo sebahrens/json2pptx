@@ -54,6 +54,7 @@ const (
 	CodeStrictFit              Code = "STRICT_FIT"
 	CodeValidationFailed       Code = "VALIDATION_FAILED"
 	CodeOutputValidationError  Code = "OUTPUT_VALIDATION_ERROR"
+	CodeOverlayFailed          Code = "OVERLAY_FAILED"
 )
 
 // Settings family — template settings operations.
@@ -112,6 +113,7 @@ func AllCodes() []Code {
 		CodeStrictFit,
 		CodeValidationFailed,
 		CodeOutputValidationError,
+		CodeOverlayFailed,
 		// Settings
 		CodeSettingsError,
 		CodeSettingsWriteDisabled,

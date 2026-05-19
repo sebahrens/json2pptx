@@ -4,6 +4,31 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.21.0 (2026-05-19)
+
+### Added
+
+- **`overlay` parameter on `render_slide_image_from_json` / `--overlay`
+  on `render-slide-from-json`** — when true, composites a diagnostic
+  overlay on top of the rendered PNG: `shape_grid` cell rectangles
+  (labelled `r,c`), density-band tints driven by the most severe attached
+  fit finding (`info`=blue, `review`=amber, `shrink_or_split`=orange,
+  `refuse`=red, semi-transparent), and per-cell severity badges
+  (`INF`/`REV`/`SHR`/`REF`). Off-cell findings stack as small badges in
+  the top-right corner.
+
+  The base LibreOffice raster is still produced and cached as before;
+  the overlay is composited on top per call (cheap given the cached
+  base). Slides with no cells and no findings render without the overlay
+  step. Large composites (>200 KB) get written to a stable on-disk path
+  prefixed `json2pptx-slide-overlay-<key>.png`; smaller results return
+  inline as `png_base64`. Errors during overlay generation surface as
+  `OVERLAY_FAILED`.
+
+  Use case: agents iterating on a single slide's design can *see*
+  the diagnostic visually instead of cross-referencing finding JSON
+  pointers against the raster.
+
 ## 4.20.0 (2026-05-19)
 
 ### Added

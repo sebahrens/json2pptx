@@ -115,6 +115,65 @@ func TestRenderWireframe_InvalidInput(t *testing.T) {
 	}
 }
 
+// TestRenderWireframe_OverlayOnly verifies the overlay path emits a
+// transparent-background SVG with no header strip or footer strip, sized
+// to the slide aspect ratio. Cell tags and severity badges still render.
+func TestRenderWireframe_OverlayOnly(t *testing.T) {
+	req := &WireframeRequest{
+		SlideIndex:    0,
+		SlideWidth:    9144000,
+		SlideHeight:   6858000,
+		OutputWidthPx: 800,
+		Cells: []WireframeCell{
+			{Row: 0, Col: 0, Kind: "shape", Rect: WireframeRect{X: 457200, Y: 457200, W: 4114800, H: 2262981}},
+			{Row: 0, Col: 1, Kind: "table", Rect: WireframeRect{X: 4572000, Y: 457200, W: 4114800, H: 2262981}},
+		},
+		Findings: []WireframeFinding{
+			{Code: "TABLE_OVERFLOW", Action: "shrink_or_split", Message: "too dense", HasCell: true, Row: 0, Col: 1},
+			{Code: "DECK_ISSUE", Action: "review", Message: "off-cell"},
+		},
+	}
+	out, err := RenderWireframe(req, RenderWireframeOptions{
+		IncludeSVG:  true,
+		IncludePNG:  true,
+		PNGScale:    1.0,
+		OverlayOnly: true,
+	})
+	if err != nil {
+		t.Fatalf("RenderWireframe overlay error: %v", err)
+	}
+	if len(out.SVG) == 0 {
+		t.Fatalf("expected overlay SVG bytes")
+	}
+	if len(out.PNG) == 0 {
+		t.Fatalf("expected overlay PNG bytes")
+	}
+	img, err := png.Decode(bytes.NewReader(out.PNG))
+	if err != nil {
+		t.Fatalf("invalid overlay PNG: %v", err)
+	}
+	// Aspect ratio of the overlay PNG must equal slide aspect (no header
+	// or footer strips added).
+	pw := img.Bounds().Dx()
+	ph := img.Bounds().Dy()
+	wantAspect := req.SlideWidth / req.SlideHeight
+	gotAspect := float64(pw) / float64(ph)
+	if rel := (gotAspect - wantAspect) / wantAspect; rel > 0.02 || rel < -0.02 {
+		t.Errorf("overlay aspect %.4f differs from slide aspect %.4f", gotAspect, wantAspect)
+	}
+	svg := string(out.SVG)
+	// Header text must NOT appear in overlay mode.
+	if strings.Contains(svg, "Slide 1") {
+		t.Errorf("overlay SVG unexpectedly contains header label 'Slide 1'")
+	}
+	// Cell tags and badge present.
+	for _, want := range []string{"r0,c0", "r0,c1", "SHR"} {
+		if !strings.Contains(svg, want) {
+			t.Errorf("overlay SVG missing %q", want)
+		}
+	}
+}
+
 func truncForLog(s string, n int) string {
 	if len(s) <= n {
 		return s

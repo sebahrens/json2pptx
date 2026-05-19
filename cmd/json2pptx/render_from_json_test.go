@@ -131,6 +131,81 @@ func TestRenderSlideImageFromJSON_OutputSchemaShared(t *testing.T) {
 	}
 }
 
+// TestRenderSlideImageFromJSON_OverlayParamAdvertised verifies the new
+// overlay parameter is exposed on the tool schema so MCP callers know to
+// pass it.
+func TestRenderSlideImageFromJSON_OverlayParamAdvertised(t *testing.T) {
+	tool := mcpRenderSlideImageFromJSONTool()
+	encoded, err := json.Marshal(tool.InputSchema)
+	if err != nil {
+		t.Fatalf("marshal input schema: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"overlay"`) {
+		t.Errorf("expected tool input schema to include 'overlay' property, got: %s", string(encoded))
+	}
+}
+
+// TestBuildOverlayWireframeRequest_ShapeGridCells verifies the overlay
+// wireframe builder resolves shape_grid cells from a slide JSON and
+// surfaces them in the wireframe request that gets sent to svggen.
+func TestBuildOverlayWireframeRequest_ShapeGridCells(t *testing.T) {
+	slideJSON := `{
+		"layout_id": "blank",
+		"shape_grid": {
+			"rows": [
+				{"cells": [
+					{"shape": {"geometry": "rect", "fill": "accent1"}},
+					{"shape": {"geometry": "rect", "fill": "accent2"}}
+				]},
+				{"cells": [
+					{"shape": {"geometry": "rect", "fill": "accent3"}},
+					{"shape": {"geometry": "rect", "fill": "accent4"}}
+				]}
+			]
+		}
+	}`
+	tplPath, cleanup, err := resolveTemplatePath("midnight-blue", "../../templates")
+	if err != nil {
+		t.Skipf("template not available: %v", err)
+	}
+	defer cleanup()
+
+	wf, err := buildOverlayWireframeRequest(slideJSON, "midnight-blue", tplPath, "../../templates", 800)
+	if err != nil {
+		t.Fatalf("buildOverlayWireframeRequest: %v", err)
+	}
+	if wf == nil {
+		t.Fatal("expected wireframe request, got nil — shape_grid cells should produce one")
+	}
+	if len(wf.Cells) != 4 {
+		t.Errorf("expected 4 cells from 2x2 shape_grid, got %d", len(wf.Cells))
+	}
+	if wf.SlideWidth <= 0 || wf.SlideHeight <= 0 {
+		t.Errorf("expected positive slide dimensions, got %vx%v", wf.SlideWidth, wf.SlideHeight)
+	}
+}
+
+// TestBuildOverlayWireframeRequest_NoCellsNoFindings returns nil when
+// the slide has no shape_grid and no findings — callers skip the
+// overlay step rather than rendering an empty PNG.
+func TestBuildOverlayWireframeRequest_NoCellsNoFindings(t *testing.T) {
+	slideJSON := `{"layout_id": "blank", "content": []}`
+	tplPath, cleanup, err := resolveTemplatePath("midnight-blue", "../../templates")
+	if err != nil {
+		t.Skipf("template not available: %v", err)
+	}
+	defer cleanup()
+
+	wf, err := buildOverlayWireframeRequest(slideJSON, "midnight-blue", tplPath, "../../templates", 800)
+	if err != nil {
+		t.Fatalf("buildOverlayWireframeRequest: %v", err)
+	}
+	if wf != nil {
+		t.Errorf("expected nil request for slide with no cells/findings, got cells=%d findings=%d",
+			len(wf.Cells), len(wf.Findings))
+	}
+}
+
 // _ keeps mcpgo referenced even when no other test in this file uses it
 // directly.
 var _ mcpgo.Tool

@@ -6,18 +6,26 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/draw"
+	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/render"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // mcpRenderSlideImageFromJSONTool is the tool-definition constructor.
@@ -45,10 +53,17 @@ Results are cached by (slide JSON content + template content + density) — repe
 		mcp.WithBoolean("force",
 			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),
 		),
+		mcp.WithBoolean("overlay",
+			mcp.Description(`If true, composite a diagnostic overlay on top of the rendered PNG: shape_grid cell rectangles, density-band tints (info=blue, review=amber, shrink_or_split=orange, refuse=red), and fit-finding badges. Lets agents "see" the diagnostic without cross-referencing finding coordinates against the image manually. Default: false.`),
+		),
 	)
 }
 
 // handleRenderSlideImageFromJSON is the MCP handler for render_slide_image_from_json.
+//
+//nolint:gocognit,gocyclo // straight-line param parsing + cache short-circuit +
+// render + optional overlay; each branch returns early. Splitting further would
+// obscure the dependency order between template hashing, cache lookup, and generation.
 func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Required: slide object.
 	slideJSON, paramErr := objectParamAsJSON(request, "slide")
@@ -83,6 +98,14 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		force = v
 	}
 
+	// Optional: overlay. When true, post-process the rendered PNG to
+	// composite shape_grid cell bounds + fit-finding badges on top of the
+	// LibreOffice raster so agents can see the diagnostic visually.
+	overlay := false
+	if v, ok := request.GetArguments()["overlay"].(bool); ok {
+		overlay = v
+	}
+
 	// Resolve the template path so we can hash it for the cache key.
 	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
 	if err != nil {
@@ -104,9 +127,18 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 	jsonCacheKey := hex.EncodeToString(h.Sum(nil))
 
 	// Fast path: if a cached PNG exists for this (json+template+density)
-	// combination, return it without spinning up LibreOffice.
+	// combination, return it without spinning up LibreOffice. When overlay
+	// is requested we still need plan resolution + compositing, so fall
+	// through to the per-call overlay step below using the cached bytes.
 	if !force {
 		if cached := render.LookupCachedSlide(jsonCacheKey, 0, density); cached != nil {
+			if overlay {
+				if applied, applyErr := applyRenderOverlay(cached, slideJSON, templateName, templatePath, mc.templatesDir, jsonCacheKey); applyErr == nil {
+					cached = applied
+				} else {
+					return api.MCPSimpleError("OVERLAY_FAILED", applyErr.Error()), nil
+				}
+			}
 			mcpResult, marshalErr := api.MCPSuccessResult(ctx, cached)
 			if marshalErr != nil {
 				return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", marshalErr)), nil
@@ -183,11 +215,232 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		return api.MCPSimpleError(code, err.Error()), nil
 	}
 
+	if overlay {
+		if applied, applyErr := applyRenderOverlay(img, slideJSON, templateName, templatePath, mc.templatesDir, jsonCacheKey); applyErr == nil {
+			img = applied
+		} else {
+			return api.MCPSimpleError("OVERLAY_FAILED", applyErr.Error()), nil
+		}
+	}
+
 	mcpResult, err := api.MCPSuccessResult(ctx, img)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// applyRenderOverlay composites a wireframe overlay (cell bounds, fit
+// findings, density tints) on top of the raster PNG carried by img. The
+// returned SlideImage shares Index/Width/Height with the input but
+// carries the composited PNG (inline base64 when small enough, otherwise
+// written to a stable path keyed off the cache key). On failure the
+// input is left untouched.
+func applyRenderOverlay(img *render.SlideImage, slideJSON, templateName, templatePath, templatesDir, cacheKey string) (*render.SlideImage, error) {
+	if img == nil {
+		return nil, fmt.Errorf("nil image")
+	}
+
+	basePNG, err := readSlideImageBytes(img)
+	if err != nil {
+		return nil, fmt.Errorf("read base image: %w", err)
+	}
+	baseImg, err := png.Decode(bytes.NewReader(basePNG))
+	if err != nil {
+		return nil, fmt.Errorf("decode base PNG: %w", err)
+	}
+
+	// Resolve the slide plan so we know cell geometry + findings.
+	wfReq, err := buildOverlayWireframeRequest(slideJSON, templateName, templatePath, templatesDir, baseImg.Bounds().Dx())
+	if err != nil {
+		return nil, err
+	}
+	if wfReq == nil {
+		// No cells/findings — nothing to draw. Return original unchanged.
+		return img, nil
+	}
+
+	out, err := svggen.RenderWireframe(wfReq, svggen.RenderWireframeOptions{
+		IncludePNG:  true,
+		PNGScale:    1.0,
+		OverlayOnly: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("render overlay: %w", err)
+	}
+	overlayImg, err := png.Decode(bytes.NewReader(out.PNG))
+	if err != nil {
+		return nil, fmt.Errorf("decode overlay PNG: %w", err)
+	}
+
+	composed := compositeImages(baseImg, overlayImg)
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, composed); err != nil {
+		return nil, fmt.Errorf("encode composite PNG: %w", err)
+	}
+
+	// Mirror the size-based fan-out from render.SlideImage: large
+	// composites get a stable on-disk path, small ones inline as base64.
+	composedBytes := buf.Bytes()
+	result := &render.SlideImage{
+		Index:  img.Index,
+		Width:  baseImg.Bounds().Dx(),
+		Height: baseImg.Bounds().Dy(),
+	}
+	const maxInlineBytes = 200 * 1024
+	if len(composedBytes) > maxInlineBytes {
+		safeKey := cacheKey
+		if len(safeKey) > 16 {
+			safeKey = safeKey[:16]
+		}
+		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-overlay-%s.png", safeKey))
+		if writeErr := os.WriteFile(stablePath, composedBytes, 0644); writeErr != nil {
+			return nil, fmt.Errorf("write composite file: %w", writeErr)
+		}
+		result.Path = stablePath
+	} else {
+		result.PNG64 = base64.StdEncoding.EncodeToString(composedBytes)
+	}
+	return result, nil
+}
+
+// readSlideImageBytes returns the raw PNG bytes for a SlideImage carrying
+// either inline base64 or a file path.
+func readSlideImageBytes(img *render.SlideImage) ([]byte, error) {
+	if img.PNG64 != "" {
+		return base64.StdEncoding.DecodeString(img.PNG64)
+	}
+	if img.Path != "" {
+		return os.ReadFile(img.Path)
+	}
+	return nil, fmt.Errorf("SlideImage has neither PNG64 nor Path")
+}
+
+// compositeImages draws overlay on top of base. When the overlay
+// dimensions match base, stdlib draw.Over does the work. When they
+// differ (rounding between EMU→points→pixels can produce a 1-px
+// mismatch), we resize the overlay to base dimensions via
+// nearest-neighbour and then composite.
+func compositeImages(base, overlay image.Image) *image.RGBA {
+	bounds := base.Bounds()
+	out := image.NewRGBA(bounds)
+	draw.Draw(out, bounds, base, bounds.Min, draw.Src)
+
+	ob := overlay.Bounds()
+	if ob.Dx() == bounds.Dx() && ob.Dy() == bounds.Dy() {
+		draw.Draw(out, bounds, overlay, ob.Min, draw.Over)
+		return out
+	}
+	resized := resizeNearest(overlay, bounds.Dx(), bounds.Dy())
+	draw.Draw(out, bounds, resized, resized.Bounds().Min, draw.Over)
+	return out
+}
+
+// resizeNearest produces an RGBA image of (w,h) by nearest-neighbour
+// sampling from src.
+func resizeNearest(src image.Image, w, h int) *image.RGBA {
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
+	sb := src.Bounds()
+	if sb.Dx() == 0 || sb.Dy() == 0 {
+		return out
+	}
+	for y := 0; y < h; y++ {
+		sy := sb.Min.Y + y*sb.Dy()/h
+		for x := 0; x < w; x++ {
+			sx := sb.Min.X + x*sb.Dx()/w
+			out.Set(x, y, src.At(sx, sy))
+		}
+	}
+	return out
+}
+
+// buildOverlayWireframeRequest resolves the same plan that
+// preview_slide_wireframe would, but for the single-slide presentation
+// implied by render_slide_image_from_json. Returns nil if the slide has
+// no cells and no findings (nothing to overlay).
+func buildOverlayWireframeRequest(slideJSON, templateName, templatePath, templatesDir string, baseWidthPx int) (*svggen.WireframeRequest, error) {
+	var slideObj any
+	if err := json.Unmarshal([]byte(slideJSON), &slideObj); err != nil {
+		return nil, fmt.Errorf("parse slide JSON: %w", err)
+	}
+	presentation := map[string]any{
+		"template": templateName,
+		"slides":   []any{slideObj},
+	}
+	presJSON, err := json.Marshal(presentation)
+	if err != nil {
+		return nil, fmt.Errorf("encode presentation envelope: %w", err)
+	}
+
+	var input PresentationInput
+	if err := strictUnmarshalJSON(presJSON, &input); err != nil {
+		return nil, fmt.Errorf("unmarshal presentation: %w", err)
+	}
+	applyDefaults(&input)
+
+	tctx, err := loadPreviewTemplate(templatePath)
+	if err != nil {
+		return nil, fmt.Errorf("load template: %w", err)
+	}
+	defer func() { _ = tctx.reader.Close() }()
+	_ = templatesDir // reserved for future cross-template overrides
+
+	resolveCanonicalLayoutIDs(input.Slides, tctx.layouts)
+	plan := resolvePreviewSlides(&input, tctx)
+	findings := computePreviewFitFindings(&input, &plan, tctx, true /*verbose*/)
+
+	if len(plan.ResolvedSlides) == 0 {
+		return nil, fmt.Errorf("plan produced no resolved slides")
+	}
+	rs := plan.ResolvedSlides[0]
+
+	// Pick canvas width matching the base raster so the overlay aligns 1:1
+	// when composited. svggen's overlay path emits a canvas equal to the
+	// slide aspect ratio at this width.
+	wf := &svggen.WireframeRequest{
+		SlideIndex:    0,
+		LayoutID:      rs.LayoutID,
+		LayoutName:    rs.LayoutName,
+		SlideType:     rs.SlideType,
+		TemplateName:  input.Template,
+		SlideWidth:    float64(tctx.slideWidth),
+		SlideHeight:   float64(tctx.slideHeight),
+		OutputWidthPx: float64(baseWidthPx),
+	}
+	if rs.Occupancy != nil {
+		wf.Occupancy = &svggen.WireframeOccupancy{
+			FilledPct:   rs.Occupancy.FilledPct,
+			FilledSlots: rs.Occupancy.FilledSlots,
+			TotalSlots:  rs.Occupancy.TotalSlots,
+		}
+	}
+	if rs.ShapeGridResolution != nil {
+		for _, c := range rs.ShapeGridResolution.Cells {
+			wf.Cells = append(wf.Cells, svggen.WireframeCell{
+				Row:  c.Row,
+				Col:  c.Col,
+				Kind: c.Kind,
+				Rect: svggen.WireframeRect{X: float64(c.X), Y: float64(c.Y), W: float64(c.W), H: float64(c.H)},
+			})
+		}
+	}
+	for _, f := range findings {
+		if slidepath.SlideIndex(f.Path) != 0 {
+			continue
+		}
+		wfd := svggen.WireframeFinding{Code: f.Code, Action: f.Action, Message: f.Message}
+		if _, r, c, ok := slidepath.ParseGridCell(f.Path); ok {
+			wfd.HasCell = true
+			wfd.Row = r
+			wfd.Col = c
+		}
+		wf.Findings = append(wf.Findings, wfd)
+	}
+
+	if len(wf.Cells) == 0 && len(wf.Findings) == 0 {
+		return nil, nil
+	}
+	return wf, nil
 }
 
 // extractMCPTextContent pulls the first TextContent block from an MCP

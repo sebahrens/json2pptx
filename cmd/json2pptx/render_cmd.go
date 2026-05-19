@@ -67,6 +67,7 @@ func runRenderSlideFromJSON() error {
 	slidePath := fs.String("slide", "", "Path to a JSON file containing a single slide object (required, or use - for stdin)")
 	density := fs.Int("density", 100, "DPI for rendering (50-300)")
 	force := fs.Bool("force", false, "Bypass render cache")
+	overlay := fs.Bool("overlay", false, "Composite shape_grid cell bounds + fit-finding badges onto the rendered PNG")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-slide-from-json -template <name> -slide <file.json> [options]\n\n")
@@ -115,6 +116,7 @@ func runRenderSlideFromJSON() error {
 		"template": *templateName,
 		"density":  float64(*density),
 		"force":    *force,
+		"overlay":  *overlay,
 	}
 
 	result, err := mc.handleRenderSlideImageFromJSON(context.Background(), mcpRequestWithArgs(args))
