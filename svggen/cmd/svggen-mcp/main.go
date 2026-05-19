@@ -151,7 +151,7 @@ func getDiagramSchemaTool() mcp.Tool {
 
 func getCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_capabilities",
-		mcp.WithDescription("Returns this svggen-mcp server's schema version, the live tool list, registered chart and diagram types, deprecations, and feature flags. Use this once per session to detect contract drift without re-reading SKILL.md. Compare schema_version across sessions — a change means the rendering or validation contract may have shifted."),
+		mcp.WithDescription("Returns this svggen-mcp server's schema version, the live tool list, registered chart and diagram types, per-type chart_capabilities and diagram_capabilities (limits, density behavior, label strategy, required/optional fields — sourced from the svggen package, the single source of truth shared with json2pptx-mcp's get_chart_capabilities/get_diagram_capabilities), deprecations, and feature flags. Use this once per session to detect contract drift without re-reading SKILL.md. Compare schema_version across sessions — a change means the rendering or validation contract may have shifted."),
 	)
 }
 
@@ -1084,6 +1084,16 @@ type capabilitiesResponse struct {
 	ToolList      []capabilitiesToolEntry   `json:"tool_list"`
 	ChartTypes    []string                  `json:"chart_types"`
 	DiagramTypes  []string                  `json:"diagram_types"`
+	// ChartCapabilities and DiagramCapabilities expose per-type limits
+	// (max_series, max_points, max_categories, max_nodes, max_depth),
+	// overflow/density behavior, label strategy, required/optional fields, and
+	// authoring surface. Values come from svggen.ChartCapabilities() and
+	// svggen.DiagramCapabilitiesReady() — the same single source of truth that
+	// backs json2pptx-mcp's get_chart_capabilities / get_diagram_capabilities,
+	// so agents can fetch capability metadata directly from the renderer
+	// without a json2pptx round-trip.
+	ChartCapabilities   []svggen.ChartCapability   `json:"chart_capabilities"`
+	DiagramCapabilities []svggen.DiagramCapability `json:"diagram_capabilities"`
 	// Registry mirrors json2pptx-mcp's registry block. patterns is intentionally
 	// empty because svggen-mcp owns chart/diagram rendering, not pattern
 	// composition — keeping the key present means agents can read the same
@@ -1227,13 +1237,15 @@ func handleGetCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallT
 	chartTypes, diagramTypes := classifyRegisteredTypes()
 
 	resp := capabilitiesResponse{
-		SchemaVersion: svggen.Version,
-		ToolList:      toolCatalog(),
-		ChartTypes:    chartTypes,
-		DiagramTypes:  diagramTypes,
-		Registry:      buildSvggenRegistry(),
-		Vocabularies:  buildSvggenVocabularies(),
-		Deprecations:  []capabilitiesDeprecation{},
+		SchemaVersion:       svggen.Version,
+		ToolList:            toolCatalog(),
+		ChartTypes:          chartTypes,
+		DiagramTypes:        diagramTypes,
+		ChartCapabilities:   svggen.ChartCapabilities(),
+		DiagramCapabilities: svggen.DiagramCapabilitiesReady(),
+		Registry:            buildSvggenRegistry(),
+		Vocabularies:        buildSvggenVocabularies(),
+		Deprecations:        []capabilitiesDeprecation{},
 		Features: capabilitiesFeatures{
 			// render_diagram supports dry_run.
 			DryRender: true,

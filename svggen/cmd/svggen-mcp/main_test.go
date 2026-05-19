@@ -1088,6 +1088,53 @@ func TestGetCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("chart_and_diagram_capabilities_populated", func(t *testing.T) {
+		// chart_capabilities and diagram_capabilities expose the same per-type
+		// metadata that json2pptx-mcp surfaces via get_chart_capabilities /
+		// get_diagram_capabilities. Both must be non-empty and aligned with the
+		// chart_types / diagram_types lists so agents can fetch capability
+		// metadata directly from svggen-mcp without a json2pptx round-trip.
+		if len(resp.ChartCapabilities) == 0 {
+			t.Error("expected non-empty chart_capabilities")
+		}
+		if len(resp.DiagramCapabilities) == 0 {
+			t.Error("expected non-empty diagram_capabilities")
+		}
+		// Sanity-check that the bar chart entry carries the expected limits;
+		// drift in svggen.ChartCapabilities() would fail this assertion early.
+		var foundBar bool
+		for _, c := range resp.ChartCapabilities {
+			if c.Type == "bar" {
+				foundBar = true
+				if c.MaxSeries == nil || *c.MaxSeries <= 0 {
+					t.Errorf("bar chart capability missing max_series, got %+v", c.MaxSeries)
+				}
+				if c.AuthoringSurface == nil || *c.AuthoringSurface != "svggen" {
+					t.Errorf("bar chart authoring_surface = %v, want \"svggen\"", c.AuthoringSurface)
+				}
+			}
+		}
+		if !foundBar {
+			t.Error("expected bar chart in chart_capabilities")
+		}
+		// Sanity-check that the timeline diagram entry is present and ready.
+		var foundTimeline bool
+		for _, d := range resp.DiagramCapabilities {
+			if d.Type == "timeline" {
+				foundTimeline = true
+				if d.Status != "ready" {
+					t.Errorf("timeline diagram status = %q, want \"ready\"", d.Status)
+				}
+				if len(d.RequiredFields) == 0 {
+					t.Error("expected timeline diagram to declare required_fields")
+				}
+			}
+		}
+		if !foundTimeline {
+			t.Error("expected timeline diagram in diagram_capabilities (ready set)")
+		}
+	})
+
 	t.Run("vocabularies_populated", func(t *testing.T) {
 		if len(resp.Vocabularies.FixKinds) == 0 {
 			t.Error("expected non-empty vocabularies.fix_kinds")
