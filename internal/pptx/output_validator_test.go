@@ -308,6 +308,75 @@ func TestOutputValidator_DanglingRel_IsBlocking(t *testing.T) {
 	}
 }
 
+func TestOutputValidator_DuplicateRelID_IsBlocking(t *testing.T) {
+	t.Parallel()
+
+	// Two relationships sharing Id="rId2" — Office shows the repair prompt.
+	files := validPPTXFiles()
+	files["ppt/_rels/presentation.xml.rels"] = `<?xml version="1.0"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+</Relationships>`
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	if report.IsValid() {
+		t.Fatal("expected invalid report for duplicate rId")
+	}
+
+	var found *Finding
+	for i := range report.Blocking() {
+		f := report.Blocking()[i]
+		if f.Code == "OPC_DUPLICATE_REL_ID" && f.Path == "ppt/_rels/presentation.xml.rels" {
+			found = &f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected OPC_DUPLICATE_REL_ID for ppt/_rels/presentation.xml.rels, got: %v", report.Findings)
+	}
+	if !strings.Contains(found.Message, "rId2") {
+		t.Errorf("expected message to name the duplicate id 'rId2', got %q", found.Message)
+	}
+	if found.Severity != SeverityBlocking {
+		t.Errorf("expected blocking severity, got %q", found.Severity)
+	}
+}
+
+func TestOutputValidator_DuplicateRelID_OnePerID(t *testing.T) {
+	t.Parallel()
+
+	// rId2 appears 3 times — expect exactly one finding for that id (not three).
+	files := validPPTXFiles()
+	files["ppt/_rels/presentation.xml.rels"] = `<?xml version="1.0"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+</Relationships>`
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	dupCount := 0
+	for _, f := range report.Blocking() {
+		if f.Code == "OPC_DUPLICATE_REL_ID" {
+			dupCount++
+		}
+	}
+	if dupCount != 1 {
+		t.Errorf("expected exactly 1 OPC_DUPLICATE_REL_ID finding for the repeated id, got %d", dupCount)
+	}
+}
+
 func TestReport_IsValid_EmptyReport(t *testing.T) {
 	t.Parallel()
 	r := &Report{}

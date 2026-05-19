@@ -67,6 +67,7 @@ func (errs ValidationErrors) Error() string {
 const (
 	ErrCodeMissingPart        = "MISSING_PART"
 	ErrCodeDanglingRel        = "DANGLING_REL"
+	ErrCodeDuplicateRelID     = "DUPLICATE_REL_ID"
 	ErrCodeMissingElement     = "MISSING_ELEMENT"
 	ErrCodeMalformedXML       = "MALFORMED_XML"
 	ErrCodeMissingContentType = "MISSING_CONTENT_TYPE"
@@ -195,7 +196,9 @@ func (v *Validator) ValidateAllRelationshipTargets() {
 	}
 }
 
-// ValidateRelationshipTargets checks that all targets in a .rels file exist.
+// ValidateRelationshipTargets checks that all targets in a .rels file exist
+// and that every Id attribute is unique within the .rels file. Duplicate rIds
+// are one of the most common triggers for PowerPoint's repair prompt.
 func (v *Validator) ValidateRelationshipTargets(relsPath string) {
 	data, err := v.pkg.ReadEntry(relsPath)
 	if err != nil {
@@ -205,6 +208,19 @@ func (v *Validator) ValidateRelationshipTargets(relsPath string) {
 	rels, err := ParseRelationships(data)
 	if err != nil {
 		return // Already reported by other validation
+	}
+
+	// Check rId uniqueness using the raw parse slice — ParseRelationships
+	// preserves duplicates in rels.All() even though its byID map dedupes.
+	seen := make(map[string]int, rels.Count())
+	for _, rel := range rels.All() {
+		seen[rel.ID]++
+	}
+	for id, n := range seen {
+		if n > 1 {
+			v.addError(relsPath, ErrCodeDuplicateRelID,
+				fmt.Sprintf("relationship Id %q appears %d times; rIds must be unique within a .rels file", id, n))
+		}
 	}
 
 	// Determine base path for resolving relative targets

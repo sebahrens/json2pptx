@@ -110,6 +110,7 @@ func (r *Report) Warnings() []Finding {
 var opcCodeMap = map[string]string{
 	ErrCodeMissingPart:        "OPC_MISSING_PART",
 	ErrCodeDanglingRel:        "OPC_DANGLING_REL",
+	ErrCodeDuplicateRelID:     "OPC_DUPLICATE_REL_ID",
 	ErrCodeMissingElement:     "OPC_MISSING_ELEMENT",
 	ErrCodeMalformedXML:       "OPC_MALFORMED_XML",
 	ErrCodeMissingContentType: "OPC_MISSING_CONTENT_TYPE",
