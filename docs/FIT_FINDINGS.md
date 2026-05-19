@@ -395,6 +395,24 @@ The chart's data map is empty — the output would be a blank chart placeholder.
 }
 ```
 
+### `CHART_PLACEHOLDER_EMPTY`
+
+**Action:** `review`
+**Pattern:** `chart-insights-split`
+**Fix kind:** — (no auto-fix; agent must supply a chart or swap patterns)
+
+The `chart-insights-split` pattern was expanded without a `chart` spec, so the left chart panel collapses and the insights column renders full-width. Emitted from the pattern's `PostExpandWarnings` hook so it appears in `preview_presentation_plan` and `generate_presentation` fit reports. Use this finding to either (a) supply a chart, or (b) switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`).
+
+```json
+{
+  "pattern": "chart-insights-split",
+  "path": "/slides/2/pattern",
+  "code": "CHART_PLACEHOLDER_EMPTY",
+  "message": "slide 3: chart-insights-split: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel",
+  "action": "review"
+}
+```
+
 ### `fit_overflow`
 
 **Action:** `shrink_or_split` (mapped from internal `unfittable`)

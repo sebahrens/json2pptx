@@ -263,6 +263,45 @@ func composeErrorAsFinding(slideIdx int, err error) *patterns.FitFinding {
 	}
 }
 
+// patternWarningRE matches the leading "<CODE>:" prefix on structured warning
+// strings emitted by Pattern PostExpandWarnings hooks. Capture 1 is the
+// warning code (e.g. CHART_PLACEHOLDER_EMPTY).
+var patternWarningRE = regexp.MustCompile(`^([A-Z_][A-Z0-9_]*):\s*(.*)$`)
+
+// patternWarningAsFinding converts a PostExpandWarnings string emitted by a
+// pattern into a structured FitFinding scoped to the slide's pattern field.
+// Returns nil when the warning does not match the "<CODE>: message" prefix
+// shape used by the post-expand convention.
+func patternWarningAsFinding(slideIdx int, patternName, warning string) *patterns.FitFinding {
+	m := patternWarningRE.FindStringSubmatch(warning)
+	if len(m) != 3 {
+		return nil
+	}
+	code := m[1]
+	body := m[2]
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: patternName,
+			Path:    slidepath.SlideField(slideIdx, "pattern"),
+			Code:    code,
+			Message: fmt.Sprintf("slide %d: %s: %s", slideIdx+1, patternName, body),
+		},
+		Action: patternWarningAction(code),
+	}
+}
+
+// patternWarningAction maps a structured pattern warning code to its
+// recommended fit-finding action. Unknown codes default to "review".
+func patternWarningAction(code string) string {
+	switch code {
+	case patterns.ErrCodeChartPlaceholderEmpty:
+		// The chart panel rendered without a chart spec — actionable, agent
+		// should either provide a chart or switch to an insights-only pattern.
+		return "review"
+	}
+	return "review"
+}
+
 // composeWarningAction maps a structured compose warning code to its
 // recommended fit-finding action. Unknown codes default to "review".
 func composeWarningAction(code string) string {

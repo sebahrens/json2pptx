@@ -182,6 +182,21 @@ type BannerSpec struct {
 }
 
 // ---------------------------------------------------------------------------
+// PostExpandWarner — optional interface for post-expansion fit warnings
+// ---------------------------------------------------------------------------
+
+// PostExpandWarner is an optional interface patterns can implement to emit
+// structured warning strings after expansion (e.g. for a known-degraded state
+// like a chart-insights-split rendered without a chart spec). Warnings are
+// formatted as "<CODE>: <message>" so downstream callers can parse them into
+// FitFindings, mirroring the compose warning convention. expandPattern invokes
+// this hook after Expand() and appends the returned warnings to its warning
+// list.
+type PostExpandWarner interface {
+	PostExpandWarnings(ctx ExpandContext, values, overrides any) []string
+}
+
+// ---------------------------------------------------------------------------
 // InlineMarkdownSupport — optional interface for markdown emphasis in body text
 // ---------------------------------------------------------------------------
 

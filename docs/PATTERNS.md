@@ -291,6 +291,14 @@ type SecondaryChart struct {
 
 When adding the same slot to a new grid-shaped pattern, reuse `SecondaryChartSchema()`, `validateSecondaryChart`, and `wrapCellWithSecondary` rather than duplicating their logic.
 
+## chart-insights-split (data + narrative composite)
+
+The `chart-insights-split` pattern is the canonical "chart on the left, takeaways on the right" consulting layout. The pattern emits a 65/35 column split: the left panel is a `Diagram` cell rendered by svggen; the right panel is a Shape cell with the title (defaults to `Key Insights`) and 1–6 bullet takeaways. A thin vertical accent divider can be toggled via `overrides.show_divider`, and `overrides.chart_width_pct` (clamped 40–80) tunes the column ratio.
+
+`values.chart` is **optional**. When omitted, the pattern collapses to a single-column insights cell at 100% width and emits the structured warning `CHART_PLACEHOLDER_EMPTY: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel` via the `PostExpandWarner` interface. Downstream `preview_presentation_plan` and `generate_presentation` callers convert that warning into a `FitFinding` with `code = "CHART_PLACEHOLDER_EMPTY"` and `action = "review"`. Agents should either supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`).
+
+`values.chart` is a regular `types.DiagramSpec` — pass the same shape used in slide-level diagram content (`type` + `data`, optional `title` / `style`).
+
 ## Bounds Override
 
 Patterns assume `full_content_area` by default — the grid fills the entire layout content area. For patterns with short content this produces oversized cells. Constrain the grid with:

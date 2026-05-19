@@ -44,9 +44,10 @@ const (
 	ErrCodeAccentOverload      = "accent_overload"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
-	ErrCodeChartValueCoerced  = "chart_value_coerced"
-	ErrCodeChartShapeInferred = "chart_shape_inferred"
-	ErrCodeChartDataEmpty     = "chart_data_empty"
+	ErrCodeChartValueCoerced     = "chart_value_coerced"
+	ErrCodeChartShapeInferred    = "chart_shape_inferred"
+	ErrCodeChartDataEmpty        = "chart_data_empty"
+	ErrCodeChartPlaceholderEmpty = "CHART_PLACEHOLDER_EMPTY"
 
 	// Grid visual cell finding codes (emitted for diagram/icon/image grid cells).
 	ErrCodeGridDiagramNarrow     = "grid_diagram_narrow"
@@ -110,9 +111,10 @@ var (
 	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
 	ErrAccentOverload      = errors.New("slide uses more than two distinct accent hues")
 
-	ErrChartValueCoerced  = errors.New("non-numeric chart value coerced to zero")
-	ErrChartShapeInferred = errors.New("chart data shape inferred from flat input")
-	ErrChartDataEmpty     = errors.New("chart data is empty; output will be blank")
+	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
+	ErrChartShapeInferred    = errors.New("chart data shape inferred from flat input")
+	ErrChartDataEmpty        = errors.New("chart data is empty; output will be blank")
+	ErrChartPlaceholderEmpty = errors.New("chart placeholder rendered without chart spec")
 
 	ErrPlaceholderRemapped = errors.New("placeholder remapped to fallback target")
 	ErrTextTrimmed         = errors.New("trailing paragraphs trimmed to fit placeholder")
@@ -168,6 +170,7 @@ var codeSentinel = map[string]error{
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,
+	ErrCodeChartPlaceholderEmpty: ErrChartPlaceholderEmpty,
 	ErrCodePlaceholderRemapped:   ErrPlaceholderRemapped,
 	ErrCodeTextTrimmed:           ErrTextTrimmed,
 	ErrCodeTextOverflow:          ErrTextOverflow,

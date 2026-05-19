@@ -174,8 +174,9 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"roadmap-phased":  true,
 		"phase-roadmap":   true,
 		"arch-stack":      true,
-		"hero-detail":     true,
-		"stylish-panels":  true,
+		"hero-detail":          true,
+		"stylish-panels":       true,
+		"chart-insights-split": true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)

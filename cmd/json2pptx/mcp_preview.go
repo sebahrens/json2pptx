@@ -529,7 +529,13 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 		Name:                slide.Pattern.Name,
 		CellsAfterExpansion: cellCount,
 	}
-	output.Warnings = append(output.Warnings, expandWarnings...)
+	for _, w := range expandWarnings {
+		output.Warnings = append(output.Warnings,
+			fmt.Sprintf("slide %d: %s", i+1, w))
+		if f := patternWarningAsFinding(i, slide.Pattern.Name, w); f != nil {
+			output.composeFindings = append(output.composeFindings, *f)
+		}
+	}
 	slide.ShapeGrid = expanded
 }
 

@@ -178,6 +178,33 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Revenue Trajectory"}
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "bar_chart",
+            "data": {
+              "categories": ["Q1", "Q2", "Q3", "Q4"],
+              "series": [
+                {"name": "Revenue ($M)", "values": [4.2, 5.1, 6.3, 8.1]}
+              ]
+            }
+          },
+          "insights_title": "Key Insights",
+          "insights": [
+            "Revenue grew 93% YoY driven by enterprise expansion.",
+            "Q4 spike reflects the EMEA market launch.",
+            "Pipeline coverage signals continued acceleration in FY26."
+          ],
+          "source": "Source: Internal finance (FY25)"
+        }
+      }
     }
   ]
 }

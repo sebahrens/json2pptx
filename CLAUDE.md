@@ -147,6 +147,7 @@ examples/         # Example JSON input files (19 decks)
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `card-grid` | Parameterized N×M grid of titled cards |
+| `chart-insights-split` | Left chart panel + right insights column (65/35 split); falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison with optional headers |
 | `icon-row` | Horizontal row of icon+caption pairs |
 | `kpi-2up` | Two big-number KPI cards with short captions |

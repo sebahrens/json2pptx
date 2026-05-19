@@ -26,6 +26,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `mixed_fill_scheme` | Slide mixes semantic (`accent1`, `lt2`) and hex fills (hex-fill mix anti-pattern) | `review` | `use_semantic_color` |
 | `accent_overload` | Slide uses more than two distinct accent hues (`accent1`..`accent6`) — pick one base accent and use `cell_accent_mode` for variety | `review` | `consolidate_accents` |
 | `cell_underfilled` | Per-cell: text uses <60% of cell character capacity (density bands: <40% = warning, 40-59% = info) | `review` | `add_detail_or_resize` |
+| `CHART_PLACEHOLDER_EMPTY` | `chart-insights-split` pattern rendered without a `chart` spec — left panel collapses and insights expand to full width. `action: review`. Agent action: supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`) | `review` | — |
 
 ### Density-band severity for cell capacity findings
 

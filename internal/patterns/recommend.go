@@ -465,6 +465,25 @@ var rules = []rule{
 		itemMin:   3,
 		itemMax:   5,
 	},
+
+	// chart-insights-split — chart on the left, narrative bullets on the right
+	{
+		pattern:   "chart-insights-split",
+		keywords:  []string{"chart with insights", "chart and takeaways", "data with narrative", "chart commentary", "data and interpretation", "chart annotated", "chart explained"},
+		baseScore: 0.92,
+		rationale: "Chart paired with 2–6 narrative takeaway bullets on the same slide",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:      "chart-insights-split",
+		keywords:     []string{"insight", "insights", "interpretation", "key takeaways", "commentary", "what this shows"},
+		baseScore:    0.74,
+		rationale:    "chart-insights-split when a chart is paired with narrative takeaways",
+		itemMin:      2,
+		itemMax:      6,
+		needsMetrics: true,
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

@@ -81,5 +81,13 @@
       4,
       4
     ]
+  },
+  {
+    "pattern_name": "chart-insights-split",
+    "row_count": 2,
+    "cell_counts": [
+      2,
+      2
+    ]
   }
 ]

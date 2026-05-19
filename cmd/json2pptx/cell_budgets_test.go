@@ -82,8 +82,12 @@ func TestComputeCellBudgets_AllPatternsAllTemplates(t *testing.T) {
 					if b.DensityPct < 0 {
 						t.Errorf("cell %d: density_pct %d < 0", b.CellIndex, b.DensityPct)
 					}
-					if b.FontSizePt <= 0 {
-						t.Errorf("cell %d: font_size_pt %f <= 0", b.CellIndex, b.FontSizePt)
+					// Non-shape cells (diagrams, images, icons, tables) get
+					// FontSizePt = 0 from textcapacity since they carry no text.
+					// Only enforce a positive font size for cells that have
+					// either capacity (max_chars > 0) or content (actual_chars > 0).
+					if (b.MaxChars > 0 || b.ActualChars > 0) && b.FontSizePt <= 0 {
+						t.Errorf("cell %d: font_size_pt %f <= 0 with max_chars=%d actual_chars=%d", b.CellIndex, b.FontSizePt, b.MaxChars, b.ActualChars)
 					}
 					// Status must be a known value
 					switch textcapacity.Status(b.Status) {

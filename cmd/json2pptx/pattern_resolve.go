@@ -104,12 +104,21 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		grid = appendCalloutRow(grid, p.Callout)
 	}
 
+	// Optional PostExpandWarner interface: patterns can surface structured
+	// warning strings (e.g. CHART_PLACEHOLDER_EMPTY) describing known-degraded
+	// states after a successful expansion. Downstream fit-report consumers
+	// parse the leading "<CODE>: " prefix into FitFindings.
+	var warnings []string
+	if warner, ok := pat.(patterns.PostExpandWarner); ok {
+		warnings = warner.PostExpandWarnings(ctx, values, overrides)
+	}
+
 	slog.Info("pattern expanded",
 		slog.String("pattern", p.Name),
 		slog.Int("version", pat.Version()),
 	)
 
-	return grid, nil, nil
+	return grid, warnings, nil
 }
 
 // appendCalloutRow appends a full-width callout row to the expanded grid.

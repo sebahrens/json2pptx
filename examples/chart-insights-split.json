@@ -1,0 +1,86 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "chart-insights-split.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Chart + Insights"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Showcase of the chart-insights-split pattern"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Revenue Trajectory"}
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "bar_chart",
+            "data": {
+              "categories": ["Q1", "Q2", "Q3", "Q4"],
+              "series": [
+                {"name": "Revenue ($M)", "values": [4.2, 5.1, 6.3, 8.1]}
+              ]
+            }
+          },
+          "insights_title": "Key Insights",
+          "insights": [
+            "Revenue grew 93% YoY driven by enterprise expansion.",
+            "Q4 spike reflects the EMEA market launch.",
+            "Pipeline coverage signals continued acceleration in FY26."
+          ],
+          "source": "Source: Internal finance (FY25)"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Custom Ratio (70/30)"}
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "line_chart",
+            "data": {
+              "categories": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+              "series": [
+                {"name": "DAU", "values": [12, 14, 17, 21, 26, 32]},
+                {"name": "MAU", "values": [120, 132, 148, 165, 184, 205]}
+              ]
+            }
+          },
+          "insights": [
+            "DAU/MAU ratio improved from 10% to 16% in six months.",
+            "Onboarding redesign in March correlates with sustained lift."
+          ]
+        },
+        "overrides": {
+          "chart_width_pct": 70
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Insights-Only Fallback"}
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "insights_title": "Strategic Takeaways",
+          "insights": [
+            "When the chart panel is omitted, the insights column expands to 100% width.",
+            "fit_report surfaces CHART_PLACEHOLDER_EMPTY so the agent can supply a chart or swap patterns.",
+            "Use this only as a deliberate fallback — chart-bearing patterns should ship with a chart."
+          ]
+        }
+      }
+    }
+  ]
+}
