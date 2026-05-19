@@ -491,6 +491,57 @@ func TestValidateDiagramFixKindEnum(t *testing.T) {
 	}
 }
 
+// TestConvertValidationErrorNextToolCall locks the next_tool_call routing for
+// every svggen ValidationError code: shape errors (missing field, wrong type,
+// wrong format) point at get_diagram_schema for schema discovery; constraint
+// errors point at validate_diagram so the agent can re-check after applying a
+// fix. Other codes intentionally omit next_tool_call.
+func TestConvertValidationErrorNextToolCall(t *testing.T) {
+	cases := []struct {
+		name     string
+		code     string
+		wantTool string // empty = expect no next_tool_call
+	}{
+		{name: "required → get_diagram_schema", code: core.ErrCodeRequired, wantTool: "get_diagram_schema"},
+		{name: "invalid_type → get_diagram_schema", code: core.ErrCodeInvalidType, wantTool: "get_diagram_schema"},
+		{name: "invalid_format → get_diagram_schema", code: core.ErrCodeInvalidFormat, wantTool: "get_diagram_schema"},
+		{name: "constraint → validate_diagram", code: core.ErrCodeConstraint, wantTool: "validate_diagram"},
+		{name: "invalid_value → no next_tool_call", code: core.ErrCodeInvalidValue, wantTool: ""},
+		{name: "unknown_field → no next_tool_call", code: core.ErrCodeUnknownField, wantTool: ""},
+		{name: "parse_failed → no next_tool_call", code: core.ErrCodeParseFailed, wantTool: ""},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			d := convertValidationError("bar_chart", core.ValidationError{
+				Code:    c.code,
+				Field:   "data.items",
+				Message: "test",
+			})
+			if c.wantTool == "" {
+				if d.NextToolCall != nil {
+					t.Errorf("expected no next_tool_call, got tool=%q", d.NextToolCall.Tool)
+				}
+				return
+			}
+			if d.NextToolCall == nil {
+				t.Fatalf("expected next_tool_call=%q, got nil", c.wantTool)
+			}
+			if d.NextToolCall.Tool != c.wantTool {
+				t.Errorf("next_tool_call.tool=%q, want %q", d.NextToolCall.Tool, c.wantTool)
+			}
+			if c.wantTool == "validate_diagram" {
+				if got, _ := d.NextToolCall.ArgsTemplate["type"].(string); got != "bar_chart" {
+					t.Errorf("validate_diagram args_template.type=%q, want %q", got, "bar_chart")
+				}
+				if _, ok := d.NextToolCall.ArgsTemplate["data"]; !ok {
+					t.Error("validate_diagram args_template missing data placeholder")
+				}
+			}
+		})
+	}
+}
+
 // TestInferFixCapacityAndLogScale covers the two new fix.kind branches added
 // to align validate_diagram with the SKILL.md chart-finding enum:
 //   - capacity-class constraints  → truncate_or_split

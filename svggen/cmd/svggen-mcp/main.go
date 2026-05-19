@@ -931,14 +931,24 @@ func convertValidationError(diagramType string, ve core.ValidationError) diagnos
 		Details:  map[string]any{"pattern": diagramType},
 	}
 
-	// Attach next_tool_call for structural errors — point the agent at
-	// get_diagram_schema so it can discover the expected shape.
-	if ve.Code == core.ErrCodeRequired || ve.Code == core.ErrCodeInvalidType ||
-		ve.Code == core.ErrCodeInvalidFormat {
+	// Attach next_tool_call so agents can recover without prose-parsing.
+	// Shape errors (missing field, wrong type/format) point at
+	// get_diagram_schema for schema discovery; constraint errors point at
+	// validate_diagram so the agent can re-check after applying the fix.
+	switch ve.Code {
+	case core.ErrCodeRequired, core.ErrCodeInvalidType, core.ErrCodeInvalidFormat:
 		d.NextToolCall = &toolCallSugg{
 			Tool: "get_diagram_schema",
 			ArgsTemplate: map[string]any{
 				"type": diagramType,
+			},
+		}
+	case core.ErrCodeConstraint:
+		d.NextToolCall = &toolCallSugg{
+			Tool: "validate_diagram",
+			ArgsTemplate: map[string]any{
+				"type": diagramType,
+				"data": "<provide corrected data>",
 			},
 		}
 	}
