@@ -382,7 +382,11 @@ Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available ic
 
 | Code | Surface |
 |---|---|
-| `ICON_PATH` | `icon.path` resolution failure (missing file, symlink escape, traversal) |
+| `ICON_NOT_FOUND` | `icon.path` file does not exist after resolution |
+| `ICON_PATH_EXT_INVALID` | `icon.path` extension is not `.svg` |
+| `ICON_PATH_TRAVERSAL` | `icon.path` contains `..` components (rejected pre-clean) |
+| `ICON_PATH_SYMLINK_ESCAPE` | `icon.path` is relative but resolves outside the base directory via a symlink |
+| `ICON_PATH` | Other `icon.path` resolution failures (symlink loop, permission denied, etc.) |
 | `IMAGE_PATH` | `image_value.path` or shape-grid cell `image.path` resolution failure |
 | `BACKGROUND_IMAGE_PATH` | `slide.background.image` resolution failure |
 

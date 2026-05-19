@@ -39,6 +39,10 @@ const (
 	CodeUnknownPattern         Code = "UNKNOWN_PATTERN"
 	CodeUnknownEnum            Code = "UNKNOWN_ENUM"
 	CodeIconPath               Code = "ICON_PATH"
+	CodeIconNotFound           Code = "ICON_NOT_FOUND"
+	CodeIconPathExtInvalid     Code = "ICON_PATH_EXT_INVALID"
+	CodeIconPathTraversal      Code = "ICON_PATH_TRAVERSAL"
+	CodeIconPathSymlinkEscape  Code = "ICON_PATH_SYMLINK_ESCAPE"
 	CodeIconAmbiguous          Code = "ICON_AMBIGUOUS"
 	CodeIconMissing            Code = "ICON_MISSING"
 	CodeIconList               Code = "ICON_LIST"
@@ -106,6 +110,10 @@ func AllCodes() []Code {
 		CodeUnknownPattern,
 		CodeUnknownEnum,
 		CodeIconPath,
+		CodeIconNotFound,
+		CodeIconPathExtInvalid,
+		CodeIconPathTraversal,
+		CodeIconPathSymlinkEscape,
 		CodeIconAmbiguous,
 		CodeIconMissing,
 		CodeIconList,

@@ -1601,7 +1601,7 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 		}
 	})
 
-	t.Run("nonexistent path file is error", func(t *testing.T) {
+	t.Run("nonexistent path file is ICON_NOT_FOUND", func(t *testing.T) {
 		slides := []SlideInput{{
 			ShapeGrid: &ShapeGridInput{
 				Rows: []GridRowInput{{
@@ -1615,11 +1615,95 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 		if len(findings) != 1 {
 			t.Fatalf("expected 1 finding for nonexistent file, got %d", len(findings))
 		}
-		if findings[0].Code != "ICON_PATH" {
-			t.Errorf("expected ICON_PATH, got %s", findings[0].Code)
+		if findings[0].Code != "ICON_NOT_FOUND" {
+			t.Errorf("expected ICON_NOT_FOUND, got %s", findings[0].Code)
 		}
 		if got := findings[0].Details["input_value"]; got != "nonexistent.svg" {
 			t.Errorf("expected input_value to round-trip, got %v", got)
+		}
+	})
+
+	t.Run("non-svg extension is ICON_PATH_EXT_INVALID", func(t *testing.T) {
+		// Even though the file does not exist, the extension check fires
+		// first so the agent gets the most actionable diagnostic.
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{Path: "icon.png"},
+					}},
+				}},
+			},
+		}}
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for non-svg extension, got %d: %+v", len(findings), findings)
+		}
+		if findings[0].Code != "ICON_PATH_EXT_INVALID" {
+			t.Errorf("expected ICON_PATH_EXT_INVALID, got %s", findings[0].Code)
+		}
+		if got := findings[0].Details["input_value"]; got != "icon.png" {
+			t.Errorf("expected input_value to round-trip, got %v", got)
+		}
+	})
+
+	t.Run("traversal in input path is ICON_PATH_TRAVERSAL", func(t *testing.T) {
+		// "../escape.svg" must be rejected before filepath.Clean collapses
+		// the ".." component, since the resolved absolute form would no
+		// longer carry traversal intent.
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{Path: "../escape.svg"},
+					}},
+				}},
+			},
+		}}
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for traversal path, got %d: %+v", len(findings), findings)
+		}
+		if findings[0].Code != "ICON_PATH_TRAVERSAL" {
+			t.Errorf("expected ICON_PATH_TRAVERSAL, got %s", findings[0].Code)
+		}
+	})
+
+	t.Run("symlink escape is ICON_PATH_SYMLINK_ESCAPE", func(t *testing.T) {
+		// A relative path whose symlink chain resolves outside baseDir
+		// should surface as a distinct code so agents know to pin an
+		// absolute path or remove the offending symlink.
+		outside := t.TempDir()
+		outsideSVG := filepath.Join(outside, "outside.svg")
+		if err := os.WriteFile(outsideSVG, []byte(`<svg/>`), 0644); err != nil {
+			t.Fatal(err)
+		}
+		linkInside := filepath.Join(tmpDir, "escape-link.svg")
+		if err := os.Symlink(outsideSVG, linkInside); err != nil {
+			t.Skipf("symlink creation not supported: %v", err)
+		}
+
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{Path: "escape-link.svg"},
+					}},
+				}},
+			},
+		}}
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for symlink escape, got %d: %+v", len(findings), findings)
+		}
+		if findings[0].Code != "ICON_PATH_SYMLINK_ESCAPE" {
+			t.Errorf("expected ICON_PATH_SYMLINK_ESCAPE, got %s", findings[0].Code)
+		}
+		if got := findings[0].Details["input_value"]; got != "escape-link.svg" {
+			t.Errorf("expected input_value to round-trip, got %v", got)
+		}
+		if got := findings[0].Details["resolved_path"]; got == "" || got == nil {
+			t.Errorf("expected resolved_path in details, got %v", got)
 		}
 	})
 
@@ -1691,7 +1775,7 @@ func TestResolveIconPaths_CollectsPerIconFindings(t *testing.T) {
 	}{
 		"/slides/0/shape_grid/rows/0/cells/0/icon":       {code: "ICON_AMBIGUOUS", slideIndex: 0},
 		"/slides/0/shape_grid/rows/1/cells/1/shape/icon": {code: "ICON_MISSING", slideIndex: 0},
-		"/slides/1/shape_grid/rows/0/cells/0/icon":       {code: "ICON_PATH", slideIndex: 1},
+		"/slides/1/shape_grid/rows/0/cells/0/icon":       {code: "ICON_NOT_FOUND", slideIndex: 1},
 	}
 	seen := make(map[string]bool)
 	for _, d := range findings {
@@ -1898,7 +1982,7 @@ func TestResolveLocalAssetPaths_PerSurfaceFindings(t *testing.T) {
 	}
 
 	want := map[string]string{
-		"/slides/0/shape_grid/rows/0/cells/0/icon":       "ICON_PATH",
+		"/slides/0/shape_grid/rows/0/cells/0/icon":       "ICON_NOT_FOUND",
 		"/slides/0/content/0/image_value/path":           "IMAGE_PATH",
 		"/slides/0/shape_grid/rows/0/cells/1/image/path": "IMAGE_PATH",
 		"/slides/0/background/image":                     "BACKGROUND_IMAGE_PATH",

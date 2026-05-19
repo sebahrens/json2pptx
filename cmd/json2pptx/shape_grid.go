@@ -1127,7 +1127,7 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 	// disk I/O so the failure is deterministic and the remediation obvious.
 	if ext := strings.ToLower(filepath.Ext(icon.Path)); ext != ".svg" {
 		return []diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeIconPath,
+			Code:     diagnostics.CodeIconPathExtInvalid,
 			Message:  fmt.Sprintf("icon path %q: unsupported extension %q (icons must be .svg)", icon.Path, ext),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
@@ -1140,34 +1140,13 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 		}}
 	}
 
-	// Resolve relative path against baseDir
-	p := filepath.FromSlash(icon.Path)
-	if !filepath.IsAbs(p) {
-		p = filepath.Join(baseDir, p)
-	}
-	p = filepath.Clean(p)
-
-	// Evaluate symlinks for security
-	resolved, err := filepath.EvalSymlinks(p)
-	if err != nil {
+	// Pre-Clean traversal check: catch ".." components in the original input
+	// before filepath.Clean collapses them. ValidatePath on the resolved path
+	// (post-Clean+EvalSymlinks) cannot detect "../../etc/passwd"-style intent
+	// because the absolute resolved form has no ".." components left.
+	if err := utils.ValidatePath(filepath.FromSlash(icon.Path), nil); err != nil {
 		return []diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeIconPath,
-			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
-			Path:     jsonPath,
-			Severity: diagnostics.SeverityError,
-			Details: map[string]any{
-				"slide_index": slideIdx,
-				"asset_kind":  "icon",
-				"input_value": icon.Path,
-				"remediation": "verify the file exists; switch to a bundled icon via 'name' or supply 'svg_data'",
-			},
-		}}
-	}
-
-	// Validate against path traversal
-	if err := utils.ValidatePath(resolved, nil); err != nil {
-		return []diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeIconPath,
+			Code:     diagnostics.CodeIconPathTraversal,
 			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
@@ -1178,6 +1157,71 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 				"remediation": "use a path that does not escape the base directory",
 			},
 		}}
+	}
+
+	// Resolve relative path against baseDir
+	p := filepath.FromSlash(icon.Path)
+	wasRelative := !filepath.IsAbs(p)
+	if wasRelative {
+		p = filepath.Join(baseDir, p)
+	}
+	p = filepath.Clean(p)
+
+	// Evaluate symlinks for security
+	resolved, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		code := diagnostics.CodeIconPath
+		remediation := "verify the file exists; switch to a bundled icon via 'name' or supply 'svg_data'"
+		if os.IsNotExist(err) {
+			code = diagnostics.CodeIconNotFound
+		}
+		return []diagnostics.Diagnostic{{
+			Code:     code,
+			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  "icon",
+				"input_value": icon.Path,
+				"remediation": remediation,
+			},
+		}}
+	}
+
+	// Symlink escape: when the input was relative, the resolved path must stay
+	// inside the absolute baseDir. A symlink that points outside baseDir lets
+	// an agent read or attach arbitrary files via a relative-looking path.
+	//
+	// Both sides need symlink resolution before comparison. On macOS, /var is
+	// itself a symlink to /private/var, so a baseDir under /var would otherwise
+	// falsely flag every legitimate file beneath it.
+	if wasRelative && baseDir != "" {
+		absBase, absErr := filepath.Abs(filepath.Clean(baseDir))
+		if absErr == nil {
+			// EvalSymlinks may fail if baseDir doesn't exist; fall back to the
+			// abs form so we still get a sensible comparison.
+			realBase, realErr := filepath.EvalSymlinks(absBase)
+			if realErr != nil {
+				realBase = absBase
+			}
+			rel, relErr := filepath.Rel(realBase, resolved)
+			if relErr != nil || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." {
+				return []diagnostics.Diagnostic{{
+					Code:     diagnostics.CodeIconPathSymlinkEscape,
+					Message:  fmt.Sprintf("icon path %q: resolves outside base directory via symlink", icon.Path),
+					Path:     jsonPath,
+					Severity: diagnostics.SeverityError,
+					Details: map[string]any{
+						"slide_index":   slideIdx,
+						"asset_kind":    "icon",
+						"input_value":   icon.Path,
+						"resolved_path": resolved,
+						"remediation":   "supply an absolute path explicitly or remove the symlink chain that escapes the base directory",
+					},
+				}}
+			}
+		}
 	}
 
 	// Update the path to the resolved absolute path

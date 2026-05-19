@@ -84,6 +84,11 @@ Emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and 
 | Code | When emitted |
 |------|-------------|
 | `ICON_BUNDLED_NAME_UNKNOWN` | `icon.name` does not resolve in the bundled icon registry. Emitted by `validate_input` and `generate_presentation` preflight so agents can fix typos and missing `filled:` prefixes without burning a generate cycle. `severity: error`. `details: {input_value, suggestions: ["chart-pie", ...], slide_index, remediation}`. Path targets the icon node, e.g. `/slides/0/shape_grid/rows/0/cells/0/icon`. `suggestions[0]` is the highest-ranked Levenshtein match (or qualified cross-set form when the bare base name only resolves in a non-default set). Agent action: replace `icon.name` with the suggested value, or call `list_icons` to discover the canonical `qualified_name` |
+| `ICON_NOT_FOUND` | `icon.path` does not point at an existing file after resolution against the JSON input directory (CLI) or server CWD (MCP). `severity: error`. `details: {input_value, asset_kind: "icon", slide_index, remediation}`. Agent action: verify the file path is correct, switch to a bundled icon via `name`, or supply inline `svg_data` |
+| `ICON_PATH_EXT_INVALID` | `icon.path` extension is not `.svg`. Icons must be SVG so they can be re-tinted; raster images should use `image_value` or shape-grid `image` cells. `severity: error`. `details: {input_value, asset_kind: "icon", slide_index, remediation}` |
+| `ICON_PATH_TRAVERSAL` | `icon.path` contains `..` components. Rejected before `filepath.Clean` collapses them, so agents can't escape the base directory via a constructed relative path. `severity: error`. `details: {input_value, asset_kind: "icon", slide_index, remediation}` |
+| `ICON_PATH_SYMLINK_ESCAPE` | `icon.path` is relative and its symlink chain resolves outside the base directory. `severity: error`. `details: {input_value, resolved_path, asset_kind: "icon", slide_index, remediation}`. Agent action: pin an absolute path explicitly, or remove the offending symlink |
+| `ICON_PATH` | Other `icon.path` resolution failures not covered by the more specific codes above (symlink loop, permission denied, etc.). `severity: error`. `details: {input_value, asset_kind: "icon", slide_index, remediation}` |
 
 ### Action semantics (shared with chart codes)
 

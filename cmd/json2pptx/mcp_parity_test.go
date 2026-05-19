@@ -261,7 +261,7 @@ func TestMCPValidateAssetPathsAllSurfaces(t *testing.T) {
 	want := map[string]string{
 		"/slides/0/background/image":                     "BACKGROUND_IMAGE_PATH",
 		"/slides/0/content/0/image_value/path":           "IMAGE_PATH",
-		"/slides/0/shape_grid/rows/0/cells/0/icon":       "ICON_PATH",
+		"/slides/0/shape_grid/rows/0/cells/0/icon":       "ICON_NOT_FOUND",
 		"/slides/0/shape_grid/rows/0/cells/1/image/path": "IMAGE_PATH",
 	}
 	got := make(map[string]string, len(want))
@@ -276,6 +276,82 @@ func TestMCPValidateAssetPathsAllSurfaces(t *testing.T) {
 		if got[path] != code {
 			t.Errorf("path %q: expected %s, got %q (full envelope: %s)", path, code, got[path], text)
 		}
+	}
+}
+
+// TestMCPValidateIconPathCodes verifies that validate_input emits the
+// structured per-failure codes for icon.path issues (extension, missing
+// file, traversal) so agents can repair each broken icon without burning a
+// generate call.
+func TestMCPValidateIconPathCodes(t *testing.T) {
+	mc := testMCPConfig(t)
+
+	cases := []struct {
+		name     string
+		path     string
+		wantCode string
+	}{
+		{name: "non-svg extension", path: "icon.png", wantCode: "ICON_PATH_EXT_INVALID"},
+		{name: "missing file", path: "tigj-truly-missing.svg", wantCode: "ICON_NOT_FOUND"},
+		{name: "traversal in input", path: "../escape.svg", wantCode: "ICON_PATH_TRAVERSAL"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			deckJSON := fmt.Sprintf(`{
+				"template": "midnight-blue",
+				"slides": [{
+					"layout_id": "slideLayout2",
+					"shape_grid": {
+						"rows": [{
+							"cells": [{"icon": {"path": %q}}]
+						}]
+					}
+				}]
+			}`, tc.path)
+
+			result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+				"presentation": mustParseJSON(deckJSON),
+			}))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !result.IsError {
+				t.Fatalf("expected IsError=true for %s, got success: %v", tc.name, result.Content)
+			}
+
+			text := result.Content[0].(mcp.TextContent).Text
+			var envelope struct {
+				Diagnostics []map[string]any `json:"diagnostics"`
+			}
+			if err := json.Unmarshal([]byte(text), &envelope); err != nil {
+				t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
+			}
+
+			var found map[string]any
+			for _, d := range envelope.Diagnostics {
+				if d["code"] == tc.wantCode {
+					found = d
+					break
+				}
+			}
+			if found == nil {
+				t.Fatalf("expected %s diagnostic, got: %s", tc.wantCode, text)
+			}
+			if path, _ := found["path"].(string); path != "/slides/0/shape_grid/rows/0/cells/0/icon" {
+				t.Errorf("expected json_path '/slides/0/shape_grid/rows/0/cells/0/icon', got %q", path)
+			}
+			details, _ := found["details"].(map[string]any)
+			if details == nil {
+				t.Fatalf("expected details map, got %v", found)
+			}
+			if details["input_value"] != tc.path {
+				t.Errorf("expected input_value %q, got %v", tc.path, details["input_value"])
+			}
+			if details["asset_kind"] != "icon" {
+				t.Errorf("expected asset_kind 'icon', got %v", details["asset_kind"])
+			}
+		})
 	}
 }
 
