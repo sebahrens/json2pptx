@@ -18,7 +18,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "bottom"
+              "vertical_align": "ctr"
             },
             "icon": {
               "name": "rocket",
@@ -41,7 +41,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "bottom"
+              "vertical_align": "ctr"
             },
             "icon": {
               "name": "trending-up",
@@ -64,7 +64,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "bottom"
+              "vertical_align": "ctr"
             },
             "icon": {
               "name": "currency-dollar",

@@ -142,6 +142,64 @@ func TestResolveTextInput_Object(t *testing.T) {
 	}
 }
 
+// TestResolveTextInput_VerticalAlignDefaultCenter is a regression test for
+// go-slide-creator-hjgz: bar/box text in shape grid cells must default to
+// vertical-anchor=center, so colored bars (numbered takeaways, before-after
+// headers, KPI cells) don't render with empty space below the text.
+func TestResolveTextInput_VerticalAlignDefaultCenter(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+	}{
+		{"string shorthand", `"Header"`},
+		{"object no vAlign", `{"content":"Header","size":14,"bold":true}`},
+		{"paragraphs no vAlign", `{"paragraphs":[{"content":"A","size":12}]}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tb, err := ResolveTextInput(json.RawMessage(tc.raw))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tb.Anchor != "ctr" {
+				t.Errorf("expected anchor=ctr by default, got %q", tb.Anchor)
+			}
+		})
+	}
+}
+
+// TestResolveTextInput_VerticalAlignNormalization verifies verbose anchor
+// names ("top"/"center"/"middle"/"bottom") are mapped to OOXML codes.
+// PowerPoint silently falls back to top alignment for unknown anchor
+// strings, which caused the icon-row caption regression (anchor="bottom"
+// rendered as top-aligned).
+func TestResolveTextInput_VerticalAlignNormalization(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{"top", "t"},
+		{"center", "ctr"},
+		{"middle", "ctr"},
+		{"bottom", "b"},
+		{"ctr", "ctr"},
+		{"t", "t"},
+		{"b", "b"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			raw := json.RawMessage(`{"content":"x","vertical_align":"` + tc.input + `"}`)
+			tb, err := ResolveTextInput(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tb.Anchor != tc.expected {
+				t.Errorf("vertical_align=%q: expected anchor=%q, got %q", tc.input, tc.expected, tb.Anchor)
+			}
+		})
+	}
+}
+
 func TestGenerateShapeXML_AllPhase1Geometries(t *testing.T) {
 	geometries := []string{
 		"rect", "roundRect", "ellipse", "diamond", "triangle",

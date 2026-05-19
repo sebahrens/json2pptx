@@ -304,7 +304,7 @@ func buildIconRowCaptionOnly(caption string, captionSize float64) json.RawMessag
 			{Content: caption, Size: captionSize, Color: "lt1", Align: "ctr"},
 		},
 		Align:         "ctr",
-		VerticalAlign: "bottom",
+		VerticalAlign: "ctr",
 	}
 
 	data, _ := json.Marshal(textObj)

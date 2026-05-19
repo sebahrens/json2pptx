@@ -307,12 +307,31 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 		obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom), nil
 }
 
+// normalizeVerticalAlign maps verbose anchor names ("top","center","middle",
+// "bottom") to canonical OOXML attribute values ("t","ctr","b"). PowerPoint
+// silently falls back to top alignment for unknown anchor strings, which
+// produces conspicuous empty space under text in colored bars/boxes. Empty
+// input is preserved so callers can apply their own default.
+func normalizeVerticalAlign(v string) string {
+	switch strings.ToLower(v) {
+	case "top":
+		return "t"
+	case "center", "middle":
+		return "ctr"
+	case "bottom":
+		return "b"
+	default:
+		return v
+	}
+}
+
 // buildTextBody creates a TextBody with wrapping text.
 func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAlign, color, font string,
 	insetL, insetT, insetR, insetB float64) *pptx.TextBody {
 	if align == "" {
 		align = "ctr"
 	}
+	vAlign = normalizeVerticalAlign(vAlign)
 	if vAlign == "" {
 		vAlign = "ctr"
 	}
@@ -378,6 +397,7 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 	if defaultAlign == "" {
 		defaultAlign = "ctr"
 	}
+	vAlign = normalizeVerticalAlign(vAlign)
 	if vAlign == "" {
 		vAlign = "ctr"
 	}
@@ -522,7 +542,7 @@ func GenerateImageTextXML(spec *ImageText, id uint32, bounds pptx.RectEmu) ([]by
 	if align == "" {
 		align = "ctr"
 	}
-	vAlign := spec.VerticalAlign
+	vAlign := normalizeVerticalAlign(spec.VerticalAlign)
 	if vAlign == "" {
 		vAlign = "b"
 	}
