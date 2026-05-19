@@ -336,6 +336,79 @@ func TestBMCCanvas(t *testing.T) {
 		}
 	})
 
+	// Regression: bmc-canvas cell headers must be preserved verbatim through
+	// Expand — no spurious whitespace or character insertion (go-slide-creator-fh8r).
+	// A bug report described "KEY PARTNERS" rendering as "KEY PART NERS"; this
+	// test pins the contract that the expand pipeline never mutates header text.
+	t.Run("headers_preserved_verbatim", func(t *testing.T) {
+		vals := BMCCanvasValues{
+			KeyPartners:       BMCCell{Header: "KEY PARTNERS", Bullets: []string{"Cloud providers"}},
+			KeyActivities:     BMCCell{Header: "KEY ACTIVITIES", Bullets: []string{"Platform development"}},
+			KeyResources:      BMCCell{Header: "KEY RESOURCES", Bullets: []string{"Engineering team"}},
+			ValuePropositions: BMCCell{Header: "VALUE PROPOSITIONS", Bullets: []string{"Real-time analytics"}},
+			CustomerRelations: BMCCell{Header: "CUSTOMER RELATIONSHIPS", Bullets: []string{"Self-service portal"}},
+			Channels:          BMCCell{Header: "CHANNELS", Bullets: []string{"Direct sales team"}},
+			CustomerSegments:  BMCCell{Header: "CUSTOMER SEGMENTS", Bullets: []string{"SMB"}},
+			CostStructure:     BMCCell{Header: "COST STRUCTURE", Bullets: []string{"Cloud infrastructure"}},
+			RevenueStreams:    BMCCell{Header: "REVENUE STREAMS", Bullets: []string{"SaaS subscriptions"}},
+		}
+		grid, err := (&bmcCanvas{}).Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+
+		// Collect every header we wrote into the input.
+		wantHeaders := []string{
+			"KEY PARTNERS", "KEY ACTIVITIES", "KEY RESOURCES",
+			"VALUE PROPOSITIONS", "CUSTOMER RELATIONSHIPS", "CHANNELS",
+			"CUSTOMER SEGMENTS", "COST STRUCTURE", "REVENUE STREAMS",
+		}
+		found := make(map[string]bool, len(wantHeaders))
+
+		for ri, row := range grid.Rows {
+			for ci, c := range row.Cells {
+				if c.Shape == nil || len(c.Shape.Text) == 0 {
+					continue
+				}
+				var textObj struct {
+					Paragraphs []struct {
+						Content string `json:"content"`
+						Bold    bool   `json:"bold"`
+					} `json:"paragraphs"`
+				}
+				if err := json.Unmarshal(c.Shape.Text, &textObj); err != nil {
+					t.Fatalf("row[%d].cells[%d] text unmarshal: %v", ri, ci, err)
+				}
+				if len(textObj.Paragraphs) == 0 {
+					t.Fatalf("row[%d].cells[%d] has no paragraphs", ri, ci)
+				}
+				header := textObj.Paragraphs[0].Content
+				if !textObj.Paragraphs[0].Bold {
+					t.Errorf("row[%d].cells[%d] header %q must be bold", ri, ci, header)
+				}
+				// Guard against any whitespace mutation inside a header
+				// (e.g. "KEY PARTNERS" → "KEY PART NERS"). A single internal
+				// space (between words) is allowed; consecutive spaces or
+				// any other whitespace is not.
+				if strings.Contains(header, "  ") {
+					t.Errorf("row[%d].cells[%d] header has spurious double space: %q", ri, ci, header)
+				}
+				for _, r := range header {
+					if r == '\t' || r == '\n' || r == '\r' || r == '\v' || r == '\f' {
+						t.Errorf("row[%d].cells[%d] header has unexpected whitespace rune %U in %q", ri, ci, r, header)
+					}
+				}
+				found[header] = true
+			}
+		}
+
+		for _, h := range wantHeaders {
+			if !found[h] {
+				t.Errorf("expected header %q to appear verbatim in expanded grid", h)
+			}
+		}
+	})
+
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := defaultBMCValues()

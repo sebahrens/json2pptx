@@ -81,6 +81,34 @@ func TestParseBulletText_UnicodeBulletPrefix(t *testing.T) {
 	}
 }
 
+// TestParseBulletText_NoSpuriousWhitespace is a regression guard for
+// go-slide-creator-fh8r: a bug report claimed "KEY PARTNERS" became
+// "KEY PART NERS" through the renderer. The OOXML the renderer emits is
+// driven by ParseBulletText, so any spurious whitespace insertion in this
+// path would surface as a header artifact in shape_grid / bmc-canvas cells.
+func TestParseBulletText_NoSpuriousWhitespace(t *testing.T) {
+	inputs := []string{
+		"KEY PARTNERS",
+		"KEY ACTIVITIES",
+		"CUSTOMER RELATIONSHIPS",
+		"BUSINESS MODEL CANVAS",
+		"REVENUE STREAMS",
+	}
+	for _, in := range inputs {
+		paras := ParseBulletText(in, BulletTextOptions{FontSize: 1200, InlineTags: true, DetectNumbered: true})
+		if len(paras) != 1 {
+			t.Fatalf("input %q: expected 1 paragraph, got %d", in, len(paras))
+		}
+		if len(paras[0].Runs) != 1 {
+			t.Fatalf("input %q: expected 1 run, got %d", in, len(paras[0].Runs))
+		}
+		got := paras[0].Runs[0].Text
+		if got != in {
+			t.Errorf("input %q: ParseBulletText mutated text → %q", in, got)
+		}
+	}
+}
+
 func TestParseBulletText_NumberedDisabledByDefault(t *testing.T) {
 	paras := ParseBulletText("1. Item one", BulletTextOptions{FontSize: 1400})
 	if len(paras) != 1 {
