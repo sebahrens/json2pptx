@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Profit Bridge (Waterfall Chart)"
+          "text_value": "Profit Bridge"
         },
         {
           "placeholder_id": "body",
@@ -48,7 +48,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Team Competency Assessment (Radar Chart)"
+          "text_value": "Team Competency Assessment"
         },
         {
           "placeholder_id": "body",
@@ -74,7 +74,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Customer Satisfaction (Gauge Chart)"
+          "text_value": "Customer Satisfaction"
         },
         {
           "placeholder_id": "body",
@@ -97,7 +97,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Revenue by Segment (Treemap)"
+          "text_value": "Revenue by Segment"
         },
         {
           "placeholder_id": "body",
@@ -122,7 +122,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Quarterly Comparison (Stacked Bar)"
+          "text_value": "Quarterly Comparison"
         },
         {
           "placeholder_id": "body",

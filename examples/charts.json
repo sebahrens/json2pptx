@@ -23,7 +23,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Quarterly Revenue (Bar Chart)"
+          "text_value": "Quarterly Revenue"
         },
         {
           "placeholder_id": "body",
@@ -48,7 +48,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Monthly Active Users (Line Chart)"
+          "text_value": "Monthly Active Users"
         },
         {
           "placeholder_id": "body",
@@ -74,7 +74,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Market Share Distribution (Pie Chart)"
+          "text_value": "Market Share Distribution"
         },
         {
           "placeholder_id": "body",
@@ -99,7 +99,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Budget Allocation (Donut Chart)"
+          "text_value": "Budget Allocation"
         },
         {
           "placeholder_id": "body",
@@ -124,7 +124,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Regional Performance (Area Chart)"
+          "text_value": "Regional Performance"
         },
         {
           "placeholder_id": "body",
@@ -149,7 +149,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Sales Funnel (Funnel Chart)"
+          "text_value": "Sales Funnel"
         },
         {
           "placeholder_id": "body",
