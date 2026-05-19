@@ -234,9 +234,13 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 
 	// Validate content items.
 	for i, slide := range input.Slides {
-		if slide.LayoutID == "" {
+		// layout_id and slide_type are alternatives: layout_id pins a specific
+		// template layout, while slide_type is a hint for auto-selection. The
+		// generator accepts either (with auto-selection picking a layout when
+		// only slide_type is provided), so the validator should mirror that.
+		if slide.LayoutID == "" && slide.SlideType == "" {
 			result.Valid = false
-			result.Errors = append(result.Errors, fmt.Sprintf("slide %d: layout_id is required", i+1))
+			result.Errors = append(result.Errors, fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1))
 		}
 		for j, item := range slide.Content {
 			if item.PlaceholderID == "" {

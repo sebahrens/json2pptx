@@ -565,3 +565,67 @@ func TestResolveCanonicalLayoutIDs_ValidationConsistency(t *testing.T) {
 		t.Errorf("expected no errors, got: %v", output.Errors)
 	}
 }
+
+// TestValidateSlidesAgainstTemplate_SlideTypeAlternativeToLayoutID is a
+// regression test for go-slide-creator-p13e. validateSlidesAgainstTemplate
+// previously errored when layout_id was empty, even if slide_type was
+// provided as an auto-selection hint. The generator accepts slide_type and
+// auto-selects a layout, so the validator must do the same.
+func TestValidateSlidesAgainstTemplate_SlideTypeAlternativeToLayoutID(t *testing.T) {
+	analysis := &types.TemplateAnalysis{
+		Layouts: []types.LayoutMetadata{
+			{
+				ID:   "content-slide",
+				Name: "Content Slide",
+				Placeholders: []types.PlaceholderInfo{
+					{ID: "title", Type: types.PlaceholderTitle},
+				},
+			},
+		},
+	}
+
+	t.Run("slide_type only is accepted", func(t *testing.T) {
+		output := dryRunOutput{Valid: true}
+		slides := []SlideInput{
+			{
+				SlideType: "title",
+				Content: []ContentInput{
+					{PlaceholderID: "title", Type: "text", Value: json.RawMessage(`"Hello"`)},
+				},
+			},
+		}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		for _, e := range output.Errors {
+			if strings.Contains(e, "layout_id is required") || strings.Contains(e, "layout_id or slide_type is required") {
+				t.Errorf("unexpected layout/slide_type error: %s", e)
+			}
+		}
+	})
+
+	t.Run("neither layout_id nor slide_type errors", func(t *testing.T) {
+		output := dryRunOutput{Valid: true}
+		slides := []SlideInput{
+			{
+				Content: []ContentInput{
+					{PlaceholderID: "title", Type: "text", Value: json.RawMessage(`"Hello"`)},
+				},
+			},
+		}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		if output.Valid {
+			t.Error("expected invalid when both layout_id and slide_type are missing")
+		}
+		found := false
+		for _, e := range output.Errors {
+			if strings.Contains(e, "layout_id or slide_type is required") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected 'layout_id or slide_type is required' error, got: %v", output.Errors)
+		}
+	})
+}

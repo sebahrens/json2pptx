@@ -315,12 +315,16 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			Placeholders: []dryRunPlaceholder{},
 		}
 
-		// Check layout_id reference
+		// Check layout_id reference. layout_id and slide_type are alternatives:
+		// the generator auto-selects a layout when only slide_type is provided,
+		// so the validator only errors when BOTH are missing.
 		lm, layoutFound := layoutByID[slideInput.LayoutID]
 		if slideInput.LayoutID == "" {
-			output.Valid = false
-			output.Errors = append(output.Errors,
-				fmt.Sprintf("slide %d: layout_id is required", i+1))
+			if slideInput.SlideType == "" {
+				output.Valid = false
+				output.Errors = append(output.Errors,
+					fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1))
+			}
 		} else if !layoutFound {
 			output.Valid = false
 			path := slidepath.SlideField(i, "layout_id")
