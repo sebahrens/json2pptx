@@ -118,13 +118,14 @@ var opcCodeMap = map[string]string{
 
 // ooxmlCodeMap maps OOXML ValidationError codes to stable OOXML_ prefixed codes.
 var ooxmlCodeMap = map[string]string{
-	ErrCodeInvalidColor:   "OOXML_INVALID_COLOR",
-	ErrCodeInvalidScheme:  "OOXML_INVALID_SCHEME",
-	ErrCodeDuplicateID:    "OOXML_DUPLICATE_ID",
-	ErrCodeInvalidTable:   "OOXML_INVALID_TABLE",
-	ErrCodeZeroExtent:     "OOXML_ZERO_EXTENT",
-	ErrCodeIllegalXMLChar: "OOXML_ILLEGAL_XML_CHAR",
-	ErrCodeSlideMismatch:  "OOXML_SLIDE_COUNT_MISMATCH",
+	ErrCodeInvalidColor:      "OOXML_INVALID_COLOR",
+	ErrCodeInvalidScheme:     "OOXML_INVALID_SCHEME",
+	ErrCodeDuplicateID:       "OOXML_DUPLICATE_ID",
+	ErrCodeInvalidTable:      "OOXML_INVALID_TABLE",
+	ErrCodeZeroExtent:        "OOXML_ZERO_EXTENT",
+	ErrCodeIllegalXMLChar:    "OOXML_ILLEGAL_XML_CHAR",
+	ErrCodeSlideMismatch:     "OOXML_SLIDE_COUNT_MISMATCH",
+	ErrCodeEmptyRequiredAttr: "OOXML_EMPTY_REQUIRED_ATTR",
 }
 
 // blockingOOXMLCodes holds OOXML finding codes that indicate structural

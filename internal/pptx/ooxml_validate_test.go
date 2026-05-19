@@ -339,6 +339,251 @@ func TestOOXMLValidator_SlideCountMismatch(t *testing.T) {
 	}
 }
 
+func TestOOXMLValidator_EmptySchemeClrVal(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:spTree>
+    <p:sp><p:nvSpPr><p:cNvPr id="1" name="Title"/></p:nvSpPr>
+      <p:spPr><a:solidFill><a:schemeClr val=""/></a:solidFill></p:spPr>
+    </p:sp>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for empty schemeClr val")
+	}
+
+	var found bool
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr {
+			found = true
+		}
+		if e.Code == ErrCodeInvalidScheme {
+			t.Errorf("empty val should not also emit INVALID_SCHEME: %v", e)
+		}
+	}
+	if !found {
+		t.Errorf("expected EMPTY_REQUIRED_ATTR error, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_EmptySrgbClrVal(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:spTree>
+    <p:sp><p:nvSpPr><p:cNvPr id="1" name="Title"/></p:nvSpPr>
+      <p:spPr><a:solidFill><a:srgbClr val=""/></a:solidFill></p:spPr>
+    </p:sp>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for empty srgbClr val")
+	}
+
+	var found bool
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr {
+			found = true
+		}
+		if e.Code == ErrCodeInvalidColor {
+			t.Errorf("empty val should not also emit INVALID_COLOR: %v", e)
+		}
+	}
+	if !found {
+		t.Errorf("expected EMPTY_REQUIRED_ATTR error, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_EmptyBlipEmbed(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree>
+    <p:pic><p:nvPicPr><p:cNvPr id="1" name="Image"/></p:nvPicPr>
+      <p:blipFill><a:blip r:embed=""/></p:blipFill>
+      <p:spPr/>
+    </p:pic>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for empty blip r:embed")
+	}
+
+	found := false
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr && strings.Contains(e.Message, "r:embed") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected EMPTY_REQUIRED_ATTR for r:embed, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_EmptyCNvPrID(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:spTree>
+    <p:sp><p:nvSpPr><p:cNvPr id="" name="Bad"/></p:nvSpPr><p:spPr/></p:sp>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for empty cNvPr id")
+	}
+
+	found := false
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr && strings.Contains(e.Message, "cNvPr") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected EMPTY_REQUIRED_ATTR for cNvPr id, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_BlipFillSelfClosing_MissingBlip(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:spTree>
+    <p:pic><p:nvPicPr><p:cNvPr id="1" name="Image"/></p:nvPicPr>
+      <p:blipFill/>
+      <p:spPr/>
+    </p:pic>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for self-closing blipFill")
+	}
+
+	found := false
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr && strings.Contains(e.Message, "blipFill") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected EMPTY_REQUIRED_ATTR for blipFill, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_BlipFillEmptyBody_MissingBlip(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:spTree>
+    <p:pic><p:nvPicPr><p:cNvPr id="1" name="Image"/></p:nvPicPr>
+      <p:blipFill><a:srcRect/></p:blipFill>
+      <p:spPr/>
+    </p:pic>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	if err := v.Validate(); err == nil {
+		t.Fatal("expected validation error for blipFill without blip child")
+	}
+
+	found := false
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr && strings.Contains(e.Message, "missing required child") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected EMPTY_REQUIRED_ATTR for missing <a:blip>, got: %v", v.Errors())
+	}
+}
+
+func TestOOXMLValidator_BlipFillWithBlip_NoFalsePositive(t *testing.T) {
+	data := createValidatorTestZIP(map[string]string{
+		"[Content_Types].xml": `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>`,
+		"ppt/slides/slide1.xml": `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree>
+    <p:pic><p:nvPicPr><p:cNvPr id="1" name="Image"/></p:nvPicPr>
+      <p:blipFill><a:blip r:embed="rId7"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+      <p:spPr/>
+    </p:pic>
+  </p:spTree></p:cSld>
+</p:sld>`,
+	})
+
+	v, err := NewOOXMLValidator(data)
+	if err != nil {
+		t.Fatalf("NewOOXMLValidator: %v", err)
+	}
+
+	_ = v.Validate()
+	for _, e := range v.Errors() {
+		if e.Code == ErrCodeEmptyRequiredAttr {
+			t.Errorf("false positive: valid blipFill with blip flagged as empty: %v", e)
+		}
+	}
+}
+
 func TestOOXMLValidator_SlideCountMatch_NoError(t *testing.T) {
 	slideXML := `<?xml version="1.0"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree/></p:cSld></p:sld>`
 	data := createValidatorTestZIP(map[string]string{
