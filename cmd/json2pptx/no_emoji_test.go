@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -167,6 +169,38 @@ func TestValidateNoEmojiInText_DiagnosticConversion(t *testing.T) {
 	}
 	if diags[0].Fix == nil || diags[0].Fix.Kind != "remove_emoji" {
 		t.Errorf("fix should be remove_emoji, got %+v", diags[0].Fix)
+	}
+}
+
+// TestValidateNoEmojiInText_ExampleDecksAreClean is a regression guard for
+// go-slide-creator-2f8c. It loads the example decks that previously embedded
+// emoji codepoints (which fell through to text rendering and produced
+// mixed-style icon rows) and asserts the no-emoji validator finds nothing.
+// If a future edit re-introduces emoji into these decks, this test fails
+// loudly before the example ships.
+func TestValidateNoEmojiInText_ExampleDecksAreClean(t *testing.T) {
+	decks := []string{
+		"patterns-smoke.json",
+		"varied-pitch-deck.json",
+		"sovereign-ai-strategy.json",
+	}
+	for _, name := range decks {
+		t.Run(name, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join("..", "..", "examples", name))
+			if err != nil {
+				t.Fatalf("read %s: %v", name, err)
+			}
+			var input PresentationInput
+			if err := json.Unmarshal(data, &input); err != nil {
+				t.Fatalf("unmarshal %s: %v", name, err)
+			}
+			findings := ValidateNoEmojiInText(&input)
+			if len(findings) != 0 {
+				for _, f := range findings {
+					t.Errorf("%s: %s — %s", name, f.Path, f.Message)
+				}
+			}
+		})
 	}
 }
 
