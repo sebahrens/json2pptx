@@ -38,32 +38,39 @@ func validateDesignMode(input *PresentationInput) []patterns.FitFinding {
 	}
 
 	var findings []patterns.FitFinding
+	for i := range input.Slides {
+		findings = append(findings, validateSlideDesignMode(&input.Slides[i], i+1)...)
+	}
+	return findings
+}
 
-	for i, slide := range input.Slides {
-		slideNum := i + 1
+// validateSlideDesignMode returns constrained-mode violations for a single slide.
+// The caller is responsible for checking that the deck is in constrained mode;
+// this function always inspects the slide regardless of deck mode.
+func validateSlideDesignMode(slide *SlideInput, slideNum int) []patterns.FitFinding {
+	var findings []patterns.FitFinding
 
-		// Check shape_grid cells
-		if slide.ShapeGrid != nil {
-			findings = append(findings, checkShapeGrid(slide.ShapeGrid, slideNum)...)
+	// Check shape_grid cells
+	if slide.ShapeGrid != nil {
+		findings = append(findings, checkShapeGrid(slide.ShapeGrid, slideNum)...)
+	}
+
+	// Check pattern overrides (patterns expand to shape grids, but the
+	// override fields are user-specified and can contain raw colors).
+	if slide.Pattern != nil {
+		findings = append(findings, checkPatternInput(slide.Pattern, slideNum)...)
+	}
+
+	// Check compose segments for pattern overrides.
+	if slide.Compose != nil {
+		for _, seg := range slide.Compose.Segments {
+			findings = append(findings, checkPatternInput(&seg.Pattern, slideNum)...)
 		}
+	}
 
-		// Check pattern overrides (patterns expand to shape grids, but the
-		// override fields are user-specified and can contain raw colors).
-		if slide.Pattern != nil {
-			findings = append(findings, checkPatternInput(slide.Pattern, slideNum)...)
-		}
-
-		// Check compose segments for pattern overrides.
-		if slide.Compose != nil {
-			for _, seg := range slide.Compose.Segments {
-				findings = append(findings, checkPatternInput(&seg.Pattern, slideNum)...)
-			}
-		}
-
-		// Check content items (chart/diagram colors)
-		for j, ci := range slide.Content {
-			findings = append(findings, checkContentInput(&ci, slideNum, j+1)...)
-		}
+	// Check content items (chart/diagram colors)
+	for j, ci := range slide.Content {
+		findings = append(findings, checkContentInput(&ci, slideNum, j+1)...)
 	}
 
 	return findings

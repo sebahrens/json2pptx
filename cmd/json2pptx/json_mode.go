@@ -335,22 +335,44 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	inputWarnings = append(inputWarnings, structureWarnings...)
 
 	// Enforce design mode constraints — reject raw hex colors and absolute font sizes.
-	if violations := validateDesignMode(input); len(violations) > 0 {
-		msgs := make([]string, 0, len(violations))
-		for _, v := range violations {
-			msg := v.Message
-			if v.Fix != nil {
-				if text, ok := v.Fix.Params["message"].(string); ok {
-				msg += " — fix: " + text
+	// In partial mode, drop slides that have violations and emit per-slide warnings
+	// instead of aborting the entire run.
+	if effectiveDesignMode(input) == designModeConstrained {
+		if partial {
+			kept := make([]SlideInput, 0, len(input.Slides))
+			for i := range input.Slides {
+				slideNum := i + 1
+				violations := validateSlideDesignMode(&input.Slides[i], slideNum)
+				if len(violations) == 0 {
+					kept = append(kept, input.Slides[i])
+					continue
+				}
+				msgs := make([]string, 0, len(violations))
+				for _, v := range violations {
+					msgs = append(msgs, v.Message)
+				}
+				inputWarnings = append(inputWarnings, fmt.Sprintf(
+					"slide %d: skipped (partial mode): design_mode violation(s): %s",
+					slideNum, strings.Join(msgs, "; ")))
 			}
+			input.Slides = kept
+		} else if violations := validateDesignMode(input); len(violations) > 0 {
+			msgs := make([]string, 0, len(violations))
+			for _, v := range violations {
+				msg := v.Message
+				if v.Fix != nil {
+					if text, ok := v.Fix.Params["message"].(string); ok {
+						msg += " — fix: " + text
+					}
+				}
+				msgs = append(msgs, msg)
 			}
-			msgs = append(msgs, msg)
+			return writeJSONError(jsonOutputPath, fmt.Errorf(
+				"design_mode %q violation(s):\n  %s\n\n"+
+					"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
+					"or set \"design_mode\": \"free\" in the JSON input.",
+				effectiveDesignMode(input), strings.Join(msgs, "\n  ")))
 		}
-		return writeJSONError(jsonOutputPath, fmt.Errorf(
-			"design_mode %q violation(s):\n  %s\n\n"+
-				"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
-				"or set \"design_mode\": \"free\" in the JSON input.",
-			effectiveDesignMode(input), strings.Join(msgs, "\n  ")))
 	}
 
 	// Run text-fit checking when --strict-fit is warn or strict.

@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -276,6 +278,131 @@ func TestParseJSONInput_DesignModeOverride(t *testing.T) {
 	}
 	if input.DesignMode != "free" {
 		t.Errorf("expected design_mode override 'free', got %q", input.DesignMode)
+	}
+}
+
+// TestValidateSlideDesignMode_SingleSlide verifies that the per-slide helper
+// inspects only the slide passed in (and is independent of deck-level mode,
+// since the caller is expected to gate on effectiveDesignMode).
+func TestValidateSlideDesignMode_SingleSlide(t *testing.T) {
+	slide := SlideInput{
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{
+				{Cells: []*GridCellInput{
+					{Shape: &ShapeSpecInput{
+						Geometry: "roundRect",
+						Fill:     json.RawMessage(`"#FF0000"`),
+					}},
+				}},
+			},
+		},
+	}
+
+	findings := validateSlideDesignMode(&slide, 7)
+	if len(findings) == 0 {
+		t.Fatal("expected violation for raw hex fill, got none")
+	}
+	if !strings.Contains(findings[0].Message, "slide 7") {
+		t.Errorf("expected message to reference slide 7, got %q", findings[0].Message)
+	}
+}
+
+// TestRunJSONMode_PartialSkipsDesignModeViolations verifies the bug fix:
+// --partial mode should skip slides with constrained-mode violations (raw hex
+// colors / absolute font sizes) and warn, rather than aborting the whole deck.
+func TestRunJSONMode_PartialSkipsDesignModeViolations(t *testing.T) {
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "deck.json")
+	outputJSON := filepath.Join(tmpDir, "result.json")
+	templatesDir := filepath.Join("..", "..", "templates")
+
+	// Two slides: slide 1 has a raw hex fill (violation), slide 2 is clean.
+	input := `{
+		"template": "midnight-blue",
+		"output_filename": "out.pptx",
+		"slides": [
+			{
+				"layout_id": "title",
+				"shape_grid": {
+					"rows": [
+						{"cells": [{"shape": {"geometry": "rect", "fill": "#FF0000"}}]}
+					]
+				}
+			},
+			{
+				"layout_id": "title",
+				"content": [
+					{"placeholder_id": "title", "type": "text", "text_value": "Clean Slide"}
+				]
+			}
+		]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	// partial=true: must succeed, skip slide 1, generate slide 2
+	err := runJSONMode(jsonPath, outputJSON, templatesDir, tmpDir, "", false, false, "", "off", true, "off", "")
+	if err != nil {
+		t.Fatalf("runJSONMode (partial=true): unexpected error: %v", err)
+	}
+
+	resultBytes, err := os.ReadFile(outputJSON)
+	if err != nil {
+		t.Fatalf("read result JSON: %v", err)
+	}
+	var result JSONOutput
+	if err := json.Unmarshal(resultBytes, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if !result.Success {
+		t.Fatalf("expected success=true in partial mode, got error=%q", result.Error)
+	}
+
+	// Verify a per-slide warning about the skipped slide was emitted.
+	foundWarning := false
+	for _, w := range result.Warnings {
+		if strings.Contains(w, "slide 1") && strings.Contains(w, "skipped (partial mode)") && strings.Contains(w, "design_mode") {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Errorf("expected warning about slide 1 being skipped in partial mode for design_mode violation, got warnings: %v", result.Warnings)
+	}
+}
+
+// TestRunJSONMode_NoPartialAbortsOnDesignModeViolation verifies that without
+// --partial, a constrained-mode violation still aborts the deck (existing
+// behavior preserved).
+func TestRunJSONMode_NoPartialAbortsOnDesignModeViolation(t *testing.T) {
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "deck.json")
+	outputJSON := filepath.Join(tmpDir, "result.json")
+	templatesDir := filepath.Join("..", "..", "templates")
+
+	input := `{
+		"template": "midnight-blue",
+		"output_filename": "out.pptx",
+		"slides": [
+			{
+				"layout_id": "title",
+				"shape_grid": {
+					"rows": [
+						{"cells": [{"shape": {"geometry": "rect", "fill": "#FF0000"}}]}
+					]
+				}
+			}
+		]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	// partial=false: must return error.
+	err := runJSONMode(jsonPath, outputJSON, templatesDir, tmpDir, "", false, false, "", "off", false, "off", "")
+	if err == nil {
+		t.Fatal("expected runJSONMode to return error without --partial on design_mode violation")
 	}
 }
 
