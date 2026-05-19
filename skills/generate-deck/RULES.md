@@ -31,6 +31,8 @@ Do not invent font sizes. When generating `shape_grid` JSON, use these consisten
 
 Always set text insets (6-12pt) on body cells. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
 
+The numeric ranges above are the published surface of the canonical design tokens in [`internal/tokens/tokens.go`](../../internal/tokens/tokens.go) (`GridHeader*`, `CardTitle*`, `CardBody*`, `StepNumber*`, `Footnote*`). A regression test (`internal/tokens/tokens_test.go`) verifies this table stays in sync with the constants — if you change one, change the other in the same PR.
+
 ## Charts
 
 | # | Rule | Rationale |

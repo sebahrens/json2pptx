@@ -2,6 +2,7 @@ package generator
 
 import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // Takeaway position constants (in EMUs).
@@ -15,9 +16,13 @@ const (
 	takeawayOffsetY  = 6200000  // ~0.45 inch above the source note row
 	takeawayExtentCX = 11277600 // ~12.4 inches wide (matches source note row)
 	takeawayExtentCY = 360000   // ~28pt — accommodates a 12pt bold line + padding
-	takeawayFontSize = 1200     // 12pt in hundredths of a point
 	takeawayShapeID  = 998      // High ID to avoid conflicts; one less than source note
 )
+
+// takeawayFontSize is the takeaway font size in hundredths of a point.
+// Sourced from the tokens package so the rendered takeaway tracks the
+// CardTitle typography role published in skills/generate-deck/RULES.md.
+var takeawayFontSize = tokens.CardTitleMinHPt // 12pt
 
 // generateTakeawayShape creates a p:sp element for slide takeaway text.
 // The shape sits in the lower content band with bold, dark-gray text.
@@ -41,7 +46,7 @@ func generateTakeawayShape(takeawayText string) string {
 					FontSize: takeawayFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SolidFill("1F1F1F"),
+					Color:    pptx.SolidFill(tokens.TakeawayColor[1:]),
 				}},
 			}},
 		},

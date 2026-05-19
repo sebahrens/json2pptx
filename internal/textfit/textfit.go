@@ -11,6 +11,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 	"github.com/tdewolff/canvas"
@@ -109,7 +110,7 @@ func Calculate(p Params) (FitResult, error) {
 
 	// Apply defaults
 	if p.FontSizeHPt <= 0 {
-		p.FontSizeHPt = 2000 // 20pt, matching typical slide master body level 1
+		p.FontSizeHPt = tokens.BodyDefaultHPt // matches typical slide master body level 1 (20pt)
 	}
 	if p.FontName == "" {
 		p.FontName = "Arial"
@@ -302,7 +303,7 @@ func MeasureHeight(p Params) (int64, error) {
 	}
 
 	if p.FontSizeHPt <= 0 {
-		p.FontSizeHPt = 2000
+		p.FontSizeHPt = tokens.BodyDefaultHPt
 	}
 	if p.FontName == "" {
 		p.FontName = "Arial"
