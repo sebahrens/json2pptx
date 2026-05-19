@@ -576,3 +576,111 @@ func TestProposeRepairs_IconFindingsHandledAsUnmapped(t *testing.T) {
 		}
 	}
 }
+
+// TestProposeRepairs_ToolCallRoundTripsToRepairSlide verifies the contract bug
+// fix: emitted directive tool_calls and per-slide batch_tool_calls must carry
+// a `presentation` arg so an agent can submit them verbatim to repair_slide.
+// Without this, repair_slide rejects every emitted call with
+// MISSING_PARAMETER "presentation is required".
+func TestProposeRepairs_ToolCallRoundTripsToRepairSlide(t *testing.T) {
+	mc := proposeMC(t)
+
+	deck := minimalDeck(
+		map[string]any{
+			"placeholder_id": "title",
+			"type":           "text",
+			"text_value":     "A reasonably long title that should be shortened by the repair tool",
+		},
+	)
+
+	findings := []any{
+		map[string]any{
+			"path":    "/slides/0/content/title",
+			"code":    "TEXT_OVERFLOW",
+			"message": "title overflows allowed extent",
+			"action":  "shrink_or_split",
+			"fix": map[string]any{
+				"kind":   "shorten_title",
+				"params": map[string]any{"max_length": float64(30)},
+			},
+		},
+	}
+
+	result, err := mc.handleProposeRepairs(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"findings":     findings,
+	}))
+	if err != nil {
+		t.Fatalf("propose_repairs unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("propose_repairs tool error: %s", textContent(result))
+	}
+
+	var out proposeRepairsOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &out); err != nil {
+		t.Fatalf("unmarshal proposeRepairs: %v", err)
+	}
+	if len(out.Slides) != 1 || len(out.Slides[0].Directives) == 0 {
+		t.Fatalf("expected at least one directive, got %+v", out.Slides)
+	}
+
+	directive := out.Slides[0].Directives[0]
+	if directive.ToolCall == nil {
+		t.Fatal("expected directive.ToolCall to be populated")
+	}
+
+	// Assert the per-directive tool_call carries presentation, slide_index, fixes.
+	directiveArgs := directive.ToolCall.ArgsTemplate
+	if _, ok := directiveArgs["presentation"].(map[string]any); !ok {
+		t.Fatalf("directive.ToolCall.ArgsTemplate missing presentation object; got keys=%v", argKeys(directiveArgs))
+	}
+	if _, ok := directiveArgs["slide_index"]; !ok {
+		t.Errorf("directive.ToolCall.ArgsTemplate missing slide_index")
+	}
+	if _, ok := directiveArgs["fixes"].([]any); !ok {
+		t.Errorf("directive.ToolCall.ArgsTemplate missing fixes array")
+	}
+
+	// Round-trip: feed the directive's tool_call args directly into
+	// handleRepairSlide and confirm it succeeds (no MISSING_PARAMETER).
+	repairResult, err := mc.handleRepairSlide(context.Background(), makeRequest(directiveArgs))
+	if err != nil {
+		t.Fatalf("repair_slide round-trip unexpected error: %v", err)
+	}
+	if repairResult.IsError {
+		t.Fatalf("repair_slide rejected propose_repairs tool_call: %s", textContent(repairResult))
+	}
+	var repairOut repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(repairResult)), &repairOut); err != nil {
+		t.Fatalf("unmarshal repair_slide: %v", err)
+	}
+	if len(repairOut.AppliedFixes) == 0 || !repairOut.AppliedFixes[0].Applied {
+		t.Errorf("expected shorten_title to be applied by repair_slide, got %+v", repairOut.AppliedFixes)
+	}
+
+	// Assert the batch_tool_call also carries presentation, then round-trip it.
+	batch := out.Slides[0].BatchToolCall
+	if batch == nil {
+		t.Fatal("expected batch_tool_call to be populated")
+	}
+	if _, ok := batch.ArgsTemplate["presentation"].(map[string]any); !ok {
+		t.Fatalf("batch_tool_call.ArgsTemplate missing presentation object; got keys=%v", argKeys(batch.ArgsTemplate))
+	}
+	batchResult, err := mc.handleRepairSlide(context.Background(), makeRequest(batch.ArgsTemplate))
+	if err != nil {
+		t.Fatalf("repair_slide batch round-trip unexpected error: %v", err)
+	}
+	if batchResult.IsError {
+		t.Fatalf("repair_slide rejected batch_tool_call: %s", textContent(batchResult))
+	}
+}
+
+func argKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}

@@ -209,8 +209,20 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 
 // proposeRepairs is the pure-function core: given a parsed deck and a list of
 // findings, return ranked directives grouped by slide. No I/O, no mutation.
+//
+// Each emitted tool_call (per-directive and per-slide batch) embeds the
+// full presentation in its args_template so the call is directly submittable
+// to repair_slide — without this slot the agent gets MISSING_PARAMETER.
 func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) proposeRepairsOutput {
 	slideCount := len(input.Slides)
+
+	// Marshal the presentation once into a generic map so each emitted
+	// tool_call / batch_tool_call can carry the full repair_slide argument
+	// payload (presentation + slide_index + fixes). Without this slot, agents
+	// that submit the tool_call verbatim get rejected by repair_slide with
+	// MISSING_PARAMETER "presentation is required" — the contract bug this
+	// function exists to prevent.
+	presentationObj := presentationAsMap(input)
 
 	// Bucket directives by slide index; track unmapped findings separately.
 	type bucketEntry struct {
@@ -263,7 +275,7 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 				Message:  f.Description,
 			}
 			for ci, cand := range candidates {
-				dir := buildDirective(cand.Kind, cand.Params, slideIdx, source, score-ci /* preserve candidate order within a finding */)
+				dir := buildDirective(cand.Kind, cand.Params, slideIdx, source, presentationObj, score-ci /* preserve candidate order within a finding */)
 				buckets[slideIdx] = append(buckets[slideIdx], bucketEntry{directive: dir, score: score - ci})
 			}
 			continue
@@ -319,7 +331,7 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 			Path:     f.Path,
 			Message:  f.Message,
 		}
-		dir := buildDirective(fix.Kind, cloneParams(fix.Params), slideIdx, source, score)
+		dir := buildDirective(fix.Kind, cloneParams(fix.Params), slideIdx, source, presentationObj, score)
 		buckets[slideIdx] = append(buckets[slideIdx], bucketEntry{directive: dir, score: score})
 	}
 
@@ -352,8 +364,9 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 		batch := &batchRepairToolCall{
 			Tool: "repair_slide",
 			ArgsTemplate: map[string]any{
-				"slide_index": slideIdx,
-				"fixes":       batchFixes,
+				"presentation": presentationObj,
+				"slide_index":  slideIdx,
+				"fixes":        batchFixes,
 			},
 		}
 
@@ -554,7 +567,10 @@ func cloneParams(src map[string]any) map[string]any {
 }
 
 // buildDirective wires up a proposedDirective with its repair_slide tool call.
-func buildDirective(kind string, params map[string]any, slideIdx int, source directiveSource, _ int) proposedDirective {
+// The presentation map is embedded directly so the args_template is a complete
+// repair_slide invocation — agents can submit it without having to thread the
+// deck through manually.
+func buildDirective(kind string, params map[string]any, slideIdx int, source directiveSource, presentation map[string]any, _ int) proposedDirective {
 	fixObj := map[string]any{"kind": kind}
 	if len(params) > 0 {
 		fixObj["params"] = params
@@ -566,11 +582,31 @@ func buildDirective(kind string, params map[string]any, slideIdx int, source dir
 		ToolCall: &patterns.ToolCallSuggestion{
 			Tool: "repair_slide",
 			ArgsTemplate: map[string]any{
-				"slide_index": slideIdx,
-				"fixes":       []any{fixObj},
+				"presentation": presentation,
+				"slide_index":  slideIdx,
+				"fixes":        []any{fixObj},
 			},
 		},
 	}
+}
+
+// presentationAsMap converts a parsed PresentationInput back into a generic
+// map[string]any so it can be embedded inside repair_slide tool_call args.
+// Returns an empty map on marshal failure (which is impossible in practice
+// for a valid PresentationInput) so callers don't have to nil-check.
+func presentationAsMap(input *PresentationInput) map[string]any {
+	if input == nil {
+		return map[string]any{}
+	}
+	data, err := json.Marshal(input)
+	if err != nil {
+		return map[string]any{}
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return map[string]any{}
+	}
+	return m
 }
 
 // extractProposeFindings reads the "findings" array argument and decodes it
