@@ -180,7 +180,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`, `bounds_source`). Pass `theme_template` (MCP) or `--template` (CLI) for template-aware layout bounds. | `expand_pattern` | `json2pptx patterns expand` |
 | **Batch-expand N patterns against the agent's content under a single template load.** Returns each candidate's full expansion + `cell_budgets[]` + `capacity_warnings[]` + `layout_suggestions[]`. Use after `recommend_pattern` to compare candidates head-to-head. | `expand_patterns` | (MCP-only; CLI users loop `json2pptx patterns expand`) |
 | Analyze deck rhythm — pattern runs, density variation, accent balance, composition score (lightweight, pre-generation) | `analyze_deck_rhythm` | `json2pptx analyze-rhythm` |
-| Table density reference (TDR) — font size + row-count guidance per template/style | `table_density_guide` | `json2pptx tables guide` |
+| Table density reference (TDR) — font size + row-count guidance per template/style. CLI `--json` emits the same envelope as the MCP tool (use `--template` / `--style-id` to scope). | `table_density_guide` | `json2pptx tables guide [--json] [--template <name>] [--style-id <id>]` |
 | Icon catalog | `list_icons` | `json2pptx icons list` |
 | Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
 | Diagram capability metadata (max nodes, overflow behavior, required fields per type) | `get_diagram_capabilities` | (CLI inlines in skill-info) |

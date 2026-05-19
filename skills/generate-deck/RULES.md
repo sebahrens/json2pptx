@@ -69,7 +69,7 @@ Accepted `IconInput` sources, exactly one per icon: `name` (bundled), `path` (lo
 
 **Refusal wording.** When TDR forces a split, emit exactly: *"This table has [N] logical rows × [M] columns; per Rule 20 I cannot fit this — emitting split_slide to distribute rows across slides."* Do not silently shrink fonts below 9pt to avoid the split.
 
-Call `table_density_guide` (MCP) or run `json2pptx tables guide` (CLI) for detailed font size and row-count guidance when building table slides in shape grids. Pass `{template: "..."}` to scope results to a specific template's `table_styles[]`.
+Call `table_density_guide` (MCP) or run `json2pptx tables guide` (CLI, add `--json` for the structured envelope) for detailed font size and row-count guidance when building table slides in shape grids. Pass `{template: "..."}` (MCP) or `--template <name>` (CLI) to scope results to a specific template's `table_styles[]`.
 
 ---
 
