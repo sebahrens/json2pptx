@@ -4,6 +4,36 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.22.0 (2026-05-19)
+
+### Added
+
+- **Pagination on `list_templates`, `list_patterns`, `list_icons`** — all
+  three discovery tools now accept optional `cursor` (opaque continuation
+  token) and `page_size` (default 50, clamped to [1, 200]). Responses
+  always echo `total_count` and `page_size`; `next_cursor` is present
+  only when more entries remain. Invalid cursors / page_size values
+  surface as structured `INVALID_PARAMETER` errors.
+
+  `list_templates` is backward compatible: the new fields are added
+  alongside the existing top-level wrapper (`tool`, `templates`,
+  `supported_types`, `input_formats`, `output_formats`).
+
+  `list_patterns` and `list_icons` previously returned bare JSON arrays;
+  responses are now wrapped envelopes:
+
+  - `list_patterns`: `{groups: [...], total_count, page_size, next_cursor?}`.
+    Categories are rebuilt per page in the canonical order
+    (`data-display`, `narrative`, `structural`, `hero`); a category only
+    appears on a page when it has at least one pattern in that slice.
+  - `list_icons`: `{sets: [...], total_count, page_size, next_cursor?}`.
+    Each per-set `count` reflects names on the current page; use
+    `total_count` for the post-filter corpus total. The optional `set`
+    and `search` arguments are honored before pagination.
+
+  Agents that previously parsed the bare-array shape from `list_patterns`
+  / `list_icons` must switch to the wrapped envelope.
+
 ## 4.21.0 (2026-05-19)
 
 ### Added

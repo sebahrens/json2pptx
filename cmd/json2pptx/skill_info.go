@@ -25,6 +25,10 @@ import (
 )
 
 // skillInfo is the top-level JSON output for the skill-info subcommand.
+//
+// Pagination fields (TotalCount, PageSize, NextCursor) are populated by the
+// list_templates MCP handler when iterating across template entries. The CLI
+// emits all templates at once, so those fields stay zero/empty there.
 type skillInfo struct {
 	Tool             skillToolInfo          `json:"tool"`
 	Templates        []skillTemplateInfo    `json:"templates"`
@@ -35,6 +39,16 @@ type skillInfo struct {
 	InputFormats     []string               `json:"input_formats"`
 	OutputFormats    []string               `json:"output_formats"`
 	Deprecations     []skillDeprecation     `json:"deprecations,omitempty"`
+	// TotalCount is the total number of templates discovered, irrespective
+	// of the current page slice. Omitted when zero (CLI / non-paginated use).
+	TotalCount int `json:"total_count,omitempty"`
+	// PageSize is the maximum number of template entries the caller
+	// requested. Omitted when zero (CLI / non-paginated use).
+	PageSize int `json:"page_size,omitempty"`
+	// NextCursor is an opaque continuation token. Present only when more
+	// template entries remain after the current page; pass it back as the
+	// `cursor` argument to retrieve the next slice.
+	NextCursor string `json:"next_cursor,omitempty"`
 }
 
 // skillComposeEntry describes the compose envelope feature for agents browsing

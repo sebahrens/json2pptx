@@ -320,6 +320,102 @@ func TestHandleListTemplates_MissingTemplate_IsError(t *testing.T) {
 	requireStructuredError(t, result, "TEMPLATE_NOT_FOUND")
 }
 
+// TestHandleListTemplates_Pagination verifies cursor + page_size iteration
+// covers the full template catalog without duplicates and emits next_cursor
+// only when more entries remain.
+func TestHandleListTemplates_Pagination(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	// Baseline: one big page.
+	full, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"mode":      "list",
+		"page_size": float64(200),
+	}))
+	if err != nil || full.IsError {
+		t.Fatalf("baseline call failed: err=%v result=%+v", err, full)
+	}
+	var fullResp skillInfo
+	if err := json.Unmarshal([]byte(full.Content[0].(mcp.TextContent).Text), &fullResp); err != nil {
+		t.Fatalf("failed to parse baseline: %v", err)
+	}
+	total := fullResp.TotalCount
+	if total < 2 {
+		t.Skipf("not enough templates to exercise pagination (total=%d)", total)
+	}
+	if fullResp.NextCursor != "" {
+		t.Errorf("expected no next_cursor with page_size=200, got %q", fullResp.NextCursor)
+	}
+
+	// Iterate pages of size 1 (every template should appear exactly once).
+	const pageSize = 1
+	cursor := ""
+	seen := make(map[string]bool, total)
+	iterations := 0
+	for {
+		args := map[string]any{
+			"mode":      "list",
+			"page_size": float64(pageSize),
+		}
+		if cursor != "" {
+			args["cursor"] = cursor
+		}
+		res, err := mc.handleListTemplates(context.Background(), makeRequest(args))
+		if err != nil || res.IsError {
+			t.Fatalf("page call failed at cursor %q: err=%v result=%+v", cursor, err, res)
+		}
+		var resp skillInfo
+		if err := json.Unmarshal([]byte(res.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+			t.Fatalf("failed to parse page: %v", err)
+		}
+		if resp.TotalCount != total {
+			t.Errorf("total_count = %d, want %d", resp.TotalCount, total)
+		}
+		if len(resp.Templates) > pageSize {
+			t.Errorf("page exceeded page_size: got %d, want <= %d", len(resp.Templates), pageSize)
+		}
+		for _, tmpl := range resp.Templates {
+			if seen[tmpl.Name] {
+				t.Errorf("duplicate template %q across pages", tmpl.Name)
+			}
+			seen[tmpl.Name] = true
+		}
+		if resp.NextCursor == "" {
+			break
+		}
+		cursor = resp.NextCursor
+		iterations++
+		if iterations > total {
+			t.Fatalf("pagination did not terminate after %d iterations", iterations)
+		}
+	}
+	if len(seen) != total {
+		t.Errorf("iterated %d unique templates, want %d", len(seen), total)
+	}
+}
+
+// TestHandleListTemplates_InvalidCursor verifies a malformed cursor produces
+// a structured INVALID_PARAMETER error.
+func TestHandleListTemplates_InvalidCursor(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	res, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"cursor": "bogus",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected transport error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatalf("expected IsError result for invalid cursor, got %+v", res)
+	}
+}
+
 func TestHandleTableDensityGuide_StructuredContent(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",

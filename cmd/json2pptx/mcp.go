@@ -234,7 +234,9 @@ func mcpListTemplatesTool() mcp.Tool {
 		mcp.WithDescription(`List available presentation templates with their layouts, theme colors, and capabilities.
 
 Response shape per template (compact/full modes): name, aspect_ratio, layout_count, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, layout_names, table_styles [{id,name}]. Full mode adds layouts with placeholders and capacity.
-Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes).`),
+Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes).
+
+Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.`),
 		mcp.WithRawOutputSchema(outputSchemaListTemplates),
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
@@ -242,6 +244,12 @@ Response also includes: supported_types (slide/chart/diagram/grid types, shape_g
 		mcp.WithString("mode",
 			mcp.Description("Detail level: list (names only), compact (names + theme), or full (all placeholders)."),
 			mcp.Enum("list", "compact", "full"),
+		),
+		mcp.WithString("cursor",
+			mcp.Description("Opaque continuation token from a previous response's next_cursor. Omit or pass empty for the first page."),
+		),
+		mcp.WithNumber("page_size",
+			mcp.Description("Maximum number of template entries to return. Default: 50. Clamped to [1, 200]."),
 		),
 	)
 }
@@ -573,6 +581,13 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 
 	templateName, _ := request.RequireString("template")
 
+	// Parse pagination parameters (cursor, page_size). Invalid input is
+	// surfaced as a structured INVALID_PARAMETER error.
+	offset, pageSize, errField, errMsg := paginationParams(request)
+	if errMsg != "" {
+		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
+	}
+
 	// Discover templates
 	var templatePaths []string
 	if templateName != "" {
@@ -593,8 +608,12 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		}
 	}
 
+	totalCount := len(templatePaths)
+	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
+	pagedPaths := templatePaths[start:end]
+
 	var templates []skillTemplateInfo
-	for _, path := range templatePaths {
+	for _, path := range pagedPaths {
 		info, err := analyzeTemplateForSkillInfo(path, mc.cache, mode)
 		if err != nil {
 			name := strings.TrimSuffix(filepath.Base(path), ".pptx")
@@ -624,6 +643,9 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		SupportedTypes: st,
 		InputFormats:   []string{"json"},
 		OutputFormats:  []string{"pptx"},
+		TotalCount:     totalCount,
+		PageSize:       pageSize,
+		NextCursor:     nextCursor,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
@@ -896,8 +918,16 @@ func mcpRecommendPatternTool() mcp.Tool {
 
 func mcpListPatternsTool() mcp.Tool {
 	return mcp.NewTool("list_patterns",
-		mcp.WithDescription("List all available named patterns. Patterns are high-level primitives that expand to shape_grid definitions, replacing ~600 tokens of boilerplate with ~100 tokens."),
+		mcp.WithDescription(`List all available named patterns. Patterns are high-level primitives that expand to shape_grid definitions, replacing ~600 tokens of boilerplate with ~100 tokens.
+
+Pagination: response is an object {groups, total_count, page_size, next_cursor?}. Patterns are flattened across categories for paging; categories are rebuilt for each page in the canonical order. Use cursor + page_size to iterate.`),
 		mcp.WithRawOutputSchema(outputSchemaListPatterns),
+		mcp.WithString("cursor",
+			mcp.Description("Opaque continuation token from a previous response's next_cursor. Omit or pass empty for the first page."),
+		),
+		mcp.WithNumber("page_size",
+			mcp.Description("Maximum number of pattern entries to return (across all categories). Default: 50. Clamped to [1, 200]."),
+		),
 	)
 }
 
@@ -1374,7 +1404,22 @@ type patternCategoryGroup struct {
 	Patterns []skillPatternCompact `json:"patterns"`
 }
 
-func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// listPatternsResponse is the paginated envelope for list_patterns. Groups are
+// rebuilt per page in the canonical category order; only categories with at
+// least one pattern in the current page appear.
+type listPatternsResponse struct {
+	Groups     []patternCategoryGroup `json:"groups"`
+	TotalCount int                    `json:"total_count"`
+	PageSize   int                    `json:"page_size"`
+	NextCursor string                 `json:"next_cursor,omitempty"`
+}
+
+func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	offset, pageSize, errField, errMsg := paginationParams(request)
+	if errMsg != "" {
+		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
+	}
+
 	reg := patterns.Default()
 	all := reg.List()
 
@@ -1402,20 +1447,42 @@ func handleListPatterns(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallTo
 		}
 	}
 
-	// Group by category in a stable order.
+	// Reorder entries so that category-grouped pagination produces stable,
+	// canonical-ordered pages: flatten by category in canonical order.
 	categoryOrder := []string{"data-display", "narrative", "structural", "hero"}
 	grouped := make(map[string][]skillPatternCompact, len(categoryOrder))
 	for _, e := range entries {
 		grouped[e.Category] = append(grouped[e.Category], e)
 	}
-	var result []patternCategoryGroup
+	ordered := make([]skillPatternCompact, 0, len(entries))
 	for _, cat := range categoryOrder {
-		if pats, ok := grouped[cat]; ok {
-			result = append(result, patternCategoryGroup{Category: cat, Patterns: pats})
+		ordered = append(ordered, grouped[cat]...)
+	}
+
+	totalCount := len(ordered)
+	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
+	page := ordered[start:end]
+
+	// Re-group the page slice into categories (preserving canonical order).
+	pageGrouped := make(map[string][]skillPatternCompact, len(categoryOrder))
+	for _, e := range page {
+		pageGrouped[e.Category] = append(pageGrouped[e.Category], e)
+	}
+	groups := make([]patternCategoryGroup, 0, len(categoryOrder))
+	for _, cat := range categoryOrder {
+		if pats, ok := pageGrouped[cat]; ok {
+			groups = append(groups, patternCategoryGroup{Category: cat, Patterns: pats})
 		}
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	resp := listPatternsResponse{
+		Groups:     groups,
+		TotalCount: totalCount,
+		PageSize:   pageSize,
+		NextCursor: nextCursor,
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -1818,7 +1885,9 @@ func collectGridDensityWarnings(grid *jsonschema.ShapeGridInput) []patternValida
 
 func mcpListIconsTool() mcp.Tool {
 	return mcp.NewTool("list_icons",
-		mcp.WithDescription("List available icon names for use in shape_grid cells via {\"icon\":{\"name\":\"icon-name\"}}. Icons are bundled SVGs in two sets: outline (default, stroke-based) and filled (solid). Use set:name syntax (e.g. \"filled:chart-pie\") to select a set; plain names default to outline."),
+		mcp.WithDescription(`List available icon names for use in shape_grid cells via {"icon":{"name":"icon-name"}}. Icons are bundled SVGs in two sets: outline (default, stroke-based) and filled (solid). Use set:name syntax (e.g. "filled:chart-pie") to select a set; plain names default to outline.
+
+Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icon names that fall within the slice. count on each set entry reflects names in that slice, not the full set size; use total_count for the corpus total.`),
 		mcp.WithRawOutputSchema(outputSchemaListIcons),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
@@ -1827,17 +1896,39 @@ func mcpListIconsTool() mcp.Tool {
 		mcp.WithString("search",
 			mcp.Description("Substring filter applied to icon names. Case-insensitive. Example: \"chart\" returns chart-pie, chart-bar, etc."),
 		),
+		mcp.WithString("cursor",
+			mcp.Description("Opaque continuation token from a previous response's next_cursor. Omit or pass empty for the first page."),
+		),
+		mcp.WithNumber("page_size",
+			mcp.Description("Maximum number of icon names to return (across the requested set(s)). Default: 50. Clamped to [1, 200]."),
+		),
 	)
 }
 
 // iconSetResult is the JSON shape for each icon set in the list_icons response.
+// When paginated, count reflects the names included on the current page, not
+// the full set size; the envelope's total_count covers the entire filtered
+// corpus.
 type iconSetResult struct {
 	Set   string   `json:"set"`
 	Count int      `json:"count"`
 	Names []string `json:"names"`
 }
 
+// listIconsResponse is the paginated envelope for list_icons.
+type listIconsResponse struct {
+	Sets       []iconSetResult `json:"sets"`
+	TotalCount int             `json:"total_count"`
+	PageSize   int             `json:"page_size"`
+	NextCursor string          `json:"next_cursor,omitempty"`
+}
+
 func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	offset, pageSize, errField, errMsg := paginationParams(request)
+	if errMsg != "" {
+		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
+	}
+
 	sets := []string{"outline", "filled"}
 	if s, err := request.RequireString("set"); err == nil && s != "" {
 		sets = []string{s}
@@ -1846,29 +1937,53 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	search, _ := request.RequireString("search")
 	search = strings.ToLower(strings.TrimSpace(search))
 
-	result := make([]iconSetResult, 0, len(sets))
+	// Flatten (set, name) pairs across all requested sets, applying the
+	// search filter as we go. Preserves intra-set ordering and overall
+	// set order.
+	type setName struct {
+		set, name string
+	}
+	flat := make([]setName, 0, 256)
 	for _, s := range sets {
 		names, err := icons.List(s)
 		if err != nil {
 			return api.MCPSimpleError("ICON_LIST", fmt.Sprintf("listing %s icons: %v", s, err)), nil
 		}
-		if search != "" {
-			filtered := make([]string, 0, len(names)/4)
-			for _, n := range names {
-				if strings.Contains(n, search) {
-					filtered = append(filtered, n)
-				}
+		for _, n := range names {
+			if search == "" || strings.Contains(strings.ToLower(n), search) {
+				flat = append(flat, setName{set: s, name: n})
 			}
-			names = filtered
 		}
-		result = append(result, iconSetResult{
-			Set:   s,
-			Count: len(names),
-			Names: names,
-		})
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, result)
+	totalCount := len(flat)
+	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
+	page := flat[start:end]
+
+	// Re-group page entries by set, preserving the original set order.
+	pageBySet := make(map[string][]string, len(sets))
+	for _, e := range page {
+		pageBySet[e.set] = append(pageBySet[e.set], e.name)
+	}
+	pageSets := make([]iconSetResult, 0, len(sets))
+	for _, s := range sets {
+		if names, ok := pageBySet[s]; ok {
+			pageSets = append(pageSets, iconSetResult{
+				Set:   s,
+				Count: len(names),
+				Names: names,
+			})
+		}
+	}
+
+	resp := listIconsResponse{
+		Sets:       pageSets,
+		TotalCount: totalCount,
+		PageSize:   pageSize,
+		NextCursor: nextCursor,
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}

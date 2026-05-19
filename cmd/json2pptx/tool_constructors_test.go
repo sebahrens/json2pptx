@@ -737,6 +737,93 @@ func TestHandleListIcons_BadSet(t *testing.T) {
 	}
 }
 
+// TestHandleListIcons_Pagination verifies cursor + page_size iteration covers
+// the full icon corpus without duplicates and emits next_cursor only when
+// more entries remain.
+func TestHandleListIcons_Pagination(t *testing.T) {
+	// Baseline call: one big page.
+	full, err := handleListIcons(context.Background(), makeRequest(map[string]any{
+		"set":       "outline",
+		"page_size": float64(200),
+	}))
+	if err != nil || full.IsError {
+		t.Fatalf("baseline call failed: err=%v result=%+v", err, full)
+	}
+	var fullResp listIconsResponse
+	if err := json.Unmarshal([]byte(full.Content[0].(mcpgo.TextContent).Text), &fullResp); err != nil {
+		t.Fatalf("failed to parse baseline: %v", err)
+	}
+	total := fullResp.TotalCount
+	if total < 10 {
+		t.Skipf("not enough outline icons to exercise pagination (total=%d)", total)
+	}
+
+	// Iterate with a small page size.
+	const pageSize = 7
+	cursor := ""
+	seen := make(map[string]bool, total)
+	iterations := 0
+	for {
+		args := map[string]any{
+			"set":       "outline",
+			"page_size": float64(pageSize),
+		}
+		if cursor != "" {
+			args["cursor"] = cursor
+		}
+		res, err := handleListIcons(context.Background(), makeRequest(args))
+		if err != nil || res.IsError {
+			t.Fatalf("page call failed at cursor %q: err=%v result=%+v", cursor, err, res)
+		}
+		var resp listIconsResponse
+		if err := json.Unmarshal([]byte(res.Content[0].(mcpgo.TextContent).Text), &resp); err != nil {
+			t.Fatalf("failed to parse page: %v", err)
+		}
+		if resp.TotalCount != total {
+			t.Errorf("total_count = %d, want %d", resp.TotalCount, total)
+		}
+		count := 0
+		for _, s := range resp.Sets {
+			for _, n := range s.Names {
+				key := s.Set + ":" + n
+				if seen[key] {
+					t.Errorf("duplicate icon %q across pages", key)
+				}
+				seen[key] = true
+				count++
+			}
+		}
+		if count > pageSize {
+			t.Errorf("page exceeded page_size: got %d, want <= %d", count, pageSize)
+		}
+		if resp.NextCursor == "" {
+			break
+		}
+		cursor = resp.NextCursor
+		iterations++
+		if iterations > total {
+			t.Fatalf("pagination did not terminate after %d iterations", iterations)
+		}
+	}
+	if len(seen) != total {
+		t.Errorf("iterated %d unique icons, want %d", len(seen), total)
+	}
+}
+
+// TestHandleListIcons_InvalidCursor verifies a malformed cursor produces a
+// structured INVALID_PARAMETER error rather than a panic.
+func TestHandleListIcons_InvalidCursor(t *testing.T) {
+	res, err := handleListIcons(context.Background(), makeRequest(map[string]any{
+		"cursor": "nope",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected transport error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatalf("expected IsError result for invalid cursor, got %+v", res)
+	}
+}
+
 func TestHandleGetShapeCatalog_All(t *testing.T) {
 	res, err := handleGetShapeCatalog(context.Background(), makeRequest(nil))
 	if err != nil {

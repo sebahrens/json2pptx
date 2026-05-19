@@ -130,7 +130,10 @@ var outputSchemaListTemplates = json.RawMessage(`{
     "templates":       {"type": "array", "items": {"type": "object"}},
     "supported_types": {"type": "object"},
     "input_formats":   {"type": "array", "items": {"type": "string"}},
-    "output_formats":  {"type": "array", "items": {"type": "string"}}
+    "output_formats":  {"type": "array", "items": {"type": "string"}},
+    "total_count":     {"type": "integer", "description": "Total number of templates discovered, irrespective of the current page."},
+    "page_size":       {"type": "integer", "description": "Maximum number of template entries in this page."},
+    "next_cursor":     {"type": "string", "description": "Opaque continuation token. Pass back as cursor on the next call. Absent on the last page."}
   },
   "required": ["tool", "templates", "supported_types", "input_formats", "output_formats"]
 }`)
@@ -166,35 +169,44 @@ var outputSchemaGetDiagramCapabilities = json.RawMessage(`{
 
 // --- list_patterns ---
 var outputSchemaListPatterns = json.RawMessage(`{
-  "type": "array",
-  "items": {
-    "type": "object",
-    "properties": {
-      "category": {"type": "string"},
-      "patterns": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "name":             {"type": "string"},
-            "cells":            {"type": "string"},
-            "use_when":         {"type": "string"},
-            "not_when":         {"type": "string"},
-            "category":         {"type": "string"},
-            "narrative_role":   {"type": "string"},
-            "pairs_with":       {"type": "array", "items": {"type": "string"}},
-            "composes_with":    {"type": "array", "items": {"type": "string"}},
-            "role_on_slide":    {"type": "array", "items": {"type": "string"}},
-            "density_class":    {"type": "string"},
-            "accent_weight":    {"type": "string"},
-            "supports_callout": {"type": "boolean"}
-          },
-          "required": ["name", "cells", "use_when", "not_when", "category"]
-        }
+  "type": "object",
+  "properties": {
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {"type": "string"},
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name":             {"type": "string"},
+                "cells":            {"type": "string"},
+                "use_when":         {"type": "string"},
+                "not_when":         {"type": "string"},
+                "category":         {"type": "string"},
+                "narrative_role":   {"type": "string"},
+                "pairs_with":       {"type": "array", "items": {"type": "string"}},
+                "composes_with":    {"type": "array", "items": {"type": "string"}},
+                "role_on_slide":    {"type": "array", "items": {"type": "string"}},
+                "density_class":    {"type": "string"},
+                "accent_weight":    {"type": "string"},
+                "supports_callout": {"type": "boolean"}
+              },
+              "required": ["name", "cells", "use_when", "not_when", "category"]
+            }
+          }
+        },
+        "required": ["category", "patterns"]
       }
     },
-    "required": ["category", "patterns"]
-  }
+    "total_count": {"type": "integer", "description": "Total number of patterns across all categories."},
+    "page_size":   {"type": "integer", "description": "Maximum number of pattern entries per page."},
+    "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."}
+  },
+  "required": ["groups", "total_count", "page_size"]
 }`)
 
 // --- show_pattern ---
@@ -448,16 +460,25 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
 
 // --- list_icons ---
 var outputSchemaListIcons = json.RawMessage(`{
-  "type": "array",
-  "items": {
-    "type": "object",
-    "properties": {
-      "set":   {"type": "string"},
-      "count": {"type": "integer"},
-      "names": {"type": "array", "items": {"type": "string"}}
+  "type": "object",
+  "properties": {
+    "sets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "set":   {"type": "string"},
+          "count": {"type": "integer", "description": "Number of names from this set included on the current page."},
+          "names": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["set", "count", "names"]
+      }
     },
-    "required": ["set", "count", "names"]
-  }
+    "total_count": {"type": "integer", "description": "Total number of icon names across all requested sets (after the search filter)."},
+    "page_size":   {"type": "integer", "description": "Maximum number of icon names per page."},
+    "next_cursor": {"type": "string", "description": "Opaque continuation token; absent on the last page."}
+  },
+  "required": ["sets", "total_count", "page_size"]
 }`)
 
 // --- get_shape_catalog ---

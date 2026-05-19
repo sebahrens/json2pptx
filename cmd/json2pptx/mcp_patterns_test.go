@@ -29,7 +29,9 @@ func mustParseJSON(s string) any {
 }
 
 func TestMCPListPatterns(t *testing.T) {
-	result, err := handleListPatterns(context.Background(), makeRequest(nil))
+	result, err := handleListPatterns(context.Background(), makeRequest(map[string]any{
+		"page_size": float64(500), // request large enough page to get everything
+	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -37,14 +39,21 @@ func TestMCPListPatterns(t *testing.T) {
 		t.Fatalf("unexpected tool error: %v", result.Content)
 	}
 
-	// Should return category-grouped JSON array
+	// Should return the paginated envelope with grouped patterns.
 	text := result.Content[0].(mcp.TextContent).Text
-	var groups []patternCategoryGroup
-	if err := json.Unmarshal([]byte(text), &groups); err != nil {
+	var resp listPatternsResponse
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
+	groups := resp.Groups
 	if len(groups) == 0 {
 		t.Fatal("expected at least one category group")
+	}
+	if resp.TotalCount == 0 {
+		t.Fatal("expected total_count > 0")
+	}
+	if resp.NextCursor != "" {
+		t.Errorf("expected no next_cursor with page_size=500, got %q", resp.NextCursor)
 	}
 
 	// Verify groups are in the expected category order.
@@ -94,6 +103,88 @@ func TestMCPListPatterns(t *testing.T) {
 	}
 	if !found {
 		t.Error("kpi-3up not found in list_patterns output")
+	}
+}
+
+// TestMCPListPatterns_Pagination verifies cursor + page_size iteration covers
+// the full pattern catalog without duplicates and emits next_cursor only when
+// more entries remain.
+func TestMCPListPatterns_Pagination(t *testing.T) {
+	// First, fetch everything to know the total.
+	full, err := handleListPatterns(context.Background(), makeRequest(map[string]any{
+		"page_size": float64(500),
+	}))
+	if err != nil || full.IsError {
+		t.Fatalf("baseline call failed: err=%v result=%+v", err, full)
+	}
+	var allResp listPatternsResponse
+	if err := json.Unmarshal([]byte(full.Content[0].(mcp.TextContent).Text), &allResp); err != nil {
+		t.Fatalf("failed to parse baseline: %v", err)
+	}
+	total := allResp.TotalCount
+	if total < 2 {
+		t.Skipf("not enough patterns to exercise pagination (total=%d)", total)
+	}
+
+	// Iterate in pages of 3.
+	const pageSize = 3
+	cursor := ""
+	seen := make(map[string]bool, total)
+	iterations := 0
+	for {
+		args := map[string]any{"page_size": float64(pageSize)}
+		if cursor != "" {
+			args["cursor"] = cursor
+		}
+		res, err := handleListPatterns(context.Background(), makeRequest(args))
+		if err != nil || res.IsError {
+			t.Fatalf("page call failed at cursor %q: err=%v result=%+v", cursor, err, res)
+		}
+		var resp listPatternsResponse
+		if err := json.Unmarshal([]byte(res.Content[0].(mcp.TextContent).Text), &resp); err != nil {
+			t.Fatalf("failed to parse page: %v", err)
+		}
+		if resp.TotalCount != total {
+			t.Errorf("total_count = %d, want %d", resp.TotalCount, total)
+		}
+		count := 0
+		for _, g := range resp.Groups {
+			for _, p := range g.Patterns {
+				if seen[p.Name] {
+					t.Errorf("duplicate pattern %q across pages", p.Name)
+				}
+				seen[p.Name] = true
+				count++
+			}
+		}
+		if count > pageSize {
+			t.Errorf("page exceeded page_size: got %d, want <= %d", count, pageSize)
+		}
+		if resp.NextCursor == "" {
+			break
+		}
+		cursor = resp.NextCursor
+		iterations++
+		if iterations > total {
+			t.Fatalf("pagination did not terminate after %d iterations", iterations)
+		}
+	}
+	if len(seen) != total {
+		t.Errorf("iterated %d unique patterns, want %d", len(seen), total)
+	}
+}
+
+// TestMCPListPatterns_InvalidCursor verifies a non-integer cursor produces
+// a structured INVALID_PARAMETER error rather than a panic or silent skip.
+func TestMCPListPatterns_InvalidCursor(t *testing.T) {
+	res, err := handleListPatterns(context.Background(), makeRequest(map[string]any{
+		"cursor": "not-a-number",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected transport error: %v", err)
+	}
+	if res == nil || !res.IsError {
+		t.Fatalf("expected IsError result for invalid cursor, got %+v", res)
 	}
 }
 
