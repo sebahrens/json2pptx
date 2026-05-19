@@ -172,6 +172,7 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"before-after-compact": true,
 		"swimlane":             true,
 		"roadmap-phased":  true,
+		"phase-roadmap":   true,
 		"arch-stack":      true,
 		"hero-detail":     true,
 		"stylish-panels":  true,

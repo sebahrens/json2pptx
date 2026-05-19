@@ -161,6 +161,23 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Modernization Roadmap"}
+      ],
+      "pattern": {
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {"name": "Plan", "date_label": "Mar–Apr 2025", "description": "Define scope, governance, stakeholders."},
+            {"name": "Build", "date_label": "May–Jul 2025", "description": "Implement core capabilities and run pilot.", "active": true, "milestone": "Pilot go-live"},
+            {"name": "Scale", "date_label": "Aug–Oct 2025", "description": "Roll out to remaining business units."},
+            {"name": "Optimize", "date_label": "Nov–Dec 2025", "description": "Tune cost, capture lessons, hand to BAU."}
+          ]
+        }
+      }
     }
   ]
 }

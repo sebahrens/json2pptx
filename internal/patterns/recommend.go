@@ -337,6 +337,24 @@ var rules = []rule{
 		rationale: "Multi-phase roadmap with workstreams",
 	},
 
+	// Phase roadmap — single-track phases with timeline bar, dates, descriptions
+	{
+		pattern:   "phase-roadmap",
+		keywords:  []string{"phase roadmap", "phased plan", "program phases", "delivery phases", "project phases", "implementation phases", "rollout phases", "phase plan"},
+		baseScore: 0.92,
+		rationale: "Single-track phased roadmap with timeline bar, date ranges, per-phase descriptions, and optional milestones",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "phase-roadmap",
+		keywords:  []string{"phases", "milestone", "milestones", "active phase", "current phase", "phase timeline", "phase callouts"},
+		baseScore: 0.78,
+		rationale: "Phase-roadmap when content names project phases with dates and short descriptions; supports a highlighted active phase and per-phase milestone callouts",
+		itemMin:   3,
+		itemMax:   6,
+	},
+
 	// Architecture stack
 	{
 		pattern:   "arch-stack",

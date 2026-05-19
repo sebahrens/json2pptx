@@ -1,0 +1,257 @@
+{
+  "gap": 6,
+  "row_gap": 4,
+  "columns": 4,
+  "rows": [
+    {
+      "height": 20,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "dk1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Plan",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Build",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "dk1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Scale",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "dk1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Optimize",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "height": 8,
+      "cells": [
+        {
+          "col_span": 4,
+          "shape": {
+            "geometry": "rect",
+            "fill": "dk1"
+          }
+        }
+      ]
+    },
+    {
+      "height": 8,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Mar–Apr 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "May–Jul 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Aug–Oct 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Nov–Dec 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Define scope and governance.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Implement pilot.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Roll out to BUs.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Tune cost, capture lessons.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

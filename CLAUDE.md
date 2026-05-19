@@ -159,6 +159,7 @@ examples/         # Example JSON input files (19 decks)
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
 | `pull-quote` | Italic quote block with attribution |
+| `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `stat-hero` | Single oversized statistic with label and optional context |

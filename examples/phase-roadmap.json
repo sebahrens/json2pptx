@@ -1,0 +1,92 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "phase-roadmap.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cloud Migration Programme"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Four phases, single track, with key milestones"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Programme Roadmap (4 phases, active = Build)"}
+      ],
+      "pattern": {
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {
+              "name": "Plan",
+              "date_label": "Mar–Apr 2025",
+              "description": "Define scope, establish governance, align stakeholders."
+            },
+            {
+              "name": "Build",
+              "date_label": "May–Jul 2025",
+              "description": "Implement core capabilities and run pilot deployment.",
+              "active": true,
+              "milestone": "Pilot go-live"
+            },
+            {
+              "name": "Scale",
+              "date_label": "Aug–Oct 2025",
+              "description": "Roll out to remaining business units and onboard suppliers.",
+              "milestone": "$2M savings target"
+            },
+            {
+              "name": "Optimize",
+              "date_label": "Nov–Dec 2025",
+              "description": "Tune cost, capture lessons, hand to business-as-usual operations."
+            }
+          ]
+        },
+        "callout": {
+          "text": "Programme target: 18 % run-rate reduction by year-end.",
+          "emphasis": "bold"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Minimal 3-phase form (no milestones)"}
+      ],
+      "pattern": {
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {"name": "Discovery", "date_label": "Q1", "description": "Stakeholder interviews and current-state mapping."},
+            {"name": "Design", "date_label": "Q2", "description": "Target-state architecture and transition plan."},
+            {"name": "Delivery", "date_label": "Q3–Q4", "description": "Wave-based execution against backlog."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Max 6-phase form with accent override"}
+      ],
+      "pattern": {
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {"name": "Assess", "date_label": "Jan"},
+            {"name": "Plan", "date_label": "Feb"},
+            {"name": "Build", "date_label": "Mar"},
+            {"name": "Pilot", "date_label": "Apr", "active": true},
+            {"name": "Scale", "date_label": "May–Jun"},
+            {"name": "Sustain", "date_label": "Jul+"}
+          ]
+        },
+        "overrides": {
+          "accent": "accent2"
+        }
+      }
+    }
+  ]
+}
