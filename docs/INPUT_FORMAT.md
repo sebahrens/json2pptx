@@ -33,7 +33,7 @@ A presentation is defined by a single JSON object with a `template` name and an 
 |--------------------|----------|-----------------|----------------------------------------------------------------|
 | `template`         | Yes      | string          | Template name (without `.pptx` extension)                      |
 | `output_filename`  | No       | string          | Desired output filename (default: `output.pptx`)               |
-| `design_mode`      | No       | string          | Generation mode: `"constrained"` (default) or `"free"`. Constrained mode enforces layout rules and fit checks; free mode relaxes them for exploratory/artistic decks. |
+| `design_mode`      | No       | string          | Generation mode: `"constrained"` (default) or `"free"`. Constrained mode rejects raw hex colors and absolute font sizes; free mode allows them for exploratory/artistic decks. The CLI flag `--design-mode=<value>` overrides this field for one-off runs without editing the JSON. |
 | `accent_strategy`  | No       | string          | Accent color rotation: `"primary"` (default), `"rotate"`, `"section-keyed"` |
 | `footer`           | No       | object          | Footer configuration (see below)                               |
 | `theme_override`   | No       | object          | Per-deck color and font overrides (see below)                  |

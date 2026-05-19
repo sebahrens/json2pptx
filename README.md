@@ -216,6 +216,9 @@ cat slides.json | json2pptx generate -json - -json-output result.json
 # Override the template specified inside the JSON
 json2pptx generate -json examples/varied-pitch-deck.json -template forest-green -output ./output
 
+# Override the deck's design_mode for one run (allow raw hex colors / absolute sizes)
+json2pptx generate --design-mode=free -json examples/business-model-canvas.json -output ./output
+
 # Use your own external template
 mkdir my-templates && cp /path/to/my-corporate-theme.pptx my-templates/
 json2pptx generate \

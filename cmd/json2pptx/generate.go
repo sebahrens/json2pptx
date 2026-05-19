@@ -24,6 +24,7 @@ func runGenerate() error {
 	strictFit := fs.String("strict-fit", "warn", "Text-fit checking mode: off, warn (default), or strict (refuse on overflow)")
 	partial := fs.Bool("partial", false, "Enable partial mode: skip failing slides instead of aborting the entire deck")
 	outputValidation := fs.String("output-validation", "off", "Post-generation PPTX validation: off (default), warn (report findings), or strict (fail on blocking findings)")
+	designMode := fs.String("design-mode", "", "Override the deck's design_mode field: constrained (default, enforces scheme colors and template-managed sizes) or free (allows raw hex colors and absolute sizes). Empty preserves the JSON setting.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] --json <file.json>\n\n")
@@ -34,7 +35,8 @@ func runGenerate() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --dry-run --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -n --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --strict-fit=strict --json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate --output-validation=warn --json slides.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --output-validation=warn --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --design-mode=free --json slides.json\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -59,6 +61,14 @@ func runGenerate() error {
 		return fmt.Errorf("invalid --output-validation value %q: must be off, warn, or strict", *outputValidation)
 	}
 
+	// Validate --design-mode value (empty string preserves the JSON field).
+	switch *designMode {
+	case "", "constrained", "free":
+		// valid
+	default:
+		return fmt.Errorf("invalid --design-mode value %q: must be constrained or free", *designMode)
+	}
+
 	// JSON input is required
 	if *jsonInput == "" {
 		fs.Usage()
@@ -72,7 +82,7 @@ func runGenerate() error {
 	}
 
 	if *dryRun {
-		return runJSONDryRun(*jsonInput, *templatesDir, *configPath)
+		return runJSONDryRun(*jsonInput, *templatesDir, *configPath, *designMode)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation)
+	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode)
 }

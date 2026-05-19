@@ -63,8 +63,9 @@ type dryRunPlaceholder struct {
 
 // runJSONDryRun validates JSON input against the template without generating
 // a PPTX file. It checks layout_id references, placeholder_id references,
-// and content types.
-func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
+// and content types. A non-empty designModeOverride replaces input.DesignMode
+// after parsing so the CLI flag wins over the JSON field.
+func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string) error {
 	output := dryRunOutput{
 		Valid:    true,
 		Warnings: []string{},
@@ -103,6 +104,12 @@ func runJSONDryRun(jsonPath, templatesDir, configPath string) error {
 			return writeDryRunOutput(output)
 		}
 	}
+
+	// CLI --design-mode override wins over the JSON field.
+	if designModeOverride != "" {
+		input.DesignMode = designModeOverride
+	}
+
 	applyDefaults(&input)
 
 	// Resolve named style references from template settings (shared with MCP).

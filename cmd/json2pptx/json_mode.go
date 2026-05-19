@@ -165,9 +165,11 @@ type SlideQuality struct {
 }
 
 // parseJSONInput reads JSON from a file or stdin, applies patch operations if present,
-// applies the template override, and validates required fields. The returned
-// warnings include unknown-key detection (additionalProperties:false enforcement).
-func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, []string, error) {
+// applies the template and design_mode overrides, and validates required fields.
+// The returned warnings include unknown-key detection (additionalProperties:false
+// enforcement). A non-empty designModeOverride replaces input.DesignMode after
+// parsing so the CLI flag wins over the JSON field.
+func parseJSONInput(jsonPath, templateOverride, designModeOverride string) (*PresentationInput, []string, error) {
 	var inputData []byte
 	var err error
 
@@ -196,6 +198,10 @@ func parseJSONInput(jsonPath, templateOverride string) (*PresentationInput, []st
 
 	if templateOverride != "" {
 		input.Template = strings.TrimSuffix(templateOverride, ".pptx")
+	}
+
+	if designModeOverride != "" {
+		input.DesignMode = designModeOverride
 	}
 
 	if input.Template == "" {
@@ -296,11 +302,11 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string) error { //nolint:gocognit,gocyclo
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// Parse and validate JSON input
-	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride)
+	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride, designModeOverride)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, err)
 	}
@@ -340,7 +346,10 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			}
 			msgs = append(msgs, msg)
 		}
-		return writeJSONError(jsonOutputPath, fmt.Errorf("design_mode %q violation(s):\n  %s",
+		return writeJSONError(jsonOutputPath, fmt.Errorf(
+			"design_mode %q violation(s):\n  %s\n\n"+
+				"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
+				"or set \"design_mode\": \"free\" in the JSON input.",
 			effectiveDesignMode(input), strings.Join(msgs, "\n  ")))
 	}
 

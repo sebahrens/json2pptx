@@ -139,7 +139,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 ```
 
 **Key scope rules:**
-- `design_mode` is **deck-level** (top of the JSON, not inside a slide)
+- `design_mode` is **deck-level** (top of the JSON, not inside a slide). The CLI flag `--design-mode=constrained|free` overrides this field for ad-hoc runs (`json2pptx generate --design-mode=free --json deck.json`).
 - `contrast_check` is **slide-level** (inside each slide object, not on a content item)
 
 ---

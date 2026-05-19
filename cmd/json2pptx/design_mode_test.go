@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 )
 
@@ -254,5 +255,43 @@ func TestEffectiveDesignMode_RespectsExplicitFree(t *testing.T) {
 	input := &PresentationInput{Template: "test", DesignMode: "free"}
 	if got := effectiveDesignMode(input); got != "free" {
 		t.Errorf("expected free, got %q", got)
+	}
+}
+
+// TestParseJSONInput_DesignModeOverride verifies the CLI --design-mode flag
+// override replaces the JSON field after parsing. This is what lets users
+// generate decks whose JSON declares design_mode:"constrained" by opting
+// into "free" at the command line without editing the file.
+func TestParseJSONInput_DesignModeOverride(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/deck.json"
+	body := `{"template":"test","design_mode":"constrained","slides":[{"layout_id":"L1"}]}`
+	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	input, _, err := parseJSONInput(path, "", "free")
+	if err != nil {
+		t.Fatalf("parseJSONInput: %v", err)
+	}
+	if input.DesignMode != "free" {
+		t.Errorf("expected design_mode override 'free', got %q", input.DesignMode)
+	}
+}
+
+func TestParseJSONInput_DesignModeOverrideEmptyPreservesJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/deck.json"
+	body := `{"template":"test","design_mode":"free","slides":[{"layout_id":"L1"}]}`
+	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	input, _, err := parseJSONInput(path, "", "")
+	if err != nil {
+		t.Fatalf("parseJSONInput: %v", err)
+	}
+	if input.DesignMode != "free" {
+		t.Errorf("expected JSON field preserved as 'free', got %q", input.DesignMode)
 	}
 }

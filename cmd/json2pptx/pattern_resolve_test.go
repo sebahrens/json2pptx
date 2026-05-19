@@ -329,7 +329,7 @@ func TestCalloutCrossTemplate(t *testing.T) {
 				}
 
 				jsonResultPath := filepath.Join(outputDir, fixtureName+"_"+tmpl+".result.json")
-				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "", "off", false, "off")
+				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "", "off", false, "off", "")
 				if err != nil {
 					t.Fatalf("runJSONMode failed: %v", err)
 				}
