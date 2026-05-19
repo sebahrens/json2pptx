@@ -162,7 +162,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	diagramType, err := request.RequireString("type")
 	if err != nil {
 		return emitErrorResult(diagnostic{
-			Code:     "required",
+			Code:     CodeRequired,
 			Message:  "type is required",
 			Path:     "type",
 			Severity: "error",
@@ -179,7 +179,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	d := reg.Get(diagramType)
 	if d == nil {
 		return emitErrorResult(diagnostic{
-			Code:     "unknown_diagram_type",
+			Code:     CodeUnknownDiagramType,
 			Message:  fmt.Sprintf("unknown diagram type %q — use list_diagram_types to see available types", diagramType),
 			Path:     "type",
 			Severity: "error",
@@ -200,7 +200,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	dataRaw, ok := args["data"]
 	if !ok {
 		return emitErrorResult(diagnostic{
-			Code:     "required",
+			Code:     CodeRequired,
 			Message:  "data is required",
 			Path:     "data",
 			Severity: "error",
@@ -215,7 +215,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	dataMap, ok := dataRaw.(map[string]any)
 	if !ok {
 		return emitErrorResult(diagnostic{
-			Code:     "invalid_type",
+			Code:     CodeInvalidType,
 			Message:  "data must be a JSON object",
 			Path:     "data",
 			Severity: "error",
@@ -256,7 +256,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		styleMap, ok := styleRaw.(map[string]any)
 		if !ok {
 			return emitErrorResult(diagnostic{
-				Code:     "invalid_type",
+				Code:     CodeInvalidType,
 				Message:  "style must be a JSON object",
 				Path:     "style",
 				Severity: "error",
@@ -267,7 +267,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		styleJSON, err := json.Marshal(styleMap)
 		if err != nil {
 			return emitErrorResult(diagnostic{
-				Code:     "invalid_value",
+				Code:     CodeInvalidValue,
 				Message:  fmt.Sprintf("failed to encode style: %v", err),
 				Path:     "style",
 				Severity: "error",
@@ -278,7 +278,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 		var style svggen.StyleSpec
 		if err := json.Unmarshal(styleJSON, &style); err != nil {
 			return emitErrorResult(diagnostic{
-				Code:     "invalid_value",
+				Code:     CodeInvalidValue,
 				Message:  fmt.Sprintf("invalid style payload: %v", err),
 				Path:     "style",
 				Severity: "error",
@@ -308,7 +308,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 			return emitErrorResult(convertValidationErrors(diagramType, vErrs)...)
 		}
 		return emitErrorResult(diagnostic{
-			Code:     "render_failed",
+			Code:     CodeRenderFailed,
 			Message:  fmt.Sprintf("render failed: %v", err),
 			Path:     "data",
 			Severity: "error",
@@ -328,7 +328,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	case "svg":
 		if result.SVG == nil {
 			return emitErrorResult(diagnostic{
-				Code:     "render_failed",
+				Code:     CodeRenderFailed,
 				Message:  "no SVG output generated",
 				Path:     "format",
 				Severity: "error",
@@ -341,7 +341,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 	case "png":
 		if result.PNG == nil {
 			return emitErrorResult(diagnostic{
-				Code:     "render_failed",
+				Code:     CodeRenderFailed,
 				Message:  "no PNG output generated",
 				Path:     "format",
 				Severity: "error",
@@ -362,7 +362,7 @@ func handleRenderDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp.C
 
 	default:
 		return emitErrorResult(diagnostic{
-			Code:     "invalid_value",
+			Code:     CodeInvalidValue,
 			Message:  fmt.Sprintf("unsupported format %q", format),
 			Path:     "format",
 			Severity: "error",
@@ -480,7 +480,7 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 		} else {
 			// Non-structured error from envelope validation — wrap it.
 			diags = []diagnostic{{
-				Code:     "parse_failed",
+				Code:     CodeParseFailed,
 				Message:  err.Error(),
 				Path:     "data",
 				Severity: "error",
@@ -503,7 +503,7 @@ func handleValidateDiagram(_ context.Context, request mcp.CallToolRequest) (*mcp
 		} else {
 			// Non-structured error — wrap it.
 			diags = []diagnostic{{
-				Code:     "invalid_value",
+				Code:     CodeInvalidValue,
 				Message:  err.Error(),
 				Path:     "data",
 				Severity: "error",
@@ -1167,13 +1167,55 @@ func emitErrorResult(diags ...diagnostic) (*mcp.CallToolResult, error) {
 // diagnostic is a single machine-readable issue matching the
 // internal/diagnostics.Diagnostic JSON shape.
 type diagnostic struct {
-	Code         string          `json:"code"`                    // lowercase_snake code, e.g. "required"
+	Code         string          `json:"code"`                    // SCREAMING_SNAKE_CASE code, e.g. "REQUIRED"
 	Message      string          `json:"message"`                 // human-readable description
 	Path         string          `json:"path,omitempty"`          // JSON path, e.g. "data.series[0].values"
 	Severity     string          `json:"severity"`                // "error", "warning", "info"
 	Fix          *fix            `json:"fix,omitempty"`           // optional structured remediation
 	NextToolCall *toolCallSugg   `json:"next_tool_call,omitempty"` // machine-readable next MCP tool call
 	Details      map[string]any  `json:"details,omitempty"`       // additional context (pattern, value, etc.)
+}
+
+// Canonical SCREAMING_SNAKE_CASE diagnostic codes emitted by svggen-mcp.
+//
+// These match the casing convention used by json2pptx-mcp (internal/diagnostics
+// codes such as MISSING_PARAMETER, INVALID_JSON, TEMPLATE_NOT_FOUND) so agents
+// dispatching on diagnostic.code can use a single equality check across both
+// MCP servers. Prior to schema 4.23.0, svggen-mcp emitted lowercase_snake codes
+// (required, invalid_type, …); the legacy → canonical mapping is surfaced via
+// get_capabilities.deprecations for the deprecation window.
+const (
+	CodeRequired           = "REQUIRED"
+	CodeInvalidType        = "INVALID_TYPE"
+	CodeInvalidFormat      = "INVALID_FORMAT"
+	CodeInvalidValue       = "INVALID_VALUE"
+	CodeUnknownField       = "UNKNOWN_FIELD"
+	CodeParseFailed        = "PARSE_FAILED"
+	CodeConstraint         = "CONSTRAINT"
+	CodeUnknownDiagram     = "UNKNOWN_DIAGRAM"
+	CodeUnknownDiagramType = "UNKNOWN_DIAGRAM_TYPE"
+	CodeRenderFailed       = "RENDER_FAILED"
+)
+
+// legacyCodeAliases maps the pre-4.23.0 lowercase_snake codes svggen-mcp used
+// to emit to the canonical SCREAMING_SNAKE codes the server emits today. It is
+// surfaced through get_capabilities.deprecations so agents that branched on the
+// old casing know exactly which new code to dispatch on. Order is alphabetical
+// by legacy code for stable output.
+var legacyCodeAliases = []struct {
+	Legacy    string
+	Canonical string
+}{
+	{"constraint", CodeConstraint},
+	{"invalid_format", CodeInvalidFormat},
+	{"invalid_type", CodeInvalidType},
+	{"invalid_value", CodeInvalidValue},
+	{"parse_failed", CodeParseFailed},
+	{"render_failed", CodeRenderFailed},
+	{"required", CodeRequired},
+	{"unknown_diagram", CodeUnknownDiagram},
+	{"unknown_diagram_type", CodeUnknownDiagramType},
+	{"unknown_field", CodeUnknownField},
 }
 
 // fix matches internal/diagnostics.Fix / patterns.FixSuggestion JSON shape.
@@ -1188,24 +1230,26 @@ type toolCallSugg struct {
 	ArgsTemplate map[string]any `json:"args_template"`
 }
 
-// codeMap converts svggen UPPER_SNAKE codes to lowercase_snake codes
-// matching internal/patterns/errors.go conventions.
+// codeMap normalizes svggen core SCREAMING_SNAKE codes to the canonical
+// svggen-mcp diagnostic code (also SCREAMING_SNAKE). The mapping is identity
+// today — the table exists so future renames inside svggen core can be
+// absorbed at the MCP boundary without changing the agent-visible code.
 var codeMap = map[string]string{
-	core.ErrCodeRequired:       "required",
-	core.ErrCodeInvalidType:    "invalid_type",
-	core.ErrCodeInvalidFormat:  "invalid_format",
-	core.ErrCodeInvalidValue:   "invalid_value",
-	core.ErrCodeUnknownField:   "unknown_field",
-	core.ErrCodeParseFailed:    "parse_failed",
-	core.ErrCodeConstraint:     "constraint",
-	core.ErrCodeUnknownDiagram: "unknown_diagram",
+	core.ErrCodeRequired:       CodeRequired,
+	core.ErrCodeInvalidType:    CodeInvalidType,
+	core.ErrCodeInvalidFormat:  CodeInvalidFormat,
+	core.ErrCodeInvalidValue:   CodeInvalidValue,
+	core.ErrCodeUnknownField:   CodeUnknownField,
+	core.ErrCodeParseFailed:    CodeParseFailed,
+	core.ErrCodeConstraint:     CodeConstraint,
+	core.ErrCodeUnknownDiagram: CodeUnknownDiagram,
 }
 
 // convertValidationError maps a svggen core.ValidationError to a diagnostic
 // at the MCP boundary, producing the same JSON shape as
 // internal/diagnostics.Diagnostic. The svggen internal type is unchanged.
 func convertValidationError(diagramType string, ve core.ValidationError) diagnostic {
-	code := strings.ToLower(ve.Code)
+	code := ve.Code
 	if mapped, ok := codeMap[ve.Code]; ok {
 		code = mapped
 	}
@@ -1429,6 +1473,24 @@ func buildSvggenRegistry() capabilitiesRegistry {
 	}
 }
 
+// buildSvggenDeprecations enumerates retired surfaces that agents may still
+// have wired up. Each entry uses path = "diagnostic.code:<legacy>" so the
+// existing {path, replacement, removed_in} shape carries the legacy →
+// canonical code mapping during the deprecation window. The casing migration
+// landed in schema 4.23.0; the legacy lowercase codes are still accepted by
+// downstream consumers as aliases but will be removed once the deprecation
+// window closes.
+func buildSvggenDeprecations() []capabilitiesDeprecation {
+	out := make([]capabilitiesDeprecation, 0, len(legacyCodeAliases))
+	for _, a := range legacyCodeAliases {
+		out = append(out, capabilitiesDeprecation{
+			Path:        "diagnostic.code:" + a.Legacy,
+			Replacement: a.Canonical,
+		})
+	}
+	return out
+}
+
 // buildSvggenVocabularies returns the chart-finding fix kinds and finding
 // codes exposed by svggen. Both slices are sorted for stable output.
 func buildSvggenVocabularies() capabilitiesVocabularies {
@@ -1538,7 +1600,7 @@ func handleGetCapabilities(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallT
 		DiagramCapabilities: svggen.DiagramCapabilitiesReady(),
 		Registry:            buildSvggenRegistry(),
 		Vocabularies:        buildSvggenVocabularies(),
-		Deprecations:        []capabilitiesDeprecation{},
+		Deprecations:        buildSvggenDeprecations(),
 		Features: capabilitiesFeatures{
 			// render_diagram supports dry_run.
 			DryRender: true,

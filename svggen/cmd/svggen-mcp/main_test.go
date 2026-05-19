@@ -255,10 +255,12 @@ func TestHandleValidateDiagramStructuredErrors(t *testing.T) {
 	if first.Severity != "error" {
 		t.Errorf("expected severity 'error', got %q", first.Severity)
 	}
-	// Code should be lowercase_snake, not UPPER_SNAKE
+	// Code should be SCREAMING_SNAKE_CASE to match json2pptx-mcp's casing
+	// convention (e.g., REQUIRED, INVALID_TYPE). Reject any lowercase letter
+	// — that would be a regression to the pre-4.23.0 lowercase_snake form.
 	for _, c := range first.Code {
-		if c >= 'A' && c <= 'Z' {
-			t.Errorf("expected lowercase_snake code, got %q", first.Code)
+		if c >= 'a' && c <= 'z' {
+			t.Errorf("expected SCREAMING_SNAKE code, got %q", first.Code)
 			break
 		}
 	}
@@ -772,28 +774,28 @@ func TestHandleRenderDiagramStructuredErrors(t *testing.T) {
 		{
 			name:         "missing_type",
 			args:         map[string]any{"data": map[string]any{}},
-			wantCode:     "required",
+			wantCode:     "REQUIRED",
 			wantFix:      true,
 			wantNextTool: "list_diagram_types",
 		},
 		{
 			name:         "unknown_diagram_type",
 			args:         map[string]any{"type": "nonexistent_chart", "data": map[string]any{}},
-			wantCode:     "unknown_diagram_type",
+			wantCode:     "UNKNOWN_DIAGRAM_TYPE",
 			wantFix:      true,
 			wantNextTool: "list_diagram_types",
 		},
 		{
 			name:         "missing_data",
 			args:         map[string]any{"type": "bar_chart"},
-			wantCode:     "required",
+			wantCode:     "REQUIRED",
 			wantFix:      true,
 			wantNextTool: "get_diagram_schema",
 		},
 		{
 			name:         "data_not_object",
 			args:         map[string]any{"type": "bar_chart", "data": "not-an-object"},
-			wantCode:     "invalid_type",
+			wantCode:     "INVALID_TYPE",
 			wantFix:      true,
 			wantNextTool: "get_diagram_schema",
 		},
@@ -804,7 +806,7 @@ func TestHandleRenderDiagramStructuredErrors(t *testing.T) {
 				"data":  validBarData,
 				"style": "not-an-object",
 			},
-			wantCode:       "invalid_type",
+			wantCode:       "INVALID_TYPE",
 			wantFix:        true,
 			wantPathPrefix: "style",
 		},
@@ -815,7 +817,7 @@ func TestHandleRenderDiagramStructuredErrors(t *testing.T) {
 				"data":   validBarData,
 				"format": "bmp",
 			},
-			wantCode:       "invalid_value",
+			wantCode:       "INVALID_VALUE",
 			wantFix:        true,
 			wantPathPrefix: "format",
 		},
@@ -1121,6 +1123,30 @@ func TestGetCapabilities(t *testing.T) {
 		// Empty is fine; nil would force agents to null-check.
 		if resp.Deprecations == nil {
 			t.Error("expected non-nil deprecations slice (empty is fine)")
+		}
+	})
+
+	t.Run("deprecations_carry_legacy_code_aliases", func(t *testing.T) {
+		// Schema 4.23.0 migrated diagnostic.code from lowercase_snake to
+		// SCREAMING_SNAKE to match json2pptx-mcp. Agents that branched on the
+		// old casing must still be able to look up the canonical replacement
+		// from get_capabilities.deprecations during the deprecation window.
+		want := map[string]string{
+			"diagnostic.code:required":             "REQUIRED",
+			"diagnostic.code:invalid_type":         "INVALID_TYPE",
+			"diagnostic.code:invalid_value":        "INVALID_VALUE",
+			"diagnostic.code:unknown_diagram_type": "UNKNOWN_DIAGRAM_TYPE",
+			"diagnostic.code:render_failed":        "RENDER_FAILED",
+			"diagnostic.code:parse_failed":         "PARSE_FAILED",
+		}
+		got := map[string]string{}
+		for _, d := range resp.Deprecations {
+			got[d.Path] = d.Replacement
+		}
+		for path, replacement := range want {
+			if got[path] != replacement {
+				t.Errorf("deprecations[%q] = %q, want %q", path, got[path], replacement)
+			}
 		}
 	})
 

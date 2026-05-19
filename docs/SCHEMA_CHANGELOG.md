@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.23.0 (2026-05-19)
+
+### Changed
+
+- **`svggen-mcp` diagnostic codes normalized to SCREAMING_SNAKE_CASE.**
+  `render_diagram` and `validate_diagram` previously emitted lowercase_snake
+  codes (`required`, `invalid_type`, `invalid_value`, `unknown_diagram_type`,
+  `render_failed`, `parse_failed`, …). They now emit the SCREAMING_SNAKE
+  equivalents (`REQUIRED`, `INVALID_TYPE`, `INVALID_VALUE`,
+  `UNKNOWN_DIAGRAM_TYPE`, `RENDER_FAILED`, `PARSE_FAILED`, …) so an agent
+  branching on `diagnostic.code` can share string-equality dispatch across
+  `json2pptx-mcp` (which has always emitted SCREAMING_SNAKE — `MISSING_PARAMETER`,
+  `INVALID_JSON`, `TEMPLATE_NOT_FOUND`, `UNKNOWN_PATTERN`, …) and `svggen-mcp`.
+
+  `get_capabilities.deprecations` carries the legacy → canonical mapping as
+  entries shaped `{path: "diagnostic.code:<legacy>", replacement: "<CANONICAL>"}`,
+  so agents that branched on the old casing can look up the new code without a
+  doc round-trip during the deprecation window.
+
 ## 4.22.0 (2026-05-19)
 
 ### Added

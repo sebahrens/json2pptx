@@ -173,7 +173,7 @@ Use when the final consumer of the SVG is a `shape_grid` cell inside a json2pptx
   "valid": false,
   "diagnostics": [
     {
-      "code": "required",           // lowercase_snake, e.g. "required", "invalid_type", "invalid_value", "unknown_diagram_type", "render_failed", "parse_failed"
+      "code": "REQUIRED",           // SCREAMING_SNAKE_CASE — matches json2pptx-mcp casing. Common values: "REQUIRED", "INVALID_TYPE", "INVALID_VALUE", "UNKNOWN_DIAGRAM_TYPE", "RENDER_FAILED", "PARSE_FAILED". Pre-4.23.0 lowercase codes (required, invalid_type, …) are deprecated; get_capabilities.deprecations carries the legacy → canonical mapping.
       "message": "data is required",
       "path": "data",               // JSON path, e.g. "data.series[0].values"
       "severity": "error",
@@ -197,13 +197,15 @@ Use when the final consumer of the SVG is a `shape_grid` cell inside a json2pptx
 
 | `code` | When | Typical `next_tool_call` |
 |---|---|---|
-| `required` | Required argument missing (`type`, `data`). | `list_diagram_types` (for `type`) or `get_diagram_schema` (for `data`). |
-| `invalid_type` | Argument has the wrong JSON kind (e.g., `data` is not an object). | `get_diagram_schema` |
-| `invalid_value` | Argument is the right kind but disallowed (e.g., unsupported `format`, malformed `style`). | none — the `fix.params.allowed` array carries the legal set. |
-| `unknown_diagram_type` | `type` does not resolve to a registered diagram (alias or canonical). | `list_diagram_types` |
-| `render_failed` | Renderer crashed past validation (rare; usually means the input slipped through schema checks). | `get_diagram_schema` |
-| `parse_failed` | Envelope-level parse error inside `validate_diagram`. | none — fix the payload. |
+| `REQUIRED` | Required argument missing (`type`, `data`). | `list_diagram_types` (for `type`) or `get_diagram_schema` (for `data`). |
+| `INVALID_TYPE` | Argument has the wrong JSON kind (e.g., `data` is not an object). | `get_diagram_schema` |
+| `INVALID_VALUE` | Argument is the right kind but disallowed (e.g., unsupported `format`, malformed `style`). | none — the `fix.params.allowed` array carries the legal set. |
+| `UNKNOWN_DIAGRAM_TYPE` | `type` does not resolve to a registered diagram (alias or canonical). | `list_diagram_types` |
+| `RENDER_FAILED` | Renderer crashed past validation (rare; usually means the input slipped through schema checks). | `get_diagram_schema` |
+| `PARSE_FAILED` | Envelope-level parse error inside `validate_diagram`. | none — fix the payload. |
 | Chart-finding codes (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) appear as `fix.kind` values on per-error diagnostics. | Returned by `validate_diagram` / dry_run when chart-specific rules fail. | Apply the suggested fix and re-validate. |
+
+Codes are SCREAMING_SNAKE_CASE matching the casing convention used by `json2pptx-mcp` (`MISSING_PARAMETER`, `INVALID_JSON`, `TEMPLATE_NOT_FOUND`, …). Agents that previously dispatched on lowercase codes (`required`, `invalid_type`, …) can read the legacy → canonical mapping from `get_capabilities.deprecations` (entries shaped `{path: "diagnostic.code:<legacy>", replacement: "<CANONICAL>"}`) during the deprecation window.
 
 ### `fix.kind` enum
 
