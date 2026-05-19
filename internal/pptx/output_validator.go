@@ -108,12 +108,13 @@ func (r *Report) Warnings() []Finding {
 
 // opcCodeMap maps structural ValidationError codes to stable OPC_ prefixed codes.
 var opcCodeMap = map[string]string{
-	ErrCodeMissingPart:        "OPC_MISSING_PART",
-	ErrCodeDanglingRel:        "OPC_DANGLING_REL",
-	ErrCodeDuplicateRelID:     "OPC_DUPLICATE_REL_ID",
-	ErrCodeMissingElement:     "OPC_MISSING_ELEMENT",
-	ErrCodeMalformedXML:       "OPC_MALFORMED_XML",
-	ErrCodeMissingContentType: "OPC_MISSING_CONTENT_TYPE",
+	ErrCodeMissingPart:                "OPC_MISSING_PART",
+	ErrCodeDanglingRel:                "OPC_DANGLING_REL",
+	ErrCodeDuplicateRelID:             "OPC_DUPLICATE_REL_ID",
+	ErrCodeMissingElement:             "OPC_MISSING_ELEMENT",
+	ErrCodeMalformedXML:               "OPC_MALFORMED_XML",
+	ErrCodeMissingContentType:         "OPC_MISSING_CONTENT_TYPE",
+	ErrCodeMissingContentTypeOverride: "OPC_MISSING_CONTENT_TYPE_OVERRIDE",
 }
 
 // ooxmlCodeMap maps OOXML ValidationError codes to stable OOXML_ prefixed codes.

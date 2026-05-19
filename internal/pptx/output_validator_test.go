@@ -479,6 +479,107 @@ func TestOutputValidator_SlideCountMismatch_IsBlocking(t *testing.T) {
 	}
 }
 
+func TestOutputValidator_MissingContentTypeOverride_IsBlocking(t *testing.T) {
+	t.Parallel()
+
+	// Replace Content_Types so the "xml" Default is removed and only
+	// presentation.xml has an explicit Override. slide1.xml is now uncovered:
+	// neither a Default for "xml" nor an Override for "/ppt/slides/slide1.xml".
+	files := validPPTXFiles()
+	files["[Content_Types].xml"] = `<?xml version="1.0"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+</Types>`
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	if report.IsValid() {
+		t.Fatal("expected invalid report for uncovered XML part")
+	}
+
+	var found *Finding
+	for i := range report.Blocking() {
+		f := report.Blocking()[i]
+		if f.Code == "OPC_MISSING_CONTENT_TYPE_OVERRIDE" && f.Path == "ppt/slides/slide1.xml" {
+			found = &f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected OPC_MISSING_CONTENT_TYPE_OVERRIDE for ppt/slides/slide1.xml, got: %v", report.Findings)
+	}
+	if found.Severity != SeverityBlocking {
+		t.Errorf("expected blocking severity, got %q", found.Severity)
+	}
+	if found.Phase != "opc" {
+		t.Errorf("expected phase=opc, got %q", found.Phase)
+	}
+	if found.Validator != "structural" {
+		t.Errorf("expected validator=structural, got %q", found.Validator)
+	}
+
+	// Presentation.xml has an Override — should NOT be flagged.
+	for _, f := range report.Findings {
+		if f.Code == "OPC_MISSING_CONTENT_TYPE_OVERRIDE" && f.Path == "ppt/presentation.xml" {
+			t.Errorf("did not expect OPC_MISSING_CONTENT_TYPE_OVERRIDE for presentation.xml (has Override): %v", f)
+		}
+	}
+}
+
+func TestOutputValidator_ContentTypeCoverage_DefaultExtensionSatisfies(t *testing.T) {
+	t.Parallel()
+
+	// validPPTXFiles() has Default Extension="xml" — every XML part is covered
+	// by extension Default. No OPC_MISSING_CONTENT_TYPE_OVERRIDE expected.
+	data := createValidatorTestZIP(validPPTXFiles())
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	for _, f := range report.Findings {
+		if f.Code == "OPC_MISSING_CONTENT_TYPE_OVERRIDE" {
+			t.Errorf("did not expect OPC_MISSING_CONTENT_TYPE_OVERRIDE when Default Extension=xml exists: %v", f)
+		}
+	}
+}
+
+func TestOutputValidator_ContentTypeCoverage_UnknownXMLPart(t *testing.T) {
+	t.Parallel()
+
+	// Add a stray XML part that has no Default and no Override — must be flagged.
+	files := validPPTXFiles()
+	files["[Content_Types].xml"] = `<?xml version="1.0"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+</Types>`
+	files["ppt/customXml/item1.xml"] = `<?xml version="1.0"?><root/>`
+
+	data := createValidatorTestZIP(files)
+	report, err := ValidateOutputBytes(data)
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+
+	found := false
+	for _, f := range report.Blocking() {
+		if f.Code == "OPC_MISSING_CONTENT_TYPE_OVERRIDE" && f.Path == "ppt/customXml/item1.xml" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected OPC_MISSING_CONTENT_TYPE_OVERRIDE for ppt/customXml/item1.xml, got: %v", report.Findings)
+	}
+}
+
 func TestFinding_ErrorFormat(t *testing.T) {
 	t.Parallel()
 

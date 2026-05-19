@@ -65,12 +65,13 @@ func (errs ValidationErrors) Error() string {
 
 // Common validation error codes.
 const (
-	ErrCodeMissingPart        = "MISSING_PART"
-	ErrCodeDanglingRel        = "DANGLING_REL"
-	ErrCodeDuplicateRelID     = "DUPLICATE_REL_ID"
-	ErrCodeMissingElement     = "MISSING_ELEMENT"
-	ErrCodeMalformedXML       = "MALFORMED_XML"
-	ErrCodeMissingContentType = "MISSING_CONTENT_TYPE"
+	ErrCodeMissingPart                = "MISSING_PART"
+	ErrCodeDanglingRel                = "DANGLING_REL"
+	ErrCodeDuplicateRelID             = "DUPLICATE_REL_ID"
+	ErrCodeMissingElement             = "MISSING_ELEMENT"
+	ErrCodeMalformedXML               = "MALFORMED_XML"
+	ErrCodeMissingContentType         = "MISSING_CONTENT_TYPE"
+	ErrCodeMissingContentTypeOverride = "MISSING_CONTENT_TYPE_OVERRIDE"
 )
 
 // NewValidator creates a validator from PPTX bytes.
@@ -117,6 +118,7 @@ func (v *Validator) Validate() error {
 
 	// Required parts
 	v.ValidateContentTypes()
+	v.ValidateContentTypeCoverage()
 	v.ValidatePackageRels()
 	v.ValidatePresentation()
 
@@ -145,6 +147,49 @@ func (v *Validator) ValidateContentTypes() {
 	_, err = ParseContentTypes(data)
 	if err != nil {
 		v.addError(ContentTypesPath, ErrCodeMalformedXML, fmt.Sprintf("failed to parse: %v", err))
+	}
+}
+
+// ValidateContentTypeCoverage checks that every XML part in the package is
+// covered by either a Default whose extension matches the part's extension or
+// an Override whose PartName matches the part's absolute path ("/" + entry).
+// Parts that lack both trigger PowerPoint's repair prompt on open.
+//
+// Excludes [Content_Types].xml itself, .rels files, and any entry beneath a
+// _rels/ directory; those have their own coverage rules in OPC.
+func (v *Validator) ValidateContentTypeCoverage() {
+	data, err := v.pkg.ReadEntry(ContentTypesPath)
+	if err != nil {
+		return // ValidateContentTypes already reported the read failure
+	}
+	ct, err := ParseContentTypes(data)
+	if err != nil {
+		return // ValidateContentTypes already reported the parse failure
+	}
+
+	for _, entry := range v.pkg.Entries() {
+		if entry == ContentTypesPath {
+			continue
+		}
+		if strings.HasSuffix(entry, ".rels") {
+			continue
+		}
+		if strings.HasPrefix(entry, "_rels/") || strings.Contains(entry, "/_rels/") {
+			continue
+		}
+		if !strings.HasSuffix(entry, ".xml") {
+			continue
+		}
+
+		ext := strings.TrimPrefix(strings.ToLower(path.Ext(entry)), ".")
+		if ct.HasDefault(ext) {
+			continue
+		}
+		if ct.HasOverride("/" + entry) {
+			continue
+		}
+		v.addError(entry, ErrCodeMissingContentTypeOverride,
+			fmt.Sprintf("part has no Default for extension %q and no Override in [Content_Types].xml; PowerPoint will show the repair prompt", ext))
 	}
 }
 
