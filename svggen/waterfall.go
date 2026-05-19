@@ -393,12 +393,11 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 	}
 
 	// ── Density-adaptive value label settings ──
-	// At high density (10+ bars), value labels overlap connector lines.
-	// We apply three strategies:
-	// 1. Thin labels: show only every Nth label (totals/subtotals always shown)
-	// 2. Reduce font size so labels occupy less vertical space
-	// 3. Switch connectors to dashed lines to reduce visual weight
-	valueLabelStep := 1 // show every Nth value label (1 = all)
+	// Value labels are shown for every bar so the bridge story is readable
+	// without gaps. When labels would not physically fit at the current
+	// bandwidth, we thin them (preserving totals/subtotals, first, and last)
+	// rather than skipping arbitrarily by index. Density also reduces the
+	// label font size to keep adjacent labels from colliding.
 	isDense := numPoints >= 8
 
 	// Identify "important" bars (totals/subtotals) — always show their labels.
@@ -409,20 +408,28 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 		}
 	}
 
-	// Determine value label thinning step for dense charts
-	if isNarrow && numPoints >= 12 {
-		valueLabelStep = 3
-	} else if isNarrow && numPoints >= 8 {
-		valueLabelStep = 2
-	} else if numPoints >= 14 {
-		valueLabelStep = 3
-	} else if numPoints >= 10 {
-		valueLabelStep = 2
+	// Measurement-based thinning: only thin when the widest value label
+	// actually exceeds the per-bar slot. This keeps every label visible
+	// at typical densities (e.g., 11 bars at full-width 900pt) while still
+	// guarding very narrow / very dense charts.
+	valueLabelFont := style.Typography.SizeBody
+	if isNarrow || isDense {
+		valueLabelFont = style.Typography.SizeCaption
+	}
+	maxLabelWidth := wc.measureValueLabelWidth(points, valueLabelFont)
+	valueLabelStep := 1
+	if bandwidth > 0 && maxLabelWidth > bandwidth*0.95 {
+		step := int(math.Ceil(maxLabelWidth / (bandwidth * 0.95)))
+		if step > valueLabelStep {
+			valueLabelStep = step
+		}
 	}
 
-	// At high density, switch connectors to dashed to reduce visual clutter
-	// so that value labels (which are more informative) stand out.
-	useDashedConnectors := isDense && wc.config.ShowConnectors && !wc.config.ConnectorDash
+	// Connectors honor the user's ConnectorDash setting. We no longer force
+	// dashed connectors at high density: with all labels visible, broken
+	// connector lines look like "skipped" transitions and obscure the
+	// running-total flow. See go-slide-creator-h6ok.
+	useDashedConnectors := wc.config.ConnectorDash
 
 	// Determine the visual baseline for total/subtotal bars.
 	// When the y-axis includes 0, total bars extend from 0 to their value.
@@ -435,7 +442,8 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 	}
 	baseY := plotArea.Y + yScale.Scale(yDomainMin)
 	var running float64
-	var prevBarEnd float64 // End position of previous bar for connectors
+	var prevBarEnd float64    // x of previous bar's right edge (connector start)
+	var prevRunningY float64  // screen-y of running total AFTER previous bar
 
 	for i, p := range points {
 		x := plotArea.X + xScale.Scale(p.Label)
@@ -498,9 +506,15 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 			barHeight = 1
 		}
 
-		// Draw connector from previous bar
+		// Draw connector from previous bar.
+		// `prevRunningY` is the screen-y of the running total *after* the
+		// previous bar, which is where the previous bar's connector edge
+		// sits. drawConnectorAdaptive uses it as a fallback when the current
+		// bar is a total/subtotal (whose floating "near edge" is at its
+		// value-y), so transitions between deltas and totals are drawn at
+		// the same y level and the line span is continuous.
 		if wc.config.ShowConnectors && i > 0 {
-			wc.drawConnectorAdaptive(prevBarEnd, x-barWidth/2, barTop, barBottom, points[i-1], p, useDashedConnectors)
+			wc.drawConnectorAdaptive(prevBarEnd, x-barWidth/2, barTop, barBottom, prevRunningY, points[i-1], p, useDashedConnectors)
 		}
 
 		// Draw the bar
@@ -572,33 +586,52 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 			}
 		}
 
-		// Store bar end for connector
+		// Store bar end for connector. prevRunningY is the screen-y of the
+		// running total after this bar — used as the y-position for the
+		// outgoing connector when the next bar is a delta, or for drawing
+		// a connector at this bar's value level when this bar is a total.
 		prevBarEnd = x + barWidth/2
+		prevRunningY = plotArea.Y + yScale.Scale(running)
 	}
 }
 
-// drawConnectorAdaptive draws a connector line between bars, with optional
-// density-adaptive dashing. When forceDash is true, connectors are rendered
-// with a short dash pattern regardless of the config.ConnectorDash setting.
-// This reduces visual clutter at high density so value labels stand out.
-func (wc *WaterfallChart) drawConnectorAdaptive(prevX, currX, currTop, currBottom float64, prevPoint, currPoint WaterfallDataPoint, forceDash bool) {
+// drawConnectorAdaptive draws a connector line between adjacent bars. When
+// forceDash is true, connectors use a short dash pattern regardless of the
+// config.ConnectorDash setting.
+//
+// `prevRunningY` is the screen-y of the running total *after* the previous
+// bar. For delta-to-delta transitions this equals the current bar's start
+// edge; we use it directly for total/subtotal transitions so the connector
+// is drawn at the running-total level rather than skipped.
+func (wc *WaterfallChart) drawConnectorAdaptive(prevX, currX, currTop, currBottom, prevRunningY float64, prevPoint, currPoint WaterfallDataPoint, forceDash bool) {
 	b := wc.builder
 
-	// Determine connector Y position based on bar types
+	// Determine connector Y position based on bar types.
 	var connectorY float64
-
-	if currPoint.Type == WaterfallTypeTotal || currPoint.Type == WaterfallTypeSubtotal {
-		// No connector to total bars (they start from baseline)
-		return
-	}
-
-	// Connect from the end of previous bar to start of current bar
-	// For positive changes, connect at the top of current bar
-	// For negative changes, connect at the bottom of current bar (where it starts)
-	if currPoint.Value >= 0 {
-		connectorY = currBottom // Bottom of current bar (where it starts, which is where prev ended)
-	} else {
-		connectorY = currTop // Top of current bar (where it starts, which is where prev ended)
+	switch {
+	case currPoint.Type == WaterfallTypeTotal || currPoint.Type == WaterfallTypeSubtotal:
+		// Connect from the previous bar's running-total level into the
+		// total/subtotal at the same y. For a subtotal, the running total
+		// after the prior bar equals the subtotal's value by construction,
+		// so this lands on the total's "near" value edge. If the user
+		// supplied an absolute total that does NOT match the running sum,
+		// skip the connector rather than draw a misleading line.
+		var totalNearY float64
+		if currPoint.Value >= 0 {
+			totalNearY = currTop // bar grows up from baseline; value edge is the top
+		} else {
+			totalNearY = currBottom // bar grows down; value edge is the bottom
+		}
+		if math.Abs(prevRunningY-totalNearY) > 1 {
+			return
+		}
+		connectorY = prevRunningY
+	case currPoint.Value >= 0:
+		// Positive delta: connect at the bottom of current bar (where it starts).
+		connectorY = currBottom
+	default:
+		// Negative delta: connect at the top of current bar (where it starts).
+		connectorY = currTop
 	}
 
 	b.Push()
@@ -611,6 +644,27 @@ func (wc *WaterfallChart) drawConnectorAdaptive(prevX, currX, currTop, currBotto
 
 	b.DrawLine(prevX, connectorY, currX, connectorY)
 	b.Pop()
+}
+
+// measureValueLabelWidth returns the widest value-label width at the given
+// font size, used to decide whether bar value labels need thinning.
+func (wc *WaterfallChart) measureValueLabelWidth(points []WaterfallDataPoint, fontSize float64) float64 {
+	b := wc.builder
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(fontSize)
+	var maxW float64
+	for i, p := range points {
+		label := formatValue(p.Value, wc.config.ValueFormat)
+		if p.Value > 0 && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && i > 0 {
+			label = "+" + label
+		}
+		w, _ := b.MeasureText(label)
+		if w > maxW {
+			maxW = w
+		}
+	}
+	return maxW
 }
 
 // =============================================================================

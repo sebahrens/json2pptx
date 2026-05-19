@@ -156,6 +156,98 @@ func TestWaterfallChart_PerPointColor(t *testing.T) {
 	}
 }
 
+// TestWaterfallChart_AllLabelsShownAtTypicalDensity is a regression test for
+// go-slide-creator-h6ok. An 11-point waterfall at full width (900pt) used to
+// thin value labels by index (showing only every other bar's value), which
+// produced inconsistent and confusing label placement. The fix replaces
+// index-based thinning with measurement-based thinning, so labels are shown
+// for every bar when they fit in the per-bar slot.
+func TestWaterfallChart_AllLabelsShownAtTypicalDensity(t *testing.T) {
+	builder := NewSVGBuilder(900, 500)
+	config := DefaultWaterfallChartConfig(900, 500)
+	config.ShowValues = true
+	config.ShowConnectors = true
+
+	chart := NewWaterfallChart(builder, config)
+	err := chart.Draw(WaterfallData{
+		Title: "Investment Breakdown",
+		Points: []WaterfallDataPoint{
+			{Label: "Data Centers", Value: -3.2, Type: WaterfallTypeDecrease},
+			{Label: "GPU Clusters", Value: -4.8, Type: WaterfallTypeDecrease},
+			{Label: "Cloud Platform", Value: -2.4, Type: WaterfallTypeDecrease},
+			{Label: "AI/ML Stack", Value: -1.6, Type: WaterfallTypeDecrease},
+			{Label: "Security/Gov", Value: -0.8, Type: WaterfallTypeDecrease},
+			{Label: "Talent & Ops", Value: -1.2, Type: WaterfallTypeDecrease},
+			{Label: "Total Investment", Value: -14.0, Type: WaterfallTypeSubtotal},
+			{Label: "Avoided Costs", Value: 8.5, Type: WaterfallTypeIncrease},
+			{Label: "Revenue Creation", Value: 12.2, Type: WaterfallTypeIncrease},
+			{Label: "Strategic Value", Value: 24.1, Type: WaterfallTypeIncrease},
+			{Label: "Net Value", Value: 30.8, Type: WaterfallTypeTotal},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Draw failed: %v", err)
+	}
+
+	svg, err := builder.Render()
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+	content := svg.String()
+
+	// Every bar's value label must appear in the SVG output. The negative-
+	// delta labels render with a leading "-" (e.g., "-4.8"); positive deltas
+	// use a "+" prefix (e.g., "+8.5"); totals/subtotals use unsigned values.
+	expected := []string{"-3.2", "-4.8", "-2.4", "-1.6", "-0.8", "-1.2", "-14.0", "+8.5", "+12.2", "+24.1", "30.8"}
+	for _, want := range expected {
+		if !strings.Contains(content, want) {
+			t.Errorf("SVG output missing value label %q (regression: all bars must be labeled)", want)
+		}
+	}
+}
+
+// TestWaterfallChart_ConnectorIntoSubtotal verifies that a connector is drawn
+// at the running-total level when transitioning from a delta bar into a
+// subtotal bar. Previously the connector was skipped, leaving a visible "gap"
+// in the bridge flow at the subtotal column. Regression: go-slide-creator-h6ok.
+func TestWaterfallChart_ConnectorIntoSubtotal(t *testing.T) {
+	builder := NewSVGBuilder(800, 500)
+	config := DefaultWaterfallChartConfig(800, 500)
+	config.ShowConnectors = true
+	config.ConnectorDash = false
+
+	chart := NewWaterfallChart(builder, config)
+	err := chart.Draw(WaterfallData{
+		Points: []WaterfallDataPoint{
+			{Label: "A", Value: -5, Type: WaterfallTypeDecrease},
+			{Label: "B", Value: -3, Type: WaterfallTypeDecrease},
+			{Label: "Sub", Value: -8, Type: WaterfallTypeSubtotal},
+			{Label: "C", Value: 10, Type: WaterfallTypeIncrease},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Draw failed: %v", err)
+	}
+
+	svg, err := builder.Render()
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+	content := svg.String()
+
+	// Count connector lines: each connector is a stroked path with the
+	// connector color. We expect three: A→B, B→Sub, Sub→C. The pre-fix
+	// behavior produced only two (it skipped B→Sub).
+	//
+	// Connectors share the ConnectorColor hex; count occurrences as a coarse
+	// proxy (other strokes use axis/grid colors instead).
+	connectorMarker := "stroke:#6c757d" // DefaultThemeTextMutedHex
+	count := strings.Count(content, connectorMarker)
+	if count < 3 {
+		t.Errorf("expected at least 3 connector strokes (A→B, B→Sub, Sub→C); got %d", count)
+	}
+}
+
 func TestWaterfallChart_NoConnectors(t *testing.T) {
 	builder := NewSVGBuilder(800, 600)
 
