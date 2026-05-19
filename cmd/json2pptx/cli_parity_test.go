@@ -29,6 +29,7 @@ var mcpToCLI = map[string]string{
 	"preview_presentation_plan":  "preview",
 	"preview_slide_wireframe":    "preview-wireframe",
 	"repair_slide":               "repair",
+	"propose_repairs":            "repair", // [MCP-only] CLI users translate findings to fixes manually and invoke 'json2pptx repair'
 	"score_deck":                 "score",
 	"score_candidates":           "score-candidates",
 	"inspect_slide_images":       "inspect",

@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.24.0 (2026-05-19)
+
+### Added
+
+- **`propose_repairs` MCP tool** — translates structured findings into a
+  ranked list of `repair_slide` fix directives without mutating the deck.
+  Accepts both fit-finding shapes (`{path, code, action, fix:{kind,params}}`)
+  and visual QA finding shapes (`{slide_index, category, severity,
+  suggested_fixes?}`); mixed input is supported. The tool resolves each
+  finding to a target slide, selects candidate fix kinds (preferring
+  `finding.fix` > `finding.suggested_fixes` > `visualqa` category mapping),
+  and returns `{slides: [{slide_index, finding_count, directives, batch_tool_call}],
+  unmapped, summary}`.
+
+  Each directive carries `{kind, params, rank, source:{type, code|category,
+  severity, action, path, message}, tool_call}` — the `tool_call` is a
+  ready-to-invoke `repair_slide` payload, and each per-slide `batch_tool_call`
+  bundles all directives for that slide into a single `repair_slide`
+  invocation. Directives are sorted by action rank
+  (`refuse > shrink_or_split > review > info`) and severity (`error|P0 >
+  warning|P1 > info|P2 > P3`). Findings with no repair mapping
+  (`image_quality`, `aspect_ratio`, `border_style`, or fit-finding kinds
+  outside the `repair_slide` vocabulary like `adopt_pattern`) appear under
+  `unmapped[]` with a stable `reason` code.
+
+  MCP-only — CLI users translate findings to fixes manually and call
+  `json2pptx repair`.
+
 ## 4.23.0 (2026-05-19)
 
 ### Changed

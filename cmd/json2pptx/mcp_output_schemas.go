@@ -1276,3 +1276,89 @@ var outputSchemaGetInputSchema = json.RawMessage(`{
   },
   "required": ["digest"]
 }`)
+
+// --- propose_repairs ---
+var outputSchemaProposeRepairs = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index":   {"type": "integer"},
+          "finding_count": {"type": "integer"},
+          "directives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind":   {"type": "string"},
+                "params": {"type": "object"},
+                "rank":   {"type": "integer"},
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type":     {"type": "string", "enum": ["fit", "visual"]},
+                    "code":     {"type": "string"},
+                    "category": {"type": "string"},
+                    "severity": {"type": "string"},
+                    "action":   {"type": "string"},
+                    "path":     {"type": "string"},
+                    "message":  {"type": "string"}
+                  },
+                  "required": ["type"]
+                },
+                "tool_call": {
+                  "type": "object",
+                  "properties": {
+                    "tool":          {"type": "string"},
+                    "args_template": {"type": "object"}
+                  },
+                  "required": ["tool", "args_template"]
+                }
+              },
+              "required": ["kind", "rank", "source"]
+            }
+          },
+          "batch_tool_call": {
+            "type": "object",
+            "properties": {
+              "tool":          {"type": "string"},
+              "args_template": {"type": "object"}
+            },
+            "required": ["tool", "args_template"]
+          }
+        },
+        "required": ["slide_index", "finding_count", "directives"]
+      }
+    },
+    "unmapped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reason":      {"type": "string"},
+          "code":        {"type": "string"},
+          "category":    {"type": "string"},
+          "slide_index": {"type": "integer"},
+          "path":        {"type": "string"},
+          "message":     {"type": "string"}
+        },
+        "required": ["reason"]
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_findings":    {"type": "integer"},
+        "mapped_findings":   {"type": "integer"},
+        "unmapped_findings": {"type": "integer"},
+        "total_directives": {"type": "integer"},
+        "slides_affected":   {"type": "integer"}
+      },
+      "required": ["total_findings", "mapped_findings", "unmapped_findings", "total_directives", "slides_affected"]
+    }
+  },
+  "required": ["slides", "summary"]
+}`)
