@@ -368,6 +368,9 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 		if slide.SourceNote != "" {
 			ctx.slideSources[slideNum] = slide.SourceNote
 		}
+		if slide.Takeaway != "" {
+			ctx.slideTakeaways[slideNum] = slide.Takeaway
+		}
 		// Register icon inserts from shape_grid as native SVG inserts
 		for iconIdx, icon := range slide.IconInserts {
 			sourceID := fmt.Sprintf("icon-s%d-i%d", slideNum, iconIdx)

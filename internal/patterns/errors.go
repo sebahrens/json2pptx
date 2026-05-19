@@ -9,37 +9,38 @@ import (
 
 // Error codes for structured validation errors.
 const (
-	ErrCodeRequired      = "required"
-	ErrCodeMaxLength     = "max_length"
-	ErrCodeOutOfRange    = "out_of_range"
-	ErrCodeCountMismatch = "count_mismatch"
-	ErrCodeUnknownKey    = "unknown_key"
-	ErrCodeMinItems      = "min_items"
-	ErrCodeMaxItems      = "max_items"
+	ErrCodeRequired            = "required"
+	ErrCodeMaxLength           = "max_length"
+	ErrCodeOutOfRange          = "out_of_range"
+	ErrCodeCountMismatch       = "count_mismatch"
+	ErrCodeUnknownKey          = "unknown_key"
+	ErrCodeMinItems            = "min_items"
+	ErrCodeMaxItems            = "max_items"
 	ErrCodeEmptyValue          = "empty_value"
-	ErrCodeHexFillNonBrand    = "hex_fill_non_brand"
-	ErrCodeUnknownLayoutID    = "unknown_layout_id"
-	ErrCodeCalloutUnsupported = "callout_unsupported"
-	ErrCodeUnknownEnum            = "UNKNOWN_ENUM"
-	ErrCodePlaceholderNotFound    = "placeholder_not_found"
-	ErrCodeUnknownTableStyleID   = "unknown_table_style_id"
-	ErrCodeWrongPattern          = "wrong_pattern"
-	ErrCodeInvalidShape          = "invalid_shape"
+	ErrCodeHexFillNonBrand     = "hex_fill_non_brand"
+	ErrCodeUnknownLayoutID     = "unknown_layout_id"
+	ErrCodeCalloutUnsupported  = "callout_unsupported"
+	ErrCodeUnknownEnum         = "UNKNOWN_ENUM"
+	ErrCodePlaceholderNotFound = "placeholder_not_found"
+	ErrCodeUnknownTableStyleID = "unknown_table_style_id"
+	ErrCodeWrongPattern        = "wrong_pattern"
+	ErrCodeInvalidShape        = "invalid_shape"
 
 	// Fit-report error codes.
-	ErrCodeFitOverflow       = "fit_overflow"
-	ErrCodeDensityExceeded   = "density_exceeded"
-	ErrCodeStackedTables     = "stacked_tables"
-	ErrCodeDividerTooThin    = "divider_too_thin"
-	ErrCodeMixedFillScheme       = "mixed_fill_scheme"
-	ErrCodePlaceholderOverflow   = "placeholder_overflow"
-	ErrCodeSlideBoundsOverflow   = "slide_bounds_overflow"
-	ErrCodeFooterCollision       = "footer_collision"
-	ErrCodeTitleWraps            = "title_wraps"
-	ErrCodeSparseLayout          = "sparse_layout"
-	ErrCodePatternUnderfilled    = "pattern_underfilled"
-	ErrCodePatternOvercrowded    = "pattern_overcrowded"
-	ErrCodeCellUnderfilled       = "cell_underfilled"
+	ErrCodeFitOverflow         = "fit_overflow"
+	ErrCodeDensityExceeded     = "density_exceeded"
+	ErrCodeStackedTables       = "stacked_tables"
+	ErrCodeDividerTooThin      = "divider_too_thin"
+	ErrCodeMixedFillScheme     = "mixed_fill_scheme"
+	ErrCodePlaceholderOverflow = "placeholder_overflow"
+	ErrCodeSlideBoundsOverflow = "slide_bounds_overflow"
+	ErrCodeFooterCollision     = "footer_collision"
+	ErrCodeTitleWraps          = "title_wraps"
+	ErrCodeSparseLayout        = "sparse_layout"
+	ErrCodePatternUnderfilled  = "pattern_underfilled"
+	ErrCodePatternOvercrowded  = "pattern_overcrowded"
+	ErrCodeCellUnderfilled     = "cell_underfilled"
+	ErrCodeTakeawayMissing     = "takeaway_missing"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced  = "chart_value_coerced"
@@ -47,22 +48,22 @@ const (
 	ErrCodeChartDataEmpty     = "chart_data_empty"
 
 	// Grid visual cell finding codes (emitted for diagram/icon/image grid cells).
-	ErrCodeGridDiagramNarrow      = "grid_diagram_narrow"
-	ErrCodeDiagramAspectMismatch  = "diagram_aspect_mismatch"
-	ErrCodeDiagramAspectConflict  = "diagram_aspect_conflict"
+	ErrCodeGridDiagramNarrow     = "grid_diagram_narrow"
+	ErrCodeDiagramAspectMismatch = "diagram_aspect_mismatch"
+	ErrCodeDiagramAspectConflict = "diagram_aspect_conflict"
 
 	// Render-time finding codes (emitted during generation, not pre-flight).
-	ErrCodePlaceholderRemapped   = "placeholder_remapped"
-	ErrCodeTextTrimmed           = "text_trimmed"
-	ErrCodeTextOverflow          = "text_overflow"
-	ErrCodeReadabilityTrimmed    = "readability_trimmed"
-	ErrCodeNoAutofitOverflow     = "no_autofit_overflow"
-	ErrCodeTableRowsTruncated    = "table_rows_truncated"
-	ErrCodeTableFontScaled       = "table_font_scaled"
-	ErrCodeDiagramClamped        = "diagram_clamped"
-	ErrCodeDiagramRenderFailed   = "diagram_render_failed"
-	ErrCodePaginationDefault     = "pagination_default_threshold"
-	ErrCodeColumnWidthDeficit    = "column_width_deficit"
+	ErrCodePlaceholderRemapped = "placeholder_remapped"
+	ErrCodeTextTrimmed         = "text_trimmed"
+	ErrCodeTextOverflow        = "text_overflow"
+	ErrCodeReadabilityTrimmed  = "readability_trimmed"
+	ErrCodeNoAutofitOverflow   = "no_autofit_overflow"
+	ErrCodeTableRowsTruncated  = "table_rows_truncated"
+	ErrCodeTableFontScaled     = "table_font_scaled"
+	ErrCodeDiagramClamped      = "diagram_clamped"
+	ErrCodeDiagramRenderFailed = "diagram_render_failed"
+	ErrCodePaginationDefault   = "pagination_default_threshold"
+	ErrCodeColumnWidthDeficit  = "column_width_deficit"
 
 	// Preflight predictions for render-time behaviour. These mirror the
 	// render-time codes but are emitted from collectFitFindings using only
@@ -75,27 +76,27 @@ const (
 //
 //	if errors.Is(err, patterns.ErrRequired) { ... }
 var (
-	ErrRequired      = errors.New("required field missing")
-	ErrMaxLength     = errors.New("value exceeds maximum length")
-	ErrOutOfRange    = errors.New("value out of range")
-	ErrCountMismatch = errors.New("item count mismatch")
-	ErrUnknownKey    = errors.New("unknown key")
-	ErrMinItems      = errors.New("too few items")
-	ErrMaxItems      = errors.New("too many items")
+	ErrRequired            = errors.New("required field missing")
+	ErrMaxLength           = errors.New("value exceeds maximum length")
+	ErrOutOfRange          = errors.New("value out of range")
+	ErrCountMismatch       = errors.New("item count mismatch")
+	ErrUnknownKey          = errors.New("unknown key")
+	ErrMinItems            = errors.New("too few items")
+	ErrMaxItems            = errors.New("too many items")
 	ErrEmptyValue          = errors.New("empty value")
-	ErrHexFillNonBrand    = errors.New("hex fill color is not in brand allowlist")
-	ErrUnknownLayoutID        = errors.New("layout_id not found in template")
-	ErrCalloutUnsupported     = errors.New("pattern does not support callout")
-	ErrUnknownEnum            = errors.New("unknown enum value")
-	ErrPlaceholderNotFound    = errors.New("placeholder_id not found in layout")
-	ErrUnknownTableStyleID   = errors.New("style_id not found in template table styles")
-	ErrWrongPattern          = errors.New("content shape matches a different pattern")
-	ErrInvalidShape          = errors.New("value has wrong structure")
+	ErrHexFillNonBrand     = errors.New("hex fill color is not in brand allowlist")
+	ErrUnknownLayoutID     = errors.New("layout_id not found in template")
+	ErrCalloutUnsupported  = errors.New("pattern does not support callout")
+	ErrUnknownEnum         = errors.New("unknown enum value")
+	ErrPlaceholderNotFound = errors.New("placeholder_id not found in layout")
+	ErrUnknownTableStyleID = errors.New("style_id not found in template table styles")
+	ErrWrongPattern        = errors.New("content shape matches a different pattern")
+	ErrInvalidShape        = errors.New("value has wrong structure")
 
-	ErrFitOverflow     = errors.New("text exceeds cell dimensions")
-	ErrDensityExceeded = errors.New("table density exceeds TDR ceiling")
-	ErrStackedTables   = errors.New("stacked tables with insufficient gap")
-	ErrDividerTooThin  = errors.New("divider shape too thin")
+	ErrFitOverflow         = errors.New("text exceeds cell dimensions")
+	ErrDensityExceeded     = errors.New("table density exceeds TDR ceiling")
+	ErrStackedTables       = errors.New("stacked tables with insufficient gap")
+	ErrDividerTooThin      = errors.New("divider shape too thin")
 	ErrMixedFillScheme     = errors.New("slide mixes hex and semantic fill colors")
 	ErrPlaceholderOverflow = errors.New("placeholder text overflows frame")
 	ErrSlideBoundsOverflow = errors.New("shape center falls outside slide bounds")
@@ -105,6 +106,7 @@ var (
 	ErrPatternUnderfilled  = errors.New("pattern grid less than 50% filled")
 	ErrPatternOvercrowded  = errors.New("pattern grid exceeds recommended cell count")
 	ErrCellUnderfilled     = errors.New("cell content is well below capacity")
+	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
 
 	ErrChartValueCoerced  = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred = errors.New("chart data shape inferred from flat input")
@@ -130,26 +132,26 @@ var (
 
 // codeSentinel maps error code strings to their sentinel errors.
 var codeSentinel = map[string]error{
-	ErrCodeRequired:      ErrRequired,
-	ErrCodeMaxLength:     ErrMaxLength,
-	ErrCodeOutOfRange:    ErrOutOfRange,
-	ErrCodeCountMismatch: ErrCountMismatch,
-	ErrCodeUnknownKey:    ErrUnknownKey,
-	ErrCodeMinItems:      ErrMinItems,
-	ErrCodeMaxItems:      ErrMaxItems,
-	ErrCodeEmptyValue:          ErrEmptyValue,
-	ErrCodeHexFillNonBrand:    ErrHexFillNonBrand,
-	ErrCodeUnknownLayoutID:        ErrUnknownLayoutID,
-	ErrCodeCalloutUnsupported:     ErrCalloutUnsupported,
-	ErrCodeUnknownEnum:            ErrUnknownEnum,
-	ErrCodePlaceholderNotFound:    ErrPlaceholderNotFound,
+	ErrCodeRequired:              ErrRequired,
+	ErrCodeMaxLength:             ErrMaxLength,
+	ErrCodeOutOfRange:            ErrOutOfRange,
+	ErrCodeCountMismatch:         ErrCountMismatch,
+	ErrCodeUnknownKey:            ErrUnknownKey,
+	ErrCodeMinItems:              ErrMinItems,
+	ErrCodeMaxItems:              ErrMaxItems,
+	ErrCodeEmptyValue:            ErrEmptyValue,
+	ErrCodeHexFillNonBrand:       ErrHexFillNonBrand,
+	ErrCodeUnknownLayoutID:       ErrUnknownLayoutID,
+	ErrCodeCalloutUnsupported:    ErrCalloutUnsupported,
+	ErrCodeUnknownEnum:           ErrUnknownEnum,
+	ErrCodePlaceholderNotFound:   ErrPlaceholderNotFound,
 	ErrCodeUnknownTableStyleID:   ErrUnknownTableStyleID,
 	ErrCodeWrongPattern:          ErrWrongPattern,
 	ErrCodeInvalidShape:          ErrInvalidShape,
-	ErrCodeFitOverflow:       ErrFitOverflow,
-	ErrCodeDensityExceeded:   ErrDensityExceeded,
-	ErrCodeStackedTables:     ErrStackedTables,
-	ErrCodeDividerTooThin:    ErrDividerTooThin,
+	ErrCodeFitOverflow:           ErrFitOverflow,
+	ErrCodeDensityExceeded:       ErrDensityExceeded,
+	ErrCodeStackedTables:         ErrStackedTables,
+	ErrCodeDividerTooThin:        ErrDividerTooThin,
 	ErrCodeMixedFillScheme:       ErrMixedFillScheme,
 	ErrCodePlaceholderOverflow:   ErrPlaceholderOverflow,
 	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
@@ -159,6 +161,7 @@ var codeSentinel = map[string]error{
 	ErrCodePatternUnderfilled:    ErrPatternUnderfilled,
 	ErrCodePatternOvercrowded:    ErrPatternOvercrowded,
 	ErrCodeCellUnderfilled:       ErrCellUnderfilled,
+	ErrCodeTakeawayMissing:       ErrTakeawayMissing,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,
@@ -194,7 +197,7 @@ func AllFitFindingCodes() []string {
 // (e.g. "split_at_row", "shrink_text"), and params carry the specifics.
 type FixSuggestion struct {
 	Kind   string         `json:"kind"`             // e.g. "split_at_row", "shrink_text", "provide_value"
-	Params map[string]any `json:"params,omitempty"`  // kind-specific parameters
+	Params map[string]any `json:"params,omitempty"` // kind-specific parameters
 }
 
 // TextFix creates a FixSuggestion with kind "text" wrapping a free-form message.

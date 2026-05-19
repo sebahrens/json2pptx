@@ -39,6 +39,20 @@ Always set text insets (6-12pt) on body cells. Anything outside these ranges sho
 | 9 | Chart types use underscores: `stacked_bar`, `grouped_bar` | Hyphens (`stacked-bar`) silently fail |
 | 10 | Don't mix data formats. Single: `{"Q1": 10}`; Multi: `{categories, series}`; Waterfall: `{points}` | Pick one format per chart |
 
+## Slide Takeaway (the "so what" line)
+
+| # | Rule | Rationale |
+|---|---|---|
+| 11a | Chart and matrix slides MUST set `slide.takeaway` (a single sentence — the headline answer). | A chart or 2x2 without a takeaway forces the audience to guess the argument. The validator emits `takeaway_missing` warning when chart/matrix slides leave it empty. The takeaway renders as bold text in the lower band of the slide, above the source note. |
+
+```json
+{
+  "layout_id": "blank",
+  "takeaway": "Margin contraction is driven by the EU region — not company-wide.",
+  "pattern": { "name": "matrix-2x2", "values": { ... } }
+}
+```
+
 ## Content and Layout
 
 | # | Rule | Rationale |

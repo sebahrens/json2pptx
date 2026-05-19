@@ -112,6 +112,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"compose":           "slide",
 		"speaker_notes":     "slide",
 		"source":            "slide",
+		"takeaway":          "slide",
 		"transition":        "slide",
 		"transition_speed":  "slide",
 		"build":             "slide",

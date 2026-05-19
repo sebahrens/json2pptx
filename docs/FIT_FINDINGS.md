@@ -469,6 +469,32 @@ See also: [PATTERNS.md Cell Capacity Contract](PATTERNS.md) for pattern-level ca
 }
 ```
 
+### `takeaway_missing`
+
+**Action:** `review`
+**Pattern:** *(none — slide-level)*
+**Fix kind:** `provide_value`
+
+Emitted by `validate_input` and the CLI dry-run when a slide carries chart or matrix content but the slide's `takeaway` field is empty. The takeaway is the slide's headline answer — a single sentence that tells the audience the "so what" of the data. A chart or 2x2 without one forces the audience to derive the argument themselves, which they rarely do correctly.
+
+Triggers when **all** of the following hold:
+
+- `slide.takeaway` is empty (or whitespace-only)
+- The slide has at least one of: a `chart` content item, a `diagram` content item whose `diagram_value.type` is chart-shaped (bar, line, area, scatter, bubble, pie, donut, stacked_bar, grouped_bar, waterfall, funnel, radar, gauge, treemap), or a pattern whose `name` starts with `matrix-`
+
+The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as bold dark-gray text in the lower band of the slide, above the source note row.
+
+```json
+{
+  "path": "/slides/3/takeaway",
+  "code": "takeaway_missing",
+  "severity": "warning",
+  "message": "slide 4: chart/matrix slides should set a takeaway headline so the audience knows the 'so what' — currently empty",
+  "fix": { "kind": "provide_value", "params": { "field": "takeaway" } },
+  "action": "review"
+}
+```
+
 ### `contrast_predicted`
 
 **Action:** `info`

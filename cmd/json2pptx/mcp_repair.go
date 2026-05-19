@@ -966,6 +966,7 @@ func cloneSlideForSplit(src SlideInput, rows []GridRowInput, srcGrid *ShapeGridI
 		ShapeGrid:       newGrid,
 		SpeakerNotes:    src.SpeakerNotes,
 		Source:          src.Source,
+		Takeaway:        src.Takeaway,
 		Transition:      src.Transition,
 		TransitionSpeed: src.TransitionSpeed,
 		Build:           src.Build,

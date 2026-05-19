@@ -23,18 +23,18 @@ import (
 
 // dryRunOutput is the top-level JSON printed to stdout in dry-run mode.
 type dryRunOutput struct {
-	Valid        bool           `json:"valid"`
-	SlideCount   int            `json:"slide_count"`
-	ChartCount   int            `json:"chart_count"`
-	DiagramCount int            `json:"diagram_count"`
-	TableCount   int            `json:"table_count"`
-	ShapeCount   int            `json:"shape_count"`
+	Valid              bool                        `json:"valid"`
+	SlideCount         int                         `json:"slide_count"`
+	ChartCount         int                         `json:"chart_count"`
+	DiagramCount       int                         `json:"diagram_count"`
+	TableCount         int                         `json:"table_count"`
+	ShapeCount         int                         `json:"shape_count"`
 	Warnings           []string                    `json:"warnings"`
-	ValidationWarnings []*patterns.ValidationError  `json:"validation_warnings,omitempty"`
+	ValidationWarnings []*patterns.ValidationError `json:"validation_warnings,omitempty"`
 	Errors             []string                    `json:"errors,omitempty"`
 	Diagnostics        []diagnostics.Diagnostic    `json:"diagnostics,omitempty"`
 	Slides             []dryRunSlide               `json:"slides"`
-	FitFindings        []patterns.FitFinding        `json:"fit_findings,omitempty"`
+	FitFindings        []patterns.FitFinding       `json:"fit_findings,omitempty"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key.
@@ -43,13 +43,13 @@ type dryRunOutput struct {
 
 // dryRunSlide describes one slide in the dry-run report.
 type dryRunSlide struct {
-	SlideNumber  int                    `json:"slide_number"`
-	Title        string                 `json:"title,omitempty"`
-	LayoutID     string                 `json:"layout_id"`
-	LayoutName   string                 `json:"layout_name,omitempty"`
-	Placeholders []dryRunPlaceholder    `json:"placeholders"`
-	ShapeCount   int                    `json:"shape_count,omitempty"`
-	Warnings     []string               `json:"warnings,omitempty"`
+	SlideNumber  int                 `json:"slide_number"`
+	Title        string              `json:"title,omitempty"`
+	LayoutID     string              `json:"layout_id"`
+	LayoutName   string              `json:"layout_name,omitempty"`
+	Placeholders []dryRunPlaceholder `json:"placeholders"`
+	ShapeCount   int                 `json:"shape_count,omitempty"`
+	Warnings     []string            `json:"warnings,omitempty"`
 }
 
 // dryRunPlaceholder describes a placeholder mapping in the dry-run report.
@@ -214,7 +214,7 @@ func validateJSONContentValue(item JSONContentItem, slideNum, contentNum int) st
 			return fmt.Sprintf("slide %d, content %d: image path is required", slideNum, contentNum)
 		}
 	case "chart":
-		var chart types.ChartSpec                                    //nolint:staticcheck // backward compatibility
+		var chart types.ChartSpec                                  //nolint:staticcheck // backward compatibility
 		if err := json.Unmarshal(item.Value, &chart); err != nil { //nolint:staticcheck // backward compatibility
 			return fmt.Sprintf("slide %d, content %d: invalid chart value: %v", slideNum, contentNum, err)
 		}
@@ -625,8 +625,65 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			}
 		}
 
+		// Takeaway warning: chart and matrix slides without a takeaway lose
+		// most of their narrative value — the audience cannot tell what the
+		// data is supposed to argue. Warn (do not error) when missing.
+		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) {
+			msg := fmt.Sprintf("slide %d: chart/matrix slides should set a takeaway headline so the audience knows the 'so what' — currently empty", i+1)
+			output.Warnings = append(output.Warnings, msg)
+			ve := &patterns.ValidationError{
+				Path:    slidepath.SlideField(i, "takeaway"),
+				Code:    patterns.ErrCodeTakeawayMissing,
+				Message: msg,
+				Fix: &patterns.FixSuggestion{
+					Kind:   "provide_value",
+					Params: map[string]any{"field": "takeaway"},
+				},
+			}
+			output.ValidationWarnings = append(output.ValidationWarnings, ve)
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
+		}
+
 		output.Slides = append(output.Slides, slide)
 	}
+}
+
+// slideRequiresTakeaway reports whether a slide carries chart or matrix
+// content for which a takeaway / "so what" headline is strongly recommended.
+// Returns true when any content item is a chart, when diagram_value is a
+// chart-shaped diagram type, or when the slide uses a matrix-* pattern.
+func slideRequiresTakeaway(s SlideInput) bool {
+	for _, item := range s.Content {
+		switch item.Type {
+		case "chart":
+			return true
+		case "diagram":
+			if item.DiagramValue != nil && isChartishDiagramType(item.DiagramValue.Type) {
+				return true
+			}
+		}
+		if item.ChartValue != nil {
+			return true
+		}
+	}
+	if s.Pattern != nil && strings.HasPrefix(s.Pattern.Name, "matrix-") {
+		return true
+	}
+	return false
+}
+
+// isChartishDiagramType reports whether a diagram type renders as a data
+// chart (bar, line, area, scatter, etc.) rather than a structural diagram.
+// Chart-shaped diagrams benefit from a takeaway in the same way native
+// chart placeholders do.
+func isChartishDiagramType(t string) bool {
+	switch t {
+	case "bar", "bar_chart", "line", "line_chart", "area", "area_chart",
+		"scatter", "bubble", "pie", "donut", "stacked_bar", "grouped_bar",
+		"waterfall", "funnel", "radar", "gauge", "treemap":
+		return true
+	}
+	return false
 }
 
 // hexColorRe matches #RGB or #RRGGBB hex color strings.

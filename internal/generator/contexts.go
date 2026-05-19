@@ -50,6 +50,7 @@ type SlideContext struct {
 	masterBulletLevelCache map[string]int     // masterPath -> first bullet level (cached)
 	slideNotes            map[int]string      // slideNum -> speaker notes text (only for slides with notes)
 	slideSources          map[int]string      // slideNum -> source attribution text (only for slides with source)
+	slideTakeaways        map[int]string      // slideNum -> takeaway / "so what" headline (only for slides with takeaway)
 	tableInserts          map[int][]tableInsert      // slideNum -> table XML inserts (replaces placeholder shapes)
 	panelShapeInserts     map[int][]panelShapeInsert // slideNum -> native panel shape inserts (replaces placeholder shapes)
 	logoZones             map[string]*LogoZone // per-layout logo zones (key = layout basename, e.g. "slideLayout1"); nil if no logos detected
@@ -219,6 +220,7 @@ func newSinglePassContext(outputPath string, slides []SlideSpec, allowedPaths []
 			masterBulletLevelCache: make(map[string]int),
 			slideNotes:             make(map[int]string),
 			slideSources:           make(map[int]string),
+			slideTakeaways:         make(map[int]string),
 			tableInserts:           make(map[int][]tableInsert),
 			panelShapeInserts:      make(map[int][]panelShapeInsert),
 			slideBgMedia:           make(map[int]mediaRel),

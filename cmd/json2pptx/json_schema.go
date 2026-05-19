@@ -217,6 +217,7 @@ type SlideInput struct {
 	Overlays        []*OverlayShapeInput `json:"overlays,omitempty"` // Free-floating shapes (arrows, lines, badges) rendered on top of the grid. See OverlayShapeInput for positioning.
 	SpeakerNotes    string           `json:"speaker_notes,omitempty"`
 	Source          string           `json:"source,omitempty"`
+	Takeaway        string           `json:"takeaway,omitempty"` // Headline answer / "so what" line rendered above the source note. Strongly recommended on chart and matrix slides.
 	Transition      string           `json:"transition,omitempty"`
 	TransitionSpeed string           `json:"transition_speed,omitempty"`
 	Build           string           `json:"build,omitempty"`

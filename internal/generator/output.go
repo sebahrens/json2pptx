@@ -749,6 +749,15 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
+	// Insert takeaway headline shape if present. Goes BEFORE source note so
+	// source attribution renders below the takeaway in the lower band.
+	if takeawayText, hasTakeaway := ctx.slideTakeaways[slideNum]; hasTakeaway {
+		slideData, err = insertTakeaway(slideData, takeawayText)
+		if err != nil {
+			return fmt.Errorf("failed to insert takeaway for slide %d: %w", slideNum, err)
+		}
+	}
+
 	// Insert source attribution text shape if present
 	if sourceText, hasSource := ctx.slideSources[slideNum]; hasSource {
 		slideData, err = insertSourceNote(slideData, sourceText)

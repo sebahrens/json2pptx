@@ -4,6 +4,26 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.26.0 (2026-05-19)
+
+### Added
+
+- **`slide.takeaway`** — first-class slide field for the "so what" headline.
+  Renders as bold dark-gray (12pt) text in the lower band of the slide,
+  above the source-note row. Accepted by both `SlideInput` (typed JSON
+  path) and the legacy `JSONSlide` shape. Propagates through
+  `generator.SlideSpec.Takeaway`, the singlepass render context, and the
+  output writer so it survives a `repair_slide` round-trip via
+  `cloneSlideForRepair`.
+- **`takeaway_missing` finding code** (`patterns.ErrCodeTakeawayMissing`,
+  sentinel `patterns.ErrTakeawayMissing`) — emitted by `validate_input`
+  and the CLI dry-run with severity `warning`, action `review`, when a
+  slide carries chart or matrix content but leaves `takeaway` empty.
+  "Chart or matrix content" means a `chart` content item, a `diagram`
+  whose `diagram_value.type` is chart-shaped (bar/line/area/scatter/etc.),
+  or a pattern whose `name` starts with `matrix-`. Documented in
+  `docs/FIT_FINDINGS.md`.
+
 ## 4.25.0 (2026-05-19)
 
 ### Added

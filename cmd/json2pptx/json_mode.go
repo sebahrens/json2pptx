@@ -77,6 +77,11 @@ type JSONSlide struct {
 	// Source is optional source attribution text
 	Source string `json:"source,omitempty"`
 
+	// Takeaway is the slide's headline answer / "so what" line. Renders
+	// as bold text above the source note row. Strongly recommended on
+	// chart and matrix slides.
+	Takeaway string `json:"takeaway,omitempty"`
+
 	// Transition is the slide transition type: "fade", "push", "wipe", etc.
 	Transition string `json:"transition,omitempty"`
 
@@ -641,6 +646,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 			Content:         contentItems,
 			SpeakerNotes:    jsonSlide.SpeakerNotes,
 			SourceNote:      jsonSlide.Source,
+			Takeaway:        jsonSlide.Takeaway,
 			Transition:      jsonSlide.Transition,
 			TransitionSpeed: jsonSlide.TransitionSpeed,
 			Build:           jsonSlide.Build,
@@ -819,6 +825,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		Eyebrow:         slide.Eyebrow,
 		SpeakerNotes:    slide.SpeakerNotes,
 		SourceNote:      slide.Source,
+		Takeaway:        slide.Takeaway,
 		Transition:      slide.Transition,
 		TransitionSpeed: slide.TransitionSpeed,
 		Build:           slide.Build,

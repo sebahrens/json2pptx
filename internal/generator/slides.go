@@ -62,6 +62,7 @@ type SlideSpec struct {
 	Background      *BackgroundImage // Slide background image (nil = no background image)
 	SpeakerNotes    string           // Speaker notes text (written to notesSlide XML)
 	SourceNote      string           // Source attribution text (rendered as small text at slide bottom)
+	Takeaway        string           // Headline answer / "so what" line (rendered as bold text above the source note)
 	Transition      string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
 	TransitionSpeed string           // Transition speed: "slow", "med", "fast" (default: "med")
 	Build           string           // Build animation: "bullets" for one-by-one bullet reveal
