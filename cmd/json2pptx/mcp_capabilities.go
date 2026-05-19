@@ -180,6 +180,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "score_candidates", AddedIn: "4.9.0"},
 		// Tools from 4.11.0
 		{Name: "get_started", AddedIn: "4.11.0"},
+		// Tools from 4.19.0
+		{Name: "render_slide_image_from_json", AddedIn: "4.19.0"},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries
@@ -432,6 +434,7 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpTableDensityGuideTool,
 		mcpResolveThemeTool,
 		mcpRenderSlideImageTool,
+		mcpRenderSlideImageFromJSONTool,
 		mcpRenderDeckThumbnailsTool,
 		mcpScoreDeckTool,
 		mcpScoreCandidatesTool,

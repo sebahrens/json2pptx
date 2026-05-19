@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.18.0"
+const SchemaVersion = "4.19.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -92,6 +92,8 @@ func dispatch() error { //nolint:gocyclo
 		return runRecommendVisual()
 	case "render-slide":
 		return runRenderSlide()
+	case "render-slide-from-json":
+		return runRenderSlideFromJSON()
 	case "render-thumbnails":
 		return runRenderThumbnails()
 	case "template-settings":
@@ -145,7 +147,8 @@ Commands:
   analyze-rhythm      Analyze deck visual rhythm and pattern repetition
   plan-deck           Plan a deck outline from a brief
   recommend-visual    Recommend visual approaches for a slide intent
-  render-slide        Render a single slide to PNG
+  render-slide        Render a single slide from a PPTX to PNG
+  render-slide-from-json  Render one slide directly from JSON (no full deck render)
   render-thumbnails   Render all slides as PNG thumbnails
   template-settings   Manage named styles (list/register/delete)
   data-format-hints   Show data format hints for chart/diagram types

@@ -36,6 +36,12 @@ func hashFile(path string) (string, error) {
 	return hex.EncodeToString(h[:]), nil
 }
 
+// HashFile is the exported form of hashFile, used by callers that need to
+// build composite cache keys (e.g. JSON-input hash + template hash).
+func HashFile(path string) (string, error) {
+	return hashFile(path)
+}
+
 // cacheKey returns a unique directory name for a given file hash and density.
 func cacheKey(hash string, density int) string {
 	return fmt.Sprintf("%s-d%d", hash, density)
@@ -239,6 +245,106 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 	}
 
 	return img, nil
+}
+
+// RenderSlideWithCacheKey renders a single slide from a PPTX, caching the
+// result under the caller-supplied cache key rather than the PPTX file content
+// hash. Use this when the PPTX is a transient intermediate (e.g. generated on
+// the fly from a single-slide JSON) whose own content hash is not a stable
+// identity for the upstream design.
+//
+// The cache directory layout matches RenderSlideOpts (one subdirectory per
+// key+density), so invalidation via InvalidateCache also clears these entries.
+func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force bool, key string) (*SlideImage, error) {
+	if key == "" {
+		return nil, fmt.Errorf("cache key is required")
+	}
+	if err := CheckDependencies(); err != nil {
+		return nil, err
+	}
+
+	fullKey := cacheKey(key, density)
+	var pngs []string
+
+	if !force {
+		pngs = getCachedPNGs(fullKey)
+	}
+
+	if pngs == nil {
+		tmpDir, err := os.MkdirTemp("", "render-slide-keyed-*")
+		if err != nil {
+			return nil, fmt.Errorf("create temp dir: %w", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		pdfPath, err := pptxToPDF(pptxPath, tmpDir)
+		if err != nil {
+			return nil, err
+		}
+
+		pngs, err = pdfToPNGs(pdfPath, tmpDir, density)
+		if err != nil {
+			return nil, err
+		}
+
+		storeCachePNGs(fullKey, pngs)
+	}
+
+	if slideIndex < 0 || slideIndex >= len(pngs) {
+		return nil, fmt.Errorf("slide_index %d out of range (deck has %d slides)", slideIndex, len(pngs))
+	}
+
+	img := &SlideImage{Index: slideIndex}
+	b64, size, err := readAsBase64(pngs[slideIndex])
+	if err != nil {
+		return nil, fmt.Errorf("read rendered slide: %w", err)
+	}
+
+	if size > maxInlineBytes {
+		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-from-json-%s.png", key[:min(16, len(key))]))
+		data, _ := os.ReadFile(pngs[slideIndex])
+		if writeErr := os.WriteFile(stablePath, data, 0644); writeErr != nil {
+			return nil, fmt.Errorf("write stable file: %w", writeErr)
+		}
+		img.Path = stablePath
+	} else {
+		img.PNG64 = b64
+	}
+
+	return img, nil
+}
+
+// LookupCachedSlide returns the cached PNG for the given key+density+index
+// without invoking the renderer. Returns nil if no cached entry exists.
+// This is the fast path for callers that want to avoid generating the
+// intermediate PPTX when a prior render is still cached.
+func LookupCachedSlide(key string, slideIndex, density int) *SlideImage {
+	if key == "" {
+		return nil
+	}
+	pngs := getCachedPNGs(cacheKey(key, density))
+	if pngs == nil || slideIndex < 0 || slideIndex >= len(pngs) {
+		return nil
+	}
+	img := &SlideImage{Index: slideIndex}
+	b64, size, err := readAsBase64(pngs[slideIndex])
+	if err != nil {
+		return nil
+	}
+	if size > maxInlineBytes {
+		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-from-json-%s.png", key[:min(16, len(key))]))
+		data, readErr := os.ReadFile(pngs[slideIndex])
+		if readErr != nil {
+			return nil
+		}
+		if writeErr := os.WriteFile(stablePath, data, 0644); writeErr != nil {
+			return nil
+		}
+		img.Path = stablePath
+	} else {
+		img.PNG64 = b64
+	}
+	return img
 }
 
 // RenderDeck renders all slides in a PPTX to PNG thumbnails.

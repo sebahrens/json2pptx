@@ -133,6 +133,7 @@ func runMCP() error {
 	s.AddTool(mcpTableDensityGuideTool(), mc.handleTableDensityGuide)
 	s.AddTool(mcpResolveThemeTool(), mc.handleResolveTheme)
 	s.AddTool(mcpRenderSlideImageTool(), mc.handleRenderSlideImage)
+	s.AddTool(mcpRenderSlideImageFromJSONTool(), mc.handleRenderSlideImageFromJSON)
 	s.AddTool(mcpRenderDeckThumbnailsTool(), mc.handleRenderDeckThumbnails)
 	s.AddTool(mcpScoreDeckTool(), mc.handleScoreDeck)
 	s.AddTool(mcpScoreCandidatesTool(), mc.handleScoreCandidates)

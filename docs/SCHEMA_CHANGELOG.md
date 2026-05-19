@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.19.0 (2026-05-19)
+
+### Added
+
+- **`render_slide_image_from_json` MCP tool / `render-slide-from-json` CLI
+  subcommand** — render a single slide directly from its JSON definition + a
+  template name, without first calling `generate_presentation` on the entire
+  deck. Returns the same image envelope as `render_slide_image`
+  (`{index, png_base64?, path?, width?, height?, size_error?}`).
+
+  Designed for tight single-slide design-iteration loops: edit the slide
+  JSON, see the rendered PNG, repeat. Avoids `O(N)` cost on deck size when
+  iterating one slide.
+
+  Behind the scenes the tool wraps the slide into a synthetic single-slide
+  deck, generates a temp PPTX, and rasterizes via LibreOffice + ImageMagick.
+  The intermediate PPTX is discarded after rendering. Results cache by
+  `sha256(slide_json || template_content_hash)` + density, so the cache
+  identity is the upstream design — not the (potentially non-deterministic)
+  PPTX file content. Pass `force=true` to bypass the cache.
+
+  Required params: `slide` (object), `template` (string). Optional:
+  `density` (number, 50-300, default 100), `force` (boolean, default false).
+
+  Error codes mirror `render_slide_image`: `MISSING_PARAMETER`,
+  `TEMPLATE_NOT_FOUND`, `INVALID_JSON`, `GENERATION_FAILED`,
+  `LIBREOFFICE_UNAVAILABLE`, `IMAGEMAGICK_UNAVAILABLE`, `RENDER_FAILED`.
+
 ## 4.18.0 (2026-05-19)
 
 ### Added
