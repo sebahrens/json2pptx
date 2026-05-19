@@ -275,6 +275,131 @@ func TestGetInputSchema(t *testing.T) {
 		}
 	})
 
+	t.Run("ContentInput encodes typed-value discriminator", func(t *testing.T) {
+		schema := buildInputSchema()
+		defs := schema["$defs"].(map[string]any)
+		ci, ok := defs["ContentInput"].(map[string]any)
+		if !ok {
+			t.Fatal("missing $defs/ContentInput")
+		}
+
+		// type field still has the full enum so agents can list valid discriminators.
+		ciProps := ci["properties"].(map[string]any)
+		typeProp, ok := ciProps["type"].(map[string]any)
+		if !ok {
+			t.Fatal("ContentInput.properties.type missing")
+		}
+		typeEnum := enumStrings(typeProp["enum"])
+		wantTypes := []string{
+			"text", "bullets", "body_and_bullets", "body_and_lead",
+			"bullet_groups", "table", "chart", "diagram", "image",
+		}
+		got := map[string]bool{}
+		for _, v := range typeEnum {
+			got[v] = true
+		}
+		for _, want := range wantTypes {
+			if !got[want] {
+				t.Errorf("ContentInput.type enum missing %q (got %v)", want, typeEnum)
+			}
+		}
+
+		// allOf must contain one if/then per content type, each requiring its
+		// matching *_value field and forbidding the others.
+		allOf, ok := ci["allOf"].([]any)
+		if !ok {
+			t.Fatal("expected ContentInput.allOf to encode discriminator rules")
+		}
+		if len(allOf) != len(wantTypes) {
+			t.Errorf("expected %d if/then branches, got %d", len(wantTypes), len(allOf))
+		}
+
+		expectedPairs := map[string]string{
+			"text":             "text_value",
+			"bullets":          "bullets_value",
+			"body_and_bullets": "body_and_bullets_value",
+			"body_and_lead":    "body_and_lead_value",
+			"bullet_groups":    "bullet_groups_value",
+			"table":            "table_value",
+			"chart":            "chart_value",
+			"diagram":          "diagram_value",
+			"image":            "image_value",
+		}
+		allTypedKeys := []string{
+			"text_value", "bullets_value", "body_and_bullets_value",
+			"body_and_lead_value", "bullet_groups_value", "table_value",
+			"chart_value", "diagram_value", "image_value",
+		}
+
+		seen := map[string]bool{}
+		for _, branch := range allOf {
+			bm, ok := branch.(map[string]any)
+			if !ok {
+				t.Fatalf("expected allOf entry to be an object, got %T", branch)
+			}
+			ifClause, ok := bm["if"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing if clause in branch: %v", bm)
+			}
+			ifProps, ok := ifClause["properties"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing if.properties: %v", ifClause)
+			}
+			typeSpec, ok := ifProps["type"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing if.properties.type: %v", ifProps)
+			}
+			constVal, ok := typeSpec["const"].(string)
+			if !ok {
+				t.Fatalf("expected if.properties.type.const to be a string, got %T", typeSpec["const"])
+			}
+			wantValue, ok := expectedPairs[constVal]
+			if !ok {
+				t.Errorf("unexpected discriminator type %q", constVal)
+				continue
+			}
+			seen[constVal] = true
+
+			thenClause, ok := bm["then"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing then clause for %q", constVal)
+			}
+
+			// (2) Required typed value field for this branch.
+			thenReq := enumStrings(thenClause["required"])
+			if len(thenReq) != 1 || thenReq[0] != wantValue {
+				t.Errorf("type=%q: expected then.required=[%q], got %v", constVal, wantValue, thenClause["required"])
+			}
+
+			// (3) All OTHER typed value fields are forbidden (schema = false).
+			thenProps, ok := thenClause["properties"].(map[string]any)
+			if !ok {
+				t.Fatalf("type=%q: missing then.properties", constVal)
+			}
+			for _, k := range allTypedKeys {
+				if k == wantValue {
+					if _, present := thenProps[k]; present {
+						t.Errorf("type=%q: required field %q must not appear in then.properties (would forbid it)", constVal, k)
+					}
+					continue
+				}
+				v, present := thenProps[k]
+				if !present {
+					t.Errorf("type=%q: expected then.properties.%s = false, key missing", constVal, k)
+					continue
+				}
+				if b, isBool := v.(bool); !isBool || b {
+					t.Errorf("type=%q: expected then.properties.%s = false, got %v", constVal, k, v)
+				}
+			}
+		}
+		for _, want := range wantTypes {
+			if !seen[want] {
+				t.Errorf("missing if/then branch for type=%q", want)
+			}
+		}
+	})
+
 	t.Run("$refs resolve to $defs entries", func(t *testing.T) {
 		schema := buildInputSchema()
 		defs := schema["$defs"].(map[string]any)

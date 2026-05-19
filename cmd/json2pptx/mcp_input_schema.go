@@ -235,6 +235,68 @@ var typeOverrides = map[string]map[string]any{
 	"SplitConfig": {
 		"description": "Configures how a split_slide base table is windowed across pages.",
 	},
+	"ContentInput": contentInputOverride(),
+}
+
+// contentTypeDiscriminator pairs each ContentInput "type" enum value with the
+// typed *_value field that must accompany it. Keep these aligned with the
+// ContentInput struct definition in json_schema.go and the enum in enumMap.
+var contentTypeDiscriminator = []struct {
+	typeName string
+	valueKey string
+}{
+	{"text", "text_value"},
+	{"bullets", "bullets_value"},
+	{"body_and_bullets", "body_and_bullets_value"},
+	{"body_and_lead", "body_and_lead_value"},
+	{"bullet_groups", "bullet_groups_value"},
+	{"table", "table_value"},
+	{"chart", "chart_value"},
+	{"diagram", "diagram_value"},
+	{"image", "image_value"},
+}
+
+// contentInputOverride builds the type-level schema constraints that encode
+// the ContentInput discriminator rules: for each "type" value, the matching
+// typed *_value field is required and the other typed *_value fields are
+// forbidden. The legacy "value" (json.RawMessage) field is intentionally
+// left unconstrained for backward compatibility.
+func contentInputOverride() map[string]any {
+	allValueKeys := make([]string, 0, len(contentTypeDiscriminator))
+	for _, e := range contentTypeDiscriminator {
+		allValueKeys = append(allValueKeys, e.valueKey)
+	}
+
+	branches := make([]any, 0, len(contentTypeDiscriminator))
+	for _, e := range contentTypeDiscriminator {
+		forbidden := map[string]any{}
+		for _, k := range allValueKeys {
+			if k == e.valueKey {
+				continue
+			}
+			// JSON Schema draft 2020-12: a property schema of `false`
+			// rejects any value, which forbids the property entirely
+			// when it is present in the instance.
+			forbidden[k] = false
+		}
+		branch := map[string]any{
+			"if": map[string]any{
+				"properties": map[string]any{
+					"type": map[string]any{"const": e.typeName},
+				},
+				"required": []any{"type"},
+			},
+			"then": map[string]any{
+				"required":   []any{e.valueKey},
+				"properties": forbidden,
+			},
+		}
+		branches = append(branches, branch)
+	}
+	return map[string]any{
+		"description": "Discriminated content item. The \"type\" field selects which typed *_value field must be set: type \"text\" requires text_value (and forbids bullets_value, table_value, etc.); type \"bullets\" requires bullets_value; and so on for body_and_bullets, body_and_lead, bullet_groups, table, chart, diagram, image. The legacy \"value\" (raw JSON) field is still accepted for backward compatibility and is unconstrained by the discriminator.",
+		"allOf":       branches,
+	}
 }
 
 // buildInputSchema builds a complete JSON Schema for PresentationInput
