@@ -136,10 +136,10 @@
       "pattern": {
         "name": "icon-row",
         "values": [
-          {"icon": "\u2b50", "caption": "Excellence"},
-          {"icon": "\ud83e\udd1d", "caption": "Collaboration"},
-          {"icon": "\ud83d\ude80", "caption": "Innovation"},
-          {"icon": "\u2764\ufe0f", "caption": "Customer Love"}
+          {"icon": "star", "caption": "Excellence"},
+          {"icon": "users", "caption": "Collaboration"},
+          {"icon": "rocket", "caption": "Innovation"},
+          {"icon": "heart", "caption": "Customer Love"}
         ]
       }
     },

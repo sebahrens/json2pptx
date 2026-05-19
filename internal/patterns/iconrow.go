@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -64,7 +64,7 @@ func (ir *iconRow) ExemplarValues() any {
 // secondary is allowed per item (enforced by the field being a single pointer
 // rather than an array).
 type IconRowItem struct {
-	Icon      string          `json:"icon"`                // Icon name or hex glyph
+	Icon      string          `json:"icon"`                // Bundled icon name, inline SVG, data: URI, https URL, or local file path. Emoji glyphs are rejected.
 	Caption   string          `json:"caption"`             // Short caption text
 	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per item)
 }
@@ -100,7 +100,6 @@ type IconRowOverrides struct {
 	IconSize       float64 `json:"icon_size,omitempty"`
 	CaptionSize    float64 `json:"caption_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
-	IconMode       string  `json:"icon_mode,omitempty"`        // text | svg | auto (default auto)
 }
 
 // IconRowCellOverride is an alias for the shared CellOverride struct.
@@ -120,7 +119,7 @@ func (ir *iconRow) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Caption\" or \"icon | Caption\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"icon":      StringSchema(20).WithDescription("Icon name or hex glyph (e.g. \"🚀\" or \"rocket\")"),
+				"icon":      StringSchema(0).WithDescription("Bundled icon name (e.g. \"rocket\"), inline SVG, data: URI, https URL, or local file path. Emoji glyphs and unknown names are rejected."),
 				"caption":   StringSchema(60).WithDescription("Short caption text"),
 				"secondary": SecondaryChartSchema(),
 			},
@@ -139,7 +138,6 @@ func (ir *iconRow) Schema() *Schema {
 					"icon_size":        NumberSchema(6, 120).WithDescription("Font size for icon in points"),
 					"caption_size":     NumberSchema(6, 120).WithDescription("Font size for caption in points"),
 					"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
-					"icon_mode":        EnumSchema("text", "svg", "auto").WithDescription("Icon rendering mode: text (emoji/glyph in text paragraph), svg (bundled SVG icon overlay), auto (SVG when icon name resolves to a bundled icon, text otherwise). Default: auto.").WithDefault("auto"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -166,14 +164,6 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
 			}
-			if ovr.IconMode != "" {
-				switch ovr.IconMode {
-				case "text", "svg", "auto":
-					// valid
-				default:
-					errs = append(errs, fmt.Errorf("%s: icon_mode must be \"text\", \"svg\", or \"auto\", got %q", name, ovr.IconMode))
-				}
-			}
 		}
 	}
 
@@ -188,8 +178,13 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 		iconPath := fmt.Sprintf("values[%d].icon", i)
 		if item.Icon == "" {
 			errs = append(errs, errRequired(name, iconPath))
-		} else if len(item.Icon) > 20 {
-			errs = append(errs, errMaxLength(name, iconPath, 20, len(item.Icon)))
+		} else if svggen.ClassifyIcon(item.Icon) == svggen.IconKindEmpty {
+			errs = append(errs, &ValidationError{
+				Pattern: name,
+				Path:    iconPath,
+				Code:    ErrCodeInvalidShape,
+				Message: fmt.Sprintf("%s: %s must be a bundled icon name (e.g. \"rocket\"), inline SVG, data: URI, https URL, or local image path; emoji glyphs and unknown names are rejected, got %q", name, iconPath, item.Icon),
+			})
 		}
 		captionPath := fmt.Sprintf("values[%d].caption", i)
 		if item.Caption == "" {
@@ -225,43 +220,30 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	iconSize := ResolveSize(ovr.IconSize, 28.0)
+	// icon_size override is retained on the schema for backward compatibility but
+	// is unused now that icons render as an SVG overlay that sizes itself relative
+	// to the cell. caption_size still controls the caption font size.
 	captionSize := ResolveSize(ovr.CaptionSize, 12.0)
 	cellAccentMode := ovr.CellAccentMode
-	iconMode := ovr.IconMode
-	if iconMode == "" {
-		iconMode = "auto"
-	}
 
 	gridCells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 
-		// Determine whether this icon should render as SVG or text.
-		useSVG := iconMode == "svg" || (iconMode == "auto" && icons.Exists(item.Icon))
-
-		var shape *jsonschema.ShapeSpecInput
-		if useSVG {
-			// SVG icon: caption-only text + icon overlay (same approach as kpi_parametric).
-			captionContent := buildIconRowCaptionOnly(item.Caption, captionSize)
-			shape = &jsonschema.ShapeSpecInput{
-				Geometry: "roundRect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     captionContent,
-				Icon: &jsonschema.IconInput{
-					Name:     item.Icon,
-					Fill:     accent,
-					Position: "top",
-				},
-			}
-		} else {
-			// Text/emoji icon: render icon as a text paragraph.
-			textContent := buildIconRowTextContent(item.Icon, iconSize, item.Caption, captionSize)
-			shape = &jsonschema.ShapeSpecInput{
-				Geometry: "roundRect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     textContent,
-			}
+		// SVG icon: caption-only text + icon overlay (same approach as kpi_parametric).
+		// Validate has already rejected any icon that doesn't classify as a loadable
+		// kind, so the loader is guaranteed to receive a bundled name, inline SVG,
+		// data URI, URL, or file path.
+		captionContent := buildIconRowCaptionOnly(item.Caption, captionSize)
+		shape := &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Text:     captionContent,
+			Icon: &jsonschema.IconInput{
+				Name:     item.Icon,
+				Fill:     accent,
+				Position: "top",
+			},
 		}
 
 		gc := &jsonschema.GridCellInput{
@@ -329,29 +311,3 @@ func buildIconRowCaptionOnly(caption string, captionSize float64) json.RawMessag
 	return data
 }
 
-// buildIconRowTextContent creates a JSON text object with icon and caption paragraphs.
-func buildIconRowTextContent(icon string, iconSize float64, caption string, captionSize float64) json.RawMessage {
-	type paragraph struct {
-		Content string  `json:"content"`
-		Size    float64 `json:"size"`
-		Bold    bool    `json:"bold,omitempty"`
-		Color   string  `json:"color,omitempty"`
-		Align   string  `json:"align,omitempty"`
-	}
-
-	textObj := struct {
-		Paragraphs    []paragraph `json:"paragraphs"`
-		Align         string      `json:"align"`
-		VerticalAlign string      `json:"vertical_align"`
-	}{
-		Paragraphs: []paragraph{
-			{Content: icon, Size: iconSize, Bold: false, Color: "lt1", Align: "ctr"},
-			{Content: caption, Size: captionSize, Color: "lt1", Align: "ctr"},
-		},
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-
-	data, _ := json.Marshal(textObj)
-	return data
-}

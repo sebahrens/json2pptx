@@ -131,6 +131,10 @@ func TestIconRow(t *testing.T) {
 		}
 	})
 
+	// inlineSVG and remoteURL are valid non-bundled icon forms accepted by Validate.
+	const inlineSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>`
+	const remoteURL = "https://example.com/icons/rocket.svg"
+
 	tests := []struct {
 		name      string
 		values    IconRowValues
@@ -140,42 +144,60 @@ func TestIconRow(t *testing.T) {
 		wantNoErr bool
 	}{
 		{
-			name: "happy_path_3_items",
+			name: "happy_path_3_items_bundled",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "rocket", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			wantNoErr: true,
 		},
 		{
-			name: "happy_path_5_items",
+			name: "happy_path_5_items_bundled",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
-				{Icon: "🎯", Caption: "Target"},
-				{Icon: "⚡", Caption: "Speed"},
+				{Icon: "rocket", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: "target", Caption: "Target"},
+				{Icon: "bolt", Caption: "Speed"},
+			},
+			wantNoErr: true,
+		},
+		{
+			name: "happy_path_inline_svg",
+			values: IconRowValues{
+				{Icon: inlineSVG, Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
+			},
+			wantNoErr: true,
+		},
+		{
+			name: "happy_path_url",
+			values: IconRowValues{
+				{Icon: remoteURL, Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			wantNoErr: true,
 		},
 		{
 			name: "too_few_items_hints_kpi3up",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
+				{Icon: "rocket", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
 			},
 			wantErr: "kpi-3up",
 		},
 		{
 			name: "too_many_items",
 			values: IconRowValues{
-				{Icon: "1", Caption: "a"},
-				{Icon: "2", Caption: "b"},
-				{Icon: "3", Caption: "c"},
-				{Icon: "4", Caption: "d"},
-				{Icon: "5", Caption: "e"},
-				{Icon: "6", Caption: "f"},
+				{Icon: "rocket", Caption: "a"},
+				{Icon: "trending-up", Caption: "b"},
+				{Icon: "currency-dollar", Caption: "c"},
+				{Icon: "target", Caption: "d"},
+				{Icon: "bolt", Caption: "e"},
+				{Icon: "rocket", Caption: "f"},
 			},
 			wantErr: "at most 5 items",
 		},
@@ -183,35 +205,44 @@ func TestIconRow(t *testing.T) {
 			name: "missing_icon",
 			values: IconRowValues{
 				{Icon: "", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			wantErr: "values[0].icon is required",
 		},
 		{
 			name: "missing_caption",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: ""},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "rocket", Caption: ""},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			wantErr: "values[0].caption is required",
 		},
 		{
-			name: "icon_exceeds_maxlen",
+			name: "emoji_icon_rejected",
 			values: IconRowValues{
-				{Icon: "this-icon-name-is-way-too-long", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "🚀", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
-			wantErr: "exceeds maxLength 20",
+			wantErr: "must be a bundled icon name",
+		},
+		{
+			name: "unknown_bundled_name_rejected",
+			values: IconRowValues{
+				{Icon: "not-a-real-icon-name", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
+			},
+			wantErr: "must be a bundled icon name",
 		},
 		{
 			name: "invalid_cell_override_key",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "rocket", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			cellOvr: map[int]any{
 				0: &struct {
@@ -223,9 +254,9 @@ func TestIconRow(t *testing.T) {
 		{
 			name: "cell_override_out_of_range",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "rocket", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			cellOvr: map[int]any{
 				5: &IconRowCellOverride{AccentBar: true},
@@ -235,9 +266,9 @@ func TestIconRow(t *testing.T) {
 		{
 			name: "accent_override",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "📈", Caption: "Growth"},
-				{Icon: "💰", Caption: "Revenue"},
+				{Icon: "rocket", Caption: "Launch"},
+				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: "currency-dollar", Caption: "Revenue"},
 			},
 			overrides: &IconRowOverrides{Accent: "accent3"},
 			wantNoErr: true,
@@ -269,9 +300,9 @@ func TestIconRow(t *testing.T) {
 	// Expand tests
 	t.Run("expand_default_3_items", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "🚀", Caption: "Launch"},
-			{Icon: "📈", Caption: "Growth"},
-			{Icon: "💰", Caption: "Revenue"},
+			{Icon: "rocket", Caption: "Launch"},
+			{Icon: "trending-up", Caption: "Growth"},
+			{Icon: "currency-dollar", Caption: "Revenue"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {
@@ -311,11 +342,11 @@ func TestIconRow(t *testing.T) {
 
 	t.Run("expand_5_items_dynamic_columns", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "🚀", Caption: "Launch"},
-			{Icon: "📈", Caption: "Growth"},
-			{Icon: "💰", Caption: "Revenue"},
-			{Icon: "🎯", Caption: "Target"},
-			{Icon: "⚡", Caption: "Speed"},
+			{Icon: "rocket", Caption: "Launch"},
+			{Icon: "trending-up", Caption: "Growth"},
+			{Icon: "currency-dollar", Caption: "Revenue"},
+			{Icon: "target", Caption: "Target"},
+			{Icon: "bolt", Caption: "Speed"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {
@@ -335,9 +366,9 @@ func TestIconRow(t *testing.T) {
 
 	t.Run("expand_accent_override", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "🚀", Caption: "Launch"},
-			{Icon: "📈", Caption: "Growth"},
-			{Icon: "💰", Caption: "Revenue"},
+			{Icon: "rocket", Caption: "Launch"},
+			{Icon: "trending-up", Caption: "Growth"},
+			{Icon: "currency-dollar", Caption: "Revenue"},
 		}
 		ovr := &IconRowOverrides{Accent: "accent3"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
@@ -357,9 +388,9 @@ func TestIconRow(t *testing.T) {
 
 	t.Run("expand_accent_bar_override", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "🚀", Caption: "Launch"},
-			{Icon: "📈", Caption: "Growth"},
-			{Icon: "💰", Caption: "Revenue"},
+			{Icon: "rocket", Caption: "Launch"},
+			{Icon: "trending-up", Caption: "Growth"},
+			{Icon: "currency-dollar", Caption: "Revenue"},
 		}
 		cellOvr := map[int]any{
 			1: &IconRowCellOverride{AccentBar: true},
@@ -383,9 +414,9 @@ func TestIconRow(t *testing.T) {
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "🚀", Caption: "Launch"},
-			{Icon: "📈", Caption: "Growth"},
-			{Icon: "💰", Caption: "Revenue"},
+			{Icon: "rocket", Caption: "Launch"},
+			{Icon: "trending-up", Caption: "Growth"},
+			{Icon: "currency-dollar", Caption: "Revenue"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {

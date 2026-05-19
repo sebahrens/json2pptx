@@ -132,7 +132,6 @@ type skillPatternFull struct {
 // renderingCapabilities describes how a pattern renders icons and other visual elements.
 type renderingCapabilities struct {
 	IconSupport string `json:"icon_support"` // "none", "text_only", "svg_only", "svg_and_text"
-	IconModes   string `json:"icon_modes,omitempty"` // available icon_mode override values, if applicable
 }
 
 // skillToolInfo identifies the tool and its version.

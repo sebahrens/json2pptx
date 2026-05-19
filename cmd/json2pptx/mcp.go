@@ -1547,8 +1547,7 @@ func patternRenderingCapabilities(name string) *renderingCapabilities {
 	switch name {
 	case "icon-row":
 		return &renderingCapabilities{
-			IconSupport: "svg_and_text",
-			IconModes:   "text, svg, auto (default: auto — SVG when icon name resolves to a bundled icon, text otherwise)",
+			IconSupport: "svg_only",
 		}
 	case "kpi-2up", "kpi-3up", "kpi-4up", "kpi-5up", "kpi-6up", "kpi-inline":
 		return &renderingCapabilities{IconSupport: "svg_only"}

@@ -11,12 +11,6 @@
             "text": {
               "paragraphs": [
                 {
-                  "content": "🚀",
-                  "size": 28,
-                  "color": "lt1",
-                  "align": "ctr"
-                },
-                {
                   "content": "Launch",
                   "size": 12,
                   "color": "lt1",
@@ -24,7 +18,12 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "bottom"
+            },
+            "icon": {
+              "name": "rocket",
+              "fill": "accent1",
+              "position": "top"
             }
           }
         },
@@ -34,12 +33,6 @@
             "fill": "accent1",
             "text": {
               "paragraphs": [
-                {
-                  "content": "📈",
-                  "size": 28,
-                  "color": "lt1",
-                  "align": "ctr"
-                },
                 {
                   "content": "Growth",
                   "size": 12,
@@ -48,7 +41,12 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "bottom"
+            },
+            "icon": {
+              "name": "trending-up",
+              "fill": "accent1",
+              "position": "top"
             }
           }
         },
@@ -59,12 +57,6 @@
             "text": {
               "paragraphs": [
                 {
-                  "content": "💰",
-                  "size": 28,
-                  "color": "lt1",
-                  "align": "ctr"
-                },
-                {
                   "content": "Revenue",
                   "size": 12,
                   "color": "lt1",
@@ -72,7 +64,12 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "bottom"
+            },
+            "icon": {
+              "name": "currency-dollar",
+              "fill": "accent1",
+              "position": "top"
             }
           }
         }
