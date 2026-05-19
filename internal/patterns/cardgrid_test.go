@@ -618,12 +618,16 @@ func TestCardGridStyles(t *testing.T) {
 	t.Run("icon_card", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "icon-card"}
 		iconCells := []CardGridCell{
-			{Header: "Launch", Body: "Description", Icon: "\U0001F680"},
-			{Header: "Growth", Body: "Description", Icon: "\U0001F4C8"},
+			{Header: "Launch", Body: "Description", Icon: "rocket"},
+			{Header: "Growth", Body: "Description", Icon: "trending-up"},
 			{Header: "Revenue", Body: "Description"},
 			{Header: "Target", Body: "Description"},
 		}
 		iconVals := &CardGridValues{Columns: 2, Rows: 2, Cells: iconCells}
+		// Validation should accept bundled icon names and missing icons alike.
+		if err := p.Validate(iconVals, ovr, nil); err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
 		grid, err := p.Expand(ExpandContext{}, iconVals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -642,15 +646,74 @@ func TestCardGridStyles(t *testing.T) {
 		if ab.Position != "top" {
 			t.Errorf("icon-card: accent bar position = %q, want %q", ab.Position, "top")
 		}
-		// Cell without icon should get fallback bullet
-		var text map[string]any
-		if err := json.Unmarshal(grid.Rows[1].Cells[0].Shape.Text, &text); err != nil {
+		// Cell with bundled icon must have an IconInput overlay (not a text glyph paragraph).
+		shape0 := grid.Rows[0].Cells[0].Shape
+		if shape0.Icon == nil {
+			t.Fatal("icon-card: expected IconInput overlay on cell with icon")
+		}
+		if shape0.Icon.Name != "rocket" {
+			t.Errorf("icon-card overlay Name = %q, want %q", shape0.Icon.Name, "rocket")
+		}
+		// Text content must be header + body only — no icon glyph paragraph.
+		var text0 map[string]any
+		if err := json.Unmarshal(shape0.Text, &text0); err != nil {
 			t.Fatalf("text unmarshal: %v", err)
 		}
-		paras := text["paragraphs"].([]any)
-		iconPara := paras[0].(map[string]any)
-		if iconPara["content"] != "\u2022" {
-			t.Errorf("icon-card fallback: got %q, want bullet", iconPara["content"])
+		paras0 := text0["paragraphs"].([]any)
+		if len(paras0) != 2 {
+			t.Fatalf("icon-card: expected 2 paragraphs (header + body), got %d", len(paras0))
+		}
+		if paras0[0].(map[string]any)["content"] != "Launch" {
+			t.Errorf("icon-card: first paragraph = %v, want header %q", paras0[0], "Launch")
+		}
+		// Cell without icon: no overlay, no bullet fallback paragraph.
+		shape1 := grid.Rows[1].Cells[0].Shape
+		if shape1.Icon != nil {
+			t.Errorf("icon-card: cell without icon should not have IconInput overlay, got %+v", shape1.Icon)
+		}
+		var text1 map[string]any
+		if err := json.Unmarshal(shape1.Text, &text1); err != nil {
+			t.Fatalf("text unmarshal: %v", err)
+		}
+		paras1 := text1["paragraphs"].([]any)
+		if len(paras1) != 2 {
+			t.Fatalf("icon-card (no icon): expected 2 paragraphs (header + body), got %d", len(paras1))
+		}
+		if first := paras1[0].(map[string]any)["content"]; first == "\u2022" {
+			t.Errorf("icon-card: bullet fallback should be removed, got %q", first)
+		}
+	})
+
+	t.Run("icon_card_rejects_emoji", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "icon-card"}
+		emojiCells := []CardGridCell{
+			{Header: "Launch", Body: "Description", Icon: "\U0001F680"},
+			{Header: "Growth", Body: "Description", Icon: "trending-up"},
+			{Header: "Revenue", Body: "Description"},
+			{Header: "Target", Body: "Description"},
+		}
+		emojiVals := &CardGridValues{Columns: 2, Rows: 2, Cells: emojiCells}
+		err := p.Validate(emojiVals, ovr, nil)
+		if err == nil {
+			t.Fatal("expected validation error for emoji icon, got nil")
+		}
+		if !strings.Contains(err.Error(), "cells[0].icon") {
+			t.Errorf("error %q should mention cells[0].icon", err.Error())
+		}
+		if !strings.Contains(err.Error(), "bundled icon name") {
+			t.Errorf("error %q should mention bundled icon name", err.Error())
+		}
+	})
+
+	t.Run("icon_card_rejects_unknown_name", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "icon-card"}
+		cells := []CardGridCell{
+			{Header: "A", Body: "B", Icon: "not-a-real-icon-xyz"},
+		}
+		vals := &CardGridValues{Columns: 1, Rows: 1, Cells: cells}
+		err := p.Validate(vals, ovr, nil)
+		if err == nil {
+			t.Fatal("expected validation error for unknown icon name, got nil")
 		}
 	})
 

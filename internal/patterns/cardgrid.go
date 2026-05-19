@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 )
 
 // ---------------------------------------------------------------------------
@@ -81,7 +82,7 @@ func (c *cardGrid) ExemplarValues() any {
 type CardGridCell struct {
 	Header    string          `json:"header"`
 	Body      string          `json:"body"`
-	Icon      string          `json:"icon,omitempty"`      // Emoji or short glyph for icon-card style
+	Icon      string          `json:"icon,omitempty"`      // Bundled SVG icon name (e.g. "rocket"); emoji/non-bundled strings are rejected
 	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per cell)
 }
 
@@ -160,7 +161,7 @@ func (c *cardGrid) Schema() *Schema {
 			map[string]*Schema{
 				"header":    StringSchema(80).WithDescription("Card header/title"),
 				"body":      StringSchema(300).WithDescription("Card body content"),
-				"icon":      StringSchema(20).WithDescription("Emoji or short glyph (used with icon-card style)"),
+				"icon":      StringSchema(40).WithDescription("Bundled SVG icon name (e.g. \"rocket\"); used with icon-card style. Emoji/non-bundled strings are rejected."),
 				"secondary": SecondaryChartSchema(),
 			},
 			[]string{"header", "body"},
@@ -182,7 +183,7 @@ func (c *cardGrid) Schema() *Schema {
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
 			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-			"style":            EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (emoji/glyph badge), tinted (alternating lt1/lt2 backgrounds)").WithDefault("filled"),
+			"style":            EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (bundled SVG icon badge above header), tinted (alternating lt1/lt2 backgrounds)").WithDefault("filled"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 		},
 		nil,
@@ -260,6 +261,14 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 		}
 		if cell.Secondary != nil {
 			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("cells[%d].secondary", i), cell.Secondary)...)
+		}
+		if cell.Icon != "" && !icons.Exists(cell.Icon) {
+			errs = append(errs, &ValidationError{
+				Pattern: name,
+				Path:    fmt.Sprintf("cells[%d].icon", i),
+				Code:    ErrCodeInvalidShape,
+				Message: fmt.Sprintf("card-grid: cells[%d].icon must be a bundled icon name (e.g. \"rocket\"); emoji glyphs and unknown names are rejected, got %q", i, cell.Icon),
+			})
 		}
 	}
 
@@ -403,17 +412,16 @@ func (c *cardGrid) expandNumberedBadge(cell CardGridCell, idx int, accent string
 	}
 }
 
-// expandIconCard: emoji/glyph badge above header text on light card with top accent bar.
+// expandIconCard: bundled SVG icon badge above header text on a light card with
+// a top accent bar. The icon overlay itself is attached by expandCell when
+// cell.Icon resolves to a bundled icon; when no icon is supplied the card
+// renders gracefully as header+body with the accent bar still visible.
 func (c *cardGrid) expandIconCard(cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
-	icon := cell.Icon
-	if icon == "" {
-		icon = "\u2022" // bullet as fallback
-	}
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
 			Fill:     json.RawMessage(`"lt1"`),
-			Text:     buildIconCardTextContent(icon, cell.Header, headerSize, cell.Body, bodySize, accent),
+			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
 		},
 		AccentBar: &jsonschema.AccentBarInput{
 			Position: "top",
@@ -521,23 +529,6 @@ func buildNumberedBadgeTextContent(badge, header string, headerSize float64, bod
 	return marshalTextObj(cardTextObj{
 		Paragraphs: []cardParagraph{
 			{Content: badge, Size: badgeSize, Bold: true, Color: accent, Align: "l"},
-			{Content: header, Size: headerSize, Bold: true, Color: "dk1", Align: "l"},
-			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "dk1", Align: "l"},
-		},
-		Align:         "l",
-		VerticalAlign: "t",
-	})
-}
-
-// buildIconCardTextContent renders an icon glyph, header, and body.
-func buildIconCardTextContent(icon, header string, headerSize float64, body string, bodySize float64, accent string) json.RawMessage {
-	iconSize := headerSize * 1.5
-	if iconSize > 36 {
-		iconSize = 36
-	}
-	return marshalTextObj(cardTextObj{
-		Paragraphs: []cardParagraph{
-			{Content: icon, Size: iconSize, Bold: false, Color: accent, Align: "l"},
 			{Content: header, Size: headerSize, Bold: true, Color: "dk1", Align: "l"},
 			{Content: pptx.ConvertMarkdownEmphasis(body), Size: bodySize, Color: "dk1", Align: "l"},
 		},
