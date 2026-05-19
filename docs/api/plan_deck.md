@@ -32,6 +32,13 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
       "slide_index": 0,
       "narrative_role": "opening",
       "recommended_pattern": "stat-hero",
+      "suggested_pattern": "stat-hero",
+      "suggested_pattern_fallback": "pull-quote",
+      "skeleton": {
+        "layout_id": "title",
+        "content": [{"placeholder_id": "title", "type": "text", "text_value": "__FILL__"}],
+        "pattern": {"name": "stat-hero", "values": {"stat": "__FILL__", "label": "__FILL__", "context": "__FILL__"}}
+      },
       "content_seed": "Title and context: Pitch our Series B...",
       "rationale": "fallback selection for opening",
       "predicted_cell_budgets": [
@@ -64,6 +71,9 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 | `recommended_pattern` | string | Pattern name to use (from `list_patterns`) |
 | `content_seed` | string | Brief hint of what content belongs on this slide |
 | `rationale` | string | Why this pattern was selected (e.g., "required by must_include", "rhythm break") |
+| `suggested_pattern` | string | First-choice pattern for this slot. Currently identical to `recommended_pattern`; kept as a separate field so the `(suggested_pattern, suggested_pattern_fallback, skeleton)` triplet reads as a single agent-facing contract. |
+| `suggested_pattern_fallback` | string | Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from `alternatives[0]` when available, omitted otherwise. |
+| `skeleton` | object | Partial `SlideInput` JSON object with `__FILL__` tokens for every agent-supplied string. Includes `layout_id`, a single `title` content entry, and a `pattern` envelope (`name` + `values`) whose string leaves are placeholders. Numeric and boolean leaves are preserved so structural defaults (grid dimensions, flags) survive the round-trip. Omitted when the recommended pattern has no `Exemplar` implementation. The skeleton validates as-is with `validate_input` (the `__FILL__` token is a non-empty string that satisfies required-string checks). |
 | `predicted_cell_budgets` | array | Per-configuration character budgets (body/header) the renderer would impose on this pattern. Empty for non-grid patterns (e.g. `pull-quote`, `stat-hero`). |
 | `predicted_findings` | array | Up to 3 forecast fit-findings the renderer would emit when this pattern is filled with exemplar (role-default) content. Each entry has `code`, `path`, `message`, `action`, and (when applicable) `next_tool_call`. Empty when the pattern declares no exemplar or expansion fails. |
 | `alternatives` | array | Up to 2 next-best ranked patterns for this slot. Each entry has `pattern_name`, `score`, and `rationale`. Includes a taxonomy fallback when the rule-based recommender returns too few. |
@@ -148,15 +158,17 @@ The planner automatically enforces:
 
 ### From plan_deck output to generate_presentation input
 
-The `plan_deck` output is a skeleton — to generate slides you need to:
+Prefer the **per-slide `skeleton`** for assembly:
 
-1. For each slide with a `recommended_pattern`:
+1. For each slide entry that has a `skeleton`:
+   - Copy the `skeleton` object verbatim into `presentation.slides[]`.
+   - Replace every `"__FILL__"` string with real content (the slide title, pattern values, etc.).
+   - The `skeleton` already pins `layout_id`, `pattern.name`, and the `pattern.values` shape, so you only fill in the leaves — no re-derivation of slide structure from the prose `content_seed`.
+2. For slides whose recommended pattern has no `Exemplar` (so `skeleton` is omitted), fall back to the longer path:
    - Call `show_pattern(name)` to get the values schema
    - Populate `values` based on your content and the `content_seed` hint
-   - Include as `{"pattern": {"name": "...", "values": {...}}, "title": "..."}`
-
-2. For slides where `recommended_pattern` is a slide type (e.g., `"content"`):
-   - Use standard content items: `{"slide_type": "content", "content": [...]}`
+   - Include as `{"pattern": {"name": "...", "values": {...}}, "content": [{"placeholder_id": "title", "type": "text", "text_value": "..."}]}`
+3. If `suggested_pattern` does not fit your content (e.g., you have 4 columns of comparison data and the pattern only supports 2), switch to `suggested_pattern_fallback` and call `show_pattern` on that one — alternatives have been pre-ranked against the same brief.
 
 ## Error Codes
 

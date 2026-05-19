@@ -1168,6 +1168,9 @@ var outputSchemaPlanDeck = json.RawMessage(`{
           "recommended_pattern":  {"type": "string"},
           "content_seed":         {"type": "string"},
           "rationale":            {"type": "string"},
+          "suggested_pattern":    {"type": "string", "description": "First-choice pattern (same value as recommended_pattern; kept as a separate field for the suggested_pattern / suggested_pattern_fallback / skeleton agent-facing triplet)."},
+          "suggested_pattern_fallback": {"type": "string", "description": "Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from alternatives[0] when available."},
+          "skeleton":             {"type": "object", "description": "Partial SlideInput JSON with __FILL__ tokens for every agent-supplied string. Copy and replace tokens rather than authoring the slide structure from scratch. Validates as-is with validate_input."},
           "predicted_cell_budgets": {
             "type": "array",
             "items": {
@@ -1208,7 +1211,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
             }
           }
         },
-        "required": ["slide_index", "narrative_role", "recommended_pattern", "content_seed", "rationale"]
+        "required": ["slide_index", "narrative_role", "recommended_pattern", "suggested_pattern", "content_seed", "rationale"]
       }
     },
     "brief":        {"type": "string"},

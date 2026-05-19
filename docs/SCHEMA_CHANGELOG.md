@@ -4,6 +4,33 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.27.0 (2026-05-19)
+
+### Added
+
+- **`plan_deck` per-slide skeleton + suggested-pattern triplet** — every
+  `slides[]` entry in the `plan_deck` response now carries three new fields:
+  `suggested_pattern` (first-choice pattern, currently identical to
+  `recommended_pattern`), `suggested_pattern_fallback` (second choice drawn
+  from `alternatives[0]`, omitted when no alternative exists), and
+  `skeleton` (a partial `SlideInput` JSON object with the sentinel string
+  `__FILL__` substituted for every agent-supplied text leaf).
+
+  Numeric and boolean leaves inside `skeleton.pattern.values` are preserved
+  so structural defaults (grid dimensions, flags) survive the round-trip.
+  The skeleton always carries `layout_id`, a single `title` content entry,
+  and a `pattern` envelope (`name` + `values`). `__FILL__` is a non-empty
+  string, so the skeleton validates as-is with `validate_input` without
+  requiring a special flag. Agents copy the skeleton and replace tokens
+  rather than re-deriving slide structure from the prose `content_seed`,
+  which was the primary source of pattern mis-selection errors observed in
+  practice.
+
+  `skeleton` is omitted when the recommended pattern does not implement
+  `patterns.Exemplar` (those patterns fall back to the longer
+  `show_pattern` → populate-values path documented in
+  `docs/api/plan_deck.md`).
+
 ## 4.26.0 (2026-05-19)
 
 ### Added

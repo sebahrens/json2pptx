@@ -53,6 +53,23 @@ type planSlide struct {
 	ContentSeed string `json:"content_seed"` // brief hint of what content should go here
 	Rationale   string `json:"rationale"`
 
+	// SuggestedPattern is the first-choice pattern for this slot. Currently
+	// always equal to RecommendedPattern; kept as a separate field so the
+	// (suggested_pattern, suggested_pattern_fallback, skeleton) triplet reads
+	// as a single agent-facing contract.
+	SuggestedPattern string `json:"suggested_pattern"`
+
+	// SuggestedPatternFallback is the second-choice pattern when the
+	// suggested pattern's content shape does not fit. Drawn from
+	// Alternatives[0] when available, empty otherwise.
+	SuggestedPatternFallback string `json:"suggested_pattern_fallback,omitempty"`
+
+	// Skeleton is a partial JSON slide object with FillPlaceholder ("__FILL__")
+	// tokens for every agent-supplied string. Agents copy the skeleton and
+	// replace tokens rather than authoring slide structure from scratch.
+	// Empty when the pattern has no exemplar (skeleton generation requires one).
+	Skeleton json.RawMessage `json:"skeleton,omitempty"`
+
 	// PredictedCellBudgets reports per-grid-configuration character budgets
 	// derived from the recommended pattern's BudgetConfigProvider. Empty when
 	// the pattern is not grid-shaped or declares no budget configurations.
@@ -724,13 +741,21 @@ const maxPredictedFindings = 3
 const maxAlternatives = 2
 
 // attachSlidePredictions enriches each slide in-place with predicted cell
-// budgets, predicted fit findings, and ranked alternative patterns. Pure
-// planning — no render is performed.
+// budgets, predicted fit findings, ranked alternative patterns, and a
+// fillable skeleton. Pure planning — no render is performed.
 func attachSlidePredictions(reg *patterns.Registry, slides []planSlide, brief, audience string) {
 	for i := range slides {
 		slides[i].PredictedCellBudgets = predictCellBudgetsForPattern(reg, slides[i].RecommendedPattern)
 		slides[i].PredictedFindings = predictFitFindingsForPattern(reg, slides[i].RecommendedPattern, i)
 		slides[i].Alternatives = computeAlternativesForSlot(reg, slides, i, brief, audience)
+
+		slides[i].SuggestedPattern = slides[i].RecommendedPattern
+		if len(slides[i].Alternatives) > 0 {
+			slides[i].SuggestedPatternFallback = slides[i].Alternatives[0].PatternName
+		}
+		if skel, err := patterns.SkeletonForPattern(reg, slides[i].RecommendedPattern, slides[i].NarrativeRole); err == nil {
+			slides[i].Skeleton = skel
+		}
 	}
 }
 

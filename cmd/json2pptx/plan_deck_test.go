@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -219,6 +221,92 @@ func TestComputeAlternatives_ExcludesRecommended(t *testing.T) {
 	for _, alt := range alts {
 		if alt.PatternName == "card-grid" {
 			t.Errorf("alternatives must not include the recommended pattern: %+v", alts)
+		}
+	}
+}
+
+func TestBuildDeckPlan_AttachesSkeletonAndFallback(t *testing.T) {
+	reg := patterns.Default()
+	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 5, "investors", nil)
+
+	if len(result.Slides) != 5 {
+		t.Fatalf("expected 5 slides, got %d", len(result.Slides))
+	}
+
+	for i, s := range result.Slides {
+		if s.SuggestedPattern == "" {
+			t.Errorf("slide %d: suggested_pattern is empty", i)
+		}
+		if s.SuggestedPattern != s.RecommendedPattern {
+			t.Errorf("slide %d: suggested_pattern %q != recommended_pattern %q",
+				i, s.SuggestedPattern, s.RecommendedPattern)
+		}
+		if len(s.Alternatives) > 0 && s.SuggestedPatternFallback == "" {
+			t.Errorf("slide %d: alternatives present but suggested_pattern_fallback empty", i)
+		}
+		if s.SuggestedPatternFallback == s.RecommendedPattern && s.SuggestedPatternFallback != "" {
+			t.Errorf("slide %d: fallback %q must differ from suggested pattern", i, s.SuggestedPatternFallback)
+		}
+
+		if len(s.Skeleton) == 0 {
+			// Patterns without an Exemplar produce no skeleton; surface as a
+			// soft warning so we know which patterns need an exemplar added.
+			if _, ok := reg.Get(s.RecommendedPattern); !ok {
+				t.Errorf("slide %d: skeleton missing and pattern %q not registered", i, s.RecommendedPattern)
+				continue
+			}
+			t.Logf("slide %d (%s): no skeleton (pattern likely lacks Exemplar)", i, s.RecommendedPattern)
+			continue
+		}
+
+		var slide map[string]any
+		if err := json.Unmarshal(s.Skeleton, &slide); err != nil {
+			t.Errorf("slide %d: skeleton is invalid JSON: %v", i, err)
+			continue
+		}
+		if _, ok := slide["layout_id"]; !ok {
+			t.Errorf("slide %d: skeleton missing layout_id", i)
+		}
+		if _, ok := slide["pattern"]; !ok {
+			t.Errorf("slide %d: skeleton missing pattern envelope", i)
+		}
+		if !strings.Contains(string(s.Skeleton), patterns.FillPlaceholder) {
+			t.Errorf("slide %d: skeleton has no %s placeholder", i, patterns.FillPlaceholder)
+		}
+	}
+}
+
+func TestBuildDeckPlan_SkeletonParsesAsSlideInput(t *testing.T) {
+	// Every produced skeleton must decode into a SlideInput so an agent can
+	// drop it straight into a PresentationInput.slides[] array and run
+	// validate_input on the result.
+	reg := patterns.Default()
+	result := buildDeckPlan(reg, "Quarterly business review", 7, "executives", nil)
+
+	for i, s := range result.Slides {
+		if len(s.Skeleton) == 0 {
+			continue
+		}
+		var slide SlideInput
+		if err := json.Unmarshal(s.Skeleton, &slide); err != nil {
+			t.Errorf("slide %d skeleton does not decode as SlideInput: %v\n%s", i, err, string(s.Skeleton))
+			continue
+		}
+		if slide.LayoutID == "" {
+			t.Errorf("slide %d skeleton has empty layout_id after decode", i)
+		}
+		if slide.Pattern == nil {
+			t.Errorf("slide %d skeleton has nil Pattern after decode", i)
+			continue
+		}
+		if slide.Pattern.Name == "" {
+			t.Errorf("slide %d skeleton has empty Pattern.Name", i)
+		}
+		if len(slide.Pattern.Values) == 0 {
+			t.Errorf("slide %d skeleton has empty Pattern.Values", i)
+		}
+		if len(slide.Content) == 0 {
+			t.Errorf("slide %d skeleton has no content[] entries", i)
 		}
 	}
 }
