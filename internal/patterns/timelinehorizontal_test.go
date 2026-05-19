@@ -223,12 +223,11 @@ func TestTimelineHorizontal(t *testing.T) {
 		if cols != 3 {
 			t.Errorf("columns = %d, want 3", cols)
 		}
-		// Check connector is present
-		if grid.Rows[0].Connector == nil {
-			t.Fatal("expected connector on row")
-		}
-		if grid.Rows[0].Connector.Style != "arrow" {
-			t.Errorf("connector style = %q, want %q", grid.Rows[0].Connector.Style, "arrow")
+		// Connector must not be emitted in dots style: a horizontal line
+		// between adjacent rounded rectangles slashes through centered text
+		// inside the cells (regression guard for go-slide-creator-2krk).
+		if grid.Rows[0].Connector != nil {
+			t.Errorf("dots style must not emit a row connector, got %+v", grid.Rows[0].Connector)
 		}
 		// Check default fill is accent1
 		for i, cell := range grid.Rows[0].Cells {
@@ -285,26 +284,6 @@ func TestTimelineHorizontal(t *testing.T) {
 			if fill != "accent4" {
 				t.Errorf("cell[%d] fill = %q, want %q", i, fill, "accent4")
 			}
-		}
-		// Connector should also use accent4
-		if grid.Rows[0].Connector.Color != "accent4" {
-			t.Errorf("connector color = %q, want %q", grid.Rows[0].Connector.Color, "accent4")
-		}
-	})
-
-	t.Run("expand_connector_line_override", func(t *testing.T) {
-		vals := TimelineHorizontalValues{
-			{Label: "Phase 1"},
-			{Label: "Phase 2"},
-			{Label: "Phase 3"},
-		}
-		ovr := &TimelineHorizontalOverrides{Connector: "line"}
-		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
-		if err != nil {
-			t.Fatalf("Expand: %v", err)
-		}
-		if grid.Rows[0].Connector.Style != "line" {
-			t.Errorf("connector style = %q, want %q", grid.Rows[0].Connector.Style, "line")
 		}
 	})
 

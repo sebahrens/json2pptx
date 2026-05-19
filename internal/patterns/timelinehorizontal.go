@@ -70,8 +70,7 @@ type TimelineHorizontalOverrides struct {
 	LabelSize      float64 `json:"label_size,omitempty"`
 	DateSize       float64 `json:"date_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
-	Connector      string  `json:"connector,omitempty"` // "arrow" or "line" (default: "arrow")
-	Style          string  `json:"style,omitempty"`     // "dots" (default), "chevron", or "gantt"
+	Style          string  `json:"style,omitempty"` // "dots" (default), "chevron", or "gantt"
 }
 
 // TimelineHorizontalCellOverride is an alias for the shared CellOverride struct.
@@ -108,7 +107,6 @@ func (th *timelineHorizontal) Schema() *Schema {
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
 					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-					"connector":       EnumSchema("arrow", "line").WithDescription("Connector style between stops (default: arrow)").WithDefault("arrow"),
 					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default rounded rectangles), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
 				},
 				nil,
@@ -216,10 +214,6 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)
 	dateSize := ResolveSize(ovr.DateSize, 10.0)
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
-	connectorStyle := "arrow"
-	if ovr.Connector != "" {
-		connectorStyle = ovr.Connector
-	}
 
 	n := len(*stops)
 	gridCells := make([]*jsonschema.GridCellInput, n)
@@ -254,19 +248,18 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 		gridCells[i] = gc
 	}
 
-	connector := &jsonschema.ConnectorSpecInput{
-		Style: connectorStyle,
-		Color: accent,
-		Width: 2.0,
-	}
-
+	// Connectors are intentionally omitted in dots style: a horizontal line
+	// routed between adjacent rounded rectangles sits at the same vertical
+	// position as centered text inside the cells, producing visible artifacts
+	// where 'Jan-Mar' reads as 'jan-iviar' at low rendering DPIs (see bead
+	// go-slide-creator-2krk). The uniform horizontal arrangement of boxes
+	// already communicates the timeline sequence without a separator line.
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
 		Gap:     16,
 		Rows: []jsonschema.GridRowInput{
 			{
-				Cells:     gridCells,
-				Connector: connector,
+				Cells: gridCells,
 			},
 		},
 	}

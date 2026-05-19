@@ -97,12 +97,7 @@
             }
           }
         }
-      ],
-      "connector": {
-        "style": "arrow",
-        "color": "accent1",
-        "width": 2
-      }
+      ]
     }
   ]
 }
