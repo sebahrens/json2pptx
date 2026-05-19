@@ -2113,6 +2113,106 @@ func TestResolve_CardRowGeometry(t *testing.T) {
 	}
 }
 
+// TestResolve_BannerRowOuterEdgeAlignment locks in that a row-0 full-width
+// banner (col_span = numCols) and any subsequent multi-cell rows share the
+// same outer edges. Regression test for go-slide-creator-rebg: bottom row's
+// total width must never exceed (or fall short of) the banner's, regardless
+// of column-width distribution or gap size.
+//
+// Acceptance criteria:
+//   - First cell in every row starts at the same X (grid.X).
+//   - Last cell in every row ends at the same X (grid.X + grid.CX).
+//   - Outer-edge difference between any two rows is 0 EMU.
+func TestResolve_BannerRowOuterEdgeAlignment(t *testing.T) {
+	cases := []struct {
+		name    string
+		columns []float64
+		gapPt   float64
+		extraRows int // additional equal-column rows after the banner
+	}{
+		{name: "5-col equal banner+1 row, gap 16", columns: []float64{20, 20, 20, 20, 20}, gapPt: 16, extraRows: 1},
+		{name: "5-col equal banner+2 rows, gap 4", columns: []float64{20, 20, 20, 20, 20}, gapPt: 4, extraRows: 2},
+		{name: "3-col equal banner+1 row, gap 12", columns: []float64{100.0 / 3, 100.0 / 3, 100.0 / 3}, gapPt: 12, extraRows: 1},
+		{name: "5-col weighted banner+1 row, gap 8", columns: []float64{17, 18, 23, 19, 23}, gapPt: 8, extraRows: 1},
+		{name: "4-col banner+3 rows, gap 10", columns: []float64{25, 25, 25, 25}, gapPt: 10, extraRows: 3},
+		{name: "2-col asymmetric banner+1 row, gap 6", columns: []float64{8, 92}, gapPt: 6, extraRows: 1},
+	}
+
+	bounds := DefaultBounds(0, 0)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			numCols := len(tc.columns)
+			rows := []Row{{
+				Height: 12,
+				Cells: []Cell{{
+					ColSpan: numCols,
+					Shape:   &ShapeSpec{Geometry: "rect"},
+				}},
+			}}
+			for r := 0; r < tc.extraRows; r++ {
+				cells := make([]Cell, numCols)
+				for c := 0; c < numCols; c++ {
+					cells[c] = Cell{Shape: &ShapeSpec{Geometry: "rect"}}
+				}
+				rows = append(rows, Row{Cells: cells})
+			}
+
+			grid := &Grid{
+				Bounds:  bounds,
+				Columns: tc.columns,
+				Rows:    rows,
+				ColGap:  tc.gapPt,
+				RowGap:  tc.gapPt,
+			}
+
+			result, err := Resolve(grid, newAlloc(100))
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+
+			// Group cells by row index.
+			byRow := make(map[int][]ResolvedCell)
+			for _, c := range result.Cells {
+				byRow[c.RowIdx] = append(byRow[c.RowIdx], c)
+			}
+
+			banner := byRow[0]
+			if len(banner) != 1 {
+				t.Fatalf("row 0 expected 1 banner cell, got %d", len(banner))
+			}
+			bannerLeft := banner[0].Bounds.X
+			bannerRight := banner[0].Bounds.X + banner[0].Bounds.CX
+
+			if bannerLeft != bounds.X {
+				t.Errorf("banner left=%d, want grid X=%d (diff %d)", bannerLeft, bounds.X, bounds.X-bannerLeft)
+			}
+			gridRight := bounds.X + bounds.CX
+			if bannerRight != gridRight {
+				t.Errorf("banner right=%d, want grid right=%d (diff %d)", bannerRight, gridRight, gridRight-bannerRight)
+			}
+
+			for r := 1; r <= tc.extraRows; r++ {
+				rowCells := byRow[r]
+				if len(rowCells) != numCols {
+					t.Fatalf("row %d expected %d cells, got %d", r, numCols, len(rowCells))
+				}
+				first := rowCells[0]
+				last := rowCells[len(rowCells)-1]
+				rowLeft := first.Bounds.X
+				rowRight := last.Bounds.X + last.Bounds.CX
+
+				if rowLeft != bannerLeft {
+					t.Errorf("row %d left=%d, banner left=%d (diff %d)", r, rowLeft, bannerLeft, bannerLeft-rowLeft)
+				}
+				if rowRight != bannerRight {
+					t.Errorf("row %d right=%d, banner right=%d (diff %d)", r, rowRight, bannerRight, bannerRight-rowRight)
+				}
+			}
+		})
+	}
+}
+
 // TestDefaultBounds_HorizontallyCentered locks in the invariant that
 // shapegrid.DefaultBounds places content with symmetric horizontal margins,
 // so any centered row span fills the bounds and ends up centered on the
