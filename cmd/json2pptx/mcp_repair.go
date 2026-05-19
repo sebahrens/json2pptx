@@ -67,18 +67,40 @@ Returns the patched deck JSON, a report of which fixes were applied, and post-pa
 
 All fix kinds accept an optional "path" parameter (JSON Pointer, RFC 6901) to disambiguate which content element to target. When omitted, the fix applies to the first matching element on the slide.
 
-Supported fix kinds (V1):
+Supported fix kinds (full vocabulary — also enumerated by get_capabilities.vocabularies.repair_fix_kinds):
+
+Text / title fits:
 - reduce_text: Truncate bullets/body text. Params: path (string, optional), max_items (int, for bullets), max_length (int, for text).
 - shorten_title: Truncate a title to max_length characters. Params: path (string, optional), max_length (int).
+- reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
+
+Layout / pagination:
 - split_at_row: Split a table across pages using the split_slide envelope. Params: path (string, optional), row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
 - swap_layout: Change the slide's layout_id. Params: layout_id (string, required).
+
+Color / theme:
 - use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
 - replace_color: Replace one color with another in shape_grid fills. Params: from (string, color to find), to (string, replacement color). Also accepts original_color/replacement_color from contrast_autofixed findings.
 - use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
+
+Pattern shape:
+- split_pattern: Split a single pattern slide into two slides by row. Params: first (int, optional, number of filled cells to keep on slide 1; defaults to half), title_part_2 (string, optional, suffix appended to slide 2's title; defaults to "(continued)").
 - swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
 - reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
 - set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
-- reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
+
+Pattern values (field-level edits to slide.pattern.values):
+- rename_field: Rename a top-level key in pattern values (or slide-level fields). Params: from (string, required, current key name), to (string, required, new key name).
+- reshape_value: Replace a pattern-values field with a restructured value (e.g. array → object). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required, replacement value in the target shape).
+- provide_value: Set a pattern-values field to an agent-supplied value, creating the key if missing. Params: path (string, required, key in pattern.values), value (any, required).
+- replace_value: Replace an existing pattern-values field with a new value (typically to bring it within valid bounds). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required).
+- reduce_items: Truncate an array field in pattern values to max_items entries. Params: path (string, required, array key in pattern.values), max_items (int, required, > 0).
+- add_items: Append items to an array field in pattern values (creates the array if missing). Params: path (string, required, array key in pattern.values), items (array, required, items to append).
+- resize_list: Adjust an array field in pattern values to exactly count entries. Truncates if too many; returns applied=false with guidance if too few (agent must supply additional items via add_items). Params: path (string, required, array key in pattern.values), count (int, required, > 0).
+- remove_key: Remove a key from pattern overrides or pattern values (overrides checked first). Params: key (string, required, key to remove).
+- remove_field: Remove a top-level field from pattern values or slide-level fields. Params: path (string, required, field name to remove).
+
+Heuristic:
 - autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
 
 Unsupported kinds return {applied: false, code: "kind_not_supported", message: "kind_not_supported", supported_kinds: [...full vocabulary...], next_tool_call: {tool: "get_capabilities", args_template: {}}}. Agents can retry with a kind from supported_kinds or call get_capabilities for the authoritative list.`),
