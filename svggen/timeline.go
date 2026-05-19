@@ -51,7 +51,8 @@ type TimelineActivity struct {
 	// Color overrides the default color for this item.
 	Color *Color
 
-	// Icon is an optional icon or emoji.
+	// Icon is an optional icon: URL, data URI, inline SVG, file path, or
+	// bundled SVG name. Emoji and plain text are not supported.
 	Icon string
 
 	// Row specifies which row this activity appears on (0-indexed).
@@ -1113,23 +1114,20 @@ func (tc *TimelineChart) drawMilestone(activity TimelineActivity, index int, row
 	}
 }
 
-// drawTimelineIcon draws an icon (emoji or loaded image) at the given center
-// position. Emoji icons are drawn as text; loadable icons (URL, data URI,
-// inline SVG, file path) are rasterized. If neither works, no fallback is
-// drawn (the underlying bar/diamond shape serves as visual marker).
+// drawTimelineIcon draws an icon image at the given center position.
+// Loadable icons (URL, data URI, inline SVG, file path, bundled name) are
+// rasterized. If the icon string is empty or not loadable, no fallback is
+// drawn — the underlying bar/diamond shape serves as the visual marker.
 func (tc *TimelineChart) drawTimelineIcon(icon, label string, accent Color, cx, cy, size float64) {
 	b := tc.builder
 	if size < 6 {
 		return // too small to be legible
 	}
 
-	if IsEmojiIcon(icon) {
-		b.Push()
-		b.SetFontSize(size)
-		b.SetTextColor(Color{R: 1, G: 1, B: 1, A: 1}) // white on colored shape
-		b.DrawText(icon, cx, cy, TextAlignCenter, TextBaselineMiddle)
-		b.Pop()
-	} else if img := LoadIcon(icon, int(size*2)); img != nil {
+	if ClassifyIcon(icon) == IconKindEmpty {
+		return
+	}
+	if img := LoadIcon(icon, int(size*2)); img != nil {
 		r := Rect{
 			X: cx - size/2,
 			Y: cy - size/2,

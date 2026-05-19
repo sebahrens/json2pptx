@@ -164,22 +164,6 @@ func decodeDataURI(uri string) ([]byte, error) {
 	return []byte(encoded), nil
 }
 
-// IsEmojiIcon returns true if the icon string is likely an emoji or very short
-// text (1-2 runes) that should be rendered as text rather than loaded as an image.
-func IsEmojiIcon(icon string) bool {
-	icon = strings.TrimSpace(icon)
-	if icon == "" {
-		return false
-	}
-	// If ClassifyIcon recognizes it as a loadable type, it's not emoji.
-	if kind := ClassifyIcon(icon); kind != IconKindEmpty {
-		return false
-	}
-	// Short strings (≤4 runes) that aren't loadable are treated as emoji/text icons.
-	runes := []rune(icon)
-	return len(runes) <= 4
-}
-
 // readFilePath reads icon bytes from a local file path.
 func readFilePath(path string) ([]byte, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // Path comes from user-provided JSON data

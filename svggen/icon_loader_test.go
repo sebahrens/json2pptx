@@ -21,6 +21,12 @@ func TestClassifyIcon(t *testing.T) {
 		{"data:image/png;base64,iVBOR=", IconKindDataURI},
 		{`<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>`, IconKindInlineSVG},
 		{"just-a-string", IconKindEmpty},
+		{"abacus", IconKindName},
+		{"outline:abacus", IconKindName},
+		// Short non-loadable strings (previously routed to the emoji
+		// text-fallback path) must now classify as empty.
+		{"🚀", IconKindEmpty},
+		{"AB", IconKindEmpty},
 	}
 
 	for _, tt := range tests {
@@ -108,6 +114,17 @@ func TestLoadIcon_URL_404(t *testing.T) {
 	img := LoadIcon(server.URL+"/missing.svg", 64)
 	if img != nil {
 		t.Error("Expected nil for 404 URL")
+	}
+}
+
+func TestLoadIcon_BundledName(t *testing.T) {
+	img := LoadIcon("abacus", 64)
+	if img == nil {
+		t.Fatal("Expected non-nil image for bundled icon name")
+	}
+	bounds := img.Bounds()
+	if bounds.Dx() == 0 || bounds.Dy() == 0 {
+		t.Error("Expected non-zero image dimensions for bundled icon")
 	}
 }
 
