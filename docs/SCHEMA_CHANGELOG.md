@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.20.0 (2026-05-19)
+
+### Added
+
+- **`preview_slide_wireframe` MCP tool / `preview-wireframe` CLI
+  subcommand** — render an annotated wireframe of one slide's resolved
+  plan as SVG and/or base64 PNG, without LibreOffice or ImageMagick.
+  Reuses the same plan resolver as `preview_presentation_plan` and
+  renders in-process via `svggen`.
+
+  Wireframe shows: the slide frame, layout placeholders (dashed blue),
+  `shape_grid` cells (labelled with row/col/kind/dimensions), occupancy
+  %, per-cell fit-finding badges (severity-coded `REF`/`SHR`/`REV`/
+  `INF`), and a footer strip for off-cell findings.
+
+  Inputs mirror `preview_presentation_plan` (`presentation` JSON) plus
+  required `slide_index` (0-based) and optional `format` ∈
+  {`svg`, `png`, `both`} (default `both`) and `width_px` (default 960,
+  clamped 320..2400).
+
+  Response: `{index, svg, png_base64, width, height, cell_count,
+  placeholder_count, finding_count, layout_id, layout_name, slide_type,
+  warnings, errors}`.
+
+  Use case: fast visual sanity-checks before paying for a full
+  `generate_presentation` + `render_slide_image` round-trip. Pure-Go, no
+  shell-outs.
+
 ## 4.19.0 (2026-05-19)
 
 ### Added

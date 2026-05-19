@@ -498,6 +498,27 @@ var outputSchemaRenderSlideImage = json.RawMessage(`{
   "required": ["index"]
 }`)
 
+// --- preview_slide_wireframe ---
+var outputSchemaPreviewSlideWireframe = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "index":             {"type": "integer"},
+    "svg":               {"type": "string", "description": "SVG document (omitted when format=\"png\")."},
+    "png_base64":        {"type": "string", "description": "Base64-encoded PNG (omitted when format=\"svg\")."},
+    "width":             {"type": "integer", "description": "Canvas width in pixels."},
+    "height":            {"type": "integer", "description": "Canvas height in pixels."},
+    "cell_count":        {"type": "integer", "description": "Number of resolved grid cells drawn."},
+    "placeholder_count": {"type": "integer", "description": "Number of layout placeholders drawn."},
+    "finding_count":     {"type": "integer", "description": "Number of fit findings overlaid (cell-attached + footer)."},
+    "layout_id":         {"type": "string"},
+    "layout_name":       {"type": "string"},
+    "slide_type":        {"type": "string"},
+    "warnings":          {"type": "array", "items": {"type": "string"}},
+    "errors":            {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["index", "cell_count", "placeholder_count", "finding_count"]
+}`)
+
 // --- render_deck_thumbnails ---
 var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
   "type": "object",

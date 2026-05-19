@@ -27,6 +27,7 @@ var mcpToCLI = map[string]string{
 	"resolve_theme":              "resolve-theme",
 	"recommend_pattern":          "recommend-pattern",
 	"preview_presentation_plan":  "preview",
+	"preview_slide_wireframe":    "preview-wireframe",
 	"repair_slide":               "repair",
 	"score_deck":                 "score",
 	"score_candidates":           "score-candidates",
