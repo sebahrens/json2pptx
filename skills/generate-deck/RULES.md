@@ -43,6 +43,14 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 |---|---|---|
 | 16 | Engine auto-replaces low-contrast text with dark gray (WCAG AA, ratio < ~3.0). Auto-fixes are now visible — check `fit_findings` for `contrast_autofixed` entries (with before/after ratios) before deciding whether to re-author colors | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
 
+## Icons (no emoji)
+
+| # | Rule | Rationale |
+|---|---|---|
+| 15a | **Never emit emoji codepoints anywhere in deck JSON.** Icon fields (`card-grid` cells, `icon-row` items, `herodetail` icon, raw `shape_grid` cell `icon`) MUST be a bundled icon name (preferred) or a loadable user icon via `path` / `url` / `svg_data`. Emoji glyphs (`🚀`, `📈`, `✅`, `⚡`, etc.) and pictographic characters in the Unicode emoji range are rejected by pattern validators and produce broken/off-brand output when they slip into text. Plain Unicode symbols outside the emoji range (`→`, `←`, `•`, en-dash) are still allowed in text. | Bundled SVG icons inherit theme colors and scale crisply; emoji rasterize at fixed sizes, fall back to system fonts (inconsistent across viewers), and break the design system |
+
+Accepted `IconInput` sources, exactly one per icon: `name` (bundled), `path` (local file), `url` (remote), `svg_data` (inline SVG). Run `json2pptx icons list` (CLI) or call `list_icons` (MCP) for the bundled catalog.
+
 ## Silent Traps (no error, broken output)
 
 | # | Wrong | Right | What happens |

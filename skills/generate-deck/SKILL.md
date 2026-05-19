@@ -305,6 +305,7 @@ Non-negotiable. Full catalog with rationale and examples in [RULES.md](RULES.md)
 - **Contrast auto-fix (Rule 16):** engine auto-replaces low-contrast text with dark gray; surfaces as `contrast_autofixed` findings.
 - **Silent traps (Rules 17–19):** `footer` is an object not a string; never prefix `source` with "Source: "; content fields need `_value` suffix (`chart_value`, `table_value`).
 - **Table density (Rule 20 — enforced):** MUST split if rows > 7 OR cols > 6 OR font < 9pt. Multiline cells count as N logical rows.
+- **No emoji codepoints (hard rule):** emoji glyphs are rejected by pattern validators in `card-grid`, `icon-row`, `herodetail`, etc. Use a bundled SVG icon name or supply a user icon via `path` / `url` / `svg_data`. See the [Icon Names](#icon-names) section.
 - **Anti-patterns:** two-tables-one-grid, hex-fill mix, pattern monotony (no 3-in-a-row), accent monotony.
 - **Cell accent variety:** `cell_accent_mode` ∈ {`uniform`, `alternate`, `progressive`} — use `progressive` for 4+ peer cells.
 
@@ -354,7 +355,18 @@ For multi-table decks, set shared styles once in the top-level `defaults` block 
 
 ## Icon Names
 
+**No-emoji policy (hard rule).** **Never emit emoji codepoints anywhere in deck JSON** — not in `icon` fields, not in pattern values (`card-grid` cells, `icon-row` items, `herodetail` etc.), not in shape text, not in titles, bullets, headers, captions, or table cells. Emoji glyphs (`🚀`, `📈`, `✅`, `⚡`, etc.) and pictographic characters in the Unicode emoji range are rejected by pattern validators and produce broken or off-brand output when they slip through to text. Use a **bundled SVG icon name** (preferred) or supply a user icon via `path` / `url` / `svg_data`. Plain Unicode symbols outside the emoji range (e.g. arrows like `→`, `←`) are still allowed in text but should not appear in icon fields.
+
 Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available names. Use `"icon": {"name": "ICON_NAME", "fill": "#FFFFFF"}` inside a shape, or `"icon": {"name": "ICON_NAME"}` as a standalone cell. The `"fill"` color override also works with custom SVG icons specified via `"path"`: `"icon": {"path": "icons/custom.svg", "fill": "#FF6600"}`.
+
+**Accepted `IconInput` sources (exactly one per icon).** Set exactly one of:
+
+| Source | Field | Example |
+|---|---|---|
+| Bundled icon | `name` | `{"name": "chart-pie", "fill": "#FFFFFF"}` |
+| Local file (SVG / image) | `path` | `{"path": "icons/custom.svg", "fill": "#FF6600"}` |
+| Remote SVG / image | `url` | `{"url": "https://example.com/logo.svg"}` |
+| Inline SVG markup | `svg_data` | `{"svg_data": "<svg…>…</svg>", "alt": "…"}` |
 
 **Inline SVG (`svg_data`).** When you already have SVG markup — e.g. the output of `svggen-mcp.render_diagram` — embed it directly in a cell without a filesystem roundtrip:
 
@@ -362,7 +374,9 @@ Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available na
 "icon": {"svg_data": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\">…</svg>", "alt": "Pie chart: A 60%, B 40%"}
 ```
 
-Exactly one of `name`, `path`, `url`, or `svg_data` must be set per icon. `fill` is ignored for `svg_data` (your SVG is assumed pre-styled). The optional `alt` field sets accessibility text; when omitted, alt falls back to a value derived from `name` or `path`, or `"icon"` for inline SVG.
+`fill` is ignored for `svg_data` (your SVG is assumed pre-styled). The optional `alt` field sets accessibility text; when omitted, alt falls back to a value derived from `name` or `path`, or `"icon"` for inline SVG. Pattern fields that accept icons (e.g. `card-grid`'s cell `icon`, `icon-row` items, `herodetail`'s `icon`) follow the same rule: bundled name or a loadable source — never an emoji glyph.
+
+**Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide.
 
 ---
 

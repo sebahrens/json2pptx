@@ -38,6 +38,7 @@ type skillInfo struct {
 	Compose          *skillComposeEntry     `json:"compose,omitempty"`
 	InputFormats     []string               `json:"input_formats"`
 	OutputFormats    []string               `json:"output_formats"`
+	IconPolicy       *skillIconPolicy       `json:"icon_policy,omitempty"`
 	Deprecations     []skillDeprecation     `json:"deprecations,omitempty"`
 	// TotalCount is the total number of templates discovered, irrespective
 	// of the current page slice. Omitted when zero (CLI / non-paginated use).
@@ -85,6 +86,18 @@ type skillComposeExample struct {
 	Title       string          `json:"title"`
 	Description string          `json:"description"`
 	JSON        json.RawMessage `json:"json"`
+}
+
+// skillIconPolicy advertises the deck-wide icon contract: emoji codepoints are
+// rejected by pattern validators, and exactly one of the listed IconInput
+// sources must be set per icon. Surfaced so agents reading skill-info pick a
+// bundled name (or a loadable source) rather than dropping an emoji glyph into
+// a pattern field.
+type skillIconPolicy struct {
+	NoEmoji         bool     `json:"no_emoji"`         // hard rule: emoji codepoints rejected anywhere in deck JSON
+	AcceptedSources []string `json:"accepted_sources"` // ordered: name, path, url, svg_data
+	Description     string   `json:"description"`      // agent-facing summary
+	BundledCatalog  string   `json:"bundled_catalog"`  // pointer to the bundled icon catalog tool
 }
 
 // skillDeprecation describes a deprecated feature and its canonical replacement.
@@ -345,6 +358,7 @@ func runSkillInfo() error {
 		Compose:         buildComposeEntry(),
 		InputFormats:    []string{"json"},
 		OutputFormats:   []string{"pptx"},
+		IconPolicy:      buildIconPolicy(),
 		Deprecations:    buildDeprecations(),
 	}
 
@@ -684,6 +698,23 @@ func buildComposeEntry() *skillComposeEntry {
 }
 
 // buildDeprecations returns the list of deprecated features with their replacements.
+// buildIconPolicy returns the deck-wide icon contract surfaced to skill-info
+// readers. Mirrors the no-emoji rule documented in
+// skills/generate-deck/SKILL.md (Icon Names) and SLIDE_FORMAT.md (Icons), and
+// the validators in internal/patterns/{cardgrid,iconrow,herodetail}.go.
+func buildIconPolicy() *skillIconPolicy {
+	return &skillIconPolicy{
+		NoEmoji:         true,
+		AcceptedSources: []string{"name", "path", "url", "svg_data"},
+		Description: "Emoji codepoints are rejected anywhere in deck JSON " +
+			"(icon fields, pattern values, shape text, titles, bullets). " +
+			"Use a bundled SVG icon name (preferred) or supply a user icon " +
+			"via path / url / svg_data. Exactly one of " +
+			"name|path|url|svg_data must be set per IconInput.",
+		BundledCatalog: "list_icons (MCP) or `json2pptx icons list` (CLI)",
+	}
+}
+
 func buildDeprecations() []skillDeprecation {
 	return []skillDeprecation{
 		{
@@ -976,4 +1007,12 @@ func printSkillInfoText(info skillInfo, mode string) {
 	fmt.Printf("Slide Types: %s\n", strings.Join(info.SupportedTypes.SlideTypes, ", "))
 	fmt.Printf("Chart Types: %s\n", strings.Join(info.SupportedTypes.ChartTypes, ", "))
 	fmt.Printf("Diagram Types: %s\n", strings.Join(info.SupportedTypes.DiagramTypes, ", "))
+	if info.IconPolicy != nil {
+		fmt.Println()
+		fmt.Println("Icon Policy:")
+		fmt.Printf("  No Emoji: %t\n", info.IconPolicy.NoEmoji)
+		fmt.Printf("  Accepted Sources: %s\n", strings.Join(info.IconPolicy.AcceptedSources, ", "))
+		fmt.Printf("  Bundled Catalog: %s\n", info.IconPolicy.BundledCatalog)
+		fmt.Printf("  %s\n", info.IconPolicy.Description)
+	}
 }

@@ -247,6 +247,39 @@ Image file or URL.
 {"placeholder_id": "image", "type": "image", "image_value": {"path": "images/photo.png", "alt": "Team photo"}}
 ```
 
+## Icons (IconInput)
+
+Icons may appear inside `shape_grid` cells, inside shapes, and inside pattern fields that accept icons (e.g. `card-grid` cells, `icon-row` items, `herodetail` icon). All icon fields use the same `IconInput` shape and the same source rules.
+
+### No-emoji policy (hard rule)
+
+**Never emit emoji codepoints in any icon field.** Glyphs in the Unicode emoji range (`🚀`, `📈`, `✅`, `⚡`, `🎯`, `🔥`, etc.) are rejected by pattern validators (`card-grid`, `icon-row`, `herodetail`) and produce broken or off-brand output if they slip through. This rule also applies to text fields: do not use emoji in titles, bullets, headers, captions, table cells, or speaker notes. Plain Unicode symbols outside the emoji range (e.g. arrows `→` / `←`, the bullet `•`, en/em dashes) are still allowed inside text.
+
+To represent a concept visually, use one of the four accepted sources below.
+
+### Accepted icon sources (exactly one per icon)
+
+| Source | Field | Example |
+|---|---|---|
+| Bundled SVG icon | `name` | `{"icon": {"name": "chart-pie", "fill": "#FFFFFF"}}` |
+| Local file (SVG / image) | `path` | `{"icon": {"path": "icons/custom.svg", "fill": "#FF6600"}}` |
+| Remote SVG / image | `url` | `{"icon": {"url": "https://example.com/logo.svg"}}` |
+| Inline SVG markup | `svg_data` | `{"icon": {"svg_data": "<svg ...>...</svg>", "alt": "Pie chart"}}` |
+
+Run `json2pptx icons list` (CLI) or call `list_icons` (MCP) for the bundled icon catalog (e.g. `rocket`, `chart-pie`, `users`, `alert-circle`, `filled:circle-check`, etc.).
+
+| Field | Description |
+|---|---|
+| `name` | Bundled icon name (preferred). Resolves through the bundled SVG registry; never an emoji glyph. |
+| `path` | File path to a custom SVG or raster image, relative to the JSON input directory. |
+| `url` | HTTP/HTTPS URL to fetch an SVG or image. |
+| `svg_data` | Inline SVG markup (e.g. the output of `svggen-mcp.render_diagram`). No filesystem or network access. |
+| `alt` | Accessibility description. Falls back to `name`/`path`/`"icon"` when omitted. |
+| `fill` | Optional fill color override. Use semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) when possible. Ignored for `svg_data`. |
+| `position` | Icon position relative to text in a shape: `"left"`, `"top"`, `"center"`. Auto-detected when empty. |
+
+Exactly one of `name`, `path`, `url`, or `svg_data` must be set per icon. Setting an emoji codepoint in `name` (or any pattern field that accepts an icon) is rejected.
+
 ## Complete Example
 
 ```json
