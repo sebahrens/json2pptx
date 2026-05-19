@@ -34,11 +34,11 @@ func runRepair() error {
 
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("-json is required")
+		return fmt.Errorf("--json is required")
 	}
 	if *fixesStr == "" {
 		fs.Usage()
-		return fmt.Errorf("-fixes is required")
+		return fmt.Errorf("--fixes is required")
 	}
 
 	jsonInput, err := readJSONInput(*jsonPath)

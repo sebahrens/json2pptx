@@ -15,9 +15,9 @@ import (
 // showing placeholders, grid cells, occupancy, and fit findings.
 //
 // Output modes:
-//   -format=svg  → writes raw SVG to stdout (or to -out file).
-//   -format=png  → writes raw PNG to stdout (or to -out file).
-//   -format=both → writes the JSON envelope (svg + base64 PNG) to stdout.
+//   --format=svg  → writes raw SVG to stdout (or to --out file).
+//   --format=png  → writes raw PNG to stdout (or to --out file).
+//   --format=both → writes the JSON envelope (svg + base64 PNG) to stdout.
 func runPreviewWireframe() error {
 	fs := flag.NewFlagSet("preview-wireframe", flag.ContinueOnError)
 
@@ -45,12 +45,12 @@ func runPreviewWireframe() error {
 	}
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("-json is required")
+		return fmt.Errorf("--json is required")
 	}
 	switch *format {
 	case "svg", "png", "both":
 	default:
-		return fmt.Errorf("-format must be one of svg, png, both (got %q)", *format)
+		return fmt.Errorf("--format must be one of svg, png, both (got %q)", *format)
 	}
 
 	presentation, err := readJSONObject(*jsonPath)

@@ -35,15 +35,15 @@ func runScoreCandidates() error {
 
 	if *jsonPath == "" {
 		fs.Usage()
-		return fmt.Errorf("-json is required")
+		return fmt.Errorf("--json is required")
 	}
 	if *candidatesPath == "" {
 		fs.Usage()
-		return fmt.Errorf("-candidates is required")
+		return fmt.Errorf("--candidates is required")
 	}
 	if *slideIndex < 0 {
 		fs.Usage()
-		return fmt.Errorf("-slide-index is required (must be >= 0)")
+		return fmt.Errorf("--slide-index is required (must be >= 0)")
 	}
 
 	presentation, err := readJSONObject(*jsonPath)

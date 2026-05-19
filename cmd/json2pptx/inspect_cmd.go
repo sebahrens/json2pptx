@@ -37,7 +37,7 @@ func runInspect() error {
 
 	if *imagesDir == "" {
 		fs.Usage()
-		return fmt.Errorf("-images is required")
+		return fmt.Errorf("--images is required")
 	}
 
 	images, err := collectInspectImages(*imagesDir)

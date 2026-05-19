@@ -31,7 +31,7 @@ func runPlanDeck() error {
 
 	if *brief == "" {
 		fs.Usage()
-		return fmt.Errorf("-brief is required")
+		return fmt.Errorf("--brief is required")
 	}
 
 	args := map[string]any{

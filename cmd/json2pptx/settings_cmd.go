@@ -65,7 +65,7 @@ func runTemplateSettingsList() error {
 
 	if *templateName == "" {
 		fs.Usage()
-		return fmt.Errorf("-template is required")
+		return fmt.Errorf("--template is required")
 	}
 
 	mc := cliMCPConfig(*templatesDir, "")
