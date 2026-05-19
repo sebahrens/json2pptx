@@ -220,7 +220,7 @@ When building a slide and unsure which visual approach to use, follow this decis
 
    **Envelope-level banner and callout.** A `ComposeInput` may set `banner: {text, emphasis?, accent?}` and/or `callout: {text, emphasis?, accent?}`. These do **not** consume a segment slot. Constraint: validation rejects `banner` when the first segment's pattern is itself banner-leading (currently `strategy-house` and `pull-quote`).
 
-   **Slide-level overlays.** `SlideInput.overlays: []OverlayShape` adds free-floating shapes rendered on top of the grid (arrows, lines, badges). Endpoints are either `{x, y}` percentages or `{anchor_cell: {row, col, at}}` with anchor positions like `"center"`, `"top-left"`, etc.
+   **Slide-level overlays.** `SlideInput.overlays: []OverlayShape` adds free-floating shapes rendered on top of the grid (arrows, lines, badges). Endpoints are either `{x, y}` percentages or `{anchor_cell: {row, col, at}}` with anchor positions like `"center"`, `"top-left"`, etc. Arrow overlays whose endpoints both target `anchor_cell` with `at: "center"` on text-bearing cells are auto-routed to the cell corners facing the opposite endpoint, keeping arrowheads off the label centers. Arrow stroke colors with poor contrast (<3:1 WCAG AA Large) against an endpoint cell's resolved fill are auto-flipped to white or near-black, whichever has the best worst-case contrast across both endpoints.
 2. **`recommend_pattern`** — use only when you already know you need a named pattern and want to pick the best one.
 3. **`list_patterns` / `show_pattern`** — use when you already know the pattern name and need its value schema.
 

@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // makeMatrix2x2Cells returns a synthetic set of ResolvedCells representing a
@@ -69,7 +71,7 @@ func TestResolveOverlays_MatrixDiagonalArrows(t *testing.T) {
 	}
 
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0)
+	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, nil)
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -106,6 +108,167 @@ func TestResolveOverlays_MatrixDiagonalArrows(t *testing.T) {
 	}
 }
 
+// makeMatrix2x2CellsWithFillsAndText returns a 2x2 set of resolved cells
+// whose shape specs carry text labels and theme-resolved fills. Used by the
+// overlay-arrow regression tests for center-anchor routing and contrast.
+func makeMatrix2x2CellsWithFillsAndText() []shapegrid.ResolvedCell {
+	cells := makeMatrix2x2Cells()
+	fills := []string{`"accent1"`, `"accent2"`, `"accent3"`, `"accent4"`}
+	labels := []string{`"Low cost\nLow risk"`, `"High cost\nLow risk"`, `"Low cost\nHigh risk"`, `"High cost\nHigh risk"`}
+	for i := range cells {
+		cells[i].ShapeSpec = &shapegrid.ShapeSpec{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(fills[i]),
+			Text:     json.RawMessage(labels[i]),
+		}
+	}
+	return cells
+}
+
+// TestResolveOverlays_CenterArrowsAvoidLabelCenters asserts that arrow
+// overlays with center-anchored endpoints get routed to the cell corners
+// facing the opposite endpoint when both cells carry text labels. This
+// prevents the arrowhead from sitting on top of the quadrant label.
+func TestResolveOverlays_CenterArrowsAvoidLabelCenters(t *testing.T) {
+	cells := makeMatrix2x2CellsWithFillsAndText()
+
+	overlays := []*OverlayShapeInput{
+		// Top-left → Bottom-right diagonal arrow
+		{
+			Kind:  "arrow",
+			Color: "FF0000", // hex avoids contrast flip path
+			Width: 2.0,
+			From:  &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 0, Col: 0, At: "center"}},
+			To:    &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 1, Col: 1, At: "center"}},
+		},
+	}
+
+	alloc := newAllocFrom(400)
+	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, nil)
+	if err != nil {
+		t.Fatalf("resolveOverlays: %v", err)
+	}
+	if len(frags) != 1 {
+		t.Fatalf("expected 1 overlay shape, got %d", len(frags))
+	}
+
+	// Without routing, the arrow would have spanned c00-center→c11-center =
+	// (2514600,1600200)→(6720840,3977640) with cx=4206240, cy=2377440.
+	// With routing snapping each endpoint toward the opposite corner with a
+	// 10% inset, both off.x/off.y and ext.cx/ext.cy must shrink noticeably.
+	rawCX, _ := parseInt(extractAttr(string(frags[0]), "<a:ext ", "cx"))
+	rawCY, _ := parseInt(extractAttr(string(frags[0]), "<a:ext ", "cy"))
+	if rawCX >= 4206240 {
+		t.Errorf("expected routed arrow cx < 4206240, got %d (arrow still spans full diagonal)", rawCX)
+	}
+	if rawCY >= 2377440 {
+		t.Errorf("expected routed arrow cy < 2377440, got %d (arrow still spans full diagonal)", rawCY)
+	}
+	rawX, _ := parseInt(extractAttr(string(frags[0]), "<a:off ", "x"))
+	rawY, _ := parseInt(extractAttr(string(frags[0]), "<a:off ", "y"))
+	if rawX <= 2514600 {
+		t.Errorf("expected routed arrow off.x > 2514600 (start moved toward bottom-right corner of c00), got %d", rawX)
+	}
+	if rawY <= 1600200 {
+		t.Errorf("expected routed arrow off.y > 1600200 (start moved toward bottom-right corner of c00), got %d", rawY)
+	}
+}
+
+// TestResolveOverlays_StrokeColorFlipsForContrast asserts that a dark arrow
+// stroke on a dark-fill quadrant gets swapped to a light contrast color.
+func TestResolveOverlays_StrokeColorFlipsForContrast(t *testing.T) {
+	cells := makeMatrix2x2Cells()
+	// Give c00 an explicit dark fill via hex (no theme needed). Both
+	// endpoints reference c00 / c11 with similar dark fills.
+	for i := range cells {
+		cells[i].ShapeSpec = &shapegrid.ShapeSpec{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(`"#1F2A44"`), // dark navy
+			Text:     json.RawMessage(`"label"`),
+		}
+	}
+
+	overlays := []*OverlayShapeInput{
+		{
+			Kind:  "arrow",
+			Color: "000000", // dark stroke — would be invisible on dark fill
+			Width: 3.0,
+			From:  &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 0, Col: 0, At: "center"}},
+			To:    &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 1, Col: 1, At: "center"}},
+		},
+	}
+
+	alloc := newAllocFrom(400)
+	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, nil)
+	if err != nil {
+		t.Fatalf("resolveOverlays: %v", err)
+	}
+	if len(frags) != 1 {
+		t.Fatalf("expected 1 overlay shape, got %d", len(frags))
+	}
+	s := string(frags[0])
+	// The stroke is rendered inside <a:ln>...<a:solidFill>...<a:srgbClr val="..."/>.
+	// After the contrast flip, the requested 000000 must be replaced with a
+	// light color (FFFFFF) so it is visible on the dark fill.
+	if strings.Contains(s, `<a:srgbClr val="000000"`) {
+		t.Errorf("expected stroke color 000000 to be flipped for contrast against dark fills, got fragment: %s", s)
+	}
+	if !strings.Contains(s, `<a:srgbClr val="FFFFFF"`) {
+		t.Errorf("expected stroke flipped to FFFFFF for visibility on dark fills, got: %s", s)
+	}
+}
+
+// TestResolveOverlays_StrokeColorFlipUsesTheme verifies the theme palette is
+// consulted when an endpoint cell fill references a scheme color.
+func TestResolveOverlays_StrokeColorFlipUsesTheme(t *testing.T) {
+	cells := makeMatrix2x2Cells()
+	for i := range cells {
+		cells[i].ShapeSpec = &shapegrid.ShapeSpec{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(`"accent1"`), // resolved via theme below
+			Text:     json.RawMessage(`"label"`),
+		}
+	}
+	theme := []types.ThemeColor{
+		{Name: "accent1", RGB: "#0B1F3A"}, // dark navy
+	}
+	overlays := []*OverlayShapeInput{
+		{
+			Kind:  "arrow",
+			Color: "dk1", // unresolvable without theme → falls back to user color
+			Width: 2.0,
+			From:  &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 0, Col: 0, At: "center"}},
+			To:    &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 1, Col: 1, At: "center"}},
+		},
+	}
+	theme = append(theme, types.ThemeColor{Name: "dk1", RGB: "#000000"})
+
+	alloc := newAllocFrom(400)
+	frags, err := resolveOverlays(overlays, cells, alloc, 0, 0, theme)
+	if err != nil {
+		t.Fatalf("resolveOverlays: %v", err)
+	}
+	s := string(frags[0])
+	if !strings.Contains(s, `<a:srgbClr val="FFFFFF"`) {
+		t.Errorf("expected dk1 stroke on dark accent1 fill to flip to FFFFFF, got: %s", s)
+	}
+}
+
+// parseInt is a strconv-free helper that parses a non-negative base-10 string.
+func parseInt(s string) (int64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	var n int64
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		n = n*10 + int64(c-'0')
+	}
+	return n, true
+}
+
 // TestResolveOverlays_LinePercent verifies percent-of-slide positioning for a
 // plain line (no arrowhead) when no anchor_cell is used.
 func TestResolveOverlays_LinePercent(t *testing.T) {
@@ -120,7 +283,7 @@ func TestResolveOverlays_LinePercent(t *testing.T) {
 	}
 	alloc := newAllocFrom(400)
 	// Use 16:9 default: 9144000 x 5143500 EMU.
-	frags, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500)
+	frags, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500, nil)
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -153,7 +316,7 @@ func TestResolveOverlays_Badge(t *testing.T) {
 		},
 	}
 	alloc := newAllocFrom(400)
-	frags, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500)
+	frags, err := resolveOverlays(overlays, nil, alloc, 9144000, 5143500, nil)
 	if err != nil {
 		t.Fatalf("resolveOverlays: %v", err)
 	}
@@ -183,7 +346,7 @@ func TestResolveOverlays_AnchorOutOfRangeError(t *testing.T) {
 		},
 	}
 	alloc := newAllocFrom(400)
-	_, err := resolveOverlays(overlays, makeMatrix2x2Cells(), alloc, 9144000, 5143500)
+	_, err := resolveOverlays(overlays, makeMatrix2x2Cells(), alloc, 9144000, 5143500, nil)
 	if err == nil {
 		t.Fatal("expected error for missing anchor cell")
 	}
@@ -209,7 +372,7 @@ func TestResolveOverlays_MissingFieldsErrors(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			alloc := newAllocFrom(400)
-			_, err := resolveOverlays([]*OverlayShapeInput{tc.ov}, nil, alloc, 9144000, 5143500)
+			_, err := resolveOverlays([]*OverlayShapeInput{tc.ov}, nil, alloc, 9144000, 5143500, nil)
 			if err == nil {
 				t.Fatal("expected error")
 			}
