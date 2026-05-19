@@ -5,7 +5,6 @@
 package quality
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -92,10 +91,16 @@ func (s *LoopState) MarkVisualQADone(slideIndices []int) {
 	}
 }
 
-// RunValidatePass executes json2pptx validate --fit-report on the given
-// JSON file and returns structured findings grouped by slide.
+// RunValidatePass executes json2pptx validate --fit-report --format=json on
+// the given JSON file and returns structured fit findings.
+//
+// The CLI emits the MCP validate_input dryRunOutput shape on stdout (a single
+// JSON object per file with fit_findings[]). For invalid inputs the CLI emits
+// the diagnostics error envelope; in that case fit_findings is absent and this
+// function returns an empty slice (the schema-level errors are surfaced via
+// the diagnostics array, but the loop driver only cares about fit findings).
 func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
-	cmd := exec.Command(cfg.Binary, "validate", "-fit-report", jsonPath) //nolint:gosec // controlled inputs in test/agent context
+	cmd := exec.Command(cfg.Binary, "validate", "--fit-report", "--format=ndjson", jsonPath) //nolint:gosec // controlled inputs in test/agent context
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -103,21 +108,26 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 	// validate may return non-zero for invalid inputs — that's expected.
 	_ = cmd.Run()
 
+	// NDJSON: one envelope per file, but the CLI is invoked with a single file
+	// here so we parse the single object on the first non-empty line.
+	type dryRunEnvelope struct {
+		FitFindings []fitFinding `json:"fit_findings"`
+	}
+
 	var findings []fitFinding
-	scanner := bufio.NewScanner(&stdout)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		var f fitFinding
-		if err := json.Unmarshal([]byte(line), &f); err != nil {
-			continue // skip malformed lines
+		var env dryRunEnvelope
+		if err := json.Unmarshal([]byte(line), &env); err != nil {
+			continue
 		}
-		findings = append(findings, f)
+		findings = append(findings, env.FitFindings...)
 	}
 
-	return findings, scanner.Err()
+	return findings, nil
 }
 
 // EvaluateFindings takes raw findings and the current loop state, and

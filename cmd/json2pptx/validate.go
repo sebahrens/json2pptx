@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -20,8 +21,8 @@ func runValidate() error { //nolint:gocognit
 	fs := flag.NewFlagSet("validate", flag.ContinueOnError)
 	templateName := fs.String("template", "", "Template name for layout validation (optional)")
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
-	jsonOut := fs.Bool("json", false, "Output results as JSON to stdout")
-	jsonOutputPath := fs.String("json-output", "", "Write JSON results to file (use - for stdout)")
+	jsonOut := fs.Bool("json", false, "Alias for --format=json: emit the MCP validate_input dryRunOutput shape to stdout")
+	jsonOutputPath := fs.String("json-output", "", "Write JSON results (dryRunOutput shape) to file (use - for stdout)")
 	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
@@ -32,6 +33,10 @@ func runValidate() error { //nolint:gocognit
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate [options] <file.json ...>\n\n")
 		fmt.Fprintf(os.Stderr, "Validate JSON slide files without generating PPTX output.\n")
 		fmt.Fprintf(os.Stderr, "Reports errors, warnings, and content statistics.\n\n")
+		fmt.Fprintf(os.Stderr, "Output shapes:\n")
+		fmt.Fprintf(os.Stderr, "  - human (default): human-readable summary on stdout, fit findings on stderr\n")
+		fmt.Fprintf(os.Stderr, "  - --json / --format=json / --json-output: MCP validate_input dryRunOutput shape\n")
+		fmt.Fprintf(os.Stderr, "  - --format=ndjson: MCP dryRunOutput, one object per line per file\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate --json slides.json\n")
@@ -57,10 +62,21 @@ func runValidate() error { //nolint:gocognit
 		return fmt.Errorf("at least one input file is required")
 	}
 
-	// When -format=json is used, delegate to the MCP validate handler to get
-	// the identical dryRunOutput shape (with structured diagnostics and fit_findings).
-	if *format == "json" || *format == "ndjson" {
-		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, *format, *strictUnknownKeys)
+	// Determine effective output format. There is exactly one structured JSON
+	// shape: the MCP validate_input dryRunOutput. --json and --json-output are
+	// aliases for --format=json (with --json-output also choosing a destination).
+	// Human mode is the only non-JSON shape; it never emits NDJSON on stdout.
+	effectiveFormat := *format
+	effectiveJSONPath := *jsonOutputPath
+	if effectiveFormat == "" && (*jsonOut || effectiveJSONPath != "") {
+		effectiveFormat = "json"
+	}
+	if effectiveFormat == "json" && effectiveJSONPath == "" {
+		effectiveJSONPath = "-"
+	}
+
+	if effectiveFormat == "json" || effectiveFormat == "ndjson" {
+		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, effectiveJSONPath)
 	}
 
 	// Suppress unused warnings for flags consumed below.
@@ -78,6 +94,8 @@ func runValidate() error { //nolint:gocognit
 	}
 
 	// Fit-report: walk all tables and shape-grid text cells for overflow.
+	// In human mode we only emit human-readable findings to stderr — NDJSON on
+	// stdout would mix shapes and break agents parsing the human output.
 	if *fitReport {
 		for _, filePath := range args {
 			content, err := os.ReadFile(filePath)
@@ -100,7 +118,6 @@ func runValidate() error { //nolint:gocognit
 			findings := generateFitReport(&input)
 			findings = budgetLocalFindings(findings, DefaultFindingBudget, *verboseFit)
 			printFitFindingsBySlide(findings)
-			writeFitReportNDJSON(os.Stdout, findings)
 			for _, f := range findings {
 				if f.Action == "refuse" {
 					hasErrors = true
@@ -109,22 +126,9 @@ func runValidate() error { //nolint:gocognit
 		}
 	}
 
-	// Resolve effective JSON output destination:
-	// -json-output takes precedence; -json is shorthand for -json-output -.
-	effectiveJSONPath := *jsonOutputPath
-	if effectiveJSONPath == "" && *jsonOut {
-		effectiveJSONPath = "-"
-	}
-
-	// Output results.
-	if effectiveJSONPath != "" {
-		if err := writeValidateJSON(effectiveJSONPath, results); err != nil {
-			return err
-		}
-	} else {
-		for _, r := range results {
-			printValidateResult(r)
-		}
+	// Human-readable output to stdout.
+	for _, r := range results {
+		printValidateResult(r)
 	}
 
 	if hasErrors {
@@ -353,38 +357,31 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) val
 	return result
 }
 
-// writeValidateJSON writes validation results as JSON to a file path or stdout
-// (when path is "-").
-func writeValidateJSON(path string, results []validateResult) error {
-	var v any = results
-	if len(results) == 1 {
-		v = results[0]
-	}
-
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
-	if path == "-" {
-		_, err = os.Stdout.Write(data)
-		_, _ = os.Stdout.WriteString("\n")
-	} else {
-		err = os.WriteFile(path, append(data, '\n'), 0644)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to write JSON output: %w", err)
-	}
-	return nil
-}
-
 // runValidateMCPFormat delegates to the MCP validate handler to produce output
-// identical to validate_input. This ensures CLI and MCP return the same shape.
-// strictUnknownKeys is passed straight through to the MCP handler so the JSON
-// output matches what validate_input would return for the same flag value.
-func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string, strictUnknownKeys bool) error {
+// identical to validate_input. This is the single structured JSON contract for
+// CLI validate output: --format=json, --format=ndjson, --json, and
+// --json-output all route here. strictUnknownKeys is passed straight through
+// to the MCP handler so the JSON output matches what validate_input would
+// return for the same flag value.
+//
+// outputPath selects the destination: "" or "-" means stdout; any other value
+// is a file path. For --format=ndjson the output is one JSON object per file,
+// per line. For --format=json each file's response is pretty-printed; when
+// multiple files are validated, their pretty-printed objects are concatenated
+// (matching the prior --format=json behavior).
+func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, outputPath string) error {
 	mc := cliMCPConfig(templatesDir, "")
 	hasErrors := false
+
+	var out io.Writer = os.Stdout
+	if outputPath != "" && outputPath != "-" {
+		f, err := os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create JSON output file: %w", err)
+		}
+		defer f.Close()
+		out = f
+	}
 
 	for _, filePath := range files {
 		jsonInput, err := readJSONInput(filePath)
@@ -413,22 +410,61 @@ func runValidateMCPFormat(files []string, templatesDir string, fitReport, verbos
 			hasErrors = true
 		}
 
-		if format == "ndjson" {
-			// NDJSON: one JSON object per line, no indentation.
-			if len(result.Content) > 0 {
-				if tc, ok := result.Content[0].(mcpgo.TextContent); ok {
-					fmt.Println(tc.Text)
-				}
-			}
-		} else {
-			if err := printMCPResultJSON(result); err != nil {
-				hasErrors = true
-			}
+		if err := writeMCPResultJSON(out, result, format); err != nil {
+			hasErrors = true
 		}
 	}
 
 	if hasErrors {
 		return fmt.Errorf("validation failed")
+	}
+	return nil
+}
+
+// writeMCPResultJSON writes the text content of an MCP CallToolResult to w as
+// either pretty-printed JSON ("json") or one JSON object per line ("ndjson").
+// Unlike printMCPResultJSON, both success and error envelopes are written to
+// the destination (so machine-readable consumers can parse failures), and
+// nothing is written to stderr.
+func writeMCPResultJSON(w io.Writer, result *mcpgo.CallToolResult, format string) error {
+	if result == nil || len(result.Content) == 0 {
+		return fmt.Errorf("empty result")
+	}
+	tc, ok := result.Content[0].(mcpgo.TextContent)
+	if !ok {
+		return fmt.Errorf("unexpected content type")
+	}
+
+	// Decode once; the MCP text content may be either compact or pretty-printed
+	// depending on session negotiation, so we re-emit in the format CLI users
+	// actually requested.
+	var raw any
+	if err := json.Unmarshal([]byte(tc.Text), &raw); err != nil {
+		// Not JSON — write as-is.
+		_, err := fmt.Fprintln(w, tc.Text)
+		return err
+	}
+
+	if format == "ndjson" {
+		// NDJSON: one compact JSON object per file, terminated by newline.
+		compact, err := json.Marshal(raw)
+		if err != nil {
+			_, err := fmt.Fprintln(w, tc.Text)
+			return err
+		}
+		if _, err := w.Write(append(compact, '\n')); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	pretty, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		_, err := fmt.Fprintln(w, tc.Text)
+		return err
+	}
+	if _, err := w.Write(append(pretty, '\n')); err != nil {
+		return err
 	}
 	return nil
 }
