@@ -91,6 +91,20 @@ jobs:
           version: v2.8.0
           args: --timeout=5m
 
+  repo-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Ensure install.sh has executable bit set in git
+        run: |
+          MODE=$(git ls-files --stage install.sh | awk '{print $1}')
+          if [ "$MODE" != "100755" ]; then
+            echo "::error file=install.sh::install.sh must be committed with executable bit (mode 100755), got ${MODE}. Run: git update-index --chmod=+x install.sh"
+            exit 1
+          fi
+          echo "✓ install.sh has executable bit set (${MODE})"
+
   svggen-test:
     runs-on: ubuntu-latest
     steps:
