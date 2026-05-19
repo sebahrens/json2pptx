@@ -376,6 +376,8 @@ Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available ic
 
 **Canonical identifier.** Each entry in the discovery response (`list_icons` MCP, `json2pptx icons list --json` CLI) exposes a `qualified_name` field in `<set>:<name>` form (e.g. `"outline:chart-pie"`, `"filled:chart-pie"`). Use `qualified_name` directly as `icon.name` in deck JSON. This is required for filled icons — a bare `"chart-pie"` resolves to the outline set; you must write `"filled:chart-pie"`. Outline icons accept either the bare name or the `outline:` prefix. The legacy `names[]` array (bare names) is kept for backward compatibility but does not disambiguate sets.
 
+**Bundled name preflight.** `validate_input` and `generate_presentation` preflight every `icon.name` against the bundled registry. Unknown names emit `ICON_BUNDLED_NAME_UNKNOWN` (severity: error) with `details.suggestions` — a ranked list of Levenshtein-closest matches (or qualified cross-set forms when the bare base name only resolves in the non-default set). Use `suggestions[0]` to repair the name without a separate `list_icons` round-trip.
+
 **Accepted `IconInput` sources (exactly one per icon).** Set exactly one of:
 
 | Source | Field | Example |

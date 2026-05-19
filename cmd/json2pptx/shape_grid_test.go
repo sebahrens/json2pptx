@@ -463,7 +463,7 @@ func TestResolveVirtualLayout_BlankWithTitle(t *testing.T) {
 	}
 	// Bounds should be between title bottom and footer top with 9pt gap
 	titleBottom := int64(274638 + 461963) // 736601
-	gapEMU := int64(9 * 12700)           // 114300
+	gapEMU := int64(9 * 12700)            // 114300
 	expectedTop := titleBottom + gapEMU   // 850901
 	if result.Bounds.Y != expectedTop {
 		t.Errorf("expected Y=%d, got %d", expectedTop, result.Bounds.Y)
@@ -815,12 +815,12 @@ func TestResolveIconSVG_FillOverride(t *testing.T) {
 
 func TestApplyIconFill(t *testing.T) {
 	tests := []struct {
-		name     string
-		svg      string
-		fill     string
-		wantFill string // expected fill attr value in <svg> tag
-		wantStr  string // expected stroke attr value in <svg> tag (empty = don't check)
-		noDupFill bool  // assert no duplicate fill attributes
+		name      string
+		svg       string
+		fill      string
+		wantFill  string // expected fill attr value in <svg> tag
+		wantStr   string // expected stroke attr value in <svg> tag (empty = don't check)
+		noDupFill bool   // assert no duplicate fill attributes
 	}{
 		{
 			name:     "no existing fill attr",
@@ -829,25 +829,25 @@ func TestApplyIconFill(t *testing.T) {
 			wantFill: "#00FF00",
 		},
 		{
-			name:     "outline icon with fill=none and stroke=currentColor",
-			svg:      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3.2"/></svg>`,
-			fill:     "#4A90E2",
-			wantFill: "none",            // fill="none" kept for outline icons
-			wantStr:  `stroke="#4A90E2"`, // stroke recolored
+			name:      "outline icon with fill=none and stroke=currentColor",
+			svg:       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3.2"/></svg>`,
+			fill:      "#4A90E2",
+			wantFill:  "none",             // fill="none" kept for outline icons
+			wantStr:   `stroke="#4A90E2"`, // stroke recolored
 			noDupFill: true,
 		},
 		{
-			name:     "filled icon with fill=currentColor",
-			svg:      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 3.2"/></svg>`,
-			fill:     "#FF0000",
-			wantFill: "#FF0000",
+			name:      "filled icon with fill=currentColor",
+			svg:       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 3.2"/></svg>`,
+			fill:      "#FF0000",
+			wantFill:  "#FF0000",
 			noDupFill: true,
 		},
 		{
-			name:     "replace existing non-none fill",
-			svg:      `<svg xmlns="http://www.w3.org/2000/svg" fill="#000000" viewBox="0 0 24 24"><path/></svg>`,
-			fill:     "#AABBCC",
-			wantFill: "#AABBCC",
+			name:      "replace existing non-none fill",
+			svg:       `<svg xmlns="http://www.w3.org/2000/svg" fill="#000000" viewBox="0 0 24 24"><path/></svg>`,
+			fill:      "#AABBCC",
+			wantFill:  "#AABBCC",
 			noDupFill: true,
 		},
 	}
@@ -1508,11 +1508,12 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 	})
 
 	t.Run("bundled icon name passes through", func(t *testing.T) {
+		// chart-pie exists in the outline set, so the bare name resolves.
 		slides := []SlideInput{{
 			ShapeGrid: &ShapeGridInput{
 				Rows: []GridRowInput{{
 					Cells: []*GridCellInput{{
-						Icon: &IconInput{Name: "shield"},
+						Icon: &IconInput{Name: "chart-pie"},
 					}},
 				}},
 			},
@@ -1520,8 +1521,83 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
 			t.Fatalf("unexpected findings: %+v", findings)
 		}
-		if slides[0].ShapeGrid.Rows[0].Cells[0].Icon.Name != "shield" {
+		if slides[0].ShapeGrid.Rows[0].Cells[0].Icon.Name != "chart-pie" {
 			t.Error("name should be unchanged")
+		}
+	})
+
+	t.Run("bundled icon name typo returns ICON_BUNDLED_NAME_UNKNOWN with suggestion", func(t *testing.T) {
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{Name: "chart-pi"},
+					}},
+				}},
+			},
+		}}
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for typo'd bundled name, got %d: %+v", len(findings), findings)
+		}
+		if findings[0].Code != "ICON_BUNDLED_NAME_UNKNOWN" {
+			t.Errorf("expected ICON_BUNDLED_NAME_UNKNOWN, got %s", findings[0].Code)
+		}
+		if findings[0].Severity != "error" {
+			t.Errorf("expected error severity, got %s", findings[0].Severity)
+		}
+		if got := findings[0].Details["input_value"]; got != "chart-pi" {
+			t.Errorf("expected input_value to round-trip, got %v", got)
+		}
+		suggestions, _ := findings[0].Details["suggestions"].([]string)
+		if len(suggestions) == 0 {
+			t.Fatalf("expected at least one suggestion, got none")
+		}
+		if suggestions[0] != "chart-pie" {
+			t.Errorf("expected first suggestion 'chart-pie', got %q (full list %v)", suggestions[0], suggestions)
+		}
+		if !strings.Contains(findings[0].Message, "chart-pie") {
+			t.Errorf("expected message to mention 'chart-pie' suggestion, got %q", findings[0].Message)
+		}
+	})
+
+	t.Run("qualified bundled icon name typo returns ICON_BUNDLED_NAME_UNKNOWN", func(t *testing.T) {
+		// 'filled:chart-pi' is a typo of 'filled:chart-pie' (which exists).
+		// Catches the agent before generate so it can fix the qualified name.
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{Name: "filled:chart-pi"},
+					}},
+				}},
+			},
+		}}
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for typo in qualified name, got %d: %+v", len(findings), findings)
+		}
+		if findings[0].Code != "ICON_BUNDLED_NAME_UNKNOWN" {
+			t.Errorf("expected ICON_BUNDLED_NAME_UNKNOWN, got %s", findings[0].Code)
+		}
+		suggestions, _ := findings[0].Details["suggestions"].([]string)
+		if len(suggestions) == 0 || suggestions[0] != "filled:chart-pie" {
+			t.Errorf("expected first suggestion 'filled:chart-pie', got %v", suggestions)
+		}
+	})
+
+	t.Run("qualified filled name passes through", func(t *testing.T) {
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{Name: "filled:chart-pie"},
+					}},
+				}},
+			},
+		}}
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("unexpected findings: %+v", findings)
 		}
 	})
 

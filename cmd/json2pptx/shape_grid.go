@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -16,19 +15,20 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 )
 
 // ShapeGridResult holds the output of resolveShapeGrid: both the raw XML
 // fragments ready for injection and the resolved cell metadata (bounds, IDs,
 // specs) for downstream processing such as icon insertion or validation.
 type ShapeGridResult struct {
-	Shapes       [][]byte                  // Raw <p:sp>/<p:graphicFrame> XML fragments
-	Cells        []shapegrid.ResolvedCell  // Resolved cell metadata with absolute coordinates
-	IconInserts  []generator.IconInsert    // Icon cells requiring media registration in the generator
-	ImageInserts []generator.ImageInsert   // Image cells requiring media registration in the generator
-	RowOverflows []shapegrid.RowOverflow   // Rows whose content exceeded max_height
-	Warnings     []string                  // Quality warnings (e.g. complex diagram in narrow cell)
-	FitFindings  []patterns.FitFinding     // Structured findings for visual grid cells (diagram, icon, image)
+	Shapes       [][]byte                 // Raw <p:sp>/<p:graphicFrame> XML fragments
+	Cells        []shapegrid.ResolvedCell // Resolved cell metadata with absolute coordinates
+	IconInserts  []generator.IconInsert   // Icon cells requiring media registration in the generator
+	ImageInserts []generator.ImageInsert  // Image cells requiring media registration in the generator
+	RowOverflows []shapegrid.RowOverflow  // Rows whose content exceeded max_height
+	Warnings     []string                 // Quality warnings (e.g. complex diagram in narrow cell)
+	FitFindings  []patterns.FitFinding    // Structured findings for visual grid cells (diagram, icon, image)
 }
 
 // GridDiagramContext provides template-level context for rendering diagram cells
@@ -42,8 +42,8 @@ type GridDiagramContext struct {
 
 // virtualLayoutResult holds the result of virtual layout resolution.
 type virtualLayoutResult struct {
-	LayoutID string                // Selected base layout ID
-	Bounds   pptx.RectEmu         // Computed grid bounds from placeholder metadata
+	LayoutID string                 // Selected base layout ID
+	Bounds   pptx.RectEmu           // Computed grid bounds from placeholder metadata
 	Zone     *shapegrid.ContentZone // Template-derived safe content area (nil if unavailable)
 }
 
@@ -923,8 +923,18 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 		}}
 	}
 
+	if hasName {
+		// Validate the bundled name exists in the embedded icon registry.
+		// Catches typos and missing "filled:" prefixes before generate so
+		// agents don't burn a generate cycle on a fixable lookup.
+		if !icons.Exists(icon.Name) {
+			return []diagnostics.Diagnostic{buildBundledIconNameFinding(icon.Name, slideIdx, jsonPath)}
+		}
+		return nil
+	}
+
 	if !hasPath {
-		return nil // bundled icon, URL, or inline svg_data — no local path resolution needed
+		return nil // URL or inline svg_data — no local path resolution needed
 	}
 
 	// Resolve relative path against baseDir
@@ -968,6 +978,34 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 	// Update the path to the resolved absolute path
 	icon.Path = resolved
 	return nil
+}
+
+// buildBundledIconNameFinding constructs an ICON_BUNDLED_NAME_UNKNOWN
+// diagnostic for an icon.name that does not resolve in the bundled registry.
+// It includes Levenshtein-based suggestions (and a cross-set "did you mean
+// filled:X?" hint) so agents can repair the name without a separate
+// list_icons round-trip.
+func buildBundledIconNameFinding(name string, slideIdx int, jsonPath string) diagnostics.Diagnostic {
+	suggestions := icons.Suggest(name, 3)
+	details := map[string]any{
+		"slide_index": slideIdx,
+		"input_value": name,
+		"remediation": "use a bundled icon name (call list_icons to discover available names and their qualified set:name form), or supply 'path', 'url', or 'svg_data' instead",
+	}
+	if len(suggestions) > 0 {
+		details["suggestions"] = suggestions
+	}
+	msg := fmt.Sprintf("icon name %q not found in bundled registry", name)
+	if len(suggestions) > 0 {
+		msg = fmt.Sprintf("%s; did you mean %q?", msg, suggestions[0])
+	}
+	return diagnostics.Diagnostic{
+		Code:     diagnostics.CodeIconBundledNameUnknown,
+		Message:  msg,
+		Path:     jsonPath,
+		Severity: diagnostics.SeverityError,
+		Details:  details,
+	}
 }
 
 // iconFindingsToError aggregates icon-resolution diagnostics into a single error

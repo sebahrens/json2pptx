@@ -110,6 +110,98 @@ func TestMCPValidateFitReport(t *testing.T) {
 	})
 }
 
+// TestMCPValidateIconBundledNameUnknown verifies that validate_input
+// preflights bundled icon names: typos return ICON_BUNDLED_NAME_UNKNOWN
+// with structured suggestions so agents can repair the name without burning
+// a generate call.
+func TestMCPValidateIconBundledNameUnknown(t *testing.T) {
+	mc := testMCPConfig(t)
+
+	deckJSON := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout2",
+			"shape_grid": {
+				"rows": [{
+					"cells": [{"icon": {"name": "chart-pi"}}]
+				}]
+			}
+		}]
+	}`
+
+	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deckJSON),
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatalf("expected IsError=true for invalid icon name, got success: %v", result.Content)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	var envelope struct {
+		Diagnostics []map[string]any `json:"diagnostics"`
+	}
+	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
+		t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
+	}
+
+	var found map[string]any
+	for _, d := range envelope.Diagnostics {
+		if d["code"] == "ICON_BUNDLED_NAME_UNKNOWN" {
+			found = d
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected ICON_BUNDLED_NAME_UNKNOWN diagnostic, got: %s", text)
+	}
+	if path, _ := found["path"].(string); path != "/slides/0/shape_grid/rows/0/cells/0/icon" {
+		t.Errorf("expected json_path '/slides/0/shape_grid/rows/0/cells/0/icon', got %q", path)
+	}
+	details, _ := found["details"].(map[string]any)
+	if details == nil {
+		t.Fatalf("expected details map, got %v", found)
+	}
+	if details["input_value"] != "chart-pi" {
+		t.Errorf("expected input_value 'chart-pi', got %v", details["input_value"])
+	}
+	suggestions, _ := details["suggestions"].([]any)
+	if len(suggestions) == 0 || suggestions[0] != "chart-pie" {
+		t.Errorf("expected first suggestion 'chart-pie', got %v", suggestions)
+	}
+}
+
+// TestMCPValidateIconBundledNameValid confirms that a valid bundled icon
+// name passes validate_input without emitting an icon finding.
+func TestMCPValidateIconBundledNameValid(t *testing.T) {
+	mc := testMCPConfig(t)
+
+	deckJSON := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout2",
+			"shape_grid": {
+				"rows": [{
+					"cells": [{"icon": {"name": "chart-pie"}}]
+				}]
+			}
+		}]
+	}`
+
+	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deckJSON),
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		text := result.Content[0].(mcp.TextContent).Text
+		t.Fatalf("expected validation to succeed for valid bundled name, got error: %s", text)
+	}
+}
+
 func TestMCPGenerateStrictFit(t *testing.T) {
 	mc := testMCPConfig(t)
 

@@ -92,6 +92,55 @@ func TestList_InvalidSet(t *testing.T) {
 	}
 }
 
+func TestSuggest_TypoBareName(t *testing.T) {
+	got := Suggest("chart-pi", 3)
+	if len(got) == 0 {
+		t.Fatal("expected suggestions for typo'd bare name")
+	}
+	if got[0] != "chart-pie" {
+		t.Errorf("expected first suggestion 'chart-pie' (bare, distance 1), got %q (full list %v)", got[0], got)
+	}
+}
+
+func TestSuggest_QualifiedFilledTypo(t *testing.T) {
+	got := Suggest("filled:chart-pi", 3)
+	if len(got) == 0 {
+		t.Fatal("expected suggestions for qualified typo")
+	}
+	if got[0] != "filled:chart-pie" {
+		t.Errorf("expected first suggestion 'filled:chart-pie', got %q (full list %v)", got[0], got)
+	}
+}
+
+func TestSuggest_UnknownSetPrefix(t *testing.T) {
+	// 'filed' is a typo of 'filled' — the set prefix is unrecognized. Suggest
+	// should still find the closest match across both sets, qualified.
+	got := Suggest("filed:rocket", 5)
+	if len(got) == 0 {
+		t.Fatal("expected suggestions for unknown set prefix")
+	}
+	if !strings.Contains(got[0], "rocket") {
+		t.Errorf("expected first suggestion to contain 'rocket', got %q (full list %v)", got[0], got)
+	}
+	if !strings.Contains(got[0], ":") {
+		t.Errorf("expected qualified suggestion (set:name), got bare %q", got[0])
+	}
+}
+
+func TestSuggest_NoCandidatesWhenFarFromAnything(t *testing.T) {
+	got := Suggest("xyzzy-no-icon-name-like-this-exists", 3)
+	if got != nil {
+		t.Errorf("expected nil suggestions for far-off input, got %v", got)
+	}
+}
+
+func TestSuggest_BoundedByMaxResults(t *testing.T) {
+	got := Suggest("a", 2)
+	if len(got) > 2 {
+		t.Errorf("expected at most 2 suggestions, got %d: %v", len(got), got)
+	}
+}
+
 func TestParseName(t *testing.T) {
 	tests := []struct {
 		input    string

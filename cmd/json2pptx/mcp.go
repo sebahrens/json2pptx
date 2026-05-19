@@ -18,7 +18,6 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -32,6 +31,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
+	"github.com/sebahrens/json2pptx/svggen/icons"
 )
 
 // mcpConfig holds the resolved configuration for MCP tool handlers.
@@ -837,6 +837,16 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
 	}
 
+	// Icon preflight: validate bundled icon names (catches typos and missing
+	// "filled:" prefix) and resolve any icon.path fields against the server's
+	// CWD. Mirrors the handleGenerate preflight so agents catch broken icons
+	// in validate_input instead of burning a generate call.
+	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
+		if iconFindings := resolveIconPaths(input.Slides, cwd); len(iconFindings) > 0 {
+			boundaryDiags = append(boundaryDiags, iconFindings...)
+		}
+	}
+
 	output := dryRunOutput{
 		Valid:       !diagnostics.HasErrors(boundaryDiags),
 		Diagnostics: boundaryDiags,
@@ -1046,10 +1056,10 @@ func mcpExpandPatternTool() mcp.Tool {
 
 // patternValidationError is a D10 structured error for pattern validation.
 type patternValidationError struct {
-	Field        string                      `json:"field"`
-	Code         string                      `json:"code,omitempty"`
-	Message      string                      `json:"message"`
-	Fix          *patterns.FixSuggestion     `json:"fix,omitempty"`
+	Field        string                       `json:"field"`
+	Code         string                       `json:"code,omitempty"`
+	Message      string                       `json:"message"`
+	Fix          *patterns.FixSuggestion      `json:"fix,omitempty"`
 	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
@@ -1283,13 +1293,13 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 	}
 
 	type candidateResult struct {
-		PatternName      string                    `json:"pattern_name"`
-		Score            float64                   `json:"score"`
-		Rationale        string                    `json:"rationale"`
-		ConfidenceBand   string                    `json:"confidence_band"`
-		DiversityBonus   bool                      `json:"diversity_bonus,omitempty"`
+		PatternName      string                     `json:"pattern_name"`
+		Score            float64                    `json:"score"`
+		Rationale        string                     `json:"rationale"`
+		ConfidenceBand   string                     `json:"confidence_band"`
+		DiversityBonus   bool                       `json:"diversity_bonus,omitempty"`
 		ExpansionPreview *jsonschema.ShapeGridInput `json:"expansion_preview,omitempty"`
-		PreviewPNGPaths  []string                  `json:"preview_png_paths,omitempty"`
+		PreviewPNGPaths  []string                   `json:"preview_png_paths,omitempty"`
 	}
 
 	candidates := make([]candidateResult, len(rec.Candidates))
@@ -1333,8 +1343,8 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		Candidates              []candidateResult `json:"candidates"`
 		QueryUnderstood         string            `json:"query_understood_as"`
 		Suggestion              string            `json:"suggestion,omitempty"`
-		NearMisses              []nearMissResult   `json:"near_misses,omitempty"`
-		DisambiguatingQuestions []string           `json:"disambiguating_questions,omitempty"`
+		NearMisses              []nearMissResult  `json:"near_misses,omitempty"`
+		DisambiguatingQuestions []string          `json:"disambiguating_questions,omitempty"`
 	}
 
 	result := resultType{
@@ -1446,7 +1456,7 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 
 // patternCategoryGroup is a category-keyed group of patterns for list_patterns.
 type patternCategoryGroup struct {
-	Category string               `json:"category"`
+	Category string                `json:"category"`
 	Patterns []skillPatternCompact `json:"patterns"`
 }
 
@@ -1833,9 +1843,9 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 
 // gridOccupancy reports how much of the layout a pattern fills.
 type gridOccupancy struct {
-	FilledPct      float64 `json:"filled_pct"`
-	RowsUsed       int     `json:"rows_used"`
-	RowsEmpty      int     `json:"rows_empty"`
+	FilledPct       float64 `json:"filled_pct"`
+	RowsUsed        int     `json:"rows_used"`
+	RowsEmpty       int     `json:"rows_empty"`
 	BoundsHeightPct float64 `json:"bounds_height_pct"`
 }
 

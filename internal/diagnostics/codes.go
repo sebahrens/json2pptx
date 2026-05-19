@@ -11,16 +11,16 @@ type Code = string
 
 // Input family — problems with request parameters or JSON payloads.
 const (
-	CodeMissingParameter Code = "MISSING_PARAMETER"
-	CodeInvalidParameter Code = "INVALID_PARAMETER"
-	CodeInvalidJSON      Code = "INVALID_JSON"
-	CodeInvalidKey       Code = "INVALID_KEY"
+	CodeMissingParameter  Code = "MISSING_PARAMETER"
+	CodeInvalidParameter  Code = "INVALID_PARAMETER"
+	CodeInvalidJSON       Code = "INVALID_JSON"
+	CodeInvalidKey        Code = "INVALID_KEY"
 	CodeInvalidGrid       Code = "INVALID_GRID"
 	CodeInvalidSlide      Code = "INVALID_SLIDE"
 	CodeInvalidSlideIndex Code = "INVALID_SLIDE_INDEX"
-	CodeInvalidPath      Code = "INVALID_PATH"
+	CodeInvalidPath       Code = "INVALID_PATH"
 	CodeAmbiguousInput    Code = "AMBIGUOUS_INPUT"
-	CodeUnsupported      Code = "UNSUPPORTED"
+	CodeUnsupported       Code = "UNSUPPORTED"
 )
 
 // Template family — template lookup and parsing failures.
@@ -32,16 +32,17 @@ const (
 
 // Resource family — file and asset lookup failures.
 const (
-	CodeFileNotFound Code = "FILE_NOT_FOUND"
-	CodeStyleNotFound Code = "STYLE_NOT_FOUND"
-	CodeUnknownTableStyleID Code = "UNKNOWN_TABLE_STYLE_ID"
-	CodeUnknownThemeColor   Code = "UNKNOWN_THEME_COLOR"
-	CodeUnknownPattern      Code = "UNKNOWN_PATTERN"
-	CodeUnknownEnum         Code = "UNKNOWN_ENUM"
-	CodeIconPath            Code = "ICON_PATH"
-	CodeIconAmbiguous       Code = "ICON_AMBIGUOUS"
-	CodeIconMissing         Code = "ICON_MISSING"
-	CodeIconList            Code = "ICON_LIST"
+	CodeFileNotFound           Code = "FILE_NOT_FOUND"
+	CodeStyleNotFound          Code = "STYLE_NOT_FOUND"
+	CodeUnknownTableStyleID    Code = "UNKNOWN_TABLE_STYLE_ID"
+	CodeUnknownThemeColor      Code = "UNKNOWN_THEME_COLOR"
+	CodeUnknownPattern         Code = "UNKNOWN_PATTERN"
+	CodeUnknownEnum            Code = "UNKNOWN_ENUM"
+	CodeIconPath               Code = "ICON_PATH"
+	CodeIconAmbiguous          Code = "ICON_AMBIGUOUS"
+	CodeIconMissing            Code = "ICON_MISSING"
+	CodeIconList               Code = "ICON_LIST"
+	CodeIconBundledNameUnknown Code = "ICON_BUNDLED_NAME_UNKNOWN"
 )
 
 // Render family — generation and rendering failures.
@@ -61,7 +62,7 @@ const (
 
 // Settings family — template settings operations.
 const (
-	CodeSettingsError        Code = "SETTINGS_ERROR"
+	CodeSettingsError         Code = "SETTINGS_ERROR"
 	CodeSettingsWriteDisabled Code = "SETTINGS_WRITE_DISABLED"
 )
 
@@ -106,6 +107,7 @@ func AllCodes() []Code {
 		CodeIconAmbiguous,
 		CodeIconMissing,
 		CodeIconList,
+		CodeIconBundledNameUnknown,
 		// Render
 		CodeGenerationFailed,
 		CodeReadFailed,

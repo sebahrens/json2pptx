@@ -79,6 +79,12 @@ Emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and 
 |------|-------------|
 | `findings_truncated` | Per-slide finding budget exceeded; remaining findings suppressed. `action: info`, `fix.kind: truncation_summary`, `fix.params: {suppressed_count: int, top_codes: ["code:count", ...] sorted by count desc}`. Pass `verbose_fit: true` (MCP) or `--verbose-fit` (CLI) to see all findings without truncation |
 
+### Icon preflight codes — emitted before render to catch broken `icon.name` / `icon.path` fields
+
+| Code | When emitted |
+|------|-------------|
+| `ICON_BUNDLED_NAME_UNKNOWN` | `icon.name` does not resolve in the bundled icon registry. Emitted by `validate_input` and `generate_presentation` preflight so agents can fix typos and missing `filled:` prefixes without burning a generate cycle. `severity: error`. `details: {input_value, suggestions: ["chart-pie", ...], slide_index, remediation}`. Path targets the icon node, e.g. `/slides/0/shape_grid/rows/0/cells/0/icon`. `suggestions[0]` is the highest-ranked Levenshtein match (or qualified cross-set form when the bare base name only resolves in a non-default set). Agent action: replace `icon.name` with the suggested value, or call `list_icons` to discover the canonical `qualified_name` |
+
 ### Action semantics (shared with chart codes)
 
 - `refuse` — with `strict_fit: "strict"`, generation is blocked and MCP returns `IsError=true`; with `warn`, emits finding only
