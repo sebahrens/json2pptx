@@ -49,6 +49,8 @@ const (
 	CodeIconBundledNameUnknown Code = "ICON_BUNDLED_NAME_UNKNOWN"
 	CodeImagePath              Code = "IMAGE_PATH"
 	CodeBackgroundImagePath    Code = "BACKGROUND_IMAGE_PATH"
+	CodeURLFetchFailed         Code = "URL_FETCH_FAILED"
+	CodeURLResolverInit        Code = "URL_RESOLVER_INIT"
 )
 
 // Render family — generation and rendering failures.
@@ -120,6 +122,8 @@ func AllCodes() []Code {
 		CodeIconBundledNameUnknown,
 		CodeImagePath,
 		CodeBackgroundImagePath,
+		CodeURLFetchFailed,
+		CodeURLResolverInit,
 		// Render
 		CodeGenerationFailed,
 		CodeReadFailed,

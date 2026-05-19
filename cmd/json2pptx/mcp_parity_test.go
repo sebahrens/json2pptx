@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -1141,4 +1144,233 @@ func TestMCPStructureSlidesMutuallyExclusive(t *testing.T) {
 			expectMutualExclusivity(t, result.Content[0].(mcp.TextContent).Text)
 		})
 	}
+}
+
+// TestMCPURLResolutionParity verifies that every URL surface documented in
+// the input schema — background.url, content image_value.url, shape_grid
+// cell image.url, cell icon.url, nested shape.icon.url — is resolved by MCP
+// the same way as the CLI. This is the parity test for go-slide-creator-6z5j.
+//
+// The test spins up an httptest server so URLs are reachable without
+// network access, injects an SSRF-bypassing HTTPClient via the mcpConfig
+// resolver options, and asserts:
+//
+//   - happy path: validate_input + generate_presentation both succeed and
+//     every URL field has been rewritten to a cached local path.
+//   - failure path: every URL returns 404 and validate_input emits one
+//     URL_FETCH_FAILED diagnostic per surface, each tagged with the right
+//     JSON Pointer and asset_kind.
+func TestMCPURLResolutionParity(t *testing.T) {
+	// Minimal PNG/SVG payloads accepted by resource.Resolver's content sniff.
+	pngBytes := append([]byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}, make([]byte, 32)...)
+	svgBytes := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>`)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/img.png"):
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(pngBytes)
+		case strings.HasSuffix(r.URL.Path, "/icon.svg"):
+			w.Header().Set("Content-Type", "image/svg+xml")
+			_, _ = w.Write(svgBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	// Build a deck that exercises ALL FIVE URL surfaces simultaneously.
+	deckJSONTmpl := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout2",
+			"background": {"url": %q, "fit": "cover"},
+			"content": [{
+				"placeholder_id": "body",
+				"type": "image",
+				"image_value": {"url": %q, "alt": "photo"}
+			}],
+			"shape_grid": {
+				"rows": [{
+					"cells": [
+						{"image": {"url": %q}},
+						{"icon":  {"url": %q}},
+						{"shape": {"geometry": "rect", "icon": {"url": %q}}}
+					]
+				}]
+			}
+		}]
+	}`
+
+	bgURL := srv.URL + "/img.png"
+	contentURL := srv.URL + "/img.png?content"
+	gridImgURL := srv.URL + "/img.png?grid"
+	cellIconURL := srv.URL + "/icon.svg?cell"
+	shapeIconURL := srv.URL + "/icon.svg?shape"
+
+	t.Run("happy path resolves all five surfaces", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		// httptest.Server listens on loopback; bypass the production
+		// SSRF dialer so the resolver can actually reach it.
+		mc.resolverOpts = resource.ResolverOptions{HTTPClient: &http.Client{}}
+
+		deckJSON := fmt.Sprintf(deckJSONTmpl, bgURL, contentURL, gridImgURL, cellIconURL, shapeIconURL)
+
+		// validate_input must succeed — no URL_FETCH_FAILED diagnostics.
+		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("validate_input: unexpected error: %v", err)
+		}
+		if result.IsError {
+			text := result.Content[0].(mcp.TextContent).Text
+			t.Fatalf("validate_input: expected success, got error: %s", text)
+		}
+		text := result.Content[0].(mcp.TextContent).Text
+		if strings.Contains(text, "URL_FETCH_FAILED") {
+			t.Errorf("validate_input emitted URL_FETCH_FAILED for reachable URLs: %s", text)
+		}
+
+		// generate_presentation must also succeed for the same input.
+		genResult, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("generate_presentation: unexpected error: %v", err)
+		}
+		if genResult.IsError {
+			genText := genResult.Content[0].(mcp.TextContent).Text
+			t.Fatalf("generate_presentation: expected success, got error: %s", genText)
+		}
+		genText := genResult.Content[0].(mcp.TextContent).Text
+		var genResp JSONOutput
+		if err := json.Unmarshal([]byte(genText), &genResp); err != nil {
+			t.Fatalf("generate_presentation: failed to parse response: %v", err)
+		}
+		if !genResp.Success {
+			t.Errorf("generate_presentation: expected success=true, got error=%q", genResp.Error)
+		}
+	})
+
+	t.Run("missing URLs surface URL_FETCH_FAILED per asset", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		mc.resolverOpts = resource.ResolverOptions{HTTPClient: &http.Client{}}
+
+		miss := srv.URL + "/missing"
+		deckJSON := fmt.Sprintf(deckJSONTmpl,
+			miss+"-bg.png",
+			miss+"-content.png",
+			miss+"-grid.png",
+			miss+"-cell.svg",
+			miss+"-shape.svg",
+		)
+
+		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+		}))
+		if err != nil {
+			t.Fatalf("validate_input: unexpected error: %v", err)
+		}
+		if !result.IsError {
+			text := result.Content[0].(mcp.TextContent).Text
+			t.Fatalf("validate_input: expected IsError=true for unreachable URLs, got success: %s", text)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var envelope struct {
+			Diagnostics []map[string]any `json:"diagnostics"`
+		}
+		if err := json.Unmarshal([]byte(text), &envelope); err != nil {
+			t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
+		}
+
+		// One URL_FETCH_FAILED per surface, keyed by JSON Pointer.
+		wantSurfaces := map[string]string{
+			"/slides/0/background/url":                              "background",
+			"/slides/0/content/0/image_value/url":                   "image",
+			"/slides/0/shape_grid/rows/0/cells/0/image/url":         "image",
+			"/slides/0/shape_grid/rows/0/cells/1/icon/url":          "icon",
+			"/slides/0/shape_grid/rows/0/cells/2/shape/icon/url":    "icon",
+		}
+		gotAssetKind := make(map[string]string, len(wantSurfaces))
+		for _, d := range envelope.Diagnostics {
+			if d["code"] != "URL_FETCH_FAILED" {
+				continue
+			}
+			path, _ := d["path"].(string)
+			if _, ok := wantSurfaces[path]; !ok {
+				continue
+			}
+			details, _ := d["details"].(map[string]any)
+			if details == nil {
+				t.Errorf("path %q: missing details map", path)
+				continue
+			}
+			kind, _ := details["asset_kind"].(string)
+			gotAssetKind[path] = kind
+
+			// Spot-check that the offending URL is echoed back so agents can
+			// repair the broken field without reading the original input.
+			if inURL, _ := details["input_url"].(string); !strings.Contains(inURL, "missing") {
+				t.Errorf("path %q: expected input_url to echo the missing URL, got %q", path, inURL)
+			}
+		}
+		for path, wantKind := range wantSurfaces {
+			if got, ok := gotAssetKind[path]; !ok {
+				t.Errorf("missing URL_FETCH_FAILED diagnostic for path %q (full envelope: %s)", path, text)
+			} else if got != wantKind {
+				t.Errorf("path %q: expected asset_kind %q, got %q", path, wantKind, got)
+			}
+		}
+	})
+}
+
+// TestResolveURLsCollectsAllFailures is a unit-level guard that the refactor
+// from "return first error" to "return all diagnostics" actually walks every
+// surface even when earlier ones fail. Without this, MCP and CLI would
+// regress to seeing only one finding per call.
+func TestResolveURLsCollectsAllFailures(t *testing.T) {
+	stub := failingURLResolver{}
+	slides := []SlideInput{{
+		Background: &BackgroundInput{URL: "https://example.invalid/bg.png"},
+		Content: []ContentInput{{
+			Type:       "image",
+			ImageValue: &ImageInput{URL: "https://example.invalid/photo.png"},
+		}},
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{
+					{Image: &GridImageInput{URL: "https://example.invalid/grid.png"}},
+					{Icon: &IconInput{URL: "https://example.invalid/cell.svg"}},
+					{Shape: &ShapeSpecInput{Geometry: "rect", Icon: &IconInput{URL: "https://example.invalid/shape.svg"}}},
+				},
+			}},
+		},
+	}}
+
+	findings := resolveURLs(slides, stub)
+	if len(findings) != 5 {
+		t.Fatalf("expected 5 findings (one per URL surface), got %d: %+v", len(findings), findings)
+	}
+	for _, f := range findings {
+		if f.Code != "URL_FETCH_FAILED" {
+			t.Errorf("expected code URL_FETCH_FAILED, got %q", f.Code)
+		}
+		if f.Severity != "error" {
+			t.Errorf("expected severity=error, got %q", f.Severity)
+		}
+	}
+}
+
+// failingURLResolver always returns an error so resolveURLs walks every
+// surface without partial success masking the iteration.
+type failingURLResolver struct{}
+
+func (failingURLResolver) ResolveImage(rawURL string) (string, error) {
+	return "", fmt.Errorf("stubbed image failure for %s", rawURL)
+}
+
+func (failingURLResolver) ResolveSVG(rawURL string) (string, error) {
+	return "", fmt.Errorf("stubbed svg failure for %s", rawURL)
 }

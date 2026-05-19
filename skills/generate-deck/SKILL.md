@@ -389,8 +389,11 @@ Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available ic
 | `ICON_PATH` | Other `icon.path` resolution failures (symlink loop, permission denied, etc.) |
 | `IMAGE_PATH` | `image_value.path` or shape-grid cell `image.path` resolution failure |
 | `BACKGROUND_IMAGE_PATH` | `slide.background.image` resolution failure |
+| `URL_FETCH_FAILED` | Any `url` field (background, image, icon, shape.icon, content image_value) could not be downloaded, exceeded the 50 MB cap, or returned the wrong content type |
 
-All findings carry `details.input_value`, `details.slide_index`, and a JSON Pointer `path` (e.g. `/slides/0/content/0/image_value/path`) so the offending node round-trips through jq/jsonpath. Unsupported extensions (anything outside `.png .jpg .jpeg .gif .svg .bmp .tiff .tif .webp` for images; `.svg` for icons) are rejected before disk I/O. Use absolute paths if your asset lives outside the input directory.
+All findings carry `details.input_value` (local paths) or `details.input_url` (URLs), `details.slide_index`, and a JSON Pointer `path` (e.g. `/slides/0/content/0/image_value/path`) so the offending node round-trips through jq/jsonpath. Unsupported extensions (anything outside `.png .jpg .jpeg .gif .svg .bmp .tiff .tif .webp` for images; `.svg` for icons) are rejected before disk I/O. Use absolute paths if your asset lives outside the input directory.
+
+**URL preflight.** `url` fields on `background`, `image_value`, shape-grid cell `image`, cell `icon`, and nested `shape.icon` are downloaded and validated by both CLI and MCP before generation. SSRF-blocked, unreachable, or content-mismatched URLs surface as one `URL_FETCH_FAILED` per offending field rather than aborting the request, so a deck with several broken remote assets reports them all in one validate / generate call.
 
 **Accepted `IconInput` sources (exactly one per icon).** Set exactly one of:
 

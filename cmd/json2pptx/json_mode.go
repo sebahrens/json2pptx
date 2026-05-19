@@ -472,8 +472,8 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			return writeJSONError(jsonOutputPath, fmt.Errorf("resource resolver: %w", resolverErr))
 		}
 		defer resolver.Close()
-		if resolverErr := resolveURLs(input.Slides, resolver); resolverErr != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("URL resolution: %w", resolverErr))
+		if urlFindings := resolveURLs(input.Slides, resolver); len(urlFindings) > 0 {
+			return writeJSONError(jsonOutputPath, iconFindingsToError(urlFindings))
 		}
 	}
 

@@ -27,6 +27,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
+	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -40,6 +41,38 @@ type mcpConfig struct {
 	outputDir    string
 	cfg          config.Config
 	cache        *template.MemoryCache
+
+	// resolverOpts customizes the URL resource resolver used by
+	// handleGenerate / handleValidate. Production leaves this zero-valued
+	// (SSRF-safe defaults). Tests inject a custom HTTPClient so they can
+	// point at httptest.NewServer instances on loopback addresses without
+	// tripping SSRF blocks.
+	resolverOpts resource.ResolverOptions
+}
+
+// resolvePresentationURLs downloads every URL reference in slides via a
+// session-scoped resource.Resolver and rewrites the URL fields to point at
+// cached local files. Each failed URL is returned as a structured
+// diagnostic.
+//
+// The returned cleanup must be called by the caller (via defer) to remove
+// the on-disk cache; it is always non-nil and safe to invoke even when
+// findings or err are returned. The cache must stay alive at least until
+// generation finishes — closing it earlier invalidates the local paths the
+// slides now reference.
+//
+// Returns (nil, noop, nil) when no URL references are present.
+func (mc *mcpConfig) resolvePresentationURLs(slides []SlideInput) ([]diagnostics.Diagnostic, func(), error) {
+	noop := func() {}
+	if !hasURLReferences(slides) {
+		return nil, noop, nil
+	}
+	resolver, err := resource.NewResolver(mc.resolverOpts)
+	if err != nil {
+		return nil, noop, err
+	}
+	findings := resolveURLs(slides, resolver)
+	return findings, resolver.Close, nil
 }
 
 // runMCP starts an MCP server over stdio, exposing json2pptx tools.
@@ -435,6 +468,21 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Resolve canonical layout names (e.g. "title", "content", "blank") to
 	// concrete layout IDs using tag-based matching against the target template.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
+
+	// Resolve URL references (background.url, image_value.url, grid image.url,
+	// icon.url, nested shape.icon.url). Mirrors the CLI generate path so MCP
+	// and CLI agree on which URL fields are supported. Failures become
+	// per-field URL_FETCH_FAILED diagnostics. The cache cleanup is deferred
+	// for the rest of this handler — closing it earlier would invalidate the
+	// local paths now embedded in the slides.
+	urlFindings, urlCleanup, urlErr := mc.resolvePresentationURLs(input.Slides)
+	defer urlCleanup()
+	if urlErr != nil {
+		return api.MCPSimpleError("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr)), nil
+	}
+	if len(urlFindings) > 0 {
+		return api.MCPDiagnosticsError(urlFindings), nil
+	}
 
 	// Resolve relative asset paths (icons, content images, grid images,
 	// background images) against CWD (MCP receives inline JSON, not a file
@@ -850,6 +898,21 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
 	if emojiViolations := ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
+	}
+
+	// URL preflight: download URL-based assets so agents see broken URLs
+	// alongside other asset findings in validate_input. Same surfaces as
+	// handleGenerate (background.url, image_value.url, grid image.url,
+	// icon.url, nested shape.icon.url). The downloaded cache is cleaned up
+	// before this handler returns — validate does not need the bytes, only
+	// confirmation that the URL is reachable.
+	urlFindings, urlCleanup, urlErr := mc.resolvePresentationURLs(input.Slides)
+	defer urlCleanup()
+	if urlErr != nil {
+		return mcpErrorWithNext("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr), nextCallRetry("validate_input", "presentation")), nil
+	}
+	if len(urlFindings) > 0 {
+		boundaryDiags = append(boundaryDiags, urlFindings...)
 	}
 
 	// Asset preflight: validate bundled icon names (catches typos and
