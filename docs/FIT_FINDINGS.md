@@ -546,6 +546,66 @@ The warning never blocks generation — the takeaway is advisory, not structural
 }
 ```
 
+### `HEADLINE_TOO_LONG`
+
+**Action:** `review`
+**Pattern:** *(none — content lint)*
+**Fix kind:** `shorten_title`
+
+Emitted when a title-class placeholder (`title`, `headline`, `ctrTitle`) carries more than 12 whitespace-separated words. Single-line headlines at 36–40pt fit roughly 12 words across a 16:9 slide; longer ones wrap or shrink. Advisory only — never blocks render.
+
+Mechanics:
+
+- Word counting splits on whitespace via `strings.Fields`, so punctuation attached to a word does not inflate the count.
+- The check runs on `text` content items whose `placeholder_id` matches a title slot; non-title text is checked against `BODY_TOO_LONG` instead.
+- `fix.params` carry `current_words` and `max_words` so agents can decide between hand-trim and `repair_slide(kind=shorten_title)`.
+
+```json
+{
+  "path": "/slides/0/content/title",
+  "code": "HEADLINE_TOO_LONG",
+  "message": "slide 1: headline is 20 words; trim to 12 or fewer for readability",
+  "fix": { "kind": "shorten_title", "params": { "current_words": 20, "max_words": 12 } },
+  "action": "review"
+}
+```
+
+### `BODY_TOO_LONG`
+
+**Action:** `review`
+**Pattern:** *(none — content lint)*
+**Fix kind:** `reduce_text`
+
+Emitted when a single text block exceeds 80 whitespace-separated words. Applies to `text`, `bullets`, `body_and_bullets`, and `bullet_groups` content items — bullet items are aggregated per content block, so a 10-bullet list of 10-word bullets trips the budget. 80 words is roughly five tight 12pt lines, which is the upper bound an audience reads while still listening.
+
+```json
+{
+  "path": "/slides/2/content/body",
+  "code": "BODY_TOO_LONG",
+  "message": "slide 3: body text is 120 words; trim to 80 or fewer (audiences read at most 5 lines per slide)",
+  "fix": { "kind": "reduce_text", "params": { "current_words": 120, "max_words": 80 } },
+  "action": "review"
+}
+```
+
+### `BULLET_NESTING_DEEP`
+
+**Action:** `review`
+**Pattern:** *(none — content lint)*
+**Fix kind:** `reduce_text`
+
+Emitted when a bullet list nests more than two levels deep. Depth is measured per bullet from leading whitespace: each tab counts as one indent unit; every two leading spaces count as one indent unit. The base level is 1 for `bullets` / `body_and_bullets` content items and 2 for bullets inside a `bullet_groups` header (header is level 1, bullets render at level 2). Depth 3 or deeper triggers the finding.
+
+```json
+{
+  "path": "/slides/4/content/body",
+  "code": "BULLET_NESTING_DEEP",
+  "message": "slide 5: bullets nest 3 levels; flatten to 2 or fewer — deep nesting reads as visual noise",
+  "fix": { "kind": "reduce_text", "params": { "current_depth": 3, "max_depth": 2 } },
+  "action": "review"
+}
+```
+
 ### `contrast_predicted`
 
 **Action:** `info`

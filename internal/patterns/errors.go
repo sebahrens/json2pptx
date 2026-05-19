@@ -43,6 +43,12 @@ const (
 	ErrCodeTakeawayMissing     = "takeaway_missing"
 	ErrCodeAccentOverload      = "accent_overload"
 
+	// Content lint codes — emitted when slide text exceeds readability budgets
+	// or bullet lists nest more than two levels. Advisory; never block render.
+	ErrCodeHeadlineTooLong    = "HEADLINE_TOO_LONG"
+	ErrCodeBodyTooLong        = "BODY_TOO_LONG"
+	ErrCodeBulletNestingDeep  = "BULLET_NESTING_DEEP"
+
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced     = "chart_value_coerced"
 	ErrCodeChartShapeInferred    = "chart_shape_inferred"
@@ -111,6 +117,10 @@ var (
 	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
 	ErrAccentOverload      = errors.New("slide uses more than two distinct accent hues")
 
+	ErrHeadlineTooLong   = errors.New("headline exceeds word count budget")
+	ErrBodyTooLong       = errors.New("body text block exceeds word count budget")
+	ErrBulletNestingDeep = errors.New("bullet list nests more than two levels deep")
+
 	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred    = errors.New("chart data shape inferred from flat input")
 	ErrChartDataEmpty        = errors.New("chart data is empty; output will be blank")
@@ -167,6 +177,9 @@ var codeSentinel = map[string]error{
 	ErrCodeCellUnderfilled:       ErrCellUnderfilled,
 	ErrCodeTakeawayMissing:       ErrTakeawayMissing,
 	ErrCodeAccentOverload:        ErrAccentOverload,
+	ErrCodeHeadlineTooLong:       ErrHeadlineTooLong,
+	ErrCodeBodyTooLong:           ErrBodyTooLong,
+	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,

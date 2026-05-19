@@ -27,6 +27,9 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `accent_overload` | Slide uses more than two distinct accent hues (`accent1`..`accent6`) — pick one base accent and use `cell_accent_mode` for variety | `review` | `consolidate_accents` |
 | `cell_underfilled` | Per-cell: text uses <60% of cell character capacity (density bands: <40% = warning, 40-59% = info) | `review` | `add_detail_or_resize` |
 | `CHART_PLACEHOLDER_EMPTY` | `chart-insights-split` pattern rendered without a `chart` spec — left panel collapses and insights expand to full width. `action: review`. Agent action: supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`) | `review` | — |
+| `HEADLINE_TOO_LONG` | Title-class placeholder text exceeds 12 whitespace-separated words. Fires on `title`, `headline`, `ctrTitle` text content items. Advisory — never blocks render. `fix.params: {current_words, max_words}` | `review` | `shorten_title` |
+| `BODY_TOO_LONG` | A single text block exceeds 80 whitespace-separated words. Applies to `text`, `bullets`, `body_and_bullets`, and `bullet_groups` content items (bullet words aggregate per block). Advisory — never blocks render. `fix.params: {current_words, max_words}` | `review` | `reduce_text` |
+| `BULLET_NESTING_DEEP` | Bullet list nests more than 2 levels. Depth is measured from leading whitespace (each tab or every 2 leading spaces = 1 indent unit); `bullet_groups` bullets start at level 2 (header is level 1). Advisory — never blocks render. `fix.params: {current_depth, max_depth}` | `review` | `reduce_text` |
 
 ### Density-band severity for cell capacity findings
 

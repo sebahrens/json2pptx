@@ -82,6 +82,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings,
 		collectChartDryRenderFindings(input, chartThemeColors, "warn")...)
 
+	// 8. Content lint: headline word count, body word count, bullet nesting
+	// depth. Advisory findings that flag verbose / over-nested authoring
+	// before render.
+	findings = append(findings, collectContentLintFindings(input)...)
+
 	// Deduplicate findings that share (Code, Path, Action, Message). This guards
 	// against the case where a pre-compose detector and the post-compose
 	// structural pass both emit the same diagnostic for one cell — the
