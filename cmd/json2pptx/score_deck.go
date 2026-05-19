@@ -272,7 +272,8 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 
 	rhythm := analyzeDeckRhythm(slides)
 
-	var diags []deterministic.CompositionDiagnostic
+	// Always non-nil so JSON marshals as [] (not null) when no diagnostics.
+	diags := []deterministic.CompositionDiagnostic{}
 
 	// Flag long pattern runs (3+).
 	for _, run := range rhythm.Aggregates.PatternRuns {

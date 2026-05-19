@@ -131,7 +131,8 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 	for _, i := range order {
 		ffs := bySlide[i]
 		slideScore := 100
-		var scoreFindings []ScoreFinding
+		// Always non-nil so JSON marshals as [] (not null) when no findings.
+		scoreFindings := []ScoreFinding{}
 
 		for _, f := range ffs {
 			w := SeverityWeight[f.Action]
@@ -206,7 +207,8 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 	for i := 0; i < slideCount; i++ {
 		ffs := bySlide[i]
 		slideScore := 100
-		var scoreFindings []ScoreFinding
+		// Always non-nil so JSON marshals as [] (not null) when no findings.
+		scoreFindings := []ScoreFinding{}
 
 		for _, f := range ffs {
 			w := SeverityWeight[f.Action]

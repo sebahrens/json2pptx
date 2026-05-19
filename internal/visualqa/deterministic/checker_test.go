@@ -198,6 +198,67 @@ func TestDeckScore_ContractShape(t *testing.T) {
 	}
 }
 
+// TestScoreFromFindings_FindingsNeverNullInJSON guards against silently
+// returning `"findings": null` for slides with no findings. The score command
+// must use empty arrays so consumers can distinguish "no findings found" from
+// "field missing / scoring skipped".
+func TestScoreFromFindings_FindingsNeverNullInJSON(t *testing.T) {
+	ds := ScoreFromFindings(nil, 3)
+
+	b, err := json.Marshal(ds)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var parsed struct {
+		PerSlide []struct {
+			Findings json.RawMessage `json:"findings"`
+		} `json:"per_slide"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(parsed.PerSlide) != 3 {
+		t.Fatalf("per_slide len = %d, want 3", len(parsed.PerSlide))
+	}
+	for i, ss := range parsed.PerSlide {
+		if string(ss.Findings) == "null" {
+			t.Errorf("slide %d: findings marshaled as null; want []", i)
+		}
+		if string(ss.Findings) != "[]" {
+			t.Errorf("slide %d: findings = %s, want []", i, string(ss.Findings))
+		}
+	}
+}
+
+// TestScoreFromFindingsForIndices_FindingsNeverNullInJSON mirrors the guard
+// above for the per-slide-indices code path.
+func TestScoreFromFindingsForIndices_FindingsNeverNullInJSON(t *testing.T) {
+	ds := ScoreFromFindingsForIndices(nil, 5, []int{1, 3})
+
+	b, err := json.Marshal(ds)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var parsed struct {
+		PerSlide []struct {
+			Findings json.RawMessage `json:"findings"`
+		} `json:"per_slide"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(parsed.PerSlide) != 2 {
+		t.Fatalf("per_slide len = %d, want 2", len(parsed.PerSlide))
+	}
+	for i, ss := range parsed.PerSlide {
+		if string(ss.Findings) != "[]" {
+			t.Errorf("subset slide %d: findings = %s, want []", i, string(ss.Findings))
+		}
+	}
+}
+
 func TestFormatTopCodes(t *testing.T) {
 	got := FormatTopCodes(nil)
 	if got != "no issues" {

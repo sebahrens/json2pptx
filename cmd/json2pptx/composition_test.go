@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -83,5 +84,44 @@ func TestCompositionAxis_Empty(t *testing.T) {
 	result := compositionAxis(nil)
 	if result != nil {
 		t.Error("expected nil for empty slides")
+	}
+}
+
+// TestCompositionAxis_DiagnosticsNeverNullInJSON guards against silently
+// returning `"diagnostics": null` for decks with no composition issues. The
+// score command must use an empty array so consumers can distinguish "no
+// composition issues found" from "field missing / scoring skipped".
+func TestCompositionAxis_DiagnosticsNeverNullInJSON(t *testing.T) {
+	// A short, varied deck with no rhythm issues — should produce zero
+	// diagnostics but still marshal as an empty array, not null.
+	slides := []SlideInput{
+		{SlideType: "title"},
+		{Pattern: &PatternInput{Name: "stat-hero"}},
+		{Pattern: &PatternInput{Name: "agenda"}},
+	}
+
+	result := compositionAxis(slides)
+	if result == nil {
+		t.Fatal("expected non-nil composition result")
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("expected zero diagnostics for varied 3-slide deck, got %d", len(result.Diagnostics))
+	}
+
+	b, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var parsed struct {
+		Diagnostics json.RawMessage `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if string(parsed.Diagnostics) == "null" {
+		t.Errorf("diagnostics marshaled as null; want []")
+	}
+	if string(parsed.Diagnostics) != "[]" {
+		t.Errorf("diagnostics = %s, want []", string(parsed.Diagnostics))
 	}
 }
