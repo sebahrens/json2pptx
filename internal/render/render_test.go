@@ -152,6 +152,80 @@ func TestHashFile(t *testing.T) {
 	}
 }
 
+// TestSortPNGsByIndex_NumericOrder is a regression test for the lex-sort bug
+// that caused render-slide --slide-index N to return the wrong slide for decks
+// with >9 slides. Files named "slide-0.png" through "slide-12.png" must sort
+// in numeric order (0,1,2,...,12), not lexicographic (0,1,10,11,12,2,3,...).
+func TestSortPNGsByIndex_NumericOrder(t *testing.T) {
+	// Mimic the shuffled order ImageMagick + Glob returns lexicographically.
+	files := []string{
+		"/tmp/foo/slide-0.png",
+		"/tmp/foo/slide-1.png",
+		"/tmp/foo/slide-10.png",
+		"/tmp/foo/slide-11.png",
+		"/tmp/foo/slide-12.png",
+		"/tmp/foo/slide-2.png",
+		"/tmp/foo/slide-3.png",
+		"/tmp/foo/slide-4.png",
+		"/tmp/foo/slide-5.png",
+		"/tmp/foo/slide-6.png",
+		"/tmp/foo/slide-7.png",
+		"/tmp/foo/slide-8.png",
+		"/tmp/foo/slide-9.png",
+	}
+
+	sortPNGsByIndex(files)
+
+	for i, p := range files {
+		if got := pngIndexFromName(p); got != i {
+			t.Errorf("position %d: got slide-%d.png, want slide-%d.png (full=%s)", i, got, i, p)
+		}
+	}
+}
+
+// TestStoreCacheAndRetrieve_ManySlides verifies the cache round-trip preserves
+// presentation order when there are more than 9 slides — i.e. position N in
+// the returned slice corresponds to the Nth source slide, not the Nth lex-sorted
+// filename.
+func TestStoreCacheAndRetrieve_ManySlides(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "cache-test-many-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	const n = 13
+	var pngs []string
+	for i := 0; i < n; i++ {
+		p := filepath.Join(tmpDir, fmt.Sprintf("slide-%d.png", i))
+		if err := os.WriteFile(p, []byte(fmt.Sprintf("png-data-%d", i)), 0644); err != nil {
+			t.Fatal(err)
+		}
+		pngs = append(pngs, p)
+	}
+
+	key := "test-store-retrieve-many-key"
+	defer os.RemoveAll(filepath.Join(cacheDir(), key))
+
+	storeCachePNGs(key, pngs)
+
+	cached := getCachedPNGs(key)
+	if len(cached) != n {
+		t.Fatalf("expected %d cached PNGs, got %d", n, len(cached))
+	}
+
+	for i, path := range cached {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := fmt.Sprintf("png-data-%d", i)
+		if string(data) != expected {
+			t.Errorf("cached file at position %d: got %q, want %q (path=%s)", i, string(data), expected, path)
+		}
+	}
+}
+
 func TestGetCachedPNGs_Miss(t *testing.T) {
 	result := getCachedPNGs("nonexistent-key-12345")
 	if result != nil {

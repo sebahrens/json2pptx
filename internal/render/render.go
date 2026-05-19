@@ -10,9 +10,32 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 )
+
+// pngIndexFromName extracts the integer N from a filename matching "slide-N.png".
+// Returns -1 if the name doesn't conform, which sorts those entries first.
+func pngIndexFromName(path string) int {
+	base := filepath.Base(path)
+	base = strings.TrimSuffix(base, ".png")
+	base = strings.TrimPrefix(base, "slide-")
+	n, err := strconv.Atoi(base)
+	if err != nil {
+		return -1
+	}
+	return n
+}
+
+// sortPNGsByIndex sorts files matching "slide-N.png" by the numeric N.
+// This avoids lexicographic ordering placing slide-10.png before slide-2.png,
+// which would map slide_index 2 to the 11th rendered page for decks >9 slides.
+func sortPNGsByIndex(files []string) {
+	sort.Slice(files, func(i, j int) bool {
+		return pngIndexFromName(files[i]) < pngIndexFromName(files[j])
+	})
+}
 
 // maxInlineBytes is the base64-decoded size cap per slide image.
 // If a rendered PNG exceeds this, the tool returns a path reference instead.
@@ -55,7 +78,7 @@ func getCachedPNGs(key string) []string {
 	if err != nil || len(files) == 0 {
 		return nil
 	}
-	sort.Strings(files)
+	sortPNGsByIndex(files)
 	return files
 }
 
@@ -165,7 +188,7 @@ func pdfToPNGs(pdfPath, outDir string, density int) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(files)
+	sortPNGsByIndex(files)
 	return files, nil
 }
 
