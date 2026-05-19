@@ -1993,3 +1993,171 @@ func TestSplitCompositeBounds_Default(t *testing.T) {
 		t.Errorf("composite halves should span the full cell width")
 	}
 }
+
+// TestResolve_CardRowGeometry locks in equal card widths, uniform gutters,
+// and horizontal centering for kpi-Nup / card-grid layouts. Regression test
+// for go-slide-creator-sx2u: visible mis-alignment in kpi-3up, kpi-4up, and
+// card-grid rows.
+//
+// Acceptance criteria:
+//   - Cells in the same row have widths within 1 EMU.
+//   - Inter-cell gutters are uniform within 1 EMU.
+//   - The first cell starts at the grid's left edge and the last cell ends at
+//     the grid's right edge (the row spans the full content area, so the
+//     surrounding slide margins are symmetric whenever the grid bounds are).
+func TestResolve_CardRowGeometry(t *testing.T) {
+	cases := []struct {
+		name    string
+		columns int
+		rows    int
+		gapPt   float64
+	}{
+		{name: "kpi-2up", columns: 2, rows: 1, gapPt: 12},
+		{name: "kpi-3up", columns: 3, rows: 1, gapPt: 12},
+		{name: "kpi-4up", columns: 4, rows: 1, gapPt: 12},
+		{name: "kpi-5up", columns: 5, rows: 1, gapPt: 12},
+		{name: "kpi-6up", columns: 6, rows: 1, gapPt: 12},
+		{name: "card-grid 3x2", columns: 3, rows: 2, gapPt: 10},
+		{name: "card-grid 2x3", columns: 2, rows: 3, gapPt: 10},
+		{name: "card-grid 3x1", columns: 3, rows: 1, gapPt: 10},
+	}
+
+	bounds := DefaultBounds(0, 0)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rowSpecs := make([]Row, tc.rows)
+			for r := 0; r < tc.rows; r++ {
+				cells := make([]Cell, tc.columns)
+				for c := 0; c < tc.columns; c++ {
+					cells[c] = Cell{Shape: &ShapeSpec{Geometry: "roundRect"}}
+				}
+				rowSpecs[r] = Row{Cells: cells}
+			}
+			cols := make([]float64, tc.columns)
+			each := 100.0 / float64(tc.columns)
+			for i := range cols {
+				cols[i] = each
+			}
+			grid := &Grid{
+				Bounds:  bounds,
+				Columns: cols,
+				Rows:    rowSpecs,
+				ColGap:  tc.gapPt,
+				RowGap:  tc.gapPt,
+			}
+
+			result, err := Resolve(grid, newAlloc(100))
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			if result == nil || len(result.Cells) != tc.columns*tc.rows {
+				t.Fatalf("expected %d cells, got %d", tc.columns*tc.rows, len(result.Cells))
+			}
+
+			// Group cells by row to validate per-row geometry.
+			byRow := make(map[int][]ResolvedCell)
+			for _, cell := range result.Cells {
+				byRow[cell.RowIdx] = append(byRow[cell.RowIdx], cell)
+			}
+
+			expectedGapEMU := PtToEMU(tc.gapPt)
+
+			for r := 0; r < tc.rows; r++ {
+				rowCells := byRow[r]
+				if len(rowCells) != tc.columns {
+					t.Fatalf("row %d: expected %d cells, got %d", r, tc.columns, len(rowCells))
+				}
+
+				// Widths within 1 EMU of each other.
+				minW, maxW := rowCells[0].Bounds.CX, rowCells[0].Bounds.CX
+				for _, c := range rowCells[1:] {
+					if c.Bounds.CX < minW {
+						minW = c.Bounds.CX
+					}
+					if c.Bounds.CX > maxW {
+						maxW = c.Bounds.CX
+					}
+				}
+				if maxW-minW > 1 {
+					t.Errorf("row %d: card widths span %d EMU (min=%d max=%d); want ≤ 1", r, maxW-minW, minW, maxW)
+				}
+
+				// Uniform gutters (within 1 EMU).
+				for i := 0; i < len(rowCells)-1; i++ {
+					left := rowCells[i]
+					right := rowCells[i+1]
+					gap := right.Bounds.X - (left.Bounds.X + left.Bounds.CX)
+					diff := gap - expectedGapEMU
+					if diff < -1 || diff > 1 {
+						t.Errorf("row %d gutter %d→%d: got %d EMU, want %d (±1)", r, i, i+1, gap, expectedGapEMU)
+					}
+				}
+
+				// Row spans the grid bounds: first cell starts at grid.X and
+				// last cell ends at grid.X+grid.CX. Combined with symmetric
+				// bounds (DefaultBounds is symmetric), this guarantees the
+				// row is centered against the slide content area.
+				first := rowCells[0]
+				last := rowCells[len(rowCells)-1]
+				if first.Bounds.X != bounds.X {
+					t.Errorf("row %d: first cell X=%d, want grid X=%d", r, first.Bounds.X, bounds.X)
+				}
+				lastRight := last.Bounds.X + last.Bounds.CX
+				gridRight := bounds.X + bounds.CX
+				if lastRight != gridRight {
+					t.Errorf("row %d: last cell right edge=%d, want grid right=%d (diff %d)", r, lastRight, gridRight, gridRight-lastRight)
+				}
+			}
+		})
+	}
+}
+
+// TestDefaultBounds_HorizontallyCentered locks in the invariant that
+// shapegrid.DefaultBounds places content with symmetric horizontal margins,
+// so any centered row span fills the bounds and ends up centered on the
+// slide.
+func TestDefaultBounds_HorizontallyCentered(t *testing.T) {
+	cases := []struct {
+		name   string
+		width  int64
+		height int64
+	}{
+		{"16:9 default", 0, 0},
+		{"4:3 explicit", 9144000, 6858000},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := DefaultBounds(tc.width, tc.height)
+			sw := tc.width
+			if sw <= 0 {
+				sw = DefaultSlideWidthEMU
+			}
+			leftMargin := b.X
+			rightMargin := sw - (b.X + b.CX)
+			if leftMargin != rightMargin {
+				t.Errorf("asymmetric horizontal margins: left=%d right=%d (diff %d)", leftMargin, rightMargin, leftMargin-rightMargin)
+			}
+		})
+	}
+}
+
+// TestDefaultBoundsFromZone_HorizontallyCentered locks in that a
+// ContentZone with symmetric LeftMargin/RightEdge produces grid bounds
+// whose horizontal margins are symmetric against the slide width.
+func TestDefaultBoundsFromZone_HorizontallyCentered(t *testing.T) {
+	zone := ContentZone{
+		TitleBottom: 1690688,
+		FooterTop:   6356350,
+		LeftMargin:  838200,
+		RightEdge:   DefaultSlideWidthEMU - 838200,
+		SlideWidth:  DefaultSlideWidthEMU,
+		SlideHeight: DefaultSlideHeightEMU,
+	}
+	b := DefaultBoundsFromZone(zone, 9.0)
+	leftMargin := b.X
+	rightMargin := zone.SlideWidth - (b.X + b.CX)
+	if leftMargin != rightMargin {
+		t.Errorf("DefaultBoundsFromZone: asymmetric margins left=%d right=%d", leftMargin, rightMargin)
+	}
+}
