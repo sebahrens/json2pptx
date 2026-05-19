@@ -19,7 +19,8 @@ func runScore() error {
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx score --json <file.json> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Score a presentation for visual quality using deterministic rules.\n\n")
+		fmt.Fprintf(os.Stderr, "Score a JSON deck spec for visual quality using deterministic rules.\n")
+		fmt.Fprintf(os.Stderr, "Note: this scores the JSON input spec, not a rendered .pptx file.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json --template midnight-blue\n")

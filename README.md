@@ -617,7 +617,7 @@ The `json2pptx` binary is the primary tool: batch converter, HTTP API server, an
 | `recommend-pattern` | Recommend patterns matching an intent |
 | `preview` | Preview generation plan without rendering |
 | `repair` | Apply targeted fixes to a single slide |
-| `score` | Score a presentation for visual quality |
+| `score` | Score a JSON deck spec for visual quality (deterministic) |
 | `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
 | `render-slide` | Render a single slide to PNG (requires LibreOffice + ImageMagick) |
 | `render-thumbnails` | Render all slides as PNG thumbnails (requires LibreOffice + ImageMagick) |
