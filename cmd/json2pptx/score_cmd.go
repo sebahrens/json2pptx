@@ -15,7 +15,7 @@ func runScore() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	jsonPath := fs.String("json", "", "Path to JSON input file (use - for stdin)")
 	templateName := fs.String("template", "", "Template name override (uses presentation.template if omitted)")
-	mode := fs.String("mode", "deterministic", "Scoring mode: deterministic or with_heuristics")
+	mode := fs.String("mode", "deterministic", "Scoring mode. Only 'deterministic' is implemented; 'with_heuristics' is reserved and currently rejected with UNSUPPORTED_MODE — use the 'inspect' subcommand on rendered thumbnails for vision-based visual QA.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx score --json <file.json> [options]\n\n")
@@ -23,8 +23,7 @@ func runScore() error {
 		fmt.Fprintf(os.Stderr, "Note: this scores the JSON input spec, not a rendered .pptx file.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json --template midnight-blue\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json --mode with_heuristics\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx score --json slides.json --template midnight-blue\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}

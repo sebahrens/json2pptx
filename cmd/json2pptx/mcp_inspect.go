@@ -5,9 +5,9 @@
 // mapped to repair_slide fix kinds (via visualqa.SuggestedFixesForCategory),
 // so the agent can pipe findings → repair_slide without an extra round-trip.
 //
-// This is the canonical surface for the visual refinement loop. score_deck's
-// with_heuristics mode is reserved for an internal call to the same agent
-// (see score_deck.go) and is not the agent-facing entry point.
+// This is the canonical surface for the visual refinement loop. score_deck
+// rejects mode="with_heuristics" with UNSUPPORTED_MODE pointing here, so any
+// vision-based QA flows through inspect_slide_images on rendered thumbnails.
 package main
 
 import (

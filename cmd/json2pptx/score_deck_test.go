@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strconv"
@@ -81,11 +82,112 @@ func TestScoreDeckResponseShape(t *testing.T) {
 	}
 }
 
-func TestAppendHeuristicNote(t *testing.T) {
-	codes := []deterministic.CodeCount{{Code: "text_overflow", Count: 1}}
-	result := appendHeuristicNote(codes)
-	if len(result) != 1 {
-		t.Errorf("expected same codes back, got %d", len(result))
+// TestScoreDeck_WithHeuristicsModeRejected verifies the contract that
+// 'with_heuristics' is not silently downgraded to deterministic. The handler
+// must return IsError=true with a structured UNSUPPORTED_MODE diagnostic that
+// points the agent at inspect_slide_images, so callers can't think a stronger
+// gate ran when it didn't.
+func TestScoreDeck_WithHeuristicsModeRejected(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	presentation := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout2",
+				"content": []any{
+					map[string]any{
+						"placeholder_id": "title",
+						"type":           "text",
+						"text_value":     "Hello",
+					},
+				},
+			},
+		},
+	}
+
+	result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+		"presentation": presentation,
+		"mode":         "with_heuristics",
+	}))
+	if err != nil {
+		t.Fatalf("handleScoreDeck returned transport error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatalf("expected IsError=true for with_heuristics; got success")
+	}
+
+	b, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal structured content: %v", err)
+	}
+	var env struct {
+		Diagnostics []struct {
+			Code         string `json:"code"`
+			Severity     string `json:"severity"`
+			Message      string `json:"message"`
+			NextToolCall *struct {
+				Tool string `json:"tool"`
+			} `json:"next_tool_call,omitempty"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(b, &env); err != nil {
+		t.Fatalf("structured content is not a diagnostics envelope: %v\nraw=%s", err, string(b))
+	}
+	if len(env.Diagnostics) == 0 {
+		t.Fatalf("expected at least one diagnostic, got none; raw=%s", string(b))
+	}
+	d := env.Diagnostics[0]
+	if d.Code != "UNSUPPORTED_MODE" {
+		t.Errorf("diagnostic code = %q, want UNSUPPORTED_MODE", d.Code)
+	}
+	if d.Severity != "error" {
+		t.Errorf("diagnostic severity = %q, want error", d.Severity)
+	}
+	if d.NextToolCall == nil || d.NextToolCall.Tool != "inspect_slide_images" {
+		t.Errorf("next_tool_call should point at inspect_slide_images; got %+v", d.NextToolCall)
+	}
+}
+
+// TestScoreDeck_UnknownModeRejected covers the catch-all branch: any mode
+// value that isn't in the enum surface must produce a structured
+// UNSUPPORTED_MODE error rather than being treated as deterministic.
+func TestScoreDeck_UnknownModeRejected(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	presentation := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout2",
+				"content": []any{
+					map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Hi"},
+				},
+			},
+		},
+	}
+
+	result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+		"presentation": presentation,
+		"mode":         "bogus",
+	}))
+	if err != nil {
+		t.Fatalf("handleScoreDeck returned transport error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatalf("expected IsError=true for unknown mode; got success")
+	}
+	b, _ := json.Marshal(result.StructuredContent)
+	if !bytes.Contains(b, []byte("UNSUPPORTED_MODE")) {
+		t.Errorf("expected UNSUPPORTED_MODE in diagnostics; got %s", string(b))
 	}
 }
 

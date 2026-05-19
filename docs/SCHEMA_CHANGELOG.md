@@ -14,6 +14,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   because they never ran the CLI's expansion step. They now apply
   `structure → flat slides` immediately after `applyDefaults` /
   `resolveInputNamedSettings`, exactly matching CLI behavior.
+- **`score_deck` no longer silently downgrades `mode:"with_heuristics"`** —
+  previously the handler accepted `with_heuristics`, ran the deterministic
+  path anyway, and stamped `mode_used:"deterministic"` on the response, which
+  let agents believe a stronger gate had run. The handler now returns
+  `IsError=true` with diagnostic code `UNSUPPORTED_MODE` and a `next_tool_call`
+  pointing at `inspect_slide_images` (the canonical vision-based QA tool).
+  Unrecognized mode values also return `UNSUPPORTED_MODE`. Agents that want
+  vision-based visual QA must call `inspect_slide_images` directly on
+  rendered thumbnails.
 
 ### Added
 

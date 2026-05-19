@@ -39,6 +39,18 @@ func nextCallListPatterns() *patterns.ToolCallSuggestion {
 	}
 }
 
+// nextCallInspectSlideImages points the agent at the canonical vision-based
+// visual QA tool. Used when a caller asks for a heuristic/vision pass on a
+// tool that only ships the deterministic axis.
+func nextCallInspectSlideImages() *patterns.ToolCallSuggestion {
+	return &patterns.ToolCallSuggestion{
+		Tool: "inspect_slide_images",
+		ArgsTemplate: map[string]any{
+			"slide_images": "<array of {index, path|png_base64} from render_deck_thumbnails>",
+		},
+	}
+}
+
 // nextCallRetry suggests retrying the same tool with a corrected argument.
 // requiredArg is the name of the missing/invalid required parameter; the
 // args template uses a placeholder string the agent must replace.

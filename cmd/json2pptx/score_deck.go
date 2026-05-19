@@ -42,7 +42,7 @@ Use this after generate_presentation to get structured visual feedback without b
 			mcp.Description("Template name override. If omitted, uses the template field from the presentation object."),
 		),
 		mcp.WithString("mode",
-			mcp.Description("Scoring mode: 'deterministic' (default, zero false positives) or 'with_heuristics' (adds vision-model checks, requires ANTHROPIC_API_KEY and rendered images)."),
+			mcp.Description("Scoring mode. Only 'deterministic' is implemented (default, zero false positives). 'with_heuristics' is reserved and currently rejected with UNSUPPORTED_MODE — for vision-based visual QA call inspect_slide_images directly on rendered thumbnails."),
 			mcp.Enum("deterministic", "with_heuristics"),
 		),
 		mcp.WithArray("slide_indices",
@@ -68,6 +68,27 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	mode := "deterministic"
 	if m, err := request.RequireString("mode"); err == nil && m != "" {
 		mode = m
+	}
+
+	// Reject unimplemented modes up front rather than silently downgrading.
+	// 'with_heuristics' is reserved for a future render+inspect pass; until
+	// that ships, agents that want vision-based QA should call
+	// inspect_slide_images directly on rendered thumbnails.
+	switch mode {
+	case "deterministic":
+		// supported
+	case "with_heuristics":
+		return mcpErrorWithNext(
+			"UNSUPPORTED_MODE",
+			"score_deck mode 'with_heuristics' is not implemented; call inspect_slide_images on rendered thumbnails for vision-based visual QA, or omit the mode parameter to use 'deterministic'",
+			nextCallInspectSlideImages(),
+		), nil
+	default:
+		return mcpErrorWithNext(
+			"UNSUPPORTED_MODE",
+			fmt.Sprintf("score_deck mode %q is not recognized; supported modes: 'deterministic'", mode),
+			nextCallGetInputSchema(),
+		), nil
 	}
 
 	// Parse JSON input.
@@ -174,18 +195,6 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		ds = deterministic.ScoreFromFindings(findings, len(input.Slides))
 		// 4. Composition axis — deck-level rhythm analysis.
 		ds.Composition = compositionAxis(input.Slides)
-	}
-
-	if mode == "with_heuristics" {
-		// Heuristic mode requires rendered images + API key. The canonical
-		// agent-facing entry point for vision-based QA is the
-		// inspect_slide_images MCP tool — agents should call that directly on
-		// just-rendered thumbnails rather than relying on score_deck to also
-		// produce vision findings. score_deck's heuristic mode is reserved
-		// for an internal call into the same visualqa agent and is not yet
-		// wired into the render+inspect pipeline.
-		ds.ModeUsed = "deterministic"
-		ds.Summary.TopCodes = appendHeuristicNote(ds.Summary.TopCodes)
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, ds)
@@ -335,12 +344,6 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 		Score:       rhythm.CompositionScore,
 		Diagnostics: diags,
 	}
-}
-
-// appendHeuristicNote adds a synthetic code entry indicating heuristic mode
-// was requested but is not yet available.
-func appendHeuristicNote(codes []deterministic.CodeCount) []deterministic.CodeCount {
-	return codes // no-op for now; heuristic mode is opt-in future work
 }
 
 // extractSlideIndices parses an optional slide_indices array parameter into a
