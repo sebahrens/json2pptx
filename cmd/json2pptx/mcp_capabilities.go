@@ -128,6 +128,13 @@ type capabilitiesFeatures struct {
 	// supported slide-input envelope. Mirrors the detailed Compose struct so
 	// agents can capability-gate without inspecting nested fields.
 	ComposeEnvelope      bool                       `json:"compose_envelope"`
+	// BaseDir lists the MCP tools that accept the `base_dir` parameter for
+	// portable resolution of relative local-asset paths (image_value.path,
+	// background.image, shape_grid image/icon paths). When absent, the server
+	// falls back to its process CWD (legacy behaviour). Agents that need
+	// reproducible behaviour across launch configurations should always send
+	// an absolute base_dir.
+	BaseDir              []string                   `json:"base_dir"`
 	FeatureVersions      map[string]string          `json:"feature_versions"`
 }
 
@@ -288,6 +295,12 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			OutputValidation:     []string{"off", "warn", "strict"},
 			Compose:              composeCapabilities(),
 			ComposeEnvelope:      true,
+			BaseDir: []string{
+				"generate_presentation",
+				"validate_input",
+				"preview_presentation_plan",
+				"render_slide_image_from_json",
+			},
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -300,6 +313,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"output_validation":      "4.6.0",
 				"compose":                "4.10.0",
 				"compose_envelope":       "4.11.0",
+				"base_dir":               "4.25.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

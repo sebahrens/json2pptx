@@ -1028,6 +1028,7 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           },
           "required": ["max_segments", "max_nesting_depth", "max_leaf_patterns", "directions", "supports_smart_compose", "supports_nested_compose", "supports_diagram_segments"]
         },
+        "base_dir":              {"type": "array", "items": {"type": "string"}},
         "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
       }
     },

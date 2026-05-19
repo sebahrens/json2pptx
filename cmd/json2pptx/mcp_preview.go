@@ -164,6 +164,9 @@ Use this to preview what generate_presentation will do: which layout each slide 
 		mcp.WithBoolean("strict_unknown_keys",
 			mcp.Description("When true, unknown JSON keys are errors that block preview. When false (default), unknown keys are reported as warnings and preview proceeds."),
 		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths during pre-flight (image_value.path, background.image, shape_grid image/icon paths). Same contract as generate_presentation: must be absolute and exist. Omit only if every asset reference is absolute or a URL."),
+		),
 	)
 }
 
@@ -211,6 +214,19 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 		if diags := unknownKeyDiags([]byte(jsonStr), true); len(diags) > 0 {
 			return api.MCPDiagnosticsError(diags), nil
 		}
+	}
+
+	// Asset preflight against base_dir. Resolves relative asset paths to
+	// absolute form so downstream geometry resolution sees the same paths
+	// that generate_presentation would. base_dir resolution failures
+	// short-circuit before per-asset findings — the agent can't fix
+	// individual paths until the base directory is correct.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return baseDirErr, nil
+	}
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+		return api.MCPDiagnosticsError(assetFindings), nil
 	}
 
 	// Resolve template.

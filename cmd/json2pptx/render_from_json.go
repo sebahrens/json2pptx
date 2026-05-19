@@ -56,6 +56,9 @@ Results are cached by (slide JSON content + template content + density) — repe
 		mcp.WithBoolean("overlay",
 			mcp.Description(`If true, composite a diagnostic overlay on top of the rendered PNG: shape_grid cell rectangles, density-band tints (info=blue, review=amber, shrink_or_split=orange, refuse=red), and fit-finding badges. Lets agents "see" the diagnostic without cross-referencing finding coordinates against the image manually. Default: false.`),
 		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths referenced by the slide (image_value.path, background.image, shape_grid image/icon paths). Same contract as generate_presentation: must be absolute and exist. Omit only if every asset reference is absolute or a URL."),
+		),
 	)
 }
 
@@ -172,9 +175,15 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		cfg:          mc.cfg,
 		cache:        mc.cache,
 	}
-	genReq := mcpRequestWithArgs(map[string]any{
+	genArgs := map[string]any{
 		"presentation": presentation,
-	})
+	}
+	// Forward base_dir so relative asset paths in the slide resolve the same
+	// way handleGenerate would resolve them when called directly.
+	if bd, ok := request.GetArguments()["base_dir"].(string); ok && bd != "" {
+		genArgs["base_dir"] = bd
+	}
+	genReq := mcpRequestWithArgs(genArgs)
 	genResult, err := tempMC.handleGenerate(ctx, genReq)
 	if err != nil {
 		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("generation failed: %v", err)), nil

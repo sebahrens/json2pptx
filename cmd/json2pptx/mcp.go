@@ -261,6 +261,9 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 			mcp.Enum("off", "warn", "strict"),
 			mcp.DefaultString("off"),
 		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory."),
+		),
 	)
 }
 
@@ -322,6 +325,9 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 		),
 		mcp.WithBoolean("strict_unknown_keys",
 			mcp.Description("When true, unknown JSON keys are errors that block validation. When false (default), unknown keys are reported as warnings."),
+		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths during pre-flight (image_value.path, background.image, shape_grid image/icon paths). Same contract as generate_presentation: must be absolute and exist. Omit only if every asset reference is absolute or a URL."),
 		),
 	)
 }
@@ -485,14 +491,21 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Resolve relative asset paths (icons, content images, grid images,
-	// background images) against CWD (MCP receives inline JSON, not a file
-	// path). All per-asset failures are collected into structured
-	// diagnostics so the caller can fix each broken reference independently
-	// instead of seeing one bag-of-strings error.
-	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
-		if assetFindings := resolveLocalAssetPaths(input.Slides, cwd); len(assetFindings) > 0 {
-			return api.MCPDiagnosticsError(assetFindings), nil
-		}
+	// background images) against base_dir. MCP receives inline JSON, not a
+	// file path, so callers pass base_dir to specify the directory relative
+	// paths should resolve against. When omitted we fall back to the server
+	// process CWD — historical behaviour that is not portable across MCP
+	// launch configurations.
+	//
+	// All per-asset failures are collected into structured diagnostics so
+	// the caller can fix each broken reference independently instead of
+	// seeing one bag-of-strings error.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return baseDirErr, nil
+	}
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+		return api.MCPDiagnosticsError(assetFindings), nil
 	}
 
 	// Resolve deck-level rhythm grid when configured.
@@ -918,13 +931,17 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// Asset preflight: validate bundled icon names (catches typos and
 	// missing "filled:" prefix), resolve icon.path fields, and resolve
 	// content image_value, shape_grid cell image, and slide background
-	// image paths against the server's CWD. Mirrors the handleGenerate
-	// preflight so agents catch broken references in validate_input instead
-	// of burning a generate call.
-	if cwd, cwdErr := os.Getwd(); cwdErr == nil {
-		if assetFindings := resolveLocalAssetPaths(input.Slides, cwd); len(assetFindings) > 0 {
-			boundaryDiags = append(boundaryDiags, assetFindings...)
-		}
+	// image paths against base_dir. Mirrors the handleGenerate preflight so
+	// agents catch broken references in validate_input instead of burning a
+	// generate call. base_dir resolution failures short-circuit before
+	// per-asset findings — the agent can't fix individual asset paths until
+	// the base directory is correct.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return baseDirErr, nil
+	}
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+		boundaryDiags = append(boundaryDiags, assetFindings...)
 	}
 
 	output := dryRunOutput{
