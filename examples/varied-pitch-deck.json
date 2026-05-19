@@ -17,11 +17,11 @@
       "pattern": {
         "name": "icon-row",
         "values": [
-          {"icon": "\ud83d\udcca", "caption": "Opportunity"},
-          {"icon": "\ud83d\udcc8", "caption": "Traction"},
-          {"icon": "\ud83d\udee0\ufe0f", "caption": "Product"},
-          {"icon": "\ud83c\udf10", "caption": "Go-to-Market"},
-          {"icon": "\ud83d\udcb0", "caption": "The Ask"}
+          {"icon": "target", "caption": "Opportunity"},
+          {"icon": "trending-up", "caption": "Traction"},
+          {"icon": "tool", "caption": "Product"},
+          {"icon": "world", "caption": "Go-to-Market"},
+          {"icon": "currency-dollar", "caption": "The Ask"}
         ]
       }
     },
@@ -193,7 +193,7 @@
               "values": [
                 {"big": "96%", "small": "Gross Margin"},
                 {"big": "<6mo", "small": "Payback Period"},
-                {"big": "4.8★", "small": "G2 Rating"}
+                {"big": "4.8/5", "small": "G2 Rating"}
               ]
             }
           }
