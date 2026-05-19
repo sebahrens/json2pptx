@@ -4,6 +4,28 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.28.0 (2026-05-19)
+
+### Fixed
+
+- **MCP handlers now expand `structure` payloads** — `generate_presentation`,
+  `validate_input`, `preview_presentation_plan`, and `score_deck` previously
+  rejected structure-only payloads at the `len(slides) == 0` boundary check
+  because they never ran the CLI's expansion step. They now apply
+  `structure → flat slides` immediately after `applyDefaults` /
+  `resolveInputNamedSettings`, exactly matching CLI behavior.
+
+### Added
+
+- **`STRUCTURE_AND_SLIDES`** boundary diagnostic (severity error, path
+  `structure`) — emitted when a payload sets both `structure` and top-level
+  `slides`. Includes `fix.kind = "remove_field"` with `params.field = "slides"`.
+- **`INVALID_STRUCTURE`** boundary diagnostic (severity error, path
+  `structure`) — emitted when `expandStructure` fails (empty sections,
+  missing section title, section with no slides, etc.). Includes
+  `fix.kind = "fix_structure"` with the underlying error message in
+  `params.error`.
+
 ## 4.27.0 (2026-05-19)
 
 ### Added
