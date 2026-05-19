@@ -25,6 +25,7 @@ func runValidate() error { //nolint:gocognit
 	fitReport := fs.Bool("fit-report", false, "Run per-cell text overflow measurement and print findings")
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
+	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are validation errors; when false (default), they are warnings. Mirrors MCP validate_input strict_unknown_keys.")
 	_ = fs.Bool("partial", false, "Accepted for CLI compatibility (validation always reports per-slide diagnostics)")
 
 	fs.Usage = func() {
@@ -40,7 +41,8 @@ func runValidate() error { //nolint:gocognit
 		fmt.Fprintf(os.Stderr, "  json2pptx validate --fit-report slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate --fit-report --verbose-fit slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate --format=json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json chapter2.json chapter3.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json chapter2.json chapter3.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate --strict-unknown-keys slides.json   # fail-fast on typo'd fields\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -58,7 +60,7 @@ func runValidate() error { //nolint:gocognit
 	// When -format=json is used, delegate to the MCP validate handler to get
 	// the identical dryRunOutput shape (with structured diagnostics and fit_findings).
 	if *format == "json" || *format == "ndjson" {
-		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, *format)
+		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, *format, *strictUnknownKeys)
 	}
 
 	// Suppress unused warnings for flags consumed below.
@@ -68,7 +70,7 @@ func runValidate() error { //nolint:gocognit
 	var results []validateResult
 
 	for _, filePath := range args {
-		result := validateJSONFile(filePath, *templatesDir)
+		result := validateJSONFile(filePath, *templatesDir, *strictUnknownKeys)
 		results = append(results, result)
 		if !result.Valid {
 			hasErrors = true
@@ -146,8 +148,10 @@ type validateResult struct {
 }
 
 // validateJSONFile validates a single JSON input file against the schema and
-// optionally against a template.
-func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:gocognit,gocyclo
+// optionally against a template. When strictUnknownKeys is true, unknown JSON
+// keys are reported as errors (matching MCP validate_input strict_unknown_keys
+// semantics) instead of warnings.
+func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) validateResult { //nolint:gocognit,gocyclo
 	result := validateResult{
 		File:     filePath,
 		Valid:    true,
@@ -195,9 +199,16 @@ func validateJSONFile(filePath, templatesDir string) validateResult { //nolint:g
 	}
 	applyDefaults(&input)
 
-	// Check for unknown keys (warn severity — additionalProperties:false).
+	// Check for unknown keys (additionalProperties:false). Warnings by default;
+	// when strictUnknownKeys is set, unknown keys become errors (mirroring MCP
+	// validate_input strict_unknown_keys=true semantics).
 	for _, ve := range checkInputUnknownKeys(content) {
-		result.Warnings = append(result.Warnings, ve.Error())
+		if strictUnknownKeys {
+			result.Valid = false
+			result.Errors = append(result.Errors, ve.Error())
+		} else {
+			result.Warnings = append(result.Warnings, ve.Error())
+		}
 	}
 
 	// Enum validation — unknown values for transition, transition_speed, build, background.fit.
@@ -369,7 +380,9 @@ func writeValidateJSON(path string, results []validateResult) error {
 
 // runValidateMCPFormat delegates to the MCP validate handler to produce output
 // identical to validate_input. This ensures CLI and MCP return the same shape.
-func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string) error {
+// strictUnknownKeys is passed straight through to the MCP handler so the JSON
+// output matches what validate_input would return for the same flag value.
+func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string, strictUnknownKeys bool) error {
 	mc := cliMCPConfig(templatesDir, "")
 	hasErrors := false
 
@@ -385,9 +398,10 @@ func runValidateMCPFormat(files []string, templatesDir string, fitReport, verbos
 		}
 
 		args := map[string]any{
-			"presentation": presentation,
-			"fit_report":   fitReport,
-			"verbose_fit":  verboseFit,
+			"presentation":        presentation,
+			"fit_report":          fitReport,
+			"verbose_fit":         verboseFit,
+			"strict_unknown_keys": strictUnknownKeys,
 		}
 
 		result, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(args))

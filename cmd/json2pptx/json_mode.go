@@ -168,8 +168,10 @@ type SlideQuality struct {
 // applies the template and design_mode overrides, and validates required fields.
 // The returned warnings include unknown-key detection (additionalProperties:false
 // enforcement). A non-empty designModeOverride replaces input.DesignMode after
-// parsing so the CLI flag wins over the JSON field.
-func parseJSONInput(jsonPath, templateOverride, designModeOverride string) (*PresentationInput, []string, error) {
+// parsing so the CLI flag wins over the JSON field. When strictUnknownKeys is
+// true, unknown JSON keys are returned as an error instead of warnings — this
+// mirrors the MCP strict_unknown_keys=true semantics.
+func parseJSONInput(jsonPath, templateOverride, designModeOverride string, strictUnknownKeys bool) (*PresentationInput, []string, error) {
 	var inputData []byte
 	var err error
 
@@ -211,9 +213,20 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string) (*Pre
 		return nil, nil, fmt.Errorf("at least one slide is required")
 	}
 
-	// Check for unknown keys (warn severity — additionalProperties:false).
+	// Check for unknown keys (additionalProperties:false). Warn by default; when
+	// --strict-unknown-keys is set, unknown keys become a hard error so a typo
+	// like "tmplate" or "slidez" fails generation instead of being silently
+	// dropped during JSON unmarshal.
 	var warnings []string
-	for _, ve := range checkInputUnknownKeys(inputData) {
+	unknownKeyErrs := checkInputUnknownKeys(inputData)
+	if strictUnknownKeys && len(unknownKeyErrs) > 0 {
+		msgs := make([]string, len(unknownKeyErrs))
+		for i, ve := range unknownKeyErrs {
+			msgs[i] = ve.Error()
+		}
+		return nil, nil, fmt.Errorf("unknown JSON keys (strict mode): %s", strings.Join(msgs, "; "))
+	}
+	for _, ve := range unknownKeyErrs {
 		warnings = append(warnings, ve.Error())
 	}
 
@@ -302,11 +315,11 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string) error { //nolint:gocognit,gocyclo
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
 	// Parse and validate JSON input
-	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride, designModeOverride)
+	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride, designModeOverride, strictUnknownKeys)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, err)
 	}

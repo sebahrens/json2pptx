@@ -16,6 +16,7 @@ func runPreview() error {
 	jsonPath := fs.String("json", "", "Path to JSON input file (use - for stdin)")
 	fitReport := fs.Bool("fit-report", true, "Include fit findings (default: true)")
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without budget limit")
+	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are errors that block preview; when false (default), they are warnings. Mirrors MCP preview_presentation_plan strict_unknown_keys.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview --json <file.json> [options]\n\n")
@@ -24,7 +25,8 @@ func runPreview() error {
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx preview --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx preview --json slides.json --fit-report=false\n")
-		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx preview --json -\n\n")
+		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx preview --json -\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx preview --strict-unknown-keys --json slides.json   # fail-fast on typo'd fields\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -46,9 +48,10 @@ func runPreview() error {
 	mc := cliMCPConfig(*templatesDir, "")
 
 	args := map[string]any{
-		"presentation": presentation,
-		"fit_report":   *fitReport,
-		"verbose_fit":  *verboseFit,
+		"presentation":        presentation,
+		"fit_report":          *fitReport,
+		"verbose_fit":         *verboseFit,
+		"strict_unknown_keys": *strictUnknownKeys,
 	}
 
 	result, err := mc.handlePreviewPlan(context.Background(), mcpRequestWithArgs(args))

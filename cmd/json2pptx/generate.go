@@ -25,6 +25,7 @@ func runGenerate() error {
 	partial := fs.Bool("partial", false, "Enable partial mode: skip failing slides instead of aborting the entire deck")
 	outputValidation := fs.String("output-validation", "off", "Post-generation PPTX validation: off (default), warn (report findings), or strict (fail on blocking findings)")
 	designMode := fs.String("design-mode", "", "Override the deck's design_mode field: constrained (default, enforces scheme colors and template-managed sizes) or free (allows raw hex colors and absolute sizes). Empty preserves the JSON setting.")
+	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are errors that block generation; when false (default), they are reported as warnings. Mirrors MCP generate_presentation strict_unknown_keys.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] --json <file.json>\n\n")
@@ -36,7 +37,8 @@ func runGenerate() error {
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -n --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --strict-fit=strict --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --output-validation=warn --json slides.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx generate --design-mode=free --json slides.json\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --design-mode=free --json slides.json\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx generate --strict-unknown-keys --json slides.json   # fail-fast on typo'd fields\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -82,7 +84,7 @@ func runGenerate() error {
 	}
 
 	if *dryRun {
-		return runJSONDryRun(*jsonInput, *templatesDir, *configPath, *designMode)
+		return runJSONDryRun(*jsonInput, *templatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode)
+	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
 }

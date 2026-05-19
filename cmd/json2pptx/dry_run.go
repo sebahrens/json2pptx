@@ -64,8 +64,10 @@ type dryRunPlaceholder struct {
 // runJSONDryRun validates JSON input against the template without generating
 // a PPTX file. It checks layout_id references, placeholder_id references,
 // and content types. A non-empty designModeOverride replaces input.DesignMode
-// after parsing so the CLI flag wins over the JSON field.
-func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string) error {
+// after parsing so the CLI flag wins over the JSON field. When strictUnknownKeys
+// is true, unknown JSON keys are reported as errors (matching MCP
+// strict_unknown_keys=true semantics) instead of warnings.
+func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
 	output := dryRunOutput{
 		Valid:    true,
 		Warnings: []string{},
@@ -115,9 +117,16 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	// Resolve named style references from template settings (shared with MCP).
 	resolveInputNamedSettingsForDir(templatesDir, &input)
 
-	// Check for unknown keys (warn severity — additionalProperties:false).
+	// Check for unknown keys (additionalProperties:false). Warnings by default;
+	// when --strict-unknown-keys is set, unknown keys become errors (mirroring
+	// MCP validate_input strict_unknown_keys=true semantics).
 	for _, ve := range checkInputUnknownKeys(inputData) {
-		output.Warnings = append(output.Warnings, ve.Error())
+		if strictUnknownKeys {
+			output.Valid = false
+			output.Errors = append(output.Errors, ve.Error())
+		} else {
+			output.Warnings = append(output.Warnings, ve.Error())
+		}
 	}
 
 	// Enum validation — unknown values for transition, transition_speed, build, background.fit.

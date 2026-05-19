@@ -161,6 +161,9 @@ Use this to preview what generate_presentation will do: which layout each slide 
 		mcp.WithBoolean("verbose_fit",
 			mcp.Description("When true, return all fit findings without the per-slide budget limit. Default: false."),
 		),
+		mcp.WithBoolean("strict_unknown_keys",
+			mcp.Description("When true, unknown JSON keys are errors that block preview. When false (default), unknown keys are reported as warnings and preview proceeds."),
+		),
 	)
 }
 
@@ -191,6 +194,16 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	// Boundary validation.
 	if errResult := validatePreviewBoundary(&input); errResult != nil {
 		return errResult, nil
+	}
+
+	// Unknown keys — warnings by default, errors when strict_unknown_keys=true.
+	// In strict mode we fail-fast before paying for template resolution so a
+	// typo'd field surfaces as a typed diagnostic, matching generate/validate.
+	strictUnknownKeys, _ := request.GetArguments()["strict_unknown_keys"].(bool)
+	if strictUnknownKeys {
+		if diags := unknownKeyDiags([]byte(jsonStr), true); len(diags) > 0 {
+			return api.MCPDiagnosticsError(diags), nil
+		}
 	}
 
 	// Resolve template.
