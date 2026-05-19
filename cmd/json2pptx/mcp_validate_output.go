@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
@@ -74,10 +75,15 @@ func handleValidateOutput(_ context.Context, request mcp.CallToolRequest) (*mcp.
 }
 
 // outputValidationErrorEnvelope is the structured error payload when strict
-// output validation fails during generation.
+// output validation fails during generation. NextToolCall is a machine-readable
+// pointer at repair_slide so agents can chain a fix without re-deriving the
+// protocol from prose. When the blocking findings map to a single source slide,
+// slide_index in the args_template is that slide's 0-based index; otherwise it
+// is -1 and the agent must populate it from findings[].slide_index.
 type outputValidationErrorEnvelope struct {
-	Summary  string         `json:"summary"`
-	Findings []pptx.Finding `json:"findings"`
+	Summary      string                        `json:"summary"`
+	Findings     []pptx.Finding                `json:"findings"`
+	NextToolCall *patterns.ToolCallSuggestion  `json:"next_tool_call,omitempty"`
 }
 
 // mcpOutputValidationError builds an error CallToolResult from an output
@@ -88,8 +94,9 @@ func mcpOutputValidationError(report *pptx.Report) *mcp.CallToolResult {
 	warnings := report.Warnings()
 
 	envelope := outputValidationErrorEnvelope{
-		Summary:  fmt.Sprintf("output validation failed: %d blocking, %d warning finding(s)", len(blocking), len(warnings)),
-		Findings: report.Findings,
+		Summary:      fmt.Sprintf("output validation failed: %d blocking, %d warning finding(s)", len(blocking), len(warnings)),
+		Findings:     report.Findings,
+		NextToolCall: repairToolCallFromFindings(blocking),
 	}
 
 	fallback, err := json.Marshal(envelope)
@@ -106,5 +113,36 @@ func mcpOutputValidationError(report *pptx.Report) *mcp.CallToolResult {
 		},
 		StructuredContent: envelope,
 		IsError:           true,
+	}
+}
+
+// repairToolCallFromFindings builds a next_tool_call hint pointing agents at
+// repair_slide. If every blocking finding pins to the same source slide, that
+// slide_index is encoded in the args_template. Otherwise slide_index is -1 so
+// the agent populates it from findings[].slide_index. The fixes array is empty
+// because output-validation findings do not map to a single canonical
+// repair_slide fix kind — agents must inspect each finding's code and choose
+// the appropriate fix.
+func repairToolCallFromFindings(blocking []pptx.Finding) *patterns.ToolCallSuggestion {
+	slideIdx := -1
+	for i, f := range blocking {
+		if f.SlideIndex < 0 {
+			continue
+		}
+		if i == 0 || slideIdx < 0 {
+			slideIdx = f.SlideIndex
+			continue
+		}
+		if f.SlideIndex != slideIdx {
+			slideIdx = -1
+			break
+		}
+	}
+	return &patterns.ToolCallSuggestion{
+		Tool: "repair_slide",
+		ArgsTemplate: map[string]any{
+			"slide_index": slideIdx,
+			"fixes":       []any{},
+		},
 	}
 }

@@ -257,9 +257,9 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 			mcp.Description("When true, unknown JSON keys are errors that block generation. When false (default), unknown keys are reported as warnings and generation proceeds."),
 		),
 		mcp.WithString("output_validation",
-			mcp.Description("Post-generation PPTX validation policy: off (skip, default), warn (run validation, include findings in response), or strict (fail generation with diagnostics if blocking findings exist)."),
+			mcp.Description("Post-generation PPTX validation policy: off (skip), warn (run validation, include findings in response), or strict (default; fail generation with diagnostics envelope when blocking findings exist). On strict failure, the response carries next_tool_call=repair_slide so agents can chain a fix without re-deriving the protocol."),
 			mcp.Enum("off", "warn", "strict"),
-			mcp.DefaultString("off"),
+			mcp.DefaultString("strict"),
 		),
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory."),
@@ -577,8 +577,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	duration := time.Since(startTime)
 
-	// Post-generation output validation via output_validation parameter (default: off).
-	outputValidation := "off"
+	// Post-generation output validation via output_validation parameter (default: strict).
+	// Strict mode is the standing guarantee for the 'zero needs repair' contract
+	// (see go-slide-creator-0myv): every successful generate_presentation response
+	// implies a clean output-validation pass.
+	outputValidation := "strict"
 	if ov, ovErr := request.RequireString("output_validation"); ovErr == nil && ov != "" {
 		outputValidation = ov
 	}

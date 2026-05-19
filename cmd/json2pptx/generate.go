@@ -23,7 +23,7 @@ func runGenerate() error {
 	fs.BoolVar(dryRun, "n", false, "Shorthand for --dry-run")
 	strictFit := fs.String("strict-fit", "warn", "Text-fit checking mode: off, warn (default), or strict (refuse on overflow)")
 	partial := fs.Bool("partial", false, "Enable partial mode: skip failing slides instead of aborting the entire deck")
-	outputValidation := fs.String("output-validation", "off", "Post-generation PPTX validation: off (default), warn (report findings), or strict (fail on blocking findings)")
+	outputValidation := fs.String("output-validation", "strict", "Post-generation PPTX validation: off (skip), warn (report findings), or strict (default; fail on blocking findings)")
 	designMode := fs.String("design-mode", "", "Override the deck's design_mode field: constrained (default, enforces scheme colors and template-managed sizes) or free (allows raw hex colors and absolute sizes). Empty preserves the JSON setting.")
 	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are errors that block generation; when false (default), they are reported as warnings. Mirrors MCP generate_presentation strict_unknown_keys.")
 

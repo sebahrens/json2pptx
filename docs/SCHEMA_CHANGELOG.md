@@ -4,6 +4,27 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.29.0 (2026-05-20)
+
+### Changed
+
+- **`output_validation` defaults to `strict`** on both `generate_presentation`
+  (MCP) and `json2pptx generate` (CLI; `--output-validation`). Every successful
+  generate response now implies a clean OPC + OOXML pass. Override with
+  `output_validation: "warn"` or `"off"` only when intentionally skipping the
+  zero-needs-repair guarantee. Existing examples/*.json continue to generate
+  cleanly under the new default.
+
+### Added
+
+- **`next_tool_call` on strict output-validation error envelopes** — when
+  `generate_presentation` refuses with `output_validation: "strict"`, the
+  structured error envelope now carries `next_tool_call.tool = "repair_slide"`
+  and `args_template.slide_index` populated when all blocking findings pin to
+  one source slide (otherwise `-1`). The `fixes` array is empty because
+  output-validation codes don't share a canonical fix kind; agents inspect each
+  finding's `code` and `scope` to choose the right `repair_slide` directive.
+
 ## 4.28.0 (2026-05-19)
 
 ### Fixed

@@ -555,7 +555,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return writeJSONError(jsonOutputPath, fmt.Errorf("failed to generate PPTX: %w", err))
 	}
 
-	// Post-generation output validation via --output-validation flag (default: off).
+	// Post-generation output validation via --output-validation flag (default: strict).
 	var outputValidationFindings []pptx.Finding
 	if outputValidation != "off" {
 		report, valErr := pptx.ValidateOutputFile(outputPath)

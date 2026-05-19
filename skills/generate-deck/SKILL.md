@@ -214,6 +214,23 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. Per-error `next_tool_call` routes shape errors to `get_diagram_schema` and constraint errors back to `validate_diagram`.
 
+**Strict output validation by default.** Both `generate_presentation` (MCP) and `json2pptx generate` (CLI) default `output_validation` / `--output-validation` to `strict`. Every successful generate response therefore implies a clean OPC + OOXML pass — agents do not need a separate `validate_presentation_output` call to confirm the file is structurally sound. When strict validation fails, the response is an error envelope shaped as:
+
+```json
+{
+  "summary": "output validation failed: 1 blocking, 0 warning finding(s)",
+  "findings": [
+    {"code": "OOXML_INVALID_COLOR", "severity": "blocking", "path": "ppt/slides/slide3.xml", "slide_index": 2, "scope": "generator", ...}
+  ],
+  "next_tool_call": {
+    "tool": "repair_slide",
+    "args_template": {"slide_index": 2, "fixes": []}
+  }
+}
+```
+
+`next_tool_call` points at `repair_slide` with `slide_index` populated when all blocking findings pin to one source slide (otherwise `-1` — fill it in from `findings[].slide_index`). The `fixes` array is empty because output-validation codes don't share a single canonical fix kind; pick the appropriate `repair_slide` directive based on each finding's `code` and `scope`. Override with `output_validation: "warn"` (run validation, surface findings as `output_validation_findings`, still succeed) or `"off"` (skip entirely) only when you have a specific reason — the strict default is the [zero 'needs repair' guarantee](https://github.com/sebahrens/json2pptx) contract.
+
 ---
 
 ## Visual Decision Ladder
