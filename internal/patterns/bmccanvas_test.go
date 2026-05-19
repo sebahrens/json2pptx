@@ -245,6 +245,47 @@ func TestBMCCanvas(t *testing.T) {
 		}
 	})
 
+	t.Run("expand_default_cell_borders", func(t *testing.T) {
+		// Regression: every BMC cell must emit a visible line/border by default
+		// so the 9-cell canvas reads as a structured grid rather than floating
+		// panels (see issue go-slide-creator-kkcc).
+		vals := defaultBMCValues()
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var cellCount int
+		for ri, row := range grid.Rows {
+			for ci, c := range row.Cells {
+				cellCount++
+				if c.Shape == nil {
+					t.Fatalf("row[%d].cells[%d] has nil shape", ri, ci)
+				}
+				if len(c.Shape.Line) == 0 {
+					t.Errorf("row[%d].cells[%d] missing default line/border", ri, ci)
+					continue
+				}
+				var lineObj struct {
+					Color string  `json:"color"`
+					Width float64 `json:"width"`
+				}
+				if err := json.Unmarshal(c.Shape.Line, &lineObj); err != nil {
+					t.Errorf("row[%d].cells[%d] line unmarshal: %v", ri, ci, err)
+					continue
+				}
+				if lineObj.Color == "" {
+					t.Errorf("row[%d].cells[%d] line missing color", ri, ci)
+				}
+				if lineObj.Width <= 0 {
+					t.Errorf("row[%d].cells[%d] line width must be > 0, got %v", ri, ci, lineObj.Width)
+				}
+			}
+		}
+		if cellCount != 9 {
+			t.Errorf("expected 9 BMC cells total, got %d", cellCount)
+		}
+	})
+
 	t.Run("expand_accent_override", func(t *testing.T) {
 		vals := defaultBMCValues()
 		ovr := &BMCCanvasOverrides{Accent: "accent5"}

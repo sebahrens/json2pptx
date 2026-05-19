@@ -9,6 +9,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -40,6 +46,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -72,6 +84,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -109,6 +127,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -141,6 +165,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -176,6 +206,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -207,6 +243,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -243,6 +285,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {
@@ -275,6 +323,12 @@
           "shape": {
             "geometry": "rect",
             "fill": "lt1",
+            "line": {
+              "color": "dk1",
+              "width": 0.75,
+              "lumMod": 25000,
+              "lumOff": 75000
+            },
             "text": {
               "paragraphs": [
                 {

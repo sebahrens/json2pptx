@@ -246,11 +246,17 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		vals.RevenueStreams,     // 8
 	}
 
+	// Default cell border: subtle dk1-tinted stroke so the 9-cell canvas
+	// reads as a structured grid (canonical Osterwalder look) rather than
+	// floating panels. Authors can override via cell_overrides if desired.
+	const bmcCellBorderJSON = `{"color":"dk1","width":0.75,"lumMod":25000,"lumOff":75000}`
+
 	makeCell := func(idx int, cell BMCCell, colSpan, rowSpan int) *jsonschema.GridCellInput {
 		gc := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"lt1"`),
+				Line:     json.RawMessage(bmcCellBorderJSON),
 				Text:     buildBMCCellContent(cell, headerSize, bulletSize, accent),
 			},
 		}
