@@ -200,6 +200,15 @@ func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem
 		ctx.fitFindings = append(ctx.fitFindings, result.Findings[i])
 	}
 
+	// Track the resolved style GUID so writeOutput can synthesize a
+	// populated ppt/tableStyles.xml. Without this, the template's stub
+	// <a:tblStyleLst def="{GUID}"/> ships unchanged and strict OOXML readers
+	// (LibreOffice in particular) error out when the referenced style is not
+	// actually declared in the file.
+	if result.ResolvedStyleID != "" {
+		ctx.tableStyleIDsUsed[result.ResolvedStyleID] = true
+	}
+
 	ctx.tableInserts[slideNum] = append(ctx.tableInserts[slideNum], tableInsert{
 		placeholderIdx:  shapeIdx,
 		graphicFrameXML: result.XML,

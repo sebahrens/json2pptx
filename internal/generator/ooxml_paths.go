@@ -15,6 +15,7 @@ const (
 	PathPresentationRels    = "ppt/_rels/presentation.xml.rels"
 	PathContentTypes        = "[Content_Types].xml"
 	PathDocPropsApp         = "docProps/app.xml"
+	PathTableStyles         = "ppt/tableStyles.xml"
 	PathMedia               = "ppt/media/"
 	PathSlides              = "ppt/slides/"
 	PathSlideLayouts        = "ppt/slideLayouts/"

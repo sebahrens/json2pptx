@@ -24,6 +24,19 @@ func TestDefaultTableStyleResolver_Passthrough(t *testing.T) {
 	}
 }
 
+// Regression for the @template-default sentinel leaking into output. When no
+// template-aware resolver is wired (the common path through media.go), the
+// default resolver must still translate the sentinel to the engine-default
+// GUID; otherwise the generated <a:tableStyleId> contains an invalid value
+// and LibreOffice refuses to open the file.
+func TestDefaultTableStyleResolver_TemplateDefaultSentinel(t *testing.T) {
+	r := defaultTableStyleResolver{}
+	got := r.ResolveTableStyleID("@template-default")
+	if got != types.DefaultTableStyleID {
+		t.Errorf("got %q, want %q", got, types.DefaultTableStyleID)
+	}
+}
+
 // stubResolver lets tests control resolved style IDs.
 type stubResolver struct {
 	resolved string

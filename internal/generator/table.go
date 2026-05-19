@@ -26,10 +26,11 @@ type TableRenderConfig struct {
 
 // TableRenderResult contains the generated table XML.
 type TableRenderResult struct {
-	XML      string                 // Complete graphicFrame XML
-	Width    int64                  // Actual width used (EMUs)
-	Height   int64                  // Actual height used (EMUs)
-	Findings []patterns.FitFinding  // Render-time fit findings (truncation, scaling)
+	XML             string                // Complete graphicFrame XML
+	Width           int64                 // Actual width used (EMUs)
+	Height          int64                 // Actual height used (EMUs)
+	Findings        []patterns.FitFinding // Render-time fit findings (truncation, scaling)
+	ResolvedStyleID string                // The post-resolution table style GUID written into <a:tableStyleId>, empty if no style was applied
 }
 
 const (

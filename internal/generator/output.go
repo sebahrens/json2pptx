@@ -52,6 +52,11 @@ func (ctx *singlePassContext) writeOutput() error {
 	// This must be done after all other rel ID allocations so IDs don't conflict.
 	ctx.allocateBackgroundRelIDs()
 
+	// Stage a populated tableStyles.xml when tables were rendered. This must
+	// run before writeTemplateFiles so the original file is skipped in favour
+	// of the synthetic override.
+	ctx.installTableStylesOverride()
+
 	// Step 1: Copy unchanged template files
 	if err := ctx.writeTemplateFiles(); err != nil {
 		return err

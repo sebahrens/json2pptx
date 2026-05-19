@@ -108,6 +108,12 @@ type MediaContext struct {
 	mediaFiles      map[string]string  // image path -> media filename
 	usedExtensions  map[string]bool    // image extensions for Content_Types.xml
 	slideRelUpdates map[int][]mediaRel // slideNum -> relationships to add
+
+	// tableStyleIDsUsed tracks the resolved <a:tableStyleId> GUIDs referenced
+	// by rendered tables. Used to synthesize a populated ppt/tableStyles.xml so
+	// strict OOXML readers (e.g. LibreOffice) see at least a stub <a:tblStyle>
+	// for every referenced GUID rather than a bare <a:tblStyleLst def="..."/>.
+	tableStyleIDsUsed map[string]bool
 }
 
 // SVGContext holds SVG conversion state for single-pass generation.
@@ -218,10 +224,11 @@ func newSinglePassContext(outputPath string, slides []SlideSpec, allowedPaths []
 			slideBgMedia:           make(map[int]mediaRel),
 		},
 		MediaContext: MediaContext{
-			media:           pptx.NewMediaAllocator(),
-			mediaFiles:      make(map[string]string),
-			usedExtensions:  make(map[string]bool),
-			slideRelUpdates: make(map[int][]mediaRel),
+			media:             pptx.NewMediaAllocator(),
+			mediaFiles:        make(map[string]string),
+			usedExtensions:    make(map[string]bool),
+			slideRelUpdates:   make(map[int][]mediaRel),
+			tableStyleIDsUsed: make(map[string]bool),
 		},
 		SVGContext: SVGContext{
 			nativeSVGInserts: make(map[int][]nativeSVGInsert),

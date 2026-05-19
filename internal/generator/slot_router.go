@@ -251,5 +251,10 @@ func PopulateTableInShape(
 	}
 
 	// Generate table XML
-	return GenerateTableXML(table, config)
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		return nil, err
+	}
+	result.ResolvedStyleID = style.StyleID
+	return result, nil
 }
