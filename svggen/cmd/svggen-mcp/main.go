@@ -141,7 +141,7 @@ func validateDiagramTool() mcp.Tool {
 
 func getDiagramSchemaTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_schema",
-		mcp.WithDescription("Get the expected data schema and a minimal example for a specific diagram type. Use this to understand what data format a diagram type expects."),
+		mcp.WithDescription("Get the expected data schema and canonical example values for a specific diagram type. Returns example_values with both a minimal example (smallest valid input) and a realistic example (representative shape and content). Mirrors the example_values field returned by json2pptx-mcp.show_pattern so agents can reuse the same exemplar pattern across both tools."),
 		mcp.WithString("type",
 			mcp.Required(),
 			mcp.Description("Diagram type to get schema for."),
@@ -536,17 +536,34 @@ func handleGetDiagramSchema(_ context.Context, request mcp.CallToolRequest) (*mc
 	// Build a minimal example by looking up known schemas.
 	schema := getSchemaForType(diagramType)
 
+	// exampleValues mirrors the show_pattern.example_values field returned by
+	// json2pptx-mcp so agents can use the same key across both tools. It carries
+	// two flavours: a minimal example (smallest valid input the diagram accepts)
+	// and a realistic example (representative shape and content).
+	type exampleValuesEnvelope struct {
+		Minimal   any `json:"minimal,omitempty"`
+		Realistic any `json:"realistic,omitempty"`
+	}
+
 	type schemaResult struct {
-		Type        string `json:"type"`
-		Description string `json:"description"`
-		Example     any    `json:"example,omitempty"`
-		DataSchema  any    `json:"data_schema,omitempty"`
+		Type          string                 `json:"type"`
+		Description   string                 `json:"description"`
+		Example       any                    `json:"example,omitempty"`        // deprecated: use example_values.realistic; retained for back-compat
+		ExampleValues *exampleValuesEnvelope `json:"example_values,omitempty"` // canonical examples matching show_pattern.example_values
+		DataSchema    any                    `json:"data_schema,omitempty"`
 	}
 
 	result := schemaResult{
 		Type:        diagramType,
 		Description: schema.description,
-		Example:     schema.example,
+		Example:     schema.realistic,
+	}
+
+	if schema.minimal != nil || schema.realistic != nil {
+		result.ExampleValues = &exampleValuesEnvelope{
+			Minimal:   schema.minimal,
+			Realistic: schema.realistic,
+		}
 	}
 
 	// Include the machine-readable data schema when the diagram provides one.
@@ -558,10 +575,13 @@ func handleGetDiagramSchema(_ context.Context, request mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(string(output)), nil
 }
 
-// diagramSchema holds description and example data for a diagram type.
+// diagramSchema holds description and example data for a diagram type. Both a
+// minimal and a realistic example are surfaced so agents can either bootstrap
+// with the smallest valid payload or copy a representative shape.
 type diagramSchema struct {
 	description string
-	example     any
+	minimal     any
+	realistic   any
 }
 
 // getSchemaForType returns a human-readable schema with example for known types.
@@ -569,50 +589,97 @@ func getSchemaForType(typ string) diagramSchema {
 	schemas := map[string]diagramSchema{
 		"bar_chart": {
 			description: "Bar chart with categories and series. Supports grouped, stacked, and horizontal variants.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"categories": []any{"A", "B"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{10, 20}},
+				},
+			},
+			realistic: map[string]any{
 				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
 				"series": []any{
 					map[string]any{"name": "Revenue", "values": []any{100, 150, 120, 180}},
+					map[string]any{"name": "Cost", "values": []any{60, 80, 70, 95}},
 				},
 			},
 		},
 		"line_chart": {
 			description: "Line chart with categories and series. Supports multiple lines, area fill, and smooth curves.",
-			example: map[string]any{
-				"categories": []any{"Jan", "Feb", "Mar", "Apr"},
+			minimal: map[string]any{
+				"categories": []any{"T1", "T2"},
 				"series": []any{
-					map[string]any{"name": "Sales", "values": []any{40, 55, 70, 65}},
+					map[string]any{"name": "S1", "values": []any{10, 20}},
+				},
+			},
+			realistic: map[string]any{
+				"categories": []any{"Jan", "Feb", "Mar", "Apr", "May", "Jun"},
+				"series": []any{
+					map[string]any{"name": "Sales", "values": []any{40, 55, 70, 65, 80, 95}},
+					map[string]any{"name": "Forecast", "values": []any{42, 58, 68, 72, 85, 100}},
 				},
 			},
 		},
 		"pie_chart": {
 			description: "Pie or donut chart with labeled slices.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"slices": []any{
+					map[string]any{"label": "A", "value": 60},
+					map[string]any{"label": "B", "value": 40},
+				},
+			},
+			realistic: map[string]any{
 				"slices": []any{
 					map[string]any{"label": "Product A", "value": 40},
 					map[string]any{"label": "Product B", "value": 30},
-					map[string]any{"label": "Product C", "value": 30},
+					map[string]any{"label": "Product C", "value": 20},
+					map[string]any{"label": "Other", "value": 10},
 				},
 			},
 		},
 		"radar_chart": {
 			description: "Radar/spider chart with axes and series.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"axes": []any{"A", "B", "C"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{50, 60, 70}},
+				},
+			},
+			realistic: map[string]any{
 				"axes": []any{"Speed", "Power", "Range", "Defense", "Accuracy"},
 				"series": []any{
 					map[string]any{"name": "Player A", "values": []any{80, 70, 90, 60, 85}},
+					map[string]any{"name": "Player B", "values": []any{60, 85, 70, 80, 75}},
 				},
 			},
 		},
 		"scatter_chart": {
 			description: "Scatter plot with x/y data points.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"series": []any{
+					map[string]any{
+						"name": "S1",
+						"points": []any{
+							map[string]any{"x": 1, "y": 1},
+							map[string]any{"x": 2, "y": 2},
+						},
+					},
+				},
+			},
+			realistic: map[string]any{
 				"series": []any{
 					map[string]any{
 						"name": "Group A",
 						"points": []any{
 							map[string]any{"x": 10, "y": 20},
 							map[string]any{"x": 30, "y": 40},
+							map[string]any{"x": 50, "y": 35},
+						},
+					},
+					map[string]any{
+						"name": "Group B",
+						"points": []any{
+							map[string]any{"x": 15, "y": 55},
+							map[string]any{"x": 45, "y": 70},
 						},
 					},
 				},
@@ -620,13 +687,25 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"bubble_chart": {
 			description: "Bubble chart with x/y/size data points.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"series": []any{
+					map[string]any{
+						"name": "S1",
+						"points": []any{
+							map[string]any{"x": 1, "y": 1, "size": 10},
+							map[string]any{"x": 2, "y": 2, "size": 20},
+						},
+					},
+				},
+			},
+			realistic: map[string]any{
 				"series": []any{
 					map[string]any{
 						"name": "Markets",
 						"points": []any{
 							map[string]any{"x": 10, "y": 20, "size": 30, "label": "US"},
 							map[string]any{"x": 40, "y": 50, "size": 20, "label": "EU"},
+							map[string]any{"x": 25, "y": 65, "size": 15, "label": "APAC"},
 						},
 					},
 				},
@@ -634,47 +713,81 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"waterfall": {
 			description: "Waterfall chart showing incremental changes to a total.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"items": []any{
+					map[string]any{"label": "Start", "value": 100},
+					map[string]any{"label": "Change", "value": -20},
+					map[string]any{"label": "End", "value": 0, "is_total": true},
+				},
+			},
+			realistic: map[string]any{
 				"items": []any{
 					map[string]any{"label": "Revenue", "value": 500},
 					map[string]any{"label": "COGS", "value": -200},
 					map[string]any{"label": "OpEx", "value": -150},
-					map[string]any{"label": "Profit", "value": 0, "is_total": true},
+					map[string]any{"label": "Tax", "value": -50},
+					map[string]any{"label": "Net Profit", "value": 0, "is_total": true},
 				},
 			},
 		},
 		"org_chart": {
 			description: "Organizational chart with hierarchical nodes.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"nodes": []any{
+					map[string]any{"id": "root", "label": "Lead"},
+					map[string]any{"id": "child", "label": "Report", "parent": "root"},
+				},
+			},
+			realistic: map[string]any{
 				"nodes": []any{
 					map[string]any{"id": "ceo", "label": "CEO", "title": "John Smith"},
-					map[string]any{"id": "vp1", "label": "VP Engineering", "parent": "ceo"},
-					map[string]any{"id": "vp2", "label": "VP Sales", "parent": "ceo"},
+					map[string]any{"id": "vp1", "label": "VP Engineering", "title": "Jane Doe", "parent": "ceo"},
+					map[string]any{"id": "vp2", "label": "VP Sales", "title": "Sam Lee", "parent": "ceo"},
+					map[string]any{"id": "vp3", "label": "VP Finance", "title": "Pat Kim", "parent": "ceo"},
 				},
 			},
 		},
 		"gantt": {
 			description: "Gantt chart for project timelines with tasks and dependencies.",
-			example: map[string]any{
+			minimal: map[string]any{
 				"tasks": []any{
-					map[string]any{"id": "t1", "name": "Design", "start": "2024-01-01", "end": "2024-01-15"},
-					map[string]any{"id": "t2", "name": "Develop", "start": "2024-01-15", "end": "2024-02-15", "depends_on": []any{"t1"}},
+					map[string]any{"id": "t1", "name": "Task", "start": "2026-01-01", "end": "2026-01-15"},
+				},
+			},
+			realistic: map[string]any{
+				"tasks": []any{
+					map[string]any{"id": "t1", "name": "Design", "start": "2026-01-01", "end": "2026-01-15"},
+					map[string]any{"id": "t2", "name": "Develop", "start": "2026-01-15", "end": "2026-02-15", "depends_on": []any{"t1"}},
+					map[string]any{"id": "t3", "name": "Test", "start": "2026-02-15", "end": "2026-03-01", "depends_on": []any{"t2"}},
 				},
 			},
 		},
 		"timeline": {
 			description: "Timeline with dated events.",
-			example: map[string]any{
+			minimal: map[string]any{
 				"events": []any{
-					map[string]any{"date": "2024-01", "title": "Project Start", "description": "Kicked off development"},
-					map[string]any{"date": "2024-06", "title": "Beta Release"},
-					map[string]any{"date": "2024-12", "title": "Launch"},
+					map[string]any{"date": "2026-01", "title": "Start"},
+					map[string]any{"date": "2026-06", "title": "End"},
+				},
+			},
+			realistic: map[string]any{
+				"events": []any{
+					map[string]any{"date": "2026-01", "title": "Project Start", "description": "Kicked off development"},
+					map[string]any{"date": "2026-04", "title": "Alpha"},
+					map[string]any{"date": "2026-08", "title": "Beta Release"},
+					map[string]any{"date": "2026-12", "title": "Launch"},
 				},
 			},
 		},
-		"funnel": {
+		"funnel_chart": {
 			description: "Funnel chart showing progressive narrowing stages.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"stages": []any{
+					map[string]any{"label": "Top", "value": 100},
+					map[string]any{"label": "Bottom", "value": 25},
+				},
+			},
+			realistic: map[string]any{
 				"stages": []any{
 					map[string]any{"label": "Visitors", "value": 10000},
 					map[string]any{"label": "Leads", "value": 5000},
@@ -685,7 +798,14 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"pyramid": {
 			description: "Pyramid diagram with hierarchical layers.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"layers": []any{
+					map[string]any{"label": "Top"},
+					map[string]any{"label": "Middle"},
+					map[string]any{"label": "Base"},
+				},
+			},
+			realistic: map[string]any{
 				"layers": []any{
 					map[string]any{"label": "Self-Actualization"},
 					map[string]any{"label": "Esteem"},
@@ -697,16 +817,29 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"venn": {
 			description: "Venn diagram with 2-4 overlapping circles.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"circles": []any{
+					map[string]any{"label": "A"},
+					map[string]any{"label": "B"},
+				},
+			},
+			realistic: map[string]any{
 				"circles": []any{
 					map[string]any{"label": "Set A", "items": []any{"a", "b", "c"}},
 					map[string]any{"label": "Set B", "items": []any{"c", "d", "e"}},
+					map[string]any{"label": "Set C", "items": []any{"e", "f", "a"}},
 				},
 			},
 		},
 		"swot": {
 			description: "SWOT analysis matrix (Strengths, Weaknesses, Opportunities, Threats).",
-			example: map[string]any{
+			minimal: map[string]any{
+				"strengths":     []any{"S1"},
+				"weaknesses":    []any{"W1"},
+				"opportunities": []any{"O1"},
+				"threats":       []any{"T1"},
+			},
+			realistic: map[string]any{
 				"strengths":     []any{"Strong brand", "Loyal customers"},
 				"weaknesses":    []any{"High costs", "Limited reach"},
 				"opportunities": []any{"New markets", "Partnerships"},
@@ -715,59 +848,101 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"matrix_2x2": {
 			description: "2x2 matrix/quadrant diagram with labeled axes and items.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"x_axis": "X",
+				"y_axis": "Y",
+				"items": []any{
+					map[string]any{"label": "Item", "x": 0.5, "y": 0.5},
+				},
+			},
+			realistic: map[string]any{
 				"x_axis": "Effort",
 				"y_axis": "Impact",
 				"items": []any{
 					map[string]any{"label": "Quick Win", "x": 0.2, "y": 0.8},
 					map[string]any{"label": "Major Project", "x": 0.8, "y": 0.9},
 					map[string]any{"label": "Fill In", "x": 0.3, "y": 0.3},
+					map[string]any{"label": "Avoid", "x": 0.8, "y": 0.2},
 				},
 			},
 		},
 		"fishbone": {
 			description: "Fishbone (Ishikawa) cause-and-effect diagram.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"effect": "Effect",
+				"categories": []any{
+					map[string]any{"name": "Cat1", "causes": []any{"Cause"}},
+				},
+			},
+			realistic: map[string]any{
 				"effect": "Production Delays",
 				"categories": []any{
 					map[string]any{"name": "People", "causes": []any{"Training", "Staffing"}},
 					map[string]any{"name": "Process", "causes": []any{"Bottleneck", "Handoffs"}},
 					map[string]any{"name": "Technology", "causes": []any{"Downtime", "Legacy systems"}},
+					map[string]any{"name": "Materials", "causes": []any{"Supply gaps"}},
 				},
 			},
 		},
 		"heatmap": {
 			description: "Heatmap with rows, columns, and values.",
-			example: map[string]any{
-				"rows":    []any{"Mon", "Tue", "Wed"},
+			minimal: map[string]any{
+				"rows":    []any{"R1", "R2"},
+				"columns": []any{"C1", "C2"},
+				"values":  []any{[]any{1, 2}, []any{3, 4}},
+			},
+			realistic: map[string]any{
+				"rows":    []any{"Mon", "Tue", "Wed", "Thu", "Fri"},
 				"columns": []any{"Morning", "Afternoon", "Evening"},
-				"values":  []any{[]any{3, 7, 2}, []any{5, 9, 4}, []any{1, 6, 8}},
+				"values":  []any{[]any{3, 7, 2}, []any{5, 9, 4}, []any{1, 6, 8}, []any{4, 8, 5}, []any{2, 5, 9}},
 			},
 		},
-		"treemap": {
+		"treemap_chart": {
 			description: "Treemap showing hierarchical data as nested rectangles.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"items": []any{
+					map[string]any{"label": "A", "value": 60},
+					map[string]any{"label": "B", "value": 40},
+				},
+			},
+			realistic: map[string]any{
 				"items": []any{
 					map[string]any{"label": "Category A", "value": 60},
 					map[string]any{"label": "Category B", "value": 30},
 					map[string]any{"label": "Category C", "value": 10},
+					map[string]any{"label": "Category D", "value": 5},
 				},
 			},
 		},
-		"gauge": {
+		"gauge_chart": {
 			description: "Gauge/dial chart showing a single metric against a range.",
-			example: map[string]any{
-				"value":     75,
-				"min":       0,
-				"max":       100,
-				"label":     "Performance",
-				"unit":      "%",
+			minimal: map[string]any{
+				"value": 50,
+				"min":   0,
+				"max":   100,
+			},
+			realistic: map[string]any{
+				"value":      75,
+				"min":        0,
+				"max":        100,
+				"label":      "Performance",
+				"unit":       "%",
 				"thresholds": []any{30, 70},
 			},
 		},
 		"value_chain": {
 			description: "Porter's Value Chain diagram with primary and support activities.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"primary": []any{
+					map[string]any{"label": "Inbound"},
+					map[string]any{"label": "Operations"},
+					map[string]any{"label": "Outbound"},
+				},
+				"support": []any{
+					map[string]any{"label": "Infrastructure"},
+				},
+			},
+			realistic: map[string]any{
 				"primary": []any{
 					map[string]any{"label": "Inbound Logistics"},
 					map[string]any{"label": "Operations"},
@@ -785,7 +960,16 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"porters_five_forces": {
 			description: "Porter's Five Forces competitive analysis diagram.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"center": "Rivalry",
+				"forces": []any{
+					map[string]any{"position": "top", "label": "New Entrants"},
+					map[string]any{"position": "bottom", "label": "Substitutes"},
+					map[string]any{"position": "left", "label": "Suppliers"},
+					map[string]any{"position": "right", "label": "Buyers"},
+				},
+			},
+			realistic: map[string]any{
 				"center": "Industry Rivalry",
 				"forces": []any{
 					map[string]any{"position": "top", "label": "Threat of New Entrants", "level": "high"},
@@ -797,7 +981,12 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"pestel": {
 			description: "PESTEL analysis diagram covering Political, Economic, Social, Technological, Environmental, Legal factors.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"factors": []any{
+					map[string]any{"category": "Political", "items": []any{"Item"}},
+				},
+			},
+			realistic: map[string]any{
 				"factors": []any{
 					map[string]any{"category": "Political", "items": []any{"Regulation", "Trade policy"}},
 					map[string]any{"category": "Economic", "items": []any{"GDP growth", "Inflation"}},
@@ -810,27 +999,131 @@ func getSchemaForType(typ string) diagramSchema {
 		},
 		"nine_box_talent": {
 			description: "9-box talent grid with performance and potential axes.",
-			example: map[string]any{
+			minimal: map[string]any{
+				"x_axis": "Performance",
+				"y_axis": "Potential",
+				"people": []any{
+					map[string]any{"name": "Person", "performance": "medium", "potential": "medium"},
+				},
+			},
+			realistic: map[string]any{
 				"x_axis": "Performance",
 				"y_axis": "Potential",
 				"people": []any{
 					map[string]any{"name": "Alice", "performance": "high", "potential": "high"},
 					map[string]any{"name": "Bob", "performance": "medium", "potential": "high"},
+					map[string]any{"name": "Carol", "performance": "high", "potential": "medium"},
+					map[string]any{"name": "Dan", "performance": "low", "potential": "medium"},
+				},
+			},
+		},
+		"donut_chart": {
+			description: "Donut chart (pie with a hollow center) with labeled slices.",
+			minimal: map[string]any{
+				"slices": []any{
+					map[string]any{"label": "A", "value": 60},
+					map[string]any{"label": "B", "value": 40},
+				},
+			},
+			realistic: map[string]any{
+				"slices": []any{
+					map[string]any{"label": "Product A", "value": 40},
+					map[string]any{"label": "Product B", "value": 30},
+					map[string]any{"label": "Product C", "value": 20},
+					map[string]any{"label": "Other", "value": 10},
+				},
+			},
+		},
+		"area_chart": {
+			description: "Area chart with filled regions under one or more series lines.",
+			minimal: map[string]any{
+				"categories": []any{"T1", "T2"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{10, 20}},
+				},
+			},
+			realistic: map[string]any{
+				"categories": []any{"Jan", "Feb", "Mar", "Apr", "May", "Jun"},
+				"series": []any{
+					map[string]any{"name": "Sales", "values": []any{40, 55, 70, 65, 80, 95}},
+				},
+			},
+		},
+		"stacked_bar_chart": {
+			description: "Stacked bar chart with categories and additive series segments.",
+			minimal: map[string]any{
+				"categories": []any{"A", "B"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{10, 20}},
+					map[string]any{"name": "S2", "values": []any{15, 25}},
+				},
+			},
+			realistic: map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+				"series": []any{
+					map[string]any{"name": "Product", "values": []any{100, 150, 120, 180}},
+					map[string]any{"name": "Services", "values": []any{60, 80, 70, 95}},
+					map[string]any{"name": "Support", "values": []any{20, 30, 25, 35}},
+				},
+			},
+		},
+		"stacked_area_chart": {
+			description: "Stacked area chart where series fills are stacked additively.",
+			minimal: map[string]any{
+				"categories": []any{"T1", "T2"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{10, 20}},
+					map[string]any{"name": "S2", "values": []any{15, 25}},
+				},
+			},
+			realistic: map[string]any{
+				"categories": []any{"Jan", "Feb", "Mar", "Apr", "May", "Jun"},
+				"series": []any{
+					map[string]any{"name": "Direct", "values": []any{40, 55, 70, 65, 80, 95}},
+					map[string]any{"name": "Partner", "values": []any{20, 28, 35, 32, 40, 45}},
+				},
+			},
+		},
+		"grouped_bar_chart": {
+			description: "Grouped (clustered) bar chart with categories and side-by-side series.",
+			minimal: map[string]any{
+				"categories": []any{"A", "B"},
+				"series": []any{
+					map[string]any{"name": "S1", "values": []any{10, 20}},
+					map[string]any{"name": "S2", "values": []any{15, 25}},
+				},
+			},
+			realistic: map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+				"series": []any{
+					map[string]any{"name": "Plan", "values": []any{100, 150, 120, 180}},
+					map[string]any{"name": "Actual", "values": []any{95, 160, 130, 175}},
 				},
 			},
 		},
 		"business_model_canvas": {
 			description: "Business Model Canvas with 9 building blocks.",
-			example: map[string]any{
-				"key_partners":      []any{"Suppliers", "Distributors"},
-				"key_activities":    []any{"Production", "Marketing"},
-				"key_resources":     []any{"IP", "Staff"},
-				"value_proposition": []any{"Quality", "Speed"},
-				"customer_segments": []any{"B2B", "B2C"},
-				"channels":          []any{"Online", "Retail"},
+			minimal: map[string]any{
+				"key_partners":           []any{"Partner"},
+				"key_activities":         []any{"Activity"},
+				"key_resources":          []any{"Resource"},
+				"value_proposition":      []any{"Value"},
+				"customer_segments":      []any{"Segment"},
+				"channels":               []any{"Channel"},
+				"customer_relationships": []any{"Relationship"},
+				"revenue_streams":        []any{"Revenue"},
+				"cost_structure":         []any{"Cost"},
+			},
+			realistic: map[string]any{
+				"key_partners":           []any{"Suppliers", "Distributors"},
+				"key_activities":         []any{"Production", "Marketing"},
+				"key_resources":          []any{"IP", "Staff"},
+				"value_proposition":      []any{"Quality", "Speed"},
+				"customer_segments":      []any{"B2B", "B2C"},
+				"channels":               []any{"Online", "Retail"},
 				"customer_relationships": []any{"Self-service", "Community"},
-				"revenue_streams":   []any{"Subscriptions", "Licensing"},
-				"cost_structure":    []any{"Fixed costs", "Variable costs"},
+				"revenue_streams":        []any{"Subscriptions", "Licensing"},
+				"cost_structure":         []any{"Fixed costs", "Variable costs"},
 			},
 		},
 	}
@@ -1190,7 +1483,7 @@ func toolCatalog() []capabilitiesToolEntry {
 		},
 		{
 			Name:        "get_diagram_schema",
-			Description: "Get the expected data schema and a minimal example for a specific diagram type.",
+			Description: "Get the expected data schema and canonical example_values (minimal + realistic) for a specific diagram type. Mirrors show_pattern.example_values from json2pptx-mcp.",
 		},
 		{
 			Name:        "get_capabilities",

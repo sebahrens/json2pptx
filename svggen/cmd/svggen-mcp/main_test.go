@@ -656,9 +656,13 @@ func TestHandleGetDiagramSchemaKnown(t *testing.T) {
 
 	text := result.Content[0].(mcp.TextContent).Text
 	var sr struct {
-		Type        string `json:"type"`
-		Description string `json:"description"`
-		Example     any    `json:"example"`
+		Type          string `json:"type"`
+		Description   string `json:"description"`
+		Example       any    `json:"example"`
+		ExampleValues struct {
+			Minimal   any `json:"minimal"`
+			Realistic any `json:"realistic"`
+		} `json:"example_values"`
 	}
 	if err := json.Unmarshal([]byte(text), &sr); err != nil {
 		t.Fatalf("failed to parse schema result: %v", err)
@@ -670,7 +674,65 @@ func TestHandleGetDiagramSchemaKnown(t *testing.T) {
 		t.Fatal("expected non-empty description")
 	}
 	if sr.Example == nil {
-		t.Fatal("expected non-nil example")
+		t.Fatal("expected non-nil example (back-compat)")
+	}
+	if sr.ExampleValues.Minimal == nil {
+		t.Fatal("expected non-nil example_values.minimal")
+	}
+	if sr.ExampleValues.Realistic == nil {
+		t.Fatal("expected non-nil example_values.realistic")
+	}
+}
+
+// TestGetDiagramSchemaExampleValuesAllTypes locks the agent-facing contract
+// that every diagram type registered in get_diagram_schema returns both a
+// minimal and a realistic example under the example_values envelope.
+// Mirrors json2pptx-mcp.show_pattern.example_values for cross-tool muscle
+// memory.
+func TestGetDiagramSchemaExampleValuesAllTypes(t *testing.T) {
+	// Covers every diagram type registered in svggen/init.go so we lock the
+	// contract that get_diagram_schema returns example_values for the full
+	// registered surface, not just a subset.
+	types := []string{
+		"waterfall", "matrix_2x2", "timeline",
+		"funnel_chart", "gauge_chart", "treemap_chart",
+		"venn", "org_chart", "gantt", "fishbone",
+		"bar_chart", "line_chart", "pie_chart", "donut_chart",
+		"area_chart", "radar_chart", "scatter_chart",
+		"stacked_bar_chart", "bubble_chart",
+		"stacked_area_chart", "grouped_bar_chart",
+	}
+	for _, diagramType := range types {
+		t.Run(diagramType, func(t *testing.T) {
+			result, err := handleGetDiagramSchema(context.Background(), makeRequest(map[string]any{
+				"type": diagramType,
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.IsError {
+				t.Fatalf("unexpected error: %v", result.Content)
+			}
+			text := result.Content[0].(mcp.TextContent).Text
+			var sr struct {
+				ExampleValues *struct {
+					Minimal   any `json:"minimal"`
+					Realistic any `json:"realistic"`
+				} `json:"example_values"`
+			}
+			if err := json.Unmarshal([]byte(text), &sr); err != nil {
+				t.Fatalf("failed to parse schema result: %v", err)
+			}
+			if sr.ExampleValues == nil {
+				t.Fatalf("%s: missing example_values envelope", diagramType)
+			}
+			if sr.ExampleValues.Minimal == nil {
+				t.Errorf("%s: missing example_values.minimal", diagramType)
+			}
+			if sr.ExampleValues.Realistic == nil {
+				t.Errorf("%s: missing example_values.realistic", diagramType)
+			}
+		})
 	}
 }
 
