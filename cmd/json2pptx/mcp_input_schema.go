@@ -463,8 +463,9 @@ func reflectStructSchema(typeName string, t reflect.Type) map[string]any {
 	sort.Strings(required)
 
 	result := map[string]any{
-		"type":       "object",
-		"properties": properties,
+		"type":                 "object",
+		"properties":           properties,
+		"additionalProperties": false,
 	}
 	if len(required) > 0 {
 		result["required"] = required

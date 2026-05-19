@@ -417,6 +417,36 @@ func TestGetInputSchema(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("struct $defs forbid unknown keys", func(t *testing.T) {
+		// All non-map object $defs must emit additionalProperties:false so
+		// that schema-driven agents catch typos before calling validate_input.
+		schema := buildInputSchema()
+		defs := schema["$defs"].(map[string]any)
+		for typeName, def := range defs {
+			defMap, ok := def.(map[string]any)
+			if !ok {
+				continue
+			}
+			if defMap["type"] != "object" {
+				continue
+			}
+			// Map-like objects intentionally use additionalProperties:<schema>;
+			// non-map struct objects must use additionalProperties:false.
+			if _, hasProps := defMap["properties"]; !hasProps {
+				continue
+			}
+			ap, ok := defMap["additionalProperties"]
+			if !ok {
+				t.Errorf("%s: missing additionalProperties", typeName)
+				continue
+			}
+			b, isBool := ap.(bool)
+			if !isBool || b {
+				t.Errorf("%s: expected additionalProperties=false, got %v", typeName, ap)
+			}
+		}
+	})
 }
 
 // enumStrings normalizes an enum value (which may be []string from the builder
