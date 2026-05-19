@@ -322,8 +322,18 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		if slideInput.LayoutID == "" {
 			if slideInput.SlideType == "" {
 				output.Valid = false
-				output.Errors = append(output.Errors,
-					fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1))
+				msg := fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1)
+				output.Errors = append(output.Errors, msg)
+				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+					Code:     patterns.ErrCodeRequired,
+					Path:     slidepath.SlideField(i, "layout_id"),
+					Message:  msg,
+					Severity: diagnostics.SeverityError,
+					Fix: &diagnostics.Fix{
+						Kind:   "provide_value",
+						Params: map[string]any{"field": "layout_id_or_slide_type"},
+					},
+				})
 			}
 		} else if !layoutFound {
 			output.Valid = false
@@ -348,6 +358,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			}
 			output.Errors = append(output.Errors, ve.Error())
 			output.ValidationWarnings = append(output.ValidationWarnings, ve)
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 		} else {
 			slide.LayoutName = lm.Name
 		}
@@ -361,8 +372,18 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 			if item.PlaceholderID == "" {
 				output.Valid = false
-				output.Errors = append(output.Errors,
-					fmt.Sprintf("slide %d, content %d: placeholder_id is required", i+1, j+1))
+				msg := fmt.Sprintf("slide %d, content %d: placeholder_id is required", i+1, j+1)
+				output.Errors = append(output.Errors, msg)
+				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+					Code:     patterns.ErrCodeRequired,
+					Path:     slidepath.ContentField(i, j, "placeholder_id"),
+					Message:  msg,
+					Severity: diagnostics.SeverityError,
+					Fix: &diagnostics.Fix{
+						Kind:   "provide_value",
+						Params: map[string]any{"field": "placeholder_id"},
+					},
+				})
 			} else if layoutFound {
 				// Check placeholder_id reference against layout
 				phInfo, phFound := phByKey[phKey{slideInput.LayoutID, item.PlaceholderID}]
@@ -389,6 +410,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					}
 					output.Errors = append(output.Errors, ve.Error())
 					output.ValidationWarnings = append(output.ValidationWarnings, ve)
+					output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 				} else {
 					ph.MaxChars = phInfo.MaxChars
 
@@ -398,9 +420,22 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						if text, ok := resolved.(string); ok && len(text) > phInfo.MaxChars {
 							ph.Truncated = true
 							ph.TruncateAt = phInfo.MaxChars
-							output.Warnings = append(output.Warnings,
-								fmt.Sprintf("slide %d, content %d: text (%d chars) exceeds placeholder %q limit (%d chars)",
-									i+1, j+1, len(text), item.PlaceholderID, phInfo.MaxChars))
+							msg := fmt.Sprintf("slide %d, content %d: text (%d chars) exceeds placeholder %q limit (%d chars)",
+								i+1, j+1, len(text), item.PlaceholderID, phInfo.MaxChars)
+							output.Warnings = append(output.Warnings, msg)
+							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+								Code:     patterns.ErrCodeMaxLength,
+								Path:     slidepath.ContentField(i, j, "text"),
+								Message:  msg,
+								Severity: diagnostics.SeverityWarning,
+								Fix: &diagnostics.Fix{
+									Kind: "shrink_text",
+									Params: map[string]any{
+										"max_chars":     phInfo.MaxChars,
+										"current_chars": len(text),
+									},
+								},
+							})
 						}
 					}
 				}
@@ -409,17 +444,42 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			// Validate content type
 			if item.Type == "" {
 				output.Valid = false
-				output.Errors = append(output.Errors,
-					fmt.Sprintf("slide %d, content %d: type is required", i+1, j+1))
+				msg := fmt.Sprintf("slide %d, content %d: type is required", i+1, j+1)
+				output.Errors = append(output.Errors, msg)
+				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+					Code:     patterns.ErrCodeRequired,
+					Path:     slidepath.ContentField(i, j, "type"),
+					Message:  msg,
+					Severity: diagnostics.SeverityError,
+					Fix: &diagnostics.Fix{
+						Kind:   "provide_value",
+						Params: map[string]any{"field": "type"},
+					},
+				})
 			} else {
+				validTypes := []string{"text", "bullets", "body_and_bullets", "bullet_groups", "table", "image", "chart", "diagram"}
 				switch item.Type {
 				case "text", "bullets", "body_and_bullets", "bullet_groups", "table", "image", "chart", "diagram":
 					// valid types
 				default:
 					output.Valid = false
-					output.Errors = append(output.Errors,
-						fmt.Sprintf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)",
-							i+1, j+1, item.Type))
+					msg := fmt.Sprintf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)",
+						i+1, j+1, item.Type)
+					output.Errors = append(output.Errors, msg)
+					fix := &diagnostics.Fix{
+						Kind:   "use_one_of",
+						Params: map[string]any{"available": validTypes},
+					}
+					if match, _ := generator.ClosestMatch(item.Type, validTypes, 3); match != "" {
+						fix.Params["did_you_mean"] = match
+					}
+					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+						Code:     diagnostics.CodeUnknownEnum,
+						Path:     slidepath.ContentField(i, j, "type"),
+						Message:  msg,
+						Severity: diagnostics.SeverityError,
+						Fix:      fix,
+					})
 				}
 				// Count content types
 				switch item.Type {
@@ -433,7 +493,9 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					table := resolveTableFromContent(&item)
 					if table != nil {
 						tablePath := slidepath.ContentIndex(i, j)
-						output.ValidationWarnings = append(output.ValidationWarnings, pipeline.DetectTableDensity(table, tablePath)...)
+						densityWarnings := pipeline.DetectTableDensity(table, tablePath)
+						output.ValidationWarnings = append(output.ValidationWarnings, densityWarnings...)
+						output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(densityWarnings)...)
 
 						// Warn when both header_background and style_id are explicitly authored.
 						if table.Style != nil {
@@ -441,16 +503,19 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 								table.Style.HeaderBackground != nil,
 								table.Style.StyleID != "",
 							); w != "" {
-								output.ValidationWarnings = append(output.ValidationWarnings, &patterns.ValidationError{
+								collisionVE := &patterns.ValidationError{
 									Path:    tablePath,
 									Code:    "style_collision",
 									Message: w,
-								})
+								}
+								output.ValidationWarnings = append(output.ValidationWarnings, collisionVE)
+								output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(collisionVE))
 							}
 						}
 						// Validate style_id against template's declared table styles.
 						if vw := validateTableStyleID(table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.ValidationWarnings = append(output.ValidationWarnings, vw)
+							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(vw))
 						}
 					}
 				}
@@ -460,8 +525,15 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			if item.Type != "" {
 				if _, err := item.ResolveValue(); err != nil {
 					output.Valid = false
-					output.Errors = append(output.Errors,
-						fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, err))
+					msg := fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, err)
+					output.Errors = append(output.Errors, msg)
+					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+						Code:     diagnostics.CodeInvalidParameter,
+						Path:     slidepath.ContentField(i, j, item.Type+"_value"),
+						Message:  msg,
+						Severity: diagnostics.SeverityError,
+						Details:  map[string]any{"cause": err.Error()},
+					})
 				}
 			}
 
@@ -469,7 +541,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			if item.UsesLegacyValue() {
 				typedField := item.Type + "_value"
 				path := slidepath.ContentIndex(i, j)
-				output.ValidationWarnings = append(output.ValidationWarnings, &patterns.ValidationError{
+				legacyVE := &patterns.ValidationError{
 					Path:    path,
 					Code:    "legacy_authoring_form",
 					Message: fmt.Sprintf("slide %d, content %d: uses legacy \"value\" field; prefer \"%s\" for new decks", i+1, j+1, typedField),
@@ -477,12 +549,23 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						Kind:   "rewrite_field",
 						Params: map[string]any{"from": "value", "to": typedField},
 					},
-				})
+				}
+				output.ValidationWarnings = append(output.ValidationWarnings, legacyVE)
+				output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(legacyVE))
 			}
 
 			// Validate chart/diagram data structure via svggen
 			if item.Type == "chart" || item.Type == "diagram" {
-				output.Warnings = append(output.Warnings, validateContentDiagramData(item, i+1, j+1)...)
+				chartWarnings := validateContentDiagramData(item, i+1, j+1)
+				output.Warnings = append(output.Warnings, chartWarnings...)
+				for _, w := range chartWarnings {
+					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+						Code:     patterns.ErrCodeChartValueCoerced,
+						Path:     slidepath.ContentIndex(i, j),
+						Message:  w,
+						Severity: diagnostics.SeverityWarning,
+					})
+				}
 			}
 
 			slide.Placeholders = append(slide.Placeholders, ph)
@@ -497,9 +580,26 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			output.DiagramCount += gridCounts.Diagrams
 			output.Warnings = append(output.Warnings, gridWarnings...)
 			output.ValidationWarnings = append(output.ValidationWarnings, gridValWarnings...)
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(gridValWarnings)...)
+			for _, w := range gridWarnings {
+				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeInvalidGrid,
+					Path:     slidepath.ShapeGrid(i),
+					Message:  w,
+					Severity: diagnostics.SeverityWarning,
+				})
+			}
 			if len(gridErrors) > 0 {
 				output.Valid = false
 				output.Errors = append(output.Errors, gridErrors...)
+				for _, e := range gridErrors {
+					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+						Code:     diagnostics.CodeInvalidGrid,
+						Path:     slidepath.ShapeGrid(i),
+						Message:  e,
+						Severity: diagnostics.SeverityError,
+					})
+				}
 			}
 
 			// Validate style_id for tables inside shape_grid cells.
@@ -509,6 +609,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						tablePath := slidepath.GridCellField(i, rowIdx, cellIdx, "table")
 						if vw := validateTableStyleID(cell.Table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.ValidationWarnings = append(output.ValidationWarnings, vw)
+							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(vw))
 						}
 					}
 				}

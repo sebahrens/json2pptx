@@ -694,3 +694,83 @@ func TestHandleScoreDeck_PresentationObject(t *testing.T) {
 	}
 	requireStructuredContent(t, result)
 }
+
+// TestHandleValidate_SlideLevelDiagnostics verifies that slide-level
+// validation failures (unknown layout_id, unknown placeholder_id, unknown
+// content type) propagate into the MCP error envelope's diagnostics[] field.
+// Regression for go-slide-creator-4l04.
+func TestHandleValidate_SlideLevelDiagnostics(t *testing.T) {
+	cases := []struct {
+		name     string
+		deck     string
+		wantCode string
+		wantPath string
+	}{
+		{
+			name:     "unknown_layout_id",
+			deck:     `{"template":"midnight-blue","slides":[{"layout_id":"slideLayoutBogus","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+			wantCode: "unknown_layout_id",
+			wantPath: "/slides/0/layout_id",
+		},
+		{
+			name:     "unknown_placeholder_id",
+			deck:     `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"definitely_not_here","type":"text","text_value":"Hi"}]}]}`,
+			wantCode: "placeholder_not_found",
+			wantPath: "/slides/0/content/0/placeholder_id",
+		},
+		{
+			name:     "missing_layout_id_and_slide_type",
+			deck:     `{"template":"midnight-blue","slides":[{"content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`,
+			wantCode: "required",
+			wantPath: "/slides/0/layout_id",
+		},
+		{
+			name:     "missing_placeholder_id",
+			deck:     `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","content":[{"type":"text","text_value":"Hi"}]}]}`,
+			wantCode: "required",
+			wantPath: "/slides/0/content/0/placeholder_id",
+		},
+		{
+			name:     "unknown_content_type",
+			deck:     `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"warble"}]}]}`,
+			wantCode: "UNKNOWN_ENUM",
+			wantPath: "/slides/0/content/0/type",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mc := &mcpConfig{
+				templatesDir: "../../templates",
+				outputDir:    t.TempDir(),
+				cache:        template.NewMemoryCache(24 * time.Hour),
+			}
+			result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+				"presentation": mustParseJSON(tc.deck),
+			}))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !result.IsError {
+				t.Fatal("expected IsError=true for slide-level validation failure")
+			}
+			requireStructuredContent(t, result)
+
+			b, _ := json.Marshal(result.StructuredContent)
+			var env mcpErrorEnvelope
+			if err := json.Unmarshal(b, &env); err != nil {
+				t.Fatalf("envelope parse: %v", err)
+			}
+			if len(env.Diagnostics) == 0 {
+				t.Fatal("expected non-empty diagnostics; got boundary-only / empty envelope")
+			}
+			d := requireDiagCode(t, env.Diagnostics, tc.wantCode)
+			if d.Path != tc.wantPath {
+				t.Errorf("diagnostic path: got %q, want %q", d.Path, tc.wantPath)
+			}
+			if d.Severity != diagnostics.SeverityError {
+				t.Errorf("diagnostic severity: got %q, want error", d.Severity)
+			}
+		})
+	}
+}
