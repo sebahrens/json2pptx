@@ -154,22 +154,33 @@ var fieldScopeMap = map[string]map[string]string{
 }
 
 // enumMap defines inline enum values for specific struct fields.
+//
+// Slide- and deck-level field vocabularies come from enums.go (the canonical
+// source consumed by the validator, capabilities, and docs). Schema-only
+// vocabularies (connector style/dash, compose direction, split_slide type
+// and by) stay inline because they describe shapes peculiar to the JSON
+// envelope, not slide-level enums published across surfaces.
 var enumMap = map[string]map[string][]string{
 	"PresentationInput": {
-		"design_mode":     {"constrained", "free"},
-		"accent_strategy": {"primary", "rotate", "section-keyed"},
+		"design_mode":     canonicalDesignModes,
+		"accent_strategy": canonicalAccentStrategies,
 	},
 	"SlideInput": {
-		"slide_type":       {"title", "content", "section", "two-column", "blank", "chart", "diagram", "image", "comparison", "closing"},
-		"transition":       {"fade", "push", "wipe", "split", "cover", "uncover", "reveal", "none"},
-		"transition_speed": {"slow", "medium", "fast"},
-		"build":            {"bullets"},
+		"slide_type":       canonicalSlideTypes,
+		"transition":       canonicalTransitions(),
+		"transition_speed": canonicalTransitionSpeeds,
+		"build":            canonicalBuilds,
 	},
 	"ContentInput": {
+		// Content types include "chart" because the contentTypeDiscriminator
+		// allOf branches pair type:"chart" with chart_value; the engine still
+		// accepts that branch. Capabilities advertises the slimmer
+		// generator.AllContentTypes() — alignment of these two surfaces is
+		// tracked as a separate task.
 		"type": {"text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "chart", "diagram", "image"},
 	},
 	"BackgroundInput": {
-		"fit": {"cover", "stretch", "tile"},
+		"fit": canonicalBackgroundFits,
 	},
 	"ConnectorSpecInput": {
 		"style": {"arrow", "line"},

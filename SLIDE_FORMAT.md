@@ -47,7 +47,7 @@ This document describes the JSON input format for `json2pptx`. JSON input provid
   "speaker_notes": "Talking points for this slide.",
   "source": "Source: Annual Report 2025",
   "transition": "fade",
-  "transition_speed": "med",
+  "transition_speed": "medium",
   "build": "bullets"
 }
 ```
@@ -61,8 +61,8 @@ This document describes the JSON input format for `json2pptx`. JSON input provid
 | `background` | No | Slide background: `{"image": "path/to/bg.png"}` or `{"url": "https://..."}` with optional `"fit": "cover"\|"stretch"\|"tile"` |
 | `speaker_notes` | No | Speaker notes text |
 | `source` | No | Source attribution text |
-| `transition` | No | Slide transition: `fade`, `push`, `wipe`, `cover`, `cut`, `none` |
-| `transition_speed` | No | Transition speed: `slow`, `med`, `fast` |
+| `transition` | No | Slide transition: `fade`, `push`, `wipe`, `cover`, `uncover`, `cut`, `dissolve`, `none` |
+| `transition_speed` | No | Transition speed: `slow`, `medium`, `fast` (legacy alias `med` is also accepted) |
 | `build` | No | Build animation: `bullets` for one-by-one bullet reveal |
 
 Provide `layout_id` for explicit layout selection, or `slide_type` for automatic selection based on template tags. If both are omitted, the generator infers from content.
