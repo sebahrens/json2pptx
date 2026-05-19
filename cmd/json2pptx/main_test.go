@@ -1337,6 +1337,47 @@ func TestRunJSONMode_OutputFilenameExtension(t *testing.T) {
 	}
 }
 
+// TestRunJSONMode_OutputAsFilePath verifies that passing --output as a .pptx
+// file path is treated as a file destination (parent dir + filename), not as
+// a directory that contains the generated file. Regression for
+// go-slide-creator-5k3c.
+func TestRunJSONMode_OutputAsFilePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "input.json")
+	jsonResultPath := filepath.Join(tmpDir, "result.json")
+
+	input := `{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "title",
+			"content": [{"placeholder_id": "title", "type": "text", "text_value": "Hello"}]
+		}]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	templatesDir := filepath.Join("..", "..", "templates")
+	outputFile := filepath.Join(tmpDir, "my-deck.pptx")
+
+	err := runJSONMode(jsonPath, jsonResultPath, templatesDir, outputFile, "", false, false, "", "off", false, "off", "", false)
+	if err != nil {
+		t.Fatalf("runJSONMode failed: %v", err)
+	}
+
+	// outputFile must exist as a regular file, not as a directory.
+	info, statErr := os.Stat(outputFile)
+	if statErr != nil {
+		t.Fatalf("expected file at %s, stat failed: %v", outputFile, statErr)
+	}
+	if info.IsDir() {
+		t.Errorf("expected %s to be a regular file, got a directory", outputFile)
+	}
+	if info.Size() == 0 {
+		t.Errorf("expected non-empty pptx at %s", outputFile)
+	}
+}
+
 // Test for invalid config path
 
 func TestRunJSONMode_InvalidConfig(t *testing.T) {

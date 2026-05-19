@@ -318,10 +318,23 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error { //nolint:gocognit,gocyclo
 	startTime := time.Now()
 
+	// If --output looks like a .pptx file path (e.g. "/tmp/deck.pptx"), split
+	// it into the parent directory + filename so users can intuitively pass a
+	// file destination instead of being forced to use a directory. The filename
+	// portion overrides input.OutputFilename below.
+	outputFilenameOverride := ""
+	if strings.HasSuffix(strings.ToLower(outputDir), ".pptx") {
+		outputFilenameOverride = filepath.Base(outputDir)
+		outputDir = filepath.Dir(outputDir)
+	}
+
 	// Parse and validate JSON input
 	input, inputWarnings, err := parseJSONInput(jsonPath, templateOverride, designModeOverride, strictUnknownKeys)
 	if err != nil {
 		return writeJSONError(jsonOutputPath, err)
+	}
+	if outputFilenameOverride != "" {
+		input.OutputFilename = outputFilenameOverride
 	}
 	// inputWarnings consumed below via result.Warnings merge.
 

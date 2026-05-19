@@ -635,7 +635,7 @@ The `json2pptx` binary is the primary tool: batch converter, HTTP API server, an
 | `-json` | (required) | Path to JSON input file, or `-` for stdin |
 | `-template` | | Template name (without `.pptx`) |
 | `-templates-dir` | `./templates` | Directory containing templates |
-| `-output` | `./output` | Output directory for generated PPTX files |
+| `-output` | `./output` | Output directory for generated PPTX files (or a `.pptx` file path, e.g. `/tmp/deck.pptx`) |
 | `-json-output` | | Path for JSON result output (headless mode) |
 | `-dry-run` / `-n` | `false` | Validate input and show layout selections without generating |
 | `-strict-fit` | `warn` | Text-fit checking mode: `off`, `warn`, or `strict` (refuse on overflow) |

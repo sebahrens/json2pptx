@@ -13,7 +13,7 @@ func runGenerate() error {
 
 	templateName := fs.String("template", "", "Template name (without .pptx extension)")
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
-	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files")
+	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files (or a .pptx file path, e.g. /tmp/deck.pptx)")
 	configPath := fs.String("config", "", "Path to config file (optional)")
 	verbose := fs.Bool("verbose", false, "Enable verbose output")
 	jsonInput := fs.String("json", "", "Path to JSON input file (use - for stdin)")
