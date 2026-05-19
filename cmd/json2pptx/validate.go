@@ -221,6 +221,12 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) val
 		result.Errors = append(result.Errors, ve.Error())
 	}
 
+	// No-emoji policy — emoji codepoints in any text field are validation errors.
+	for _, v := range ValidateNoEmojiInText(&input) {
+		result.Valid = false
+		result.Errors = append(result.Errors, v.Message)
+	}
+
 	// Validate required fields.
 	if input.Template == "" {
 		result.Valid = false

@@ -388,6 +388,19 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		}
 	}
 
+	// No-emoji policy — applies regardless of design mode. Emoji codepoints
+	// in any user-supplied text are a hard error so authors switch to the
+	// bundled SVG icon set or user-provided icons.
+	if emojiViolations := ValidateNoEmojiInText(input); len(emojiViolations) > 0 {
+		msgs := make([]string, 0, len(emojiViolations))
+		for _, v := range emojiViolations {
+			msgs = append(msgs, v.Message)
+		}
+		return writeJSONError(jsonOutputPath, fmt.Errorf(
+			"no_emoji policy violation(s):\n  %s",
+			strings.Join(msgs, "\n  ")))
+	}
+
 	// Run text-fit checking when --strict-fit is warn or strict.
 	// Findings from warn mode are merged into the structured fit_findings
 	// output below so JSON consumers see them without having to separately

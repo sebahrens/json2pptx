@@ -349,6 +349,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		boundaryDiags = append(boundaryDiags, designModeDiagnostics(violations)...)
 	}
 
+	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
+	// Authors must use bundled SVG icons (see svggen/icons) or user-provided icons.
+	if emojiViolations := ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
+		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
+	}
+
 	// Fail fast if any boundary diagnostic is an error.
 	if diagnostics.HasErrors(boundaryDiags) {
 		return api.MCPDiagnosticsError(boundaryDiags), nil
@@ -821,6 +827,11 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// Design mode constraints.
 	if violations := validateDesignMode(&input); len(violations) > 0 {
 		boundaryDiags = append(boundaryDiags, designModeDiagnostics(violations)...)
+	}
+
+	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
+	if emojiViolations := ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
+		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
 	}
 
 	output := dryRunOutput{

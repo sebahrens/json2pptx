@@ -305,9 +305,5 @@ func createFormattedRuns(text string, templateRProps *runPropertiesXML) []runXML
 		}
 	}
 
-	// Split runs at emoji boundaries and inject emoji-capable font so
-	// PowerPoint renders pictographs instead of blank spaces.
-	runs = splitEmojiRuns(runs)
-
 	return runs
 }
