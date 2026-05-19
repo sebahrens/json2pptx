@@ -469,6 +469,39 @@ See also: [PATTERNS.md Cell Capacity Contract](PATTERNS.md) for pattern-level ca
 }
 ```
 
+### `accent_overload`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `consolidate_accents`
+
+Emitted by `DetectStructuralSmells` (via `validate_input`, dry-run, and the pipeline's per-slide checks) when a single slide's `shape_grid` uses more than two distinct accent semantic fills (`accent1` … `accent6`). The cap is two so that a slide can still draw a paired comparison (current vs. proposed, before vs. after) without losing focus, but three or more accents on one slide reads as visual noise — the audience cannot tell which item is the argument.
+
+Mechanics:
+
+- Only semantic accent names count. Hex fills are ignored here (the hex/scheme mixing check is a separate finding). Neutrals like `lt1`, `dk1`, `lt2` are not accents and do not count.
+- Object-form fills with tint/shade modifiers (`{"color": "accent1", "lumMod": 75000}`) count as the same hue as the bare scheme name — three `accent1` tints are still one accent.
+- The fix suggestion's `params.accents_used` lists the distinct accents found, and the recommended remedy is to pick one base accent and use `cell_accent_mode` (`alternate` or `progressive`) when a grid genuinely needs item-level differentiation.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/2/shape_grid",
+  "code": "accent_overload",
+  "severity": "warning",
+  "message": "slide 3: shape_grid uses 4 distinct accent hues (accent1, accent2, accent3, accent4); max 2 — pick one base accent and use cell_accent_mode for within-slide variety",
+  "fix": {
+    "kind": "consolidate_accents",
+    "params": {
+      "accents_used": ["accent1","accent2","accent3","accent4"],
+      "max_accents": 2,
+      "guidance": "keep at most two accent hues per slide; use cell_accent_mode (alternate/progressive) for grids that need item differentiation"
+    }
+  },
+  "action": "review"
+}
+```
+
 ### `takeaway_missing`
 
 **Action:** `review`

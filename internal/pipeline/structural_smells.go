@@ -27,7 +27,20 @@ const (
 	// minDividerHeightPct is the minimum height percentage of the slide that a
 	// divider shape row should occupy. Rows shorter than this are flagged.
 	minDividerHeightPct = 4.0
+
+	// maxAccentHuesPerSlide is the maximum number of distinct accent hues
+	// (accent1..accent6) that may appear on a single slide before the
+	// composition reads as "many colors competing" rather than "one focused
+	// argument". Above this, the validator emits an `accent_overload`
+	// finding. Two hues lets a slide draw a paired comparison (current
+	// vs. proposed, before vs. after) without losing focus.
+	maxAccentHuesPerSlide = 2
 )
+
+// accentColorPattern matches "accent1".."accent6" semantic color names,
+// optionally suffixed by tint modifiers the renderer accepts (e.g.,
+// `accent1` proper or just the bare scheme name).
+var accentColorPattern = regexp.MustCompile(`^accent[1-6]$`)
 
 // hexColorPattern matches #RGB or #RRGGBB hex color strings.
 var hexColorPattern = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
@@ -51,6 +64,7 @@ func DetectStructuralSmells(grid *jsonschema.ShapeGridInput, slideIdx int) []*pa
 	warnings = append(warnings, detectStackedTables(grid, slideIdx)...)
 	warnings = append(warnings, detectDividerTooThin(grid, slideIdx)...)
 	warnings = append(warnings, detectMixedFillScheme(grid, slideIdx)...)
+	warnings = append(warnings, detectAccentOverload(grid, slideIdx)...)
 	return warnings
 }
 
@@ -205,6 +219,82 @@ func detectMixedFillScheme(grid *jsonschema.ShapeGridInput, slideIdx int) []*pat
 	}
 
 	return nil
+}
+
+// detectAccentOverload flags slides whose shape_grid uses more than
+// maxAccentHuesPerSlide distinct accent semantic fills (accent1..accent6).
+// Multiple accent hues on one slide reads as visual noise — the audience
+// cannot tell which item is the focus. The "one accent per slide" rule
+// allows a second accent for paired comparisons but blocks three or more.
+//
+// Hex fills are ignored here; mixed hex+semantic combinations are caught
+// by detectMixedFillScheme. Cells whose fill is a tint/shade object
+// referencing an accent (e.g. `{"color": "accent1", "lumMod": 75000}`)
+// count toward the same accent hue as the bare name.
+func detectAccentOverload(grid *jsonschema.ShapeGridInput, slideIdx int) []*patterns.ValidationError {
+	hues := make(map[string]struct{})
+	walkAccentFills(grid, func(name string) {
+		if accentColorPattern.MatchString(name) {
+			hues[name] = struct{}{}
+		}
+	})
+
+	if len(hues) <= maxAccentHuesPerSlide {
+		return nil
+	}
+
+	names := make([]string, 0, len(hues))
+	for n := range hues {
+		names = append(names, n)
+	}
+	// Stable order so the message is deterministic for snapshot tests.
+	sortStrings(names)
+
+	path := slidepath.ShapeGrid(slideIdx)
+	return []*patterns.ValidationError{{
+		Pattern: "shape_grid",
+		Path:    path,
+		Code:    patterns.ErrCodeAccentOverload,
+		Message: fmt.Sprintf(
+			"slide %d: shape_grid uses %d distinct accent hues (%s); max %d — pick one base accent and use cell_accent_mode for within-slide variety",
+			slideIdx+1, len(hues), strings.Join(names, ", "), maxAccentHuesPerSlide),
+		Fix: &patterns.FixSuggestion{
+			Kind: "consolidate_accents",
+			Params: map[string]any{
+				"accents_used": names,
+				"max_accents":  maxAccentHuesPerSlide,
+				"guidance":     "keep at most two accent hues per slide; use cell_accent_mode (alternate/progressive) for grids that need item differentiation",
+			},
+		},
+	}}
+}
+
+// walkAccentFills calls visit for every fill color found on a shape_grid
+// cell's shape. Object-form fills (with tint/shade modifiers) yield their
+// base `color` value, so tinted accents count as the same hue as the bare
+// scheme name.
+func walkAccentFills(grid *jsonschema.ShapeGridInput, visit func(name string)) {
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil || cell.Shape == nil || len(cell.Shape.Fill) == 0 {
+				continue
+			}
+			color := extractFillColor(cell.Shape.Fill)
+			if color != "" {
+				visit(color)
+			}
+		}
+	}
+}
+
+// sortStrings sorts a slice in place. Small helper to avoid importing sort
+// in a hot file already crowded with imports.
+func sortStrings(s []string) {
+	for i := 1; i < len(s); i++ {
+		for j := i; j > 0 && s[j-1] > s[j]; j-- {
+			s[j-1], s[j] = s[j], s[j-1]
+		}
+	}
 }
 
 // DetectTableDensity checks a single table against TDR density rules and returns

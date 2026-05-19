@@ -41,6 +41,7 @@ const (
 	ErrCodePatternOvercrowded  = "pattern_overcrowded"
 	ErrCodeCellUnderfilled     = "cell_underfilled"
 	ErrCodeTakeawayMissing     = "takeaway_missing"
+	ErrCodeAccentOverload      = "accent_overload"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced  = "chart_value_coerced"
@@ -107,6 +108,7 @@ var (
 	ErrPatternOvercrowded  = errors.New("pattern grid exceeds recommended cell count")
 	ErrCellUnderfilled     = errors.New("cell content is well below capacity")
 	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
+	ErrAccentOverload      = errors.New("slide uses more than two distinct accent hues")
 
 	ErrChartValueCoerced  = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred = errors.New("chart data shape inferred from flat input")
@@ -162,6 +164,7 @@ var codeSentinel = map[string]error{
 	ErrCodePatternOvercrowded:    ErrPatternOvercrowded,
 	ErrCodeCellUnderfilled:       ErrCellUnderfilled,
 	ErrCodeTakeawayMissing:       ErrTakeawayMissing,
+	ErrCodeAccentOverload:        ErrAccentOverload,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,
