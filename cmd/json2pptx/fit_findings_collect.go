@@ -104,15 +104,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// post-compose check on the merged grid should not double-surface.
 	findings = dedupFitFindings(findings)
 
-	// Sort by ActionRank desc, then slide index asc.
-	sort.Slice(findings, func(i, j int) bool {
-		ri := patterns.ActionRank(findings[i].Action)
-		rj := patterns.ActionRank(findings[j].Action)
-		if ri != rj {
-			return ri > rj
-		}
-		return slidepath.SlideIndex(findings[i].Path) < slidepath.SlideIndex(findings[j].Path)
-	})
+	// Canonical findings order: (severity desc, slide_index asc, code asc).
+	// See patterns.SortCanonical and docs/FIT_FINDINGS.md "Sort invariant".
+	patterns.SortCanonical(findings, slidepath.SlideIndex)
 
 	// Attach next_tool_call to actionable findings.
 	patterns.AttachNextToolCalls(findings, slidepath.SlideIndex)
@@ -204,6 +198,12 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 		})
 	}
 
+	// The per-slide budget selection groups findings by insertion-order of
+	// slide index, which can scramble the global (severity desc, slide asc,
+	// code asc) invariant. Re-apply the canonical sort so the post-budget
+	// slice still satisfies it.
+	patterns.SortCanonical(result, slidepath.SlideIndex)
+
 	return result
 }
 
@@ -281,7 +281,33 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 		})
 	}
 
+	// Mirror collectFitFindings' canonical post-budget order:
+	// (severity desc, slide_index asc, code asc).
+	sortLocalFitFindingsCanonical(result)
+
 	return result
+}
+
+// sortLocalFitFindingsCanonical sorts the local fitFinding slice into the
+// canonical (severity_desc, slide_index_asc, code_asc) order — the local-type
+// equivalent of patterns.SortCanonical.
+func sortLocalFitFindingsCanonical(findings []fitFinding) {
+	if len(findings) <= 1 {
+		return
+	}
+	sort.Slice(findings, func(i, j int) bool {
+		ri := patterns.ActionRank(findings[i].Action)
+		rj := patterns.ActionRank(findings[j].Action)
+		if ri != rj {
+			return ri > rj
+		}
+		si := slidepath.SlideIndex(findings[i].Path)
+		sj := slidepath.SlideIndex(findings[j].Path)
+		if si != sj {
+			return si < sj
+		}
+		return findings[i].Code < findings[j].Code
+	})
 }
 
 // convertTextFitFinding converts a local fitFinding to patterns.FitFinding.

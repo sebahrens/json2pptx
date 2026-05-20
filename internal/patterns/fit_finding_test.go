@@ -25,6 +25,76 @@ func TestActionRank(t *testing.T) {
 	}
 }
 
+func TestSortCanonical(t *testing.T) {
+	stubSlideIndex := func(path string) int {
+		// Mirror slidepath.SlideIndex's contract: "/slides/N/..." → N, else -1.
+		if len(path) > 8 && path[:8] == "/slides/" {
+			return int(path[8] - '0')
+		}
+		return -1
+	}
+
+	t.Run("severity descending, then slide ascending, then code ascending", func(t *testing.T) {
+		findings := []FitFinding{
+			{ValidationError: ValidationError{Path: "/slides/0", Code: "zzz"}, Action: "info"},
+			{ValidationError: ValidationError{Path: "/slides/2", Code: "alpha"}, Action: "refuse"},
+			{ValidationError: ValidationError{Path: "/slides/5", Code: "abc"}, Action: "review"},
+			{ValidationError: ValidationError{Path: "/slides/0", Code: "beta"}, Action: "refuse"},
+			{ValidationError: ValidationError{Path: "/slides/2", Code: "alpha"}, Action: "shrink_or_split"},
+		}
+
+		SortCanonical(findings, stubSlideIndex)
+
+		wantOrder := []struct {
+			action string
+			path   string
+			code   string
+		}{
+			// refuse (rank 3) — sorted by slide asc, then code asc.
+			{"refuse", "/slides/0", "beta"},
+			{"refuse", "/slides/2", "alpha"},
+			// shrink_or_split (rank 2).
+			{"shrink_or_split", "/slides/2", "alpha"},
+			// review (rank 1).
+			{"review", "/slides/5", "abc"},
+			// info (rank 0).
+			{"info", "/slides/0", "zzz"},
+		}
+		if len(findings) != len(wantOrder) {
+			t.Fatalf("findings length changed: got %d, want %d", len(findings), len(wantOrder))
+		}
+		for i, want := range wantOrder {
+			got := findings[i]
+			if got.Action != want.action || got.Path != want.path || got.Code != want.code {
+				t.Errorf("findings[%d] = {action:%q path:%q code:%q}, want {%q %q %q}",
+					i, got.Action, got.Path, got.Code, want.action, want.path, want.code)
+			}
+		}
+	})
+
+	t.Run("deck-level paths (slide_index -1) sort before slide 0 at same severity", func(t *testing.T) {
+		findings := []FitFinding{
+			{ValidationError: ValidationError{Path: "/slides/0", Code: "x"}, Action: "info"},
+			{ValidationError: ValidationError{Path: "/deck/duplicate_title", Code: "x"}, Action: "info"},
+		}
+
+		SortCanonical(findings, stubSlideIndex)
+
+		if findings[0].Path != "/deck/duplicate_title" {
+			t.Errorf("expected deck-level path first, got %q", findings[0].Path)
+		}
+	})
+
+	t.Run("empty and single-element slices are no-ops", func(t *testing.T) {
+		SortCanonical(nil, stubSlideIndex)
+		single := []FitFinding{{ValidationError: ValidationError{Path: "/slides/0", Code: "x"}, Action: "info"}}
+		SortCanonical(single, stubSlideIndex)
+		if single[0].Code != "x" {
+			t.Errorf("single-element slice was mutated: %+v", single)
+		}
+	})
+}
+
 func TestActionRankOrdering(t *testing.T) {
 	// Verify refuse > shrink_or_split > review > info.
 	ordered := []string{"info", "review", "shrink_or_split", "refuse"}

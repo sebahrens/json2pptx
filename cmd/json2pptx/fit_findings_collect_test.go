@@ -404,7 +404,17 @@ func TestBudgetFitFindings_TopCodesHistogram(t *testing.T) {
 	if len(result) != 4 {
 		t.Fatalf("expected 4 findings, got %d", len(result))
 	}
-	summary := result[3]
+	// Locate the truncation summary by code. The canonical post-budget sort
+	// (severity_desc, slide_index_asc, code_asc) does not pin the summary to
+	// a fixed position — at info severity on the same slide, the summary's
+	// code "findings_truncated" sorts ahead of "fit_overflow" alphabetically.
+	var summary patterns.FitFinding
+	for _, f := range result {
+		if f.Code == "findings_truncated" {
+			summary = f
+			break
+		}
+	}
 	if summary.Fix == nil {
 		t.Fatal("summary.Fix should be non-nil")
 	}

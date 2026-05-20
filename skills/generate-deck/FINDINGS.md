@@ -6,6 +6,8 @@ For the contributor-facing catalog (with longer rationale + emission paths) see 
 
 **Runtime lookup:** for any single unfamiliar code, call the `describe_finding` MCP tool — it returns the same `{summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}` envelope this catalog documents, sourced from the engine's own registry so it cannot drift. One tool call resolves any code without loading this file.
 
+**Sort invariant.** Every `findings` / `fit_findings` array is returned in `(severity desc, slide_index asc, code asc)` order across every tool that emits findings (`validate_input`, `preview_presentation_plan`, `generate_presentation`, `repair_slide`, `score_deck`). `findings[0]` is always the most important fix to address first. Deck-level findings (path doesn't match `/slides/N/...`) sort before slide 0 at equal severity. Ordering is deterministic across runs — safe to walk top-down.
+
 ---
 
 ## Layout Finding Codes

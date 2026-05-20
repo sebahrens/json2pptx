@@ -93,7 +93,17 @@ Actions indicate severity and recommended remediation. They are ranked from most
 | 1 | `review` | Content may not render ideally. Human or agent review recommended but not blocking. |
 | 0 | `info` | Informational signal. No action required. |
 
-The `ActionRank(action)` function returns these numeric ranks. Unknown actions return -1. Findings are sorted by rank descending (most severe first), then by slide index ascending.
+The `ActionRank(action)` function returns these numeric ranks. Unknown actions return -1.
+
+### Sort invariant
+
+Every `fit_report` / `findings` array crosses serialization boundaries in the canonical order
+
+  `(action_rank desc, slide_index asc, code asc)`
+
+so `findings[0]` is always the most important fix and the order is deterministic across runs and tools. Implemented by `patterns.SortCanonical`. The invariant is asserted at every gate that emits findings (validate / generate / preview / score / repair) — see `cmd/json2pptx/mcp_response_fingerprint_test.go` for the cross-tool test.
+
+Deck-level findings whose path does not match `/slides/N/...` (slide index extracts to `-1`) sort before slide 0 at equal severity.
 
 ## Finding Codes
 

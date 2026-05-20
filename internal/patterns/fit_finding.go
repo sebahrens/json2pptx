@@ -1,5 +1,7 @@
 package patterns
 
+import "sort"
+
 // Extent represents a measured or allowed dimension in EMU.
 type Extent struct {
 	WidthEMU  int64 `json:"width_emu"`
@@ -123,6 +125,37 @@ func RecommendToolCall(itemCount int) *ToolCallSuggestion {
 			"item_count": itemCount,
 		},
 	}
+}
+
+// SortCanonical sorts findings in place into the canonical serialization order:
+//
+//  1. severity descending (highest ActionRank first — refuse > shrink_or_split > review > info)
+//  2. slide index ascending (path-derived; -1 for deck-level findings sorts before slide 0)
+//  3. code ascending (lexicographic, stable tiebreaker)
+//
+// This is the invariant every fit_report / findings array must satisfy before
+// it crosses a serialization boundary so agents can rely on findings[0] being
+// the most important fix, with deterministic ordering across runs and tools.
+//
+// slideIndexFn extracts the 0-based slide index from a finding's path; pass
+// slidepath.SlideIndex (or an equivalent extractor) from the caller.
+func SortCanonical(findings []FitFinding, slideIndexFn func(string) int) {
+	if len(findings) <= 1 {
+		return
+	}
+	sort.Slice(findings, func(i, j int) bool {
+		ri := ActionRank(findings[i].Action)
+		rj := ActionRank(findings[j].Action)
+		if ri != rj {
+			return ri > rj
+		}
+		si := slideIndexFn(findings[i].Path)
+		sj := slideIndexFn(findings[j].Path)
+		if si != sj {
+			return si < sj
+		}
+		return findings[i].Code < findings[j].Code
+	})
 }
 
 // AttachNextToolCalls populates NextToolCall on each finding whose action is

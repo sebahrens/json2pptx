@@ -61,7 +61,8 @@ func evaluateStrictFit(input *PresentationInput, mode string) ([]fitFinding, err
 
 // generateFitReport walks all tables and shape-grid text cells in the
 // presentation, measuring text against available cell dimensions. It returns
-// findings for cells that overflow.
+// findings for cells that overflow, in canonical
+// (severity_desc, slide_index_asc, code_asc) order.
 func generateFitReport(input *PresentationInput) []fitFinding {
 	var findings []fitFinding
 
@@ -86,6 +87,7 @@ func generateFitReport(input *PresentationInput) []fitFinding {
 		}
 	}
 
+	sortLocalFitFindingsCanonical(findings)
 	return findings
 }
 
