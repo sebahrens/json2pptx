@@ -164,6 +164,7 @@ examples/         # Example JSON input files (19 decks)
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
+| `process-grid-2row` | Two parallel process tracks: dk1 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution) |
 | `pull-quote` | Italic quote block with attribution |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |

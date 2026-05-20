@@ -309,6 +309,22 @@ var rules = []rule{
 		rationale: "Height-capped process flow for supporting context",
 	},
 
+	// Process grid 2-row — double-track processes with two parallel rows sharing N columns
+	{
+		pattern:   "process-grid-2row",
+		keywords:  []string{"parallel process", "parallel tracks", "two-track process", "double-track", "design and production", "strategy and execution", "two parallel workstreams", "paired process"},
+		baseScore: 0.92,
+		rationale: "Two parallel process tracks with a row-label column on the left and N equal-width phase boxes per row (3-6 columns)",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "process-grid-2row",
+		keywords:  []string{"parallel", "two tracks", "double track", "paired phases", "twin process"},
+		baseScore: 0.72,
+		rationale: "Two-row process grid when two workstreams share the same phase columns",
+	},
+
 	// Value chain — Porter-style horizontal sequence with descriptions
 	{
 		pattern:   "value-chain",

@@ -107,6 +107,24 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			}
 		}
 		return &patterns.ProcessFlowValues{Steps: steps}
+	case "process-grid-2row":
+		// cols includes the row-label column; phases per row = cols - 1.
+		n := cols - 1
+		if n < 1 {
+			n = 1
+		}
+		row1 := make([]string, n)
+		row2 := make([]string, n)
+		for i := range row1 {
+			row1[i] = "Phase label"
+			row2[i] = "Phase label"
+		}
+		return &patterns.ProcessGrid2RowValues{
+			Row1Label:  "Row one",
+			Row1Phases: row1,
+			Row2Label:  "Row two",
+			Row2Phases: row2,
+		}
 	case "before-after":
 		// Grid is always 3 columns × 2 rows; items fill the body cells
 		return &patterns.BeforeAfterValues{

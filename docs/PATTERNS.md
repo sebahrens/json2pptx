@@ -112,6 +112,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Single dominant metric | `stat-hero` | One hero number with context |
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |
+| Two parallel process tracks | `process-grid-2row` | Two rows × 3–6 phase columns sharing the same N columns; dk1 row-label column on the left, per-row accent fill |
 | Porter / supply value chain | `value-chain` | 4–10 step columns with bold label + 1–3 line description |
 | Maturity ladder / current-state journey | `journey-maturity-model` | 3–6 stage columns with numbered headers, description, and optional 'where we are' marker |
 | P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals |

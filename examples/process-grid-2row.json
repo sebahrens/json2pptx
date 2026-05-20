@@ -1,0 +1,61 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "process-grid-2row.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Process Grid 2-Row"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Two parallel tracks across the same N phase columns"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Design × Production handoff (4 phases per row)"}
+      ],
+      "pattern": {
+        "name": "process-grid-2row",
+        "values": {
+          "row1_label": "DESIGN PROCESS",
+          "row1_phases": ["DESIGN", "EDIT", "ASSETS", "UX / UI"],
+          "row2_label": "PRODUCTION",
+          "row2_phases": ["PROTOTYPE", "DEVELOP", "USER TESTING", "RELEASE"]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Strategy × Execution with custom row colors"}
+      ],
+      "pattern": {
+        "name": "process-grid-2row",
+        "values": {
+          "row1_label": "STRATEGY",
+          "row1_phases": ["DIAGNOSE", "DECIDE", "ALIGN"],
+          "row1_color": "accent2",
+          "row2_label": "EXECUTION",
+          "row2_phases": ["BUILD", "LAUNCH", "MEASURE"],
+          "row2_color": "accent4"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Six-phase parallel programme"}
+      ],
+      "pattern": {
+        "name": "process-grid-2row",
+        "values": {
+          "row1_label": "TECHNOLOGY",
+          "row1_phases": ["DISCOVER", "DESIGN", "BUILD", "TEST", "DEPLOY", "OPERATE"],
+          "row2_label": "ADOPTION",
+          "row2_phases": ["AWARENESS", "TRAINING", "PILOT", "ROLLOUT", "SUPPORT", "OPTIMISE"]
+        }
+      }
+    }
+  ]
+}

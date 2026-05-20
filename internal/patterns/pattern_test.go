@@ -169,6 +169,7 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"before-after":    true,
 		"process-flow":         true,
 		"process-flow-compact": true,
+		"process-grid-2row":    true,
 		"before-after-compact": true,
 		"swimlane":             true,
 		"roadmap-phased":  true,
