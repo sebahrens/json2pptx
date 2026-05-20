@@ -6,18 +6,20 @@ Fit findings are structured diagnostics emitted when generated slide content may
 
 ## Output-Validation Findings — Separate Category
 
-This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized:
+This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized, and from **visual-QA findings** emitted by the `slide-visual-qa` Haiku skill from rendered screenshots:
 
-| | Fit findings | Output-validation findings |
-|---|---|---|
-| Source type | `patterns.FitFinding` (`internal/patterns/fit_finding.go`) | `pptx.Finding` (`internal/pptx/output_validator.go`) |
-| When emitted | Before / during render (text overflow, density, chart layout) | After write, against the serialized package |
-| Severity values | `action` ∈ `refuse` / `shrink_or_split` / `review` / `info` | `severity` ∈ `blocking` / `warning` |
-| Code prefixes | bare codes (`placeholder_overflow`), `chart.*`, `BODY_TOO_LONG`, etc. (this document) | `OPC_*` (package integrity) and `OOXML_*` (content validity) |
-| MCP response field | `fit_findings[]` on the success envelope | error envelope `findings[]` (strict mode) or `output_validation_findings[]` (warn mode) |
-| Repair path | `repair_slide` with a `Fix.Kind` directive | `repair_slide` with a directive chosen per finding's `code` + `scope` |
+| | Fit findings | Output-validation findings | Visual-QA findings |
+|---|---|---|---|
+| Source type | `patterns.FitFinding` (`internal/patterns/fit_finding.go`) | `pptx.Finding` (`internal/pptx/output_validator.go`) | JSON `findings[]` block emitted by `skills/slide-visual-qa/SKILL.md` |
+| When emitted | Before / during render (text overflow, density, chart layout) | After write, against the serialized package | After render-to-image, from screenshot inspection |
+| Severity values | `action` ∈ `refuse` / `shrink_or_split` / `review` / `info` | `severity` ∈ `blocking` / `warning` | `severity` ∈ `blocking` / `warning` / `info` |
+| Code prefixes | bare codes (`placeholder_overflow`), `chart.*`, `BODY_TOO_LONG`, etc. (this document) | `OPC_*` (package integrity) and `OOXML_*` (content validity) | aesthetic codes (`ACCENT_OVERLOAD`, `BASELINE_MISALIGN`, `MISSING_TAKEAWAY`, `CHART_BORDER`, `CHART_VERTICAL_GRIDLINES`, `REDUNDANT_LEGEND`, `NON_TABULAR_NUMS`, `EYEBROW_NO_CAPS`) plus the screenshot-rendering categories listed in the skill |
+| MCP response field | `fit_findings[]` on the success envelope | error envelope `findings[]` (strict mode) or `output_validation_findings[]` (warn mode) | not an MCP tool — consumed by `auto_repair` after the skill runs |
+| Repair path | `repair_slide` with a `Fix.Kind` directive | `repair_slide` with a directive chosen per finding's `code` + `scope` | mapped to `repair_slide` directives via `internal/visualqa/repair_map.go` |
 
 Output-validation codes are the "zero needs repair" contract: in strict mode (the default) a blocking `OPC_*` or `OOXML_*` finding fails generation outright. See [skills/generate-deck/SKILL.md → Output Validation Guarantee](../skills/generate-deck/SKILL.md#output-validation-guarantee) for the envelope shape and response protocol. Authoritative code list: `opcCodeMap` and `ooxmlCodeMap` in `internal/pptx/output_validator.go`.
+
+Visual-QA codes are subjective image-derived findings. They never block generation; they raise the bar from "renders correctly" to "looks consulting-grade." The full catalog of aesthetic codes is below in the [Visual-QA Aesthetic Findings](#visual-qa-aesthetic-findings) section.
 
 ## Finding Structure
 
@@ -868,3 +870,93 @@ Findings are printed to stderr grouped by slide. Exit code is nonzero only if an
 ### Compact Responses
 
 The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
+
+## Visual-QA Aesthetic Findings
+
+These codes are emitted by the `slide-visual-qa` Haiku skill (see [`skills/slide-visual-qa/SKILL.md`](../skills/slide-visual-qa/SKILL.md)) from screenshot inspection of rendered slides. They are subjective image-derived signals — the engine cannot detect them from JSON alone because they depend on the rasterized result. Skill output is a JSON block of the shape `{"findings": [{"slide_index", "code", "severity", "detail"}]}`, consumed by `auto_repair` and other automation.
+
+These findings never block generation. They raise the bar from "renders correctly" to "looks consulting-grade." Severity vocabulary differs from engine fit findings: visual-QA uses `blocking` / `warning` / `info` (matching output-validation findings), not `refuse` / `shrink_or_split` / `review` / `info`.
+
+### `ACCENT_OVERLOAD`
+
+**Severity:** `warning`
+
+More than 2 distinct accent hues visible on a single slide, counting only accent fills (not background, neutrals, or text). Three or more accents on one slide reads as visual noise — the audience cannot tell which item carries the argument.
+
+Engine has a related precondition `accent_overload` (lowercase) that checks accent counts in `shape_grid` JSON, but it only sees what JSON authors named. The visual-qa code catches cases where rendered swatches differ from the JSON (template defaults bleeding through, image content, etc.).
+
+```json
+{ "slide_index": 3, "code": "ACCENT_OVERLOAD", "severity": "warning", "detail": "3 distinct accent hues visible: coral, teal, gold" }
+```
+
+### `BASELINE_MISALIGN`
+
+**Severity:** `warning`
+
+Body text in adjacent grid cells of a sibling pattern (`card-grid`, `kpi-*`, `comparison-2col`, `team-bios`, …) does not sit on the same horizontal baseline. Visible misalignment between sibling cards breaks the "one row, one beat" reading rhythm.
+
+```json
+{ "slide_index": 7, "code": "BASELINE_MISALIGN", "severity": "warning", "detail": "left KPI body baseline ~12px above right KPI body" }
+```
+
+### `MISSING_TAKEAWAY`
+
+**Severity:** `info`
+
+A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" band (typically the bottom 8-12% of the slide, filled with `dk1` or an accent and white text). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
+
+Engine has a parallel `takeaway_missing` (lowercase, action `review`) that fires when `slide.takeaway` is empty on chart/matrix slides; the visual-qa code catches cases where the takeaway text is present but the band is invisible (rendered with low contrast, off-slide, etc.).
+
+```json
+{ "slide_index": 5, "code": "MISSING_TAKEAWAY", "severity": "info", "detail": "bar-chart slide has no takeaway band" }
+```
+
+### `CHART_BORDER`
+
+**Severity:** `warning`
+
+A chart is rendered with a visible outer border framing the plot area. Borders add ink, frame the chart as decorative artwork, and clash with executive-style "data only" composition.
+
+```json
+{ "slide_index": 4, "code": "CHART_BORDER", "severity": "warning", "detail": "bar chart has a 1pt dk2 border around the plot area" }
+```
+
+### `CHART_VERTICAL_GRIDLINES`
+
+**Severity:** `warning`
+
+A bar or line chart is rendered with vertical gridlines along the value axis. Vertical gridlines on bar charts double-encode the bar lengths, and on most line charts they add ink without adding read accuracy. Executive style is horizontal gridlines only.
+
+```json
+{ "slide_index": 4, "code": "CHART_VERTICAL_GRIDLINES", "severity": "warning", "detail": "bar chart shows vertical gridlines at 25/50/75/100" }
+```
+
+### `REDUNDANT_LEGEND`
+
+**Severity:** `warning`
+
+A single-series chart (one bar/line/area series) carries a legend. A legend with one entry is pure noise — the title or axis label already names the series.
+
+```json
+{ "slide_index": 6, "code": "REDUNDANT_LEGEND", "severity": "warning", "detail": "single-series line chart shows a 1-entry legend ('Revenue')" }
+```
+
+### `NON_TABULAR_NUMS`
+
+**Severity:** `warning`
+
+Numeric labels (data labels, KPI numbers, table cells) are not right-aligned or do not use tabular figure spacing, so digit columns wobble between rows. Executive style requires tabular alignment so the audience can compare magnitudes by column position.
+
+```json
+{ "slide_index": 2, "code": "NON_TABULAR_NUMS", "severity": "warning", "detail": "KPI cards show ragged number widths ('1,243', '987', '12,408')" }
+```
+
+### `EYEBROW_NO_CAPS`
+
+**Severity:** `info`
+
+A slide carries an eyebrow / category line above the title that renders in regular body case instead of ALL-CAPS or with noticeably tighter letter spacing. Eyebrows that look like body text fail to anchor the slide as part of a section.
+
+```json
+{ "slide_index": 8, "code": "EYEBROW_NO_CAPS", "severity": "info", "detail": "eyebrow 'market context' renders in title case, no caps or letter-spacing distinction" }
+```

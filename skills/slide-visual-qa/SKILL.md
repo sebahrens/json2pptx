@@ -122,9 +122,27 @@ Thresholds (see docs/VISUAL_CRITERIA.md for full rationale):
 - Missing content — slide appears sparse or incomplete relative to what's expected
 - Obvious typos visible at a glance
 
+**Aesthetic Quality (consulting-grade polish)**
+
+These checks target presentation polish beyond rendering correctness. Each finding has a stable code and severity that maps into the structured output below.
+
+- **Accent hue count** — count distinct accent hues visible on the slide (excluding background, neutrals, and text colors). More than 2 distinct accent hues on one slide reads as visual noise. Finding code: `ACCENT_OVERLOAD`. Severity: `warning`.
+- **Baseline alignment** — body text in adjacent grid cells (e.g. `card-grid`, `kpi-*`, `comparison-2col`) should sit on the same horizontal baseline. Flag visible misalignment between sibling cards. Finding code: `BASELINE_MISALIGN`. Severity: `warning`.
+- **Takeaway band** — slides showing a chart or 2×2 matrix should carry a visually distinct "takeaway" / "so what" row, typically the bottom 8-12% of the slide with `dk1` or accent fill plus white text. Flag missing takeaway bands on chart / matrix slides. Finding code: `MISSING_TAKEAWAY`. Severity: `info`.
+- **Executive chart style** — flag the following chart anti-patterns:
+  - Visible chart border framing the plot area → `CHART_BORDER` (severity: `warning`)
+  - Visible vertical gridlines on a bar/line chart → `CHART_VERTICAL_GRIDLINES` (severity: `warning`)
+  - Single-series chart with a legend (legend adds no information) → `REDUNDANT_LEGEND` (severity: `warning`)
+  - Non-tabular numeric labels (numerals not right-aligned / not monospace-cadenced) → `NON_TABULAR_NUMS` (severity: `warning`)
+- **Eyebrow formatting** — if a slide carries an eyebrow / category line above the title, it should be in ALL-CAPS or have noticeably tighter letter spacing than the body text. Flag eyebrows that look like regular body case. Finding code: `EYEBROW_NO_CAPS`. Severity: `info`.
+
 ---
 
 ## Output Format
+
+Produce two artifacts: a human-readable prose report **and** a machine-readable JSON findings array. The prose report is for the human reviewer; the JSON block is consumed by the `auto_repair` MCP tool and other automation, so the codes must match the catalog above exactly.
+
+### Prose report
 
 Report composition first, then per-slide rendering issues. For each slide, either list every issue found or explicitly state it looks clean. Be specific — name the element and where on the slide the problem is.
 
@@ -149,8 +167,26 @@ Slide 3 — Key Metrics
 SUMMARY
 Composition issues: 1 (monotony)
 Rendering issues: 4 across 2 slides
+Aesthetic issues: 2 (1 ACCENT_OVERLOAD, 1 MISSING_TAKEAWAY)
 Slides with issues: 1, 3
 ```
+
+### Structured findings (JSON)
+
+After the prose report, emit a single fenced ```` ```json ```` block containing a `findings` array. One entry per detected issue. Use the codes documented above (rendering codes like `text_overflow`, `contrast`, plus the aesthetic codes `ACCENT_OVERLOAD`, `BASELINE_MISALIGN`, `MISSING_TAKEAWAY`, `CHART_BORDER`, `CHART_VERTICAL_GRIDLINES`, `REDUNDANT_LEGEND`, `NON_TABULAR_NUMS`, `EYEBROW_NO_CAPS`). Severities are `blocking`, `warning`, or `info`. `slide_index` is 1-based to match the prose report.
+
+```json
+{
+  "findings": [
+    { "slide_index": 3, "code": "ACCENT_OVERLOAD", "severity": "warning", "detail": "3 distinct accent hues visible: coral, teal, gold" },
+    { "slide_index": 5, "code": "MISSING_TAKEAWAY", "severity": "info", "detail": "chart slide has no takeaway band" },
+    { "slide_index": 5, "code": "CHART_VERTICAL_GRIDLINES", "severity": "warning", "detail": "bar chart shows vertical gridlines at 25/50/75/100" },
+    { "slide_index": 7, "code": "BASELINE_MISALIGN", "severity": "warning", "detail": "left KPI body baseline ~12px above right KPI body" }
+  ]
+}
+```
+
+Always emit the JSON block even when no findings exist (`{"findings": []}`). The block must be self-contained valid JSON — no trailing commas, no comments.
 
 ---
 
