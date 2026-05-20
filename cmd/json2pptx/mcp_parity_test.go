@@ -1374,3 +1374,285 @@ func (failingURLResolver) ResolveImage(rawURL string) (string, error) {
 func (failingURLResolver) ResolveSVG(rawURL string) (string, error) {
 	return "", fmt.Errorf("stubbed svg failure for %s", rawURL)
 }
+
+// relativeAssetDeckJSON returns a deck payload whose every local-asset
+// surface (background.image, content image_value.path, grid image.path,
+// grid icon.path) is a bare filename — the deck is only resolvable when an
+// explicit base_dir is supplied.
+func relativeAssetDeckJSON(bg, photo, gridImg, gridIcon string) string {
+	return fmt.Sprintf(`{
+		"template": "midnight-blue",
+		"slides": [{
+			"layout_id": "slideLayout2",
+			"background": {"image": %q},
+			"content": [{
+				"placeholder_id": "body",
+				"type": "image",
+				"image_value": {"path": %q, "alt": "photo"}
+			}],
+			"shape_grid": {
+				"rows": [{
+					"cells": [
+						{"image": {"path": %q}},
+						{"icon":  {"path": %q}}
+					]
+				}]
+			}
+		}]
+	}`, bg, photo, gridImg, gridIcon)
+}
+
+// TestMCPRelativeAssetParity exercises the base_dir flow across every MCP
+// handler that advertises it (generate_presentation, validate_input,
+// preview_presentation_plan). Each handler must resolve relative paths
+// against the supplied base_dir — regardless of the server's process CWD —
+// and emit one structured per-asset diagnostic when an asset is missing.
+//
+// Without this parity guard, base_dir could silently regress on any one
+// handler and CLI+MCP would diverge on payloads that look identical to the
+// agent. This is the MCP parity test for go-slide-creator-dbgl's "relative
+// local asset paths with explicit base_dir" requirement.
+//
+// Asset basenames are uniquely prefixed (`dbgl-rel-`) so the bare filenames
+// in the deck could not accidentally exist under the test process CWD —
+// making base_dir the only directory that can resolve them. We do NOT chdir
+// in this test: an outer chdir would race against other tests in the package
+// that use relative paths like ../../templates.
+func TestMCPRelativeAssetParity(t *testing.T) {
+	const (
+		bgName       = "dbgl-rel-bg.png"
+		photoName    = "dbgl-rel-photo.png"
+		gridImgName  = "dbgl-rel-grid.jpg"
+		gridIconName = "dbgl-rel-icon.svg"
+	)
+
+	t.Run("happy path resolves all four surfaces under base_dir", func(t *testing.T) {
+		baseDir := t.TempDir()
+		// Minimal asset bytes are enough — the local-asset pass cares only
+		// about existence + extension, not decode-ability.
+		for _, name := range []string{bgName, photoName, gridImgName} {
+			if err := os.WriteFile(filepath.Join(baseDir, name), []byte("x"), 0o644); err != nil {
+				t.Fatalf("write %s: %v", name, err)
+			}
+		}
+		if err := os.WriteFile(filepath.Join(baseDir, gridIconName), []byte(`<svg/>`), 0o644); err != nil {
+			t.Fatalf("write %s: %v", gridIconName, err)
+		}
+
+		deckJSON := relativeAssetDeckJSON(bgName, photoName, gridImgName, gridIconName)
+
+		handlers := []struct {
+			name string
+			call func(*mcpConfig) (*mcp.CallToolResult, error)
+		}{
+			{
+				name: "validate_input",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleValidate(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "generate_presentation",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "preview_presentation_plan",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+		}
+
+		for _, h := range handlers {
+			t.Run(h.name, func(t *testing.T) {
+				mc := testMCPConfig(t)
+				result, err := h.call(mc)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if result.IsError {
+					text := result.Content[0].(mcp.TextContent).Text
+					t.Fatalf("expected success for relative paths under base_dir, got error: %s", text)
+				}
+				// Asset findings must not appear when every relative path
+				// resolves cleanly under base_dir.
+				text := result.Content[0].(mcp.TextContent).Text
+				for _, code := range []string{"BACKGROUND_IMAGE_PATH", "IMAGE_PATH", "ICON_NOT_FOUND"} {
+					if strings.Contains(text, code) {
+						t.Errorf("unexpected %s diagnostic in success response: %s", code, text)
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("missing assets surface one diagnostic per surface under base_dir", func(t *testing.T) {
+		// base_dir exists but is empty — every relative path points at a
+		// missing file. Each surface must emit its own structured
+		// diagnostic with the canonical asset_kind + JSON Pointer, on
+		// every handler.
+		baseDir := t.TempDir()
+		const (
+			missBg   = "dbgl-missing-bg.png"
+			missImg  = "dbgl-missing-photo.png"
+			missGrid = "dbgl-missing-grid.jpg"
+			missIcon = "dbgl-missing-icon.svg"
+		)
+		deckJSON := relativeAssetDeckJSON(missBg, missImg, missGrid, missIcon)
+
+		// Each surface emits exactly one diagnostic keyed by JSON Pointer.
+		// asset_kind comes from resolveLocalAssetPaths' canonical tagging.
+		want := map[string]struct {
+			code      string
+			assetKind string
+		}{
+			"/slides/0/background/image":                     {code: "BACKGROUND_IMAGE_PATH", assetKind: "background"},
+			"/slides/0/content/0/image_value/path":           {code: "IMAGE_PATH", assetKind: "image"},
+			"/slides/0/shape_grid/rows/0/cells/0/image/path": {code: "IMAGE_PATH", assetKind: "image"},
+			"/slides/0/shape_grid/rows/0/cells/1/icon":       {code: "ICON_NOT_FOUND", assetKind: "icon"},
+		}
+
+		handlers := []struct {
+			name string
+			call func(*mcpConfig) (*mcp.CallToolResult, error)
+		}{
+			{
+				name: "validate_input",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleValidate(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "generate_presentation",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "preview_presentation_plan",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+		}
+
+		for _, h := range handlers {
+			t.Run(h.name, func(t *testing.T) {
+				mc := testMCPConfig(t)
+				result, err := h.call(mc)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if !result.IsError {
+					text := result.Content[0].(mcp.TextContent).Text
+					t.Fatalf("expected IsError=true for missing relative assets, got success: %s", text)
+				}
+
+				text := result.Content[0].(mcp.TextContent).Text
+				var envelope struct {
+					Diagnostics []map[string]any `json:"diagnostics"`
+				}
+				if err := json.Unmarshal([]byte(text), &envelope); err != nil {
+					t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
+				}
+
+				got := make(map[string]map[string]string, len(want))
+				for _, d := range envelope.Diagnostics {
+					path, _ := d["path"].(string)
+					code, _ := d["code"].(string)
+					if _, ok := want[path]; !ok {
+						continue
+					}
+					details, _ := d["details"].(map[string]any)
+					kind, _ := details["asset_kind"].(string)
+					got[path] = map[string]string{"code": code, "asset_kind": kind}
+				}
+				for path, w := range want {
+					g, ok := got[path]
+					if !ok {
+						t.Errorf("missing diagnostic for %q (full envelope: %s)", path, text)
+						continue
+					}
+					if g["code"] != w.code {
+						t.Errorf("path %q: expected code %s, got %s", path, w.code, g["code"])
+					}
+					if g["asset_kind"] != w.assetKind {
+						t.Errorf("path %q: expected asset_kind %s, got %s", path, w.assetKind, g["asset_kind"])
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("relative base_dir is rejected with INVALID_PARAMETER", func(t *testing.T) {
+		// Relative base_dir re-introduces the CWD coupling that base_dir
+		// exists to eliminate. Every handler must reject it with the same
+		// structured diagnostic, so agents see one signal rather than a
+		// scattershot of broken-asset findings.
+		deckJSON := relativeAssetDeckJSON("bg.png", "photo.png", "grid.jpg", "icon.svg")
+
+		handlers := []struct {
+			name string
+			call func(*mcpConfig) (*mcp.CallToolResult, error)
+		}{
+			{
+				name: "validate_input",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleValidate(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     "relative/path/not/allowed",
+					}))
+				},
+			},
+			{
+				name: "generate_presentation",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     "relative/path/not/allowed",
+					}))
+				},
+			},
+			{
+				name: "preview_presentation_plan",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     "relative/path/not/allowed",
+					}))
+				},
+			},
+		}
+
+		for _, h := range handlers {
+			t.Run(h.name, func(t *testing.T) {
+				mc := testMCPConfig(t)
+				result, err := h.call(mc)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				requireStructuredError(t, result, "INVALID_PARAMETER")
+			})
+		}
+	})
+}
