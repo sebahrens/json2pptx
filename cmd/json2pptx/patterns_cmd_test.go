@@ -114,8 +114,8 @@ func TestPatternsShow(t *testing.T) {
 		if result.Name != "kpi-3up" {
 			t.Errorf("expected name=kpi-3up, got %q", result.Name)
 		}
-		if result.Version != 1 {
-			t.Errorf("expected version=1, got %d", result.Version)
+		if result.Version != 2 {
+			t.Errorf("expected version=2, got %d", result.Version)
 		}
 		if len(result.Schema) == 0 {
 			t.Error("expected non-empty schema")
@@ -272,8 +272,8 @@ func TestPatternsExpand(t *testing.T) {
 		if result.Pattern != "kpi-3up" {
 			t.Errorf("expected pattern=kpi-3up, got %q", result.Pattern)
 		}
-		if result.Version != 1 {
-			t.Errorf("expected version=1, got %d", result.Version)
+		if result.Version != 2 {
+			t.Errorf("expected version=2, got %d", result.Version)
 		}
 		if len(result.ShapeGrid) == 0 {
 			t.Error("expected non-empty shape_grid")

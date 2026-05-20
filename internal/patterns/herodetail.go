@@ -7,7 +7,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -28,7 +27,7 @@ func (hd *heroDetail) UseWhen() string {
 func (hd *heroDetail) NotWhen() string {
 	return "No supporting details (use stat-hero), all items have equal weight (use kpi-3up or kpi-4up), or content is a quote (use pull-quote)"
 }
-func (hd *heroDetail) Version() int    { return 1 }
+func (hd *heroDetail) Version() int    { return 2 }
 func (hd *heroDetail) CellsHint() string { return "1 + 2-4" }
 func (hd *heroDetail) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -78,9 +77,9 @@ type HeroDetailHero struct {
 
 // HeroDetailItem is a single detail card (bottom row).
 type HeroDetailItem struct {
-	Icon  string `json:"icon,omitempty"`  // Bundled SVG icon name or user-provided icon (URL / data URI / inline SVG / file path). Emoji glyphs are rejected.
-	Title string `json:"title"`          // Card title
-	Body  string `json:"body,omitempty"` // Card body text
+	Icon  *IconRef `json:"icon,omitempty"` // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs are rejected.
+	Title string   `json:"title"`          // Card title
+	Body  string   `json:"body,omitempty"` // Card body text
 }
 
 // HeroDetailValues holds the data for a hero-detail pattern.
@@ -130,7 +129,7 @@ func (hd *heroDetail) Schema() *Schema {
 
 	detailSchema := ObjectSchema(
 		map[string]*Schema{
-			"icon":  StringSchema(60).WithDescription("Bundled SVG icon name or user-provided icon (URL / data URI / inline SVG / file path)"),
+			"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
 			"title": StringSchema(60).WithDescription("Detail card title"),
 			"body":  StringSchema(200).WithDescription("Detail card body text"),
 		},
@@ -212,14 +211,9 @@ func (hd *heroDetail) Validate(values, overrides any, cellOverrides map[int]any)
 			bodyPath := fmt.Sprintf("details[%d].body", i)
 			errs = append(errs, errMaxLength(name, bodyPath, 200, len(d.Body)))
 		}
-		if d.Icon != "" && svggen.ClassifyIcon(d.Icon) == svggen.IconKindEmpty {
+		if d.Icon != nil {
 			iconPath := fmt.Sprintf("details[%d].icon", i)
-			errs = append(errs, &ValidationError{
-				Pattern: name,
-				Path:    iconPath,
-				Code:    ErrCodeInvalidShape,
-				Message: fmt.Sprintf("%s: %s must be a bundled icon name (e.g. \"rocket\"), inline SVG, data: URI, https URL, or local image path; emoji glyphs and unknown names are rejected, got %q", name, iconPath, d.Icon),
-			})
+			errs = append(errs, validateIconRef(name, iconPath, *d.Icon)...)
 		}
 	}
 
@@ -371,11 +365,9 @@ func (hd *heroDetail) buildCardDetailCell(d HeroDetailItem, accent string, heade
 	}
 
 	// Add icon overlay when provided
-	if d.Icon != "" {
-		gc.Shape.Icon = &jsonschema.IconInput{
-			Name:     d.Icon,
-			Fill:     accent,
-			Position: "top",
+	if d.Icon != nil {
+		if icon := d.Icon.Resolve(accent, "top"); icon != nil {
+			gc.Shape.Icon = icon
 		}
 	}
 
@@ -413,11 +405,9 @@ func (hd *heroDetail) buildMinimalDetailCell(d HeroDetailItem, accent string, he
 		},
 	}
 
-	if d.Icon != "" {
-		gc.Shape.Icon = &jsonschema.IconInput{
-			Name:     d.Icon,
-			Fill:     accent,
-			Position: "top",
+	if d.Icon != nil {
+		if icon := d.Icon.Resolve(accent, "top"); icon != nil {
+			gc.Shape.Icon = icon
 		}
 	}
 

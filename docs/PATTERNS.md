@@ -271,6 +271,44 @@ Caps are advertised via `get_capabilities().features.compose`:
 
 `cell_overrides` indices remain per-pattern; the merge step does not re-number them.
 
+## Icon slot (card-grid, kpi-Nup, kpi-inline, matrix-2x2, icon-row, hero-detail)
+
+Pattern cells that accept an icon use the shared `*IconRef` field defined in `internal/patterns/iconref.go`. Both forms are accepted:
+
+```jsonc
+// Bundled-name shorthand — backwards-compatible
+{"header": "Launch", "body": "...", "icon": "rocket"}
+
+// Full IconRef object — for path/URL/inline SVG with optional overrides
+{"header": "Brand", "body": "...", "icon": {"path": "logo.svg", "fill": "#FF0000", "alt": "company logo"}}
+{"header": "API",   "body": "...", "icon": {"url": "https://example.com/icons/api.svg"}}
+{"header": "Wave",  "body": "...", "icon": {"svg_data": "<svg xmlns=\"http://www.w3.org/2000/svg\">…</svg>"}}
+```
+
+When the field is a bare string, it is classified at unmarshal time by `svggen.ClassifyIcon`:
+
+| Input string                              | Routed to       |
+| ----------------------------------------- | --------------- |
+| Bundled name (`"rocket"`, `"filled:x"`)   | `Name`          |
+| `"http(s)://…"` or `"data:…"`             | `URL`           |
+| `"<svg…>…</svg>"`                          | `SVGData`       |
+| Path with `/` or `\` + `.svg`/`.png`/`.jpg` | `Path`        |
+| Anything else                             | `Name` (rejected by validator if not bundled) |
+
+**`IconRef` fields** (from `jsonschema.IconInput`):
+
+- `name` — bundled icon name (e.g. `"rocket"`, `"filled:trending-up"`). Validated against the bundled registry via `icons.Exists`.
+- `path` — local `.svg` file path (relative paths resolve against the JSON input dir; supports `~/` and `$VAR` expansion). Non-SVG extensions are rejected at validate time.
+- `url` — HTTPS or `data:` URL. Network resolution happens in the asset pipeline; validators accept any string here.
+- `svg_data` — inline SVG markup. No disk I/O is performed when set; `fill` is ignored (pre-style the SVG instead). The shared validator does not enforce arity beyond "exactly one of name/path/url/svg_data".
+- `alt` — accessibility description; defaults to a derived value from name/path.
+- `fill` — hex or scheme color override (e.g. `"accent1"`, `"#FF0000"`). Pattern code supplies a sensible default (the cell's accent) when blank; explicit values win.
+- `position` — `left`, `top`, or `center`. Defaults to the pattern-specific position (kpi → `left`, card-grid/iconrow/herodetail/matrix → `top`) when blank.
+
+**Schema authoring.** New patterns that accept an icon should reuse `IconRefSchema(description)` and `validateIconRef(pattern, path, ref)` rather than duplicate the OneOf string-or-object schema. When a pattern repeats the icon slot across many siblings (matrix-2x2's four quadrants, multi-row card grids), wrap the cell schema in `$defs` and use `RefSchema(name)` to keep the per-pattern schema under the 6 KB compression budget.
+
+**Expansion.** Pattern `Expand` code calls `cell.Icon.Resolve(defaultFill, defaultPosition)`. Resolve returns `nil` for empty refs, applies pattern defaults only when the author left a field blank, and copies the underlying `IconInput` so downstream mutation is safe. Patterns that supported a string-only icon field bumped their `Version()` to `2` when migrating.
+
 ## Secondary chart slot (card-grid, icon-row)
 
 `card-grid` cells (`CardGridCell`) and `icon-row` items (`IconRowItem`) accept an optional `secondary *SecondaryChart` field that embeds a small chart below the cell's title/body or caption. The field is defined once in `internal/patterns/secondary_chart.go` and reused by both patterns:

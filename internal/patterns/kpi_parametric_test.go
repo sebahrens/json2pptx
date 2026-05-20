@@ -17,8 +17,8 @@ func TestKPINupAllVariantsRegistered(t *testing.T) {
 		if p.Name() != name {
 			t.Errorf("Name() = %q, want %q", p.Name(), name)
 		}
-		if p.Version() != 1 {
-			t.Errorf("%s Version() = %d, want 1", name, p.Version())
+		if p.Version() != 2 {
+			t.Errorf("%s Version() = %d, want 2", name, p.Version())
 		}
 		if p.CellsHint() != fmt.Sprintf("%d", n) {
 			t.Errorf("%s CellsHint() = %q, want %q", name, p.CellsHint(), fmt.Sprintf("%d", n))

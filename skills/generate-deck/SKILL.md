@@ -495,6 +495,24 @@ All findings carry `details.input_value` (local paths) or `details.input_url` (U
 
 `fill` is ignored for `svg_data` (your SVG is assumed pre-styled); setting both emits a non-blocking `ICON_FILL_IGNORED_ON_INLINE` warning — either pre-color the inline markup, or switch to `name`/`path` with `fill`. The optional `alt` field sets accessibility text; when omitted, alt falls back to a value derived from `name` or `path`, or `"icon"` for inline SVG. Pattern fields that accept icons (e.g. `card-grid`'s cell `icon`, `icon-row` items, `herodetail`'s `icon`) follow the same rule: bundled name or a loadable source — never an emoji glyph.
 
+**Polymorphic icon slot on pattern cells.** `card-grid`, `kpi-2up`…`kpi-6up`, `kpi-inline`, `matrix-2x2`, `icon-row`, and `hero-detail` accept either a bundled-name string shorthand or a full `IconInput` object. Both are equivalent — pick the form that fits your need:
+
+```jsonc
+// Bundled-name shorthand (most common)
+{"icon": "rocket"}
+
+// Custom SVG on disk with a fill recolor
+{"icon": {"path": "logo.svg", "fill": "#FF0000", "alt": "Acme logo"}}
+
+// Pre-styled inline SVG (no disk I/O, fill is ignored)
+{"icon": {"svg_data": "<svg xmlns=\"http://www.w3.org/2000/svg\">…</svg>"}}
+
+// Remote SVG (downloaded via the URL preflight)
+{"icon": {"url": "https://cdn.example.com/icons/widget.svg"}}
+```
+
+A bare string is classified at parse time: bundled name → `name`, `http(s)://` or `data:` → `url`, `<svg…>` → `svg_data`, path with `/` and `.svg`/`.png`/`.jpg` → `path`. Unknown short strings stay in `name` and are rejected by the bundled-name preflight (`ICON_BUNDLED_NAME_UNKNOWN`). Setting two of `name`/`path`/`url`/`svg_data` in the object form fails validate with `invalid_shape`. The patterns above bumped their `version` to `2` when this slot landed.
+
 **Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide.
 
 ---

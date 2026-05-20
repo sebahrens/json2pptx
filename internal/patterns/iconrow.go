@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
-	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -28,7 +27,7 @@ func (ir *iconRow) UseWhen() string {
 func (ir *iconRow) NotWhen() string {
 	return "Items are sequential steps (use process-flow), items need body text beyond a caption (use card-grid), or content is a single metric (use stat-hero)"
 }
-func (ir *iconRow) Version() int { return 1 }
+func (ir *iconRow) Version() int { return 2 }
 func (ir *iconRow) CellsHint() string { return "3-5" }
 func (ir *iconRow) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -45,9 +44,9 @@ func (ir *iconRow) Taxonomy() PatternTaxonomy {
 
 func (ir *iconRow) ExemplarValues() any {
 	v := IconRowValues{
-		{Icon: "rocket", Caption: "Launch"},
-		{Icon: "trending-up", Caption: "Growth"},
-		{Icon: "currency-dollar", Caption: "Revenue"},
+		{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+		{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+		{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 	}
 	return &v
 }
@@ -64,17 +63,21 @@ func (ir *iconRow) ExemplarValues() any {
 // secondary is allowed per item (enforced by the field being a single pointer
 // rather than an array).
 type IconRowItem struct {
-	Icon      string          `json:"icon"`                // Bundled icon name, inline SVG, data: URI, https URL, or local file path. Emoji glyphs are rejected.
+	Icon      *IconRef        `json:"icon"`                // Bundled icon name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs are rejected.
 	Caption   string          `json:"caption"`             // Short caption text
 	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per item)
 }
 
 // UnmarshalJSON supports string shorthand "Caption" or "icon | Caption", or object {icon, caption}.
+// The icon segment of the shorthand is classified via parseIconString so URLs,
+// inline SVG, file paths, and bundled names all route to the correct IconRef
+// field.
 func (item *IconRowItem) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {
 		if parts := strings.SplitN(s, " | ", 2); len(parts) == 2 {
-			item.Icon = parts[0]
+			ref := parseIconString(parts[0])
+			item.Icon = &ref
 			item.Caption = parts[1]
 		} else {
 			item.Caption = s
@@ -119,7 +122,7 @@ func (ir *iconRow) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Caption\" or \"icon | Caption\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"icon":      StringSchema(0).WithDescription("Bundled icon name (e.g. \"rocket\"), inline SVG, data: URI, https URL, or local file path. Emoji glyphs and unknown names are rejected."),
+				"icon":      IconRefSchema("Icon: bundled name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object. Emoji glyphs and unknown bundled names are rejected."),
 				"caption":   StringSchema(60).WithDescription("Short caption text"),
 				"secondary": SecondaryChartSchema(),
 			},
@@ -176,15 +179,10 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 
 	for i, item := range *items {
 		iconPath := fmt.Sprintf("values[%d].icon", i)
-		if item.Icon == "" {
+		if item.Icon == nil || item.Icon.IsEmpty() {
 			errs = append(errs, errRequired(name, iconPath))
-		} else if svggen.ClassifyIcon(item.Icon) == svggen.IconKindEmpty {
-			errs = append(errs, &ValidationError{
-				Pattern: name,
-				Path:    iconPath,
-				Code:    ErrCodeInvalidShape,
-				Message: fmt.Sprintf("%s: %s must be a bundled icon name (e.g. \"rocket\"), inline SVG, data: URI, https URL, or local image path; emoji glyphs and unknown names are rejected, got %q", name, iconPath, item.Icon),
-			})
+		} else {
+			errs = append(errs, validateIconRef(name, iconPath, *item.Icon)...)
 		}
 		captionPath := fmt.Sprintf("values[%d].caption", i)
 		if item.Caption == "" {
@@ -239,11 +237,9 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			Geometry: "roundRect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
 			Text:     captionContent,
-			Icon: &jsonschema.IconInput{
-				Name:     item.Icon,
-				Fill:     accent,
-				Position: "top",
-			},
+		}
+		if item.Icon != nil {
+			shape.Icon = item.Icon.Resolve(accent, "top")
 		}
 
 		gc := &jsonschema.GridCellInput{

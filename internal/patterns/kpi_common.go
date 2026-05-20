@@ -13,10 +13,13 @@ import (
 
 // KPICell is a single KPI cell: a big number and a short caption.
 // Supports string shorthand: "Big | Small" unmarshals to {big:"Big", small:"Small"}.
+//
+// Icon accepts either a bundled-name string shorthand or a full IconRef object
+// (path / url / svg_data / fill / alt / position). See IconRef and IconRefSchema.
 type KPICell struct {
-	Big   string `json:"big"`
-	Small string `json:"small"`
-	Icon  string `json:"icon,omitempty"` // Bundled icon name (e.g. "trending-up", "filled:users")
+	Big   string   `json:"big"`
+	Small string   `json:"small"`
+	Icon  *IconRef `json:"icon,omitempty"`
 }
 
 // UnmarshalJSON supports string shorthand "Big | Small" or object {big, small}.
@@ -184,6 +187,10 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		} else if len(cell.Small) > 40 {
 			errs = append(errs, errMaxLength(patternName, smallPath, 40, len(cell.Small)))
 		}
+		if cell.Icon != nil {
+			iconPath := fmt.Sprintf("values[%d].icon", i)
+			errs = append(errs, validateIconRef(patternName, iconPath, *cell.Icon)...)
+		}
 	}
 
 	// Validate cell_overrides keys (D15 whitelist)
@@ -196,6 +203,10 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 
 // kpiCellSchema returns the JSON Schema for a single KPI cell.
 // Accepts either the object form {big, small, icon?} or the shorthand string "Big | Small".
+//
+// The icon field is polymorphic: it accepts a bundled-name string shorthand
+// (e.g. "rocket") or a full IconRef object (path / url / svg_data / fill / alt
+// / position).
 func kpiCellSchema() *Schema {
 	return OneOfSchema(
 		StringSchema(0).WithDescription("Shorthand: \"Big | Small\" (e.g. \"$4.2M | ARR\")"),
@@ -203,7 +214,7 @@ func kpiCellSchema() *Schema {
 			map[string]*Schema{
 				"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
 				"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
-				"icon":  StringSchema(60).WithDescription("Bundled icon name (e.g. \"trending-up\", \"filled:users\")"),
+				"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
 			},
 			[]string{"big", "small"},
 		).WithAdditionalProperties(false),

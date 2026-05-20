@@ -27,7 +27,7 @@ func (k *kpiInline) UseWhen() string {
 func (k *kpiInline) NotWhen() string {
 	return "KPIs are the primary slide content (use kpi-Nup), a single metric should dominate (use stat-hero), or items need multi-line descriptions (use card-grid)"
 }
-func (k *kpiInline) Version() int     { return 1 }
+func (k *kpiInline) Version() int     { return 2 }
 func (k *kpiInline) CellsHint() string { return "2-6" }
 func (k *kpiInline) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -103,6 +103,10 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 		} else if len(cell.Small) > 40 {
 			errs = append(errs, errMaxLength(name, smallPath, 40, len(cell.Small)))
 		}
+		if cell.Icon != nil {
+			iconPath := fmt.Sprintf("values[%d].icon", i)
+			errs = append(errs, validateIconRef(name, iconPath, *cell.Icon)...)
+		}
 	}
 
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(*cells), ""); coErr != nil {
@@ -146,11 +150,9 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			Fill:     fillJSON,
 			Text:     textContent,
 		}
-		if cell.Icon != "" {
-			shape.Icon = &jsonschema.IconInput{
-				Name:     cell.Icon,
-				Fill:     accent,
-				Position: "left",
+		if cell.Icon != nil {
+			if icon := cell.Icon.Resolve(accent, "left"); icon != nil {
+				shape.Icon = icon
 			}
 		}
 

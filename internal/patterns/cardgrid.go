@@ -9,7 +9,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/svggen/icons"
 )
 
 // ---------------------------------------------------------------------------
@@ -30,7 +29,7 @@ func (c *cardGrid) UseWhen() string {
 func (c *cardGrid) NotWhen() string {
 	return "Exactly 3 numeric KPIs (use kpi-3up), two-column pros/cons (use comparison-2col), standard BMC (use bmc-canvas), or a single hero metric (use stat-hero)"
 }
-func (c *cardGrid) Version() int { return 1 }
+func (c *cardGrid) Version() int { return 2 }
 func (c *cardGrid) CellsHint() string { return "rows × cols" }
 func (c *cardGrid) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -82,7 +81,7 @@ func (c *cardGrid) ExemplarValues() any {
 type CardGridCell struct {
 	Header    string          `json:"header"`
 	Body      string          `json:"body"`
-	Icon      string          `json:"icon,omitempty"`      // Bundled SVG icon name (e.g. "rocket"); emoji/non-bundled strings are rejected
+	Icon      *IconRef        `json:"icon,omitempty"`      // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object
 	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per cell)
 }
 
@@ -161,7 +160,7 @@ func (c *cardGrid) Schema() *Schema {
 			map[string]*Schema{
 				"header":    StringSchema(80).WithDescription("Card header/title"),
 				"body":      StringSchema(300).WithDescription("Card body content"),
-				"icon":      StringSchema(40).WithDescription("Bundled SVG icon name (e.g. \"rocket\"); used with icon-card style. Emoji/non-bundled strings are rejected."),
+				"icon":      IconRefSchema("Optional icon: bundled name string (e.g. \"rocket\") or {name|path|url|svg_data, fill?, alt?, position?} object. Used with icon-card style; also rendered as overlay when set with other styles."),
 				"secondary": SecondaryChartSchema(),
 			},
 			[]string{"header", "body"},
@@ -262,13 +261,8 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 		if cell.Secondary != nil {
 			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("cells[%d].secondary", i), cell.Secondary)...)
 		}
-		if cell.Icon != "" && !icons.Exists(cell.Icon) {
-			errs = append(errs, &ValidationError{
-				Pattern: name,
-				Path:    fmt.Sprintf("cells[%d].icon", i),
-				Code:    ErrCodeInvalidShape,
-				Message: fmt.Sprintf("card-grid: cells[%d].icon must be a bundled icon name (e.g. \"rocket\"); emoji glyphs and unknown names are rejected, got %q", i, cell.Icon),
-			})
+		if cell.Icon != nil {
+			errs = append(errs, validateIconRef(name, fmt.Sprintf("cells[%d].icon", i), *cell.Icon)...)
 		}
 	}
 
@@ -357,13 +351,9 @@ func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, sty
 	default: // "filled"
 		gc = c.expandFilled(cell, accent, headerSize, bodySize)
 	}
-	// Add SVG icon overlay when a bundled icon name is provided.
-	if cell.Icon != "" && gc.Shape != nil && gc.Shape.Icon == nil {
-		gc.Shape.Icon = &jsonschema.IconInput{
-			Name:     cell.Icon,
-			Fill:     accent,
-			Position: "top",
-		}
+	// Add SVG icon overlay when a bundled icon name or rich icon spec is provided.
+	if cell.Icon != nil && gc.Shape != nil && gc.Shape.Icon == nil {
+		gc.Shape.Icon = cell.Icon.Resolve(accent, "top")
 	}
 	// When a secondary chart is attached, convert the cell to a composite
 	// stack so the existing text shape is rendered on top and the chart below.

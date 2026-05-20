@@ -74,8 +74,8 @@ func TestKpi3up(t *testing.T) {
 		if p.UseWhen() == "" {
 			t.Error("UseWhen() must not be empty (D6)")
 		}
-		if p.Version() != 1 {
-			t.Errorf("Version() = %d, want 1", p.Version())
+		if p.Version() != 2 {
+			t.Errorf("Version() = %d, want 2", p.Version())
 		}
 	})
 

@@ -46,7 +46,7 @@ func (k *kpiNup) NotWhen() string {
 	return "Items need multi-line descriptions (use card-grid), a single metric should dominate (use stat-hero), or items are not numeric KPIs (use icon-row)"
 }
 
-func (k *kpiNup) Version() int { return 1 }
+func (k *kpiNup) Version() int { return 2 }
 
 func (k *kpiNup) CellsHint() string { return strconv.Itoa(k.cfg.Count) }
 
@@ -159,11 +159,9 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			Fill:     fillJSON,
 			Text:     textContent,
 		}
-		if cell.Icon != "" {
-			shape.Icon = &jsonschema.IconInput{
-				Name:     cell.Icon,
-				Fill:     accent,
-				Position: "left",
+		if cell.Icon != nil {
+			if icon := cell.Icon.Resolve(accent, "left"); icon != nil {
+				shape.Icon = icon
 			}
 		}
 

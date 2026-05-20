@@ -27,7 +27,7 @@ func (m *matrix2x2) UseWhen() string {
 func (m *matrix2x2) NotWhen() string {
 	return "Only one comparison dimension (use comparison-2col), items are unstructured cards (use card-grid), or layout is a standard BMC (use bmc-canvas)"
 }
-func (m *matrix2x2) Version() int { return 1 }
+func (m *matrix2x2) Version() int { return 2 }
 func (m *matrix2x2) CellsHint() string { return "4 + axes" }
 func (m *matrix2x2) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -56,9 +56,9 @@ func (m *matrix2x2) ExemplarValues() any {
 
 // Matrix2x2Quadrant is a single quadrant cell with a header and body.
 type Matrix2x2Quadrant struct {
-	Header string `json:"header"`
-	Body   string `json:"body,omitempty"`
-	Icon   string `json:"icon,omitempty"` // Bundled icon name (e.g. "star", "filled:trending-up")
+	Header string   `json:"header"`
+	Body   string   `json:"body,omitempty"`
+	Icon   *IconRef `json:"icon,omitempty"` // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object
 }
 
 // UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
@@ -142,30 +142,34 @@ func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
 
 
 func (m *matrix2x2) Schema() *Schema {
+	// Define the quadrant schema once in $defs and reference it from each
+	// quadrant slot so a polymorphic icon spec doesn't multiply the schema size
+	// by 5 (4 named slots + 1 array form).
 	quadrantObjSchema := ObjectSchema(
 		map[string]*Schema{
 			"header": StringSchema(80).WithDescription("Quadrant header text"),
 			"body":   StringSchema(200).WithDescription("Quadrant body text"),
-			"icon":   StringSchema(60).WithDescription("Bundled icon name (e.g. \"star\", \"filled:trending-up\")"),
+			"icon":   IconRefSchema(""),
 		},
 		[]string{"header"},
 	).WithAdditionalProperties(false)
 
-	// Quadrant accepts object {header, body} or string "Header" / "Header | Body"
 	quadrantSchema := OneOfSchema(
 		quadrantObjSchema,
 		StringSchema(0).WithDescription(`String shorthand: "Header" or "Header | Body"`),
 	)
+
+	quadrantRef := RefSchema("quadrant")
 
 	// Named form: top_left, top_right, bottom_left, bottom_right
 	namedValuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
-			"top_left":     quadrantSchema.WithDescription("Top-left quadrant"),
-			"top_right":    quadrantSchema.WithDescription("Top-right quadrant"),
-			"bottom_left":  quadrantSchema.WithDescription("Bottom-left quadrant"),
-			"bottom_right": quadrantSchema.WithDescription("Bottom-right quadrant"),
+			"top_left":     quadrantRef,
+			"top_right":    quadrantRef,
+			"bottom_left":  quadrantRef,
+			"bottom_right": quadrantRef,
 		},
 		[]string{"x_axis_label", "y_axis_label", "top_left", "top_right", "bottom_left", "bottom_right"},
 	).WithAdditionalProperties(false)
@@ -175,7 +179,7 @@ func (m *matrix2x2) Schema() *Schema {
 		map[string]*Schema{
 			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
-			"quadrants":    ArraySchema(quadrantSchema, 4, 4).WithDescription("Positional quadrants: [top_left, top_right, bottom_left, bottom_right]"),
+			"quadrants":    ArraySchema(quadrantRef, 4, 4).WithDescription("Positional quadrants: [top_left, top_right, bottom_left, bottom_right]"),
 		},
 		[]string{"x_axis_label", "y_axis_label", "quadrants"},
 	).WithAdditionalProperties(false)
@@ -200,6 +204,7 @@ func (m *matrix2x2) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
+		"quadrant":     quadrantSchema,
 	}).WithDescription("2×2 quadrant matrix with axis labels")
 }
 
@@ -243,6 +248,9 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		}
 		if len(qd.q.Body) > 200 {
 			errs = append(errs, errMaxLength(name, qd.name+".body", 200, len(qd.q.Body)))
+		}
+		if qd.q.Icon != nil {
+			errs = append(errs, validateIconRef(name, qd.name+".icon", *qd.q.Icon)...)
 		}
 	}
 
@@ -324,11 +332,9 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			Line:     json.RawMessage(matrix2x2CellBorderJSON),
 			Text:     buildMatrix2x2QuadrantContent(q, headerSize, bodySize, accent),
 		}
-		if q.Icon != "" {
-			shape.Icon = &jsonschema.IconInput{
-				Name:     q.Icon,
-				Fill:     accent,
-				Position: "top",
+		if q.Icon != nil {
+			if icon := q.Icon.Resolve(accent, "top"); icon != nil {
+				shape.Icon = icon
 			}
 		}
 		quadrantCells[i] = &jsonschema.GridCellInput{

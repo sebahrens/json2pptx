@@ -141,8 +141,8 @@ func TestCardGrid(t *testing.T) {
 		if p.UseWhen() == "" {
 			t.Error("UseWhen() must not be empty (D6)")
 		}
-		if p.Version() != 1 {
-			t.Errorf("Version() = %d, want 1", p.Version())
+		if p.Version() != 2 {
+			t.Errorf("Version() = %d, want 2", p.Version())
 		}
 	})
 
@@ -618,8 +618,8 @@ func TestCardGridStyles(t *testing.T) {
 	t.Run("icon_card", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "icon-card"}
 		iconCells := []CardGridCell{
-			{Header: "Launch", Body: "Description", Icon: "rocket"},
-			{Header: "Growth", Body: "Description", Icon: "trending-up"},
+			{Header: "Launch", Body: "Description", Icon: &IconRef{Name: "rocket"}},
+			{Header: "Growth", Body: "Description", Icon: &IconRef{Name: "trending-up"}},
 			{Header: "Revenue", Body: "Description"},
 			{Header: "Target", Body: "Description"},
 		}
@@ -687,8 +687,8 @@ func TestCardGridStyles(t *testing.T) {
 	t.Run("icon_card_rejects_emoji", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "icon-card"}
 		emojiCells := []CardGridCell{
-			{Header: "Launch", Body: "Description", Icon: "\U0001F680"},
-			{Header: "Growth", Body: "Description", Icon: "trending-up"},
+			{Header: "Launch", Body: "Description", Icon: &IconRef{Name: "\U0001F680"}},
+			{Header: "Growth", Body: "Description", Icon: &IconRef{Name: "trending-up"}},
 			{Header: "Revenue", Body: "Description"},
 			{Header: "Target", Body: "Description"},
 		}
@@ -708,7 +708,7 @@ func TestCardGridStyles(t *testing.T) {
 	t.Run("icon_card_rejects_unknown_name", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "icon-card"}
 		cells := []CardGridCell{
-			{Header: "A", Body: "B", Icon: "not-a-real-icon-xyz"},
+			{Header: "A", Body: "B", Icon: &IconRef{Name: "not-a-real-icon-xyz"}},
 		}
 		vals := &CardGridValues{Columns: 1, Rows: 1, Cells: cells}
 		err := p.Validate(vals, ovr, nil)

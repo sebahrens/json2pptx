@@ -15,8 +15,8 @@ func TestHeroDetail(t *testing.T) {
 		if p.Name() != "hero-detail" {
 			t.Errorf("Name() = %q, want %q", p.Name(), "hero-detail")
 		}
-		if p.Version() != 1 {
-			t.Errorf("Version() = %d, want 1", p.Version())
+		if p.Version() != 2 {
+			t.Errorf("Version() = %d, want 2", p.Version())
 		}
 		if p.CellsHint() != "1 + 2-4" {
 			t.Errorf("CellsHint() = %q, want %q", p.CellsHint(), "1 + 2-4")
@@ -180,7 +180,7 @@ func TestHeroDetail(t *testing.T) {
 		v := &HeroDetailValues{
 			Hero: HeroDetailHero{Value: "$1B", Label: "TAM"},
 			Details: []HeroDetailItem{
-				{Icon: "🚀", Title: "A"},
+				{Icon: &IconRef{Name: "🚀"}, Title: "A"},
 				{Title: "B"},
 			},
 		}
@@ -197,8 +197,8 @@ func TestHeroDetail(t *testing.T) {
 		v := &HeroDetailValues{
 			Hero: HeroDetailHero{Value: "$1B", Label: "TAM"},
 			Details: []HeroDetailItem{
-				{Icon: "rocket", Title: "A"},
-				{Icon: "trending-up", Title: "B"},
+				{Icon: &IconRef{Name: "rocket"}, Title: "A"},
+				{Icon: &IconRef{Name: "trending-up"}, Title: "B"},
 			},
 		}
 		if err := p.Validate(v, nil, nil); err != nil {
@@ -278,7 +278,7 @@ func TestHeroDetail(t *testing.T) {
 		v := &HeroDetailValues{
 			Hero: HeroDetailHero{Value: "$1B", Label: "Revenue"},
 			Details: []HeroDetailItem{
-				{Icon: "trending-up", Title: "Growth", Body: "Strong"},
+				{Icon: &IconRef{Name: "trending-up"}, Title: "Growth", Body: "Strong"},
 				{Title: "Margin", Body: "Healthy"},
 			},
 		}

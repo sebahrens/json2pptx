@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -18,22 +19,22 @@ func TestIconRowItemUnmarshalJSON(t *testing.T) {
 		{
 			name:  "object_form",
 			input: `{"icon":"🚀","caption":"Launch"}`,
-			want:  IconRowItem{Icon: "🚀", Caption: "Launch"},
+			want:  IconRowItem{Icon: &IconRef{Name: "🚀"}, Caption: "Launch"},
 		},
 		{
 			name:  "string_with_icon",
 			input: `"🚀 | Launch"`,
-			want:  IconRowItem{Icon: "🚀", Caption: "Launch"},
+			want:  IconRowItem{Icon: &IconRef{Name: "🚀"}, Caption: "Launch"},
 		},
 		{
 			name:  "string_caption_only",
 			input: `"Launch"`,
-			want:  IconRowItem{Icon: "", Caption: "Launch"},
+			want:  IconRowItem{Icon: nil, Caption: "Launch"},
 		},
 		{
 			name:  "string_with_pipe_in_caption",
 			input: `"rocket | A | B"`,
-			want:  IconRowItem{Icon: "rocket", Caption: "A | B"},
+			want:  IconRowItem{Icon: &IconRef{Name: "rocket"}, Caption: "A | B"},
 		},
 		{
 			name:    "invalid_json",
@@ -58,7 +59,7 @@ func TestIconRowItemUnmarshalJSON(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tc.want {
+			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %+v, want %+v", got, tc.want)
 			}
 		})
@@ -105,8 +106,8 @@ func TestIconRow(t *testing.T) {
 		if !strings.Contains(p.UseWhen(), "prefer") {
 			t.Errorf("UseWhen() lacks contrastive language: %q", p.UseWhen())
 		}
-		if p.Version() != 1 {
-			t.Errorf("Version() = %d, want 1", p.Version())
+		if p.Version() != 2 {
+			t.Errorf("Version() = %d, want 2", p.Version())
 		}
 	})
 
@@ -146,103 +147,103 @@ func TestIconRow(t *testing.T) {
 		{
 			name: "happy_path_3_items_bundled",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantNoErr: true,
 		},
 		{
 			name: "happy_path_5_items_bundled",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
-				{Icon: "target", Caption: "Target"},
-				{Icon: "bolt", Caption: "Speed"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
+				{Icon: &IconRef{Name: "target"}, Caption: "Target"},
+				{Icon: &IconRef{Name: "bolt"}, Caption: "Speed"},
 			},
 			wantNoErr: true,
 		},
 		{
 			name: "happy_path_inline_svg",
 			values: IconRowValues{
-				{Icon: inlineSVG, Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{SVGData: inlineSVG}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantNoErr: true,
 		},
 		{
 			name: "happy_path_url",
 			values: IconRowValues{
-				{Icon: remoteURL, Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{URL: remoteURL}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantNoErr: true,
 		},
 		{
 			name: "too_few_items_hints_kpi3up",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
 			},
 			wantErr: "kpi-3up",
 		},
 		{
 			name: "too_many_items",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "a"},
-				{Icon: "trending-up", Caption: "b"},
-				{Icon: "currency-dollar", Caption: "c"},
-				{Icon: "target", Caption: "d"},
-				{Icon: "bolt", Caption: "e"},
-				{Icon: "rocket", Caption: "f"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "a"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "b"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "c"},
+				{Icon: &IconRef{Name: "target"}, Caption: "d"},
+				{Icon: &IconRef{Name: "bolt"}, Caption: "e"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "f"},
 			},
 			wantErr: "at most 5 items",
 		},
 		{
 			name: "missing_icon",
 			values: IconRowValues{
-				{Icon: "", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: nil, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantErr: "values[0].icon is required",
 		},
 		{
 			name: "missing_caption",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: ""},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: ""},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantErr: "values[0].caption is required",
 		},
 		{
 			name: "emoji_icon_rejected",
 			values: IconRowValues{
-				{Icon: "🚀", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "🚀"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantErr: "must be a bundled icon name",
 		},
 		{
 			name: "unknown_bundled_name_rejected",
 			values: IconRowValues{
-				{Icon: "not-a-real-icon-name", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "not-a-real-icon-name"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			wantErr: "must be a bundled icon name",
 		},
 		{
 			name: "invalid_cell_override_key",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			cellOvr: map[int]any{
 				0: &struct {
@@ -254,9 +255,9 @@ func TestIconRow(t *testing.T) {
 		{
 			name: "cell_override_out_of_range",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			cellOvr: map[int]any{
 				5: &IconRowCellOverride{AccentBar: true},
@@ -266,9 +267,9 @@ func TestIconRow(t *testing.T) {
 		{
 			name: "accent_override",
 			values: IconRowValues{
-				{Icon: "rocket", Caption: "Launch"},
-				{Icon: "trending-up", Caption: "Growth"},
-				{Icon: "currency-dollar", Caption: "Revenue"},
+				{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+				{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+				{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 			},
 			overrides: &IconRowOverrides{Accent: "accent3"},
 			wantNoErr: true,
@@ -300,9 +301,9 @@ func TestIconRow(t *testing.T) {
 	// Expand tests
 	t.Run("expand_default_3_items", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "rocket", Caption: "Launch"},
-			{Icon: "trending-up", Caption: "Growth"},
-			{Icon: "currency-dollar", Caption: "Revenue"},
+			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {
@@ -342,11 +343,11 @@ func TestIconRow(t *testing.T) {
 
 	t.Run("expand_5_items_dynamic_columns", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "rocket", Caption: "Launch"},
-			{Icon: "trending-up", Caption: "Growth"},
-			{Icon: "currency-dollar", Caption: "Revenue"},
-			{Icon: "target", Caption: "Target"},
-			{Icon: "bolt", Caption: "Speed"},
+			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
+			{Icon: &IconRef{Name: "target"}, Caption: "Target"},
+			{Icon: &IconRef{Name: "bolt"}, Caption: "Speed"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {
@@ -366,9 +367,9 @@ func TestIconRow(t *testing.T) {
 
 	t.Run("expand_accent_override", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "rocket", Caption: "Launch"},
-			{Icon: "trending-up", Caption: "Growth"},
-			{Icon: "currency-dollar", Caption: "Revenue"},
+			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 		}
 		ovr := &IconRowOverrides{Accent: "accent3"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
@@ -388,9 +389,9 @@ func TestIconRow(t *testing.T) {
 
 	t.Run("expand_accent_bar_override", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "rocket", Caption: "Launch"},
-			{Icon: "trending-up", Caption: "Growth"},
-			{Icon: "currency-dollar", Caption: "Revenue"},
+			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 		}
 		cellOvr := map[int]any{
 			1: &IconRowCellOverride{AccentBar: true},
@@ -414,9 +415,9 @@ func TestIconRow(t *testing.T) {
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := IconRowValues{
-			{Icon: "rocket", Caption: "Launch"},
-			{Icon: "trending-up", Caption: "Growth"},
-			{Icon: "currency-dollar", Caption: "Revenue"},
+			{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+			{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth"},
+			{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {

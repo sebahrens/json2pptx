@@ -214,9 +214,9 @@ func TestCardGridValidateRejectsBadSecondary(t *testing.T) {
 
 func TestIconRowExpandEmitsCompositeWhenSecondarySet(t *testing.T) {
 	items := IconRowValues{
-		{Icon: "rocket", Caption: "Launch"},
-		{Icon: "trending-up", Caption: "Growth", Secondary: &SecondaryChart{Type: "bar_chart", Values: []float64{10, 20, 30}}},
-		{Icon: "currency-dollar", Caption: "Revenue"},
+		{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+		{Icon: &IconRef{Name: "trending-up"}, Caption: "Growth", Secondary: &SecondaryChart{Type: "bar_chart", Values: []float64{10, 20, 30}}},
+		{Icon: &IconRef{Name: "currency-dollar"}, Caption: "Revenue"},
 	}
 	ir := &iconRow{}
 	grid, err := ir.Expand(ExpandContext{}, &items, nil, nil)
@@ -240,9 +240,9 @@ func TestIconRowExpandEmitsCompositeWhenSecondarySet(t *testing.T) {
 
 func TestIconRowValidateRejectsTooManyValues(t *testing.T) {
 	items := IconRowValues{
-		{Icon: "a", Caption: "A", Secondary: &SecondaryChart{Type: "sparkline", Values: []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}}},
-		{Icon: "b", Caption: "B"},
-		{Icon: "c", Caption: "C"},
+		{Icon: &IconRef{Name: "a"}, Caption: "A", Secondary: &SecondaryChart{Type: "sparkline", Values: []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}}},
+		{Icon: &IconRef{Name: "b"}, Caption: "B"},
+		{Icon: &IconRef{Name: "c"}, Caption: "C"},
 	}
 	ir := &iconRow{}
 	err := ir.Validate(&items, nil, nil)
