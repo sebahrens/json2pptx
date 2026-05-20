@@ -222,6 +222,10 @@ var outputSchemaShowPattern = json.RawMessage(`{
     "use_when":    {"type": "string"},
     "not_when":    {"type": "string"},
     "supports_callout": {"type": "boolean"},
+    "callout_schema": {
+      "type": "object",
+      "description": "JSON Schema fragment for the envelope-level callout DTO. Present only when supports_callout=true."
+    },
     "version":     {"type": "integer"},
     "schema":      {"type": "object"},
     "composes_with": {"type": "array", "items": {"type": "string"}},

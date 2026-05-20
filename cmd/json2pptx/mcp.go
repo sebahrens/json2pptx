@@ -1796,6 +1796,13 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	}
 	result.Cells = pat.CellsHint()
 
+	if cs, ok := pat.(patterns.CalloutSupport); ok {
+		result.SupportsCallout = cs.SupportsCallout()
+		if cs.SupportsCallout() {
+			result.CalloutSchema = patternCalloutSchemaJSON()
+		}
+	}
+
 	if ex, ok := pat.(patterns.Exemplar); ok {
 		result.ExampleValues = ex.ExemplarValues()
 	}

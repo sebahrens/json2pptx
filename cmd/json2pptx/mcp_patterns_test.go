@@ -232,6 +232,105 @@ func TestMCPShowPattern(t *testing.T) {
 			t.Error("expected tool error for unknown pattern")
 		}
 	})
+
+	t.Run("callout-supporting pattern populates supports_callout + callout_schema (CLI parity)", func(t *testing.T) {
+		// Find a pattern that returns true for SupportsCallout via the registry,
+		// so the test stays correct even if the set of callout-supporting
+		// patterns changes.
+		reg := patterns.Default()
+		var sample string
+		for _, p := range reg.List() {
+			if cs, ok := p.(patterns.CalloutSupport); ok && cs.SupportsCallout() {
+				sample = p.Name()
+				break
+			}
+		}
+		if sample == "" {
+			t.Skip("no callout-supporting patterns registered")
+		}
+
+		result, err := handleShowPattern(context.Background(), makeRequest(map[string]any{
+			"name": sample,
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected tool error: %v", result.Content)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var entry skillPatternFull
+		if err := json.Unmarshal([]byte(text), &entry); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if !entry.SupportsCallout {
+			t.Errorf("supports_callout = false for %q, want true", sample)
+		}
+		if len(entry.CalloutSchema) == 0 {
+			t.Fatalf("callout_schema missing for callout-supporting pattern %q", sample)
+		}
+		var schema map[string]any
+		if err := json.Unmarshal(entry.CalloutSchema, &schema); err != nil {
+			t.Fatalf("callout_schema is not valid JSON: %v", err)
+		}
+
+		// Parity with CLI: both call patternCalloutSchemaJSON() so the schema
+		// payload must be semantically equal (compare via canonical re-encoding
+		// since MCP marshaling re-indents the embedded RawMessage).
+		var got any
+		if err := json.Unmarshal(entry.CalloutSchema, &got); err != nil {
+			t.Fatalf("callout_schema re-parse failed: %v", err)
+		}
+		var want any
+		if err := json.Unmarshal(patternCalloutSchemaJSON(), &want); err != nil {
+			t.Fatalf("CLI patternCalloutSchemaJSON() re-parse failed: %v", err)
+		}
+		gotBytes, _ := json.Marshal(got)
+		wantBytes, _ := json.Marshal(want)
+		if string(gotBytes) != string(wantBytes) {
+			t.Errorf("callout_schema diverges from CLI patternCalloutSchemaJSON()\n got: %s\nwant: %s", gotBytes, wantBytes)
+		}
+	})
+
+	t.Run("non-callout pattern omits callout_schema", func(t *testing.T) {
+		// Pick a registered pattern that does NOT implement CalloutSupport or
+		// reports false, so we can assert the omitempty branch.
+		reg := patterns.Default()
+		var sample string
+		for _, p := range reg.List() {
+			cs, ok := p.(patterns.CalloutSupport)
+			if !ok || !cs.SupportsCallout() {
+				sample = p.Name()
+				break
+			}
+		}
+		if sample == "" {
+			t.Skip("no non-callout patterns registered")
+		}
+
+		result, err := handleShowPattern(context.Background(), makeRequest(map[string]any{
+			"name": sample,
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected tool error: %v", result.Content)
+		}
+
+		text := result.Content[0].(mcp.TextContent).Text
+		var entry skillPatternFull
+		if err := json.Unmarshal([]byte(text), &entry); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if entry.SupportsCallout {
+			t.Errorf("supports_callout = true for non-callout pattern %q", sample)
+		}
+		if len(entry.CalloutSchema) != 0 {
+			t.Errorf("callout_schema present (%s) for non-callout pattern %q; want omitted", entry.CalloutSchema, sample)
+		}
+	})
 }
 
 func TestMCPValidatePattern(t *testing.T) {
