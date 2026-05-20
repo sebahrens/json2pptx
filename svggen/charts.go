@@ -159,6 +159,19 @@ type ChartConfig struct {
 	// ShowGrid enables grid lines.
 	ShowGrid bool
 
+	// ShowVerticalGrid, when true, draws vertical gridlines for Cartesian
+	// charts (in addition to the horizontal lines that ShowGrid governs).
+	// Default false matches the executive token
+	// tokens.ChartHideVerticalGridlines. Honored by BarChart, LineChart, and
+	// AreaChart; bar charts use category boundaries, line/area use x ticks.
+	ShowVerticalGrid bool
+
+	// ForceLegendSingleSeries, when true, renders the legend even on
+	// single-series charts. Default false matches the executive token
+	// tokens.ChartLegendMinSeries (>=2). Honored anywhere the existing
+	// `len(series) > 1` legend gate runs (Bar/Line/Area/Radar/Scatter).
+	ForceLegendSingleSeries bool
+
 	// ShowValues enables value labels on data points.
 	ShowValues bool
 
@@ -313,7 +326,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 	// Refine legend height so multi-row legends aren't clipped.
 	if bc.config.ShowLegend {
-		RefineLegendHeight(b, style, data.Series, &plotArea, &legendHeight)
+		RefineLegendHeightForced(b, style, data.Series, &plotArea, &legendHeight, bc.config.ForceLegendSingleSeries)
 	}
 
 	// Detect all-zero series: flat/blank chart.
@@ -391,9 +404,9 @@ func (bc *BarChart) Draw(data ChartData) error {
 		yScale.SetRangeLinear(plotArea.H, 0)
 		yScale.Nice(true)
 
-		// Draw grid
+		// Draw grid (horizontal + optional vertical per chart_style override)
 		if bc.config.ShowGrid {
-			DrawCartesianGrid(b, plotArea, yScale, nil)
+			DrawCartesianGridWithVerticals(b, plotArea, yScale, xScale, bc.config.ShowVerticalGrid)
 		}
 
 		// Draw axes
@@ -424,7 +437,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	}
 
 	// Draw legend
-	if bc.config.ShowLegend && len(data.Series) > 1 {
+	if bc.config.ShowLegend && (len(data.Series) > 1 || bc.config.ForceLegendSingleSeries) {
 		legendConfig := PresentationLegendConfig(style)
 		legendConfig.Position = bc.config.LegendPosition
 
@@ -938,7 +951,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	// Refine legend height so multi-row legends aren't clipped.
 	if lc.config.ShowLegend {
-		RefineLegendHeight(b, style, data.Series, &plotArea, &legendHeight)
+		RefineLegendHeightForced(b, style, data.Series, &plotArea, &legendHeight, lc.config.ForceLegendSingleSeries)
 	}
 
 	// Check if data is time-series
@@ -993,9 +1006,9 @@ func (lc *LineChart) Draw(data ChartData) error {
 	yScale.SetRangeLinear(plotArea.H, 0)
 	yScale.Nice(true)
 
-	// Draw grid
+	// Draw grid (horizontal + optional vertical per chart_style override)
 	if lc.config.ShowGrid {
-		DrawCartesianGrid(b, plotArea, yScale, nil)
+		DrawCartesianGridWithVerticals(b, plotArea, yScale, xScale, lc.config.ShowVerticalGrid)
 	}
 
 	// Draw axes
@@ -1042,7 +1055,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	}
 
 	// Draw legend
-	if lc.config.ShowLegend && len(data.Series) > 1 {
+	if lc.config.ShowLegend && (len(data.Series) > 1 || lc.config.ForceLegendSingleSeries) {
 		legendConfig := PresentationLegendConfig(style)
 		legendConfig.MarkerShape = LegendMarkerLine
 
@@ -1558,7 +1571,7 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 
 	// Refine legend height so multi-row legends aren't clipped.
 	if sc.config.ShowLegend {
-		RefineLegendHeight(b, style, data.Series, &plotArea, &legendHeight)
+		RefineLegendHeightForced(b, style, data.Series, &plotArea, &legendHeight, sc.config.ForceLegendSingleSeries)
 	}
 
 	// Create scales
@@ -1593,7 +1606,7 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 	}
 
 	// Draw legend
-	if sc.config.ShowLegend && len(data.Series) > 1 {
+	if sc.config.ShowLegend && (len(data.Series) > 1 || sc.config.ForceLegendSingleSeries) {
 		legendConfig := PresentationLegendConfig(style)
 		legendConfig.MarkerShape = LegendMarkerCircle
 
@@ -2481,7 +2494,7 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	}
 
 	legendHeight := 0.0
-	if rc.config.ShowLegend && len(data.Series) > 1 {
+	if rc.config.ShowLegend && (len(data.Series) > 1 || rc.config.ForceLegendSingleSeries) {
 		legendHeight = style.Typography.SizeSmall + style.Spacing.LG
 	}
 
@@ -2584,7 +2597,7 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	}
 
 	// Draw legend
-	if rc.config.ShowLegend && len(data.Series) > 1 {
+	if rc.config.ShowLegend && (len(data.Series) > 1 || rc.config.ForceLegendSingleSeries) {
 		rc.drawLegend(data, colors, plotArea, legendHeight)
 	}
 

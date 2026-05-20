@@ -236,6 +236,17 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		}
 	}
 
+	// Forward per-slide chart_style token overrides (vertical gridlines,
+	// single-series legend, etc.) into the svggen StyleSpec. The two structs
+	// are field-for-field copies — see internal/types.ChartStyleOverrides
+	// and svggen/core.ChartStyleOverrides.
+	if spec.ChartStyle != nil {
+		style.ChartStyle = &svggen.ChartStyleOverrides{
+			ShowVerticalGridlines:  spec.ChartStyle.ShowVerticalGridlines,
+			ShowSingleSeriesLegend: spec.ChartStyle.ShowSingleSeriesLegend,
+		}
+	}
+
 	// Build output spec
 	output := svggen.OutputSpec{
 		Format:      "png",

@@ -7,6 +7,23 @@ import (
 	"fmt"
 )
 
+// applyChartStyleOverrides copies per-request token overrides from
+// req.Style.ChartStyle onto a ChartConfig. Each field is a *bool — nil means
+// "leave the renderer default in place". The renderer defaults are already
+// aligned with internal/tokens.Chart* via DefaultChartConfig and the legend
+// gates in chart Draw methods, so a nil override never changes behaviour.
+func applyChartStyleOverrides(cfg *ChartConfig, overrides *ChartStyleOverrides) {
+	if cfg == nil || overrides == nil {
+		return
+	}
+	if overrides.ShowVerticalGridlines != nil {
+		cfg.ShowVerticalGrid = *overrides.ShowVerticalGridlines
+	}
+	if overrides.ShowSingleSeriesLegend != nil {
+		cfg.ForceLegendSingleSeries = *overrides.ShowSingleSeriesLegend
+	}
+}
+
 // =============================================================================
 // Bar Chart Diagram
 // =============================================================================
@@ -60,6 +77,10 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 
 		// Apply data_labels config to chart config
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
+
+		// Apply per-slide chart_style token overrides (vertical gridlines,
+		// single-series legend, etc.).
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
 
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -156,6 +177,9 @@ func (d *LineChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 
 		// Apply data_labels config to chart config
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
+
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
 
 		chart := NewLineChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -327,6 +351,9 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// Apply data_labels config to chart config
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+
 		chart := NewAreaChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
 			return fmt.Errorf("area_chart render failed: %w", err)
@@ -404,6 +431,9 @@ func (d *RadarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 		// Apply color overrides from data.colors (array of hex strings).
 		config.Colors = extractChartColors(req.Data)
 
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+
 		chart := NewRadarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
 			return fmt.Errorf("radar_chart render failed: %w", err)
@@ -463,6 +493,9 @@ func (d *ScatterChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuild
 		if config.YAxisTitle != "" {
 			config.MarginLeft += 20
 		}
+
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
 
 		chart := NewScatterChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -662,6 +695,9 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 
 		// Apply data_labels config to chart config
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
+
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
 
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -1387,6 +1423,9 @@ func (d *BubbleChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilde
 			config.MarginLeft += 20
 		}
 
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+
 		chart := NewScatterChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
 			return fmt.Errorf("bubble_chart render failed: %w", err)
@@ -1573,6 +1612,9 @@ func (d *StackedAreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGB
 			config.MarginLeft += 20
 		}
 
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+
 		chart := NewStackedAreaChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
 			return fmt.Errorf("stacked_area_chart render failed: %w", err)
@@ -1626,6 +1668,9 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		if config.YAxisTitle != "" {
 			config.MarginLeft += 20
 		}
+
+		// Apply per-slide chart_style token overrides.
+		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
 
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {

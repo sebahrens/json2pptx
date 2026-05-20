@@ -34,6 +34,40 @@ type ChartSpec struct {
 
 	// TimeOrder preserves the input order of time keys (optional).
 	TimeOrder []string `json:"time_order,omitempty"`
+
+	// ChartStyle carries per-slide overrides for the executive chart-style
+	// tokens centralised in internal/tokens (ChartHideVerticalGridlines,
+	// ChartLegendMinSeries, etc.). Nil means "use the token default". Each
+	// field is a *bool so the absence of an override is distinguishable from
+	// an explicit false. See ChartStyleOverrides for the field catalog.
+	ChartStyle *ChartStyleOverrides `json:"chart_style,omitempty"`
+}
+
+// ChartStyleOverrides carries per-slide overrides for the executive chart-style
+// defaults defined in internal/tokens. Each field is a *bool — nil means
+// "honour the token default" while a set value forces that behaviour for the
+// single chart. The struct lives alongside ChartStyle (general styling) but
+// is purposefully narrow: it only exposes toggles whose default lives in the
+// tokens layer.
+//
+// Today's surface covers the two toggles that have shipped acceptance tests:
+//
+//   - ShowVerticalGridlines  — opt back into vertical gridlines on Cartesian
+//     charts (default off per tokens.ChartHideVerticalGridlines).
+//   - ShowSingleSeriesLegend — opt back into a legend on charts with one
+//     series (default suppressed per tokens.ChartLegendMinSeries == 2).
+//
+// New token toggles should be added here (and to svggen's mirror struct) when
+// agents need per-slide control.
+type ChartStyleOverrides struct {
+	// ShowVerticalGridlines, when non-nil, forces vertical gridlines on or
+	// off for Cartesian charts regardless of the token default.
+	ShowVerticalGridlines *bool `json:"show_vertical_gridlines,omitempty"`
+
+	// ShowSingleSeriesLegend, when non-nil, forces the legend to render (or
+	// stay suppressed) for charts with a single series. The token default
+	// suppresses it because the title carries the series label.
+	ShowSingleSeriesLegend *bool `json:"show_single_series_legend,omitempty"`
 }
 
 // UnmarshalJSON handles the case where "data" is either a map (normal) or an array
@@ -43,18 +77,19 @@ type ChartSpec struct {
 func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	// Always use RawMessage for data so we can extract key order.
 	type chartSpecRawData struct {
-		Type         ChartType         `json:"type"`
-		Title        string            `json:"title,omitempty"`
-		Data         json.RawMessage   `json:"data"`
-		DataOrder    []string          `json:"data_order,omitempty"`
-		Width        int               `json:"width,omitempty"`
-		Height       int               `json:"height,omitempty"`
-		Scale        float64           `json:"scale,omitempty"`
-		Style        *ChartStyle       `json:"style,omitempty"`
-		OutputFormat string            `json:"output_format,omitempty"`
-		SeriesLabels []string          `json:"series_labels,omitempty"`
-		TimeData     map[string]any    `json:"time_data,omitempty"`
-		TimeOrder    []string          `json:"time_order,omitempty"`
+		Type         ChartType            `json:"type"`
+		Title        string               `json:"title,omitempty"`
+		Data         json.RawMessage      `json:"data"`
+		DataOrder    []string             `json:"data_order,omitempty"`
+		Width        int                  `json:"width,omitempty"`
+		Height       int                  `json:"height,omitempty"`
+		Scale        float64              `json:"scale,omitempty"`
+		Style        *ChartStyle          `json:"style,omitempty"`
+		OutputFormat string               `json:"output_format,omitempty"`
+		SeriesLabels []string             `json:"series_labels,omitempty"`
+		TimeData     map[string]any       `json:"time_data,omitempty"`
+		TimeOrder    []string             `json:"time_order,omitempty"`
+		ChartStyle   *ChartStyleOverrides `json:"chart_style,omitempty"`
 	}
 
 	var raw chartSpecRawData
@@ -73,6 +108,7 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	cs.SeriesLabels = raw.SeriesLabels
 	cs.TimeData = raw.TimeData
 	cs.TimeOrder = raw.TimeOrder
+	cs.ChartStyle = raw.ChartStyle
 
 	if len(raw.Data) == 0 {
 		return nil
@@ -326,13 +362,14 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 
 	// Width/Height: pass through as-is (0 means "auto-detect from placeholder").
 	return &DiagramSpec{
-		Type:     svggenType,
-		Title:    cs.Title,
-		Data:     data,
-		Width:    cs.Width,
-		Height:   cs.Height,
-		Scale:    cs.Scale,
-		Style:    style,
+		Type:             svggenType,
+		Title:            cs.Title,
+		Data:             data,
+		Width:            cs.Width,
+		Height:           cs.Height,
+		Scale:            cs.Scale,
+		Style:            style,
+		ChartStyle:       cs.ChartStyle,
 		Warnings:         warnings,
 		ChartDiagnostics: chartDiags,
 	}

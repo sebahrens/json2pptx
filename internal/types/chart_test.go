@@ -285,6 +285,67 @@ func TestChartSpecZeroScale(t *testing.T) {
 	}
 }
 
+// TestToDiagramSpec_ChartStylePassthrough asserts the per-slide chart_style
+// override survives ChartSpec → DiagramSpec conversion. Without this the
+// override would silently disappear before reaching svggen.
+func TestToDiagramSpec_ChartStylePassthrough(t *testing.T) {
+	tru := true
+	chartSpec := &ChartSpec{
+		Type: ChartBar,
+		Data: map[string]any{"A": 1.0, "B": 2.0},
+		ChartStyle: &ChartStyleOverrides{
+			ShowVerticalGridlines:  &tru,
+			ShowSingleSeriesLegend: &tru,
+		},
+	}
+
+	ds := chartSpec.ToDiagramSpec()
+
+	if ds.ChartStyle == nil {
+		t.Fatal("DiagramSpec.ChartStyle is nil; override dropped during conversion")
+	}
+	if ds.ChartStyle.ShowVerticalGridlines == nil || !*ds.ChartStyle.ShowVerticalGridlines {
+		t.Errorf("ShowVerticalGridlines not preserved: %+v", ds.ChartStyle.ShowVerticalGridlines)
+	}
+	if ds.ChartStyle.ShowSingleSeriesLegend == nil || !*ds.ChartStyle.ShowSingleSeriesLegend {
+		t.Errorf("ShowSingleSeriesLegend not preserved: %+v", ds.ChartStyle.ShowSingleSeriesLegend)
+	}
+
+	// Nil chart_style must round-trip as nil; absent override should never
+	// materialise into a non-nil-but-empty struct that hides the default
+	// "use token" branch.
+	noOverride := &ChartSpec{Type: ChartBar, Data: map[string]any{"A": 1.0}}
+	if noOverride.ToDiagramSpec().ChartStyle != nil {
+		t.Error("absent chart_style should remain nil after conversion")
+	}
+}
+
+// TestChartSpec_UnmarshalJSON_ChartStyle locks in the JSON key shape for
+// chart_style so a future refactor that breaks the tag is caught here.
+func TestChartSpec_UnmarshalJSON_ChartStyle(t *testing.T) {
+	raw := []byte(`{
+		"type": "bar",
+		"data": {"Q1": 10, "Q2": 20},
+		"chart_style": {
+			"show_vertical_gridlines": true,
+			"show_single_series_legend": false
+		}
+	}`)
+	var cs ChartSpec
+	if err := cs.UnmarshalJSON(raw); err != nil {
+		t.Fatalf("UnmarshalJSON: %v", err)
+	}
+	if cs.ChartStyle == nil {
+		t.Fatal("ChartStyle nil after unmarshal — JSON tag wrong?")
+	}
+	if cs.ChartStyle.ShowVerticalGridlines == nil || !*cs.ChartStyle.ShowVerticalGridlines {
+		t.Errorf("show_vertical_gridlines not parsed: %+v", cs.ChartStyle.ShowVerticalGridlines)
+	}
+	if cs.ChartStyle.ShowSingleSeriesLegend == nil || *cs.ChartStyle.ShowSingleSeriesLegend {
+		t.Errorf("show_single_series_legend=false should parse as &false: %+v", cs.ChartStyle.ShowSingleSeriesLegend)
+	}
+}
+
 func TestToFloat64(t *testing.T) {
 	tests := []struct {
 		name     string

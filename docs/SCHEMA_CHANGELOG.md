@@ -4,6 +4,43 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.36.0 (2026-05-21)
+
+### Added
+
+- **`chart_style` block on `ChartSpec` and `DiagramSpec`.** Per-slide
+  overrides for the executive chart-style tokens centralised in
+  `internal/tokens` (e.g. `ChartHideVerticalGridlines`,
+  `ChartLegendMinSeries`). Each field is a `*bool` so an absent override is
+  distinguishable from an explicit `false`. Shipping with:
+  - `show_vertical_gridlines` — opt back into vertical gridlines on
+    Cartesian charts (default off).
+  - `show_single_series_legend` — opt back into the legend for a chart with
+    one series (default suppressed).
+
+  Example:
+
+  ```json
+  {
+    "type": "chart",
+    "chart_value": {
+      "type": "bar",
+      "data": {"Q1": 12, "Q2": 18},
+      "chart_style": {
+        "show_vertical_gridlines": true,
+        "show_single_series_legend": true
+      }
+    }
+  }
+  ```
+
+  The override is forwarded through `diagramSpecToSVGGen` into
+  `svggen.StyleSpec.ChartStyle`; svggen's chart factories copy the values
+  onto `ChartConfig.ShowVerticalGrid` / `ChartConfig.ForceLegendSingleSeries`
+  and the Cartesian Draw methods honour them. Token defaults stay aligned
+  with `internal/tokens.Chart*` so omitting `chart_style` produces
+  byte-identical output to prior versions. (bd `go-slide-creator-8a9l`.)
+
 ## 4.35.0 (2026-05-20)
 
 ### Added

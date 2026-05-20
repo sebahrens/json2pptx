@@ -248,6 +248,42 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 			t.Errorf("StrictFit = %q, want empty", resultOff.Output.StrictFit)
 		}
 	})
+
+	// Verify per-slide chart_style overrides survive the bridge so svggen
+	// can honour them. Without this both fields silently default to nil and
+	// the override is ignored.
+	t.Run("chart_style_overrides_threaded", func(t *testing.T) {
+		tru := true
+		fls := false
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "series": []any{}},
+			ChartStyle: &types.ChartStyleOverrides{
+				ShowVerticalGridlines:  &tru,
+				ShowSingleSeriesLegend: &fls,
+			},
+		}
+		result := diagramSpecToSVGGen(spec, nil, 0, "")
+		if result.Style.ChartStyle == nil {
+			t.Fatal("StyleSpec.ChartStyle = nil; bridge dropped per-slide override")
+		}
+		if result.Style.ChartStyle.ShowVerticalGridlines == nil || !*result.Style.ChartStyle.ShowVerticalGridlines {
+			t.Errorf("ShowVerticalGridlines not forwarded: %+v", result.Style.ChartStyle.ShowVerticalGridlines)
+		}
+		if result.Style.ChartStyle.ShowSingleSeriesLegend == nil || *result.Style.ChartStyle.ShowSingleSeriesLegend {
+			t.Errorf("ShowSingleSeriesLegend should be &false, got: %+v", result.Style.ChartStyle.ShowSingleSeriesLegend)
+		}
+
+		// Absent override must remain absent — never materialise into an
+		// empty non-nil struct.
+		specNoOverride := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "series": []any{}},
+		}
+		if diagramSpecToSVGGen(specNoOverride, nil, 0, "").Style.ChartStyle != nil {
+			t.Error("missing chart_style should leave StyleSpec.ChartStyle nil")
+		}
+	})
 }
 
 func TestRenderDiagramSpec(t *testing.T) {

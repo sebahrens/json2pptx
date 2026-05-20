@@ -227,6 +227,30 @@ type StyleSpec struct {
 	// When unset, StyleGuideFromSpec auto-derives the roles from ThemeColors
 	// using the same white-contrast (≥3.0) heuristic as the native side.
 	RoleMap RoleMapSpec `json:"role_map,omitempty" yaml:"role_map,omitempty"`
+
+	// ChartStyle carries per-request overrides for the executive chart-style
+	// tokens centralised in the json2pptx internal/tokens package. Nil means
+	// "use the renderer default". Mirrors the json2pptx-side
+	// ChartStyleOverrides shape so the override survives the StyleSpec
+	// bridge.
+	ChartStyle *ChartStyleOverrides `json:"chart_style,omitempty" yaml:"chart_style,omitempty"`
+}
+
+// ChartStyleOverrides carries per-request opt-ins/opt-outs that flip an
+// executive chart-style default for a single render. The fields are pointers
+// so a missing override is distinguishable from an explicit false.
+//
+// Keep this struct in sync with internal/types.ChartStyleOverrides on the
+// json2pptx side; the chart_render bridge copies field-for-field.
+type ChartStyleOverrides struct {
+	// ShowVerticalGridlines forces vertical gridlines on or off for
+	// Cartesian charts. Renderer default is suppressed (horizontal-only).
+	ShowVerticalGridlines *bool `json:"show_vertical_gridlines,omitempty" yaml:"show_vertical_gridlines,omitempty"`
+
+	// ShowSingleSeriesLegend forces the legend to render (or stay
+	// suppressed) on charts with one series. Renderer default suppresses
+	// the legend because the title already names the series.
+	ShowSingleSeriesLegend *bool `json:"show_single_series_legend,omitempty" yaml:"show_single_series_legend,omitempty"`
 }
 
 // RoleMapSpec carries design-intent colors as hex strings. Empty fields mean

@@ -120,6 +120,30 @@ Pattern field shapes and overrides are documented in `docs/PATTERNS.md`.
 
 Supported chart types: `bar_chart`, `line_chart`, `pie_chart`, `donut_chart`, `area_chart`, `radar_chart`, `scatter_chart`, `bubble_chart`, `stacked_bar_chart`, `stacked_area_chart`, `grouped_bar_chart`, `waterfall`, `funnel_chart`, `gauge_chart`, `treemap_chart`.
 
+### Per-slide chart-style overrides
+
+Add a `chart_style` block on a `chart_value` (or `diagram_value`) to flip an
+executive-default token for one chart. Omit the block to keep the deck-wide
+defaults. Each field is optional:
+
+| field | type | default | effect |
+|---|---|---|---|
+| `show_vertical_gridlines` | bool | `false` | When `true`, draws vertical gridlines on bar/line/area charts in addition to the horizontal ones. |
+| `show_single_series_legend` | bool | `false` | When `true`, renders the legend even when the chart has a single series (default suppresses it because the title carries the label). |
+
+```json
+{
+  "type": "chart",
+  "chart_value": {
+    "type": "bar",
+    "data": {"Q1": 12, "Q2": 18, "Q3": 22, "Q4": 31},
+    "chart_style": {
+      "show_vertical_gridlines": true
+    }
+  }
+}
+```
+
 ```json
 {
   "placeholder_id": "body",

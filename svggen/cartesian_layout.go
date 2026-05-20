@@ -52,7 +52,7 @@ func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtit
 
 	// Legend
 	legendHeight := 0.0
-	if config.ShowLegend && seriesCount > 1 {
+	if config.ShowLegend && (seriesCount > 1 || config.ForceLegendSingleSeries) {
 		legendHeight = style.Typography.SizeSmall + style.Spacing.LG
 	}
 
@@ -76,8 +76,26 @@ func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtit
 // the real height exceeds the initial estimate. This prevents multi-row legends
 // (caused by large PresentationLegendConfig fonts and TextWidthFactor) from
 // being clipped by the SVG viewBox.
+//
+// Single-series charts are skipped by default since they don't render a
+// legend. Callers that have opted into a single-series legend via
+// ChartConfig.ForceLegendSingleSeries should use RefineLegendHeightForced.
 func RefineLegendHeight(b *SVGBuilder, style *StyleGuide, series []ChartSeries, plotArea *Rect, legendHeight *float64) {
-	if len(series) <= 1 {
+	refineLegendHeight(b, style, series, plotArea, legendHeight, false)
+}
+
+// RefineLegendHeightForced is the force-aware variant of RefineLegendHeight.
+// When force is true, the single-series early return is skipped so the
+// legend height reflects the real measurement even with one series.
+func RefineLegendHeightForced(b *SVGBuilder, style *StyleGuide, series []ChartSeries, plotArea *Rect, legendHeight *float64, force bool) {
+	refineLegendHeight(b, style, series, plotArea, legendHeight, force)
+}
+
+func refineLegendHeight(b *SVGBuilder, style *StyleGuide, series []ChartSeries, plotArea *Rect, legendHeight *float64, force bool) {
+	if len(series) <= 1 && !force {
+		return
+	}
+	if len(series) == 0 {
 		return
 	}
 	legendConfig := PresentationLegendConfig(style)
@@ -98,6 +116,53 @@ func RefineLegendHeight(b *SVGBuilder, style *StyleGuide, series []ChartSeries, 
 // =============================================================================
 // Shared Grid Drawing
 // =============================================================================
+
+// DrawCartesianGridWithVerticals draws the standard horizontal y-axis grid
+// (via DrawCartesianGrid) and, when showVertical is true, additionally draws
+// per-category vertical gridlines for charts whose x axis is a
+// CategoricalScale. Combining the two paths keeps the per-chart Draw method
+// at a single grid call site (and a single cyclomatic branch).
+func DrawCartesianGridWithVerticals(b *SVGBuilder, plotArea Rect, yScale *LinearScale, xScale Scale, showVertical bool) {
+	DrawCartesianGrid(b, plotArea, yScale, nil)
+	if showVertical {
+		DrawCategoricalVerticalGrid(b, plotArea, xScale)
+	}
+}
+
+// DrawCategoricalVerticalGrid draws vertical gridlines at category positions on
+// a Cartesian chart whose x axis is a CategoricalScale (bar/line/area). Used
+// to honour ChartConfig.ShowVerticalGrid when the executive token default
+// (horizontal-only) has been overridden via chart_style.show_vertical_gridlines.
+//
+// The function quietly no-ops on non-CategoricalScale inputs so callers can
+// pass the chart's existing Scale without type-switching at the call site.
+func DrawCategoricalVerticalGrid(b *SVGBuilder, plotArea Rect, xScale Scale) {
+	cat, ok := xScale.(*CategoricalScale)
+	if !ok || cat == nil {
+		return
+	}
+
+	gridConfig := DefaultGridConfig()
+
+	b.Push()
+	b.SetStrokeColor(gridConfig.Color)
+	b.SetStrokeWidth(gridConfig.StrokeWidth)
+	b.SetDashes(gridConfig.DashPattern...)
+
+	// Place one vertical line at the center of each category band so the
+	// gridline visually anchors the corresponding bar/marker. Skip lines
+	// that fall outside the plot rect (e.g. when the scale has padding
+	// that pushes the first/last band beyond plotArea).
+	for _, label := range cat.Categories() {
+		x := plotArea.X + cat.Scale(label)
+		if x < plotArea.X-0.5 || x > plotArea.X+plotArea.W+0.5 {
+			continue
+		}
+		b.DrawLine(x, plotArea.Y, x, plotArea.Y+plotArea.H)
+	}
+
+	b.Pop()
+}
 
 // DrawCartesianGrid draws horizontal grid lines (and optionally vertical) for
 // Cartesian charts. This replaces the duplicated drawGrid methods on BarChart,

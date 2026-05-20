@@ -450,7 +450,7 @@ See [PATTERNS.md](PATTERNS.md) for the full pattern workflow: catalog browsing, 
 Non-negotiable. Full catalog with rationale and examples in [RULES.md](RULES.md). Highlights:
 
 - **Shape grid (Rules 1–7):** col_spans must sum per row; `bounds` are percentages; gaps are typographic points; one content type per cell (except `composite`/`pattern`/`grid` slots); body text cells need all 4 insets.
-- **Charts (Rules 8–10):** `series[i].values` length equals `len(categories)`; chart types use underscores (`stacked_bar`, NOT `stacked-bar`); don't mix data formats.
+- **Charts (Rules 8–10):** `series[i].values` length equals `len(categories)`; chart types use underscores (`stacked_bar`, NOT `stacked-bar`); don't mix data formats. **Per-slide chart-style overrides:** add `chart_value.chart_style: {show_vertical_gridlines: true}` or `{show_single_series_legend: true}` to flip an executive token default for one chart — omit the block to keep the deck defaults.
 - **Content & layout (Rules 11–15):** `layout_id` must be canonical (`title`, `content`, `blank`, `section`, `closing`, `two-column`, …); semantic fills (`accent1`, `lt2`, `dk1`) required, never mix with hex on one slide; align values are `"l"`/`"ctr"`/`"r"`/`"just"`, vertical align is `"t"`/`"ctr"`/`"b"`.
 - **Contrast auto-fix (Rule 16):** engine auto-replaces low-contrast text with dark gray; surfaces as `contrast_autofixed` findings.
 - **Silent traps (Rules 17–19):** `footer` is an object not a string; never prefix `source` with "Source: "; content fields need `_value` suffix (`chart_value`, `table_value`).

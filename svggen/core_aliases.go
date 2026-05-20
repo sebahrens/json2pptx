@@ -31,6 +31,10 @@ type ThemeColorInput = core.ThemeColorInput
 // header / body fill the native skill-info would have chosen.
 type RoleMapSpec = core.RoleMapSpec
 
+// ChartStyleOverrides carries per-request opt-ins/opt-outs that flip an
+// executive chart-style default for a single render.
+type ChartStyleOverrides = core.ChartStyleOverrides
+
 // SVGDocument represents a rendered SVG document.
 type SVGDocument = core.SVGDocument
 

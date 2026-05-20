@@ -9,8 +9,8 @@ import "testing"
 //  2. Add a changelog entry in docs/SCHEMA_CHANGELOG.md.
 //  3. Update wantFingerprint below to the new fingerprint value.
 func TestSchemaFingerprintMatchesVersion(t *testing.T) {
-	// Pinned to SchemaVersion "4.35.0". If this fails, see file header comment.
-	const wantFingerprint = "a7b590259dbc8dc7"
+	// Pinned to SchemaVersion "4.36.0". If this fails, see file header comment.
+	const wantFingerprint = "3eeb7724529f8e44"
 
 	got := schemaFingerprint()
 

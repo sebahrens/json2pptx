@@ -226,8 +226,13 @@ type DiagramSpec struct {
 	Scale   float64        `json:"scale,omitempty" yaml:"scale,omitempty"`       // Resolution scale (default: calculated dynamically, min 2.0)
 	FitMode  string         `json:"fit_mode,omitempty" yaml:"fit_mode,omitempty"` // Fit mode: "stretch" (default), "contain", or "cover"
 	Style    *DiagramStyle  `json:"style,omitempty" yaml:"style,omitempty"`       // Optional styling overrides
-	Warnings         []string          `json:"warnings,omitempty" yaml:"-"`                  // Non-fatal warnings (e.g., flat-map auto-conversion)
-	ChartDiagnostics []ChartDiagnostic `json:"-" yaml:"-"`                                   // Structured chart data diagnostics (internal use)
+	// ChartStyle carries per-slide overrides for the executive chart-style
+	// tokens (defined in internal/tokens). Each field is a *bool — nil means
+	// "use the token default". Mirrors ChartSpec.ChartStyle so callers
+	// reaching svggen via DiagramSpec keep the same override surface.
+	ChartStyle       *ChartStyleOverrides `json:"chart_style,omitempty" yaml:"chart_style,omitempty"`
+	Warnings         []string             `json:"warnings,omitempty" yaml:"-"`                  // Non-fatal warnings (e.g., flat-map auto-conversion)
+	ChartDiagnostics []ChartDiagnostic    `json:"-" yaml:"-"`                                   // Structured chart data diagnostics (internal use)
 }
 
 // ChartDiagnostic is a structured diagnostic emitted during chart data
