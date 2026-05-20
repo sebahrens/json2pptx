@@ -111,6 +111,25 @@ type capabilitiesFitReport struct {
 	DefaultIn map[string]bool `json:"default_in"`
 }
 
+// capabilitiesAssetLimits exposes the per-asset-kind size caps the engine
+// enforces on local SVG/raster files (icon.path, image_value.path,
+// background.image, GridImageInput.path) and inline SVG markup
+// (icon.svg_data). Soft-cap breaches emit ASSET_TOO_LARGE at warning severity;
+// hard-cap breaches emit it at error severity. Each pair is overridable via
+// the matching env var so operators can tighten or relax limits without
+// recompiling.
+type capabilitiesAssetLimits struct {
+	SVGSoftBytes        int64  `json:"svg_soft_bytes"`
+	SVGHardBytes        int64  `json:"svg_hard_bytes"`
+	RasterSoftBytes     int64  `json:"raster_soft_bytes"`
+	RasterHardBytes     int64  `json:"raster_hard_bytes"`
+	SVGSoftEnv          string `json:"svg_soft_env"`
+	SVGHardEnv          string `json:"svg_hard_env"`
+	RasterSoftEnv       string `json:"raster_soft_env"`
+	RasterHardEnv       string `json:"raster_hard_env"`
+	FindingCodeOnBreach string `json:"finding_code_on_breach"`
+}
+
 // capabilitiesFeatures describes feature flags the server supports.
 type capabilitiesFeatures struct {
 	StrictFit            []string                   `json:"strict_fit"`
@@ -135,6 +154,11 @@ type capabilitiesFeatures struct {
 	// reproducible behaviour across launch configurations should always send
 	// an absolute base_dir.
 	BaseDir              []string                   `json:"base_dir"`
+	// AssetLimits exposes the per-kind size caps enforced on icons, images,
+	// and slide-background assets. Agents that pre-validate user inputs can
+	// reject oversized assets locally instead of round-tripping through the
+	// server.
+	AssetLimits          capabilitiesAssetLimits    `json:"asset_limits"`
 	FeatureVersions      map[string]string          `json:"feature_versions"`
 }
 
@@ -305,6 +329,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"preview_presentation_plan",
 				"render_slide_image_from_json",
 			},
+			AssetLimits: buildAssetLimits(),
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -318,6 +343,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"compose":                "4.10.0",
 				"compose_envelope":       "4.11.0",
 				"base_dir":               "4.25.0",
+				"asset_limits":           "4.33.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{
@@ -509,6 +535,26 @@ func buildToolList() []capabilitiesToolListEntry {
 		})
 	}
 	return out
+}
+
+// buildAssetLimits resolves the current asset-size caps (soft and hard, for
+// SVG and raster) by calling the same helpers used to enforce them at
+// resolve time, so the advertised numbers can never disagree with the
+// enforced numbers.
+func buildAssetLimits() capabilitiesAssetLimits {
+	svg := svgSizeLimits()
+	raster := rasterSizeLimits()
+	return capabilitiesAssetLimits{
+		SVGSoftBytes:        svg.SoftBytes,
+		SVGHardBytes:        svg.HardBytes,
+		RasterSoftBytes:     raster.SoftBytes,
+		RasterHardBytes:     raster.HardBytes,
+		SVGSoftEnv:          envMaxSVGSoftBytes,
+		SVGHardEnv:          envMaxSVGHardBytes,
+		RasterSoftEnv:       envMaxRasterSoftBytes,
+		RasterHardEnv:       envMaxRasterHardBytes,
+		FindingCodeOnBreach: diagnostics.CodeAssetTooLarge,
+	}
 }
 
 // buildRegistry returns the standardized chart/diagram/pattern registry used

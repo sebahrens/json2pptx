@@ -2393,6 +2393,248 @@ func TestResolveLocalAssetPaths_SkipsURLOnlyImage(t *testing.T) {
 	}
 }
 
+// writeAssetOfSize creates a file of approximately size bytes (filled with a
+// single byte) at the given path. Used to drive the asset-size cap tests
+// without keeping huge files in the repo.
+func writeAssetOfSize(t *testing.T, path string, size int64) {
+	t.Helper()
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create %s: %v", path, err)
+	}
+	defer f.Close()
+	if size > 0 {
+		// Truncate is the fastest way to fabricate a sparse file of the
+		// requested length; the file system reports the requested size
+		// via os.Stat.
+		if err := f.Truncate(size); err != nil {
+			t.Fatalf("truncate %s: %v", path, err)
+		}
+	}
+}
+
+// TestResolveIconInputPath_OversizedSVG_Warning verifies that an SVG icon
+// between the soft and hard caps emits an ASSET_TOO_LARGE warning while still
+// committing the resolved path so generation can proceed.
+func TestResolveIconInputPath_OversizedSVG_Warning(t *testing.T) {
+	// Force a tiny soft cap so we don't need a multi-megabyte test fixture.
+	t.Setenv(envMaxSVGSoftBytes, "1024")
+	t.Setenv(envMaxSVGHardBytes, "1048576")
+
+	dir := t.TempDir()
+	iconFile := filepath.Join(dir, "big.svg")
+	writeAssetOfSize(t, iconFile, 4096) // 4 KB > 1 KB soft cap, < 1 MB hard cap
+
+	icon := &IconInput{Path: iconFile}
+	findings := resolveIconInputPath(icon, dir, 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+	var got *diagnostics.Diagnostic
+	for i := range findings {
+		if findings[i].Code == diagnostics.CodeAssetTooLarge {
+			got = &findings[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("expected ASSET_TOO_LARGE finding, got %+v", findings)
+	}
+	if got.Severity != diagnostics.SeverityWarning {
+		t.Errorf("expected warning severity, got %s", got.Severity)
+	}
+	if got.Details["exceeded_cap"] != "soft" {
+		t.Errorf("expected exceeded_cap=soft, got %v", got.Details["exceeded_cap"])
+	}
+	// Resolved path must still be committed so a soft-cap warning does not
+	// block downstream generation.
+	resolved, _ := filepath.EvalSymlinks(iconFile)
+	if icon.Path != resolved {
+		t.Errorf("expected icon.Path=%q after warning, got %q", resolved, icon.Path)
+	}
+}
+
+// TestResolveIconInputPath_OversizedSVG_Blocking verifies that an SVG icon
+// past the hard cap emits an ASSET_TOO_LARGE error-severity finding so the
+// caller can refuse generation.
+func TestResolveIconInputPath_OversizedSVG_Blocking(t *testing.T) {
+	t.Setenv(envMaxSVGSoftBytes, "1024")
+	t.Setenv(envMaxSVGHardBytes, "2048")
+
+	dir := t.TempDir()
+	iconFile := filepath.Join(dir, "huge.svg")
+	writeAssetOfSize(t, iconFile, 8192) // 8 KB > 2 KB hard cap
+
+	icon := &IconInput{Path: iconFile}
+	findings := resolveIconInputPath(icon, dir, 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+	var got *diagnostics.Diagnostic
+	for i := range findings {
+		if findings[i].Code == diagnostics.CodeAssetTooLarge {
+			got = &findings[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("expected ASSET_TOO_LARGE finding, got %+v", findings)
+	}
+	if got.Severity != diagnostics.SeverityError {
+		t.Errorf("expected error severity, got %s", got.Severity)
+	}
+	if got.Details["exceeded_cap"] != "hard" {
+		t.Errorf("expected exceeded_cap=hard, got %v", got.Details["exceeded_cap"])
+	}
+}
+
+// TestResolveIconInputPath_InlineSVGData_OverSoftCap verifies that inline
+// svg_data markup is also checked against the SVG caps even though there is
+// no file on disk to stat.
+func TestResolveIconInputPath_InlineSVGData_OverSoftCap(t *testing.T) {
+	t.Setenv(envMaxSVGSoftBytes, "256")
+	t.Setenv(envMaxSVGHardBytes, "1048576")
+
+	big := strings.Repeat("a", 512) // > 256-byte soft cap
+	icon := &IconInput{SVGData: "<svg>" + big + "</svg>"}
+	findings := resolveIconInputPath(icon, t.TempDir(), 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+	var got *diagnostics.Diagnostic
+	for i := range findings {
+		if findings[i].Code == diagnostics.CodeAssetTooLarge {
+			got = &findings[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("expected ASSET_TOO_LARGE finding for inline svg_data, got %+v", findings)
+	}
+	if got.Severity != diagnostics.SeverityWarning {
+		t.Errorf("expected warning severity, got %s", got.Severity)
+	}
+	if got.Details["media_kind"] != "svg" {
+		t.Errorf("expected media_kind=svg for inline svg_data, got %v", got.Details["media_kind"])
+	}
+}
+
+// TestResolveLocalAssetPaths_OversizedRaster verifies that a PNG over the
+// raster soft cap emits an ASSET_TOO_LARGE warning while still committing the
+// resolved path. Confirms image_value path is checked.
+func TestResolveLocalAssetPaths_OversizedRaster(t *testing.T) {
+	t.Setenv(envMaxRasterSoftBytes, "1024")
+	t.Setenv(envMaxRasterHardBytes, "1048576")
+
+	dir := t.TempDir()
+	imgFile := filepath.Join(dir, "photo.png")
+	writeAssetOfSize(t, imgFile, 4096) // 4 KB > 1 KB soft cap
+
+	slides := []SlideInput{{
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{Path: imgFile},
+		}},
+	}}
+	findings := resolveLocalAssetPaths(slides, dir)
+	var got *diagnostics.Diagnostic
+	for i := range findings {
+		if findings[i].Code == diagnostics.CodeAssetTooLarge {
+			got = &findings[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("expected ASSET_TOO_LARGE finding for oversized image, got %+v", findings)
+	}
+	if got.Severity != diagnostics.SeverityWarning {
+		t.Errorf("expected warning severity, got %s", got.Severity)
+	}
+	if got.Details["media_kind"] != "raster" {
+		t.Errorf("expected media_kind=raster, got %v", got.Details["media_kind"])
+	}
+	resolved, _ := filepath.EvalSymlinks(imgFile)
+	if slides[0].Content[0].ImageValue.Path != resolved {
+		t.Errorf("expected image_value.path=%q after warning, got %q", resolved, slides[0].Content[0].ImageValue.Path)
+	}
+}
+
+// TestResolveLocalAssetPaths_OversizedRaster_Blocking verifies that a PNG
+// past the raster hard cap emits an ASSET_TOO_LARGE error finding and that
+// the resolved path is NOT committed (so generation refuses to embed).
+func TestResolveLocalAssetPaths_OversizedRaster_Blocking(t *testing.T) {
+	t.Setenv(envMaxRasterSoftBytes, "1024")
+	t.Setenv(envMaxRasterHardBytes, "2048")
+
+	dir := t.TempDir()
+	imgFile := filepath.Join(dir, "huge.png")
+	writeAssetOfSize(t, imgFile, 8192)
+
+	slides := []SlideInput{{
+		Content: []ContentInput{{
+			PlaceholderID: "body",
+			Type:          "image",
+			ImageValue:    &ImageInput{Path: imgFile},
+		}},
+	}}
+	rawInput := slides[0].Content[0].ImageValue.Path
+	findings := resolveLocalAssetPaths(slides, dir)
+	var got *diagnostics.Diagnostic
+	for i := range findings {
+		if findings[i].Code == diagnostics.CodeAssetTooLarge {
+			got = &findings[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("expected ASSET_TOO_LARGE finding, got %+v", findings)
+	}
+	if got.Severity != diagnostics.SeverityError {
+		t.Errorf("expected error severity, got %s", got.Severity)
+	}
+	if slides[0].Content[0].ImageValue.Path != rawInput {
+		t.Errorf("hard-cap breach must not commit resolved path; original=%q, got %q",
+			rawInput, slides[0].Content[0].ImageValue.Path)
+	}
+}
+
+// TestResolveIconSVG_RejectsOversizedFile verifies the defense-in-depth check
+// in resolveIconSVG: even if preflight is bypassed, the renderer-entry path
+// must refuse to read a file beyond the hard cap rather than slurp it into
+// memory.
+func TestResolveIconSVG_RejectsOversizedFile(t *testing.T) {
+	t.Setenv(envMaxSVGSoftBytes, "1024")
+	t.Setenv(envMaxSVGHardBytes, "2048")
+
+	dir := t.TempDir()
+	iconFile := filepath.Join(dir, "huge.svg")
+	writeAssetOfSize(t, iconFile, 8192)
+
+	spec := &shapegrid.IconSpec{Path: iconFile}
+	_, err := resolveIconSVG(spec)
+	if err == nil {
+		t.Fatal("expected error for oversized icon file, got nil")
+	}
+	if !strings.Contains(err.Error(), "hard cap") {
+		t.Errorf("expected error to mention hard cap, got: %v", err)
+	}
+}
+
+// TestCapabilitiesAssetLimits verifies get_capabilities advertises the
+// current limits and the matching env-var names, and that env-var overrides
+// flow through into the advertised numbers.
+func TestCapabilitiesAssetLimits(t *testing.T) {
+	t.Setenv(envMaxSVGSoftBytes, "12345")
+	t.Setenv(envMaxRasterHardBytes, "99999999")
+
+	resp := getCapabilitiesResult(t)
+	al := resp.Features.AssetLimits
+	if al.SVGSoftBytes != 12345 {
+		t.Errorf("svg_soft_bytes override not honored: got %d, want 12345", al.SVGSoftBytes)
+	}
+	if al.RasterHardBytes != 99999999 {
+		t.Errorf("raster_hard_bytes override not honored: got %d, want 99999999", al.RasterHardBytes)
+	}
+	if al.FindingCodeOnBreach != diagnostics.CodeAssetTooLarge {
+		t.Errorf("finding_code_on_breach: got %q, want %q", al.FindingCodeOnBreach, diagnostics.CodeAssetTooLarge)
+	}
+	if al.SVGSoftEnv != envMaxSVGSoftBytes {
+		t.Errorf("svg_soft_env mismatch: got %q, want %q", al.SVGSoftEnv, envMaxSVGSoftBytes)
+	}
+}
+
 func TestResolveShapeGrid_DiagramCell(t *testing.T) {
 	grid := &ShapeGridInput{
 		Columns: json.RawMessage(`2`),

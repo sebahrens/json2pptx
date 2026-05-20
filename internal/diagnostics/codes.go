@@ -51,6 +51,7 @@ const (
 	CodeImagePath              Code = "IMAGE_PATH"
 	CodeBackgroundImagePath    Code = "BACKGROUND_IMAGE_PATH"
 	CodeAssetPathEnvUnset      Code = "ASSET_PATH_ENV_UNSET"
+	CodeAssetTooLarge          Code = "ASSET_TOO_LARGE"
 	CodeURLFetchFailed         Code = "URL_FETCH_FAILED"
 	CodeURLResolverInit        Code = "URL_RESOLVER_INIT"
 )
@@ -126,6 +127,7 @@ func AllCodes() []Code {
 		CodeImagePath,
 		CodeBackgroundImagePath,
 		CodeAssetPathEnvUnset,
+		CodeAssetTooLarge,
 		CodeURLFetchFailed,
 		CodeURLResolverInit,
 		// Render

@@ -911,56 +911,61 @@ func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.D
 	// Reuse the existing icon walker so its tests stay authoritative.
 	findings = append(findings, resolveIconPaths(slides, baseDir)...)
 	for i := range slides {
-		// Slide-level background image.
-		if bg := slides[i].Background; bg != nil && bg.Image != "" {
-			path := slidepath.SlideField(i, "background/image")
-			resolved, diag := resolveLocalAssetPath(bg.Image, baseDir, imageAssetExtensions,
-				diagnostics.CodeBackgroundImagePath, "background", i, path)
-			if diag != nil {
-				findings = append(findings, *diag)
-			} else {
-				bg.Image = resolved
-			}
-		}
+		findings = append(findings, resolveSlideAssets(&slides[i], baseDir, i)...)
+	}
+	return findings
+}
 
-		// Content-level image_value paths.
-		for j := range slides[i].Content {
-			c := &slides[i].Content[j]
-			if c.Type != "image" || c.ImageValue == nil || c.ImageValue.Path == "" {
-				continue
-			}
-			path := slidepath.ContentField(i, j, "image_value/path")
-			resolved, diag := resolveLocalAssetPath(c.ImageValue.Path, baseDir, imageAssetExtensions,
-				diagnostics.CodeImagePath, "image", i, path)
-			if diag != nil {
-				findings = append(findings, *diag)
-			} else {
-				c.ImageValue.Path = resolved
-			}
-		}
-
-		// Shape-grid image cells.
-		if slides[i].ShapeGrid == nil {
+// resolveSlideAssets resolves background, content image_value, and shape-grid
+// image cell paths for one slide. Extracted from resolveLocalAssetPaths to
+// keep that function's cognitive complexity under the linter ceiling.
+func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
+	if bg := slide.Background; bg != nil && bg.Image != "" {
+		path := slidepath.SlideField(slideIdx, "background/image")
+		findings = append(findings, applyLocalAssetPath(&bg.Image, baseDir,
+			diagnostics.CodeBackgroundImagePath, "background", slideIdx, path)...)
+	}
+	for j := range slide.Content {
+		c := &slide.Content[j]
+		if c.Type != "image" || c.ImageValue == nil || c.ImageValue.Path == "" {
 			continue
 		}
-		for j := range slides[i].ShapeGrid.Rows {
-			for k := range slides[i].ShapeGrid.Rows[j].Cells {
-				cell := slides[i].ShapeGrid.Rows[j].Cells[k]
-				if cell == nil || cell.Image == nil || cell.Image.Path == "" {
-					continue
-				}
-				path := slidepath.GridCellField(i, j, k, "image/path")
-				resolved, diag := resolveLocalAssetPath(cell.Image.Path, baseDir, imageAssetExtensions,
-					diagnostics.CodeImagePath, "image", i, path)
-				if diag != nil {
-					findings = append(findings, *diag)
-				} else {
-					cell.Image.Path = resolved
-				}
+		path := slidepath.ContentField(slideIdx, j, "image_value/path")
+		findings = append(findings, applyLocalAssetPath(&c.ImageValue.Path, baseDir,
+			diagnostics.CodeImagePath, "image", slideIdx, path)...)
+	}
+	if slide.ShapeGrid == nil {
+		return findings
+	}
+	for j := range slide.ShapeGrid.Rows {
+		for k := range slide.ShapeGrid.Rows[j].Cells {
+			cell := slide.ShapeGrid.Rows[j].Cells[k]
+			if cell == nil || cell.Image == nil || cell.Image.Path == "" {
+				continue
 			}
+			path := slidepath.GridCellField(slideIdx, j, k, "image/path")
+			findings = append(findings, applyLocalAssetPath(&cell.Image.Path, baseDir,
+				diagnostics.CodeImagePath, "image", slideIdx, path)...)
 		}
 	}
 	return findings
+}
+
+// applyLocalAssetPath wraps resolveLocalAssetPath plus the writeback rule:
+// commit the resolved path whenever one is returned (which covers both the
+// fully-clean case and the soft-cap warning case), and bubble any diagnostic
+// the resolver produced. Centralizes the writeback so resolveSlideAssets
+// stays linear.
+func applyLocalAssetPath(dst *string, baseDir string, code diagnostics.Code, assetKind string, slideIdx int, jsonPath string) []diagnostics.Diagnostic {
+	resolved, diag := resolveLocalAssetPath(*dst, baseDir, imageAssetExtensions, code, assetKind, slideIdx, jsonPath)
+	if resolved != "" {
+		*dst = resolved
+	}
+	if diag != nil {
+		return []diagnostics.Diagnostic{*diag}
+	}
+	return nil
 }
 
 // expandAssetPath expands a leading "~/" (or bare "~") to the user's home
@@ -1154,6 +1159,17 @@ func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool,
 		}
 	}
 
+	// Enforce per-asset size caps. A hard-cap breach is fatal: the path stays
+	// unresolved so the caller skips committing it. A soft-cap breach is
+	// advisory: the resolved path is returned, but the warning diagnostic is
+	// surfaced alongside so callers append it to the diagnostic stream.
+	if diag := checkAssetSize(resolved, rawPath, assetKind, slideIdx, jsonPath, code); diag != nil {
+		if diag.Severity == diagnostics.SeverityError {
+			return "", diag
+		}
+		return resolved, diag
+	}
+
 	return resolved, nil
 }
 
@@ -1175,6 +1191,64 @@ func joinSortedExts(exts map[string]bool) string {
 	return strings.Join(keys, ", ")
 }
 
+// checkIconSourceArity validates that exactly one of name/path/url/svg_data
+// is set on an icon spec. Returns the conflict (>1 source) or missing-source
+// diagnostic, or nil when exactly one source is set. Extracted from
+// resolveIconInputPath to keep that function under the linter complexity
+// ceiling.
+func checkIconSourceArity(hasName, hasPath, hasURL, hasSVGData bool, slideIdx int, jsonPath string) *diagnostics.Diagnostic {
+	var setFields []string
+	if hasName {
+		setFields = append(setFields, "name")
+	}
+	if hasPath {
+		setFields = append(setFields, "path")
+	}
+	if hasURL {
+		setFields = append(setFields, "url")
+	}
+	if hasSVGData {
+		setFields = append(setFields, "svg_data")
+	}
+	if len(setFields) > 1 {
+		quoted := make([]string, len(setFields))
+		for i, f := range setFields {
+			quoted[i] = "'" + f + "'"
+		}
+		conflicting := strings.Join(quoted, ", ")
+		return &diagnostics.Diagnostic{
+			Code:     diagnostics.CodeIconAmbiguous,
+			Message:  fmt.Sprintf("icon has conflicting sources %s; exactly one of 'name', 'path', 'url', or 'svg_data' is allowed", conflicting),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index":        slideIdx,
+				"conflicting_fields": setFields,
+				"remediation":        fmt.Sprintf("keep one of %s and remove the others", conflicting),
+			},
+		}
+	}
+	if len(setFields) == 0 {
+		example := "examples:\n" +
+			`  { "name": "chart-pie" }                      // bundled icon` + "\n" +
+			`  { "path": "icons/custom.svg" }               // local SVG file` + "\n" +
+			`  { "url": "https://example.com/icon.svg" }    // remote SVG` + "\n" +
+			`  { "svg_data": "<svg ...>...</svg>" }         // inline SVG`
+		return &diagnostics.Diagnostic{
+			Code:     diagnostics.CodeIconMissing,
+			Message:  "icon must have one of 'name', 'path', 'url', or 'svg_data'\n" + example,
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"remediation": "set one of 'name' (bundled icon), 'path' (filesystem), 'url' (remote), or 'svg_data' (inline)",
+				"example":     example,
+			},
+		}
+	}
+	return nil
+}
+
 // resolveIconInputPath validates and resolves a single IconInput's path field.
 // Returns a slice of diagnostics describing any problems found. Returns nil on
 // success (in which case icon.Path is rewritten to the resolved absolute form).
@@ -1189,56 +1263,8 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 	hasURL := icon.URL != ""
 	hasSVGData := icon.SVGData != ""
 
-	var setFields []string
-	if hasName {
-		setFields = append(setFields, "name")
-	}
-	if hasPath {
-		setFields = append(setFields, "path")
-	}
-	if hasURL {
-		setFields = append(setFields, "url")
-	}
-	if hasSVGData {
-		setFields = append(setFields, "svg_data")
-	}
-	set := len(setFields)
-
-	if set > 1 {
-		quoted := make([]string, len(setFields))
-		for i, f := range setFields {
-			quoted[i] = "'" + f + "'"
-		}
-		conflicting := strings.Join(quoted, ", ")
-		return []diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeIconAmbiguous,
-			Message:  fmt.Sprintf("icon has conflicting sources %s; exactly one of 'name', 'path', 'url', or 'svg_data' is allowed", conflicting),
-			Path:     jsonPath,
-			Severity: diagnostics.SeverityError,
-			Details: map[string]any{
-				"slide_index":        slideIdx,
-				"conflicting_fields": setFields,
-				"remediation":        fmt.Sprintf("keep one of %s and remove the others", conflicting),
-			},
-		}}
-	}
-	if set == 0 {
-		example := "examples:\n" +
-			`  { "name": "chart-pie" }                      // bundled icon` + "\n" +
-			`  { "path": "icons/custom.svg" }               // local SVG file` + "\n" +
-			`  { "url": "https://example.com/icon.svg" }    // remote SVG` + "\n" +
-			`  { "svg_data": "<svg ...>...</svg>" }         // inline SVG`
-		return []diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeIconMissing,
-			Message:  "icon must have one of 'name', 'path', 'url', or 'svg_data'\n" + example,
-			Path:     jsonPath,
-			Severity: diagnostics.SeverityError,
-			Details: map[string]any{
-				"slide_index": slideIdx,
-				"remediation": "set one of 'name' (bundled icon), 'path' (filesystem), 'url' (remote), or 'svg_data' (inline)",
-				"example":     example,
-			},
-		}}
+	if diag := checkIconSourceArity(hasName, hasPath, hasURL, hasSVGData, slideIdx, jsonPath); diag != nil {
+		return []diagnostics.Diagnostic{*diag}
 	}
 
 	var findings []diagnostics.Diagnostic
@@ -1254,6 +1280,15 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 				"remediation": "either pre-color the inline svg_data markup, or remove svg_data and use 'name'/'path' with 'fill'",
 			},
 		})
+	}
+
+	if hasSVGData {
+		if extra, blocked := checkInlineSVGSize(icon.SVGData, slideIdx, jsonPath); extra != nil {
+			findings = append(findings, *extra)
+			if blocked {
+				return findings
+			}
+		}
 	}
 
 	if hasName {
@@ -1362,7 +1397,17 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 
 	// Update the path to the resolved absolute path
 	icon.Path = resolved
-	return nil
+
+	// Enforce per-asset size caps. A hard-cap breach is fatal — return the
+	// finding without committing the resolved path? The path is already
+	// committed above for symmetry with the existing nil-return contract,
+	// but a downstream caller using iconFindingsToError will still treat the
+	// error-severity finding as blocking. A soft-cap breach is advisory and
+	// passes through as a warning so generation proceeds.
+	if diag := checkAssetSize(resolved, icon.Path, "icon", slideIdx, jsonPath, diagnostics.CodeAssetTooLarge); diag != nil {
+		return append(findings, *diag)
+	}
+	return findings
 }
 
 // buildBundledIconNameFinding constructs an ICON_BUNDLED_NAME_UNKNOWN
@@ -1419,12 +1464,26 @@ func iconFindingsToError(findings []diagnostics.Diagnostic) error {
 // For custom icons (Path set), it reads the SVG file from disk.
 // Fill color override is applied to both bundled and custom SVG icons.
 func resolveIconSVG(spec *shapegrid.IconSpec) ([]byte, error) {
+	limits := svgSizeLimits()
 	if spec.SVGData != "" {
 		// Inline SVG markup — no disk I/O, no fill recolor (agent supplies pre-styled SVG).
+		// Hard cap enforcement is a defense in depth: preflight should have
+		// already flagged oversized inline SVG, but a renderer-entry check
+		// guards against callers that bypass preflight.
+		if int64(len(spec.SVGData)) > limits.HardBytes {
+			return nil, fmt.Errorf("inline svg_data exceeds hard cap of %s (got %s); shrink the SVG or supply a smaller alternative",
+				humanizeBytes(limits.HardBytes), humanizeBytes(int64(len(spec.SVGData))))
+		}
 		return []byte(spec.SVGData), nil
 	}
 	if spec.Path != "" {
-		// Custom SVG from file path (already resolved to absolute path)
+		// Custom SVG from file path (already resolved to absolute path). Stat
+		// before reading so a 1 GB file does not get pulled into memory just
+		// to be rejected.
+		if info, err := os.Stat(spec.Path); err == nil && info.Size() > limits.HardBytes {
+			return nil, fmt.Errorf("custom icon %q: file size %s exceeds hard cap of %s; shrink the SVG or supply a smaller alternative",
+				spec.Path, humanizeBytes(info.Size()), humanizeBytes(limits.HardBytes))
+		}
 		svgData, err := os.ReadFile(spec.Path)
 		if err != nil {
 			return nil, fmt.Errorf("custom icon %q: %w", spec.Path, err)
