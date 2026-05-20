@@ -54,6 +54,9 @@ const (
 	CodeAssetTooLarge          Code = "ASSET_TOO_LARGE"
 	CodeURLFetchFailed         Code = "URL_FETCH_FAILED"
 	CodeURLResolverInit        Code = "URL_RESOLVER_INIT"
+	CodeSVGInvalidRoot         Code = "SVG_INVALID_ROOT"
+	CodeSVGUnsafeXML           Code = "SVG_UNSAFE_XML"
+	CodeSVGParseError          Code = "SVG_PARSE_ERROR"
 )
 
 // Render family — generation and rendering failures.
@@ -130,6 +133,9 @@ func AllCodes() []Code {
 		CodeAssetTooLarge,
 		CodeURLFetchFailed,
 		CodeURLResolverInit,
+		CodeSVGInvalidRoot,
+		CodeSVGUnsafeXML,
+		CodeSVGParseError,
 		// Render
 		CodeGenerationFailed,
 		CodeReadFailed,

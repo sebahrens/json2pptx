@@ -154,13 +154,19 @@ func resolveURLs(slides []SlideInput, resolver urlResolver) []diagnostics.Diagno
 	return findings
 }
 
-// urlFetchDiagnostic builds a structured URL_FETCH_FAILED diagnostic with the
-// fields agents need to repair a broken URL reference: JSON Pointer path,
-// asset kind, expected content type, the offending URL, and the underlying
-// error message.
+// urlFetchDiagnostic builds a structured diagnostic with the fields agents
+// need to repair a broken URL reference: JSON Pointer path, asset kind,
+// expected content type, the offending URL, and the underlying error message.
+// The default code is URL_FETCH_FAILED; SVG-specific validation failures
+// surface the more precise SVG_INVALID_ROOT / SVG_UNSAFE_XML / SVG_PARSE_ERROR
+// codes via the structured error returned by resource.ResolveSVG.
 func urlFetchDiagnostic(jsonPath, assetKind, expectedContent, rawURL string, slideIdx int, cause error) diagnostics.Diagnostic {
+	code := urlFetchCode
+	if svgCode := resource.SVGValidationCode(cause); svgCode != "" {
+		code = svgCode
+	}
 	return diagnostics.Diagnostic{
-		Code:     urlFetchCode,
+		Code:     code,
 		Path:     jsonPath,
 		Message:  fmt.Sprintf("%s URL %q: %v", assetKind, rawURL, cause),
 		Severity: diagnostics.SeverityError,

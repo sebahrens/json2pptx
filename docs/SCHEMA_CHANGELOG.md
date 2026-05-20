@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Strict XML safety check for remote SVGs.** `ResolveSVG` now parses
+  downloaded bytes with `encoding/xml` (Strict, Entity=nil) before they reach
+  the cache. The previous "starts with `<svg` or `<?xml`" prefix check is
+  replaced with three structured codes: `SVG_INVALID_ROOT` (well-formed XML
+  whose root is not `<svg>`), `SVG_UNSAFE_XML` (any `<!DOCTYPE …>` or
+  `<!ENTITY …>` declaration — the carriers for XXE / billion-laughs /
+  external-entity expansion), and `SVG_PARSE_ERROR` (malformed XML, empty
+  payload, or content that does not start with `<`). Diagnostics emitted via
+  `urlFetchDiagnostic` propagate the specific SVG code instead of the
+  generic `URL_FETCH_FAILED` when the failure is a content-validation
+  failure rather than a transport error. (bd `go-slide-creator-9vl8`.)
 - **`preview_icon` MCP tool (CLI: `json2pptx preview-icon`).** Renders a single
   `IconInput` (bundled name, custom `.svg` path, HTTPS URL, or inline `svg_data`)
   to SVG bytes plus a base64 PNG without building a full deck. Lets agents

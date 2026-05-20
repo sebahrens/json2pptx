@@ -1,9 +1,12 @@
 package resource
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // testResolver creates a Resolver that bypasses SSRF checks for local test servers.
@@ -147,6 +150,111 @@ func TestResolveSVG_RejectsNonSVG(t *testing.T) {
 	_, err := resolver.ResolveSVG(srv.URL + "/not-svg.txt")
 	if err == nil {
 		t.Fatal("expected error for non-SVG content")
+	}
+	if got := SVGValidationCode(err); got != diagnostics.CodeSVGParseError {
+		t.Fatalf("expected code %q for plain text, got %q (err=%v)", diagnostics.CodeSVGParseError, got, err)
+	}
+}
+
+// TestResolveSVG_RejectsHTMLRoot covers the SVG_INVALID_ROOT path: a
+// well-formed XML document whose root element is anything other than <svg>
+// must be rejected before reaching the cache.
+func TestResolveSVG_RejectsHTMLRoot(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<?xml version="1.0"?><html><body>not svg</body></html>`))
+	}))
+	defer srv.Close()
+
+	resolver := testResolver(t, ResolverOptions{})
+
+	_, err := resolver.ResolveSVG(srv.URL + "/page.xml")
+	if err == nil {
+		t.Fatal("expected error for non-svg root element")
+	}
+	var sve *SVGValidationError
+	if !errors.As(err, &sve) {
+		t.Fatalf("expected *SVGValidationError, got %T (%v)", err, err)
+	}
+	if sve.Code != diagnostics.CodeSVGInvalidRoot {
+		t.Fatalf("expected code %q, got %q", diagnostics.CodeSVGInvalidRoot, sve.Code)
+	}
+}
+
+// TestResolveSVG_RejectsDOCTYPE covers SVG_UNSAFE_XML for a DOCTYPE
+// declaration — the carrier for external entities / XXE / billion-laughs.
+func TestResolveSVG_RejectsDOCTYPE(t *testing.T) {
+	payload := `<?xml version="1.0"?>
+<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+<svg xmlns="http://www.w3.org/2000/svg"><text>&xxe;</text></svg>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+
+	resolver := testResolver(t, ResolverOptions{})
+
+	_, err := resolver.ResolveSVG(srv.URL + "/xxe.svg")
+	if err == nil {
+		t.Fatal("expected error for DOCTYPE/entity declarations")
+	}
+	if got := SVGValidationCode(err); got != diagnostics.CodeSVGUnsafeXML {
+		t.Fatalf("expected code %q, got %q (err=%v)", diagnostics.CodeSVGUnsafeXML, got, err)
+	}
+}
+
+// TestResolveSVG_RejectsBillionLaughs covers SVG_UNSAFE_XML for a recursive
+// internal-entity expansion DOCTYPE.
+func TestResolveSVG_RejectsBillionLaughs(t *testing.T) {
+	payload := `<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;">
+]>
+<svg xmlns="http://www.w3.org/2000/svg"><text>&lol2;</text></svg>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(payload))
+	}))
+	defer srv.Close()
+
+	resolver := testResolver(t, ResolverOptions{})
+
+	_, err := resolver.ResolveSVG(srv.URL + "/lolz.svg")
+	if err == nil {
+		t.Fatal("expected error for recursive entity expansion")
+	}
+	if got := SVGValidationCode(err); got != diagnostics.CodeSVGUnsafeXML {
+		t.Fatalf("expected code %q, got %q (err=%v)", diagnostics.CodeSVGUnsafeXML, got, err)
+	}
+}
+
+// TestResolveSVG_RejectsMalformedXML covers SVG_PARSE_ERROR for content that
+// starts like XML but cannot be parsed.
+func TestResolveSVG_RejectsMalformedXML(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Missing closing tag — not well-formed.
+		w.Write([]byte(`<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><rect></svg>`))
+	}))
+	defer srv.Close()
+
+	resolver := testResolver(t, ResolverOptions{})
+
+	_, err := resolver.ResolveSVG(srv.URL + "/broken.svg")
+	if err == nil {
+		t.Fatal("expected error for malformed XML")
+	}
+	if got := SVGValidationCode(err); got != diagnostics.CodeSVGParseError {
+		t.Fatalf("expected code %q, got %q (err=%v)", diagnostics.CodeSVGParseError, got, err)
+	}
+}
+
+// TestSVGValidationCode_UnknownError returns "" for errors unrelated to
+// SVG validation so callers can fall back to the generic URL_FETCH_FAILED.
+func TestSVGValidationCode_UnknownError(t *testing.T) {
+	if got := SVGValidationCode(errors.New("network refused")); got != "" {
+		t.Fatalf("expected empty code for non-validation error, got %q", got)
+	}
+	if got := SVGValidationCode(nil); got != "" {
+		t.Fatalf("expected empty code for nil, got %q", got)
 	}
 }
 

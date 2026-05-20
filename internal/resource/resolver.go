@@ -109,7 +109,11 @@ func (r *Resolver) ResolveImage(rawURL string) (string, error) {
 }
 
 // ResolveSVG downloads the URL, validates it contains SVG data, and returns
-// the local cached path.
+// the local cached path. SVG bytes are parsed with a strict XML pass that
+// requires an <svg> root element and rejects DOCTYPE / entity declarations
+// (XXE / billion-laughs carriers) before the payload reaches the cache.
+// Returns a *SVGValidationError on rejection — call SVGValidationCode(err)
+// to recover the structured diagnostic code.
 func (r *Resolver) ResolveSVG(rawURL string) (string, error) {
 	data, _, err := r.download(rawURL)
 	if err != nil {
@@ -119,10 +123,8 @@ func (r *Resolver) ResolveSVG(rawURL string) (string, error) {
 		return "", err
 	}
 
-	// Validate SVG content
-	trimmed := bytes.TrimSpace(data)
-	if !bytes.HasPrefix(trimmed, []byte("<svg")) && !bytes.HasPrefix(trimmed, []byte("<?xml")) {
-		return "", fmt.Errorf("URL %q: content is not valid SVG", rawURL)
+	if err := validateSVG(data); err != nil {
+		return "", fmt.Errorf("URL %q: %w", rawURL, err)
 	}
 
 	filename := hashFilename(rawURL, ".svg")
