@@ -395,7 +395,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 
 	ast.Inspect(f, func(n ast.Node) bool {
 		fn, ok := n.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "runMCP" {
+		if !ok || fn.Name.Name != "registerMCPTools" {
 			return true
 		}
 		// Walk the function body to find s.AddTool calls.
@@ -425,7 +425,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 	// Parse the tool names from AddTool first arg constructor calls.
 	ast.Inspect(f, func(n ast.Node) bool {
 		fn, ok := n.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "runMCP" {
+		if !ok || fn.Name.Name != "registerMCPTools" {
 			return true
 		}
 		ast.Inspect(fn.Body, func(n ast.Node) bool {

@@ -150,7 +150,22 @@ func runMCP() error {
 		server.WithHooks(hooks),
 	)
 
-	// Register tools
+	registerMCPTools(s, mc)
+
+	slog.Info("starting json2pptx MCP server",
+		"version", Version,
+		"templates_dir", mc.templatesDir,
+		"output_dir", mc.outputDir,
+	)
+
+	return server.ServeStdio(s)
+}
+
+// registerMCPTools registers every json2pptx MCP tool against the supplied
+// server. It is the single source of truth for the tool catalog so that
+// runMCP (production) and the doctor test (coverage audit) cannot drift —
+// adding a tool here automatically gets it tested.
+func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	s.AddTool(mcpGenerateTool(), mc.handleGenerate)
 	s.AddTool(mcpListTemplatesTool(), mc.handleListTemplates)
 	s.AddTool(mcpGetDataFormatHintsTool(), handleGetDataFormatHints)
@@ -190,14 +205,6 @@ func runMCP() error {
 	s.AddTool(mcpReadPresentationTool(), handleReadPresentation)
 	s.AddTool(mcpValidateOutputTool(), handleValidateOutput)
 	s.AddTool(mcpDescribeFindingTool(), handleDescribeFinding)
-
-	slog.Info("starting json2pptx MCP server",
-		"version", Version,
-		"templates_dir", mc.templatesDir,
-		"output_dir", mc.outputDir,
-	)
-
-	return server.ServeStdio(s)
 }
 
 // --- Tool definitions ---
