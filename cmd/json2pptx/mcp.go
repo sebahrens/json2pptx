@@ -163,6 +163,7 @@ func runMCP() error {
 	s.AddTool(mcpExpandPatternTool(), mc.handleExpandPattern)
 	s.AddTool(mcpExpandPatternsTool(), mc.handleExpandPatterns)
 	s.AddTool(mcpListIconsTool(), handleListIcons)
+	s.AddTool(mcpPreviewIconTool(), mc.handlePreviewIcon)
 	s.AddTool(mcpGetShapeCatalogTool(), handleGetShapeCatalog)
 	s.AddTool(mcpTableDensityGuideTool(), mc.handleTableDensityGuide)
 	s.AddTool(mcpResolveThemeTool(), mc.handleResolveTheme)

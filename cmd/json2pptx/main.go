@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.31.0"
+const SchemaVersion = "4.32.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -60,6 +60,8 @@ func dispatch() error { //nolint:gocyclo
 		return runPatterns()
 	case "icons":
 		return runIcons()
+	case "preview-icon":
+		return runPreviewIcon()
 	case "tables":
 		return runTables()
 	case "skill-info":
@@ -137,6 +139,7 @@ Commands:
   template-check      Check template conformance against spec
   patterns            Discover, validate, and expand named patterns
   icons               List available icon names
+  preview-icon        Render a single icon spec to SVG + PNG preview
   tables              Table density and sizing reference
   skill-info          Show template capabilities for Claude Code skill
   capabilities        Show schema version, tools, features, and vocabularies

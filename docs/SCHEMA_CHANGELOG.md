@@ -4,6 +4,25 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.32.0 (2026-05-20)
+
+### Added
+
+- **`preview_icon` MCP tool (CLI: `json2pptx preview-icon`).** Renders a single
+  `IconInput` (bundled name, custom `.svg` path, HTTPS URL, or inline `svg_data`)
+  to SVG bytes plus a base64 PNG without building a full deck. Lets agents
+  verify an icon spec — including a custom-SVG path or a recolored bundled
+  icon — before committing it to a slide, instead of round-tripping through
+  `generate_presentation` + `render_slide_image`. Response carries `svg_data`,
+  `png_base64`, `alt`, `source_kind` (`bundled` / `path` / `url` / `inline`),
+  and `qualified_name` for bundled icons. The `fill` override is honored for
+  bundled, path, and URL sources; for inline `svg_data` it is ignored with a
+  warning (the agent supplies pre-styled markup). Path-based calls honor
+  `base_dir` for relative path resolution. Failure codes:
+  `ICON_BUNDLED_NAME_UNKNOWN` (with suggestions), `ICON_NOT_FOUND`,
+  `ICON_PATH_EXT_INVALID`, `URL_FETCH_FAILED`, `INVALID_PARAMETER`. (bd
+  `go-slide-creator-33el`.)
+
 ## 4.31.0 (2026-05-20)
 
 ### Changed

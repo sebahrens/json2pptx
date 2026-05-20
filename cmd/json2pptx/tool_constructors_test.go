@@ -38,6 +38,7 @@ func TestMCPToolConstructors(t *testing.T) {
 		{"expand_patterns", mcpExpandPatternsTool},
 		{"recommend_visual", mcpRecommendVisualTool},
 		{"list_icons", mcpListIconsTool},
+		{"preview_icon", mcpPreviewIconTool},
 		{"render_slide_image", mcpRenderSlideImageTool},
 		{"render_slide_image_from_json", mcpRenderSlideImageFromJSONTool},
 		{"render_deck_thumbnails", mcpRenderDeckThumbnailsTool},

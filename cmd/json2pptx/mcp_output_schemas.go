@@ -543,6 +543,22 @@ var outputSchemaGetShapeCatalog = json.RawMessage(`{
   }
 }`)
 
+// --- preview_icon ---
+var outputSchemaPreviewIcon = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "svg_data":       {"type": "string", "description": "SVG markup for the resolved icon (Fill applied for non-inline sources)."},
+    "png_base64":     {"type": "string", "description": "Base64-encoded PNG rasterization of the SVG. Absent when rasterization fails."},
+    "alt":            {"type": "string", "description": "Alt text — IconInput.alt when set, otherwise derived from name/path/url."},
+    "source_kind":    {"type": "string", "enum": ["bundled", "path", "url", "inline"], "description": "Which IconInput field was set."},
+    "qualified_name": {"type": "string", "description": "Canonical '<set>:<name>' identifier for bundled icons. Drop directly into icon.name in deck JSON."},
+    "width":          {"type": "integer", "description": "PNG width in pixels."},
+    "height":         {"type": "integer", "description": "PNG height in pixels."},
+    "warnings":       {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["svg_data", "alt", "source_kind"]
+}`)
+
 // --- render_slide_image ---
 var outputSchemaRenderSlideImage = json.RawMessage(`{
   "type": "object",
