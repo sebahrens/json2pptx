@@ -42,6 +42,13 @@ type mcpConfig struct {
 	cfg          config.Config
 	cache        *template.MemoryCache
 
+	// idempotency caches success responses for generate_presentation,
+	// auto_repair, and make_deck so transport-layer retries with the same
+	// idempotency_key return the original result instead of regenerating.
+	// Nil in tests that don't exercise the path — Get/Set tolerate a nil
+	// receiver and degrade to no-op behaviour.
+	idempotency *idempotencyCache
+
 	// resolverOpts customizes the URL resource resolver used by
 	// handleGenerate / handleValidate. Production leaves this zero-valued
 	// (SSRF-safe defaults). Tests inject a custom HTTPClient so they can
@@ -283,6 +290,7 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory."),
 		),
+		idempotencyKeyToolParam(),
 	)
 }
 
@@ -365,6 +373,18 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 // --- Tool handlers ---
 
 func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo,gocognit
+	// Idempotency: if a matching key is already in the cache, replay the
+	// cached response instead of regenerating. The cache is per-process and
+	// only holds successful responses, so retries on transient transport
+	// failures dedupe but bad-input retries still surface diagnostics.
+	idemKey := idempotencyKey(request)
+	if cached, ok := mc.idempotency.Get("generate_presentation", idemKey); ok {
+		if out, ok := cached.(JSONOutput); ok {
+			out.IdempotentReplay = true
+			return api.MCPSuccessResult(ctx, out)
+		}
+	}
+
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
 	if paramErr != nil {
 		return paramErr, nil
@@ -708,6 +728,8 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Slides:                   slideResolutions,
 		OutputValidationFindings: outputValidationFindings,
 	}
+
+	mc.idempotency.Set("generate_presentation", idemKey, output)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {

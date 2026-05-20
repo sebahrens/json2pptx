@@ -20,6 +20,7 @@ var outputSchemaGenerate = json.RawMessage(`{
     "quality":           {"$ref": "#/$defs/quality_score"},
     "validation_errors": {"type": "array", "items": {"$ref": "#/$defs/validation_error"}},
     "fit_findings":      {"type": "array", "items": {"$ref": "#/$defs/fit_finding"}},
+    "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."},
     "output_validation_findings": {
       "type": "array",
       "items": {
@@ -953,7 +954,8 @@ var outputSchemaAutoRepair = json.RawMessage(`{
       "type": "array",
       "description": "Human-readable list of unmet gate criteria. Present only when gate_passed=false.",
       "items": {"type": "string"}
-    }
+    },
+    "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
   "required": ["final_score", "gate_passed", "passes", "trace"]
 }`)
@@ -1006,7 +1008,8 @@ var outputSchemaMakeDeck = json.RawMessage(`{
         }
       },
       "required": ["template", "slide_budget", "slides"]
-    }
+    },
+    "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
   "required": ["final_score", "gate_passed", "passes", "trace", "plan"]
 }`)

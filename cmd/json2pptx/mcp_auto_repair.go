@@ -48,6 +48,9 @@ type autoRepairOutput struct {
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
+	// IdempotentReplay is true when this response was served from the
+	// idempotency cache instead of regenerated.
+	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
 }
 
 // autoRepairTraceEntry is one iteration of the loop.
@@ -111,12 +114,22 @@ When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: auto_repair.pptx). Path components are stripped for safety."),
 		),
+		idempotencyKeyToolParam(),
 	)
 }
 
 // --- Handler ---
 
 func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	idemKey := idempotencyKey(request)
+	if cached, ok := mc.idempotency.Get("auto_repair", idemKey); ok {
+		if out, ok := cached.(*autoRepairOutput); ok {
+			clone := *out
+			clone.IdempotentReplay = true
+			return api.MCPSuccessResult(ctx, &clone)
+		}
+	}
+
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
 	if paramErr != nil {
 		return paramErr, nil
@@ -159,6 +172,8 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 	if errResult != nil {
 		return errResult, nil
 	}
+
+	mc.idempotency.Set("auto_repair", idemKey, output)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {

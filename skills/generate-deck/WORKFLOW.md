@@ -206,3 +206,26 @@ Boundary-error mappings used by the candidate-decision tools:
 ## `response_fingerprint` — server-side cache key
 
 `validate_input`, `preview_presentation_plan`, `plan_deck`, and `recommend_visual` responses include a top-level `response_fingerprint` field: a sha256 hex digest (64 chars) of the canonical JSON of the response body with the fingerprint field itself zeroed. These four paths are deterministic — identical inputs produce identical fingerprints — so agents may use the fingerprint directly as a memoisation cache key without re-hashing the body. To verify a fingerprint, parse the response, zero `response_fingerprint`, re-marshal canonically, and sha256-hash the result.
+
+---
+
+## `idempotency_key` — safe retries for generate / auto_repair / make_deck
+
+`generate_presentation`, `auto_repair`, and `make_deck` accept an optional top-level `idempotency_key` string. When set, the server caches the first successful response under that key and replays it on subsequent calls within the cache TTL (1 hour, per-process). The replay response carries `"idempotent_replay": true` so the caller can tell a deduped retry from a fresh run.
+
+Use this to make transport-layer retries safe. Without an idempotency key, every retry runs the full pipeline again and writes a fresh output file (`output.pptx`, `output_1.pptx`, `output_2.pptx`, …); the caller is also billed for the wasted inference + render cost.
+
+```json
+{
+  "presentation": { "template": "midnight-blue", "slides": [/* … */] },
+  "output_filename": "deck.pptx",
+  "idempotency_key": "agent-session-abc123/turn-7"
+}
+```
+
+Rules of thumb:
+
+- Generate the key from something stable across retries (session id + turn number, or a hash of the input). Never use a timestamp — every retry would get a new key.
+- Keys are scoped per-tool, so the same string used against `generate_presentation` and `auto_repair` will not collide.
+- Only successful responses are cached. Error responses surface every time so the agent can fix the underlying input.
+- The cache is in-memory and per-process. Restarting the MCP server drops it — design retries to tolerate a fresh run after a server bounce.

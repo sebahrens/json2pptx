@@ -42,6 +42,9 @@ type makeDeckOutput struct {
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
 	Plan        *makeDeckPlanSummary   `json:"plan"`
+	// IdempotentReplay is true when this response was served from the
+	// idempotency cache instead of regenerated.
+	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
 }
 
 // makeDeckPlanSummary captures the plan_deck decisions that produced the
@@ -119,12 +122,22 @@ Quality gate matches auto_repair semantics: same field names, same defaults. Omi
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: make_deck.pptx). Path components are stripped for safety."),
 		),
+		idempotencyKeyToolParam(),
 	)
 }
 
 // --- Handler ---
 
 func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	idemKey := idempotencyKey(request)
+	if cached, ok := mc.idempotency.Get("make_deck", idemKey); ok {
+		if out, ok := cached.(*makeDeckOutput); ok {
+			clone := *out
+			clone.IdempotentReplay = true
+			return api.MCPSuccessResult(ctx, &clone)
+		}
+	}
+
 	outline, err := request.RequireString("outline")
 	if err != nil || outline == "" {
 		return argMissing("make_deck", "outline", "string", "Pitch our Series B for an AI infra company", nil), nil
@@ -182,7 +195,7 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		return errResult, nil
 	}
 
-	out := makeDeckOutput{
+	out := &makeDeckOutput{
 		Path:        loopOut.Path,
 		FinalScore:  loopOut.FinalScore,
 		GatePassed:  loopOut.GatePassed,
@@ -191,6 +204,8 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		GateReasons: loopOut.GateReasons,
 		Plan:        planSummaryFromInput(plan, input, templateName),
 	}
+
+	mc.idempotency.Set("make_deck", idemKey, out)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, out)
 	if err != nil {

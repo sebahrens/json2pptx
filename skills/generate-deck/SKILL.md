@@ -18,7 +18,7 @@ This skill is split into focused sub-files. SKILL.md (this file) covers precondi
 | File | Contents |
 |---|---|
 | [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue (40+ rows) with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
-| [WORKFLOW.md](WORKFLOW.md) | 4-phase workflow deep dive (Plan, Vary, Render, Repair), visual inspection, `next_tool_call`, response_fingerprint |
+| [WORKFLOW.md](WORKFLOW.md) | 4-phase workflow deep dive (Plan, Vary, Render, Repair), visual inspection, `next_tool_call`, response_fingerprint, idempotency_key |
 | [FINDINGS.md](FINDINGS.md) | All finding codes (layout + chart), the `fix.kind` enum, the `repair_slide` apply-only superset, strict-fit promotion ladder |
 | [RULES.md](RULES.md) | Rules 1–20 (shape grid, charts, content/layout, contrast, silent traps, table density), anti-patterns, cell accent variety |
 | [PATTERNS.md](PATTERNS.md) | Pattern library, `text_budget_guide`, Text Capacity Awareness, density bands, bounds override |

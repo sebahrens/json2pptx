@@ -143,6 +143,10 @@ type JSONOutput struct {
 	FitFindings                []patterns.FitFinding       `json:"fit_findings,omitempty"`
 	Slides                     []SlideResolution           `json:"slides,omitempty"`
 	OutputValidationFindings   []pptx.Finding              `json:"output_validation_findings,omitempty"`
+	// IdempotentReplay is true when this response was served from the
+	// idempotency cache instead of regenerated. Only set on MCP responses
+	// when an idempotency_key was supplied and matched a prior call.
+	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
 }
 
 // SlideError describes a render-time failure for a specific slide.
