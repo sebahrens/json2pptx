@@ -169,6 +169,7 @@ examples/         # Example JSON input files (19 decks)
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
+| `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
 
 ### Key Top-Level Fields
 

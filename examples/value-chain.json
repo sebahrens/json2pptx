@@ -1,0 +1,81 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "value-chain.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Industrial Value Chain"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Equal-width steps with bold labels and short descriptions"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "End-to-end mining and metals chain (6 steps, manufacturing highlighted)"}
+      ],
+      "pattern": {
+        "name": "value-chain",
+        "values": {
+          "steps": [
+            {"label": "Extraction", "description": "Mining raw materials and managing EPC contracts."},
+            {"label": "Processing", "description": "Refining ore into intermediate inputs."},
+            {"label": "Manufacturing", "description": "Converting inputs into finished goods.", "highlight": true},
+            {"label": "Distribution", "description": "Moving product through wholesale channels."},
+            {"label": "Retail", "description": "Reaching end customers via partner stores."},
+            {"label": "Service", "description": "Supporting customers through the product lifecycle."}
+          ]
+        },
+        "callout": {
+          "text": "Manufacturing is the focus of this year's transformation programme.",
+          "emphasis": "bold"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Minimal 4-step form (no highlight)"}
+      ],
+      "pattern": {
+        "name": "value-chain",
+        "values": {
+          "steps": [
+            {"label": "Source", "description": "Identify and onboard upstream suppliers."},
+            {"label": "Make", "description": "Assemble components into finished SKUs."},
+            {"label": "Deliver", "description": "Operate logistics from plant to dock."},
+            {"label": "Return", "description": "Process reverse logistics and warranty returns."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "10-step closed-loop chain with custom highlight color"}
+      ],
+      "pattern": {
+        "name": "value-chain",
+        "values": {
+          "highlight_color": "accent3",
+          "steps": [
+            {"label": "Extraction", "description": "Mining raw materials and EPC delivery."},
+            {"label": "Processing", "description": "Refining ore into intermediate inputs."},
+            {"label": "Manufacturing", "description": "Converting inputs into finished goods.", "highlight": true},
+            {"label": "Distribution", "description": "Moving product through wholesale channels."},
+            {"label": "Retail", "description": "Reaching end customers via partner stores."},
+            {"label": "Service", "description": "Supporting customers throughout the lifecycle."},
+            {"label": "Recovery", "description": "Recovering materials for reuse.", "highlight": true},
+            {"label": "Disposal", "description": "Decommissioning end-of-life inventory."},
+            {"label": "Renewal", "description": "Returning value back into supply."},
+            {"label": "Closure", "description": "Closing the loop on the chain."}
+          ]
+        },
+        "overrides": {
+          "accent": "accent4"
+        }
+      }
+    }
+  ]
+}

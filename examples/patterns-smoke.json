@@ -229,6 +229,25 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Industrial Value Chain"}
+      ],
+      "pattern": {
+        "name": "value-chain",
+        "values": {
+          "steps": [
+            {"label": "Extraction", "description": "Mining raw materials and managing EPC contracts."},
+            {"label": "Processing", "description": "Refining ore into intermediate inputs."},
+            {"label": "Manufacturing", "description": "Converting inputs into finished goods.", "highlight": true},
+            {"label": "Distribution", "description": "Moving product through wholesale channels."},
+            {"label": "Retail", "description": "Reaching end customers via partner stores."},
+            {"label": "Service", "description": "Supporting customers through the product lifecycle."}
+          ]
+        }
+      }
     }
   ]
 }

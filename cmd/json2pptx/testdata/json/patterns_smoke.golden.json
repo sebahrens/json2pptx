@@ -99,5 +99,13 @@
       2,
       2
     ]
+  },
+  {
+    "pattern_name": "value-chain",
+    "row_count": 2,
+    "cell_counts": [
+      6,
+      6
+    ]
   }
 ]

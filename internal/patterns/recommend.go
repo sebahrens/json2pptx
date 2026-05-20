@@ -309,6 +309,22 @@ var rules = []rule{
 		rationale: "Height-capped process flow for supporting context",
 	},
 
+	// Value chain — Porter-style horizontal sequence with descriptions
+	{
+		pattern:   "value-chain",
+		keywords:  []string{"value chain", "porter", "supply chain", "operations chain", "primary activities", "support activities"},
+		baseScore: 0.92,
+		rationale: "Porter-style value chain with 4-10 equal-width step columns (label + description) and arrow connectors",
+		itemMin:   4,
+		itemMax:   10,
+	},
+	{
+		pattern:   "value-chain",
+		keywords:  []string{"value chain", "supply chain", "operations chain"},
+		baseScore: 0.78,
+		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
+	},
+
 	// Swimlane
 	{
 		pattern:   "swimlane",
