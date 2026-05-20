@@ -49,6 +49,7 @@ var mcpToCLI = map[string]string{
 	"get_input_schema":               "input-schema",
 	"validate_presentation_output":   "validate-output",
 	"get_started":                    "get-started",
+	"describe_finding":               "describe-finding",
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server
@@ -151,7 +152,8 @@ func TestHelpListsAllDispatchableSubcommands(t *testing.T) {
 		"repair", "score", "score-candidates", "inspect", "analyze-rhythm",
 		"plan-deck", "recommend-visual", "render-slide", "render-slide-from-json",
 		"render-thumbnails", "template-settings", "data-format-hints",
-		"preview-patterns", "shape-catalog", "audit-palette", "version",
+		"preview-patterns", "shape-catalog", "audit-palette", "describe-finding",
+		"version",
 	}
 	for _, sub := range subcommands {
 		if !strings.Contains(outStr, sub) {

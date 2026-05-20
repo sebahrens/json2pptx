@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.26.0"
+const SchemaVersion = "4.30.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -68,6 +68,8 @@ func dispatch() error { //nolint:gocyclo
 		return runCapabilities()
 	case "get-started":
 		return runGetStarted()
+	case "describe-finding":
+		return runDescribeFinding()
 	case "input-schema":
 		return runInputSchema()
 	case "resolve-theme":
@@ -139,6 +141,7 @@ Commands:
   skill-info          Show template capabilities for Claude Code skill
   capabilities        Show schema version, tools, features, and vocabularies
   get-started         Print the recommended MCP-call sequence for a task (brief|revise|validate-only)
+  describe-finding    Print the agent-facing description for a single finding code
   input-schema        Print the JSON input schema (full or compact)
   resolve-theme       Resolve theme colors and fonts for a template
   recommend-pattern   Recommend patterns matching an intent

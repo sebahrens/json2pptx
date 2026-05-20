@@ -4,6 +4,21 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.30.0 (2026-05-20)
+
+### Added
+
+- **`describe_finding` MCP tool** — given a single finding code, returns
+  `{code, summary, severity, when_emitted, remediation_steps[], example_before,
+  example_after, related_codes[]}` so agents can resolve any unfamiliar finding
+  code in one extra tool call without scanning `docs/FIT_FINDINGS.md` or the
+  SKILL.md tables. Backed by a single `patterns.FindingMeta` registry whose
+  coverage of `AllFitFindingCodes()` is enforced by
+  `TestFindingMetaCoversAllSentinelCodes` — new sentinel codes added to
+  `internal/patterns/errors.go` without a metadata entry fail the build.
+  Unknown codes return a structured error whose `fix.params.allowed` enumerates
+  the known vocabulary so the agent can self-correct without a second tool call.
+
 ## 4.29.0 (2026-05-20)
 
 ### Changed

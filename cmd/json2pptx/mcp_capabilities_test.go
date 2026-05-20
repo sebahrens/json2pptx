@@ -459,6 +459,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpGetInputSchemaTool":          mcpGetInputSchemaTool,
 		"mcpReadPresentationTool":        mcpReadPresentationTool,
 		"mcpValidateOutputTool":          mcpValidateOutputTool,
+		"mcpDescribeFindingTool":         mcpDescribeFindingTool,
 	}
 
 	// Build the set of tool names that are actually registered in runMCP.

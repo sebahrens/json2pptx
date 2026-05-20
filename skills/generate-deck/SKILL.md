@@ -184,6 +184,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
 | **Read back a generated PPTX as structured JSON** — best-effort extraction of placeholders, shapes, tables, and speaker notes. | `read_presentation` | (CLI inlines) |
 | **Validate a generated PPTX file** — runs OPC package integrity + OOXML content checks against an on-disk `.pptx`. | `validate_presentation_output` | (CLI inlines) |
+| **Describe a finding code** — given a single finding code (e.g. `placeholder_overflow`, `accent_overload`, `chart.zero_sum_pie`), returns `{summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}`. Use after any tool returns a finding you do not recognize — resolves the meaning in one extra tool call without scanning `docs/FIT_FINDINGS.md`. Covers every code in `get_capabilities.vocabularies.fit_finding_codes` plus `chart.*` and the string-literal codes (`contrast_autofixed`, `findings_truncated`). Unknown codes return a structured error whose `fix.params.allowed` enumerates the vocabulary. | `describe_finding` | (MCP-only) |
 | Browse pattern catalog | `list_patterns` | `json2pptx patterns list` |
 | Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` |
 | Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
@@ -194,6 +195,7 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Icon catalog | `list_icons` | `json2pptx icons list` |
 | Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
 | Diagram capability metadata (max nodes, overflow behavior, required fields per type) | `get_diagram_capabilities` | (CLI inlines in skill-info) |
+| **Describe a finding code** — given any code emitted in `fit_findings[]`, `validation_errors[]`, `output_validation_findings[]`, or `inspect_slide_images` reports, returns `{summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}`. Use whenever you see an unfamiliar code — resolves the meaning + remediation in one tool call without scanning `docs/FIT_FINDINGS.md` or this file. Unknown codes return a structured error whose `fix.params.allowed` enumerates the known vocabulary so you can self-correct. | `describe_finding` | (MCP-only) |
 | List named `table_styles`/`cell_styles` registered for a template (read-only) | `list_template_settings` | (CLI inlines) |
 | Register a named `table_style` or `cell_style` (**write — gated**) | `register_template_setting` | (CLI inlines) |
 | Delete a named template setting (**write — gated**) | `delete_template_setting` | (CLI inlines) |

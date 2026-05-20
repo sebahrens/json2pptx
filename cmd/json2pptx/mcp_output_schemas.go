@@ -269,6 +269,30 @@ var outputSchemaShowPattern = json.RawMessage(`{
   "required": ["name", "description", "use_when", "not_when", "version", "schema"]
 }`)
 
+// --- describe_finding ---
+var outputSchemaDescribeFinding = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "code":         {"type": "string", "description": "Echo of the requested finding code."},
+    "summary":      {"type": "string", "description": "One-line description of what the finding means."},
+    "severity":     {"type": "string", "enum": ["refuse", "shrink_or_split", "review", "info"], "description": "Action rank — matches fit_findings[].action."},
+    "when_emitted": {"type": "string", "description": "The condition under which the engine emits this code."},
+    "remediation_steps": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Ordered remediation steps, most direct first. Steps that map to repair_slide fix kinds name the kind explicitly."
+    },
+    "example_before": {"type": "string", "description": "Illustrative snippet showing the input/finding shape that triggers this code (may be omitted)."},
+    "example_after":  {"type": "string", "description": "Illustrative snippet showing the same input after applying remediation (may be omitted)."},
+    "related_codes": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Codes that often co-occur or that share a root cause."
+    }
+  },
+  "required": ["code", "summary", "severity", "when_emitted", "remediation_steps"]
+}`)
+
 // --- validate_pattern ---
 var outputSchemaValidatePattern = json.RawMessage(`{
   "type": "object",

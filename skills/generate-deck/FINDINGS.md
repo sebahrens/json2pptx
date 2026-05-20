@@ -4,6 +4,8 @@ Complete catalog of finding codes (emitted by `validate_input`, `preview_present
 
 For the contributor-facing catalog (with longer rationale + emission paths) see `../../docs/FIT_FINDINGS.md`.
 
+**Runtime lookup:** for any single unfamiliar code, call the `describe_finding` MCP tool — it returns the same `{summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}` envelope this catalog documents, sourced from the engine's own registry so it cannot drift. One tool call resolves any code without loading this file.
+
 ---
 
 ## Layout Finding Codes
