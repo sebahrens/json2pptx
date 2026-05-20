@@ -1,11 +1,47 @@
 package template
 
 import (
+	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+// Canonical layout role names, as defined in docs/TEMPLATE_SPEC.md. These are
+// the roles that template-check considers mandatory and that the repair
+// pipeline uses when deciding whether to rename an existing layout vs. author
+// a new one. Keep these strings stable — they appear in template-check output
+// and in agent-visible warnings.
+const (
+	CanonicalRoleTitleSlide     = "Title Slide"
+	CanonicalRoleOneContent     = "One Content"
+	CanonicalRoleTwoContent     = "Two Content"
+	CanonicalRoleSectionDivider = "Section Divider"
+	CanonicalRoleBlank          = "Blank"
+	CanonicalRoleBlankTitle     = "Blank + Title"
+	CanonicalRoleClosing        = "Closing"
+)
+
+// CanonicalConfidenceThreshold is the confidence above which ClassifyCanonicalRole
+// is considered "confident enough" to drive a rename suggestion. Layouts at or
+// above this threshold should be renamed in place rather than duplicated.
+const CanonicalConfidenceThreshold = 0.8
+
+// CanonicalLayoutNames maps each canonical role to its accepted layout names
+// (case-insensitive). The first entry is the canonical name used in rename
+// suggestions; subsequent entries are accepted aliases. This mapping is the
+// single source of truth shared by template-check and the repair pipeline.
+var CanonicalLayoutNames = map[string][]string{
+	CanonicalRoleTitleSlide:     {"Title Slide"},
+	CanonicalRoleOneContent:     {"One Content", "Content"},
+	CanonicalRoleTwoContent:     {"Two Content", "Comparison"},
+	CanonicalRoleSectionDivider: {"Section Divider", "Section Header"},
+	CanonicalRoleBlank:          {"Blank"},
+	CanonicalRoleBlankTitle:     {"Blank + Title", "Blank Layout"},
+	CanonicalRoleClosing:        {"Closing", "Thank You", "End Slide"},
+}
 
 // EMU (English Metric Units) constants for slide layout classification.
 // Based on standard 16:9 slide dimensions: 9144000 x 6858000 EMU (10 inches wide).
@@ -379,4 +415,207 @@ func hasImageOnLeft(placeholders []types.PlaceholderInfo) bool {
 
 	// Image is on left if its X position is less than body X position
 	return imageX < bodyX
+}
+
+// ClassifyCanonicalRole maps a layout to its canonical role (per
+// docs/TEMPLATE_SPEC.md) based on its structural fingerprint — placeholder
+// types, count, and side-by-side relationships — and the existing semantic
+// tags computed by ClassifyLayout.
+//
+// Returns:
+//   - canonicalRole: one of the CanonicalRole* constants, or "" if the layout
+//     does not structurally correspond to any canonical role.
+//   - signature: a deterministic, sorted, structural fingerprint string
+//     (e.g. "blank", "title", "title+subtitle", "title+body",
+//     "title+body+body[side-by-side]"). Two layouts with the same signature
+//     are structurally equivalent and one of them is a duplicate that the
+//     repair pipeline must surface.
+//   - confidence: 0.0–1.0. The repair pipeline and the name-mismatch
+//     template-check use CanonicalConfidenceThreshold to decide whether to
+//     trust the classification.
+//
+// This function is idempotent and side-effect-free with respect to the layout
+// argument; it does not mutate the layout (unlike ClassifyLayout, which sets
+// layout.Tags). Callers that need tags must call ClassifyLayout separately.
+func ClassifyCanonicalRole(layout *types.LayoutMetadata) (canonicalRole, signature string, confidence float64) {
+	if layout == nil {
+		return "", "", 0
+	}
+
+	counts := countPlaceholders(layout.Placeholders)
+	signature = layoutSignature(layout.Placeholders, counts)
+
+	// Compute tags locally so we don't depend on layout.Tags being populated.
+	// We don't mutate layout — work on a shallow copy.
+	localTags := classifyByName(layout.Name, counts)
+	tagsSet := make(map[string]bool, len(localTags))
+	for _, t := range localTags {
+		tagsSet[t] = true
+	}
+
+	hasUsableBody := counts.usableBody > 0
+	hasAnyBody := counts.body > 0
+
+	// Blank: no placeholders at all. Highest possible structural confidence.
+	if len(layout.Placeholders) == 0 {
+		return CanonicalRoleBlank, signature, 1.0
+	}
+
+	// Two Content: title + at least two body placeholders that sit side-by-side.
+	// Structural fingerprint disambiguates from Title Slide and One Content,
+	// so it can be evaluated before the name-based checks.
+	if counts.visibleTitle > 0 && counts.body >= 2 &&
+		areSideBySide(layout.Placeholders, types.PlaceholderBody, types.PlaceholderContent) {
+		return CanonicalRoleTwoContent, signature, 0.95
+	}
+
+	// Closing, Section Divider, and Blank+Title share the same structural
+	// fingerprint as Title Slide (a centered title, sometimes with subtitle).
+	// They MUST be evaluated before the Title Slide branch — otherwise a
+	// layout named "Closing" or "Section Divider" would mis-classify as
+	// Title Slide.
+
+	// Closing: name-based signal ("closing", "end slide", "thank you", "q&a").
+	if tagsSet["closing"] || tagsSet["thank-you"] {
+		return CanonicalRoleClosing, signature, 0.9
+	}
+
+	// Section Divider: name-based signal. Section dividers look like Title
+	// Slides structurally, so we rely on the name tag.
+	if tagsSet["section-header"] {
+		return CanonicalRoleSectionDivider, signature, 0.9
+	}
+
+	// Blank + Title: single visible title and nothing else, AND a name that
+	// suggests "blank". The strict structural test mirrors ClassifyLayout's
+	// "blank-title" tag.
+	if counts.visibleTitle == 1 && counts.title == 1 && counts.subtitle == 0 &&
+		!hasAnyBody && counts.image == 0 && counts.chart == 0 &&
+		isBlankTitleByName(layout.Name) {
+		return CanonicalRoleBlankTitle, signature, 0.9
+	}
+
+	// Title Slide: visible title (often paired with subtitle), no body, no
+	// image/chart content. Tightest purely-structural fingerprint.
+	if counts.visibleTitle > 0 && !hasAnyBody && counts.image == 0 && counts.chart == 0 {
+		// title+subtitle is the strongest signal; title-only is a hero/cover
+		// variant that we still map to Title Slide with slightly lower confidence.
+		if counts.subtitle > 0 {
+			return CanonicalRoleTitleSlide, signature, 0.95
+		}
+		return CanonicalRoleTitleSlide, signature, 0.85
+	}
+
+	// One Content: visible title + at least one usable body placeholder, and
+	// not already classified as Two Content above.
+	if counts.visibleTitle > 0 && hasUsableBody {
+		return CanonicalRoleOneContent, signature, 0.85
+	}
+
+	return "", signature, 0
+}
+
+// CanonicalNameFor returns the preferred (canonical) display name for a role,
+// or "" if the role is not known. This is the name that name-mismatch warnings
+// recommend renaming to.
+func CanonicalNameFor(role string) string {
+	names, ok := CanonicalLayoutNames[role]
+	if !ok || len(names) == 0 {
+		return ""
+	}
+	return names[0]
+}
+
+// IsCanonicalLayoutName reports whether name (case-insensitive) is an accepted
+// name for the given canonical role.
+func IsCanonicalLayoutName(role, name string) bool {
+	names, ok := CanonicalLayoutNames[role]
+	if !ok {
+		return false
+	}
+	lower := strings.ToLower(strings.TrimSpace(name))
+	for _, n := range names {
+		if lower == strings.ToLower(n) {
+			return true
+		}
+	}
+	return false
+}
+
+// layoutSignature builds a deterministic structural fingerprint string for a
+// layout. Two layouts that produce the same signature are structurally
+// equivalent and only differ in name / decorative content. The signature is
+// stable across runs (no map iteration, sorted ordering) and intentionally
+// excludes utility placeholders (date, footer, slide number).
+//
+// Component vocabulary (kept short on purpose so signatures stay readable in
+// agent-visible output):
+//
+//	title          – visible title placeholder
+//	titlehidden    – title placeholder positioned off-screen
+//	titlebottom    – title placeholder positioned in the lower half
+//	subtitle       – subtitle placeholder
+//	body           – body / content placeholder usable for text
+//	image          – image placeholder
+//	chart          – chart placeholder
+//
+// A trailing "[side-by-side]" annotation marks layouts where two body or
+// content placeholders sit on the same row (two-column / comparison layouts).
+func layoutSignature(placeholders []types.PlaceholderInfo, counts placeholderCounts) string {
+	if len(placeholders) == 0 {
+		return "blank"
+	}
+
+	parts := make(map[string]int)
+	for _, ph := range placeholders {
+		switch ph.Type {
+		case types.PlaceholderTitle:
+			switch {
+			case ph.Bounds.Y < 0:
+				parts["titlehidden"]++
+			case ph.Bounds.Y > emuTitleBottomThreshold:
+				parts["titlebottom"]++
+			default:
+				parts["title"]++
+			}
+		case types.PlaceholderSubtitle:
+			parts["subtitle"]++
+		case types.PlaceholderBody, types.PlaceholderContent:
+			parts["body"]++
+		case types.PlaceholderImage:
+			parts["image"]++
+		case types.PlaceholderChart:
+			parts["chart"]++
+		case types.PlaceholderOther:
+			// utility placeholders (date, footer, sldNum) intentionally skipped
+		}
+	}
+
+	if len(parts) == 0 {
+		return "blank"
+	}
+
+	keys := make([]string, 0, len(parts))
+	for k := range parts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			sb.WriteString("+")
+		}
+		if parts[k] == 1 {
+			sb.WriteString(k)
+		} else {
+			sb.WriteString(fmt.Sprintf("%s*%d", k, parts[k]))
+		}
+	}
+
+	if counts.body >= 2 && areSideBySide(placeholders, types.PlaceholderBody, types.PlaceholderContent) {
+		sb.WriteString("[side-by-side]")
+	}
+
+	return sb.String()
 }

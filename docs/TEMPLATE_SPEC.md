@@ -170,15 +170,17 @@ json2pptx template-check --json <template.pptx>   # machine-readable output
 ```
 
 The checker verifies:
-1. All 7 mandatory layouts are present (by name or tag)
+1. All 7 mandatory layouts are present (by name, tag, **or canonical-role classification**)
 2. Each mandatory layout has its required placeholders
 3. Section Number placeholder meets size/position requirements
 4. Theme defines all 12 scheme colors
 5. Theme defines major and minor fonts
 6. Dark/light color luminance polarity is correct
+7. **Layout names match canonical roles** — emits WARN when a layout is structurally a canonical role (Title Slide, One Content, Two Content, Section Divider, Blank, Blank + Title, Closing) but uses a non-canonical name (e.g. "Cover Slide" → "Title Slide"). The repair pipeline must rename in place; do not author a new duplicate layout.
+8. **No duplicate layout signatures** — emits WARN when two or more layouts map to the **same canonical role** AND share the **same structural signature**. Layouts that share only a signature but have different canonical roles (e.g. a Closing layout and a Title Slide both with `subtitle+title`) are not flagged.
 
 Exit codes:
-- **0**: All checks pass
+- **0**: All checks pass (WARN findings do not fail the check)
 - **1**: One or more mandatory checks failed
 
 ### Known Exceptions

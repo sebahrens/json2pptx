@@ -115,6 +115,8 @@ func runTemplateCheck() error {
 	// Run all checks
 	var checks []templateCheckEntry
 	checks = append(checks, checkMandatoryLayouts(layouts)...)
+	checks = append(checks, checkLayoutNameMismatches(layouts)...)
+	checks = append(checks, checkDuplicateLayoutSignatures(layouts)...)
 	checks = append(checks, checkSectionNumber(layouts)...)
 	checks = append(checks, checkTheme(theme)...)
 
@@ -179,7 +181,13 @@ func checkMandatoryLayouts(layouts []types.LayoutMetadata) []templateCheckEntry 
 	return checks
 }
 
-// findMandatoryLayout searches for a mandatory layout by name or tag.
+// findMandatoryLayout searches for a mandatory layout by name, tag, or
+// canonical-role classification. The canonical-role fallback is the
+// mechanism that prevents FAIL "missing <canonical>" findings when the
+// template already contains a structurally equivalent layout under a
+// non-canonical name (e.g. a "Cover Slide" that is structurally a Title
+// Slide). The name-mismatch WARN raised by checkLayoutNameMismatches is the
+// rename signal in that case.
 func findMandatoryLayout(layouts []types.LayoutMetadata, ml mandatoryLayout) (bool, types.LayoutMetadata) {
 	// First try name match
 	for _, l := range layouts {
@@ -202,7 +210,38 @@ func findMandatoryLayout(layouts []types.LayoutMetadata, ml mandatoryLayout) (bo
 		}
 	}
 
+	// Fall back to canonical-role classification. This catches layouts that
+	// have neither the canonical name nor the expected tag set (e.g., a
+	// layout's classifier tags were not populated, or the tag heuristics
+	// disagree with the structural fingerprint).
+	if canonical := mandatoryRoleFor(ml); canonical != "" {
+		for i := range layouts {
+			l := &layouts[i]
+			role, _, conf := template.ClassifyCanonicalRole(l)
+			if role == canonical && conf >= template.CanonicalConfidenceThreshold {
+				return true, *l
+			}
+		}
+	}
+
 	return false, types.LayoutMetadata{}
+}
+
+// mandatoryRoleFor maps a mandatoryLayout entry to the canonical role name
+// used by ClassifyCanonicalRole. The string comparison is on the role field,
+// which has been kept identical to the canonical-role constants on purpose.
+func mandatoryRoleFor(ml mandatoryLayout) string {
+	switch ml.role {
+	case template.CanonicalRoleTitleSlide,
+		template.CanonicalRoleOneContent,
+		template.CanonicalRoleTwoContent,
+		template.CanonicalRoleSectionDivider,
+		template.CanonicalRoleBlank,
+		template.CanonicalRoleBlankTitle,
+		template.CanonicalRoleClosing:
+		return ml.role
+	}
+	return ""
 }
 
 // checkPlaceholders verifies a layout has required placeholders.
@@ -272,6 +311,111 @@ func matchesPlaceholderRequirement(ph types.PlaceholderInfo, req string) bool {
 	default:
 		return false
 	}
+}
+
+// checkLayoutNameMismatches walks every layout in the template and, for each
+// layout the classifier confidently maps to a canonical role, emits a WARN
+// when the layout's existing name does not match any accepted canonical name.
+//
+// This rule is the agent-facing signal that repair pipelines should rename
+// existing layouts in place ("Cover Slide" → "Title Slide") rather than
+// authoring brand-new layouts on top of structurally equivalent ones. It is
+// emitted as WARN, not FAIL, because the layout already functions correctly
+// for content matching by tag — only the name disagrees.
+func checkLayoutNameMismatches(layouts []types.LayoutMetadata) []templateCheckEntry {
+	var checks []templateCheckEntry
+
+	for i := range layouts {
+		l := &layouts[i]
+		role, sig, conf := template.ClassifyCanonicalRole(l)
+		if role == "" || conf < template.CanonicalConfidenceThreshold {
+			continue
+		}
+		if template.IsCanonicalLayoutName(role, l.Name) {
+			continue
+		}
+
+		canonical := template.CanonicalNameFor(role)
+		checks = append(checks, templateCheckEntry{
+			Category: "layout",
+			Check:    fmt.Sprintf("Layout name matches canonical role: %s", role),
+			Status:   "warn",
+			Detail: fmt.Sprintf(
+				"rename suggested: %q → %q (structurally a %s; signature=%s, confidence=%.2f)",
+				l.Name, canonical, role, sig, conf,
+			),
+		})
+	}
+
+	return checks
+}
+
+// checkDuplicateLayoutSignatures flags layouts that map to the *same*
+// canonical role AND share a structural signature. A duplicate of this kind
+// indicates that a repair (or a designer) authored a new layout where a
+// structurally equivalent layout already existed under a different name —
+// the repair pipeline should delete the synthetic duplicate and reuse the
+// original.
+//
+// We intentionally do NOT flag layouts that share only a signature but have
+// different canonical roles (a Closing layout shares signature
+// "subtitle+title" with a Title Slide layout; both are valid and intended).
+// The (role, signature) join is what separates legitimate structural reuse
+// from accidental duplication.
+//
+// Emitted as WARN: duplicates do not break template-check's mandatory-layout
+// coverage, but they bloat the template and create ambiguous layout
+// selection.
+func checkDuplicateLayoutSignatures(layouts []types.LayoutMetadata) []templateCheckEntry {
+	var checks []templateCheckEntry
+
+	// Bucket layouts by (role, signature). Skip layouts that have no
+	// canonical role — they're not a target for the repair pipeline.
+	type bucket struct {
+		role  string
+		sig   string
+		names []string
+	}
+	buckets := make(map[string]*bucket)
+	order := make([]string, 0)
+	for i := range layouts {
+		l := &layouts[i]
+		role, sig, conf := template.ClassifyCanonicalRole(l)
+		if role == "" || conf < template.CanonicalConfidenceThreshold {
+			continue
+		}
+		if sig == "" || sig == "blank" {
+			// Multiple Blank-ish utility layouts are intentional in many
+			// designer templates; do not flag them.
+			continue
+		}
+		key := role + "|" + sig
+		b, ok := buckets[key]
+		if !ok {
+			b = &bucket{role: role, sig: sig}
+			buckets[key] = b
+			order = append(order, key)
+		}
+		b.names = append(b.names, l.Name)
+	}
+
+	for _, key := range order {
+		b := buckets[key]
+		if len(b.names) < 2 {
+			continue
+		}
+		checks = append(checks, templateCheckEntry{
+			Category: "layout",
+			Check:    "Duplicate layout signature",
+			Status:   "warn",
+			Detail: fmt.Sprintf(
+				"%d layouts share role %s + signature %s: %v — consider removing duplicates and renaming the canonical one",
+				len(b.names), b.role, b.sig, b.names,
+			),
+		})
+	}
+
+	return checks
 }
 
 // checkSectionNumber verifies the Section Number placeholder on section divider layouts.

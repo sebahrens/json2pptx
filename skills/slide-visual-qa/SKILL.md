@@ -32,7 +32,47 @@ and use whatever it prints.
 
 ---
 
-## Composition Review (FIRST — before per-slide inspection)
+## Template Layout Review (when reviewing a repaired template)
+
+If you are reviewing a template repair (every layout of one `templates/*.pptx`
+rendered to JPGs), first surface **structurally-equivalent layouts** that the
+template ships under different names — these are duplicates that the repair
+pipeline should consolidate.
+
+1. Run `json2pptx template-check --json templates/<file>.pptx` and read the
+   `checks` array. Any entry with `check: "Layout name matches canonical
+   role: …"` flags an existing layout that is structurally a canonical role
+   but is named differently — recommend the rename in your report (do NOT
+   recommend authoring a brand-new layout to fill that role).
+2. Any entry with `check: "Duplicate layout signature"` flags two or more
+   layouts that share the SAME canonical role AND the SAME structural
+   signature. Report these as duplicates and recommend deleting the
+   synthetic copy and keeping the layout with the canonical name.
+3. If the JPGs show two layouts that look visually indistinguishable (same
+   placeholder positions, same decoration) but the template metadata lists
+   them under two different layout names, treat it as a duplicate even if
+   `template-check` did not surface it (the structural fingerprint may have
+   missed a subtle equivalence).
+
+Report layout findings in a dedicated section ABOVE the per-slide rendering
+section:
+
+```
+TEMPLATE LAYOUTS
+  ⚠ rename: "Cover Slide" → "Title Slide" (structurally a Title Slide)
+  ⚠ rename: "Section break with image" → "Section Divider"
+  ⚠ duplicate: layouts ["Title Slide", "Hero"] share role Title Slide
+    with signature subtitle+title — delete the synthetic "Hero" copy
+  ✓ all canonical layouts present and named correctly
+```
+
+**Do NOT recommend creating new layouts when an existing one is structurally
+equivalent.** A "Cover Slide" with ctrTitle + subTitle IS a Title Slide —
+rename, do not duplicate.
+
+---
+
+## Composition Review (before per-slide inspection)
 
 Before opening any slide images, call the `analyze_deck_rhythm` MCP tool on the deck JSON. Its output is **authoritative** for composition issues — do not re-judge these from screenshots.
 
