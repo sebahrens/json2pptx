@@ -4,6 +4,21 @@ Fit findings are structured diagnostics emitted when generated slide content may
 
 **Chart / diagram dry-render.** `validate_input` and `preview_presentation_plan` also drive svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item and merge the resulting `chart.*` findings (e.g. `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`) into the fit-finding stream. Agents see render-time chart issues at validate / preview time without paying for full generation. The strict-fit severity ladder applies identically to the generate path. The svggen top-level helper is `svggen.DryRender(req) ([]Finding, error)`; the corresponding MCP entry point is `render_diagram` with `dry_run: true`.
 
+## Output-Validation Findings — Separate Category
+
+This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized:
+
+| | Fit findings | Output-validation findings |
+|---|---|---|
+| Source type | `patterns.FitFinding` (`internal/patterns/fit_finding.go`) | `pptx.Finding` (`internal/pptx/output_validator.go`) |
+| When emitted | Before / during render (text overflow, density, chart layout) | After write, against the serialized package |
+| Severity values | `action` ∈ `refuse` / `shrink_or_split` / `review` / `info` | `severity` ∈ `blocking` / `warning` |
+| Code prefixes | bare codes (`placeholder_overflow`), `chart.*`, `BODY_TOO_LONG`, etc. (this document) | `OPC_*` (package integrity) and `OOXML_*` (content validity) |
+| MCP response field | `fit_findings[]` on the success envelope | error envelope `findings[]` (strict mode) or `output_validation_findings[]` (warn mode) |
+| Repair path | `repair_slide` with a `Fix.Kind` directive | `repair_slide` with a directive chosen per finding's `code` + `scope` |
+
+Output-validation codes are the "zero needs repair" contract: in strict mode (the default) a blocking `OPC_*` or `OOXML_*` finding fails generation outright. See [skills/generate-deck/SKILL.md → Output Validation Guarantee](../skills/generate-deck/SKILL.md#output-validation-guarantee) for the envelope shape and response protocol. Authoritative code list: `opcCodeMap` and `ooxmlCodeMap` in `internal/pptx/output_validator.go`.
+
 ## Finding Structure
 
 Every finding is a `FitFinding` (defined in `internal/patterns/fit_finding.go`) that embeds `ValidationError`. In JSON output, all fields are flattened to the top level:

@@ -273,13 +273,42 @@ When operating through the MCP server, prefer these tools over shelling out to t
 
 **Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. Per-error `next_tool_call` routes shape errors to `get_diagram_schema` and constraint errors back to `validate_diagram`.
 
-**Strict output validation by default.** Both `generate_presentation` (MCP) and `json2pptx generate` (CLI) default `output_validation` / `--output-validation` to `strict`. Every successful generate response therefore implies a clean OPC + OOXML pass — agents do not need a separate `validate_presentation_output` call to confirm the file is structurally sound. When strict validation fails, the response is an error envelope shaped as:
+**Strict output validation by default.** Both `generate_presentation` (MCP) and `json2pptx generate` (CLI) default `output_validation` / `--output-validation` to `strict`, so every successful response implies a clean OPC + OOXML pass. See the [Output Validation Guarantee](#output-validation-guarantee) section below for the envelope shape, response protocol, and code catalog.
+
+---
+
+## Output Validation Guarantee
+
+**The zero "needs repair" contract.** `generate_presentation` (MCP) and `json2pptx generate` (CLI) default `output_validation` / `--output-validation` to `strict`. In strict mode the engine runs the full OPC + OOXML validator (`internal/pptx.ValidateOutputFile`) against the freshly-written `.pptx` and **refuses to return success on any blocking finding**. Every successful generate response therefore implies a structurally clean file — agents do not need a separate `validate_presentation_output` call to confirm.
+
+A blocking finding means PowerPoint or Keynote would show the "we found a problem with some content, do you want us to repair" prompt when opening the file. The validator covers:
+
+| Phase | Validator | Sample codes |
+|-------|-----------|--------------|
+| `opc` | `structural` | `OPC_MISSING_PART`, `OPC_DANGLING_REL`, `OPC_DUPLICATE_REL_ID`, `OPC_MISSING_ELEMENT`, `OPC_MALFORMED_XML`, `OPC_MISSING_CONTENT_TYPE`, `OPC_MISSING_CONTENT_TYPE_OVERRIDE` |
+| `ooxml` | `ooxml_content` | `OOXML_INVALID_COLOR`, `OOXML_INVALID_SCHEME`, `OOXML_DUPLICATE_ID`, `OOXML_INVALID_TABLE`, `OOXML_ZERO_EXTENT`, `OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`, `OOXML_EMPTY_REQUIRED_ATTR` |
+
+`OPC_*` and the two structural-corruption `OOXML_*` codes (`OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`) are always promoted to `severity: "blocking"`. Other `OOXML_*` codes are advisory `warning`s and do not fail strict mode unless the validator escalates them.
+
+### Error envelope shape
+
+When strict validation fails, the tool returns an error `CallToolResult` (`isError: true`) whose structured content is:
 
 ```json
 {
   "summary": "output validation failed: 1 blocking, 0 warning finding(s)",
   "findings": [
-    {"code": "OOXML_INVALID_COLOR", "severity": "blocking", "path": "ppt/slides/slide3.xml", "slide_index": 2, "scope": "generator", ...}
+    {
+      "code": "OOXML_INVALID_COLOR",
+      "severity": "blocking",
+      "path": "ppt/slides/slide3.xml",
+      "phase": "ooxml",
+      "validator": "ooxml_content",
+      "slide_index": 2,
+      "source_path": "/slides/2/shape_grid/cells/4/style/fill",
+      "scope": "generator",
+      "message": "..."
+    }
   ],
   "next_tool_call": {
     "tool": "repair_slide",
@@ -288,7 +317,40 @@ When operating through the MCP server, prefer these tools over shelling out to t
 }
 ```
 
-`next_tool_call` points at `repair_slide` with `slide_index` populated when all blocking findings pin to one source slide (otherwise `-1` — fill it in from `findings[].slide_index`). The `fixes` array is empty because output-validation codes don't share a single canonical fix kind; pick the appropriate `repair_slide` directive based on each finding's `code` and `scope`. Override with `output_validation: "warn"` (run validation, surface findings as `output_validation_findings`, still succeed) or `"off"` (skip entirely) only when you have a specific reason — the strict default is the [zero 'needs repair' guarantee](https://github.com/sebahrens/json2pptx) contract.
+Every finding carries a `scope` field classifying responsibility:
+
+| `scope` | Meaning | Agent response |
+|---------|---------|----------------|
+| `source` | The bug is in the input JSON (bad color, malformed table). | Repair via `repair_slide` (e.g. `replace_color`, `use_semantic_color`). |
+| `template` | The bug is in the `.pptx` template (missing layout part, dangling rel). | Switch templates or report; cannot be fixed via `repair_slide`. |
+| `generator` | The bug is in the engine. | Report — do not retry; an automated repair is unlikely to help. |
+
+### Responding to a validation error
+
+1. **Inspect every blocking finding's `code` and `scope`.** `scope: "source"` is repairable; `template` and `generator` usually are not.
+2. **Use `next_tool_call.args_template` as a starting point.** When every blocking finding pins to one slide, `slide_index` is populated; otherwise it is `-1` and you must fill it in from `findings[].slide_index`. The `fixes` array is empty because output-validation codes do not share a single canonical fix kind.
+3. **Look up unfamiliar codes** in `internal/pptx/output_validator.go` (`opcCodeMap`, `ooxmlCodeMap`) before guessing a remedy. Each finding's `message` field also explains why it fired.
+4. **Pick the right `repair_slide` directive** based on the finding's `code` and `source_path`. Common mappings:
+   - `OOXML_INVALID_COLOR` / `OOXML_INVALID_SCHEME` → `replace_color` or `use_semantic_color`
+   - `OOXML_ILLEGAL_XML_CHAR` → `reduce_text` after stripping the offending byte
+   - `OOXML_DUPLICATE_ID` → regenerate the slide (call `generate_presentation` again; this is usually a generator bug worth reporting)
+5. **Submit the repair**, then re-run `generate_presentation`. The strict gate runs again on the new output.
+
+### Override modes
+
+| Mode | Behavior | Use when |
+|------|----------|----------|
+| `strict` (default) | Run validation; block on any blocking finding. | Always, unless you have a specific reason to override. |
+| `warn` | Run validation; surface findings in the `output_validation_findings[]` array on the success envelope; never block. | Diagnosing template issues without losing the generated file. |
+| `off` | Skip validation entirely. | One-off renders where you accept the "needs repair" risk. |
+
+Set the override per-call: MCP `{"output_validation": "warn"}` or CLI `--output-validation=warn`.
+
+### Where the codes live
+
+- Code definitions and severity classification: `internal/pptx/output_validator.go` (`opcCodeMap`, `ooxmlCodeMap`, `blockingOOXMLCodes`).
+- Validator implementation: `internal/pptx/output_validator.go` (`OutputValidator.Validate`) composes the structural OPC `Validator` (`internal/pptx/validator.go`) and the `OOXMLValidator` (`internal/pptx/ooxml_validate.go`).
+- Corpus headless-open regression test: `cmd/json2pptx/corpus_headless_test.go` opens every `examples/*.json` deck in headless LibreOffice and fails CI on any repair warning.
 
 ---
 

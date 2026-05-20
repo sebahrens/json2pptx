@@ -73,6 +73,10 @@ You can also combine patterns on one slide with a `compose` envelope (e.g. a her
 
 Every generation (and every dry-run) emits structured **fit findings** (`code`, `severity`, `action`, `fix`, JSON Pointer path). An agent can call the `repair_slide` MCP tool with a list of typed fixes (`reduce_text`, `swap_layout`, `split_at_row`, `swap_pattern`, `reshape_grid`, `set_pattern_style`, `replace_color`, `use_semantic_color`, ...) to patch a single slide rather than regenerating the whole deck. See [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) and [docs/REPAIR_LOOP.md](docs/REPAIR_LOOP.md).
 
+### Output Validation Guarantee
+
+`generate_presentation` (MCP) and `json2pptx generate` (CLI) default to **strict** output validation: every successful response implies the generated `.pptx` passed the full OPC + OOXML validator (`internal/pptx.ValidateOutputFile`) with zero blocking findings. This is the "zero needs repair" contract — PowerPoint and Keynote will not show the *"we found a problem with some content"* prompt on a strict-mode success. When validation fails, the response is an error envelope `{summary, findings[], next_tool_call: {tool: "repair_slide", args_template}}` carrying `OPC_*` / `OOXML_*` findings with per-finding `scope` (`source` / `template` / `generator`). See [skills/generate-deck/SKILL.md#output-validation-guarantee](skills/generate-deck/SKILL.md#output-validation-guarantee) for the envelope shape, full code catalog, and response protocol.
+
 ## Features
 
 - **JSON-to-PPTX conversion** -- structured slide definitions become polished PowerPoint files
