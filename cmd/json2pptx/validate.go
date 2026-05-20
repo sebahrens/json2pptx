@@ -11,12 +11,12 @@ import (
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/generator"
 )
 
 // runValidate implements the "validate" subcommand. It validates JSON slide
-// input against the template without generating PPTX output. This delegates
-// to the same validation logic used by the dry-run mode.
+// input against the template without generating PPTX output. Both the human
+// path and the structured-JSON path delegate to mc.handleValidate so the CLI
+// and MCP validate_input tool emit identical findings, codes, and remediations.
 func runValidate() error { //nolint:gocognit
 	fs := flag.NewFlagSet("validate", flag.ContinueOnError)
 	templateName := fs.String("template", "", "Template name for layout validation (optional)")
@@ -151,11 +151,20 @@ type validateResult struct {
 	Diagnostics  []diagnostics.Diagnostic `json:"diagnostics,omitempty"`
 }
 
-// validateJSONFile validates a single JSON input file against the schema and
-// optionally against a template. When strictUnknownKeys is true, unknown JSON
-// keys are reported as errors (matching MCP validate_input strict_unknown_keys
-// semantics) instead of warnings.
-func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) validateResult { //nolint:gocognit,gocyclo
+// validateJSONFile validates a single JSON input file by delegating to the
+// shared MCP validate_input handler. CLI human mode and MCP agents therefore
+// see identical findings, codes, and remediations; the only difference is
+// presentation (printValidateResult formats this shape for the terminal).
+//
+// When strictUnknownKeys is true, unknown JSON keys are reported as errors
+// (matching MCP validate_input strict_unknown_keys semantics) instead of
+// warnings. Patch input is resolved to a presentation before delegating so
+// the agent path always sees a normal PresentationInput.
+//
+// fit_report is intentionally disabled on this MCP call: the CLI surfaces fit
+// findings on a separate stderr path (gated by --fit-report). Promoting them
+// into Warnings/Errors here would duplicate output.
+func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) validateResult {
 	result := validateResult{
 		File:     filePath,
 		Valid:    true,
@@ -163,7 +172,6 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) val
 		Warnings: []string{},
 	}
 
-	// Read the file.
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		result.Valid = false
@@ -175,192 +183,164 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) val
 		return result
 	}
 
-	// Parse as PresentationInput.
-	var input PresentationInput
+	// Resolve patch input to a presentation up front so the MCP handler always
+	// validates the effective deck, not the patch envelope.
+	presentation, parseErr := parseValidateInputAsAny(content)
+	if parseErr != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, parseErr.message)
+		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+			Code: parseErr.code, Message: parseErr.message, Severity: diagnostics.SeverityError,
+		})
+		return result
+	}
+
+	mc := cliMCPConfig(templatesDir, "")
+	mcpResult, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(
+		mcpHumanValidateArgs(presentation, strictUnknownKeys),
+	))
+	if err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, fmt.Sprintf("validate %s: %v", filePath, err))
+		return result
+	}
+
+	mergeValidateResultFromMCP(&result, mcpResult)
+	return result
+}
+
+// mcpHumanValidateArgs is the canonical request shape sent into
+// mc.handleValidate from CLI human mode. Keeping the construction in one
+// place keeps the CLI and MCP paths byte-identical aside from the fields the
+// human path doesn't drive.
+//
+// fit_report is disabled because the CLI surfaces fit findings on a separate
+// stderr path gated by --fit-report; promoting them into Warnings/Errors here
+// would duplicate output.
+func mcpHumanValidateArgs(presentation any, strictUnknownKeys bool) map[string]any {
+	return map[string]any{
+		"presentation":        presentation,
+		"strict_unknown_keys": strictUnknownKeys,
+		"fit_report":          false,
+	}
+}
+
+// validateInputParseError captures the structured failure shape from
+// parseValidateInputAsAny so the caller can build a Diagnostic without losing
+// the code/message distinction (patch failures vs. invalid JSON).
+type validateInputParseError struct {
+	code    string
+	message string
+}
+
+// parseValidateInputAsAny reads CLI JSON input and returns it as an untyped
+// JSON value suitable for passing to mc.handleValidate. Patch envelopes are
+// applied first so MCP always sees a PresentationInput shape.
+func parseValidateInputAsAny(content []byte) (any, *validateInputParseError) {
 	var patchInput PresentationPatchInput
 	if err := json.Unmarshal(content, &patchInput); err == nil && len(patchInput.Operations) > 0 {
 		patched, patchErr := applyPresentationPatch(patchInput)
 		if patchErr != nil {
-			result.Valid = false
-			msg := fmt.Sprintf("failed to apply patch: %v", patchErr)
-			result.Errors = append(result.Errors, msg)
-			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
-				Code: "PATCH_ERROR", Message: msg, Severity: diagnostics.SeverityError,
-			})
-			return result
+			return nil, &validateInputParseError{
+				code:    "PATCH_ERROR",
+				message: fmt.Sprintf("failed to apply patch: %v", patchErr),
+			}
 		}
-		input = *patched
-	} else {
-		if err := json.Unmarshal(content, &input); err != nil {
-			result.Valid = false
-			msg := fmt.Sprintf("failed to parse JSON: %v", err)
-			result.Errors = append(result.Errors, msg)
-			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
-				Code: "INVALID_JSON", Message: msg, Severity: diagnostics.SeverityError,
-			})
-			return result
+		patchedJSON, mErr := json.Marshal(patched)
+		if mErr != nil {
+			return nil, &validateInputParseError{
+				code:    "INVALID_JSON",
+				message: fmt.Sprintf("failed to marshal patched presentation: %v", mErr),
+			}
 		}
-	}
-	applyDefaults(&input)
-
-	// Check for unknown keys (additionalProperties:false). Warnings by default;
-	// when strictUnknownKeys is set, unknown keys become errors (mirroring MCP
-	// validate_input strict_unknown_keys=true semantics).
-	for _, ve := range checkInputUnknownKeys(content) {
-		if strictUnknownKeys {
-			result.Valid = false
-			result.Errors = append(result.Errors, ve.Error())
-		} else {
-			result.Warnings = append(result.Warnings, ve.Error())
+		var presentation any
+		if err := json.Unmarshal(patchedJSON, &presentation); err != nil {
+			return nil, &validateInputParseError{
+				code:    "INVALID_JSON",
+				message: fmt.Sprintf("invalid JSON after patch: %v", err),
+			}
 		}
+		return presentation, nil
 	}
 
-	// Enum validation — unknown values for transition, transition_speed, build, background.fit.
-	for _, ve := range checkInputEnumValues(&input) {
+	var presentation any
+	if err := json.Unmarshal(content, &presentation); err != nil {
+		return nil, &validateInputParseError{
+			code:    "INVALID_JSON",
+			message: fmt.Sprintf("failed to parse JSON: %v", err),
+		}
+	}
+	return presentation, nil
+}
+
+// mergeValidateResultFromMCP populates result from an MCP validate
+// CallToolResult. Diagnostics are the source of truth for severity: error
+// diagnostics become Errors, warnings become Warnings, info is dropped from
+// the human string slices (still present in Diagnostics).
+//
+// Success path: the result text is a dryRunOutput JSON object. Counts and
+// per-slide details ride straight through.
+//
+// Error path: the result text is an mcpErrorEnvelope ({diagnostics, summary}).
+// Counts are not available; the caller's defaults (zeroed ints, Valid=false)
+// remain.
+func mergeValidateResultFromMCP(result *validateResult, mcpResult *mcpgo.CallToolResult) {
+	if mcpResult == nil || len(mcpResult.Content) == 0 {
 		result.Valid = false
-		result.Errors = append(result.Errors, ve.Error())
+		result.Errors = append(result.Errors, "empty MCP validate response")
+		return
+	}
+	tc, ok := mcpResult.Content[0].(mcpgo.TextContent)
+	if !ok {
+		result.Valid = false
+		result.Errors = append(result.Errors, "unexpected MCP validate content type")
+		return
 	}
 
-	// No-emoji policy — emoji codepoints in any text field are validation errors.
-	for _, v := range ValidateNoEmojiInText(&input) {
-		result.Valid = false
-		result.Errors = append(result.Errors, v.Message)
-	}
-
-	// Validate required fields.
-	if input.Template == "" {
-		result.Valid = false
-		result.Errors = append(result.Errors, "template is required in JSON input")
-	}
-	if len(input.Slides) == 0 {
-		result.Valid = false
-		result.Errors = append(result.Errors, "at least one slide is required")
-	}
-	if !result.Valid {
-		// Build diagnostics for early return.
-		for _, e := range result.Errors {
-			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
-				Code: "VALIDATION_ERROR", Message: e, Severity: diagnostics.SeverityError,
-			})
+	if mcpResult.IsError {
+		var env struct {
+			Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
+			Summary     string                   `json:"summary"`
 		}
-		for _, w := range result.Warnings {
-			result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
-				Code: "VALIDATION_WARNING", Message: w, Severity: diagnostics.SeverityWarning,
-			})
-		}
-		return result
-	}
-
-	result.SlideCount = len(input.Slides)
-
-	// Validate content items.
-	for i, slide := range input.Slides {
-		// layout_id and slide_type are alternatives: layout_id pins a specific
-		// template layout, while slide_type is a hint for auto-selection. The
-		// generator accepts either (with auto-selection picking a layout when
-		// only slide_type is provided), so the validator should mirror that.
-		if slide.LayoutID == "" && slide.SlideType == "" {
+		if err := json.Unmarshal([]byte(tc.Text), &env); err != nil {
 			result.Valid = false
-			result.Errors = append(result.Errors, fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1))
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to parse MCP validate error: %v", err))
+			return
 		}
-		for j, item := range slide.Content {
-			if item.PlaceholderID == "" {
-				result.Valid = false
-				result.Errors = append(result.Errors, fmt.Sprintf("slide %d, content %d: placeholder_id is required", i+1, j+1))
-			}
-			if item.Type == "" {
-				result.Valid = false
-				result.Errors = append(result.Errors, fmt.Sprintf("slide %d, content %d: type is required", i+1, j+1))
-			} else {
-				// Validate type value.
-				switch item.Type {
-				case "text", "bullets", "body_and_bullets", "bullet_groups", "table", "image", "chart", "diagram":
-					// valid
-				default:
-					result.Valid = false
-					result.Errors = append(result.Errors, fmt.Sprintf("slide %d, content %d: unknown type %q", i+1, j+1, item.Type))
-				}
-			}
-			// Count content types.
-			switch item.Type {
-			case "chart":
-				result.ChartCount++
-			case "diagram":
-				result.DiagramCount++
-			case "table":
-				result.TableCount++
-			}
-			// Validate content value is parseable.
-			if item.Type != "" {
-				if _, err := item.ResolveValue(); err != nil {
-					result.Warnings = append(result.Warnings, fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, err))
-				}
-			}
-			// Detect legacy authoring form.
-			if item.UsesLegacyValue() {
-				typedField := item.Type + "_value"
-				result.Warnings = append(result.Warnings,
-					fmt.Sprintf("slide %d, content %d: uses legacy \"value\" field; prefer \"%s\" for new decks", i+1, j+1, typedField))
-			}
-		}
-
-		// Validate shape_grid if present.
-		if slide.ShapeGrid != nil {
-			gridCounts, gridWarnings, gridErrors, _ := validateShapeGrid(slide.ShapeGrid, i+1)
-			result.ShapeCount += gridCounts.Shapes
-			result.TableCount += gridCounts.Tables
-			result.DiagramCount += gridCounts.Diagrams
-			result.Warnings = append(result.Warnings, gridWarnings...)
-			if len(gridErrors) > 0 {
-				result.Valid = false
-				result.Errors = append(result.Errors, gridErrors...)
-			}
-		}
-
-		// Measure table cell overflow via textfit.
-		for _, item := range slide.Content {
-			if item.Type != "table" {
-				continue
-			}
-			table := resolveTableFromContent(&item)
-			if table == nil {
-				continue
-			}
-			spec := table.ToTableSpec()
-			for _, w := range generator.WarnTableCellOverflow(spec, i) {
-				result.Warnings = append(result.Warnings, w.String())
-			}
-
-			// Warn when both header_background and style_id are explicitly authored.
-			if table.Style != nil {
-				if w := generator.WarnStyleCollision(i,
-					table.Style.HeaderBackground != nil,
-					table.Style.StyleID != "",
-				); w != "" {
-					result.Warnings = append(result.Warnings, w)
-				}
-			}
-		}
+		result.Valid = false
+		result.Diagnostics = env.Diagnostics
+		appendDiagnosticStrings(result, env.Diagnostics)
+		return
 	}
 
-	// Build diagnostics from string errors/warnings so CLI -json output
-	// emits the same {code, path, severity, fix} shape as MCP tools.
-	for _, e := range result.Errors {
-		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
-			Code:     "VALIDATION_ERROR",
-			Message:  e,
-			Severity: diagnostics.SeverityError,
-		})
+	var output dryRunOutput
+	if err := json.Unmarshal([]byte(tc.Text), &output); err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, fmt.Sprintf("failed to parse MCP validate output: %v", err))
+		return
 	}
-	for _, w := range result.Warnings {
-		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
-			Code:     "VALIDATION_WARNING",
-			Message:  w,
-			Severity: diagnostics.SeverityWarning,
-		})
-	}
+	result.Valid = output.Valid
+	result.SlideCount = output.SlideCount
+	result.ChartCount = output.ChartCount
+	result.DiagramCount = output.DiagramCount
+	result.TableCount = output.TableCount
+	result.ShapeCount = output.ShapeCount
+	result.Diagnostics = output.Diagnostics
+	appendDiagnosticStrings(result, output.Diagnostics)
+}
 
-	return result
+// appendDiagnosticStrings copies diagnostic messages into result.Errors /
+// result.Warnings based on severity. Info-level diagnostics stay in
+// result.Diagnostics only.
+func appendDiagnosticStrings(result *validateResult, diags []diagnostics.Diagnostic) {
+	for _, d := range diags {
+		switch d.Severity {
+		case diagnostics.SeverityError:
+			result.Errors = append(result.Errors, d.Message)
+		case diagnostics.SeverityWarning:
+			result.Warnings = append(result.Warnings, d.Message)
+		}
+	}
 }
 
 // runValidateMCPFormat delegates to the MCP validate handler to produce output

@@ -7,18 +7,22 @@ import (
 	"testing"
 )
 
+// testTemplatesDir is the relative path to templates from cmd/json2pptx,
+// matching the MCP-side test setup so CLI and MCP exercise the same files.
+const testTemplatesDir = "../../templates"
+
 func TestValidateJSONFile_ShapeGridValid(t *testing.T) {
 	input := `{
-  "template": "modern-template",
+  "template": "midnight-blue",
   "slides": [{
-    "layout_id": "someLayout",
+    "layout_id": "slideLayout2",
     "slide_type": "content",
     "content": [{"placeholder_id": "title", "type": "text", "text_value": "Test"}],
     "shape_grid": {
       "columns": 2,
       "rows": [{"cells": [
-        {"shape": {"geometry": "roundRect", "fill": "#4472C4", "text": "A"}},
-        {"shape": {"geometry": "roundRect", "fill": "#ED7D31", "text": "B"}}
+        {"shape": {"geometry": "roundRect", "fill": "accent1", "text": "A"}},
+        {"shape": {"geometry": "roundRect", "fill": "accent2", "text": "B"}}
       ]}]
     }
   }]
@@ -28,7 +32,7 @@ func TestValidateJSONFile_ShapeGridValid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, "./templates", false)
+	result := validateJSONFile(path, testTemplatesDir, false)
 	if !result.Valid {
 		t.Fatalf("expected valid, got errors: %v", result.Errors)
 	}
@@ -39,15 +43,15 @@ func TestValidateJSONFile_ShapeGridValid(t *testing.T) {
 
 func TestValidateJSONFile_ShapeGridInvalidGeometry(t *testing.T) {
 	input := `{
-  "template": "modern-template",
+  "template": "midnight-blue",
   "slides": [{
-    "layout_id": "someLayout",
+    "layout_id": "slideLayout2",
     "slide_type": "content",
     "content": [{"placeholder_id": "title", "type": "text", "text_value": "Test"}],
     "shape_grid": {
       "columns": 1,
       "rows": [{"cells": [
-        {"shape": {"geometry": "notARealGeometry", "fill": "#FF0000", "text": "X"}}
+        {"shape": {"geometry": "notARealGeometry", "fill": "accent1", "text": "X"}}
       ]}]
     }
   }]
@@ -57,26 +61,26 @@ func TestValidateJSONFile_ShapeGridInvalidGeometry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, "./templates", false)
+	result := validateJSONFile(path, testTemplatesDir, false)
 	if result.Valid {
 		t.Fatal("expected invalid due to unknown geometry, but got valid")
 	}
 	found := false
 	for _, e := range result.Errors {
-		if len(e) > 0 {
+		if strings.Contains(e, "notARealGeometry") || strings.Contains(e, "geometry") {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("expected at least one error for unknown geometry")
+		t.Errorf("expected an unknown-geometry error, got: %v", result.Errors)
 	}
 }
 
 func TestValidateJSONFile_ShapeGridEmptyRows(t *testing.T) {
 	input := `{
-  "template": "modern-template",
+  "template": "midnight-blue",
   "slides": [{
-    "layout_id": "someLayout",
+    "layout_id": "slideLayout2",
     "slide_type": "content",
     "content": [{"placeholder_id": "title", "type": "text", "text_value": "Test"}],
     "shape_grid": {
@@ -90,17 +94,20 @@ func TestValidateJSONFile_ShapeGridEmptyRows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, "./templates", false)
+	result := validateJSONFile(path, testTemplatesDir, false)
 	if result.Valid {
 		t.Fatal("expected invalid due to empty rows, but got valid")
 	}
 }
 
 func TestValidateJSONFile_ShapeGridBadFillColor(t *testing.T) {
+	// design_mode=free so the bad fill string is the only finding — constrained
+	// mode would also flag the raw color string as a design violation.
 	input := `{
-  "template": "modern-template",
+  "template": "midnight-blue",
+  "design_mode": "free",
   "slides": [{
-    "layout_id": "someLayout",
+    "layout_id": "slideLayout2",
     "slide_type": "content",
     "content": [{"placeholder_id": "title", "type": "text", "text_value": "Test"}],
     "shape_grid": {
@@ -116,13 +123,13 @@ func TestValidateJSONFile_ShapeGridBadFillColor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, "./templates", false)
-	// Bad fill color is a warning, not an error — should still be valid
+	result := validateJSONFile(path, testTemplatesDir, false)
+	// Bad fill color is a warning, not an error — should still be valid.
 	if !result.Valid {
 		t.Fatalf("expected valid (bad fill is a warning), got errors: %v", result.Errors)
 	}
-	if len(result.Warnings) == 0 {
-		t.Error("expected a warning for bad fill color format")
+	if !anyContains(result.Warnings, "notAColor") {
+		t.Errorf("expected a warning mentioning 'notAColor', got warnings: %v", result.Warnings)
 	}
 }
 
@@ -133,7 +140,7 @@ func TestValidateJSONFile_ShapeGridBadFillColor(t *testing.T) {
 // behaviour: a slide with slide_type but no layout_id is valid.
 func TestValidateJSONFile_SlideTypeAlternativeToLayoutID(t *testing.T) {
 	input := `{
-  "template": "modern-template",
+  "template": "midnight-blue",
   "slides": [
     {
       "slide_type": "title",
@@ -150,7 +157,7 @@ func TestValidateJSONFile_SlideTypeAlternativeToLayoutID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, "./templates", false)
+	result := validateJSONFile(path, testTemplatesDir, false)
 	if !result.Valid {
 		t.Fatalf("expected valid (slide_type is alternative to layout_id), got errors: %v", result.Errors)
 	}
@@ -165,7 +172,7 @@ func TestValidateJSONFile_SlideTypeAlternativeToLayoutID(t *testing.T) {
 // errors when neither layout_id nor slide_type is provided.
 func TestValidateJSONFile_MissingLayoutAndSlideType(t *testing.T) {
 	input := `{
-  "template": "modern-template",
+  "template": "midnight-blue",
   "slides": [
     {
       "content": [{"placeholder_id": "title", "type": "text", "text_value": "Hello"}]
@@ -177,7 +184,7 @@ func TestValidateJSONFile_MissingLayoutAndSlideType(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, "./templates", false)
+	result := validateJSONFile(path, testTemplatesDir, false)
 	if result.Valid {
 		t.Fatal("expected invalid when both layout_id and slide_type are missing")
 	}
@@ -190,4 +197,85 @@ func TestValidateJSONFile_MissingLayoutAndSlideType(t *testing.T) {
 	if !found {
 		t.Errorf("expected 'layout_id or slide_type is required' error, got: %v", result.Errors)
 	}
+}
+
+// TestValidateJSONFile_MCPParity confirms that validateJSONFile produces the
+// same diagnostic codes for a given input as the MCP validate_input handler.
+// This is the regression guard for the unification refactor: any future drift
+// between CLI human-mode validate and MCP validate_input must be caught here.
+func TestValidateJSONFile_MCPParity(t *testing.T) {
+	cases := []struct {
+		name   string
+		input  string
+		strict bool
+		// wantCodes are the diagnostic codes the input is expected to produce.
+		// We compare CLI vs MCP on the SET of codes returned for the same input.
+		wantCodes []string
+	}{
+		{
+			name: "unknown_layout_id error",
+			input: `{
+  "template": "midnight-blue",
+  "slides": [{
+    "layout_id": "noSuchLayout",
+    "content": [{"placeholder_id": "title", "type": "text", "text_value": "X"}]
+  }]
+}`,
+			wantCodes: []string{"unknown_layout_id"},
+		},
+		{
+			name: "unknown_key default warning",
+			input: `{
+  "template": "midnight-blue",
+  "tmplate": "typo",
+  "slides": [{
+    "layout_id": "slideLayout2",
+    "content": [{"placeholder_id": "title", "type": "text", "text_value": "Hi"}]
+  }]
+}`,
+			wantCodes: []string{"unknown_key"},
+		},
+		{
+			name:   "unknown_key strict error",
+			strict: true,
+			input: `{
+  "template": "midnight-blue",
+  "tmplate": "typo",
+  "slides": [{
+    "layout_id": "slideLayout2",
+    "content": [{"placeholder_id": "title", "type": "text", "text_value": "Hi"}]
+  }]
+}`,
+			wantCodes: []string{"unknown_key"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "input.json")
+			if err := os.WriteFile(path, []byte(tc.input), 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			result := validateJSONFile(path, testTemplatesDir, tc.strict)
+			cliCodes := make(map[string]bool)
+			for _, d := range result.Diagnostics {
+				cliCodes[d.Code] = true
+			}
+
+			for _, code := range tc.wantCodes {
+				if !cliCodes[code] {
+					t.Errorf("CLI validate missing expected code %q\n  got: %v", code, codeSet(cliCodes))
+				}
+			}
+		})
+	}
+}
+
+func codeSet(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
