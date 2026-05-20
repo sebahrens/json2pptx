@@ -142,18 +142,18 @@ func (mc *mcpConfig) handleExpandPatterns(ctx context.Context, request mcp.CallT
 	// --- names[] (required) ---
 	namesRaw, ok := request.GetArguments()["names"]
 	if !ok || namesRaw == nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "names is required"), nil
+		return argMissing("expand_patterns", "names", "array", []any{"kpi-3up", "stat-hero"}, nextCallListPatterns()), nil
 	}
 	namesJSON, err := json.Marshal(namesRaw)
 	if err != nil {
-		return mcpParseError("INVALID_JSON", "names", fmt.Sprintf("invalid names: %v", err)), nil
+		return argInvalidJSON("names", fmt.Sprintf("invalid names: %v", err), "array", []any{"kpi-3up"}, nil), nil
 	}
 	var names []string
 	if err := json.Unmarshal(namesJSON, &names); err != nil {
-		return mcpParseError("INVALID_JSON", "names", fmt.Sprintf("names must be an array of strings: %v", err)), nil
+		return argInvalidJSON("names", fmt.Sprintf("names must be an array of strings: %v", err), "array", []any{"kpi-3up"}, nil), nil
 	}
 	if len(names) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "names must contain at least one pattern name"), nil
+		return argMissing("expand_patterns", "names", "array", []any{"kpi-3up", "stat-hero"}, nextCallListPatterns()), nil
 	}
 
 	// --- content (optional) ---
@@ -165,12 +165,12 @@ func (mc *mcpConfig) handleExpandPatterns(ctx context.Context, request mcp.CallT
 		// per-entry parse errors rather than a single opaque one.
 		var rawByName map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(contentStr), &rawByName); err != nil {
-			return mcpParseError("INVALID_JSON", "content", fmt.Sprintf("invalid content JSON: %v", err)), nil
+			return argInvalidJSON("content", fmt.Sprintf("invalid content JSON: %v", err), "object", nil, nil), nil
 		}
 		for k, raw := range rawByName {
 			var pc patternBatchContent
 			if err := json.Unmarshal(raw, &pc); err != nil {
-				return mcpParseError("INVALID_JSON", "content."+k, fmt.Sprintf("invalid content[%q]: %v", k, err)), nil
+				return argInvalidJSON("content."+k, fmt.Sprintf("invalid content[%q]: %v", k, err), "object", nil, nil), nil
 			}
 			contentByName[k] = pc
 		}

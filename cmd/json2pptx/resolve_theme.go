@@ -72,7 +72,7 @@ type resolveThemeUnknownColor struct {
 func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template_name is required"), nil
+		return argMissing("resolve_theme", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	// Resolve template path.
@@ -95,7 +95,7 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	// mirrors what the singlepass generator would see for the same frontmatter.
 	overrideInput, overrideErr := parseResolveThemeOverride(request)
 	if overrideErr != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", overrideErr.Error()), nil
+		return argInvalidValue("resolve_theme", "INVALID_PARAMETER", "theme_override", overrideErr.Error(), "object", nil, nil), nil
 	}
 	var overrideWarnings []string
 	if overrideInput != nil {

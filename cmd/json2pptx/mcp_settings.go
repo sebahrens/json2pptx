@@ -98,10 +98,10 @@ type listTemplateSettingsResponse struct {
 func (mc *mcpConfig) handleListTemplateSettings(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template_name is required"), nil
+		return argMissing("list_template_settings", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("list_template_settings", "INVALID_PARAMETER", "template_name", err.Error(), "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	// Verify template exists.
@@ -143,38 +143,38 @@ func (mc *mcpConfig) handleRegisterTemplateSetting(ctx context.Context, request 
 
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template_name is required"), nil
+		return argMissing("register_template_setting", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("register_template_setting", "INVALID_PARAMETER", "template_name", err.Error(), "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	kindStr, err := request.RequireString("kind")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "kind is required"), nil
+		return argMissing("register_template_setting", "kind", "string", "table_style", nil), nil
 	}
 	kind, err := templatesettings.ValidateKind(kindStr)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("register_template_setting", "INVALID_PARAMETER", "kind", err.Error(), "string", "table_style", nil), nil
 	}
 
 	name, err := request.RequireString("name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
+		return argMissing("register_template_setting", "name", "string", "my-style", nil), nil
 	}
 	if err := templatesettings.ValidateName(name); err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("register_template_setting", "INVALID_PARAMETER", "name", err.Error(), "string", "my-style", nil), nil
 	}
 
 	defRaw, ok := request.GetArguments()["definition"]
 	if !ok || defRaw == nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "definition is required"), nil
+		return argMissing("register_template_setting", "definition", "object", map[string]any{}, nil), nil
 	}
 
 	// Re-marshal the definition so we can unmarshal into the typed struct.
 	defJSON, err := json.Marshal(defRaw)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", fmt.Sprintf("failed to encode definition: %v", err)), nil
+		return argInvalidValue("register_template_setting", "INVALID_PARAMETER", "definition", fmt.Sprintf("failed to encode definition: %v", err), "object", nil, nil), nil
 	}
 
 	// Verify template exists and open it for style_id validation.
@@ -251,24 +251,24 @@ func (mc *mcpConfig) handleDeleteTemplateSetting(ctx context.Context, request mc
 
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template_name is required"), nil
+		return argMissing("delete_template_setting", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("delete_template_setting", "INVALID_PARAMETER", "template_name", err.Error(), "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	kindStr, err := request.RequireString("kind")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "kind is required"), nil
+		return argMissing("delete_template_setting", "kind", "string", "table_style", nil), nil
 	}
 	kind, err := templatesettings.ValidateKind(kindStr)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("delete_template_setting", "INVALID_PARAMETER", "kind", err.Error(), "string", "table_style", nil), nil
 	}
 
 	name, err := request.RequireString("name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
+		return argMissing("delete_template_setting", "name", "string", "my-style", nil), nil
 	}
 
 	settingsDir := mc.resolveSettingsDir()

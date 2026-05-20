@@ -32,11 +32,11 @@ Response shape: {slide_count, slides: [{index, layout_id, placeholders: [{id, ty
 func handleReadPresentation(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
+		return argMissing("read_presentation", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {
-		return api.MCPSimpleError("INVALID_PATH", err.Error()), nil
+		return argInvalidValue("read_presentation", "INVALID_PATH", "pptx_path", err.Error(), "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {

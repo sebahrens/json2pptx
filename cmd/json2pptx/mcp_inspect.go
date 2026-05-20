@@ -85,16 +85,16 @@ Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path tra
 func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	images, err := extractSlideImages(request)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("inspect_slide_images", "INVALID_PARAMETER", "slide_images", err.Error(), "array", []any{map[string]any{"index": 0, "path": "/tmp/slide-0.jpg"}}, nil), nil
 	}
 	if len(images) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "slide_images must contain at least one entry"), nil
+		return argMissing("inspect_slide_images", "slide_images", "array", []any{map[string]any{"index": 0, "path": "/tmp/slide-0.jpg"}}, nil), nil
 	}
 
 	// Optional slide_info overrides.
 	infoByIdx, err := extractSlideInfoOverrides(request)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("inspect_slide_images", "INVALID_PARAMETER", "slide_info", err.Error(), "array", []any{}, nil), nil
 	}
 
 	// Optional deck metadata (template echo).

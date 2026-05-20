@@ -74,13 +74,16 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		return paramErr, nil
 	}
 	if slideJSON == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "slide is required"), nil
+		return argMissing("render_slide_image_from_json", "slide", "object", map[string]any{
+			"layout_id": "title",
+			"content":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// Required: template name.
 	templateName, err := request.RequireString("template")
 	if err != nil || templateName == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template is required"), nil
+		return argMissing("render_slide_image_from_json", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	// Optional: density (clamped 50-300, default 100).

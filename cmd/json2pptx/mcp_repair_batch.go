@@ -89,12 +89,15 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return argMissing("repair_slides_batch", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
 
@@ -104,10 +107,10 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 
 	fixes, err := extractBatchFixes(request, len(input.Slides))
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("repair_slides_batch", "INVALID_PARAMETER", "fixes", err.Error(), "array", []any{map[string]any{"slide_index": 0, "kind": "reduce_text"}}, nil), nil
 	}
 	if len(fixes) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "fixes array must contain at least one fix directive"), nil
+		return argMissing("repair_slides_batch", "fixes", "array", []any{map[string]any{"slide_index": 0, "kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
 	}
 
 	applied := make([]batchAppliedFix, 0, len(fixes))

@@ -84,17 +84,20 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
+		return argMissing("preview_slide_wireframe", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// slide_index is required and 0-based.
 	slideIdxF, ok := request.GetArguments()["slide_index"].(float64)
 	if !ok {
-		return api.MCPSimpleError("MISSING_PARAMETER", "slide_index is required"), nil
+		return argMissing("preview_slide_wireframe", "slide_index", "integer", 0, nil), nil
 	}
 	slideIdx := int(slideIdxF)
 	if slideIdx < 0 {
-		return api.MCPSimpleError("INVALID_PARAMETER", "slide_index must be >= 0"), nil
+		return argInvalidValue("preview_slide_wireframe", "INVALID_PARAMETER", "slide_index", "slide_index must be >= 0", "integer", 0, nil), nil
 	}
 
 	// Optional format (default "both").
@@ -105,7 +108,7 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 	includeSVG := format == "svg" || format == "both"
 	includePNG := format == "png" || format == "both"
 	if !includeSVG && !includePNG {
-		return api.MCPSimpleError("INVALID_PARAMETER", fmt.Sprintf("format must be one of \"svg\", \"png\", \"both\" — got %q", format)), nil
+		return argInvalidValue("preview_slide_wireframe", "INVALID_PARAMETER", "format", fmt.Sprintf("format must be one of \"svg\", \"png\", \"both\" — got %q", format), "string", "both", nil), nil
 	}
 
 	// Optional width_px (clamped 320..2400, default 960).
@@ -122,7 +125,7 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
 	}
 
 	applyDefaults(&input)
@@ -132,8 +135,8 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 	}
 
 	if slideIdx >= len(input.Slides) {
-		return api.MCPSimpleError("INVALID_PARAMETER",
-			fmt.Sprintf("slide_index %d out of range (deck has %d slides)", slideIdx, len(input.Slides))), nil
+		return argInvalidValue("preview_slide_wireframe", "INVALID_PARAMETER", "slide_index",
+			fmt.Sprintf("slide_index %d out of range (deck has %d slides)", slideIdx, len(input.Slides)), "integer", 0, nil), nil
 	}
 
 	// Resolve template.

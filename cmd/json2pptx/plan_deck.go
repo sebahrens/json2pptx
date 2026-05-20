@@ -138,7 +138,7 @@ type rhythmCheck struct {
 func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	brief, err := request.RequireString("brief")
 	if err != nil {
-		return mcpErrorWithNext("MISSING_PARAMETER", "brief is required", nextCallRetry("plan_deck", "brief")), nil
+		return argMissing("plan_deck", "brief", "string", "Pitch our Q3 product launch to the executive team", nil), nil
 	}
 
 	slideBudget := 10
@@ -173,7 +173,7 @@ func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	reg := patterns.Default()
 	for _, name := range mustInclude {
 		if _, ok := reg.Get(name); !ok {
-			return mcpErrorWithNext("INVALID_PARAMETER", fmt.Sprintf("must_include pattern %q not found; use list_patterns to see available patterns", name), nextCallListPatterns()), nil
+			return argInvalidValue("plan_deck", "INVALID_PARAMETER", "must_include", fmt.Sprintf("must_include pattern %q not found; use list_patterns to see available patterns", name), "array", []any{"kpi-3up"}, nextCallListPatterns()), nil
 		}
 	}
 

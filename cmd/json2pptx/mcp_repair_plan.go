@@ -176,12 +176,15 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return argMissing("propose_repairs", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
 	if errResult := validateRepairBoundary(&input); errResult != nil {
@@ -190,10 +193,10 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 
 	findings, ferr := extractProposeFindings(request)
 	if ferr != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", ferr.Error()), nil
+		return argInvalidValue("propose_repairs", "INVALID_PARAMETER", "findings", ferr.Error(), "array", []any{map[string]any{"code": "BODY_TOO_LONG", "slide_index": 0}}, nil), nil
 	}
 	if len(findings) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "findings array must contain at least one finding"), nil
+		return argMissing("propose_repairs", "findings", "array", []any{map[string]any{"code": "BODY_TOO_LONG", "slide_index": 0, "path": "slides[0].content.body"}}, nil), nil
 	}
 
 	output := proposeRepairs(&input, findings)

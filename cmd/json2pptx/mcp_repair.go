@@ -132,13 +132,16 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return argMissing("repair_slide", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// Parse the deck.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
 
@@ -150,16 +153,16 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 	// Extract slide_index.
 	slideIdx, err := extractSlideIndex(request, len(input.Slides))
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("repair_slide", "INVALID_PARAMETER", "slide_index", err.Error(), "integer", 0, nil), nil
 	}
 
 	// Extract fixes array.
 	fixes, err := extractFixes(request)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("repair_slide", "INVALID_PARAMETER", "fixes", err.Error(), "array", []any{map[string]any{"kind": "reduce_text"}}, nil), nil
 	}
 	if len(fixes) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "fixes array must contain at least one fix directive"), nil
+		return argMissing("repair_slide", "fixes", "array", []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
 	}
 
 	// Apply each fix to the target slide.

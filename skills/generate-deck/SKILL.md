@@ -241,7 +241,33 @@ A blocking finding means PowerPoint or Keynote would show the "we found a proble
 
 `OPC_*` and the two structural-corruption `OOXML_*` codes (`OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`) are always promoted to `severity: "blocking"`. Other `OOXML_*` codes are advisory `warning`s and do not fail strict mode unless the validator escalates them.
 
-### Error envelope shape
+### Arg-validation error envelope
+
+When a tool call fails argument validation (missing required field, wrong type, malformed JSON), the response is an error `CallToolResult` whose first diagnostic carries a stable, machine-readable envelope:
+
+```json
+{
+  "summary": "1 error",
+  "diagnostics": [
+    {
+      "code": "MISSING_PARAMETER",
+      "message": "fixes is required (expected array)",
+      "path": "fixes",
+      "severity": "error",
+      "expected_type": "array",
+      "example_value": [{"kind": "reduce_text", "params": {"max_items": 5}}],
+      "next_tool_call": {
+        "tool": "repair_slide",
+        "args_template": {"fixes": "<provide value>"}
+      }
+    }
+  ]
+}
+```
+
+Every arg-validation diagnostic guarantees a non-empty `path` plus at least one of `expected_type` or `next_tool_call` so an agent can self-correct without re-reading the schema. Common codes are `MISSING_PARAMETER`, `INVALID_PARAMETER`, `INVALID_JSON`, `INVALID_KEY`, and `INVALID_PATH`. The `next_tool_call` usually replays the same tool with the offending field as a placeholder; for shape failures it points at `get_input_schema`, and for unknown identifiers it points at the relevant discovery tool (e.g. `list_templates`, `list_patterns`).
+
+### Output validation error envelope
 
 When strict validation fails, the tool returns an error `CallToolResult` (`isError: true`) whose structured content is:
 

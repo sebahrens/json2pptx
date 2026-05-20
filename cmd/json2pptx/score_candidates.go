@@ -82,34 +82,37 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return argMissing("score_candidates", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// Parse the deck.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
 	mc.resolveInputNamedSettings(&input)
 
 	if len(input.Slides) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "at least one slide is required in presentation"), nil
+		return argMissing("score_candidates", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
 	// slide_index validation against the (possibly empty) deck.
 	slideIdx, err := extractSlideIndex(request, len(input.Slides))
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("score_candidates", "INVALID_PARAMETER", "slide_index", err.Error(), "integer", 0, nil), nil
 	}
 
 	// Candidates array.
 	candidatesRaw, err := extractCandidates(request)
 	if err != nil {
-		return api.MCPSimpleError("INVALID_PARAMETER", err.Error()), nil
+		return argInvalidValue("score_candidates", "INVALID_PARAMETER", "candidates", err.Error(), "array", []any{"kpi-3up"}, nil), nil
 	}
 	if len(candidatesRaw) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "candidates array must contain at least one entry"), nil
+		return argMissing("score_candidates", "candidates", "array", []any{"kpi-3up", "stat-hero"}, nil), nil
 	}
 
 	// Resolve template.
@@ -118,7 +121,7 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 		templateName = override
 	}
 	if templateName == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "template is required (in presentation or as template parameter)"), nil
+		return argMissing("score_candidates", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)

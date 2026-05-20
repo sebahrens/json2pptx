@@ -37,7 +37,7 @@ type validateOutputResponse struct {
 func handleValidateOutput(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	path, err := request.RequireString("path")
 	if err != nil || path == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "path is required"), nil
+		return argMissing("validate_output", "path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	// Check file exists

@@ -182,13 +182,16 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
+		return argMissing("preview_presentation_plan", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
 	}
 
 	// Apply deck-level defaults before resolution.

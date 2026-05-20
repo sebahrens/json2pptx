@@ -368,13 +368,16 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return argMissing("generate_presentation", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// Parse JSON input — reject trailing data.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 
 	// Apply deck-level defaults before any validation or conversion.
@@ -397,15 +400,21 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if input.Template == "" {
 		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
 			Code: "REQUIRED", Path: "template", Message: "template is required in presentation",
-			Severity: diagnostics.SeverityError,
-			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "string",
+			ExampleValue: "midnight-blue",
+			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
+			NextToolCall: nextCallListTemplates(),
 		})
 	}
 	if len(input.Slides) == 0 {
 		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
 			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
-			Severity: diagnostics.SeverityError,
-			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "array",
+			ExampleValue: []any{map[string]any{"layout_id": "title", "content": []any{}}},
+			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
+			NextToolCall: nextCallGetInputSchema(),
 		})
 	}
 
@@ -734,7 +743,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	// must pin mode=compact explicitly.
 	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
 	if fErrMsg != "" {
-		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
+		return argInvalidValue("list_templates", "INVALID_PARAMETER", fErrField, fErrMsg, "string", "compact", nil), nil
 	}
 	if fieldsExplicit {
 		switch fieldsMode {
@@ -752,7 +761,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	// surfaced as a structured INVALID_PARAMETER error.
 	offset, pageSize, errField, errMsg := paginationParams(request)
 	if errMsg != "" {
-		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
+		return argInvalidValue("list_templates", "INVALID_PARAMETER", errField, errMsg, "", nil, nil), nil
 	}
 
 	// Discover templates using the shared resolution path (flag → env → user
@@ -950,13 +959,16 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
+		return argMissing("validate_input", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	// Parse JSON input — reject trailing data.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
 	}
 
 	// Apply deck-level defaults before validation.
@@ -1424,7 +1436,7 @@ func attachBoundsHintToCapacityWarnings(warnings []cellDensityWarning, patternNa
 func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	intent, err := request.RequireString("intent")
 	if err != nil {
-		return mcpErrorWithNext("MISSING_PARAMETER", "intent is required", nextCallRetry("recommend_pattern", "intent")), nil
+		return argMissing("recommend_pattern", "intent", "string", "compare two options side-by-side", nil), nil
 	}
 
 	// Parse optional content_hints.
@@ -1589,7 +1601,7 @@ func mcpRecommendVisualTool() mcp.Tool {
 func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	intent, err := request.RequireString("intent")
 	if err != nil {
-		return mcpErrorWithNext("MISSING_PARAMETER", "intent is required", nextCallRetry("recommend_visual", "intent")), nil
+		return argMissing("recommend_visual", "intent", "string", "show revenue growth over four quarters", nil), nil
 	}
 
 	// Parse optional content_hints.
@@ -1767,7 +1779,7 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
+		return argMissing("show_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
 	}
 
 	reg := patterns.Default()
@@ -1847,14 +1859,16 @@ func patternRenderingCapabilities(name string) *renderingCapabilities {
 func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
+		return argMissing("validate_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
 	}
 	valuesStr, paramErr := objectParamAsJSON(request, "values")
 	if paramErr != nil {
 		return paramErr, nil
 	}
 	if valuesStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "values is required"), nil
+		return argMissing("validate_pattern", "values", "object", map[string]any{
+			"items": []any{map[string]any{"label": "Revenue", "value": "$1.2M"}},
+		}, nil), nil
 	}
 
 	reg := patterns.Default()
@@ -1875,7 +1889,7 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 		if result := unmarshalValidationErrorResult(ctx, err, name); result != nil {
 			return result, nil
 		}
-		return mcpParseError("INVALID_JSON", "values", fmt.Sprintf("invalid values JSON: %v", err)), nil
+		return argInvalidJSON("values", fmt.Sprintf("invalid values JSON: %v", err), "object", nil, nil), nil
 	}
 
 	// Unmarshal overrides
@@ -1888,7 +1902,7 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 		overrides = pat.NewOverrides()
 		if overrides != nil {
 			if err := json.Unmarshal([]byte(overridesStr), overrides); err != nil {
-				return mcpParseError("INVALID_JSON", "overrides", fmt.Sprintf("invalid overrides JSON: %v", err)), nil
+				return argInvalidJSON("overrides", fmt.Sprintf("invalid overrides JSON: %v", err), "object", nil, nil), nil
 			}
 		}
 	}
@@ -1902,20 +1916,20 @@ func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*m
 	if coStr != "" {
 		var rawCO map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(coStr), &rawCO); err != nil {
-			return mcpParseError("INVALID_JSON", "cell_overrides", fmt.Sprintf("invalid cell_overrides JSON: %v", err)), nil
+			return argInvalidJSON("cell_overrides", fmt.Sprintf("invalid cell_overrides JSON: %v", err), "object", nil, nil), nil
 		}
 		cellOverrides = make(map[int]any, len(rawCO))
 		for key, raw := range rawCO {
 			idx, err := strconv.Atoi(key)
 			if err != nil {
-				return mcpParseError("INVALID_KEY", fmt.Sprintf("cell_overrides.%s", key), fmt.Sprintf("cell_overrides key %q is not an integer", key)), nil
+				return argInvalidValue("validate_pattern", "INVALID_KEY", fmt.Sprintf("cell_overrides.%s", key), fmt.Sprintf("cell_overrides key %q is not an integer", key), "integer", 0, nil), nil
 			}
 			co := pat.NewCellOverride()
 			if co == nil {
 				return api.MCPSimpleError("UNSUPPORTED", fmt.Sprintf("pattern %q does not support cell_overrides", name)), nil
 			}
 			if err := json.Unmarshal(raw, co); err != nil {
-				return mcpParseError("INVALID_JSON", fmt.Sprintf("cell_overrides[%d]", idx), fmt.Sprintf("invalid cell_overrides[%d]: %v", idx, err)), nil
+				return argInvalidJSON(fmt.Sprintf("cell_overrides[%d]", idx), fmt.Sprintf("invalid cell_overrides[%d]: %v", idx, err), "object", nil, nil), nil
 			}
 			cellOverrides[idx] = co
 		}
@@ -1960,7 +1974,7 @@ func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name
 	}
 	var callout patterns.PatternCallout
 	if err := json.Unmarshal([]byte(calloutStr), &callout); err != nil {
-		return mcpParseError("INVALID_JSON", "callout", fmt.Sprintf("invalid callout JSON: %v", err))
+		return argInvalidJSON("callout", fmt.Sprintf("invalid callout JSON: %v", err), "object", nil, nil)
 	}
 	cs, ok := pat.(patterns.CalloutSupport)
 	if ok && cs.SupportsCallout() {
@@ -1981,14 +1995,16 @@ func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name
 func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "name is required"), nil
+		return argMissing("expand_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
 	}
 	valuesStr, paramErr := objectParamAsJSON(request, "values")
 	if paramErr != nil {
 		return paramErr, nil
 	}
 	if valuesStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "values is required"), nil
+		return argMissing("expand_pattern", "values", "object", map[string]any{
+			"items": []any{map[string]any{"label": "Revenue", "value": "$1.2M"}},
+		}, nil), nil
 	}
 
 	reg := patterns.Default()
@@ -2021,7 +2037,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	if coStr != "" {
 		var rawCO map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(coStr), &rawCO); err != nil {
-			return mcpParseError("INVALID_JSON", "cell_overrides", fmt.Sprintf("invalid cell_overrides JSON: %v", err)), nil
+			return argInvalidJSON("cell_overrides", fmt.Sprintf("invalid cell_overrides JSON: %v", err), "object", nil, nil), nil
 		}
 		pi.CellOverrides = rawCO
 	}
@@ -2034,7 +2050,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 	if boundsStr != "" {
 		var b jsonschema.GridBoundsInput
 		if err := json.Unmarshal([]byte(boundsStr), &b); err != nil {
-			return mcpParseError("INVALID_JSON", "bounds", fmt.Sprintf("invalid bounds JSON: %v", err)), nil
+			return argInvalidJSON("bounds", fmt.Sprintf("invalid bounds JSON: %v", err), "object", nil, nil), nil
 		}
 		pi.Bounds = &b
 	}
@@ -2238,12 +2254,12 @@ type listIconsResponse struct {
 func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	offset, pageSize, errField, errMsg := paginationParams(request)
 	if errMsg != "" {
-		return mcpParseError("INVALID_PARAMETER", errField, errMsg), nil
+		return argInvalidValue("list_icons", "INVALID_PARAMETER", errField, errMsg, "", nil, nil), nil
 	}
 
 	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
 	if fErrMsg != "" {
-		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
+		return argInvalidValue("list_icons", "INVALID_PARAMETER", fErrField, fErrMsg, "string", "compact", nil), nil
 	}
 	if !fieldsExplicit {
 		fieldsMode = listFieldsFull
@@ -2383,11 +2399,11 @@ Cost note: at density=50, each thumbnail is typically 5-20KB base64. A 10-slide 
 func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
+		return argMissing("render_slide_image", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {
-		return api.MCPSimpleError("INVALID_PATH", err.Error()), nil
+		return argInvalidValue("render_slide_image", "INVALID_PATH", "pptx_path", err.Error(), "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {
@@ -2438,11 +2454,11 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "pptx_path is required"), nil
+		return argMissing("render_deck_thumbnails", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {
-		return api.MCPSimpleError("INVALID_PATH", err.Error()), nil
+		return argInvalidValue("render_deck_thumbnails", "INVALID_PATH", "pptx_path", err.Error(), "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {

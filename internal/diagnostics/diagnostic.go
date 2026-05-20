@@ -52,6 +52,16 @@ type Diagnostic struct {
 	// via a specific tool.
 	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 
+	// ExpectedType is the JSON-schema-style type the agent should supply
+	// (e.g. "object", "string", "integer", "array"). Populated on
+	// arg-validation failures where the type contract is clear.
+	ExpectedType string `json:"expected_type,omitempty"`
+
+	// ExampleValue is a representative valid value for the argument that
+	// triggered the diagnostic. Optional; populated when an example is cheap
+	// to derive from the schema.
+	ExampleValue any `json:"example_value,omitempty"`
+
 	// Details carries additional context that doesn't fit the other fields.
 	// Preserves raw cause text, overflow ratios, etc.
 	Details map[string]any `json:"details,omitempty"`

@@ -40,10 +40,10 @@ Covered codes include every entry returned by get_capabilities.vocabularies.fit_
 func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	code, err := request.RequireString("code")
 	if err != nil {
-		return api.MCPSimpleError("MISSING_PARAMETER", "code is required"), nil
+		return argMissing("describe_finding", "code", "string", "placeholder_overflow", nil), nil
 	}
 	if code == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "code must not be empty"), nil
+		return argMissing("describe_finding", "code", "string", "placeholder_overflow", nil), nil
 	}
 
 	meta, ok := patterns.GetFindingMeta(code)

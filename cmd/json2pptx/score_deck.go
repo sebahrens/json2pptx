@@ -63,7 +63,10 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return mcpErrorWithNext("MISSING_PARAMETER", "presentation is required", nextCallGetInputSchema()), nil
+		return argMissing("score_deck", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	mode := "deterministic"
@@ -95,7 +98,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseErrorWithNext("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err), nextCallGetInputSchema()), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
 	}
 
 	// Apply deck-level defaults before checks.
@@ -117,17 +120,17 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		templateName = override
 	}
 	if templateName == "" {
-		return mcpErrorWithNext("MISSING_PARAMETER", "template is required (in presentation or as template parameter)", nextCallListTemplates()), nil
+		return argMissing("score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if len(input.Slides) == 0 {
-		return mcpErrorWithNext("MISSING_PARAMETER", "at least one slide is required in presentation", nextCallGetInputSchema()), nil
+		return argMissing("score_deck", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
 	// Optional slide_indices: when provided, only those slides are rendered +
 	// scored, which is significantly faster than rerunning the whole deck.
 	slideIndices, idxErr := extractSlideIndices(request, len(input.Slides))
 	if idxErr != nil {
-		return mcpErrorWithNext("INVALID_PARAMETER", idxErr.Error(), nextCallGetInputSchema()), nil
+		return argInvalidValue("score_deck", "INVALID_PARAMETER", "slide_indices", idxErr.Error(), "array", []any{0, 1}, nil), nil
 	}
 
 	// Resolve and analyze template.

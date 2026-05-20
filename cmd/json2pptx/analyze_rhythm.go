@@ -99,16 +99,19 @@ func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return api.MCPSimpleError("MISSING_PARAMETER", "presentation is required"), nil
+		return argMissing("analyze_deck_rhythm", "presentation", "object", map[string]any{
+			"template": "<template-name>",
+			"slides":   []any{},
+		}, nextCallGetInputSchema()), nil
 	}
 
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return mcpParseError("INVALID_JSON", "presentation", fmt.Sprintf("invalid JSON: %v", err)), nil
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 
 	if len(input.Slides) == 0 {
-		return api.MCPSimpleError("MISSING_PARAMETER", "at least one slide is required in presentation"), nil
+		return argMissing("analyze_deck_rhythm", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
 	result := analyzeDeckRhythm(input.Slides)

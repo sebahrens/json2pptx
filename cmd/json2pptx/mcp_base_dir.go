@@ -48,10 +48,12 @@ func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-				Code:     diagnostics.CodeInvalidParameter,
-				Path:     "base_dir",
-				Message:  fmt.Sprintf("base_dir not supplied and process CWD unavailable: %v", err),
-				Severity: diagnostics.SeverityError,
+				Code:         diagnostics.CodeInvalidParameter,
+				Path:         "base_dir",
+				Message:      fmt.Sprintf("base_dir not supplied and process CWD unavailable: %v", err),
+				Severity:     diagnostics.SeverityError,
+				ExpectedType: "string",
+				ExampleValue: "/Users/you/decks",
 				Details: map[string]any{
 					"remediation": "pass an absolute directory as base_dir on this tool call",
 				},
@@ -62,10 +64,12 @@ func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
 
 	if !filepath.IsAbs(raw) {
 		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeInvalidParameter,
-			Path:     "base_dir",
-			Message:  fmt.Sprintf("base_dir must be an absolute path, got %q", raw),
-			Severity: diagnostics.SeverityError,
+			Code:         diagnostics.CodeInvalidParameter,
+			Path:         "base_dir",
+			Message:      fmt.Sprintf("base_dir must be an absolute path, got %q", raw),
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "string",
+			ExampleValue: "/Users/you/decks",
 			Details: map[string]any{
 				"input_value": raw,
 				"remediation": "pass an absolute path (e.g. /Users/you/decks) so the server can resolve relative asset references portably across CWDs",
@@ -76,10 +80,12 @@ func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
 	resolved, err := filepath.EvalSymlinks(raw)
 	if err != nil {
 		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeInvalidParameter,
-			Path:     "base_dir",
-			Message:  fmt.Sprintf("base_dir %q: %v", raw, err),
-			Severity: diagnostics.SeverityError,
+			Code:         diagnostics.CodeInvalidParameter,
+			Path:         "base_dir",
+			Message:      fmt.Sprintf("base_dir %q: %v", raw, err),
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "string",
+			ExampleValue: "/Users/you/decks",
 			Details: map[string]any{
 				"input_value": raw,
 				"remediation": "verify base_dir exists and is reachable from the server process",
@@ -90,10 +96,12 @@ func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
 	info, err := os.Stat(resolved)
 	if err != nil {
 		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeInvalidParameter,
-			Path:     "base_dir",
-			Message:  fmt.Sprintf("base_dir %q: %v", raw, err),
-			Severity: diagnostics.SeverityError,
+			Code:         diagnostics.CodeInvalidParameter,
+			Path:         "base_dir",
+			Message:      fmt.Sprintf("base_dir %q: %v", raw, err),
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "string",
+			ExampleValue: "/Users/you/decks",
 			Details: map[string]any{
 				"input_value": raw,
 				"remediation": "verify base_dir exists and is reachable from the server process",
@@ -102,10 +110,12 @@ func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
 	}
 	if !info.IsDir() {
 		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeInvalidParameter,
-			Path:     "base_dir",
-			Message:  fmt.Sprintf("base_dir %q is not a directory", raw),
-			Severity: diagnostics.SeverityError,
+			Code:         diagnostics.CodeInvalidParameter,
+			Path:         "base_dir",
+			Message:      fmt.Sprintf("base_dir %q is not a directory", raw),
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "string",
+			ExampleValue: "/Users/you/decks",
 			Details: map[string]any{
 				"input_value": raw,
 				"remediation": "pass the path to an existing directory, not a file",
