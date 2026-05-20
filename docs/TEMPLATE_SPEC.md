@@ -187,6 +187,15 @@ Exit codes:
 
 **`modern-template.pptx`** natively lacks `Two Content`, `Blank`, and `Blank + Title` layouts. The engine synthesizes these at runtime, so the template works correctly for generation. However, `template-check` reports failures because it validates native layouts only. This is an accepted exception — new templates should include all 7 layouts natively.
 
+### Programmability
+
+Templates fall into two categories:
+
+- **Programmable** (regenerable from `cmd/mktemplate`): `forest-green`, `midnight-blue`, `warm-coral`.
+- **Designer-owned** (must be repaired in place — `mktemplate` cannot reproduce embedded decorative assets, custom layout shapes, or intentional theme polarities): `abstract`, `blue-corporate`, `business-template`, `modern`, `modern-template`, `modern-yellow`.
+
+See [TEMPLATE_ANALYSIS.md](TEMPLATE_ANALYSIS.md) for the full per-template matrix, current conformance status, and the in-place repair workflow for designer templates.
+
 ## Creating a New Template
 
 1. Start from an existing conformant template (e.g., `midnight-blue.pptx`)

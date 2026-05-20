@@ -184,6 +184,8 @@ go tool cover -html=coverage.out
 
 Every file under `templates/*.pptx` MUST pass `json2pptx template-check` with **zero FAIL and zero WARN** before it ships. The gate is enforced by the corpus test `internal/template/conformance_corpus_test.go`, which runs as part of `go test ./...` (and therefore on every PR in CI).
 
+Before adding or modifying a template, check [docs/TEMPLATE_ANALYSIS.md](docs/TEMPLATE_ANALYSIS.md) to see whether the file is **programmable** (regenerable from `cmd/mktemplate`) or **designer-owned** (must be repaired in place). Do NOT run `mktemplate` against a designer-owned template — it cannot reproduce embedded decorative assets, custom layout shapes, or intentional theme polarities.
+
 ### Checklist
 
 1. Build the template (see `docs/TEMPLATE_SPEC.md` for the required layouts, placeholders, theme colors, and fonts).
