@@ -312,6 +312,32 @@ func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 // the literal "<text x=" prefix the canvas library always emits.
 var textAnchorRe = regexp.MustCompile(`<text x="([\d.]+)"([^>]*)><tspan x="([\d.]+)"`)
 
+// svgOpenTagRe matches the SVG root opening tag.
+var svgOpenTagRe = regexp.MustCompile(`<svg [^>]*>`)
+
+// tabularNumsStyleBlock is the CSS rule applied to every <text> element in a
+// chart SVG so columns of numbers align vertically. The font-variant-numeric
+// property only affects digit glyphs (tabular figures vs. proportional), so
+// non-numeric text — titles, legends, category labels — is unaffected. Fonts
+// without tabular figures fall back to proportional digits silently.
+//
+// This is the rendered counterpart of tokens.ChartTickLabelTabularNums; drift
+// is caught by the parity test in internal/tokens.
+const tabularNumsStyleBlock = `<style>text{font-variant-numeric:tabular-nums;}</style>`
+
+// injectTabularNumsStyle inserts the tabular-nums CSS rule immediately after
+// the SVG root tag. Per the executive chart-style defaults (bd issue
+// go-slide-creator-bla5), consulting decks should render monospaced-digit
+// figures so axis tick labels and value labels line up across rows.
+func injectTabularNumsStyle(svgContent []byte) []byte {
+	return svgOpenTagRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
+		out := make([]byte, 0, len(match)+len(tabularNumsStyleBlock))
+		out = append(out, match...)
+		out = append(out, tabularNumsStyleBlock...)
+		return out
+	})
+}
+
 // fixSVGTextAlignment injects an explicit text-anchor and dominant-baseline on
 // every <text> element emitted by DrawText, using the alignment and baseline
 // recorded at draw time.
@@ -1167,6 +1193,10 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	// recorded by DrawText. Must run before pixel scaling so it operates on the
 	// same coordinate space the canvas library produced.
 	content = b.fixSVGTextAlignment(content)
+
+	// Inject the executive-default tabular-nums CSS so numeric tick labels and
+	// value labels render with monospaced digits. See tokens.ChartTickLabelTabularNums.
+	content = injectTabularNumsStyle(content)
 
 	// Scale all SVG coordinates from mm to CSS pixels. LibreOffice and PowerPoint
 	// misinterpret font-size "px" values when the viewBox uses mm-scale coordinates,

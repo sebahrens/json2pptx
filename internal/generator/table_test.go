@@ -764,6 +764,54 @@ func TestEscapeXMLText(t *testing.T) {
 	}
 }
 
+// TestGenerateTableXML_NumericHeaderRightAligned asserts that header cells in
+// columns flagged as numeric (number / currency / percent / delta via
+// Style.ColumnTypes) render right-aligned, matching the existing data-cell
+// alignment. Without this, a "Revenue" header would sit left-aligned over a
+// column of right-aligned currency figures, which is the consulting-chart
+// anti-pattern the tokens.TableNumericHeaderAlignRight default removes.
+func TestGenerateTableXML_NumericHeaderRightAligned(t *testing.T) {
+	style := types.DefaultTableStyle
+	style.ColumnTypes = []string{"text", "currency", "percent", "delta", "number"}
+	table := &types.TableSpec{
+		Headers: []string{"Service", "Revenue", "Growth", "YoY", "Count"},
+		Rows: [][]types.TableCell{
+			{
+				{Content: "API", ColSpan: 1, RowSpan: 1},
+				{Content: "$1.2M", ColSpan: 1, RowSpan: 1},
+				{Content: "12%", ColSpan: 1, RowSpan: 1},
+				{Content: "+5%", ColSpan: 1, RowSpan: 1},
+				{Content: "42", ColSpan: 1, RowSpan: 1},
+			},
+		},
+		Style: style,
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{Width: 9000000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Expect 8 right-aligned paragraphs:
+	//   - 4 numeric headers (Revenue, Growth, YoY, Count)
+	//   - 4 numeric data cells matching them
+	// The single text column ("Service" / "API") stays left-aligned.
+	rightCount := strings.Count(result.XML, `algn="r"`)
+	if rightCount != 8 {
+		t.Errorf("expected 8 right-aligned paragraphs (4 numeric headers + 4 numeric data cells), got %d\nXML: %s",
+			rightCount, result.XML)
+	}
+	leftCount := strings.Count(result.XML, `algn="l"`)
+	if leftCount != 2 {
+		t.Errorf("expected 2 left-aligned paragraphs (1 text header + 1 text data cell), got %d", leftCount)
+	}
+}
+
 func TestGenerateBorderXML(t *testing.T) {
 	tests := []struct {
 		style      string

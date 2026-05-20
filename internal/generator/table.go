@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -724,6 +725,14 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 	algn := "l" // default left
 	if colIdx >= 0 && colIdx < len(config.ColumnAlignments) {
 		algn = alignmentToOOXML(config.ColumnAlignments[colIdx])
+	}
+	// Headers of numeric columns inherit the right-alignment that data cells
+	// already get from column_types. Without this, "Revenue" sits left-aligned
+	// over a column of right-aligned dollar figures (tokens.TableNumericHeaderAlignRight).
+	if isHeader && tokens.TableNumericHeaderAlignRight &&
+		colIdx >= 0 && colIdx < len(config.Style.ColumnTypes) &&
+		tokens.NumericColumnType(config.Style.ColumnTypes[colIdx]) {
+		algn = "r"
 	}
 
 	return fmt.Sprintf(

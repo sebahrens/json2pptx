@@ -4,6 +4,29 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.31.0 (2026-05-20)
+
+### Changed
+
+- **Numeric table column headers right-align by default.** When a column declares
+  `column_types` of `number`, `currency`, `percent`, or `delta`, the header cell
+  now paragraph-aligns right to match the data cells underneath. Previously the
+  header inherited the default left alignment, producing the "Revenue" header
+  drifting over a column of right-aligned dollar figures — a consulting-table
+  anti-pattern. Headers follow the same `column_types`-wins-over-
+  `column_alignments` precedence already used by data cells. Centralised in
+  `internal/tokens.TableNumericHeaderAlignRight` per executive chart-style
+  defaults (bd `go-slide-creator-bla5`).
+- **Chart SVGs now render with tabular figures.** Every chart SVG emitted by
+  `svggen` includes a top-level `text{font-variant-numeric:tabular-nums;}` rule
+  so columns of numeric tick labels and value labels line up vertically.
+  Non-numeric text is unaffected (the CSS property only swaps digit glyphs).
+  Renderers without tabular figure support (or fonts that lack them) fall back
+  to proportional digits silently. Centralised in
+  `internal/tokens.ChartTickLabelTabularNums`; the parity test in
+  `internal/tokens/chart_style_test.go` asserts the rule survives in rendered
+  output.
+
 ## 4.30.0 (2026-05-20)
 
 ### Added
