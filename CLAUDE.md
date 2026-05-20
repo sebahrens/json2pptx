@@ -163,6 +163,7 @@ examples/         # Example JSON input files (19 decks)
 | `pull-quote` | Italic quote block with attribution |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
+| `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
 | `stat-hero` | Single oversized statistic with label and optional context |

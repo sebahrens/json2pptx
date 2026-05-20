@@ -79,6 +79,7 @@ Catalog / agenda / quote
   plain numbered agenda                → agenda
   agenda with images or quotes         → agenda-with-images
   single pull-quote                    → pull-quote
+  3-8 stakeholder quote bubbles        → quote-cluster
 ─────────────────────────────────────────────────────────────────
 RULE: prefer diagram types (svggen-rendered) over shape_grid patterns
 when a data-driven or topologically complex diagram is needed.

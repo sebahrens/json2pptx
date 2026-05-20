@@ -283,6 +283,25 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "What stakeholders are telling us"}
+      ],
+      "pattern": {
+        "name": "quote-cluster",
+        "values": {
+          "quotes": [
+            {"text": "The new platform cut our cycle time in half.", "name": "J. Lin", "title": "Head of Operations"},
+            {"text": "Our analysts finally trust the numbers they see.", "name": "P. Reyes", "title": "Director of Finance"},
+            {"text": "Adoption was easier than any tool we have rolled out.", "name": "K. Müller", "title": "CTO"},
+            {"text": "We are catching issues weeks earlier than before.", "name": "S. Patel", "title": "VP Customer Success"},
+            {"text": "Reporting that used to take days is now a click.", "name": "M. Tanaka", "title": "Regional Controller"},
+            {"text": "The team's data fluency has stepped up across the board.", "name": "A. Okafor", "title": "Chief Data Officer"}
+          ]
+        }
+      }
     }
   ]
 }

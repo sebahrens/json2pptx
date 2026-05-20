@@ -130,5 +130,13 @@
       4,
       4
     ]
+  },
+  {
+    "pattern_name": "quote-cluster",
+    "row_count": 2,
+    "cell_counts": [
+      3,
+      3
+    ]
   }
 ]

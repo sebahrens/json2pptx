@@ -1,0 +1,49 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "quote-cluster.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Voice of the Customer"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Six months after the platform launch"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "What stakeholders are telling us"}
+      ],
+      "pattern": {
+        "name": "quote-cluster",
+        "values": {
+          "quotes": [
+            {"text": "The new platform cut our cycle time in half.", "name": "J. Lin", "title": "Head of Operations"},
+            {"text": "Our analysts finally trust the numbers they see.", "name": "P. Reyes", "title": "Director of Finance"},
+            {"text": "Adoption was easier than any tool we have rolled out.", "name": "K. Müller", "title": "CTO"},
+            {"text": "We are catching issues weeks earlier than before.", "name": "S. Patel", "title": "VP Customer Success"},
+            {"text": "Reporting that used to take days is now a click.", "name": "M. Tanaka", "title": "Regional Controller"},
+            {"text": "The team's data fluency has stepped up across the board.", "name": "A. Okafor", "title": "Chief Data Officer"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Where there is still friction"}
+      ],
+      "pattern": {
+        "name": "quote-cluster",
+        "values": {
+          "quotes": [
+            {"text": "Onboarding new hires still takes too long.", "name": "R. Bauer", "title": "People Ops Lead"},
+            {"text": "Cross-region reporting needs another pass.", "name": "F. Garcia", "title": "VP EMEA"},
+            {"text": "We want richer drill-downs on the dashboards.", "name": "H. Cho", "title": "Analytics Manager"},
+            {"text": "Vendor onboarding could be faster.", "name": "T. Andersson", "title": "Procurement Director"}
+          ]
+        }
+      }
+    }
+  ]
+}

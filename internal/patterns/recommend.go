@@ -484,6 +484,24 @@ var rules = []rule{
 		itemMax:   8,
 	},
 
+	// Quote cluster — 3-8 stakeholder quote bubbles
+	{
+		pattern:   "quote-cluster",
+		keywords:  []string{"voice of customer", "voice of the customer", "voc", "stakeholder quotes", "customer quotes", "user quotes", "quote cluster", "quote wall", "stakeholder voices", "research quotes", "interview quotes", "what customers said"},
+		baseScore: 0.92,
+		rationale: "Structured 3-column grid of 3–8 attributed stakeholder quote bubbles",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern:   "quote-cluster",
+		keywords:  []string{"quotes", "testimonials", "stakeholders"},
+		baseScore: 0.78,
+		rationale: "Quote-cluster when multiple attributed quotes need to share a slide",
+		itemMin:   3,
+		itemMax:   8,
+	},
+
 	// Stylish panels — pillars, capabilities, workstreams
 	{
 		pattern:   "stylish-panels",
