@@ -38,6 +38,55 @@ See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-p
 
 ---
 
+## Quick Pattern Selector
+
+Skim before reading the pattern catalogue. For ambiguous cases, fall through to `recommend_visual`.
+
+```
+PICK YOUR LAYOUT
+─────────────────────────────────────────────────────────────────
+Framing / exec summary
+  SCQA narrative                       → scqa-summary
+  strategic pillars + base (+ roof)    → strategy-house
+Data + interpretation
+  chart + so-what bullets              → chart-insights-split
+  one big number (± details)           → stat-hero / hero-detail
+  2-6 KPIs (or supporting bar)         → kpi-2up … kpi-6up, kpi-inline
+Compare 2 options / states
+  side-by-side text                    → comparison-2col
+  before / after transition            → before-after (or -compact)
+  2×2 axes positioning                 → matrix-2x2  ·  svggen: matrix_2x2
+Process / sequence
+  linear steps (3-8)                   → process-flow (or -compact)
+  phases + dates                       → phase-roadmap
+  workstreams × phases                 → roadmap-phased
+  cross-actor / cross-functional       → swimlane
+  date-based milestones                → timeline-horizontal
+  value / supply chain (4-10 steps)    → value-chain
+  gantt schedule data                  → svggen: gantt
+Cause-effect / structure
+  fishbone / Ishikawa                  → svggen: fishbone
+  architecture / tech stack            → arch-stack
+  narrowing hierarchy / panels         → pyramid / stylish-panels
+People / org / distribution
+  org hierarchy (top-down)             → svggen: org_chart
+  team bios with photos                → team-bios
+  treemap / venn / funnel              → svggen: treemap, venn, funnel
+Catalog / agenda / quote
+  N×M titled cards                     → card-grid
+  3-5 icon + caption pairs             → icon-row
+  full 9-cell Osterwalder BMC          → bmc-canvas
+  plain numbered agenda                → agenda
+  agenda with images or quotes         → agenda-with-images
+  single pull-quote                    → pull-quote
+─────────────────────────────────────────────────────────────────
+RULE: prefer diagram types (svggen-rendered) over shape_grid patterns
+when a data-driven or topologically complex diagram is needed.
+Use shape_grid patterns for structural/text layouts.
+```
+
+---
+
 ## Connected MCP servers
 
 This skill talks to **two** independent MCP servers. Both must be reachable for the workflow described below to function end-to-end.
