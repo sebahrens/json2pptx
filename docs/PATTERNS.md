@@ -114,6 +114,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Sequential process | `process-flow` | Ordered steps with arrows |
 | Porter / supply value chain | `value-chain` | 4–10 step columns with bold label + 1–3 line description |
 | Maturity ladder / current-state journey | `journey-maturity-model` | 3–6 stage columns with numbered headers, description, and optional 'where we are' marker |
+| P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals |
 | Temporal sequence | `timeline-horizontal` | Date-labeled stops |
 | Layer/stack diagram | `arch-stack` | Vertical tier ordering |
 | Narrowing hierarchy | `pyramid` | Visual narrowing (top < bottom) |

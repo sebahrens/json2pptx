@@ -1,0 +1,76 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "waterfall-bridge.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Waterfall Bridge"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "P&L walks, cost drivers, and gap-to-target views"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "FY26 EBITDA bridge ($m, 5 columns with subtotal)"}
+      ],
+      "pattern": {
+        "name": "waterfall-bridge",
+        "values": {
+          "unit": "$m",
+          "columns": [
+            {"label": "Revenue", "value": 120, "type": "total"},
+            {"label": "COGS", "value": -45, "type": "delta"},
+            {"label": "Gross Profit", "type": "subtotal"},
+            {"label": "OpEx", "value": -30, "type": "delta"},
+            {"label": "EBITDA", "value": 45, "type": "total"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cost driver decomposition (7 columns, two subtotals)"}
+      ],
+      "pattern": {
+        "name": "waterfall-bridge",
+        "values": {
+          "unit": "M",
+          "columns": [
+            {"label": "FY25 Cost", "value": 200, "type": "total"},
+            {"label": "Volume", "value": 14, "type": "delta"},
+            {"label": "Mix", "value": -6, "type": "delta"},
+            {"label": "Operational", "type": "subtotal"},
+            {"label": "FX", "value": 8, "type": "delta"},
+            {"label": "Inflation", "value": 12, "type": "delta"},
+            {"label": "FY26 Cost", "value": 228, "type": "total"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Gap to plan (4 columns, single delta dominates)"}
+      ],
+      "pattern": {
+        "name": "waterfall-bridge",
+        "values": {
+          "unit": "%",
+          "columns": [
+            {"label": "Plan", "value": 100, "type": "total"},
+            {"label": "Pricing miss", "value": -8, "type": "delta"},
+            {"label": "Cost recapture", "value": 3, "type": "delta"},
+            {"label": "Actual", "value": 95, "type": "total"}
+          ]
+        },
+        "overrides": {
+          "accent": "accent4",
+          "negative_accent": "accent2"
+        }
+      }
+    }
+  ]
+}

@@ -175,6 +175,7 @@ examples/         # Example JSON input files (19 decks)
 | `team-bios` | Team / 'Our People' grid of 1–8 members with photo placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
+| `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals |
 
 ### Key Top-Level Fields
 

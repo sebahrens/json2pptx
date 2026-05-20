@@ -325,6 +325,22 @@ var rules = []rule{
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
 	},
 
+	// Waterfall bridge — P&L walk / cost-driver decomposition
+	{
+		pattern:   "waterfall-bridge",
+		keywords:  []string{"waterfall", "bridge chart", "p&l walk", "pl walk", "p and l walk", "cost bridge", "cost driver bridge", "gap to target", "variance bridge", "ebitda bridge", "revenue bridge", "margin walk"},
+		baseScore: 0.92,
+		rationale: "Waterfall / bridge bar chart showing how components sum to a total, with floating delta bars and auto-computed subtotals (3-10 columns)",
+		itemMin:   3,
+		itemMax:   10,
+	},
+	{
+		pattern:   "waterfall-bridge",
+		keywords:  []string{"waterfall", "bridge", "components", "decomposition", "drivers"},
+		baseScore: 0.74,
+		rationale: "Waterfall-bridge when content reconciles a start total to an end total via positive/negative components",
+	},
+
 	// Horizontal bar with callouts — ranked horizontal bars with per-bar insight
 	{
 		pattern:   "horizontal-bar-with-callouts",
