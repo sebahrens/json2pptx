@@ -1,0 +1,81 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "horizontal-bar-with-callouts.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Vendor Scorecard"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Ranked horizontal bars with per-bar insight callouts"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Vendor evaluation scores (5 vendors, 100-pt scale)"}
+      ],
+      "pattern": {
+        "name": "horizontal-bar-with-callouts",
+        "values": {
+          "max_value": 100,
+          "unit": "%",
+          "bars": [
+            {"label": "Vendor A", "value": 87, "callout": "Strongest on price; weakest on support SLA."},
+            {"label": "Vendor B", "value": 72, "callout": "Preferred for enterprise; long implementation cycles."},
+            {"label": "Vendor C", "value": 64, "callout": "Best APIs and ecosystem fit, mid-market focus."},
+            {"label": "Vendor D", "value": 51, "callout": "Solid baseline product; underinvesting in security certifications."},
+            {"label": "Vendor E", "value": 33, "callout": "New entrant; track quarterly for capability maturation."}
+          ]
+        },
+        "callout": {
+          "text": "Vendor A and B advance to the BAFO round.",
+          "emphasis": "bold"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Opportunity sizing (3 horizontal bars, dollar unit)"}
+      ],
+      "pattern": {
+        "name": "horizontal-bar-with-callouts",
+        "values": {
+          "unit": "M",
+          "bars": [
+            {"label": "Enterprise", "value": 42, "callout": "Largest opportunity; 18-month sales cycle."},
+            {"label": "Mid-market", "value": 27, "callout": "Fastest velocity; channel partner play."},
+            {"label": "SMB", "value": 11, "callout": "Self-serve motion; low ACV but volume-driven."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Top growth drivers (8 ranked levers, custom accent)"}
+      ],
+      "pattern": {
+        "name": "horizontal-bar-with-callouts",
+        "values": {
+          "max_value": 100,
+          "unit": "%",
+          "bars": [
+            {"label": "Pricing", "value": 92, "callout": "Largest single contributor; revisit annually."},
+            {"label": "Cross-sell", "value": 81, "callout": "Drives ARR expansion in install base."},
+            {"label": "New logo", "value": 73, "callout": "Pipeline coverage up 1.5x YoY."},
+            {"label": "Renewals", "value": 64, "callout": "NRR floor; protect with CS investment."},
+            {"label": "Geography", "value": 52, "callout": "EMEA launch closes regional gap."},
+            {"label": "Channel", "value": 41, "callout": "Tier-1 partner motion in scoping."},
+            {"label": "Product", "value": 33, "callout": "Three platform GAs gated on Q3 stability work."},
+            {"label": "Partnerships", "value": 22, "callout": "Strategic integrations; long lead time."}
+          ]
+        },
+        "overrides": {
+          "accent": "accent3"
+        }
+      }
+    }
+  ]
+}

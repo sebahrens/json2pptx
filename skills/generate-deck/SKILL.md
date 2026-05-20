@@ -50,6 +50,7 @@ Framing / exec summary
   strategic pillars + base (+ roof)    → strategy-house
 Data + interpretation
   chart + so-what bullets              → chart-insights-split
+  ranked bars + per-bar insight        → horizontal-bar-with-callouts
   one big number (± details)           → stat-hero / hero-detail
   2-6 KPIs (or supporting bar)         → kpi-2up … kpi-6up, kpi-inline
 Compare 2 options / states
@@ -424,7 +425,7 @@ For the `repair_slide` fix-kind vocabulary, finding-code catalog, and strict-fit
 
 ## Pattern Library (overview)
 
-For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, accent-banded panels (`stylish-panels`), strategy-house frameworks, executive SCQA summaries (`scqa-summary`), chart-with-takeaway layouts (`chart-insights-split`), Porter-style value chains (`value-chain` — 4–10 step columns with per-step description and optional highlight), maturity ladders (`journey-maturity-model` — 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker), visual deck previews (`agenda-with-images` — 3–6 numbered agenda rows each with title/subtitle and an image or quote placeholder), and team / 'Our People' pages (`team-bios` — 1–8 members, each with a photo placeholder above name + role + short bio, up to 4 per row), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
+For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, accent-banded panels (`stylish-panels`), strategy-house frameworks, executive SCQA summaries (`scqa-summary`), chart-with-takeaway layouts (`chart-insights-split`), ranked horizontal bars with per-bar callouts (`horizontal-bar-with-callouts` — 3–8 bars; each bar binds to one insight via a left accent bar), Porter-style value chains (`value-chain` — 4–10 step columns with per-step description and optional highlight), maturity ladders (`journey-maturity-model` — 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker), visual deck previews (`agenda-with-images` — 3–6 numbered agenda rows each with title/subtitle and an image or quote placeholder), and team / 'Our People' pages (`team-bios` — 1–8 members, each with a photo placeholder above name + role + short bio, up to 4 per row), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
 
 **Tip — chart + narrative on the same slide.** `chart-insights-split` is the canonical "data on the left, interpretation on the right" consulting layout: pass a `chart` (any `types.DiagramSpec` shape) plus 1–6 `insights` bullets. If you ship the pattern without a `chart`, the engine renders insights full-width and emits `CHART_PLACEHOLDER_EMPTY` (`action: review`) so you know the panel collapsed — supply a chart or swap to an insights-only pattern.
 

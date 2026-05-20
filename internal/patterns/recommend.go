@@ -325,6 +325,22 @@ var rules = []rule{
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
 	},
 
+	// Horizontal bar with callouts — ranked horizontal bars with per-bar insight
+	{
+		pattern:   "horizontal-bar-with-callouts",
+		keywords:  []string{"ranked horizontal", "horizontal bars", "vendor scoring", "vendor scorecard", "opportunity sizing", "driver list", "ranked drivers", "ranked vendors", "bar with insight", "bars with callouts", "per-bar callout", "per-bar insight"},
+		baseScore: 0.92,
+		rationale: "Ranked horizontal bars (3-8) with one accent-anchored insight callout per bar",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern:   "horizontal-bar-with-callouts",
+		keywords:  []string{"ranked", "vendor", "opportunity", "driver", "scorecard", "ranking", "bars"},
+		baseScore: 0.70,
+		rationale: "Horizontal bar comparison pattern with per-item insights",
+	},
+
 	// Journey maturity model — N-stage horizontal maturity ladder with current-state marker
 	{
 		pattern:   "journey-maturity-model",

@@ -179,6 +179,7 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"chart-insights-split": true,
 		"scqa-summary":         true,
 		"value-chain":          true,
+		"horizontal-bar-with-callouts": true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)
