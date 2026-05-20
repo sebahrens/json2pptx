@@ -183,6 +183,15 @@ Editing tools accept a *patch* envelope rather than a full `PresentationInput`:
 
 Operations are applied in order; indices are 0-based. The patch envelope is detected automatically when an input contains an `operations` array.
 
+## Local asset paths
+
+`icon.path`, `image_value.path`, shape-grid `image.path`, and `background.image` accept two convenience expansions before resolution against the input base directory:
+
+- A leading `~/` (or bare `~`) expands to the invoking user's home directory.
+- `$VAR` and `${VAR}` expand via the process environment.
+
+So `~/assets/logo.svg` and `$BRAND_ASSETS/logo.svg` resolve as expected instead of being passed literally to the filesystem. Unset environment variables yield an `ASSET_PATH_ENV_UNSET` finding (with `details.env_variable` naming the missing var) rather than silently collapsing to an empty path. Traversal and symlink protections still apply against the expanded path.
+
 ## Validating before generating
 
 - CLI: `json2pptx validate <input.json>` — same validator the engine runs.
