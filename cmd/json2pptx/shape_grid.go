@@ -1070,43 +1070,71 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 	hasURL := icon.URL != ""
 	hasSVGData := icon.SVGData != ""
 
-	set := 0
+	var setFields []string
 	if hasName {
-		set++
+		setFields = append(setFields, "name")
 	}
 	if hasPath {
-		set++
+		setFields = append(setFields, "path")
 	}
 	if hasURL {
-		set++
+		setFields = append(setFields, "url")
 	}
 	if hasSVGData {
-		set++
+		setFields = append(setFields, "svg_data")
 	}
+	set := len(setFields)
 
 	if set > 1 {
+		quoted := make([]string, len(setFields))
+		for i, f := range setFields {
+			quoted[i] = "'" + f + "'"
+		}
+		conflicting := strings.Join(quoted, ", ")
 		return []diagnostics.Diagnostic{{
 			Code:     diagnostics.CodeIconAmbiguous,
-			Message:  "icon must have exactly one of 'name', 'path', 'url', or 'svg_data'",
+			Message:  fmt.Sprintf("icon has conflicting sources %s; exactly one of 'name', 'path', 'url', or 'svg_data' is allowed", conflicting),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
-				"slide_index": slideIdx,
-				"remediation": "remove all but one of 'name', 'path', 'url', or 'svg_data'",
+				"slide_index":        slideIdx,
+				"conflicting_fields": setFields,
+				"remediation":        fmt.Sprintf("keep one of %s and remove the others", conflicting),
 			},
 		}}
 	}
 	if set == 0 {
+		example := "examples:\n" +
+			`  { "name": "chart-pie" }                      // bundled icon` + "\n" +
+			`  { "path": "icons/custom.svg" }               // local SVG file` + "\n" +
+			`  { "url": "https://example.com/icon.svg" }    // remote SVG` + "\n" +
+			`  { "svg_data": "<svg ...>...</svg>" }         // inline SVG`
 		return []diagnostics.Diagnostic{{
 			Code:     diagnostics.CodeIconMissing,
-			Message:  "icon must have one of 'name', 'path', 'url', or 'svg_data'",
+			Message:  "icon must have one of 'name', 'path', 'url', or 'svg_data'\n" + example,
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
 				"slide_index": slideIdx,
 				"remediation": "set one of 'name' (bundled icon), 'path' (filesystem), 'url' (remote), or 'svg_data' (inline)",
+				"example":     example,
 			},
 		}}
+	}
+
+	var findings []diagnostics.Diagnostic
+	if hasSVGData && icon.Fill != "" {
+		findings = append(findings, diagnostics.Diagnostic{
+			Code:     diagnostics.CodeIconFillIgnoredInline,
+			Message:  fmt.Sprintf("icon 'fill' (%q) is ignored when 'svg_data' is set; pre-style the SVG or switch to 'name'/'path'", icon.Fill),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityWarning,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"input_value": icon.Fill,
+				"remediation": "either pre-color the inline svg_data markup, or remove svg_data and use 'name'/'path' with 'fill'",
+			},
+		})
 	}
 
 	if hasName {
@@ -1114,13 +1142,13 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 		// Catches typos and missing "filled:" prefixes before generate so
 		// agents don't burn a generate cycle on a fixable lookup.
 		if !icons.Exists(icon.Name) {
-			return []diagnostics.Diagnostic{buildBundledIconNameFinding(icon.Name, slideIdx, jsonPath)}
+			return append(findings, buildBundledIconNameFinding(icon.Name, slideIdx, jsonPath))
 		}
-		return nil
+		return findings
 	}
 
 	if !hasPath {
-		return nil // URL or inline svg_data — no local path resolution needed
+		return findings // URL or inline svg_data — no local path resolution needed
 	}
 
 	// Icons must be SVG — catches agents passing PNGs to icon.path before
@@ -1257,19 +1285,24 @@ func buildBundledIconNameFinding(name string, slideIdx int, jsonPath string) dia
 	}
 }
 
-// iconFindingsToError aggregates local-asset-resolution diagnostics into a
-// single error suitable for CLI callers. Returns nil when findings is empty.
+// iconFindingsToError aggregates blocking local-asset-resolution diagnostics
+// (severity == error) into a single error suitable for CLI callers. Returns
+// nil when findings is empty or contains only non-blocking warnings/info — the
+// caller is expected to surface those through the warning channel instead.
 // Despite the historical name, it now handles icon, image, and background
 // findings emitted by resolveLocalAssetPaths.
 func iconFindingsToError(findings []diagnostics.Diagnostic) error {
-	if len(findings) == 0 {
-		return nil
-	}
 	parts := make([]string, 0, len(findings))
 	for _, d := range findings {
+		if d.Severity != diagnostics.SeverityError {
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
 	}
-	return fmt.Errorf("asset path errors (%d):\n  - %s", len(findings), strings.Join(parts, "\n  - "))
+	if len(parts) == 0 {
+		return nil
+	}
+	return fmt.Errorf("asset path errors (%d):\n  - %s", len(parts), strings.Join(parts, "\n  - "))
 }
 
 // resolveIconSVG loads SVG bytes for an icon spec, optionally applying a fill color override.

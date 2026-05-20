@@ -2039,3 +2039,28 @@ func TestRunJSONMode_MissingAssetReturnsAggregatedError(t *testing.T) {
 		t.Errorf("expected error to mention image_value json_path, got: %s", msg)
 	}
 }
+
+// TestIconFindingsToError_WarningsAreNonBlocking verifies that diagnostics with
+// non-error severity (warnings/info) do not trigger an aggregated CLI error.
+// This is what makes ICON_FILL_IGNORED_ON_INLINE genuinely non-blocking — the
+// CLI generate path bails only when iconFindingsToError returns non-nil.
+func TestIconFindingsToError_WarningsAreNonBlocking(t *testing.T) {
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg"/>`
+	slides := []SlideInput{{
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{{
+					Icon: &IconInput{SVGData: svg, Fill: "#FF0000"},
+				}},
+			}},
+		},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, t.TempDir())
+	if len(findings) != 1 || findings[0].Code != "ICON_FILL_IGNORED_ON_INLINE" {
+		t.Fatalf("expected 1 ICON_FILL_IGNORED_ON_INLINE finding, got %+v", findings)
+	}
+	if err := iconFindingsToError(findings); err != nil {
+		t.Errorf("expected nil error for warning-only findings, got: %v", err)
+	}
+}

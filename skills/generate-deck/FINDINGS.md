@@ -91,6 +91,9 @@ Emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and 
 | `ICON_PATH_TRAVERSAL` | `icon.path` contains `..` components. Rejected before `filepath.Clean` collapses them, so agents can't escape the base directory via a constructed relative path. `severity: error`. `details: {input_value, asset_kind: "icon", slide_index, remediation}` |
 | `ICON_PATH_SYMLINK_ESCAPE` | `icon.path` is relative and its symlink chain resolves outside the base directory. `severity: error`. `details: {input_value, resolved_path, asset_kind: "icon", slide_index, remediation}`. Agent action: pin an absolute path explicitly, or remove the offending symlink |
 | `ICON_PATH` | Other `icon.path` resolution failures not covered by the more specific codes above (symlink loop, permission denied, etc.). `severity: error`. `details: {input_value, asset_kind: "icon", slide_index, remediation}` |
+| `ICON_AMBIGUOUS` | Multiple icon source fields are set (e.g., both `name` and `path`). `severity: error`. `details: {conflicting_fields: ["name", "path", ...], slide_index, remediation}`. Message names exactly which fields conflict so the agent does not have to re-read the JSON. Agent action: keep one of `name`, `path`, `url`, or `svg_data` and remove the others |
+| `ICON_MISSING` | No icon source field is set on an `icon` node. `severity: error`. `details: {slide_index, remediation, example}`. Message includes a 4-line copy-paste example block, one per source variant. Agent action: pick the variant that fits the use case |
+| `ICON_FILL_IGNORED_ON_INLINE` | `icon.fill` is set together with `icon.svg_data`. The inline SVG is rendered verbatim, so `fill` has no effect. `severity: warning` (non-blocking). `details: {input_value, slide_index, remediation}`. Agent action: either pre-color the inline `svg_data` markup, or remove `svg_data` and use `name`/`path` with `fill` |
 
 ### Action semantics (shared with chart codes)
 

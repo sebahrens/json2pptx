@@ -516,8 +516,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
-		return api.MCPDiagnosticsError(assetFindings), nil
+	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
+		return api.MCPDiagnosticsError(assetErrors), nil
 	}
 
 	// Resolve deck-level rhythm grid when configured.
@@ -542,6 +543,13 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Pre-validate chart/diagram data (unknown keys already caught at boundary).
 	inputWarnings := validateSlidesChartData(input.Slides)
 	inputWarnings = append(inputWarnings, gridDiagWarnings...)
+	// Surface non-blocking asset findings (e.g. ICON_FILL_IGNORED_ON_INLINE)
+	// as warnings so generation proceeds while the agent still sees them.
+	for _, d := range assetFindings {
+		if d.Severity != diagnostics.SeverityError {
+			inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
+		}
+	}
 	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
 	// Determine output filename

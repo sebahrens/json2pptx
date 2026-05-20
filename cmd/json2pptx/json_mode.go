@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -481,10 +482,20 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// shape_grid cell image.path, slide background.image) against the JSON
 	// input directory. This must happen before convertPresentationSlides so
 	// that downstream specs see absolute paths.
+	//
+	// Errors abort with an aggregated message; non-blocking warnings (e.g.
+	// ICON_FILL_IGNORED_ON_INLINE) flow into inputWarnings so the user sees
+	// them in the success output instead of having generation refused.
 	if jsonPath != "-" {
 		inputDir := filepath.Dir(jsonPath)
-		if assetFindings := resolveLocalAssetPaths(input.Slides, inputDir); len(assetFindings) > 0 {
-			return writeJSONError(jsonOutputPath, iconFindingsToError(assetFindings))
+		assetFindings := resolveLocalAssetPaths(input.Slides, inputDir)
+		if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
+			return writeJSONError(jsonOutputPath, assetErr)
+		}
+		for _, d := range assetFindings {
+			if d.Severity != diagnostics.SeverityError {
+				inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
+			}
 		}
 	}
 

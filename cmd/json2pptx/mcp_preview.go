@@ -225,9 +225,11 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
-		return api.MCPDiagnosticsError(assetFindings), nil
+	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
+		return api.MCPDiagnosticsError(assetErrors), nil
 	}
+	previewAssetWarnings := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityWarning)
 
 	// Resolve template.
 	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
@@ -262,6 +264,11 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	// Collect boundary warnings.
 	for _, w := range checkInputUnknownKeys([]byte(jsonStr)) {
 		output.Warnings = append(output.Warnings, w.Error())
+	}
+	// Surface non-blocking asset findings (e.g. ICON_FILL_IGNORED_ON_INLINE)
+	// alongside other warnings so agents see them without blocking the preview.
+	for _, d := range previewAssetWarnings {
+		output.Warnings = append(output.Warnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
 	}
 
 	if err := api.ComputeResponseFingerprint(&output); err != nil {

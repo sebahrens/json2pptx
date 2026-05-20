@@ -138,7 +138,7 @@ type IconInput struct {
 	URL      string `json:"url,omitempty"`       // HTTP/HTTPS URL to download an SVG icon from
 	SVGData  string `json:"svg_data,omitempty"`  // Inline SVG markup (e.g., output of svggen-mcp render_diagram). When set, no disk I/O is performed.
 	Alt      string `json:"alt,omitempty"`       // Alt text / description for accessibility. Falls back to name/path/"icon" when empty.
-	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons. Ignored for inline svg_data.
+	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons. Ignored for inline svg_data — emits ICON_FILL_IGNORED_ON_INLINE warning if both are set.
 	Position string `json:"position,omitempty"`  // Icon position relative to text: "left", "top", "center". Auto-detected if empty.
 }
 

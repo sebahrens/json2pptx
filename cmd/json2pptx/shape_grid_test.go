@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -1405,6 +1406,119 @@ func TestResolveIconPaths_InlineSVGData(t *testing.T) {
 			t.Errorf("unexpected message: %s", findings[0].Message)
 		}
 	})
+
+	t.Run("svg_data with fill emits non-blocking warning", func(t *testing.T) {
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{SVGData: svg, Fill: "#FF0000"},
+					}},
+				}},
+			},
+		}}
+		findings := resolveIconPaths(slides, tmpDir)
+		if len(findings) != 1 {
+			t.Fatalf("expected 1 finding for svg_data+fill, got %d: %+v", len(findings), findings)
+		}
+		if findings[0].Code != "ICON_FILL_IGNORED_ON_INLINE" {
+			t.Errorf("expected ICON_FILL_IGNORED_ON_INLINE, got %s", findings[0].Code)
+		}
+		if findings[0].Severity != diagnostics.SeverityWarning {
+			t.Errorf("expected severity=warning (non-blocking), got %s", findings[0].Severity)
+		}
+		if !strings.Contains(findings[0].Message, "ignored") {
+			t.Errorf("message should mention 'ignored': %s", findings[0].Message)
+		}
+		if !strings.Contains(findings[0].Message, "pre-style") {
+			t.Errorf("message should include remediation hint 'pre-style': %s", findings[0].Message)
+		}
+	})
+
+	t.Run("svg_data without fill emits no warning", func(t *testing.T) {
+		slides := []SlideInput{{
+			ShapeGrid: &ShapeGridInput{
+				Rows: []GridRowInput{{
+					Cells: []*GridCellInput{{
+						Icon: &IconInput{SVGData: svg},
+					}},
+				}},
+			},
+		}}
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("expected 0 findings for svg_data alone, got %+v", findings)
+		}
+	})
+}
+
+// TestResolveIconPaths_AmbiguousMessageNamesConflictingFields verifies that the
+// ICON_AMBIGUOUS error message names only the fields that were actually set,
+// not all four sources. Naming the conflict makes the remediation obvious
+// without forcing the agent to re-read the JSON to spot which fields collide.
+func TestResolveIconPaths_AmbiguousMessageNamesConflictingFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	svgPath := filepath.Join(tmpDir, "icon.svg")
+	if err := os.WriteFile(svgPath, []byte(`<svg/>`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	slides := []SlideInput{{
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{{
+					Icon: &IconInput{Name: "shield", Path: "icon.svg"},
+				}},
+			}},
+		},
+	}}
+	findings := resolveIconPaths(slides, tmpDir)
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %+v", len(findings), findings)
+	}
+	d := findings[0]
+	if d.Code != "ICON_AMBIGUOUS" {
+		t.Fatalf("expected ICON_AMBIGUOUS, got %s", d.Code)
+	}
+	// The message should call out the specific conflicting fields up front,
+	// before the rule restatement that names all four valid sources.
+	if !strings.Contains(d.Message, "conflicting sources 'name', 'path'") {
+		t.Errorf("message should call out conflict 'name', 'path' explicitly: %s", d.Message)
+	}
+	got, _ := d.Details["conflicting_fields"].([]string)
+	if len(got) != 2 || got[0] != "name" || got[1] != "path" {
+		t.Errorf("details.conflicting_fields = %v, want [name path]", got)
+	}
+}
+
+// TestResolveIconPaths_MissingMessageHasExample verifies that ICON_MISSING
+// includes a multi-line example block showing each of the four icon source
+// shapes. Agents that hit this error need to pick a source and a copy-paste
+// example is much faster than reading the schema.
+func TestResolveIconPaths_MissingMessageHasExample(t *testing.T) {
+	slides := []SlideInput{{
+		ShapeGrid: &ShapeGridInput{
+			Rows: []GridRowInput{{
+				Cells: []*GridCellInput{{Icon: &IconInput{}}},
+			}},
+		},
+	}}
+	findings := resolveIconPaths(slides, t.TempDir())
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %+v", len(findings), findings)
+	}
+	d := findings[0]
+	if d.Code != "ICON_MISSING" {
+		t.Fatalf("expected ICON_MISSING, got %s", d.Code)
+	}
+	for _, key := range []string{`"name"`, `"path"`, `"url"`, `"svg_data"`} {
+		if !strings.Contains(d.Message, key) {
+			t.Errorf("missing example for %s in message: %s", key, d.Message)
+		}
+	}
+	// Acceptance: 4-line example block.
+	if strings.Count(d.Message, "\n") < 4 {
+		t.Errorf("expected at least 4 newlines (one per example line), got message:\n%s", d.Message)
+	}
 }
 
 func TestConvertGridCell_InlineSVGData(t *testing.T) {

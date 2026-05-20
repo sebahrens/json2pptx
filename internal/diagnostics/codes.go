@@ -47,6 +47,7 @@ const (
 	CodeIconMissing            Code = "ICON_MISSING"
 	CodeIconList               Code = "ICON_LIST"
 	CodeIconBundledNameUnknown Code = "ICON_BUNDLED_NAME_UNKNOWN"
+	CodeIconFillIgnoredInline  Code = "ICON_FILL_IGNORED_ON_INLINE"
 	CodeImagePath              Code = "IMAGE_PATH"
 	CodeBackgroundImagePath    Code = "BACKGROUND_IMAGE_PATH"
 	CodeURLFetchFailed         Code = "URL_FETCH_FAILED"
@@ -120,6 +121,7 @@ func AllCodes() []Code {
 		CodeIconMissing,
 		CodeIconList,
 		CodeIconBundledNameUnknown,
+		CodeIconFillIgnoredInline,
 		CodeImagePath,
 		CodeBackgroundImagePath,
 		CodeURLFetchFailed,
