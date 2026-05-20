@@ -493,6 +493,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"repair_slides_batch":        true,
 		"propose_repairs":            true,
 		"auto_repair":                true,
+		"make_deck":                  true,
 		"table_density_guide":        true,
 		"resolve_theme":              true,
 		"list_template_settings":     true,

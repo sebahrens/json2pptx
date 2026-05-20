@@ -4,6 +4,29 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.35.0 (2026-05-20)
+
+### Added
+
+- **`make_deck` MCP tool.** Cold-start facade: one call from an outline to a
+  validated PPTX. Internally chains `plan_deck → expand patterns with exemplar
+  content → auto_repair` (generate → inspect → repair) until the quality gate
+  passes or `max_repair_passes` (default 3, clamped to [1, 10]) is exhausted.
+  Replaces the manual cold-start path through 37 individual tools with a
+  single call. Inputs: `outline` (required brief), `template` (default
+  `midnight-blue`), `style_hints` (optional `slide_budget`, `audience`,
+  `accent_strategy`, `must_include`), `gate` (same vocabulary as
+  `auto_repair.gate`), and `output_filename`. Response shape:
+  `{path, final_score, gate_passed, passes, trace[], gate_reasons[], plan}`
+  where `plan.slides[]` exposes the per-slide pattern + role + title so
+  follow-up `repair_slide` calls can target specific positions without
+  re-planning. Reuses the `auto_repair` convergence-loop core, which has been
+  refactored to a shared `runAutoRepairLoop` helper; `auto_repair` callers
+  see no behavior change. The shared loop now also calls
+  `resolveCanonicalLayoutIDs` on input slides so callers can ship portable
+  canonical names (`title`, `blank`, `section`, `closing`) instead of
+  template-specific `slideLayoutN` IDs. (bd `go-slide-creator-oji3`.)
+
 ## 4.34.0 (2026-05-20)
 
 ### Added

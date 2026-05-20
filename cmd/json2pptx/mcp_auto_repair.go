@@ -147,22 +147,58 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMaxPasses(request)
 
+	outputFilename := sanitizeOutputFilename(input.OutputFilename)
+	if outputFilename == "" {
+		outputFilename = "auto_repair.pptx"
+	}
+	if reqFilename, err := request.RequireString("output_filename"); err == nil && reqFilename != "" {
+		outputFilename = sanitizeOutputFilename(reqFilename)
+	}
+
+	output, errResult := mc.runAutoRepairLoop(ctx, &input, gate, maxPasses, outputFilename)
+	if errResult != nil {
+		return errResult, nil
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, output)
+	if err != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
+	}
+	return mcpResult, nil
+}
+
+// runAutoRepairLoop encapsulates the template-resolution + convergence-loop +
+// final-render core of auto_repair. Extracted so make_deck (the cold-start
+// facade) can reuse the same loop after building a PresentationInput from a
+// plan rather than receiving one directly from the caller.
+//
+// Returns either a populated autoRepairOutput (errResult=nil) or an MCP error
+// result the caller should pass straight through. Callers must wrap the
+// successful output in api.MCPSuccessResult themselves so they can attach
+// facade-specific fields (e.g. the deck plan summary in make_deck).
+func (mc *mcpConfig) runAutoRepairLoop(
+	ctx context.Context,
+	input *PresentationInput,
+	gate autoRepairGate,
+	maxPasses int,
+	outputFilename string,
+) (*autoRepairOutput, *mcp.CallToolResult) {
 	// Resolve template once — reused on every pass.
 	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
 	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(input.Template, mc.templatesDir), nextCallListTemplates()), nil
+		return nil, mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(input.Template, mc.templatesDir), nextCallListTemplates())
 	}
 	defer templateCleanup()
 
 	reader, err := template.OpenTemplate(templatePath)
 	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
+		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
 	}
 	defer func() { _ = reader.Close() }()
 
 	layouts, err := template.ParseLayouts(reader)
 	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates()), nil
+		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
 	}
 	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
 	analysis := &types.TemplateAnalysis{
@@ -180,14 +216,13 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 	templateMetadata, _ := template.ParseMetadata(reader)
 	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
 
-	// Determine output path.
-	outputFilename := sanitizeOutputFilename(input.OutputFilename)
-	if outputFilename == "" {
-		outputFilename = "auto_repair.pptx"
-	}
-	if reqFilename, err := request.RequireString("output_filename"); err == nil && reqFilename != "" {
-		outputFilename = sanitizeOutputFilename(reqFilename)
-	}
+	// Resolve canonical layout names (e.g. "title", "blank") to concrete
+	// slideLayoutN IDs once, before findings collection and generation. This
+	// lets callers (make_deck, agent-authored JSON) ship the portable canonical
+	// names without forcing them to hard-code template-specific IDs. Already-
+	// resolved IDs pass through unchanged.
+	resolveCanonicalLayoutIDs(input.Slides, layouts)
+
 	outputPath := filepath.Join(mc.outputDir, outputFilename)
 
 	// Convergence loop.
@@ -201,16 +236,13 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 	for pass := 1; pass <= maxPasses; pass++ {
 		passesRun = pass
 
-		findings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &analysis.Theme)
-		renderFindings := mc.collectRenderFindings(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		findings := collectFitFindings(input, layouts, slideWidth, slideHeight, &analysis.Theme)
+		renderFindings := mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
 		findings = append(findings, renderFindings...)
 
 		ds := deterministic.ScoreFromFindings(findings, len(input.Slides))
 		gateReasons := evaluateAutoRepairGate(ds, findings, gate)
 
-		// Repairs applied on THIS pass are accumulated after the gate check so
-		// pass 1 always shows an empty repairs_applied (no repairs ran before
-		// the first inspection).
 		entry := autoRepairTraceEntry{
 			Pass:           pass,
 			Score:          ds.OverallScore,
@@ -233,32 +265,22 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 			break
 		}
 
-		// Build directives from the findings and apply them. We score per
-		// pass so the trace reflects the BEFORE-repair state of each iteration;
-		// the repairs we record on entry are the ones applied DURING this
-		// iteration, after the gate check fails.
-		proposed := proposeRepairs(&input, fitFindingsToProposeFindings(findings))
-		applied := applyProposedRepairs(&input, proposed)
+		proposed := proposeRepairs(input, fitFindingsToProposeFindings(findings))
+		applied := applyProposedRepairs(input, proposed)
 		entry.RepairsApplied = applied
 		trace = append(trace, entry)
 
-		// If no repairs landed this pass, further iterations cannot improve
-		// the score — break out early so the agent doesn't pay for redundant
-		// renders chasing a stuck deck.
 		if len(applied) == 0 {
 			break
 		}
 	}
 
-	// Final render — always writes the converged (or best-effort) deck to the
-	// configured output path so the caller can rely on a single canonical
-	// artifact even when the gate fails.
-	finalPath, renderErr := mc.renderAutoRepairFinal(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath)
+	finalPath, renderErr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath)
 	if renderErr != nil {
-		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("final generation failed: %v", renderErr)), nil
+		return nil, api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("final generation failed: %v", renderErr))
 	}
 
-	output := autoRepairOutput{
+	output := &autoRepairOutput{
 		Path:        finalPath,
 		FinalScore:  lastScore,
 		GatePassed:  gatePassed,
@@ -267,21 +289,10 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		GateReasons: lastGateReasons,
 	}
 	if gatePassed {
-		// Squelch gate_reasons on success so the response only carries
-		// remediation hints when the agent actually needs them.
 		output.GateReasons = nil
 	}
-
-	// Surface the final findings count via the trace so the JSON shape stays
-	// stable across pass counts — lastFindings is only retained here for
-	// documentation / debugging.
 	_ = lastFindings
-
-	mcpResult, err := api.MCPSuccessResult(ctx, output)
-	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
-	}
-	return mcpResult, nil
+	return output, nil
 }
 
 // --- Gate evaluation ---

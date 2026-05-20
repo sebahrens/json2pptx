@@ -958,6 +958,59 @@ var outputSchemaAutoRepair = json.RawMessage(`{
   "required": ["final_score", "gate_passed", "passes", "trace"]
 }`)
 
+// --- make_deck ---
+var outputSchemaMakeDeck = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "path":        {"type": "string", "description": "Absolute path to the final rendered PPTX. Written regardless of whether the gate passed."},
+    "final_score": {"type": "integer", "description": "overall_score of the last (post-repair) pass, in [0, 100]."},
+    "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_repair_passes iterations."},
+    "passes":      {"type": "integer", "description": "Number of auto_repair iterations actually run (≤ max_repair_passes)."},
+    "trace": {
+      "type": "array",
+      "description": "Per-pass record of score, finding count, and repairs applied DURING that pass. Same shape as auto_repair.trace.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pass":            {"type": "integer"},
+          "score":           {"type": "integer"},
+          "findings_count":  {"type": "integer"},
+          "repairs_applied": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["pass", "score", "findings_count", "repairs_applied"]
+      }
+    },
+    "gate_reasons": {
+      "type": "array",
+      "description": "Human-readable list of unmet gate criteria. Present only when gate_passed=false.",
+      "items": {"type": "string"}
+    },
+    "plan": {
+      "type": "object",
+      "description": "Snapshot of the planner's decisions for this deck. Use slides[].slide_index to target follow-up repair_slide calls.",
+      "properties": {
+        "template":     {"type": "string"},
+        "slide_budget": {"type": "integer"},
+        "slides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slide_index":         {"type": "integer"},
+              "narrative_role":      {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "closing"]},
+              "recommended_pattern": {"type": "string"},
+              "title":               {"type": "string"}
+            },
+            "required": ["slide_index", "narrative_role", "recommended_pattern", "title"]
+          }
+        }
+      },
+      "required": ["template", "slide_budget", "slides"]
+    }
+  },
+  "required": ["final_score", "gate_passed", "passes", "trace", "plan"]
+}`)
+
 // --- table_density_guide ---
 var outputSchemaTableDensityGuide = json.RawMessage(`{
   "type": "object",

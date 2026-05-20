@@ -196,6 +196,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	s.AddTool(mcpRepairSlidesBatchTool(), mc.handleRepairSlidesBatch)
 	s.AddTool(mcpProposeRepairsTool(), mc.handleProposeRepairs)
 	s.AddTool(mcpAutoRepairTool(), mc.handleAutoRepair)
+	s.AddTool(mcpMakeDeckTool(), mc.handleMakeDeck)
 	s.AddTool(mcpListTemplateSettingsTool(), mc.handleListTemplateSettings)
 	s.AddTool(mcpRegisterTemplateSettingTool(), mc.handleRegisterTemplateSetting)
 	s.AddTool(mcpDeleteTemplateSettingTool(), mc.handleDeleteTemplateSetting)
