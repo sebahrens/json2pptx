@@ -132,9 +132,18 @@ type GridImageTextInput struct {
 
 // IconInput defines an SVG icon from the bundled icon library, a custom SVG file,
 // a URL, or inline SVG markup. Exactly one of Name, Path, URL, or SVGData must be set.
+//
+// Path supports two convenience expansions before resolution against baseDir:
+//   - Leading "~/" (or bare "~") expands to the user's home directory.
+//   - "$VAR" and "${VAR}" expand via the process environment.
+//
+// Unset environment variables yield an ASSET_PATH_ENV_UNSET finding rather
+// than silently collapsing to an empty string. Traversal and symlink checks
+// run against the expanded path. The same expansion rules apply to
+// ImageInput.Path, GridImageInput.Path, and BackgroundInput.Image.
 type IconInput struct {
 	Name     string `json:"name,omitempty"`      // Bundled icon name (e.g., "chart-pie", "filled:alert-circle")
-	Path     string `json:"path,omitempty"`      // File path to a custom SVG icon (relative to JSON input directory)
+	Path     string `json:"path,omitempty"`      // File path to a custom SVG icon (relative to JSON input directory; supports leading "~/" and "$VAR"/"${VAR}" expansion)
 	URL      string `json:"url,omitempty"`       // HTTP/HTTPS URL to download an SVG icon from
 	SVGData  string `json:"svg_data,omitempty"`  // Inline SVG markup (e.g., output of svggen-mcp render_diagram). When set, no disk I/O is performed.
 	Alt      string `json:"alt,omitempty"`       // Alt text / description for accessibility. Falls back to name/path/"icon" when empty.

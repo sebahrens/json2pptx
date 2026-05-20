@@ -963,6 +963,99 @@ func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.D
 	return findings
 }
 
+// expandAssetPath expands a leading "~/" (or bare "~") to the user's home
+// directory and expands "$VAR" / "${VAR}" references via the process
+// environment. The leading-tilde rule mirrors POSIX shells: only "~" or "~/"
+// is rewritten; embedded tildes are passed through unchanged. Environment
+// expansion accepts the same syntax as os.Expand.
+//
+// When any referenced environment variable is unset, expansion is aborted and
+// the variable name is returned in unsetVar — callers surface this as an
+// ASSET_PATH_ENV_UNSET finding rather than letting an empty expansion silently
+// produce a confusing "no such file" downstream. The returned path is the
+// original rawPath when unsetVar is non-empty so error messages quote the
+// agent's literal input.
+func expandAssetPath(rawPath string) (string, string) {
+	p := rawPath
+	switch {
+	case p == "~":
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			p = home
+		}
+	case strings.HasPrefix(p, "~/"):
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			p = filepath.Join(home, p[2:])
+		}
+	}
+	var unsetVar string
+	expanded := os.Expand(p, func(name string) string {
+		v, ok := os.LookupEnv(name)
+		if !ok && unsetVar == "" {
+			unsetVar = name
+		}
+		return v
+	})
+	if unsetVar != "" {
+		return rawPath, unsetVar
+	}
+	return expanded, ""
+}
+
+// prepareIconPath runs the per-icon path prep steps shared by all callers:
+// a pre-clean traversal check (catches "../.." before filepath.Clean
+// collapses it), tilde/$ENV expansion, unset-env-var detection, and a
+// post-expansion traversal check. Returns the expanded path on success, or a
+// single diagnostic naming the failure mode. Extracted from
+// resolveIconInputPath to keep that function's cyclomatic complexity under
+// the linter ceiling without inlining a Nolint pragma.
+func prepareIconPath(rawPath string, slideIdx int, jsonPath string) (string, *diagnostics.Diagnostic) {
+	if err := utils.ValidatePath(filepath.FromSlash(rawPath), nil); err != nil {
+		return "", &diagnostics.Diagnostic{
+			Code:     diagnostics.CodeIconPathTraversal,
+			Message:  fmt.Sprintf("icon path %q: %v", rawPath, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  "icon",
+				"input_value": rawPath,
+				"remediation": "use a path that does not escape the base directory",
+			},
+		}
+	}
+	expanded, unsetVar := expandAssetPath(rawPath)
+	if unsetVar != "" {
+		return "", &diagnostics.Diagnostic{
+			Code:     diagnostics.CodeAssetPathEnvUnset,
+			Message:  fmt.Sprintf("icon path %q references unset environment variable %q", rawPath, unsetVar),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index":  slideIdx,
+				"asset_kind":   "icon",
+				"input_value":  rawPath,
+				"env_variable": unsetVar,
+				"remediation":  fmt.Sprintf("export %s before invoking, or supply a literal path", unsetVar),
+			},
+		}
+	}
+	if err := utils.ValidatePath(filepath.FromSlash(expanded), nil); err != nil {
+		return "", &diagnostics.Diagnostic{
+			Code:     diagnostics.CodeIconPathTraversal,
+			Message:  fmt.Sprintf("icon path %q (expanded %q): %v", rawPath, expanded, err),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index": slideIdx,
+				"asset_kind":  "icon",
+				"input_value": rawPath,
+				"remediation": "use a path that does not escape the base directory after expansion",
+			},
+		}
+	}
+	return expanded, nil
+}
+
 // resolveLocalAssetPath validates a single asset path field (image or
 // background) and returns either the resolved absolute path or a single
 // diagnostic describing the problem. The caller is responsible for writing
@@ -970,15 +1063,20 @@ func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.D
 //
 // Validation pipeline (mirrors resolveIconInputPath):
 //  1. Extension allow-list (assetKindExtensions).
-//  2. Relative-to-absolute resolution against baseDir.
-//  3. filepath.EvalSymlinks (catches missing files and symlink loops).
-//  4. utils.ValidatePath (catches ".." traversal).
+//  2. Tilde / $ENV expansion (expandAssetPath) — unset env vars yield
+//     ASSET_PATH_ENV_UNSET; tilde with no home directory passes through
+//     unchanged and fails normally at EvalSymlinks.
+//  3. Relative-to-absolute resolution against baseDir.
+//  4. filepath.EvalSymlinks (catches missing files and symlink loops).
+//  5. utils.ValidatePath (catches ".." traversal).
 //
 // code is the diagnostic Code emitted on failure; assetKind is recorded in
 // the Details map so callers can group / filter by kind without parsing
 // codes.
 func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool, code diagnostics.Code, assetKind string, slideIdx int, jsonPath string) (string, *diagnostics.Diagnostic) {
-	// Extension allow-list check (case-insensitive).
+	// Extension allow-list check (case-insensitive). Run on the raw input so
+	// the diagnostic quotes what the agent supplied; ~/foo.png and $VAR/foo.png
+	// keep their .png extension across expansion.
 	ext := strings.ToLower(filepath.Ext(rawPath))
 	if !allowedExts[ext] {
 		return "", &diagnostics.Diagnostic{
@@ -995,8 +1093,29 @@ func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool,
 		}
 	}
 
+	// Expand "~/..." and "$VAR" before joining baseDir so an agent-supplied
+	// "~/assets/logo.png" or "$BRAND_ASSETS/logo.png" resolves against the home
+	// directory or env-pointed root instead of being silently rooted under
+	// baseDir. Unset env vars short-circuit with a structured finding.
+	expanded, unsetVar := expandAssetPath(rawPath)
+	if unsetVar != "" {
+		return "", &diagnostics.Diagnostic{
+			Code:     diagnostics.CodeAssetPathEnvUnset,
+			Message:  fmt.Sprintf("%s path %q references unset environment variable %q", assetKind, rawPath, unsetVar),
+			Path:     jsonPath,
+			Severity: diagnostics.SeverityError,
+			Details: map[string]any{
+				"slide_index":  slideIdx,
+				"asset_kind":   assetKind,
+				"input_value":  rawPath,
+				"env_variable": unsetVar,
+				"remediation":  fmt.Sprintf("export %s before invoking, or supply a literal path", unsetVar),
+			},
+		}
+	}
+
 	// Resolve relative paths against baseDir.
-	p := filepath.FromSlash(rawPath)
+	p := filepath.FromSlash(expanded)
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(baseDir, p)
 	}
@@ -1168,27 +1287,16 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 		}}
 	}
 
-	// Pre-Clean traversal check: catch ".." components in the original input
-	// before filepath.Clean collapses them. ValidatePath on the resolved path
-	// (post-Clean+EvalSymlinks) cannot detect "../../etc/passwd"-style intent
-	// because the absolute resolved form has no ".." components left.
-	if err := utils.ValidatePath(filepath.FromSlash(icon.Path), nil); err != nil {
-		return []diagnostics.Diagnostic{{
-			Code:     diagnostics.CodeIconPathTraversal,
-			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
-			Path:     jsonPath,
-			Severity: diagnostics.SeverityError,
-			Details: map[string]any{
-				"slide_index": slideIdx,
-				"asset_kind":  "icon",
-				"input_value": icon.Path,
-				"remediation": "use a path that does not escape the base directory",
-			},
-		}}
+	// Pre-clean traversal check, "~/..." / "$VAR" expansion, unset-env-var
+	// rejection, and post-expansion traversal check are bundled in
+	// prepareIconPath so this function stays under the gocyclo ceiling.
+	expanded, prepDiag := prepareIconPath(icon.Path, slideIdx, jsonPath)
+	if prepDiag != nil {
+		return []diagnostics.Diagnostic{*prepDiag}
 	}
 
 	// Resolve relative path against baseDir
-	p := filepath.FromSlash(icon.Path)
+	p := filepath.FromSlash(expanded)
 	wasRelative := !filepath.IsAbs(p)
 	if wasRelative {
 		p = filepath.Join(baseDir, p)

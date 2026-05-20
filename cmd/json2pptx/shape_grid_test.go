@@ -2184,6 +2184,197 @@ func TestResolveLocalAssetPaths_AbsolutePathsPassThrough(t *testing.T) {
 	}
 }
 
+// TestExpandAssetPath_TildeAndEnv verifies the pure helper expands "~/" to
+// the user's home directory and resolves "$VAR"/"${VAR}" via the process
+// environment, while reporting the first unset variable name when expansion
+// would silently collapse a reference to an empty string.
+func TestExpandAssetPath_TildeAndEnv(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir: %v", err)
+	}
+
+	t.Setenv("JSON2PPTX_TEST_ASSETS", "/tmp/brand-assets")
+	t.Setenv("JSON2PPTX_TEST_SUBDIR", "icons")
+	os.Unsetenv("JSON2PPTX_DEFINITELY_UNSET_XYZ")
+
+	cases := []struct {
+		name      string
+		in        string
+		wantOut   string
+		wantUnset string
+	}{
+		{name: "tilde slash", in: "~/icons/x.svg", wantOut: filepath.Join(home, "icons/x.svg")},
+		{name: "bare tilde", in: "~", wantOut: home},
+		{name: "embedded tilde untouched", in: "icons/~tmp/x.svg", wantOut: "icons/~tmp/x.svg"},
+		{name: "dollar var", in: "$JSON2PPTX_TEST_ASSETS/icon.svg", wantOut: "/tmp/brand-assets/icon.svg"},
+		{name: "braced var", in: "${JSON2PPTX_TEST_ASSETS}/icon.svg", wantOut: "/tmp/brand-assets/icon.svg"},
+		{name: "tilde plus relative subdir var", in: "~/${JSON2PPTX_TEST_SUBDIR}/x.svg", wantOut: filepath.Join(home, "icons", "x.svg")},
+		{name: "unset var", in: "$JSON2PPTX_DEFINITELY_UNSET_XYZ/icon.svg", wantUnset: "JSON2PPTX_DEFINITELY_UNSET_XYZ"},
+		{name: "literal absolute passthrough", in: "/etc/passwd", wantOut: "/etc/passwd"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, unset := expandAssetPath(tc.in)
+			if tc.wantUnset != "" {
+				if unset != tc.wantUnset {
+					t.Fatalf("expected unsetVar %q, got %q (out=%q)", tc.wantUnset, unset, got)
+				}
+				if got != tc.in {
+					t.Errorf("on unset var, expected out to echo raw input %q, got %q", tc.in, got)
+				}
+				return
+			}
+			if unset != "" {
+				t.Fatalf("expected no unsetVar, got %q (out=%q)", unset, got)
+			}
+			if got != tc.wantOut {
+				t.Errorf("expected %q, got %q", tc.wantOut, got)
+			}
+		})
+	}
+}
+
+// TestResolveIconInputPath_TildeExpansion verifies that an icon.path beginning
+// with "~/" resolves to a file under the user's home directory. The test
+// hijacks HOME via t.Setenv so it can materialize a real SVG inside a temp
+// directory without touching the actual home tree.
+func TestResolveIconInputPath_TildeExpansion(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	iconDir := filepath.Join(fakeHome, "icons")
+	if err := os.MkdirAll(iconDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	iconFile := filepath.Join(iconDir, "custom.svg")
+	if err := os.WriteFile(iconFile, []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	icon := &IconInput{Path: "~/icons/custom.svg"}
+	findings := resolveIconInputPath(icon, t.TempDir(), 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+	if len(findings) != 0 {
+		t.Fatalf("expected no findings, got %+v", findings)
+	}
+	resolved, _ := filepath.EvalSymlinks(iconFile)
+	if icon.Path != resolved {
+		t.Errorf("expected icon.Path=%q, got %q", resolved, icon.Path)
+	}
+}
+
+// TestResolveIconInputPath_EnvExpansion verifies $VAR-style expansion. Setting
+// an env var to a temp directory and supplying "$VAR/foo.svg" should resolve
+// identically to "<tempdir>/foo.svg".
+func TestResolveIconInputPath_EnvExpansion(t *testing.T) {
+	assetDir := t.TempDir()
+	iconFile := filepath.Join(assetDir, "logo.svg")
+	if err := os.WriteFile(iconFile, []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSON2PPTX_BRAND_ASSETS_TEST", assetDir)
+
+	for _, in := range []string{"$JSON2PPTX_BRAND_ASSETS_TEST/logo.svg", "${JSON2PPTX_BRAND_ASSETS_TEST}/logo.svg"} {
+		icon := &IconInput{Path: in}
+		findings := resolveIconInputPath(icon, t.TempDir(), 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+		if len(findings) != 0 {
+			t.Fatalf("input %q: expected no findings, got %+v", in, findings)
+		}
+		resolved, _ := filepath.EvalSymlinks(iconFile)
+		if icon.Path != resolved {
+			t.Errorf("input %q: expected resolved=%q, got %q", in, resolved, icon.Path)
+		}
+	}
+}
+
+// TestResolveIconInputPath_UnsetEnvVar verifies that referencing a missing env
+// var short-circuits with ASSET_PATH_ENV_UNSET instead of silently expanding
+// to an empty path and producing a confusing "no such file" downstream.
+func TestResolveIconInputPath_UnsetEnvVar(t *testing.T) {
+	os.Unsetenv("JSON2PPTX_DEFINITELY_UNSET_TEST")
+
+	icon := &IconInput{Path: "$JSON2PPTX_DEFINITELY_UNSET_TEST/icon.svg"}
+	findings := resolveIconInputPath(icon, t.TempDir(), 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %+v", len(findings), findings)
+	}
+	f := findings[0]
+	if f.Code != diagnostics.CodeAssetPathEnvUnset {
+		t.Errorf("expected code %s, got %s", diagnostics.CodeAssetPathEnvUnset, f.Code)
+	}
+	if f.Details["env_variable"] != "JSON2PPTX_DEFINITELY_UNSET_TEST" {
+		t.Errorf("expected env_variable detail, got %v", f.Details["env_variable"])
+	}
+	if f.Details["input_value"] != "$JSON2PPTX_DEFINITELY_UNSET_TEST/icon.svg" {
+		t.Errorf("expected input_value to echo raw input, got %v", f.Details["input_value"])
+	}
+}
+
+// TestResolveIconInputPath_TraversalAfterExpansion verifies the post-expansion
+// traversal check rejects "$VAR/foo" when VAR itself injects ".." components,
+// so an unsuspecting baseDir cannot be escaped via env-supplied parent refs.
+func TestResolveIconInputPath_TraversalAfterExpansion(t *testing.T) {
+	t.Setenv("JSON2PPTX_TRAVERSAL_TEST", "/etc/../etc")
+	icon := &IconInput{Path: "$JSON2PPTX_TRAVERSAL_TEST/icon.svg"}
+	findings := resolveIconInputPath(icon, t.TempDir(), 0, "/slides/0/shape_grid/rows/0/cells/0/icon")
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d: %+v", len(findings), findings)
+	}
+	if findings[0].Code != diagnostics.CodeIconPathTraversal {
+		t.Errorf("expected ICON_PATH_TRAVERSAL after expansion, got %s", findings[0].Code)
+	}
+}
+
+// TestResolveLocalAssetPaths_TildeAndEnvExpansion verifies the unified asset
+// walker honors tilde/env expansion for background images and content image
+// paths the same way it does for icons, with ASSET_PATH_ENV_UNSET surfaced
+// per offending asset surface.
+func TestResolveLocalAssetPaths_TildeAndEnvExpansion(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	bgFile := filepath.Join(fakeHome, "bg.jpg")
+	if err := os.WriteFile(bgFile, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	assetDir := t.TempDir()
+	imageFile := filepath.Join(assetDir, "photo.png")
+	if err := os.WriteFile(imageFile, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSON2PPTX_BRAND_ASSETS_TEST2", assetDir)
+	os.Unsetenv("JSON2PPTX_DEFINITELY_UNSET_TEST2")
+
+	slides := []SlideInput{{
+		Background: &BackgroundInput{Image: "~/bg.jpg"},
+		Content: []ContentInput{
+			{PlaceholderID: "body", Type: "image", ImageValue: &ImageInput{Path: "${JSON2PPTX_BRAND_ASSETS_TEST2}/photo.png"}},
+			{PlaceholderID: "body", Type: "image", ImageValue: &ImageInput{Path: "$JSON2PPTX_DEFINITELY_UNSET_TEST2/missing.png"}},
+		},
+	}}
+
+	findings := resolveLocalAssetPaths(slides, t.TempDir())
+	if len(findings) != 1 {
+		t.Fatalf("expected exactly 1 ASSET_PATH_ENV_UNSET finding, got %d: %+v", len(findings), findings)
+	}
+	if findings[0].Code != diagnostics.CodeAssetPathEnvUnset {
+		t.Errorf("expected %s, got %s", diagnostics.CodeAssetPathEnvUnset, findings[0].Code)
+	}
+	if findings[0].Path != "/slides/0/content/1/image_value/path" {
+		t.Errorf("unexpected json_path: %s", findings[0].Path)
+	}
+	if findings[0].Details["env_variable"] != "JSON2PPTX_DEFINITELY_UNSET_TEST2" {
+		t.Errorf("expected env_variable=JSON2PPTX_DEFINITELY_UNSET_TEST2, got %v", findings[0].Details["env_variable"])
+	}
+
+	wantBG, _ := filepath.EvalSymlinks(bgFile)
+	if slides[0].Background.Image != wantBG {
+		t.Errorf("background: expected %q, got %q", wantBG, slides[0].Background.Image)
+	}
+	wantImg, _ := filepath.EvalSymlinks(imageFile)
+	if slides[0].Content[0].ImageValue.Path != wantImg {
+		t.Errorf("image_value: expected %q, got %q", wantImg, slides[0].Content[0].ImageValue.Path)
+	}
+}
+
 // TestResolveLocalAssetPaths_SkipsURLOnlyImage confirms that an image_value
 // with only URL set (Path empty) is left alone — resolveURLs handles
 // remote fetches before the local-asset pass runs.

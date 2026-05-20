@@ -50,6 +50,7 @@ const (
 	CodeIconFillIgnoredInline  Code = "ICON_FILL_IGNORED_ON_INLINE"
 	CodeImagePath              Code = "IMAGE_PATH"
 	CodeBackgroundImagePath    Code = "BACKGROUND_IMAGE_PATH"
+	CodeAssetPathEnvUnset      Code = "ASSET_PATH_ENV_UNSET"
 	CodeURLFetchFailed         Code = "URL_FETCH_FAILED"
 	CodeURLResolverInit        Code = "URL_RESOLVER_INIT"
 )
@@ -124,6 +125,7 @@ func AllCodes() []Code {
 		CodeIconFillIgnoredInline,
 		CodeImagePath,
 		CodeBackgroundImagePath,
+		CodeAssetPathEnvUnset,
 		CodeURLFetchFailed,
 		CodeURLResolverInit,
 		// Render

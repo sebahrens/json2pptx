@@ -414,9 +414,12 @@ Call `list_icons` (MCP) or run `json2pptx icons list` (CLI) for all available ic
 | `ICON_PATH` | Other `icon.path` resolution failures (symlink loop, permission denied, etc.) |
 | `IMAGE_PATH` | `image_value.path` or shape-grid cell `image.path` resolution failure |
 | `BACKGROUND_IMAGE_PATH` | `slide.background.image` resolution failure |
+| `ASSET_PATH_ENV_UNSET` | Any local asset path references `$VAR`/`${VAR}` whose environment variable is not set; `details.env_variable` names the missing var |
 | `URL_FETCH_FAILED` | Any `url` field (background, image, icon, shape.icon, content image_value) could not be downloaded, exceeded the 50 MB cap, or returned the wrong content type |
 
 All findings carry `details.input_value` (local paths) or `details.input_url` (URLs), `details.slide_index`, and a JSON Pointer `path` (e.g. `/slides/0/content/0/image_value/path`) so the offending node round-trips through jq/jsonpath. Unsupported extensions (anything outside `.png .jpg .jpeg .gif .svg .bmp .tiff .tif .webp` for images; `.svg` for icons) are rejected before disk I/O. Use absolute paths if your asset lives outside `base_dir`, or pass a `base_dir` that contains every referenced asset. `get_capabilities` lists the tools that honor `base_dir` under `features.base_dir`.
+
+**Path expansion.** Local asset paths (`icon.path`, `image_value.path`, shape-grid cell `image.path`, `background.image`) honor two convenience expansions before resolution: a leading `~/` (or bare `~`) expands to the invoking user's home directory, and `$VAR` / `${VAR}` expand via the server's environment. Unset environment variables yield an `ASSET_PATH_ENV_UNSET` finding rather than silently collapsing to an empty string; traversal and symlink protections still apply against the expanded path.
 
 **URL preflight.** `url` fields on `background`, `image_value`, shape-grid cell `image`, cell `icon`, and nested `shape.icon` are downloaded and validated by both CLI and MCP before generation. SSRF-blocked, unreachable, or content-mismatched URLs surface as one `URL_FETCH_FAILED` per offending field rather than aborting the request, so a deck with several broken remote assets reports them all in one validate / generate call.
 
