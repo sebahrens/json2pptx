@@ -80,6 +80,7 @@ INSTALL_CMDS := json2pptx svggen svggen-server svggen-mcp
         build-linux-amd64 build-linux-arm64 build-windows-amd64 \
         ensure-templates dist-linux dist-windows release-check release \
         check test test-race test-cover test-svg-stress \
+        template-check install-git-hooks \
         lint vulncheck security fmt fmt-check \
         preview-patterns \
         run clean ci help
@@ -307,6 +308,23 @@ test-cover:
 test-svg-stress: build
 	./bin/testrand svg-stress --seed=$${SEED:-0}
 
+# Gate: every templates/*.pptx must be conformance-clean (zero FAIL, zero WARN
+# under json2pptx template-check), with the exception of templates whose
+# sha256 is on internal/template/testdata/conformance_allowlist.json. The
+# corpus test is the authoritative implementation — it shares the same
+# CheckConformance API the CLI uses.
+template-check:
+	go test ./internal/template/ -run TestConformanceCorpus -count=1 -timeout=60s -v
+
+# Install repo-managed git hooks. Idempotent; safe to re-run.
+install-git-hooks:
+	@if [ ! -d .git ]; then \
+		echo "ERROR: not a git checkout (no .git directory)"; exit 1; \
+	fi
+	git config core.hooksPath scripts/git-hooks
+	@echo "✓ core.hooksPath set to scripts/git-hooks"
+	@echo "  Active hooks: $$(ls scripts/git-hooks 2>/dev/null | tr '\n' ' ')"
+
 lint:
 	golangci-lint run ./...
 	cd svggen && golangci-lint run ./...
@@ -350,7 +368,7 @@ release-check:
 
 release: release-check ensure-templates build-cross
 
-ci: fmt-check lint test vulncheck
+ci: fmt-check lint test vulncheck template-check
 
 # ─── Help ─────────────────────────────────────────────────────────────
 
@@ -382,9 +400,11 @@ help:
 	@echo "  make test             Run all tests"
 	@echo "  make test-race        Tests with race detector"
 	@echo "  make test-cover       Tests with coverage report"
+	@echo "  make template-check   Gate every templates/*.pptx against the conformance allow-list"
+	@echo "  make install-git-hooks Install repo-managed pre-commit hook for template-check"
 	@echo "  make lint             Run golangci-lint"
 	@echo "  make security         Run vulncheck + lint"
-	@echo "  make ci               Full CI pipeline (fmt + lint + test + vulncheck)"
+	@echo "  make ci               Full CI pipeline (fmt + lint + test + vulncheck + template-check)"
 	@echo ""
 	@echo "Other:"
 	@echo "  make run              Build and run the server"

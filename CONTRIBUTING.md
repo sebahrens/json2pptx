@@ -186,6 +186,25 @@ Every file under `templates/*.pptx` MUST pass `json2pptx template-check` with **
 
 Before adding or modifying a template, check [docs/TEMPLATE_ANALYSIS.md](docs/TEMPLATE_ANALYSIS.md) to see whether the file is **programmable** (regenerable from `cmd/mktemplate`) or **designer-owned** (must be repaired in place). Do NOT run `mktemplate` against a designer-owned template — it cannot reproduce embedded decorative assets, custom layout shapes, or intentional theme polarities.
 
+### Where the gate runs
+
+| Surface              | Command                                                                | When                                            |
+|----------------------|------------------------------------------------------------------------|-------------------------------------------------|
+| Local dev            | `make template-check`                                                  | On demand                                       |
+| Pre-commit hook      | `scripts/git-hooks/pre-commit` (install via `make install-git-hooks`)  | On every commit that touches a template or the allow-list |
+| Make CI pipeline     | `make ci`                                                              | Before pushing                                  |
+| GitHub Actions       | `test` job (`go test ./...`) and `corpus-headless`                     | On every PR                                     |
+
+All four use the same `internal/template.CheckConformance` API the `json2pptx template-check` CLI is built on, so results are byte-identical regardless of entry point.
+
+To enable the pre-commit hook for your checkout, run once:
+
+```bash
+make install-git-hooks   # sets git config core.hooksPath = scripts/git-hooks
+```
+
+The hook only fires when a commit touches `templates/*.pptx` or `internal/template/testdata/conformance_allowlist.json`, so unrelated commits incur no cost.
+
 ### Checklist
 
 1. Build the template (see `docs/TEMPLATE_SPEC.md` for the required layouts, placeholders, theme colors, and fonts).
@@ -196,12 +215,13 @@ Before adding or modifying a template, check [docs/TEMPLATE_ANALYSIS.md](docs/TE
    ```
 
    Iterate until the output is `PASS` with zero `[WARN]` and zero `[FAIL]` lines.
-3. Add the file under `templates/` and confirm the corpus test passes:
+3. Add the file under `templates/` and confirm the corpus gate passes:
 
    ```bash
-   go test ./internal/template/ -run TestConformanceCorpus -v
+   make template-check
    ```
 
+   (equivalent to `go test ./internal/template/ -run TestConformanceCorpus -v`)
 4. If you genuinely cannot reach a clean check today (e.g. a legacy designer template whose repair is tracked in a separate issue), add an entry to `internal/template/testdata/conformance_allowlist.json`:
 
    ```json

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook: rejects commits that add or modify a templates/*.pptx
+# file whose sha256 is not on the conformance allow-list at
+# internal/template/testdata/conformance_allowlist.json.
+#
+# Also re-runs the gate whenever the allow-list itself changes, so that
+# stale entries cannot silently land.
+#
+# Install once per checkout:
+#
+#   make install-git-hooks
+#
+# (equivalent to: git config core.hooksPath scripts/git-hooks)
+#
+# Tracked by: go-slide-creator-t1fa.
+
+set -euo pipefail
+
+# Collect staged paths under git's filter (Added / Copied / Modified / Renamed).
+# Renames are reported as the *new* name with --diff-filter=R.
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- 'templates/*.pptx' || true)
+allowlist=$(git diff --cached --name-only --diff-filter=ACMR \
+    -- 'internal/template/testdata/conformance_allowlist.json' || true)
+
+if [[ -z "$staged" && -z "$allowlist" ]]; then
+    exit 0
+fi
+
+if ! command -v go >/dev/null 2>&1; then
+    echo "pre-commit: 'go' is not on PATH; cannot run template-check gate." >&2
+    echo "  Install Go or skip with 'git commit --no-verify' (NOT recommended)." >&2
+    exit 1
+fi
+
+if [[ -n "$staged" ]]; then
+    echo "pre-commit: staged template changes detected:"
+    printf '  %s\n' $staged
+fi
+if [[ -n "$allowlist" ]]; then
+    echo "pre-commit: staged conformance allow-list change detected."
+fi
+echo "pre-commit: running conformance corpus test..."
+
+if ! go test ./internal/template/ -run TestConformanceCorpus \
+        -count=1 -timeout=120s; then
+    cat >&2 <<'MSG'
+
+pre-commit: template conformance check FAILED.
+
+A staged templates/*.pptx (or the conformance allow-list) is not 100%
+template-check clean. See the failing test output above.
+
+Next steps:
+  1. Inspect the offending template:
+       json2pptx template-check templates/<file>.pptx
+  2. Repair it until 'template-check' shows zero FAIL and zero WARN.
+  3. If repair is being tracked separately, add an allow-list entry to
+     internal/template/testdata/conformance_allowlist.json — see
+     CONTRIBUTING.md "Adding a Template" for the schema.
+
+To bypass once for an unrelated emergency (DISCOURAGED):
+  git commit --no-verify
+MSG
+    exit 1
+fi
+
+echo "pre-commit: template conformance OK."
+exit 0
