@@ -452,6 +452,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeBodyTooLong},
 	},
+	ErrCodeMissingAltText: {
+		Code:        ErrCodeMissingAltText,
+		Summary:     "An image or icon asset sourced from path/url/svg_data is missing alt text.",
+		Severity:    "review",
+		WhenEmitted: "Accessibility lint pass detects an image_value, shape_grid image, or icon (cell- or shape-overlay) whose source is a file path, URL, or inline SVG markup but whose alt field is empty. Bundled built-in icons referenced by name are exempt because the name itself supplies an implicit caption.",
+		RemediationSteps: []string{
+			"Set the alt field on the affected image_value, grid image, or icon entry to a short caption describing the visual content.",
+			"For decorative-only marks, supply a brief description (e.g., \"divider\") rather than leaving alt empty.",
+			"Switch icons to a bundled name when possible — bundled icons carry implicit alt text from their qualified_name.",
+		},
+		ExampleBefore: `{"image_value": {"path": "team.png"}}`,
+		ExampleAfter:  `{"image_value": {"path": "team.png", "alt": "Leadership team standing on stage"}}`,
+		RelatedCodes:  []string{ErrCodeBodyTooLong},
+	},
 
 	// ---- Chart data diagnostic codes ----
 

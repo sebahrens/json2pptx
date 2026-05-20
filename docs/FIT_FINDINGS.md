@@ -606,6 +606,38 @@ Emitted when a bullet list nests more than two levels deep. Depth is measured pe
 }
 ```
 
+### `MISSING_ALT_TEXT`
+
+**Action:** `review`
+**Pattern:** *(none — accessibility lint)*
+**Fix kind:** `provide_value`
+
+Emitted when an image or icon asset is sourced from `path`, `url`, or `svg_data` but its `alt` field is empty (or whitespace-only). Bundled built-in icons referenced by `IconInput.name` are exempt — the qualified bundled name itself supplies an implicit caption (`preview_icon` returns it via the `alt` field).
+
+The lint walks four surfaces:
+
+- `slide.content[].image_value` (`ImageInput.Path` / `ImageInput.URL`)
+- `slide.shape_grid.rows[].cells[].image` (`GridImageInput.Path` / `GridImageInput.URL`)
+- `slide.shape_grid.rows[].cells[].icon` (cell-level `IconInput`)
+- `slide.shape_grid.rows[].cells[].shape.icon` (shape-overlay `IconInput`)
+
+The finding never blocks render — it appears as a `review` action so agents that optimize only for `passes validation` cannot ship visually-fine but accessibility-incomplete decks. Because the action is `review`, `score_deck` deducts 5 points per occurrence from the affected slide's score (and from the overall correctness axis), creating scoring pressure to set alt text.
+
+`fix.params` carry the asset `kind` (`image_value`, `image`, or `icon`) and the `source` field (`path`, `url`, or `svg_data`) so an agent can route the fix to the right authoring surface.
+
+```json
+{
+  "path": "/slides/0/content/0/image_value",
+  "code": "MISSING_ALT_TEXT",
+  "message": "slide 1: image_value sourced from path is missing alt text — set alt for screen-reader accessibility",
+  "fix": {
+    "kind": "provide_value",
+    "params": { "field": "alt", "kind": "image_value", "source": "path" }
+  },
+  "action": "review"
+}
+```
+
 ### `contrast_predicted`
 
 **Action:** `info`

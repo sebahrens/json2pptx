@@ -45,9 +45,10 @@ const (
 
 	// Content lint codes — emitted when slide text exceeds readability budgets
 	// or bullet lists nest more than two levels. Advisory; never block render.
-	ErrCodeHeadlineTooLong    = "HEADLINE_TOO_LONG"
-	ErrCodeBodyTooLong        = "BODY_TOO_LONG"
-	ErrCodeBulletNestingDeep  = "BULLET_NESTING_DEEP"
+	ErrCodeHeadlineTooLong   = "HEADLINE_TOO_LONG"
+	ErrCodeBodyTooLong       = "BODY_TOO_LONG"
+	ErrCodeBulletNestingDeep = "BULLET_NESTING_DEEP"
+	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced     = "chart_value_coerced"
@@ -120,6 +121,7 @@ var (
 	ErrHeadlineTooLong   = errors.New("headline exceeds word count budget")
 	ErrBodyTooLong       = errors.New("body text block exceeds word count budget")
 	ErrBulletNestingDeep = errors.New("bullet list nests more than two levels deep")
+	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
 
 	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred    = errors.New("chart data shape inferred from flat input")
@@ -180,6 +182,7 @@ var codeSentinel = map[string]error{
 	ErrCodeHeadlineTooLong:       ErrHeadlineTooLong,
 	ErrCodeBodyTooLong:           ErrBodyTooLong,
 	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,
+	ErrCodeMissingAltText:        ErrMissingAltText,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,

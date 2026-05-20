@@ -87,6 +87,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// before render.
 	findings = append(findings, collectContentLintFindings(input)...)
 
+	// 9. Accessibility lint: alt text on images / icons sourced from
+	// path/url/svg_data. Bundled icon names are exempt (implicit captions).
+	findings = append(findings, collectAltTextFindings(input)...)
+
 	// Deduplicate findings that share (Code, Path, Action, Message). This guards
 	// against the case where a pre-compose detector and the post-compose
 	// structural pass both emit the same diagnostic for one cell — the

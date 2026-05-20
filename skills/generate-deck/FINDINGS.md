@@ -32,6 +32,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `HEADLINE_TOO_LONG` | Title-class placeholder text exceeds 12 whitespace-separated words. Fires on `title`, `headline`, `ctrTitle` text content items. Advisory — never blocks render. `fix.params: {current_words, max_words}` | `review` | `shorten_title` |
 | `BODY_TOO_LONG` | A single text block exceeds 80 whitespace-separated words. Applies to `text`, `bullets`, `body_and_bullets`, and `bullet_groups` content items (bullet words aggregate per block). Advisory — never blocks render. `fix.params: {current_words, max_words}` | `review` | `reduce_text` |
 | `BULLET_NESTING_DEEP` | Bullet list nests more than 2 levels. Depth is measured from leading whitespace (each tab or every 2 leading spaces = 1 indent unit); `bullet_groups` bullets start at level 2 (header is level 1). Advisory — never blocks render. `fix.params: {current_depth, max_depth}` | `review` | `reduce_text` |
+| `MISSING_ALT_TEXT` | Image or icon asset sourced from `path` / `url` / `svg_data` has an empty `alt`. Covers `image_value`, shape-grid `image`, cell-level `icon`, and shape-overlay `icon`. Bundled built-in icons referenced by `name` are exempt (the qualified name supplies an implicit caption). Advisory — never blocks render. `fix.kind: provide_value`, `fix.params: {field: "alt", kind, source}` | `review` | `provide_value` |
 
 ### Density-band severity for cell capacity findings
 
