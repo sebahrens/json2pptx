@@ -722,6 +722,27 @@ var outputSchemaScoreDeck = json.RawMessage(`{
         "problem_slides_count": {"type": "integer"}
       }
     },
+    "quality_gate": {
+      "type": "object",
+      "description": "Machine-readable definition of done. passed=true iff every criterion is satisfied; reasons enumerates the unmet ones. Agents (and the visual-QA loop) should stop calling repair tools when passed=true.",
+      "properties": {
+        "passed":  {"type": "boolean", "description": "True iff the deck meets ship-quality thresholds. When true, the agent should stop iterating."},
+        "reasons": {"type": "array", "items": {"type": "string"}, "description": "Human-readable list of unmet criteria. Empty when passed=true."},
+        "criteria": {
+          "type": "object",
+          "description": "Thresholds applied. Echoed in every response so agents can pin a known gate version in their own tests.",
+          "properties": {
+            "min_score":                  {"type": "integer", "description": "Minimum overall_score (default 80)."},
+            "max_p0_findings":            {"type": "integer", "description": "Maximum refuse-action findings tolerated (default 0)."},
+            "max_p1_findings":            {"type": "integer", "description": "Maximum shrink_or_split-action findings tolerated (default 0)."},
+            "require_takeaway_on_charts": {"type": "boolean", "description": "Whether takeaway_missing findings fail the gate (default true)."},
+            "allow_accent_overload":      {"type": "boolean", "description": "Whether accent_overload findings are permitted (default false)."}
+          },
+          "required": ["min_score", "max_p0_findings", "max_p1_findings", "require_takeaway_on_charts", "allow_accent_overload"]
+        }
+      },
+      "required": ["passed", "reasons", "criteria"]
+    },
     "mode_used": {"type": "string"}
   },
   "required": ["overall_score", "per_slide", "summary", "mode_used"]

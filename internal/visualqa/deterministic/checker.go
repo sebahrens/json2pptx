@@ -60,7 +60,109 @@ type DeckScore struct {
 	PerSlide     []SlideScore       `json:"per_slide"`
 	Composition  *CompositionResult `json:"composition,omitempty"`
 	Summary      DeckSummary        `json:"summary"`
+	QualityGate  *QualityGate       `json:"quality_gate,omitempty"`
 	ModeUsed     string             `json:"mode_used"`
+}
+
+// QualityGate is the machine-readable "definition of done" for a deck. Passed
+// is true iff every criterion in Criteria is satisfied; Reasons enumerates the
+// unmet ones (empty when Passed). Surfacing the Criteria block in the response
+// lets agents reason about why the gate did or didn't pass and pin a known set
+// of thresholds in their own tests.
+type QualityGate struct {
+	Passed   bool                `json:"passed"`
+	Reasons  []string            `json:"reasons"`
+	Criteria QualityGateCriteria `json:"criteria"`
+}
+
+// QualityGateCriteria documents the thresholds applied. The score_deck handler
+// uses the fixed defaults exposed by DefaultQualityGateCriteria — auto_repair
+// has its own tunable gate elsewhere (different defaults to give the repair
+// loop room to converge).
+type QualityGateCriteria struct {
+	MinScore                int  `json:"min_score"`
+	MaxP0Findings           int  `json:"max_p0_findings"`
+	MaxP1Findings           int  `json:"max_p1_findings"`
+	RequireTakeawayOnCharts bool `json:"require_takeaway_on_charts"`
+	AllowAccentOverload     bool `json:"allow_accent_overload"`
+}
+
+// Default thresholds for the score_deck quality gate — the numeric definition
+// of done. Tighter than the auto_repair convergence gate (min_score 75,
+// max_p1 2) because score_deck's gate is the ship-quality check, not the
+// repair-loop continue/stop signal.
+const (
+	DefaultQualityGateMinScore      = 80
+	DefaultQualityGateMaxP0Findings = 0
+	DefaultQualityGateMaxP1Findings = 0
+)
+
+// DefaultQualityGateCriteria returns the fixed ship-quality thresholds used by
+// score_deck. Returning a value (not a global) prevents accidental mutation
+// by callers and keeps the criteria block self-documenting in every response.
+func DefaultQualityGateCriteria() QualityGateCriteria {
+	return QualityGateCriteria{
+		MinScore:                DefaultQualityGateMinScore,
+		MaxP0Findings:           DefaultQualityGateMaxP0Findings,
+		MaxP1Findings:           DefaultQualityGateMaxP1Findings,
+		RequireTakeawayOnCharts: true,
+		AllowAccentOverload:     false,
+	}
+}
+
+// EvaluateQualityGate computes a QualityGate verdict against the given score
+// and findings using the supplied criteria. Reason order is deterministic:
+// score → P0 → P1 → takeaway → accent_overload, so agents can pattern-match
+// on the leading reason.
+//
+// findings should be the same slice that produced the score (i.e. already
+// scoped to the slides being evaluated when slide_indices is set); the gate
+// counts a finding once per occurrence regardless of action ranking.
+func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria QualityGateCriteria) *QualityGate {
+	gate := &QualityGate{
+		Passed:   false,
+		Reasons:  []string{},
+		Criteria: criteria,
+	}
+	if ds == nil {
+		return gate
+	}
+
+	if ds.OverallScore < criteria.MinScore {
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("score %d < min_score %d", ds.OverallScore, criteria.MinScore))
+	}
+
+	var p0, p1, takeawayMissing, accentOverload int
+	for _, f := range findings {
+		switch f.Action {
+		case "refuse":
+			p0++
+		case "shrink_or_split":
+			p1++
+		}
+		switch f.Code {
+		case patterns.ErrCodeTakeawayMissing:
+			takeawayMissing++
+		case patterns.ErrCodeAccentOverload:
+			accentOverload++
+		}
+	}
+
+	if p0 > criteria.MaxP0Findings {
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P0 (refuse) finding(s) exceeds max_p0_findings %d", p0, criteria.MaxP0Findings))
+	}
+	if p1 > criteria.MaxP1Findings {
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P1 (shrink_or_split) finding(s) exceeds max_p1_findings %d", p1, criteria.MaxP1Findings))
+	}
+	if criteria.RequireTakeawayOnCharts && takeawayMissing > 0 {
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d chart/matrix slide(s) missing takeaway", takeawayMissing))
+	}
+	if !criteria.AllowAccentOverload && accentOverload > 0 {
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d slide(s) emit accent_overload (too many distinct accents)", accentOverload))
+	}
+
+	gate.Passed = len(gate.Reasons) == 0
+	return gate
 }
 
 // DeckSummary provides aggregate stats.

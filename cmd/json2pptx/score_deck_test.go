@@ -333,6 +333,117 @@ func TestScoreDeck_SlideIndicesScopesRendering(t *testing.T) {
 	}
 }
 
+// TestScoreDeck_QualityGateWiredIntoResponse asserts the quality_gate field
+// is present in score_deck's structured content, carries the default criteria,
+// and reports Passed=true on a trivially clean deck. Regression for the
+// 9eg0 / "numeric definition of done" contract — agents stop when this is
+// true, so it must always serialize.
+func TestScoreDeck_QualityGateWiredIntoResponse(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	presentation := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout2",
+				"content": []any{
+					map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Hello"},
+				},
+			},
+		},
+	}
+
+	result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+		"presentation": presentation,
+	}))
+	if err != nil {
+		t.Fatalf("handleScoreDeck returned transport error: %v", err)
+	}
+	if result.IsError {
+		b, _ := json.Marshal(result.StructuredContent)
+		t.Fatalf("expected success; got error envelope: %s", string(b))
+	}
+
+	b, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal structured content: %v", err)
+	}
+	var ds deterministic.DeckScore
+	if err := json.Unmarshal(b, &ds); err != nil {
+		t.Fatalf("unmarshal DeckScore: %v", err)
+	}
+	if ds.QualityGate == nil {
+		t.Fatalf("score_deck response missing quality_gate; raw=%s", string(b))
+	}
+	if !ds.QualityGate.Passed {
+		t.Errorf("trivially clean deck: gate Passed=false; reasons=%v", ds.QualityGate.Reasons)
+	}
+	if ds.QualityGate.Criteria.MinScore != deterministic.DefaultQualityGateMinScore {
+		t.Errorf("Criteria.MinScore = %d, want default %d", ds.QualityGate.Criteria.MinScore, deterministic.DefaultQualityGateMinScore)
+	}
+	if ds.QualityGate.Criteria.MaxP0Findings != deterministic.DefaultQualityGateMaxP0Findings {
+		t.Errorf("Criteria.MaxP0Findings = %d, want default %d", ds.QualityGate.Criteria.MaxP0Findings, deterministic.DefaultQualityGateMaxP0Findings)
+	}
+	if !ds.QualityGate.Criteria.RequireTakeawayOnCharts {
+		t.Errorf("Criteria.RequireTakeawayOnCharts = false, want true (default)")
+	}
+	if ds.QualityGate.Criteria.AllowAccentOverload {
+		t.Errorf("Criteria.AllowAccentOverload = true, want false (default)")
+	}
+
+	// Reasons must marshal as [] not null on success — agents pattern-match on
+	// the field regardless of pass/fail.
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatalf("raw unmarshal: %v", err)
+	}
+	var gateRaw map[string]json.RawMessage
+	if err := json.Unmarshal(raw["quality_gate"], &gateRaw); err != nil {
+		t.Fatalf("quality_gate not an object: %v", err)
+	}
+	if string(gateRaw["reasons"]) == "null" {
+		t.Errorf("quality_gate.reasons marshaled as null; want []")
+	}
+}
+
+// TestFilterFindingsForSlideIndices_KeepsScopedAndDeckLevel asserts the gate
+// filter: findings on included slides are kept; findings on excluded slides
+// are dropped; template-level findings (no slide path) are kept so the gate
+// still notices template-wide synthesis errors when scoring a subset.
+func TestFilterFindingsForSlideIndices_KeepsScopedAndDeckLevel(t *testing.T) {
+	in := []patterns.FitFinding{
+		{ValidationError: patterns.ValidationError{Path: "/slides/0/content/body", Code: "a"}},
+		{ValidationError: patterns.ValidationError{Path: "/slides/3/content/body", Code: "b"}},
+		{ValidationError: patterns.ValidationError{Path: "/slides/7/content/body", Code: "c"}},
+		{ValidationError: patterns.ValidationError{Path: "/template/synthesis", Code: "d"}},
+	}
+	out := filterFindingsForSlideIndices(in, []int{3, 7})
+	if len(out) != 3 {
+		t.Fatalf("got %d findings, want 3 (slide 3, slide 7, template); out=%+v", len(out), out)
+	}
+	got := map[string]bool{}
+	for _, f := range out {
+		got[f.Code] = true
+	}
+	for _, want := range []string{"b", "c", "d"} {
+		if !got[want] {
+			t.Errorf("missing code %q in filtered output", want)
+		}
+	}
+	if got["a"] {
+		t.Errorf("code 'a' (excluded slide 0) leaked through filter")
+	}
+
+	// Empty includedIndices means "no filter" — gate sees everything.
+	if out := filterFindingsForSlideIndices(in, nil); len(out) != len(in) {
+		t.Errorf("nil indices: got %d findings, want all %d", len(out), len(in))
+	}
+}
+
 // TestRemapFindingsSlideIndex_RewritesSubsetPaths is a unit-level check for the
 // helper that rewrites finding paths from the subset (rendered) index space
 // back to the original deck index space.

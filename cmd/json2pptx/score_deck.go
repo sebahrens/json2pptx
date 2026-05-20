@@ -193,13 +193,21 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// set, PerSlide only contains entries for those indices; composition is
 	// omitted because it only meaningfully scores the full deck.
 	var ds *deterministic.DeckScore
+	gateFindings := findings
 	if len(slideIndices) > 0 {
 		ds = deterministic.ScoreFromFindingsForIndices(findings, len(input.Slides), slideIndices)
+		gateFindings = filterFindingsForSlideIndices(findings, slideIndices)
 	} else {
 		ds = deterministic.ScoreFromFindings(findings, len(input.Slides))
 		// 4. Composition axis — deck-level rhythm analysis.
 		ds.Composition = compositionAxis(input.Slides)
 	}
+
+	// 5. Quality gate — machine-readable definition of done. Computed on the
+	//    findings the scorer actually saw, so the subset path's gate reflects
+	//    only the requested slides (plus template/synthesis findings, which
+	//    have no slide index).
+	ds.QualityGate = deterministic.EvaluateQualityGate(ds, gateFindings, deterministic.DefaultQualityGateCriteria())
 
 	mcpResult, err := api.MCPSuccessResult(ctx, ds)
 	if err != nil {
@@ -448,6 +456,28 @@ func buildSlideSubset(input *PresentationInput, indices []int) (*PresentationInp
 		subsetToOrig[subsetIdx] = origIdx
 	}
 	return &clone, subsetToOrig
+}
+
+// filterFindingsForSlideIndices keeps only findings whose path's slide index
+// is in includedIndices, plus findings without a slide path (synthesis,
+// template-level). Used to scope the quality gate to the same slides the
+// per-slide score saw when slide_indices is set on score_deck.
+func filterFindingsForSlideIndices(findings []patterns.FitFinding, includedIndices []int) []patterns.FitFinding {
+	if len(includedIndices) == 0 {
+		return findings
+	}
+	included := make(map[int]bool, len(includedIndices))
+	for _, i := range includedIndices {
+		included[i] = true
+	}
+	out := make([]patterns.FitFinding, 0, len(findings))
+	for _, f := range findings {
+		si := slidepath.SlideIndex(f.Path)
+		if si < 0 || included[si] {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // remapFindingsSlideIndex rewrites the "/slides/{idx}/..." prefix in each

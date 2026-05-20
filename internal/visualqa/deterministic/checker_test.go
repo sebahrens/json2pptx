@@ -259,6 +259,161 @@ func TestScoreFromFindingsForIndices_FindingsNeverNullInJSON(t *testing.T) {
 	}
 }
 
+// TestEvaluateQualityGate covers the four-criterion ship-quality gate: score
+// floor, P0/P1 caps, takeaway-on-charts, and accent_overload veto. Each case
+// flips exactly one criterion so the test fails loudly if the gate logic
+// silently changes its severity vocabulary or finding-code matching.
+func TestEvaluateQualityGate(t *testing.T) {
+	criteria := DefaultQualityGateCriteria()
+
+	tests := []struct {
+		name     string
+		score    int
+		findings []patterns.FitFinding
+		passed   bool
+		// reasonContains is a substring expected in the first reason on
+		// failure; "" allowed when passed=true.
+		reasonContains string
+	}{
+		{
+			name:     "clean deck passes",
+			score:    90,
+			findings: nil,
+			passed:   true,
+		},
+		{
+			name:           "score below floor fails",
+			score:          79,
+			findings:       nil,
+			passed:         false,
+			reasonContains: "score 79 < min_score 80",
+		},
+		{
+			name:  "p0 finding fails",
+			score: 100,
+			findings: []patterns.FitFinding{
+				{ValidationError: patterns.ValidationError{Path: "/slides/0/content/body", Code: "text_overflow"}, Action: "refuse"},
+			},
+			passed:         false,
+			reasonContains: "P0 (refuse)",
+		},
+		{
+			name:  "p1 finding fails (zero tolerance)",
+			score: 100,
+			findings: []patterns.FitFinding{
+				{ValidationError: patterns.ValidationError{Path: "/slides/0/content/body", Code: "text_overflow"}, Action: "shrink_or_split"},
+			},
+			passed:         false,
+			reasonContains: "P1 (shrink_or_split)",
+		},
+		{
+			name:  "takeaway_missing fails",
+			score: 100,
+			findings: []patterns.FitFinding{
+				{ValidationError: patterns.ValidationError{Path: "/slides/0", Code: patterns.ErrCodeTakeawayMissing}, Action: "review"},
+			},
+			passed:         false,
+			reasonContains: "missing takeaway",
+		},
+		{
+			name:  "accent_overload fails",
+			score: 100,
+			findings: []patterns.FitFinding{
+				{ValidationError: patterns.ValidationError{Path: "/slides/0/shape_grid", Code: patterns.ErrCodeAccentOverload}, Action: "review"},
+			},
+			passed:         false,
+			reasonContains: "accent_overload",
+		},
+		{
+			name:  "review-action findings alone are fine",
+			score: 90,
+			findings: []patterns.FitFinding{
+				{ValidationError: patterns.ValidationError{Path: "/slides/0/content/title", Code: "title_wraps"}, Action: "review"},
+			},
+			passed: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ds := &DeckScore{OverallScore: tc.score}
+			gate := EvaluateQualityGate(ds, tc.findings, criteria)
+			if gate == nil {
+				t.Fatal("EvaluateQualityGate returned nil")
+			}
+			if gate.Passed != tc.passed {
+				t.Errorf("Passed = %v, want %v (reasons=%v)", gate.Passed, tc.passed, gate.Reasons)
+			}
+			if !tc.passed {
+				if len(gate.Reasons) == 0 {
+					t.Fatalf("expected at least one reason on failure")
+				}
+				found := false
+				for _, r := range gate.Reasons {
+					if tc.reasonContains != "" && contains(r, tc.reasonContains) {
+						found = true
+						break
+					}
+				}
+				if tc.reasonContains != "" && !found {
+					t.Errorf("no reason contained %q; got %v", tc.reasonContains, gate.Reasons)
+				}
+			}
+			if gate.Criteria.MinScore != criteria.MinScore {
+				t.Errorf("Criteria.MinScore = %d, want %d (criteria not echoed)", gate.Criteria.MinScore, criteria.MinScore)
+			}
+		})
+	}
+}
+
+func contains(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
+// TestEvaluateQualityGate_NilDeck guards the nil-safe path — score_deck never
+// passes nil today, but the function is exported and callable from tests.
+func TestEvaluateQualityGate_NilDeck(t *testing.T) {
+	gate := EvaluateQualityGate(nil, nil, DefaultQualityGateCriteria())
+	if gate == nil {
+		t.Fatal("expected non-nil gate even for nil deck score")
+	}
+	if gate.Passed {
+		t.Errorf("nil deck should not pass the gate")
+	}
+}
+
+// TestQualityGate_ReasonOrderDeterministic ensures the reason list is
+// reproducibly ordered (score → P0 → P1 → takeaway → accent_overload) so
+// agents can pattern-match on the leading reason and the response_fingerprint
+// stays stable across runs of an identical input.
+func TestQualityGate_ReasonOrderDeterministic(t *testing.T) {
+	findings := []patterns.FitFinding{
+		{ValidationError: patterns.ValidationError{Path: "/slides/0/shape_grid", Code: patterns.ErrCodeAccentOverload}, Action: "review"},
+		{ValidationError: patterns.ValidationError{Path: "/slides/0", Code: patterns.ErrCodeTakeawayMissing}, Action: "review"},
+		{ValidationError: patterns.ValidationError{Path: "/slides/0/content/body", Code: "text_overflow"}, Action: "refuse"},
+		{ValidationError: patterns.ValidationError{Path: "/slides/0/content/body", Code: "text_overflow"}, Action: "shrink_or_split"},
+	}
+	ds := &DeckScore{OverallScore: 50}
+	gate := EvaluateQualityGate(ds, findings, DefaultQualityGateCriteria())
+	if gate.Passed {
+		t.Fatal("expected gate to fail")
+	}
+	wantOrder := []string{"score ", "P0 (refuse)", "P1 (shrink_or_split)", "missing takeaway", "accent_overload"}
+	if len(gate.Reasons) != len(wantOrder) {
+		t.Fatalf("reasons len = %d, want %d; got %v", len(gate.Reasons), len(wantOrder), gate.Reasons)
+	}
+	for i, want := range wantOrder {
+		if !contains(gate.Reasons[i], want) {
+			t.Errorf("reasons[%d] = %q, want substring %q", i, gate.Reasons[i], want)
+		}
+	}
+}
+
 func TestFormatTopCodes(t *testing.T) {
 	got := FormatTopCodes(nil)
 	if got != "no issues" {

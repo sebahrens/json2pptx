@@ -225,6 +225,24 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 | `repair_slide` | REPAIR | Apply targeted fixes to a single slide using the `Fix.Kind` vocabulary fit-report emits. For multi-slide fixes, run `propose_repairs` first to translate findings into ranked directives. |
 | `auto_repair` | REPAIR | Server-side convergence loop: each pass runs `generate→inspect→repair` against a configurable gate (`min_score`, `max_p0_findings`, `max_p1_findings`, `require_takeaway_on_charts`). Returns the final PPTX path plus a per-pass trace. Replaces hand-coded `generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation` loops. Default `max_passes` is 3; the final deck is always rendered, with `gate_passed` reporting whether convergence succeeded. |
 
+**Stop when the quality gate passes.** Every `score_deck` response carries a `quality_gate` block — the **machine-readable definition of done**:
+
+```json
+"quality_gate": {
+  "passed":   true,
+  "reasons":  [],
+  "criteria": {
+    "min_score":                  80,
+    "max_p0_findings":            0,
+    "max_p1_findings":            0,
+    "require_takeaway_on_charts": true,
+    "allow_accent_overload":      false
+  }
+}
+```
+
+When `quality_gate.passed === true`, the deck has cleared the ship-quality bar — **stop**. Do not chain another `propose_repairs` / `repair_slide` / `repair_slides_batch` / `auto_repair` call, do not render thumbnails to "double-check", and do not spend more tokens on aesthetic polish. When `passed === false`, `reasons[]` enumerates the unmet criteria in a stable order (`score → P0 → P1 → takeaway → accent_overload`) so you can address the highest-impact issue first. The criteria block is fixed by the server (not configurable on `score_deck`) so the gate cannot be relaxed at call time — agents that need a different threshold should call `auto_repair` (which exposes a tunable gate) instead. The same gate semantics apply inside the visual-QA loop: stop iterating once `quality_gate.passed` flips true on a `score_deck` pass.
+
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
 
 ---
