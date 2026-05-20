@@ -1,507 +1,124 @@
-# JSON Input Format Reference
+# JSON Input Format — Tutorial
 
-This document describes the complete JSON input format accepted by `go-slide-creator`. The input types are defined in `cmd/json2pptx/json_schema.go` and `cmd/json2pptx/json_mode.go`.
+`json2pptx` accepts a JSON object describing a presentation and renders it into a `.pptx` file. This page walks through the format with worked examples; for the **canonical list of fields, types, enums, and required-vs-optional flags**, query the schema directly.
 
-## Document Structure
+## Canonical schema (single source of truth)
 
-A presentation is defined by a single JSON object with a `template` name and an array of `slides`:
+- MCP: `get_input_schema` — returns the JSON Schema for `PresentationInput`, with `x-field-scope` (`deck` / `slide` / `content` / `shape` / `split`), inline `enum` arrays, and discriminator constraints. Digest-cacheable.
+- CLI: `json2pptx input-schema` — same payload, printed to stdout.
+
+Both are generated from the Go input structs in `cmd/json2pptx/json_schema.go`. This tutorial only describes shapes and gives examples; the schema is authoritative on field names, types, and required-vs-optional.
+
+## Minimum complete deck
 
 ```json
 {
   "template": "warm-coral",
-  "output_filename": "Q1_Review.pptx",
+  "output_filename": "review.pptx",
   "slides": [
     {
       "layout_id": "title",
       "content": [
-        {
-          "placeholder_id": "title",
-          "type": "text",
-          "text_value": "Q1 2026 Business Review"
-        }
+        {"placeholder_id": "title", "type": "text", "text_value": "Q1 Review"}
       ]
     }
   ]
 }
 ```
 
----
+A presentation is a top-level object with a `template` and a non-empty `slides` array. Each slide pins a layout via `layout_id` (canonical id, e.g. `title`, `content`, `two-column`, `section`, `blank`) or hints `slide_type` (`title`, `content`, `chart`, `section`, `two-column`, `diagram`, `image`, `comparison`, `blank`). At least one of the two must be set.
 
-## 1. Top-Level Schema (PresentationInput / JSONInput)
-
-| Field              | Required | Type            | Description                                                    |
-|--------------------|----------|-----------------|----------------------------------------------------------------|
-| `template`         | Yes      | string          | Template name (without `.pptx` extension)                      |
-| `output_filename`  | No       | string          | Desired output filename (default: `output.pptx`)               |
-| `design_mode`      | No       | string          | Generation mode: `"constrained"` (default) or `"free"`. Constrained mode rejects raw hex colors and absolute font sizes; free mode allows them for exploratory/artistic decks. The CLI flag `--design-mode=<value>` overrides this field for one-off runs without editing the JSON. |
-| `accent_strategy`  | No       | string          | Accent color rotation: `"primary"` (default), `"rotate"`, `"section-keyed"` |
-| `footer`           | No       | object          | Footer configuration (see below)                               |
-| `theme_override`   | No       | object          | Per-deck color and font overrides (see below)                  |
-| `slides`           | Yes      | array           | Array of slide definitions                                     |
-
-### Footer Configuration
-
-```json
-{
-  "footer": {
-    "enabled": true,
-    "left_text": "Acme Corp | Confidential"
-  }
-}
-```
-
-| Field       | Type    | Description                                              |
-|-------------|---------|----------------------------------------------------------|
-| `enabled`   | boolean | Master switch — when false, no footers are injected      |
-| `left_text` | string  | Left footer text (e.g., "Acme Corp \| Confidential")    |
-
-### Theme Override
-
-Override template colors and fonts for the entire deck:
-
-```json
-{
-  "theme_override": {
-    "colors": {
-      "accent1": "#E31837",
-      "accent2": "#2E75B6",
-      "dk1": "#000000",
-      "lt1": "#FFFFFF"
-    },
-    "title_font": "Georgia",
-    "body_font": "Arial"
-  }
-}
-```
-
-| Field        | Type              | Description                                                   |
-|--------------|-------------------|---------------------------------------------------------------|
-| `colors`     | map[string]string | Color overrides: `accent1`–`accent6`, `dk1`, `dk2`, `lt1`, `lt2`, `hlink`, `folHlink` |
-| `title_font` | string            | Font name for titles                                          |
-| `body_font`  | string            | Font name for body text                                       |
-
-### Accent Strategy
-
-Controls how the default accent color is chosen for patterns that don't specify an explicit `accent` override:
-
-```json
-{
-  "template": "midnight-blue",
-  "accent_strategy": "rotate",
-  "slides": [ ... ]
-}
-```
-
-| Value            | Behavior                                                                 |
-|------------------|--------------------------------------------------------------------------|
-| `"primary"`      | Always uses `accent1` (the default when omitted)                         |
-| `"rotate"`       | Round-robins through `accent1`–`accent6` by slide index                  |
-| `"section-keyed"`| Assigns one accent per section, wrapping at 6                            |
-
-Patterns with an explicit `accent` or `semantic_accent` override are not affected by this setting.
-
----
-
-## 2. Slide Schema (SlideInput)
-
-Each slide specifies a layout, content items, and optional metadata.
+## A typical content slide
 
 ```json
 {
   "layout_id": "content",
-  "slide_type": "content",
-  "content": [ ... ],
-  "speaker_notes": "Emphasize the Q4 recovery.",
-  "source": "Company Annual Report, FY2025",
-  "transition": "fade",
-  "transition_speed": "med",
-  "build": "bullets"
+  "content": [
+    {"placeholder_id": "title", "type": "text", "text_value": "Highlights"},
+    {"placeholder_id": "body",  "type": "bullets",
+     "bullets_value": ["Revenue +25%", "NPS at all-time high", "OpEx flat"]}
+  ],
+  "speaker_notes": "Hit the revenue point first."
 }
 ```
 
-| Field              | Required | Type   | Description                                                        |
-|--------------------|----------|--------|--------------------------------------------------------------------|
-| `layout_id`        | No       | string | Layout identifier — use a **canonical ID**: `title`, `content`, `two-column`, `blank`, `section`, `closing`, `image-left`, `image-right`, `quote`, `agenda`. Raw IDs like `"slideLayout1"` are accepted for backward compatibility but canonical IDs are strongly preferred — they are stable across templates. Display names like `"Title Slide"` are **not valid**. |
-| `slide_type`       | No       | string | Type hint: `content`, `title`, `section`, `chart`, `two-column`, `diagram`, `image`, `comparison`, `blank` |
-| `content`          | Yes      | array  | Array of content items for placeholders                            |
-| `shape_grid`       | No       | object | Grid of preset geometry shapes (see Shape Grid section)            |
-| `overlays`         | No       | array  | Slide-level overlay shapes (arrows, lines, badges) rendered on top of the grid. See Overlays section below. |
-| `background`       | No       | object | Slide background image (see Background section below)              |
-| `speaker_notes`    | No       | string | Speaker notes text (not rendered on slide)                         |
-| `source`           | No       | string | Source attribution text (small text at slide bottom)               |
-| `transition`       | No       | string | Slide transition: `fade`, `push`, `wipe`, `cover`, `cut`, `none`  |
-| `transition_speed` | No       | string | Transition speed: `slow`, `med`, `fast`                            |
-| `build`            | No       | string | Build animation: `"bullets"` for one-by-one bullet reveal          |
-| `contrast_check`   | No       | boolean | WCAG contrast enforcement for this slide. Default `true` — the engine auto-fixes low-contrast text. Set `false` to preserve exact color choices (e.g., artistic overlays on background images). This is a **slide-level** field, not a content-item property. |
+A slide's `content` array is a list of typed items, each targeting a placeholder by its canonical id (`title`, `subtitle`, `body`, `body_2`, `body_3`, `image`, `image_2`). The schema enforces the `type` → typed-value pairing via an `if`/`then` discriminator chain:
 
-Either `layout_id` or `slide_type` (or both) should be provided. `layout_id` takes precedence for layout selection.
+- `type: "text"`             → requires `text_value` (string)
+- `type: "bullets"`          → requires `bullets_value` (string array)
+- `type: "body_and_bullets"` → requires `body_and_bullets_value`
+- `type: "body_and_lead"`    → requires `body_and_lead_value`
+- `type: "bullet_groups"`    → requires `bullet_groups_value`
+- `type: "table"`            → requires `table_value`
+- `type: "chart"`            → requires `chart_value`
+- `type: "diagram"`          → requires `diagram_value`
+- `type: "image"`            → requires `image_value`
 
-**`blank` vs `content` — when to use each:**
+Other `*_value` fields are forbidden for the chosen type. The legacy raw `value` field is still accepted (unconstrained) for backward compatibility.
 
-| Layout | Placeholders | Use when |
-|--------|-------------|----------|
-| `content` | `title` + `body` | Slide content goes into the body placeholder (text, bullets, charts, tables, diagrams) |
-| `blank` | `title` only | Slide content is a `shape_grid` or `pattern` — there is no body placeholder; all visual content is rendered as positioned shapes below the title |
+## Inline formatting
 
-Use `content` when the engine should populate a body placeholder. Use `blank` (or `slide_type: "blank"`) when the slide's visual content comes from `shape_grid` or `pattern` — the engine auto-selects a blank layout with a title area and computes grid bounds below it.
+Text and bullet strings accept three inline tags: `<b>`, `<i>`, `<u>`. They can be nested: `<b><i>bold italic</i></b>`. Plain dashes/arrows (`→`, `•`, en/em dashes) are allowed; **emoji codepoints are rejected anywhere** in deck JSON.
 
-### Background
+## A custom visual: `shape_grid`
 
-Set a slide background image from a local file or URL:
+For slides where placeholders aren't expressive enough, use `shape_grid` on a `blank` layout:
 
 ```json
 {
-  "background": {
-    "image": "assets/hero-bg.png",
-    "fit": "cover"
-  }
-}
-```
-
-Or from a URL:
-
-```json
-{
-  "background": {
-    "url": "https://example.com/background.jpg",
-    "fit": "stretch"
-  }
-}
-```
-
-| Field   | Type   | Default  | Description                                     |
-|---------|--------|----------|-------------------------------------------------|
-| `image` | string | ---      | Local file path to background image             |
-| `url`   | string | ---      | HTTP/HTTPS URL to download background image     |
-| `fit`   | string | `cover`  | Sizing mode: `"cover"`, `"stretch"`, `"tile"`   |
-
-Only one of `image` or `url` should be set.
-
----
-
-## 3. Content Items (ContentInput)
-
-Each content item targets a placeholder and carries typed content. The `type` field determines which value field to use.
-
-```json
-{
-  "placeholder_id": "body",
-  "type": "bullets",
-  "bullets_value": ["Revenue up 25%", "Margins improved"]
-}
-```
-
-| Field            | Required | Type   | Description                                          |
-|------------------|----------|--------|------------------------------------------------------|
-| `placeholder_id` | Yes      | string | Target placeholder identifier                        |
-| `type`           | Yes      | string | Content type discriminator (see table below)         |
-| `value`          | No       | any    | Legacy value field (JSON raw message, for backward compatibility) |
-| `font_size`      | No       | number | Override font size in points (e.g., `72`). Only applies to text-based types. |
-
-### Content Types
-
-| Type                | Value Field              | Value Type       | Description                          |
-|---------------------|--------------------------|------------------|--------------------------------------|
-| `text`              | `text_value`             | string           | Plain or formatted text              |
-| `bullets`           | `bullets_value`          | string[]         | Bullet point list                    |
-| `body_and_bullets`  | `body_and_bullets_value` | object           | Body text followed by bullets        |
-| `bullet_groups`     | `bullet_groups_value`    | object           | Grouped bullets with section headers |
-| `table`             | `table_value`            | object           | Data table                           |
-| `chart`             | `chart_value`            | object           | SVG chart                            |
-| `diagram`           | `diagram_value`          | object           | Business diagram                     |
-| `image`             | `image_value`            | object           | Image file                           |
-
-For backward compatibility, the generic `value` field (raw JSON) is also accepted for all types.
-
----
-
-## 4. Inline Formatting
-
-Text and bullet string values support inline formatting tags:
-
-| Tag              | Effect      |
-|------------------|-------------|
-| `<b>text</b>`   | **Bold**    |
-| `<i>text</i>`   | *Italic*    |
-| `<u>text</u>`   | Underline   |
-
-Tags can be nested: `<b><i>bold italic</i></b>`.
-
-Example:
-```json
-{
-  "type": "bullets",
-  "bullets_value": [
-    "Revenue up <b>25%</b> year-over-year",
-    "Customer NPS: <i>all-time high</i>",
-    "<b><u>Action required</u></b>: review Q2 targets"
-  ]
-}
-```
-
----
-
-## 5. Content Type Details
-
-### Text
-
-```json
-{
-  "placeholder_id": "title",
-  "type": "text",
-  "text_value": "Q1 2026 Business Review"
-}
-```
-
-### Bullets
-
-```json
-{
-  "placeholder_id": "body",
-  "type": "bullets",
-  "bullets_value": [
-    "Revenue growth of <b>15%</b>",
-    "New market expansion",
-    "Team grew by 20%"
-  ]
-}
-```
-
-### Body and Bullets
-
-Combines introductory body text with a bullet list:
-
-```json
-{
-  "placeholder_id": "body",
-  "type": "body_and_bullets",
-  "body_and_bullets_value": {
-    "body": "Our company achieved significant growth in 2025.",
-    "bullets": [
-      "Revenue up 25%",
-      "Customer satisfaction at all-time high"
-    ],
-    "trailing_body": "We expect continued momentum in 2026."
-  }
-}
-```
-
-| Field           | Required | Description                              |
-|-----------------|----------|------------------------------------------|
-| `body`          | Yes      | Introductory text                        |
-| `bullets`       | Yes      | Array of bullet strings                  |
-| `trailing_body` | No       | Text after the bullets                   |
-
-### Bullet Groups
-
-Grouped bullets with section headers, for structured content like roadmaps:
-
-```json
-{
-  "placeholder_id": "body",
-  "type": "bullet_groups",
-  "bullet_groups_value": {
-    "body": "Product Roadmap",
-    "groups": [
-      {
-        "header": "Phase 1 - Foundation (Q1)",
-        "bullets": ["Core platform stabilization", "Performance optimization"]
-      },
-      {
-        "header": "Phase 2 - Growth (Q2-Q3)",
-        "bullets": ["New feature releases", "Partner integrations"]
-      }
-    ],
-    "trailing_body": "Timeline subject to board approval."
-  }
-}
-```
-
-| Field           | Required | Description                              |
-|-----------------|----------|------------------------------------------|
-| `body`          | No       | Optional introductory text               |
-| `groups`        | Yes      | Array of bullet group objects            |
-| `groups[].header` | No     | Bold section header                      |
-| `groups[].body` | No       | Group body text                          |
-| `groups[].bullets` | Yes   | Array of bullet strings                  |
-| `trailing_body` | No       | Text after all groups                    |
-
-### Table
-
-```json
-{
-  "placeholder_id": "body",
-  "type": "table",
-  "table_value": {
-    "headers": ["Metric", "Q3 Actual", "Q4 Target"],
+  "layout_id": "blank",
+  "content": [
+    {"placeholder_id": "title", "type": "text", "text_value": "Strategic Pillars"}
+  ],
+  "shape_grid": {
+    "columns": 3,
+    "gap": 4,
     "rows": [
-      ["Revenue", "$4.2M", "$5.0M"],
-      ["Margin", "62%", "65%"],
-      ["Customers", "380", "450"]
-    ],
-    "style": {
-      "header_background": "accent1",
-      "borders": "horizontal",
-      "striped": true
-    },
-    "column_alignments": ["left", "right", "right"]
+      {"cells": [
+        {"shape": {"geometry": "roundRect", "fill": "accent1",
+          "text": {"content": "Innovation\nR&D + emerging tech",
+                   "size": 12, "color": "lt1", "vertical_align": "ctr"}}},
+        {"shape": {"geometry": "roundRect", "fill": "accent2",
+          "text": {"content": "Growth\nNew markets",
+                   "size": 12, "color": "lt1", "vertical_align": "ctr"}}},
+        {"shape": {"geometry": "roundRect", "fill": "accent3",
+          "text": {"content": "Efficiency\nAutomation",
+                   "size": 12, "color": "lt1", "vertical_align": "ctr"}}}
+      ]}
+    ]
   }
 }
 ```
 
-| Field               | Required | Description                                              |
-|---------------------|----------|----------------------------------------------------------|
-| `headers`           | Yes      | Array of header cell strings                             |
-| `rows`              | Yes      | Array of row arrays (each cell is a string or object)    |
-| `style`             | No       | Table styling options                                    |
-| `column_alignments` | No       | Array of `"left"`, `"center"`, or `"right"`              |
+Each cell holds exactly one of: `shape`, `table`, `icon`, `image`, `diagram`, or `composite`. Cells can span columns/rows via `col_span` / `row_span`. Slide-level `overlays` can float arrows, lines, and badges over the grid; anchor them to cells by `(row, col, at)` or by percent-of-slide coordinates.
 
-**Cell format:** Each cell can be a plain string or an object with `content`, `col_span`, and `row_span`:
+## Named patterns (prefer over hand-built grids)
 
-```json
-{"content": "Category", "col_span": 2, "row_span": 1}
-```
+For common business slide shapes — KPI cards, process flows, BMC canvas, matrix-2x2, roadmap, strategy house, SCQA summary, agenda, comparison, pull-quote — use a named pattern instead of hand-authoring a `shape_grid`. Patterns are registered in `internal/patterns/` and discoverable via:
 
-**Style options:**
+- MCP: `list_patterns`, `show_pattern`, `expand_pattern`, `recommend_visual`
+- CLI: `json2pptx patterns list`
 
-| Field                | Values                                          | Default    |
-|----------------------|-------------------------------------------------|------------|
-| `header_background`  | `accent1`–`accent6`, `none`, or hex color       | `accent1`  |
-| `borders`            | `all`, `horizontal`, `outer`, `none`            | `all`      |
-| `striped`            | `true`, `false`                                 | `false`    |
-| `style_id`           | `@template-default`, raw OOXML GUID, or omit    | engine default |
-| `use_table_style`    | `true`, `false`                                 | `false`    |
+Pattern field shapes and overrides are documented in `docs/PATTERNS.md`.
 
-#### Table style resolution (`style_id`)
-
-The `style_id` field controls which OOXML table style is written into the
-generated slide. It accepts three kinds of values:
-
-| Value                  | Behavior |
-|------------------------|----------|
-| *(omitted or empty)*   | Uses the engine default style (Medium Style 2 – Accent 1). |
-| `"@template-default"`  | Resolves to the default table style declared in the template's `tableStyles.xml`. If the template declares no default, falls back to the engine default. This is the recommended value when you want tables to match the template's own visual identity without hard-coding a GUID. |
-| `"{GUID}"`             | A raw OOXML table style GUID (e.g. `"{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"`). Used as-is. |
-
-#### Delegating appearance to the table style (`use_table_style`)
-
-When `use_table_style` is `true`, the engine skips its own border and fill
-generation and lets the OOXML table style control all cell appearance — borders,
-header formatting, and banding. Combine with `style_id` to select which style
-takes effect:
-
-```json
-{
-  "style": {
-    "use_table_style": true,
-    "style_id": "@template-default"
-  }
-}
-```
-
-When `use_table_style` is `false` (the default), the engine applies
-`header_background`, `borders`, and `striped` as explicit overrides on top of
-the table style.
-
-### Chart
-
-Charts are rendered as SVG images and embedded in the slide.
+## Charts and diagrams
 
 ```json
 {
   "placeholder_id": "body",
   "type": "chart",
   "chart_value": {
-    "type": "bar",
-    "title": "Quarterly Revenue ($M)",
+    "type": "bar_chart",
+    "title": "Revenue by Quarter ($M)",
     "data": [
       {"label": "Q1", "value": 12},
-      {"label": "Q2", "value": 14},
-      {"label": "Q3", "value": 15},
-      {"label": "Q4", "value": 18}
-    ],
-    "width": 800,
-    "height": 600,
-    "style": {
-      "colors": ["#FF6384", "#36A2EB", "#FFCE56"],
-      "font_family": "Arial",
-      "show_legend": true,
-      "show_values": true,
-      "show_grid": true,
-      "background": "#FFFFFF"
-    }
+      {"label": "Q2", "value": 18}
+    ]
   }
 }
 ```
 
-#### Chart Types
-
-| Type            | Description                     |
-|-----------------|---------------------------------|
-| `bar`           | Vertical bar chart              |
-| `line`          | Line chart with markers         |
-| `pie`           | Pie chart                       |
-| `donut`         | Donut chart (pie with hole)     |
-| `area`          | Filled area chart               |
-| `radar`         | Radar/spider chart              |
-| `scatter`       | Scatter plot                    |
-| `bubble`        | Bubble chart (scatter + size)   |
-| `stacked_bar`   | Stacked bar chart               |
-| `grouped_bar`   | Grouped bar chart               |
-| `stacked_area`  | Stacked area chart              |
-| `waterfall`     | Waterfall chart (financial)     |
-| `funnel`        | Funnel chart (conversion)       |
-| `gauge`         | Gauge/meter chart               |
-| `treemap`       | Treemap chart                   |
-
-#### Chart Data Format
-
-**Flat map** (recommended for simple charts):
-
-```json
-"data": {"Q1": 100, "Q2": 150, "Q3": 180}
-```
-
-**Array of objects** (preserves display order):
-
-```json
-"data": [
-  {"label": "Q1", "value": 100},
-  {"label": "Q2", "value": 150}
-]
-```
-
-**Multi-series** (for `stacked_bar`, `grouped_bar`, `stacked_area`):
-
-```json
-"data": {"Q1": [10, 15, 8], "Q2": [12, 18, 9]},
-"series_labels": ["Product A", "Product B", "Product C"]
-```
-
-**Scatter/bubble** (for `scatter` and `bubble` charts):
-
-```json
-"data": [
-  {"x": 10, "y": 20},
-  {"x": 15, "y": 30, "size": 5}
-]
-```
-
-Both flat map and array-of-objects formats are fully supported. The array format is automatically converted to a flat map internally, preserving key order.
-
-#### Optional Chart Fields
-
-| Field      | Default | Description                                |
-|------------|---------|--------------------------------------------|
-| `title`    | —       | Chart title                                |
-| `width`    | 800     | Width in pixels                            |
-| `height`   | 600     | Height in pixels                           |
-| `fit_mode` | —       | `"stretch"`, `"contain"`, or `"cover"`     |
-| `style`    | —       | Styling overrides (colors, fonts, etc.)    |
-
-### Diagram
-
-Diagrams are rendered as SVG images for business visualizations.
+Supported chart types: `bar_chart`, `line_chart`, `pie_chart`, `donut_chart`, `area_chart`, `radar_chart`, `scatter_chart`, `bubble_chart`, `stacked_bar_chart`, `stacked_area_chart`, `grouped_bar_chart`, `waterfall`, `funnel_chart`, `gauge_chart`, `treemap_chart`.
 
 ```json
 {
@@ -509,574 +126,75 @@ Diagrams are rendered as SVG images for business visualizations.
   "type": "diagram",
   "diagram_value": {
     "type": "swot",
-    "title": "Company SWOT",
     "data": {
-      "strengths": ["Strong brand", "Loyal customers"],
-      "weaknesses": ["High costs"],
+      "strengths":     ["Strong brand", "Loyal customers"],
+      "weaknesses":    ["High costs"],
       "opportunities": ["Emerging markets"],
-      "threats": ["Competition"]
+      "threats":       ["Competition"]
     }
   }
 }
 ```
 
-#### Diagram Types
+Supported diagram types: `timeline`, `process_flow`, `pyramid`, `venn`, `swot`, `org_chart`, `gantt`, `matrix_2x2`, `porters_five_forces`, `house_diagram`, `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`, `heatmap`, `fishbone`, `pestel`, `panel_layout`. See `ChartSpec.type` and `DiagramSpec.type` in the schema for the authoritative list.
 
-**Business Strategy:**
+Charts and diagrams render to SVG and embed into the slide.
 
-| Type                     | Description                          | Key Data Fields                              |
-|--------------------------|--------------------------------------|----------------------------------------------|
-| `timeline`               | Horizontal timeline                  | `items[].{date, title, description}`         |
-| `process_flow`           | Linear process flow                  | `steps[].{title, description}`               |
-| `matrix_2x2`            | 2x2 matrix (effort vs impact)       | `{x_label, y_label, quadrants[]}`            |
-| `porters_five_forces`    | Porter's Five Forces                 | `{rivalry, new_entrants, substitutes, ...}`  |
-| `business_model_canvas`  | Business Model Canvas                | `{key_partners, key_activities, ...}`        |
-| `value_chain`            | Value chain analysis                 | `{primary[], support[]}`                     |
-| `pestel`                 | PESTEL analysis                      | `{political[], economic[], social[], ...}`   |
+## Theme override
 
-**Organizational:**
-
-| Type              | Description             | Key Data Fields                         |
-|-------------------|-------------------------|-----------------------------------------|
-| `nine_box_talent` | 9-box talent grid       | `{x_label, y_label, employees[]}`       |
-| `org_chart`       | Organizational chart    | `root.{name, title, children[]}`        |
-
-**General:**
-
-| Type            | Description                  | Key Data Fields                                   |
-|-----------------|------------------------------|---------------------------------------------------|
-| `swot`          | SWOT analysis                | `{strengths[], weaknesses[], opportunities[], threats[]}` |
-| `pyramid`       | Pyramid/hierarchy            | `levels[].{label, description}`                   |
-| `venn`          | Venn diagram (2-3 circles)   | `{circles[], intersections{}}`                    |
-| `house_diagram` | Strategy house               | `{roof, sections[], foundation}`                  |
-| `gantt`         | Gantt chart                  | `tasks[].{name, start, end}`                      |
-| `kpi_dashboard` | KPI metrics grid             | `metrics[].{label, value, delta, trend}`          |
-| `heatmap`       | Heatmap visualization        | `{rows[], columns[], values[][]}`                 |
-| `fishbone`      | Fishbone/Ishikawa diagram    | `{problem, categories[].{name, causes[]}}`        |
-| `panel_layout`  | Panel layout (columns, rows, stat cards, stylish panels) | `{layout, panels[].{title, body, icon}}` |
-
-#### Diagram Type Aliases
-
-| Alias          | Maps To               |
-|----------------|------------------------|
-| `process`      | `process_flow`         |
-| `flow`         | `process_flow`         |
-| `flowchart`    | `process_flow`         |
-| `org`          | `org_chart`            |
-| `orgchart`     | `org_chart`            |
-| `nine-box`     | `nine_box_talent`      |
-| `bmc`          | `business_model_canvas`|
-| `porter`       | `porters_five_forces`  |
-| `porters`      | `porters_five_forces`  |
-| `stat_cards`   | `panel_layout`         |
-| `panel`        | `panel_layout`         |
-
-### Image
+The deck's visual identity comes from the chosen `template`. Override deck-wide colors or fonts with `theme_override`:
 
 ```json
 {
-  "placeholder_id": "body",
-  "type": "image",
-  "image_value": {
-    "path": "images/architecture.png",
-    "alt": "System Architecture"
+  "theme_override": {
+    "colors": {"accent1": "#E31837"},
+    "title_font": "Georgia",
+    "body_font": "Arial"
   }
 }
 ```
 
-| Field  | Required | Description              |
-|--------|----------|--------------------------|
-| `path` | Yes      | File path or URL         |
-| `alt`  | No       | Alt text for the image   |
+In `design_mode: "constrained"` (the default), raw hex colors are restricted; switch to `design_mode: "free"` for exploratory/artistic decks.
 
----
+## Footer, page numbers, and structure
 
-## 6. Shape Grid
+`footer`, `chrome.page_numbers`, and `structure.sections` configure deck chrome and section grouping. See the schema for the full set; agents typically only set `footer.enabled` and `footer.left_text`.
 
-The `shape_grid` field on a slide defines a grid of preset geometry shapes for custom layouts. When `shape_grid` is present and no `layout_id` is specified (or `slide_type` is `"blank"` / `"virtual"`), the system automatically selects a suitable blank layout and computes grid bounds from the template's title and footer positions.
+## Patch input
 
-### Grid Definition (ShapeGridInput)
-
-```json
-{
-  "layout_id": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "Process Overview"}
-  ],
-  "shape_grid": {
-    "bounds": {"x": 5, "y": 18, "width": 90, "height": 72},
-    "gap": 2,
-    "columns": 3,
-    "rows": [
-      {
-        "cells": [
-          {
-            "shape": {
-              "geometry": "roundRect",
-              "fill": "#4472C4",
-              "text": {"content": "Step 1", "size": 14, "bold": true, "color": "#FFFFFF"}
-            }
-          },
-          {
-            "shape": {
-              "geometry": "roundRect",
-              "fill": "#5B9BD5",
-              "text": {"content": "Step 2", "size": 14, "color": "#FFFFFF"}
-            }
-          },
-          {
-            "shape": {
-              "geometry": "roundRect",
-              "fill": "#70AD47",
-              "text": {"content": "Step 3", "size": 14, "color": "#FFFFFF"}
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-| Field     | Type                | Required | Default      | Description                                                  |
-|-----------|---------------------|----------|--------------|--------------------------------------------------------------|
-| `bounds`  | object              | No       | Auto-derived | Bounding rectangle as percentages `{x, y, width, height}`   |
-| `gap`     | number              | No       | 0            | Uniform gap between cells (percentage)                       |
-| `col_gap` | number              | No       | `gap`        | Column-specific gap override (percentage of grid width)      |
-| `row_gap` | number              | No       | `gap`        | Row-specific gap override (percentage of grid height)        |
-| `columns` | number or number[]  | No       | Cell count   | Number of equal columns, or array of column width percentages |
-| `rows`    | array               | Yes      | —            | Array of row definitions                                     |
-
-**Bounds** (`{x, y, width, height}`): Slide-percentage coordinates (0–100). When omitted, bounds are auto-derived from the selected layout's title and footer placeholders.
-
-### Grid Cells (GridCellInput)
-
-Each cell holds exactly one content type (mutually exclusive): **shape**, **table**, **icon**, **image**, **diagram**, or **composite**.
-
-| Field       | Type    | Required | Default | Description                            |
-|-------------|---------|----------|---------|----------------------------------------|
-| `col_span`  | integer | No       | 1       | Number of columns this cell spans      |
-| `row_span`  | integer | No       | 1       | Number of rows this cell spans         |
-| `shape`     | object  | No       | —       | Preset geometry shape (ShapeSpecInput) |
-| `table`     | object  | No       | —       | Data table (same schema as content type `table`) |
-| `icon`      | object  | No       | —       | SVG icon (`{name | path | url | svg_data, alt, fill, position}`) — exactly one of `name`, `path`, `url`, `svg_data`. `svg_data` is inline SVG markup (no disk I/O; `fill` ignored). |
-| `image`     | object  | No       | —       | Image file (`{path, url, alt, fit, overlay, text}`) |
-| `diagram`   | object  | No       | —       | Chart or diagram (`DiagramSpec` — same schema as content type `diagram`) |
-| `composite` | object  | No       | —       | Composite stack cell — see [Composite Stack Cell](#composite-stack-cell-compositeinput) below |
-
-#### Composite Stack Cell (CompositeInput)
-
-`composite` packs a native text shape and an embedded sub-diagram into a single grid cell, split vertically. Use it for KPI + sparkline, headline + mini chart, callout + small diagram — anywhere you'd otherwise hand-split a cell into two adjacent column entries with brittle spans.
-
-| Field         | Type    | Required | Default  | Description                                                                 |
-|---------------|---------|----------|----------|-----------------------------------------------------------------------------|
-| `text`        | object  | Yes      | —        | Native text shape (ShapeSpecInput) — typically a `roundRect` or `rect` with text content |
-| `sub_diagram` | object  | Yes      | —        | Sub-diagram (DiagramSpec) — e.g., a sparkline `line_chart` or mini `bar_chart` |
-| `split`       | string  | No       | `"top"`  | Which half hosts the text shape: `"top"` (text on top, sub-diagram below) or `"bottom"` (text on bottom, sub-diagram above) |
-| `ratio`       | number  | No       | `0.5`    | Fraction of cell height allocated to the text portion. Must be in the open interval (0, 1). Example: `0.3` = text gets 30%, diagram gets 70% |
-
-**Mutual exclusion.** A composite cell must NOT also set `shape`, `table`, `icon`, `image`, or `diagram`. The validator emits a dedicated error naming the conflicting keys.
-
-**Resolution behavior.** A composite cell expands into two ResolvedCells at grid-resolution time, both sharing the same `(row, col)` index. A single accent_bar (if set on the cell) spans the entire outer rectangle, and connector targeting treats the pair as one logical cell. A small inter-half inset (~2pt) prevents the text shape and the sub-diagram from butting against each other.
-
-**Example — KPI + sparkline.**
-
-```json
-{
-  "composite": {
-    "text": {
-      "geometry": "roundRect",
-      "fill": "accent1",
-      "text": {"content": "$4.2M\nARR", "size": 24, "bold": true, "align": "ctr", "color": "lt1"}
-    },
-    "sub_diagram": {
-      "type": "line_chart",
-      "data": {"categories": ["Jan","Feb","Mar","Apr","May"], "series": [{"name": "ARR", "values": [3.1, 3.3, 3.7, 3.9, 4.2]}]}
-    },
-    "split": "top",
-    "ratio": 0.55
-  }
-}
-```
-
-### Shape Specification (ShapeSpecInput)
-
-| Field         | Type              | Required | Default | Description                                             |
-|---------------|-------------------|----------|---------|---------------------------------------------------------|
-| `geometry`    | string            | Yes      | —       | Preset geometry: `"rect"`, `"roundRect"`, `"ellipse"`, `"diamond"`, `"chevron"`, etc. |
-| `fill`        | string or object  | No       | —       | Fill color (`"#hex"`) or gradient object                |
-| `line`        | string or object  | No       | —       | Line color (`"#hex"`) or line style object              |
-| `text`        | string or object  | No       | —       | Text string shorthand, or full ShapeTextInput object    |
-| `rotation`    | number            | No       | 0       | Rotation in degrees                                     |
-| `adjustments` | object            | No       | —       | Preset geometry adjustment values                       |
-
-### Shape Text (ShapeTextInput)
-
-When `text` is a plain string, it is equivalent to `{"content": "..."}` with all defaults. The full object form:
-
-```json
-{
-  "text": {
-    "content": "Key Takeaway:\nStrong growth across all segments",
-    "size": 14,
-    "bold": true,
-    "italic": false,
-    "align": "ctr",
-    "vertical_align": "ctr",
-    "color": "#FFFFFF",
-    "font": "Arial",
-    "inset_left": 12,
-    "inset_right": 12,
-    "inset_top": 8,
-    "inset_bottom": 8
-  }
-}
-```
-
-| Field            | Type    | Required | Default    | Description                                              |
-|------------------|---------|----------|------------|----------------------------------------------------------|
-| `content`        | string  | Yes      | —          | Text content (supports `<b>`, `<i>`, `<u>` inline tags) |
-| `size`           | number  | No       | —          | Font size in points                                      |
-| `bold`           | boolean | No       | `false`    | Bold text                                                |
-| `italic`         | boolean | No       | `false`    | Italic text                                              |
-| `align`          | string  | No       | `"ctr"`    | Horizontal: `"l"` (left), `"ctr"` (center), `"r"` (right) |
-| `vertical_align` | string  | No       | `"ctr"`    | Vertical: `"t"` (top), `"ctr"` (middle), `"b"` (bottom) |
-| `color`          | string  | No       | —          | Text color: `"#hex"` or scheme name (e.g., `"lt1"`)     |
-| `font`           | string  | No       | `"+mn-lt"` | Font name, or `"+mn-lt"` (theme body) / `"+mj-lt"` (theme title) |
-| `inset_left`     | number  | No       | 0          | Left text inset in points                                |
-| `inset_right`    | number  | No       | 0          | Right text inset in points                               |
-| `inset_top`      | number  | No       | 0          | Top text inset in points                                 |
-| `inset_bottom`   | number  | No       | 0          | Bottom text inset in points                              |
-
-### Typography Best Practices for Shape Grids
-
-Use a consistent font size hierarchy across shape grid cells to create professional, readable slides. The recommended sizes follow consulting-style (Bain/McKinsey) conventions:
-
-| Role                    | Size (pt) | Weight  | Color                | Use Case                                      |
-|-------------------------|-----------|---------|----------------------|-----------------------------------------------|
-| Grid header / banner    | 14–18     | Bold    | White on accent fill | Full-width header row spanning all columns     |
-| Card title / headline   | 12–14     | Bold    | Dark text or white   | First line of a card (use `\n` to separate)    |
-| Card body text          | 9–11      | Regular | Dark text            | Descriptive content within a card              |
-| Numbering / step label  | 20–24     | Bold    | White on accent fill | Numbered step indicators in narrow columns     |
-| Footnote / source       | 7–8       | Regular | Grey (`#666666`)     | Source citations or disclaimers                |
-
-**Guidelines:**
-
-- **3-4 columns:** Use 11pt body text with 6pt insets
-- **5+ columns:** Reduce to 10pt body text with 4pt insets
-- **Header rows:** Use `col_span` to span all columns, 18% height, accent fill
-- **Card content:** Use `\n` to separate the bold title from body text within a single `content` string
-- **Insets:** Always set `inset_top`, `inset_left`, and `inset_right` on body text cells (6–12pt) to prevent text touching shape edges
-- **Alignment:** Headers use `"ctr"` / `"ctr"`, body cards use `"ctr"` / `"t"` or `"l"` / `"ctr"` depending on layout
-
-**Example — Consistent typography across a 4-column grid:**
-
-```json
-{
-  "shape_grid": {
-    "gap": 6,
-    "rows": [
-      {
-        "height": 18,
-        "cells": [
-          {
-            "col_span": 4,
-            "shape": {
-              "geometry": "rect",
-              "fill": "accent1",
-              "text": { "content": "Strategic Pillars", "size": 18, "bold": true, "color": "#FFFFFF", "align": "ctr", "vertical_align": "ctr" }
-            }
-          }
-        ]
-      },
-      {
-        "auto_height": true,
-        "cells": [
-          {
-            "shape": {
-              "geometry": "rect",
-              "fill": "lt2",
-              "text": { "content": "Innovation\n\nInvest in R&D and emerging technologies", "size": 11, "align": "ctr", "vertical_align": "t", "inset_top": 12, "inset_left": 6, "inset_right": 6 }
-            }
-          },
-          {
-            "shape": {
-              "geometry": "rect",
-              "fill": "lt2",
-              "text": { "content": "Growth\n\nExpand into new markets and segments", "size": 11, "align": "ctr", "vertical_align": "t", "inset_top": 12, "inset_left": 6, "inset_right": 6 }
-            }
-          },
-          {
-            "shape": {
-              "geometry": "rect",
-              "fill": "lt2",
-              "text": { "content": "Efficiency\n\nStreamline operations via automation", "size": 11, "align": "ctr", "vertical_align": "t", "inset_top": 12, "inset_left": 6, "inset_right": 6 }
-            }
-          },
-          {
-            "shape": {
-              "geometry": "rect",
-              "fill": "lt2",
-              "text": { "content": "Talent\n\nAttract and retain top performers", "size": 11, "align": "ctr", "vertical_align": "t", "inset_top": 12, "inset_left": 6, "inset_right": 6 }
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Example: Two-Column Grid with Table and Shape
-
-```json
-{
-  "slide_type": "blank",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "Q1 Financial Summary"}
-  ],
-  "shape_grid": {
-    "columns": [55, 45],
-    "gap": 2,
-    "rows": [
-      {
-        "cells": [
-          {
-            "table": {
-              "headers": ["Metric", "Value"],
-              "rows": [["Revenue", "$21M"], ["Growth", "+17%"]],
-              "style": {"header_background": "accent1", "borders": "horizontal"}
-            }
-          },
-          {
-            "shape": {
-              "geometry": "roundRect",
-              "fill": "#4472C4",
-              "text": {
-                "content": "<b>Key Takeaway</b>\nStrong growth across all segments",
-                "size": 14,
-                "color": "#FFFFFF",
-                "vertical_align": "ctr",
-                "inset_left": 12,
-                "inset_right": 12
-              }
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
----
-
-## 7. Slide Overlays
-
-The `overlays` field on a slide defines free-floating shapes rendered on top of the grid. Use overlays for things that grid cells can't express on their own: cross-cell arrows on a matrix, floating roof badges over a strategy-house tier, or callout pointers from a chart to a stat hero.
-
-### OverlayShape Fields
-
-| Field    | Required | Type     | Description |
-|----------|----------|----------|-------------|
-| `kind`   | Yes      | string   | `"arrow"` (line with triangle tailEnd), `"line"` (no arrowhead), `"badge"` (roundRect with optional text) |
-| `from`   | Yes      | object   | Start point — see `OverlayPoint` below. For badges, defines the top-left corner. |
-| `to`     | Conditional | object | End point. **Required** for `arrow`/`line`. **Optional** for `badge`: when present, defines bottom-right corner (overrides `width`/`height`). |
-| `color`  | No       | string   | Stroke color (arrow/line) or fill color (badge). Hex (`"FF0000"`) or scheme name (`"accent1"`). Defaults: `"000000"` for arrow/line, `"accent1"` for badge. |
-| `width`  | No       | number   | Arrow/line: stroke thickness in points (default 1.5). Badge (when `to` omitted): width as percent-of-slide-width (default 12). |
-| `height` | No       | number   | Badge (when `to` omitted): height as percent-of-slide-height (default 6). Ignored for arrow/line. |
-| `dash`   | No       | string   | Arrow/line dash style: `"solid"`, `"dash"`, `"dot"`, `"lgDash"`, `"dashDot"`. |
-| `text`   | No       | string   | Badge label text. Rendered centered, 12pt bold white. |
-
-### OverlayPoint
-
-Each `from` / `to` is an `OverlayPoint`. Specify either explicit percent coordinates **or** an `anchor_cell` reference (anchor wins when both are set):
-
-| Field         | Type   | Description |
-|---------------|--------|-------------|
-| `x`           | number | Percent of slide width (0–100). Used when `anchor_cell` is absent. |
-| `y`           | number | Percent of slide height (0–100). |
-| `anchor_cell` | object | Cell reference (overrides `x`/`y`). |
-
-### Anchor Cell
-
-`anchor_cell` references a cell in the slide's `shape_grid` by zero-based indices and selects a named point on its bounds:
-
-| Field | Type   | Description |
-|-------|--------|-------------|
-| `row` | int    | 0-based row index in the resolved grid. |
-| `col` | int    | 0-based column index. |
-| `at`  | string | One of `"center"` (default), `"top-left"`, `"top"`, `"top-right"`, `"right"`, `"bottom-right"`, `"bottom"`, `"bottom-left"`, `"left"`. |
-
-### Example: Diagonal Arrows on a 2x2 Matrix
-
-```json
-{
-  "shape_grid": {
-    "columns": 2,
-    "rows": [
-      { "cells": [
-        {"shape": {"geometry": "roundRect", "fill": "accent1", "text": "Low cost\nLow risk"}},
-        {"shape": {"geometry": "roundRect", "fill": "accent2", "text": "High cost\nLow risk"}}
-      ]},
-      { "cells": [
-        {"shape": {"geometry": "roundRect", "fill": "accent3", "text": "Low cost\nHigh risk"}},
-        {"shape": {"geometry": "roundRect", "fill": "accent4", "text": "High cost\nHigh risk"}}
-      ]}
-    ]
-  },
-  "overlays": [
-    {"kind": "arrow", "color": "dk1", "width": 3,
-     "from": {"anchor_cell": {"row": 0, "col": 0}},
-     "to":   {"anchor_cell": {"row": 1, "col": 1}}},
-    {"kind": "arrow", "color": "dk1", "width": 3, "dash": "dash",
-     "from": {"anchor_cell": {"row": 0, "col": 1}},
-     "to":   {"anchor_cell": {"row": 1, "col": 0}}},
-    {"kind": "badge", "color": "accent6", "text": "RECOMMENDED",
-     "width": 18, "height": 5,
-     "from": {"x": 41, "y": 4}}
-  ]
-}
-```
-
-Overlays render **after** the grid, so they always appear on top. Overlays may be used on slides without `shape_grid` too — in that case only percent-of-slide endpoints are valid (anchor_cell references would error).
-
----
-
-## Complete Example
-
-```json
-{
-  "template": "warm-coral",
-  "output_filename": "Q1_Business_Review.pptx",
-  "footer": {
-    "enabled": true,
-    "left_text": "Strategy Team | Confidential"
-  },
-  "slides": [
-    {
-      "slide_type": "title",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Q1 2026 Business Review"},
-        {"placeholder_id": "subtitle", "type": "text", "text_value": "Strategy Team"}
-      ]
-    },
-    {
-      "slide_type": "content",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Agenda"},
-        {
-          "placeholder_id": "body",
-          "type": "bullets",
-          "bullets_value": ["Financial performance", "Customer metrics", "Product roadmap", "Next steps"]
-        }
-      ],
-      "speaker_notes": "Keep this to 30 seconds, just an overview."
-    },
-    {
-      "slide_type": "chart",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Revenue by Quarter"},
-        {
-          "placeholder_id": "body",
-          "type": "chart",
-          "chart_value": {
-            "type": "bar",
-            "title": "2025-2026 Revenue ($M)",
-            "data": [
-              {"label": "Q1 '25", "value": 12},
-              {"label": "Q2 '25", "value": 14},
-              {"label": "Q3 '25", "value": 15},
-              {"label": "Q4 '25", "value": 18},
-              {"label": "Q1 '26", "value": 21}
-            ]
-          }
-        }
-      ],
-      "source": "Internal CRM, Dec 2025"
-    },
-    {
-      "slide_type": "content",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priorities"},
-        {
-          "placeholder_id": "body",
-          "type": "bullet_groups",
-          "bullet_groups_value": {
-            "groups": [
-              {
-                "header": "Near-term (Q2)",
-                "bullets": ["Launch enterprise tier", "Expand partner program"]
-              },
-              {
-                "header": "Medium-term (Q3-Q4)",
-                "bullets": ["International expansion", "Platform v2 architecture"]
-              }
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "slide_type": "section",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Appendix"}
-      ]
-    },
-    {
-      "slide_type": "content",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Detailed Financials"},
-        {
-          "placeholder_id": "body",
-          "type": "table",
-          "table_value": {
-            "headers": ["Metric", "Q4 '25", "Q1 '26", "Change"],
-            "rows": [
-              ["Revenue", "$18M", "$21M", "+17%"],
-              ["COGS", "$5.8M", "$6.7M", "+16%"],
-              ["Gross Profit", "$12.2M", "$14.3M", "+17%"],
-              ["OpEx", "$9.0M", "$10.1M", "+12%"],
-              ["Net Income", "$3.2M", "$4.2M", "+31%"]
-            ],
-            "style": {"header_background": "accent1", "borders": "horizontal", "striped": true}
-          }
-        }
-      ]
-    }
-  ]
-}
-```
-
----
-
-## Patch Input Format
-
-The system supports incremental modifications to a presentation via a patch input format. When the JSON input contains an `operations` array, it is automatically detected as a patch.
+Editing tools accept a *patch* envelope rather than a full `PresentationInput`:
 
 ```json
 {
   "base": {
     "template": "midnight-blue",
     "slides": [
-      {"layout_id": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original Title"}]},
+      {"layout_id": "title",   "content": [{"placeholder_id": "title", "type": "text", "text_value": "Original"}]},
       {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Slide 2"}]}
     ]
   },
   "operations": [
-    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "title", "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated Title"}]}},
-    {"op": "add", "slide_index": 2, "slide": {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New Slide"}]}},
-    {"op": "remove", "slide_index": 1}
+    {"op": "replace", "slide_index": 0, "slide": {"layout_id": "title",   "content": [{"placeholder_id": "title", "type": "text", "text_value": "Updated"}]}},
+    {"op": "add",     "slide_index": 2, "slide": {"layout_id": "content", "content": [{"placeholder_id": "title", "type": "text", "text_value": "New"}]}},
+    {"op": "remove",  "slide_index": 1}
   ]
 }
 ```
 
-### Patch Operations
+Operations are applied in order; indices are 0-based. The patch envelope is detected automatically when an input contains an `operations` array.
 
-| Operation | Description | Requires `slide` |
-|-----------|-------------|-------------------|
-| `replace` | Replace the slide at `slide_index` with the provided slide | Yes |
-| `add`     | Insert a new slide at `slide_index` (shifts subsequent slides right) | Yes |
-| `remove`  | Remove the slide at `slide_index` (shifts subsequent slides left) | No |
+## Validating before generating
 
-Operations are applied in order. Indices are 0-based.
+- CLI: `json2pptx validate <input.json>` — same validator the engine runs.
+- CLI: `json2pptx validate <input.json> -fit-report` — adds layout-fit diagnostics.
+- MCP: `validate_input` — wraps both.
+
+Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with severity and recommended action). The validator accepts both canonical and alias enum values for backward compatibility; the schema publishes only the canonical names.
+
+## Where to go next
+
+- `SLIDE_FORMAT.md` — even shorter quickstart.
+- `docs/PATTERNS.md` — named-pattern authoring guide.
+- `docs/FIT_FINDINGS.md` — finding-code catalogue.
+- `docs/STYLE_DEFAULTS.md` — deck-level defaults for table and cell styles.
+- `skills/generate-deck/` — agent-facing workflow, rules, and pattern recommendations.
