@@ -873,6 +873,39 @@ var outputSchemaRepairSlide = json.RawMessage(`{
   "required": ["patched_deck", "applied_fixes"]
 }`)
 
+// --- repair_slides_batch ---
+var outputSchemaRepairSlidesBatch = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "patched_deck": {"type": "object"},
+    "applied_fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slide_index":     {"type": "integer"},
+          "kind":            {"type": "string"},
+          "applied":         {"type": "boolean"},
+          "message":         {"type": "string"},
+          "code":            {"type": "string"},
+          "supported_kinds": {"type": "array", "items": {"type": "string"}},
+          "next_tool_call": {
+            "type": "object",
+            "properties": {
+              "tool":          {"type": "string"},
+              "args_template": {"type": "object"}
+            },
+            "required": ["tool", "args_template"]
+          }
+        },
+        "required": ["slide_index", "kind", "applied"]
+      }
+    },
+    "new_findings": {"type": "array", "items": {"type": "object"}}
+  },
+  "required": ["patched_deck", "applied_fixes"]
+}`)
+
 // --- table_density_guide ---
 var outputSchemaTableDensityGuide = json.RawMessage(`{
   "type": "object",

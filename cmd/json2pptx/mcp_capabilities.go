@@ -252,6 +252,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "describe_finding", AddedIn: "4.30.0"},
 		// Tools from 4.32.0
 		{Name: "preview_icon", AddedIn: "4.32.0"},
+		// Tools from 4.33.0
+		{Name: "repair_slides_batch", AddedIn: "4.33.0"},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries
@@ -545,6 +547,7 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpPreviewPlanTool,
 		mcpPreviewSlideWireframeTool,
 		mcpRepairSlideTool,
+		mcpRepairSlidesBatchTool,
 		mcpProposeRepairsTool,
 		mcpListTemplateSettingsTool,
 		mcpRegisterTemplateSettingTool,

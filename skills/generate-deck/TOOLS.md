@@ -39,7 +39,7 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 
 ### REPAIR (when fit-report or visual QA flags findings)
 
-- **MANDATORY** — `inspect_slide_images` **or** `render_slide_image` / `render_deck_thumbnails` (pixels are truth), `repair_slide` (apply targeted fixes using the `Fix.Kind` vocabulary). For multi-slide repair, prefer `propose_repairs` to translate findings into ranked directives.
+- **MANDATORY** — `inspect_slide_images` **or** `render_slide_image` / `render_deck_thumbnails` (pixels are truth), `repair_slide` (apply targeted fixes using the `Fix.Kind` vocabulary). For multi-slide repair, prefer `propose_repairs` to translate findings into ranked directives, then submit them via `repair_slides_batch` in a single round-trip.
 - **SKIPPABLE** — `render_slide_image_from_json` (skip full-deck generation; cached), `read_presentation` (inspection-only round-trip — **not** a `PresentationInput`), `validate_presentation_output` (redundant when `generate_presentation` defaults to `output_validation: "strict"`), `score_deck`, `describe_finding` (resolve unfamiliar finding codes in one call).
 
 ### Write tools (gated)
@@ -67,6 +67,7 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 | **Render one slide's resolved plan as an annotated wireframe (SVG + base64 PNG) without LibreOffice or ImageMagick** — paints the slide frame, layout placeholders, `shape_grid` cells, occupancy %, and per-cell fit-finding badges. Inputs mirror `preview_presentation_plan` plus required `slide_index` and optional `format` ∈ {`svg`, `png`, `both`}. | `preview_slide_wireframe` | (MCP-only) |
 | Generate the PPTX (accepts `strict_fit` + `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields) | `generate_presentation` | `json2pptx generate [--strict-unknown-keys]` |
 | Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
+| **Apply fixes to multiple slides in one call** — same `Fix.Kind` vocabulary as `repair_slide`, but accepts an ordered `fixes[]` array where each directive carries its own `slide_index`. Best-effort: a failed fix reports `applied:false` without aborting the batch. Returns the patched deck, per-directive outcomes (each with `slide_index`), and a fresh deck-wide fit report. Halves round-trips when a fit report flags multiple slides. | `repair_slides_batch` | (MCP-only) |
 | **Translate fit/visual QA findings into ranked `repair_slide` fix directives** — accepts FitFinding-shaped and visualqa-shaped findings (mixed input is fine). Returns directives grouped by slide and ranked by severity/action, plus a per-slide `batch_tool_call` ready to submit to `repair_slide`. Does **not** mutate the deck. Findings with no repair mapping (e.g. `image_quality`, `aspect_ratio`, `border_style`) are returned under `unmapped[]`. | `propose_repairs` | (MCP-only) |
 | Score a generated deck (0-100 with structured findings) — accepts optional `slide_indices: [int]` to render + score only the listed slides | `score_deck` | (CLI inlines) |
 | **Rank candidate slide_jsons for one slot without rendering** — predicts each candidate's score from static analysis plus a rhythm penalty for pattern runs at the target slide position. | `score_candidates` | `json2pptx score-candidates` |

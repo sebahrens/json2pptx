@@ -4,6 +4,22 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.33.0 (2026-05-20)
+
+### Added
+
+- **`repair_slides_batch` MCP tool.** Atomic multi-slide repair in a single
+  call. Accepts the same `presentation` payload as `repair_slide` plus an
+  ordered `fixes[]` array where each directive carries its own `slide_index`
+  alongside the existing `{kind, params}` shape. Fixes execute in order
+  through the same `applyRepairFix` engine, so the per-kind vocabulary is
+  identical to `repair_slide`; a failed fix is reported with
+  `applied: false` and does not abort the batch. Returns the patched deck,
+  one outcome per directive (including the targeted `slide_index`), and a
+  fresh deck-wide fit report after every fix has been applied. Halves
+  round-trip latency on multi-slide repair plans typically produced by
+  `propose_repairs`. (bd `go-slide-creator-5zmk`.)
+
 ## 4.32.0 (2026-05-20)
 
 ### Added

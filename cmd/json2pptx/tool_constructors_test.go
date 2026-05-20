@@ -52,6 +52,7 @@ func TestMCPToolConstructors(t *testing.T) {
 		{"register_template_setting", mcpRegisterTemplateSettingTool},
 		{"delete_template_setting", mcpDeleteTemplateSettingTool},
 		{"repair_slide", mcpRepairSlideTool},
+		{"repair_slides_batch", mcpRepairSlidesBatchTool},
 		{"preview_plan", mcpPreviewPlanTool},
 		{"score_deck", mcpScoreDeckTool},
 		{"inspect_slide_images", mcpInspectSlideImagesTool},

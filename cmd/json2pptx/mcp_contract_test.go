@@ -490,6 +490,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"preview_presentation_plan":  true,
 		"preview_slide_wireframe":    true,
 		"repair_slide":               true,
+		"repair_slides_batch":        true,
 		"propose_repairs":            true,
 		"table_density_guide":        true,
 		"resolve_theme":              true,
