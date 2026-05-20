@@ -59,8 +59,9 @@ var templates = []templateDef{
 		MajorFont:    "Calibri", MinorFont: "Calibri",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u25A0",
-		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
-		DataPalette:  []string{"accent1", "accent2", "accent3", "accent4", "accent6", "accent5"},
+		SurfaceTints:      map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
+		DataPalette:       []string{"accent1", "accent2", "accent3", "accent4", "accent6", "accent5"},
+		HideChromeOnTitle: true,
 	},
 	{
 		Name:         "forest-green",
@@ -522,13 +523,17 @@ func hideMasterChromeAttr(def templateDef) string {
 // alongside the title/body/footer placeholders. Forest Green ships an
 // analytical, data-heavy look (thin accent1 title underline + small accent3
 // corner brand mark). Warm Coral wears a full-width accent1 top bar above
-// the title. Every other theme keeps the legacy left-edge accent bar.
+// the title. Midnight Blue carries paired vertical left-edge bars (blue
+// accent1 + 0.5cm gap + thin yellow stripe). Every other theme keeps the
+// legacy left-edge accent bar.
 func chromeShapes(def templateDef) string {
 	switch def.Name {
 	case "forest-green":
 		return forestGreenChrome()
 	case "warm-coral":
 		return warmCoralChrome()
+	case "midnight-blue":
+		return midnightBlueChrome()
 	default:
 		return legacyAccentBarChrome(def)
 	}
@@ -616,6 +621,46 @@ func warmCoralChrome() string {
 			`<a:ln><a:noFill/></a:ln></p:spPr>`+
 			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
 		slideW, barH)
+}
+
+// midnightBlueChrome emits the midnight-blue theme's signature chrome per
+// go-slide-creator-kzt5: paired vertical bars on the left edge — an accent1
+// blue bar (0.4cm wide) flush against the slide edge, a 0.5cm gap of slide
+// background, then a thin yellow (#F4C430) stripe (0.2cm wide). Both bars
+// span the full slide height. They live on the slide master and are hidden
+// on Title Slide / Closing via def.HideChromeOnTitle (showMasterSp="0") so
+// the cover and closer stay clean.
+//
+// All master placeholders begin at x=838200 EMU, well clear of the bars'
+// rightmost edge at x=396000, so no layout overlap is possible.
+func midnightBlueChrome() string {
+	const (
+		slideH    = 6858000 // full 16:9 slide height
+		blueX     = 0
+		blueW     = 144000 // ~0.4cm
+		gapW      = 180000 // 0.5cm clear of slide background
+		yellowX   = blueX + blueW + gapW // 324000
+		yellowW   = 72000  // ~0.2cm
+		yellowHex = "F4C430"
+	)
+	var b strings.Builder
+	fmt.Fprintf(&b,
+		`<p:sp><p:nvSpPr><p:cNvPr id="7" name="Accent Bar"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
+			`<p:spPr><a:xfrm><a:off x="%d" y="0"/><a:ext cx="%d" cy="%d"/></a:xfrm>`+
+			`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`+
+			`<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>`+
+			`<a:ln><a:noFill/></a:ln></p:spPr>`+
+			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
+		blueX, blueW, slideH)
+	fmt.Fprintf(&b,
+		`<p:sp><p:nvSpPr><p:cNvPr id="8" name="Accent Stripe"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
+			`<p:spPr><a:xfrm><a:off x="%d" y="0"/><a:ext cx="%d" cy="%d"/></a:xfrm>`+
+			`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`+
+			`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`+
+			`<a:ln><a:noFill/></a:ln></p:spPr>`+
+			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
+		yellowX, yellowW, slideH, yellowHex)
+	return b.String()
 }
 
 func masterTextStyles(def templateDef) string {
