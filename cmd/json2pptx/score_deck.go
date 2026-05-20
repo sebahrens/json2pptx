@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -287,9 +288,44 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 	}
 
 	rhythm := analyzeDeckRhythm(slides)
+	compositionScore := rhythm.CompositionScore
 
 	// Always non-nil so JSON marshals as [] (not null) when no diagnostics.
 	diags := []deterministic.CompositionDiagnostic{}
+
+	// Flag duplicate titles on content slides (case-insensitive). Title and
+	// section-divider slides are exempt. Each duplicate group adds one
+	// diagnostic and lowers the composition score by 5 per occurrence beyond
+	// the first, capped at 30 so a single offending group can't sink the
+	// composition axis alone.
+	dupBeyondFirst, dupGroups, dupExamples := duplicateTitleSummary(slides)
+	if dupGroups > 0 {
+		penalty := 5 * dupBeyondFirst
+		if penalty > 30 {
+			penalty = 30
+		}
+		compositionScore -= penalty
+		if compositionScore < 0 {
+			compositionScore = 0
+		}
+		msg := fmt.Sprintf("%d content slide(s) repeat a title used earlier in the deck — distinct headlines improve audience comprehension", dupBeyondFirst)
+		if len(dupExamples) > 0 {
+			preview := dupExamples
+			if len(preview) > 3 {
+				preview = preview[:3]
+			}
+			quoted := make([]string, len(preview))
+			for i, t := range preview {
+				quoted[i] = fmt.Sprintf("%q", t)
+			}
+			msg += " (e.g., " + strings.Join(quoted, ", ") + ")"
+		}
+		diags = append(diags, deterministic.CompositionDiagnostic{
+			Code:     "duplicate_title",
+			Severity: "warning",
+			Message:  msg,
+		})
+	}
 
 	// Flag long pattern runs (3+).
 	for _, run := range rhythm.Aggregates.PatternRuns {
@@ -341,7 +377,7 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 	}
 
 	return &deterministic.CompositionResult{
-		Score:       rhythm.CompositionScore,
+		Score:       compositionScore,
 		Diagnostics: diags,
 	}
 }

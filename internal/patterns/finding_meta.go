@@ -466,6 +466,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleAfter:  `{"image_value": {"path": "team.png", "alt": "Leadership team standing on stage"}}`,
 		RelatedCodes:  []string{ErrCodeBodyTooLong},
 	},
+	ErrCodeDuplicateTitle: {
+		Code:        ErrCodeDuplicateTitle,
+		Summary:     "Two or more content slides share the same title (case-insensitive, whitespace-normalized).",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight duplicate-title pass groups title-placeholder text across non-title/section slides; emits the finding on the second and later occurrences of any normalized title. Title and section-divider slides are exempt because cover / Q&A / closing slides legitimately repeat phrasing.",
+		RemediationSteps: []string{
+			"Rename the headline so each content slide announces a distinct point.",
+			"Apply via repair_slide(kind=shorten_title) with a new title text, or hand-edit the slide's title content item.",
+			"If a section genuinely covers the same topic across multiple slides, prefix titles with subtopic differentiators (e.g., \"Pricing — Plans\", \"Pricing — Margins\").",
+		},
+		ExampleBefore: `slide 3 and slide 5 both titled "Next Steps"`,
+		ExampleAfter:  `slide 3 titled "Next Steps — Q3 Pilot", slide 5 titled "Next Steps — Q4 Rollout"`,
+		RelatedCodes:  []string{ErrCodeHeadlineTooLong, ErrCodeTitleWraps},
+	},
 
 	// ---- Chart data diagnostic codes ----
 

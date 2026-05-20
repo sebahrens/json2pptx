@@ -638,6 +638,40 @@ The finding never blocks render — it appears as a `review` action so agents th
 }
 ```
 
+### `DUPLICATE_TITLE`
+
+**Action:** `review`
+**Pattern:** *(none — deck-level content lint)*
+**Fix kind:** `shorten_title`
+
+Emitted when two or more content slides share the same title text after case-folding and collapsing whitespace runs. The earliest occurrence is treated as canonical and is not annotated — every later slide in the duplicate group carries the finding so agents can target the renaming work without re-touching the original.
+
+Slide selection:
+
+- Title slides (cover, "Thank You", "Q&A") and section dividers are exempt — these slide types legitimately repeat phrasing across decks and sections.
+- A slide is treated as a content slide when (a) its `slide_type` is set to anything other than `title` / `section`, or (b) it carries a `shape_grid`, `pattern`, or `compose` block, or (c) `inferSlideType` does not classify it as `title` / `section`.
+- An empty or whitespace-only title is ignored; the finding requires non-empty text.
+
+`fix.params` carry `duplicate_of_slide` (1-based slide number of the earliest occurrence), `duplicate_slide_numbers` (sorted 1-based slide numbers of every slide in the group), `duplicate_count` (group size), and `placeholder_id` (the title placeholder the duplicate text lives on) so the agent can quickly compose a rename without re-walking the deck.
+
+```json
+{
+  "path": "/slides/4/content/title",
+  "code": "DUPLICATE_TITLE",
+  "message": "slide 5: title duplicates slide 3 (3 slides share this title: 3, 5, 8); rename so each headline announces a distinct point",
+  "fix": {
+    "kind": "shorten_title",
+    "params": {
+      "duplicate_of_slide": 3,
+      "duplicate_slide_numbers": [3, 5, 8],
+      "duplicate_count": 3,
+      "placeholder_id": "title"
+    }
+  },
+  "action": "review"
+}
+```
+
 ### `contrast_predicted`
 
 **Action:** `info`

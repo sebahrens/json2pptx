@@ -91,6 +91,13 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// path/url/svg_data. Bundled icon names are exempt (implicit captions).
 	findings = append(findings, collectAltTextFindings(input)...)
 
+	// 10. Deck-level duplicate-title lint: flags content slides that share a
+	// title (case-insensitive, whitespace-normalized) so authors don't ship
+	// decks where multiple content slides announce the same point. Title and
+	// section-divider slides are exempt because cover/closing slides
+	// legitimately repeat phrasing.
+	findings = append(findings, collectDuplicateTitleFindings(input)...)
+
 	// Deduplicate findings that share (Code, Path, Action, Message). This guards
 	// against the case where a pre-compose detector and the post-compose
 	// structural pass both emit the same diagnostic for one cell — the

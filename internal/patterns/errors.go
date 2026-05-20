@@ -49,6 +49,7 @@ const (
 	ErrCodeBodyTooLong       = "BODY_TOO_LONG"
 	ErrCodeBulletNestingDeep = "BULLET_NESTING_DEEP"
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
+	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
 
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced     = "chart_value_coerced"
@@ -122,6 +123,7 @@ var (
 	ErrBodyTooLong       = errors.New("body text block exceeds word count budget")
 	ErrBulletNestingDeep = errors.New("bullet list nests more than two levels deep")
 	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
+	ErrDuplicateTitle    = errors.New("slide title duplicates another content slide's title")
 
 	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred    = errors.New("chart data shape inferred from flat input")
@@ -183,6 +185,7 @@ var codeSentinel = map[string]error{
 	ErrCodeBodyTooLong:           ErrBodyTooLong,
 	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,
 	ErrCodeMissingAltText:        ErrMissingAltText,
+	ErrCodeDuplicateTitle:        ErrDuplicateTitle,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,

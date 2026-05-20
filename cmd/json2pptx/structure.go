@@ -185,7 +185,10 @@ func applyStructureExpansion(input *PresentationInput) []diagnostics.Diagnostic 
 }
 
 // validateStructure checks for structural grammar issues and returns warnings.
-// Currently checks for missing closing slide when cover is present.
+// Currently checks for missing closing slide when cover is present and flags
+// content slides that share a title (case-insensitive). Title and
+// section-divider slides are exempt from the duplicate-title check because
+// cover/closing/divider slides legitimately repeat phrasing.
 func validateStructure(input *PresentationInput) []string {
 	var warnings []string
 
@@ -193,16 +196,13 @@ func validateStructure(input *PresentationInput) []string {
 		if input.Structure.Cover != nil && input.Structure.Closing == nil {
 			warnings = append(warnings, "structure: cover slide present but no closing slide — consider adding a closing slide for symmetry")
 		}
-		return warnings
-	}
-
-	// For flat slides, detect cover/closing asymmetry
-	if len(input.Slides) > 0 {
+	} else if len(input.Slides) > 0 {
+		// For flat slides, detect cover/closing asymmetry.
 		hasCover := false
 		hasClosing := false
 
 		// First slide with type "title" = cover
-		if len(input.Slides) > 0 && inferSlideType(input.Slides[0]) == "title" {
+		if inferSlideType(input.Slides[0]) == "title" {
 			hasCover = true
 		}
 
@@ -214,6 +214,13 @@ func validateStructure(input *PresentationInput) []string {
 		if hasCover && !hasClosing {
 			warnings = append(warnings, "deck has a cover slide but no closing slide — consider adding a closing/thank-you slide")
 		}
+	}
+
+	if dupBeyondFirst, dupGroups, _ := duplicateTitleSummary(input.Slides); dupGroups > 0 {
+		warnings = append(warnings, fmt.Sprintf(
+			"deck has %d content slide title(s) duplicating an earlier slide title across %d title group(s) — rename so each headline announces a distinct point",
+			dupBeyondFirst, dupGroups,
+		))
 	}
 
 	return warnings
