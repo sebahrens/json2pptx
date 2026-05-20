@@ -560,6 +560,8 @@ json2pptx skill-info --mode=full --template=midnight-blue
 json2pptx template-check templates/midnight-blue.pptx     # conformance against docs/TEMPLATE_SPEC.md
 ```
 
+Every file shipped under `templates/` is gated by `internal/template/conformance_corpus_test.go`, which runs as part of `go test ./...` and asserts zero `FAIL` and zero `WARN`. See [CONTRIBUTING.md → "Adding a Template"](CONTRIBUTING.md#adding-a-template) for the procedure and the sha256-keyed allow-list mechanism for legacy known-exceptions.
+
 ### Creating a Custom Template
 
 Any `.pptx` file can serve as a template. Open PowerPoint (or Keynote, Google Slides, LibreOffice Impress), design your slides in **Slide Master** view, save as `.pptx`. json2pptx analyzes the layouts at runtime and maps your JSON content to the right placeholders.

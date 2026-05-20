@@ -180,6 +180,39 @@ go test ./... -cover -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
 
+## Adding a Template
+
+Every file under `templates/*.pptx` MUST pass `json2pptx template-check` with **zero FAIL and zero WARN** before it ships. The gate is enforced by the corpus test `internal/template/conformance_corpus_test.go`, which runs as part of `go test ./...` (and therefore on every PR in CI).
+
+### Checklist
+
+1. Build the template (see `docs/TEMPLATE_SPEC.md` for the required layouts, placeholders, theme colors, and fonts).
+2. Run the conformance check locally:
+
+   ```bash
+   json2pptx template-check templates/<your-template>.pptx
+   ```
+
+   Iterate until the output is `PASS` with zero `[WARN]` and zero `[FAIL]` lines.
+3. Add the file under `templates/` and confirm the corpus test passes:
+
+   ```bash
+   go test ./internal/template/ -run TestConformanceCorpus -v
+   ```
+
+4. If you genuinely cannot reach a clean check today (e.g. a legacy designer template whose repair is tracked in a separate issue), add an entry to `internal/template/testdata/conformance_allowlist.json`:
+
+   ```json
+   {
+     "template": "<filename>.pptx",
+     "sha256": "<sha256 from `template-check --json`>",
+     "tracking_issue": "<bd issue id>",
+     "reason": "<one-sentence explanation of what's broken>"
+   }
+   ```
+
+   The allow-list is keyed by sha256. As soon as the template is repaired its sha256 changes, the allow-list entry no longer matches, and the conformance gate is automatically re-engaged. The allow-list MUST shrink over time, not grow.
+
 ## Pull Request Process
 
 ### Branch Naming

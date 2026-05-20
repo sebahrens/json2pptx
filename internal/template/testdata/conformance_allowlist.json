@@ -1,0 +1,60 @@
+{
+  "$schema_version": 1,
+  "comment": "Allow-list for internal/template/conformance_corpus_test.go. Templates whose sha256 appears in 'exceptions' are exempt from the zero-FAIL / zero-WARN gate. Each entry MUST cite a tracking issue and SHOULD be removed once the template is repaired (the sha256 will then no longer match, restoring the gate). Use `json2pptx template-check --json <file>` to read the sha256. The list MUST be empty once go-slide-creator-vqad and its children land.",
+  "exceptions": [
+    {
+      "template": "abstract.pptx",
+      "sha256": "a3d0a6f432df45c13f26c1f2923416672b2eb601bc5e6e30bac22cd6ad45eb3f",
+      "tracking_issue": "go-slide-creator-lenc",
+      "reason": "Designer template: Title Slide missing subtitle; missing Two Content, Blank, Blank+Title; Section Number not named. Repair under parent go-slide-creator-vqad."
+    },
+    {
+      "template": "blue-corporate.pptx",
+      "sha256": "d9ccc95a09689ea70879d4713aea9fabf9659d2726864fc5e5fa51efbd5162a7",
+      "tracking_issue": "go-slide-creator-pxdp",
+      "reason": "Designer template: no native Title Slide; Section Divider lacks title; Blank/Blank+Title missing. Repair under parent go-slide-creator-vqad."
+    },
+    {
+      "template": "business-template.pptx",
+      "sha256": "ad9957767676406c21d2e0955d2adaece2a2ff2c0fe103cf4db8a61428c5ce86",
+      "tracking_issue": "go-slide-creator-mzhu",
+      "reason": "Designer template: missing Two Content, Section Divider, Blank, Blank+Title, Closing; Title Slide lacks subtitle. Repair under parent go-slide-creator-vqad."
+    },
+    {
+      "template": "forest-green.pptx",
+      "sha256": "2083345d452eece39221ac53954d4f2be0c151067b06975639f39e3974b9cdb5",
+      "tracking_issue": "go-slide-creator-vqad",
+      "reason": "Programmatic template: passes template-check at the FAIL level but emits one WARN (Section Number placeholder missing). Repair as part of vqad sweep."
+    },
+    {
+      "template": "midnight-blue.pptx",
+      "sha256": "7a2ae024b91e75d6dde4d945e35b1d60ae5b8ce32556b05003649ac7b1fd427a",
+      "tracking_issue": "go-slide-creator-vqad",
+      "reason": "Programmatic template: passes template-check at the FAIL level but emits one WARN (Section Number placeholder missing). Repair as part of vqad sweep."
+    },
+    {
+      "template": "modern-template.pptx",
+      "sha256": "f4240729d288d5a331431aff82d8830ce56636ba5d7e62dc62acd898178363ba",
+      "tracking_issue": "go-slide-creator-iy2k",
+      "reason": "Designer template: missing Two Content, Blank, Blank+Title. Repair under parent go-slide-creator-vqad."
+    },
+    {
+      "template": "modern-yellow.pptx",
+      "sha256": "fe0cfdb61cf84486a407155153809e398feb7fefff79807d83e21bfee12114d0",
+      "tracking_issue": "go-slide-creator-9gxk",
+      "reason": "Designer template: Title Slide lacks subtitle; missing 5 layouts; theme dk1=#FFFFFF (polarity wrong). Repair under parent go-slide-creator-vqad."
+    },
+    {
+      "template": "modern.pptx",
+      "sha256": "d8cd3e028b7d90de78b092b205309bcc8dfb12b3b276548b6ecad6188ab965c7",
+      "tracking_issue": "go-slide-creator-4wvi",
+      "reason": "Designer template: missing Two Content, Section Divider, Blank, Blank+Title, Closing. Repair under parent go-slide-creator-vqad."
+    },
+    {
+      "template": "warm-coral.pptx",
+      "sha256": "c4c1651c48ef16fd36f712c18c645b79a501d0e3d162f409388487b29741b950",
+      "tracking_issue": "go-slide-creator-vqad",
+      "reason": "Programmatic template: passes template-check at the FAIL level but emits one WARN (Section Number placeholder missing). Repair as part of vqad sweep."
+    }
+  ]
+}
