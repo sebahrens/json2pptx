@@ -130,9 +130,11 @@ func runMCP() error {
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
-	// Advertise compact_responses as an experimental server capability.
-	// Clients that send experimental.compact_responses: true in their
-	// initialize request will receive compact (non-indented) JSON responses.
+	// The server advertises experimental.compact_responses: true in its
+	// initialize response; compaction itself is controlled by client opt-in
+	// (the client sends experimental.compact_responses: true in its
+	// capabilities) or the deprecated MCP_COMPACT_RESPONSES=1 environment
+	// variable.
 	hooks := &server.Hooks{}
 	hooks.AddAfterInitialize(func(_ context.Context, _ any, _ *mcp.InitializeRequest, result *mcp.InitializeResult) {
 		if result.Capabilities.Experimental == nil {

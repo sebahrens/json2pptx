@@ -147,6 +147,59 @@ func TestSkillMdMentionsEveryRepairFixKind(t *testing.T) {
 	}
 }
 
+// TestCompactResponsesPhrasingMatchesRuntime guards against drift between the
+// agent-facing skill (SKILL.md), contributor-facing docs (FIT_FINDINGS.md), and
+// the Go source comments that describe the compact_responses handshake. The
+// runtime contract is: the server advertises the capability unconditionally,
+// but the response is only compacted when the client opts in (or the
+// deprecated env var is set). All four locations must state the same thing,
+// so an agent reading SKILL.md models the same behavior the engine implements.
+func TestCompactResponsesPhrasingMatchesRuntime(t *testing.T) {
+	// The canonical sentence — normalized form (backticks stripped, whitespace
+	// collapsed, lowercased) must appear in every location below.
+	const canonical = "the server advertises experimental.compact_responses: true in its initialize response; compaction itself is controlled by client opt-in (the client sends experimental.compact_responses: true in its capabilities) or the deprecated mcp_compact_responses=1 environment variable"
+
+	repoRoot := filepath.Join("..", "..")
+	locations := []string{
+		filepath.Join(repoRoot, "skills", "generate-deck", "SKILL.md"),
+		filepath.Join(repoRoot, "docs", "FIT_FINDINGS.md"),
+		filepath.Join(repoRoot, "cmd", "json2pptx", "mcp.go"),
+		filepath.Join(repoRoot, "internal", "api", "mcp_encode.go"),
+	}
+
+	for _, path := range locations {
+		path := path
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			norm := normalizeForDrift(string(data))
+			if !strings.Contains(norm, canonical) {
+				t.Errorf("%s does not contain the canonical compact_responses sentence.\n"+
+					"All four locations (SKILL.md, docs/FIT_FINDINGS.md, cmd/json2pptx/mcp.go, "+
+					"internal/api/mcp_encode.go) must carry identical phrasing of the handshake "+
+					"contract — server advertises the capability; compaction is gated on client "+
+					"opt-in or the deprecated env var. Update this file (or update the canonical "+
+					"string in this test if the contract itself changed).\n"+
+					"Expected substring (normalized): %q", path, canonical)
+			}
+		})
+	}
+}
+
+// normalizeForDrift strips comment markers, backticks, and collapses whitespace
+// so the same sentence can be compared across Markdown prose and Go comments.
+func normalizeForDrift(s string) string {
+	s = strings.ToLower(s)
+	// Strip Go comment markers and Markdown backticks.
+	for _, sub := range []string{"//", "/*", "*/", "`"} {
+		s = strings.ReplaceAll(s, sub, " ")
+	}
+	// Collapse whitespace.
+	return strings.Join(strings.Fields(s), " ")
+}
+
 func TestSkillMdTemplateGuideCrossRefResolves(t *testing.T) {
 	for _, skillPath := range skillMdPaths(t) {
 		skillPath := skillPath

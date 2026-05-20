@@ -808,6 +808,4 @@ Findings are printed to stderr grouped by slide. Exit code is nonzero only if an
 
 ### Compact Responses
 
-MCP clients can negotiate compact (non-indented) JSON output via capability negotiation. Send `experimental.compact_responses: true` in the client capabilities during the MCP `initialize` handshake. The server advertises support for this in its own `experimental` capabilities.
-
-The `MCP_COMPACT_RESPONSES=1` environment variable is still honored as a fallback but is deprecated and will be removed in a future release.
+The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.

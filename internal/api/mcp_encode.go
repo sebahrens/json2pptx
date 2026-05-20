@@ -10,13 +10,11 @@ import (
 
 // MarshalMCPResponse serializes v for MCP tool output.
 //
-// Compact mode (no indentation) is enabled when EITHER:
-//   - The client negotiated compact_responses during MCP initialization
-//     (experimental.compact_responses capability), OR
-//   - The MCP_COMPACT_RESPONSES=1 environment variable is set (deprecated;
-//     will be removed in a future release).
-//
-// Otherwise it uses json.MarshalIndent with two-space indentation.
+// The server advertises experimental.compact_responses: true in its
+// initialize response; compaction itself is controlled by client opt-in (the
+// client sends experimental.compact_responses: true in its capabilities) or
+// the deprecated MCP_COMPACT_RESPONSES=1 environment variable. When neither
+// is set the response is indented with two spaces.
 func MarshalMCPResponse(ctx context.Context, v any) ([]byte, error) {
 	if isCompactSession(ctx) || os.Getenv("MCP_COMPACT_RESPONSES") == "1" {
 		return json.Marshal(v)
