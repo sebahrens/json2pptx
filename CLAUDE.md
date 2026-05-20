@@ -151,6 +151,7 @@ examples/         # Example JSON input files (19 decks)
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split); falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison with optional headers |
 | `icon-row` | Horizontal row of icon+caption pairs |
+| `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
 | `kpi-2up` | Two big-number KPI cards with short captions |
 | `kpi-3up` | Three big-number KPI cards with short captions |
 | `kpi-4up` | Four big-number KPI cards with short captions |

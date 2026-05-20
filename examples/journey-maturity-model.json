@@ -1,0 +1,68 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "journey-maturity-model.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Digital Maturity Model"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Five stages, current position highlighted"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "5-stage capability maturity (current: Defined)"}
+      ],
+      "pattern": {
+        "name": "journey-maturity-model",
+        "values": {
+          "stages": [
+            {"label": "Initial", "description": "Ad hoc processes; no formal practices in place."},
+            {"label": "Developing", "description": "Repeatable practices; informal governance."},
+            {"label": "Defined", "description": "Standardised practices; documented playbooks.", "current": true},
+            {"label": "Managed", "description": "Quantitatively measured outcomes; continuous review."},
+            {"label": "Optimising", "description": "Continuous improvement embedded across the organisation."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Minimal 4-stage form (no current marker)"}
+      ],
+      "pattern": {
+        "name": "journey-maturity-model",
+        "values": {
+          "stages": [
+            {"label": "Aware", "description": "Pockets of awareness; no shared language."},
+            {"label": "Adopting", "description": "Lighthouse projects underway; tools in pilot."},
+            {"label": "Scaling", "description": "Standardised across business units."},
+            {"label": "Embedded", "description": "Practices guide every major decision."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "3-stage transformation journey (current: Adopting)"}
+      ],
+      "pattern": {
+        "name": "journey-maturity-model",
+        "values": {
+          "stages": [
+            {"label": "Exploring", "description": "Discovery and proof-of-concept work."},
+            {"label": "Adopting", "description": "First production workloads; team training in progress.", "current": true},
+            {"label": "Scaling", "description": "Standard pattern across the organisation."}
+          ]
+        },
+        "overrides": {
+          "accent": "accent3"
+        }
+      }
+    }
+  ]
+}

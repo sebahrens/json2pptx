@@ -325,6 +325,24 @@ var rules = []rule{
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
 	},
 
+	// Journey maturity model — N-stage horizontal maturity ladder with current-state marker
+	{
+		pattern:   "journey-maturity-model",
+		keywords:  []string{"maturity model", "maturity ladder", "maturity stages", "maturity progression", "capability maturity", "digital maturity", "transformation maturity"},
+		baseScore: 0.92,
+		rationale: "Horizontal maturity ladder with 3-6 named stages, per-stage description, and a 'where we are' marker for the current state",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "journey-maturity-model",
+		keywords:  []string{"customer journey", "transformation journey", "maturity assessment", "maturity curve", "maturity stage", "where we are", "current state"},
+		baseScore: 0.78,
+		rationale: "Maturity-journey ladder when content describes ordered stages with descriptions and highlights a single present state",
+		itemMin:   3,
+		itemMax:   6,
+	},
+
 	// Swimlane
 	{
 		pattern:   "swimlane",

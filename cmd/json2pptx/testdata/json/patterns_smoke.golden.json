@@ -138,5 +138,14 @@
       3,
       3
     ]
+  },
+  {
+    "pattern_name": "journey-maturity-model",
+    "row_count": 3,
+    "cell_counts": [
+      5,
+      5,
+      5
+    ]
   }
 ]

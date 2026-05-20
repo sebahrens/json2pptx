@@ -302,6 +302,24 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Digital Maturity Model"}
+      ],
+      "pattern": {
+        "name": "journey-maturity-model",
+        "values": {
+          "stages": [
+            {"label": "Initial", "description": "Ad hoc processes; no formal practices in place."},
+            {"label": "Developing", "description": "Repeatable practices; informal governance."},
+            {"label": "Defined", "description": "Standardised practices; documented playbooks.", "current": true},
+            {"label": "Managed", "description": "Quantitatively measured outcomes; continuous review."},
+            {"label": "Optimising", "description": "Continuous improvement embedded across the organisation."}
+          ]
+        }
+      }
     }
   ]
 }
