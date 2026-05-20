@@ -1,0 +1,51 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "team-bios.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Meet The Team"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Engagement leads for the transformation programme"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Core Engagement Team"}
+      ],
+      "pattern": {
+        "name": "team-bios",
+        "values": {
+          "members": [
+            {"name": "Jane Smith", "role": "Project Lead", "bio": "10 years in supply-chain strategy. Previously at McKinsey."},
+            {"name": "Arun Patel", "role": "Lead Engineer", "bio": "Built data platforms at two scale-ups. MIT alumnus."},
+            {"name": "Lila Romero", "role": "Design Lead", "bio": "Service-design specialist. Ex-IDEO, ex-Frog."},
+            {"name": "Tom Becker", "role": "Client Partner", "bio": "Account director for top-10 retailers. Frankfurt office."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Extended Leadership Bench"}
+      ],
+      "pattern": {
+        "name": "team-bios",
+        "values": {
+          "members": [
+            {"name": "Jane Smith", "role": "Project Lead", "bio": "10 years in supply-chain strategy."},
+            {"name": "Arun Patel", "role": "Lead Engineer", "bio": "Built data platforms at two scale-ups."},
+            {"name": "Lila Romero", "role": "Design Lead", "bio": "Service-design specialist. Ex-IDEO."},
+            {"name": "Tom Becker", "role": "Client Partner", "bio": "Account director for top-10 retailers."},
+            {"name": "Mei Wong", "role": "Data Scientist", "bio": "Forecasting models for retail demand."},
+            {"name": "Pedro Alvarez", "role": "Program Manager", "bio": "PMO lead for cross-border rollouts."},
+            {"name": "Hana Sato", "role": "Engagement Manager", "bio": "Public sector engagements in EMEA."},
+            {"name": "Ravi Iyer", "role": "Solution Architect", "bio": "Cloud architecture across hyperscalers."}
+          ]
+        }
+      }
+    }
+  ]
+}

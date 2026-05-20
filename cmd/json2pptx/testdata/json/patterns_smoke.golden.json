@@ -122,5 +122,13 @@
       1,
       2
     ]
+  },
+  {
+    "pattern_name": "team-bios",
+    "row_count": 2,
+    "cell_counts": [
+      4,
+      4
+    ]
   }
 ]

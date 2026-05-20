@@ -57,7 +57,8 @@ func TestRecommend_EvalSet(t *testing.T) {
 
 		// Card grid
 		{intent: "grid of 6 category cards", hints: &ContentHints{ItemCount: 6}, wantTop: "card-grid"},
-		{intent: "team overview cards", hints: nil, wantTop: "card-grid"},
+		// Team-bios specifically handles "our people" / "team overview" slides.
+		{intent: "team overview cards", hints: nil, wantTop: "team-bios"},
 
 		// Mixed — should still pick the best
 		{intent: "schedule milestones on a timeline", hints: nil, wantTop: "timeline-horizontal"},

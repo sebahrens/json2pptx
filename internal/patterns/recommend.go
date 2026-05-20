@@ -466,6 +466,24 @@ var rules = []rule{
 		itemMax:   6,
 	},
 
+	// Team bios — photo placeholder + name/role/bio cards (1-8 members)
+	{
+		pattern:   "team-bios",
+		keywords:  []string{"team", "our people", "our team", "team page", "team bios", "team biographies", "team profiles", "team introductions", "meet the team", "leadership team", "advisors", "engagement team"},
+		baseScore: 0.92,
+		rationale: "Team / 'Our People' card grid with photo placeholder above name + role + short bio, up to 4 cards per row",
+		itemMin:   1,
+		itemMax:   8,
+	},
+	{
+		pattern:   "team-bios",
+		keywords:  []string{"team", "people", "bios", "profiles", "leadership"},
+		baseScore: 0.75,
+		rationale: "Team-bios when the slide introduces named people with roles and short biographies",
+		itemMin:   1,
+		itemMax:   8,
+	},
+
 	// Stylish panels — pillars, capabilities, workstreams
 	{
 		pattern:   "stylish-panels",

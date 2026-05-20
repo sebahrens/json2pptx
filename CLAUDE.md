@@ -169,6 +169,7 @@ examples/         # Example JSON input files (19 decks)
 | `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
+| `team-bios` | Team / 'Our People' grid of 1–8 members with photo placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
 

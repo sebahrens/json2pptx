@@ -266,6 +266,23 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Our Engagement Team"}
+      ],
+      "pattern": {
+        "name": "team-bios",
+        "values": {
+          "members": [
+            {"name": "Jane Smith", "role": "Project Lead", "bio": "10 years in supply-chain strategy. Previously at McKinsey."},
+            {"name": "Arun Patel", "role": "Lead Engineer", "bio": "Built data platforms at two scale-ups. MIT alumnus."},
+            {"name": "Lila Romero", "role": "Design Lead", "bio": "Service-design specialist. Ex-IDEO, ex-Frog."},
+            {"name": "Tom Becker", "role": "Client Partner", "bio": "Account director for top-10 retailers. Frankfurt office."}
+          ]
+        }
+      }
     }
   ]
 }
