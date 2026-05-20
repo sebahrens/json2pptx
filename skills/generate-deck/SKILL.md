@@ -195,7 +195,6 @@ When operating through the MCP server, prefer these tools over shelling out to t
 | Icon catalog | `list_icons` | `json2pptx icons list` |
 | Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
 | Diagram capability metadata (max nodes, overflow behavior, required fields per type) | `get_diagram_capabilities` | (CLI inlines in skill-info) |
-| **Describe a finding code** — given any code emitted in `fit_findings[]`, `validation_errors[]`, `output_validation_findings[]`, or `inspect_slide_images` reports, returns `{summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}`. Use whenever you see an unfamiliar code — resolves the meaning + remediation in one tool call without scanning `docs/FIT_FINDINGS.md` or this file. Unknown codes return a structured error whose `fix.params.allowed` enumerates the known vocabulary so you can self-correct. | `describe_finding` | (MCP-only) |
 | List named `table_styles`/`cell_styles` registered for a template (read-only) | `list_template_settings` | (CLI inlines) |
 | Register a named `table_style` or `cell_style` (**write — gated**) | `register_template_setting` | (CLI inlines) |
 | Delete a named template setting (**write — gated**) | `delete_template_setting` | (CLI inlines) |
