@@ -1738,26 +1738,59 @@ func TestResolveIconPaths_Validation(t *testing.T) {
 	})
 
 	t.Run("non-svg extension is ICON_PATH_EXT_INVALID", func(t *testing.T) {
-		// Even though the file does not exist, the extension check fires
-		// first so the agent gets the most actionable diagnostic.
+		// Raster and unrelated extensions must be rejected before disk I/O
+		// so the agent gets a deterministic, actionable diagnostic that
+		// points at image_value. The check is case-insensitive on the
+		// extension, so .SVG is treated the same as .svg.
+		rejected := []string{"icon.png", "logo.PNG", "photo.jpg", "photo.jpeg", "anim.gif", "raster.webp", "doc.pdf"}
+		for _, p := range rejected {
+			p := p
+			t.Run(p, func(t *testing.T) {
+				slides := []SlideInput{{
+					ShapeGrid: &ShapeGridInput{
+						Rows: []GridRowInput{{
+							Cells: []*GridCellInput{{
+								Icon: &IconInput{Path: p},
+							}},
+						}},
+					},
+				}}
+				findings := resolveIconPaths(slides, tmpDir)
+				if len(findings) != 1 {
+					t.Fatalf("expected 1 finding for %s, got %d: %+v", p, len(findings), findings)
+				}
+				if findings[0].Code != "ICON_PATH_EXT_INVALID" {
+					t.Errorf("expected ICON_PATH_EXT_INVALID, got %s", findings[0].Code)
+				}
+				if got := findings[0].Details["input_value"]; got != p {
+					t.Errorf("expected input_value %q, got %v", p, got)
+				}
+				rem, _ := findings[0].Details["remediation"].(string)
+				if !strings.Contains(rem, "image_value") {
+					t.Errorf("expected remediation to mention image_value, got %q", rem)
+				}
+			})
+		}
+	})
+
+	t.Run("uppercase .SVG extension is accepted", func(t *testing.T) {
+		// Extension check is case-insensitive: agents that copy filenames
+		// from sources that uppercase the extension should not be blocked.
+		upperPath := filepath.Join(tmpDir, "ICON.SVG")
+		if err := os.WriteFile(upperPath, []byte(`<svg/>`), 0644); err != nil {
+			t.Fatal(err)
+		}
 		slides := []SlideInput{{
 			ShapeGrid: &ShapeGridInput{
 				Rows: []GridRowInput{{
 					Cells: []*GridCellInput{{
-						Icon: &IconInput{Path: "icon.png"},
+						Icon: &IconInput{Path: "ICON.SVG"},
 					}},
 				}},
 			},
 		}}
-		findings := resolveIconPaths(slides, tmpDir)
-		if len(findings) != 1 {
-			t.Fatalf("expected 1 finding for non-svg extension, got %d: %+v", len(findings), findings)
-		}
-		if findings[0].Code != "ICON_PATH_EXT_INVALID" {
-			t.Errorf("expected ICON_PATH_EXT_INVALID, got %s", findings[0].Code)
-		}
-		if got := findings[0].Details["input_value"]; got != "icon.png" {
-			t.Errorf("expected input_value to round-trip, got %v", got)
+		if findings := resolveIconPaths(slides, tmpDir); len(findings) != 0 {
+			t.Fatalf("unexpected findings for .SVG path: %+v", findings)
 		}
 	})
 
