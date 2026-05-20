@@ -43,12 +43,6 @@
       "sha256": "d8cd3e028b7d90de78b092b205309bcc8dfb12b3b276548b6ecad6188ab965c7",
       "tracking_issue": "go-slide-creator-4wvi",
       "reason": "Designer template: missing Two Content, Section Divider, Blank, Blank+Title, Closing. Repair under parent go-slide-creator-vqad."
-    },
-    {
-      "template": "warm-coral.pptx",
-      "sha256": "c4c1651c48ef16fd36f712c18c645b79a501d0e3d162f409388487b29741b950",
-      "tracking_issue": "go-slide-creator-vqad",
-      "reason": "Programmatic template: passes template-check at the FAIL level but emits one WARN (Section Number placeholder missing). Repair as part of vqad sweep."
     }
   ]
 }

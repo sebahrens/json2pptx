@@ -521,11 +521,14 @@ func hideMasterChromeAttr(def templateDef) string {
 // chromeShapes returns the theme-specific decorative master shapes that sit
 // alongside the title/body/footer placeholders. Forest Green ships an
 // analytical, data-heavy look (thin accent1 title underline + small accent3
-// corner brand mark). Every other theme keeps the legacy left-edge accent bar.
+// corner brand mark). Warm Coral wears a full-width accent1 top bar above
+// the title. Every other theme keeps the legacy left-edge accent bar.
 func chromeShapes(def templateDef) string {
 	switch def.Name {
 	case "forest-green":
 		return forestGreenChrome()
+	case "warm-coral":
+		return warmCoralChrome()
 	default:
 		return legacyAccentBarChrome(def)
 	}
@@ -589,6 +592,30 @@ func forestGreenChrome() string {
 			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
 		triX, triY, triSize, triSize)
 	return b.String()
+}
+
+// warmCoralChrome emits the warm-coral theme's signature chrome per
+// go-slide-creator-y3gv: a full-width accent1 (coral) bar that runs from the
+// top of the slide down to just above the master title placeholder. The bar
+// lives on the slide master so it appears on every layout. Height is derived
+// from the master title's y-offset (365125 EMU) minus a 1pt gap (12700 EMU)
+// so the bar never overlaps the title frame on any of the 7 mandatory
+// layouts (all of which place their title at or below y=365125).
+func warmCoralChrome() string {
+	const (
+		slideW   = 12192000           // 16:9 slide width
+		titleTop = 365125             // master title placeholder y-offset
+		gap      = 12700              // 1pt clear space between bar and title
+		barH     = titleTop - gap     // 352425 EMU (~0.385")
+	)
+	return fmt.Sprintf(
+		`<p:sp><p:nvSpPr><p:cNvPr id="7" name="Top Bar"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
+			`<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="%d" cy="%d"/></a:xfrm>`+
+			`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`+
+			`<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>`+
+			`<a:ln><a:noFill/></a:ln></p:spPr>`+
+			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
+		slideW, barH)
 }
 
 func masterTextStyles(def templateDef) string {
