@@ -1,0 +1,77 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "driver-tree.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Value Driver Tree"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Root metric decomposed into branches and leaf items"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Net Benefits decomposition (with annotations)"}
+      ],
+      "pattern": {
+        "name": "driver-tree",
+        "values": {
+          "root": {"label": "Net Benefits", "unit": "($m USD)"},
+          "branches": [
+            {
+              "label": "Revenue Benefits",
+              "unit": "($m USD)",
+              "leaves": [
+                "Reduce unscheduled outages",
+                "Increase scheduling flexibility"
+              ],
+              "annotation": "Primary value driver"
+            },
+            {
+              "label": "Cost Benefits",
+              "unit": "($m USD)",
+              "leaves": [
+                "Lower maintenance spend",
+                "Reduce overtime hours",
+                "Avoid contractor escalation"
+              ],
+              "annotation": "Secondary value driver"
+            }
+          ]
+        },
+        "callout": {
+          "text": "Revenue benefits dominate the value case for this programme.",
+          "emphasis": "bold"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three branches, no annotations"}
+      ],
+      "pattern": {
+        "name": "driver-tree",
+        "values": {
+          "root": {"label": "Total Cost to Serve", "unit": "($/order)"},
+          "branches": [
+            {
+              "label": "Fulfilment",
+              "leaves": ["Pick & pack", "Outbound freight"]
+            },
+            {
+              "label": "Customer Care",
+              "leaves": ["Contact handling", "Returns processing"]
+            },
+            {
+              "label": "Platform",
+              "leaves": ["Hosting", "Licences", "Payment fees"]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -180,6 +180,7 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"scqa-summary":         true,
 		"value-chain":          true,
 		"horizontal-bar-with-callouts": true,
+		"driver-tree":          true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)

@@ -341,6 +341,22 @@ var rules = []rule{
 		rationale: "Waterfall-bridge when content reconciles a start total to an end total via positive/negative components",
 	},
 
+	// Driver tree — hierarchical metric decomposition with root → branches → leaves
+	{
+		pattern:   "driver-tree",
+		keywords:  []string{"driver tree", "value driver tree", "cost driver tree", "metric decomposition", "value decomposition", "kpi tree", "kpi decomposition", "benefit decomposition", "revenue tree", "cost tree", "net benefits tree"},
+		baseScore: 0.92,
+		rationale: "Hierarchical driver tree: root metric → 2-4 branches → 1-4 leaf items each, with optional per-branch annotations and connector lines",
+		itemMin:   2,
+		itemMax:   4,
+	},
+	{
+		pattern:   "driver-tree",
+		keywords:  []string{"driver", "decompose", "decomposition", "breakdown", "contributors"},
+		baseScore: 0.68,
+		rationale: "Driver-tree when content reads as 'metric X = sum of branch metrics, each backed by 1-4 leaf items'",
+	},
+
 	// Horizontal bar with callouts — ranked horizontal bars with per-bar insight
 	{
 		pattern:   "horizontal-bar-with-callouts",
