@@ -232,6 +232,11 @@ Grid options: "columns" (number or width array), "gap"/"col_gap"/"row_gap" (poin
 Cell options: "col_span", "row_span" for merged cells. Shape options: "geometry", "fill" (color string or {color,alpha}), "line" ({color,width,dash}), "text" (string or {content,size,bold,italic,align,vertical_align,color,font,inset_left,inset_right,inset_top,inset_bottom}), "rotation", "adjustments".
 
 Optional top-level fields: "output_filename", "accent_strategy" ("primary"|"rotate"|"section-keyed" — controls default accent color rotation across slides), "defaults":{"table_style":{...},"cell_style":{...}} (swap-only deck-level defaults applied before validation), "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
+
+Advanced deck-level fields (all opt-in; see get_capabilities.features for support + usage hints):
+- "chrome":{"confidentiality":"...","client_name":"...","project_code":"...","footer_date":"...","page_numbers":{"enabled":true,"format":"{current} / {total}","skip":["title","closing"]},"section_crumb":true} — deck-wide footer chrome with page numbers and an optional section title crumb; auto-suppressed on title/closing slides.
+- "structure":{"cover":{...},"closing":{...},"auto_agenda":true,"sections":[{"title":"...","slides":[...]}]} — expands into a flat slide sequence with auto section dividers + optional agenda slide. Mutually exclusive with top-level "slides".
+
 Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "build".
 
 Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"table.rows","layout_id":"...","content":[...]} auto-paginates overflowing table rows across multiple slides.`),

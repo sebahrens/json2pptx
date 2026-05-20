@@ -1072,8 +1072,45 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           "required": ["max_segments", "max_nesting_depth", "max_leaf_patterns", "directions", "supports_smart_compose", "supports_nested_compose", "supports_diagram_segments"]
         },
         "base_dir":              {"type": "array", "items": {"type": "string"}},
+        "deck_chrome": {
+          "type": "object",
+          "properties": {
+            "supported":  {"type": "boolean"},
+            "version":    {"type": "string"},
+            "usage_hint": {"type": "string"}
+          },
+          "required": ["supported", "version", "usage_hint"]
+        },
+        "page_numbers": {
+          "type": "object",
+          "properties": {
+            "supported":  {"type": "boolean"},
+            "version":    {"type": "string"},
+            "usage_hint": {"type": "string"}
+          },
+          "required": ["supported", "version", "usage_hint"]
+        },
+        "section_structure": {
+          "type": "object",
+          "properties": {
+            "supported":  {"type": "boolean"},
+            "version":    {"type": "string"},
+            "usage_hint": {"type": "string"}
+          },
+          "required": ["supported", "version", "usage_hint"]
+        },
+        "section_crumb": {
+          "type": "object",
+          "properties": {
+            "supported":  {"type": "boolean"},
+            "version":    {"type": "string"},
+            "usage_hint": {"type": "string"}
+          },
+          "required": ["supported", "version", "usage_hint"]
+        },
         "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
-      }
+      },
+      "required": ["deck_chrome", "page_numbers", "section_structure", "section_crumb"]
     },
     "runtime": {
       "type": "object",

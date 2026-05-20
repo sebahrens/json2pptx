@@ -74,6 +74,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			"This is the canonical new-deck workflow. Each step's output informs the next.",
 			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
 			"validate_input is mandatory per SKILL.md preconditions — skipping it is a workflow violation even when preview_presentation_plan succeeds.",
+			"Advanced deck-level fields (opt-in): top-level `chrome` adds a deck-wide footer (confidentiality / client / project / date) with `chrome.page_numbers` ({current}/{total} formats, auto-skipped on title/closing) and optional `chrome.section_crumb`; top-level `structure` ({cover, closing, auto_agenda, sections[]}) expands into a flat slide sequence with auto section dividers — mutually exclusive with top-level `slides`. See get_capabilities.features.{deck_chrome, page_numbers, section_structure, section_crumb} for versions and authoring hints.",
 		}
 	case "revise":
 		seq = []getStartedStep{

@@ -431,6 +431,54 @@ For multi-table decks, set shared styles once in the top-level `defaults` block 
 
 ---
 
+## Deck Chrome & Section Structure
+
+Two opt-in top-level fields raise the deck from a flat slide list to a structured presentation with persistent chrome. Both are surfaced under `get_capabilities.features` (`deck_chrome`, `page_numbers`, `section_structure`, `section_crumb`) with version + one-line usage hints so you can capability-gate without re-reading this section.
+
+**`chrome` — deck-wide footer chrome (since `2.8.0`).** Composites a footer line from `confidentiality`, `client_name`, `project_code`, and `footer_date`, and overlays slide numbers via `chrome.page_numbers`. Chrome is auto-suppressed on title and closing slides.
+
+```json
+{
+  "chrome": {
+    "confidentiality": "Strictly confidential",
+    "client_name": "Acme Corp",
+    "project_code": "Aurora",
+    "footer_date": "May 2026",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current} / {total}",
+      "skip": ["title", "closing"]
+    },
+    "section_crumb": true
+  }
+}
+```
+
+- `chrome.page_numbers.format` supports `{current}` and `{total}` placeholders. Default skip set is `["title", "closing"]`.
+- `chrome.section_crumb: true` surfaces the current section title in the footer — it only resolves when the deck also sets `structure.sections[].title`.
+
+**`structure` — deck-level section grammar (since `2.7.0`).** Replaces a flat `slides[]` list with named sections plus an optional cover, closing, and auto-generated agenda. The engine expands `structure` into a flat slide sequence with auto section dividers.
+
+```json
+{
+  "structure": {
+    "cover":   {"layout_id": "slideLayout1", "content": [...]},
+    "closing": {"layout_id": "slideLayout1", "content": [...]},
+    "auto_agenda": true,
+    "sections": [
+      {"title": "Situation",     "slides": [...]},
+      {"title": "Recommendation", "slides": [...]}
+    ]
+  }
+}
+```
+
+- `structure` is **mutually exclusive** with a top-level `slides` — pick one.
+- `auto_agenda: true` inserts an agenda slide listing every section title after the cover (requires ≥ 2 sections).
+- Pair with `chrome.section_crumb: true` so the running section title appears in the footer for every content slide.
+
+---
+
 ## Deck Sizing Guidelines
 
 | Deck type | Slides | Notes |

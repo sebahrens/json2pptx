@@ -159,7 +159,38 @@ type capabilitiesFeatures struct {
 	// reject oversized assets locally instead of round-tripping through the
 	// server.
 	AssetLimits          capabilitiesAssetLimits    `json:"asset_limits"`
+	// DeckChrome advertises the top-level `chrome` block (deck-wide footer
+	// chrome with confidentiality / client / project / date composites plus
+	// page numbers and section crumb). Surfaced as an explicit flag so agents
+	// can discover the feature without scanning the generate_presentation
+	// description.
+	DeckChrome           capabilitiesFeatureFlag    `json:"deck_chrome"`
+	// PageNumbers advertises the `chrome.page_numbers` sub-block (format
+	// templates with {current}/{total} placeholders and per-slide-type skip
+	// list).
+	PageNumbers          capabilitiesFeatureFlag    `json:"page_numbers"`
+	// SectionStructure advertises the top-level `structure` block
+	// (`cover` / `closing` / `auto_agenda` / `sections[]`) that expands into a
+	// flat slide sequence with auto-generated dividers. Mutually exclusive
+	// with top-level `slides`.
+	SectionStructure     capabilitiesFeatureFlag    `json:"section_structure"`
+	// SectionCrumb advertises the `chrome.section_crumb` boolean that surfaces
+	// the current section title in the footer. Requires a populated structure
+	// block to be useful.
+	SectionCrumb         capabilitiesFeatureFlag    `json:"section_crumb"`
 	FeatureVersions      map[string]string          `json:"feature_versions"`
+}
+
+// capabilitiesFeatureFlag is the standard descriptor for an opt-in JSON-input
+// feature: whether it is supported, the schema version it became available in,
+// and a one-line authoring hint pointing agents at the JSON field that turns
+// it on. Used by deck_chrome, page_numbers, section_structure, and
+// section_crumb so agents can capability-gate each without parsing tool
+// descriptions or SKILL.md.
+type capabilitiesFeatureFlag struct {
+	Supported bool   `json:"supported"`
+	Version   string `json:"version"`
+	UsageHint string `json:"usage_hint"`
 }
 
 // mcpToolCatalog returns the full list of MCP tools with version metadata,
@@ -330,6 +361,26 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"render_slide_image_from_json",
 			},
 			AssetLimits: buildAssetLimits(),
+			DeckChrome: capabilitiesFeatureFlag{
+				Supported: true,
+				Version:   "2.8.0",
+				UsageHint: "Set top-level chrome:{confidentiality,client_name,project_code,footer_date,page_numbers,section_crumb}. Composites into a deck-wide footer; auto-suppressed on title/closing slides.",
+			},
+			PageNumbers: capabilitiesFeatureFlag{
+				Supported: true,
+				Version:   "2.8.0",
+				UsageHint: "Set chrome.page_numbers:{enabled,format,skip}. format supports {current}/{total} placeholders; default skip is [\"title\",\"closing\"]. Requires the deck chrome block.",
+			},
+			SectionStructure: capabilitiesFeatureFlag{
+				Supported: true,
+				Version:   "2.7.0",
+				UsageHint: "Set top-level structure:{cover,closing,auto_agenda,sections[]} (each section has title + slides[]). Expands into a flat slide sequence with auto-generated section dividers. Mutually exclusive with top-level slides.",
+			},
+			SectionCrumb: capabilitiesFeatureFlag{
+				Supported: true,
+				Version:   "2.8.0",
+				UsageHint: "Set chrome.section_crumb:true to surface the current section.title in the footer. Requires a populated structure.sections[] to resolve a crumb.",
+			},
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -344,6 +395,10 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"compose_envelope":       "4.11.0",
 				"base_dir":               "4.25.0",
 				"asset_limits":           "4.33.0",
+				"deck_chrome":            "2.8.0",
+				"page_numbers":           "2.8.0",
+				"section_structure":      "2.7.0",
+				"section_crumb":          "2.8.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

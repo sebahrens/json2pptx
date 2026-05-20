@@ -120,6 +120,23 @@ func TestGetStartedDefaultsToBrief(t *testing.T) {
 	}
 }
 
+// TestGetStartedBriefAdvertisesDeckChromeAndStructure ensures the brief flow
+// surfaces the deck-chrome / structure / page-numbers / section-crumb opt-in
+// fields. Agents staying inside MCP discovery should learn these exist without
+// reading SKILL.md or scanning the generate_presentation description.
+func TestGetStartedBriefAdvertisesDeckChromeAndStructure(t *testing.T) {
+	resp := callGetStarted(t, "brief")
+	joined := strings.Join(resp.Notes, "\n")
+	for _, must := range []string{"chrome", "structure", "page_numbers", "section_crumb"} {
+		if !strings.Contains(joined, must) {
+			t.Errorf("brief notes must advertise %q so MCP-only agents can discover the advanced deck-level field; notes:\n%s", must, joined)
+		}
+	}
+	if !strings.Contains(joined, "deck_chrome") || !strings.Contains(joined, "section_structure") {
+		t.Errorf("brief notes should point agents at the get_capabilities.features flags (deck_chrome, section_structure); notes:\n%s", joined)
+	}
+}
+
 func TestGetStartedAvailableTasksEchoed(t *testing.T) {
 	resp := callGetStarted(t, "brief")
 	want := getStartedAvailableTasks()

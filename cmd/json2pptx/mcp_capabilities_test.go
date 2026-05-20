@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -288,6 +289,45 @@ func TestMCPGetCapabilities(t *testing.T) {
 				t.Errorf("deprecations[%d].path=%q != deprecated_fields[%d].path=%q",
 					i, resp.Deprecations[i].Path, i, resp.DeprecatedFields[i].Path)
 			}
+		}
+	})
+
+	t.Run("deck chrome / structure feature flags advertised", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		flags := map[string]capabilitiesFeatureFlag{
+			"deck_chrome":       resp.Features.DeckChrome,
+			"page_numbers":      resp.Features.PageNumbers,
+			"section_structure": resp.Features.SectionStructure,
+			"section_crumb":     resp.Features.SectionCrumb,
+		}
+		for name, f := range flags {
+			if !f.Supported {
+				t.Errorf("features.%s.supported should be true", name)
+			}
+			if f.Version == "" {
+				t.Errorf("features.%s.version is empty — agents need a version to capability-gate against schema_version drift", name)
+			}
+			if f.UsageHint == "" {
+				t.Errorf("features.%s.usage_hint is empty — agents need a one-line authoring hint pointing at the JSON field that turns this on", name)
+			}
+			if _, ok := resp.Features.FeatureVersions[name]; !ok {
+				t.Errorf("feature_versions missing %q so the version is only advertised in the nested struct — duplicate it to feature_versions so agents using the flat lookup also see it", name)
+			}
+		}
+		// The usage hints must actually name the relevant JSON field so an
+		// agent staying within MCP discovery can author the input without
+		// reading SKILL.md.
+		if !strings.Contains(resp.Features.DeckChrome.UsageHint, "chrome") {
+			t.Errorf("deck_chrome.usage_hint should mention the chrome JSON field; got %q", resp.Features.DeckChrome.UsageHint)
+		}
+		if !strings.Contains(resp.Features.PageNumbers.UsageHint, "page_numbers") {
+			t.Errorf("page_numbers.usage_hint should mention the chrome.page_numbers JSON field; got %q", resp.Features.PageNumbers.UsageHint)
+		}
+		if !strings.Contains(resp.Features.SectionStructure.UsageHint, "structure") {
+			t.Errorf("section_structure.usage_hint should mention the structure JSON field; got %q", resp.Features.SectionStructure.UsageHint)
+		}
+		if !strings.Contains(resp.Features.SectionCrumb.UsageHint, "section_crumb") {
+			t.Errorf("section_crumb.usage_hint should mention chrome.section_crumb; got %q", resp.Features.SectionCrumb.UsageHint)
 		}
 	})
 
