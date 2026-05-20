@@ -13,10 +13,11 @@ description: >
 You generate structured JSON for the json2pptx engine. Your output must be valid input
 for the `generate_presentation` MCP tool (or the CLI `json2pptx generate -json`).
 
-This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, MCP tools, and the workflow overview. Load the sub-files when you need their detail:
+This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
 | File | Contents |
 |---|---|
+| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue (40+ rows) with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
 | [WORKFLOW.md](WORKFLOW.md) | 4-phase workflow deep dive (Plan, Vary, Render, Repair), visual inspection, `next_tool_call`, response_fingerprint |
 | [FINDINGS.md](FINDINGS.md) | All finding codes (layout + chart), the `fix.kind` enum, the `repair_slide` apply-only superset, strict-fit promotion ladder |
 | [RULES.md](RULES.md) | Rules 1–20 (shape grid, charts, content/layout, contrast, silent traps, table density), anti-patterns, cell accent variety |
@@ -97,7 +98,7 @@ This skill talks to **two** independent MCP servers. Both must be reachable for 
 
 ### `json2pptx-mcp` — deck-level engine
 
-Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. This is the server that exposes every tool listed in the [MCP Tools](#mcp-tools-prefer-over-cli-shell-outs) table below.
+Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. The 5-tool quick reference for this server is in the [MCP Tools (most-used)](#mcp-tools-most-used) section below; the full 40+ tool catalogue with phase markers lives in [TOOLS.md](TOOLS.md).
 
 - **Binary path:** `cmd/json2pptx/json2pptx` (built via `make` or `go build ./cmd/json2pptx`)
 - **Run as MCP:** `json2pptx mcp [-templates-dir <path>] [-output-dir <path>]`
@@ -207,76 +208,20 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ---
 
-## MCP Tools (prefer over CLI shell-outs)
+## MCP Tools (most-used)
 
-When operating through the MCP server, prefer these tools over shelling out to the CLI. All tools below are served by **`json2pptx-mcp`**; the six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented in the [Connected MCP servers](#connected-mcp-servers) section above.
+The five tools below cover the precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. For the full 40+ tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
 
-| Purpose | MCP tool | CLI equivalent |
+| Tool | Phase | When to call |
 |---|---|---|
-| **First call — ordered MCP workflow keyed to your task** (`brief`/`revise`/`validate-only`). Returns `sequence:[{tool, when_to_call}]` so you do not have to derive the workflow from the flat 35+ tool catalog. The `brief` sequence includes `validate_input` between `recommend_visual` and `preview_presentation_plan` (the cheapest precondition gate). The `revise` sequence marks `read_presentation` as inspection-only — its output is NOT a `PresentationInput`, so you must still supply the authoritative deck JSON to every downstream tool (`validate_input` / `preview_presentation_plan` / `repair_slide` / `generate_presentation`). | `get_started` | `json2pptx get-started` |
-| **Detect API drift** — fetch `schema_version`, live tool list, deprecations, feature flags. Both `json2pptx-mcp` and `svggen-mcp` expose the same standardized fields. | `get_capabilities` | (CLI inlines) |
-| **Authoritative input schema** — JSON Schema for `PresentationInput` with all nested types, `x-field-scope` annotations, and inline enums. Digest-cacheable. | `get_input_schema` | `json2pptx input-schema` |
-| Introspect templates, patterns, layouts, `canonical_layout_ids`, `color_roles`, `table_styles`, `white_text_safe`, `data_format_hints_digest` | `list_templates` | `json2pptx skill-info` |
-| Fetch data-format hints by digest (paginated) | `get_data_format_hints` | (CLI inlines in skill-info) |
-| Resolve a template's theme colors (semantic name → hex, including tint modifiers). Returns both `colors` (map for lookups) and `theme_colors` (array ready to copy into svggen-mcp's `render_diagram` under `style.theme_colors`). Accepts optional `theme_override`. | `resolve_theme` | (CLI inlines) |
-| **Plan a deck** — given a brief, returns an ordered slide outline with per-slide pattern recommendations, narrative roles, content seeds, and accent rotation. Enforces rhythm rules. Recommended starting point for any deck > 4 slides. Each slide also carries `suggested_pattern`, `suggested_pattern_fallback`, and a `skeleton` (partial `SlideInput` JSON with `__FILL__` tokens for every agent-supplied string) — copy the skeleton and replace tokens rather than re-deriving the slide structure from the prose `content_seed`. | `plan_deck` | (CLI inlines) |
-| **Visual decision aid** — rank candidates across layouts, patterns, charts, diagrams, and raw shape_grid for a slide intent. **Start here** when unsure which visual approach to use. | `recommend_visual` | `json2pptx recommend-visual` |
-| Recommend a named pattern given an intent (pattern-only subset of recommend_visual) — **legacy, prefer `recommend_visual`** for new code. | `recommend_pattern` | (CLI inlines) |
-| Discover preset shape geometries (chevron, homePlate, callout, action_button, ...) grouped by category, with optional substring search | `get_shape_catalog` | (CLI inlines) |
-| Validate input JSON (schema + optional `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields) | `validate_input` | `json2pptx validate [--fit-report] [--strict-unknown-keys]` |
-| Preview the planned generation (layout selection, placeholder mapping, fit findings) without rendering. Each `resolved_slides[].shape_grid_resolution.cells[]` carries the per-cell wireframe rectangle. For compose slides, `expanded_compose` exposes per-segment geometry. Fit findings attributable to a child segment carry `segment_index`. Surfaces `COMPOSE_HORIZONTAL_TRUNCATION` and `COMPOSE_SEGMENT_BOUNDS_IGNORED` warnings. Accepts optional `strict_unknown_keys` for fail-fast on typo'd fields. | `preview_presentation_plan` | `json2pptx preview [--strict-unknown-keys]` |
-| **Render one slide's resolved plan as an annotated wireframe (SVG + base64 PNG) without LibreOffice or ImageMagick** — paints the slide frame, layout placeholders, `shape_grid` cells, occupancy %, and per-cell fit-finding badges. Inputs mirror `preview_presentation_plan` plus required `slide_index` and optional `format` ∈ {`svg`, `png`, `both`}. | `preview_slide_wireframe` | (MCP-only) |
-| Generate the PPTX (accepts `strict_fit` + `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields) | `generate_presentation` | `json2pptx generate [--strict-unknown-keys]` |
-| Apply targeted fixes to a single slide (uses the `Fix.Kind` vocabulary fit-report emits) | `repair_slide` | (CLI inlines) |
-| **Translate fit/visual QA findings into ranked `repair_slide` fix directives** — accepts FitFinding-shaped and visualqa-shaped findings (mixed input is fine). Returns directives grouped by slide and ranked by severity/action, plus a per-slide `batch_tool_call` ready to submit to `repair_slide`. Does **not** mutate the deck. Findings with no repair mapping (e.g. `image_quality`, `aspect_ratio`, `border_style`) are returned under `unmapped[]`. | `propose_repairs` | (MCP-only) |
-| Score a generated deck (0-100 with structured findings) — accepts optional `slide_indices: [int]` to render + score only the listed slides | `score_deck` | (CLI inlines) |
-| **Rank candidate slide_jsons for one slot without rendering** — predicts each candidate's score from static analysis plus a rhythm penalty for pattern runs at the target slide position. | `score_candidates` | `json2pptx score-candidates` |
-| **Inspect rendered slide images with Claude vision** — returns structured findings whose `suggested_fixes[]` are pre-mapped to `repair_slide` fix kinds. When `ANTHROPIC_API_KEY` is set the report uses vision; when unset it degrades to a pure-Go heuristic pass (all findings P3). | `inspect_slide_images` | `testrand qa` |
-| Render one slide to a PNG image (preferred over `pptx2jpg` shell-out) | `render_slide_image` | `pptx2jpg` |
-| **Render one slide directly from its JSON** — skips full-deck generation by wrapping the slide in a synthetic single-slide deck. Cached by `(slide_json + template_content + density)`. Pass `overlay=true` to composite a diagnostic overlay on top of the rendered PNG. | `render_slide_image_from_json` | `json2pptx render-slide-from-json` |
-| Render the whole deck as thumbnails (preferred over `pptx2jpg` shell-out) | `render_deck_thumbnails` | `pptx2jpg` |
-| **Read back a generated PPTX as structured JSON** — best-effort extraction of placeholders, shapes, tables, and speaker notes. | `read_presentation` | (CLI inlines) |
-| **Validate a generated PPTX file** — runs OPC package integrity + OOXML content checks against an on-disk `.pptx`. | `validate_presentation_output` | (CLI inlines) |
-| **Describe a finding code** — given a single finding code (e.g. `placeholder_overflow`, `accent_overload`, `chart.zero_sum_pie`), returns `{summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}`. Use after any tool returns a finding you do not recognize — resolves the meaning in one extra tool call without scanning `docs/FIT_FINDINGS.md`. Covers every code in `get_capabilities.vocabularies.fit_finding_codes` plus `chart.*` and the string-literal codes (`contrast_autofixed`, `findings_truncated`). Unknown codes return a structured error whose `fix.params.allowed` enumerates the vocabulary. | `describe_finding` | (MCP-only) |
-| Browse pattern catalog | `list_patterns` | `json2pptx patterns list` |
-| Show a pattern's value schema | `show_pattern` | `json2pptx patterns show <name>` (also surfaces `supports_callout`; when true the response carries a `callout_schema` JSON Schema fragment for the envelope-level `callout` DTO so you can author the band without a second tool call) |
-| Validate a pattern's input values | `validate_pattern` | `json2pptx patterns validate` |
-| Expand a pattern (preview the `shape_grid` + run table-density checks; returns `density_warnings`, `bounds_source`). Pass `theme_template` (MCP) or `--template` (CLI) for template-aware layout bounds. | `expand_pattern` | `json2pptx patterns expand` |
-| **Batch-expand N patterns against the agent's content under a single template load.** Returns each candidate's full expansion + `cell_budgets[]` + `capacity_warnings[]` + `layout_suggestions[]`. Use after `recommend_pattern` to compare candidates head-to-head. | `expand_patterns` | (MCP-only; CLI users loop `json2pptx patterns expand`) |
-| Analyze deck rhythm — pattern runs, density variation, accent balance, composition score (lightweight, pre-generation) | `analyze_deck_rhythm` | `json2pptx analyze-rhythm` |
-| Table density reference (TDR) — font size + row-count guidance per template/style. CLI `--json` emits the same envelope as the MCP tool (use `--template` / `--style-id` to scope). | `table_density_guide` | `json2pptx tables guide [--json] [--template <name>] [--style-id <id>]` |
-| Icon catalog | `list_icons` | `json2pptx icons list` |
-| Preview a single icon (bundled/path/url/inline) — returns svg_data + png_base64 without building a deck | `preview_icon` | `json2pptx preview-icon` |
-| Chart capability metadata (limits, density behavior, label strategy per type) | `get_chart_capabilities` | (CLI inlines in skill-info) |
-| Diagram capability metadata (max nodes, overflow behavior, required fields per type) | `get_diagram_capabilities` | (CLI inlines in skill-info) |
-| List named `table_styles`/`cell_styles` registered for a template (read-only) | `list_template_settings` | (CLI inlines) |
-| Register a named `table_style` or `cell_style` (**write — gated**) | `register_template_setting` | (CLI inlines) |
-| Delete a named template setting (**write — gated**) | `delete_template_setting` | (CLI inlines) |
-
-**Contract drift detection.** Call `get_capabilities` once per session to fetch `schema_version`, the live tool list, deprecated fields, and feature flags (`features.strict_fit`, `compact_responses`, `fit_report`, `strict_unknown_keys`, `named_patterns`, `template_settings`). Compare `schema_version` against the value you cached last session — a major bump means breaking changes and you should re-read this skill. Prefer `features.strict_fit` and `features.named_patterns` over hardcoding mode lists.
+| `recommend_visual` | PLAN | First call per slide intent — ranks candidates across layouts, patterns, charts, diagrams, and raw shape_grid. Start here when unsure which visual approach fits. |
+| `show_pattern` | PLAN | Per chosen pattern — returns the value schema and `example_values`. When `supports_callout: true`, the response also carries a `callout_schema` fragment for the envelope-level `callout` DTO. |
+| `expand_pattern` | PLAN | Per pattern slide — preview the resolved `shape_grid` plus `density_warnings`, `cell_budgets`, and `bounds_source`. Confirm density lands in the 60–110% optimal band before generating. |
+| `validate_input` | RENDER | Cheapest precondition gate — full-deck schema + optional `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields. Always run before `generate_presentation`. |
+| `generate_presentation` | RENDER | Render the PPTX. Defaults to `output_validation: "strict"` (see [Output Validation Guarantee](#output-validation-guarantee)); `strict_fit` controls overflow promotion (see [FINDINGS.md](FINDINGS.md)). |
+| `repair_slide` | REPAIR | Apply targeted fixes to a single slide using the `Fix.Kind` vocabulary fit-report emits. For multi-slide fixes, run `propose_repairs` first to translate findings into ranked directives. |
 
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
-
-**Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. Check `get_capabilities().features.template_settings` before attempting writes.
-
-**Digest protocol.** `list_templates` returns `data_format_hints_digest` instead of the inline hints payload. Reuse the digest across calls; fetch the full hints only when the digest changes via `get_data_format_hints{digest: "..."}`. The same digest protocol applies to `get_input_schema{digest: "..."}`.
-
-**Pagination (discovery tools).** `list_templates`, `list_patterns`, and `list_icons` accept optional `cursor` and `page_size` arguments (default 50, max 200). The response envelope echoes `total_count`, `page_size`, and `next_cursor` when more entries remain.
-
-**Field projection + filter (discovery tools).** The same three tools accept `fields` (`"compact"` | `"full"`) and `filter` (case-insensitive substring on entity name) for agent token economy:
-
-- `fields="compact"` — `list_patterns` returns only `{name, category, cells, use_when, supports_callout}` per pattern; `list_templates` drops `theme_colors` / `color_roles` / `layout_summaries`; `list_icons` drops the redundant `sets[].icons[]` dual array (synthesize `qualified_name` as `set + ":" + name`).
-- `fields="full"` — explicit legacy payload (silences the deprecation hint).
-- `fields` omitted — current legacy payload PLUS a deprecation hint in `warnings[]`; future releases will flip the default to `compact`.
-- `filter="kpi"` (or `filter="midnight"`, `filter="arrow"`) — substring trims the catalog before pagination, so `total_count` reflects the filtered universe. `list_icons` keeps the legacy `search` alias; when both are set, `filter` wins.
-
-**Input schema introspection.** Call `get_input_schema` to discover the full `PresentationInput` JSON Schema derived from the live Go structs. Each field is annotated with `x-field-scope` (`deck`, `slide`, `content`, `shape`, or `split`). Enum-constrained fields include inline `enum` arrays. The `slides[]` item schema is a `oneOf` between a regular `SlideInput` and a `SplitSlideInput` envelope (discriminator: `type == "split_slide"`), so agents can author either variant directly from schema output. `SlideInput` also carries type-level `anyOf` (`layout_id` OR `slide_type` is required) and `allOf` (`pattern` / `shape_grid` / `compose` are mutually exclusive visual-envelope alternatives). `ContentInput` encodes the typed-value discriminator as an `allOf` of `if`/`then` branches: setting `type` to `text` requires `text_value` and forbids the other typed `*_value` fields; `type: bullets` requires `bullets_value`; and so on through `body_and_bullets`, `body_and_lead`, `bullet_groups`, `table`, `chart`, `diagram`, and `image`. The legacy raw `value` field remains accepted for backward compatibility and is unconstrained by the discriminator.
-
-**Chart and diagram capabilities.** `list_templates` includes `chart_capabilities` and `diagram_capabilities` arrays. Each entry carries an optional `aliases` array listing alternate names. Some diagram types have `status: "stub"` indicating the renderer exists but is not yet production-hardened.
-
-**Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. Per-error `next_tool_call` routes shape errors to `get_diagram_schema` and constraint errors back to `validate_diagram`.
-
-**Strict output validation by default.** Both `generate_presentation` (MCP) and `json2pptx generate` (CLI) default `output_validation` / `--output-validation` to `strict`, so every successful response implies a clean OPC + OOXML pass. See the [Output Validation Guarantee](#output-validation-guarantee) section below for the envelope shape, response protocol, and code catalog.
 
 ---
 
