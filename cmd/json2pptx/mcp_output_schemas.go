@@ -906,6 +906,37 @@ var outputSchemaRepairSlidesBatch = json.RawMessage(`{
   "required": ["patched_deck", "applied_fixes"]
 }`)
 
+// --- auto_repair ---
+var outputSchemaAutoRepair = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "path":        {"type": "string", "description": "Absolute path to the final rendered PPTX. Written regardless of whether the gate ultimately passed."},
+    "final_score": {"type": "integer", "description": "Overall_score of the last (post-repair) pass, in [0, 100]."},
+    "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_passes iterations."},
+    "passes":      {"type": "integer", "description": "Number of iterations actually run (≤ max_passes)."},
+    "trace": {
+      "type": "array",
+      "description": "Per-pass record of score, finding count, and the repairs applied DURING that pass (empty on the final converged pass).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pass":            {"type": "integer"},
+          "score":           {"type": "integer"},
+          "findings_count":  {"type": "integer"},
+          "repairs_applied": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["pass", "score", "findings_count", "repairs_applied"]
+      }
+    },
+    "gate_reasons": {
+      "type": "array",
+      "description": "Human-readable list of unmet gate criteria. Present only when gate_passed=false.",
+      "items": {"type": "string"}
+    }
+  },
+  "required": ["final_score", "gate_passed", "passes", "trace"]
+}`)
+
 // --- table_density_guide ---
 var outputSchemaTableDensityGuide = json.RawMessage(`{
   "type": "object",

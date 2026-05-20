@@ -223,6 +223,7 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 | `validate_input` | RENDER | Cheapest precondition gate — full-deck schema + optional `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields. Always run before `generate_presentation`. |
 | `generate_presentation` | RENDER | Render the PPTX. Defaults to `output_validation: "strict"` (see [Output Validation Guarantee](#output-validation-guarantee)); `strict_fit` controls overflow promotion (see [FINDINGS.md](FINDINGS.md)). |
 | `repair_slide` | REPAIR | Apply targeted fixes to a single slide using the `Fix.Kind` vocabulary fit-report emits. For multi-slide fixes, run `propose_repairs` first to translate findings into ranked directives. |
+| `auto_repair` | REPAIR | Server-side convergence loop: each pass runs `generate→inspect→repair` against a configurable gate (`min_score`, `max_p0_findings`, `max_p1_findings`, `require_takeaway_on_charts`). Returns the final PPTX path plus a per-pass trace. Replaces hand-coded `generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation` loops. Default `max_passes` is 3; the final deck is always rendered, with `gate_passed` reporting whether convergence succeeded. |
 
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
 

@@ -490,6 +490,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpRepairSlideTool":          mcpRepairSlideTool,
 		"mcpRepairSlidesBatchTool":    mcpRepairSlidesBatchTool,
 		"mcpProposeRepairsTool":       mcpProposeRepairsTool,
+		"mcpAutoRepairTool":           mcpAutoRepairTool,
 		"mcpListTemplateSettingsTool":     mcpListTemplateSettingsTool,
 		"mcpRegisterTemplateSettingTool":  mcpRegisterTemplateSettingTool,
 		"mcpDeleteTemplateSettingTool":    mcpDeleteTemplateSettingTool,

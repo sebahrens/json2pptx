@@ -4,6 +4,30 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.34.0 (2026-05-20)
+
+### Added
+
+- **`auto_repair` MCP tool.** Server-side convergence loop that replaces the
+  hand-coded `generate_presentation → score_deck → propose_repairs →
+  repair_slides_batch → generate_presentation` chain. Accepts the same
+  `presentation` payload as `repair_slide` plus an optional `gate` block
+  (`min_score`, `max_p0_findings`, `max_p1_findings`,
+  `require_takeaway_on_charts`) and `max_passes` (default 3, clamped to
+  [1, 10]). Each pass renders the deck, collects static + render-time fit
+  findings, scores deterministically, and applies the top-ranked
+  `propose_repairs` directive per affected slide. Stops as soon as the gate is
+  satisfied or `max_passes` is exhausted; the final PPTX is written either
+  way. Response shape:
+  `{path, final_score, gate_passed, passes, trace[], gate_reasons[]}` where
+  `trace[i] = {pass, score, findings_count, repairs_applied[]}` records score
+  progression. `gate_reasons` is omitted on success and lists every unmet
+  criterion on failure so the agent can decide whether to relax the gate or
+  escalate. The tool reuses `repair_slide`'s `Fix.Kind` vocabulary verbatim;
+  the loop adapter translates BODY_TOO_LONG-style `max_words` params into
+  `max_items`/`max_length` based on the actual slide content so the canned
+  fit-finding fixes drive real repairs. (bd `go-slide-creator-p7j4`.)
+
 ## 4.33.0 (2026-05-20)
 
 ### Added
