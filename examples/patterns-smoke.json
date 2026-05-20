@@ -248,6 +248,24 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Today's Agenda"}
+      ],
+      "pattern": {
+        "name": "agenda-with-images",
+        "values": {
+          "items": [
+            {"title": "Executive Summary", "subtitle": "Situation, complication and our answer", "image_label": "Chart: Revenue trend"},
+            {"title": "Market Analysis", "subtitle": "Size, growth and competitive position", "image_label": "Photo: Market scene"},
+            {"title": "Strategic Options", "subtitle": "Three paths and our recommendation", "image_label": "Diagram: Option tree"},
+            {"title": "Implementation Plan", "subtitle": "Phased rollout over 12 months", "image_label": "Photo: Project team"},
+            {"title": "Next Steps", "subtitle": "Decisions required from this meeting"}
+          ]
+        }
+      }
     }
   ]
 }

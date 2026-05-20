@@ -123,6 +123,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
 | Deck section list | `agenda` | Numbered section outline |
+| Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |
 | Callout / testimonial | `pull-quote` | Attributed quotation |
 
@@ -170,7 +171,7 @@ These patterns have structurally determined accent logic and do not expose `cell
 - **Single-cell patterns** (stat-hero, pull-quote): one cell, no variation needed.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal): cell fills are determined by content structure (lanes, phases, sections) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal): cell fills are determined by content structure (lanes, phases, sections) rather than peer ordering.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 

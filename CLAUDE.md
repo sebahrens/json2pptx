@@ -142,6 +142,7 @@ examples/         # Example JSON input files (19 decks)
 | Pattern | Description |
 |---------|-------------|
 | `agenda` | Numbered section list for agenda / table-of-contents slides |
+| `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
 | `before-after` | Two-column before/after with transition chevron |
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |

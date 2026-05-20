@@ -448,6 +448,24 @@ var rules = []rule{
 		rationale: "Agenda slide with numbered sections",
 	},
 
+	// Agenda with images — agenda rows with image/quote previews
+	{
+		pattern:   "agenda-with-images",
+		keywords:  []string{"agenda with images", "agenda with photos", "visual agenda", "agenda preview", "illustrated agenda", "agenda with thumbnails"},
+		baseScore: 0.92,
+		rationale: "Numbered agenda rows with title/subtitle and image (or quote) placeholders alongside each section",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "agenda-with-images",
+		keywords:  []string{"agenda", "table of contents", "section overview"},
+		baseScore: 0.74,
+		rationale: "Agenda-with-images when each section needs a visual preview alongside the title",
+		itemMin:   3,
+		itemMax:   6,
+	},
+
 	// Stylish panels — pillars, capabilities, workstreams
 	{
 		pattern:   "stylish-panels",
