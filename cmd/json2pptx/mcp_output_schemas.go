@@ -96,7 +96,8 @@ var outputSchemaValidate = json.RawMessage(`{
     "errors":              {"type": "array", "items": {"type": "string"}},
     "diagnostics":         {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
     "slides":              {"type": "array", "items": {"type": "object"}},
-    "fit_findings":        {"type": "array", "items": {"type": "object"}}
+    "fit_findings":        {"type": "array", "items": {"type": "object"}},
+    "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
   "required": ["valid"],
   "$defs": {
@@ -464,7 +465,8 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
     "disambiguating_questions": {
       "type": "array",
       "items": {"type": "string"}
-    }
+    },
+    "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
   "required": ["candidates", "query_understood_as"],
   "$defs": {
@@ -829,7 +831,8 @@ var outputSchemaPreviewPlan = json.RawMessage(`{
     },
     "warnings":    {"type": "array", "items": {"type": "string"}},
     "errors":      {"type": "array", "items": {"type": "string"}},
-    "fit_findings": {"type": "array", "items": {"type": "object"}}
+    "fit_findings": {"type": "array", "items": {"type": "object"}},
+    "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
   "required": ["resolved_slides"]
 }`)
@@ -1306,7 +1309,8 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "pattern_variety":     {"type": "integer"}
       },
       "required": ["longest_pattern_run", "has_emphasis", "emphasis_count", "pattern_variety"]
-    }
+    },
+    "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
   "required": ["slides", "brief", "slide_budget", "rhythm_check"]
 }`)

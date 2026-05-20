@@ -103,6 +103,40 @@ func TestResponseFingerprint_PresentInAllFourTools(t *testing.T) {
 	})
 }
 
+// TestResponseFingerprint_AdvertisedInOutputSchemas asserts that every tool
+// that emits response_fingerprint also lists it as a "string" property in its
+// MCP output schema. Schema-driven clients must be able to discover the field
+// from the schema alone; drift between emission and schema breaks them
+// silently. This test must fail the moment a tool starts emitting (or stops
+// advertising) the field.
+func TestResponseFingerprint_AdvertisedInOutputSchemas(t *testing.T) {
+	schemas := map[string]json.RawMessage{
+		"validate_input":            outputSchemaValidate,
+		"preview_presentation_plan": outputSchemaPreviewPlan,
+		"plan_deck":                 outputSchemaPlanDeck,
+		"recommend_visual":          outputSchemaRecommendVisual,
+	}
+
+	for name, schema := range schemas {
+		var parsed map[string]any
+		if err := json.Unmarshal(schema, &parsed); err != nil {
+			t.Fatalf("%s: schema not valid JSON: %v", name, err)
+		}
+		props, ok := parsed["properties"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s: schema missing top-level properties object", name)
+		}
+		fpProp, ok := props["response_fingerprint"].(map[string]any)
+		if !ok {
+			t.Errorf("%s: output schema must declare response_fingerprint as a property (drift between emission and schema)", name)
+			continue
+		}
+		if got, _ := fpProp["type"].(string); got != "string" {
+			t.Errorf("%s: response_fingerprint must be type=string, got %q", name, got)
+		}
+	}
+}
+
 // TestResponseFingerprint_DeterministicAcrossCalls verifies that calling a
 // fingerprinted handler twice with identical inputs produces identical
 // fingerprints, which is the cache-key contract.
