@@ -147,5 +147,16 @@
       5,
       5
     ]
+  },
+  {
+    "pattern_name": "dual-org-ladder",
+    "row_count": 5,
+    "cell_counts": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ]
   }
 ]

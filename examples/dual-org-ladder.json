@@ -1,0 +1,75 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "dual-org-ladder.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Joint Engagement Team"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Acme Industries × Strategy Partners LLP"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Engagement Team — Paired Roles"}
+      ],
+      "pattern": {
+        "name": "dual-org-ladder",
+        "values": {
+          "org_a": "Acme Industries",
+          "org_b": "Strategy Partners LLP",
+          "rows": [
+            {"a_name": "Bob Jones", "a_title": "Executive Sponsor", "b_name": "Betty Smith", "b_title": "Engagement Partner"},
+            {"a_name": "Alex Chen", "a_title": "Steering Committee", "b_name": "Maria Lopez", "b_title": "Account Director"},
+            {"a_name": "Sara Patel", "a_title": "Programme Lead", "b_name": "Tom Becker", "b_title": "Delivery Lead"},
+            {"a_name": "Jordan Park", "a_title": "Workstream Owner", "b_name": "Lila Romero", "b_title": "Senior Consultant"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Minimal pair (2 rows, connectors off)"}
+      ],
+      "pattern": {
+        "name": "dual-org-ladder",
+        "values": {
+          "org_a": "Client",
+          "org_b": "Advisor",
+          "show_connectors": false,
+          "rows": [
+            {"a_name": "Dana Wu", "a_title": "CFO", "b_name": "Idris Khan", "b_title": "Lead Partner"},
+            {"a_name": "Mei Park", "a_title": "Controller", "b_name": "Rosa Vega", "b_title": "Senior Manager"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Six-row ladder with accent overrides"}
+      ],
+      "pattern": {
+        "name": "dual-org-ladder",
+        "values": {
+          "org_a": "Northwind Group",
+          "org_b": "Helios Advisory",
+          "rows": [
+            {"a_name": "Eva Larsen", "a_title": "Chief Executive", "b_name": "Pavel Novak", "b_title": "Managing Partner"},
+            {"a_name": "Kenji Sato", "a_title": "Chief Operating Officer", "b_name": "Naomi Reyes", "b_title": "Programme Director"},
+            {"a_name": "Olu Adeyemi", "a_title": "Programme Sponsor", "b_name": "Aisha Khan", "b_title": "Engagement Manager"},
+            {"a_name": "Marta Silva", "a_title": "Functional Lead", "b_name": "Yusuf Bello", "b_title": "Senior Consultant"},
+            {"a_name": "Chen Wei", "a_title": "Technology Lead", "b_name": "Hannah Wolf", "b_title": "Solution Architect"},
+            {"a_name": "Sofia Russo", "a_title": "Change Champion", "b_name": "Ravi Iyer", "b_title": "Change Lead"}
+          ]
+        },
+        "overrides": {
+          "accent_a": "accent3",
+          "accent_b": "accent4"
+        }
+      }
+    }
+  ]
+}

@@ -150,6 +150,7 @@ examples/         # Example JSON input files (19 decks)
 | `card-grid` | Parameterized N×M grid of titled cards |
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split); falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison with optional headers |
+| `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right |
 | `icon-row` | Horizontal row of icon+caption pairs |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |

@@ -534,6 +534,24 @@ var rules = []rule{
 		itemMax:   8,
 	},
 
+	// Dual org ladder — two parallel org columns for joint-venture team slides
+	{
+		pattern:   "dual-org-ladder",
+		keywords:  []string{"dual org", "dual-org", "joint venture", "joint-venture", "client and consultant", "client and consulting", "client/consultant", "two org", "two-org", "paired teams", "paired org", "two organisations", "two organizations"},
+		baseScore: 0.92,
+		rationale: "Two parallel org columns with paired role cards and an org-name header above each column",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "dual-org-ladder",
+		keywords:  []string{"engagement team", "team pairs", "client team", "joint team", "partner team"},
+		baseScore: 0.78,
+		rationale: "Dual-org-ladder when two organisations share an engagement and matched roles align horizontally",
+		itemMin:   2,
+		itemMax:   6,
+	},
+
 	// Quote cluster — 3-8 stakeholder quote bubbles
 	{
 		pattern:   "quote-cluster",

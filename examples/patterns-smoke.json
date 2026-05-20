@@ -320,6 +320,25 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Joint Engagement Team"}
+      ],
+      "pattern": {
+        "name": "dual-org-ladder",
+        "values": {
+          "org_a": "Acme Industries",
+          "org_b": "Strategy Partners LLP",
+          "rows": [
+            {"a_name": "Bob Jones", "a_title": "Executive Sponsor", "b_name": "Betty Smith", "b_title": "Engagement Partner"},
+            {"a_name": "Alex Chen", "a_title": "Steering Committee", "b_name": "Maria Lopez", "b_title": "Account Director"},
+            {"a_name": "Sara Patel", "a_title": "Programme Lead", "b_name": "Tom Becker", "b_title": "Delivery Lead"},
+            {"a_name": "Jordan Park", "a_title": "Workstream Owner", "b_name": "Lila Romero", "b_title": "Senior Consultant"}
+          ]
+        }
+      }
     }
   ]
 }
