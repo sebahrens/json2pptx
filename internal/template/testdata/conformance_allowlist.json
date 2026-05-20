@@ -21,12 +21,6 @@
       "reason": "Designer template: missing Two Content, Section Divider, Blank, Blank+Title, Closing; Title Slide lacks subtitle. Repair under parent go-slide-creator-vqad."
     },
     {
-      "template": "forest-green.pptx",
-      "sha256": "2083345d452eece39221ac53954d4f2be0c151067b06975639f39e3974b9cdb5",
-      "tracking_issue": "go-slide-creator-vqad",
-      "reason": "Programmatic template: passes template-check at the FAIL level but emits one WARN (Section Number placeholder missing). Repair as part of vqad sweep."
-    },
-    {
       "template": "midnight-blue.pptx",
       "sha256": "7a2ae024b91e75d6dde4d945e35b1d60ae5b8ce32556b05003649ac7b1fd427a",
       "tracking_issue": "go-slide-creator-vqad",

@@ -39,6 +39,10 @@ type templateDef struct {
 	SurfaceTints map[string]string
 	// Data palette: ordered scheme color names for chart series
 	DataPalette []string
+	// HideChromeOnTitle, when true, sets showMasterSp="0" on the Title Slide
+	// and Closing layouts so master decorative shapes (underlines, brand
+	// marks, accent bars) do not bleed into the cover/closer.
+	HideChromeOnTitle bool
 }
 
 var templates = []templateDef{
@@ -71,8 +75,9 @@ var templates = []templateDef{
 		MajorFont:    "Calibri", MinorFont: "Calibri",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u2022",
-		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
-		DataPalette:  []string{"accent1", "accent3", "accent2", "accent5", "accent4", "accent6"},
+		SurfaceTints:      map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
+		DataPalette:       []string{"accent1", "accent3", "accent2", "accent5", "accent4", "accent6"},
+		HideChromeOnTitle: true,
 	},
 	{
 		Name:         "warm-coral",
@@ -484,15 +489,8 @@ func slideMaster(def templateDef) string {
 		`<p:txBody><a:bodyPr vert="horz" lIns="91440" tIns="45720" rIns="91440" bIns="45720" rtlCol="0" anchor="ctr"/>` +
 		`<a:lstStyle><a:lvl1pPr algn="r"><a:defRPr sz="1200"><a:solidFill><a:schemeClr val="dk2"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>` +
 		`<a:p><a:fld id="{B2C3D4E5-F6A7-8901-BCDE-F12345678901}" type="slidenum"><a:rPr lang="en-US"/><a:t>‹#›</a:t></a:fld></a:p></p:txBody></p:sp>` +
-		// Accent bar decorative shape
-		fmt.Sprintf(
-			`<p:sp><p:nvSpPr><p:cNvPr id="7" name="Accent Bar"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
-				`<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="228600" cy="6858000"/></a:xfrm>`+
-				`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`+
-				`<a:solidFill><a:schemeClr val="%s"/></a:solidFill>`+
-				`<a:ln><a:noFill/></a:ln></p:spPr>`+
-				`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
-			def.BarSchemeClr) +
+		// Theme-specific decorative chrome (accent bar, underline, brand mark, …).
+		chromeShapes(def) +
 		`</p:spTree></p:cSld>` +
 		`<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>` +
 		`<p:sldLayoutIdLst>` +
@@ -506,6 +504,91 @@ func slideMaster(def templateDef) string {
 		`</p:sldLayoutIdLst>` +
 		masterTextStyles(def) +
 		`</p:sldMaster>`
+}
+
+// hideMasterChromeAttr returns ` showMasterSp="0"` when the theme opts out of
+// master decorations on this layout (used for Title Slide and Closing on
+// forest-green so the underline/brand mark stay on content slides only).
+// Returns "" for themes that keep chrome everywhere, preserving the existing
+// XML byte-for-byte.
+func hideMasterChromeAttr(def templateDef) string {
+	if def.HideChromeOnTitle {
+		return ` showMasterSp="0"`
+	}
+	return ""
+}
+
+// chromeShapes returns the theme-specific decorative master shapes that sit
+// alongside the title/body/footer placeholders. Forest Green ships an
+// analytical, data-heavy look (thin accent1 title underline + small accent3
+// corner brand mark). Every other theme keeps the legacy left-edge accent bar.
+func chromeShapes(def templateDef) string {
+	switch def.Name {
+	case "forest-green":
+		return forestGreenChrome()
+	default:
+		return legacyAccentBarChrome(def)
+	}
+}
+
+// legacyAccentBarChrome emits the original full-height left-edge accent bar
+// used by midnight-blue and warm-coral. Preserved byte-for-byte so existing
+// templates regenerate to the same XML.
+func legacyAccentBarChrome(def templateDef) string {
+	return fmt.Sprintf(
+		`<p:sp><p:nvSpPr><p:cNvPr id="7" name="Accent Bar"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
+			`<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="228600" cy="6858000"/></a:xfrm>`+
+			`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`+
+			`<a:solidFill><a:schemeClr val="%s"/></a:solidFill>`+
+			`<a:ln><a:noFill/></a:ln></p:spPr>`+
+			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
+		def.BarSchemeClr)
+}
+
+// forestGreenChrome emits Option A for forest-green per go-slide-creator-4bxi:
+//   - a 2pt accent1 horizontal underline spanning the full title content width,
+//     positioned ~1pt below the master title placeholder.
+//   - a 24pt × 24pt accent3 right-angled triangle in the bottom-right corner
+//     as a quiet brand mark (flipped so the right angle hugs the corner).
+//
+// Both shapes live on the slide master; titleSlideLayout and closingLayout set
+// showMasterSp="0" via def.HideChromeOnTitle to suppress them on cover / closer.
+func forestGreenChrome() string {
+	// Master title placeholder lives at x=838200..11353800, y=365125..1690688.
+	// Place a 2pt-thick (25400 EMU) underline 1pt (12700 EMU) below the title,
+	// matching the title's content width for clean visual alignment.
+	const (
+		underlineX = 838200
+		underlineY = 365125 + 1325563 + 12700 // 1703388
+		underlineW = 10515600
+		underlineH = 25400 // 2pt
+	)
+	// Brand mark: 24pt = 304800 EMU, flush against the bottom-right corner of
+	// the 12192000 × 6858000 slide. flipH="1" rotates the rtTriangle so the
+	// right angle is in the bottom-right.
+	const (
+		triSize = 304800
+		triX    = 12192000 - triSize // 11887200
+		triY    = 6858000 - triSize  // 6553200
+	)
+	var b strings.Builder
+	fmt.Fprintf(&b,
+		`<p:sp><p:nvSpPr><p:cNvPr id="7" name="Title Underline"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
+			`<p:spPr><a:xfrm><a:off x="%d" y="%d"/><a:ext cx="%d" cy="%d"/></a:xfrm>`+
+			`<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`+
+			`<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>`+
+			`<a:ln><a:noFill/></a:ln></p:spPr>`+
+			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
+		underlineX, underlineY, underlineW, underlineH)
+	fmt.Fprintf(&b,
+		`<p:sp><p:nvSpPr><p:cNvPr id="8" name="Corner Mark"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
+			`<p:spPr><a:xfrm flipH="1"><a:off x="%d" y="%d"/><a:ext cx="%d" cy="%d"/></a:xfrm>`+
+			`<a:prstGeom prst="rtTriangle"><a:avLst/></a:prstGeom>`+
+			`<a:solidFill><a:schemeClr val="accent3"/></a:solidFill>`+
+			`<a:ln><a:noFill/></a:ln></p:spPr>`+
+			`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>`,
+		triX, triY, triSize, triSize)
+	return b.String()
 }
 
 func masterTextStyles(def templateDef) string {
@@ -575,7 +658,7 @@ func slideMasterRels(def templateDef) string {
 
 func titleSlideLayout(def templateDef) string {
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="title" preserve="1">` +
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"` + hideMasterChromeAttr(def) + ` type="title" preserve="1">` +
 		`<p:cSld name="Title Slide">` +
 		`<p:spTree>` +
 		`<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
@@ -684,7 +767,7 @@ func sectionLayout(def templateDef) string {
 
 func closingLayout(def templateDef) string {
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" preserve="1" userDrawn="1">` +
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"` + hideMasterChromeAttr(def) + ` preserve="1" userDrawn="1">` +
 		`<p:cSld name="Closing">` +
 		`<p:spTree>` +
 		`<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
