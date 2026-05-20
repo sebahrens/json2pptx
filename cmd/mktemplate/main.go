@@ -672,10 +672,10 @@ func sectionLayout(def templateDef) string {
 		`<a:lstStyle><a:lvl1pPr><a:buNone/><a:defRPr sz="3600"/></a:lvl1pPr></a:lstStyle>` +
 		`<a:p><a:r><a:rPr lang="en-US"/><a:t>Section Title</a:t></a:r></a:p></p:txBody></p:sp>` +
 		// Decorative section number placeholder (right side)
-		`<p:sp><p:nvSpPr><p:cNvPr id="3" name="body"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
+		`<p:sp><p:nvSpPr><p:cNvPr id="3" name="Section Number"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
 		`<p:nvPr><p:ph type="body" sz="quarter" idx="1" hasCustomPrompt="1"/></p:nvPr></p:nvSpPr>` +
 		`<p:spPr><a:xfrm><a:off x="7886700" y="1268413"/><a:ext cx="3182938" cy="3417887"/></a:xfrm></p:spPr>` +
-		`<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113"><a:buNone/><a:defRPr sz="9600"/></a:lvl1pPr></a:lstStyle>` +
+		`<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113" algn="r"><a:buNone/><a:defRPr sz="13600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>` +
 		`<a:p><a:pPr lvl="0"/><a:r><a:rPr lang="en-US"/><a:t>#</a:t></a:r></a:p></p:txBody></p:sp>` +
 		`</p:spTree></p:cSld>` +
 		`<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>` +
