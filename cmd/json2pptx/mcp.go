@@ -25,6 +25,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/resource"
@@ -459,7 +460,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
 	// Authors must use bundled SVG icons (see svggen/icons) or user-provided icons.
-	if emojiViolations := ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
+	if emojiViolations := emoji.ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
 	}
 
@@ -1034,7 +1035,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
-	if emojiViolations := ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
+	if emojiViolations := emoji.ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
 	}
 

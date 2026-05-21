@@ -17,6 +17,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -414,7 +415,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// No-emoji policy — applies regardless of design mode. Emoji codepoints
 	// in any user-supplied text are a hard error so authors switch to the
 	// bundled SVG icon set or user-provided icons.
-	if emojiViolations := ValidateNoEmojiInText(input); len(emojiViolations) > 0 {
+	if emojiViolations := emoji.ValidateNoEmojiInText(input); len(emojiViolations) > 0 {
 		msgs := make([]string, 0, len(emojiViolations))
 		for _, v := range emojiViolations {
 			msgs = append(msgs, v.Message)

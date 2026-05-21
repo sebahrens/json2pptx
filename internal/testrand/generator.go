@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 )
 
 // PresentationInput mirrors cmd/json2pptx.PresentationInput for JSON generation.
@@ -1146,12 +1148,16 @@ func (g *Generator) randomPercent() float64 {
 	return float64(5+g.rng.IntN(40)) + float64(g.rng.IntN(100))/100.0
 }
 
-// maybeEdge has a 10% chance of replacing text with an edge case string.
+// maybeEdge has a 10% chance of replacing text with an edge case string. Both
+// branches route through emoji.Sanitize so the generated corpus stays clean of
+// emoji codepoints by construction — the producer shares the exact predicate
+// the no-emoji validator enforces (internal/policy/emoji), preventing the
+// producer/enforcer drift that caused repeated emoji-in-corpus regressions.
 func (g *Generator) maybeEdge(normal string) string {
 	if g.rng.IntN(10) == 0 {
-		return edgeCaseStrings[g.rng.IntN(len(edgeCaseStrings))]
+		return emoji.Sanitize(edgeCaseStrings[g.rng.IntN(len(edgeCaseStrings))])
 	}
-	return normal
+	return emoji.Sanitize(normal)
 }
 
 func (g *Generator) randomChartStyle() *ChartStyleInput {

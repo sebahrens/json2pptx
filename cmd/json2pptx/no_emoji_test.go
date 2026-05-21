@@ -6,49 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 )
 
-func TestIsEmoji(t *testing.T) {
-	tests := []struct {
-		r    rune
-		want bool
-	}{
-		{'A', false},
-		{'z', false},
-		{' ', false},
-		{'日', false},
-		{'📊', true},   // U+1F4CA Bar Chart
-		{'🎯', true},   // U+1F3AF Direct Hit
-		{'✅', true},   // U+2705 Check Mark
-		{'📈', true},   // U+1F4C8 Chart Increasing
-		{'🚀', true},   // U+1F680 Rocket
-		{0xFE0F, true}, // Variation Selector-16
-		{0x200D, true}, // Zero Width Joiner
-	}
-	for _, tt := range tests {
-		if got := isEmoji(tt.r); got != tt.want {
-			t.Errorf("isEmoji(U+%04X) = %v, want %v", tt.r, got, tt.want)
-		}
-	}
-}
-
-func TestContainsEmoji(t *testing.T) {
-	tests := []struct {
-		s    string
-		want bool
-	}{
-		{"Hello World", false},
-		{"📊 Revenue", true},
-		{"日本語テスト", false},
-		{"Revenue 📈 Growth 🎯", true},
-		{"", false},
-	}
-	for _, tt := range tests {
-		if got := containsEmoji(tt.s); got != tt.want {
-			t.Errorf("containsEmoji(%q) = %v, want %v", tt.s, got, tt.want)
-		}
-	}
-}
+// These tests exercise the cmd/json2pptx boundary: the no-emoji policy applied
+// to this package's PresentationInput type and its conversion to diagnostics.
+// The emoji-detection predicate, sanitizer, and FitFinding builder are unit
+// tested in internal/policy/emoji.
 
 func TestValidateNoEmojiInText_CleanInput(t *testing.T) {
 	input := &PresentationInput{
@@ -62,7 +27,7 @@ func TestValidateNoEmojiInText_CleanInput(t *testing.T) {
 			},
 		},
 	}
-	if got := ValidateNoEmojiInText(input); len(got) != 0 {
+	if got := emoji.ValidateNoEmojiInText(input); len(got) != 0 {
 		t.Errorf("expected no findings, got %d: %+v", len(got), got)
 	}
 }
@@ -80,7 +45,7 @@ func TestValidateNoEmojiInText_DetectsEmojiInTitle(t *testing.T) {
 			},
 		},
 	}
-	findings := ValidateNoEmojiInText(input)
+	findings := emoji.ValidateNoEmojiInText(input)
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding, got %d: %+v", len(findings), findings)
 	}
@@ -115,7 +80,7 @@ func TestValidateNoEmojiInText_DetectsEmojiInBullets(t *testing.T) {
 			},
 		},
 	}
-	findings := ValidateNoEmojiInText(input)
+	findings := emoji.ValidateNoEmojiInText(input)
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding, got %d: %+v", len(findings), findings)
 	}
@@ -138,7 +103,7 @@ func TestValidateNoEmojiInText_DetectsEmojiInPatternOverrides(t *testing.T) {
 			},
 		},
 	}
-	findings := ValidateNoEmojiInText(input)
+	findings := emoji.ValidateNoEmojiInText(input)
 	if len(findings) == 0 {
 		t.Fatal("expected at least one finding for emoji in pattern overrides")
 	}
@@ -156,7 +121,7 @@ func TestValidateNoEmojiInText_DiagnosticConversion(t *testing.T) {
 			},
 		},
 	}
-	violations := ValidateNoEmojiInText(input)
+	violations := emoji.ValidateNoEmojiInText(input)
 	diags := noEmojiDiagnostics(violations)
 	if len(diags) != len(violations) {
 		t.Fatalf("expected %d diagnostics, got %d", len(violations), len(diags))
@@ -194,7 +159,7 @@ func TestValidateNoEmojiInText_ExampleDecksAreClean(t *testing.T) {
 			if err := json.Unmarshal(data, &input); err != nil {
 				t.Fatalf("unmarshal %s: %v", name, err)
 			}
-			findings := ValidateNoEmojiInText(&input)
+			findings := emoji.ValidateNoEmojiInText(&input)
 			if len(findings) != 0 {
 				for _, f := range findings {
 					t.Errorf("%s: %s — %s", name, f.Path, f.Message)
@@ -203,21 +168,3 @@ func TestValidateNoEmojiInText_ExampleDecksAreClean(t *testing.T) {
 		})
 	}
 }
-
-func TestExtractEmojiSample(t *testing.T) {
-	tests := []struct {
-		in   string
-		max  int
-		want string
-	}{
-		{"📊 Revenue 📈 Growth", 3, "📊📈"},
-		{"Plain text", 3, ""},
-		{"📊📊📊", 3, "📊"}, // distinct only
-	}
-	for _, tt := range tests {
-		if got := extractEmojiSample(tt.in, tt.max); got != tt.want {
-			t.Errorf("extractEmojiSample(%q, %d) = %q, want %q", tt.in, tt.max, got, tt.want)
-		}
-	}
-}
-

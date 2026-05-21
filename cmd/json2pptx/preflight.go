@@ -12,6 +12,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -162,7 +163,7 @@ func runPreflightCore(inputData []byte, opts preflightOptions) diagnostics.Findi
 
 	// STAGE 2: POLICY — design-mode constraints and the no-emoji content policy.
 	acc.add(preflightStagePolicy, designModeDiagnostics(validateDesignMode(input))...)
-	acc.add(preflightStagePolicy, noEmojiDiagnostics(ValidateNoEmojiInText(input))...)
+	acc.add(preflightStagePolicy, noEmojiDiagnostics(emoji.ValidateNoEmojiInText(input))...)
 
 	// Fail-fast: a deck missing a template (or slides) cannot resolve a
 	// template or validate layouts, so stop after INPUT/POLICY. Policy findings
