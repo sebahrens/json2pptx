@@ -528,6 +528,7 @@ Each template exposes `color_roles` in `list_templates` (MCP) / `json2pptx skill
 - `canonical_coverage` — per content-bearing family (`title-slide`, `section-divider`, `one-content`, `qa-closing`): `{present, layouts[]}`. A family with `present: false` means decks needing that slide kind cannot resolve a native layout.
 - `derivable_layouts` — `[{name, ready, missing[]}]` for higher-level layouts the engine can synthesise (e.g. `two-content`, `full-image`, grid patterns). When `ready: false`, `missing` names the absent prerequisite.
 - Full mode (`fields=full`) adds, per layout, `canonical_type` / `canonical_family` / `canonical_confidence`, and per placeholder `role` / `role_confidence` / `font_size_pt` (the font-size evidence behind the font-aware `max_chars`).
+- The full per-layout entries (`examine_template`'s `report.json` `layouts[]`, and discovery `fields=full` `layouts[]`) carry a `tags[]` array of structural/semantic hints. Two matter when placing section titles: `title-at-bottom` (the title slot sits in the lower half of the slide, under a decorative element) and `compact-title` (that bottom title slot only fits a short single-line title — visible-title `max_chars` < 35). When a Section Divider carries these, keep the section title to one short line; long titles overflow. (See the template guide for the full tag catalog.)
 
 ---
 

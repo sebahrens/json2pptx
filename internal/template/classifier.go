@@ -72,14 +72,15 @@ const (
 
 // placeholderCounts holds pre-computed counts of placeholder types.
 type placeholderCounts struct {
-	title             int
-	subtitle          int  // Subtitle placeholders (typically on title slides)
-	visibleTitle      int  // Title placeholders that are visible (Y >= 0)
-	titleAtBottom     bool // True if all title placeholders are positioned at the bottom of the slide
-	body              int
-	usableBody        int // Body placeholders large enough for content (MaxChars >= minUsableBodyChars)
-	image             int
-	chart             int
+	title         int
+	subtitle      int  // Subtitle placeholders (typically on title slides)
+	visibleTitle  int  // Title placeholders that are visible (Y >= 0)
+	titleAtBottom bool // True if all title placeholders are positioned at the bottom of the slide
+	compactTitle  bool // True if a visible title placeholder only fits a short single-line title
+	body          int
+	usableBody    int // Body placeholders large enough for content (MaxChars >= minUsableBodyChars)
+	image         int
+	chart         int
 }
 
 // minUsableBodyChars is the minimum character capacity for a body placeholder
@@ -87,6 +88,15 @@ type placeholderCounts struct {
 // Placeholders below this threshold are likely designed for decorative elements
 // like section numbers ("#") or short labels, not for actual content.
 const minUsableBodyChars = 100
+
+// compactTitleMaxChars is the capacity ceiling below which a visible title
+// placeholder is considered "compact" — it only holds a short, single-line
+// title. Once estimateMaxChars scales by font size, large-font title slots
+// report ~14–32 characters while roomy multi-line title slots (e.g. some
+// templates' Section Divider) report ~69+, so a ceiling of 35 sits above the
+// tight cluster and below the roomy slots. Used (in combination with
+// title-at-bottom geometry) to emit the "compact-title" planning hint.
+const compactTitleMaxChars = 35
 
 // countPlaceholders pre-computes placeholder type counts for classification.
 // Note: PlaceholderOther (date, footer, slide number) is intentionally not counted
@@ -97,6 +107,8 @@ func countPlaceholders(placeholders []types.PlaceholderInfo) placeholderCounts {
 	var counts placeholderCounts
 	titleAtTopCount := 0
 	titleAtBottomCount := 0
+	visibleTitleHasChars := false
+	minVisibleTitleMaxChars := 0
 
 	for _, ph := range placeholders {
 		switch ph.Type {
@@ -110,6 +122,14 @@ func countPlaceholders(placeholders []types.PlaceholderInfo) placeholderCounts {
 					titleAtBottomCount++
 				} else {
 					titleAtTopCount++
+				}
+				// Track the tightest visible title capacity so we can flag
+				// layouts whose title slot only fits a short single-line title.
+				// MaxChars == 0 means the font size was unknown, so capacity is
+				// indeterminate and must not count as "compact".
+				if ph.MaxChars > 0 && (!visibleTitleHasChars || ph.MaxChars < minVisibleTitleMaxChars) {
+					minVisibleTitleMaxChars = ph.MaxChars
+					visibleTitleHasChars = true
 				}
 			}
 		case types.PlaceholderSubtitle:
@@ -140,6 +160,10 @@ func countPlaceholders(placeholders []types.PlaceholderInfo) placeholderCounts {
 	// Layout has title at bottom if there are title placeholders and all visible ones
 	// are positioned below the 50% threshold
 	counts.titleAtBottom = counts.title > 0 && titleAtTopCount == 0 && titleAtBottomCount > 0
+
+	// Layout has a compact title if its tightest visible title placeholder only
+	// holds a short single-line title.
+	counts.compactTitle = visibleTitleHasChars && minVisibleTitleMaxChars < compactTitleMaxChars
 
 	return counts
 }
@@ -225,6 +249,21 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 
 	// Semantic tags based on layout name patterns
 	tags = append(tags, classifyByName(layout.Name, counts)...)
+
+	// Compact-title: a visible title placeholder that is BOTH positioned low on
+	// the slide (title-at-bottom geometry) AND small enough to hold only a short
+	// single-line title. This marks the specific truncation hazard where a
+	// descriptive section title is squeezed into a small slot beneath a large
+	// decorative element (e.g. modern-yellow's Section Divider, where a 208pt
+	// "Section Number" frame sits above a 48pt title slot). Planners should keep
+	// titles on these layouts terse; per-layout MaxChars carries the raw budget.
+	// Gating on title-at-bottom keeps the hint targeted: ordinary content/title
+	// slots are also capacity-limited but are not an unexpected hazard. The
+	// gate mirrors the title-at-bottom tag condition exactly (counts.titleAtBottom
+	// && counts.body > 0) so "compact-title" is always emitted alongside it.
+	if counts.titleAtBottom && counts.body > 0 && counts.compactTitle {
+		tags = append(tags, "compact-title")
+	}
 
 	layout.Tags = tags
 }

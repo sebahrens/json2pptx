@@ -36,6 +36,7 @@ Each layout receives classification tags based on its placeholder structure and 
 | `content` | Visible title + at least one usable body placeholder |
 | `title-hidden` | Title placeholder off-screen (Y < 0), body present |
 | `title-at-bottom` | Title in lower 50% of slide, body present |
+| `compact-title` | A `title-at-bottom` layout whose title slot only fits a short single-line title (visible title `max_chars` < 35). Keep titles terse here — long section titles overflow. Emitted alongside `title-at-bottom`; read per-layout `max_chars` for the exact budget. |
 | `two-column` | 2+ body placeholders side-by-side (X gap > 10%) |
 | `comparison` | Same as two-column (both tags applied together) |
 | `image-left` | Image placeholder left of body |

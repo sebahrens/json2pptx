@@ -56,6 +56,12 @@ A slide's `content` array is a list of typed items, each targeting a placeholder
 
 Other `*_value` fields are forbidden for the chosen type. The legacy raw `value` field is still accepted (unconstrained) for backward compatibility.
 
+## Section slides and the title-at-bottom convention
+
+Section dividers (`layout_id: "section"` / `slide_type: "section"`) target a template's Section Divider layout. In some templates the **visual order of the title and the decorative number is reversed** from a normal content slide: a large decorative "section number" frame sits at the top of the slide and the section *title* is placed in a smaller slot near the **bottom**. You still author it the same way — write the section title into the `title` placeholder — but the rendered title will appear lower on the slide than you might expect, and its capacity is small.
+
+These layouts carry the `title-at-bottom` classification tag, and when the bottom title slot only fits a short single-line title they additionally carry `compact-title` (see the layout-tag tables in the template guide). When you see either tag — or a low per-layout `max_chars` on the title — keep the section title to a short, single line. Long, multi-line section titles overflow the slot. The decorative number is supplied by the template, not by your JSON.
+
 ## Inline formatting
 
 Text and bullet strings accept three inline tags: `<b>`, `<i>`, `<u>`. They can be nested: `<b><i>bold italic</i></b>`. Plain dashes/arrows (`→`, `•`, en/em dashes) are allowed; **emoji codepoints are rejected anywhere** in deck JSON.
