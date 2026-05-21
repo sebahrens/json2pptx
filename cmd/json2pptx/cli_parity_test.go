@@ -56,6 +56,7 @@ var mcpToCLI = map[string]string{
 	"describe_finding":               "describe-finding",
 	"audit_palette":                  "audit-palette",
 	"examine_template":               "examine-template",
+	"apply_deck_patch":               "repair", // [MCP-only] pure deck JSON transform; CLI users edit the JSON directly or invoke 'json2pptx repair'
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server

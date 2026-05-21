@@ -4,6 +4,33 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.46.0 (2026-05-21)
+
+### Added
+
+- **`apply_deck_patch` MCP tool.** A pure deck-JSON transform primitive. Accepts
+  the full deck plus an ordered `ops[]` list of bounded structural operations and
+  returns the patched deck plus validation/preflight findings. It never writes
+  files, renders, or mutates server state — it is a primitive, not a workflow
+  facade.
+  - Operations: `insert_slide` (`index?`, `slide`), `remove_slide` (`index`),
+    `replace_slide` (`index`, `slide`), `move_slide` (`from`, `to`),
+    `duplicate_slide` (`index`, `to?`), and `replace_field` (`path`, `value`) —
+    where `path` is an RFC 6901 JSON Pointer that must already exist (replace
+    semantics, never create).
+  - The patch is **atomic**: any invalid operation (index out of range, unknown
+    op, missing field, JSON Pointer path that does not exist) or a change that
+    produces a deck which no longer parses is rejected with a structured error
+    envelope and no `patched_deck` is returned.
+  - Response shape: `{patched_deck, applied_ops[], findings}` where `findings` is
+    the shared [FindingEnvelope](AGENT_DIAGNOSTICS.md) (branch on `findings.ok`).
+  - The deck round-trips through a generic JSON tree (numbers preserved), so
+    fields the tool does not model survive the patch unchanged.
+
+  Adding a tool changes the MCP tool-name set, so `schema_version` advances to
+  `4.46.0` and the schema fingerprint advances to `968385126256b966`. (bd
+  `go-slide-creator-wnx3`.)
+
 ## 4.45.0 (2026-05-21)
 
 ### Added

@@ -506,6 +506,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpPreviewIconTool":             mcpPreviewIconTool,
 		"mcpAuditPaletteTool":            mcpAuditPaletteTool,
 		"mcpExamineTemplateTool":         mcpExamineTemplateTool,
+		"mcpApplyDeckPatchTool":          mcpApplyDeckPatchTool,
 	}
 
 	// Build the set of tool names that are actually registered in runMCP.

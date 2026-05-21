@@ -561,6 +561,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"describe_finding":               true,
 		"audit_palette":                  true,
 		"examine_template":               true,
+		"apply_deck_patch":               true,
 	}
 
 	for _, name := range mcpToolNames() {

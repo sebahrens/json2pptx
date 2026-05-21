@@ -989,6 +989,29 @@ var outputSchemaExamineTemplate = json.RawMessage(`{
   "required": ["template", "aspect_ratio", "slide", "theme", "canonical_coverage", "layouts", "findings"]
 }`)
 
+// --- apply_deck_patch ---
+var outputSchemaApplyDeckPatch = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "patched_deck": {"type": "object", "description": "The deck after applying every operation. Same schema as generate_presentation's presentation input — feed it straight into validate_input / generate_presentation / repair_slide. Present only on success; a rejected (atomic) patch returns an error envelope instead, with no patched_deck."},
+    "applied_ops": {
+      "type": "array",
+      "description": "One entry per operation, in request order. On a success response every entry has applied=true (the patch is atomic).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "op":      {"type": "string", "enum": ["insert_slide", "remove_slide", "replace_slide", "move_slide", "duplicate_slide", "replace_field"]},
+          "applied": {"type": "boolean"},
+          "message": {"type": "string"}
+        },
+        "required": ["op", "applied"]
+      }
+    },
+    "findings": ` + findingEnvelopeSchema + `
+  },
+  "required": ["patched_deck", "applied_ops", "findings"]
+}`)
+
 // findingEnvelopeSchema is the JSON Schema fragment for a diagnostics.
 // FindingEnvelope (docs/api/finding-envelope.schema.json). Surfaces that embed
 // the envelope concatenate this fragment so the shape stays in one place.
