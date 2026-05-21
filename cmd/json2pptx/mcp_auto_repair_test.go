@@ -142,6 +142,143 @@ func TestAutoRepair_ConvergesWithinMaxPasses(t *testing.T) {
 	}
 }
 
+// TestAutoRepair_ReturnsFinalPresentation asserts that a converging run
+// returns the full repaired deck JSON in final_presentation, that the JSON
+// reflects the applied repairs, and that it round-trips back through
+// validate_input without a caller having to reconstruct state from the trace.
+func TestAutoRepair_ReturnsFinalPresentation(t *testing.T) {
+	mc := repairMC(t)
+
+	deckJSON := autoRepairDeck(3)
+
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deckJSON),
+		"gate": map[string]any{
+			"min_score":                  float64(95),
+			"max_p0_findings":            float64(0),
+			"max_p1_findings":            float64(2),
+			"require_takeaway_on_charts": false,
+		},
+		"max_passes":      float64(3),
+		"output_filename": "auto_repair_final_pres.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if len(output.FinalPresentation) == 0 {
+		t.Fatal("expected non-empty final_presentation on a successful run")
+	}
+
+	// The returned JSON must parse as a deck with the same shape we sent.
+	var finalDeck PresentationInput
+	if err := json.Unmarshal(output.FinalPresentation, &finalDeck); err != nil {
+		t.Fatalf("final_presentation is not a valid PresentationInput: %v", err)
+	}
+	if finalDeck.Template != "midnight-blue" {
+		t.Errorf("final_presentation.template = %q, want midnight-blue", finalDeck.Template)
+	}
+	if len(finalDeck.Slides) != 3 {
+		t.Errorf("final_presentation has %d slides, want 3", len(finalDeck.Slides))
+	}
+
+	// The deck entered the loop with six bullets per body (BODY_TOO_LONG);
+	// convergence to min_score=95 requires reduce_text, so the repaired JSON
+	// must show at least one body trimmed below the original six bullets.
+	// This proves final_presentation is the post-repair state, not the input.
+	trimmed := false
+	for _, s := range finalDeck.Slides {
+		for _, c := range s.Content {
+			if c.BulletsValue != nil && len(*c.BulletsValue) < 6 {
+				trimmed = true
+			}
+		}
+	}
+	if !trimmed {
+		t.Errorf("expected final_presentation to reflect a reduce_text repair (a body with <6 bullets), found none")
+	}
+
+	// The headline guarantee: feed final_presentation straight back into
+	// validate_input and it must validate, with no reconstruction from trace.
+	vResult, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(string(output.FinalPresentation)),
+	}))
+	if err != nil {
+		t.Fatalf("validate_input round-trip errored: %v", err)
+	}
+	if vResult.IsError {
+		t.Fatalf("validate_input round-trip returned tool error: %s", textContent(vResult))
+	}
+	var vOut dryRunOutput
+	if err := json.Unmarshal([]byte(textContent(vResult)), &vOut); err != nil {
+		t.Fatalf("unmarshal validate_input response: %v", err)
+	}
+	if !vOut.Valid {
+		t.Errorf("final_presentation did not validate; findings: %s", textContent(vResult))
+	}
+}
+
+// TestAutoRepair_FinalPresentationOnZeroRepairRun asserts the field is present
+// even when the deck passes the gate on pass 1 with no repairs applied — the
+// acceptance criterion explicitly covers zero-repair runs.
+func TestAutoRepair_FinalPresentationOnZeroRepairRun(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout1",
+				"content": []any{
+					map[string]any{
+						"placeholder_id": "title",
+						"type":           "text",
+						"text_value":     "Hello",
+					},
+				},
+			},
+		},
+	}
+	b, _ := json.Marshal(deck)
+
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation":    mustParseJSON(string(b)),
+		"output_filename": "auto_repair_zero_repair.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if !output.GatePassed {
+		t.Fatalf("expected trivial deck to pass gate on pass 1, reasons=%v", output.GateReasons)
+	}
+	if len(output.FinalPresentation) == 0 {
+		t.Fatal("expected final_presentation present on a zero-repair run")
+	}
+	var finalDeck PresentationInput
+	if err := json.Unmarshal(output.FinalPresentation, &finalDeck); err != nil {
+		t.Fatalf("final_presentation is not a valid PresentationInput: %v", err)
+	}
+	if len(finalDeck.Slides) != 1 {
+		t.Errorf("final_presentation has %d slides, want 1", len(finalDeck.Slides))
+	}
+}
+
 // TestAutoRepair_GateNotMetExhaustsPasses asserts that when the gate is set
 // to an unattainable threshold, the loop runs the full max_passes count,
 // returns gate_passed=false, and records every pass in the trace with

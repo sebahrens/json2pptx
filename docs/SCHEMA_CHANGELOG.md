@@ -4,6 +4,28 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.39.0 (2026-05-21)
+
+### Added
+
+- **`final_presentation` field on `auto_repair` and `make_deck` responses.**
+  Both tools now return the full deck JSON produced after the convergence loop,
+  alongside the existing PPTX `path` and `trace[]`. `auto_repair` returns it on
+  every successful run (including zero-repair runs, where it equals the resolved
+  input); `make_deck` returns the deck it planned, expanded, and repaired.
+
+  The value is the same shape as `generate_presentation`'s `presentation`
+  input, so an agent can feed it straight back into `validate_input`,
+  `generate_presentation`, or `repair_slide` to keep editing, diffing,
+  patching, and re-running quality checks without reconstructing state from the
+  trace. The JSON reflects every repair applied during the loop plus the
+  up-front asset-path and canonical-layout resolution.
+
+  Output schemas (`outputSchemaAutoRepair`, `outputSchemaMakeDeck`) add
+  `final_presentation` to their `properties` and `required` lists. Both PPTX
+  outputs and all prior trace/plan/gate fields are preserved. (bd
+  `go-slide-creator-5k9k`.)
+
 ## 4.38.0 (2026-05-21)
 
 ### Added

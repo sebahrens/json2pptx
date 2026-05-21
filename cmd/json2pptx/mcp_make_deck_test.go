@@ -83,6 +83,69 @@ func TestMakeDeck_ColdStartOutlineProducesPPTX(t *testing.T) {
 	}
 }
 
+// TestMakeDeck_ReturnsFinalPresentation asserts make_deck returns the deck it
+// planned, expanded, and repaired in final_presentation, and that the JSON
+// round-trips back through validate_input — so a cold-start agent can keep
+// editing the auto-authored deck without rebuilding it from the plan summary.
+func TestMakeDeck_ReturnsFinalPresentation(t *testing.T) {
+	mc := repairMC(t)
+
+	result, err := mc.handleMakeDeck(context.Background(), makeRequest(map[string]any{
+		"outline":         "Pitch our Series B for an AI infrastructure company",
+		"template":        "midnight-blue",
+		"output_filename": "make_deck_final_pres.pptx",
+		"style_hints": map[string]any{
+			"slide_budget": float64(6),
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output makeDeckOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if len(output.FinalPresentation) == 0 {
+		t.Fatal("expected non-empty final_presentation on a successful run")
+	}
+
+	var finalDeck PresentationInput
+	if err := json.Unmarshal(output.FinalPresentation, &finalDeck); err != nil {
+		t.Fatalf("final_presentation is not a valid PresentationInput: %v", err)
+	}
+	if finalDeck.Template != "midnight-blue" {
+		t.Errorf("final_presentation.template = %q, want midnight-blue", finalDeck.Template)
+	}
+	// The plan summary and the returned deck must agree on slide count so the
+	// agent can map plan.slides[].slide_index onto final_presentation.slides[].
+	if output.Plan != nil && len(finalDeck.Slides) != len(output.Plan.Slides) {
+		t.Errorf("final_presentation has %d slides but plan has %d", len(finalDeck.Slides), len(output.Plan.Slides))
+	}
+
+	// Headline guarantee: feed final_presentation back into validate_input.
+	vResult, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(string(output.FinalPresentation)),
+	}))
+	if err != nil {
+		t.Fatalf("validate_input round-trip errored: %v", err)
+	}
+	if vResult.IsError {
+		t.Fatalf("validate_input round-trip returned tool error: %s", textContent(vResult))
+	}
+	var vOut dryRunOutput
+	if err := json.Unmarshal([]byte(textContent(vResult)), &vOut); err != nil {
+		t.Fatalf("unmarshal validate_input response: %v", err)
+	}
+	if !vOut.Valid {
+		t.Errorf("final_presentation did not validate; findings: %s", textContent(vResult))
+	}
+}
+
 // TestMakeDeck_MissingOutlineReturnsArgError asserts the tool refuses to run
 // without an outline rather than silently producing an empty plan.
 func TestMakeDeck_MissingOutlineReturnsArgError(t *testing.T) {

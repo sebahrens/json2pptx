@@ -42,6 +42,12 @@ type makeDeckOutput struct {
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
 	Plan        *makeDeckPlanSummary   `json:"plan"`
+	// FinalPresentation is the full deck JSON produced after planning and
+	// repair. Always present on success. Lets agents continue editing the
+	// auto-authored deck (per-slide content via repair_slide, re-validation via
+	// validate_input, re-render via generate_presentation) without
+	// reconstructing it from the plan summary or trace.
+	FinalPresentation json.RawMessage `json:"final_presentation"`
 	// IdempotentReplay is true when this response was served from the
 	// idempotency cache instead of regenerated.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
@@ -81,7 +87,7 @@ func mcpMakeDeckTool() mcp.Tool {
 
 Use this when you want a publishable deck without orchestrating the 37-tool surface yourself. The full surface remains available for fine-grained control; make_deck is intended as the recommended starting point for cold-start agents.
 
-Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], plan}. The final PPTX is written to the configured output directory whether the gate passed or not. plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning.
+Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], plan, final_presentation}. The final PPTX is written to the configured output directory whether the gate passed or not. plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
 
 Style hints (all optional):
 - slide_budget: target deck size, clamped to [3, 30] (default 10).
@@ -206,13 +212,14 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 	}
 
 	out := &makeDeckOutput{
-		Path:        loopOut.Path,
-		FinalScore:  loopOut.FinalScore,
-		GatePassed:  loopOut.GatePassed,
-		Passes:      loopOut.Passes,
-		Trace:       loopOut.Trace,
-		GateReasons: loopOut.GateReasons,
-		Plan:        planSummaryFromInput(plan, input, templateName),
+		Path:              loopOut.Path,
+		FinalScore:        loopOut.FinalScore,
+		GatePassed:        loopOut.GatePassed,
+		Passes:            loopOut.Passes,
+		Trace:             loopOut.Trace,
+		GateReasons:       loopOut.GateReasons,
+		Plan:              planSummaryFromInput(plan, input, templateName),
+		FinalPresentation: loopOut.FinalPresentation,
 	}
 
 	mc.idempotency.Set("make_deck", idemKey, out)

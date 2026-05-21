@@ -49,6 +49,13 @@ type autoRepairOutput struct {
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
+	// FinalPresentation is the full repaired deck JSON after the convergence
+	// loop. Always present on a successful run, including zero-repair runs
+	// (where it equals the resolved input). Lets agents continue editing,
+	// diffing, patching, or re-validating by feeding it straight back into
+	// validate_input / generate_presentation / repair_slide without
+	// reconstructing state from the trace.
+	FinalPresentation json.RawMessage `json:"final_presentation"`
 	// IdempotentReplay is true when this response was served from the
 	// idempotency cache instead of regenerated.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
@@ -85,7 +92,7 @@ Gate fields (all optional, all defaulted):
 - max_p1_findings (default 2): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
-Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[]}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior.
+Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], final_presentation}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace.
 
 When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
 		mcp.WithRawOutputSchema(outputSchemaAutoRepair),
@@ -323,13 +330,23 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		return nil, api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("final generation failed: %v", renderErr))
 	}
 
+	// Marshal the final repaired deck. input reflects every repair applied
+	// during the loop plus the up-front asset-path and canonical-layout
+	// resolution, so the JSON round-trips back into validate_input /
+	// generate_presentation as-is — agents never have to rebuild it from trace.
+	finalPresentation, err := json.Marshal(input)
+	if err != nil {
+		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal final presentation: %v", err))
+	}
+
 	output := &autoRepairOutput{
-		Path:        finalPath,
-		FinalScore:  lastScore,
-		GatePassed:  gatePassed,
-		Passes:      passesRun,
-		Trace:       trace,
-		GateReasons: lastGateReasons,
+		Path:              finalPath,
+		FinalScore:        lastScore,
+		GatePassed:        gatePassed,
+		Passes:            passesRun,
+		Trace:             trace,
+		GateReasons:       lastGateReasons,
+		FinalPresentation: finalPresentation,
 	}
 	if gatePassed {
 		output.GateReasons = nil

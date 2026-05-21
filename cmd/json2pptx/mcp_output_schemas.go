@@ -951,9 +951,10 @@ var outputSchemaAutoRepair = json.RawMessage(`{
       "description": "Human-readable list of unmet gate criteria. Present only when gate_passed=false.",
       "items": {"type": "string"}
     },
+    "final_presentation": {"type": "object", "description": "The full repaired deck JSON after the convergence loop (same schema as generate_presentation's presentation input). Always present on success, including zero-repair runs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without reconstructing state from the trace."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "final_presentation"]
 }`)
 
 // --- make_deck ---
@@ -1005,9 +1006,10 @@ var outputSchemaMakeDeck = json.RawMessage(`{
       },
       "required": ["template", "slide_budget", "slides"]
     },
+    "final_presentation": {"type": "object", "description": "The full deck JSON the engine authored and repaired (same schema as generate_presentation's presentation input). Always present on success. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without rebuilding it from the plan summary or trace."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "plan"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "plan", "final_presentation"]
 }`)
 
 // --- table_density_guide ---
