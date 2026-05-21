@@ -104,7 +104,7 @@ func TestMCPArgErrors_EnvelopeShape(t *testing.T) {
 		{name: "analyze_deck_rhythm/missing", handler: handleAnalyzeDeckRhythm, args: map[string]any{}, wantPath: "presentation"},
 
 		// plan_deck — required: brief (string)
-		{name: "plan_deck/missing", handler: handlePlanDeck, args: map[string]any{}, wantPath: "brief"},
+		{name: "plan_deck/missing", handler: wrap(mc.handlePlanDeck), args: map[string]any{}, wantPath: "brief"},
 
 		// describe_finding — required: code (string)
 		{name: "describe_finding/missing", handler: handleDescribeFinding, args: map[string]any{}, wantPath: "code"},

@@ -85,7 +85,7 @@ func TestResponseFingerprint_PresentInAllFourTools(t *testing.T) {
 	})
 
 	t.Run("plan_deck", func(t *testing.T) {
-		result, err := handlePlanDeck(ctx, makeRequest(map[string]any{
+		result, err := mc.handlePlanDeck(ctx, makeRequest(map[string]any{
 			"brief":        "quarterly review of north america sales",
 			"slide_budget": 6.0,
 		}))
@@ -304,6 +304,11 @@ func TestFindingsCanonicalOrder_OverflowBudgetAcrossSlides(t *testing.T) {
 // fingerprinted handler twice with identical inputs produces identical
 // fingerprints, which is the cache-key contract.
 func TestResponseFingerprint_DeterministicAcrossCalls(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
 	ctx := context.Background()
 
 	args := map[string]any{
@@ -311,11 +316,11 @@ func TestResponseFingerprint_DeterministicAcrossCalls(t *testing.T) {
 		"slide_budget": 8.0,
 	}
 
-	r1, err := handlePlanDeck(ctx, makeRequest(args))
+	r1, err := mc.handlePlanDeck(ctx, makeRequest(args))
 	if err != nil {
 		t.Fatalf("call 1: %v", err)
 	}
-	r2, err := handlePlanDeck(ctx, makeRequest(args))
+	r2, err := mc.handlePlanDeck(ctx, makeRequest(args))
 	if err != nil {
 		t.Fatalf("call 2: %v", err)
 	}

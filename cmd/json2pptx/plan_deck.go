@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -39,6 +40,9 @@ The output is directly consumable as the slides array in generate_presentation �
 		),
 		mcp.WithArray("must_include",
 			mcp.Description("Pattern names that must appear in the plan (e.g., [\"bmc-canvas\", \"kpi-3up\"])."),
+		),
+		mcp.WithString("template",
+			mcp.Description("Optional template name (e.g., midnight-blue) to make the plan template-aware. When supplied, every planned slide (and each alternative) carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette — the same shared helper recommend_visual uses. A recommended pattern the template cannot host is replaced with a supported alternative when one exists, so the plan never assigns an impossible pattern. Use list_templates to discover names."),
 		),
 	)
 }
@@ -84,6 +88,12 @@ type planSlide struct {
 	// Alternatives are the next-best ranked patterns for this slot, after
 	// the recommended one. Up to 2 entries.
 	Alternatives []plannedAlternative `json:"alternatives,omitempty"`
+
+	// TemplateSupport reports how well the recommended pattern fits the
+	// template passed in the `template` argument. Populated by the shared
+	// recommendation helper (the same one recommend_visual uses); nil when no
+	// template context was supplied (template-agnostic plan, unchanged).
+	TemplateSupport *patterns.TemplateSupport `json:"template_support,omitempty"`
 }
 
 // predictedCellBudget is a single (columns × rows) configuration with the
@@ -111,6 +121,11 @@ type plannedAlternative struct {
 	PatternName string  `json:"pattern_name"`
 	Score       float64 `json:"score"`
 	Rationale   string  `json:"rationale"`
+
+	// TemplateSupport reports the alternative's fit for the template passed in
+	// the `template` argument, so a caller swapping in a fallback can see its
+	// feasibility up front. Nil when no template context was supplied.
+	TemplateSupport *patterns.TemplateSupport `json:"template_support,omitempty"`
 }
 
 // planDeckResult is the top-level plan_deck response.
@@ -119,6 +134,10 @@ type planDeckResult struct {
 	Brief           string      `json:"brief"`
 	SlideBudget     int         `json:"slide_budget"`
 	RhythmCheck     rhythmCheck `json:"rhythm_check"`
+
+	// Template echoes the template name the plan was vetted against, when the
+	// `template` argument was supplied. Empty for a template-agnostic plan.
+	Template string `json:"template,omitempty"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key.
@@ -135,7 +154,7 @@ type rhythmCheck struct {
 
 // --- Handler ---
 
-func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	brief, err := request.RequireString("brief")
 	if err != nil {
 		return argMissing("plan_deck", "brief", "string", "Pitch our Q3 product launch to the executive team", nil), nil
@@ -177,7 +196,26 @@ func handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 		}
 	}
 
-	result := buildDeckPlan(reg, brief, slideBudget, audience, mustInclude)
+	// Optional template context — when supplied, the plan becomes template-aware:
+	// every slide (and alternative) is annotated with template_support and any
+	// recommended pattern the template cannot host is swapped for a supported one.
+	analysis, cleanup, errResult := mc.resolveTemplateAnalysis(request)
+	if errResult != nil {
+		return errResult, nil
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
+	var tc *generator.TemplateSupportContext
+	templateName := ""
+	if analysis != nil {
+		tc = generator.NewTemplateSupportContext(analysis, reg)
+		if t, ok := request.GetArguments()["template"].(string); ok {
+			templateName = t
+		}
+	}
+
+	result := buildDeckPlan(reg, brief, slideBudget, audience, mustInclude, tc, templateName)
 
 	if err := api.ComputeResponseFingerprint(result); err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("plan_deck", "brief")), nil
@@ -225,7 +263,12 @@ var narrativeRoleToTaxonomy = map[string][]string{
 	"closing":    {"conclude"},
 }
 
-func buildDeckPlan(reg *patterns.Registry, brief string, budget int, audience string, mustInclude []string) *planDeckResult {
+// buildDeckPlan assembles a deck plan. When tc is non-nil the plan becomes
+// template-aware: a recommended pattern the template cannot host is swapped for
+// a supported alternative before predictions are attached, and every slide /
+// alternative is annotated with its template_support. templateName is echoed in
+// the result for traceability; pass "" with a nil tc for a template-agnostic plan.
+func buildDeckPlan(reg *patterns.Registry, brief string, budget int, audience string, mustInclude []string, tc *generator.TemplateSupportContext, templateName string) *planDeckResult {
 	// 1. Distribute slides across narrative roles.
 	roleSlots := distributeRoles(budget)
 
@@ -235,12 +278,25 @@ func buildDeckPlan(reg *patterns.Registry, brief string, budget int, audience st
 	// 3. Enforce rhythm rules — break runs of 3+ and inject emphasis.
 	slides = enforceRhythm(reg, slides, brief)
 
-	// 4. Attach per-slot predictions: cell budgets, top-3 fit findings,
+	// 4. With template context, replace any recommended pattern the template
+	//    cannot host with a supported alternative. Done before predictions so the
+	//    cell budgets / findings / skeleton reflect the final pattern.
+	if tc != nil {
+		swapInfeasiblePatterns(reg, tc, slides, brief, audience)
+	}
+
+	// 5. Attach per-slot predictions: cell budgets, top-3 fit findings,
 	//    and ranked alternatives. Done after rhythm enforcement so the
 	//    predictions reflect the final pattern choice for each slot.
 	attachSlidePredictions(reg, slides, brief, audience)
 
-	// 5. Build rhythm check.
+	// 6. With template context, annotate each slide and alternative with the
+	//    shared recommendation helper's support assessment.
+	if tc != nil {
+		annotatePlanTemplateSupport(tc, slides)
+	}
+
+	// 7. Build rhythm check.
 	check := computeRhythmCheck(slides)
 
 	return &planDeckResult{
@@ -248,6 +304,52 @@ func buildDeckPlan(reg *patterns.Registry, brief string, budget int, audience st
 		Brief:       brief,
 		SlideBudget: budget,
 		RhythmCheck: check,
+		Template:    templateName,
+	}
+}
+
+// patternFeasibleForTemplate reports whether the named pattern can be hosted by
+// the template. "Feasible" means the shared helper does not report it as
+// unsupported (supported and risky both count, mirroring recommend_visual's
+// demotion policy, which only sinks unsupported candidates below feasible ones).
+func patternFeasibleForTemplate(tc *generator.TemplateSupportContext, name string) bool {
+	ts := tc.Support(patterns.VisualCategoryPattern, name, nil)
+	return ts == nil || ts.Status != patterns.TemplateSupportUnsupported
+}
+
+// swapInfeasiblePatterns replaces any recommended pattern the template cannot
+// host with the first feasible alternative for that slot, so the plan never
+// assigns an impossible pattern when a supported one exists. It is a no-op for
+// templates that can host every recommended pattern (the common case — named
+// patterns expand into a shape_grid, which any title/body/blank-title canvas
+// supports).
+func swapInfeasiblePatterns(reg *patterns.Registry, tc *generator.TemplateSupportContext, slides []planSlide, brief, audience string) {
+	for i := range slides {
+		if patternFeasibleForTemplate(tc, slides[i].RecommendedPattern) {
+			continue
+		}
+		for _, alt := range computeAlternativesForSlot(reg, slides, i, brief, audience) {
+			if !patternFeasibleForTemplate(tc, alt.PatternName) {
+				continue
+			}
+			old := slides[i].RecommendedPattern
+			slides[i].RecommendedPattern = alt.PatternName
+			slides[i].Rationale = fmt.Sprintf("template feasibility: %q is unsupported by this template; substituted supported alternative %q", old, alt.PatternName)
+			break
+		}
+	}
+}
+
+// annotatePlanTemplateSupport sets template_support on every slide (for its
+// recommended pattern) and on every alternative, using the same shared helper
+// recommend_visual uses so the two tools agree for identical template
+// constraints.
+func annotatePlanTemplateSupport(tc *generator.TemplateSupportContext, slides []planSlide) {
+	for i := range slides {
+		slides[i].TemplateSupport = tc.Support(patterns.VisualCategoryPattern, slides[i].RecommendedPattern, nil)
+		for j := range slides[i].Alternatives {
+			slides[i].Alternatives[j].TemplateSupport = tc.Support(patterns.VisualCategoryPattern, slides[i].Alternatives[j].PatternName, nil)
+		}
 	}
 }
 

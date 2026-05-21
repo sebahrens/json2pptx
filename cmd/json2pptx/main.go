@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.44.0"
+const SchemaVersion = "4.45.0"
 
 func main() {
 	if err := dispatch(); err != nil {

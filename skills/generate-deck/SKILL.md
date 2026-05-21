@@ -452,7 +452,7 @@ generate_presentation               →  only after steps above pass
 
 Full details for each phase live in [WORKFLOW.md](WORKFLOW.md). One-line summary:
 
-1. **PLAN** — produce a short outline (template, accent strategy, slide-by-slide list of layouts + patterns + accents). Use `plan_deck` for decks >4 slides.
+1. **PLAN** — produce a short outline (template, accent strategy, slide-by-slide list of layouts + patterns + accents). Use `plan_deck` for decks >4 slides. **Pass the optional `template` (a template name) to make the plan template-aware:** every planned slide — and each `alternatives[]` entry — then carries `template_support: {status: supported|risky|unsupported, reasons[], required_layout}` from the same shared helper `recommend_visual` uses, so the two tools agree for identical template constraints. A recommended pattern the template cannot host is swapped for a supported alternative during planning, so the plan never assigns an impossible pattern; the result also echoes the vetted `template`. Without `template`, slides carry no `template_support` (template-agnostic plan, unchanged).
 2. **VARY** — call `analyze_deck_rhythm` and act on `longest_run`, `accent_balance`, `density_cv`, `composition_score`.
 3. **RENDER** — generate the JSON in one pass; verify the pre-emit checklist (Rule 20, semantic fills, gap ≥4pt, accent variety, 60–110% density).
 4. **REPAIR** — `validate_input` → `generate_presentation` → `render_slide_image` / `render_deck_thumbnails` → `inspect_slide_images` → `repair_slide`. Images are truth.

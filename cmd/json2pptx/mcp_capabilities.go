@@ -437,6 +437,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"section_crumb":            "2.8.0",
 				"quality_modes":            "4.43.0",
 				"template_aware_recommend": "4.44.0",
+				"template_aware_plan":      "4.45.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

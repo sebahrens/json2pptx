@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.45.0 (2026-05-21)
+
+### Added
+
+- **Template-aware `plan_deck`.** The tool gains an optional `template` input
+  (a template name; `--template` on the CLI), reusing the same shared support
+  helper (`generator.NewTemplateSupportContext` / `Support`) that powers
+  template-aware `recommend_visual`. When supplied:
+  - Every planned slide carries an additive `template_support` object —
+    `{status, reasons[], required_layout}` — for its recommended pattern, and
+    every `alternatives[]` entry carries the same object for its candidate
+    pattern. `status` is `"supported"` / `"risky"` / `"unsupported"` with the
+    same meaning as in `recommend_visual`. Because both tools call the same
+    helper, plan_deck and recommend_visual agree for identical template
+    constraints (a pattern's status is the same in both).
+  - A recommended pattern the template cannot host (`unsupported`) is **swapped**
+    for the first feasible (`supported`/`risky`) alternative for that slot, so the
+    plan never assigns an impossible pattern when a supported one exists. The
+    swapped slide's `rationale` records the substitution.
+  - The response echoes the vetted template name in a new top-level `template`
+    field.
+
+  Without `template`, slides carry no `template_support` and `template` is
+  omitted (template-agnostic plan, unchanged behavior). `make_deck` continues to
+  plan template-agnostically (it builds slides from pattern exemplars and never
+  surfaces `template_support`). `get_capabilities().features.feature_versions`
+  gains `template_aware_plan: "4.45.0"`. (bd `go-slide-creator-452l`.)
+
 ## 4.44.0 (2026-05-21)
 
 ### Added

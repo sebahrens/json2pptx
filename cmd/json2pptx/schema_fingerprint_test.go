@@ -21,6 +21,10 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.44.0 added the optional `template` input + `template_support` response
 	// field to recommend_visual — again input params/response fields only, not
 	// tool names or PresentationInput/Fix.Kind surfaces, so the hash is unchanged.
+	// 4.45.0 added the same optional `template` input + `template_support`
+	// response field to plan_deck (the shared helper reused from recommend_visual)
+	// — once more input params/response fields only, not tool names or
+	// PresentationInput/Fix.Kind surfaces, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "e597f18f06d5bf07"
 

@@ -10,7 +10,7 @@ import (
 
 func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 12, "investors", nil)
+	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 12, "investors", nil, nil, "")
 
 	if len(result.Slides) != 12 {
 		t.Fatalf("expected 12 slides, got %d", len(result.Slides))
@@ -65,7 +65,7 @@ func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 
 func TestBuildDeckPlan_MustInclude(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Business model overview", 8, "", []string{"bmc-canvas", "kpi-3up"})
+	result := buildDeckPlan(reg, "Business model overview", 8, "", []string{"bmc-canvas", "kpi-3up"}, nil, "")
 
 	// Verify must_include patterns appear in the plan.
 	found := map[string]bool{}
@@ -85,7 +85,7 @@ func TestBuildDeckPlan_MustInclude(t *testing.T) {
 
 func TestBuildDeckPlan_MinBudget(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Quick update", 3, "", nil)
+	result := buildDeckPlan(reg, "Quick update", 3, "", nil, nil, "")
 
 	if len(result.Slides) != 3 {
 		t.Fatalf("expected 3 slides, got %d", len(result.Slides))
@@ -132,7 +132,7 @@ func TestDistributeRoles(t *testing.T) {
 
 func TestBuildDeckPlan_AttachesPredictions(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Quarterly business review", 10, "executives", nil)
+	result := buildDeckPlan(reg, "Quarterly business review", 10, "executives", nil, nil, "")
 
 	if len(result.Slides) != 10 {
 		t.Fatalf("expected 10 slides, got %d", len(result.Slides))
@@ -227,7 +227,7 @@ func TestComputeAlternatives_ExcludesRecommended(t *testing.T) {
 
 func TestBuildDeckPlan_AttachesSkeletonAndFallback(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 5, "investors", nil)
+	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 5, "investors", nil, nil, "")
 
 	if len(result.Slides) != 5 {
 		t.Fatalf("expected 5 slides, got %d", len(result.Slides))
@@ -281,7 +281,7 @@ func TestBuildDeckPlan_SkeletonParsesAsSlideInput(t *testing.T) {
 	// drop it straight into a PresentationInput.slides[] array and run
 	// validate_input on the result.
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Quarterly business review", 7, "executives", nil)
+	result := buildDeckPlan(reg, "Quarterly business review", 7, "executives", nil, nil, "")
 
 	for i, s := range result.Slides {
 		if len(s.Skeleton) == 0 {

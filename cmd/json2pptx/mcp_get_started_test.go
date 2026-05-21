@@ -226,7 +226,7 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 		case "list_templates":
 			result, err = mc.handleListTemplates(ctx, makeRequest(map[string]any{}))
 		case "plan_deck":
-			result, err = handlePlanDeck(ctx, makeRequest(map[string]any{
+			result, err = mc.handlePlanDeck(ctx, makeRequest(map[string]any{
 				"brief": "Quarterly review for the leadership team",
 			}))
 		case "recommend_visual":

@@ -208,7 +208,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	s.AddTool(mcpRegisterTemplateSettingTool(), mc.handleRegisterTemplateSetting)
 	s.AddTool(mcpDeleteTemplateSettingTool(), mc.handleDeleteTemplateSetting)
 	s.AddTool(mcpAnalyzeDeckRhythmTool(), handleAnalyzeDeckRhythm)
-	s.AddTool(mcpPlanDeckTool(), handlePlanDeck)
+	s.AddTool(mcpPlanDeckTool(), mc.handlePlanDeck)
 	s.AddTool(mcpGetCapabilitiesTool(), mc.handleGetCapabilities)
 	s.AddTool(mcpGetStartedTool(), handleGetStarted)
 	s.AddTool(mcpGetInputSchemaTool(), handleGetInputSchema)

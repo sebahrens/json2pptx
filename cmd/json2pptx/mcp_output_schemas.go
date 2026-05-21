@@ -1657,17 +1657,20 @@ var outputSchemaPlanDeck = json.RawMessage(`{
               "properties": {
                 "pattern_name": {"type": "string"},
                 "score":        {"type": "number"},
-                "rationale":    {"type": "string"}
+                "rationale":    {"type": "string"},
+                "template_support": {"$ref": "#/$defs/template_support"}
               },
               "required": ["pattern_name", "score", "rationale"]
             }
-          }
+          },
+          "template_support": {"$ref": "#/$defs/template_support"}
         },
         "required": ["slide_index", "narrative_role", "recommended_pattern", "suggested_pattern", "content_seed", "rationale"]
       }
     },
     "brief":        {"type": "string"},
     "slide_budget":  {"type": "integer"},
+    "template":      {"type": "string", "description": "Echo of the template name the plan was vetted against (the 'template' argument). Present only when template context was supplied."},
     "rhythm_check": {
       "type": "object",
       "properties": {
@@ -1680,7 +1683,19 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     },
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
-  "required": ["slides", "brief", "slide_budget", "rhythm_check"]
+  "required": ["slides", "brief", "slide_budget", "rhythm_check"],
+  "$defs": {
+    "template_support": {
+      "type": "object",
+      "description": "Per-pattern feasibility for the template passed in the 'template' argument. Present only when template context was supplied. The recommended pattern is never left unsupported when a supported alternative exists — it is swapped during planning. Computed by the same shared helper recommend_visual uses, so the two tools agree for identical template constraints.",
+      "properties": {
+        "status":          {"type": "string", "enum": ["supported", "risky", "unsupported"], "description": "supported = the template natively covers the needed layout/capability; risky = producible only via a synthesised/derived layout or close to a capacity/content-zone limit; unsupported = requires an absent canonical/derivable layout."},
+        "reasons":         {"type": "array", "items": {"type": "string"}, "description": "Why the status applies: which layouts cover the candidate, what is synthesised, which capacity/content-zone constraint bites, or what is missing."},
+        "required_layout": {"type": "string", "description": "The canonical layout or derivable capability the pattern needs (e.g. \"grid base\"). Omitted when there is no specific layout requirement."}
+      },
+      "required": ["status"]
+    }
+  }
 }`)
 
 // --- validate_presentation_output ---

@@ -36,7 +36,7 @@ func TestHandlerErrors_CarryNextToolCall(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("plan_deck_missing_brief", func(t *testing.T) {
-		result, err := handlePlanDeck(ctx, makeRequest(map[string]any{}))
+		result, err := mc.handlePlanDeck(ctx, makeRequest(map[string]any{}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -46,7 +46,7 @@ func TestHandlerErrors_CarryNextToolCall(t *testing.T) {
 	})
 
 	t.Run("plan_deck_unknown_must_include", func(t *testing.T) {
-		result, err := handlePlanDeck(ctx, makeRequest(map[string]any{
+		result, err := mc.handlePlanDeck(ctx, makeRequest(map[string]any{
 			"brief":        "test deck",
 			"must_include": []any{"no-such-pattern"},
 		}))

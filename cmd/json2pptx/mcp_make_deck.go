@@ -196,8 +196,11 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		}
 	}
 
-	// Phase 1: plan the deck.
-	plan := buildDeckPlan(reg, outline, hints.SlideBudget, hints.Audience, hints.MustInclude)
+	// Phase 1: plan the deck. make_deck builds its slides from each pattern's
+	// exemplar content and never surfaces plan_deck's template_support, so it
+	// plans template-agnostically (nil context) — the template is applied during
+	// expansion and the auto_repair loop.
+	plan := buildDeckPlan(reg, outline, hints.SlideBudget, hints.Audience, hints.MustInclude, nil, "")
 
 	// Phase 2: expand each planned slide with exemplar content. The cold-start
 	// agent supplies no per-slide content, so we use each pattern's canonical
