@@ -57,7 +57,10 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		// Do not override with req.Style.ShowLegend because Go's bool
 		// zero-value (false) is indistinguishable from "not set", which
 		// would suppress legends on multi-series charts when callers omit
-		// the show_legend field from JSON.
+		// the show_legend field from JSON. Instead, treat an explicit
+		// ShowLegend=true as a force-on signal that disables the direct-label
+		// path (which would otherwise replace the legend with inline labels).
+		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		// Only disable if the request explicitly sets show_grid (Go zero-value means unset).
@@ -159,6 +162,10 @@ func (d *LineChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		config := DefaultLineChartConfig(width, height)
 		config.ShowTitle = req.Title != ""
 		// ShowLegend kept at default true; Draw only renders for multi-series.
+		// Explicit ShowLegend=true forces the legend back on by disabling
+		// the direct-label path; otherwise direct labels replace the legend
+		// for series counts in the executive direct-label window.
+		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
@@ -332,6 +339,9 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		config := DefaultAreaChartConfig(width, height)
 		config.ShowTitle = req.Title != ""
 		// ShowLegend kept at default true; Draw only renders for multi-series.
+		// Explicit ShowLegend=true forces the legend back on by disabling
+		// the direct-label path.
+		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
@@ -1652,6 +1662,9 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		config := DefaultBarChartConfig(width, height)
 		config.ShowTitle = req.Title != ""
 		// ShowLegend kept at default true; Draw only renders for multi-series.
+		// Explicit ShowLegend=true forces the legend back on by disabling the
+		// direct-label path.
+		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		config.Stacked = false // Explicit: side-by-side bars

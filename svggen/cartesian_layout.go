@@ -52,7 +52,7 @@ func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtit
 
 	// Legend
 	legendHeight := 0.0
-	if config.ShowLegend && (seriesCount > 1 || config.ForceLegendSingleSeries) {
+	if config.ShowLegend && (seriesCount > 1 || config.ForceLegendSingleSeries) && !useDirectLabels(config, seriesCount) {
 		legendHeight = style.Typography.SizeSmall + style.Spacing.LG
 	}
 

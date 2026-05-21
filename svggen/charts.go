@@ -172,6 +172,15 @@ type ChartConfig struct {
 	// `len(series) > 1` legend gate runs (Bar/Line/Area/Radar/Scatter).
 	ForceLegendSingleSeries bool
 
+	// PreferDirectLabels, when true, suppresses the legend and draws
+	// inline series labels (at the line end for line/area, above the
+	// last bar of each series for bar) when the series count falls in
+	// the direct-label window [MinLegendSeriesCount, MaxDirectLabelSeriesCount].
+	// Mirrors the executive token tokens.ChartDirectLabelMaxSeries.
+	// Above the window the legend wins because in-plot labels collide.
+	// Honored by BarChart (non-stacked), LineChart, and AreaChart.
+	PreferDirectLabels bool
+
 	// ShowValues enables value labels on data points.
 	ShowValues bool
 
@@ -222,6 +231,31 @@ func (c ChartConfig) PlotArea() Rect {
 		W: math.Max(0, c.Width-c.MarginLeft-c.MarginRight),
 		H: math.Max(0, c.Height-c.MarginTop-c.MarginBottom),
 	}
+}
+
+// MinLegendSeriesCount is the smallest series count for which a legend is
+// rendered by default. A single-series chart carries its label in the
+// chart title or in a direct label, so the legend would be redundant.
+// Mirrors internal/tokens.ChartLegendMinSeries; parity is asserted by
+// TestChartDirectLabel_Parity in internal/tokens/chart_style_test.go.
+const MinLegendSeriesCount = 2
+
+// MaxDirectLabelSeriesCount is the largest series count for which direct
+// (in-plot) series labels are preferred over a legend. Above this threshold
+// the legend wins because direct labels collide. Mirrors
+// internal/tokens.ChartDirectLabelMaxSeries.
+const MaxDirectLabelSeriesCount = 4
+
+// useDirectLabels reports whether the chart should suppress its legend and
+// draw inline series labels per the executive defaults. Returns true only
+// when PreferDirectLabels is set and seriesCount is in the direct-label
+// window [MinLegendSeriesCount, MaxDirectLabelSeriesCount]. Outside the
+// window the legend remains the right choice — too few or too many series
+// to label inline without collision or redundancy.
+func useDirectLabels(config ChartConfig, seriesCount int) bool {
+	return config.PreferDirectLabels &&
+		seriesCount >= MinLegendSeriesCount &&
+		seriesCount <= MaxDirectLabelSeriesCount
 }
 
 // =============================================================================
@@ -325,7 +359,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	legendHeight := layout.LegendHeight
 
 	// Refine legend height so multi-row legends aren't clipped.
-	if bc.config.ShowLegend {
+	if bc.config.ShowLegend && !useDirectLabels(bc.config.ChartConfig, len(data.Series)) {
 		RefineLegendHeightForced(b, style, data.Series, &plotArea, &legendHeight, bc.config.ForceLegendSingleSeries)
 	}
 
@@ -436,37 +470,11 @@ func (bc *BarChart) Draw(data ChartData) error {
 		title.Draw(Rect{X: 0, Y: 0, W: bc.config.Width, H: headerHeight + bc.config.MarginTop})
 	}
 
-	// Draw legend
-	if bc.config.ShowLegend && (len(data.Series) > 1 || bc.config.ForceLegendSingleSeries) {
-		legendConfig := PresentationLegendConfig(style)
-		legendConfig.Position = bc.config.LegendPosition
-
-		legend := NewLegend(b, legendConfig)
-
-		items := make([]LegendItem, len(data.Series))
-		for i, series := range data.Series {
-			items[i] = LegendItem{
-				Label: series.Name,
-				Color: colors[i%len(colors)],
-			}
-			if series.Color != nil {
-				items[i].Color = *series.Color
-			}
-		}
-		legend.SetItems(items)
-
-		// Calculate x-axis label space: tick size + tick padding + label height + extra gap
-		xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
-		xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
-
-		legendBounds := Rect{
-			X: plotArea.X,
-			Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
-			W: plotArea.W,
-			H: legendHeight,
-		}
-		legend.Draw(legendBounds)
-	}
+	// Draw legend or inline direct labels. Stacked bars and log-scale bars
+	// keep the legend path because each "series" is a stacked segment or
+	// the log positions break the "above last bar" geometry.
+	directLabels := useDirectLabels(bc.config.ChartConfig, len(data.Series)) && !bc.config.Stacked && bc.logScale == nil
+	bc.drawLegendOrDirectLabels(directLabels, style, displayData, plotArea, legendHeight, colors)
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -482,6 +490,125 @@ func (bc *BarChart) Draw(data ChartData) error {
 	}
 
 	return nil
+}
+
+// drawLegendOrDirectLabels routes to either the legend renderer or the
+// inline direct-label renderer based on the directLabels flag and the
+// existing legend-show gates. Centralises the branch so BarChart.Draw stays
+// at one decision call site and the cyclomatic complexity budget holds.
+func (bc *BarChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGuide, data ChartData, plotArea Rect, legendHeight float64, colors []Color) {
+	b := bc.builder
+
+	if directLabels {
+		drawBarDirectSeriesLabels(b, style, data, plotArea, colors, bc.config)
+		return
+	}
+	if !bc.config.ShowLegend {
+		return
+	}
+	if len(data.Series) <= 1 && !bc.config.ForceLegendSingleSeries {
+		return
+	}
+
+	legendConfig := PresentationLegendConfig(style)
+	legendConfig.Position = bc.config.LegendPosition
+
+	legend := NewLegend(b, legendConfig)
+
+	items := make([]LegendItem, len(data.Series))
+	for i, series := range data.Series {
+		items[i] = LegendItem{
+			Label: series.Name,
+			Color: colors[i%len(colors)],
+		}
+		if series.Color != nil {
+			items[i].Color = *series.Color
+		}
+	}
+	legend.SetItems(items)
+
+	// Calculate x-axis label space: tick size + tick padding + label height + extra gap
+	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
+	xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
+
+	legendBounds := Rect{
+		X: plotArea.X,
+		Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
+		W: plotArea.W,
+		H: legendHeight,
+	}
+	legend.Draw(legendBounds)
+}
+
+// drawBarDirectSeriesLabels draws inline series labels above the last bar of
+// each series in a grouped bar chart, in the series color. Used in place of a
+// legend when the series count is in the direct-label window.
+func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, colors []Color, cfg BarChartConfig) {
+	if len(data.Series) == 0 || len(data.Categories) == 0 {
+		return
+	}
+
+	// Build a scale matching what drawBars uses so label X positions line up
+	// with the rendered bars.
+	xScale := NewCategoricalScale(data.Categories)
+	xScale.SetRangeCategorical(plotArea.X, plotArea.X+plotArea.W)
+	xScale.PaddingOuter(cfg.GroupPadding)
+	xScale.PaddingInner(cfg.GroupPadding)
+
+	bandwidth := xScale.Bandwidth()
+	numSeries := len(data.Series)
+	groupWidth := bandwidth * (1 - cfg.BarPadding)
+	barWidth := groupWidth / float64(numSeries)
+
+	yMin, yMax := math.Inf(1), math.Inf(-1)
+	for _, s := range data.Series {
+		for _, v := range s.Values {
+			if v < yMin {
+				yMin = v
+			}
+			if v > yMax {
+				yMax = v
+			}
+		}
+	}
+	if math.IsInf(yMin, 1) || math.IsInf(yMax, -1) {
+		return
+	}
+	if yMin > 0 {
+		yMin = 0
+	}
+	yScale := NewLinearScale(yMin, yMax)
+	yScale.SetRangeLinear(plotArea.H, 0)
+	yScale.Nice(true)
+
+	lastCatIdx := len(data.Categories) - 1
+	lastCat := data.Categories[lastCatIdx]
+
+	b.Push()
+	b.SetFontSize(style.Typography.SizeSmall)
+	b.SetFontWeight(style.Typography.WeightMedium)
+
+	for i, series := range data.Series {
+		if len(series.Values) <= lastCatIdx {
+			continue
+		}
+		v := series.Values[lastCatIdx]
+		barCenterX := xScale.ScaleStart(lastCat) + (bandwidth-groupWidth)/2 + barWidth*float64(i) + barWidth/2
+		barTopY := plotArea.Y + yScale.Scale(v)
+		// Place label one ex-height above the bar top, clamped inside the plot area.
+		labelY := barTopY - style.Spacing.XS
+		if labelY < plotArea.Y+style.Typography.SizeSmall {
+			labelY = plotArea.Y + style.Typography.SizeSmall
+		}
+		color := colors[i%len(colors)]
+		if series.Color != nil {
+			color = *series.Color
+		}
+		b.SetTextColor(color)
+		b.DrawText(series.Name, barCenterX, labelY, TextAlignCenter, TextBaselineBottom)
+	}
+
+	b.Pop()
 }
 
 // calculateDomain calculates the y-axis domain.
@@ -938,6 +1065,16 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 
+	// Reserve horizontal space on the right for inline series labels when
+	// direct labels are active so the labels (drawn at the line end) fit
+	// inside the SVG viewport instead of being clipped.
+	directLabels := useDirectLabels(lc.config.ChartConfig, len(data.Series))
+	directLabelMargin := 0.0
+	if directLabels {
+		directLabelMargin = measureDirectLabelMargin(b, style, data.Series)
+		lc.config.MarginRight += directLabelMargin
+	}
+
 	// Calculate y-axis domain early so we can probe label widths and grow
 	// MarginLeft before layout if labels would clip into the title/legend area.
 	yMin, yMax := lc.calculateYDomain(data)
@@ -950,7 +1087,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	legendHeight := layout.LegendHeight
 
 	// Refine legend height so multi-row legends aren't clipped.
-	if lc.config.ShowLegend {
+	if lc.config.ShowLegend && !directLabels {
 		RefineLegendHeightForced(b, style, data.Series, &plotArea, &legendHeight, lc.config.ForceLegendSingleSeries)
 	}
 
@@ -1054,37 +1191,8 @@ func (lc *LineChart) Draw(data ChartData) error {
 		title.Draw(Rect{X: 0, Y: 0, W: lc.config.Width, H: headerHeight + lc.config.MarginTop})
 	}
 
-	// Draw legend
-	if lc.config.ShowLegend && (len(data.Series) > 1 || lc.config.ForceLegendSingleSeries) {
-		legendConfig := PresentationLegendConfig(style)
-		legendConfig.MarkerShape = LegendMarkerLine
-
-		legend := NewLegend(b, legendConfig)
-
-		items := make([]LegendItem, len(data.Series))
-		for i, series := range data.Series {
-			items[i] = LegendItem{
-				Label: series.Name,
-				Color: colors[i%len(colors)],
-			}
-			if series.Color != nil {
-				items[i].Color = *series.Color
-			}
-		}
-		legend.SetItems(items)
-
-		// Calculate x-axis label space: tick size + tick padding + label height + extra gap
-		xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
-		xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
-
-		legendBounds := Rect{
-			X: plotArea.X,
-			Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
-			W: plotArea.W,
-			H: legendHeight,
-		}
-		legend.Draw(legendBounds)
-	}
+	// Draw legend or inline direct labels.
+	lc.drawLegendOrDirectLabels(directLabels, style, drawData, plotArea, xScale, yScale, legendHeight, colors, directLabelMargin)
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -1100,6 +1208,143 @@ func (lc *LineChart) Draw(data ChartData) error {
 	}
 
 	return nil
+}
+
+// drawLegendOrDirectLabels routes to either the legend renderer or the
+// inline direct-label renderer for line/area charts. Centralises the branch
+// so LineChart.Draw stays at one decision call site and the cyclomatic
+// complexity budget holds.
+func (lc *LineChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGuide, data ChartData, plotArea Rect, xScale Scale, yScale *LinearScale, legendHeight float64, colors []Color, marginRight float64) {
+	b := lc.builder
+
+	if directLabels {
+		drawLineDirectSeriesLabels(b, style, data, plotArea, xScale, yScale, colors, marginRight)
+		return
+	}
+	if !lc.config.ShowLegend {
+		return
+	}
+	if len(data.Series) <= 1 && !lc.config.ForceLegendSingleSeries {
+		return
+	}
+
+	legendConfig := PresentationLegendConfig(style)
+	legendConfig.MarkerShape = LegendMarkerLine
+
+	legend := NewLegend(b, legendConfig)
+
+	items := make([]LegendItem, len(data.Series))
+	for i, series := range data.Series {
+		items[i] = LegendItem{
+			Label: series.Name,
+			Color: colors[i%len(colors)],
+		}
+		if series.Color != nil {
+			items[i].Color = *series.Color
+		}
+	}
+	legend.SetItems(items)
+
+	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
+	xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
+
+	legendBounds := Rect{
+		X: plotArea.X,
+		Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
+		W: plotArea.W,
+		H: legendHeight,
+	}
+	legend.Draw(legendBounds)
+}
+
+// measureDirectLabelMargin returns the right-margin extra space required to
+// fit inline series labels (drawn at the end of each line) without clipping.
+// Sized off the widest series name plus a small gap. Caller adds this to
+// config.MarginRight before computing the cartesian layout.
+func measureDirectLabelMargin(b *SVGBuilder, style *StyleGuide, series []ChartSeries) float64 {
+	if len(series) == 0 {
+		return 0
+	}
+	b.Push()
+	b.SetFontSize(style.Typography.SizeSmall)
+	var maxW float64
+	for _, s := range series {
+		w, _ := b.MeasureText(s.Name)
+		if w > maxW {
+			maxW = w
+		}
+	}
+	b.Pop()
+	return maxW*1.1 + style.Spacing.SM
+}
+
+// drawLineDirectSeriesLabels draws inline series labels at the rightmost
+// data point of each line, in the series color. Used in place of a legend
+// when the series count is in the direct-label window.
+func drawLineDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, xScale Scale, yScale *LinearScale, colors []Color, marginRight float64) {
+	if len(data.Series) == 0 {
+		return
+	}
+
+	b.Push()
+	b.SetFontSize(style.Typography.SizeSmall)
+	b.SetFontWeight(style.Typography.WeightMedium)
+
+	for i, series := range data.Series {
+		if len(series.Values) == 0 {
+			continue
+		}
+		// Find the rightmost data point that has both a usable x and y.
+		var lastX, lastY float64
+		found := false
+		for idx, v := range series.Values {
+			var x float64
+			switch xs := xScale.(type) {
+			case *CategoricalScale:
+				if idx >= len(data.Categories) {
+					continue
+				}
+				cat := data.Categories[idx]
+				x = plotArea.X + xs.Scale(cat)
+			case *LinearScale:
+				if idx < len(series.XValues) {
+					x = xs.Scale(series.XValues[idx])
+				} else {
+					x = xs.Scale(float64(idx))
+				}
+			case *TimeScale:
+				timeValues, err := series.GetTimeValues()
+				if err != nil || idx >= len(timeValues) {
+					continue
+				}
+				x = xs.Scale(timeValues[idx])
+			default:
+				continue
+			}
+			y := plotArea.Y + yScale.Scale(v)
+			lastX, lastY = x, y
+			found = true
+		}
+		if !found {
+			continue
+		}
+
+		color := colors[i%len(colors)]
+		if series.Color != nil {
+			color = *series.Color
+		}
+		b.SetTextColor(color)
+		// Place the label just to the right of the line's endpoint within the
+		// reserved right margin, vertically centered on the endpoint.
+		labelX := lastX + style.Spacing.XS
+		maxLabelX := plotArea.X + plotArea.W + marginRight
+		if labelX > maxLabelX {
+			labelX = maxLabelX
+		}
+		b.DrawText(series.Name, labelX, lastY, TextAlignLeft, TextBaselineMiddle)
+	}
+
+	b.Pop()
 }
 
 // calculateXDomain calculates the x-axis domain for linear scales.

@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -75,6 +76,111 @@ func TestChartStyleDefaults_Parity_TabularNums(t *testing.T) {
 	if !strings.Contains(got, want) {
 		t.Errorf("chart SVG missing %q rule (per tokens.ChartTickLabelTabularNums)", want)
 	}
+}
+
+// TestChartStyleDefaults_Parity_DirectLabelThreshold asserts svggen exposes
+// the same direct-label threshold as the token. Drift here would mean charts
+// silently switch back to legends at the wrong series count, breaking the
+// executive default.
+func TestChartStyleDefaults_Parity_DirectLabelThreshold(t *testing.T) {
+	if svggen.MinLegendSeriesCount != ChartLegendMinSeries {
+		t.Errorf("svggen.MinLegendSeriesCount = %d, want %d (per tokens.ChartLegendMinSeries)",
+			svggen.MinLegendSeriesCount, ChartLegendMinSeries)
+	}
+	if svggen.MaxDirectLabelSeriesCount != ChartDirectLabelMaxSeries {
+		t.Errorf("svggen.MaxDirectLabelSeriesCount = %d, want %d (per tokens.ChartDirectLabelMaxSeries)",
+			svggen.MaxDirectLabelSeriesCount, ChartDirectLabelMaxSeries)
+	}
+}
+
+// TestChartStyleDefaults_Parity_DirectLabelsRendered asserts that bar and
+// line charts emitted by svggen suppress the legend and draw inline series
+// labels when the series count falls in the executive direct-label window
+// (2-4 series by default) and that the legend reappears above the window
+// (5+ series). This is the end-to-end contract for the token threshold.
+func TestChartStyleDefaults_Parity_DirectLabelsRendered(t *testing.T) {
+	t.Helper()
+
+	cases := []struct {
+		name        string
+		chartType   string
+		seriesCount int
+		wantLegend  bool
+	}{
+		{"bar_2series_direct", "bar_chart", 2, false},
+		{"bar_4series_direct", "bar_chart", 4, false},
+		{"bar_5series_legend", "bar_chart", 5, true},
+		{"line_2series_direct", "line_chart", 2, false},
+		{"line_4series_direct", "line_chart", 4, false},
+		{"line_5series_legend", "line_chart", 5, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &svggen.RequestEnvelope{
+				Type:   tc.chartType,
+				Title:  "Series threshold parity",
+				Data:   makeSeriesData(tc.seriesCount),
+				Output: svggen.OutputSpec{Format: "svg", Width: 1600, Height: 900},
+			}
+			out, err := svggen.RenderMultiFormatWithFindings(req, "svg")
+			if err != nil {
+				t.Fatalf("render svg: %v", err)
+			}
+			if out == nil || out.SVG == nil {
+				t.Fatal("svggen returned no SVG document")
+			}
+			svg := string(out.SVG.Content)
+			labelHits := 0
+			for i := 0; i < tc.seriesCount; i++ {
+				if strings.Contains(svg, seriesNameFor(i)) {
+					labelHits++
+				}
+			}
+			if tc.wantLegend {
+				// At/above the threshold every series name must appear in the
+				// legend.
+				if labelHits != tc.seriesCount {
+					t.Errorf("%s: expected legend with %d series names, found %d", tc.name, tc.seriesCount, labelHits)
+				}
+			} else {
+				// Below the threshold the legend is suppressed but the inline
+				// labels still write each series name to the SVG.
+				if labelHits != tc.seriesCount {
+					t.Errorf("%s: expected inline labels for all %d series, found %d in SVG", tc.name, tc.seriesCount, labelHits)
+				}
+			}
+		})
+	}
+}
+
+// makeSeriesData builds a chart data payload with N named series sharing the
+// same 4 categories. Numeric values stay small enough to keep the y-axis
+// linear (no auto-log scale) so the rendered SVG is predictable across runs.
+func makeSeriesData(n int) map[string]any {
+	categories := []string{"Q1", "Q2", "Q3", "Q4"}
+	series := make([]map[string]any, n)
+	for i := 0; i < n; i++ {
+		values := make([]float64, len(categories))
+		for j := range values {
+			values[j] = float64(10 + i*2 + j)
+		}
+		series[i] = map[string]any{
+			"name":   seriesNameFor(i),
+			"values": values,
+		}
+	}
+	return map[string]any{
+		"categories": categories,
+		"series":     series,
+	}
+}
+
+// seriesNameFor returns a stable, unique-by-index series label so tests can
+// search the rendered SVG for series identifiers without false positives
+// against shared substrings ("Series 1" vs "Series 10").
+func seriesNameFor(i int) string {
+	return fmt.Sprintf("DirectLabelSeries%c", 'A'+i)
 }
 
 // TestChartStyleDefaults_Sanity guards the contract values themselves so a

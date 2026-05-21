@@ -4,6 +4,35 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.37.0 (2026-05-21)
+
+### Changed
+
+- **Direct-label rendering for small-multiseries bar / line / area charts.**
+  When a `bar_chart`, `line_chart`, `grouped_bar_chart`, or `area_chart` has
+  between `tokens.ChartLegendMinSeries` (2) and
+  `tokens.ChartDirectLabelMaxSeries` (4) series, the renderer now suppresses
+  the legend and draws inline series labels at the rightmost data point
+  (line/area) or above each series's last bar (bar). Above the threshold
+  the legend wins because direct labels would collide. Single-series
+  charts are unaffected (the legend was already suppressed).
+
+  Existing override:
+
+  - Set `chart_value.style.show_legend = true` to force the legend back on
+    even inside the direct-label window. The field was previously a no-op;
+    explicit `true` now means "render the legend regardless of series
+    count". Omitting the field, or setting `false`, keeps the new default.
+
+  Stacked variants (`stacked_bar_chart`, `stacked_area_chart`) and other
+  chart types (`pie`, `donut`, `scatter`, `bubble`, `radar`, `waterfall`,
+  `funnel`, `gauge`, `treemap`) keep the previous legend gating. svggen
+  mirrors the token thresholds as `svggen.MinLegendSeriesCount` and
+  `svggen.MaxDirectLabelSeriesCount`; the parity test
+  `TestChartStyleDefaults_Parity_DirectLabelThreshold` in
+  `internal/tokens/chart_style_test.go` enforces alignment.
+  (bd `go-slide-creator-8ho6`.)
+
 ## 4.36.0 (2026-05-21)
 
 ### Added

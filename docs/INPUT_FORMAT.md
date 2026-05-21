@@ -120,6 +120,16 @@ Pattern field shapes and overrides are documented in `docs/PATTERNS.md`.
 
 Supported chart types: `bar_chart`, `line_chart`, `pie_chart`, `donut_chart`, `area_chart`, `radar_chart`, `scatter_chart`, `bubble_chart`, `stacked_bar_chart`, `stacked_area_chart`, `grouped_bar_chart`, `waterfall`, `funnel_chart`, `gauge_chart`, `treemap_chart`.
 
+### Legend defaults: direct labels for 2–4 series
+
+Bar / line / grouped-bar / area charts with 2–4 series default to **inline
+series labels** (at the line endpoint, or above the last bar of each series)
+in place of a legend — per `tokens.ChartDirectLabelMaxSeries`. Above 4 series
+the legend reappears because in-plot labels collide. Force the legend back on
+with `chart_value.style.show_legend: true`. Stacked variants and non-Cartesian
+chart types (pie, donut, scatter, radar, waterfall, funnel, gauge, treemap)
+are unaffected.
+
 ### Per-slide chart-style overrides
 
 Add a `chart_style` block on a `chart_value` (or `diagram_value`) to flip an
