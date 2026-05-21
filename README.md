@@ -464,166 +464,28 @@ Claude:  [calls repair_slide twice -> patches only the affected slides]
 
 ## JSON Input Format
 
-The authoritative input schema is generated from the Go input structs and published via `get_input_schema` (MCP) or `json2pptx input-schema` (CLI). See [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) for the worked-example tutorial, and [docs/PATTERNS.md](docs/PATTERNS.md) for the named-pattern authoring guide.
+The authoritative input schema is generated from the Go input structs and published via `get_input_schema` (MCP) or `json2pptx input-schema` (CLI) — that is the single source of truth for field names, types, enums, and required-vs-optional flags. For a worked-example walkthrough of every shape (top-level config, slide and content items, `shape_grid`, `compose`, charts, diagrams, and named patterns), read **[docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md)**; for the named-pattern authoring contract see [docs/PATTERNS.md](docs/PATTERNS.md).
 
-### Top-Level Schema
+A deck is a top-level object with a `template` and a `slides` array. Each slide is plain placeholder content, a raw `shape_grid`, a named `pattern`, or a `compose` envelope:
 
 ```json
 {
   "template": "warm-coral",
   "output_filename": "Q1_Review.pptx",
-  "design_mode": "constrained",
-  "accent_strategy": "rotate",
-  "footer": {"enabled": true, "left_text": "Acme Corp | Confidential"},
-  "chrome": {"page_numbers": true, "skip": ["title", "section"]},
-  "theme_override": {
-    "colors": {"accent1": "#E31837"},
-    "title_font": "Georgia",
-    "body_font": "Arial"
-  },
-  "defaults": {
-    "table_style": {"style_id": "@template-default"},
-    "cell_style": {"font_size": 11}
-  },
-  "structure": {
-    "sections": [{"title": "Strategy", "slides": [/* ... */]}],
-    "auto_agenda": true
-  },
-  "slides": [/* ... */]
-}
-```
-
-| Top-level field | Purpose |
-|-----------------|---------|
-| `template` | Template name (without `.pptx`) |
-| `design_mode` | `"constrained"` (default, refuses raw hex + absolute font sizes) or `"free"` |
-| `accent_strategy` | `"primary"` (default), `"rotate"`, or `"section-keyed"` |
-| `footer` / `chrome` | Persistent footer/header/page-number chrome with skip rules |
-| `theme_override` | Per-deck color and font overrides resolved against the scheme |
-| `defaults` | Deck-level `table_style` / `cell_style`, swap-only (inline always wins). See [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md) |
-| `structure` | Sections, `auto_agenda`, `cover`, `closing` -- expanded into flat slides |
-| `slides` | Array of slide definitions |
-
-### Slide Schema
-
-A slide can be plain placeholder content, a raw `shape_grid`, a named `pattern`, or a `compose` envelope.
-
-```json
-{
-  "layout_id": "One Content",
-  "slide_type": "content",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "Revenue Overview"},
-    {"placeholder_id": "body",  "type": "bullets",
-     "bullets_value": ["Revenue up <b>25%</b> YoY", "Margins improved to 68%"]}
-  ],
-  "speaker_notes": "Emphasize the Q4 recovery.",
-  "source": "Company Annual Report, FY2025"
-}
-```
-
-#### Named Pattern
-
-```json
-{
-  "slide_type": "blank",
-  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Q1 KPIs"}],
-  "pattern": {
-    "name": "kpi-3up",
-    "values": {
-      "kpis": [
-        {"value": "$12M", "label": "Revenue"},
-        {"value": "+25%", "label": "YoY"},
-        {"value": "84%",  "label": "NPS"}
+  "slides": [
+    {
+      "slide_type": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue Overview"},
+        {"placeholder_id": "body",  "type": "bullets",
+         "bullets_value": ["Revenue up <b>25%</b> YoY", "Margins improved to 68%"]}
       ]
     }
-  }
+  ]
 }
 ```
 
-#### Compose Envelope
-
-```json
-{
-  "slide_type": "blank",
-  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Why now"}],
-  "compose": {
-    "direction": "vertical",
-    "gap": 8,
-    "segments": [
-      {"size_pct": 40, "pattern": {"name": "stat-hero", "values": {"value": "$2.4B", "label": "TAM"}}},
-      {"pattern": {"name": "icon-row", "values": {"items": [/* ... */]}}}
-    ]
-  }
-}
-```
-
-#### Raw Shape Grid
-
-```json
-{
-  "slide_type": "blank",
-  "content": [{"placeholder_id": "title", "type": "text", "text_value": "Process Steps"}],
-  "shape_grid": {
-    "columns": 3, "gap": 2,
-    "rows": [{"cells": [
-      {"shape": {"geometry": "roundRect", "fill": "accent1",
-                 "text": {"content": "Step 1", "size": 14, "bold": true, "color": "lt1"}}},
-      {"shape": {"geometry": "roundRect", "fill": "accent2",
-                 "text": {"content": "Step 2", "size": 14, "color": "lt1"}}},
-      {"shape": {"geometry": "roundRect", "fill": "accent3",
-                 "text": {"content": "Step 3", "size": 14, "color": "lt1"}}}
-    ]}]
-  }
-}
-```
-
-When `shape_grid` is present with `slide_type: "blank"` (or no `layout_id`), the system uses **virtual layout resolution** to derive safe grid bounds from the template's title and footer geometry. You can also supply explicit `bounds` as slide percentages.
-
-### Content Types
-
-| Type | Description | Value Field |
-|------|-------------|-------------|
-| `text` | Plain or formatted text | `text_value` |
-| `bullets` | Bullet point list | `bullets_value` |
-| `body_and_bullets` | Body text followed by bullets | `body_and_bullets_value` |
-| `body_and_lead` | Lead sentence + body paragraph | `body_and_lead_value` |
-| `bullet_groups` | Grouped bullets with headers | `bullet_groups_value` |
-| `table` | Data table (auto-paginates via `split_slide`) | `table_value` |
-| `chart` | SVG chart (15 types) | `chart_value` |
-| `diagram` | Business diagram (21 types; many native OOXML) | `diagram_value` |
-| `image` | Image file | `image_value` |
-
-### Chart Types (15)
-
-`bar`, `grouped_bar`, `stacked_bar`, `line`, `area`, `stacked_area`, `pie`, `donut`, `scatter`, `bubble`, `radar`, `waterfall`, `funnel`, `gauge`, `treemap`
-
-### Diagram Types (21)
-
-`swot`, `timeline`, `process_flow`, `pyramid`, `venn`, `org_chart`, `gantt`, `kpi_dashboard`, `heatmap`, `fishbone`, `pestel`, `porters_five_forces`, `value_chain`, `business_model_canvas`, `nine_box_talent`, `house_diagram`, `panel_layout`, `icon_columns`, `icon_rows`, `stat_cards`, `matrix_2x2`
-
-### Named Patterns (20)
-
-| Pattern | Description |
-|---------|-------------|
-| `agenda` | Numbered section list for agenda / table-of-contents slides |
-| `arch-stack` | Architecture stack diagram with tiers and optional side rails |
-| `before-after` | Two-column before/after with transition chevron |
-| `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
-| `card-grid` | Parameterized N x M grid of titled cards (with optional icons) |
-| `comparison-2col` | Two-column comparison with optional headers |
-| `icon-row` | Horizontal row of icon+caption pairs |
-| `kpi-2up` ... `kpi-6up` | Big-number KPI cards (parametric: 2-6 cards per row) |
-| `matrix-2x2` | 2x2 quadrant matrix with axis labels |
-| `process-flow` | Left-to-right process flow with steps and decision points |
-| `pull-quote` | Italic quote block with attribution |
-| `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
-| `roadmap-phased` | Phased roadmap with workstreams and time periods |
-| `stat-hero` | Single oversized statistic with label and optional context |
-| `swimlane` | Horizontal swimlane diagram with actors and steps |
-| `timeline-horizontal` | Linear horizontal timeline with stops |
-
-Aliases: `timeline`->`timeline-horizontal`, `bmc`->`bmc-canvas`, `matrix`->`matrix-2x2`, `comparison`->`comparison-2col`, `roadmap`->`roadmap-phased`, `architecture`->`arch-stack`, `hero`->`stat-hero`, `quote`->`pull-quote`.
+The content types, chart types, diagram types, and named patterns are summarized under [Features](#features), and each is documented with per-field examples in [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md). Run `json2pptx input-schema` (or call `get_input_schema`) for the exhaustive, always-current field reference rather than relying on a copy here.
 
 ## Templates
 
