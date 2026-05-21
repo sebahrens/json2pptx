@@ -110,6 +110,23 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 
 ## Installation
 
+### Which method should I use?
+
+json2pptx ships several install paths. Pick one by what you have and your platform:
+
+| You have | Platform | Recommended command | What it does |
+|----------|----------|---------------------|--------------|
+| **Source checkout** (cloned repo) | macOS / Linux / WSL2 | `make install` | Builds every binary from source, installs to `~/.local/bin`, sets up skills + MCP. **Default for source checkouts.** |
+| **Source checkout**, want install options | macOS / Linux / WSL2 | `./install.sh` | Same build + install as `make install`, but adds `--prefix`, `--skip-skill`, `--skip-mcp`, `--skip-templates`, `--skip-build` flags. |
+| **Source checkout** | Windows (PowerShell) | `.\install.ps1` | Builds from source, installs to `%LOCALAPPDATA%\json2pptx\bin`. **Default for Windows source checkouts.** Needs Go; no Make/bash. |
+| **Prebuilt release archive** | macOS / Linux / WSL2 | `./install.sh` (inside the archive) | Copies the bundled binary + templates into place — **no Go or Make required.** |
+| **Prebuilt release archive** | Windows | `.\install.ps1` (inside the archive) | Copies the bundled binary + templates into place — **no Go required.** |
+| **Any platform**, just want the HTTP API | Docker | `docker-compose up --build` | Runs the API in a container; no local toolchain. |
+
+> **Why are there two scripts named `install.sh`?** The `install.sh` / `install.ps1` in a **source checkout** compile from source. A **release archive** ships a *different* installer — `scripts/install-dist.sh` / `scripts/install-dist.ps1`, staged into the archive as `install.sh` / `install.ps1` — that only copies the prebuilt binary and templates and never needs a Go toolchain. Run whichever script is in the tree you downloaded; you do not invoke `scripts/install-dist.sh` directly.
+
+> **Binary only?** Add `--skip-skill --skip-mcp` (Unix) or `-SkipSkill -SkipMcp` (Windows) to any command above to install just the CLI without Claude Code skills or MCP config.
+
 ### Prerequisites
 
 - **Go 1.25+** -- [download](https://go.dev/dl/)
