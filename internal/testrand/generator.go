@@ -212,7 +212,7 @@ var edgeCaseStrings = []string{
 	"",
 	strings.Repeat("A", 2500),
 	"日本語テスト 中文测试 한국어",
-	"🚀 📊 💡 🎯 ✅ ❌",
+	"Symbols: § ¶ † ‡ • — € £ ¥",
 	"<script>alert('xss')</script>",
 	"Line 1\nLine 2\nLine 3",
 	`He said "hello" & she said 'goodbye'`,

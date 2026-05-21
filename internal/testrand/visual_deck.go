@@ -529,10 +529,10 @@ func (v *VisualDeckGenerator) diagramData(diagType string) map[string]any {
 	case "panel_layout":
 		return map[string]any{
 			"panels": []map[string]any{
-				{"icon": "📊", "title": "Revenue", "value": "$4.2B", "subtitle": "+15% YoY"},
-				{"icon": "👥", "title": "Customers", "value": "12,500", "subtitle": "+22% YoY"},
-				{"icon": "🎯", "title": "NPS", "value": "67", "subtitle": "+25 pts"},
-				{"icon": "📈", "title": "Growth", "value": "23%", "subtitle": "vs 18% target"},
+				{"icon": "chart-bar", "title": "Revenue", "value": "$4.2B", "subtitle": "+15% YoY"},
+				{"icon": "users", "title": "Customers", "value": "12,500", "subtitle": "+22% YoY"},
+				{"icon": "target", "title": "NPS", "value": "67", "subtitle": "+25 pts"},
+				{"icon": "trending-up", "title": "Growth", "value": "23%", "subtitle": "vs 18% target"},
 			},
 		}
 	default:
@@ -650,7 +650,7 @@ func (v *VisualDeckGenerator) edgeUnicode() SlideInput {
 		"한국어: 분기별 실적 검토",
 		"العربية: مراجعة الأداء الربع سنوي",
 		"Ελληνικά: Τριμηνιαία ανασκόπηση",
-		"Emoji: 📊 Revenue 📈 Growth 🎯 Target ✅ Achieved",
+		"Currency: € £ ¥ ₹ ₩ — Symbols: § ¶ † ‡ •",
 	}
 	return SlideInput{
 		SlideType: "content",

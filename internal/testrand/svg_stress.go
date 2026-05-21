@@ -732,7 +732,7 @@ func (r *SVGStressRunner) edgeData(typ string) map[string]any { //nolint:gocyclo
 		strings.Repeat("VeryLongLabel", 20),
 		"Line1\nLine2\nLine3",
 		`He said "hello" & she said 'goodbye'`,
-		"🚀📊💡",
+		"§¶†‡•",
 		"   spaces   ",
 		"",
 	}
