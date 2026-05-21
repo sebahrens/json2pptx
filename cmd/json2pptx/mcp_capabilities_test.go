@@ -494,13 +494,14 @@ func TestCapabilitiesExposesToolClassification(t *testing.T) {
 	}
 }
 
-// TestMCPToolCatalog_MatchesRegisteredTools parses the s.AddTool calls in mcp.go
-// and verifies every registered tool appears in mcpToolCatalog (and vice versa).
+// TestMCPToolCatalog_MatchesRegisteredTools parses the s.AddTool calls in
+// mcp_registry.go and verifies every registered tool appears in mcpToolCatalog
+// (and vice versa).
 func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "mcp.go", nil, 0)
+	f, err := parser.ParseFile(fset, "mcp_registry.go", nil, 0)
 	if err != nil {
-		t.Fatalf("failed to parse mcp.go: %v", err)
+		t.Fatalf("failed to parse mcp_registry.go: %v", err)
 	}
 
 	// Extract tool names from the mcpXxxTool() constructor calls inside runMCP.

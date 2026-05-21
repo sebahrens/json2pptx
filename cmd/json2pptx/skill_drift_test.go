@@ -163,7 +163,7 @@ func TestCompactResponsesPhrasingMatchesRuntime(t *testing.T) {
 	locations := []string{
 		filepath.Join(repoRoot, "skills", "generate-deck", "SKILL.md"),
 		filepath.Join(repoRoot, "docs", "FIT_FINDINGS.md"),
-		filepath.Join(repoRoot, "cmd", "json2pptx", "mcp.go"),
+		filepath.Join(repoRoot, "cmd", "json2pptx", "mcp_server.go"),
 		filepath.Join(repoRoot, "internal", "api", "mcp_encode.go"),
 	}
 
@@ -177,7 +177,7 @@ func TestCompactResponsesPhrasingMatchesRuntime(t *testing.T) {
 			norm := normalizeForDrift(string(data))
 			if !strings.Contains(norm, canonical) {
 				t.Errorf("%s does not contain the canonical compact_responses sentence.\n"+
-					"All four locations (SKILL.md, docs/FIT_FINDINGS.md, cmd/json2pptx/mcp.go, "+
+					"All four locations (SKILL.md, docs/FIT_FINDINGS.md, cmd/json2pptx/mcp_server.go, "+
 					"internal/api/mcp_encode.go) must carry identical phrasing of the handshake "+
 					"contract — server advertises the capability; compaction is gated on client "+
 					"opt-in or the deprecated env var. Update this file (or update the canonical "+
