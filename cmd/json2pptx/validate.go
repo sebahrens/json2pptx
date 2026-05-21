@@ -283,9 +283,8 @@ func parseValidateInputAsAny(content []byte) (any, *validateInputParseError) {
 // per-slide details ride straight through; warning/error findings are read from
 // the embedded Findings envelope.
 //
-// Error path: the result text is an mcpErrorEnvelope ({diagnostics, summary}).
-// Counts are not available; the caller's defaults (zeroed ints, Valid=false)
-// remain.
+// Error path: the result text is a diagnostics.FindingEnvelope. Counts are not
+// available; the caller's defaults (zeroed ints, Valid=false) remain.
 func mergeValidateResultFromMCP(result *validateResult, mcpResult *mcpgo.CallToolResult) {
 	if mcpResult == nil || len(mcpResult.Content) == 0 {
 		result.Valid = false
@@ -300,18 +299,14 @@ func mergeValidateResultFromMCP(result *validateResult, mcpResult *mcpgo.CallToo
 	}
 
 	if mcpResult.IsError {
-		var env struct {
-			Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
-			Summary     string                   `json:"summary"`
-		}
+		var env diagnostics.FindingEnvelope
 		if err := json.Unmarshal([]byte(tc.Text), &env); err != nil {
 			result.Valid = false
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to parse MCP validate error: %v", err))
 			return
 		}
 		result.Valid = false
-		result.Diagnostics = env.Diagnostics
-		appendDiagnosticStrings(result, env.Diagnostics)
+		appendFindingStrings(result, env.Findings)
 		return
 	}
 
@@ -328,20 +323,6 @@ func mergeValidateResultFromMCP(result *validateResult, mcpResult *mcpgo.CallToo
 	result.TableCount = output.TableCount
 	result.ShapeCount = output.ShapeCount
 	appendFindingStrings(result, output.Findings.Findings)
-}
-
-// appendDiagnosticStrings copies diagnostic messages into result.Errors /
-// result.Warnings based on severity. Info-level diagnostics are dropped from the
-// human string slices.
-func appendDiagnosticStrings(result *validateResult, diags []diagnostics.Diagnostic) {
-	for _, d := range diags {
-		switch d.Severity {
-		case diagnostics.SeverityError:
-			result.Errors = append(result.Errors, d.Message)
-		case diagnostics.SeverityWarning:
-			result.Warnings = append(result.Warnings, d.Message)
-		}
-	}
 }
 
 // appendFindingStrings copies finding messages from a Findings envelope into

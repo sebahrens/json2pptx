@@ -261,31 +261,37 @@ A blocking finding means PowerPoint or Keynote would show the "we found a proble
 
 `OPC_*` and the two structural-corruption `OOXML_*` codes (`OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`) are always promoted to `severity: "blocking"`. Other `OOXML_*` codes are advisory `warning`s and do not fail strict mode unless the validator escalates them.
 
-### Arg-validation error envelope
+### MCP error envelope (FindingEnvelope)
 
-When a tool call fails argument validation (missing required field, wrong type, malformed JSON), the response is an error `CallToolResult` whose first diagnostic carries a stable, machine-readable envelope:
+Every MCP tool error — argument validation (missing required field, wrong type, malformed JSON), template/asset resolution failures, strict-fit refusals, slide-level validation errors — returns an error `CallToolResult` (`isError: true`) whose structured content is the shared **FindingEnvelope**. The same shape is emitted by `validate_input`, `repair_slide`, and the other diagnostic-bearing surfaces:
 
 ```json
 {
+  "schema_version": "1.0",
+  "tool": "json2pptx",
+  "subcommand": "mcp",
+  "ok": false,
   "summary": "1 error",
-  "diagnostics": [
+  "findings": [
     {
-      "code": "MISSING_PARAMETER",
-      "message": "fixes is required (expected array)",
-      "path": "fixes",
+      "id": "input-1",
+      "code": "INPUT.MISSING_PARAMETER",
+      "category": "INPUT",
       "severity": "error",
-      "expected_type": "array",
+      "message": "fixes is required (expected array)",
+      "evidence": {"path": "fixes", "expected_type": "array"},
       "example_value": [{"kind": "reduce_text", "params": {"max_items": 5}}],
       "next_tool_call": {
         "tool": "repair_slide",
         "args_template": {"fixes": "<provide value>"}
-      }
+      },
+      "describe_command": "json2pptx describe-finding MISSING_PARAMETER"
     }
   ]
 }
 ```
 
-Every arg-validation diagnostic guarantees a non-empty `path` plus at least one of `expected_type` or `next_tool_call` so an agent can self-correct without re-reading the schema. Common codes are `MISSING_PARAMETER`, `INVALID_PARAMETER`, `INVALID_JSON`, `INVALID_KEY`, and `INVALID_PATH`. The `next_tool_call` usually replays the same tool with the offending field as a placeholder; for shape failures it points at `get_input_schema`, and for unknown identifiers it points at the relevant discovery tool (e.g. `list_templates`, `list_patterns`).
+Branch on `ok` (false when any error-severity finding is present), then walk `findings`. Each finding carries a namespaced `code` (`<CATEGORY>.<legacy_code>`, e.g. `INPUT.MISSING_PARAMETER`, `TPL.TEMPLATE_NOT_FOUND`, `RENDER.URL_FETCH_FAILED`), the offending JSON `path` and `expected_type` under `evidence`, and — for repairable issues — a structured `remediation.primary.{action, params}`. Arg-validation findings guarantee a non-empty `evidence.path` plus at least one of `evidence.expected_type` or `next_tool_call` so an agent can self-correct without re-reading the schema. The `next_tool_call` usually replays the same tool with the offending field as a placeholder; for shape failures it points at `get_input_schema`, and for unknown identifiers it points at the relevant discovery tool (e.g. `list_templates`, `list_patterns`). Discovery findings also carry list facts in `evidence` (e.g. icon-name `suggestions`) so you can repair without a separate lookup. Common legacy codes (after the namespace prefix) are `MISSING_PARAMETER`, `INVALID_PARAMETER`, `INVALID_JSON`, `INVALID_KEY`, and `INVALID_PATH`.
 
 ### Output validation error envelope
 

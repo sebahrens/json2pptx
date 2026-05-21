@@ -7,6 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -70,8 +71,10 @@ func TestDescribeFinding_UnknownCodeReturnsAllowedList(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("expected IsError envelope for unknown code")
 	}
-	// Structured content should expose the diagnostics envelope with a
-	// use_one_of fix whose params.allowed enumerates the vocabulary.
+	// Structured content should expose the FindingEnvelope with a remediation
+	// whose params.allowed enumerates the vocabulary. The source fix kind
+	// "use_one_of" is not a member of the action vocabulary, so it maps to the
+	// replace_value action while the original kind is preserved in params.
 	if result.StructuredContent == nil {
 		t.Fatal("StructuredContent is nil — agents depend on it to discover allowed codes")
 	}
@@ -79,34 +82,33 @@ func TestDescribeFinding_UnknownCodeReturnsAllowedList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal StructuredContent: %v", err)
 	}
-	var env struct {
-		Diagnostics []struct {
-			Code string `json:"code"`
-			Fix  struct {
-				Kind   string         `json:"kind"`
-				Params map[string]any `json:"params"`
-			} `json:"fix"`
-		} `json:"diagnostics"`
+	var fe diagnostics.FindingEnvelope
+	if err := json.Unmarshal(b, &fe); err != nil {
+		t.Fatalf("parse finding envelope: %v", err)
 	}
-	if err := json.Unmarshal(b, &env); err != nil {
-		t.Fatalf("parse error envelope: %v", err)
+	if len(fe.Findings) == 0 {
+		t.Fatal("finding envelope has no findings entries")
 	}
-	if len(env.Diagnostics) == 0 {
-		t.Fatal("error envelope has no diagnostics entries")
+	f := fe.Findings[0]
+	if f.Code != "INPUT.UNKNOWN_FINDING_CODE" {
+		t.Errorf("finding.code = %q, want INPUT.UNKNOWN_FINDING_CODE", f.Code)
 	}
-	d := env.Diagnostics[0]
-	if d.Code != "UNKNOWN_FINDING_CODE" {
-		t.Errorf("diagnostic.code = %q, want UNKNOWN_FINDING_CODE", d.Code)
+	if f.Remediation == nil || f.Remediation.Primary == nil {
+		t.Fatal("finding has no primary remediation")
 	}
-	if d.Fix.Kind != "use_one_of" {
-		t.Errorf("fix.kind = %q, want use_one_of", d.Fix.Kind)
+	primary := f.Remediation.Primary
+	if primary.Action != diagnostics.ActionReplaceValue {
+		t.Errorf("remediation.primary.action = %q, want %q", primary.Action, diagnostics.ActionReplaceValue)
 	}
-	allowed, ok := d.Fix.Params["allowed"].([]any)
+	if got, _ := primary.Params["kind"].(string); got != "use_one_of" {
+		t.Errorf("remediation.primary.params[kind] = %v, want use_one_of", primary.Params["kind"])
+	}
+	allowed, ok := primary.Params["allowed"].([]any)
 	if !ok {
-		t.Fatalf("fix.params.allowed is not an array: %T", d.Fix.Params["allowed"])
+		t.Fatalf("remediation.primary.params.allowed is not an array: %T", primary.Params["allowed"])
 	}
 	if len(allowed) == 0 {
-		t.Fatal("fix.params.allowed must list at least one known code")
+		t.Fatal("remediation.primary.params.allowed must list at least one known code")
 	}
 }
 

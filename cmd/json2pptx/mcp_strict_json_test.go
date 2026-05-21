@@ -16,24 +16,123 @@ import (
 	_ "github.com/sebahrens/json2pptx/internal/patterns"
 )
 
-// mcpErrorEnvelope mirrors the internal type in api/mcp_result.go.
+// mcpErrorEnvelope is the legacy {Diagnostics, Summary} view of an MCP error
+// result. The wire shape is now diagnostics.FindingEnvelope (see
+// api/mcp_result.go); parseMCPError and structuredErrorEnvelope reconstruct this
+// view from the envelope so the broad set of behavioral tests can keep asserting
+// against un-namespaced codes, JSON paths, and the agent-recovery fields
+// (expected_type, next_tool_call, example_value). Wire-shape contract tests
+// assert the FindingEnvelope directly via parseMCPFindingEnvelope.
 type mcpErrorEnvelope struct {
-	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
-	Summary     string                   `json:"summary"`
+	Diagnostics []diagnostics.Diagnostic
+	Summary     string
 }
 
-// parseMCPError extracts diagnostics from an IsError MCP result.
-func parseMCPError(t *testing.T, result *mcp.CallToolResult) mcpErrorEnvelope {
+// parseMCPFindingEnvelope parses the FindingEnvelope wire shape from the text
+// fallback of an IsError MCP result.
+func parseMCPFindingEnvelope(t *testing.T, result *mcp.CallToolResult) diagnostics.FindingEnvelope {
 	t.Helper()
 	if !result.IsError {
 		t.Fatal("expected IsError=true")
 	}
 	text := result.Content[0].(mcp.TextContent).Text
-	var env mcpErrorEnvelope
-	if err := json.Unmarshal([]byte(text), &env); err != nil {
-		t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
+	var fe diagnostics.FindingEnvelope
+	if err := json.Unmarshal([]byte(text), &fe); err != nil {
+		t.Fatalf("failed to parse finding envelope: %v\nraw: %s", err, text)
+	}
+	return fe
+}
+
+// parseMCPError extracts the reconstructed legacy diagnostics view from an
+// IsError MCP result's text fallback.
+func parseMCPError(t *testing.T, result *mcp.CallToolResult) mcpErrorEnvelope {
+	t.Helper()
+	return reconstructErrorEnvelope(parseMCPFindingEnvelope(t, result))
+}
+
+// structuredErrorEnvelope reconstructs the legacy diagnostics view from the
+// StructuredContent (a diagnostics.FindingEnvelope) of an IsError MCP result.
+func structuredErrorEnvelope(t *testing.T, result *mcp.CallToolResult) mcpErrorEnvelope {
+	t.Helper()
+	if !result.IsError {
+		t.Fatal("expected IsError=true")
+	}
+	if result.StructuredContent == nil {
+		t.Fatal("StructuredContent is nil, want non-nil")
+	}
+	b, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("failed to marshal StructuredContent: %v", err)
+	}
+	var fe diagnostics.FindingEnvelope
+	if err := json.Unmarshal(b, &fe); err != nil {
+		t.Fatalf("StructuredContent is not a FindingEnvelope: %v", err)
+	}
+	return reconstructErrorEnvelope(fe)
+}
+
+// reconstructErrorEnvelope adapts a FindingEnvelope back into the legacy
+// {Diagnostics, Summary} view: codes are de-namespaced, the evidence map is
+// surfaced as Details (with path / expected_type also lifted onto their dedicated
+// fields), and the agent-recovery fields (next_tool_call, example_value) plus the
+// primary remediation are carried across.
+func reconstructErrorEnvelope(fe diagnostics.FindingEnvelope) mcpErrorEnvelope {
+	env := mcpErrorEnvelope{Summary: fe.Summary}
+	for _, f := range fe.Findings {
+		d := diagnostics.Diagnostic{
+			Code:         legacyFindingCode(f.Code),
+			Message:      f.Message,
+			Severity:     f.Severity,
+			NextToolCall: f.NextToolCall,
+			ExampleValue: f.ExampleValue,
+		}
+		if len(f.Evidence) > 0 {
+			d.Details = f.Evidence
+		}
+		if p, ok := f.Evidence["path"].(string); ok {
+			d.Path = p
+		}
+		if et, ok := f.Evidence["expected_type"].(string); ok {
+			d.ExpectedType = et
+		}
+		if f.Remediation != nil && f.Remediation.Primary != nil {
+			d.Fix = &diagnostics.Fix{
+				Kind:   f.Remediation.Primary.Action,
+				Params: f.Remediation.Primary.Params,
+			}
+		}
+		env.Diagnostics = append(env.Diagnostics, d)
 	}
 	return env
+}
+
+// legacyDiagsFromWire parses the FindingEnvelope text fallback of an MCP error
+// result and reconstructs the legacy map-shaped diagnostics that the asset / URL
+// parity tests assert against: each finding becomes a map with a de-namespaced
+// "code", its "path" lifted from evidence, the full evidence map under
+// "details", plus "message" and "severity".
+func legacyDiagsFromWire(t *testing.T, text string) []map[string]any {
+	t.Helper()
+	var fe diagnostics.FindingEnvelope
+	if err := json.Unmarshal([]byte(text), &fe); err != nil {
+		t.Fatalf("failed to parse finding envelope: %v\nraw: %s", err, text)
+	}
+	out := make([]map[string]any, 0, len(fe.Findings))
+	for _, f := range fe.Findings {
+		d := map[string]any{
+			"code":     legacyFindingCode(f.Code),
+			"message":  f.Message,
+			"severity": string(f.Severity),
+		}
+		if p, ok := f.Evidence["path"].(string); ok {
+			d["path"] = p
+		}
+		if len(f.Evidence) > 0 {
+			d["details"] = map[string]any(f.Evidence)
+		}
+		out = append(out, d)
+	}
+	return out
 }
 
 // requireDiagCode asserts at least one diagnostic has the given code.

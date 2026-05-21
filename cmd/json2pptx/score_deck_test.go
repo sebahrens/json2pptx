@@ -121,32 +121,19 @@ func TestScoreDeck_WithHeuristicsModeRejected(t *testing.T) {
 		t.Fatalf("expected IsError=true for with_heuristics; got success")
 	}
 
-	b, err := json.Marshal(result.StructuredContent)
-	if err != nil {
-		t.Fatalf("marshal structured content: %v", err)
-	}
-	var env struct {
-		Diagnostics []struct {
-			Code         string `json:"code"`
-			Severity     string `json:"severity"`
-			Message      string `json:"message"`
-			NextToolCall *struct {
-				Tool string `json:"tool"`
-			} `json:"next_tool_call,omitempty"`
-		} `json:"diagnostics"`
-	}
-	if err := json.Unmarshal(b, &env); err != nil {
-		t.Fatalf("structured content is not a diagnostics envelope: %v\nraw=%s", err, string(b))
-	}
+	// The error wire shape is the shared FindingEnvelope; reconstruct the legacy
+	// view so the de-namespaced code, severity, and next_tool_call are easy to
+	// assert.
+	env := structuredErrorEnvelope(t, result)
 	if len(env.Diagnostics) == 0 {
-		t.Fatalf("expected at least one diagnostic, got none; raw=%s", string(b))
+		t.Fatalf("expected at least one finding, got none")
 	}
 	d := env.Diagnostics[0]
 	if d.Code != "UNSUPPORTED_MODE" {
-		t.Errorf("diagnostic code = %q, want UNSUPPORTED_MODE", d.Code)
+		t.Errorf("finding code = %q, want UNSUPPORTED_MODE", d.Code)
 	}
 	if d.Severity != "error" {
-		t.Errorf("diagnostic severity = %q, want error", d.Severity)
+		t.Errorf("finding severity = %q, want error", d.Severity)
 	}
 	if d.NextToolCall == nil || d.NextToolCall.Tool != "inspect_slide_images" {
 		t.Errorf("next_tool_call should point at inspect_slide_images; got %+v", d.NextToolCall)

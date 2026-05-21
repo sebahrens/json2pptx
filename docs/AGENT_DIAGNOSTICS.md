@@ -153,16 +153,27 @@ success-path response collapses the legacy `warnings[]`, `validation_warnings[]`
 `FindingEnvelope` under the `findings` key (built from the boundary + slide
 diagnostics plus the fit-report findings, with fit findings carrying category
 `FIT`). The structural fields (`valid`, the `*_count` totals, `slides[]`,
-`response_fingerprint`) are unchanged. A failing `validate_input` still returns
-the MCP diagnostics **error** envelope (`{diagnostics, summary}`, `IsError=true`)
-— that surface migrates separately. Note that `findings.ok` reflects
+`response_fingerprint`) are unchanged. Note that `findings.ok` reflects
 finding severity (it is `false` when any error-severity finding, including a
 `refuse`-action fit finding, is present), which can legitimately differ from the
 structural `valid` flag.
 
-The remaining ad-hoc shapes in `inspect`, the MCP error envelope, and HTTP serve
-mode are still pending, along with emitting the envelope natively from the
-forthcoming `preflight` and `examine-template` subcommands.
+The MCP **error** envelope has migrated: every tool error result
+(`IsError=true`) — arg-validation, template/asset resolution, strict-fit
+refusal, slide-level validation, and a failing `validate_input` — now carries a
+`FindingEnvelope` as `StructuredContent` (and as the text fallback), replacing
+the legacy `{diagnostics, summary}` shape. `MCPDiagnosticsError` /
+`MCPSimpleError` still take `[]diagnostics.Diagnostic` (no call-site churn) and
+build the envelope via `BuildEnvelope`; the error envelope is stamped with the
+generic `subcommand: "mcp"` because the shared builders do not plumb a per-tool
+name. The lossless agent-recovery fields (`next_tool_call`, `expected_type`,
+`example_value`) survive, and the adapter now also carries **list facts** (e.g.
+icon-name `suggestions`, allowed enum values) in `evidence` — only arbitrary
+nested objects are dropped.
+
+The remaining ad-hoc shapes in `inspect` and HTTP serve mode are still pending,
+along with emitting the envelope natively from the forthcoming `preflight` and
+`examine-template` subcommands.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to

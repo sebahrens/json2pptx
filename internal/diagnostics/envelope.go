@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -161,8 +162,10 @@ type Finding struct {
 	Where *Where `json:"where,omitempty"`
 	// Message is the human-readable description.
 	Message string `json:"message"`
-	// Evidence carries numeric/enum facts only (measured vs. allowed extents,
-	// overflow ratios, the offending JSON path, expected types). Never prose.
+	// Evidence carries machine-readable facts (measured vs. allowed extents,
+	// overflow ratios, the offending JSON path, expected types, asset kind/value,
+	// suggestion lists). Scalars and lists of facts are carried; arbitrary nested
+	// objects are dropped.
 	Evidence map[string]any `json:"evidence,omitempty"`
 	// Remediation is the structured repair suggestion, when one exists.
 	Remediation *Remediation `json:"remediation,omitempty"`
@@ -375,10 +378,13 @@ func mapFixKindToAction(kind string) Action {
 	}
 }
 
-// evidenceFromDiagnostic lifts numeric/enum facts from a Diagnostic into the
+// evidenceFromDiagnostic lifts machine-readable facts from a Diagnostic into the
 // Finding evidence map: scalar Details entries, known structured extents
-// (measured/allowed/overflow_ratio), the offending JSON path, and the expected
-// type. Free-form prose and arbitrary nested objects are dropped.
+// (measured/allowed/overflow_ratio), lists of facts (e.g. icon-name
+// suggestions, allowed enum values), the offending JSON path, and the expected
+// type. Arbitrary nested objects are dropped. The adaptation is lossless for the
+// scalar and list Details an agent uses to recover; only free-form nested maps
+// are elided.
 func evidenceFromDiagnostic(d Diagnostic) map[string]any {
 	ev := map[string]any{}
 	for k, v := range d.Details {
@@ -386,7 +392,7 @@ func evidenceFromDiagnostic(d Diagnostic) map[string]any {
 		case "measured", "allowed", "overflow_ratio", "action", "pattern", "segment_index":
 			ev[k] = v
 		default:
-			if isScalarFact(v) {
+			if isCarryableFact(v) {
 				ev[k] = v
 			}
 		}
@@ -411,6 +417,24 @@ func isScalarFact(v any) bool {
 		int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64,
 		float32, float64:
+		return true
+	default:
+		return false
+	}
+}
+
+// isCarryableFact reports whether v should ride in the evidence map. Scalar
+// facts and lists/arrays of facts (suggestions, allowed values) are carried;
+// nested objects (maps) are dropped to keep evidence flat and machine-parseable.
+func isCarryableFact(v any) bool {
+	if v == nil {
+		return false
+	}
+	if isScalarFact(v) {
+		return true
+	}
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Slice, reflect.Array:
 		return true
 	default:
 		return false

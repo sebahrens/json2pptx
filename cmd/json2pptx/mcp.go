@@ -1146,7 +1146,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.
 // When validation fails (any error-severity diagnostic), it returns IsError=true
-// with the same mcpErrorEnvelope shape that generate_presentation uses. When
+// with the same FindingEnvelope error shape that generate_presentation uses. When
 // validation passes, it returns a success envelope whose warnings/info findings
 // travel in the single Findings envelope (see docs/AGENT_DIAGNOSTICS.md).
 func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallToolResult, error) {

@@ -92,17 +92,34 @@ func TestMCPDiagnosticsError(t *testing.T) {
 		t.Error("IsError = false, want true")
 	}
 
-	// StructuredContent should be the error envelope.
-	envelope, ok := result.StructuredContent.(mcpErrorEnvelope)
+	// StructuredContent should be the shared FindingEnvelope.
+	envelope, ok := result.StructuredContent.(diagnostics.FindingEnvelope)
 	if !ok {
-		t.Fatalf("StructuredContent type = %T, want mcpErrorEnvelope", result.StructuredContent)
+		t.Fatalf("StructuredContent type = %T, want diagnostics.FindingEnvelope", result.StructuredContent)
 	}
 
-	if len(envelope.Diagnostics) != 2 {
-		t.Errorf("Diagnostics count = %d, want 2", len(envelope.Diagnostics))
+	if envelope.SchemaVersion != diagnostics.SchemaVersion {
+		t.Errorf("SchemaVersion = %q, want %q", envelope.SchemaVersion, diagnostics.SchemaVersion)
+	}
+	if envelope.Tool != diagnostics.DefaultTool {
+		t.Errorf("Tool = %q, want %q", envelope.Tool, diagnostics.DefaultTool)
+	}
+	if envelope.Subcommand == "" {
+		t.Error("Subcommand is empty, want a generic surface identifier")
+	}
+	if envelope.OK {
+		t.Error("OK = true, want false for error-severity findings")
+	}
+	if len(envelope.Findings) != 2 {
+		t.Errorf("Findings count = %d, want 2", len(envelope.Findings))
 	}
 	if envelope.Summary != "2 errors" {
 		t.Errorf("Summary = %q, want %q", envelope.Summary, "2 errors")
+	}
+
+	// Codes are namespaced on the wire.
+	if len(envelope.Findings) > 0 && !strings.Contains(envelope.Findings[0].Code, ".") {
+		t.Errorf("Findings[0].Code = %q, want namespaced", envelope.Findings[0].Code)
 	}
 
 	// Text fallback should be present.
@@ -110,7 +127,7 @@ func TestMCPDiagnosticsError(t *testing.T) {
 		t.Fatal("Content is empty, want text fallback")
 	}
 
-	// Text fallback should contain the diagnostics as JSON.
+	// Text fallback should contain the findings as JSON.
 	b, _ := json.Marshal(result.Content[0])
 	text := string(b)
 	if !strings.Contains(text, "required") {
@@ -134,9 +151,14 @@ func TestMCPDiagnosticsError_SingleWarning(t *testing.T) {
 		t.Error("IsError = false, want true")
 	}
 
-	envelope := result.StructuredContent.(mcpErrorEnvelope)
+	envelope := result.StructuredContent.(diagnostics.FindingEnvelope)
 	if envelope.Summary != "1 warning" {
 		t.Errorf("Summary = %q, want %q", envelope.Summary, "1 warning")
+	}
+	// No error-severity finding, so the envelope reports OK=true even though the
+	// transport result is flagged IsError.
+	if !envelope.OK {
+		t.Error("OK = false, want true for a warning-only envelope")
 	}
 }
 
@@ -147,24 +169,27 @@ func TestMCPSimpleError(t *testing.T) {
 		t.Error("IsError = false, want true")
 	}
 
-	envelope, ok := result.StructuredContent.(mcpErrorEnvelope)
+	envelope, ok := result.StructuredContent.(diagnostics.FindingEnvelope)
 	if !ok {
-		t.Fatalf("StructuredContent type = %T, want mcpErrorEnvelope", result.StructuredContent)
+		t.Fatalf("StructuredContent type = %T, want diagnostics.FindingEnvelope", result.StructuredContent)
 	}
 
-	if len(envelope.Diagnostics) != 1 {
-		t.Fatalf("Diagnostics count = %d, want 1", len(envelope.Diagnostics))
+	if len(envelope.Findings) != 1 {
+		t.Fatalf("Findings count = %d, want 1", len(envelope.Findings))
 	}
 
-	d := envelope.Diagnostics[0]
-	if d.Code != "INVALID_JSON" {
-		t.Errorf("Code = %q, want INVALID_JSON", d.Code)
+	f := envelope.Findings[0]
+	if f.Code != "INPUT.INVALID_JSON" {
+		t.Errorf("Code = %q, want INPUT.INVALID_JSON", f.Code)
 	}
-	if d.Message != "invalid JSON: unexpected EOF" {
-		t.Errorf("Message = %q", d.Message)
+	if f.Category != diagnostics.NamespaceInput {
+		t.Errorf("Category = %q, want %q", f.Category, diagnostics.NamespaceInput)
 	}
-	if d.Severity != diagnostics.SeverityError {
-		t.Errorf("Severity = %q, want error", d.Severity)
+	if f.Message != "invalid JSON: unexpected EOF" {
+		t.Errorf("Message = %q", f.Message)
+	}
+	if f.Severity != diagnostics.SeverityError {
+		t.Errorf("Severity = %q, want error", f.Severity)
 	}
 }
 
@@ -183,17 +208,23 @@ func TestMCPDiagnosticsError_WithFix(t *testing.T) {
 
 	result := MCPDiagnosticsError(ds)
 
-	envelope := result.StructuredContent.(mcpErrorEnvelope)
-	if envelope.Diagnostics[0].Fix == nil {
-		t.Error("Fix is nil, want non-nil")
+	envelope := result.StructuredContent.(diagnostics.FindingEnvelope)
+	rem := envelope.Findings[0].Remediation
+	if rem == nil || rem.Primary == nil {
+		t.Fatal("Remediation.Primary is nil, want non-nil")
 	}
-	if envelope.Diagnostics[0].Fix.Kind != "provide_value" {
-		t.Errorf("Fix.Kind = %q, want provide_value", envelope.Diagnostics[0].Fix.Kind)
+	// "provide_value" is not a member of the action vocabulary, so it maps to
+	// replace_value while the original kind is preserved in params.
+	if rem.Primary.Action != diagnostics.ActionReplaceValue {
+		t.Errorf("Remediation.Primary.Action = %q, want %q", rem.Primary.Action, diagnostics.ActionReplaceValue)
+	}
+	if got, _ := rem.Primary.Params["kind"].(string); got != "provide_value" {
+		t.Errorf("Remediation.Primary.Params[kind] = %v, want provide_value", rem.Primary.Params["kind"])
 	}
 
-	// Verify JSON round-trip preserves fix.
+	// Verify JSON round-trip preserves the original kind.
 	b, _ := json.Marshal(envelope)
 	if !strings.Contains(string(b), "provide_value") {
-		t.Errorf("JSON missing fix kind: %s", b)
+		t.Errorf("JSON missing original fix kind: %s", b)
 	}
 }

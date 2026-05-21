@@ -100,19 +100,26 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
 1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). The CLI form `-fit-report=path.json` writes **NDJSON** (one finding per line, no array wrapping); `-fit-report=-` writes NDJSON to stdout; bare `-fit-report` prints a human-readable summary to stderr. Validate exits 0 even with unfittable cells — refusal comes via `strict_fit` on generate. Fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints that are directly actionable. See `FINDINGS.md` for the full code catalog and `fix.kind` enums. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
 
    **Findings sort invariant.** Every `findings` / `fit_findings` array — across `validate_input`, `preview_presentation_plan`, `generate_presentation`, `score_deck`, and `repair_slide` — is sorted by `(severity desc, slide_index asc, code asc)`. `findings[0]` is always the most important fix to attempt first. Deck-level findings (path doesn't match `/slides/N/...`) sort before slide 0 at equal severity. The ordering is deterministic across runs, so agents can address findings top-to-bottom without re-prioritising.
-2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `fix.kind: split_at_row|reduce_text`). Both native layout findings and chart findings participate in the ladder — see FINDINGS.md for which codes promote at which level. On refusal, MCP returns structured diagnostics with `IsError=true`:
+2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `fix.kind: split_at_row|reduce_text`). Both native layout findings and chart findings participate in the ladder — see FINDINGS.md for which codes promote at which level. On refusal, MCP returns the shared FindingEnvelope with `IsError=true`:
    ```json
    {
-     "diagnostics": [
+     "schema_version": "1.0",
+     "tool": "json2pptx",
+     "subcommand": "mcp",
+     "ok": false,
+     "summary": "1 error",
+     "findings": [
        {
-         "path": "slides[2].content.body",
-         "code": "placeholder_overflow",
+         "id": "fit-1",
+         "code": "FIT.placeholder_overflow",
+         "category": "FIT",
          "severity": "error",
+         "where": { "slide": 2 },
          "message": "text overflows placeholder by 42%",
-         "fix": { "kind": "reduce_text" }
+         "evidence": { "path": "slides[2].content.body" },
+         "remediation": { "primary": { "action": "shorten_text", "params": { "kind": "reduce_text" } } }
        }
-     ],
-     "summary": "generation refused: 1 error-severity finding"
+     ]
    }
    ```
 3. **Render to images.** Call `render_slide_image` (one slide) or `render_deck_thumbnails` (whole deck) over MCP — preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out. Both paths require LibreOffice + ImageMagick on the server's PATH; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done. To get a deck-level quality signal, also call `score_deck` — it returns a 0-100 score plus structured findings keyed to the same `code` vocabulary as fit-report.

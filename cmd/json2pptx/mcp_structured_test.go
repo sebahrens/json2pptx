@@ -25,23 +25,15 @@ func requireStructuredContent(t *testing.T, result *mcp.CallToolResult) {
 }
 
 // requireStructuredError asserts IsError=true and StructuredContent carries the
-// diagnostics envelope with at least one diagnostic matching the given code.
+// FindingEnvelope with at least one finding whose de-namespaced code matches the
+// given legacy code.
 func requireStructuredError(t *testing.T, result *mcp.CallToolResult, code string) {
 	t.Helper()
 	if !result.IsError {
 		t.Fatal("expected IsError=true")
 	}
 	requireStructuredContent(t, result)
-
-	// StructuredContent should round-trip as a diagnostics envelope.
-	b, err := json.Marshal(result.StructuredContent)
-	if err != nil {
-		t.Fatalf("failed to marshal StructuredContent: %v", err)
-	}
-	var env mcpErrorEnvelope
-	if err := json.Unmarshal(b, &env); err != nil {
-		t.Fatalf("StructuredContent is not a diagnostics envelope: %v", err)
-	}
+	env := structuredErrorEnvelope(t, result)
 	requireDiagCode(t, env.Diagnostics, code)
 }
 
@@ -164,10 +156,8 @@ func TestHandleShowPattern_UnknownPattern_StructuredError(t *testing.T) {
 	}
 	requireStructuredError(t, result, "UNKNOWN_PATTERN")
 
-	// Should include a fix suggestion.
-	b, _ := json.Marshal(result.StructuredContent)
-	var env mcpErrorEnvelope
-	_ = json.Unmarshal(b, &env)
+	// Should include a fix suggestion (remediation on the wire).
+	env := structuredErrorEnvelope(t, result)
 	d := requireDiagCode(t, env.Diagnostics, "UNKNOWN_PATTERN")
 	if d.Fix == nil {
 		t.Error("expected fix suggestion for unknown pattern")
@@ -253,8 +243,8 @@ func TestHandleValidate_MissingTemplate_StructuredDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// A failing validate returns the MCP diagnostics error envelope (IsError=true,
-	// {diagnostics, summary}) — the same shape generate_presentation uses.
+	// A failing validate returns the MCP FindingEnvelope error shape
+	// (IsError=true) — the same shape generate_presentation uses.
 	requireStructuredError(t, result, "TEMPLATE_NOT_FOUND")
 }
 
@@ -534,27 +524,47 @@ func TestHandleListIcons_StructuredContent(t *testing.T) {
 // --- Verify diagnostics are surfaced through StructuredContent on errors ---
 
 func TestStructuredContent_ErrorEnvelopeRoundTrip(t *testing.T) {
-	// Verify that error paths produce StructuredContent that round-trips
-	// as a diagnostics envelope with code, message, severity, and optional fix.
+	// Verify that error paths produce StructuredContent that round-trips as a
+	// FindingEnvelope: schema_version/tool/subcommand metadata, ok=false, and a
+	// single finding carrying the namespaced code, message, evidence.path, and
+	// remediation built from the source Fix.
 	result := mcpParseErrorWithFix("TEST_CODE", "test.path", "test message",
 		&diagnostics.Fix{Kind: "replace_value", Params: map[string]any{"suggestion": "correct_value"}},
 	)
 
 	requireStructuredContent(t, result)
 	b, _ := json.Marshal(result.StructuredContent)
-	var env mcpErrorEnvelope
-	if err := json.Unmarshal(b, &env); err != nil {
+	var fe diagnostics.FindingEnvelope
+	if err := json.Unmarshal(b, &fe); err != nil {
 		t.Fatalf("round-trip failed: %v", err)
 	}
-	if len(env.Diagnostics) != 1 {
-		t.Fatalf("expected 1 diagnostic, got %d", len(env.Diagnostics))
+	if fe.SchemaVersion != diagnostics.SchemaVersion {
+		t.Errorf("schema_version = %q, want %q", fe.SchemaVersion, diagnostics.SchemaVersion)
 	}
-	d := env.Diagnostics[0]
-	if d.Code != "TEST_CODE" || d.Message != "test message" || d.Path != "test.path" {
-		t.Errorf("diagnostic mismatch: got %+v", d)
+	if fe.Tool != diagnostics.DefaultTool {
+		t.Errorf("tool = %q, want %q", fe.Tool, diagnostics.DefaultTool)
 	}
-	if d.Fix == nil || d.Fix.Kind != "replace_value" {
-		t.Error("fix not preserved in round-trip")
+	if fe.Subcommand == "" {
+		t.Error("subcommand is empty, want a generic surface identifier")
+	}
+	if fe.OK {
+		t.Error("ok = true, want false for an error-severity envelope")
+	}
+	if len(fe.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(fe.Findings))
+	}
+	f := fe.Findings[0]
+	if f.Code != "INPUT.TEST_CODE" || f.Category != diagnostics.NamespaceInput {
+		t.Errorf("code/category mismatch: code=%q category=%q", f.Code, f.Category)
+	}
+	if f.Message != "test message" {
+		t.Errorf("message = %q, want %q", f.Message, "test message")
+	}
+	if p, _ := f.Evidence["path"].(string); p != "test.path" {
+		t.Errorf("evidence.path = %v, want test.path", f.Evidence["path"])
+	}
+	if f.Remediation == nil || f.Remediation.Primary == nil || f.Remediation.Primary.Action != "replace_value" {
+		t.Errorf("remediation.primary.action not preserved in round-trip: %+v", f.Remediation)
 	}
 }
 
@@ -723,7 +733,7 @@ func TestHandleScoreDeck_PresentationObject(t *testing.T) {
 
 // TestHandleValidate_SlideLevelDiagnostics verifies that slide-level
 // validation failures (unknown layout_id, unknown placeholder_id, unknown
-// content type) propagate into the MCP error envelope's diagnostics[] field.
+// content type) propagate into the MCP error FindingEnvelope's findings.
 // Regression for go-slide-creator-4l04.
 func TestHandleValidate_SlideLevelDiagnostics(t *testing.T) {
 	cases := []struct {
@@ -782,13 +792,9 @@ func TestHandleValidate_SlideLevelDiagnostics(t *testing.T) {
 			}
 			requireStructuredContent(t, result)
 
-			b, _ := json.Marshal(result.StructuredContent)
-			var env mcpErrorEnvelope
-			if err := json.Unmarshal(b, &env); err != nil {
-				t.Fatalf("envelope parse: %v", err)
-			}
+			env := structuredErrorEnvelope(t, result)
 			if len(env.Diagnostics) == 0 {
-				t.Fatal("expected non-empty diagnostics; got boundary-only / empty envelope")
+				t.Fatal("expected non-empty findings; got boundary-only / empty envelope")
 			}
 			d := requireDiagCode(t, env.Diagnostics, tc.wantCode)
 			if d.Path != tc.wantPath {

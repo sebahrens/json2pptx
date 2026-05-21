@@ -9,6 +9,13 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
+// mcpErrorSubcommand is the generic Subcommand stamped on MCP error envelopes.
+// The shared error builders (MCPDiagnosticsError / MCPSimpleError) are called
+// from ~150 sites that do not plumb their tool name through, so a single generic
+// surface identifier is used; per-tool attribution can be threaded later without
+// changing the wire shape.
+const mcpErrorSubcommand = "mcp"
+
 // MCPSuccessResult builds a CallToolResult with StructuredContent set to data
 // and a JSON text fallback in Content. The text fallback respects the session's
 // compact_responses negotiation (via MarshalMCPResponse).
@@ -28,20 +35,16 @@ func MCPSuccessResult(ctx context.Context, data any) (*mcp.CallToolResult, error
 	}, nil
 }
 
-// mcpErrorEnvelope is the structured content for error results.
-type mcpErrorEnvelope struct {
-	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
-	Summary     string                   `json:"summary"`
-}
-
 // MCPDiagnosticsError builds an error CallToolResult from a slice of
 // Diagnostics. The result has IsError=true, StructuredContent carrying the
-// diagnostics envelope, and a human-readable text fallback.
+// shared diagnostics.FindingEnvelope wire shape, and a human-readable text
+// fallback. Callers keep passing []diagnostics.Diagnostic; the envelope is
+// assembled via diagnostics.BuildEnvelope, so namespaced codes, remediation,
+// next_tool_call, expected_type, and example_value all survive on the wire.
 func MCPDiagnosticsError(ds []diagnostics.Diagnostic) *mcp.CallToolResult {
-	envelope := mcpErrorEnvelope{
-		Diagnostics: ds,
-		Summary:     diagnostics.Summary(ds),
-	}
+	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+		Subcommand: mcpErrorSubcommand,
+	}, ds)
 
 	fallback, err := json.Marshal(envelope)
 	if err != nil {

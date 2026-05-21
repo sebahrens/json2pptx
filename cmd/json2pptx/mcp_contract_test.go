@@ -23,15 +23,16 @@ import (
 // will break.
 //
 // Stable fields (safe for programmatic matching):
-//   - diagnostics[].code, .severity, .path, .fix.kind, .fix.params
+//   - error envelope: schema_version, tool, subcommand, ok, summary, findings[]
+//   - findings[].id, .code (namespaced), .category, .severity, .evidence,
+//     .remediation.primary.{action,params}, .next_tool_call, .example_value
 //   - success, valid, output_path, slide_count, fit_findings[].code
-//   - error envelope: diagnostics[], summary
 //
 // Advisory fields (human-readable, may change wording):
-//   - diagnostics[].message, summary text, warnings[]
+//   - findings[].message, summary text, warnings[]
 
-// TestMCPErrorEnvelope_ContractShape verifies that MCP error results carry
-// the diagnostics envelope with the exact field names agents expect.
+// TestMCPErrorEnvelope_ContractShape verifies that MCP error results carry the
+// shared FindingEnvelope with the exact field names agents expect.
 func TestMCPErrorEnvelope_ContractShape(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
@@ -65,53 +66,70 @@ func TestMCPErrorEnvelope_ContractShape(t *testing.T) {
 		t.Fatalf("error envelope is not a JSON object: %v", err)
 	}
 
-	// "diagnostics" must be present and an array.
-	diagsRaw, ok := raw["diagnostics"]
-	if !ok {
-		t.Fatal("error envelope missing 'diagnostics' field")
-	}
-	var diags []map[string]json.RawMessage
-	if err := json.Unmarshal(diagsRaw, &diags); err != nil {
-		t.Fatalf("diagnostics is not an array of objects: %v", err)
-	}
-	if len(diags) == 0 {
-		t.Fatal("diagnostics array is empty")
+	// The legacy {diagnostics, summary} envelope is gone; the wire shape is the
+	// shared FindingEnvelope.
+	if _, ok := raw["diagnostics"]; ok {
+		t.Error("legacy 'diagnostics' field must not be present on the error envelope")
 	}
 
-	// "summary" must be present and a string.
-	summaryRaw, ok := raw["summary"]
-	if !ok {
-		t.Fatal("error envelope missing 'summary' field")
-	}
-	var summary string
-	if err := json.Unmarshal(summaryRaw, &summary); err != nil {
-		t.Fatalf("summary is not a string: %v", err)
-	}
-
-	// --- Assert diagnostic entry shape ---
-	d := diags[0]
-	for _, field := range []string{"code", "message", "severity"} {
-		if _, ok := d[field]; !ok {
-			t.Errorf("diagnostic missing required field %q", field)
+	// Run-level envelope metadata agents branch on.
+	for _, key := range []string{"schema_version", "tool", "subcommand", "ok", "summary", "findings"} {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("error envelope missing required key %q", key)
 		}
 	}
 
-	// "code" and "severity" must be strings.
-	var code string
-	if err := json.Unmarshal(d["code"], &code); err != nil {
-		t.Errorf("diagnostic.code is not a string: %v", err)
+	// "ok" must be false for an error result.
+	var ok2 bool
+	if err := json.Unmarshal(raw["ok"], &ok2); err != nil {
+		t.Errorf("ok is not a boolean: %v", err)
 	}
-	var severity string
-	if err := json.Unmarshal(d["severity"], &severity); err != nil {
-		t.Errorf("diagnostic.severity is not a string: %v", err)
+	if ok2 {
+		t.Error("ok = true, want false for an error envelope")
 	}
 
-	// Severity must be one of the stable values.
+	// "summary" must be a string.
+	var summary string
+	if err := json.Unmarshal(raw["summary"], &summary); err != nil {
+		t.Fatalf("summary is not a string: %v", err)
+	}
+
+	// "findings" must be a non-empty array.
+	var findings []map[string]json.RawMessage
+	if err := json.Unmarshal(raw["findings"], &findings); err != nil {
+		t.Fatalf("findings is not an array of objects: %v", err)
+	}
+	if len(findings) == 0 {
+		t.Fatal("findings array is empty")
+	}
+
+	// --- Assert finding entry shape ---
+	f := findings[0]
+	for _, field := range []string{"id", "code", "category", "message", "severity"} {
+		if _, ok := f[field]; !ok {
+			t.Errorf("finding missing required field %q", field)
+		}
+	}
+
+	// "code" must be a namespaced string.
+	var code string
+	if err := json.Unmarshal(f["code"], &code); err != nil {
+		t.Errorf("finding.code is not a string: %v", err)
+	}
+	if !strings.Contains(code, ".") {
+		t.Errorf("finding.code %q is not namespaced", code)
+	}
+
+	// "severity" must be one of the stable values.
+	var severity string
+	if err := json.Unmarshal(f["severity"], &severity); err != nil {
+		t.Errorf("finding.severity is not a string: %v", err)
+	}
 	switch diagnostics.Severity(severity) {
 	case diagnostics.SeverityError, diagnostics.SeverityWarning, diagnostics.SeverityInfo:
 		// ok
 	default:
-		t.Errorf("diagnostic.severity = %q, want one of error/warning/info", severity)
+		t.Errorf("finding.severity = %q, want one of error/warning/info", severity)
 	}
 
 	// --- Assert text fallback is also present ---
@@ -120,8 +138,8 @@ func TestMCPErrorEnvelope_ContractShape(t *testing.T) {
 	}
 }
 
-// TestMCPErrorEnvelope_FixShape verifies that the fix suggestion in diagnostics
-// carries the stable {kind, params} structure.
+// TestMCPErrorEnvelope_FixShape verifies that the repair suggestion on a finding
+// carries the stable remediation.primary.{action, params} structure.
 func TestMCPErrorEnvelope_FixShape(t *testing.T) {
 	// Trigger an error that includes a fix (unknown pattern with suggestion).
 	result, err := handleShowPattern(context.Background(), makeRequest(map[string]any{
@@ -135,36 +153,37 @@ func TestMCPErrorEnvelope_FixShape(t *testing.T) {
 	}
 
 	b, _ := json.Marshal(result.StructuredContent)
-	var env mcpErrorEnvelope
-	if err := json.Unmarshal(b, &env); err != nil {
+	var fe diagnostics.FindingEnvelope
+	if err := json.Unmarshal(b, &fe); err != nil {
 		t.Fatalf("parse envelope: %v", err)
 	}
 
-	// Find a diagnostic with a fix.
-	var fixDiag *diagnostics.Diagnostic
-	for i := range env.Diagnostics {
-		if env.Diagnostics[i].Fix != nil {
-			fixDiag = &env.Diagnostics[i]
+	// Find a finding with a remediation.
+	var fixFinding *diagnostics.Finding
+	for i := range fe.Findings {
+		if fe.Findings[i].Remediation != nil && fe.Findings[i].Remediation.Primary != nil {
+			fixFinding = &fe.Findings[i]
 			break
 		}
 	}
-	if fixDiag == nil {
-		t.Skip("no diagnostic with fix — typo suggestion may not have fired")
+	if fixFinding == nil {
+		t.Skip("no finding with remediation — typo suggestion may not have fired")
 	}
 
-	// Assert fix shape: {kind: string, params?: object}
-	if fixDiag.Fix.Kind == "" {
-		t.Error("fix.kind is empty — agents use this to decide repair action")
+	// Assert remediation shape: primary.{action: string, params?: object}
+	primary := fixFinding.Remediation.Primary
+	if primary.Action == "" {
+		t.Error("remediation.primary.action is empty — agents use this to decide repair action")
 	}
 
 	// Round-trip through JSON to verify serialization.
-	fixJSON, _ := json.Marshal(fixDiag.Fix)
-	var fixRaw map[string]json.RawMessage
-	if err := json.Unmarshal(fixJSON, &fixRaw); err != nil {
-		t.Fatalf("fix is not a JSON object: %v", err)
+	primaryJSON, _ := json.Marshal(primary)
+	var primaryRaw map[string]json.RawMessage
+	if err := json.Unmarshal(primaryJSON, &primaryRaw); err != nil {
+		t.Fatalf("remediation.primary is not a JSON object: %v", err)
 	}
-	if _, ok := fixRaw["kind"]; !ok {
-		t.Error("fix JSON missing 'kind' field")
+	if _, ok := primaryRaw["action"]; !ok {
+		t.Error("remediation.primary JSON missing 'action' field")
 	}
 }
 

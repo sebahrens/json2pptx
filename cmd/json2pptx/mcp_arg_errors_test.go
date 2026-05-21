@@ -141,26 +141,31 @@ func TestMCPArgErrors_EnvelopeShape(t *testing.T) {
 			if err != nil {
 				t.Fatalf("handler returned go error: %v", err)
 			}
-			env := parseMCPError(t, result)
-			if len(env.Diagnostics) == 0 {
-				t.Fatalf("expected at least one diagnostic, got empty envelope")
+			// Read the FindingEnvelope wire shape directly: the offending JSON
+			// path and the expected type live in findings[0].evidence; the
+			// recovery hint is findings[0].next_tool_call.
+			fe := parseMCPFindingEnvelope(t, result)
+			if len(fe.Findings) == 0 {
+				t.Fatalf("expected at least one finding, got empty envelope")
 			}
-			d := env.Diagnostics[0]
-			if d.Path == "" {
-				t.Errorf("expected path on diagnostic, got empty (code=%q, message=%q)", d.Code, d.Message)
+			f := fe.Findings[0]
+			path, _ := f.Evidence["path"].(string)
+			if path == "" {
+				t.Errorf("expected evidence.path on finding, got empty (code=%q, message=%q)", f.Code, f.Message)
 			}
-			if tc.wantPath != "" && d.Path != tc.wantPath {
+			if tc.wantPath != "" && path != tc.wantPath {
 				// A few handlers normalize the path differently (e.g. presentation.slides);
 				// accept any path that begins with the expected root path.
-				if len(d.Path) < len(tc.wantPath) || d.Path[:len(tc.wantPath)] != tc.wantPath {
-					t.Errorf("expected path=%q (or prefix), got %q", tc.wantPath, d.Path)
+				if len(path) < len(tc.wantPath) || path[:len(tc.wantPath)] != tc.wantPath {
+					t.Errorf("expected path=%q (or prefix), got %q", tc.wantPath, path)
 				}
 			}
-			// Every arg-validation diagnostic must surface at least one of:
-			// expected_type or next_tool_call. Both are agent-actionable; one
-			// alone is enough for a recovery path.
-			if d.ExpectedType == "" && d.NextToolCall == nil {
-				t.Errorf("expected diagnostic to carry expected_type or next_tool_call, got neither (code=%q, message=%q)", d.Code, d.Message)
+			// Every arg-validation finding must surface at least one of:
+			// evidence.expected_type or next_tool_call. Both are agent-actionable;
+			// one alone is enough for a recovery path.
+			expectedType, _ := f.Evidence["expected_type"].(string)
+			if expectedType == "" && f.NextToolCall == nil {
+				t.Errorf("expected finding to carry evidence.expected_type or next_tool_call, got neither (code=%q, message=%q)", f.Code, f.Message)
 			}
 		})
 	}

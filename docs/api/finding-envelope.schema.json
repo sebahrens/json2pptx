@@ -136,7 +136,7 @@
         "message": { "type": "string" },
         "evidence": {
           "type": "object",
-          "description": "Numeric/enum facts only (measured vs. allowed extents, overflow ratios, offending JSON path, expected type). Never prose."
+          "description": "Machine-readable facts (measured vs. allowed extents, overflow ratios, offending JSON path, expected type, asset kind/value, suggestion lists). Scalars and lists of facts are carried; arbitrary nested objects are dropped."
         },
         "remediation": { "$ref": "#/$defs/remediation" },
         "next_tool_call": { "$ref": "#/$defs/tool_call_suggestion" },

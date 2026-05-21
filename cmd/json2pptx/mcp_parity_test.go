@@ -169,15 +169,10 @@ func TestMCPValidateIconBundledNameUnknown(t *testing.T) {
 	}
 
 	text := result.Content[0].(mcp.TextContent).Text
-	var envelope struct {
-		Diagnostics []map[string]any `json:"diagnostics"`
-	}
-	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-		t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
-	}
+	diags := legacyDiagsFromWire(t, text)
 
 	var found map[string]any
-	for _, d := range envelope.Diagnostics {
+	for _, d := range diags {
 		if d["code"] == "ICON_BUNDLED_NAME_UNKNOWN" {
 			found = d
 			break
@@ -276,12 +271,7 @@ func TestMCPValidateAssetPathsAllSurfaces(t *testing.T) {
 	}
 
 	text := result.Content[0].(mcp.TextContent).Text
-	var envelope struct {
-		Diagnostics []map[string]any `json:"diagnostics"`
-	}
-	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-		t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
-	}
+	diags := legacyDiagsFromWire(t, text)
 
 	// Expect exactly one diagnostic per surface, keyed by json_path.
 	want := map[string]string{
@@ -291,7 +281,7 @@ func TestMCPValidateAssetPathsAllSurfaces(t *testing.T) {
 		"/slides/0/shape_grid/rows/0/cells/1/image/path": "IMAGE_PATH",
 	}
 	got := make(map[string]string, len(want))
-	for _, d := range envelope.Diagnostics {
+	for _, d := range diags {
 		path, _ := d["path"].(string)
 		code, _ := d["code"].(string)
 		if _, ok := want[path]; ok {
@@ -347,15 +337,10 @@ func TestMCPValidateIconPathCodes(t *testing.T) {
 			}
 
 			text := result.Content[0].(mcp.TextContent).Text
-			var envelope struct {
-				Diagnostics []map[string]any `json:"diagnostics"`
-			}
-			if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-				t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
-			}
+			diags := legacyDiagsFromWire(t, text)
 
 			var found map[string]any
-			for _, d := range envelope.Diagnostics {
+			for _, d := range diags {
 				if d["code"] == tc.wantCode {
 					found = d
 					break
@@ -1098,14 +1083,9 @@ func TestMCPStructureSlidesMutuallyExclusive(t *testing.T) {
 
 	expectMutualExclusivity := func(t *testing.T, text string) {
 		t.Helper()
-		var envelope struct {
-			Diagnostics []map[string]any `json:"diagnostics"`
-		}
-		if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-			t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
-		}
+		diags := legacyDiagsFromWire(t, text)
 		var found bool
-		for _, d := range envelope.Diagnostics {
+		for _, d := range diags {
 			if d["code"] == "STRUCTURE_AND_SLIDES" {
 				found = true
 				break
@@ -1301,12 +1281,7 @@ func TestMCPURLResolutionParity(t *testing.T) {
 		}
 
 		text := result.Content[0].(mcp.TextContent).Text
-		var envelope struct {
-			Diagnostics []map[string]any `json:"diagnostics"`
-		}
-		if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-			t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
-		}
+		diags := legacyDiagsFromWire(t, text)
 
 		// One URL_FETCH_FAILED per surface, keyed by JSON Pointer.
 		wantSurfaces := map[string]string{
@@ -1317,7 +1292,7 @@ func TestMCPURLResolutionParity(t *testing.T) {
 			"/slides/0/shape_grid/rows/0/cells/2/shape/icon/url":    "icon",
 		}
 		gotAssetKind := make(map[string]string, len(wantSurfaces))
-		for _, d := range envelope.Diagnostics {
+		for _, d := range diags {
 			if d["code"] != "URL_FETCH_FAILED" {
 				continue
 			}
@@ -1630,15 +1605,10 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 				}
 
 				text := result.Content[0].(mcp.TextContent).Text
-				var envelope struct {
-					Diagnostics []map[string]any `json:"diagnostics"`
-				}
-				if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-					t.Fatalf("failed to parse error envelope: %v\nraw: %s", err, text)
-				}
+				diags := legacyDiagsFromWire(t, text)
 
 				got := make(map[string]map[string]string, len(want))
-				for _, d := range envelope.Diagnostics {
+				for _, d := range diags {
 					path, _ := d["path"].(string)
 					code, _ := d["code"].(string)
 					if _, ok := want[path]; !ok {
