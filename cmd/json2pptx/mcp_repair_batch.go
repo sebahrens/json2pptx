@@ -18,6 +18,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
@@ -29,9 +30,14 @@ import (
 // applied fix carries an explicit slide_index because a single batch can span
 // multiple slides.
 type repairSlidesBatchOutput struct {
-	PatchedDeck  json.RawMessage       `json:"patched_deck"`
-	AppliedFixes []batchAppliedFix     `json:"applied_fixes"`
-	NewFindings  []patterns.FitFinding `json:"new_findings,omitempty"`
+	PatchedDeck  json.RawMessage   `json:"patched_deck"`
+	AppliedFixes []batchAppliedFix `json:"applied_fixes"`
+	// Findings is the deck-wide post-batch FindingEnvelope. As with
+	// repair_slide.findings it is always present so an agent can branch on
+	// findings.ok; findings.findings[] is empty when no residual issue remains.
+	// Replaces the legacy new_findings []FitFinding array — agents can reuse the
+	// same parser across both repair tools. See docs/AGENT_DIAGNOSTICS.md.
+	Findings diagnostics.FindingEnvelope `json:"findings"`
 }
 
 // batchAppliedFix is the per-fix outcome. Same fields as appliedFix plus the
@@ -153,7 +159,11 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 	output := repairSlidesBatchOutput{
 		PatchedDeck:  patchedJSON,
 		AppliedFixes: applied,
-		NewFindings:  newFindings,
+		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+			Subcommand:  "repair_slides_batch",
+			Template:    input.Template,
+			InputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
+		}, diagnostics.FromFitFindings(newFindings)),
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)

@@ -61,7 +61,9 @@ func threeSlideHeavyDeck() string {
 func countBodyTooLong(findings []map[string]any) int {
 	n := 0
 	for _, f := range findings {
-		if code, _ := f["code"].(string); code == "BODY_TOO_LONG" {
+		// The FindingEnvelope namespaces fit codes (BODY_TOO_LONG -> the FIT
+		// namespace), so match the dotted code an agent actually sees.
+		if code, _ := f["code"].(string); code == "FIT.BODY_TOO_LONG" {
 			n++
 		}
 	}
@@ -144,10 +146,10 @@ func TestRepairSlidesBatch_FixesThreeSlidesAndClearsFindings(t *testing.T) {
 		}
 	}
 
-	// Round-trip new_findings through a generic map so the test does not
-	// depend on the FitFinding struct shape, then assert no BODY_TOO_LONG
+	// Round-trip the envelope findings through a generic map so the test does
+	// not depend on the Finding struct shape, then assert no BODY_TOO_LONG
 	// finding survived the batch.
-	raw, _ := json.Marshal(output.NewFindings)
+	raw, _ := json.Marshal(output.Findings.Findings)
 	var asMaps []map[string]any
 	_ = json.Unmarshal(raw, &asMaps)
 	if n := countBodyTooLong(asMaps); n != 0 {

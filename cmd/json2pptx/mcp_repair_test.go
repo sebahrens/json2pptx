@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/template"
 
 	// Ensure all patterns are registered via init().
@@ -541,6 +542,84 @@ func TestRepairSlide_ContractShape(t *testing.T) {
 		if _, ok := f["applied"]; !ok {
 			t.Error("applied_fixes[].applied missing")
 		}
+	}
+}
+
+// TestRepairSlide_FindingsEnvelopeShape verifies that repair_slide returns the
+// residual post-patch fit findings as a FindingEnvelope (replacing the legacy
+// new_findings array). The envelope is always present so an agent can branch on
+// findings.ok deterministically.
+func TestRepairSlide_FindingsEnvelopeShape(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := minimalDeck(
+		map[string]any{
+			"placeholder_id": "title",
+			"type":           "text",
+			"text_value":     "Hello",
+		},
+	)
+
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(3)}}},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	// Typed view: the envelope is always present and stamped for this surface.
+	var output repairSlideOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if output.Findings.SchemaVersion != diagnostics.SchemaVersion {
+		t.Errorf("findings.schema_version = %q, want %q", output.Findings.SchemaVersion, diagnostics.SchemaVersion)
+	}
+	if output.Findings.Tool != diagnostics.DefaultTool {
+		t.Errorf("findings.tool = %q, want %q", output.Findings.Tool, diagnostics.DefaultTool)
+	}
+	if output.Findings.Subcommand != "repair_slide" {
+		t.Errorf("findings.subcommand = %q, want repair_slide", output.Findings.Subcommand)
+	}
+	if output.Findings.Findings == nil {
+		t.Error("findings.findings must be non-nil (may be empty)")
+	}
+	// Any residual finding must carry a namespaced (dotted) code.
+	for _, f := range output.Findings.Findings {
+		if !strings.Contains(f.Code, ".") {
+			t.Errorf("residual finding code %q is not namespaced", f.Code)
+		}
+	}
+
+	// Wire view: the legacy new_findings key is gone; findings is an object
+	// carrying the envelope's required fields plus a correlation digest.
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(textContent(result)), &raw); err != nil {
+		t.Fatalf("response is not a JSON object: %v", err)
+	}
+	if _, ok := raw["new_findings"]; ok {
+		t.Error("legacy 'new_findings' field must not be present")
+	}
+	envRaw, ok := raw["findings"]
+	if !ok {
+		t.Fatal("missing 'findings' envelope in response")
+	}
+	var env map[string]any
+	if err := json.Unmarshal(envRaw, &env); err != nil {
+		t.Fatalf("findings is not an object: %v", err)
+	}
+	for _, key := range []string{"schema_version", "tool", "subcommand", "ok", "summary", "findings"} {
+		if _, ok := env[key]; !ok {
+			t.Errorf("findings envelope missing required key %q", key)
+		}
+	}
+	if sha, _ := env["input_sha256"].(string); len(sha) != 64 {
+		t.Errorf("findings.input_sha256 = %q, want 64-hex-char digest", sha)
 	}
 }
 

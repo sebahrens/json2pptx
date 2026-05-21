@@ -25,9 +25,14 @@ import (
 
 // repairSlideOutput is the top-level response for repair_slide.
 type repairSlideOutput struct {
-	PatchedDeck  json.RawMessage       `json:"patched_deck"`
-	AppliedFixes []appliedFix          `json:"applied_fixes"`
-	NewFindings  []patterns.FitFinding `json:"new_findings,omitempty"`
+	PatchedDeck  json.RawMessage `json:"patched_deck"`
+	AppliedFixes []appliedFix    `json:"applied_fixes"`
+	// Findings is the FindingEnvelope of residual post-patch fit findings for
+	// the repaired slide. It is always present (never omitted) so an agent can
+	// branch on findings.ok deterministically; findings.findings[] is empty
+	// when the patch left no residual issues. This replaces the legacy
+	// new_findings []FitFinding array — see docs/AGENT_DIAGNOSTICS.md.
+	Findings diagnostics.FindingEnvelope `json:"findings"`
 }
 
 // appliedFix reports whether a single fix directive was successfully applied.
@@ -201,7 +206,11 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 	output := repairSlideOutput{
 		PatchedDeck:  patchedJSON,
 		AppliedFixes: applied,
-		NewFindings:  newFindings,
+		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+			Subcommand:  "repair_slide",
+			Template:    input.Template,
+			InputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
+		}, diagnostics.FromFitFindings(newFindings)),
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)

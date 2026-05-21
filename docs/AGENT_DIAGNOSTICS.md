@@ -139,12 +139,16 @@ when it is not already an action verb.
 The shared contract — types, action vocabulary, namespace prefixes, JSON
 schema, and the `BuildEnvelope` adapter over `[]diagnostics.Diagnostic` — is the
 foundation that every diagnostic-bearing surface adopts. The per-command and
-per-tool wire migration (replacing the remaining ad-hoc shapes in `validate`,
-`generate -dry-run`, `repair`, `inspect`, the MCP error envelope, and HTTP serve
-mode, and emitting the envelope from the forthcoming `preflight` and
-`examine-template` subcommands) is tracked as a separate phase because it is a
-breaking change to existing response contracts and depends on subcommands that
-do not exist yet.
+per-tool wire migration runs as a separate phase because each step is a breaking
+change to an existing response contract.
+
+`repair_slide` and `repair_slides_batch` have migrated: their residual post-patch
+fit findings ship as a `FindingEnvelope` under the `findings` key (replacing the
+legacy `new_findings []FitFinding` array), always present so an agent can branch
+on `findings.ok`. The remaining ad-hoc shapes in `validate`, `generate -dry-run`,
+`inspect`, the MCP error envelope, and HTTP serve mode are still pending, along
+with emitting the envelope natively from the forthcoming `preflight` and
+`examine-template` subcommands.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to

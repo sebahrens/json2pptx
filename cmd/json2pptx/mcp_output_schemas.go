@@ -863,6 +863,24 @@ var outputSchemaPreviewPlan = json.RawMessage(`{
   "required": ["resolved_slides"]
 }`)
 
+// findingEnvelopeSchema is the JSON Schema fragment for a diagnostics.
+// FindingEnvelope (docs/api/finding-envelope.schema.json). Surfaces that embed
+// the envelope concatenate this fragment so the shape stays in one place.
+const findingEnvelopeSchema = `{
+      "type": "object",
+      "properties": {
+        "schema_version": {"type": "string"},
+        "tool":           {"type": "string"},
+        "subcommand":     {"type": "string"},
+        "input_sha256":   {"type": "string"},
+        "template":       {"type": "string"},
+        "ok":             {"type": "boolean"},
+        "summary":        {"type": "string"},
+        "findings":       {"type": "array", "items": {"type": "object"}}
+      },
+      "required": ["schema_version", "tool", "subcommand", "ok", "summary", "findings"]
+    }`
+
 // --- repair_slide ---
 var outputSchemaRepairSlide = json.RawMessage(`{
   "type": "object",
@@ -890,9 +908,9 @@ var outputSchemaRepairSlide = json.RawMessage(`{
         "required": ["kind", "applied"]
       }
     },
-    "new_findings": {"type": "array", "items": {"type": "object"}}
+    "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["patched_deck", "applied_fixes"]
+  "required": ["patched_deck", "applied_fixes", "findings"]
 }`)
 
 // --- repair_slides_batch ---
@@ -923,9 +941,9 @@ var outputSchemaRepairSlidesBatch = json.RawMessage(`{
         "required": ["slide_index", "kind", "applied"]
       }
     },
-    "new_findings": {"type": "array", "items": {"type": "object"}}
+    "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["patched_deck", "applied_fixes"]
+  "required": ["patched_deck", "applied_fixes", "findings"]
 }`)
 
 // --- auto_repair ---

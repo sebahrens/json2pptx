@@ -138,7 +138,7 @@ func mcpProposeRepairsTool() mcp.Tool {
 		mcp.WithDescription(`Translate structured findings (fit_report findings, visual QA findings, or validation diagnostics) into a ranked list of repair_slide fix directives. Returns proposed directives grouped by slide and ordered by severity — does NOT mutate the deck.
 
 Accepts two finding shapes (polymorphic, mixed input is fine):
-- Fit findings: {path, code, message, action, fix:{kind,params}, slide_index?} — emitted by generate_presentation(fit_report=true), validate_input, repair_slide.new_findings.
+- Fit findings: {path, code, message, action, fix:{kind,params}, slide_index?} — emitted by generate_presentation(fit_report=true) and validate_input. (repair_slide / repair_slides_batch now return residual findings as a FindingEnvelope under "findings", a different shape — feed propose_repairs from a fit_report or validate_input instead.)
 - Visual QA findings: {slide_index, slide_type, severity, category, suggested_fixes:[{kind,params}], description, location} — emitted by inspect_slide_images.
 
 For each finding the tool:
