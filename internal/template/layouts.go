@@ -110,6 +110,15 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 	// Classify layout to populate tags
 	ClassifyLayout(&layoutMeta)
 
+	// Assign canonical roles so all consumers share one classification source:
+	// per-placeholder intent role, then the layout's canonical type.
+	for i := range layoutMeta.Placeholders {
+		role, conf := ClassifyPlaceholderRole(layoutMeta.Placeholders[i], &layoutMeta)
+		layoutMeta.Placeholders[i].Role = role
+		layoutMeta.Placeholders[i].RoleConfidence = conf
+	}
+	layoutMeta.CanonicalType, layoutMeta.CanonicalConfidence = ClassifyLayoutCanonical(&layoutMeta)
+
 	return layoutMeta, nil
 }
 

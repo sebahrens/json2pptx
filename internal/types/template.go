@@ -124,6 +124,16 @@ type LayoutMetadata struct {
 	Placeholders []PlaceholderInfo // Placeholders in this layout
 	Capacity     CapacityEstimate  // Content capacity estimate
 	Tags         []string          // Classification tags
+
+	// CanonicalType is the canonical layout role assigned by the single
+	// authoritative layout classifier (see internal/template.ClassifyLayoutCanonical
+	// / ClassifyCanonicalRole). It is the stable wire ID shared by template
+	// parsing, generation, and preflight. Empty when the layout does not map to
+	// any canonical role.
+	CanonicalType CanonicalLayoutType
+
+	// CanonicalConfidence is the 0.0–1.0 confidence of CanonicalType.
+	CanonicalConfidence float64
 }
 
 // PlaceholderInfo describes a placeholder within a layout.
@@ -138,6 +148,86 @@ type PlaceholderInfo struct {
 	FontFamily string // Font family name (e.g., "Arial", "Calibri")
 	FontSize   int    // Font size in hundredths of a point (e.g., 1400 = 14pt)
 	FontColor  string // Font color as hex string (e.g., "#000000")
+
+	// Role is the canonical, agent-facing placeholder role assigned by
+	// internal/template.ClassifyPlaceholderRole. It refines Type with
+	// intent-level distinctions (eyebrow vs title, section_number vs body,
+	// date/footer/page_number vs other) and is the single source of truth for
+	// role-aware content placement and diagnostics. Empty until classified.
+	Role PlaceholderRole
+
+	// RoleConfidence is the 0.0–1.0 confidence of Role.
+	RoleConfidence float64
+}
+
+// PlaceholderRole is the canonical, agent-facing role of a placeholder within a
+// layout. Unlike PlaceholderType (which mirrors the raw OOXML placeholder type),
+// the role captures intent: an eyebrow/kicker is distinguished from a title, a
+// decorative section number from a body, and date/footer/page-number chrome from
+// generic "other" placeholders. The string values are stable wire IDs.
+type PlaceholderRole string
+
+const (
+	PlaceholderRoleTitle         PlaceholderRole = "title"
+	PlaceholderRoleSubtitle      PlaceholderRole = "subtitle"
+	PlaceholderRoleEyebrow       PlaceholderRole = "eyebrow"
+	PlaceholderRoleSectionNumber PlaceholderRole = "section_number"
+	PlaceholderRoleBody          PlaceholderRole = "body"
+	PlaceholderRoleImage         PlaceholderRole = "image"
+	PlaceholderRoleChart         PlaceholderRole = "chart"
+	PlaceholderRoleFooter        PlaceholderRole = "footer"
+	PlaceholderRolePageNumber    PlaceholderRole = "page_number"
+	PlaceholderRoleDate          PlaceholderRole = "date"
+	PlaceholderRoleOther         PlaceholderRole = "other"
+)
+
+// CanonicalLayoutType is the canonical, agent-facing type of a slide layout. Its
+// values are the same stable wire IDs used by the layout classifier in
+// internal/template (CanonicalRole* constants); there is intentionally one
+// layout taxonomy, not two. Empty (CanonicalLayoutUnknown) means the layout does
+// not structurally correspond to any canonical role.
+type CanonicalLayoutType string
+
+const (
+	CanonicalLayoutUnknown        CanonicalLayoutType = ""
+	CanonicalLayoutTitleSlide     CanonicalLayoutType = "Title Slide"
+	CanonicalLayoutOneContent     CanonicalLayoutType = "One Content"
+	CanonicalLayoutTwoContent     CanonicalLayoutType = "Two Content"
+	CanonicalLayoutSectionDivider CanonicalLayoutType = "Section Divider"
+	CanonicalLayoutBlank          CanonicalLayoutType = "Blank"
+	CanonicalLayoutBlankTitle     CanonicalLayoutType = "Blank + Title"
+	CanonicalLayoutClosing        CanonicalLayoutType = "Closing"
+)
+
+// CanonicalLayoutFamily is the coarse four-way grouping of layout types used by
+// the layout taxonomy (title-slide, section-divider, one-content, qa-closing).
+// It is a view over CanonicalLayoutType — every template should provide at least
+// one layout in each content-bearing family — not an independent taxonomy.
+type CanonicalLayoutFamily string
+
+const (
+	LayoutFamilyTitleSlide     CanonicalLayoutFamily = "title-slide"
+	LayoutFamilySectionDivider CanonicalLayoutFamily = "section-divider"
+	LayoutFamilyOneContent     CanonicalLayoutFamily = "one-content"
+	LayoutFamilyQAClosing      CanonicalLayoutFamily = "qa-closing"
+	LayoutFamilyOther          CanonicalLayoutFamily = "other"
+)
+
+// Family maps a canonical layout type to its coarse four-way family. Blank and
+// Blank+Title are utility layouts and map to LayoutFamilyOther.
+func (t CanonicalLayoutType) Family() CanonicalLayoutFamily {
+	switch t {
+	case CanonicalLayoutTitleSlide:
+		return LayoutFamilyTitleSlide
+	case CanonicalLayoutSectionDivider:
+		return LayoutFamilySectionDivider
+	case CanonicalLayoutOneContent, CanonicalLayoutTwoContent:
+		return LayoutFamilyOneContent
+	case CanonicalLayoutClosing:
+		return LayoutFamilyQAClosing
+	default:
+		return LayoutFamilyOther
+	}
 }
 
 // PlaceholderType represents the type of content a placeholder accepts.

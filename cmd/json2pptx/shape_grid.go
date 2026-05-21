@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 	"github.com/sebahrens/json2pptx/svggen/icons"
@@ -51,26 +52,28 @@ type virtualLayoutResult struct {
 // grid bounds from the layout's placeholder metadata.
 //
 // Selection priority:
-//  1. Layout tagged "blank" with a title placeholder
-//  2. Layout tagged "blank-title" (synthesized)
+//  1. Canonical Blank layout with a title placeholder
+//  2. Canonical Blank+Title layout (synthesized)
 //  3. Any layout with a body/content placeholder (bounds = body placeholder)
+//
+// Selection is driven by the canonical layout type assigned during template
+// parsing (types.CanonicalLayoutType), so generation and preflight share one
+// source of truth instead of matching ad-hoc classification tags.
 //
 // Returns nil if no suitable layout is found.
 func resolveVirtualLayout(layouts []types.LayoutMetadata, slideWidth, slideHeight int64) *virtualLayoutResult {
 	// Priority 1 & 2: find blank or blank-title layout with title placeholder
 	var blankLayout, blankTitleLayout *types.LayoutMetadata
 	for i := range layouts {
-		for _, tag := range layouts[i].Tags {
-			if tag == "blank-title" {
-				blankTitleLayout = &layouts[i]
-			}
-			if tag == "blank" {
-				// Check if it has a title placeholder
-				for _, ph := range layouts[i].Placeholders {
-					if ph.Type == types.PlaceholderTitle {
-						blankLayout = &layouts[i]
-						break
-					}
+		switch template.EffectiveCanonicalType(&layouts[i]) {
+		case types.CanonicalLayoutBlankTitle:
+			blankTitleLayout = &layouts[i]
+		case types.CanonicalLayoutBlank:
+			// Check if it has a title placeholder
+			for _, ph := range layouts[i].Placeholders {
+				if ph.Type == types.PlaceholderTitle {
+					blankLayout = &layouts[i]
+					break
 				}
 			}
 		}
