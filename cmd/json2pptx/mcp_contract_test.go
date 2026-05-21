@@ -496,6 +496,7 @@ func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
 		"analyze_deck_rhythm":        outputSchemaAnalyzeDeckRhythm,
 		"plan_deck":                  outputSchemaPlanDeck,
 		"describe_finding":           outputSchemaDescribeFinding,
+		"audit_palette":              outputSchemaAuditPalette,
 	}
 
 	for name, schema := range schemas {
@@ -557,6 +558,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"validate_presentation_output":   true,
 		"get_started":                    true,
 		"describe_finding":               true,
+		"audit_palette":                  true,
 	}
 
 	for _, name := range mcpToolNames() {

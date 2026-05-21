@@ -54,6 +54,7 @@ var mcpToCLI = map[string]string{
 	"validate_presentation_output":   "validate-output",
 	"get_started":                    "get-started",
 	"describe_finding":               "describe-finding",
+	"audit_palette":                  "audit-palette",
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server

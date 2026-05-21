@@ -133,6 +133,9 @@ func TestMCPArgErrors_EnvelopeShape(t *testing.T) {
 
 		// preview_icon — required: icon (object)
 		{name: "preview_icon/missing", handler: wrap(mc.handlePreviewIcon), args: map[string]any{}, wantPath: "icon"},
+
+		// audit_palette — required: pptx_path (string)
+		{name: "audit_palette/missing", handler: handleAuditPalette, args: map[string]any{}, wantPath: "pptx_path"},
 	}
 
 	for _, tc := range cases {

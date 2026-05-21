@@ -1605,3 +1605,67 @@ var outputSchemaProposeRepairs = json.RawMessage(`{
   },
   "required": ["slides", "summary"]
 }`)
+
+// --- audit_palette ---
+// region describes one sampled pic/shape rectangle; pair is a (pic, shape) ΔE
+// comparison. findings projects every threshold violation into the shared
+// FindingEnvelope so agents can branch on findings.ok.
+var outputSchemaAuditPalette = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "pptx":                {"type": "string"},
+    "slide_count":         {"type": "integer"},
+    "max_delta_e_allowed": {"type": "number", "description": "ΔE threshold a (pic, shape) pair must not exceed."},
+    "chroma_min":          {"type": "integer"},
+    "density":             {"type": "integer"},
+    "violations":          {"type": "integer", "description": "Number of (pic, shape) pairs whose ΔE exceeded the threshold across all slides."},
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index":       {"type": "integer", "description": "1-based slide index."},
+          "pic_count":   {"type": "integer"},
+          "shape_count": {"type": "integer"},
+          "pair_count":  {"type": "integer"},
+          "max_delta_e": {"type": "number", "description": "Largest ΔE among this slide's pairs."},
+          "pairs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slide":   {"type": "integer"},
+                "pic":     {"$ref": "#/$defs/audit_region"},
+                "shape":   {"$ref": "#/$defs/audit_region"},
+                "delta_e": {"type": "number"},
+                "pass":    {"type": "boolean", "description": "True when delta_e <= max_delta_e_allowed."}
+              },
+              "required": ["slide", "pic", "shape", "delta_e", "pass"]
+            }
+          }
+        },
+        "required": ["index", "pic_count", "shape_count", "pair_count"]
+      }
+    },
+    "findings": ` + findingEnvelopeSchema + `
+  },
+  "required": ["pptx", "slide_count", "violations", "findings"],
+  "$defs": {
+    "audit_region": {
+      "type": "object",
+      "properties": {
+        "kind":         {"type": "string", "enum": ["pic", "shape"]},
+        "name":         {"type": "string"},
+        "bounds_emu":   {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
+        "bounds_px":    {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
+        "dominant_hex": {"type": "string"},
+        "r":            {"type": "integer"},
+        "g":            {"type": "integer"},
+        "b":            {"type": "integer"},
+        "pixel_count":  {"type": "integer"},
+        "declared_hex": {"type": "string", "description": "Explicit srgbClr or schemeClr indirection for shape regions; blank for pics."}
+      },
+      "required": ["kind", "dominant_hex", "pixel_count"]
+    }
+  }
+}`)

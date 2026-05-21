@@ -258,6 +258,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "auto_repair", AddedIn: "4.34.0"},
 		// Tools from 4.35.0
 		{Name: "make_deck", AddedIn: "4.35.0"},
+		// Tools from 4.40.0
+		{Name: "audit_palette", AddedIn: "4.40.0"},
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries
@@ -570,6 +572,7 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpValidateOutputTool,
 		mcpDescribeFindingTool,
 		mcpPreviewIconTool,
+		mcpAuditPaletteTool,
 	}
 	out := make(map[string]func() mcp.Tool, len(ctors))
 	for _, c := range ctors {

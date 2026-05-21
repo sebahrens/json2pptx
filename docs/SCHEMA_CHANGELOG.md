@@ -4,6 +4,33 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.40.0 (2026-05-21)
+
+### Added
+
+- **`audit_palette` MCP tool.** The deterministic palette-diff audit that
+  previously shipped only as the `json2pptx audit-palette` CLI subcommand is now
+  also an MCP tool. It renders a PPTX to PNG (via libreoffice + pdftoppm) and
+  reports the CIE76 ΔE between every embedded chart/picture region and every
+  native solid-filled shape region per slide — catching silent palette drift the
+  vision-QA agent cannot see.
+
+  Both surfaces call the shared `auditPalettePPTX` core, so the report is
+  identical for the same PPTX and options. Input: `pptx_path` (required;
+  validated with the same traversal/extension rules as `read_presentation`),
+  plus optional `max_delta_e` (default 5.0), `chroma_min` (default 25), and
+  `density` (default 150). Unlike the CLI, the MCP tool exposes no
+  output/keep/tmp parameters: render artifacts are written only to an
+  auto-removed OS temp directory, so the tool never writes to an agent-controlled
+  path.
+
+  Response shape: the full audit report (`pptx`, `slide_count`, `violations`,
+  per-slide pic/shape regions and `(pic, shape)` pairs with `delta_e` + `pass`)
+  promoted to the top level, plus a `findings` `FindingEnvelope` where each pair
+  that exceeds `max_delta_e` becomes one `RENDER.palette_drift` error finding.
+  The tool appears in `get_capabilities` (`mcp_tools_available`, `tool_list`)
+  with `added_in: "4.40.0"`. (bd `go-slide-creator-a5nv`.)
+
 ## 4.39.0 (2026-05-21)
 
 ### Added

@@ -215,6 +215,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	s.AddTool(mcpReadPresentationTool(), handleReadPresentation)
 	s.AddTool(mcpValidateOutputTool(), handleValidateOutput)
 	s.AddTool(mcpDescribeFindingTool(), handleDescribeFinding)
+	s.AddTool(mcpAuditPaletteTool(), handleAuditPalette)
 }
 
 // --- Tool definitions ---
