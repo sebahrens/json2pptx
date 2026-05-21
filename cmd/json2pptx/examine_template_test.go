@@ -148,6 +148,105 @@ func TestExamineTemplate_SyntheticMissingSectionDivider(t *testing.T) {
 	}
 }
 
+// TestExamineGate_BundledTemplatesPass is the positive half of the template CI
+// gate: every bundled template must pass every gate check with zero violations,
+// so the gate added by go-slide-creator-vt0n never red-flags a template that is
+// already conformant. If this fails, a shipped template regressed (empty tags,
+// missing canonical family, mis-named title, or a section divider without a
+// "Section Number" frame) — fix the template, not the gate.
+func TestExamineGate_BundledTemplatesPass(t *testing.T) {
+	templates, err := filepath.Glob("../../templates/*.pptx")
+	if err != nil {
+		t.Fatalf("glob templates: %v", err)
+	}
+	if len(templates) == 0 {
+		t.Fatal("no bundled templates found")
+	}
+
+	for _, tpl := range templates {
+		tpl := tpl
+		t.Run(filepath.Base(tpl), func(t *testing.T) {
+			reader, err := template.OpenTemplate(tpl)
+			if err != nil {
+				t.Fatalf("open template: %v", err)
+			}
+			defer func() { _ = reader.Close() }()
+
+			report, err := examine.Examine(reader, examine.Options{TemplatePath: tpl})
+			if err != nil {
+				t.Fatalf("examine: %v", err)
+			}
+			if v := examine.Gate(report); len(v) != 0 {
+				t.Fatalf("bundled template %s failed the CI gate with %d violation(s): %+v",
+					filepath.Base(tpl), len(v), v)
+			}
+		})
+	}
+}
+
+// TestExamineGate_SyntheticBrokenTemplateFails is the negative half: a template
+// missing a content-bearing canonical family must fail the gate with a precise
+// GATE.CANONICAL_COVERAGE_INCOMPLETE violation naming the missing family. This
+// is the acceptance check that "adding a synthetic broken template fails CI
+// with a precise finding", exercised against a real PPTX (not just a synthetic
+// report).
+func TestExamineGate_SyntheticBrokenTemplateFails(t *testing.T) {
+	const src = "../../templates/midnight-blue.pptx"
+
+	reader, err := template.OpenTemplate(src)
+	if err != nil {
+		t.Fatalf("open template: %v", err)
+	}
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		_ = reader.Close()
+		t.Fatalf("parse layouts: %v", err)
+	}
+	_ = reader.Close()
+
+	var sectionID string
+	for _, l := range layouts {
+		if template.EffectiveCanonicalType(&l) == types.CanonicalLayoutSectionDivider {
+			sectionID = l.ID
+			break
+		}
+	}
+	if sectionID == "" {
+		t.Fatal("midnight-blue should have a section-divider layout to strip")
+	}
+
+	stripped := copyZipExcluding(t, src, map[string]bool{
+		"ppt/slideLayouts/" + sectionID + ".xml":            true,
+		"ppt/slideLayouts/_rels/" + sectionID + ".xml.rels": true,
+	})
+
+	sr, err := template.OpenTemplate(stripped)
+	if err != nil {
+		t.Fatalf("open stripped template: %v", err)
+	}
+	defer func() { _ = sr.Close() }()
+
+	report, err := examine.Examine(sr, examine.Options{TemplatePath: stripped})
+	if err != nil {
+		t.Fatalf("examine stripped: %v", err)
+	}
+
+	violations := examine.Gate(report)
+	if len(violations) == 0 {
+		t.Fatal("expected the gate to fail for a template missing its section divider")
+	}
+	found := false
+	for _, v := range violations {
+		if v.Code == examine.GateCodeCanonicalCoverage && contains(v.Message, "section-divider") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a %s violation naming section-divider; got %+v",
+			examine.GateCodeCanonicalCoverage, violations)
+	}
+}
+
 func TestPrettyXML_PreservesContentAndIsWellFormed(t *testing.T) {
 	raw := []byte(`<?xml version="1.0"?><a:root xmlns:a="urn:x"><a:child id="1"><a:t>hello world</a:t></a:child><a:empty/></a:root>`)
 	out := prettyXML(raw)

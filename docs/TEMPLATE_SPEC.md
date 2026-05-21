@@ -226,6 +226,36 @@ Templates fall into two categories:
 
 See [TEMPLATE_ANALYSIS.md](TEMPLATE_ANALYSIS.md) for the full per-template matrix, current conformance status, and the in-place repair workflow for designer templates.
 
+## CI Template Gate
+
+Beyond `template-check`, every PR that touches `templates/`, `internal/template/`,
+or `internal/examine/` runs the **template gate** (`.github/workflows/templates.yml`).
+The gate runs `json2pptx examine-template <tpl> --gate` against every file in
+`templates/` and **fails the build** if any of these hold for any template:
+
+| Gate code | Fails when |
+|-----------|-----------|
+| `GATE.LAYOUT_EMPTY_TAGS` | A layout carries no classification tags (tag-based selection can never reach it). |
+| `GATE.CANONICAL_COVERAGE_INCOMPLETE` | A content-bearing canonical family is missing — coverage must include all four of `title-slide`, `section-divider`, `one-content`, `qa-closing`. |
+| `GATE.TITLE_PLACEHOLDER_NAMING` | A title-typed placeholder is named anything other than exactly `title` on disk. |
+| `GATE.SECTION_NUMBER_MISSING` | A section-divider layout has no placeholder named exactly `Section Number`. |
+| `GATE.ERROR_FINDING` | The examination emitted any error-severity finding. |
+
+`--gate` writes a `gate.json` verdict (`{template, passed, violations[]}`) into the
+examination output directory and exits non-zero on any violation; the run always
+leaves the full `examination/` tree (including annotated SVGs) behind, which the
+workflow uploads as the `template-examination` artifact so reviewers can visually
+inspect a template change. The gate is implemented in `internal/examine/gate.go`
+and is distinct from the report's `findings` envelope: the four structural checks
+are gate-only (the report surfaces missing coverage as a *warning*), and the fifth
+check folds in any error-severity finding the report already carries.
+
+Run the gate locally before opening a template PR:
+
+```bash
+json2pptx examine-template <your-template.pptx> --out ./examination --gate
+```
+
 ## Creating a New Template
 
 1. Start from an existing conformant template (e.g., `midnight-blue.pptx`)
@@ -234,3 +264,4 @@ See [TEMPLATE_ANALYSIS.md](TEMPLATE_ANALYSIS.md) for the full per-template matri
 4. Run `json2pptx template-check <your-template.pptx>` to verify
 5. Optionally add metadata at `ppt/go-slide-creator-metadata.json`
 6. Test with `json2pptx generate -json examples/basic-deck.json -template <name>`
+7. Run `json2pptx examine-template <your-template.pptx> --gate` — the same gate CI enforces (see [CI Template Gate](#ci-template-gate))

@@ -65,6 +65,7 @@ func runExamineTemplate() error {
 	strict := fs.Bool("strict", false, "Fail metadata validation on warnings, not just errors")
 	dpi := fs.Int("dpi", 110, "DPI for the per-layout PNG render (when LibreOffice + ImageMagick are available)")
 	noPNG := fs.Bool("no-png", false, "Skip the LibreOffice PNG render pass (SVG overlays are always produced)")
+	gate := fs.Bool("gate", false, "Apply the template CI gate: write gate.json and exit non-zero on any violation")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx examine-template <template.pptx> [options]\n\n")
@@ -131,7 +132,50 @@ func runExamineTemplate() error {
 	}
 
 	printExamineSummary(report, *outDir, pngCount, *noPNG)
+
+	if *gate {
+		return runExamineGate(report, *outDir)
+	}
 	return nil
+}
+
+// examineGateResult is the gate verdict written to gate.json: a per-template
+// pass/fail roll-up an agent or CI step can branch on, plus the precise
+// violations behind a failure.
+type examineGateResult struct {
+	Template   string                  `json:"template"`
+	Passed     bool                    `json:"passed"`
+	Violations []examine.GateViolation `json:"violations"`
+}
+
+// runExamineGate applies the template CI gate to a built report, writes the
+// verdict to <out>/gate.json (so a failing run still leaves an inspectable
+// artifact), prints the result, and returns a non-nil error when any gate
+// check fails — which propagates to a non-zero process exit via main.dispatch.
+func runExamineGate(report *examine.Report, outDir string) error {
+	violations := examine.Gate(report)
+	if violations == nil {
+		violations = []examine.GateViolation{}
+	}
+	result := examineGateResult{
+		Template:   report.Template,
+		Passed:     len(violations) == 0,
+		Violations: violations,
+	}
+	if err := writeJSONFile(filepath.Join(outDir, "gate.json"), result); err != nil {
+		return fmt.Errorf("examine-template: write gate.json: %w", err)
+	}
+
+	if len(violations) == 0 {
+		fmt.Println("Gate:     PASS (no violations)")
+		return nil
+	}
+
+	fmt.Printf("Gate:     FAIL (%d violation(s))\n", len(violations))
+	for _, v := range violations {
+		fmt.Printf("  [%s] %s\n", v.Code, v.Message)
+	}
+	return fmt.Errorf("examine-template gate failed: %d violation(s) in %s", len(violations), report.Template)
 }
 
 // writeExamination materialises the report into the output directory tree.

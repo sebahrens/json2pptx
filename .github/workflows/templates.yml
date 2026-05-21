@@ -1,0 +1,97 @@
+name: Template Gate
+
+# Runs the examine-template CI gate over every bundled template whenever a PR
+# (or a push to main) touches the templates or the template-parsing engine.
+# Fails the build if any template is non-conformant — missing a canonical
+# family, an untagged layout, a mis-named title placeholder, a section divider
+# without a "Section Number" frame, or any error-severity finding — and uploads
+# the full examination/ directory (report.json, annotated SVGs, gate.json) so a
+# reviewer can visually inspect a PR that adds or modifies a template.
+#
+# Owned by go-slide-creator-vt0n. The gate logic lives in
+# internal/examine/gate.go (json2pptx examine-template --gate); see
+# docs/TEMPLATE_SPEC.md "CI Template Gate" for the contract.
+
+on:
+  pull_request:
+    paths:
+      - 'templates/**'
+      - 'internal/template/**'
+      - 'internal/examine/**'
+      - 'cmd/json2pptx/examine_template.go'
+      - '.github/workflows/templates.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'templates/**'
+      - 'internal/template/**'
+      - 'internal/examine/**'
+      - 'cmd/json2pptx/examine_template.go'
+      - '.github/workflows/templates.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  template-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      # No rendering tools needed: --gate --no-png reads structural report
+      # fields only, and the annotated SVG overlays are generated in pure Go.
+
+      - name: Build json2pptx
+        run: go build -o ./bin/json2pptx ./cmd/json2pptx
+
+      - name: Run examine-template gate over every template
+        id: gate
+        run: |
+          mkdir -p examination
+          FAILED=0
+
+          echo "## Template Gate Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Template | Verdict | Violations |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|---------|------------|" >> "$GITHUB_STEP_SUMMARY"
+
+          shopt -s nullglob
+          for tpl in templates/*.pptx; do
+            name=$(basename "$tpl" .pptx)
+            out="examination/${name}"
+
+            # --gate writes gate.json and exits non-zero on any violation.
+            # SVG overlays are always produced; --no-png keeps the run fast and
+            # deterministic (no LibreOffice/ImageMagick dependency).
+            if ./bin/json2pptx examine-template "$tpl" --out "$out" --no-png --gate; then
+              echo "| \`${name}\` | ✓ pass | 0 |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              FAILED=1
+              count=$(jq '.violations | length' "$out/gate.json" 2>/dev/null || echo "?")
+              echo "| \`${name}\` | ✗ fail | ${count} |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::group::Gate violations for ${name}"
+              jq -r '.violations[] | "::error file=" + "'"$tpl"'" + "::[" + .code + "] " + .message' \
+                "$out/gate.json" 2>/dev/null || true
+              echo "::endgroup::"
+            fi
+          done
+
+          echo "gate_failed=$FAILED" >> "$GITHUB_OUTPUT"
+
+      - name: Upload examination artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: template-examination
+          path: examination/
+
+      - name: Fail if any template did not pass the gate
+        if: steps.gate.outputs.gate_failed == '1'
+        run: |
+          echo "::error::One or more templates failed the examine-template gate. See the job summary and the template-examination artifact for the annotated SVGs and gate.json."
+          exit 1
