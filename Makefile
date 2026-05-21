@@ -172,7 +172,7 @@ ifndef SKIP_SKILL
 	@for skill_dir in skills/*/; do \
 		skill_name=$$(basename "$$skill_dir"); \
 		mkdir -p "$(HOME)/.claude/skills/$$skill_name"; \
-		cp "$$skill_dir"* "$(HOME)/.claude/skills/$$skill_name/"; \
+		cp -R "$$skill_dir". "$(HOME)/.claude/skills/$$skill_name/"; \
 		echo "    $(HOME)/.claude/skills/$$skill_name/"; \
 	done
 endif
@@ -256,8 +256,15 @@ dist-linux: release-check ensure-templates
 	@for skill_dir in skills/*/; do \
 		skill_name=$$(basename "$$skill_dir"); \
 		mkdir -p $(DIST_STAGING)/skills/$$skill_name; \
-		cp "$$skill_dir"* $(DIST_STAGING)/skills/$$skill_name/; \
+		cp -R "$$skill_dir". $(DIST_STAGING)/skills/$$skill_name/; \
 	done
+	@# Assert nested skill assets survived the copy (guards against a shallow,
+	@# non-recursive cp regression — see go-slide-creator-8lv5).
+	@if [ ! -f "$(DIST_STAGING)/skills/generate-deck/examples/skeletons/README.md" ]; then \
+		echo "ERROR: staged dist is missing nested skill assets (skills/generate-deck/examples/skeletons/)."; \
+		echo "       The skill copy must be recursive (cp -R)."; \
+		exit 1; \
+	fi
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
 	@echo "==> Creating archive: $(DIST_ARCHIVE)"
