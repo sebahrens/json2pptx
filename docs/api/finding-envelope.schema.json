@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sebahrens/json2pptx/docs/api/finding-envelope.schema.json",
+  "title": "FindingEnvelope",
+  "description": "Unified agent-facing response shape returned by every diagnostic-bearing json2pptx surface (validate, validate-template, template-check, generate -dry-run, repair, inspect, preflight, examine-template, and their MCP / HTTP serve-mode equivalents). See docs/AGENT_DIAGNOSTICS.md section 2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tool", "subcommand", "ok", "summary", "findings"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Wire version of this contract.",
+      "const": "1.0"
+    },
+    "tool": {
+      "type": "string",
+      "description": "Producing tool identifier.",
+      "examples": ["json2pptx"]
+    },
+    "subcommand": {
+      "type": "string",
+      "description": "Surface that produced the envelope.",
+      "examples": ["validate", "validate-template", "generate -dry-run", "repair", "inspect"]
+    },
+    "input_sha256": {
+      "type": "string",
+      "description": "Hex-encoded SHA-256 of the request payload, for correlation.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "template": {
+      "type": "string",
+      "description": "Template the run targeted, when applicable."
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "True when no finding has error severity."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short human-readable roll-up, e.g. '2 errors, 1 warning'."
+    },
+    "findings": {
+      "type": "array",
+      "description": "The list of issues; may be empty.",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": ["error", "warning", "info"]
+    },
+    "namespace": {
+      "type": "string",
+      "enum": ["TPL", "FIT", "GRID", "RENDER", "POLICY", "INPUT"]
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "shorten_text",
+        "replace_value",
+        "apply_patch",
+        "switch_layout",
+        "split_slide",
+        "move_to_placeholder",
+        "remove_emoji",
+        "regenerate_pattern"
+      ]
+    },
+    "where": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Location of a finding within a deck or template. All fields optional.",
+      "properties": {
+        "slide": { "type": "integer", "minimum": 0, "description": "0-based slide index." },
+        "slide_id": { "type": "string" },
+        "layout_id": { "type": "string" },
+        "layout_role": { "type": "string" },
+        "placeholder_id": { "type": "string" },
+        "placeholder_role": { "type": "string" }
+      }
+    },
+    "remediation_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "$ref": "#/$defs/action" },
+        "params": {
+          "type": "object",
+          "description": "Action-specific arguments (which row to split at, the replacement value, the target placeholder, etc.)."
+        }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Structured repair: a primary action plus ranked alternatives.",
+      "properties": {
+        "primary": { "$ref": "#/$defs/remediation_action" },
+        "alternatives": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/remediation_action" }
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "code", "severity", "category", "message"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within an envelope (e.g. 'fit-1')."
+        },
+        "code": {
+          "type": "string",
+          "description": "Dotted, namespaced code, e.g. 'FIT.placeholder_overflow'.",
+          "pattern": "^(TPL|FIT|GRID|RENDER|POLICY|INPUT)\\."
+        },
+        "severity": { "$ref": "#/$defs/severity" },
+        "category": { "$ref": "#/$defs/namespace" },
+        "where": { "$ref": "#/$defs/where" },
+        "message": { "type": "string" },
+        "evidence": {
+          "type": "object",
+          "description": "Numeric/enum facts only (measured vs. allowed extents, overflow ratios, offending JSON path, expected type). Never prose."
+        },
+        "remediation": { "$ref": "#/$defs/remediation" },
+        "doc_url": { "type": "string" },
+        "describe_command": {
+          "type": "string",
+          "description": "Executable command that explains the code, e.g. 'json2pptx describe-finding placeholder_overflow'."
+        }
+      }
+    }
+  }
+}
