@@ -841,6 +841,136 @@ var outputSchemaPreviewPlan = json.RawMessage(`{
   "required": ["resolved_slides"]
 }`)
 
+// --- examine_template ---
+// Mirrors examine.Report (internal/examine/examine.go), the same shape the CLI
+// writes to report.json. The findings field embeds the shared FindingEnvelope.
+var outputSchemaExamineTemplate = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "template":     {"type": "string", "description": "Template display name (base file name)."},
+    "sha256":       {"type": "string", "description": "SHA-256 of the template bytes."},
+    "aspect_ratio": {"type": "string", "description": "Slide aspect ratio (e.g. 16:9)."},
+    "slide": {
+      "type": "object",
+      "properties": {
+        "width_emu":  {"type": "integer"},
+        "height_emu": {"type": "integer"},
+        "width_in":   {"type": "number"},
+        "height_in":  {"type": "number"}
+      },
+      "required": ["width_emu", "height_emu", "width_in", "height_in"]
+    },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "name":       {"type": "string"},
+        "title_font": {"type": "string"},
+        "body_font":  {"type": "string"},
+        "colors":     {"type": "object", "additionalProperties": {"type": "string"}, "description": "Scheme color name → hex (e.g. {\"accent1\":\"#336699\"})."}
+      },
+      "required": ["name", "title_font", "body_font", "colors"]
+    },
+    "masters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":     {"type": "string"},
+          "xml_path": {"type": "string", "description": "Path of the master XML within the PPTX package."}
+        },
+        "required": ["name", "xml_path"]
+      }
+    },
+    "canonical_coverage": {
+      "type": "object",
+      "description": "Per-family coverage of the four content-bearing canonical layout families. Keyed by family name.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "family":  {"type": "string"},
+          "present": {"type": "boolean"},
+          "layouts": {"type": "array", "items": {"type": "string"}, "description": "Names of the layouts providing this family."}
+        },
+        "required": ["family", "present", "layouts"]
+      }
+    },
+    "derivable_layouts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":    {"type": "string"},
+          "ready":   {"type": "boolean"},
+          "missing": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["name", "ready"]
+      }
+    },
+    "layouts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index":                {"type": "integer"},
+          "id":                   {"type": "string"},
+          "name":                 {"type": "string"},
+          "tags":                 {"type": "array", "items": {"type": "string"}},
+          "canonical_type":       {"type": "string"},
+          "canonical_family":     {"type": "string"},
+          "canonical_confidence": {"type": "number"},
+          "asset_base":           {"type": "string", "description": "Shared base name the CLI uses for this layout's artifacts."},
+          "xml_path":             {"type": "string"},
+          "content_zone": {
+            "type": "object",
+            "description": "Derived safe content area in EMU (title-bottom, footer-top, side margins).",
+            "properties": {
+              "left_emu":   {"type": "integer"},
+              "top_emu":    {"type": "integer"},
+              "right_emu":  {"type": "integer"},
+              "bottom_emu": {"type": "integer"}
+            },
+            "required": ["left_emu", "top_emu", "right_emu", "bottom_emu"]
+          },
+          "placeholders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id":              {"type": "string"},
+                "type":            {"type": "string"},
+                "role":            {"type": "string"},
+                "role_confidence": {"type": "number"},
+                "index":           {"type": "integer"},
+                "z_index":         {"type": "integer", "description": "Document order in the layout shape tree (later = drawn on top)."},
+                "font_pt":         {"type": "number", "description": "Font-aware point size the engine uses for fit decisions."},
+                "max_chars":       {"type": "integer", "description": "Font-aware character budget."},
+                "bounds": {
+                  "type": "object",
+                  "properties": {
+                    "x_emu": {"type": "integer"},
+                    "y_emu": {"type": "integer"},
+                    "w_emu": {"type": "integer"},
+                    "h_emu": {"type": "integer"},
+                    "x_in":  {"type": "number"},
+                    "y_in":  {"type": "number"},
+                    "w_in":  {"type": "number"},
+                    "h_in":  {"type": "number"}
+                  },
+                  "required": ["x_emu", "y_emu", "w_emu", "h_emu", "x_in", "y_in", "w_in", "h_in"]
+                }
+              },
+              "required": ["id", "type", "role", "index", "z_index", "font_pt", "max_chars", "bounds"]
+            }
+          }
+        },
+        "required": ["index", "id", "name", "canonical_type", "canonical_family", "asset_base", "xml_path", "content_zone", "placeholders"]
+      }
+    },
+    "findings": ` + findingEnvelopeSchema + `
+  },
+  "required": ["template", "aspect_ratio", "slide", "theme", "canonical_coverage", "layouts", "findings"]
+}`)
+
 // findingEnvelopeSchema is the JSON Schema fragment for a diagnostics.
 // FindingEnvelope (docs/api/finding-envelope.schema.json). Surfaces that embed
 // the envelope concatenate this fragment so the shape stays in one place.

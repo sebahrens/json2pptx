@@ -4,6 +4,31 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.41.0 (2026-05-21)
+
+### Added
+
+- **`examine_template` MCP tool.** The reusable template-examination service
+  behind the `json2pptx examine-template` CLI subcommand is now also an MCP
+  tool. Given a `template_name` (required) and optional `strict` (bool), it
+  returns the full `examine.Report` inline as structured content — the same
+  report.json shape the CLI writes: `template`, `sha256`, `aspect_ratio`,
+  `slide` (dimensions in EMU + inches), `theme` (name, fonts, scheme→hex
+  colors), `masters[]`, `canonical_coverage` (the four content-bearing layout
+  families, each `{family, present, layouts[]}`), `derivable_layouts[]`, and
+  `layouts[]` (per-layout canonical type/family + confidence, asset_base,
+  xml_path, derived content_zone, and placeholders[] with role, font-aware
+  `font_pt` + `max_chars`, exact bounds in EMU + inches, and z-order), plus a
+  findings envelope folding every diagnostic — including
+  `TPL.LAYOUT.MISSING_ROLE` for an absent canonical family.
+
+  Unlike the CLI, MCP mode is side-effect-free: it never writes an artifact
+  directory and exposes no out param for asset materialisation. Agents that
+  need the rendered SVG/PNG artifact tree shell out to the CLI subcommand;
+  agents that only need the capability facts read them straight off this
+  response. Both surfaces call the shared `examine.Examine` core, so the report
+  is identical for the same template and options.
+
 ## 4.40.0 (2026-05-21)
 
 ### Added
