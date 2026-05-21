@@ -1,9 +1,14 @@
-// Command testrand generates random JSON decks for E2E fuzz testing of json2pptx.
+// Command testrand (also installed as testkit) is the json2pptx test toolbox.
+//
+// It bundles randomized deck generators (generate, svg-stress) with systematic
+// test utilities (visual, validate, qa). The two binary names are
+// interchangeable; testkit is the preferred neutral name and testrand is kept
+// as a compatibility alias. Usage text reflects whichever name was invoked.
 //
 // Usage:
 //
-//	testrand generate --seed=N --output=path.json
-//	testrand validate --pptx=path.pptx --expected-slides=N
+//	testkit generate --seed=N --output=path.json
+//	testkit validate --pptx=path.pptx --expected-slides=N
 //
 // All randomization is seed-based. Every run prints the seed so failures
 // are 100% reproducible.
@@ -14,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/testrand"
@@ -46,7 +52,18 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `testrand — random E2E test generator for json2pptx
+	fmt.Fprint(os.Stderr, usageText(filepath.Base(os.Args[0])))
+}
+
+// usageText renders the help banner for the invoked binary name (prog), so the
+// same package presents correctly whether it is run as testkit or testrand.
+func usageText(prog string) string {
+	return fmt.Sprintf(`%s — test toolbox for json2pptx (generation, visual stress, validation, QA)
+
+This tool bundles randomized generators (generate, svg-stress) with systematic
+test utilities (visual, validate, qa). It ships under two interchangeable names:
+  testkit   — preferred, neutral name
+  testrand  — original name, kept for compatibility
 
 Commands:
   generate    Generate a random JSON deck
@@ -80,7 +97,7 @@ QA options:
   --parallel=N        Concurrent API calls (default: 4)
   --json-output       Output full JSON report
   --min-severity=SEV  Minimum severity to report: P0, P1, P2, P3 (default: P3)
-`)
+`, prog)
 }
 
 func cmdGenerate(args []string) {

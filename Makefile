@@ -57,6 +57,7 @@ WIN_DIST_ARCHIVE  := dist/$(WIN_DIST_NAME).tar.gz
 MAIN_CMDS := \
 	json2pptx:cmd/json2pptx \
 	testrand:cmd/testrand \
+	testkit:cmd/testrand \
 	pptx2jpg:cmd/pptx2jpg \
 	validatepptx:cmd/validatepptx \
 	mktemplate:cmd/mktemplate \

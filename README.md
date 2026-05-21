@@ -749,7 +749,7 @@ for each under "MCP-only tools".
 | `templatecaps` | Template capabilities inspector |
 | `debugcolors` | Theme color introspector |
 | `validatepptx` | Standalone PPTX validator |
-| `testrand` | Random deck generator (fuzz harness) |
+| `testkit` (alias `testrand`) | Test toolbox: random deck generation (fuzz harness), visual stress decks, PPTX validation, and visual QA |
 
 ## HTTP API
 
@@ -857,7 +857,7 @@ cmd/
   debugcolors/      Theme color debugging tool
   templatecaps/     Template capabilities inspector
   validatepptx/     Standalone PPTX validator
-  testrand/         Random deck generator (fuzz harness)
+  testrand/         Test toolbox (builds testkit + testrand: fuzz, visual, validate, qa)
 internal/
   api/              HTTP API handlers and routing
   config/           Configuration loading
