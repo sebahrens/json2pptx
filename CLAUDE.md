@@ -131,7 +131,14 @@ examples/         # Example JSON input files (19 decks)
 
 4 bundled templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral`. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
 
+Template rules are documented in two canonical docs — link to them rather than restating their detail here:
+
+- **Using a template** (placeholder IDs, layout tags, layout→slide-type mapping) → [skills/template-deck/TEMPLATE_GUIDE.md](skills/template-deck/TEMPLATE_GUIDE.md)
+- **Authoring / validating a template** (mandatory layouts, theme requirements, conformance checks) → [docs/TEMPLATE_SPEC.md](docs/TEMPLATE_SPEC.md)
+
 ## Common Patterns
+
+Quick reference only — the full placeholder/layout catalog lives in [skills/template-deck/TEMPLATE_GUIDE.md](skills/template-deck/TEMPLATE_GUIDE.md).
 
 - Slide types: `title`, `content`, `section`, `two-column`, `blank`, `chart`, `diagram`
 - Placeholder IDs: `title`, `subtitle`, `body`, `body_2` (portable across templates)

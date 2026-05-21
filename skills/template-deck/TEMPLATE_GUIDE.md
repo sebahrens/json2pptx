@@ -2,6 +2,13 @@
 
 Reference for template selection, layout capabilities, and placeholder naming in go-slide-creator.
 
+> **Canonical doc — template *usage*.** This is the authoritative reference for
+> *using* a template from JSON (placeholder IDs, layout tags, layout→slide-type
+> mapping). Other docs should link here rather than restate these rules. For
+> *authoring or validating* a template (mandatory layouts, theme requirements,
+> conformance checks), see the companion canonical doc
+> [docs/TEMPLATE_SPEC.md](../../docs/TEMPLATE_SPEC.md).
+
 ## Placeholder IDs
 
 All placeholders use **normalized canonical IDs**. The binary automatically normalizes OOXML placeholder names at load time, so JSON input and skill-info output always use these IDs:

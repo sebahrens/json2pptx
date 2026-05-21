@@ -629,6 +629,13 @@ json2pptx template-check templates/midnight-blue.pptx     # conformance against 
 
 Every file shipped under `templates/` is gated by `internal/template/conformance_corpus_test.go`, which runs as part of `go test ./...` and asserts zero `FAIL` and zero `WARN`. See [CONTRIBUTING.md → "Adding a Template"](CONTRIBUTING.md#adding-a-template) for the procedure and the sha256-keyed allow-list mechanism for legacy known-exceptions.
 
+#### Which template doc should I read?
+
+| You want to… | Canonical doc |
+|--------------|---------------|
+| **Use** a template from JSON — placeholder IDs, layout tags, layout→slide-type mapping | [skills/template-deck/TEMPLATE_GUIDE.md](skills/template-deck/TEMPLATE_GUIDE.md) |
+| **Author or validate** a template — mandatory layouts, theme requirements, conformance checks | [docs/TEMPLATE_SPEC.md](docs/TEMPLATE_SPEC.md) |
+
 ### Creating a Custom Template
 
 Any `.pptx` file can serve as a template. Open PowerPoint (or Keynote, Google Slides, LibreOffice Impress), design your slides in **Slide Master** view, save as `.pptx`. json2pptx analyzes the layouts at runtime and maps your JSON content to the right placeholders.
@@ -983,7 +990,8 @@ make release         # All platforms (requires clean tree)
 - [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) -- fit findings catalog and action semantics
 - [docs/REPAIR_LOOP.md](docs/REPAIR_LOOP.md) -- structured repair workflow
 - [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md) -- defaults block semantics
-- [docs/TEMPLATE_SPEC.md](docs/TEMPLATE_SPEC.md) -- template conformance spec
+- [skills/template-deck/TEMPLATE_GUIDE.md](skills/template-deck/TEMPLATE_GUIDE.md) -- template *usage* reference (placeholder IDs, layout tags, layout→slide-type mapping)
+- [docs/TEMPLATE_SPEC.md](docs/TEMPLATE_SPEC.md) -- template *authoring & validation* spec (mandatory layouts, theme requirements, conformance)
 - [docs/VISUAL_CRITERIA.md](docs/VISUAL_CRITERIA.md) -- composition scoring criteria
 - [docs/SCHEMA_CHANGELOG.md](docs/SCHEMA_CHANGELOG.md) -- schema/version history
 - [docs/PATH_GRAMMAR.md](docs/PATH_GRAMMAR.md) -- JSON Pointer path grammar for fit findings

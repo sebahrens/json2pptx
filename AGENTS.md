@@ -68,6 +68,13 @@ When generating `shape_grid` JSON, use consistent font sizes:
 
 Always set text insets (6-12pt) on body cells. See `docs/INPUT_FORMAT.md` for full examples.
 
+## Template Reference
+
+Template structure, placeholder IDs, and layout rules are documented in two canonical docs — read these instead of relying on scattered summaries:
+
+- **Using a template** (placeholder IDs, layout tags, layout→slide-type mapping) → [skills/template-deck/TEMPLATE_GUIDE.md](skills/template-deck/TEMPLATE_GUIDE.md)
+- **Authoring / validating a template** (mandatory layouts, theme requirements, conformance checks) → [docs/TEMPLATE_SPEC.md](docs/TEMPLATE_SPEC.md)
+
 ## Project Structure
 
 ```

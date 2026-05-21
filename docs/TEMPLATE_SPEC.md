@@ -2,6 +2,14 @@
 
 This document defines what a json2pptx-compatible PPTX template must contain. Templates that conform to this spec work out of the box with the generator, the layout selector, and the MCP agent. Templates that violate mandatory rules will fail `json2pptx template-check`.
 
+> **Canonical doc — template *authoring & validation*.** This is the
+> authoritative reference for *building or validating* a template (mandatory
+> layouts, placeholder naming, theme requirements, conformance checks). Other
+> docs should link here rather than restate these rules. For *using* a template
+> from JSON (placeholder IDs, layout tags, layout→slide-type mapping), see the
+> companion canonical doc
+> [skills/template-deck/TEMPLATE_GUIDE.md](../skills/template-deck/TEMPLATE_GUIDE.md).
+
 ## Mandatory Layouts
 
 Every template must contain **all** of the following layouts. Layout names are matched case-insensitively; common synonyms are accepted (noted in parentheses).
