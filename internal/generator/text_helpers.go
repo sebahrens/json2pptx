@@ -362,6 +362,12 @@ func maxFontForWordFit(text string, widthEMU int64) int {
 // crowding body text in the placeholder below.
 const maxTitleLines = 3
 
+// maxSubtitleLines is the maximum number of wrapped lines allowed for a title-slide
+// subtitle. Subtitle placeholders are short (≈1 line tall), so a subtitle that wraps
+// past this budget would overflow its band and collide with the title above it.
+// Autofit then scales the (possibly truncated) text to fit the placeholder height.
+const maxSubtitleLines = 3
+
 // isTitlePlaceholder returns true if the placeholder ID indicates a regular
 // slide title (not subtitle, section title, or title slide ctrTitle — those
 // have separate code paths).

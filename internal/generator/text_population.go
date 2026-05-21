@@ -36,7 +36,7 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	case ContentSectionTitle:
 		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 0, themeFontName, autofitOpts...) // no cap — normAutofit scales to fill
 	case ContentTitleSlideTitle:
-		err = setTitleSlideTitle(shape, item.PlaceholderID, item.Value) // preserve template styling
+		err = setTitleSlideTitle(shape, item.PlaceholderID, item.Value, themeFontName, autofitOpts...) // preserve template styling, add overflow protection
 	case ContentBullets:
 		err = setBulletParagraphs(shape, item.PlaceholderID, item.Value, masterBulletLevel, autofitOpts...)
 	case ContentBodyAndBullets:
@@ -235,15 +235,28 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	return nil
 }
 
-// setTitleSlideTitle replaces the text in a title slide's ctrTitle placeholder
-// while preserving the template's font size, alignment, and bold styling.
-// Unlike setTextParagraph (used for body text), this function does NOT:
+// setTitleSlideTitle replaces the text in a title slide's title/ctrTitle or
+// subtitle placeholder while preserving the template's font size, alignment, and
+// bold styling. Unlike setTextParagraph (used for body text), this function does NOT:
 //   - Cap the font size (ctrTitle typically uses 40-60pt by design)
-//   - Force left alignment (ctrTitle uses centered alignment)
+//   - Force left alignment (ctrTitle/subtitle use the template's alignment)
 //   - Strip bold/caps from lstStyle (template styling is intentional)
 //
+// It DOES apply overflow protection so a long title or subtitle scales (and, for
+// the subtitle role, truncates) to stay within its placeholder band instead of
+// overflowing and overlapping the adjacent title/subtitle:
+//   - normAutofit shrink-to-fit, which is non-destructive when the text already
+//     fits (fontScale stays at 100%), so the template's large title font is
+//     preserved for normal-length titles.
+//   - For the subtitle role (a non-title placeholder), wrap-aware truncation to
+//     maxSubtitleLines, since subtitle bands are short.
+//
+// Run-property font sizes are preserved so the autofit pass measures the same
+// size that is rendered (see go-slide-creator-waic); extractFontSizeFromShape
+// falls back to the lstStyle size when the run carries no explicit sz.
+//
 // Supports inline tag formatting: <b>bold</b>, <i>italic</i>, <u>underline</u>.
-func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}) error {
+func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}, themeFontName string, autofitOpts ...autofitOption) error {
 	text, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid text value for placeholder %s", placeholderID)
@@ -255,6 +268,28 @@ func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}
 
 	// Extract template styling from existing paragraphs
 	templatePProps, templateRProps := extractTemplateTextStyle(shape.TextBody.Paragraphs)
+
+	// Subtitle role: the placeholder is not the title/ctrTitle. Subtitle bands are
+	// short (~1 line tall), so truncate a long subtitle to a small line budget at
+	// its own font size so it does not push past its band and collide with the
+	// title. The title/ctrTitle is left untruncated; its large font is instead
+	// scaled to fit by the autofit pass below.
+	if !isTitlePlaceholder(placeholderID) {
+		widthEMU, _ := getShapeDimensions(shape)
+		fontSizeHPt := extractFontSizeFromShape(shape)
+		if fontSizeHPt == 0 {
+			fontSizeHPt = 2400 // 24pt typical subtitle default
+		}
+		truncated := truncateTextToMaxLines(text, widthEMU, fontSizeHPt, maxSubtitleLines, themeFontName)
+		if truncated != text {
+			slog.Info("truncated long title-slide subtitle to fit max lines",
+				slog.String("placeholder", placeholderID),
+				slog.Int("max_lines", maxSubtitleLines),
+				slog.Int("original_runes", len([]rune(text))),
+				slog.Int("truncated_runes", len([]rune(truncated))))
+			text = truncated
+		}
+	}
 
 	// Preserve the template's paragraph properties (alignment, spacing, etc.)
 	// without suppressing bullets or forcing left alignment.
@@ -277,7 +312,16 @@ func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}
 	shape.TextBody.Paragraphs = paras
 
 	// Do NOT strip bold, caps, or cap font size — preserve template styling.
-	// Do NOT call replaceSpAutoFitWithNorm — ctrTitle uses noAutofit by design.
+	//
+	// DO add overflow protection: strip grow-to-fit (spAutoFit), enforce wrapping,
+	// and apply smart autofit so a long title or subtitle scales down to fit its
+	// band instead of overflowing into the adjacent placeholder. normAutofit is
+	// non-destructive when the text already fits, and applySmartAutofit respects an
+	// explicit template <a:noAutofit/> directive.
+	replaceSpAutoFitWithNorm(shape)
+	enforceTextWrap(shape)
+	opts := append([]autofitOption{withThemeFont(themeFontName)}, autofitOpts...)
+	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil
 }

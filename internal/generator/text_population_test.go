@@ -488,6 +488,118 @@ func TestRunFontSizePreservedThroughPopulation(t *testing.T) {
 	}
 }
 
+// TestSetTitleSlideTitle_OverflowProtection is a regression test for
+// go-slide-creator-dcj3: the title-slide path used to skip autofit and
+// truncation, so a long title or subtitle overflowed its band and overlapped the
+// adjacent placeholder. setTitleSlideTitle must now:
+//   - preserve the template's large font (no cap) and run-level sz, so the
+//     autofit pass measures the size it renders (go-slide-creator-waic);
+//   - add normAutofit overflow protection to both title and subtitle;
+//   - truncate an over-long subtitle (the short non-title band) but leave the
+//     title text intact (the title relies on autofit, not truncation).
+func TestSetTitleSlideTitle_OverflowProtection(t *testing.T) {
+	const ellipsis = "…"
+
+	// titleShape builds a populated-placeholder-like shape with explicit
+	// dimensions, a template run-level font size, and a usable bodyPr (required
+	// for autofit to run).
+	titleShape := func(widthEMU, heightEMU int64, fontSizeHPt, prompt string) *shapeXML {
+		return &shapeXML{
+			ShapeProperties: shapePropertiesXML{
+				Transform: &transformXML{Extent: extentXML{CX: widthEMU, CY: heightEMU}},
+			},
+			TextBody: &textBodyXML{
+				BodyProperties: &bodyPropertiesXML{Inner: ""},
+				ListStyle:      &listStyleXML{},
+				Paragraphs: []paragraphXML{
+					{Runs: []runXML{{
+						RunProperties: &runPropertiesXML{FontSize: fontSizeHPt, Lang: "en-US"},
+						Text:          prompt,
+					}}},
+				},
+			},
+		}
+	}
+
+	renderedText := func(shape *shapeXML) string {
+		var b strings.Builder
+		for _, para := range shape.TextBody.Paragraphs {
+			for _, run := range para.Runs {
+				b.WriteString(run.Text)
+			}
+		}
+		return b.String()
+	}
+
+	longText := "This is a deliberately long line of placeholder copy that cannot " +
+		"fit inside a narrow placeholder band and therefore must be handled without " +
+		"overflowing into the neighbouring title or subtitle on the slide"
+
+	t.Run("title preserves large font and gains autofit", func(t *testing.T) {
+		shape := titleShape(9*914400, 914400, "6000", "Click to edit title")
+		if err := setTitleSlideTitle(shape, "title", "Short Title", ""); err != nil {
+			t.Fatalf("setTitleSlideTitle: %v", err)
+		}
+		// Font size preserved (not capped to a body-text size) so autofit measures
+		// the size that is rendered.
+		if got := extractFontSizeFromShape(shape); got != 6000 {
+			t.Errorf("title font size = %d, want 6000 (preserved, not capped)", got)
+		}
+		if got := renderedText(shape); got != "Short Title" {
+			t.Errorf("title text = %q, want %q (not truncated)", got, "Short Title")
+		}
+		if !strings.Contains(shape.TextBody.BodyProperties.Inner, "normAutofit") {
+			t.Errorf("title bodyPr missing normAutofit overflow protection: %q", shape.TextBody.BodyProperties.Inner)
+		}
+	})
+
+	t.Run("long subtitle is truncated and gains autofit", func(t *testing.T) {
+		// Narrow, short band forces the subtitle past its line budget.
+		shape := titleShape(2*914400, 914400/2, "2400", "Click to edit subtitle")
+		if err := setTitleSlideTitle(shape, "subtitle", longText, ""); err != nil {
+			t.Fatalf("setTitleSlideTitle: %v", err)
+		}
+		got := renderedText(shape)
+		if got == longText {
+			t.Errorf("long subtitle was not truncated: %q", got)
+		}
+		if !strings.HasSuffix(strings.TrimSpace(got), ellipsis) {
+			t.Errorf("truncated subtitle should end with ellipsis, got %q", got)
+		}
+		if extractFontSizeFromShape(shape) != 2400 {
+			t.Errorf("subtitle font size = %d, want 2400 (preserved)", extractFontSizeFromShape(shape))
+		}
+		if !strings.Contains(shape.TextBody.BodyProperties.Inner, "normAutofit") {
+			t.Errorf("subtitle bodyPr missing normAutofit overflow protection: %q", shape.TextBody.BodyProperties.Inner)
+		}
+	})
+
+	t.Run("short subtitle is not truncated", func(t *testing.T) {
+		shape := titleShape(9*914400, 914400, "2400", "Click to edit subtitle")
+		if err := setTitleSlideTitle(shape, "subtitle", "A short subtitle", ""); err != nil {
+			t.Fatalf("setTitleSlideTitle: %v", err)
+		}
+		if got := renderedText(shape); got != "A short subtitle" {
+			t.Errorf("short subtitle text = %q, want %q (unchanged)", got, "A short subtitle")
+		}
+	})
+
+	t.Run("long title is not truncated (relies on autofit, not ellipsis)", func(t *testing.T) {
+		// Same narrow band as the truncated-subtitle case, but the title role must
+		// keep its full text and let autofit scale it down.
+		shape := titleShape(2*914400, 914400/2, "6000", "Click to edit title")
+		if err := setTitleSlideTitle(shape, "title", longText, ""); err != nil {
+			t.Fatalf("setTitleSlideTitle: %v", err)
+		}
+		if got := renderedText(shape); got != longText {
+			t.Errorf("title text = %q, want full text (titles are not truncated)", got)
+		}
+		if !strings.Contains(shape.TextBody.BodyProperties.Inner, "normAutofit") {
+			t.Errorf("long title bodyPr missing normAutofit overflow protection: %q", shape.TextBody.BodyProperties.Inner)
+		}
+	})
+}
+
 func TestParseSzAttr(t *testing.T) {
 	tests := []struct {
 		input string
