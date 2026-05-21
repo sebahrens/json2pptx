@@ -138,6 +138,56 @@ func TestFindingFromDiagnostic_RemediationActionVocabulary(t *testing.T) {
 	}
 }
 
+// TestFindingFromDiagnostic_PreservesAgentRecoveryFields locks the lossless
+// adaptation contract: a Diagnostic's NextToolCall and ExampleValue — the
+// agent-recovery fields set by the MCP arg-error helpers and by fit findings —
+// must survive into the Finding rather than being silently dropped.
+func TestFindingFromDiagnostic_PreservesAgentRecoveryFields(t *testing.T) {
+	next := &patterns.ToolCallSuggestion{
+		Tool:         "get_input_schema",
+		ArgsTemplate: map[string]any{"tool": "generate_presentation"},
+	}
+	example := map[string]any{"layout_id": "title", "content": []any{}}
+	d := Diagnostic{
+		Code:         "MISSING_PARAMETER",
+		Message:      "slides is required",
+		Severity:     SeverityError,
+		ExpectedType: "array",
+		NextToolCall: next,
+		ExampleValue: example,
+	}
+
+	f := FindingFromDiagnostic(d)
+
+	if f.NextToolCall == nil {
+		t.Fatal("next_tool_call dropped during adaptation")
+	}
+	if f.NextToolCall.Tool != "get_input_schema" {
+		t.Errorf("next_tool_call.tool = %q, want get_input_schema", f.NextToolCall.Tool)
+	}
+	if f.ExampleValue == nil {
+		t.Fatal("example_value dropped during adaptation")
+	}
+	if got, ok := f.ExampleValue.(map[string]any); !ok || got["layout_id"] != "title" {
+		t.Errorf("example_value not carried verbatim: %#v", f.ExampleValue)
+	}
+	// expected_type still rides in evidence (unchanged behavior).
+	if f.Evidence["expected_type"] != "array" {
+		t.Errorf("evidence.expected_type = %v, want array", f.Evidence["expected_type"])
+	}
+
+	// Round-trips on the wire with snake_case keys.
+	b, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, key := range []string{`"next_tool_call"`, `"example_value"`, `"args_template"`} {
+		if !strings.Contains(string(b), key) {
+			t.Errorf("marshaled finding missing key %s: %s", key, b)
+		}
+	}
+}
+
 func TestClassifyCode(t *testing.T) {
 	cases := map[string]Namespace{
 		"TEMPLATE_NOT_FOUND":    NamespaceTemplate,
@@ -273,11 +323,25 @@ func TestEnvelopeConformsToCommittedSchema(t *testing.T) {
 		t.Fatalf("parse schema: %v", err)
 	}
 
+	// Include an arg-error-style diagnostic so the new next_tool_call /
+	// example_value finding fields are validated against the committed schema
+	// (the finding def is additionalProperties:false).
+	ds := append(sampleDiagnostics(), Diagnostic{
+		Code:         "MISSING_PARAMETER",
+		Message:      "slides is required",
+		Severity:     SeverityError,
+		ExpectedType: "array",
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool:         "get_input_schema",
+			ArgsTemplate: map[string]any{"tool": "generate_presentation"},
+		},
+		ExampleValue: map[string]any{"layout_id": "title"},
+	})
 	env := BuildEnvelope(EnvelopeOptions{
 		Subcommand:  "validate",
 		InputSHA256: ComputeInputSHA256([]byte(`{}`)),
 		Template:    "midnight-blue",
-	}, sampleDiagnostics())
+	}, ds)
 	b, _ := json.Marshal(env)
 	var doc any
 	if err := json.Unmarshal(b, &doc); err != nil {

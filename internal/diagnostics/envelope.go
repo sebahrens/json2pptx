@@ -21,6 +21,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // SchemaVersion identifies the wire version of the FindingEnvelope contract.
@@ -164,6 +166,17 @@ type Finding struct {
 	Evidence map[string]any `json:"evidence,omitempty"`
 	// Remediation is the structured repair suggestion, when one exists.
 	Remediation *Remediation `json:"remediation,omitempty"`
+	// NextToolCall is a machine-readable suggestion for the next tool call that
+	// would resolve the issue, replayable verbatim by an agent. It is distinct
+	// from Remediation: Remediation says *what* to change in the deck, while
+	// NextToolCall names a tool (and argument template) to call to recover or
+	// discover. Carried verbatim from the source Diagnostic.
+	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
+	// ExampleValue is a representative valid value for the argument or field
+	// that triggered the finding. May be a scalar or a nested object, so it is
+	// carried as a dedicated field rather than folded into Evidence (which holds
+	// scalar facts only). Carried verbatim from the source Diagnostic.
+	ExampleValue any `json:"example_value,omitempty"`
 	// DocURL points at the human documentation for the code, when available.
 	DocURL string `json:"doc_url,omitempty"`
 	// DescribeCommand is an executable command that explains the code, e.g.
@@ -232,10 +245,12 @@ func BuildEnvelope(opts EnvelopeOptions, ds []Diagnostic) FindingEnvelope {
 
 // FindingFromDiagnostic adapts a single transport-neutral Diagnostic into a
 // Finding: it namespaces the code, classifies the category, lifts numeric/enum
-// facts into Evidence, maps the Fix into a Remediation, and points
+// facts into Evidence, maps the Fix into a Remediation, carries the agent-
+// recovery fields (NextToolCall, ExampleValue) verbatim, and points
 // DescribeCommand at the executable describe-finding lookup. The legacy
 // (un-prefixed) code is used in DescribeCommand so the command stays runnable
-// against the existing describe-finding registry.
+// against the existing describe-finding registry. The adaptation is lossless
+// for every agent-actionable field on the source Diagnostic.
 func FindingFromDiagnostic(d Diagnostic) Finding {
 	legacy := d.Code
 	ns := ClassifyCode(legacy)
@@ -250,6 +265,8 @@ func FindingFromDiagnostic(d Diagnostic) Finding {
 		Category:        ns,
 		Message:         d.Message,
 		Evidence:        evidenceFromDiagnostic(d),
+		NextToolCall:    d.NextToolCall,
+		ExampleValue:    d.ExampleValue,
 		DescribeCommand: describeCommand(legacy),
 	}
 	if w := whereFromPath(d.Path); !w.IsZero() {

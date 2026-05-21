@@ -57,6 +57,8 @@ converters remain the **adapter input**: callers build envelopes from
 | `message`          | string        | yes      | Human-readable description.                                         |
 | `evidence`         | object        | no       | Numeric/enum facts only — never prose.                             |
 | `remediation`      | `Remediation` | no       | Structured repair (see §2.5).                                      |
+| `next_tool_call`   | object        | no       | Replayable tool-call hop to recover/investigate: `{tool, args_template}`. |
+| `example_value`    | any           | no       | Representative valid value for the offending argument/field.        |
 | `doc_url`          | string        | no       | Human documentation for the code.                                  |
 | `describe_command` | string        | no       | Executable lookup, `json2pptx describe-finding <code>`.            |
 
@@ -64,6 +66,13 @@ converters remain the **adapter input**: callers build envelopes from
 overflow ratios, the offending JSON `path`, the `expected_type`, the fit
 `action`, etc. Free-form text and arbitrary nested objects are dropped during
 adaptation so an agent can rely on the map being parseable facts.
+
+`next_tool_call` and `example_value` are carried verbatim from the source
+`Diagnostic` so the adapter loses no agent-recovery information: `next_tool_call`
+names a tool an agent can replay to recover (it differs from `remediation`,
+which describes *what to change* rather than *which tool to call*), and
+`example_value` is a representative valid value that may be a scalar or a nested
+object — which is why it is a dedicated field rather than an `evidence` entry.
 
 ### 2.3 Where
 

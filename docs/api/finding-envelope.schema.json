@@ -104,6 +104,18 @@
         }
       }
     },
+    "tool_call_suggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A machine-readable next tool call an agent can replay to recover from or investigate the finding.",
+      "properties": {
+        "tool": { "type": "string", "description": "Tool name to call, e.g. 'get_input_schema'." },
+        "args_template": {
+          "type": "object",
+          "description": "Argument template for the call; the agent fills in the offending value."
+        }
+      }
+    },
     "finding": {
       "type": "object",
       "additionalProperties": false,
@@ -127,6 +139,10 @@
           "description": "Numeric/enum facts only (measured vs. allowed extents, overflow ratios, offending JSON path, expected type). Never prose."
         },
         "remediation": { "$ref": "#/$defs/remediation" },
+        "next_tool_call": { "$ref": "#/$defs/tool_call_suggestion" },
+        "example_value": {
+          "description": "Representative valid value for the offending argument/field. Any JSON type."
+        },
         "doc_url": { "type": "string" },
         "describe_command": {
           "type": "string",
