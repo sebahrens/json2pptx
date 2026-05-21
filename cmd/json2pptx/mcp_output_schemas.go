@@ -547,12 +547,15 @@ var outputSchemaPreviewIcon = json.RawMessage(`{
 var outputSchemaRenderSlideImage = json.RawMessage(`{
   "type": "object",
   "properties": {
-    "index":      {"type": "integer"},
-    "png_base64": {"type": "string"},
-    "path":       {"type": "string"},
-    "width":      {"type": "integer"},
-    "height":     {"type": "integer"},
-    "size_error": {"type": "string"}
+    "index":        {"type": "integer"},
+    "png_base64":   {"type": "string"},
+    "path":         {"type": "string", "description": "Content-addressed artifact path, returned instead of png_base64 when the image exceeds the inline cap (~200KB). The filename embeds the PNG content hash, so the path is collision-free across decks and never overwritten with different content."},
+    "width":        {"type": "integer"},
+    "height":       {"type": "integer"},
+    "size_error":   {"type": "string"},
+    "content_hash": {"type": "string", "description": "SHA-256 of the rendered PNG bytes. Stable identity of this image regardless of delivery (inline or path)."},
+    "source_hash":  {"type": "string", "description": "Identity of the upstream artifact this image was rendered from: the PPTX file content hash, or the caller-supplied cache key for keyed renders."},
+    "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned; empty for inline png_base64."}
   },
   "required": ["index"]
 }`)
@@ -587,11 +590,15 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
-          "index":      {"type": "integer"},
-          "png_base64": {"type": "string"},
-          "path":       {"type": "string"},
-          "width":      {"type": "integer"},
-          "height":     {"type": "integer"}
+          "index":        {"type": "integer"},
+          "png_base64":   {"type": "string"},
+          "path":         {"type": "string", "description": "Content-addressed artifact path, returned instead of png_base64 when a thumbnail exceeds the inline cap (~200KB). The filename embeds the PNG content hash, so the path is collision-free across decks and never overwritten with different content."},
+          "width":        {"type": "integer"},
+          "height":       {"type": "integer"},
+          "size_error":   {"type": "string"},
+          "content_hash": {"type": "string", "description": "SHA-256 of the rendered thumbnail PNG bytes."},
+          "source_hash":  {"type": "string", "description": "PPTX file content hash this thumbnail was rendered from."},
+          "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned."}
         },
         "required": ["index"]
       }

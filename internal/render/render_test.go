@@ -1,10 +1,12 @@
 package render
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -271,6 +273,141 @@ func TestStoreCacheAndRetrieve(t *testing.T) {
 		if string(data) != expected {
 			t.Errorf("cached file %d: got %q, want %q", i, string(data), expected)
 		}
+	}
+}
+
+// TestSlideImageFromBytes_PathCollisionFreeAcrossDecks is the core regression
+// test for the index-addressed-path bug: two different decks rendering the SAME
+// slide index used to write to the same /tmp/json2pptx-slide-N.png and clobber
+// each other. Artifacts are now content-addressed, so distinct content yields
+// distinct paths and neither overwrites the other.
+func TestSlideImageFromBytes_PathCollisionFreeAcrossDecks(t *testing.T) {
+	deckA := bytes.Repeat([]byte{0xA1}, maxInlineBytes+1000)
+	deckB := bytes.Repeat([]byte{0xB2}, maxInlineBytes+1000)
+
+	const sameIndex = 0
+	imgA, err := SlideImageFromBytes(sameIndex, deckA, "deck-A-source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	imgB, err := SlideImageFromBytes(sameIndex, deckB, "deck-B-source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(imgA.Path)
+	defer os.Remove(imgB.Path)
+
+	if imgA.Path == "" || imgB.Path == "" {
+		t.Fatalf("expected path references for large images, got A=%q B=%q", imgA.Path, imgB.Path)
+	}
+	if imgA.Path == imgB.Path {
+		t.Fatalf("path collision: two decks at slide index %d returned the same path %q", sameIndex, imgA.Path)
+	}
+
+	// Each file must still hold its own deck's bytes — neither clobbered the other.
+	if got, _ := os.ReadFile(imgA.Path); !bytes.Equal(got, deckA) {
+		t.Error("artifact A content was overwritten or corrupted")
+	}
+	if got, _ := os.ReadFile(imgB.Path); !bytes.Equal(got, deckB) {
+		t.Error("artifact B content was overwritten or corrupted")
+	}
+}
+
+// TestSlideImageFromBytes_IdenticalContentSamePath verifies the only case where
+// two renders are allowed to share a path: byte-identical content. Index and
+// source identity do not affect the path — the content hash does.
+func TestSlideImageFromBytes_IdenticalContentSamePath(t *testing.T) {
+	data := bytes.Repeat([]byte{0xC3}, maxInlineBytes+500)
+
+	img1, err := SlideImageFromBytes(0, data, "src-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	img2, err := SlideImageFromBytes(5, data, "src-2") // different index + source, same bytes
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(img1.Path)
+
+	if img1.Path != img2.Path {
+		t.Errorf("identical content should map to the same path: %q vs %q", img1.Path, img2.Path)
+	}
+	if img1.ContentHash != img2.ContentHash {
+		t.Errorf("identical content should produce the same content hash: %q vs %q", img1.ContentHash, img2.ContentHash)
+	}
+}
+
+// TestSlideImageFromBytes_LargeArtifactFields verifies the response carries the
+// stable-identity fields (content hash, source identity, slide index) and the
+// cleanup semantics required for an on-disk artifact.
+func TestSlideImageFromBytes_LargeArtifactFields(t *testing.T) {
+	data := bytes.Repeat([]byte{0xD4}, maxInlineBytes+1)
+
+	img, err := SlideImageFromBytes(2, data, "deck-source-hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(img.Path)
+
+	if img.PNG64 != "" {
+		t.Error("large image should not be inlined as base64")
+	}
+	if img.Path == "" {
+		t.Fatal("large image should produce a path reference")
+	}
+	if img.Index != 2 {
+		t.Errorf("index = %d, want 2", img.Index)
+	}
+	if img.ContentHash == "" {
+		t.Error("content_hash must be populated")
+	}
+	if img.SourceHash != "deck-source-hash" {
+		t.Errorf("source_hash = %q, want %q", img.SourceHash, "deck-source-hash")
+	}
+	if img.Cleanup != ArtifactCleanupPolicy {
+		t.Errorf("cleanup = %q, want ArtifactCleanupPolicy", img.Cleanup)
+	}
+	if !strings.Contains(filepath.Base(img.Path), img.ContentHash) {
+		t.Errorf("path %q does not embed content hash %q", img.Path, img.ContentHash)
+	}
+	if filepath.Dir(img.Path) != artifactsDir() {
+		t.Errorf("artifact dir = %q, want %q", filepath.Dir(img.Path), artifactsDir())
+	}
+}
+
+// TestSlideImageFromBytes_SmallInline verifies small images are still delivered
+// inline as base64, carry a content/source hash, and report no cleanup (there is
+// no on-disk artifact to clean up).
+func TestSlideImageFromBytes_SmallInline(t *testing.T) {
+	data := []byte("small png bytes")
+
+	img, err := SlideImageFromBytes(1, data, "src")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if img.Path != "" {
+		t.Errorf("small image should be inline, got path %q", img.Path)
+	}
+	if img.PNG64 == "" {
+		t.Error("small image should be inlined as base64")
+	}
+	if img.Cleanup != "" {
+		t.Errorf("inline image should have no cleanup semantics, got %q", img.Cleanup)
+	}
+	if img.ContentHash == "" {
+		t.Error("content_hash must be populated even for inline images")
+	}
+	if img.SourceHash != "src" {
+		t.Errorf("source_hash = %q, want %q", img.SourceHash, "src")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(img.PNG64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(decoded, data) {
+		t.Error("inline base64 did not round-trip to original bytes")
 	}
 }
 

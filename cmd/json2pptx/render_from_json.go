@@ -17,7 +17,6 @@ import (
 	"image/draw"
 	"image/png"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -291,28 +290,16 @@ func applyRenderOverlay(img *render.SlideImage, slideJSON, templateName, templat
 		return nil, fmt.Errorf("encode composite PNG: %w", err)
 	}
 
-	// Mirror the size-based fan-out from render.SlideImage: large
-	// composites get a stable on-disk path, small ones inline as base64.
+	// Mirror the size-based fan-out from render.SlideImage: large composites get
+	// a content-addressed on-disk path, small ones inline as base64. The composite
+	// differs in content from the un-overlaid render, so it gets a distinct path.
 	composedBytes := buf.Bytes()
-	result := &render.SlideImage{
-		Index:  img.Index,
-		Width:  baseImg.Bounds().Dx(),
-		Height: baseImg.Bounds().Dy(),
+	result, err := render.SlideImageFromBytes(img.Index, composedBytes, cacheKey)
+	if err != nil {
+		return nil, fmt.Errorf("build composite slide image: %w", err)
 	}
-	const maxInlineBytes = 200 * 1024
-	if len(composedBytes) > maxInlineBytes {
-		safeKey := cacheKey
-		if len(safeKey) > 16 {
-			safeKey = safeKey[:16]
-		}
-		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-overlay-%s.png", safeKey))
-		if writeErr := os.WriteFile(stablePath, composedBytes, 0644); writeErr != nil {
-			return nil, fmt.Errorf("write composite file: %w", writeErr)
-		}
-		result.Path = stablePath
-	} else {
-		result.PNG64 = base64.StdEncoding.EncodeToString(composedBytes)
-	}
+	result.Width = baseImg.Bounds().Dx()
+	result.Height = baseImg.Bounds().Dy()
 	return result, nil
 }
 

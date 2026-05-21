@@ -4,6 +4,32 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.42.0 (2026-05-21)
+
+### Added
+
+- **Collision-free, content-addressed render artifacts.** When a rendered image
+  exceeds the inline cap (~200KB), `render_slide_image`, `render_deck_thumbnails`,
+  and `render_slide_image_from_json` (incl. `overlay=true`) previously returned a
+  mutable path keyed only by slide index (`/tmp/json2pptx-slide-N.png`,
+  `/tmp/json2pptx-thumb-N.png`), so a later render of a *different* deck at the
+  same index silently overwrote it. The `path` is now content-addressed: the
+  filename embeds the PNG's SHA-256 (`<render-cache>/artifacts/slide-<hash>.png`),
+  so two decks at the same slide index never collide, and a path is only reused
+  when the bytes are byte-identical.
+
+  Each `SlideImage` in these responses gains three additive fields:
+  - `content_hash` — SHA-256 of the rendered PNG bytes (stable identity
+    regardless of inline-vs-path delivery; populated for both).
+  - `source_hash` — identity of the upstream artifact (PPTX file content hash, or
+    the caller-supplied cache key for keyed/from-JSON renders).
+  - `cleanup` — lifetime/cleanup semantics of the on-disk artifact; set only when
+    `path` is returned, empty for inline `png_base64`.
+
+  Artifacts live under the render cache directory and are cleared together by
+  cache invalidation or OS temp cleanup. Existing fields are unchanged; agents
+  that read only `png_base64`/`path` keep working. (bd `go-slide-creator-3cjg`.)
+
 ## 4.41.0 (2026-05-21)
 
 ### Added

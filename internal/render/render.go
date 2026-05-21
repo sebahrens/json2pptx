@@ -41,6 +41,13 @@ func sortPNGsByIndex(files []string) {
 // If a rendered PNG exceeds this, the tool returns a path reference instead.
 const maxInlineBytes = 200 * 1024 // 200 KB
 
+// ArtifactCleanupPolicy documents the lifetime of on-disk render artifacts
+// returned via SlideImage.Path. Artifacts are content-addressed: the filename
+// embeds the SHA-256 of the PNG, so a given path always holds the same bytes and
+// is never overwritten with different content. They live under the render cache
+// directory and are removed by InvalidateCache or by OS temp cleanup.
+const ArtifactCleanupPolicy = "content-addressed; path is stable while the file exists and is never overwritten with different content; removed by render-cache invalidation (InvalidateCache) or OS temp cleanup"
+
 // mu serializes LibreOffice invocations (single-threaded per process).
 var mu sync.Mutex
 
@@ -106,6 +113,19 @@ type SlideImage struct {
 	Width   int    `json:"width,omitempty"`
 	Height  int    `json:"height,omitempty"`
 	SizeErr string `json:"size_error,omitempty"`
+
+	// ContentHash is the SHA-256 (hex) of the rendered PNG bytes. It is the
+	// stable identity of this image regardless of delivery (inline or path), and
+	// is what makes Path collision-free: two renders share a Path only when their
+	// ContentHash is identical.
+	ContentHash string `json:"content_hash,omitempty"`
+	// SourceHash identifies the upstream artifact this image was rendered from —
+	// the PPTX file content hash for deck/slide renders, or the caller-supplied
+	// cache key (e.g. slide-JSON + template hash) for keyed renders.
+	SourceHash string `json:"source_hash,omitempty"`
+	// Cleanup describes the lifetime/cleanup semantics of an on-disk Path
+	// artifact. Empty when the image is delivered inline as PNG64.
+	Cleanup string `json:"cleanup,omitempty"`
 }
 
 // DeckResult holds the result of rendering an entire deck.
@@ -201,6 +221,67 @@ func readAsBase64(path string) (string, int, error) {
 	return base64.StdEncoding.EncodeToString(data), len(data), nil
 }
 
+// artifactsDir is where content-addressed render artifacts (large PNGs returned
+// as a path reference rather than inline base64) are written. It lives under the
+// render cache dir so InvalidateCache clears artifacts and cache entries together.
+func artifactsDir() string {
+	return filepath.Join(cacheDir(), "artifacts")
+}
+
+// writeArtifact writes PNG bytes to a content-addressed path under artifactsDir
+// and returns that path. The filename embeds contentHash, so identical content
+// always maps to the same path and different content never collides. An existing
+// file of the same size already holds identical bytes, so the write is skipped.
+func writeArtifact(data []byte, contentHash string) (string, error) {
+	if err := os.MkdirAll(artifactsDir(), 0755); err != nil {
+		return "", err
+	}
+	// path is internal: render cache dir + sha256 content hash, not user-tainted.
+	path := filepath.Join(artifactsDir(), fmt.Sprintf("slide-%s.png", contentHash))
+	if info, err := os.Stat(path); err == nil && info.Size() == int64(len(data)) { //nolint:gosec // path is internal (cache dir + content hash)
+		return path, nil
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil { //nolint:gosec // path is internal (cache dir + content hash)
+		return "", err
+	}
+	return path, nil
+}
+
+// SlideImageFromBytes builds a SlideImage from in-memory PNG bytes, applying the
+// size-based inline/path fan-out: images at or under maxInlineBytes are returned
+// inline as base64; larger images are written to a content-addressed artifact
+// path. ContentHash and SourceHash are always populated; Cleanup is set only when
+// a Path artifact is produced. sourceHash identifies the upstream deck/input.
+func SlideImageFromBytes(index int, data []byte, sourceHash string) (*SlideImage, error) {
+	sum := sha256.Sum256(data)
+	contentHash := hex.EncodeToString(sum[:])
+	img := &SlideImage{
+		Index:       index,
+		ContentHash: contentHash,
+		SourceHash:  sourceHash,
+	}
+	if len(data) > maxInlineBytes {
+		path, err := writeArtifact(data, contentHash)
+		if err != nil {
+			return nil, fmt.Errorf("write artifact: %w", err)
+		}
+		img.Path = path
+		img.Cleanup = ArtifactCleanupPolicy
+	} else {
+		img.PNG64 = base64.StdEncoding.EncodeToString(data)
+	}
+	return img, nil
+}
+
+// buildSlideImage reads a rendered PNG file and delegates to SlideImageFromBytes.
+func buildSlideImage(index int, pngPath, sourceHash string) (*SlideImage, error) {
+	data, err := os.ReadFile(pngPath)
+	if err != nil {
+		return nil, err
+	}
+	return SlideImageFromBytes(index, data, sourceHash)
+}
+
 // RenderSlide renders a single slide from a PPTX file to a PNG.
 // slideIndex is 0-based.
 func RenderSlide(pptxPath string, slideIndex, density int) (*SlideImage, error) {
@@ -249,24 +330,10 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 		return nil, fmt.Errorf("slide_index %d out of range (deck has %d slides)", slideIndex, len(pngs))
 	}
 
-	img := &SlideImage{Index: slideIndex}
-	b64, size, err := readAsBase64(pngs[slideIndex])
+	img, err := buildSlideImage(slideIndex, pngs[slideIndex], hash)
 	if err != nil {
 		return nil, fmt.Errorf("read rendered slide: %w", err)
 	}
-
-	if size > maxInlineBytes {
-		// Too large for inline — copy to a stable path and return reference.
-		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-%d.png", slideIndex))
-		data, _ := os.ReadFile(pngs[slideIndex])
-		if writeErr := os.WriteFile(stablePath, data, 0644); writeErr != nil {
-			return nil, fmt.Errorf("write stable file: %w", writeErr)
-		}
-		img.Path = stablePath
-	} else {
-		img.PNG64 = b64
-	}
-
 	return img, nil
 }
 
@@ -317,23 +384,10 @@ func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force boo
 		return nil, fmt.Errorf("slide_index %d out of range (deck has %d slides)", slideIndex, len(pngs))
 	}
 
-	img := &SlideImage{Index: slideIndex}
-	b64, size, err := readAsBase64(pngs[slideIndex])
+	img, err := buildSlideImage(slideIndex, pngs[slideIndex], key)
 	if err != nil {
 		return nil, fmt.Errorf("read rendered slide: %w", err)
 	}
-
-	if size > maxInlineBytes {
-		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-from-json-%s.png", key[:min(16, len(key))]))
-		data, _ := os.ReadFile(pngs[slideIndex])
-		if writeErr := os.WriteFile(stablePath, data, 0644); writeErr != nil {
-			return nil, fmt.Errorf("write stable file: %w", writeErr)
-		}
-		img.Path = stablePath
-	} else {
-		img.PNG64 = b64
-	}
-
 	return img, nil
 }
 
@@ -349,23 +403,9 @@ func LookupCachedSlide(key string, slideIndex, density int) *SlideImage {
 	if pngs == nil || slideIndex < 0 || slideIndex >= len(pngs) {
 		return nil
 	}
-	img := &SlideImage{Index: slideIndex}
-	b64, size, err := readAsBase64(pngs[slideIndex])
+	img, err := buildSlideImage(slideIndex, pngs[slideIndex], key)
 	if err != nil {
 		return nil
-	}
-	if size > maxInlineBytes {
-		stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-slide-from-json-%s.png", key[:min(16, len(key))]))
-		data, readErr := os.ReadFile(pngs[slideIndex])
-		if readErr != nil {
-			return nil
-		}
-		if writeErr := os.WriteFile(stablePath, data, 0644); writeErr != nil {
-			return nil
-		}
-		img.Path = stablePath
-	} else {
-		img.PNG64 = b64
 	}
 	return img
 }
@@ -422,22 +462,12 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 	}
 
 	for i := 0; i < limit; i++ {
-		img := SlideImage{Index: i}
-		b64, size, err := readAsBase64(pngs[i])
+		img, err := buildSlideImage(i, pngs[i], hash)
 		if err != nil {
-			img.SizeErr = err.Error()
-		} else if size > maxInlineBytes {
-			stablePath := filepath.Join(os.TempDir(), fmt.Sprintf("json2pptx-thumb-%d.png", i))
-			data, _ := os.ReadFile(pngs[i])
-			if writeErr := os.WriteFile(stablePath, data, 0644); writeErr == nil {
-				img.Path = stablePath
-			} else {
-				img.SizeErr = fmt.Sprintf("file too large for inline (%d bytes) and copy failed", size)
-			}
-		} else {
-			img.PNG64 = b64
+			result.Slides = append(result.Slides, SlideImage{Index: i, SizeErr: err.Error()})
+			continue
 		}
-		result.Slides = append(result.Slides, img)
+		result.Slides = append(result.Slides, *img)
 	}
 
 	return result, nil
