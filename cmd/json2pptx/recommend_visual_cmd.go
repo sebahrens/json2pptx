@@ -14,6 +14,7 @@ func runRecommendVisual() error {
 
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	intent := fs.String("intent", "", "Natural language description of what to show (required)")
+	tmpl := fs.String("template", "", "Optional template name to make recommendations template-aware (adds per-candidate template_support)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx recommend-visual --intent <description> [options]\n\n")
@@ -38,6 +39,9 @@ func runRecommendVisual() error {
 
 	args := map[string]any{
 		"intent": *intent,
+	}
+	if *tmpl != "" {
+		args["template"] = *tmpl
 	}
 
 	result, err := mc.handleRecommendVisual(context.Background(), mcpRequestWithArgs(args))

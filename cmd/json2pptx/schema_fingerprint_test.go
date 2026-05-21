@@ -18,6 +18,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// visual_qa parameter + quality_mode/visual_qa response fields to
 	// auto_repair / make_deck — input params and response fields, not tool names
 	// or PresentationInput/Fix.Kind surfaces, so the hash is again unchanged.
+	// 4.44.0 added the optional `template` input + `template_support` response
+	// field to recommend_visual — again input params/response fields only, not
+	// tool names or PresentationInput/Fix.Kind surfaces, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "e597f18f06d5bf07"
 

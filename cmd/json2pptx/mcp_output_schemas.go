@@ -438,7 +438,8 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "rationale":        {"type": "string"},
           "confidence_band":  {"type": "string", "enum": ["high", "medium", "low"]},
           "diversity_bonus":  {"type": "boolean"},
-          "placement":        {"$ref": "#/$defs/placement_guidance"}
+          "placement":        {"$ref": "#/$defs/placement_guidance"},
+          "template_support": {"$ref": "#/$defs/template_support"}
         },
         "required": ["category", "name", "score", "rationale", "confidence_band"]
       }
@@ -463,6 +464,16 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
         "composable_with":     {"type": "array", "items": {"type": "string"}, "description": "Categories or patterns this composes with on a single slide."}
       },
       "required": ["preferred_placement", "host_strategy", "grid_embeddable", "render_pipeline"]
+    },
+    "template_support": {
+      "type": "object",
+      "description": "Per-candidate feasibility for the template passed in the 'template' argument. Present only when template context was supplied. Candidates that are unsupported (or risky) are demoted in the ranking so they no longer appear first.",
+      "properties": {
+        "status":          {"type": "string", "enum": ["supported", "risky", "unsupported"], "description": "supported = the template natively covers the needed layout/capability; risky = producible only via a synthesised/derived layout or close to a capacity/content-zone limit; unsupported = requires an absent canonical/derivable layout."},
+        "reasons":         {"type": "array", "items": {"type": "string"}, "description": "Why the status applies: which layouts cover the candidate, what is synthesised, which capacity/content-zone constraint bites, or what is missing."},
+        "required_layout": {"type": "string", "description": "The canonical layout or derivable capability the candidate needs (e.g. \"Title Slide\", \"Two Content\", \"full-image\", \"grid base\"). Omitted when the candidate has no specific layout requirement."}
+      },
+      "required": ["status"]
     }
   }
 }`)

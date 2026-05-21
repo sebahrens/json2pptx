@@ -4,6 +4,38 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.44.0 (2026-05-21)
+
+### Added
+
+- **Template-aware `recommend_visual`.** The tool gains an optional `template`
+  input (a template name; `--template` on the CLI). When supplied, every
+  returned candidate carries an additive `template_support` object —
+  `{status, reasons[], required_layout}` — reporting how well that candidate fits
+  the named template:
+  - `status` — `"supported"` (the template natively covers the needed
+    layout/capability), `"risky"` (producible only via a synthesised/derived
+    layout, or close to a body-capacity / content-zone limit), or
+    `"unsupported"` (requires an absent canonical/derivable layout).
+  - `reasons[]` — why the status applies (which layouts cover it, what is
+    synthesised, which capacity/content-zone constraint bites, or what is
+    missing).
+  - `required_layout` — the canonical layout or derivable capability the
+    candidate needs (`"Title Slide"`, `"Two Content"`, `"full-image"`,
+    `"grid base"`, …); omitted when there is no specific layout requirement.
+
+  The support assessment is grounded in the template's canonical layouts,
+  derivable-layout analysis, font-aware placeholder capacities, and palette
+  metadata (`data_palette`). Candidates the template cannot host (or that are
+  risky) are **demoted** in the ranking so the top candidate is feasible whenever
+  any feasible option exists; the displayed `score` is left untouched. Without
+  `template`, candidates carry no `template_support` (template-agnostic ranking,
+  unchanged). `get_capabilities().features.feature_versions` gains
+  `template_aware_recommend: "4.44.0"`. The shared support helper
+  (`generator.NewTemplateSupportContext` / `AnnotateTemplateSupport`) is reused
+  by `plan_deck`. Existing callers that omit `template` see no behavior change.
+  (bd `go-slide-creator-q5dx`.)
+
 ## 4.43.0 (2026-05-21)
 
 ### Added

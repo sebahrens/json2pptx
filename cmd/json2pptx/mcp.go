@@ -1625,29 +1625,26 @@ func mcpRecommendVisualTool() mcp.Tool {
 		mcp.WithArray("candidates",
 			mcp.Description("Explicit shortlist of candidate names to rank across all visual categories (placeholder layouts, named patterns, chart types, diagram types, or raw_shape_grid). When supplied, ALL listed names are scored and returned ranked (no threshold cutoff, no truncation). Category is auto-resolved from the catalog; unknown names appear with score 0 and a rationale noting the miss."),
 		),
+		mcp.WithString("template",
+			mcp.Description("Optional template name (e.g., midnight-blue) to make recommendations template-aware. When supplied, each candidate carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette; candidates needing absent layouts or violating capacity are demoted so they no longer rank first. Use list_templates to discover names."),
+		),
 	)
 }
 
-func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	intent, err := request.RequireString("intent")
-	if err != nil {
-		return argMissing("recommend_visual", "intent", "string", "show revenue growth over four quarters", nil), nil
-	}
-
-	// Parse optional content_hints.
+// parseRecommendVisualArgs extracts the optional content_hints and
+// variety/candidate options from a recommend_visual request. Malformed optional
+// fields are silently ignored (best-effort parse), matching the tool contract.
+func parseRecommendVisualArgs(request mcp.CallToolRequest) (patterns.VisualHints, patterns.RecommendOptions) {
 	var hints patterns.VisualHints
 	if hintsRaw, ok := request.GetArguments()["content_hints"]; ok && hintsRaw != nil {
-		hintsJSON, err := json.Marshal(hintsRaw)
-		if err == nil {
+		if hintsJSON, err := json.Marshal(hintsRaw); err == nil {
 			_ = json.Unmarshal(hintsJSON, &hints)
 		}
 	}
 
-	// Parse optional variety/diversity parameters.
 	var opts patterns.RecommendOptions
 	if rpRaw, ok := request.GetArguments()["recent_patterns"]; ok && rpRaw != nil {
-		rpJSON, err := json.Marshal(rpRaw)
-		if err == nil {
+		if rpJSON, err := json.Marshal(rpRaw); err == nil {
 			_ = json.Unmarshal(rpJSON, &opts.RecentPatterns)
 		}
 	}
@@ -1662,10 +1659,55 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 		}
 	}
 	if candsRaw, ok := request.GetArguments()["candidates"]; ok && candsRaw != nil {
-		candsJSON, err := json.Marshal(candsRaw)
-		if err == nil {
+		if candsJSON, err := json.Marshal(candsRaw); err == nil {
 			_ = json.Unmarshal(candsJSON, &opts.Candidates)
 		}
+	}
+	return hints, opts
+}
+
+// resolveTemplateAnalysis loads the optional `template` argument into a parsed
+// TemplateAnalysis. It returns (nil, nil) when no template was supplied, or
+// (nil, errResult) when the named template cannot be resolved or analysed. The
+// returned cleanup must be called by the caller when non-nil.
+func (mc *mcpConfig) resolveTemplateAnalysis(request mcp.CallToolRequest) (*types.TemplateAnalysis, func(), *mcp.CallToolResult) {
+	templateName := ""
+	if t, ok := request.GetArguments()["template"]; ok {
+		if s, ok := t.(string); ok {
+			templateName = s
+		}
+	}
+	if templateName == "" {
+		return nil, nil, nil
+	}
+	templatePath, cleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
+	if err != nil {
+		return nil, nil, api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir))
+	}
+	analysis, err := getOrAnalyzeTemplate(templatePath, mc.cache)
+	if err != nil {
+		cleanup()
+		return nil, nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("failed to analyze template %q: %v", templateName, err), nextCallListTemplates())
+	}
+	return analysis, cleanup, nil
+}
+
+func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	intent, err := request.RequireString("intent")
+	if err != nil {
+		return argMissing("recommend_visual", "intent", "string", "show revenue growth over four quarters", nil), nil
+	}
+
+	hints, opts := parseRecommendVisualArgs(request)
+
+	// Optional template context — when supplied, recommendations become
+	// template-aware (per-candidate support + demotion of unsupported visuals).
+	analysis, cleanup, errResult := mc.resolveTemplateAnalysis(request)
+	if errResult != nil {
+		return errResult, nil
+	}
+	if cleanup != nil {
+		defer cleanup()
 	}
 
 	reg := patterns.Default()
@@ -1674,10 +1716,26 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 	if len(opts.Candidates) > 0 {
 		maxCands = len(opts.Candidates)
 	}
-	rec := patterns.RecommendVisual(reg, intent, &hints, maxCands, &opts)
+	// With template context (non-candidates mode), fetch a wider set so that
+	// support-aware demotion can promote a template-supported candidate into the
+	// visible top-N instead of leaving an unsupported one at the top.
+	fetchN := maxCands
+	if analysis != nil && len(opts.Candidates) == 0 {
+		fetchN = maxCands * 3
+	}
+	rec := patterns.RecommendVisual(reg, intent, &hints, fetchN, &opts)
 
 	// Enrich candidates with placement guidance from capability truth.
 	generator.EnrichVisualPlacement(&rec)
+
+	// Annotate template support and demote candidates the template cannot host.
+	if analysis != nil {
+		generator.AnnotateTemplateSupport(&rec, analysis, &hints, reg)
+		generator.ReorderByTemplateSupport(&rec)
+		if len(opts.Candidates) == 0 && len(rec.Candidates) > maxCands {
+			rec.Candidates = rec.Candidates[:maxCands]
+		}
+	}
 
 	if err := api.ComputeResponseFingerprint(&rec); err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("recommend_visual", "intent")), nil

@@ -217,7 +217,7 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 
 | Tool | Phase | When to call |
 |---|---|---|
-| `recommend_visual` | PLAN | First call per slide intent — ranks candidates across layouts, patterns, charts, diagrams, and raw shape_grid. Start here when unsure which visual approach fits. |
+| `recommend_visual` | PLAN | First call per slide intent — ranks candidates across layouts, patterns, charts, diagrams, and raw shape_grid. Start here when unsure which visual approach fits. Pass the optional `template` (a template name) to make it **template-aware**: each candidate then carries `template_support: {status: supported\|risky\|unsupported, reasons[], required_layout}` grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette — and candidates needing absent layouts (or violating capacity) are demoted so they no longer rank first. |
 | `show_pattern` | PLAN | Per chosen pattern — returns the value schema and `example_values`. When `supports_callout: true`, the response also carries a `callout_schema` fragment for the envelope-level `callout` DTO. |
 | `expand_pattern` | PLAN | Per pattern slide — preview the resolved `shape_grid` plus `density_warnings`, `cell_budgets`, and `bounds_source`. Confirm density lands in the 60–110% optimal band before generating. |
 | `validate_input` | RENDER | Cheapest precondition gate — full-deck schema + optional `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields. Always run before `generate_presentation`. |
@@ -392,6 +392,13 @@ Set the override per-call: MCP `{"output_validation": "warn"}` or CLI `--output-
 When building a slide and unsure which visual approach to use, follow this decision order:
 
 1. **`recommend_visual`** — the unified entry point. Ranks candidates across *all* categories (placeholder layouts, named patterns, charts, diagrams, compose envelopes, raw shape_grid). Start here.
+
+   **Template-aware ranking.** Pass `template` (a template name, e.g. `"midnight-blue"`) to vet each candidate against that specific template. Every candidate then carries `template_support: {status, reasons[], required_layout}`:
+   - `status: "supported"` — the template natively covers the layout/capability the candidate needs.
+   - `status: "risky"` — producible only via a synthesised/derived layout (e.g. a two-column built by splitting a One Content layout), or close to a body-capacity / content-zone limit. Read `reasons[]` for the caveat.
+   - `status: "unsupported"` — the candidate needs a canonical or derivable layout the template cannot provide (`reasons[]` names what is missing).
+
+   The engine **demotes** risky/unsupported candidates in the ranking, so the top candidate is feasible for the template whenever any feasible option exists. The displayed `score` is left untouched (it stays the intent-match score); only ordering changes. `required_layout` names the canonical layout or derivable capability the candidate needs (`"Title Slide"`, `"Two Content"`, `"full-image"`, `"grid base"`, …). The same support logic also powers `plan_deck` template-awareness. Without `template`, candidates carry no `template_support` (template-agnostic ranking, unchanged behaviour).
 
    Compose envelopes accept 2 to **N** top-level segments — the enforced cap is published as `get_capabilities().features.compose.max_segments` (default 8) along with the supported `directions` and `supports_smart_compose` flag. For arrangements that exceed the cap, nest a compose envelope inside a segment instead of flattening: a `SegmentInput` may set `compose` (XOR with `pattern`) to host a child envelope. Nesting depth and total leaf count caps are published under the same `compose` feature block.
 

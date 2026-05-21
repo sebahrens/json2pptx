@@ -41,6 +41,38 @@ type PlacementGuidance struct {
 	ComposableWith []string `json:"composable_with,omitempty"`
 }
 
+// Template-support status values. They classify how well a candidate fits a
+// specific template once template context is supplied.
+const (
+	// TemplateSupportSupported means the template natively covers the layout /
+	// capability the candidate needs and no capacity concern was detected.
+	TemplateSupportSupported = "supported"
+	// TemplateSupportRisky means the candidate is producible but only via a
+	// synthesized/derived layout, or it brushes against a capacity / content-zone
+	// constraint. The reasons explain the caveat.
+	TemplateSupportRisky = "risky"
+	// TemplateSupportUnsupported means the candidate requires a canonical or
+	// derivable layout the template cannot provide. The reasons name what is
+	// missing.
+	TemplateSupportUnsupported = "unsupported"
+)
+
+// TemplateSupport reports how well a visual candidate fits a specific template.
+// It is populated by the engine (internal/generator) when the recommend_visual
+// caller supplies template context; it is nil for template-agnostic results.
+type TemplateSupport struct {
+	// Status is one of "supported", "risky", or "unsupported".
+	Status string `json:"status"`
+	// Reasons explain the status: which layouts cover the candidate, what is
+	// synthesized, which capacity / content-zone constraint applies, or what is
+	// absent. Always carries at least one entry.
+	Reasons []string `json:"reasons,omitempty"`
+	// RequiredLayout names the canonical layout or derivable capability the
+	// candidate needs (e.g. "Title Slide", "Two Content", "full-image",
+	// "grid base"). Empty for candidates with no specific layout requirement.
+	RequiredLayout string `json:"required_layout,omitempty"`
+}
+
 // VisualCandidate is a scored recommendation across all visual types.
 type VisualCandidate struct {
 	Category       VisualCategory `json:"category"`
@@ -52,6 +84,10 @@ type VisualCandidate struct {
 	// Placement provides authoring guidance for the agent. Populated by the MCP layer
 	// from capability truth; nil when returned from the pure scoring function.
 	Placement *PlacementGuidance `json:"placement,omitempty"`
+	// TemplateSupport reports template-specific feasibility. Populated by the
+	// engine when the caller supplies template context; nil for
+	// template-agnostic results.
+	TemplateSupport *TemplateSupport `json:"template_support,omitempty"`
 }
 
 // VisualHints extends ContentHints with data-shape information for chart/diagram routing.
@@ -64,8 +100,8 @@ type VisualHints struct {
 
 // RecommendVisualResult is the output of RecommendVisual.
 type RecommendVisualResult struct {
-	Candidates             []VisualCandidate `json:"candidates"`
-	QueryUnderstood        string            `json:"query_understood_as"`
+	Candidates              []VisualCandidate `json:"candidates"`
+	QueryUnderstood         string            `json:"query_understood_as"`
 	DisambiguatingQuestions []string          `json:"disambiguating_questions,omitempty"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
@@ -77,11 +113,11 @@ type RecommendVisualResult struct {
 
 // chartRule maps intent keywords to a chart type with scoring.
 type chartRule struct {
-	chartType string
-	keywords  []string
-	baseScore float64
-	rationale string
-	needsMultiSeries bool
+	chartType         string
+	keywords          []string
+	baseScore         float64
+	rationale         string
+	needsMultiSeries  bool
 	needsSingleSeries bool
 }
 
