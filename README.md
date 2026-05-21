@@ -232,7 +232,7 @@ json2pptx validate examples/varied-pitch-deck.json
 json2pptx generate -dry-run -json examples/varied-pitch-deck.json
 
 # Read JSON from stdin, write structured result to file
-cat slides.json | json2pptx generate -json - -json-output-report result.json
+cat examples/varied-pitch-deck.json | json2pptx generate -json - -json-output-report result.json
 
 # Override the template specified inside the JSON
 json2pptx generate -json examples/varied-pitch-deck.json -template forest-green -output ./output
@@ -658,7 +658,7 @@ json2pptx extracts your template's theme colors (`accent1`-`accent6`, `dk1`, `dk
 ```sh
 mkdir my-templates && cp my-corporate-theme.pptx my-templates/
 
-json2pptx generate -json slides.json -template my-corporate-theme -templates-dir my-templates
+json2pptx generate -json examples/basic-deck.json -template my-corporate-theme -templates-dir my-templates
 json2pptx validate-template my-templates/my-corporate-theme.pptx
 json2pptx skill-info --mode=full --template=my-corporate-theme --templates-dir=my-templates
 ```
