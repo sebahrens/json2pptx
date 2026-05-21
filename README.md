@@ -619,6 +619,8 @@ for each under "MCP-only tools".
 
 ### Companion Tools
 
+See [cmd/README.md](cmd/README.md) for the full command index — purpose, a usage example, and the authoritative `-h` pointer for every binary.
+
 | Binary | Purpose |
 |--------|---------|
 | `pptx2jpg` | Convert PPTX to JPG/PNG via LibreOffice + ImageMagick |
