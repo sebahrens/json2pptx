@@ -73,7 +73,7 @@ linters:
         text: "SA1019"
 
       # Allow ChartSpec usage in CLI tools that still support the old format
-      - path: cmd/(json2pptx|testgen)/main\.go
+      - path: cmd/json2pptx/main\.go
         linters:
           - staticcheck
         text: "SA1019"

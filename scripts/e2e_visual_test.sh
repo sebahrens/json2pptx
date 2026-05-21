@@ -5,7 +5,7 @@
 #
 # DESCRIPTION:
 #   End-to-end visual testing pipeline for the Go Slide Creator.
-#   Uses the json2pptx JSON pipeline (not the old markdown testgen pipeline).
+#   Uses the json2pptx JSON pipeline.
 #
 #   Flow:
 #   1. testrand visual --template=X → deck.json
