@@ -1443,14 +1443,20 @@ func streamImageToZip(w *zip.Writer, imagePath, zipPath string) error {
 	return nil
 }
 
-// insertRawShapes inserts pre-generated <p:sp> XML fragments before </p:spTree>.
+// insertRawShapes inserts pre-generated <p:sp> XML fragments at the start of the
+// spTree (just after the mandatory group properties), so shape_grid cells render
+// BEHIND the native title/body placeholders rather than on top of them. Inserting
+// at the end (on top) meant any minor geometry intrusion into title space became a
+// full visual cover-up because cards/charts painted over the title. Native SVG icon
+// pics that should sit on top of grid cells are inserted in a later step
+// (insertNativeSVGPics, InsertAtEnd), so they remain above these shapes.
 func insertRawShapes(slideData []byte, shapes [][]byte) ([]byte, error) {
 	var parts []string
 	for _, s := range shapes {
 		parts = append(parts, string(s))
 	}
 	insertion := strings.Join(parts, "\n")
-	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtStart)
 }
 
 // insertBackgroundImage injects a <p:bg> element into slide XML before <p:spTree>.

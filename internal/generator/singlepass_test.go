@@ -822,6 +822,92 @@ func TestSinglePassContext_InsertNativeSVGPics_NoSpTreeError(t *testing.T) {
 	}
 }
 
+// TestInsertRawShapes_BehindPlaceholders verifies that shape_grid raw shapes are
+// inserted at the START of the spTree (just after the group properties) so they
+// render BEHIND native title/body placeholders, rather than on top of them.
+// Regression test for go-slide-creator-fscc: cards/charts painting over titles.
+func TestInsertRawShapes_BehindPlaceholders(t *testing.T) {
+	slideData := []byte(`<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1"/></p:nvGrpSpPr>
+      <p:grpSpPr/>
+      <p:sp><p:nvSpPr><p:cNvPr id="2" name="Title 1"/></p:nvSpPr></p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`)
+
+	rawShapes := [][]byte{
+		[]byte(`<p:sp><p:nvSpPr><p:cNvPr id="100" name="GridCard"/></p:nvSpPr></p:sp>`),
+	}
+
+	result, err := insertRawShapes(slideData, rawShapes)
+	if err != nil {
+		t.Fatalf("insertRawShapes failed: %v", err)
+	}
+
+	resultStr := string(result)
+
+	cardIdx := strings.Index(resultStr, `name="GridCard"`)
+	titleIdx := strings.Index(resultStr, `name="Title 1"`)
+	grpSpPrIdx := strings.Index(resultStr, "<p:grpSpPr/>")
+
+	if cardIdx < 0 || titleIdx < 0 || grpSpPrIdx < 0 {
+		t.Fatalf("missing markers: card=%d title=%d grpSpPr=%d", cardIdx, titleIdx, grpSpPrIdx)
+	}
+	if cardIdx < grpSpPrIdx {
+		t.Error("raw shape_grid card must be inserted after the group properties")
+	}
+	if cardIdx > titleIdx {
+		t.Error("raw shape_grid card must come BEFORE the title placeholder (rendered behind it)")
+	}
+}
+
+// TestInsertRawShapes_IconsRemainOnTop verifies that native SVG icon pics, which
+// are inserted in a later step (insertNativeSVGPics, InsertAtEnd), still render on
+// top of shape_grid cells after the fscc fix moved raw shapes to InsertAtStart.
+func TestInsertRawShapes_IconsRemainOnTop(t *testing.T) {
+	slideData := []byte(`<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1"/></p:nvGrpSpPr>
+      <p:grpSpPr/>
+      <p:sp><p:nvSpPr><p:cNvPr id="2" name="Title 1"/></p:nvSpPr></p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`)
+
+	rawShapes := [][]byte{
+		[]byte(`<p:sp><p:nvSpPr><p:cNvPr id="100" name="GridCard"/></p:nvSpPr></p:sp>`),
+	}
+
+	withGrid, err := insertRawShapes(slideData, rawShapes)
+	if err != nil {
+		t.Fatalf("insertRawShapes failed: %v", err)
+	}
+
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	nativeSVGs := []nativeSVGInsert{
+		{pngRelID: "rId10", svgRelID: "rId11", offsetX: 1, offsetY: 2, extentCX: 3, extentCY: 4},
+	}
+	result, err := ctx.insertNativeSVGPics(1, withGrid, nativeSVGs)
+	if err != nil {
+		t.Fatalf("insertNativeSVGPics failed: %v", err)
+	}
+
+	resultStr := string(result)
+	cardIdx := strings.Index(resultStr, `name="GridCard"`)
+	picIdx := strings.Index(resultStr, "<p:pic")
+	if cardIdx < 0 || picIdx < 0 {
+		t.Fatalf("missing markers: card=%d pic=%d", cardIdx, picIdx)
+	}
+	if picIdx < cardIdx {
+		t.Error("native SVG icon pic must come AFTER the grid card (rendered on top of it)")
+	}
+}
+
 // TestMediaRel tests the mediaRel struct for both file and byte-based media
 func TestMediaRel_Structure(t *testing.T) {
 	// File-based media
