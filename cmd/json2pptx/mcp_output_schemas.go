@@ -1543,9 +1543,20 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "pattern_aliases":      {"type": "object", "additionalProperties": {"type": "string"}}
       }
     },
-    "error_codes": {"type": "array", "items": {"type": "string"}}
+    "error_codes": {"type": "array", "items": {"type": "string"}},
+    "cli_only_commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":            {"type": "string"},
+          "cli_only_reason": {"type": "string"}
+        },
+        "required": ["name", "cli_only_reason"]
+      }
+    }
   },
-  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "tool_list", "registry", "deprecations", "features", "runtime", "vocabularies", "error_codes"]
+  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "tool_list", "registry", "deprecations", "features", "runtime", "vocabularies", "error_codes", "cli_only_commands"]
 }`)
 
 // --- analyze_deck_rhythm ---

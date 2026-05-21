@@ -45,6 +45,19 @@ type capabilitiesResponse struct {
 	Runtime      capabilitiesRuntime           `json:"runtime"`
 	Vocabularies capabilitiesVocabularies      `json:"vocabularies"`
 	ErrorCodes   []string                      `json:"error_codes"`
+	// CLIOnlyCommands lists dispatchable CLI commands that have no MCP tool,
+	// each with the reason it is CLI-only. This is the reverse of the per-tool
+	// mcp_only_reason carried in mcp_tools_available[]: an agent that wants a
+	// capability absent from the MCP catalog can discover here whether a CLI
+	// command covers it and why it was not exposed as a tool.
+	CLIOnlyCommands []capabilitiesCLIOnlyCommand `json:"cli_only_commands"`
+}
+
+// capabilitiesCLIOnlyCommand describes one dispatchable CLI command that
+// intentionally has no MCP tool counterpart.
+type capabilitiesCLIOnlyCommand struct {
+	Name          string `json:"name"`
+	CLIOnlyReason string `json:"cli_only_reason"`
 }
 
 // capabilitiesToolListEntry is the cross-server-aligned tool descriptor used
@@ -493,8 +506,9 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			OutputDir:            outputDir,
 			SchemaFingerprint:    schemaFingerprint(),
 		},
-		Vocabularies: buildVocabularies(),
-		ErrorCodes:   codes,
+		Vocabularies:    buildVocabularies(),
+		ErrorCodes:      codes,
+		CLIOnlyCommands: buildCLIOnlyCommands(),
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
@@ -700,6 +714,24 @@ func buildAssetLimits() capabilitiesAssetLimits {
 		RasterHardEnv:       envMaxRasterHardBytes,
 		FindingCodeOnBreach: diagnostics.CodeAssetTooLarge,
 	}
+}
+
+// buildCLIOnlyCommands returns the dispatchable CLI commands that have no MCP
+// tool, sorted by name, drawing on the same cliCommandClassifications() source
+// of truth that the reverse parity gate enforces. Surfacing this list makes the
+// CLIOnlyReason discoverable to agents, symmetric with the mcp_only_reason
+// carried per MCP tool.
+func buildCLIOnlyCommands() []capabilitiesCLIOnlyCommand {
+	classes := cliCommandClassifications()
+	names := cliOnlyCommandNames()
+	out := make([]capabilitiesCLIOnlyCommand, 0, len(names))
+	for _, name := range names {
+		out = append(out, capabilitiesCLIOnlyCommand{
+			Name:          name,
+			CLIOnlyReason: classes[name].CLIOnlyReason,
+		})
+	}
+	return out
 }
 
 // buildRegistry returns the standardized chart/diagram/pattern registry used

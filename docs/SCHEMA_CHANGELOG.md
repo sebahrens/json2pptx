@@ -4,6 +4,31 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.49.0 (2026-05-21)
+
+### Added
+
+- **`cli_only_commands` on `get_capabilities`.** The `get_capabilities` response
+  (MCP and `json2pptx capabilities`) now carries a `cli_only_commands[]` array —
+  `{name, cli_only_reason}` for every dispatchable CLI command that intentionally
+  has no MCP tool. This is the reverse of the per-tool `mcp_only_reason` in
+  `mcp_tools_available[]`: an agent that wants a capability absent from the MCP
+  catalog can discover whether a CLI command covers it and why it was not exposed
+  as a tool. Today the list is `preflight`, `validate-template`, `template-check`,
+  and `preview-patterns`.
+
+  A reverse parity gate (`TestEveryCLICommandHasMCPParityOrException`) now fails
+  when an agent-facing CLI command (parsed from `main.dispatch()`) lacks both an
+  MCP counterpart in the `mcpToCLI` table and a documented `CLIOnlyReason`.
+  Server-lifecycle (`serve`, `mcp`) and meta (`version`, `help`) commands are
+  exempt. Classifications live in `cliCommandClassifications()` and are kept in
+  lockstep with the dispatch switch by `TestCLICommandClassificationCoversDispatch`.
+
+  This is an additive response field and does not change the MCP tool-name set,
+  PresentationInput shape, or Fix.Kind vocabulary, so the schema fingerprint is
+  unchanged; `schema_version` advances to 4.49.0 to mark the new response surface.
+  (bd `go-slide-creator-kq3m`.)
+
 ## 4.48.0 (2026-05-21)
 
 ### Added

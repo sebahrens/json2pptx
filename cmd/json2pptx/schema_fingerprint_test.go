@@ -32,6 +32,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// hash is unchanged. 4.48.0 added the get_started `fast_path` response field —
 	// again a response field only, not a tool name or PresentationInput/Fix.Kind
 	// surface, so the hash is unchanged.
+	// 4.49.0 added the get_capabilities `cli_only_commands` response field (the
+	// reverse CLI-to-MCP parity exceptions) — again a response field only, not a
+	// tool name or PresentationInput/Fix.Kind surface, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 
