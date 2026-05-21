@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
-	"github.com/sebahrens/json2pptx/internal/generator"
-	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/themeinfo"
 )
 
 func mcpResolveThemeTool() mcp.Tool {
@@ -31,42 +29,19 @@ func mcpResolveThemeTool() mcp.Tool {
 	)
 }
 
-// resolveThemeResponse is the JSON envelope for resolve_theme.
+// resolveThemeResponse is the JSON envelope for resolve_theme. It wraps the
+// reusable themeinfo.Result with the MCP-specific applied-override echo and the
+// color_roles view derived from skill_info's buildColorRoles.
 type resolveThemeResponse struct {
-	Template        string                     `json:"template"`
-	Colors          map[string]string          `json:"colors"`
-	ThemeColors     []resolveThemeColorEntry   `json:"theme_colors"`
-	ColorRoles      *skillColorRoles           `json:"color_roles"`
-	Fonts           resolveThemeFonts          `json:"fonts"`
-	ResolvedFor     []string                   `json:"resolved_for,omitempty"`
-	Unknown         []resolveThemeUnknownColor `json:"unknown,omitempty"`
-	AppliedOverride *ThemeInput                `json:"applied_theme_override,omitempty"`
-	Warnings        []string                   `json:"warnings,omitempty"`
-}
-
-// resolveThemeColorEntry mirrors svggen-mcp's StyleSpec.theme_colors entry shape
-// ({name, rgb}) so an agent can copy this slice straight into render_diagram's
-// `style.theme_colors` without pivoting the colors map by hand.
-type resolveThemeColorEntry struct {
-	Name string `json:"name"`
-	RGB  string `json:"rgb"`
-}
-
-// resolveThemeFonts describes the font families in the theme.
-type resolveThemeFonts struct {
-	Major resolveThemeFontEntry `json:"major"`
-	Minor resolveThemeFontEntry `json:"minor"`
-}
-
-// resolveThemeFontEntry describes a single font slot.
-type resolveThemeFontEntry struct {
-	Latin string `json:"latin"`
-}
-
-// resolveThemeUnknownColor is returned for color names not found in the theme.
-type resolveThemeUnknownColor struct {
-	Name       string `json:"name"`
-	DidYouMean string `json:"did_you_mean,omitempty"`
+	Template        string                   `json:"template"`
+	Colors          map[string]string        `json:"colors"`
+	ThemeColors     []themeinfo.ColorEntry   `json:"theme_colors"`
+	ColorRoles      *skillColorRoles         `json:"color_roles"`
+	Fonts           themeinfo.Fonts          `json:"fonts"`
+	ResolvedFor     []string                 `json:"resolved_for,omitempty"`
+	Unknown         []themeinfo.UnknownColor `json:"unknown,omitempty"`
+	AppliedOverride *ThemeInput              `json:"applied_theme_override,omitempty"`
+	Warnings        []string                 `json:"warnings,omitempty"`
 }
 
 func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -82,90 +57,40 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	}
 	defer templateCleanup()
 
-	// Parse theme from template.
-	reader, err := template.OpenTemplate(templatePath)
-	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("failed to open template: %v", err)), nil
-	}
-	defer func() { _ = reader.Close() }()
-
-	theme := template.ParseTheme(reader)
-
-	// Apply optional theme_override before reading colors/fonts, so the response
-	// mirrors what the singlepass generator would see for the same frontmatter.
+	// Decode the optional theme_override argument into a ThemeInput.
 	overrideInput, overrideErr := parseResolveThemeOverride(request)
 	if overrideErr != nil {
 		return argInvalidValue("resolve_theme", "INVALID_PARAMETER", "theme_override", overrideErr.Error(), "object", nil, nil), nil
 	}
-	var overrideWarnings []string
-	if overrideInput != nil {
-		theme, overrideWarnings = theme.ApplyOverride(overrideInput.ToThemeOverride())
-	}
 
-	// Build full color map.
-	allColors := make(map[string]string, len(theme.Colors))
-	allColorNames := make([]string, 0, len(theme.Colors))
-	for _, c := range theme.Colors {
-		allColors[c.Name] = c.RGB
-		allColorNames = append(allColorNames, c.Name)
-	}
-
-	// Determine which colors to return.
-	var requestedNames []string
+	// Parse the comma-separated color filter, dropping blanks.
+	var colorNames []string
 	if colorNamesStr, err := request.RequireString("color_names"); err == nil && colorNamesStr != "" {
 		for _, name := range strings.Split(colorNamesStr, ",") {
-			name = strings.TrimSpace(name)
-			if name != "" {
-				requestedNames = append(requestedNames, name)
+			if name = strings.TrimSpace(name); name != "" {
+				colorNames = append(colorNames, name)
 			}
 		}
 	}
 
-	colors := allColors
-	var unknown []resolveThemeUnknownColor
-	var resolvedFor []string
-	// themeColors mirrors the colors map as the [{name,rgb}] array that
-	// svggen-mcp's StyleSpec.theme_colors expects. Built in stable order:
-	// theme-defined order when unfiltered, request order when filtered.
-	themeColors := make([]resolveThemeColorEntry, 0, len(theme.Colors))
-
-	if len(requestedNames) > 0 {
-		colors = make(map[string]string, len(requestedNames))
-		resolvedFor = requestedNames
-		for _, name := range requestedNames {
-			if hex, ok := allColors[name]; ok {
-				colors[name] = hex
-				themeColors = append(themeColors, resolveThemeColorEntry{Name: name, RGB: hex})
-			} else {
-				entry := resolveThemeUnknownColor{Name: name}
-				if match, _ := generator.ClosestMatch(name, allColorNames, 3); match != "" {
-					entry.DidYouMean = match
-				}
-				unknown = append(unknown, entry)
-			}
-		}
-	} else {
-		for _, c := range theme.Colors {
-			themeColors = append(themeColors, resolveThemeColorEntry{Name: c.Name, RGB: c.RGB})
-		}
+	result, err := themeinfo.Resolve(templatePath, themeinfo.Options{
+		ColorNames: colorNames,
+		Override:   overrideInput.ToThemeOverride(),
+	})
+	if err != nil {
+		return api.MCPSimpleError("TEMPLATE_ERROR", err.Error()), nil
 	}
-
-	// Strip template name from path.
-	name := strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
 
 	resp := resolveThemeResponse{
-		Template:    name,
-		Colors:      colors,
-		ThemeColors: themeColors,
-		ColorRoles:  buildColorRoles(theme.Colors),
-		Fonts: resolveThemeFonts{
-			Major: resolveThemeFontEntry{Latin: theme.TitleFont},
-			Minor: resolveThemeFontEntry{Latin: theme.BodyFont},
-		},
-		ResolvedFor:     resolvedFor,
-		Unknown:         unknown,
+		Template:        result.Template,
+		Colors:          result.Colors,
+		ThemeColors:     result.ThemeColors,
+		ColorRoles:      buildColorRoles(result.AllColors),
+		Fonts:           result.Fonts,
+		ResolvedFor:     result.ResolvedFor,
+		Unknown:         result.Unknown,
 		AppliedOverride: overrideInput,
-		Warnings:        overrideWarnings,
+		Warnings:        result.Warnings,
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
