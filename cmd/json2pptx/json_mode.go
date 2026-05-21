@@ -935,19 +935,34 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		var overrideBounds *pptx.RectEmu
 		var contentZone *shapegrid.ContentZone
 
-		// Always compute ContentZone from template layouts for shape_grid slides
-		// so that DefaultBounds can respect the actual title height, even when
-		// the slide has an explicit layout_id and doesn't need virtual resolution.
+		// Derive the ContentZone so shape_grid bounds respect the real title
+		// height and footer clearance. A slide with a concrete (explicit or
+		// auto-selected) layout takes its zone from THAT layout's placeholders;
+		// resolveVirtualLayout's blank/blank-title pick can otherwise hand back
+		// title/footer bounds from an unrelated layout, intruding into title
+		// chrome (go-slide-creator-j15r). Only blank/virtual slides go through
+		// virtual resolution, which additionally drives the layout pick and
+		// override bounds.
 		if len(layouts) > 0 {
-			if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
-				contentZone = vl.Zone
-				if needsVirtualLayout(slide) {
+			switch {
+			case needsVirtualLayout(slide):
+				if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
+					contentZone = vl.Zone
 					spec.LayoutID = vl.LayoutID
 					overrideBounds = &vl.Bounds
 					slog.Info("virtual layout resolved",
 						slog.Int("slide", i+1),
 						slog.String("layout_id", vl.LayoutID),
 					)
+				}
+			default:
+				contentZone = contentZoneFromLayout(findLayoutByID(layouts, slide.LayoutID), slideWidth, slideHeight)
+				if contentZone == nil {
+					// Concrete layout had no usable title/body/footer geometry —
+					// fall back to the virtual zone for chrome protection.
+					if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
+						contentZone = vl.Zone
+					}
 				}
 			}
 		}

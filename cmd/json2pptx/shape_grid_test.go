@@ -629,6 +629,144 @@ func TestResolveVirtualLayout_NoSuitableLayout(t *testing.T) {
 	}
 }
 
+func TestFindLayoutByID(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "a", Name: "Alpha"},
+		{ID: "b", Name: "Beta"},
+	}
+	if got := findLayoutByID(layouts, "b"); got == nil || got.Name != "Beta" {
+		t.Errorf("expected to find Beta, got %v", got)
+	}
+	if got := findLayoutByID(layouts, "missing"); got != nil {
+		t.Errorf("expected nil for missing ID, got %v", got)
+	}
+	if got := findLayoutByID(layouts, ""); got != nil {
+		t.Errorf("expected nil for empty ID, got %v", got)
+	}
+}
+
+// TestContentZoneFromLayout_ExplicitLayout is the regression test for
+// go-slide-creator-j15r: a shape_grid slide with an explicit layout_id must
+// derive its ContentZone from THAT layout's placeholders, not from the
+// blank/blank-title layout that resolveVirtualLayout would otherwise pick.
+func TestContentZoneFromLayout_ExplicitLayout(t *testing.T) {
+	// blankLayout is what resolveVirtualLayout prefers (blank with title).
+	// contentLayout is the slide's explicit layout, with deliberately different
+	// title/footer geometry so the two are distinguishable.
+	const (
+		blankTitleY    = 274638
+		blankTitleH    = 461963
+		contentTitleY  = 400000
+		contentTitleH  = 600000
+		contentBodyX   = 500000
+		contentBodyY   = 1100000
+		contentBodyW   = 8000000
+		contentBodyH   = 4000000
+		contentFooterY = 6000000
+	)
+	layouts := []types.LayoutMetadata{
+		{
+			ID:            "blank",
+			Name:          "Blank + Title",
+			CanonicalType: types.CanonicalLayoutBlank,
+			Placeholders: []types.PlaceholderInfo{
+				{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 457200, Y: blankTitleY, Width: 8229600, Height: blankTitleH}},
+				{Type: types.PlaceholderOther, Bounds: types.BoundingBox{X: 457200, Y: 6356350, Width: 2895600, Height: 365125}},
+			},
+		},
+		{
+			ID:   "content",
+			Name: "Content",
+			Placeholders: []types.PlaceholderInfo{
+				{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 457200, Y: contentTitleY, Width: 8229600, Height: contentTitleH}},
+				{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: contentBodyX, Y: contentBodyY, Width: contentBodyW, Height: contentBodyH}},
+				{Type: types.PlaceholderOther, Bounds: types.BoundingBox{X: contentBodyX, Y: contentFooterY, Width: 2895600, Height: 365125}},
+			},
+		},
+	}
+
+	zone := contentZoneFromLayout(findLayoutByID(layouts, "content"), 0, 0)
+	if zone == nil {
+		t.Fatal("expected non-nil zone for explicit content layout")
+	}
+	if got, want := zone.TitleBottom, int64(contentTitleY+contentTitleH); got != want {
+		t.Errorf("TitleBottom = %d, want %d (from content layout's title)", got, want)
+	}
+	if got, want := zone.FooterTop, int64(contentFooterY); got != want {
+		t.Errorf("FooterTop = %d, want %d (from content layout's footer)", got, want)
+	}
+	if got, want := zone.LeftMargin, int64(contentBodyX); got != want {
+		t.Errorf("LeftMargin = %d, want %d", got, want)
+	}
+	if got, want := zone.RightEdge, int64(contentBodyX+contentBodyW); got != want {
+		t.Errorf("RightEdge = %d, want %d", got, want)
+	}
+
+	// The explicit-layout zone must differ from the virtual blank/blank-title
+	// pick, which is precisely the bug this fix addresses.
+	vl := resolveVirtualLayout(layouts, 0, 0)
+	if vl == nil || vl.Zone == nil {
+		t.Fatal("expected resolveVirtualLayout to return a zone for comparison")
+	}
+	if vl.LayoutID != "blank" {
+		t.Fatalf("expected virtual pick to be the blank layout, got %s", vl.LayoutID)
+	}
+	if zone.TitleBottom == vl.Zone.TitleBottom {
+		t.Errorf("explicit-layout TitleBottom (%d) must differ from virtual pick (%d)", zone.TitleBottom, vl.Zone.TitleBottom)
+	}
+}
+
+func TestContentZoneFromLayout_TitleOnly(t *testing.T) {
+	// A title-only layout (no body/content placeholder) anchors the zone on the
+	// title with symmetric horizontal margins.
+	const (
+		titleX = 600000
+		titleY = 300000
+		titleW = 7000000
+		titleH = 500000
+	)
+	layout := &types.LayoutMetadata{
+		ID:   "title-only",
+		Name: "Title Only",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: titleX, Y: titleY, Width: titleW, Height: titleH}},
+		},
+	}
+	zone := contentZoneFromLayout(layout, 0, 0)
+	if zone == nil {
+		t.Fatal("expected non-nil zone for title-only layout")
+	}
+	if got, want := zone.TitleBottom, int64(titleY+titleH); got != want {
+		t.Errorf("TitleBottom = %d, want %d", got, want)
+	}
+	if got, want := zone.LeftMargin, int64(titleX); got != want {
+		t.Errorf("LeftMargin = %d, want %d", got, want)
+	}
+	if got, want := zone.RightEdge, shapegrid.DefaultSlideWidthEMU-int64(titleX); got != want {
+		t.Errorf("RightEdge = %d, want %d (symmetric margin)", got, want)
+	}
+	// No footer placeholder → FooterTop = slide height - minimum bottom margin.
+	if got, want := zone.FooterTop, shapegrid.DefaultSlideHeightEMU-shapegrid.MinBottomMarginEMU; got != want {
+		t.Errorf("FooterTop = %d, want %d", got, want)
+	}
+}
+
+func TestContentZoneFromLayout_NilAndNoAnchor(t *testing.T) {
+	if zone := contentZoneFromLayout(nil, 0, 0); zone != nil {
+		t.Errorf("expected nil zone for nil layout, got %v", zone)
+	}
+	// Layout with only a subtitle placeholder has no title/body/content anchor.
+	layout := &types.LayoutMetadata{
+		ID: "subtitle-only",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderSubtitle, Bounds: types.BoundingBox{X: 457200, Y: 3200000, Width: 8229600, Height: 800000}},
+		},
+	}
+	if zone := contentZoneFromLayout(layout, 0, 0); zone != nil {
+		t.Errorf("expected nil zone for layout with no title/body anchor, got %v", zone)
+	}
+}
+
 func TestNeedsVirtualLayout(t *testing.T) {
 	grid := &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{{}}}}}
 

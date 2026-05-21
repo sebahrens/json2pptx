@@ -241,6 +241,94 @@ func pickBlankLayout(blank, blankTitle *types.LayoutMetadata, slideWidth, slideH
 	return nil
 }
 
+// findLayoutByID returns a pointer to the layout with the given ID, or nil if
+// no layout matches (or id is empty).
+func findLayoutByID(layouts []types.LayoutMetadata, id string) *types.LayoutMetadata {
+	if id == "" {
+		return nil
+	}
+	for i := range layouts {
+		if layouts[i].ID == id {
+			return &layouts[i]
+		}
+	}
+	return nil
+}
+
+// contentZoneFromLayout derives a ContentZone directly from a concrete layout's
+// own placeholders. Used for shape_grid slides that carry an explicit (or
+// auto-selected) layout_id: the safe content area (title bottom, footer top,
+// horizontal margins) must come from THAT layout, not from resolveVirtualLayout's
+// blank/blank-title pick, which can hand back title/footer bounds from an
+// unrelated layout (go-slide-creator-j15r).
+//
+// When the layout exposes a body/content placeholder, the horizontal extent and
+// title/footer derivation reuse fallbackContentZone (the same logic as
+// resolveVirtualLayout's priority-3 path). A title-only layout falls back to
+// symmetric margins around the title placeholder. Returns nil when the layout is
+// nil or has neither a title nor a body/content placeholder to anchor the zone,
+// so the caller can fall back to virtual resolution.
+func contentZoneFromLayout(layout *types.LayoutMetadata, slideWidth, slideHeight int64) *shapegrid.ContentZone {
+	if layout == nil {
+		return nil
+	}
+	if content, ok := firstBodyOrContentBounds(layout); ok {
+		zone := fallbackContentZone(layout, content, slideWidth, slideHeight)
+		return &zone
+	}
+	return titleOnlyContentZone(layout, slideWidth, slideHeight)
+}
+
+// titleOnlyContentZone derives a ContentZone for a concrete layout that has a
+// title placeholder but no body/content placeholder. The horizontal extent uses
+// symmetric margins around the title; FooterTop comes from the first
+// utility/footer placeholder, falling back to the minimum bottom margin. Returns
+// nil when the layout has no title placeholder.
+func titleOnlyContentZone(layout *types.LayoutMetadata, slideWidth, slideHeight int64) *shapegrid.ContentZone {
+	sw := slideWidth
+	if sw <= 0 {
+		sw = shapegrid.DefaultSlideWidthEMU
+	}
+	sh := slideHeight
+	if sh <= 0 {
+		sh = shapegrid.DefaultSlideHeightEMU
+	}
+
+	var title *pptx.RectEmu
+	footerTop := sh - shapegrid.MinBottomMarginEMU
+	hasFooter := false
+	for i := range layout.Placeholders {
+		ph := &layout.Placeholders[i]
+		switch ph.Type {
+		case types.PlaceholderTitle:
+			if title == nil {
+				title = &pptx.RectEmu{X: ph.Bounds.X, Y: ph.Bounds.Y, CX: ph.Bounds.Width, CY: ph.Bounds.Height}
+			}
+		case types.PlaceholderOther:
+			if !hasFooter {
+				footerTop = ph.Bounds.Y
+				hasFooter = true
+			}
+		}
+	}
+	if title == nil {
+		return nil
+	}
+
+	rightEdge := sw - title.X // symmetric margin
+	if rightEdge < title.X+title.CX {
+		rightEdge = title.X + title.CX
+	}
+	return &shapegrid.ContentZone{
+		TitleBottom: title.Y + title.CY,
+		FooterTop:   footerTop,
+		LeftMargin:  title.X,
+		RightEdge:   rightEdge,
+		SlideWidth:  sw,
+		SlideHeight: sh,
+	}
+}
+
 // needsVirtualLayout returns true if the slide should use virtual layout resolution
 // (has shape_grid and either no layout_id or a blank/virtual slide type).
 func needsVirtualLayout(slide SlideInput) bool {
