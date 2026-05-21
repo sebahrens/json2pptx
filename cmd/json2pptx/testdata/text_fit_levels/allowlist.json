@@ -7,12 +7,6 @@
       "sha256": "ad9957767676406c21d2e0955d2adaece2a2ff2c0fe103cf4db8a61428c5ce86",
       "tracking_issue": "go-slide-creator-mzhu",
       "reason": "Designer template: undersized body slots on 'UNKNOWN IF USED 01' and 'BLANK - Left LARGE Logo' overflow at densities (P1–P4) that should fit. Repair under parent go-slide-creator-vqad."
-    },
-    {
-      "template": "modern-yellow.pptx",
-      "sha256": "fe0cfdb61cf84486a407155153809e398feb7fefff79807d83e21bfee12114d0",
-      "tracking_issue": "go-slide-creator-9gxk",
-      "reason": "Designer template: body and body_2 placeholders on '42_Custom Layout' overflow at trivial densities (P0–P1) where peers fit comfortably. Repair under parent go-slide-creator-vqad."
     }
   ]
 }

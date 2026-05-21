@@ -64,12 +64,6 @@ var schemeAliasToTheme = map[string]string{
 // gates are repaired in the same commit.
 var themeCorpusKnownBroken = []themeCorpusException{
 	{
-		// modern-yellow.pptx has dk1.lastClr=#FFFFFF (polarity wrong).
-		Template: "modern-yellow.pptx",
-		Category: "scheme colors",
-		Tracking: "go-slide-creator-9gxk",
-	},
-	{
 		// blue-corporate.pptx: explicit white text on accent6 (#60A2F5) light
 		// blue background falls below WCAG AA Large 3.0:1. Repair will adjust
 		// either the layout background or the text color.

@@ -74,6 +74,7 @@ Thumbs.db
 !/templates/abstract.pptx
 !/templates/blue-corporate.pptx
 !/templates/modern.pptx
+!/templates/modern-yellow.pptx
 # pwc-template is intentionally ignored (proprietary; do not redistribute)
 /templates/pwc-template.pptx
 /assets/pattern-previews/pwc-template/
