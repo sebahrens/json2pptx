@@ -1000,6 +1000,8 @@ make release         # All platforms (requires clean tree)
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style guidelines, testing requirements, and the pull request process.
 
+> **Note:** Building and testing json2pptx requires no issue-tracker setup. The `.beads/` directory you may see is **optional, local-only Beads workflow state** (gitignored, not present in a fresh clone) — see [Beads Workflow (Optional)](CONTRIBUTING.md#beads-workflow-optional) for when and how to opt in.
+
 ## License
 
 Licensed under the Apache License, Version 2.0. You may use, modify, and distribute this software freely, including for commercial purposes, provided you include the [LICENSE](LICENSE) and [NOTICE](NOTICE) files as required by the license. See [LICENSE](LICENSE) for the full terms.

@@ -81,6 +81,44 @@ docker-compose up --build
 docker-compose build --no-cache && docker-compose up
 ```
 
+## Beads Workflow (Optional)
+
+This repo uses [Beads](https://github.com/steveyegge/beads) (`bd`) for issue
+tracking, but **Beads is opt-in local workflow state — it is not required to
+build, test, or contribute to json2pptx.** The standard `go build ./...` and
+`go test ./...` workflow above needs none of it.
+
+A few things to know so the `.beads/` directory doesn't surprise you:
+
+- **`.beads/` is local-only and gitignored.** It is not committed, so it will
+  not be present in a fresh clone, and you should not assume any other
+  contributor shares your local issue database. Nothing under `.beads/` is part
+  of the source you build against.
+- **You only need `bd` if you choose to use it** — for example, when a task
+  explicitly asks you to track work in Beads, or you find it convenient for
+  managing your own work items locally.
+- **AGENTS.md and CLAUDE.md assume `bd` is already set up** because they target
+  agents working in a configured environment. If you are a human contributor and
+  those `bd prime` / `bd ready` commands aren't available, that's expected — you
+  haven't opted in yet.
+
+To opt in, install Beads and initialize it in your checkout:
+
+```bash
+# Install (see the Beads docs for other methods)
+curl -sSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+
+# Initialize local issue tracking in your clone
+bd init
+
+# Load workflow context and find work
+bd prime
+bd ready
+```
+
+See [.beads/README.md](.beads/README.md) for background on what Beads is and the
+everyday command reference.
+
 ## Code Style
 
 ### General Guidelines
