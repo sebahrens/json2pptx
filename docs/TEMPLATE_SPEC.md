@@ -185,7 +185,9 @@ Exit codes:
 
 ### Known Exceptions
 
-**`modern-template.pptx`** natively lacks `Two Content`, `Blank`, and `Blank + Title` layouts. The engine synthesizes these at runtime, so the template works correctly for generation. However, `template-check` reports failures because it validates native layouts only. This is an accepted exception — new templates should include all 7 layouts natively.
+The remaining designer templates (`abstract`, `blue-corporate`, `business-template`, `modern`, `modern-yellow`) still fail `template-check` while their per-template repairs land under the [`go-slide-creator-vqad`](https://github.com/) umbrella. Their SHA-256 fingerprints are listed in `internal/template/testdata/conformance_allowlist.json` and `canonical_placeholders_allowlist.json`; the allow-list entries auto-expire when the fingerprints change after repair.
+
+`modern-template.pptx` previously lacked `Two Content`, `Blank`, and `Blank + Title`. Those layouts were authored into the template directly via OOXML edits (preserving all embedded media byte-for-byte) and `modern-template` is no longer allow-listed.
 
 ### Programmability
 
