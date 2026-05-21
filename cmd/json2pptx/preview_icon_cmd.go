@@ -29,6 +29,7 @@ func runPreviewIcon() error {
 	baseDir := fs.String("base-dir", "", "Absolute directory used to resolve a relative icon path.")
 	outSVG := fs.String("out-svg", "", "Optional path to write the resolved SVG bytes (default: include svg_data in JSON output).")
 	outPNG := fs.String("out-png", "", "Optional path to write the PNG preview (default: include png_base64 in JSON output).")
+	manifest := fs.Bool("manifest", false, "When set with --out-svg/--out-png, emit a JSON success manifest (written paths, kinds, byte lengths, sha256) to stdout instead of the icon response. Requires at least one --out-svg/--out-png target.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview-icon [--icon <file>|-] [--name|--path|--url|--svg-data ...] [options]\n\n")
@@ -43,6 +44,10 @@ func runPreviewIcon() error {
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return err
+	}
+
+	if *manifest && *outSVG == "" && *outPNG == "" {
+		return fmt.Errorf("--manifest requires at least one of --out-svg or --out-png (the manifest describes written files)")
 	}
 
 	iconArg, err := buildPreviewIconArg(*iconFile, *name, *path, *url, *svgData, *fill, *alt)
@@ -73,24 +78,46 @@ func runPreviewIcon() error {
 		return fmt.Errorf("decode response: %w", err)
 	}
 
-	if *outSVG != "" {
-		if err := os.WriteFile(*outSVG, []byte(resp.SVGData), 0o644); err != nil { //nolint:gosec
+	return emitPreviewIcon(os.Stdout, resp, *outSVG, *outPNG, *manifest)
+}
+
+// emitPreviewIcon writes the resolved SVG / PNG bytes to the requested output
+// paths and then emits the machine-readable result to stdout. When manifest is
+// true it prints a WriteManifest listing only the files actually written (the
+// PNG is skipped when rasterization produced no bytes); otherwise it prints the
+// icon response with the written byte fields cleared so they are not duplicated
+// on disk and in the JSON.
+func emitPreviewIcon(stdout io.Writer, resp *previewIconResponse, outSVG, outPNG string, manifest bool) error {
+	var specs []artifactSpec
+
+	if outSVG != "" {
+		if err := os.WriteFile(outSVG, []byte(resp.SVGData), 0o644); err != nil { //nolint:gosec
 			return fmt.Errorf("write svg: %w", err)
 		}
+		specs = append(specs, artifactSpec{path: outSVG, kind: "svg"})
 		resp.SVGData = ""
 	}
-	if *outPNG != "" && resp.PNGBase64 != "" {
+	if outPNG != "" && resp.PNGBase64 != "" {
 		pngBytes, decodeErr := base64.StdEncoding.DecodeString(resp.PNGBase64)
 		if decodeErr != nil {
 			return fmt.Errorf("decode png_base64: %w", decodeErr)
 		}
-		if err := os.WriteFile(*outPNG, pngBytes, 0o644); err != nil { //nolint:gosec
+		if err := os.WriteFile(outPNG, pngBytes, 0o644); err != nil { //nolint:gosec
 			return fmt.Errorf("write png: %w", err)
 		}
+		specs = append(specs, artifactSpec{path: outPNG, kind: "png"})
 		resp.PNGBase64 = ""
 	}
 
-	enc := json.NewEncoder(os.Stdout)
+	if manifest {
+		m, err := buildWriteManifest("preview-icon", specs, resp.Warnings)
+		if err != nil {
+			return err
+		}
+		return printWriteManifest(stdout, m)
+	}
+
+	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(resp)
 }

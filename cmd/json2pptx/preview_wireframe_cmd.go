@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -15,9 +16,10 @@ import (
 // showing placeholders, grid cells, occupancy, and fit findings.
 //
 // Output modes:
-//   --format=svg  → writes raw SVG to stdout (or to --out file).
-//   --format=png  → writes raw PNG to stdout (or to --out file).
-//   --format=both → writes the JSON envelope (svg + base64 PNG) to stdout.
+//
+//	--format=svg  → writes raw SVG to stdout (or to --out file).
+//	--format=png  → writes raw PNG to stdout (or to --out file).
+//	--format=both → writes the JSON envelope (svg + base64 PNG) to stdout.
 func runPreviewWireframe() error {
 	fs := flag.NewFlagSet("preview-wireframe", flag.ContinueOnError)
 
@@ -27,6 +29,7 @@ func runPreviewWireframe() error {
 	format := fs.String("format", "svg", "Output format: svg, png, or both")
 	widthPx := fs.Int("width-px", 960, "Canvas width in pixels (clamped 320..2400)")
 	outPath := fs.String("out", "", "Output path; when set with --format=svg|png, writes the raw bytes to this file. Ignored for --format=both.")
+	manifest := fs.Bool("manifest", false, "When set with --out, emit a JSON success manifest (written path, kind, byte length, sha256) to stdout instead of writing the file silently. Requires --format=svg|png and --out.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview-wireframe --json <file.json> --slide <n> [options]\n\n")
@@ -51,6 +54,14 @@ func runPreviewWireframe() error {
 	case "svg", "png", "both":
 	default:
 		return fmt.Errorf("--format must be one of svg, png, both (got %q)", *format)
+	}
+	if *manifest {
+		if *outPath == "" {
+			return fmt.Errorf("--manifest requires --out (the manifest describes a written file)")
+		}
+		if *format == "both" {
+			return fmt.Errorf("--manifest requires --format=svg or png (got %q)", *format)
+		}
 	}
 
 	presentation, err := readJSONObject(*jsonPath)
@@ -100,13 +111,32 @@ func runPreviewWireframe() error {
 			}
 			payload = decoded
 		}
-		if *outPath == "" {
-			_, err := os.Stdout.Write(payload)
-			return err
-		}
-		return os.WriteFile(*outPath, payload, 0o644) //nolint:gosec // user-specified output path
+		return emitWireframeArtifact(os.Stdout, payload, *format, *outPath, *manifest)
 	}
 
 	// format=both: emit the full JSON envelope.
 	return printMCPResultJSON(result)
+}
+
+// emitWireframeArtifact writes payload to outPath (or to stdout when outPath is
+// empty), then optionally prints a JSON success manifest describing the written
+// file. format is the artifact kind ("svg" or "png"). The manifest path is only
+// reachable with a non-empty outPath (the caller enforces this), so the file is
+// guaranteed to exist before it is hashed.
+func emitWireframeArtifact(stdout io.Writer, payload []byte, format, outPath string, manifest bool) error {
+	if outPath == "" {
+		_, err := stdout.Write(payload)
+		return err
+	}
+	if err := os.WriteFile(outPath, payload, 0o644); err != nil { //nolint:gosec // user-specified output path
+		return err
+	}
+	if !manifest {
+		return nil
+	}
+	m, err := buildWriteManifest("preview-wireframe", []artifactSpec{{path: outPath, kind: format}}, nil)
+	if err != nil {
+		return err
+	}
+	return printWriteManifest(stdout, m)
 }

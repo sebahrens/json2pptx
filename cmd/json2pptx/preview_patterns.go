@@ -25,6 +25,7 @@ func runPreviewPatterns() error {
 	outputDir := fs.String("output", "./assets/pattern-previews", "Output directory for pattern preview PNGs")
 	density := fs.Int("density", 150, "DPI for rendered PNGs")
 	patternFilter := fs.String("pattern", "", "Generate preview for a single pattern only")
+	manifest := fs.Bool("manifest", false, "Emit a JSON success manifest (written PNG paths, kind, byte length, sha256, and per-pattern warnings) to stdout instead of relying on the stderr progress log.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx preview-patterns [options]\n\n")
@@ -68,7 +69,8 @@ func runPreviewPatterns() error {
 	}
 
 	cache := template.NewMemoryCache(0)
-	generated := 0
+	var written []artifactSpec
+	var warnings []string
 	for _, tplPath := range templateFiles {
 		tplName := strings.TrimSuffix(filepath.Base(tplPath), ".pptx")
 		tplOutDir := filepath.Join(*outputDir, tplName)
@@ -79,22 +81,34 @@ func runPreviewPatterns() error {
 		// Analyze template
 		analysis, err := getOrAnalyzeTemplate(tplPath, cache)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "WARN: skip template %s: %v\n", tplName, err)
+			warn := fmt.Sprintf("skip template %s: %v", tplName, err)
+			warnings = append(warnings, warn)
+			fmt.Fprintf(os.Stderr, "WARN: %s\n", warn)
 			continue
 		}
 
 		for _, pat := range exemplarPatterns {
 			pngPath := filepath.Join(tplOutDir, pat.Name()+".png")
 			if err := generateOnePatternPreview(tplPath, analysis, pat, pngPath, *density); err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: %s/%s: %v\n", tplName, pat.Name(), err)
+				warn := fmt.Sprintf("%s/%s: %v", tplName, pat.Name(), err)
+				warnings = append(warnings, warn)
+				fmt.Fprintf(os.Stderr, "WARN: %s\n", warn)
 				continue
 			}
-			generated++
+			written = append(written, artifactSpec{path: pngPath, kind: "pattern-preview"})
 			fmt.Fprintf(os.Stderr, "  %s/%s.png\n", tplName, pat.Name())
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "\nGenerated %d pattern preview PNGs in %s\n", generated, *outputDir)
+	fmt.Fprintf(os.Stderr, "\nGenerated %d pattern preview PNGs in %s\n", len(written), *outputDir)
+
+	if *manifest {
+		m, err := buildWriteManifest("preview-patterns", written, warnings)
+		if err != nil {
+			return err
+		}
+		return printWriteManifest(os.Stdout, m)
+	}
 	return nil
 }
 
