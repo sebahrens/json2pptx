@@ -88,14 +88,6 @@ func TestCheckSectionNumberNaming_NoWarningWhenBelowThresholds(t *testing.T) {
 		ph       types.PlaceholderInfo
 	}{
 		{
-			name: "large MaxChars",
-			ph: types.PlaceholderInfo{
-				ID: "body", Type: types.PlaceholderBody,
-				MaxChars: 100, FontSize: 8000,
-				Bounds: types.BoundingBox{Y: 500000},
-			},
-		},
-		{
 			name: "small font",
 			ph: types.PlaceholderInfo{
 				ID: "body", Type: types.PlaceholderBody,
@@ -127,6 +119,61 @@ func TestCheckSectionNumberNaming_NoWarningWhenBelowThresholds(t *testing.T) {
 				t.Errorf("expected no warnings, got %v", warnings)
 			}
 		})
+	}
+}
+
+// TestCheckSectionNumberNaming_WarnsForLargeFontDecorativeNumber is the
+// acceptance test for go-slide-creator-ksq2: a section-header layout with a
+// misnamed body placeholder rendered at 100pt in the top third must produce a
+// warning, even though it is not named "Section Number".
+func TestCheckSectionNumberNaming_WarnsForLargeFontDecorativeNumber(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{
+			Name: "Section Divider",
+			Tags: []string{"section-header"},
+			Placeholders: []types.PlaceholderInfo{
+				{
+					ID:       "TextBox 7",          // decorative number frame, but misnamed
+					Type:     types.PlaceholderBody, // normalizer would stuff prose into it
+					MaxChars: 2,
+					FontSize: 10000,                            // 100pt
+					Bounds:   types.BoundingBox{X: 100000, Y: 500000, Width: 914400, Height: 914400},
+				},
+			},
+		},
+	}
+	warnings := checkSectionNumberNaming(layouts)
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning for misnamed 100pt decorative number, got %d: %v", len(warnings), warnings)
+	}
+	if got := warnings[0].Code; got != diagnostics.CodeTemplateSectionNumberNaming {
+		t.Errorf("warning code = %q, want %q", got, diagnostics.CodeTemplateSectionNumberNaming)
+	}
+}
+
+// TestCheckSectionNumberNaming_WarnsForWideBannerNumber covers the safety-net
+// loosening: a wide banner-style decorative number frame reports a high MaxChars
+// even at large font, so the validator must not gate on MaxChars < 5. The
+// large-font + upper-third + body-typed signal alone must trigger the warning.
+func TestCheckSectionNumberNaming_WarnsForWideBannerNumber(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{
+			Name: "Section Divider",
+			Tags: []string{"section-header"},
+			Placeholders: []types.PlaceholderInfo{
+				{
+					ID:       "Rectangle 4",
+					Type:     types.PlaceholderBody,
+					MaxChars: 100, // wide frame -> high reported capacity
+					FontSize: 8000,
+					Bounds:   types.BoundingBox{Y: 500000},
+				},
+			},
+		},
+	}
+	warnings := checkSectionNumberNaming(layouts)
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning for wide banner number frame, got %d: %v", len(warnings), warnings)
 	}
 }
 

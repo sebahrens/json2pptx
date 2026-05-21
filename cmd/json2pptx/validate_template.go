@@ -401,15 +401,21 @@ func boolYesNo(b bool) string {
 //
 // Heuristic thresholds (all must be true to trigger):
 //   - Placeholder type is "body"
-//   - MaxChars < 5  (tiny text capacity — typical of a 1-2 digit number frame)
 //   - FontSize > 4000 (> 40pt in hundredths-of-a-point)
 //   - Y position in upper third of slide (Y < slideHeight/3 ≈ 2_286_000 EMU for 16:9)
 //   - Name is NOT "Section Number" (case-insensitive)
+//
+// A tiny text capacity (low MaxChars) is *not* required. estimateMaxChars is
+// now font-size-aware, so an oversized decorative number frame already reports a
+// small MaxChars — but a wide banner-style number frame can still report >= 5
+// chars at large font, and gating on MaxChars would let those slip through. The
+// large-font + upper-third + body-typed combination on a section-header layout
+// is itself the decisive signal; relying on it (rather than MaxChars) keeps the
+// validator firing on misnamed frames regardless of their width.
 func checkSectionNumberNaming(layouts []types.LayoutMetadata) []diagnostics.Diagnostic {
 	const (
-		maxCharsThreshold = 5       // fewer than 5 chars expected
-		minFontSize       = 4000    // 40pt in hundredths-of-a-point
-		upperThirdY       = 2286000 // ~1/3 of 6858000 EMU (16:9 slide height)
+		minFontSize = 4000    // 40pt in hundredths-of-a-point
+		upperThirdY = 2286000 // ~1/3 of 6858000 EMU (16:9 slide height)
 	)
 
 	var diags []diagnostics.Diagnostic
@@ -422,9 +428,6 @@ func checkSectionNumberNaming(layouts []types.LayoutMetadata) []diagnostics.Diag
 				continue
 			}
 			if strings.EqualFold(ph.ID, "Section Number") {
-				continue
-			}
-			if ph.MaxChars >= maxCharsThreshold {
 				continue
 			}
 			if ph.FontSize < minFontSize {
