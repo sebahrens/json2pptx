@@ -122,6 +122,9 @@ Quality gate matches auto_repair semantics: same field names, same defaults. Omi
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: make_deck.pptx). Path components are stripped for safety."),
 		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths in any exemplar content that references local files (image_value.path, background.image, shape_grid image/icon paths). When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory. Same contract as generate_presentation."),
+		),
 		idempotencyKeyToolParam(),
 	)
 }
@@ -181,7 +184,14 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 
 	// Phase 3: run the auto_repair convergence loop. make_deck and auto_repair
 	// share the same gate vocabulary so callers can graduate from one to the
-	// other without re-learning the schema.
+	// other without re-learning the schema. Resolve base_dir up front so the
+	// shared loop resolves any exemplar-supplied relative asset paths with the
+	// same contract as generate_presentation.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return baseDirErr, nil
+	}
+
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMakeDeckMaxPasses(request)
 
@@ -190,7 +200,7 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, gate, maxPasses, outputFilename)
+	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, outputFilename)
 	if errResult != nil {
 		return errResult, nil
 	}

@@ -1472,6 +1472,25 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 					}))
 				},
 			},
+			{
+				name: "score_deck",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "auto_repair",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+						"max_passes":   float64(1),
+					}))
+				},
+			},
 		}
 
 		for _, h := range handlers {
@@ -1551,6 +1570,25 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
 						"presentation": mustParseJSON(deckJSON),
 						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "score_deck",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+					}))
+				},
+			},
+			{
+				name: "auto_repair",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     baseDir,
+						"max_passes":   float64(1),
 					}))
 				},
 			},
@@ -1639,6 +1677,25 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
 						"presentation": mustParseJSON(deckJSON),
 						"base_dir":     "relative/path/not/allowed",
+					}))
+				},
+			},
+			{
+				name: "score_deck",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     "relative/path/not/allowed",
+					}))
+				},
+			},
+			{
+				name: "auto_repair",
+				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+					return mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+						"presentation": mustParseJSON(deckJSON),
+						"base_dir":     "relative/path/not/allowed",
+						"max_passes":   float64(1),
 					}))
 				},
 			},

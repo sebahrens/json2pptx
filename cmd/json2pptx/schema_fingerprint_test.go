@@ -9,7 +9,10 @@ import "testing"
 //  2. Add a changelog entry in docs/SCHEMA_CHANGELOG.md.
 //  3. Update wantFingerprint below to the new fingerprint value.
 func TestSchemaFingerprintMatchesVersion(t *testing.T) {
-	// Pinned to SchemaVersion "4.36.0". If this fails, see file header comment.
+	// Pinned to SchemaVersion "4.38.0". The fingerprint covers PresentationInput
+	// fields, MCP tool NAMES, and Fix.Kind vocab — none of which the base_dir
+	// param additions (4.38.0) touch, so the hash is unchanged from 4.36.0.
+	// If this fails, see file header comment.
 	const wantFingerprint = "3eeb7724529f8e44"
 
 	got := schemaFingerprint()

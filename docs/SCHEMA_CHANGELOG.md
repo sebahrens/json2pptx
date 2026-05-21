@@ -4,6 +4,32 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.38.0 (2026-05-21)
+
+### Added
+
+- **`base_dir` parameter on `score_deck`, `auto_repair`, and `make_deck`.**
+  The best-deck MCP tools now resolve relative local-asset paths
+  (`image_value.path`, `background.image`, shape-grid `image`/`icon` paths)
+  through the same `resolveBaseDir` + `resolveLocalAssetPaths` helpers that
+  back `generate_presentation` and `validate_input`. Previously these tools
+  ignored `base_dir`, so a deck that referenced a relative asset scored or
+  repaired differently (or failed) depending on the server's process CWD.
+
+  Contract is identical to `generate_presentation`: `base_dir` must be an
+  absolute path to an existing directory; a relative, missing, or
+  non-directory value is rejected with `INVALID_PARAMETER` (`path:
+  "base_dir"`) before any per-asset finding; when omitted the server falls
+  back to its process CWD (legacy, non-portable). A missing relative asset
+  short-circuits with one structured finding per surface
+  (`BACKGROUND_IMAGE_PATH`, `IMAGE_PATH`, `ICON_NOT_FOUND`, …).
+
+  `score_deck` resolves before its render+score pass; `auto_repair` and
+  `make_deck` resolve once before the convergence loop (paths are rewritten
+  to absolute form in place, so every repair pass embeds the same assets).
+  `get_capabilities().features.base_dir` now lists all seven tools that
+  honour the parameter. (bd `go-slide-creator-5p6e`.)
+
 ## 4.37.0 (2026-05-21)
 
 ### Changed

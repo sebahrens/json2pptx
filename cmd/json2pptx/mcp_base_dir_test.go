@@ -267,6 +267,9 @@ func TestCapabilities_AdvertisesBaseDir(t *testing.T) {
 		"validate_input":               true,
 		"preview_presentation_plan":    true,
 		"render_slide_image_from_json": true,
+		"score_deck":                   true,
+		"auto_repair":                  true,
+		"make_deck":                    true,
 	}
 	got := make(map[string]bool, len(resp.Features.BaseDir))
 	for _, n := range resp.Features.BaseDir {

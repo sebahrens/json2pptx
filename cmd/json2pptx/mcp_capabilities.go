@@ -365,6 +365,9 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"validate_input",
 				"preview_presentation_plan",
 				"render_slide_image_from_json",
+				"score_deck",
+				"auto_repair",
+				"make_deck",
 			},
 			AssetLimits: buildAssetLimits(),
 			DeckChrome: capabilitiesFeatureFlag{

@@ -21,6 +21,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -114,6 +115,9 @@ When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: auto_repair.pptx). Path components are stripped for safety."),
 		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory. Same contract as generate_presentation."),
+		),
 		idempotencyKeyToolParam(),
 	)
 }
@@ -157,6 +161,16 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		return errResult, nil
 	}
 
+	// Resolve base_dir up front so relative local-asset paths resolve with the
+	// same contract as generate_presentation. A malformed base_dir short-circuits
+	// before the loop; runAutoRepairLoop rewrites the relative paths to absolute
+	// form once (before the first pass) so every render in the loop embeds the
+	// same assets generate_presentation would.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return baseDirErr, nil
+	}
+
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMaxPasses(request)
 
@@ -168,7 +182,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	output, errResult := mc.runAutoRepairLoop(ctx, &input, gate, maxPasses, outputFilename)
+	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, outputFilename)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -194,10 +208,24 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 func (mc *mcpConfig) runAutoRepairLoop(
 	ctx context.Context,
 	input *PresentationInput,
+	baseDir string,
 	gate autoRepairGate,
 	maxPasses int,
 	outputFilename string,
 ) (*autoRepairOutput, *mcp.CallToolResult) {
+	// Resolve relative local-asset paths (icons, images, background) against
+	// base_dir once, before the convergence loop, mirroring generate_presentation
+	// / validate_input. Resolution rewrites paths to absolute form in place; the
+	// loop's repair edits never touch asset paths and already-absolute paths pass
+	// through unchanged, so resolving once up front is correct for every pass.
+	// Error-severity findings short-circuit (the caller passes the result
+	// straight through), matching handleGenerate's contract.
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
+			return nil, api.MCPDiagnosticsError(assetErrors)
+		}
+	}
+
 	// Resolve template once — reused on every pass.
 	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
 	if err != nil {

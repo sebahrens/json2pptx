@@ -13,6 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -49,6 +50,9 @@ Use this after generate_presentation to get structured visual feedback without b
 		mcp.WithArray("slide_indices",
 			mcp.Description("Optional array of 0-based slide indices to score. When provided, only those slides are rendered + scored — skipping the rest is significantly faster for iterative single-slide refinement. Findings on other slides are omitted; per_slide contains only the requested indices. summary.slide_count still reflects the full deck size. composition is omitted because it only meaningfully scores the full deck."),
 			mcp.Items(map[string]any{"type": "integer", "minimum": 0}),
+		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory. Same contract as generate_presentation."),
 		),
 	)
 }
@@ -124,6 +128,23 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	}
 	if len(input.Slides) == 0 {
 		return argMissing("score_deck", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
+	}
+
+	// Resolve relative local-asset paths (icons, content images, grid images,
+	// background images) against base_dir before rendering. The score reflects
+	// the actual generated deck, so its asset resolution must use the same
+	// helper and contract as generate_presentation / validate_input — otherwise
+	// a deck that scores here would render differently (or fail) under generate.
+	// base_dir resolution failures short-circuit before per-asset findings;
+	// error-severity asset findings short-circuit too, mirroring handleGenerate.
+	baseDir, baseDirErr := resolveBaseDir(request)
+	if baseDirErr != nil {
+		return baseDirErr, nil
+	}
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
+			return api.MCPDiagnosticsError(assetErrors), nil
+		}
 	}
 
 	// Optional slide_indices: when provided, only those slides are rendered +
