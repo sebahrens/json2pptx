@@ -164,14 +164,25 @@ func (ctx *singlePassContext) writeTemplateFiles() error { //nolint:gocognit,goc
 		// Skip notes slide files that will be re-written by writeNotesSlides().
 		// Templates like template_2 have existing notesSlide files; writing them
 		// again creates duplicate ZIP entries that crash LibreOffice.
+		//
+		// Also skip template notes-slide files (and their .rels) tied to slides
+		// that are being dropped via excludeTemplateSlides. Their rels target
+		// ppt/slides/slideN.xml parts that no longer exist, which would emit
+		// OPC_DANGLING_REL blocking findings.
 		if strings.HasPrefix(f.Name, PathNotesSlides) {
 			if noteSlideNum, ok := parseNotesSlideNum(f.Name); ok {
 				if _, willRewrite := ctx.slideNotes[noteSlideNum]; willRewrite {
 					continue
 				}
+				if ctx.excludeTemplateSlides && noteSlideNum <= ctx.existingSlides {
+					continue
+				}
 			}
 			if noteSlideNum, ok := parseNotesSlideRelsNum(f.Name); ok {
 				if _, willRewrite := ctx.slideNotes[noteSlideNum]; willRewrite {
+					continue
+				}
+				if ctx.excludeTemplateSlides && noteSlideNum <= ctx.existingSlides {
 					continue
 				}
 			}
@@ -1167,13 +1178,22 @@ func addSlideContentTypeOverrides(ctData []byte, slideContentMap map[int]SlideSp
 		return nil, fmt.Errorf("failed to parse [Content_Types].xml for slides: %w", err)
 	}
 
-	// When excluding template slides, remove stale slide overrides
+	// When excluding template slides, remove stale slide overrides.
+	// Also strip template notes-slide overrides whose slide number is in the
+	// excluded range — the matching notesSlideN.xml parts are no longer present
+	// in the output, so leaving the Override entries would point at missing parts.
 	if excludeTemplateSlides {
 		filtered := make([]pptx.ContentTypeOverride, 0, len(contentTypes.Overrides))
 		for _, ovr := range contentTypes.Overrides {
-			if ovr.ContentType != pptx.ContentTypeSlide {
-				filtered = append(filtered, ovr)
+			if ovr.ContentType == pptx.ContentTypeSlide {
+				continue
 			}
+			if ovr.ContentType == pptx.ContentTypeNotesSlide {
+				if num, ok := parseNotesSlideOverridePartName(ovr.PartName); ok && num <= existingSlides {
+					continue
+				}
+			}
+			filtered = append(filtered, ovr)
 		}
 		contentTypes.Overrides = filtered
 	}

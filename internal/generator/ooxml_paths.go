@@ -86,6 +86,13 @@ func parseNotesSlideRelsNum(path string) (int, bool) {
 	return parseNumFromPath(path, "ppt/notesSlides/_rels/notesSlide", ".xml.rels")
 }
 
+// parseNotesSlideOverridePartName extracts the slide number from a Content_Types Override
+// PartName like "/ppt/notesSlides/notesSlide3.xml". The leading slash distinguishes
+// these from raw ZIP paths.
+func parseNotesSlideOverridePartName(partName string) (int, bool) {
+	return parseNumFromPath(partName, "/ppt/notesSlides/notesSlide", ".xml")
+}
+
 // parseSlideNum extracts the slide number from a path like "ppt/slides/slide3.xml".
 // Returns the number and true on success, or 0 and false if the path doesn't match.
 func parseSlideNum(path string) (int, bool) {

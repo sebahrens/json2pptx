@@ -167,7 +167,7 @@ func TestTemplatePatternMatrix(t *testing.T) {
 					tplName,      // templateOverride
 					"off",        // strictFit — we inspect findings explicitly below
 					false,        // partial
-					"warn",       // outputValidation — findings surface in JSON, do not gate cell
+					"strict",     // outputValidation — gate cell on blocking findings
 					"free",       // designModeOverride — tolerate template artefacts
 					false,        // strictUnknownKeys
 				)
@@ -214,10 +214,10 @@ func TestTemplatePatternMatrix(t *testing.T) {
 					}
 				}
 
-				// OutputValidationFindings surface in the result JSON in warn
-				// mode but do not gate the cell. Switch back to "strict" above
-				// once go-slide-creator-0g9c (orphan notesSlide rels cleanup
-				// on abstract.pptx / modern.pptx) is resolved.
+				// OutputValidationFindings are now gated in strict mode above;
+				// runJSONMode hard-fails the case if any blocking finding is
+				// emitted, so we do not need to re-inspect them here. The
+				// orphan notesSlide rels cleanup landed via go-slide-creator-0g9c.
 
 				if !titlePlaceholderPresent(out.Slides) {
 					results[pat.Name()][tplName] = matrixCell{ok: false, reason: "title missing"}
