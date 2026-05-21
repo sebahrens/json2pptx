@@ -6,6 +6,17 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// NOTE ON NAMING: the "canonical" in this file refers to user-facing canonical
+// *layout names* (the JSON shorthands "title", "content", "section", …), not the
+// canonical layout *taxonomy* in internal/template (types.CanonicalLayoutType).
+// The mappings below stay tag-based on purpose: they depend on fine-grained
+// structural tags (image-left, two-column variants, quote/statement, agenda,
+// nameHints) that have no 1:1 equivalent in the coarse 7-type taxonomy, so they
+// are intentionally NOT routed through types.CanonicalLayoutType. The heuristic
+// scorer in heuristic.go is tag-based for the same reason. The one selection
+// site with a clean 1:1 mapping — chrome page-number/footer skipping — does use
+// the canonical taxonomy (see applyChromeSkip in cmd/json2pptx/json_mode.go).
+
 // canonicalRule defines how a canonical layout name maps to template layouts via tags.
 type canonicalRule struct {
 	requireTags []string // At least one must match

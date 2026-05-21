@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -24,30 +25,11 @@ import (
 // types.LayoutMetadata / types.PlaceholderInfo without internal/template <->
 // internal/types import cycles.
 
-// sectionNumberMinFontSize is the font-size threshold (hundredths of a point)
-// above which a body placeholder is treated as a decorative section number.
-// Observed across templates: titles top out near 80pt while section numbers run
-// 96–208pt, so 90pt cleanly separates the two.
-const sectionNumberMinFontSize = 9000
-
-// sectionNumberAliasIDs are the canonical placeholder IDs that name a section
-// number directly. Kept in lockstep with internal/generator's
-// sectionNumberAliases; duplicated here (rather than imported) so
-// internal/template never depends on internal/generator.
-var sectionNumberAliasIDs = map[string]bool{
-	"section_number": true,
-	"section_no":     true,
-	"large_number":   true,
-}
-
-// Lower-cased substring hints used to refine roles from a placeholder's name.
-var (
-	eyebrowHints  = []string{"eyebrow", "kicker"}
-	subtitleHints = []string{"subtitle", "sub title", "sub-title"}
-	dateHints     = []string{"date"}
-	pageNumHints  = []string{"slide number", "slidenum", "slide_number", "page number", "page_number", "pagenum", "pagenumber"}
-	footerHints   = []string{"footer", "ftr"}
-)
+// The section-number font-size threshold and the placeholder-name alias / hint
+// sets live in internal/placeholderrole, a stdlib-only leaf package shared with
+// internal/generator's resolver. internal/template references them from there so
+// the two classifiers never drift and internal/template never has to import
+// internal/generator.
 
 // ClassifyLayoutCanonical returns the canonical layout type and confidence for a
 // layout. It delegates to ClassifyCanonicalRole so that the layout taxonomy has a
@@ -100,7 +82,7 @@ func ClassifyPlaceholderRole(ph types.PlaceholderInfo, _ *types.LayoutMetadata) 
 	case types.PlaceholderSubtitle:
 		return types.PlaceholderRoleSubtitle, 0.95
 	case types.PlaceholderTitle:
-		if containsAnyHint(id, eyebrowHints) {
+		if placeholderrole.ContainsAnyHint(id, placeholderrole.EyebrowHints) {
 			return types.PlaceholderRoleEyebrow, 0.75
 		}
 		return types.PlaceholderRoleTitle, 0.95
@@ -108,10 +90,10 @@ func ClassifyPlaceholderRole(ph types.PlaceholderInfo, _ *types.LayoutMetadata) 
 		if conf, ok := sectionNumberConfidence(ph, id); ok {
 			return types.PlaceholderRoleSectionNumber, conf
 		}
-		if containsAnyHint(id, eyebrowHints) {
+		if placeholderrole.ContainsAnyHint(id, placeholderrole.EyebrowHints) {
 			return types.PlaceholderRoleEyebrow, 0.7
 		}
-		if containsAnyHint(id, subtitleHints) {
+		if placeholderrole.ContainsAnyHint(id, placeholderrole.SubtitleHints) {
 			return types.PlaceholderRoleSubtitle, 0.7
 		}
 		return types.PlaceholderRoleBody, 0.85
@@ -125,13 +107,13 @@ func ClassifyPlaceholderRole(ph types.PlaceholderInfo, _ *types.LayoutMetadata) 
 // decorative section number and, if so, the confidence. It triggers on an
 // explicit alias ID, a "section … number" name, or a very large resolved font.
 func sectionNumberConfidence(ph types.PlaceholderInfo, id string) (float64, bool) {
-	if sectionNumberAliasIDs[id] {
+	if placeholderrole.IsSectionNumberAlias(id) {
 		return 0.95, true
 	}
 	if strings.Contains(id, "section") && strings.Contains(id, "number") {
 		return 0.9, true
 	}
-	if ph.FontSize >= sectionNumberMinFontSize {
+	if ph.FontSize >= placeholderrole.SectionNumberMinFontSize {
 		return 0.85, true
 	}
 	return 0, false
@@ -142,25 +124,15 @@ func sectionNumberConfidence(ph types.PlaceholderInfo, id string) (float64, bool
 // PlaceholderOther upstream, so name is the only available signal.
 func classifyChromeRole(id string) (types.PlaceholderRole, float64) {
 	switch {
-	case containsAnyHint(id, dateHints):
+	case placeholderrole.ContainsAnyHint(id, placeholderrole.DateHints):
 		return types.PlaceholderRoleDate, 0.85
-	case containsAnyHint(id, pageNumHints):
+	case placeholderrole.ContainsAnyHint(id, placeholderrole.PageNumHints):
 		return types.PlaceholderRolePageNumber, 0.85
-	case containsAnyHint(id, footerHints):
+	case placeholderrole.ContainsAnyHint(id, placeholderrole.FooterHints):
 		return types.PlaceholderRoleFooter, 0.85
 	default:
 		return types.PlaceholderRoleOther, 0.6
 	}
-}
-
-// containsAnyHint reports whether the lower-cased id contains any of the hints.
-func containsAnyHint(id string, hints []string) bool {
-	for _, h := range hints {
-		if strings.Contains(id, h) {
-			return true
-		}
-	}
-	return false
 }
 
 // CanonicalFamilyCoverage returns, for each coarse layout family, the names of

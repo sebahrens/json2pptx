@@ -2531,34 +2531,60 @@ func composeChromeLine(chrome *ChromeInput) string {
 	return strings.Join(parts, " | ")
 }
 
-// applyChromeSkip sets SkipFooter=true on slides whose layout tags match the
-// chrome skip list. Default skip list is ["title", "closing"] when page_numbers
-// is unset or has no explicit skip list.
+// applyChromeSkip sets SkipFooter=true on slides whose layout should not carry
+// page-number / footer chrome. The default skip set is ["title", "closing"]
+// when page_numbers is unset or has no explicit skip list.
+//
+// The two well-known skip names route through the canonical layout taxonomy
+// (template.EffectiveCanonicalType) rather than the raw structural tags:
+// "title" matches the canonical Title Slide and "closing" the canonical
+// Closing. This is the single source of truth shared with generation and
+// preflight, and it deliberately fixes a long-standing divergence — a
+// title-only Section Divider carries the structural "title-slide" tag and used
+// to be skipped, but it classifies canonically as Section Divider and is now
+// kept in the numbered body flow, matching the documented "title and closing"
+// default. Any other (caller-supplied, arbitrary) skip value still matches the
+// layout's structural tags, so e.g. ["section-header"] can opt section dividers
+// back out.
 func applyChromeSkip(specs []generator.SlideSpec, chrome *ChromeInput, slides []SlideInput, layouts []types.LayoutMetadata) {
-	// Build skip set from chrome config.
-	skipTags := map[string]bool{"title-slide": true, "closing": true}
+	// Canonical layout types to skip (well-known names), and arbitrary tags to
+	// skip (caller-supplied values that aren't well-known names).
+	skipCanonical := map[types.CanonicalLayoutType]bool{
+		types.CanonicalLayoutTitleSlide: true,
+		types.CanonicalLayoutClosing:    true,
+	}
+	skipTags := map[string]bool{}
 	if chrome.PageNumbers != nil && chrome.PageNumbers.Skip != nil {
-		skipTags = make(map[string]bool)
-		for _, tag := range chrome.PageNumbers.Skip {
-			// Map user-facing names to internal tag names.
-			switch tag {
+		skipCanonical = map[types.CanonicalLayoutType]bool{}
+		for _, name := range chrome.PageNumbers.Skip {
+			switch name {
 			case "title":
-				skipTags["title-slide"] = true
+				skipCanonical[types.CanonicalLayoutTitleSlide] = true
+			case "closing":
+				skipCanonical[types.CanonicalLayoutClosing] = true
 			default:
-				skipTags[tag] = true
+				// Arbitrary structural tag (e.g. "section-header", "blank").
+				skipTags[name] = true
 			}
 		}
 	}
 
-	// Build layout ID → tags lookup.
-	tagsByLayout := make(map[string][]string, len(layouts))
-	for _, l := range layouts {
-		tagsByLayout[l.ID] = l.Tags
+	// Build layout ID → layout lookup so we can read both canonical type and tags.
+	layoutByID := make(map[string]*types.LayoutMetadata, len(layouts))
+	for i := range layouts {
+		layoutByID[layouts[i].ID] = &layouts[i]
 	}
 
 	for i := range specs {
-		layoutTags := tagsByLayout[specs[i].LayoutID]
-		for _, tag := range layoutTags {
+		l := layoutByID[specs[i].LayoutID]
+		if l == nil {
+			continue
+		}
+		if len(skipCanonical) > 0 && skipCanonical[template.EffectiveCanonicalType(l)] {
+			specs[i].SkipFooter = true
+			continue
+		}
+		for _, tag := range l.Tags {
 			if skipTags[tag] {
 				specs[i].SkipFooter = true
 				break
