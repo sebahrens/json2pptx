@@ -5,6 +5,17 @@
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
+## Choose your path
+
+json2pptx has two audiences. Jump straight to yours:
+
+| I want to… | Go to |
+|------------|-------|
+| **Run the CLI or Go library** — generate decks from JSON in a shell, script, or program | [Install](#installation) → [CLI Quick Start](#cli-quick-start) |
+| **Integrate via MCP** — let an AI agent (e.g. Claude Code) plan, build, validate, and repair decks | [Claude Code Integration](#mcp-integration) → [MCP Server (45 tools)](#mcp-server-45-tools) |
+
+New here? The [Philosophy](#philosophy) and [How It Works](#how-it-works) sections give the mental model first.
+
 ## Philosophy
 
 PowerPoint is a visual tool. You drag boxes, pick fonts, nudge alignment. This works for one-off decks, but it falls apart when presentations need to be generated programmatically, updated from data, or produced at scale.
@@ -219,6 +230,8 @@ docker run -d \
 
 ## Quick Start
 
+<a id="cli-quick-start"></a>
+
 ### CLI Usage
 
 ```sh
@@ -292,6 +305,8 @@ curl -X POST http://localhost:8080/api/v1/convert \
     ]
   }'
 ```
+
+<a id="mcp-integration"></a>
 
 ## Claude Code Integration
 
