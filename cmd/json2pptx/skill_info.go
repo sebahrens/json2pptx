@@ -54,6 +54,44 @@ type skillInfo struct {
 	// when an agent calls list_templates without the new `fields` projection
 	// parameter). It is not a validation/error channel.
 	Warnings []string `json:"warnings,omitempty"`
+	// SideEffects documents the disk side effects of this discovery call —
+	// specifically whether template analysis writes layout-preview PNG cache
+	// files, where, and how to suppress them. Always populated by the CLI
+	// skill-info and MCP list_templates surfaces so an agent in read-only
+	// planning mode can tell whether the call touched the filesystem.
+	SideEffects *skillSideEffects `json:"side_effects,omitempty"`
+}
+
+// skillSideEffects documents the disk side effects of a discovery call. The
+// only side effect skill-info / list_templates can produce is writing
+// layout-preview PNG cache files; this block reports whether the current call
+// did (or could) write them and names the opt-out so an agent operating in
+// read-only planning mode can gather template context without cache writes.
+type skillSideEffects struct {
+	// PreviewCacheWrites reports whether this call may write layout-preview PNG
+	// cache files to disk. False when read-only / no-preview mode is active.
+	// When true, actual writes still require the render toolchain (LibreOffice +
+	// ImageMagick); when those are absent, preview generation no-ops silently.
+	PreviewCacheWrites bool `json:"preview_cache_writes"`
+	// ReadOnly reports whether read-only / no-preview mode was active for this
+	// call (no layout-preview artifacts written).
+	ReadOnly bool `json:"read_only"`
+	// PreviewCacheDir is the base directory layout-preview PNGs are cached under
+	// when PreviewCacheWrites is true. Reported even in read-only mode so agents
+	// know which location the default mode would touch.
+	PreviewCacheDir string `json:"preview_cache_dir,omitempty"`
+	// DisableWith names the parameter or flag that suppresses preview cache
+	// writes (e.g. "read_only=true" for the MCP tool, "--no-preview" for the
+	// CLI subcommand).
+	DisableWith string `json:"disable_with"`
+}
+
+// skillInfoOptions controls optional behavior of per-template skill-info
+// analysis.
+type skillInfoOptions struct {
+	// NoPreview skips layout-preview PNG generation (and the cache writes it
+	// performs), making analysis side-effect-free for read-only discovery.
+	NoPreview bool
 }
 
 // skillComposeEntry describes the compose envelope feature for agents browsing
@@ -354,6 +392,7 @@ func runSkillInfo() error {
 	// drop it. Kept here so existing callers don't break with an "unknown flag"
 	// error on upgrade.
 	includeFullSchemas := fs.Bool("include-full-schemas", false, "(Deprecated; --mode=full already includes full pattern schemas)")
+	noPreview := fs.Bool("no-preview", false, "Read-only discovery: skip layout-preview PNG generation so no cache files are written (preview_png_path is then omitted). Use when gathering template context in a read-only planning context.")
 	jsonFlag := fs.Bool("json", true, "Output as JSON (default: true)")
 
 	fs.Usage = func() {
@@ -400,9 +439,10 @@ func runSkillInfo() error {
 	cache := template.NewMemoryCache(24 * time.Hour)
 
 	// Analyze each template
+	skillOpts := skillInfoOptions{NoPreview: *noPreview}
 	var templates []skillTemplateInfo
 	for _, path := range templatePaths {
-		info, err := analyzeTemplateForSkillInfo(path, cache, *mode)
+		info, err := analyzeTemplateForSkillInfoOpts(path, cache, *mode, skillOpts)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to analyze %s: %v\n", filepath.Base(path), err)
 			continue
@@ -437,6 +477,7 @@ func runSkillInfo() error {
 		OutputFormats:   []string{"pptx"},
 		IconPolicy:      buildIconPolicy(),
 		Deprecations:    buildDeprecations(),
+		SideEffects:     buildSkillSideEffects(*noPreview, "--no-preview"),
 	}
 
 	if *jsonFlag {
@@ -450,8 +491,19 @@ func runSkillInfo() error {
 	return nil
 }
 
-// analyzeTemplateForSkillInfo analyzes a single template and returns skill info.
+// analyzeTemplateForSkillInfo analyzes a single template and returns skill
+// info. Layout-preview generation (which writes PNG cache files) is enabled;
+// for a side-effect-free read-only analysis use analyzeTemplateForSkillInfoOpts
+// with skillInfoOptions{NoPreview: true}.
 func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache, mode string) (skillTemplateInfo, error) {
+	return analyzeTemplateForSkillInfoOpts(templatePath, cache, mode, skillInfoOptions{})
+}
+
+// analyzeTemplateForSkillInfoOpts analyzes a single template and returns skill
+// info, honoring opts. When opts.NoPreview is set, layout-preview PNG
+// generation is skipped entirely so the call writes no files; preview_png_path
+// fields are then omitted from the result.
+func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCache, mode string, opts skillInfoOptions) (skillTemplateInfo, error) {
 	analysis, err := getOrAnalyzeTemplate(templatePath, cache)
 	if err != nil {
 		return skillTemplateInfo{}, err
@@ -522,8 +574,13 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	info.CanonicalCoverage = buildSkillCanonicalCoverage(analysis.Layouts)
 	info.DerivableLayouts = buildSkillDerivableLayouts(analysis.Layouts)
 
-	// Generate layout preview PNGs (best-effort, non-blocking)
-	previews, _ := layoutpreview.Generate(templatePath, analysis, nil)
+	// Generate layout preview PNGs (best-effort, non-blocking). Skipped in
+	// read-only mode so discovery writes no cache files; downstream code already
+	// treats a nil previews result as "no previews available".
+	var previews *layoutpreview.Result
+	if !opts.NoPreview {
+		previews, _ = layoutpreview.Generate(templatePath, analysis, nil)
+	}
 
 	layoutNames := make([]string, len(analysis.Layouts))
 	layoutSummaries := make([]skillLayoutSummary, len(analysis.Layouts))
@@ -568,6 +625,18 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	}
 
 	return info, nil
+}
+
+// buildSkillSideEffects describes the disk side effects of a discovery call.
+// noPreview reflects whether read-only / no-preview mode was active; disableWith
+// names the surface-specific opt-out (e.g. "read_only=true" or "--no-preview").
+func buildSkillSideEffects(noPreview bool, disableWith string) *skillSideEffects {
+	return &skillSideEffects{
+		PreviewCacheWrites: !noPreview,
+		ReadOnly:           noPreview,
+		PreviewCacheDir:    layoutpreview.DefaultCacheDir(),
+		DisableWith:        disableWith,
+	}
 }
 
 // buildFullLayoutInfos constructs detailed layout info with placeholders and previews.

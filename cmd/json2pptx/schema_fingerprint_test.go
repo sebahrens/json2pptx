@@ -35,6 +35,10 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.49.0 added the get_capabilities `cli_only_commands` response field (the
 	// reverse CLI-to-MCP parity exceptions) — again a response field only, not a
 	// tool name or PresentationInput/Fix.Kind surface, so the hash is unchanged.
+	// 4.50.0 added the list_templates `read_only` input param + `side_effects`
+	// response block (and flipped list_templates writes_files to true) — input
+	// params / response fields / a classification flag only, not tool names or
+	// PresentationInput/Fix.Kind surfaces, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

@@ -130,7 +130,11 @@ func toolClassifications() map[string]toolClassification {
 		"get_capabilities":         {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
 		"get_input_schema":         {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "input-schema"},
 		"get_data_format_hints":    {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "data-format-hints"},
-		"list_templates":           {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "skill-info"},
+		// list_templates writes layout-preview PNG cache files in its default
+		// mode (when LibreOffice + ImageMagick are present), so WritesFiles is
+		// true. Pass read_only=true to suppress those cache writes; the response
+		// side_effects block reports what happened.
+		"list_templates":           {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, WritesFiles: true, CLICounterpart: "skill-info"},
 		"get_chart_capabilities":   {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
 		"get_diagram_capabilities": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
 		"get_shape_catalog":        {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "shape-catalog"},

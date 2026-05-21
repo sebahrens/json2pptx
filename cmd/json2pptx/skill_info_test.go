@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -440,6 +443,88 @@ func TestAnalyzeTemplateForSkillInfo_AccentUsageGuideOmittedWhenAbsent(t *testin
 	b, _ := json.Marshal(info)
 	if containsSubstring(string(b), "accent_usage_guide") {
 		t.Error("accent_usage_guide should be omitted from JSON when not supplied by template metadata")
+	}
+}
+
+// TestAnalyzeTemplateForSkillInfo_ReadOnlyWritesNoFiles is the acceptance gate
+// for the read-only discovery mode: with NoPreview set, analysis must return
+// the full metadata payload (minus preview paths) and write no layout-preview
+// cache files anywhere under the user's home cache directory.
+func TestAnalyzeTemplateForSkillInfo_ReadOnlyWritesNoFiles(t *testing.T) {
+	// Redirect the home dir so the default preview cache
+	// (~/.cache/json2pptx/layout-previews) would land somewhere we control and
+	// can inspect after the call. HOME governs os.UserHomeDir on darwin/linux.
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfoOpts(
+		"../../templates/midnight-blue.pptx", cache, "full",
+		skillInfoOptions{NoPreview: true},
+	)
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfoOpts failed: %v", err)
+	}
+
+	// Read-only must not degrade the metadata payload beyond dropping previews.
+	if len(info.Layouts) == 0 {
+		t.Fatal("read-only full mode should still return layouts")
+	}
+	if len(info.LayoutSummaries) == 0 {
+		t.Fatal("read-only full mode should still return layout summaries")
+	}
+
+	// No preview PNG paths should be reported in read-only mode.
+	for _, l := range info.Layouts {
+		if l.PreviewPNGPath != "" {
+			t.Errorf("layout %q carries preview_png_path %q in read-only mode", l.ID, l.PreviewPNGPath)
+		}
+	}
+	for _, s := range info.LayoutSummaries {
+		if s.PreviewPNGPath != "" {
+			t.Errorf("layout summary %q carries preview_png_path %q in read-only mode", s.ID, s.PreviewPNGPath)
+		}
+	}
+
+	// Crucially: no preview cache files were created under the redirected HOME.
+	cacheRoot := filepath.Join(tmpHome, ".cache", "json2pptx")
+	if _, statErr := os.Stat(cacheRoot); !os.IsNotExist(statErr) {
+		t.Errorf("read-only analysis created %s (err=%v); expected no cache writes outside the requested output area", cacheRoot, statErr)
+	}
+}
+
+// TestBuildSkillSideEffects asserts the side-effects descriptor reports the
+// correct write intent and opt-out for both read-only and default calls.
+func TestBuildSkillSideEffects(t *testing.T) {
+	ro := buildSkillSideEffects(true, "read_only=true")
+	if ro == nil {
+		t.Fatal("buildSkillSideEffects returned nil")
+	}
+	if ro.PreviewCacheWrites {
+		t.Error("read-only side_effects should report preview_cache_writes=false")
+	}
+	if !ro.ReadOnly {
+		t.Error("read-only side_effects should report read_only=true")
+	}
+	if ro.DisableWith != "read_only=true" {
+		t.Errorf("disable_with = %q, want read_only=true", ro.DisableWith)
+	}
+	if ro.PreviewCacheDir == "" {
+		t.Error("preview_cache_dir should be reported even in read-only mode")
+	}
+	if ro.PreviewCacheDir != layoutpreview.DefaultCacheDir() {
+		t.Errorf("preview_cache_dir = %q, want %q", ro.PreviewCacheDir, layoutpreview.DefaultCacheDir())
+	}
+
+	def := buildSkillSideEffects(false, "--no-preview")
+	if !def.PreviewCacheWrites {
+		t.Error("default side_effects should report preview_cache_writes=true")
+	}
+	if def.ReadOnly {
+		t.Error("default side_effects should report read_only=false")
+	}
+	if def.DisableWith != "--no-preview" {
+		t.Errorf("disable_with = %q, want --no-preview", def.DisableWith)
 	}
 }
 

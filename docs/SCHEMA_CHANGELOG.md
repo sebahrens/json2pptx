@@ -4,6 +4,32 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.50.0 (2026-05-21)
+
+### Added
+
+- **Read-only discovery on `list_templates` / `skill-info` + `side_effects`
+  block.** Template discovery generates layout-preview PNG **cache files** as a
+  side effect (when LibreOffice + ImageMagick are present), which an agent in
+  read-only planning mode may want to avoid. Two additions make this explicit and
+  opt-out-able:
+  - `read_only` (MCP `list_templates`) / `--no-preview` (CLI `skill-info`) — when
+    set, layout-preview generation is skipped entirely so the call writes no cache
+    files. `preview_png_path` is then omitted from `layout_summaries[]` / `layouts[]`.
+  - `side_effects` response block (both surfaces) —
+    `{preview_cache_writes, read_only, preview_cache_dir, disable_with}`. It
+    reports whether this call writes (or could write) preview cache files, the
+    cache directory the default mode touches, whether read-only mode was active,
+    and the surface-specific opt-out (`read_only=true` / `--no-preview`).
+
+  The `list_templates` tool classification now honestly carries `writes_files:
+  true` (its default mode produces PNG cache artifacts); `read_only=true`
+  suppresses them. These are additive input params / response fields and a
+  classification flag — they do not change the MCP tool-name set, PresentationInput
+  shape, or Fix.Kind vocabulary, so the schema fingerprint is unchanged;
+  `schema_version` advances to 4.50.0 to mark the new surface.
+  (bd `go-slide-creator-had3`.)
+
 ## 4.49.0 (2026-05-21)
 
 ### Added

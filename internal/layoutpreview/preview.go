@@ -37,6 +37,16 @@ func (o *Options) cacheDir() string {
 	if o != nil && o.CacheDir != "" {
 		return o.CacheDir
 	}
+	return DefaultCacheDir()
+}
+
+// DefaultCacheDir returns the base directory layout-preview PNGs are cached
+// under when no explicit Options.CacheDir is set
+// (~/.cache/json2pptx/layout-previews, falling back to a temp dir when the
+// user home directory cannot be resolved). It is exported so discovery
+// surfaces (skill-info / list_templates) can report the preview cache location
+// to agents alongside the read-only opt-out.
+func DefaultCacheDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return filepath.Join(os.TempDir(), "json2pptx-layout-previews")

@@ -113,7 +113,8 @@ var outputSchemaListTemplates = json.RawMessage(`{
     "total_count":     {"type": "integer", "description": "Total number of templates discovered (after filter), irrespective of the current page."},
     "page_size":       {"type": "integer", "description": "Maximum number of template entries in this page."},
     "next_cursor":     {"type": "string", "description": "Opaque continuation token. Pass back as cursor on the next call. Absent on the last page."},
-    "warnings":        {"type": "array", "items": {"type": "string"}, "description": "Advisory hints (e.g. deprecation notice when fields is omitted)."}
+    "warnings":        {"type": "array", "items": {"type": "string"}, "description": "Advisory hints (e.g. deprecation notice when fields is omitted)."},
+    "side_effects":    {"type": "object", "description": "Disk side effects of this call: whether layout-preview PNG cache files were (or could be) written, the cache directory, whether read-only mode was active, and the opt-out (read_only=true).", "properties": {"preview_cache_writes": {"type": "boolean"}, "read_only": {"type": "boolean"}, "preview_cache_dir": {"type": "string"}, "disable_with": {"type": "string"}}}
   },
   "required": ["tool", "templates", "supported_types", "input_formats", "output_formats"]
 }`)

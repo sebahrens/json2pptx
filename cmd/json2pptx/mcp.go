@@ -331,6 +331,10 @@ Filtering: pass filter="<substring>" to limit the response to templates whose na
 		mcp.WithNumber("page_size",
 			mcp.Description("Maximum number of template entries to return. Default: 50. Clamped to [1, 200]."),
 		),
+		mcp.WithBoolean("read_only",
+			mcp.Description("Read-only discovery: skip layout-preview PNG generation so the call writes no cache files (preview_png_path is then omitted from layout summaries / layouts). Set this when gathering template context in a read-only planning context. The response's side_effects block reports whether preview cache writes occurred and the cache directory. Default: false (default mode may write preview PNGs to the cache dir when LibreOffice + ImageMagick are present)."),
+			mcp.DefaultBool(false),
+		),
 	)
 }
 
@@ -785,6 +789,14 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	templateName, _ := request.RequireString("template")
 	filterStr := listFilterParam(request)
 
+	// Read-only discovery: when set, skip layout-preview PNG generation so the
+	// call writes no cache files. The side_effects block in the response reports
+	// what happened either way.
+	readOnly := false
+	if v, err := request.RequireBool("read_only"); err == nil {
+		readOnly = v
+	}
+
 	// Parse pagination parameters (cursor, page_size). Invalid input is
 	// surfaced as a structured INVALID_PARAMETER error.
 	offset, pageSize, errField, errMsg := paginationParams(request)
@@ -838,9 +850,10 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
 	pagedTemplates := resolved[start:end]
 
+	skillOpts := skillInfoOptions{NoPreview: readOnly}
 	var templates []skillTemplateInfo
 	for _, rt := range pagedTemplates {
-		info, err := analyzeTemplateForSkillInfo(rt.path, mc.cache, mode)
+		info, err := analyzeTemplateForSkillInfoOpts(rt.path, mc.cache, mode, skillOpts)
 		if err != nil {
 			slog.Error("failed to analyze template", "template", rt.name, "error", err)
 			templates = append(templates, skillTemplateInfo{
@@ -871,6 +884,7 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		TotalCount:     totalCount,
 		PageSize:       pageSize,
 		NextCursor:     nextCursor,
+		SideEffects:    buildSkillSideEffects(readOnly, "read_only=true"),
 	}
 
 	// Deprecation hint: nudge callers that did not pick a projection so a

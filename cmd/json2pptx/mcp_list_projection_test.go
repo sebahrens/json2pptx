@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -394,6 +396,80 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 		if !strings.Contains(text, expected) {
 			t.Errorf("fields=full response missing %s on the wire", expected)
 		}
+	}
+}
+
+// TestListTemplates_ReadOnlySideEffects verifies the read_only parameter
+// suppresses preview cache writes and that the response side_effects block
+// truthfully reports the write intent for both read-only and default calls.
+func TestListTemplates_ReadOnlySideEffects(t *testing.T) {
+	// Redirect HOME so any preview cache writes would be observable under a
+	// temp dir rather than the developer's real cache.
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+
+	// read_only=true: no cache writes, side_effects reports read-only.
+	res, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"mode":      "full",
+		"filter":    "midnight",
+		"read_only": true,
+	}))
+	if err != nil || res.IsError {
+		t.Fatalf("unexpected failure: err=%v result=%+v", err, res)
+	}
+	text := res.Content[0].(mcp.TextContent).Text
+	var resp skillInfo
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp.SideEffects == nil {
+		t.Fatal("read_only response missing side_effects block")
+	}
+	if resp.SideEffects.PreviewCacheWrites {
+		t.Error("read_only=true should report preview_cache_writes=false")
+	}
+	if !resp.SideEffects.ReadOnly {
+		t.Error("read_only=true should report read_only=true in side_effects")
+	}
+	if resp.SideEffects.DisableWith != "read_only=true" {
+		t.Errorf("disable_with = %q, want read_only=true", resp.SideEffects.DisableWith)
+	}
+	// No layout previews should have been emitted on the wire.
+	if strings.Contains(text, `"preview_png_path"`) {
+		t.Error("read_only=true response should not contain preview_png_path")
+	}
+	// And no preview cache files should exist under the redirected HOME.
+	cacheRoot := filepath.Join(tmpHome, ".cache", "json2pptx")
+	if _, statErr := os.Stat(cacheRoot); !os.IsNotExist(statErr) {
+		t.Errorf("read_only list_templates created %s; expected no cache writes", cacheRoot)
+	}
+
+	// Default call: side_effects reports the write intent (preview_cache_writes=true).
+	res2, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"mode":   "list",
+		"filter": "midnight",
+	}))
+	if err != nil || res2.IsError {
+		t.Fatalf("unexpected failure: err=%v result=%+v", err, res2)
+	}
+	var resp2 skillInfo
+	if err := json.Unmarshal([]byte(res2.Content[0].(mcp.TextContent).Text), &resp2); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if resp2.SideEffects == nil {
+		t.Fatal("default response missing side_effects block")
+	}
+	if !resp2.SideEffects.PreviewCacheWrites {
+		t.Error("default call should report preview_cache_writes=true")
+	}
+	if resp2.SideEffects.ReadOnly {
+		t.Error("default call should report read_only=false")
 	}
 }
 
