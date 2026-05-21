@@ -1,12 +1,5 @@
 {
   "$schema_version": 1,
   "comment": "Allow-list for internal/template/conformance_corpus_test.go. Templates whose sha256 appears in 'exceptions' are exempt from the zero-FAIL / zero-WARN gate. Each entry MUST cite a tracking issue and SHOULD be removed once the template is repaired (the sha256 will then no longer match, restoring the gate). Use `json2pptx template-check --json <file>` to read the sha256. The list MUST be empty once go-slide-creator-vqad and its children land.",
-  "exceptions": [
-    {
-      "template": "business-template.pptx",
-      "sha256": "ad9957767676406c21d2e0955d2adaece2a2ff2c0fe103cf4db8a61428c5ce86",
-      "tracking_issue": "go-slide-creator-mzhu",
-      "reason": "Designer template: missing Two Content, Section Divider, Blank, Blank+Title, Closing; Title Slide lacks subtitle. Repair under parent go-slide-creator-vqad."
-    }
-  ]
+  "exceptions": []
 }
