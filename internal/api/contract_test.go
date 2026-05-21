@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
@@ -17,14 +18,17 @@ import (
 // depend on. They assert specific JSON field names and types.
 //
 // Stable fields (safe for programmatic matching):
-//   - error envelope: success (bool), error.code (string), error.message (string)
-//   - error.details.validation_errors[].code, .message, .path, .fix
+//   - transport-error envelope (apierrors.Response): success (bool),
+//     error.code (string), error.message (string)
+//   - diagnostic-bearing FindingEnvelope (pattern validate/expand):
+//     schema_version (string), tool (string), subcommand (string), ok (bool),
+//     findings[].{id, code, severity, category, message}, findings[].evidence.pattern
 //   - convert success: success (bool), stats.slide_count (int)
 //   - pattern validate: ok (bool)
 //   - pattern show: name (string), schema (object)
 //
 // Advisory fields (human-readable, may change wording):
-//   - error.message text, error.details free-form entries
+//   - error.message text, error.details free-form entries, finding.message text
 
 // TestHTTPConvertMalformedJSON_ContractShape verifies the HTTP convert endpoint
 // returns the stable error envelope for malformed JSON input.
@@ -278,7 +282,9 @@ func TestHTTPCapabilities_ContractShape(t *testing.T) {
 }
 
 // TestHTTPPatternValidationFailed_ContractShape verifies the HTTP pattern
-// validation error response includes structured validation_errors.
+// validation endpoint emits the shared diagnostics.FindingEnvelope — the same
+// agent-facing contract as the CLI/MCP surfaces — rather than the legacy
+// apierrors.Response with details.validation_errors.
 func TestHTTPPatternValidationFailed_ContractShape(t *testing.T) {
 	h := NewPatternsHandler(patterns.Default())
 
@@ -294,57 +300,50 @@ func TestHTTPPatternValidationFailed_ContractShape(t *testing.T) {
 		t.Fatalf("Status = %d, want 400", w.Code)
 	}
 
-	// Parse raw to assert field names.
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
-		t.Fatalf("response is not a JSON object: %v", err)
+	var env diagnostics.FindingEnvelope
+	if err := json.Unmarshal(w.Body.Bytes(), &env); err != nil {
+		t.Fatalf("response is not a FindingEnvelope: %v", err)
 	}
 
-	// Top-level error envelope.
-	errRaw, ok := raw["error"]
-	if !ok {
-		t.Fatal("missing 'error' field")
+	// Run-level envelope fields.
+	if env.SchemaVersion == "" {
+		t.Error("envelope missing stable field schema_version")
+	}
+	if env.Tool == "" {
+		t.Error("envelope missing stable field tool")
+	}
+	if env.Subcommand != "validate_pattern" {
+		t.Errorf("subcommand = %q, want %q", env.Subcommand, "validate_pattern")
+	}
+	if env.OK {
+		t.Error("expected ok=false for a failed validation")
+	}
+	if len(env.Findings) == 0 {
+		t.Fatal("expected non-empty findings")
 	}
 
-	var errObj map[string]json.RawMessage
-	if err := json.Unmarshal(errRaw, &errObj); err != nil {
-		t.Fatalf("error is not a JSON object: %v", err)
-	}
-
-	// details must contain pattern and validation_errors.
-	detailsRaw, ok := errObj["details"]
-	if !ok {
-		t.Fatal("error missing 'details' field")
-	}
-
-	var details map[string]json.RawMessage
-	if err := json.Unmarshal(detailsRaw, &details); err != nil {
-		t.Fatalf("details is not a JSON object: %v", err)
-	}
-
-	if _, ok := details["pattern"]; !ok {
-		t.Error("details missing 'pattern' field")
-	}
-
-	veRaw, ok := details["validation_errors"]
-	if !ok {
-		t.Fatal("details missing 'validation_errors' field")
-	}
-
-	var validationErrors []map[string]json.RawMessage
-	if err := json.Unmarshal(veRaw, &validationErrors); err != nil {
-		t.Fatalf("validation_errors is not an array: %v", err)
-	}
-	if len(validationErrors) == 0 {
-		t.Fatal("expected non-empty validation_errors")
-	}
-
-	// Each validation error must have code and message.
-	for i, ve := range validationErrors {
-		for _, field := range []string{"code", "message"} {
-			if _, ok := ve[field]; !ok {
-				t.Errorf("validation_errors[%d] missing stable field %q", i, field)
-			}
+	// Each finding carries the stable, machine-matchable fields.
+	for i, f := range env.Findings {
+		if f.ID == "" {
+			t.Errorf("findings[%d] missing stable field id", i)
 		}
+		if f.Code == "" {
+			t.Errorf("findings[%d] missing stable field code", i)
+		}
+		if f.Severity == "" {
+			t.Errorf("findings[%d] missing stable field severity", i)
+		}
+		if f.Category == "" {
+			t.Errorf("findings[%d] missing stable field category", i)
+		}
+		if f.Message == "" {
+			t.Errorf("findings[%d] missing stable field message", i)
+		}
+	}
+
+	// The originating pattern rides on the finding evidence so agents can
+	// correlate the failure without a separate top-level field.
+	if got := env.Findings[0].Evidence["pattern"]; got != "kpi-3up" {
+		t.Errorf("findings[0].evidence.pattern = %v, want %q", got, "kpi-3up")
 	}
 }

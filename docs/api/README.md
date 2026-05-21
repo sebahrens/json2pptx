@@ -50,7 +50,7 @@ The Go Slide Creator HTTP API enables programmatic generation of PowerPoint pres
 
 ## Error Handling
 
-All errors follow a consistent JSON structure:
+Transport and request errors follow a consistent JSON structure:
 
 ```json
 {
@@ -64,6 +64,13 @@ All errors follow a consistent JSON structure:
   }
 }
 ```
+
+> **Exception — diagnostic-bearing endpoints.** The pattern validation endpoints
+> (`POST /api/v1/patterns/{name}/validate` and `/expand`) return a
+> `FindingEnvelope` on a validation failure (HTTP 400) instead of the shape
+> above — the same agent-facing diagnostic contract emitted by the CLI and MCP
+> surfaces (see [docs/AGENT_DIAGNOSTICS.md](../AGENT_DIAGNOSTICS.md)). Transport
+> failures on those endpoints (404/415/413/500) still use the simple shape.
 
 ### Error Codes
 
@@ -554,14 +561,29 @@ curl -X POST http://localhost:8080/api/v1/patterns/bmc/validate \
 
 #### Response (Invalid)
 
+A validation failure returns a `FindingEnvelope` (HTTP 400) — the shared
+agent-facing diagnostic contract also emitted by the CLI and MCP surfaces, not
+the simple error envelope. The originating pattern name rides on each finding's
+`evidence.pattern`. (Transport failures — 404/415/413 — still use the simple
+`{success, error{...}}` shape.)
+
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "PATTERN_VALIDATION_FAILED",
-    "message": "missing required field: value_propositions",
-    "details": {"pattern": "bmc"}
-  }
+  "schema_version": "1.0",
+  "tool": "json2pptx",
+  "subcommand": "validate_pattern",
+  "ok": false,
+  "summary": "1 error",
+  "findings": [
+    {
+      "id": "input-1",
+      "code": "INPUT.required",
+      "severity": "error",
+      "category": "INPUT",
+      "message": "missing required field: value_propositions",
+      "evidence": {"pattern": "bmc"}
+    }
+  ]
 }
 ```
 

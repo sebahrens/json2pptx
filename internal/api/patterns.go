@@ -97,12 +97,12 @@ func (h *PatternsHandler) ValidateHandler() http.HandlerFunc {
 
 		values, overrides, cellOverrides, err := unmarshalPatternInputs(pat, &body)
 		if err != nil {
-			writePatternValidationError(w, name, err)
+			writePatternValidationError(w, "validate_pattern", name, err)
 			return
 		}
 
 		if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-			writePatternValidationError(w, name, err)
+			writePatternValidationError(w, "validate_pattern", name, err)
 			return
 		}
 
@@ -131,12 +131,12 @@ func (h *PatternsHandler) ExpandHandler() http.HandlerFunc {
 
 		values, overrides, cellOverrides, err := unmarshalPatternInputs(pat, &body)
 		if err != nil {
-			writePatternValidationError(w, name, err)
+			writePatternValidationError(w, "expand_pattern", name, err)
 			return
 		}
 
 		if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-			writePatternValidationError(w, name, err)
+			writePatternValidationError(w, "expand_pattern", name, err)
 			return
 		}
 
@@ -245,30 +245,40 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 }
 
 // writePatternValidationError converts a (possibly joined) validation error into
-// structured diagnostics and writes an HTTP error response with the individual
-// entries in the details map. This mirrors what MCP does via splitValidationErrors
-// so agents get the same machine-readable shape from both transports.
-func writePatternValidationError(w http.ResponseWriter, patternName string, err error) {
+// the shared diagnostics.FindingEnvelope and writes it as the HTTP response body.
+// Pattern validation is the one diagnostic-bearing HTTP serve-mode endpoint, so it
+// emits the same agent-facing FindingEnvelope contract as the CLI/MCP surfaces
+// (built via diagnostics.BuildEnvelope). Transport errors on the pattern endpoints
+// (404 not-found, 415 content-type, 413 too-large, 500 expand-failed) keep the
+// simple apierrors.Response shape. The originating pattern name rides on every
+// finding's evidence so an agent can correlate the failure without a separate
+// top-level field. subcommand names the operation ("validate_pattern" or
+// "expand_pattern") in the envelope.
+func writePatternValidationError(w http.ResponseWriter, subcommand, patternName string, err error) {
 	ds := diagnostics.FromJoinedError(err, diagnostics.CodeValidationFailed)
-	entries := make([]map[string]any, len(ds))
-	for i, d := range ds {
-		entry := map[string]any{
-			"code":    d.Code,
-			"message": d.Message,
+	// Ensure the pattern name is carried on every diagnostic's evidence, even for
+	// the plain (non-ValidationError) inputs where FromValidationError did not set
+	// it (e.g. "values field is required").
+	for i := range ds {
+		if ds[i].Details == nil {
+			ds[i].Details = map[string]any{}
 		}
-		if d.Path != "" {
-			entry["path"] = d.Path
+		if _, ok := ds[i].Details["pattern"]; !ok {
+			ds[i].Details["pattern"] = patternName
 		}
-		if d.Fix != nil {
-			entry["fix"] = d.Fix
-		}
-		entries[i] = entry
 	}
-	writeError(w, http.StatusBadRequest, apierrors.CodePatternValidationFailed,
-		diagnostics.Summary(ds), map[string]any{
-			"pattern":           patternName,
-			"validation_errors": entries,
-		})
+	env := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+		Subcommand: subcommand,
+	}, ds)
+	writeFindingEnvelope(w, http.StatusBadRequest, env)
+}
+
+// writeFindingEnvelope writes a diagnostics.FindingEnvelope as the response body
+// for a diagnostic-bearing endpoint. Unlike writeError (the transport-error
+// apierrors.Response shape), this is the shared agent-facing FindingEnvelope
+// contract documented in docs/AGENT_DIAGNOSTICS.md.
+func writeFindingEnvelope(w http.ResponseWriter, status int, env diagnostics.FindingEnvelope) {
+	writeJSON(w, status, env)
 }
 
 // unmarshalPatternInputs deserializes the raw JSON fields from the request body

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -124,7 +125,7 @@ func TestValidatePattern(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid values returns structured validation_errors", func(t *testing.T) {
+	t.Run("invalid values returns a FindingEnvelope", func(t *testing.T) {
 		// Only 2 cells instead of required 3
 		body := `{"values": [{"big":"100","small":"Revenue"},{"big":"200","small":"Users"}]}`
 		req := httptest.NewRequest("POST", "/api/v1/patterns/kpi-3up/validate", bytes.NewBufferString(body))
@@ -138,40 +139,28 @@ func TestValidatePattern(t *testing.T) {
 			t.Fatalf("Status = %d, want %d; body: %s", w.Code, http.StatusBadRequest, w.Body.String())
 		}
 
-		var errResp apierrors.Response
-		if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
-			t.Fatalf("Failed to decode error response: %v", err)
+		var env diagnostics.FindingEnvelope
+		if err := json.NewDecoder(w.Body).Decode(&env); err != nil {
+			t.Fatalf("Failed to decode FindingEnvelope: %v", err)
 		}
-		if errResp.Error.Code != apierrors.CodePatternValidationFailed {
-			t.Errorf("Error code = %q, want %q", errResp.Error.Code, apierrors.CodePatternValidationFailed)
+		if env.Subcommand != "validate_pattern" {
+			t.Errorf("subcommand = %q, want %q", env.Subcommand, "validate_pattern")
 		}
-
-		// Verify structured validation_errors in details
-		details := errResp.Error.Details
-		if details == nil {
-			t.Fatal("Expected details to be non-nil")
+		if env.OK {
+			t.Error("Expected ok=false for invalid input")
 		}
-		if details["pattern"] != "kpi-3up" {
-			t.Errorf("details.pattern = %v, want %q", details["pattern"], "kpi-3up")
+		if len(env.Findings) == 0 {
+			t.Fatal("Expected non-empty findings")
 		}
-		veRaw, ok := details["validation_errors"]
-		if !ok {
-			t.Fatal("Expected details.validation_errors to be present")
+		f := env.Findings[0]
+		if f.Code == "" {
+			t.Error("Expected findings[0] to have a code")
 		}
-		veSlice, ok := veRaw.([]any)
-		if !ok || len(veSlice) == 0 {
-			t.Fatalf("Expected validation_errors to be a non-empty array, got %T", veRaw)
+		if f.Message == "" {
+			t.Error("Expected findings[0] to have a message")
 		}
-		// Each entry should have code and message at minimum
-		entry, ok := veSlice[0].(map[string]any)
-		if !ok {
-			t.Fatalf("Expected validation_errors[0] to be an object, got %T", veSlice[0])
-		}
-		if _, hasCode := entry["code"]; !hasCode {
-			t.Error("Expected validation_errors[0] to have 'code' field")
-		}
-		if _, hasMsg := entry["message"]; !hasMsg {
-			t.Error("Expected validation_errors[0] to have 'message' field")
+		if got := f.Evidence["pattern"]; got != "kpi-3up" {
+			t.Errorf("findings[0].evidence.pattern = %v, want %q", got, "kpi-3up")
 		}
 	})
 

@@ -598,8 +598,11 @@ paths:
       summary: Validate pattern data
       description: |
         Validates pattern input values against the pattern's schema without
-        expanding into a shape_grid. Returns `{"ok": true}` on success or
-        an error with code `PATTERN_VALIDATION_FAILED`.
+        expanding into a shape_grid. Returns `{"ok": true}` on success. On
+        failure it returns a `FindingEnvelope` (the shared agent-facing
+        diagnostic contract, `subcommand: "validate_pattern"`) with HTTP 400 —
+        not the simple error envelope. Transport failures (404/415/413) still
+        use the simple `ErrorResponse` shape.
       operationId: validatePattern
       parameters:
         - name: name
@@ -623,18 +626,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/PatternValidateResponse'
         '400':
-          description: Validation failed
+          description: Validation failed (FindingEnvelope)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FindingEnvelope'
               example:
-                success: false
-                error:
-                  code: PATTERN_VALIDATION_FAILED
-                  message: "missing required field: value_propositions"
-                  details:
-                    pattern: bmc
+                schema_version: "1.0"
+                tool: json2pptx
+                subcommand: validate_pattern
+                ok: false
+                summary: "1 error"
+                findings:
+                  - id: input-1
+                    code: INPUT.required
+                    severity: error
+                    category: INPUT
+                    message: "missing required field: value_propositions"
+                    evidence:
+                      pattern: bmc
         '404':
           description: Pattern not found
           content:
@@ -650,7 +660,10 @@ paths:
       description: |
         Validates and expands pattern values into a `shape_grid` object
         ready for inclusion in a slide definition. Uses default slide
-        dimensions (10×7.5 inches) and standard layout bounds.
+        dimensions (10×7.5 inches) and standard layout bounds. A validation
+        failure returns a `FindingEnvelope` (`subcommand: "expand_pattern"`)
+        with HTTP 400; transport failures (404/415/413) and an internal
+        expansion failure (500) use the simple `ErrorResponse` shape.
       operationId: expandPattern
       parameters:
         - name: name
@@ -674,11 +687,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/PatternExpandResponse'
         '400':
-          description: Validation failed
+          description: Validation failed (FindingEnvelope)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FindingEnvelope'
         '404':
           description: Pattern not found
           content:
@@ -1353,7 +1366,6 @@ components:
             - PANIC_RECOVERED
             - INTERNAL_ERROR
             - PATTERN_NOT_FOUND
-            - PATTERN_VALIDATION_FAILED
             - PATTERN_EXPAND_FAILED
             - UNSUPPORTED_FEATURE
         message:
@@ -1365,6 +1377,86 @@ components:
           description: Additional error context
           example:
             field: slides
+
+    FindingEnvelope:
+      type: object
+      description: |
+        The shared agent-facing diagnostic contract emitted by every
+        diagnostic-bearing surface (CLI, MCP, and the HTTP pattern
+        validate/expand endpoints). Documented in docs/AGENT_DIAGNOSTICS.md and
+        validated by docs/api/finding-envelope.schema.json. Distinct from the
+        transport-error ErrorResponse shape.
+      required:
+        - schema_version
+        - tool
+        - subcommand
+        - ok
+        - summary
+        - findings
+      properties:
+        schema_version:
+          type: string
+          description: Wire version of the FindingEnvelope contract
+          example: "1.0"
+        tool:
+          type: string
+          description: Producing tool
+          example: json2pptx
+        subcommand:
+          type: string
+          description: Surface that produced the envelope
+          example: validate_pattern
+        ok:
+          type: boolean
+          description: True when no finding has error severity
+        summary:
+          type: string
+          description: Short human-readable roll-up
+          example: "1 error"
+        findings:
+          type: array
+          description: The list of issues; always present (may be empty)
+          items:
+            $ref: '#/components/schemas/Finding'
+
+    Finding:
+      type: object
+      required:
+        - id
+        - code
+        - severity
+        - category
+        - message
+      properties:
+        id:
+          type: string
+          description: Unique within the envelope
+          example: input-1
+        code:
+          type: string
+          description: Dotted, namespaced code
+          example: INPUT.required
+        severity:
+          type: string
+          enum: [error, warning, info]
+        category:
+          type: string
+          description: Namespace prefix of code
+          enum: [TPL, FIT, GRID, RENDER, POLICY, INPUT]
+        message:
+          type: string
+          description: Human-readable description
+        evidence:
+          type: object
+          additionalProperties: true
+          description: |
+            Machine-readable facts. For pattern validation the originating
+            pattern name is carried here as `evidence.pattern`.
+          example:
+            pattern: bmc
+        remediation:
+          type: object
+          description: Structured repair suggestion, when one exists
 
     PatternListItem:
       type: object

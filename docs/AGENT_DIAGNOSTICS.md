@@ -183,9 +183,23 @@ are namespaced `FIT` for content overflow (`text_overflow`, `text_truncation`) a
 `RENDER` for every other defect, and the first `suggested_fix` becomes the
 finding's remediation.
 
-The remaining ad-hoc shape in HTTP serve mode is still pending, along with
-emitting the envelope natively from the forthcoming `preflight` and
-`examine-template` subcommands.
+HTTP serve mode has migrated its one diagnostic-bearing endpoint: pattern
+validation (`POST /api/v1/patterns/{name}/validate` and `/expand`) now emits a
+`FindingEnvelope` as the response body — stamped with `subcommand:
+"validate_pattern"` or `"expand_pattern"` — replacing the legacy
+`apierrors.Response` with `error.details.validation_errors[]`. The originating
+pattern name rides on every finding's `evidence.pattern` so an agent can
+correlate the failure without a separate top-level field. The HTTP **transport**
+errors — the convert endpoint's request/content validation and JSON parse
+errors, plus every transport status (404 not-found, 415 content-type, 413
+too-large, 504 timeout, 500 internal/expand-failed) — intentionally keep the
+simple `apierrors.Response` shape (`{success, error{code, message, details}}`):
+those paths build ad-hoc typed errors rather than `[]diagnostics.Diagnostic`, so
+migrating them would either split a single endpoint across two shapes or churn
+the whole convert surface for no agent-recovery gain.
+
+The remaining work is emitting the envelope natively from the forthcoming
+`preflight` and `examine-template` subcommands.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to
