@@ -19,11 +19,34 @@ Automated development loop runner.
 
 ### e2e_visual_test.sh
 
-End-to-end visual testing against all templates.
+End-to-end visual testing against all templates (random / stress decks).
 
 ```bash
 TEST_MODE=all ./scripts/e2e_visual_test.sh
 ```
+
+### test_template_visual_qa.sh
+
+Per-template visual QA driver. Renders the fixed reference deck at
+`examples/template-qa-deck.json` (7 mandatory layout roles + 3 representative
+patterns: shape_grid, comparison-2col, journey-maturity-model) against every
+`templates/*.pptx`, converts to JPGs via `cmd/pptx2jpg`, and writes a
+`REPORT.md` skeleton under `output/visual-qa/<template>/` that the
+`slide-visual-qa` skill (Haiku subagent) fills in with per-slide findings.
+
+```bash
+./scripts/test_template_visual_qa.sh                      # all templates
+TEMPLATE=midnight-blue ./scripts/test_template_visual_qa.sh   # one template
+```
+
+Output:
+
+- `output/visual-qa/<template>/REPORT.md` — embedded screenshots + file:line
+  refs into `deck.json`, placeholders for `slide-visual-qa` findings and
+  `analyze_deck_rhythm` composition output, plus a maintainer-review
+  checklist that must be ticked before any template ships.
+- `output/visual-qa/<template>/template-check.json` — JSON conformance
+  output consumed by the subagent's "Template Layout Review" pass.
 
 ### run_tests.sh
 

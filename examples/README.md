@@ -21,6 +21,12 @@ These pattern-rich decks are the best entry points for AI agents building new de
 |------|-------------|----------|
 | `patterns-smoke.json` | Pattern library smoke test: one slide per v1 pattern (kpi-3up, kpi-4up, bmc-canvas, matrix-2x2, timeline-horizontal, card-grid, icon-row, comparison-2col) | midnight-blue |
 
+### Testing & QA decks
+
+| File | Description | Template |
+|------|-------------|----------|
+| `template-qa-deck.json` | Fixed reference deck used by `scripts/test_template_visual_qa.sh`. Exercises every mandatory layout role (title, content, two-column, section, blank, blank+title, closing) plus three representative pattern families (hand-built `shape_grid`, `comparison-2col`, `journey-maturity-model`). Layouts are pinned by canonical name so the same deck renders against every template. | any (override with `-template`) |
+
 ### Placeholder-first examples
 
 | File | Description | Template |

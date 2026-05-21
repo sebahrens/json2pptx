@@ -1,0 +1,125 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "template-qa-deck.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Template Visual QA Deck"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Fixed reference deck — exercises every mandatory layout and three pattern families"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "One Content — body bullets"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "First bullet: a complete sentence that wraps onto a second line so we can see line spacing behaviour",
+          "Second bullet: concise",
+          "Third bullet: <b>bold inline</b>, <i>italic inline</i>, and <u>underline inline</u> for inline-format sanity",
+          "Fourth bullet: contains a long em-dash phrase — used to confirm typography renders without glyph swaps",
+          "Fifth bullet: trailing entry to confirm body fit under a packed title"
+        ]}
+      ]
+    },
+    {
+      "layout_id": "two-column",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Two Content — side-by-side bullet lists"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "Left column item 1",
+          "Left column item 2 with a slightly longer description",
+          "Left column item 3",
+          "Left column item 4"
+        ]},
+        {"placeholder_id": "body_2", "type": "bullets", "bullets_value": [
+          "Right column item 1",
+          "Right column item 2",
+          "Right column item 3 with a slightly longer description",
+          "Right column item 4"
+        ]}
+      ]
+    },
+    {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Section Divider"}
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": []
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Blank + Title — title only, no body"}
+      ]
+    },
+    {
+      "layout_id": "closing",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Thank You"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Questions & Discussion"}
+      ]
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "shape_grid — hand-built three-card row"}
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "gap": 6,
+        "rows": [
+          {
+            "auto_height": true,
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Discover\nUnderstand the current state", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Design\nFrame the target state", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Deliver\nMove the organisation", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "two-column",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Comparison — comparison-2col pattern"}
+      ],
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "header_left": "Today",
+          "header_right": "Target State",
+          "rows": [
+            {"left": "Manual hand-offs between teams", "right": "Automated workflow with status visibility"},
+            {"left": "Quarterly release cadence", "right": "Continuous delivery, weekly increments"},
+            {"left": "Siloed reporting in spreadsheets", "right": "Single source of truth in the platform"},
+            {"left": "Reactive incident response", "right": "Proactive monitoring and SLOs"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Journey — journey-maturity-model pattern (current: Defined)"}
+      ],
+      "pattern": {
+        "name": "journey-maturity-model",
+        "values": {
+          "stages": [
+            {"label": "Initial", "description": "Ad hoc processes; no formal practices in place."},
+            {"label": "Developing", "description": "Repeatable practices; informal governance."},
+            {"label": "Defined", "description": "Standardised practices; documented playbooks.", "current": true},
+            {"label": "Managed", "description": "Quantitatively measured outcomes; continuous review."},
+            {"label": "Optimising", "description": "Continuous improvement embedded across the organisation."}
+          ]
+        }
+      }
+    }
+  ]
+}
