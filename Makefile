@@ -245,6 +245,24 @@ ensure-templates:
 		exit 1; \
 	fi
 
+# Shared recursive skill staging — keeps dist-linux and dist-windows copying
+# the identical skill tree so Windows archives never drift (go-slide-creator-pmsc).
+# Copies every bundle under skills/ recursively, then asserts nested assets
+# survived the copy (guards against a shallow, non-recursive cp regression —
+# see go-slide-creator-8lv5). Usage in a recipe: @$(call stage-skills,<staging-dir>)
+define stage-skills
+	for skill_dir in skills/*/; do \
+		skill_name=$$(basename "$$skill_dir"); \
+		mkdir -p "$(1)/skills/$$skill_name"; \
+		cp -R "$$skill_dir". "$(1)/skills/$$skill_name/"; \
+	done; \
+	if [ ! -f "$(1)/skills/generate-deck/examples/skeletons/README.md" ]; then \
+		echo "ERROR: staged dist is missing nested skill assets (skills/generate-deck/examples/skeletons/)."; \
+		echo "       The skill copy must be recursive (cp -R)."; \
+		exit 1; \
+	fi
+endef
+
 dist-linux: release-check ensure-templates
 	@echo "==> Building Linux distribution: $(DIST_NAME)"
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/json2pptx-linux-amd64 ./cmd/json2pptx/
@@ -253,18 +271,7 @@ dist-linux: release-check ensure-templates
 	mkdir -p $(DIST_STAGING)/bin $(DIST_STAGING)/templates
 	cp bin/json2pptx-linux-amd64 $(DIST_STAGING)/bin/json2pptx
 	cp templates/*.pptx $(DIST_STAGING)/templates/
-	@for skill_dir in skills/*/; do \
-		skill_name=$$(basename "$$skill_dir"); \
-		mkdir -p $(DIST_STAGING)/skills/$$skill_name; \
-		cp -R "$$skill_dir". $(DIST_STAGING)/skills/$$skill_name/; \
-	done
-	@# Assert nested skill assets survived the copy (guards against a shallow,
-	@# non-recursive cp regression — see go-slide-creator-8lv5).
-	@if [ ! -f "$(DIST_STAGING)/skills/generate-deck/examples/skeletons/README.md" ]; then \
-		echo "ERROR: staged dist is missing nested skill assets (skills/generate-deck/examples/skeletons/)."; \
-		echo "       The skill copy must be recursive (cp -R)."; \
-		exit 1; \
-	fi
+	@$(call stage-skills,$(DIST_STAGING))
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
 	@echo "==> Creating archive: $(DIST_ARCHIVE)"
@@ -280,10 +287,7 @@ dist-windows: release-check ensure-templates
 	mkdir -p $(WIN_DIST_STAGING)/bin $(WIN_DIST_STAGING)/templates
 	cp bin/json2pptx-windows-amd64.exe $(WIN_DIST_STAGING)/bin/json2pptx.exe
 	cp templates/*.pptx $(WIN_DIST_STAGING)/templates/
-	@if [ -d .claude/skills/template-deck ]; then \
-		mkdir -p $(WIN_DIST_STAGING)/skills/template-deck; \
-		cp .claude/skills/template-deck/* $(WIN_DIST_STAGING)/skills/template-deck/; \
-	fi
+	@$(call stage-skills,$(WIN_DIST_STAGING))
 	cp scripts/install-dist.ps1 $(WIN_DIST_STAGING)/install.ps1
 	@echo "==> Creating archive: $(WIN_DIST_ARCHIVE)"
 	cd dist && tar czf $(WIN_DIST_NAME).tar.gz $(WIN_DIST_NAME)
