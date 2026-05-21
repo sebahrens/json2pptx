@@ -378,13 +378,13 @@ h2 { color: #666; margin-top: 40px; border-bottom: 2px solid #ddd; padding-botto
 `)
 
 	for _, diag := range diagrams {
-		html.WriteString(fmt.Sprintf("<h2>%s</h2>\n<div class=\"pair\">\n", diag.name))
+		fmt.Fprintf(&html, "<h2>%s</h2>\n<div class=\"pair\">\n", diag.name)
 		for _, size := range sizes {
 			pngName := fmt.Sprintf("%s_%s.png", diag.name, size.name)
-			html.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&html,
 				"<div class=\"card %s\"><h3>%s (%dx%d pt)</h3><img src=\"%s\"></div>\n",
 				size.name, size.name, size.width, size.height, pngName,
-			))
+			)
 		}
 		html.WriteString("</div>\n")
 	}

@@ -294,7 +294,7 @@ func cmdRender(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	// Write output
 	if f.output != "" {
-		if err := os.WriteFile(f.output, outputBytes, 0644); err != nil {
+		if err := os.WriteFile(f.output, outputBytes, 0644); err != nil { //nolint:gosec // G703: f.output is a user-supplied CLI argument; the CLI user legitimately controls the output path
 			fmt.Fprintf(stderr, "svggen render: %v\n", err)
 			return exitIO
 		}
@@ -382,7 +382,7 @@ func cmdValidate(args []string, stdin io.Reader, stderr io.Writer) int {
 				fmt.Fprintf(stderr, "svggen validate: missing value for %s\n", arg)
 				return exitValidation
 			}
-			input = args[i]
+			input = args[i] //nolint:gosec // G602: i is bounds-checked (i >= len(args)) immediately above
 		case "-h", "--help":
 			fmt.Fprintln(stderr, `Usage: svggen validate [flags]
 
@@ -403,7 +403,7 @@ Exit codes: 0=valid, 2=invalid`)
 	var data []byte
 	var err error
 	if input != "" {
-		data, err = os.ReadFile(input)
+		data, err = os.ReadFile(input) //nolint:gosec // G703: input is a user-supplied CLI argument; the CLI user legitimately controls the input path
 		if err != nil {
 			fmt.Fprintf(stderr, "svggen validate: %v\n", err)
 			return exitIO
@@ -461,21 +461,21 @@ func cmdBatch(args []string, stderr io.Writer) int {
 				fmt.Fprintf(stderr, "svggen batch: missing value for %s\n", arg)
 				return exitRender
 			}
-			inputPath = args[i]
+			inputPath = args[i] //nolint:gosec // G602: i is bounds-checked (i >= len(args)) immediately above
 		case "-o", "--output":
 			i++
 			if i >= len(args) {
 				fmt.Fprintf(stderr, "svggen batch: missing value for %s\n", arg)
 				return exitRender
 			}
-			outputPath = args[i]
+			outputPath = args[i] //nolint:gosec // G602: i is bounds-checked (i >= len(args)) immediately above
 		case "--format":
 			i++
 			if i >= len(args) {
 				fmt.Fprintf(stderr, "svggen batch: missing value for --format\n")
 				return exitRender
 			}
-			format = args[i]
+			format = args[i] //nolint:gosec // G602: i is bounds-checked (i >= len(args)) immediately above
 		case "-h", "--help":
 			fmt.Fprintln(stderr, `Usage: svggen batch [flags]
 
@@ -501,12 +501,12 @@ Flags:
 	}
 
 	// Create output directory
-	if err := os.MkdirAll(outputPath, 0755); err != nil {
+	if err := os.MkdirAll(outputPath, 0755); err != nil { //nolint:gosec // G703: outputPath is a user-supplied CLI argument; the CLI user legitimately controls the output directory
 		fmt.Fprintf(stderr, "svggen batch: %v\n", err)
 		return exitIO
 	}
 
-	info, err := os.Stat(inputPath)
+	info, err := os.Stat(inputPath) //nolint:gosec // G703: inputPath is a user-supplied CLI argument; the CLI user legitimately controls the input path
 	if err != nil {
 		fmt.Fprintf(stderr, "svggen batch: %v\n", err)
 		return exitIO
@@ -527,7 +527,7 @@ Flags:
 		}
 	} else if filepath.Ext(inputPath) == ".jsonl" {
 		// JSONL: each line is a separate request
-		data, err := os.ReadFile(inputPath)
+		data, err := os.ReadFile(inputPath) //nolint:gosec // G703: inputPath is a user-supplied CLI argument; the CLI user legitimately controls the input path
 		if err != nil {
 			fmt.Fprintf(stderr, "svggen batch: %v\n", err)
 			return exitIO
@@ -546,7 +546,7 @@ Flags:
 	decoder := svggen.NewDecoder(svggen.DefaultDecodeOptions())
 	errCount := 0
 	for _, file := range files {
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) //nolint:gosec // G703: file is derived from the user-supplied input directory; the CLI user legitimately controls the input path
 		if err != nil {
 			fmt.Fprintf(stderr, "  ERROR %s: %v\n", filepath.Base(file), err)
 			errCount++
@@ -640,5 +640,5 @@ func writeResult(path, format string, result *svggen.RenderResult) error {
 	if data == nil {
 		return fmt.Errorf("no %s output generated", format)
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0644) //nolint:gosec // G703: path is derived from the user-supplied output directory; the CLI user legitimately controls the output path
 }
