@@ -505,3 +505,169 @@ func TestAnalyzeTemplateForSkillInfo_NoColorRolesInListMode(t *testing.T) {
 		t.Error("ColorRoles should be nil in list mode")
 	}
 }
+
+// TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull asserts that full mode
+// surfaces the canonical taxonomy (per-layout type/family/confidence,
+// per-placeholder role/confidence/font_size_pt) plus the template-level
+// coverage matrix, derivable readiness, and semantic palette metadata.
+func TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "full")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	// Template-level identity + semantic palette metadata.
+	if info.SHA256 == "" {
+		t.Error("full mode: sha256 should be populated")
+	}
+	if info.MetadataVersion == "" {
+		t.Error("full mode: metadata_version should be populated for a template with metadata")
+	}
+	if len(info.SemanticAccents) == 0 {
+		t.Error("full mode: semantic_accents should be populated for midnight-blue")
+	}
+	if len(info.SurfaceTints) == 0 {
+		t.Error("full mode: surface_tints should be populated for midnight-blue")
+	}
+	if len(info.DataPalette) == 0 {
+		t.Error("full mode: data_palette should be populated for midnight-blue")
+	}
+
+	// Canonical coverage lists every content-bearing family; bundled templates
+	// cover all four.
+	for _, fam := range []string{"title-slide", "section-divider", "one-content", "qa-closing"} {
+		cov, ok := info.CanonicalCoverage[fam]
+		if !ok {
+			t.Errorf("canonical_coverage missing family %q", fam)
+			continue
+		}
+		if !cov.Present || len(cov.Layouts) == 0 {
+			t.Errorf("canonical_coverage[%q] expected present with layouts, got %+v", fam, cov)
+		}
+	}
+
+	// Derivable layouts include the synthesised two-content path.
+	if len(info.DerivableLayouts) == 0 {
+		t.Fatal("full mode: derivable_layouts should be populated")
+	}
+	var sawTwoContent bool
+	for _, d := range info.DerivableLayouts {
+		if d.Name == "two-content" {
+			sawTwoContent = true
+		}
+	}
+	if !sawTwoContent {
+		t.Error("derivable_layouts should include two-content")
+	}
+
+	// Per-layout canonical classification + per-placeholder role/font evidence.
+	var sawCanonicalType, sawRole, sawFontPt bool
+	for _, l := range info.Layouts {
+		if l.CanonicalType != "" {
+			sawCanonicalType = true
+			if l.CanonicalFamily == "" {
+				t.Errorf("layout %q has canonical_type %q but empty canonical_family", l.ID, l.CanonicalType)
+			}
+		}
+		for _, ph := range l.Placeholders {
+			if ph.Role != "" {
+				sawRole = true
+			}
+			if ph.FontSizePt > 0 {
+				sawFontPt = true
+			}
+		}
+	}
+	if !sawCanonicalType {
+		t.Error("no layout exposed canonical_type in full mode")
+	}
+	if !sawRole {
+		t.Error("no placeholder exposed role in full mode")
+	}
+	if !sawFontPt {
+		t.Error("no placeholder exposed font_size_pt in full mode")
+	}
+}
+
+// TestAnalyzeTemplateForSkillInfo_CompactSurvivesProjection asserts that the
+// compact projection keeps the stable IDs and layout summaries generate-deck
+// relies on (canonical_layout_ids, layout_summaries with canonical_type and
+// placeholder role) plus the template-level coverage/semantic metadata, while
+// the heavy full layouts array stays out of compact.
+func TestAnalyzeTemplateForSkillInfo_CompactSurvivesProjection(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	if len(info.CanonicalLayoutIDs) == 0 {
+		t.Error("compact: canonical_layout_ids should survive projection")
+	}
+	if len(info.LayoutSummaries) == 0 {
+		t.Fatal("compact: layout_summaries should survive projection")
+	}
+	if len(info.CanonicalCoverage) == 0 {
+		t.Error("compact: canonical_coverage should survive projection")
+	}
+	if len(info.SemanticAccents) == 0 {
+		t.Error("compact: semantic_accents should survive projection")
+	}
+
+	var sawSummaryCanonical, sawSummaryRole bool
+	for _, s := range info.LayoutSummaries {
+		if s.CanonicalType != "" {
+			sawSummaryCanonical = true
+		}
+		for _, ph := range s.Placeholders {
+			if ph.Role != "" {
+				sawSummaryRole = true
+			}
+		}
+	}
+	if !sawSummaryCanonical {
+		t.Error("compact: layout summaries should carry canonical_type")
+	}
+	if !sawSummaryRole {
+		t.Error("compact: compact placeholders should carry role")
+	}
+
+	// The full layouts array (placeholder geometry) belongs to full mode only.
+	if len(info.Layouts) != 0 {
+		t.Errorf("compact: full layouts array should be omitted, got %d", len(info.Layouts))
+	}
+
+	// Stable, slimmer compact placeholders must not carry the full geometry
+	// shape (those fields are full-mode only).
+	b, _ := json.Marshal(info.LayoutSummaries)
+	for _, banned := range []string{"x_emu", "font_size_hundredths", "role_confidence", "canonical_confidence"} {
+		if containsSubstring(string(b), banned) {
+			t.Errorf("compact summaries JSON contains %q, which should only appear in full mode", banned)
+		}
+	}
+}
+
+// TestAnalyzeTemplateForSkillInfo_NoCanonicalMetadataInListMode confirms the
+// slim list projection (MCP fields=compact) omits the canonical/semantic
+// metadata entirely.
+func TestAnalyzeTemplateForSkillInfo_NoCanonicalMetadataInListMode(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")
+	if err != nil {
+		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
+	}
+
+	if info.CanonicalCoverage != nil {
+		t.Error("list mode: canonical_coverage should be omitted")
+	}
+	if info.DerivableLayouts != nil {
+		t.Error("list mode: derivable_layouts should be omitted")
+	}
+	if info.SemanticAccents != nil {
+		t.Error("list mode: semantic_accents should be omitted")
+	}
+	if info.SHA256 != "" {
+		t.Error("list mode: sha256 should be omitted (compact+full only)")
+	}
+}

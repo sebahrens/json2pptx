@@ -30,16 +30,16 @@ import (
 // list_templates MCP handler when iterating across template entries. The CLI
 // emits all templates at once, so those fields stay zero/empty there.
 type skillInfo struct {
-	Tool             skillToolInfo          `json:"tool"`
-	Templates        []skillTemplateInfo    `json:"templates"`
-	SupportedTypes   skillSupportedTypes    `json:"supported_types"`
-	PatternsCompact  []skillPatternCompact  `json:"patterns_compact,omitempty"`
-	PatternsFull     []skillPatternFull     `json:"patterns_full,omitempty"`
-	Compose          *skillComposeEntry     `json:"compose,omitempty"`
-	InputFormats     []string               `json:"input_formats"`
-	OutputFormats    []string               `json:"output_formats"`
-	IconPolicy       *skillIconPolicy       `json:"icon_policy,omitempty"`
-	Deprecations     []skillDeprecation     `json:"deprecations,omitempty"`
+	Tool            skillToolInfo         `json:"tool"`
+	Templates       []skillTemplateInfo   `json:"templates"`
+	SupportedTypes  skillSupportedTypes   `json:"supported_types"`
+	PatternsCompact []skillPatternCompact `json:"patterns_compact,omitempty"`
+	PatternsFull    []skillPatternFull    `json:"patterns_full,omitempty"`
+	Compose         *skillComposeEntry    `json:"compose,omitempty"`
+	InputFormats    []string              `json:"input_formats"`
+	OutputFormats   []string              `json:"output_formats"`
+	IconPolicy      *skillIconPolicy      `json:"icon_policy,omitempty"`
+	Deprecations    []skillDeprecation    `json:"deprecations,omitempty"`
 	// TotalCount is the total number of templates discovered, irrespective
 	// of the current page slice. Omitted when zero (CLI / non-paginated use).
 	TotalCount int `json:"total_count,omitempty"`
@@ -61,13 +61,13 @@ type skillInfo struct {
 // concrete examples so an agent can author a ComposeInput without reading the
 // raw input schema or the recommend_visual schema first.
 type skillComposeEntry struct {
-	Description     string             `json:"description"`
-	Directions      []string           `json:"directions"`
-	MaxSegments     int                `json:"max_segments"`
-	MaxNestingDepth int                `json:"max_nesting_depth"`
-	MaxLeafPatterns int                `json:"max_leaf_patterns"`
-	SmartCompose   bool               `json:"smart_compose"`
-	NestedCompose  bool               `json:"nested_compose"`
+	Description     string   `json:"description"`
+	Directions      []string `json:"directions"`
+	MaxSegments     int      `json:"max_segments"`
+	MaxNestingDepth int      `json:"max_nesting_depth"`
+	MaxLeafPatterns int      `json:"max_leaf_patterns"`
+	SmartCompose    bool     `json:"smart_compose"`
+	NestedCompose   bool     `json:"nested_compose"`
 	// SupportsBanner advertises that ComposeInput.banner is honored: an
 	// envelope-level decoration band rendered above the merged grid that does
 	// not consume a segment slot.
@@ -135,20 +135,20 @@ type skillPatternCompact struct {
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.
 type skillPatternFull struct {
-	Name                    string                        `json:"name"`
-	Description             string                        `json:"description"`
-	Cells                   string                        `json:"cells"`
-	UseWhen                 string                        `json:"use_when"`
-	NotWhen                 string                        `json:"not_when"`
-	SupportsCallout         bool                          `json:"supports_callout"`
-	Version                 int                           `json:"version"`
-	Schema                  json.RawMessage               `json:"schema"`
-	CalloutSchema           json.RawMessage               `json:"callout_schema,omitempty"`
-	TextBudgetGuide         *textcapacity.TextBudgetGuide `json:"text_budget_guide,omitempty"`
-	ExampleValues           any                           `json:"example_values,omitempty"`
-	RenderingCapabilities   *renderingCapabilities        `json:"rendering_capabilities,omitempty"`
-	ComposesWith            []string                      `json:"composes_with,omitempty"`
-	RoleOnSlide             []string                      `json:"role_on_slide,omitempty"`
+	Name                  string                        `json:"name"`
+	Description           string                        `json:"description"`
+	Cells                 string                        `json:"cells"`
+	UseWhen               string                        `json:"use_when"`
+	NotWhen               string                        `json:"not_when"`
+	SupportsCallout       bool                          `json:"supports_callout"`
+	Version               int                           `json:"version"`
+	Schema                json.RawMessage               `json:"schema"`
+	CalloutSchema         json.RawMessage               `json:"callout_schema,omitempty"`
+	TextBudgetGuide       *textcapacity.TextBudgetGuide `json:"text_budget_guide,omitempty"`
+	ExampleValues         any                           `json:"example_values,omitempty"`
+	RenderingCapabilities *renderingCapabilities        `json:"rendering_capabilities,omitempty"`
+	ComposesWith          []string                      `json:"composes_with,omitempty"`
+	RoleOnSlide           []string                      `json:"role_on_slide,omitempty"`
 }
 
 // renderingCapabilities describes how a pattern renders icons and other visual elements.
@@ -172,72 +172,137 @@ type skillTableStyle struct {
 
 // skillTemplateInfo describes a single available template.
 type skillTemplateInfo struct {
-	Name         string                   `json:"name"`
-	AspectRatio  string                   `json:"aspect_ratio,omitempty"`
-	LayoutCount  int                      `json:"layout_count,omitempty"`
-	Error        string                   `json:"error,omitempty"`
-	ThemeColors  map[string]string        `json:"theme_colors,omitempty"`
-	ColorRoles   *skillColorRoles         `json:"color_roles,omitempty"`
-	TitleFont    string                   `json:"title_font,omitempty"`
-	BodyFont     string                   `json:"body_font,omitempty"`
-	AccentUsageGuide    map[string]string        `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
-	CanonicalLayoutIDs  map[string]string        `json:"canonical_layout_ids,omitempty"` // canonical name → concrete layout ID
-	LayoutNames         []string                 `json:"layout_names,omitempty"`
-	LayoutSummaries     []skillLayoutSummary     `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
-	TableStyles      []skillTableStyle        `json:"table_styles"`
-	Layouts          []skillLayoutInfo        `json:"layouts,omitempty"` // only in full mode
+	Name        string `json:"name"`
+	AspectRatio string `json:"aspect_ratio,omitempty"`
+	LayoutCount int    `json:"layout_count,omitempty"`
+	Error       string `json:"error,omitempty"`
+	// SHA256 is the content hash of the template file (template.Reader.Hash()).
+	// Agents use it as a stable identity / cache key to detect when a template
+	// has changed under a stable name. Present in compact+full.
+	SHA256 string `json:"sha256,omitempty"`
+	// MetadataVersion is the embedded template metadata schema version (e.g.
+	// "1.0"). Omitted when the template carries no metadata block.
+	MetadataVersion  string            `json:"metadata_version,omitempty"`
+	ThemeColors      map[string]string `json:"theme_colors,omitempty"`
+	ColorRoles       *skillColorRoles  `json:"color_roles,omitempty"`
+	TitleFont        string            `json:"title_font,omitempty"`
+	BodyFont         string            `json:"body_font,omitempty"`
+	AccentUsageGuide map[string]string `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
+	// SemanticAccents maps semantic roles (positive/negative/neutral) to theme
+	// accent names. Mirrors TemplateMetadata.SemanticAccents; omitted when unset.
+	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
+	// SurfaceTints maps surface roles (subtle/paper/elevated/inverse) to theme
+	// color names for tinted backgrounds. Mirrors TemplateMetadata.SurfaceTints.
+	SurfaceTints map[string]string `json:"surface_tints,omitempty"`
+	// DataPalette is the ordered list of scheme color names for chart series.
+	// Mirrors TemplateMetadata.DataPalette; omitted when unset.
+	DataPalette []string `json:"data_palette,omitempty"`
+	// LayoutHints carries per-layout authoring hints from template metadata
+	// (preferred_for, max_bullets, max_chars, deprecated). Omitted when unset.
+	LayoutHints        map[string]types.LayoutHint `json:"layout_hints,omitempty"`
+	CanonicalLayoutIDs map[string]string           `json:"canonical_layout_ids,omitempty"` // canonical name → concrete layout ID
+	// CanonicalCoverage reports, per content-bearing canonical family
+	// (title-slide, section-divider, one-content, qa-closing), whether the
+	// template provides a layout and which layouts cover it. Present in
+	// compact+full so agents can vet a template before authoring against it.
+	CanonicalCoverage map[string]skillCanonicalCoverage `json:"canonical_coverage,omitempty"`
+	// DerivableLayouts reports which higher-level layouts the engine can produce
+	// from the template's base layouts (two-content, full-image, grid patterns),
+	// and what is missing when it cannot. Present in compact+full.
+	DerivableLayouts []skillDerivableLayout `json:"derivable_layouts,omitempty"`
+	LayoutNames      []string               `json:"layout_names,omitempty"`
+	LayoutSummaries  []skillLayoutSummary   `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
+	TableStyles      []skillTableStyle      `json:"table_styles"`
+	Layouts          []skillLayoutInfo      `json:"layouts,omitempty"` // only in full mode
+}
+
+// skillCanonicalCoverage reports whether a canonical layout family is present in
+// a template and names the layouts that cover it.
+type skillCanonicalCoverage struct {
+	Family  string   `json:"family"`
+	Present bool     `json:"present"`
+	Layouts []string `json:"layouts,omitempty"`
+}
+
+// skillDerivableLayout reports whether a higher-level layout can be derived from
+// a template's base layouts, and what is missing when it cannot.
+type skillDerivableLayout struct {
+	Name    string   `json:"name"`
+	Ready   bool     `json:"ready"`
+	Missing []string `json:"missing,omitempty"`
 }
 
 // skillColorRoles maps design intent to scheme color names for a template.
 // Agents use this to pick safe color pairings without manual WCAG checks.
 type skillColorRoles struct {
-	PrimaryFill   string   `json:"primary_fill"`        // dark accent for headers (white text safe)
-	SecondaryFill string   `json:"secondary_fill"`      // second accent for headers (white text safe)
-	BodyFill      string   `json:"body_fill"`           // light fill for body/card cells
-	BodyText      string   `json:"body_text"`           // dark text on light backgrounds
-	WhiteTextSafe []string `json:"white_text_safe"`     // all accents passing WCAG AA (≥3.0) against white
+	PrimaryFill   string   `json:"primary_fill"`    // dark accent for headers (white text safe)
+	SecondaryFill string   `json:"secondary_fill"`  // second accent for headers (white text safe)
+	BodyFill      string   `json:"body_fill"`       // light fill for body/card cells
+	BodyText      string   `json:"body_text"`       // dark text on light backgrounds
+	WhiteTextSafe []string `json:"white_text_safe"` // all accents passing WCAG AA (≥3.0) against white
 }
 
 // skillLayoutSummary is a lightweight layout entry included in compact mode
 // so agents can address layouts by ID and gauge placeholder capacity without
 // escalating to full mode.
 type skillLayoutSummary struct {
-	ID             string                    `json:"id"`
-	Name           string                    `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// CanonicalType is the layout's canonical role (e.g. "Title Slide",
+	// "One Content", "Section Divider"). Lets agents pick a layout by intent
+	// without escalating to full mode. Omitted when unclassified.
+	CanonicalType  string                    `json:"canonical_type,omitempty"`
 	Placeholders   []skillPlaceholderCompact `json:"placeholders,omitempty"`
 	PreviewPNGPath string                    `json:"preview_png_path,omitempty"`
 }
 
 // skillPlaceholderCompact is the minimal placeholder info surfaced in compact
-// mode — just enough for agents to size content.
+// mode — just enough for agents to size content and place it by role.
 type skillPlaceholderCompact struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
+	ID   string `json:"id"`
+	Type string `json:"type"`
+	// Role is the canonical, intent-level placeholder role (title, eyebrow,
+	// section_number, body, image, chart, …) — refines Type for role-aware
+	// placement. Omitted when unclassified.
+	Role     string `json:"role,omitempty"`
 	MaxChars int    `json:"max_chars"`
 }
 
 // skillLayoutInfo describes a single layout (only included in full mode).
 type skillLayoutInfo struct {
-	Name           string                   `json:"name"`
-	ID             string                   `json:"id"`
-	Tags           []string                 `json:"tags"`
-	Placeholders   []skillPlaceholderInfo   `json:"placeholders"`
-	Capacity       skillCapacity            `json:"capacity"`
-	PreviewPNGPath string                   `json:"preview_png_path,omitempty"`
+	Name string   `json:"name"`
+	ID   string   `json:"id"`
+	Tags []string `json:"tags"`
+	// CanonicalType / CanonicalFamily / CanonicalConfidence are the layout's
+	// canonical classification (the same taxonomy examine_template reports).
+	// Empty CanonicalType means the layout maps to no canonical role.
+	CanonicalType       string                 `json:"canonical_type,omitempty"`
+	CanonicalFamily     string                 `json:"canonical_family,omitempty"`
+	CanonicalConfidence float64                `json:"canonical_confidence,omitempty"`
+	Placeholders        []skillPlaceholderInfo `json:"placeholders"`
+	Capacity            skillCapacity          `json:"capacity"`
+	PreviewPNGPath      string                 `json:"preview_png_path,omitempty"`
 }
 
 // skillPlaceholderInfo describes a placeholder within a layout.
 type skillPlaceholderInfo struct {
-	ID         string `json:"id"`
-	Type       string `json:"type"`
-	MaxChars   int    `json:"max_chars"`
-	X          int64  `json:"x_emu"`
-	Y          int64  `json:"y_emu"`
-	Width      int64  `json:"width_emu"`
-	Height     int64  `json:"height_emu"`
-	FontFamily string `json:"font_family,omitempty"`
-	FontSize   int    `json:"font_size_hundredths,omitempty"`
-	FontColor  string `json:"font_color,omitempty"`
+	ID   string `json:"id"`
+	Type string `json:"type"`
+	// Role / RoleConfidence are the canonical, intent-level placeholder role and
+	// the classifier's 0.0–1.0 confidence in it.
+	Role           string  `json:"role,omitempty"`
+	RoleConfidence float64 `json:"role_confidence,omitempty"`
+	MaxChars       int     `json:"max_chars"`
+	X              int64   `json:"x_emu"`
+	Y              int64   `json:"y_emu"`
+	Width          int64   `json:"width_emu"`
+	Height         int64   `json:"height_emu"`
+	FontFamily     string  `json:"font_family,omitempty"`
+	FontSize       int     `json:"font_size_hundredths,omitempty"`
+	// FontSizePt is FontSize expressed in points (the font-size evidence behind
+	// the font-aware MaxChars estimate). Omitted when unknown.
+	FontSizePt float64 `json:"font_size_pt,omitempty"`
+	FontColor  string  `json:"font_color,omitempty"`
 }
 
 // skillCapacity summarizes a layout's content capacity.
@@ -250,15 +315,15 @@ type skillCapacity struct {
 
 // skillSupportedTypes lists all supported slide, chart, diagram, and grid types.
 type skillSupportedTypes struct {
-	SlideTypes            []string                      `json:"slide_types"`
-	ChartTypes            []string                      `json:"chart_types"`
-	DiagramTypes          []string                      `json:"diagram_types"`
-	ChartCapabilities   []svggen.ChartCapability   `json:"chart_capabilities"`
-	DiagramCapabilities []svggen.DiagramCapability `json:"diagram_capabilities"`
-	GridCellTypes       []string                  `json:"grid_cell_types"`
-	ShapeGeometries       []string                      `json:"shape_geometries"`
-	DataFormatHints       map[string]skillDataFormat    `json:"data_format_hints,omitempty"`
-	DataFormatHintsDigest string                        `json:"data_format_hints_digest,omitempty"`
+	SlideTypes            []string                   `json:"slide_types"`
+	ChartTypes            []string                   `json:"chart_types"`
+	DiagramTypes          []string                   `json:"diagram_types"`
+	ChartCapabilities     []svggen.ChartCapability   `json:"chart_capabilities"`
+	DiagramCapabilities   []svggen.DiagramCapability `json:"diagram_capabilities"`
+	GridCellTypes         []string                   `json:"grid_cell_types"`
+	ShapeGeometries       []string                   `json:"shape_geometries"`
+	DataFormatHints       map[string]skillDataFormat `json:"data_format_hints,omitempty"`
+	DataFormatHintsDigest string                     `json:"data_format_hints_digest,omitempty"`
 }
 
 // skillDataFormat describes the expected data structure for a chart or diagram type.
@@ -427,10 +492,35 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	info.BodyFont = analysis.Theme.BodyFont
 	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 
-	// Surface accent_usage_guide from template metadata when present.
-	if analysis.Metadata != nil && len(analysis.Metadata.AccentUsageGuide) > 0 {
-		info.AccentUsageGuide = analysis.Metadata.AccentUsageGuide
+	// Stable content identity for change detection / cache keys.
+	info.SHA256 = analysis.Hash
+
+	// Surface semantic palette metadata + per-layout hints from the embedded
+	// template metadata when present (all omitempty, so metadata-less templates
+	// stay slim).
+	if md := analysis.Metadata; md != nil {
+		info.MetadataVersion = md.Version
+		if len(md.AccentUsageGuide) > 0 {
+			info.AccentUsageGuide = md.AccentUsageGuide
+		}
+		if len(md.SemanticAccents) > 0 {
+			info.SemanticAccents = md.SemanticAccents
+		}
+		if len(md.SurfaceTints) > 0 {
+			info.SurfaceTints = md.SurfaceTints
+		}
+		if len(md.DataPalette) > 0 {
+			info.DataPalette = md.DataPalette
+		}
+		if len(md.LayoutHints) > 0 {
+			info.LayoutHints = md.LayoutHints
+		}
 	}
+
+	// Canonical family coverage + derivable-layout readiness let agents vet a
+	// template's planning surface without escalating to examine_template.
+	info.CanonicalCoverage = buildSkillCanonicalCoverage(analysis.Layouts)
+	info.DerivableLayouts = buildSkillDerivableLayouts(analysis.Layouts)
 
 	// Generate layout preview PNGs (best-effort, non-blocking)
 	previews, _ := layoutpreview.Generate(templatePath, analysis, nil)
@@ -439,9 +529,13 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 	layoutSummaries := make([]skillLayoutSummary, len(analysis.Layouts))
 	for i, l := range analysis.Layouts {
 		layoutNames[i] = l.Name
-		summary := skillLayoutSummary{ID: l.ID, Name: l.Name}
+		summary := skillLayoutSummary{
+			ID:            l.ID,
+			Name:          l.Name,
+			CanonicalType: string(template.EffectiveCanonicalType(&analysis.Layouts[i])),
+		}
 
-		// Compact placeholder entries (id + type + max_chars only)
+		// Compact placeholder entries (id + type + role + max_chars only)
 		phs := make([]skillPlaceholderCompact, 0, len(l.Placeholders))
 		for _, ph := range l.Placeholders {
 			if ph.Type == types.PlaceholderOther {
@@ -450,6 +544,7 @@ func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache,
 			phs = append(phs, skillPlaceholderCompact{
 				ID:       ph.ID,
 				Type:     string(ph.Type),
+				Role:     string(ph.Role),
 				MaxChars: ph.MaxChars,
 			})
 		}
@@ -486,16 +581,19 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 				continue
 			}
 			pi := skillPlaceholderInfo{
-				ID:         ph.ID,
-				Type:       string(ph.Type),
-				MaxChars:   ph.MaxChars,
-				X:          ph.Bounds.X,
-				Y:          ph.Bounds.Y,
-				Width:      ph.Bounds.Width,
-				Height:     ph.Bounds.Height,
-				FontFamily: ph.FontFamily,
-				FontSize:   ph.FontSize,
-				FontColor:  ph.FontColor,
+				ID:             ph.ID,
+				Type:           string(ph.Type),
+				Role:           string(ph.Role),
+				RoleConfidence: ph.RoleConfidence,
+				MaxChars:       ph.MaxChars,
+				X:              ph.Bounds.X,
+				Y:              ph.Bounds.Y,
+				Width:          ph.Bounds.Width,
+				Height:         ph.Bounds.Height,
+				FontFamily:     ph.FontFamily,
+				FontSize:       ph.FontSize,
+				FontSizePt:     fontHundredthsToPt(ph.FontSize),
+				FontColor:      ph.FontColor,
 			}
 			phs = append(phs, pi)
 			if strings.EqualFold(ph.ID, "Section Number") {
@@ -512,11 +610,15 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 		if tags == nil {
 			tags = []string{}
 		}
+		ct := template.EffectiveCanonicalType(&layouts[i])
 		li := skillLayoutInfo{
-			Name: l.Name,
-			ID:   l.ID,
-			Tags: tags,
-			Placeholders: phs,
+			Name:                l.Name,
+			ID:                  l.ID,
+			Tags:                tags,
+			CanonicalType:       string(ct),
+			CanonicalFamily:     string(ct.Family()),
+			CanonicalConfidence: l.CanonicalConfidence,
+			Placeholders:        phs,
 			Capacity: skillCapacity{
 				MaxBullets:   l.Capacity.MaxBullets,
 				MaxTextLines: l.Capacity.MaxTextLines,
@@ -585,6 +687,54 @@ func findColorHex(colors []types.ThemeColor, name string) string {
 		}
 	}
 	return ""
+}
+
+// contentCanonicalFamilies enumerates the four content-bearing canonical layout
+// families every template is expected to provide. Utility families (Blank,
+// Blank+Title) are intentionally excluded — they are not planning targets.
+var contentCanonicalFamilies = []types.CanonicalLayoutFamily{
+	types.LayoutFamilyTitleSlide,
+	types.LayoutFamilySectionDivider,
+	types.LayoutFamilyOneContent,
+	types.LayoutFamilyQAClosing,
+}
+
+// buildSkillCanonicalCoverage reports, for each content-bearing canonical family,
+// whether the template provides a covering layout and which layouts cover it.
+// Absent families are still listed with present=false so agents see the full
+// coverage matrix (mirrors examine_template's canonical_coverage).
+func buildSkillCanonicalCoverage(layouts []types.LayoutMetadata) map[string]skillCanonicalCoverage {
+	byFamily := template.CanonicalFamilyCoverage(layouts)
+	out := make(map[string]skillCanonicalCoverage, len(contentCanonicalFamilies))
+	for _, fam := range contentCanonicalFamilies {
+		names := byFamily[fam]
+		out[string(fam)] = skillCanonicalCoverage{
+			Family:  string(fam),
+			Present: len(names) > 0,
+			Layouts: names,
+		}
+	}
+	return out
+}
+
+// buildSkillDerivableLayouts projects template.DerivableLayouts into the
+// skill-info wire shape.
+func buildSkillDerivableLayouts(layouts []types.LayoutMetadata) []skillDerivableLayout {
+	dls := template.DerivableLayouts(layouts)
+	out := make([]skillDerivableLayout, len(dls))
+	for i, d := range dls {
+		out[i] = skillDerivableLayout{Name: d.Name, Ready: d.Ready, Missing: d.Missing}
+	}
+	return out
+}
+
+// fontHundredthsToPt converts a font size in hundredths of a point (the OOXML /
+// PlaceholderInfo.FontSize unit) to points. Returns 0 when unknown.
+func fontHundredthsToPt(hundredths int) float64 {
+	if hundredths <= 0 {
+		return 0
+	}
+	return float64(hundredths) / 100.0
 }
 
 // readyDiagramTypeNames returns the names of diagram types with Status "ready".

@@ -342,6 +342,61 @@ func TestListTemplates_Filter(t *testing.T) {
 	}
 }
 
+// TestListTemplates_FieldsFullCanonicalMetadata verifies that fields=full
+// carries the canonical taxonomy and semantic palette metadata end-to-end
+// through the MCP handler (not just analyzeTemplateForSkillInfo).
+func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	res, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"fields":    "full",
+		"filter":    "midnight",
+		"page_size": float64(50),
+	}))
+	if err != nil || res.IsError {
+		t.Fatalf("unexpected failure: err=%v result=%+v", err, res)
+	}
+	text := res.Content[0].(mcp.TextContent).Text
+	var resp skillInfo
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(resp.Templates) == 0 {
+		t.Fatal("expected midnight-blue template in response")
+	}
+	tmpl := resp.Templates[0]
+
+	if tmpl.SHA256 == "" {
+		t.Error("fields=full: sha256 missing")
+	}
+	if len(tmpl.SemanticAccents) == 0 {
+		t.Error("fields=full: semantic_accents missing")
+	}
+	if len(tmpl.CanonicalCoverage) == 0 {
+		t.Error("fields=full: canonical_coverage missing")
+	}
+	if len(tmpl.DerivableLayouts) == 0 {
+		t.Error("fields=full: derivable_layouts missing")
+	}
+	if len(tmpl.Layouts) == 0 {
+		t.Fatal("fields=full: layouts array missing")
+	}
+
+	// Raw wire check: the canonical/role fields must reach the JSON.
+	for _, expected := range []string{
+		`"canonical_type"`, `"canonical_family"`, `"role"`,
+		`"role_confidence"`, `"font_size_pt"`, `"canonical_coverage"`,
+		`"derivable_layouts"`,
+	} {
+		if !strings.Contains(text, expected) {
+			t.Errorf("fields=full response missing %s on the wire", expected)
+		}
+	}
+}
+
 // TestListIcons_FieldsCompact verifies fields=compact drops the redundant
 // per-set `icons[]` qualified-name array while keeping `names[]`.
 func TestListIcons_FieldsCompact(t *testing.T) {

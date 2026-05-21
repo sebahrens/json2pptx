@@ -505,6 +505,21 @@ Each template exposes `color_roles` in `list_templates` (MCP) / `json2pptx skill
 
 **Template-authored accent guidance (`accent_usage_guide`).** Some templates include an `accent_usage_guide` map in their `list_templates` output. When present, it maps accent color names (e.g. `"accent1"`, `"accent3"`) to prose descriptions of each accent's intended role within that template's visual language. When `accent_usage_guide` is present, defer to the template's role descriptions over generic assumptions — do not assume any accent has a fixed semantic role (positive, negative, neutral, subtle, etc.) unless the guide says so. When absent, fall back to the existing `color_roles` `primary_fill`/`secondary_fill`/`body_fill` semantics above.
 
+**Semantic palette metadata.** `list_templates` (MCP, `fields=full`) / `json2pptx skill-info` also surface the template's authored palette intent (omitted when the template ships no metadata block):
+
+- `semantic_accents` — maps `positive` / `negative` / `neutral` to accent names; use these when a pattern field expects a `semantic_accent` so reds/greens follow the template's own conventions.
+- `surface_tints` — maps `subtle` / `paper` / `elevated` / `inverse` surface roles to scheme color names for tinted card/panel backgrounds.
+- `data_palette` — ordered scheme color names for chart series (matches what svggen uses), so multi-series charts stay on-brand.
+- `metadata_version` and `sha256` — the metadata schema version and a stable content hash of the template file; use `sha256` as a cache key to detect when a template changed under a stable name.
+
+**Canonical layout taxonomy.** Discovery output (compact and full) carries the same canonical taxonomy that `examine_template` reports, so you can plan against stable roles instead of raw layout names:
+
+- `canonical_layout_ids` — canonical layout name → concrete layout ID (address layouts by intent).
+- Each `layout_summaries[]` entry carries `canonical_type` (e.g. `"Title Slide"`, `"One Content"`, `"Section Divider"`) and per-placeholder `role` (`title`, `eyebrow`, `section_number`, `body`, `image`, `chart`, …) alongside `max_chars`.
+- `canonical_coverage` — per content-bearing family (`title-slide`, `section-divider`, `one-content`, `qa-closing`): `{present, layouts[]}`. A family with `present: false` means decks needing that slide kind cannot resolve a native layout.
+- `derivable_layouts` — `[{name, ready, missing[]}]` for higher-level layouts the engine can synthesise (e.g. `two-content`, `full-image`, grid patterns). When `ready: false`, `missing` names the absent prerequisite.
+- Full mode (`fields=full`) adds, per layout, `canonical_type` / `canonical_family` / `canonical_confidence`, and per placeholder `role` / `role_confidence` / `font_size_pt` (the font-size evidence behind the font-aware `max_chars`).
+
 ---
 
 ## Deck-Level Defaults
