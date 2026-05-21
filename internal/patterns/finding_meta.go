@@ -870,4 +870,62 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or reduce data/series count so the chart fits.",
 		},
 	},
+
+	// ---- Template-validation codes (emitted by validate-template; TPL.* namespace) ----
+
+	"TEMPLATE_METADATA_PARSE": {
+		Code:        "TEMPLATE_METADATA_PARSE",
+		Summary:     "The template's embedded metadata file could not be read or parsed.",
+		Severity:    "review",
+		WhenEmitted: "validate-template reads ppt/go-slide-creator-metadata.json and finds it missing, unreadable, or not valid JSON. The template still works using inferred defaults.",
+		RemediationSteps: []string{
+			"Regenerate the template's metadata with mktemplate, or fix the malformed JSON in ppt/go-slide-creator-metadata.json.",
+			"If the template was hand-authored without metadata, ignore this warning — layout capabilities are inferred from the slide layouts.",
+		},
+		RelatedCodes: []string{"TEMPLATE_METADATA_VERSION"},
+	},
+	"TEMPLATE_METADATA_VERSION": {
+		Code:        "TEMPLATE_METADATA_VERSION",
+		Summary:     "The template metadata declares a version outside the supported range.",
+		Severity:    "review",
+		WhenEmitted: "validate-template parses the metadata version and finds it below the minimum or above the maximum supported by this build.",
+		RemediationSteps: []string{
+			"Re-export the template with a compatible tool version, or edit the \"version\" field in the metadata to a supported value.",
+			"Upgrade json2pptx if the template was produced by a newer release.",
+		},
+		RelatedCodes: []string{"TEMPLATE_METADATA_PARSE"},
+	},
+	"TEMPLATE_ASPECT_RATIO_INVALID": {
+		Code:        "TEMPLATE_ASPECT_RATIO_INVALID",
+		Summary:     "The metadata aspect_ratio is not in WIDTH:HEIGHT form.",
+		Severity:    "review",
+		WhenEmitted: "validate-template finds an aspect_ratio that does not match a numeric WIDTH:HEIGHT pattern (e.g. \"16:9\"). The default 16:9 is used instead.",
+		RemediationSteps: []string{
+			"Set aspect_ratio to a numeric ratio like \"16:9\" or \"4:3\" in the template metadata.",
+		},
+		ExampleBefore: `{"aspect_ratio":"16x9"}`,
+		ExampleAfter:  `{"aspect_ratio":"16:9"}`,
+	},
+	"TEMPLATE_LAYOUT_HINT_INVALID": {
+		Code:        "TEMPLATE_LAYOUT_HINT_INVALID",
+		Summary:     "A layout hint in the metadata is malformed (empty key or a negative budget).",
+		Severity:    "review",
+		WhenEmitted: "validate-template finds a layout_hints entry with an empty key, a negative max_bullets, or a negative max_chars. The malformed hint is ignored.",
+		RemediationSteps: []string{
+			"Give every layout_hints entry a non-empty layout key.",
+			"Set max_bullets and max_chars to non-negative integers (0 means \"no hint\").",
+		},
+		ExampleBefore: `{"layout_hints":{"content":{"max_bullets":-1}}}`,
+		ExampleAfter:  `{"layout_hints":{"content":{"max_bullets":6}}}`,
+	},
+	"TEMPLATE_SECTION_NUMBER_NAMING": {
+		Code:        "TEMPLATE_SECTION_NUMBER_NAMING",
+		Summary:     "A section-header layout has a decorative number placeholder that is not named \"Section Number\".",
+		Severity:    "review",
+		WhenEmitted: "validate-template finds, on a section-header layout, a small high-position body placeholder with a large font (the signature of a decorative number frame) that is not named \"Section Number\". The engine's normalizer skips shapes named \"Section Number\"; a misnamed one is treated as body text and corrupted.",
+		RemediationSteps: []string{
+			"Rename the placeholder to \"Section Number\" in the template's slide layout so the engine preserves it.",
+			"If the placeholder is genuinely body text, ignore this warning.",
+		},
+	},
 }

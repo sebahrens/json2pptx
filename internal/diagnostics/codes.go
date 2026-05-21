@@ -23,11 +23,18 @@ const (
 	CodeUnsupported       Code = "UNSUPPORTED"
 )
 
-// Template family — template lookup and parsing failures.
+// Template family — template lookup, parsing, and metadata-validation failures.
 const (
 	CodeTemplateNotFound Code = "TEMPLATE_NOT_FOUND"
 	CodeTemplateError    Code = "TEMPLATE_ERROR"
 	CodeTemplatesDir     Code = "TEMPLATES_DIR"
+
+	// Template-metadata validation findings emitted by validate-template.
+	CodeTemplateMetadataParse       Code = "TEMPLATE_METADATA_PARSE"
+	CodeTemplateMetadataVersion     Code = "TEMPLATE_METADATA_VERSION"
+	CodeTemplateAspectRatioInvalid  Code = "TEMPLATE_ASPECT_RATIO_INVALID"
+	CodeTemplateLayoutHintInvalid   Code = "TEMPLATE_LAYOUT_HINT_INVALID"
+	CodeTemplateSectionNumberNaming Code = "TEMPLATE_SECTION_NUMBER_NAMING"
 )
 
 // Resource family — file and asset lookup failures.
@@ -110,6 +117,11 @@ func AllCodes() []Code {
 		CodeTemplateNotFound,
 		CodeTemplateError,
 		CodeTemplatesDir,
+		CodeTemplateMetadataParse,
+		CodeTemplateMetadataVersion,
+		CodeTemplateAspectRatioInvalid,
+		CodeTemplateLayoutHintInvalid,
+		CodeTemplateSectionNumberNaming,
 		// Resource
 		CodeFileNotFound,
 		CodeStyleNotFound,

@@ -263,7 +263,7 @@ A blocking finding means PowerPoint or Keynote would show the "we found a proble
 
 ### MCP error envelope (FindingEnvelope)
 
-Every MCP tool error — argument validation (missing required field, wrong type, malformed JSON), template/asset resolution failures, strict-fit refusals, slide-level validation errors — returns an error `CallToolResult` (`isError: true`) whose structured content is the shared **FindingEnvelope**. The same shape is emitted by `validate_input`, `repair_slide`, and the other diagnostic-bearing surfaces:
+Every MCP tool error — argument validation (missing required field, wrong type, malformed JSON), template/asset resolution failures, strict-fit refusals, slide-level validation errors — returns an error `CallToolResult` (`isError: true`) whose structured content is the shared **FindingEnvelope**. The same shape is emitted by `validate_input`, `repair_slide`, the `validate-template` CLI command (under its `findings` key, alongside the structural `theme`/`layouts`/`capabilities` fields), and the other diagnostic-bearing surfaces:
 
 ```json
 {
@@ -290,6 +290,8 @@ Every MCP tool error — argument validation (missing required field, wrong type
   ]
 }
 ```
+
+`validate-template` carries its findings under `findings` rather than as an error result: the structural report (`theme`, `layouts`, `capabilities`) always returns, and template-validation issues ride in the envelope with `TPL.*` codes — `TPL.TEMPLATE_METADATA_PARSE`, `TPL.TEMPLATE_METADATA_VERSION`, `TPL.TEMPLATE_ASPECT_RATIO_INVALID`, `TPL.TEMPLATE_LAYOUT_HINT_INVALID`, `TPL.TEMPLATE_SECTION_NUMBER_NAMING` (all warnings), and `TPL.TEMPLATE_ERROR` (error). Run `json2pptx describe-finding <code>` (legacy code, e.g. `TEMPLATE_SECTION_NUMBER_NAMING`) for remediation steps.
 
 Branch on `ok` (false when any error-severity finding is present), then walk `findings`. Each finding carries a namespaced `code` (`<CATEGORY>.<legacy_code>`, e.g. `INPUT.MISSING_PARAMETER`, `TPL.TEMPLATE_NOT_FOUND`, `RENDER.URL_FETCH_FAILED`), the offending JSON `path` and `expected_type` under `evidence`, and — for repairable issues — a structured `remediation.primary.{action, params}`. Arg-validation findings guarantee a non-empty `evidence.path` plus at least one of `evidence.expected_type` or `next_tool_call` so an agent can self-correct without re-reading the schema. The `next_tool_call` usually replays the same tool with the offending field as a placeholder; for shape failures it points at `get_input_schema`, and for unknown identifiers it points at the relevant discovery tool (e.g. `list_templates`, `list_patterns`). Discovery findings also carry list facts in `evidence` (e.g. icon-name `suggestions`) so you can repair without a separate lookup. Common legacy codes (after the namespace prefix) are `MISSING_PARAMETER`, `INVALID_PARAMETER`, `INVALID_JSON`, `INVALID_KEY`, and `INVALID_PATH`.
 

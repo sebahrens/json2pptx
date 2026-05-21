@@ -6,13 +6,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // validateTemplateResult is the JSON-serializable output of validate-template.
+// The structural fields (template, aspect_ratio, theme, layouts, capabilities)
+// describe what the template can do; every coded error and warning is folded
+// into the single Findings envelope (the shared agent-facing diagnostic
+// surface). See docs/AGENT_DIAGNOSTICS.md for the envelope contract.
 type validateTemplateResult struct {
 	Valid        bool                        `json:"valid"`
 	Template     string                      `json:"template"`
@@ -20,8 +26,11 @@ type validateTemplateResult struct {
 	Theme        validateTemplateTheme       `json:"theme"`
 	Layouts      []validateTemplateLayout    `json:"layouts"`
 	Capabilities validateTemplateCapabilites `json:"capabilities"`
-	Warnings     []string                    `json:"warnings"`
-	Errors       []string                    `json:"errors"`
+
+	// Findings is the agent-facing diagnostic surface: a FindingEnvelope
+	// carrying every coded TPL.* template-validation error and warning, ordered
+	// highest-severity first.
+	Findings diagnostics.FindingEnvelope `json:"findings"`
 }
 
 // validateTemplateTheme is the theme section of the JSON output.
@@ -131,27 +140,20 @@ func runValidateTemplate() error {
 	caps := detectCapabilities(layouts, analysis.Synthesis)
 
 	// Run heuristic checks
-	sectionNumberWarnings := checkSectionNumberNaming(layouts)
-
-	// Collect all warnings and errors
-	var warnings []string
-	var errors []string
-	warnings = append(warnings, validationResult.Warnings...)
-	warnings = append(warnings, sectionNumberWarnings...)
-	errors = append(errors, validationResult.Errors...)
+	sectionNumberDiags := checkSectionNumberNaming(layouts)
 
 	valid := validationResult.Valid
 
 	// Build result
+	templateName := filepath.Base(templatePath)
 	result := validateTemplateResult{
-		Valid:       valid,
-		Template:    filepath.Base(templatePath),
-		AspectRatio: aspectRatio,
-		Theme:       buildThemeOutput(theme),
-		Layouts:     buildLayoutsOutput(layouts, *verbose),
+		Valid:        valid,
+		Template:     templateName,
+		AspectRatio:  aspectRatio,
+		Theme:        buildThemeOutput(theme),
+		Layouts:      buildLayoutsOutput(layouts, *verbose),
 		Capabilities: caps,
-		Warnings:    warnings,
-		Errors:      errors,
+		Findings:     buildTemplateFindings(templateName, validationResult.Diagnostics, sectionNumberDiags),
 	}
 
 	// Output
@@ -244,6 +246,24 @@ func buildLayoutsOutput(layouts []types.LayoutMetadata, verbose bool) []validate
 	return out
 }
 
+// buildTemplateFindings folds the metadata-validation diagnostics and the
+// heuristic section-number diagnostics into the single FindingEnvelope returned
+// by validate-template. Findings are stably sorted by descending severity so
+// findings[0] is the highest-severity issue, matching the convention of the
+// other diagnostic-bearing surfaces (see dry_run.go buildFindingsEnvelope).
+func buildTemplateFindings(templateName string, metaDiags, sectionDiags []diagnostics.Diagnostic) diagnostics.FindingEnvelope {
+	ds := make([]diagnostics.Diagnostic, 0, len(metaDiags)+len(sectionDiags))
+	ds = append(ds, metaDiags...)
+	ds = append(ds, sectionDiags...)
+	sort.SliceStable(ds, func(i, j int) bool {
+		return severityRank(ds[i].Severity) < severityRank(ds[j].Severity)
+	})
+	return diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+		Subcommand: "validate-template",
+		Template:   templateName,
+	}, ds)
+}
+
 // outputJSON writes the result as JSON to stdout.
 func outputJSON(result validateTemplateResult) error {
 	enc := json.NewEncoder(os.Stdout)
@@ -309,21 +329,31 @@ func outputText(result validateTemplateResult, verbose bool) {
 	}
 	fmt.Printf("  Two-column: %s\n", twoCol)
 
-	// Warnings and errors
+	// Findings — render the envelope's errors and warnings as plain lines,
+	// prefixing each with its coded TPL.* category for agent-readable text.
 	fmt.Println()
-	if len(result.Errors) > 0 {
-		fmt.Printf("Errors (%d):\n", len(result.Errors))
-		for _, e := range result.Errors {
+	var errLines, warnLines []string
+	for _, f := range result.Findings.Findings {
+		line := fmt.Sprintf("[%s] %s", f.Code, f.Message)
+		if f.Severity == diagnostics.SeverityError {
+			errLines = append(errLines, line)
+		} else {
+			warnLines = append(warnLines, line)
+		}
+	}
+	if len(errLines) > 0 {
+		fmt.Printf("Errors (%d):\n", len(errLines))
+		for _, e := range errLines {
 			fmt.Printf("  - %s\n", e)
 		}
 	}
-	if len(result.Warnings) > 0 {
-		fmt.Printf("Warnings (%d):\n", len(result.Warnings))
-		for _, w := range result.Warnings {
+	if len(warnLines) > 0 {
+		fmt.Printf("Warnings (%d):\n", len(warnLines))
+		for _, w := range warnLines {
 			fmt.Printf("  - %s\n", w)
 		}
 	}
-	if len(result.Errors) == 0 && len(result.Warnings) == 0 {
+	if len(errLines) == 0 && len(warnLines) == 0 {
 		fmt.Println("Warnings: none")
 	}
 }
@@ -375,14 +405,14 @@ func boolYesNo(b bool) string {
 //   - FontSize > 4000 (> 40pt in hundredths-of-a-point)
 //   - Y position in upper third of slide (Y < slideHeight/3 ≈ 2_286_000 EMU for 16:9)
 //   - Name is NOT "Section Number" (case-insensitive)
-func checkSectionNumberNaming(layouts []types.LayoutMetadata) []string {
+func checkSectionNumberNaming(layouts []types.LayoutMetadata) []diagnostics.Diagnostic {
 	const (
-		maxCharsThreshold = 5        // fewer than 5 chars expected
-		minFontSize       = 4000     // 40pt in hundredths-of-a-point
-		upperThirdY       = 2286000  // ~1/3 of 6858000 EMU (16:9 slide height)
+		maxCharsThreshold = 5       // fewer than 5 chars expected
+		minFontSize       = 4000    // 40pt in hundredths-of-a-point
+		upperThirdY       = 2286000 // ~1/3 of 6858000 EMU (16:9 slide height)
 	)
 
-	var warnings []string
+	var diags []diagnostics.Diagnostic
 	for _, layout := range layouts {
 		if !hasSectionHeaderTag(layout.Tags) {
 			continue
@@ -403,14 +433,18 @@ func checkSectionNumberNaming(layouts []types.LayoutMetadata) []string {
 			if ph.Bounds.Y >= upperThirdY {
 				continue
 			}
-			warnings = append(warnings, fmt.Sprintf(
-				"Layout %q has a placeholder that looks like a decorative section number but is named %q. "+
-					"Rename to \"Section Number\" so the engine preserves it correctly.",
-				layout.Name, ph.ID,
-			))
+			diags = append(diags, diagnostics.Diagnostic{
+				Code:     diagnostics.CodeTemplateSectionNumberNaming,
+				Severity: diagnostics.SeverityWarning,
+				Message: fmt.Sprintf(
+					"Layout %q has a placeholder that looks like a decorative section number but is named %q. "+
+						"Rename to \"Section Number\" so the engine preserves it correctly.",
+					layout.Name, ph.ID,
+				),
+			})
 		}
 	}
-	return warnings
+	return diags
 }
 
 // hasSectionHeaderTag returns true if the tags slice contains "section-header".

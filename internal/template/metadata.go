@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -229,8 +230,36 @@ type ValidationResult struct {
 	// Warnings are issues that fail validation only in strict mode.
 	Warnings []string
 
+	// Diagnostics is the structured, coded form of every entry in Errors and
+	// Warnings, in the same order. Callers that emit a diagnostics.FindingEnvelope
+	// (e.g. the validate-template subcommand) consume this; the flat Errors and
+	// Warnings string slices are retained for human-readable callers.
+	Diagnostics []diagnostics.Diagnostic
+
 	// Metadata is the parsed metadata (nil if parsing failed).
 	Metadata *types.TemplateMetadata
+}
+
+// addError records a critical issue, appending the human-readable message to
+// Errors and a coded diagnostics.Diagnostic to Diagnostics.
+func (vr *ValidationResult) addError(code, message string) {
+	vr.Errors = append(vr.Errors, message)
+	vr.Diagnostics = append(vr.Diagnostics, diagnostics.Diagnostic{
+		Code:     code,
+		Message:  message,
+		Severity: diagnostics.SeverityError,
+	})
+}
+
+// addWarning records a non-critical issue, appending the human-readable message
+// to Warnings and a coded diagnostics.Diagnostic to Diagnostics.
+func (vr *ValidationResult) addWarning(code, message string) {
+	vr.Warnings = append(vr.Warnings, message)
+	vr.Diagnostics = append(vr.Diagnostics, diagnostics.Diagnostic{
+		Code:     code,
+		Message:  message,
+		Severity: diagnostics.SeverityWarning,
+	})
 }
 
 // HasIssues returns true if there are any errors or warnings.
@@ -269,13 +298,13 @@ func ValidateTemplateMetadata(reader *Reader, strictMode bool) *ValidationResult
 		switch e := err.(type) {
 		case *MetadataParseError:
 			// Parse errors are warnings in soft mode, errors in strict mode
-			result.Warnings = append(result.Warnings, e.Error())
+			result.addWarning(diagnostics.CodeTemplateMetadataParse, e.Error())
 		case *MetadataVersionError:
 			// Version errors are warnings in soft mode, errors in strict mode
-			result.Warnings = append(result.Warnings, e.Error())
+			result.addWarning(diagnostics.CodeTemplateMetadataVersion, e.Error())
 		default:
 			// Unknown errors are always errors
-			result.Errors = append(result.Errors, err.Error())
+			result.addError(diagnostics.CodeTemplateError, err.Error())
 		}
 	} else {
 		result.Metadata = metadata
@@ -304,7 +333,7 @@ func validateRequiredFields(metadata *types.TemplateMetadata, result *Validation
 	// Validate aspect ratio format if provided
 	if metadata.AspectRatio != "" {
 		if !isValidAspectRatio(metadata.AspectRatio) {
-			result.Warnings = append(result.Warnings,
+			result.addWarning(diagnostics.CodeTemplateAspectRatioInvalid,
 				fmt.Sprintf("invalid aspect ratio format: %s (expected format like '16:9')", metadata.AspectRatio))
 		}
 	}
@@ -314,15 +343,15 @@ func validateRequiredFields(metadata *types.TemplateMetadata, result *Validation
 	if metadata.LayoutHints != nil {
 		for key, hint := range metadata.LayoutHints {
 			if key == "" {
-				result.Warnings = append(result.Warnings, "layout hint with empty key")
+				result.addWarning(diagnostics.CodeTemplateLayoutHintInvalid, "layout hint with empty key")
 				continue
 			}
 			if hint.MaxBullets < 0 {
-				result.Warnings = append(result.Warnings,
+				result.addWarning(diagnostics.CodeTemplateLayoutHintInvalid,
 					fmt.Sprintf("layout %q has invalid max_bullets: %d (must be non-negative)", key, hint.MaxBullets))
 			}
 			if hint.MaxChars < 0 {
-				result.Warnings = append(result.Warnings,
+				result.addWarning(diagnostics.CodeTemplateLayoutHintInvalid,
 					fmt.Sprintf("layout %q has invalid max_chars: %d (must be non-negative)", key, hint.MaxChars))
 			}
 		}

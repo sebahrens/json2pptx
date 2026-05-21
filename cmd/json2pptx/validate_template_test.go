@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -48,8 +49,14 @@ func TestCheckSectionNumberNaming_WarnsForMisnamedPlaceholder(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning, got %d: %v", len(warnings), warnings)
 	}
-	if got := warnings[0]; got == "" {
+	if got := warnings[0].Message; got == "" {
 		t.Error("warning message is empty")
+	}
+	if got := warnings[0].Code; got != diagnostics.CodeTemplateSectionNumberNaming {
+		t.Errorf("warning code = %q, want %q", got, diagnostics.CodeTemplateSectionNumberNaming)
+	}
+	if got := warnings[0].Severity; got != diagnostics.SeverityWarning {
+		t.Errorf("warning severity = %q, want %q", got, diagnostics.SeverityWarning)
 	}
 }
 
@@ -142,5 +149,81 @@ func TestCheckSectionNumberNaming_CaseInsensitiveName(t *testing.T) {
 	warnings := checkSectionNumberNaming(layouts)
 	if len(warnings) != 0 {
 		t.Errorf("expected no warnings for case-insensitive match, got %v", warnings)
+	}
+}
+
+// TestBuildTemplateFindings_EnvelopeShape asserts validate-template folds its
+// metadata-validation and section-number diagnostics into a single
+// FindingEnvelope: namespaced TPL.* codes, error-before-warning ordering, the
+// run-level metadata, and the OK flag derived from error-severity findings.
+func TestBuildTemplateFindings_EnvelopeShape(t *testing.T) {
+	metaDiags := []diagnostics.Diagnostic{
+		{
+			Code:     diagnostics.CodeTemplateAspectRatioInvalid,
+			Severity: diagnostics.SeverityWarning,
+			Message:  "invalid aspect ratio format: 16x9 (expected format like '16:9')",
+		},
+		{
+			Code:     diagnostics.CodeTemplateError,
+			Severity: diagnostics.SeverityError,
+			Message:  "unexpected metadata failure",
+		},
+	}
+	sectionDiags := []diagnostics.Diagnostic{
+		{
+			Code:     diagnostics.CodeTemplateSectionNumberNaming,
+			Severity: diagnostics.SeverityWarning,
+			Message:  `Layout "Section Divider" has a placeholder named "body".`,
+		},
+	}
+
+	env := buildTemplateFindings("midnight-blue.pptx", metaDiags, sectionDiags)
+
+	if env.SchemaVersion != diagnostics.SchemaVersion {
+		t.Errorf("schema_version = %q, want %q", env.SchemaVersion, diagnostics.SchemaVersion)
+	}
+	if env.Subcommand != "validate-template" {
+		t.Errorf("subcommand = %q, want validate-template", env.Subcommand)
+	}
+	if env.Template != "midnight-blue.pptx" {
+		t.Errorf("template = %q, want midnight-blue.pptx", env.Template)
+	}
+	if env.OK {
+		t.Error("ok = true, want false (an error-severity finding is present)")
+	}
+	if len(env.Findings) != 3 {
+		t.Fatalf("findings count = %d, want 3", len(env.Findings))
+	}
+	// Errors sort before warnings: findings[0] is the error.
+	if env.Findings[0].Severity != diagnostics.SeverityError {
+		t.Errorf("findings[0].severity = %q, want error", env.Findings[0].Severity)
+	}
+	// Every finding carries a TPL-namespaced code and category.
+	for i, f := range env.Findings {
+		if f.Category != diagnostics.NamespaceTemplate {
+			t.Errorf("findings[%d].category = %q, want %q", i, f.Category, diagnostics.NamespaceTemplate)
+		}
+		wantPrefix := diagnostics.NamespaceTemplate + "."
+		if len(f.Code) < len(wantPrefix) || f.Code[:len(wantPrefix)] != wantPrefix {
+			t.Errorf("findings[%d].code = %q, want %s* prefix", i, f.Code, wantPrefix)
+		}
+	}
+}
+
+// TestBuildTemplateFindings_CleanTemplate asserts a template with no issues
+// produces an OK envelope with an empty (non-nil) findings list.
+func TestBuildTemplateFindings_CleanTemplate(t *testing.T) {
+	env := buildTemplateFindings("forest-green.pptx", nil, nil)
+	if !env.OK {
+		t.Error("ok = false, want true for a clean template")
+	}
+	if env.Findings == nil {
+		t.Error("findings is nil, want empty non-nil slice")
+	}
+	if len(env.Findings) != 0 {
+		t.Errorf("findings count = %d, want 0", len(env.Findings))
+	}
+	if env.Summary != "no issues" {
+		t.Errorf("summary = %q, want \"no issues\"", env.Summary)
 	}
 }
