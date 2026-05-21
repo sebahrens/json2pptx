@@ -161,19 +161,8 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			i,
 		)
 
-		// Estimate character capacity for text placeholders
-		maxChars := 0
-		if phType == types.PlaceholderTitle || phType == types.PlaceholderSubtitle || phType == types.PlaceholderBody || phType == types.PlaceholderContent {
-			maxChars = estimateMaxChars(bounds)
-		}
-
-		// Get placeholder index (defaults to 0 if not specified)
-		idx := 0
-		if ph.Index != nil {
-			idx = *ph.Index
-		}
-
-		// Resolve font properties from shape → master hierarchy
+		// Resolve font properties from shape → master hierarchy. Font size must
+		// be known before estimating capacity so estimateMaxChars can scale by it.
 		var fontFamily string
 		var fontSize int
 		var fontColor string
@@ -183,6 +172,18 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 				fontSize = fontStyle.FontSize
 				fontColor = fontStyle.FontColor
 			}
+		}
+
+		// Estimate character capacity for text placeholders, scaled by font size.
+		maxChars := 0
+		if phType == types.PlaceholderTitle || phType == types.PlaceholderSubtitle || phType == types.PlaceholderBody || phType == types.PlaceholderContent {
+			maxChars = estimateMaxChars(bounds, fontSize)
+		}
+
+		// Get placeholder index (defaults to 0 if not specified)
+		idx := 0
+		if ph.Index != nil {
+			idx = *ph.Index
 		}
 
 		placeholders = append(placeholders, types.PlaceholderInfo{
@@ -252,17 +253,39 @@ func extractBounds(props shapePropertiesXML, layoutName string, shapeIndex int) 
 	return bounds
 }
 
-// estimateMaxChars estimates character capacity based on placeholder dimensions.
+// estimateMaxChars estimates character capacity based on placeholder dimensions
+// and the resolved font size (hundredths of a point; 0 means "unknown").
+//
 // Formula: MaxChars = (Width / CharWidthEMU) * (Height / LineHeightEMU) * 0.4
-func estimateMaxChars(bounds types.BoundingBox) int {
+//
+// The base constants assume an 18pt body font. Glyph width and line height both
+// scale linearly with point size, so when fontSize is known both denominators
+// are scaled by fontSize/1800. Without this, a decorative number frame rendered
+// at ~200pt (e.g. a "Section Number" placeholder) is reported as fitting ~200
+// characters instead of the ~2 it actually holds.
+func estimateMaxChars(bounds types.BoundingBox, fontSize int) int {
 	const (
-		charWidthEMU  = 91440  // 1 inch / 10 characters at standard font
-		lineHeightEMU = 274320 // 0.3 inches per line
-		safetyFactor  = 0.4    // Safety factor for margins and padding
+		// Both constants derive from the same 18pt baseline: average glyph
+		// advance ≈ 0.5em (9pt = 114300 EMU) and line height ≈ 1.2em
+		// (21.6pt = 274320 EMU). Keeping them consistent matters once they are
+		// scaled by font size below — a mismatched glyph-width model leaves
+		// oversized decorative frames reporting several characters too many.
+		baseCharWidthEMU  = 114300 // 0.5em (9pt) glyph advance at an 18pt font
+		baseLineHeightEMU = 274320 // 1.2em (21.6pt) line height at an 18pt font
+		baseFontSize      = 1800   // 18pt in hundredths-of-a-point (the constants' baseline)
+		safetyFactor      = 0.4    // Safety factor for margins and padding
 	)
 
 	if bounds.Width == 0 || bounds.Height == 0 {
 		return 0
+	}
+
+	charWidthEMU := float64(baseCharWidthEMU)
+	lineHeightEMU := float64(baseLineHeightEMU)
+	if fontSize > 0 {
+		scale := float64(fontSize) / float64(baseFontSize)
+		charWidthEMU *= scale
+		lineHeightEMU *= scale
 	}
 
 	charsPerLine := float64(bounds.Width) / charWidthEMU

@@ -480,7 +480,7 @@ func convertGeneratedToMetadata(gl GeneratedLayout, layoutID string, index int, 
 			Type:     types.PlaceholderContent,
 			Index:    phIdx,
 			Bounds:   gp.Bounds,
-			MaxChars: estimateMaxChars(gp.Bounds),
+			MaxChars: estimateMaxChars(gp.Bounds, gp.Style.FontSize),
 		}
 
 		// Copy font properties from the generated placeholder's style

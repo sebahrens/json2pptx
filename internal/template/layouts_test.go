@@ -155,10 +155,11 @@ func TestExtractPlaceholders(t *testing.T) {
 
 func TestEstimateMaxChars(t *testing.T) {
 	tests := []struct {
-		name   string
-		bounds types.BoundingBox
-		want   int
-		margin int // Allow +/- margin for capacity estimation
+		name     string
+		bounds   types.BoundingBox
+		fontSize int // hundredths of a point; 0 = unknown (baseline 18pt assumption)
+		want     int
+		margin   int // Allow +/- margin for capacity estimation
 	}{
 		{
 			name: "standard body placeholder (6x4 inches)",
@@ -166,8 +167,18 @@ func TestEstimateMaxChars(t *testing.T) {
 				Width:  5486400, // 6 inches * 914400 EMUs/inch
 				Height: 3657600, // 4 inches * 914400 EMUs/inch
 			},
-			want:   320, // Approximately 320 characters with 0.4 safety factor
+			want:   256, // ~256 characters at the 18pt baseline with 0.4 safety factor
 			margin: 100, // Within 20% tolerance (AC6)
+		},
+		{
+			name: "body placeholder at the 18pt baseline matches unknown font",
+			bounds: types.BoundingBox{
+				Width:  5486400,
+				Height: 3657600,
+			},
+			fontSize: 1800, // 18pt: scale factor 1.0, identical to fontSize==0
+			want:     256,
+			margin:   100,
 		},
 		{
 			name: "title placeholder (8x1 inches)",
@@ -175,8 +186,18 @@ func TestEstimateMaxChars(t *testing.T) {
 				Width:  7315200, // 8 inches
 				Height: 914400,  // 1 inch
 			},
-			want:   106, // Approximately 106 characters with 0.4 safety factor
+			want:   85, // ~85 characters with 0.4 safety factor
 			margin: 80,
+		},
+		{
+			name: "decorative section number frame at 208pt fits a couple of digits",
+			bounds: types.BoundingBox{
+				Width:  3657600, // 4 inches
+				Height: 2743200, // 3 inches
+			},
+			fontSize: 20800, // 208pt: ~11.6x baseline, capacity collapses to single digits
+			want:     1,
+			margin:   4, // assert MaxChars stays in [0,5] for this decorative frame
 		},
 		{
 			name: "zero bounds",
@@ -200,7 +221,7 @@ func TestEstimateMaxChars(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := estimateMaxChars(tt.bounds)
+			got := estimateMaxChars(tt.bounds, tt.fontSize)
 
 			// AC6: Capacity Estimation
 			// Check within margin (20% tolerance per spec)
