@@ -180,12 +180,19 @@ for TEMPLATE in "${SELECTED_TEMPLATES[@]}"; do
     # Step 3: Generate PPTX via json2pptx
     echo "Step 3: Generating PPTX with json2pptx..."
 
+    # NOTE: This must NOT be a bare `VAR=$(...)` assignment. Under `set -e` a
+    # command-substitution assignment that exits non-zero terminates the script
+    # immediately, so a generation failure would skip the error print, the
+    # per-template result, the remaining templates, and the bead-creation path.
+    # The `|| GEN_STATUS=$?` makes it an OR list, which suspends errexit and
+    # lets us capture the status. GEN_STATUS is reset first so a stale non-zero
+    # from a previously failed template cannot leak into a later success.
+    GEN_STATUS=0
     GEN_OUTPUT=$("${OUTPUT_DIR}/json2pptx" generate \
         -json "${DECK_JSON}" \
         -output "${TEMPLATE_OUTPUT_DIR}" \
         -templates-dir "${TEMPLATE_DIR}" \
-        -partial 2>&1)
-    GEN_STATUS=$?
+        -partial 2>&1) || GEN_STATUS=$?
     echo "${GEN_OUTPUT}"
 
     if [ ${GEN_STATUS} -ne 0 ]; then
