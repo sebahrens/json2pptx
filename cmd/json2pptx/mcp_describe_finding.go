@@ -8,7 +8,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // ---------------------------------------------------------------------------
@@ -28,7 +27,7 @@ func mcpDescribeFindingTool() mcp.Tool {
 	return mcp.NewTool("describe_finding",
 		mcp.WithDescription(`Look up an agent-facing description for a single finding code. Returns {code, summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}. Use after any tool returns a finding/error you do not recognize — resolves the meaning in one extra tool call without scanning docs/FIT_FINDINGS.md or SKILL.md.
 
-Covered codes include every entry returned by get_capabilities.vocabularies.fit_finding_codes plus chart.* and string-literal codes (contrast_autofixed, findings_truncated). Unknown codes return a structured error whose fix.params.allowed enumerates the known vocabulary.`),
+Covers every code emitted across the pipeline: the fit/pattern codes from get_capabilities.vocabularies.fit_finding_codes, chart.* and string-literal codes (contrast_autofixed, findings_truncated), and every diagnostics taxonomy code (MISSING_PARAMETER, TEMPLATE_NOT_FOUND, RENDER_FAILED, INTERNAL, …). Accepts either the bare legacy code or the dotted namespaced code from a finding envelope (INPUT.MISSING_PARAMETER, FIT.placeholder_overflow) — the namespace prefix is stripped before lookup, so a finding's describe_command runs verbatim. Unknown codes return a structured error whose fix.params.allowed enumerates the known vocabulary.`),
 		mcp.WithRawOutputSchema(outputSchemaDescribeFinding),
 		mcp.WithString("code",
 			mcp.Required(),
@@ -46,9 +45,9 @@ func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*m
 		return argMissing("describe_finding", "code", "string", "placeholder_overflow", nil), nil
 	}
 
-	meta, ok := patterns.GetFindingMeta(code)
+	meta, ok := diagnostics.Describe(code)
 	if !ok {
-		allowed := patterns.AllFindingMetaCodes()
+		allowed := diagnostics.AllDescribableCodes()
 		fix := &diagnostics.Fix{
 			Kind:   "use_one_of",
 			Params: map[string]any{"allowed": allowed},

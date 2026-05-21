@@ -96,7 +96,17 @@ and placeholder roles.
 
 Every `code` is `"<NAMESPACE>.<legacy-code>"`, and `category` equals the
 namespace. The legacy (un-prefixed) code is what `describe_command` passes to
-`describe-finding`, so the command stays runnable against the existing registry.
+`describe-finding`, so the command stays runnable against the registry.
+`describe-finding` also accepts the dotted namespaced form directly (it strips a
+leading known-namespace prefix before lookup), and the CLI takes the code either
+positionally (`json2pptx describe-finding <code>`) or via `-code`. The
+`describe_finding` lookup is the single read surface for code metadata: it
+resolves every code in this section — the lowercase fit/pattern codes and dotted
+`chart.*` codes from `internal/patterns`, plus every `SCREAMING_SNAKE` code
+declared in `internal/diagnostics/codes.go` (`MISSING_PARAMETER`,
+`TEMPLATE_NOT_FOUND`, `RENDER_FAILED`, `INTERNAL`, …) backed by the registry in
+`internal/diagnostics/describe.go`. `TestDescribeCoversAllDiagnosticCodes` fails
+CI when a declared code has no describe entry.
 
 | Namespace | Covers                                                  |
 | --------- | ------------------------------------------------------ |
@@ -208,7 +218,9 @@ stage in one pass (see section 6). MCP `preflight` parity is tracked separately.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to
-`internal/diagnostics/codes.go` plus the `describe-finding` registry. Codes that
+`internal/diagnostics/codes.go` plus its `describe-finding` entry in
+`internal/diagnostics/describe.go` (lowercase fit/pattern codes live in the
+`internal/patterns` registry instead). Codes that
 are dotted (e.g. `LAYOUT.MISSING_ROLE`) cannot live in `codes.go` (the
 `SCREAMING_SNAKE` invariant forbids the dot); classify them with a prefix rule
 in `diagnostics.ClassifyCode` instead — the `layout.` prefix routes to the `TPL`

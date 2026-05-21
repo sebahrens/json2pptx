@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -109,6 +111,61 @@ func TestDescribeFinding_UnknownCodeReturnsAllowedList(t *testing.T) {
 	}
 	if len(allowed) == 0 {
 		t.Fatal("remediation.primary.params.allowed must list at least one known code")
+	}
+}
+
+func TestRunDescribeFinding_AcceptsPositionalCode(t *testing.T) {
+	// The describe_command emitted on the wire is "json2pptx describe-finding
+	// <code>" (positional), so the CLI must accept the code without -code.
+	withSavedArgs(func() {
+		os.Args = []string{"json2pptx", diagnostics.CodeMissingParameter}
+		out := captureStdout(t, func() {
+			if err := runDescribeFinding(); err != nil {
+				t.Fatalf("runDescribeFinding (positional) returned error: %v", err)
+			}
+		})
+		if !strings.Contains(out, diagnostics.CodeMissingParameter) {
+			t.Errorf("positional describe output missing code %q; got: %s", diagnostics.CodeMissingParameter, out)
+		}
+	})
+}
+
+func TestRunDescribeFinding_NoCodeIsError(t *testing.T) {
+	withSavedArgs(func() {
+		os.Args = []string{"json2pptx"}
+		captureStderr(t, func() {
+			if err := runDescribeFinding(); err == nil {
+				t.Fatal("runDescribeFinding with no code should return an error")
+			}
+		})
+	})
+}
+
+func TestDescribeFinding_CoversEveryDiagnosticCode(t *testing.T) {
+	// Mirrors internal/diagnostics drift gate at the tool boundary: every code
+	// in the diagnostics taxonomy must describe through the MCP tool, so a
+	// finding's describe_command always resolves.
+	for _, code := range diagnostics.AllCodes() {
+		code := code
+		t.Run(code, func(t *testing.T) {
+			meta := callDescribeFinding(t, code)
+			if meta.Summary == "" {
+				t.Errorf("code %q returned empty summary", code)
+			}
+		})
+	}
+}
+
+func TestDescribeFinding_AcceptsNamespacedCode(t *testing.T) {
+	// The dotted code an agent reads off a finding envelope must resolve to the
+	// same metadata as its bare legacy code.
+	dotted := diagnostics.DottedCode(diagnostics.NamespaceInput, diagnostics.CodeMissingParameter)
+	meta := callDescribeFinding(t, dotted)
+	if meta.Code != diagnostics.CodeMissingParameter {
+		t.Errorf("describe %q: code = %q, want %q", dotted, meta.Code, diagnostics.CodeMissingParameter)
+	}
+	if meta.Summary == "" {
+		t.Errorf("describe %q: summary is empty", dotted)
 	}
 }
 
