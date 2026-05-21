@@ -528,7 +528,8 @@ func ClassifyCode(legacy string) Namespace {
 	case strings.HasPrefix(l, "chart."), strings.Contains(l, "render"),
 		strings.Contains(l, "generation"), strings.Contains(l, "overlay"):
 		return NamespaceRender
-	case strings.Contains(l, "template"):
+	case strings.Contains(l, "template"), strings.HasPrefix(l, "layout."),
+		strings.HasPrefix(l, "tpl."):
 		return NamespaceTemplate
 	case strings.Contains(l, "grid"), strings.Contains(l, "pattern"),
 		strings.Contains(l, "cell"):

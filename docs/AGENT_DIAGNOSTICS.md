@@ -198,9 +198,94 @@ those paths build ad-hoc typed errors rather than `[]diagnostics.Diagnostic`, so
 migrating them would either split a single endpoint across two shapes or churn
 the whole convert surface for no agent-recovery gain.
 
-The remaining work is emitting the envelope natively from the forthcoming
-`preflight` and `examine-template` subcommands.
+`examine-template` has migrated (CLI): it emits the envelope natively under the
+`findings` key of its `report.json` (see section 4). MCP `examine_template`
+parity is tracked separately. The remaining work is emitting the envelope
+natively from the forthcoming `preflight` subcommand.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to
-`internal/diagnostics/codes.go` plus the `describe-finding` registry.
+`internal/diagnostics/codes.go` plus the `describe-finding` registry. Codes that
+are dotted (e.g. `LAYOUT.MISSING_ROLE`) cannot live in `codes.go` (the
+`SCREAMING_SNAKE` invariant forbids the dot); classify them with a prefix rule
+in `diagnostics.ClassifyCode` instead — the `layout.` prefix routes to the `TPL`
+namespace.
+
+## 4. `examine-template` — the template capability report
+
+`json2pptx examine-template <template.pptx> --out <dir>` is the deepest
+read-only template diagnostic. It is a thin CLI over the reusable
+`internal/examine` service (`examine.Examine(reader, opts) (*Report, error)`),
+so the same report can back an MCP `examine_template` tool, template CI, and
+docs without re-deriving the facts.
+
+It writes a directory an agent or human can read to know exactly what a
+user-provided template supports:
+
+```
+<out>/
+  report.json            FindingEnvelope (nested under "findings") + slide
+                         dimensions + theme + canonical_coverage +
+                         derivable_layouts + layouts[]
+  report.md              Human-readable pass/fail matrix + remediation list
+  theme.json             Scheme colors + major/minor fonts
+  conformance.json       validate-template + template-check evidence, merged
+  canonical_roles.json   Per-layout canonical group + per-placeholder role
+  layouts/
+    slideLayoutN__<canonical>.json   Parsed LayoutReport
+    slideLayoutN__<canonical>.xml    Pretty-printed raw layout XML
+    slideLayoutN__<canonical>.svg    Annotated overlay (see below)
+    slideLayoutN__<canonical>.png    Rendered layout (best-effort; needs
+                                     LibreOffice + ImageMagick)
+  master/
+    slideMasterN.{xml,json}
+```
+
+The annotated SVG shows, per placeholder: id, derived role, FontSize-aware
+`max_chars`, exact bounds in inches, and z-index. The content zone
+(title-bottom, footer-top, side-margins) is drawn as a dashed inset, and
+section-number frames get a badge. Every placeholder group carries the same
+numbers as `report.json` on `data-*` attributes, so the overlay and the JSON
+cannot drift.
+
+**Why `report.json` nests the envelope.** The envelope schema is
+`additionalProperties: false`, so a `FindingEnvelope` cannot carry the extra
+structural fields `report.json` needs at its top level. Following the
+`validate-template` precedent, the envelope lives one level down under
+`findings`, where it validates against
+[`docs/api/finding-envelope.schema.json`](api/finding-envelope.schema.json); the
+sibling `canonical_coverage` / `derivable_layouts` / `layouts` fields describe
+capability rather than diagnose.
+
+The single new finding code is `TPL.LAYOUT.MISSING_ROLE` (warning), emitted once
+per absent content-bearing canonical family (section 5). Its
+`evidence.family` names the missing family (`title-slide`, `section-divider`,
+`one-content`, or `qa-closing`) and `evidence.expected_layout_type` names the
+canonical layout that would satisfy it; `canonical_coverage.<family>.present` is
+`false` for the same gap.
+
+## 5. Canonical layout groups
+
+Every layout is classified into one canonical type
+(`types.CanonicalLayoutType`) by the single authoritative classifier
+(`template.ClassifyLayoutCanonical`), which collapses into four coarse
+**content-bearing families** (`types.CanonicalLayoutFamily`) that every usable
+template should cover:
+
+| Family | Canonical types | Role |
+| --- | --- | --- |
+| `title-slide` | Title Slide | Opening / cover slide. |
+| `section-divider` | Section Divider | Section break with optional number. |
+| `one-content` | One Content, Two Content | The body-bearing workhorse layouts. |
+| `qa-closing` | Closing | Thank-you / Q&A / end slide. |
+
+Utility layouts (`Blank`, `Blank + Title`) map to the `other` family and are not
+required. `examine-template` reports `canonical_coverage` keyed by family
+(`present` + the layout names that provide it) and emits a
+`TPL.LAYOUT.MISSING_ROLE` finding for each of the four families that is absent.
+
+`derivable_layouts` is the complementary view: higher-level layouts the engine
+can synthesise or overlay from the base layouts (`two-content`, `comparison`,
+`full-image`, `blank-title`, `stat-grid`, `timeline`, `journey`,
+`panel-layout`), each with `ready: true|false` and `missing[]` naming the absent
+prerequisite. It is produced by `template.DerivableLayouts`.

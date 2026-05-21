@@ -54,6 +54,8 @@ func dispatch() error { //nolint:gocyclo
 		return runValidateTemplate()
 	case "template-check":
 		return runTemplateCheck()
+	case "examine-template":
+		return runExamineTemplate()
 	case "validate-output":
 		return runValidateOutput()
 	case "patterns":
@@ -137,6 +139,7 @@ Commands:
   validate-output     Check generated PPTX for OOXML correctness
   validate-template   Check template compatibility
   template-check      Check template conformance against spec
+  examine-template    Emit a full template capability report (visual + XML + canonical roles)
   patterns            Discover, validate, and expand named patterns
   icons               List available icon names
   preview-icon        Render a single icon spec to SVG + PNG preview
