@@ -17,7 +17,8 @@ func runGenerate() error {
 	configPath := fs.String("config", "", "Path to config file (optional)")
 	verbose := fs.Bool("verbose", false, "Enable verbose output")
 	jsonInput := fs.String("json", "", "Path to JSON input file (use - for stdin)")
-	jsonOutput := fs.String("json-output", "", "Path for JSON result output (headless mode)")
+	jsonOutputReport := fs.String("json-output-report", "", "Path for the JSON result report (success, warnings, quality score) in headless mode")
+	jsonOutput := fs.String("json-output", "", "DEPRECATED: alias for --json-output-report")
 	chartPNG := fs.Bool("chart-png", false, "DEPRECATED: Use PNG instead of native SVG for charts. Native SVG is now the default and recommended strategy.")
 	dryRun := fs.Bool("dry-run", false, "Validate input and show layout selections without generating output")
 	fs.BoolVar(dryRun, "n", false, "Shorthand for --dry-run")
@@ -32,7 +33,7 @@ func runGenerate() error {
 		fmt.Fprintf(os.Stderr, "Convert JSON slide descriptions to PowerPoint presentations.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --json slides.json --output ./output\n")
-		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx generate --json - --json-output result.json\n")
+		fmt.Fprintf(os.Stderr, "  cat slides.json | json2pptx generate --json - --json-output-report result.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --dry-run --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate -n --json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx generate --strict-fit=strict --json slides.json\n")
@@ -44,6 +45,22 @@ func runGenerate() error {
 	}
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
+		return err
+	}
+
+	// Reconcile the deprecated --json-output flag with its preferred alias
+	// --json-output-report. Both name the same JSON result report destination.
+	var jsonOutputSet, jsonOutputReportSet bool
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "json-output":
+			jsonOutputSet = true
+		case "json-output-report":
+			jsonOutputReportSet = true
+		}
+	})
+	resolvedJSONOutput, err := resolveJSONOutputReport(*jsonOutput, *jsonOutputReport, jsonOutputSet, jsonOutputReportSet)
+	if err != nil {
 		return err
 	}
 
@@ -86,5 +103,26 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
-	return runJSONMode(*jsonInput, *jsonOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+	return runJSONMode(*jsonInput, resolvedJSONOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+}
+
+// resolveJSONOutputReport reconciles the deprecated --json-output flag with its
+// preferred alias --json-output-report. Both names target the same JSON result
+// report destination. oldSet/newSet report which of the two flags were
+// explicitly provided on the command line. When both are set with differing
+// values, it returns an error so the caller cannot silently pick one.
+func resolveJSONOutputReport(oldVal, newVal string, oldSet, newSet bool) (string, error) {
+	switch {
+	case oldSet && newSet:
+		if oldVal != newVal {
+			return "", fmt.Errorf("--json-output and --json-output-report were set to conflicting values (%q vs %q); set only one (prefer --json-output-report)", oldVal, newVal)
+		}
+		return newVal, nil
+	case newSet:
+		return newVal, nil
+	case oldSet:
+		return oldVal, nil
+	default:
+		return "", nil
+	}
 }

@@ -215,7 +215,7 @@ json2pptx validate examples/varied-pitch-deck.json
 json2pptx generate -dry-run -json examples/varied-pitch-deck.json
 
 # Read JSON from stdin, write structured result to file
-cat slides.json | json2pptx generate -json - -json-output result.json
+cat slides.json | json2pptx generate -json - -json-output-report result.json
 
 # Override the template specified inside the JSON
 json2pptx generate -json examples/varied-pitch-deck.json -template forest-green -output ./output
@@ -708,7 +708,8 @@ for each under "MCP-only tools".
 | `-template` | | Template name (without `.pptx`) |
 | `-templates-dir` | `./templates` | Directory containing templates |
 | `-output` | `./output` | Output directory for generated PPTX files (or a `.pptx` file path, e.g. `/tmp/deck.pptx`) |
-| `-json-output` | | Path for JSON result output (headless mode) |
+| `-json-output-report` | | Path for the JSON result report (success, warnings, quality score) in headless mode |
+| `-json-output` | | DEPRECATED: alias for `-json-output-report` |
 | `-dry-run` / `-n` | `false` | Validate input and show layout selections without generating |
 | `-strict-fit` | `warn` | Text-fit checking mode: `off`, `warn`, or `strict` (refuse on overflow) |
 | `-fit-report` | `false` | Emit structured fit findings |
