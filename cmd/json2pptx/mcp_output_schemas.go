@@ -1062,6 +1062,67 @@ var outputSchemaRepairSlidesBatch = json.RawMessage(`{
 }`)
 
 // --- auto_repair ---
+// visualQAQualityModeSchema and visualQAResultSchema are shared by the
+// auto_repair and make_deck output schemas so the two stay in lockstep. They
+// describe the truth-labeled quality_mode and the opt-in visual_qa phase report.
+const visualQAQualityModeSchema = `{"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "Truth-label for which inspection regime ran. \"deterministic\" (default) = static + render-fit findings only, no rendering or API key. \"deterministic+visual_qa\" = the deterministic loop followed by the opt-in vision/heuristic visual refinement phase (set visual_qa.enabled=true)."}`
+
+const visualQAResultSchema = `{
+      "type": "object",
+      "description": "Visual-QA phase report. Present only when visual_qa mode was requested. Records the inspection backend, per-pass thumbnail paths/findings/repairs, and optional palette audit. Any repairs applied here are also reflected in final_presentation.",
+      "properties": {
+        "requested":       {"type": "boolean"},
+        "inspection_mode": {"type": "string", "enum": ["vision", "heuristic", "skipped"], "description": "vision = Claude vision API (ANTHROPIC_API_KEY set); heuristic = pure-Go fallback (no key); skipped = render tools unavailable, no inspection ran."},
+        "model":           {"type": "string", "description": "Resolved vision model (empty in heuristic/skipped modes)."},
+        "requirements": {
+          "type": "object",
+          "description": "Preconditions and cost of vision-backed inspection.",
+          "properties": {
+            "api_key_env":         {"type": "string"},
+            "api_key_present":     {"type": "boolean"},
+            "default_model":       {"type": "string"},
+            "render_dependencies": {"type": "array", "items": {"type": "string"}},
+            "render_available":    {"type": "boolean"},
+            "render_missing":      {"type": "array", "items": {"type": "string"}},
+            "cost_note":           {"type": "string"}
+          },
+          "required": ["api_key_env", "api_key_present", "default_model", "render_dependencies", "render_available", "cost_note"]
+        },
+        "passes": {
+          "type": "array",
+          "description": "Per-pass record of the render→inspect→repair iterations.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pass":            {"type": "integer"},
+              "inspection_mode": {"type": "string"},
+              "thumbnail_paths": {"type": "array", "items": {"type": "string"}, "description": "Stable on-disk paths to the inspected thumbnails."},
+              "visual_findings": {"type": "array", "items": {"type": "object"}, "description": "All visualqa.Finding objects (every severity), in slide order."},
+              "proposed_repairs": {
+                "type": "array",
+                "items": {"type": "object", "properties": {"slide_index": {"type": "integer"}, "kind": {"type": "string"}, "category": {"type": "string"}}}
+              },
+              "repairs_applied": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["pass", "inspection_mode", "thumbnail_paths", "visual_findings", "proposed_repairs", "repairs_applied"]
+          }
+        },
+        "palette_audit": {
+          "type": "object",
+          "description": "Deterministic palette ΔE audit. Present only when visual_qa.audit_palette=true.",
+          "properties": {
+            "available":  {"type": "boolean"},
+            "violations": {"type": "integer"},
+            "findings":   {"type": "object", "description": "FindingEnvelope of RENDER.palette_drift findings."},
+            "note":       {"type": "string"}
+          },
+          "required": ["available", "violations", "findings"]
+        },
+        "notes": {"type": "array", "items": {"type": "string"}, "description": "Human-readable explanations for transparent fallbacks (missing render tools, missing API key, re-render failures)."}
+      },
+      "required": ["requested", "inspection_mode", "requirements", "passes"]
+    }`
+
 var outputSchemaAutoRepair = json.RawMessage(`{
   "type": "object",
   "properties": {
@@ -1088,10 +1149,12 @@ var outputSchemaAutoRepair = json.RawMessage(`{
       "description": "Human-readable list of unmet gate criteria. Present only when gate_passed=false.",
       "items": {"type": "string"}
     },
-    "final_presentation": {"type": "object", "description": "The full repaired deck JSON after the convergence loop (same schema as generate_presentation's presentation input). Always present on success, including zero-repair runs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without reconstructing state from the trace."},
+    "final_presentation": {"type": "object", "description": "The full repaired deck JSON after the convergence loop (same schema as generate_presentation's presentation input). Always present on success, including zero-repair runs. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without reconstructing state from the trace."},
+    "quality_mode": ` + visualQAQualityModeSchema + `,
+    "visual_qa": ` + visualQAResultSchema + `,
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "final_presentation"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation"]
 }`)
 
 // --- make_deck ---
@@ -1143,10 +1206,12 @@ var outputSchemaMakeDeck = json.RawMessage(`{
       },
       "required": ["template", "slide_budget", "slides"]
     },
-    "final_presentation": {"type": "object", "description": "The full deck JSON the engine authored and repaired (same schema as generate_presentation's presentation input). Always present on success. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without rebuilding it from the plan summary or trace."},
+    "final_presentation": {"type": "object", "description": "The full deck JSON the engine authored and repaired (same schema as generate_presentation's presentation input). Always present on success. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without rebuilding it from the plan summary or trace."},
+    "quality_mode": ` + visualQAQualityModeSchema + `,
+    "visual_qa": ` + visualQAResultSchema + `,
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "plan", "final_presentation"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation"]
 }`)
 
 // --- table_density_guide ---
@@ -1391,9 +1456,21 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           },
           "required": ["supported", "version", "usage_hint"]
         },
+        "quality_modes": {
+          "type": "object",
+          "description": "auto_repair / make_deck inspection regimes. default is the deterministic loop; visual_qa_opt_in marks the opt-in vision/heuristic phase.",
+          "properties": {
+            "default":          {"type": "string"},
+            "modes":            {"type": "array", "items": {"type": "string"}},
+            "visual_qa_opt_in": {"type": "boolean"},
+            "version":          {"type": "string"},
+            "usage_hint":       {"type": "string"}
+          },
+          "required": ["default", "modes", "visual_qa_opt_in", "version", "usage_hint"]
+        },
         "feature_versions":       {"type": "object", "additionalProperties": {"type": "string"}}
       },
-      "required": ["deck_chrome", "page_numbers", "section_structure", "section_crumb"]
+      "required": ["deck_chrome", "page_numbers", "section_structure", "section_crumb", "quality_modes"]
     },
     "runtime": {
       "type": "object",

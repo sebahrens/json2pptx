@@ -24,27 +24,27 @@ import (
 // either shape; the standardized fields enable drift detection across both
 // MCP servers without server-specific code paths.
 type capabilitiesResponse struct {
-	SchemaVersion      string                        `json:"schema_version"`
-	ToolVersion        string                        `json:"tool_version"`
-	ChangelogURL       string                        `json:"changelog_url"`
-	MCPToolsAvailable  []mcpToolEntry                `json:"mcp_tools_available"`
+	SchemaVersion     string         `json:"schema_version"`
+	ToolVersion       string         `json:"tool_version"`
+	ChangelogURL      string         `json:"changelog_url"`
+	MCPToolsAvailable []mcpToolEntry `json:"mcp_tools_available"`
 	// ToolList is the cross-server-aligned tool catalog: each entry carries
 	// {name, description}. Mirrors svggen-mcp's tool_list. Populated by
 	// calling every registered tool's constructor.
-	ToolList           []capabilitiesToolListEntry   `json:"tool_list"`
+	ToolList []capabilitiesToolListEntry `json:"tool_list"`
 	// Registry groups the canonical names of every registered chart, diagram,
 	// and pattern this server can render. Mirrors svggen-mcp's registry block
 	// (which leaves patterns empty since it has no pattern engine).
-	Registry           capabilitiesRegistry          `json:"registry"`
-	DeprecatedFields   []capabilitiesDeprecatedField `json:"deprecated_fields"`
+	Registry         capabilitiesRegistry          `json:"registry"`
+	DeprecatedFields []capabilitiesDeprecatedField `json:"deprecated_fields"`
 	// Deprecations is the cross-server-aligned deprecation list. Today it is
 	// the same content as DeprecatedFields; the alias exists so agents can
 	// read a single key name on both MCP servers.
-	Deprecations       []capabilitiesDeprecatedField `json:"deprecations"`
-	Features           capabilitiesFeatures          `json:"features"`
-	Runtime            capabilitiesRuntime           `json:"runtime"`
-	Vocabularies       capabilitiesVocabularies      `json:"vocabularies"`
-	ErrorCodes         []string                      `json:"error_codes"`
+	Deprecations []capabilitiesDeprecatedField `json:"deprecations"`
+	Features     capabilitiesFeatures          `json:"features"`
+	Runtime      capabilitiesRuntime           `json:"runtime"`
+	Vocabularies capabilitiesVocabularies      `json:"vocabularies"`
+	ErrorCodes   []string                      `json:"error_codes"`
 }
 
 // capabilitiesToolListEntry is the cross-server-aligned tool descriptor used
@@ -85,17 +85,17 @@ type mcpToolEntry struct {
 // capabilitiesVocabularies exposes categorical enums and vocabularies so agents
 // can discover valid values programmatically instead of parsing tool descriptions.
 type capabilitiesVocabularies struct {
-	RepairFixKinds       []string            `json:"repair_fix_kinds"`
-	FitFindingCodes      []string            `json:"fit_finding_codes"`
-	ContentTypes         []string            `json:"content_types"`
-	SlideTransitions     []string            `json:"slide_transitions"`
-	TransitionSpeeds     []string            `json:"transition_speeds"`
-	BuildAnimations      []string            `json:"build_animations"`
-	ChartTypes           []string            `json:"chart_types"`
-	DiagramTypes         []string            `json:"diagram_types"`
-	PlaceholderAliases   map[string][]string `json:"placeholder_aliases"`
-	PatternNames         []string            `json:"pattern_names"`
-	PatternAliases       map[string]string   `json:"pattern_aliases"`
+	RepairFixKinds     []string            `json:"repair_fix_kinds"`
+	FitFindingCodes    []string            `json:"fit_finding_codes"`
+	ContentTypes       []string            `json:"content_types"`
+	SlideTransitions   []string            `json:"slide_transitions"`
+	TransitionSpeeds   []string            `json:"transition_speeds"`
+	BuildAnimations    []string            `json:"build_animations"`
+	ChartTypes         []string            `json:"chart_types"`
+	DiagramTypes       []string            `json:"diagram_types"`
+	PlaceholderAliases map[string][]string `json:"placeholder_aliases"`
+	PatternNames       []string            `json:"pattern_names"`
+	PatternAliases     map[string]string   `json:"pattern_aliases"`
 }
 
 // capabilitiesDeprecatedField describes a deprecated JSON input field.
@@ -146,39 +146,55 @@ type capabilitiesFeatures struct {
 	// can return Category=="compose" candidates and that ComposeInput is a
 	// supported slide-input envelope. Mirrors the detailed Compose struct so
 	// agents can capability-gate without inspecting nested fields.
-	ComposeEnvelope      bool                       `json:"compose_envelope"`
+	ComposeEnvelope bool `json:"compose_envelope"`
 	// BaseDir lists the MCP tools that accept the `base_dir` parameter for
 	// portable resolution of relative local-asset paths (image_value.path,
 	// background.image, shape_grid image/icon paths). When absent, the server
 	// falls back to its process CWD (legacy behaviour). Agents that need
 	// reproducible behaviour across launch configurations should always send
 	// an absolute base_dir.
-	BaseDir              []string                   `json:"base_dir"`
+	BaseDir []string `json:"base_dir"`
 	// AssetLimits exposes the per-kind size caps enforced on icons, images,
 	// and slide-background assets. Agents that pre-validate user inputs can
 	// reject oversized assets locally instead of round-tripping through the
 	// server.
-	AssetLimits          capabilitiesAssetLimits    `json:"asset_limits"`
+	AssetLimits capabilitiesAssetLimits `json:"asset_limits"`
 	// DeckChrome advertises the top-level `chrome` block (deck-wide footer
 	// chrome with confidentiality / client / project / date composites plus
 	// page numbers and section crumb). Surfaced as an explicit flag so agents
 	// can discover the feature without scanning the generate_presentation
 	// description.
-	DeckChrome           capabilitiesFeatureFlag    `json:"deck_chrome"`
+	DeckChrome capabilitiesFeatureFlag `json:"deck_chrome"`
 	// PageNumbers advertises the `chrome.page_numbers` sub-block (format
 	// templates with {current}/{total} placeholders and per-slide-type skip
 	// list).
-	PageNumbers          capabilitiesFeatureFlag    `json:"page_numbers"`
+	PageNumbers capabilitiesFeatureFlag `json:"page_numbers"`
 	// SectionStructure advertises the top-level `structure` block
 	// (`cover` / `closing` / `auto_agenda` / `sections[]`) that expands into a
 	// flat slide sequence with auto-generated dividers. Mutually exclusive
 	// with top-level `slides`.
-	SectionStructure     capabilitiesFeatureFlag    `json:"section_structure"`
+	SectionStructure capabilitiesFeatureFlag `json:"section_structure"`
 	// SectionCrumb advertises the `chrome.section_crumb` boolean that surfaces
 	// the current section title in the footer. Requires a populated structure
 	// block to be useful.
-	SectionCrumb         capabilitiesFeatureFlag    `json:"section_crumb"`
-	FeatureVersions      map[string]string          `json:"feature_versions"`
+	SectionCrumb capabilitiesFeatureFlag `json:"section_crumb"`
+	// QualityModes truth-labels the auto_repair / make_deck quality regimes: the
+	// default deterministic loop (static + render-fit findings only) and the
+	// opt-in visual_qa phase (render → inspect_slide_images → repair, plus
+	// optional palette audit). Lets agents discover the visual_qa parameter and
+	// its preconditions without parsing the tool descriptions.
+	QualityModes    capabilitiesQualityModes `json:"quality_modes"`
+	FeatureVersions map[string]string        `json:"feature_versions"`
+}
+
+// capabilitiesQualityModes describes the auto_repair / make_deck inspection
+// regimes so agents can capability-gate the opt-in visual_qa phase.
+type capabilitiesQualityModes struct {
+	Default       string   `json:"default"`
+	Modes         []string `json:"modes"`
+	VisualQAOptIn bool     `json:"visual_qa_opt_in"`
+	Version       string   `json:"version"`
+	UsageHint     string   `json:"usage_hint"`
 }
 
 // capabilitiesFeatureFlag is the standard descriptor for an opt-in JSON-input
@@ -394,6 +410,13 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				Version:   "2.8.0",
 				UsageHint: "Set chrome.section_crumb:true to surface the current section.title in the footer. Requires a populated structure.sections[] to resolve a crumb.",
 			},
+			QualityModes: capabilitiesQualityModes{
+				Default:       qualityModeDeterministic,
+				Modes:         []string{qualityModeDeterministic, qualityModeVisualQA},
+				VisualQAOptIn: true,
+				Version:       "4.43.0",
+				UsageHint:     "auto_repair / make_deck default to the deterministic loop (static + render-fit findings, no rendering or API key). Pass visual_qa:{enabled:true} to add the opt-in vision/heuristic visual refinement phase (needs libreoffice + magick; ANTHROPIC_API_KEY for vision, else heuristic fallback). The response's visual_qa.requirements reports resolved preconditions and cost; quality_mode truth-labels which ran.",
+			},
 			FeatureVersions: map[string]string{
 				"strict_fit":             "2.0.0",
 				"compact_responses":      "2.0.0",
@@ -412,6 +435,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"page_numbers":           "2.8.0",
 				"section_structure":      "2.7.0",
 				"section_crumb":          "2.8.0",
+				"quality_modes":          "4.43.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

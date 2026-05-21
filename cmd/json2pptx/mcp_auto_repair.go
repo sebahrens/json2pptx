@@ -49,6 +49,17 @@ type autoRepairOutput struct {
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
+	// QualityMode truth-labels which inspection regime ran: "deterministic"
+	// (static + render-fit findings only — the default) or
+	// "deterministic+visual_qa" (the deterministic loop followed by the opt-in
+	// vision/heuristic visual refinement phase). final_score and trace always
+	// describe the deterministic loop; visual-QA detail lives under visual_qa.
+	QualityMode string `json:"quality_mode"`
+	// VisualQA is present only when visual_qa mode was requested. It carries the
+	// inspection mode, thumbnail paths, visual findings, proposed/applied
+	// repairs, and optional palette audit. Any repairs it applied are also
+	// reflected in final_presentation.
+	VisualQA *visualQAResult `json:"visual_qa,omitempty"`
 	// FinalPresentation is the full repaired deck JSON after the convergence
 	// loop. Always present on a successful run, including zero-repair runs
 	// (where it equals the resolved input). Lets agents continue editing,
@@ -84,15 +95,19 @@ func mcpAutoRepairTool() mcp.Tool {
 	return mcp.NewTool("auto_repair",
 		mcp.WithDescription(`Run a server-side generate→inspect→repair convergence loop on a deck. Each pass renders the deck, collects fit findings, scores the deck deterministically, and applies the top-ranked repairs from propose_repairs. The loop stops when the configurable gate is satisfied or when max_passes is exhausted.
 
+Quality mode (truth-labeled in the response as quality_mode):
+- DEFAULT is "deterministic": the loop scores the deck from static + render-fit findings only. It never looks at a rendered pixel and needs no API key or render tools. This is fast and free but cannot catch purely visual defects (overlap, contrast, misalignment) the way a vision pass can.
+- OPT-IN "deterministic+visual_qa": set visual_qa.enabled=true to additionally run the agent-grade visual refinement loop AFTER the deterministic loop — render thumbnails → inspect_slide_images → map visual findings → repair → re-render — and optionally the deterministic palette ΔE audit (audit_palette). This mode renders the deck (needs libreoffice + magick on PATH) and, when ANTHROPIC_API_KEY is set, issues one Claude vision call per slide (default model claude-haiku-4-5-20251001). It degrades transparently: missing render tools skip the phase with a note; a missing API key falls back to the free pure-Go heuristic inspector (advisory P3 findings). See the visual_qa response block's requirements field for the resolved preconditions and cost.
+
 Replaces the agent's manual chain (generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation) with a single tool call. The final PPTX is written to the server output directory either way; gate_passed reports whether convergence succeeded.
 
-Gate fields (all optional, all defaulted):
+Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loop only:
 - min_score (default 75): overall_score must be ≥ this value.
 - max_p0_findings (default 0): max count of refuse-action findings tolerated.
 - max_p1_findings (default 2): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
-Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], final_presentation}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace.
+Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, visual_qa?}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
 
 When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
 		mcp.WithRawOutputSchema(outputSchemaAutoRepair),
@@ -118,6 +133,16 @@ When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet
 		),
 		mcp.WithNumber("max_passes",
 			mcp.Description("Maximum number of generate→inspect→repair iterations (default 3). Clamped to [1, 10]."),
+		),
+		mcp.WithObject("visual_qa",
+			mcp.Description("Opt-in visual-QA mode. When enabled=true, runs a vision/heuristic visual refinement phase AFTER the deterministic loop (render thumbnails → inspect_slide_images → repair → re-render). Disabled by default. Requires libreoffice + magick on PATH; vision inspection additionally requires ANTHROPIC_API_KEY (otherwise falls back to the heuristic inspector). See the visual_qa response block for resolved requirements and cost."),
+			mcp.Properties(map[string]any{
+				"enabled":       map[string]any{"type": "boolean", "description": "Enable the visual-QA phase (default false)."},
+				"model":         map[string]any{"type": "string", "description": "Claude vision model override (default claude-haiku-4-5-20251001)."},
+				"audit_palette": map[string]any{"type": "boolean", "description": "Also run the deterministic palette ΔE audit (audit_palette) on the final deck (default false)."},
+				"max_passes":    map[string]any{"type": "integer", "description": "Max visual render→inspect→repair iterations (default 1). Clamped to [1, 3]."},
+				"density":       map[string]any{"type": "integer", "description": "Thumbnail DPI for inspection (default 50). Clamped to [25, 150]."},
+			}),
 		),
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: auto_repair.pptx). Path components are stripped for safety."),
@@ -180,6 +205,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMaxPasses(request)
+	vqa := extractVisualQAConfig(request)
 
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)
 	if outputFilename == "" {
@@ -189,7 +215,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, outputFilename)
+	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -218,6 +244,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	baseDir string,
 	gate autoRepairGate,
 	maxPasses int,
+	vqa visualQAConfig,
 	outputFilename string,
 ) (*autoRepairOutput, *mcp.CallToolResult) {
 	// Resolve relative local-asset paths (icons, images, background) against
@@ -330,10 +357,21 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		return nil, api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("final generation failed: %v", renderErr))
 	}
 
+	// Opt-in visual-QA phase. Runs only when enabled; it mutates input (applying
+	// any visual repairs) and rewrites finalPath so the on-disk PPTX and the
+	// marshaled final_presentation below both reflect the visual repairs. It
+	// never errors — failures degrade to recorded notes — so the deterministic
+	// deck is always preserved.
+	var vqaResult *visualQAResult
+	if vqa.Enabled {
+		vqaResult = mc.runVisualQALoop(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, finalPath, vqa)
+	}
+
 	// Marshal the final repaired deck. input reflects every repair applied
-	// during the loop plus the up-front asset-path and canonical-layout
-	// resolution, so the JSON round-trips back into validate_input /
-	// generate_presentation as-is — agents never have to rebuild it from trace.
+	// during the loop (and visual_qa phase) plus the up-front asset-path and
+	// canonical-layout resolution, so the JSON round-trips back into
+	// validate_input / generate_presentation as-is — agents never have to
+	// rebuild it from trace.
 	finalPresentation, err := json.Marshal(input)
 	if err != nil {
 		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal final presentation: %v", err))
@@ -346,6 +384,8 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		Passes:            passesRun,
 		Trace:             trace,
 		GateReasons:       lastGateReasons,
+		QualityMode:       qualityModeLabel(vqa.Enabled),
+		VisualQA:          vqaResult,
 		FinalPresentation: finalPresentation,
 	}
 	if gatePassed {

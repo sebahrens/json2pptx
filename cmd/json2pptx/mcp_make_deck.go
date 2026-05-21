@@ -41,7 +41,14 @@ type makeDeckOutput struct {
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
-	Plan        *makeDeckPlanSummary   `json:"plan"`
+	// QualityMode truth-labels the inspection regime: "deterministic" (default)
+	// or "deterministic+visual_qa" when visual_qa.enabled was passed through.
+	// Mirrors auto_repair.quality_mode.
+	QualityMode string `json:"quality_mode"`
+	// VisualQA is present only when visual_qa mode was requested. Same shape as
+	// auto_repair.visual_qa.
+	VisualQA *visualQAResult      `json:"visual_qa,omitempty"`
+	Plan     *makeDeckPlanSummary `json:"plan"`
 	// FinalPresentation is the full deck JSON produced after planning and
 	// repair. Always present on success. Lets agents continue editing the
 	// auto-authored deck (per-slide content via repair_slide, re-validation via
@@ -57,8 +64,8 @@ type makeDeckOutput struct {
 // deck. Per-slide entries let the agent target individual slides for follow-up
 // edits without re-running plan_deck.
 type makeDeckPlanSummary struct {
-	Template    string             `json:"template"`
-	SlideBudget int                `json:"slide_budget"`
+	Template    string              `json:"template"`
+	SlideBudget int                 `json:"slide_budget"`
 	Slides      []makeDeckPlanSlide `json:"slides"`
 }
 
@@ -87,7 +94,9 @@ func mcpMakeDeckTool() mcp.Tool {
 
 Use this when you want a publishable deck without orchestrating the 37-tool surface yourself. The full surface remains available for fine-grained control; make_deck is intended as the recommended starting point for cold-start agents.
 
-Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], plan, final_presentation}. The final PPTX is written to the configured output directory whether the gate passed or not. plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
+Quality mode (truth-labeled in the response as quality_mode): like auto_repair, the DEFAULT is "deterministic" — the internal loop scores the deck from static + render-fit findings only, with no rendering and no API key. Pass visual_qa.enabled=true to additionally run the opt-in vision/heuristic visual refinement phase (quality_mode "deterministic+visual_qa"); it inherits auto_repair's visual_qa semantics, requirements, and transparent fallbacks.
+
+Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
 
 Style hints (all optional):
 - slide_budget: target deck size, clamped to [3, 30] (default 10).
@@ -115,6 +124,16 @@ Quality gate matches auto_repair semantics: same field names, same defaults. Omi
 		),
 		mcp.WithNumber("max_repair_passes",
 			mcp.Description("Maximum number of auto_repair iterations (default 3). Clamped to [1, 10]."),
+		),
+		mcp.WithObject("visual_qa",
+			mcp.Description("Opt-in visual-QA mode, inherited from auto_repair. When enabled=true, runs a vision/heuristic visual refinement phase after the deterministic loop. Disabled by default. Same shape and semantics as auto_repair.visual_qa (enabled, model, audit_palette, max_passes, density); see auto_repair for requirements and cost."),
+			mcp.Properties(map[string]any{
+				"enabled":       map[string]any{"type": "boolean", "description": "Enable the visual-QA phase (default false)."},
+				"model":         map[string]any{"type": "string", "description": "Claude vision model override (default claude-haiku-4-5-20251001)."},
+				"audit_palette": map[string]any{"type": "boolean", "description": "Also run the deterministic palette ΔE audit on the final deck (default false)."},
+				"max_passes":    map[string]any{"type": "integer", "description": "Max visual render→inspect→repair iterations (default 1). Clamped to [1, 3]."},
+				"density":       map[string]any{"type": "integer", "description": "Thumbnail DPI for inspection (default 50). Clamped to [25, 150]."},
+			}),
 		),
 		mcp.WithObject("gate",
 			mcp.Description("Quality gate configuration. Same shape as auto_repair.gate. Omit to use engine defaults."),
@@ -200,13 +219,14 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMakeDeckMaxPasses(request)
+	vqa := extractVisualQAConfig(request)
 
 	outputFilename := "make_deck.pptx"
 	if reqFilename, ferr := request.RequireString("output_filename"); ferr == nil && reqFilename != "" {
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, outputFilename)
+	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -218,6 +238,8 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		Passes:            loopOut.Passes,
 		Trace:             loopOut.Trace,
 		GateReasons:       loopOut.GateReasons,
+		QualityMode:       loopOut.QualityMode,
+		VisualQA:          loopOut.VisualQA,
 		Plan:              planSummaryFromInput(plan, input, templateName),
 		FinalPresentation: loopOut.FinalPresentation,
 	}

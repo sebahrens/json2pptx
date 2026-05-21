@@ -31,6 +31,12 @@ type Agent struct {
 	httpClient  *http.Client
 }
 
+// DefaultModel returns the Claude model the visual-QA agent uses when no model
+// override is supplied. Exposed so callers (e.g. the auto_repair visual-QA mode)
+// can report the default model in their cost/requirements summary without
+// hard-coding the version string.
+func DefaultModel() string { return defaultModel }
+
 // Option configures the Agent.
 type Option func(*Agent)
 

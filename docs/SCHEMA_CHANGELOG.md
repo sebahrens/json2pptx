@@ -4,6 +4,41 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.43.0 (2026-05-21)
+
+### Added
+
+- **Opt-in `visual_qa` mode for `auto_repair` and `make_deck`.** The default
+  convergence loop is now truth-labeled `quality_mode: "deterministic"` — it
+  scores the deck from static + render-fit findings only and never inspects a
+  rendered pixel (no rendering, no API key). Both tools gain an optional
+  `visual_qa` object — `{enabled, model?, audit_palette?, max_passes?, density?}`
+  — that, when `enabled: true`, runs the agent-grade visual refinement loop
+  AFTER the deterministic loop: render thumbnails → `inspect_slide_images` → map
+  visual findings to `propose_repairs` → apply → re-render, plus an optional
+  deterministic palette ΔE audit (`audit_palette`). The response is labeled
+  `quality_mode: "deterministic+visual_qa"`.
+
+  Both responses gain two additive fields:
+  - `quality_mode` — `"deterministic"` (default) or `"deterministic+visual_qa"`.
+    Always present.
+  - `visual_qa` — present only when the mode was requested. Carries
+    `{requested, inspection_mode, model, requirements, passes[], palette_audit?,
+    notes[]}`. `requirements` reports the API-key env var + presence, default
+    model, render dependencies + availability, and a cost note. Each
+    `passes[]` entry records `{pass, inspection_mode, thumbnail_paths[],
+    visual_findings[], proposed_repairs[], repairs_applied[]}`. Any repairs the
+    phase applies are also reflected in `final_presentation`.
+
+  The mode degrades transparently: when libreoffice/magick are missing the phase
+  is `inspection_mode: "skipped"` with an explanatory note; when
+  `ANTHROPIC_API_KEY` is unset it falls back to the pure-Go heuristic inspector
+  (`inspection_mode: "heuristic"`, advisory P3 findings) instead of erroring.
+  Only P0/P1 visual findings drive automatic repairs. `get_capabilities` gains a
+  `features.quality_modes` block advertising the default mode, the mode list, and
+  the opt-in. Existing deterministic-only callers see no behavior change.
+  (bd `go-slide-creator-g0ch`.)
+
 ## 4.42.0 (2026-05-21)
 
 ### Added

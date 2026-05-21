@@ -228,6 +228,17 @@ func artifactsDir() string {
 	return filepath.Join(cacheDir(), "artifacts")
 }
 
+// WriteArtifact persists PNG bytes to a content-addressed path under the render
+// artifacts directory and returns that path, regardless of size. Unlike
+// SlideImageFromBytes (which only writes a path when the image exceeds the inline
+// cap), this always materializes a stable on-disk path — useful when a caller
+// needs a filesystem path for every image, e.g. the visual-QA loop recording
+// thumbnail paths in its trace. Identical bytes always map to the same path.
+func WriteArtifact(data []byte) (string, error) {
+	sum := sha256.Sum256(data)
+	return writeArtifact(data, hex.EncodeToString(sum[:]))
+}
+
 // writeArtifact writes PNG bytes to a content-addressed path under artifactsDir
 // and returns that path. The filename embeds contentHash, so identical content
 // always maps to the same path and different content never collides. An existing

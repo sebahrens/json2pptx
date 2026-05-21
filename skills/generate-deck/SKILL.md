@@ -223,8 +223,8 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 | `validate_input` | RENDER | Cheapest precondition gate — full-deck schema + optional `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields. Always run before `generate_presentation`. |
 | `generate_presentation` | RENDER | Render the PPTX. Defaults to `output_validation: "strict"` (see [Output Validation Guarantee](#output-validation-guarantee)); `strict_fit` controls overflow promotion (see [FINDINGS.md](FINDINGS.md)). |
 | `repair_slide` | REPAIR | Apply targeted fixes to a single slide using the `Fix.Kind` vocabulary fit-report emits. For multi-slide fixes, run `propose_repairs` first to translate findings into ranked directives. |
-| `auto_repair` | REPAIR | Server-side convergence loop: each pass runs `generate→inspect→repair` against a configurable gate (`min_score`, `max_p0_findings`, `max_p1_findings`, `require_takeaway_on_charts`). Returns `{path, final_score, gate_passed, passes, trace[], gate_reasons[], final_presentation}`. Replaces hand-coded `generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation` loops. Default `max_passes` is 3; the final deck is always rendered, with `gate_passed` reporting whether convergence succeeded. `final_presentation` is the full repaired deck JSON (always present, including zero-repair runs) — feed it back into `validate_input` / `generate_presentation` / `repair_slide` to keep editing without rebuilding state from the trace. |
-| `make_deck` | COLD-START | One-call facade: hand it an `outline` (natural-language brief) and it chains `plan_deck → expand patterns with exemplar content → auto_repair` internally, returning a publishable PPTX in a single tool call. Same `gate` vocabulary as `auto_repair`. Optional `style_hints` (`slide_budget`, `audience`, `accent_strategy`, `must_include`) and `max_repair_passes` (default 3, clamped to [1, 10]). Returns `{path, final_score, gate_passed, passes, trace[], gate_reasons[], plan, final_presentation}` where `plan.slides[]` exposes the per-slide pattern + role + title so you can target `repair_slide` follow-ups without re-planning, and `final_presentation` is the full authored+repaired deck JSON (feed it back into `validate_input` / `generate_presentation` / `repair_slide` to keep editing without rebuilding it from the plan or trace). Use this as the recommended starting point when you don't need fine control; switch to the precondition workflow (`recommend_visual` → `expand_pattern` → `validate_input` → `generate_presentation`) when you want to author per-slide content yourself. |
+| `auto_repair` | REPAIR | Server-side convergence loop: each pass runs `generate→inspect→repair` against a configurable gate (`min_score`, `max_p0_findings`, `max_p1_findings`, `require_takeaway_on_charts`). Returns `{path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, visual_qa?}`. Replaces hand-coded `generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation` loops. Default `max_passes` is 3; the final deck is always rendered, with `gate_passed` reporting whether convergence succeeded. `final_presentation` is the full repaired deck JSON (always present, including zero-repair runs) — feed it back into `validate_input` / `generate_presentation` / `repair_slide` to keep editing without rebuilding state from the trace. **Quality mode** (`quality_mode`): defaults to `"deterministic"` — static + render-fit findings only, no rendering or API key. Pass `visual_qa:{enabled:true}` for the opt-in `"deterministic+visual_qa"` mode that adds a vision/heuristic visual refinement phase (render thumbnails → `inspect_slide_images` → repair → re-render) plus optional `audit_palette`; see [Visual-QA mode](#visual-qa-mode-auto_repair--make_deck). |
+| `make_deck` | COLD-START | One-call facade: hand it an `outline` (natural-language brief) and it chains `plan_deck → expand patterns with exemplar content → auto_repair` internally, returning a publishable PPTX in a single tool call. Same `gate` vocabulary as `auto_repair`. Optional `style_hints` (`slide_budget`, `audience`, `accent_strategy`, `must_include`), `max_repair_passes` (default 3, clamped to [1, 10]), and the same opt-in `visual_qa` block as `auto_repair`. Returns `{path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, visual_qa?}` where `plan.slides[]` exposes the per-slide pattern + role + title so you can target `repair_slide` follow-ups without re-planning, and `final_presentation` is the full authored+repaired deck JSON (feed it back into `validate_input` / `generate_presentation` / `repair_slide` to keep editing without rebuilding it from the plan or trace). Use this as the recommended starting point when you don't need fine control; switch to the precondition workflow (`recommend_visual` → `expand_pattern` → `validate_input` → `generate_presentation`) when you want to author per-slide content yourself. |
 
 **Stop when the quality gate passes.** Every `score_deck` response carries a `quality_gate` block — the **machine-readable definition of done**:
 
@@ -245,6 +245,32 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 When `quality_gate.passed === true`, the deck has cleared the ship-quality bar — **stop**. Do not chain another `propose_repairs` / `repair_slide` / `repair_slides_batch` / `auto_repair` call, do not render thumbnails to "double-check", and do not spend more tokens on aesthetic polish. When `passed === false`, `reasons[]` enumerates the unmet criteria in a stable order (`score → P0 → P1 → takeaway → accent_overload`) so you can address the highest-impact issue first. The criteria block is fixed by the server (not configurable on `score_deck`) so the gate cannot be relaxed at call time — agents that need a different threshold should call `auto_repair` (which exposes a tunable gate) instead. The same gate semantics apply inside the visual-QA loop: stop iterating once `quality_gate.passed` flips true on a `score_deck` pass.
 
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
+
+---
+
+## Visual-QA mode (auto_repair / make_deck)
+
+`auto_repair` and `make_deck` run a **deterministic** convergence loop by default: they score the deck from static + render-fit findings and **never look at a rendered pixel**. This is fast and free but cannot catch purely visual defects (overlap, contrast, misalignment) the way a vision pass can. The response truth-labels this as `quality_mode: "deterministic"`.
+
+To add the agent-grade visual refinement loop, pass `visual_qa: {enabled: true}`. The response is then labeled `quality_mode: "deterministic+visual_qa"` and carries a `visual_qa` block. The phase runs AFTER the deterministic loop: render thumbnails → `inspect_slide_images` → map visual findings to `propose_repairs` → apply → re-render. Only **P0/P1** visual findings drive automatic repairs (P2/P3 are advisory). Any repairs it applies are reflected in `final_presentation`.
+
+```jsonc
+"visual_qa": {
+  "enabled": true,         // default false — the whole mode is opt-in
+  "model": "claude-...",   // optional vision-model override
+  "audit_palette": true,   // also run the deterministic palette ΔE audit
+  "max_passes": 1,         // visual render→inspect→repair iterations, clamped [1,3]
+  "density": 50            // thumbnail DPI for inspection, clamped [25,150]
+}
+```
+
+**Preconditions and cost** (echoed back in `visual_qa.requirements`): rendering needs `libreoffice` + `magick` on PATH; vision inspection issues one Claude vision call per slide (default `claude-haiku-4-5-20251001`) and requires `ANTHROPIC_API_KEY`.
+
+**Transparent fallbacks** — the mode never errors out the call:
+- Render tools missing → `visual_qa.inspection_mode: "skipped"` with an explanatory `notes[]` entry; the deterministic deck is preserved.
+- `ANTHROPIC_API_KEY` unset → `inspection_mode: "heuristic"` (pure-Go fallback, advisory P3 findings) instead of vision.
+
+`visual_qa.passes[]` records each iteration: `{pass, inspection_mode, thumbnail_paths[], visual_findings[], proposed_repairs[], repairs_applied[]}`. When `audit_palette: true`, `visual_qa.palette_audit` carries `{available, violations, findings, note?}`. Discover the mode at runtime via `get_capabilities` → `features.quality_modes`.
 
 ---
 

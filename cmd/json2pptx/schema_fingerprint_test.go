@@ -14,7 +14,10 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// addition of the examine_template MCP tool changes the tool-name set, so the
 	// hash advanced from 873ef2aca515871c (4.40.0). 4.42.0 only added response
 	// fields to the render tools (render.SlideImage), which are not part of the
-	// fingerprint surface, so the hash is unchanged.
+	// fingerprint surface, so the hash is unchanged. 4.43.0 added the opt-in
+	// visual_qa parameter + quality_mode/visual_qa response fields to
+	// auto_repair / make_deck — input params and response fields, not tool names
+	// or PresentationInput/Fix.Kind surfaces, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "e597f18f06d5bf07"
 
