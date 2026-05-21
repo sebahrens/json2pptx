@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -158,9 +159,11 @@ func TestHandleValidate_BaseDirResolvesRelativeAsset(t *testing.T) {
 	if err := json.Unmarshal(b, &resp); err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	for _, d := range resp.Diagnostics {
-		if d.Code == "BACKGROUND_IMAGE_PATH" || d.Code == "IMAGE_PATH" {
-			t.Errorf("unexpected asset finding: %+v", d)
+	// Asset findings are folded into the namespaced Findings envelope
+	// (e.g. INPUT.BACKGROUND_IMAGE_PATH); none should appear.
+	for _, f := range resp.Findings.Findings {
+		if strings.Contains(f.Code, "IMAGE_PATH") {
+			t.Errorf("unexpected asset finding: %+v", f)
 		}
 	}
 }
@@ -199,28 +202,19 @@ func TestHandleValidate_BaseDirMissingAssetEmitsStructuredFinding(t *testing.T) 
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	b, _ := json.Marshal(result.StructuredContent)
-	var resp dryRunOutput
-	if err := json.Unmarshal(b, &resp); err != nil {
-		t.Fatalf("parse: %v", err)
+	// A missing asset invalidates the deck, so validate returns the MCP
+	// diagnostics error envelope (IsError=true, {diagnostics, summary}) with the
+	// raw, un-namespaced diagnostic codes and their Details preserved.
+	if !result.IsError {
+		t.Fatalf("expected IsError=true for missing background asset, got success: %+v", result.StructuredContent)
 	}
-	if resp.Valid {
-		t.Error("expected valid=false for missing background asset")
+	env := parseMCPError(t, result)
+	d := requireDiagCode(t, env.Diagnostics, "BACKGROUND_IMAGE_PATH")
+	if d.Details["asset_kind"] != "background" {
+		t.Errorf("expected asset_kind=background in details, got %v", d.Details["asset_kind"])
 	}
-	found := false
-	for _, d := range resp.Diagnostics {
-		if d.Code == "BACKGROUND_IMAGE_PATH" {
-			found = true
-			if d.Details["asset_kind"] != "background" {
-				t.Errorf("expected asset_kind=background in details, got %v", d.Details["asset_kind"])
-			}
-			if d.Details["input_value"] != "missing-bg.jpg" {
-				t.Errorf("expected input_value=missing-bg.jpg, got %v", d.Details["input_value"])
-			}
-		}
-	}
-	if !found {
-		t.Errorf("expected BACKGROUND_IMAGE_PATH diagnostic, got %+v", resp.Diagnostics)
+	if d.Details["input_value"] != "missing-bg.jpg" {
+		t.Errorf("expected input_value=missing-bg.jpg, got %v", d.Details["input_value"])
 	}
 }
 

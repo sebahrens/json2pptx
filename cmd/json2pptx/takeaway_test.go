@@ -103,18 +103,12 @@ func TestValidateTakeawayMissing(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+			output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 			validateSlidesAgainstTemplate(&output, []SlideInput{tc.slide}, analysis)
 
-			var found bool
-			for _, vw := range output.ValidationWarnings {
-				if vw.Code == patterns.ErrCodeTakeawayMissing {
-					found = true
-					break
-				}
-			}
+			found := findDiagByCode(output.Diagnostics, patterns.ErrCodeTakeawayMissing) != nil
 			if found != tc.wantWarning {
-				t.Errorf("takeaway_missing warning: got=%v want=%v\nwarnings=%v", found, tc.wantWarning, output.Warnings)
+				t.Errorf("takeaway_missing warning: got=%v want=%v\ndiagnostics=%v", found, tc.wantWarning, output.Diagnostics)
 			}
 		})
 	}

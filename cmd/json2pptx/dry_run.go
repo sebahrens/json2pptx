@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -21,24 +22,83 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// dryRunOutput is the top-level JSON printed to stdout in dry-run mode.
+// dryRunOutput is the top-level JSON printed to stdout in dry-run mode and
+// returned by the validate_input MCP tool on the success path. Every warning,
+// error, validation finding, and fit finding is folded into the single Findings
+// envelope by buildFindingsEnvelope; the legacy parallel arrays
+// (warnings/errors/validation_warnings/diagnostics/fit_findings) have been
+// removed from the wire. The structural fields (counts, slides) are preserved.
+// See docs/AGENT_DIAGNOSTICS.md for the envelope contract.
 type dryRunOutput struct {
-	Valid              bool                        `json:"valid"`
-	SlideCount         int                         `json:"slide_count"`
-	ChartCount         int                         `json:"chart_count"`
-	DiagramCount       int                         `json:"diagram_count"`
-	TableCount         int                         `json:"table_count"`
-	ShapeCount         int                         `json:"shape_count"`
-	Warnings           []string                    `json:"warnings"`
-	ValidationWarnings []*patterns.ValidationError `json:"validation_warnings,omitempty"`
-	Errors             []string                    `json:"errors,omitempty"`
-	Diagnostics        []diagnostics.Diagnostic    `json:"diagnostics,omitempty"`
-	Slides             []dryRunSlide               `json:"slides"`
-	FitFindings        []patterns.FitFinding       `json:"fit_findings,omitempty"`
+	Valid        bool          `json:"valid"`
+	SlideCount   int           `json:"slide_count"`
+	ChartCount   int           `json:"chart_count"`
+	DiagramCount int           `json:"diagram_count"`
+	TableCount   int           `json:"table_count"`
+	ShapeCount   int           `json:"shape_count"`
+	Slides       []dryRunSlide `json:"slides"`
+
+	// Findings is the single agent-facing diagnostic surface: a FindingEnvelope
+	// carrying every warning, error, validation finding, and fit finding for the
+	// deck. It is populated by buildFindingsEnvelope just before serialization,
+	// so a freshly built dryRunOutput (e.g. a unit test that calls
+	// validateSlidesAgainstTemplate directly) carries an empty envelope and
+	// populates the Diagnostics/FitFindings accumulators instead.
+	Findings diagnostics.FindingEnvelope `json:"findings"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key.
 	ResponseFingerprint string `json:"response_fingerprint,omitempty"`
+
+	// Diagnostics and FitFindings are internal accumulators that
+	// buildFindingsEnvelope folds into Findings. They are never serialized — the
+	// wire carries only the Findings envelope. Diagnostics is the complete
+	// superset of every warning, error, and validation finding produced during
+	// validation.
+	Diagnostics []diagnostics.Diagnostic `json:"-"`
+	FitFindings []patterns.FitFinding    `json:"-"`
+
+	// Envelope metadata captured during validation and stamped onto Findings by
+	// buildFindingsEnvelope.
+	subcommand  string
+	template    string
+	inputSHA256 string
+}
+
+// buildFindingsEnvelope folds the accumulated Diagnostics and FitFindings into
+// the single Findings envelope. Call it exactly once, just before serialization;
+// the error-severity findings determine Findings.OK.
+//
+// The combined diagnostics are stably sorted by descending severity so
+// findings[0] is the highest-severity issue — the "most important fix first"
+// invariant documented in the skill FINDINGS.md. Within a severity the original
+// order is preserved (validation diagnostics in document order, then fit
+// findings in their canonical order), keeping output deterministic.
+func (o *dryRunOutput) buildFindingsEnvelope() {
+	ds := make([]diagnostics.Diagnostic, 0, len(o.Diagnostics)+len(o.FitFindings))
+	ds = append(ds, o.Diagnostics...)
+	ds = append(ds, diagnostics.FromFitFindings(o.FitFindings)...)
+	sort.SliceStable(ds, func(i, j int) bool {
+		return severityRank(ds[i].Severity) < severityRank(ds[j].Severity)
+	})
+	o.Findings = diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+		Subcommand:  o.subcommand,
+		Template:    o.template,
+		InputSHA256: o.inputSHA256,
+	}, ds)
+}
+
+// severityRank orders diagnostics for the findings envelope: error before
+// warning before info.
+func severityRank(s diagnostics.Severity) int {
+	switch s {
+	case diagnostics.SeverityError:
+		return 0
+	case diagnostics.SeverityWarning:
+		return 1
+	default:
+		return 2
+	}
 }
 
 // dryRunSlide describes one slide in the dry-run report.
@@ -69,9 +129,9 @@ type dryRunPlaceholder struct {
 // strict_unknown_keys=true semantics) instead of warnings.
 func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
 	output := dryRunOutput{
-		Valid:    true,
-		Warnings: []string{},
-		Slides:   []dryRunSlide{},
+		Valid:      true,
+		Slides:     []dryRunSlide{},
+		subcommand: "generate -dry-run",
 	}
 
 	// Read JSON input
@@ -84,9 +144,13 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	}
 	if err != nil {
 		output.Valid = false
-		output.Errors = append(output.Errors, fmt.Sprintf("failed to read JSON input: %v", err))
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+			Code: "READ_FAILED", Message: fmt.Sprintf("failed to read JSON input: %v", err),
+			Severity: diagnostics.SeverityError,
+		})
 		return writeDryRunOutput(output)
 	}
+	output.inputSHA256 = diagnostics.ComputeInputSHA256(inputData)
 
 	// Parse JSON as PresentationInput (superset of legacy JSONInput)
 	var input PresentationInput
@@ -95,14 +159,20 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 		patched, patchErr := applyPresentationPatch(patchInput)
 		if patchErr != nil {
 			output.Valid = false
-			output.Errors = append(output.Errors, fmt.Sprintf("failed to apply patch: %v", patchErr))
+			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+				Code: "PATCH_ERROR", Message: fmt.Sprintf("failed to apply patch: %v", patchErr),
+				Severity: diagnostics.SeverityError,
+			})
 			return writeDryRunOutput(output)
 		}
 		input = *patched
 	} else {
 		if err := json.Unmarshal(inputData, &input); err != nil {
 			output.Valid = false
-			output.Errors = append(output.Errors, fmt.Sprintf("failed to parse JSON: %v", err))
+			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+				Code: "INVALID_JSON", Message: fmt.Sprintf("failed to parse JSON: %v", err),
+				Severity: diagnostics.SeverityError,
+			})
 			return writeDryRunOutput(output)
 		}
 	}
@@ -113,6 +183,7 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	}
 
 	applyDefaults(&input)
+	output.template = input.Template
 
 	// Resolve named style references from template settings (shared with MCP).
 	resolveInputNamedSettingsForDir(templatesDir, &input)
@@ -123,26 +194,34 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	for _, ve := range checkInputUnknownKeys(inputData) {
 		if strictUnknownKeys {
 			output.Valid = false
-			output.Errors = append(output.Errors, ve.Error())
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 		} else {
-			output.Warnings = append(output.Warnings, ve.Error())
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(ve))
 		}
 	}
 
 	// Enum validation — unknown values for transition, transition_speed, build, background.fit.
 	for _, ve := range checkInputEnumValues(&input) {
 		output.Valid = false
-		output.Errors = append(output.Errors, ve.Error())
+		output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 	}
 
 	// Validate required fields
 	if input.Template == "" {
 		output.Valid = false
-		output.Errors = append(output.Errors, "template is required in JSON input")
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+			Code: "REQUIRED", Path: "template", Message: "template is required in JSON input",
+			Severity: diagnostics.SeverityError,
+			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
+		})
 	}
 	if len(input.Slides) == 0 {
 		output.Valid = false
-		output.Errors = append(output.Errors, "at least one slide is required")
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+			Code: "REQUIRED", Path: "slides", Message: "at least one slide is required",
+			Severity: diagnostics.SeverityError,
+			Fix:      &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
+		})
 	}
 	if !output.Valid {
 		return writeDryRunOutput(output)
@@ -154,7 +233,10 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 		cfg, err = config.Load(configPath)
 		if err != nil {
 			output.Valid = false
-			output.Errors = append(output.Errors, fmt.Sprintf("failed to load config: %v", err))
+			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+				Code: "SETTINGS_ERROR", Message: fmt.Sprintf("failed to load config: %v", err),
+				Severity: diagnostics.SeverityError,
+			})
 			return writeDryRunOutput(output)
 		}
 	}
@@ -166,7 +248,11 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
 	if err != nil {
 		output.Valid = false
-		output.Errors = append(output.Errors, templateNotFoundError(input.Template, cfg.Templates.Dir))
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+			Code: "TEMPLATE_NOT_FOUND", Path: "template",
+			Message:  templateNotFoundError(input.Template, cfg.Templates.Dir),
+			Severity: diagnostics.SeverityError,
+		})
 		return writeDryRunOutput(output)
 	}
 	defer templateCleanup()
@@ -175,7 +261,11 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	templateAnalysis, err := getOrAnalyzeTemplate(templatePath, cache)
 	if err != nil {
 		output.Valid = false
-		output.Errors = append(output.Errors, fmt.Sprintf("template analysis failed: %v", err))
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+			Code: "TEMPLATE_ERROR", Path: "template",
+			Message:  fmt.Sprintf("template analysis failed: %v", err),
+			Severity: diagnostics.SeverityError,
+		})
 		return writeDryRunOutput(output)
 	}
 
@@ -289,7 +379,8 @@ func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetada
 
 // validateSlidesAgainstTemplate validates the slides in a PresentationInput
 // against a resolved TemplateAnalysis, populating the dryRunOutput with
-// per-slide details, warnings, and errors. This is the shared validation
+// per-slide details and accumulating diagnostics in output.Diagnostics (folded
+// into the Findings envelope at serialization). This is the shared validation
 // core used by both the CLI dry-run and the MCP validate_input handler.
 func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, analysis *types.TemplateAnalysis) { //nolint:gocognit,gocyclo
 	// Build layout and placeholder lookup maps from template analysis
@@ -332,7 +423,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			if slideInput.SlideType == "" {
 				output.Valid = false
 				msg := fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1)
-				output.Errors = append(output.Errors, msg)
 				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 					Code:     patterns.ErrCodeRequired,
 					Path:     slidepath.SlideField(i, "layout_id"),
@@ -365,8 +455,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				Message: msg,
 				Fix:     fix,
 			}
-			output.Errors = append(output.Errors, ve.Error())
-			output.ValidationWarnings = append(output.ValidationWarnings, ve)
 			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 		} else {
 			slide.LayoutName = lm.Name
@@ -382,7 +470,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			if item.PlaceholderID == "" {
 				output.Valid = false
 				msg := fmt.Sprintf("slide %d, content %d: placeholder_id is required", i+1, j+1)
-				output.Errors = append(output.Errors, msg)
 				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 					Code:     patterns.ErrCodeRequired,
 					Path:     slidepath.ContentField(i, j, "placeholder_id"),
@@ -417,8 +504,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						Message: msg,
 						Fix:     fix,
 					}
-					output.Errors = append(output.Errors, ve.Error())
-					output.ValidationWarnings = append(output.ValidationWarnings, ve)
 					output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 				} else {
 					ph.MaxChars = phInfo.MaxChars
@@ -431,7 +516,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							ph.TruncateAt = phInfo.MaxChars
 							msg := fmt.Sprintf("slide %d, content %d: text (%d chars) exceeds placeholder %q limit (%d chars)",
 								i+1, j+1, len(text), item.PlaceholderID, phInfo.MaxChars)
-							output.Warnings = append(output.Warnings, msg)
 							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 								Code:     patterns.ErrCodeMaxLength,
 								Path:     slidepath.ContentField(i, j, "text"),
@@ -454,7 +538,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			if item.Type == "" {
 				output.Valid = false
 				msg := fmt.Sprintf("slide %d, content %d: type is required", i+1, j+1)
-				output.Errors = append(output.Errors, msg)
 				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 					Code:     patterns.ErrCodeRequired,
 					Path:     slidepath.ContentField(i, j, "type"),
@@ -474,7 +557,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					output.Valid = false
 					msg := fmt.Sprintf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)",
 						i+1, j+1, item.Type)
-					output.Errors = append(output.Errors, msg)
 					fix := &diagnostics.Fix{
 						Kind:   "use_one_of",
 						Params: map[string]any{"available": validTypes},
@@ -503,7 +585,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					if table != nil {
 						tablePath := slidepath.ContentIndex(i, j)
 						densityWarnings := pipeline.DetectTableDensity(table, tablePath)
-						output.ValidationWarnings = append(output.ValidationWarnings, densityWarnings...)
 						output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(densityWarnings)...)
 
 						// Warn when both header_background and style_id are explicitly authored.
@@ -517,14 +598,14 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 									Code:    "style_collision",
 									Message: w,
 								}
-								output.ValidationWarnings = append(output.ValidationWarnings, collisionVE)
 								output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(collisionVE))
 							}
 						}
 						// Validate style_id against template's declared table styles.
+						// Advisory only — an unknown style_id does not invalidate the
+						// deck (Valid is left unchanged), so it is a warning.
 						if vw := validateTableStyleID(table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
-							output.ValidationWarnings = append(output.ValidationWarnings, vw)
-							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(vw))
+							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
 						}
 					}
 				}
@@ -535,7 +616,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				if _, err := item.ResolveValue(); err != nil {
 					output.Valid = false
 					msg := fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, err)
-					output.Errors = append(output.Errors, msg)
 					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 						Code:     diagnostics.CodeInvalidParameter,
 						Path:     slidepath.ContentField(i, j, item.Type+"_value"),
@@ -559,14 +639,12 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						Params: map[string]any{"from": "value", "to": typedField},
 					},
 				}
-				output.ValidationWarnings = append(output.ValidationWarnings, legacyVE)
 				output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(legacyVE))
 			}
 
 			// Validate chart/diagram data structure via svggen
 			if item.Type == "chart" || item.Type == "diagram" {
 				chartWarnings := validateContentDiagramData(item, i+1, j+1)
-				output.Warnings = append(output.Warnings, chartWarnings...)
 				for _, w := range chartWarnings {
 					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 						Code:     patterns.ErrCodeChartValueCoerced,
@@ -587,8 +665,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			output.ShapeCount += gridCounts.Shapes
 			output.TableCount += gridCounts.Tables
 			output.DiagramCount += gridCounts.Diagrams
-			output.Warnings = append(output.Warnings, gridWarnings...)
-			output.ValidationWarnings = append(output.ValidationWarnings, gridValWarnings...)
 			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(gridValWarnings)...)
 			for _, w := range gridWarnings {
 				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
@@ -600,7 +676,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			}
 			if len(gridErrors) > 0 {
 				output.Valid = false
-				output.Errors = append(output.Errors, gridErrors...)
 				for _, e := range gridErrors {
 					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 						Code:     diagnostics.CodeInvalidGrid,
@@ -617,8 +692,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					if cell != nil && cell.Table != nil {
 						tablePath := slidepath.GridCellField(i, rowIdx, cellIdx, "table")
 						if vw := validateTableStyleID(cell.Table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
-							output.ValidationWarnings = append(output.ValidationWarnings, vw)
-							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(vw))
+							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
 						}
 					}
 				}
@@ -630,7 +704,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		// data is supposed to argue. Warn (do not error) when missing.
 		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) {
 			msg := fmt.Sprintf("slide %d: chart/matrix slides should set a takeaway headline so the audience knows the 'so what' — currently empty", i+1)
-			output.Warnings = append(output.Warnings, msg)
 			ve := &patterns.ValidationError{
 				Path:    slidepath.SlideField(i, "takeaway"),
 				Code:    patterns.ErrCodeTakeawayMissing,
@@ -640,8 +713,9 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					Params: map[string]any{"field": "takeaway"},
 				},
 			}
-			output.ValidationWarnings = append(output.ValidationWarnings, ve)
-			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
+			// Advisory only — a missing takeaway does not invalidate the deck
+			// (Valid is left unchanged), so it is a warning.
+			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(ve))
 		}
 
 		output.Slides = append(output.Slides, slide)
@@ -864,9 +938,12 @@ func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, sty
 	}
 }
 
-// writeDryRunOutput writes the dry-run result as JSON to stdout.
-// Returns nil on valid output, or an error to signal exit code 1 for invalid.
+// writeDryRunOutput writes the dry-run result as JSON to stdout. The accumulated
+// diagnostics and fit findings are folded into the single Findings envelope just
+// before encoding. Returns nil on valid output, or an error to signal exit code 1
+// for invalid.
 func writeDryRunOutput(output dryRunOutput) error {
+	output.buildFindingsEnvelope()
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(output); err != nil {

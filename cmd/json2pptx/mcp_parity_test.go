@@ -14,10 +14,24 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
+
+// fitFindingsInEnvelope returns the FIT-category findings from a validate
+// response envelope. Fit findings are now folded into the single Findings
+// envelope (category "FIT"), replacing the legacy fit_findings array.
+func fitFindingsInEnvelope(env diagnostics.FindingEnvelope) []diagnostics.Finding {
+	var out []diagnostics.Finding
+	for _, f := range env.Findings {
+		if f.Category == diagnostics.NamespaceFit {
+			out = append(out, f)
+		}
+	}
+	return out
+}
 
 // fitFindingCodes returns the codes of the given findings, for diagnostic
 // messages in test failures.
@@ -54,10 +68,10 @@ func TestMCPValidateFitReport(t *testing.T) {
 		}]
 	}`
 
-	t.Run("fit_report=false omits findings", func(t *testing.T) {
+	t.Run("fit_report=false omits fit findings", func(t *testing.T) {
 		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"fit_report": false,
+			"fit_report":   false,
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -71,15 +85,15 @@ func TestMCPValidateFitReport(t *testing.T) {
 		if err := json.Unmarshal([]byte(text), &resp); err != nil {
 			t.Fatalf("failed to parse response: %v", err)
 		}
-		if len(resp.FitFindings) != 0 {
-			t.Errorf("expected no fit_findings when fit_report=false, got %d", len(resp.FitFindings))
+		if got := fitFindingsInEnvelope(resp.Findings); len(got) != 0 {
+			t.Errorf("expected no FIT findings when fit_report=false, got %d", len(got))
 		}
 	})
 
-	t.Run("fit_report=true includes findings field", func(t *testing.T) {
+	t.Run("fit_report=true carries the findings envelope", func(t *testing.T) {
 		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"fit_report": true,
+			"fit_report":   true,
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -89,16 +103,21 @@ func TestMCPValidateFitReport(t *testing.T) {
 		}
 
 		text := result.Content[0].(mcp.TextContent).Text
-		// When fit_report=true, the response should contain the fit_findings key
-		// (even if empty — the field is present).
-		if !strings.Contains(text, "fit_findings") {
-			// fit_findings is omitempty, so if there are no findings it won't appear.
-			// That's fine — the important thing is that the code path ran without error.
-			t.Log("fit_findings not in output (no overflow detected — expected for short text)")
+		var resp dryRunOutput
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		// The findings envelope is always present (replacing the legacy
+		// fit_findings array), so an agent can branch on findings.ok.
+		if resp.Findings.SchemaVersion == "" {
+			t.Error("expected findings envelope to be present (schema_version set)")
+		}
+		if resp.Findings.Findings == nil {
+			t.Error("findings.findings must be non-nil (may be empty)")
 		}
 	})
 
-	t.Run("fit_report absent defaults to no findings", func(t *testing.T) {
+	t.Run("minimal deck produces no fit findings", func(t *testing.T) {
 		result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
 		}))
@@ -110,8 +129,12 @@ func TestMCPValidateFitReport(t *testing.T) {
 		}
 
 		text := result.Content[0].(mcp.TextContent).Text
-		if strings.Contains(text, "fit_findings") {
-			t.Error("fit_findings should not appear when fit_report is not set")
+		var resp dryRunOutput
+		if err := json.Unmarshal([]byte(text), &resp); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if got := fitFindingsInEnvelope(resp.Findings); len(got) != 0 {
+			t.Errorf("expected no FIT findings for a minimal short-text deck, got %d", len(got))
 		}
 	})
 }

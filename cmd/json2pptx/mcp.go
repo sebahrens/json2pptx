@@ -1070,6 +1070,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		Valid:       !diagnostics.HasErrors(boundaryDiags),
 		Diagnostics: boundaryDiags,
 		Slides:      []dryRunSlide{},
+		subcommand:  "validate_input",
+		template:    input.Template,
+		inputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
 	}
 
 	// Validate required fields
@@ -1144,15 +1147,16 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 // marshalValidateResult serializes a dryRunOutput as a CallToolResult.
 // When validation fails (any error-severity diagnostic), it returns IsError=true
 // with the same mcpErrorEnvelope shape that generate_presentation uses. When
-// validation passes, it returns a success envelope with diagnostics[] for
-// warnings/info.
+// validation passes, it returns a success envelope whose warnings/info findings
+// travel in the single Findings envelope (see docs/AGENT_DIAGNOSTICS.md).
 func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallToolResult, error) {
 	if !output.Valid {
 		// Return the same error envelope shape as generate_presentation.
 		return api.MCPDiagnosticsError(output.Diagnostics), nil
 	}
-	// Success path: include diagnostics (warnings/info) but no redundant
-	// string arrays. The Errors/Warnings fields are left nil (omitted from JSON).
+	// Success path: fold the accumulated diagnostics and fit findings into the
+	// single Findings envelope just before serialization.
+	output.buildFindingsEnvelope()
 	if err := api.ComputeResponseFingerprint(&output); err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to compute response fingerprint: %v", err), nextCallRetry("validate_input", "presentation")), nil
 	}

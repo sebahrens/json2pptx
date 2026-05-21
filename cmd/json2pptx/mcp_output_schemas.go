@@ -83,6 +83,8 @@ var outputSchemaGenerate = json.RawMessage(`{
 }`)
 
 // --- validate_input ---
+// The diagnostic-bearing fields (warnings/errors/validation_warnings/
+// diagnostics/fit_findings) are collapsed into the single findings envelope.
 var outputSchemaValidate = json.RawMessage(`{
   "type": "object",
   "properties": {
@@ -92,36 +94,11 @@ var outputSchemaValidate = json.RawMessage(`{
     "diagram_count":       {"type": "integer"},
     "table_count":         {"type": "integer"},
     "shape_count":         {"type": "integer"},
-    "warnings":            {"type": "array", "items": {"type": "string"}},
-    "validation_warnings": {"type": "array", "items": {"type": "object"}},
-    "errors":              {"type": "array", "items": {"type": "string"}},
-    "diagnostics":         {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
     "slides":              {"type": "array", "items": {"type": "object"}},
-    "fit_findings":        {"type": "array", "items": {"type": "object"}},
+    "findings":            ` + findingEnvelopeSchema + `,
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
-  "required": ["valid"],
-  "$defs": {
-    "diagnostic": {
-      "type": "object",
-      "properties": {
-        "code":     {"type": "string"},
-        "path":     {"type": "string"},
-        "message":  {"type": "string"},
-        "severity": {"type": "string", "enum": ["error", "warning"]},
-        "fix":      {"type": "object"},
-        "next_tool_call": {
-          "type": "object",
-          "properties": {
-            "tool":          {"type": "string"},
-            "args_template": {"type": "object"}
-          },
-          "required": ["tool", "args_template"]
-        }
-      },
-      "required": ["code", "message", "severity"]
-    }
-  }
+  "required": ["valid", "findings"]
 }`)
 
 // --- list_templates ---

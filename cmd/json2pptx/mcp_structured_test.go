@@ -253,32 +253,9 @@ func TestHandleValidate_MissingTemplate_StructuredDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// validate returns a success result with valid=false, not IsError.
-	requireStructuredContent(t, result)
-
-	b, _ := json.Marshal(result.StructuredContent)
-	var resp dryRunOutput
-	if err := json.Unmarshal(b, &resp); err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if resp.Valid {
-		t.Error("expected valid=false for missing template")
-	}
-	// Should have TEMPLATE_NOT_FOUND in diagnostics.
-	found := false
-	for _, d := range resp.Diagnostics {
-		if d.Code == "TEMPLATE_NOT_FOUND" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		codes := make([]string, len(resp.Diagnostics))
-		for i, d := range resp.Diagnostics {
-			codes[i] = d.Code
-		}
-		t.Errorf("expected TEMPLATE_NOT_FOUND diagnostic, got codes: %v", codes)
-	}
+	// A failing validate returns the MCP diagnostics error envelope (IsError=true,
+	// {diagnostics, summary}) — the same shape generate_presentation uses.
+	requireStructuredError(t, result, "TEMPLATE_NOT_FOUND")
 }
 
 func TestHandleExpandPattern_InvalidValues_StructuredError(t *testing.T) {

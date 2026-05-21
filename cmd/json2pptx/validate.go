@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 
@@ -279,7 +280,8 @@ func parseValidateInputAsAny(content []byte) (any, *validateInputParseError) {
 // the human string slices (still present in Diagnostics).
 //
 // Success path: the result text is a dryRunOutput JSON object. Counts and
-// per-slide details ride straight through.
+// per-slide details ride straight through; warning/error findings are read from
+// the embedded Findings envelope.
 //
 // Error path: the result text is an mcpErrorEnvelope ({diagnostics, summary}).
 // Counts are not available; the caller's defaults (zeroed ints, Valid=false)
@@ -325,13 +327,12 @@ func mergeValidateResultFromMCP(result *validateResult, mcpResult *mcpgo.CallToo
 	result.DiagramCount = output.DiagramCount
 	result.TableCount = output.TableCount
 	result.ShapeCount = output.ShapeCount
-	result.Diagnostics = output.Diagnostics
-	appendDiagnosticStrings(result, output.Diagnostics)
+	appendFindingStrings(result, output.Findings.Findings)
 }
 
 // appendDiagnosticStrings copies diagnostic messages into result.Errors /
-// result.Warnings based on severity. Info-level diagnostics stay in
-// result.Diagnostics only.
+// result.Warnings based on severity. Info-level diagnostics are dropped from the
+// human string slices.
 func appendDiagnosticStrings(result *validateResult, diags []diagnostics.Diagnostic) {
 	for _, d := range diags {
 		switch d.Severity {
@@ -341,6 +342,44 @@ func appendDiagnosticStrings(result *validateResult, diags []diagnostics.Diagnos
 			result.Warnings = append(result.Warnings, d.Message)
 		}
 	}
+}
+
+// appendFindingStrings copies finding messages from a Findings envelope into
+// result.Errors / result.Warnings based on severity (info-level findings are
+// dropped from the human string slices), and reconstructs result.Diagnostics
+// with the un-namespaced legacy codes. The CLI's internal validateResult uses
+// the legacy code vocabulary so it stays consistent with the error-path
+// diagnostics and the describe-finding registry.
+func appendFindingStrings(result *validateResult, findings []diagnostics.Finding) {
+	for _, f := range findings {
+		switch f.Severity {
+		case diagnostics.SeverityError:
+			result.Errors = append(result.Errors, f.Message)
+		case diagnostics.SeverityWarning:
+			result.Warnings = append(result.Warnings, f.Message)
+		}
+		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{
+			Code:     legacyFindingCode(f.Code),
+			Message:  f.Message,
+			Severity: f.Severity,
+		})
+	}
+}
+
+// legacyFindingCode strips the leading "<NAMESPACE>." prefix from a namespaced
+// finding code, recovering the un-namespaced code used by the CLI's internal
+// validateResult and the describe-finding registry. Codes without a known
+// namespace prefix are returned unchanged.
+func legacyFindingCode(code string) string {
+	if i := strings.IndexByte(code, '.'); i >= 0 {
+		prefix := code[:i]
+		for _, ns := range diagnostics.AllNamespaces() {
+			if prefix == ns {
+				return code[i+1:]
+			}
+		}
+	}
+	return code
 }
 
 // runValidateMCPFormat delegates to the MCP validate handler to produce output

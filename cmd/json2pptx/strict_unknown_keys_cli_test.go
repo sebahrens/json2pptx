@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -72,11 +73,12 @@ func TestRunJSONDryRun_UnknownKey_DefaultWarning(t *testing.T) {
 	output := captureDryRun(t, func() error {
 		return runJSONDryRun(path, "../../templates", "", "", false)
 	})
+	warns := findingMessages(output.Findings, diagnostics.SeverityWarning)
 	if !output.Valid {
-		t.Fatalf("expected Valid=true with default mode, got errors: %v", output.Errors)
+		t.Fatalf("expected Valid=true with default mode, got errors: %v", findingMessages(output.Findings, diagnostics.SeverityError))
 	}
-	if !anyContains(output.Warnings, "tmplate") {
-		t.Errorf("expected 'tmplate' in warnings, got: %v", output.Warnings)
+	if !anyContains(warns, "tmplate") {
+		t.Errorf("expected 'tmplate' in warnings, got: %v", warns)
 	}
 }
 
@@ -88,8 +90,9 @@ func TestRunJSONDryRun_UnknownKey_StrictError(t *testing.T) {
 	if output.Valid {
 		t.Fatalf("expected Valid=false with strict=true")
 	}
-	if !anyContains(output.Errors, "tmplate") {
-		t.Errorf("expected 'tmplate' in errors, got: %v", output.Errors)
+	errs := findingMessages(output.Findings, diagnostics.SeverityError)
+	if !anyContains(errs, "tmplate") {
+		t.Errorf("expected 'tmplate' in errors, got: %v", errs)
 	}
 }
 

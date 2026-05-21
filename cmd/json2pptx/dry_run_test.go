@@ -5,9 +5,46 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+// diagMessages returns the messages of the diagnostics matching sev. Used by
+// tests that previously read the now-removed output.Warnings / output.Errors
+// string slices; output.Diagnostics is the complete superset.
+func diagMessages(ds []diagnostics.Diagnostic, sev diagnostics.Severity) []string {
+	var out []string
+	for _, d := range ds {
+		if d.Severity == sev {
+			out = append(out, d.Message)
+		}
+	}
+	return out
+}
+
+// findDiagByCode returns the first diagnostic with the given code, or nil.
+func findDiagByCode(ds []diagnostics.Diagnostic, code string) *diagnostics.Diagnostic {
+	for i := range ds {
+		if ds[i].Code == code {
+			return &ds[i]
+		}
+	}
+	return nil
+}
+
+// findingMessages returns the messages of the envelope's findings matching sev.
+// Used by tests that parse the serialized dryRunOutput wire (where diagnostics
+// live in the Findings envelope, not the json:"-" Diagnostics accumulator).
+func findingMessages(env diagnostics.FindingEnvelope, sev diagnostics.Severity) []string {
+	var out []string
+	for _, f := range env.Findings {
+		if f.Severity == sev {
+			out = append(out, f.Message)
+		}
+	}
+	return out
+}
 
 // TestValidateSlidesAgainstTemplate_ChartDiagramSvggen verifies that
 // validateSlidesAgainstTemplate dispatches chart/diagram content items to
@@ -31,9 +68,8 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 		// svggen validation since diagram type passes data directly without
 		// auto-conversion.
 		output := dryRunOutput{
-			Valid:    true,
-			Warnings: []string{},
-			Slides:   []dryRunSlide{},
+			Valid:  true,
+			Slides: []dryRunSlide{},
 		}
 		slides := []SlideInput{
 			{
@@ -51,14 +87,14 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
 		found := false
-		for _, w := range output.Warnings {
+		for _, w := range diagMessages(output.Diagnostics, diagnostics.SeverityWarning) {
 			if strings.Contains(w, "waterfall") && strings.Contains(w, "data validation") {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("expected svggen validation warning for waterfall diagram with flat map data, got warnings: %v", output.Warnings)
+			t.Errorf("expected svggen validation warning for waterfall diagram with flat map data, got warnings: %v", diagMessages(output.Diagnostics, diagnostics.SeverityWarning))
 		}
 	})
 
@@ -66,9 +102,8 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 		// Chart type auto-converts flat maps via buildChartData, which should
 		// produce a flat-map conversion warning but not a validation error.
 		output := dryRunOutput{
-			Valid:    true,
-			Warnings: []string{},
-			Slides:   []dryRunSlide{},
+			Valid:  true,
+			Slides: []dryRunSlide{},
 		}
 		slides := []SlideInput{
 			{
@@ -86,22 +121,21 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
 		foundConversion := false
-		for _, w := range output.Warnings {
+		for _, w := range diagMessages(output.Diagnostics, diagnostics.SeverityWarning) {
 			if strings.Contains(w, "flat data") {
 				foundConversion = true
 				break
 			}
 		}
 		if !foundConversion {
-			t.Errorf("expected flat-map conversion warning for waterfall chart, got warnings: %v", output.Warnings)
+			t.Errorf("expected flat-map conversion warning for waterfall chart, got warnings: %v", diagMessages(output.Diagnostics, diagnostics.SeverityWarning))
 		}
 	})
 
 	t.Run("chart with valid bar data produces no svggen warning", func(t *testing.T) {
 		output := dryRunOutput{
-			Valid:    true,
-			Warnings: []string{},
-			Slides:   []dryRunSlide{},
+			Valid:  true,
+			Slides: []dryRunSlide{},
 		}
 		slides := []SlideInput{
 			{
@@ -118,7 +152,7 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, w := range output.Warnings {
+		for _, w := range diagMessages(output.Diagnostics, diagnostics.SeverityWarning) {
 			if strings.Contains(w, "data validation") {
 				t.Errorf("unexpected svggen validation warning for valid bar chart: %s", w)
 			}
@@ -127,9 +161,8 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 	t.Run("diagram with valid waterfall data produces no warning", func(t *testing.T) {
 		output := dryRunOutput{
-			Valid:    true,
-			Warnings: []string{},
-			Slides:   []dryRunSlide{},
+			Valid:  true,
+			Slides: []dryRunSlide{},
 		}
 		slides := []SlideInput{
 			{
@@ -154,7 +187,7 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, w := range output.Warnings {
+		for _, w := range diagMessages(output.Diagnostics, diagnostics.SeverityWarning) {
 			if strings.Contains(w, "data validation") {
 				t.Errorf("unexpected svggen validation warning for valid waterfall diagram: %s", w)
 			}
@@ -163,9 +196,8 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 	t.Run("aggregate counts populated for mixed content", func(t *testing.T) {
 		output := dryRunOutput{
-			Valid:    true,
-			Warnings: []string{},
-			Slides:   []dryRunSlide{},
+			Valid:  true,
+			Slides: []dryRunSlide{},
 		}
 		slides := []SlideInput{
 			{
@@ -208,9 +240,8 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 	t.Run("text content is not chart-validated", func(t *testing.T) {
 		output := dryRunOutput{
-			Valid:    true,
-			Warnings: []string{},
-			Slides:   []dryRunSlide{},
+			Valid:  true,
+			Slides: []dryRunSlide{},
 		}
 		slides := []SlideInput{
 			{
@@ -227,7 +258,7 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, w := range output.Warnings {
+		for _, w := range diagMessages(output.Diagnostics, diagnostics.SeverityWarning) {
 			if strings.Contains(w, "data validation") {
 				t.Errorf("unexpected chart/diagram validation warning for text content: %s", w)
 			}
@@ -249,26 +280,24 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 	}
 
 	t.Run("typo layout_id is error with did_you_mean", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{LayoutID: "conten-slide"}} // typo
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
 		if output.Valid {
 			t.Error("expected Valid=false for unknown layout_id, got true")
 		}
-		if len(output.Errors) == 0 {
+		errMsgs := diagMessages(output.Diagnostics, diagnostics.SeverityError)
+		if len(errMsgs) == 0 {
 			t.Fatal("expected at least one error for unknown layout_id")
 		}
-		if !strings.Contains(output.Errors[0], "not found") {
-			t.Errorf("error should mention 'not found': %s", output.Errors[0])
+		if !strings.Contains(errMsgs[0], "not found") {
+			t.Errorf("error should mention 'not found': %s", errMsgs[0])
 		}
-		// Check structured ValidationError
-		if len(output.ValidationWarnings) == 0 {
-			t.Fatal("expected a ValidationError for unknown layout_id")
-		}
-		ve := output.ValidationWarnings[0]
-		if ve.Code != patterns.ErrCodeUnknownLayoutID {
-			t.Errorf("expected code %q, got %q", patterns.ErrCodeUnknownLayoutID, ve.Code)
+		// Check structured diagnostic
+		ve := findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownLayoutID)
+		if ve == nil {
+			t.Fatal("expected a diagnostic for unknown layout_id")
 		}
 		if ve.Path != "/slides/0/layout_id" {
 			t.Errorf("expected path /slides/0/layout_id, got %q", ve.Path)
@@ -286,17 +315,17 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 	})
 
 	t.Run("completely wrong layout_id is error without did_you_mean", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{LayoutID: "zzz-nonexistent-zzz"}}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
 		if output.Valid {
 			t.Error("expected Valid=false for unknown layout_id")
 		}
-		if len(output.ValidationWarnings) == 0 {
-			t.Fatal("expected a ValidationError")
+		ve := findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownLayoutID)
+		if ve == nil {
+			t.Fatal("expected a diagnostic for unknown layout_id")
 		}
-		ve := output.ValidationWarnings[0]
 		if ve.Fix == nil {
 			t.Fatal("expected fix suggestion")
 		}
@@ -306,15 +335,15 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 	})
 
 	t.Run("valid layout_id produces no error", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{LayoutID: "content-slide"}}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
 		if !output.Valid {
 			t.Error("expected Valid=true for valid layout_id")
 		}
-		if len(output.Errors) > 0 {
-			t.Errorf("unexpected errors: %v", output.Errors)
+		if errs := diagMessages(output.Diagnostics, diagnostics.SeverityError); len(errs) > 0 {
+			t.Errorf("unexpected errors: %v", errs)
 		}
 	})
 }
@@ -338,7 +367,7 @@ func TestValidateTableStyleID(t *testing.T) {
 	}
 
 	t.Run("unknown style_id produces validation warning", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{
 			LayoutID: "content-slide",
 			Content: []ContentInput{{
@@ -353,15 +382,12 @@ func TestValidateTableStyleID(t *testing.T) {
 		}}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		var found *patterns.ValidationError
-		for _, vw := range output.ValidationWarnings {
-			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
-				found = vw
-				break
-			}
-		}
+		found := findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownTableStyleID)
 		if found == nil {
-			t.Fatal("expected a ValidationError with code unknown_table_style_id")
+			t.Fatal("expected a diagnostic with code unknown_table_style_id")
+		}
+		if found.Severity != diagnostics.SeverityWarning {
+			t.Errorf("expected warning severity, got %q", found.Severity)
 		}
 		if found.Fix == nil || found.Fix.Kind != "use_one_of" {
 			t.Errorf("expected fix kind 'use_one_of', got %v", found.Fix)
@@ -369,7 +395,7 @@ func TestValidateTableStyleID(t *testing.T) {
 	})
 
 	t.Run("known style_id produces no warning", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{
 			LayoutID: "content-slide",
 			Content: []ContentInput{{
@@ -384,15 +410,13 @@ func TestValidateTableStyleID(t *testing.T) {
 		}}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, vw := range output.ValidationWarnings {
-			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
-				t.Errorf("unexpected unknown_table_style_id warning for known GUID")
-			}
+		if findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownTableStyleID) != nil {
+			t.Errorf("unexpected unknown_table_style_id warning for known GUID")
 		}
 	})
 
 	t.Run("@template-default is always valid", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{
 			LayoutID: "content-slide",
 			Content: []ContentInput{{
@@ -407,15 +431,13 @@ func TestValidateTableStyleID(t *testing.T) {
 		}}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, vw := range output.ValidationWarnings {
-			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
-				t.Errorf("unexpected unknown_table_style_id warning for @template-default")
-			}
+		if findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownTableStyleID) != nil {
+			t.Errorf("unexpected unknown_table_style_id warning for @template-default")
 		}
 	})
 
 	t.Run("no style_id produces no warning", func(t *testing.T) {
-		output := dryRunOutput{Valid: true, Warnings: []string{}, Slides: []dryRunSlide{}}
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
 		slides := []SlideInput{{
 			LayoutID: "content-slide",
 			Content: []ContentInput{{
@@ -429,10 +451,8 @@ func TestValidateTableStyleID(t *testing.T) {
 		}}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, vw := range output.ValidationWarnings {
-			if vw.Code == patterns.ErrCodeUnknownTableStyleID {
-				t.Errorf("unexpected unknown_table_style_id warning when no style_id set")
-			}
+		if findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownTableStyleID) != nil {
+			t.Errorf("unexpected unknown_table_style_id warning when no style_id set")
 		}
 	})
 }
@@ -552,17 +572,17 @@ func TestResolveCanonicalLayoutIDs_ValidationConsistency(t *testing.T) {
 	resolveCanonicalLayoutIDs(slides, analysis.Layouts)
 
 	output := dryRunOutput{
-		Valid:    true,
-		Warnings: []string{},
-		Slides:   []dryRunSlide{},
+		Valid:  true,
+		Slides: []dryRunSlide{},
 	}
 	validateSlidesAgainstTemplate(&output, slides, analysis)
 
+	errMsgs := diagMessages(output.Diagnostics, diagnostics.SeverityError)
 	if !output.Valid {
-		t.Errorf("expected valid=true after canonical resolution, got errors: %v", output.Errors)
+		t.Errorf("expected valid=true after canonical resolution, got errors: %v", errMsgs)
 	}
-	if len(output.Errors) > 0 {
-		t.Errorf("expected no errors, got: %v", output.Errors)
+	if len(errMsgs) > 0 {
+		t.Errorf("expected no errors, got: %v", errMsgs)
 	}
 }
 
@@ -596,7 +616,7 @@ func TestValidateSlidesAgainstTemplate_SlideTypeAlternativeToLayoutID(t *testing
 		}
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		for _, e := range output.Errors {
+		for _, e := range diagMessages(output.Diagnostics, diagnostics.SeverityError) {
 			if strings.Contains(e, "layout_id is required") || strings.Contains(e, "layout_id or slide_type is required") {
 				t.Errorf("unexpected layout/slide_type error: %s", e)
 			}
@@ -617,15 +637,16 @@ func TestValidateSlidesAgainstTemplate_SlideTypeAlternativeToLayoutID(t *testing
 		if output.Valid {
 			t.Error("expected invalid when both layout_id and slide_type are missing")
 		}
+		errMsgs := diagMessages(output.Diagnostics, diagnostics.SeverityError)
 		found := false
-		for _, e := range output.Errors {
+		for _, e := range errMsgs {
 			if strings.Contains(e, "layout_id or slide_type is required") {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("expected 'layout_id or slide_type is required' error, got: %v", output.Errors)
+			t.Errorf("expected 'layout_id or slide_type is required' error, got: %v", errMsgs)
 		}
 	})
 }

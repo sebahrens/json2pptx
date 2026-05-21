@@ -145,10 +145,24 @@ change to an existing response contract.
 `repair_slide` and `repair_slides_batch` have migrated: their residual post-patch
 fit findings ship as a `FindingEnvelope` under the `findings` key (replacing the
 legacy `new_findings []FitFinding` array), always present so an agent can branch
-on `findings.ok`. The remaining ad-hoc shapes in `validate`, `generate -dry-run`,
-`inspect`, the MCP error envelope, and HTTP serve mode are still pending, along
-with emitting the envelope natively from the forthcoming `preflight` and
-`examine-template` subcommands.
+on `findings.ok`.
+
+`validate_input` / CLI `validate` and `generate -dry-run` have migrated too: the
+success-path response collapses the legacy `warnings[]`, `validation_warnings[]`,
+`errors[]`, `diagnostics[]`, and `fit_findings[]` arrays into a single
+`FindingEnvelope` under the `findings` key (built from the boundary + slide
+diagnostics plus the fit-report findings, with fit findings carrying category
+`FIT`). The structural fields (`valid`, the `*_count` totals, `slides[]`,
+`response_fingerprint`) are unchanged. A failing `validate_input` still returns
+the MCP diagnostics **error** envelope (`{diagnostics, summary}`, `IsError=true`)
+— that surface migrates separately. Note that `findings.ok` reflects
+finding severity (it is `false` when any error-severity finding, including a
+`refuse`-action fit finding, is present), which can legitimately differ from the
+structural `valid` flag.
+
+The remaining ad-hoc shapes in `inspect`, the MCP error envelope, and HTTP serve
+mode are still pending, along with emitting the envelope natively from the
+forthcoming `preflight` and `examine-template` subcommands.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to

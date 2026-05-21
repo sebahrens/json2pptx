@@ -91,14 +91,16 @@ func (s *LoopState) MarkVisualQADone(slideIndices []int) {
 	}
 }
 
-// RunValidatePass executes json2pptx validate --fit-report --format=json on
+// RunValidatePass executes json2pptx validate --fit-report --format=ndjson on
 // the given JSON file and returns structured fit findings.
 //
 // The CLI emits the MCP validate_input dryRunOutput shape on stdout (a single
-// JSON object per file with fit_findings[]). For invalid inputs the CLI emits
-// the diagnostics error envelope; in that case fit_findings is absent and this
-// function returns an empty slice (the schema-level errors are surfaced via
-// the diagnostics array, but the loop driver only cares about fit findings).
+// JSON object per file). Diagnostics — including fit findings — are folded into
+// the single findings envelope (replacing the legacy fit_findings[] array); fit
+// findings carry category "FIT" and stash their action and JSON path in the
+// finding's evidence map. For invalid inputs the CLI emits the diagnostics error
+// envelope, which has no findings envelope; this function then returns an empty
+// slice (the loop driver only cares about fit findings).
 func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 	cmd := exec.Command(cfg.Binary, "validate", "--fit-report", "--format=ndjson", jsonPath) //nolint:gosec // controlled inputs in test/agent context
 	var stdout, stderr bytes.Buffer
@@ -110,8 +112,16 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 
 	// NDJSON: one envelope per file, but the CLI is invoked with a single file
 	// here so we parse the single object on the first non-empty line.
+	type wireFinding struct {
+		Code     string         `json:"code"`
+		Category string         `json:"category"`
+		Message  string         `json:"message"`
+		Evidence map[string]any `json:"evidence"`
+	}
 	type dryRunEnvelope struct {
-		FitFindings []fitFinding `json:"fit_findings"`
+		Findings struct {
+			Findings []wireFinding `json:"findings"`
+		} `json:"findings"`
 	}
 
 	var findings []fitFinding
@@ -124,7 +134,19 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 		if err := json.Unmarshal([]byte(line), &env); err != nil {
 			continue
 		}
-		findings = append(findings, env.FitFindings...)
+		for _, f := range env.Findings.Findings {
+			if f.Category != "FIT" {
+				continue
+			}
+			ff := fitFinding{Code: f.Code, Message: f.Message}
+			if p, ok := f.Evidence["path"].(string); ok {
+				ff.Path = p
+			}
+			if a, ok := f.Evidence["action"].(string); ok {
+				ff.Action = a
+			}
+			findings = append(findings, ff)
+		}
 	}
 
 	return findings, nil

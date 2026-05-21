@@ -283,8 +283,9 @@ func TestMCPValidateSuccess_ContractShape(t *testing.T) {
 	}
 }
 
-// TestMCPValidateWithDiagnostics_ContractShape verifies that validate returns
-// diagnostics[] with the same shape as the error envelope diagnostics.
+// TestMCPValidateWithDiagnostics_ContractShape verifies that a successful
+// validate folds its warnings/info into the single findings envelope (replacing
+// the legacy diagnostics[] array).
 func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
@@ -292,7 +293,8 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
 
-	// Unknown key should produce diagnostics in the validate output.
+	// Unknown key is a warning (deck stays valid), so it surfaces in the success
+	// response's findings envelope.
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
 		"presentation": mustParseJSON(`{"template":"midnight-blue","tmplate":"typo","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
 	}))
@@ -300,7 +302,7 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if result.IsError {
-		t.Fatal("validate should return success with diagnostics, not IsError")
+		t.Fatal("validate should return success with findings, not IsError")
 	}
 
 	b, _ := json.Marshal(result.StructuredContent)
@@ -309,25 +311,53 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 		t.Fatalf("response is not a JSON object: %v", err)
 	}
 
-	diagsRaw, ok := raw["diagnostics"]
+	// The legacy diagnostics[] array is gone; diagnostics live in findings.
+	if _, ok := raw["diagnostics"]; ok {
+		t.Error("legacy 'diagnostics' field must not be present")
+	}
+
+	envRaw, ok := raw["findings"]
 	if !ok {
-		t.Fatal("validate response missing 'diagnostics' field")
+		t.Fatal("validate response missing 'findings' envelope")
+	}
+	var env map[string]json.RawMessage
+	if err := json.Unmarshal(envRaw, &env); err != nil {
+		t.Fatalf("findings is not an object: %v", err)
+	}
+	for _, key := range []string{"schema_version", "tool", "subcommand", "ok", "summary", "findings"} {
+		if _, ok := env[key]; !ok {
+			t.Errorf("findings envelope missing required key %q", key)
+		}
+	}
+	var subcommand string
+	_ = json.Unmarshal(env["subcommand"], &subcommand)
+	if subcommand != "validate_input" {
+		t.Errorf("findings.subcommand = %q, want validate_input", subcommand)
+	}
+	var inputSHA string
+	_ = json.Unmarshal(env["input_sha256"], &inputSHA)
+	if len(inputSHA) != 64 {
+		t.Errorf("findings.input_sha256 = %q, want 64-hex-char digest", inputSHA)
 	}
 
-	var diags []map[string]json.RawMessage
-	if err := json.Unmarshal(diagsRaw, &diags); err != nil {
-		t.Fatalf("diagnostics is not an array: %v", err)
+	var findings []map[string]json.RawMessage
+	if err := json.Unmarshal(env["findings"], &findings); err != nil {
+		t.Fatalf("findings.findings is not an array: %v", err)
 	}
-	if len(diags) == 0 {
-		t.Fatal("expected non-empty diagnostics for unknown key")
+	if len(findings) == 0 {
+		t.Fatal("expected non-empty findings for unknown key")
 	}
-
-	// Each diagnostic must have the same shape as the error envelope diagnostics.
-	for i, d := range diags {
-		for _, field := range []string{"code", "message", "severity"} {
-			if _, ok := d[field]; !ok {
-				t.Errorf("diagnostics[%d] missing required field %q", i, field)
+	// Each finding carries the namespaced code, message, severity, and category.
+	for i, f := range findings {
+		for _, field := range []string{"id", "code", "message", "severity", "category"} {
+			if _, ok := f[field]; !ok {
+				t.Errorf("findings[%d] missing required field %q", i, field)
 			}
+		}
+		var code string
+		_ = json.Unmarshal(f["code"], &code)
+		if !strings.Contains(code, ".") {
+			t.Errorf("findings[%d] code %q is not namespaced", i, code)
 		}
 	}
 }
