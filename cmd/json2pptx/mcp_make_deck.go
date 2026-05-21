@@ -21,6 +21,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/deckplan"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -200,7 +201,12 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 	// exemplar content and never surfaces plan_deck's template_support, so it
 	// plans template-agnostically (nil context) — the template is applied during
 	// expansion and the auto_repair loop.
-	plan := buildDeckPlan(reg, outline, hints.SlideBudget, hints.Audience, hints.MustInclude, nil, "")
+	plan := deckplan.BuildDeckPlan(reg, deckplan.Params{
+		Brief:       outline,
+		SlideBudget: hints.SlideBudget,
+		Audience:    hints.Audience,
+		MustInclude: hints.MustInclude,
+	}, planPredictor{reg: reg})
 
 	// Phase 2: expand each planned slide with exemplar content. The cold-start
 	// agent supplies no per-slide content, so we use each pattern's canonical
@@ -328,7 +334,7 @@ func clampMaxPasses(n int) int {
 // Patterns lacking an Exemplar implementation degrade to a title-only slide
 // using the layout that matches the narrative role. This keeps the deck shape
 // stable even when individual pattern slots cannot be auto-filled.
-func buildPresentationFromPlan(reg *patterns.Registry, plan *planDeckResult, templateName, outline, accentStrategy string) *PresentationInput {
+func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, templateName, outline, accentStrategy string) *PresentationInput {
 	slides := make([]SlideInput, 0, len(plan.Slides))
 	for _, ps := range plan.Slides {
 		title := titleForPlannedSlide(ps, outline)
@@ -397,13 +403,13 @@ func layoutIDForNarrativeRole(role string) string {
 // every other slot draws from the planner's content_seed so the title at
 // least describes the slot's purpose. Empty seeds fall back to a positional
 // label so we never emit empty titles (which would trigger output validation).
-func titleForPlannedSlide(ps planSlide, outline string) string {
+func titleForPlannedSlide(ps deckplan.Slide, outline string) string {
 	const titleCap = 60
 	if ps.NarrativeRole == "opening" && outline != "" {
-		return truncateBrief(outline, titleCap)
+		return deckplan.TruncateBrief(outline, titleCap)
 	}
 	if ps.ContentSeed != "" {
-		return truncateBrief(ps.ContentSeed, titleCap)
+		return deckplan.TruncateBrief(ps.ContentSeed, titleCap)
 	}
 	return fmt.Sprintf("Slide %d", ps.SlideIndex+1)
 }
@@ -422,7 +428,7 @@ func makeTitleContent(text string) ContentInput {
 // planSummaryFromInput packages the planner's decisions into the agent-visible
 // plan summary returned in makeDeckOutput. Reads back from the final input so
 // titles reflect what was actually rendered (after any auto_repair edits).
-func planSummaryFromInput(plan *planDeckResult, input *PresentationInput, templateName string) *makeDeckPlanSummary {
+func planSummaryFromInput(plan *deckplan.Result, input *PresentationInput, templateName string) *makeDeckPlanSummary {
 	summary := &makeDeckPlanSummary{
 		Template:    templateName,
 		SlideBudget: plan.SlideBudget,

@@ -5,12 +5,26 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/deckplan"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
+// testBuildPlan invokes the deckplan core wired with package main's
+// render-coupled predictor — the same combination handlePlanDeck and make_deck
+// use, so these tests exercise the cmd-side prediction seam (cell budgets and
+// fit findings) end to end.
+func testBuildPlan(reg *patterns.Registry, brief string, budget int, audience string, mustInclude []string) *deckplan.Result {
+	return deckplan.BuildDeckPlan(reg, deckplan.Params{
+		Brief:       brief,
+		SlideBudget: budget,
+		Audience:    audience,
+		MustInclude: mustInclude,
+	}, planPredictor{reg: reg})
+}
+
 func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 12, "investors", nil, nil, "")
+	result := testBuildPlan(reg, "Pitch our Series B for an AI infra company", 12, "investors", nil)
 
 	if len(result.Slides) != 12 {
 		t.Fatalf("expected 12 slides, got %d", len(result.Slides))
@@ -65,7 +79,7 @@ func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 
 func TestBuildDeckPlan_MustInclude(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Business model overview", 8, "", []string{"bmc-canvas", "kpi-3up"}, nil, "")
+	result := testBuildPlan(reg, "Business model overview", 8, "", []string{"bmc-canvas", "kpi-3up"})
 
 	// Verify must_include patterns appear in the plan.
 	found := map[string]bool{}
@@ -85,7 +99,7 @@ func TestBuildDeckPlan_MustInclude(t *testing.T) {
 
 func TestBuildDeckPlan_MinBudget(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Quick update", 3, "", nil, nil, "")
+	result := testBuildPlan(reg, "Quick update", 3, "", nil)
 
 	if len(result.Slides) != 3 {
 		t.Fatalf("expected 3 slides, got %d", len(result.Slides))
@@ -98,41 +112,9 @@ func TestBuildDeckPlan_MinBudget(t *testing.T) {
 	}
 }
 
-func TestDistributeRoles(t *testing.T) {
-	tests := []struct {
-		budget     int
-		wantFirst  string
-		wantLast   string
-	}{
-		{3, "opening", "closing"},
-		{5, "opening", "closing"},
-		{10, "opening", "closing"},
-		{20, "opening", "closing"},
-	}
-
-	for _, tt := range tests {
-		roles := distributeRoles(tt.budget)
-		if len(roles) != tt.budget {
-			t.Errorf("budget %d: got %d roles", tt.budget, len(roles))
-		}
-		if roles[0] != tt.wantFirst {
-			t.Errorf("budget %d: first role = %q, want %q", tt.budget, roles[0], tt.wantFirst)
-		}
-		if roles[len(roles)-1] != tt.wantLast {
-			t.Errorf("budget %d: last role = %q, want %q", tt.budget, roles[len(roles)-1], tt.wantLast)
-		}
-		// All roles should be non-empty.
-		for i, r := range roles {
-			if r == "" {
-				t.Errorf("budget %d: role at index %d is empty", tt.budget, i)
-			}
-		}
-	}
-}
-
 func TestBuildDeckPlan_AttachesPredictions(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Quarterly business review", 10, "executives", nil, nil, "")
+	result := testBuildPlan(reg, "Quarterly business review", 10, "executives", nil)
 
 	if len(result.Slides) != 10 {
 		t.Fatalf("expected 10 slides, got %d", len(result.Slides))
@@ -143,8 +125,8 @@ func TestBuildDeckPlan_AttachesPredictions(t *testing.T) {
 		if len(s.Alternatives) == 0 {
 			t.Errorf("slide %d (%s): expected at least 1 alternative, got 0", i, s.RecommendedPattern)
 		}
-		if len(s.Alternatives) > maxAlternatives {
-			t.Errorf("slide %d: alternatives exceed cap %d, got %d", i, maxAlternatives, len(s.Alternatives))
+		if len(s.Alternatives) > deckplan.MaxAlternatives {
+			t.Errorf("slide %d: alternatives exceed cap %d, got %d", i, deckplan.MaxAlternatives, len(s.Alternatives))
 		}
 		for _, alt := range s.Alternatives {
 			if alt.PatternName == s.RecommendedPattern {
@@ -210,24 +192,9 @@ func TestPredictCellBudgets_UnknownPattern(t *testing.T) {
 	}
 }
 
-func TestComputeAlternatives_ExcludesRecommended(t *testing.T) {
-	reg := patterns.Default()
-	slides := []planSlide{
-		{SlideIndex: 0, NarrativeRole: "opening", RecommendedPattern: "stat-hero"},
-		{SlideIndex: 1, NarrativeRole: "evidence", RecommendedPattern: "card-grid"},
-		{SlideIndex: 2, NarrativeRole: "closing", RecommendedPattern: "pull-quote"},
-	}
-	alts := computeAlternativesForSlot(reg, slides, 1, "demo brief", "team")
-	for _, alt := range alts {
-		if alt.PatternName == "card-grid" {
-			t.Errorf("alternatives must not include the recommended pattern: %+v", alts)
-		}
-	}
-}
-
 func TestBuildDeckPlan_AttachesSkeletonAndFallback(t *testing.T) {
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Pitch our Series B for an AI infra company", 5, "investors", nil, nil, "")
+	result := testBuildPlan(reg, "Pitch our Series B for an AI infra company", 5, "investors", nil)
 
 	if len(result.Slides) != 5 {
 		t.Fatalf("expected 5 slides, got %d", len(result.Slides))
@@ -281,7 +248,7 @@ func TestBuildDeckPlan_SkeletonParsesAsSlideInput(t *testing.T) {
 	// drop it straight into a PresentationInput.slides[] array and run
 	// validate_input on the result.
 	reg := patterns.Default()
-	result := buildDeckPlan(reg, "Quarterly business review", 7, "executives", nil, nil, "")
+	result := testBuildPlan(reg, "Quarterly business review", 7, "executives", nil)
 
 	for i, s := range result.Slides {
 		if len(s.Skeleton) == 0 {
@@ -307,47 +274,6 @@ func TestBuildDeckPlan_SkeletonParsesAsSlideInput(t *testing.T) {
 		}
 		if len(slide.Content) == 0 {
 			t.Errorf("slide %d skeleton has no content[] entries", i)
-		}
-	}
-}
-
-func TestEnforceRhythm_BreaksLongRuns(t *testing.T) {
-	reg := patterns.Default()
-
-	// Create slides with a 5-slide run of the same pattern.
-	slides := make([]planSlide, 7)
-	for i := range slides {
-		slides[i] = planSlide{
-			SlideIndex:         i,
-			NarrativeRole:      "evidence",
-			RecommendedPattern: "card-grid",
-			ContentSeed:        "test",
-			Rationale:          "test",
-		}
-	}
-	slides[0].NarrativeRole = "opening"
-	slides[6].NarrativeRole = "closing"
-
-	result := enforceRhythm(reg, slides, "test")
-
-	// Count longest run.
-	longestRun := 1
-	currentRun := 1
-	for i := 1; i < len(result); i++ {
-		if result[i].RecommendedPattern == result[i-1].RecommendedPattern {
-			currentRun++
-			if currentRun > longestRun {
-				longestRun = currentRun
-			}
-		} else {
-			currentRun = 1
-		}
-	}
-
-	if longestRun > 2 {
-		t.Errorf("after enforceRhythm, longest run should be <=2, got %d", longestRun)
-		for _, s := range result {
-			t.Logf("  slide %d: %s (%s)", s.SlideIndex, s.RecommendedPattern, s.NarrativeRole)
 		}
 	}
 }

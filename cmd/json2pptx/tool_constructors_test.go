@@ -300,28 +300,6 @@ func TestUnknownPatternError_SuggestsCloseMatch(t *testing.T) {
 	}
 }
 
-func TestContainsStr(t *testing.T) {
-	cases := []struct {
-		name  string
-		slice []string
-		needle string
-		want  bool
-	}{
-		{"present", []string{"a", "b", "c"}, "b", true},
-		{"missing", []string{"a", "b", "c"}, "z", false},
-		{"empty", nil, "x", false},
-		{"empty needle in empty slice", nil, "", false},
-		{"empty needle present", []string{"", "a"}, "", true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := containsStr(tc.slice, tc.needle); got != tc.want {
-				t.Errorf("containsStr(%v, %q) = %v, want %v", tc.slice, tc.needle, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestBoundingBoxToGeom(t *testing.T) {
 	bb := types.BoundingBox{X: 100, Y: 200, Width: 300, Height: 400}
 	got := boundingBoxToGeom(bb)

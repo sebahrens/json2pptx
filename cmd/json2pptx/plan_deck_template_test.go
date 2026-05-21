@@ -7,12 +7,13 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/deckplan"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // callPlanDeck invokes the plan_deck handler with args and parses the typed
 // result. It fails the test on any error or tool error.
-func callPlanDeck(t *testing.T, mc *mcpConfig, args map[string]any) planDeckResult {
+func callPlanDeck(t *testing.T, mc *mcpConfig, args map[string]any) deckplan.Result {
 	t.Helper()
 	result, err := mc.handlePlanDeck(context.Background(), makeRequest(args))
 	if err != nil {
@@ -22,7 +23,7 @@ func callPlanDeck(t *testing.T, mc *mcpConfig, args map[string]any) planDeckResu
 		t.Fatalf("unexpected tool error: %v", result.Content)
 	}
 	text := result.Content[0].(mcp.TextContent).Text
-	var plan planDeckResult
+	var plan deckplan.Result
 	if err := json.Unmarshal([]byte(text), &plan); err != nil {
 		t.Fatalf("failed to parse plan_deck result: %v\n%s", err, text)
 	}
