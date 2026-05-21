@@ -157,6 +157,31 @@ func TestHelpListsMCPOnlyTools(t *testing.T) {
 	}
 }
 
+// TestHelpListsAllMCPOnlyTools is the drift gate for the "MCP-only tools"
+// section of `json2pptx help`: every tool whose classification carries an
+// MCPOnlyReason (the single source of truth via mcpOnlyToolNames) must be
+// advertised in help, so agents shelling out to the CLI learn which
+// capabilities require the MCP server. If a future MCP-only tool is added
+// without listing it here, this test fails loudly.
+func TestHelpListsAllMCPOnlyTools(t *testing.T) {
+	binary := buildTestBinary(t)
+
+	cmd := exec.Command(binary, "help") //nolint:gosec
+	cmd.Env = append(os.Environ(), "HOME=/tmp")
+	out, _ := cmd.CombinedOutput()
+	outStr := string(out)
+
+	mcpOnly := mcpOnlyToolNames()
+	if len(mcpOnly) == 0 {
+		t.Fatal("mcpOnlyToolNames() returned empty — classification source of truth is broken")
+	}
+	for _, tool := range mcpOnly {
+		if !strings.Contains(outStr, tool) {
+			t.Errorf("help output omits MCP-only tool %q (must be listed under 'MCP-only tools')\n--- output ---\n%s", tool, outStr)
+		}
+	}
+}
+
 // TestHelpListsAllDispatchableSubcommands ensures every CLI subcommand
 // recognized by the dispatcher is also documented in the Commands section of
 // `json2pptx help`. Subcommands missing from help are invisible to agents that

@@ -1765,6 +1765,16 @@ var outputSchemaGetStarted = json.RawMessage(`{
   "properties": {
     "task":            {"type": "string"},
     "available_tasks": {"type": "array", "items": {"type": "string"}},
+    "fast_path": {
+      "type": "object",
+      "description": "The recommended single-call workflow facade for this task (make_deck for brief, auto_repair for revise). Present only for tasks that have a facade; omitted for validate-only. Reach for this before the manual sequence when you do not need per-step control.",
+      "properties": {
+        "tool":          {"type": "string", "description": "The facade tool to call first (e.g. make_deck)."},
+        "when_to_call":  {"type": "string", "description": "When to use the facade versus dropping to the manual sequence."},
+        "falls_back_to": {"type": "array", "items": {"type": "string"}, "description": "The manual primitive tool names (this response's sequence) the facade collapses into one call."}
+      },
+      "required": ["tool", "when_to_call", "falls_back_to"]
+    },
     "sequence": {
       "type": "array",
       "items": {

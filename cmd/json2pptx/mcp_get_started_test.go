@@ -90,6 +90,85 @@ func TestGetStartedSequencesAreClassifiedTools(t *testing.T) {
 	}
 }
 
+// TestGetStartedBriefRecommendsMakeDeck pins the acceptance criterion: the
+// brief flow leads with the make_deck fast path and its notes explain when to
+// use the facade versus the manual primitives.
+func TestGetStartedBriefRecommendsMakeDeck(t *testing.T) {
+	resp := callGetStarted(t, "brief")
+	if resp.FastPath == nil {
+		t.Fatal("brief response must carry a fast_path (the recommended best-deck path)")
+	}
+	if resp.FastPath.Tool != "make_deck" {
+		t.Errorf("brief fast_path.tool = %q, want %q", resp.FastPath.Tool, "make_deck")
+	}
+	if resp.FastPath.WhenToCall == "" {
+		t.Error("brief fast_path.when_to_call must explain when to use make_deck")
+	}
+	// falls_back_to must mirror the manual sequence so the facade and the
+	// controllable path it collapses stay in lockstep.
+	seqTools := make([]string, len(resp.Sequence))
+	for i, s := range resp.Sequence {
+		seqTools[i] = s.Tool
+	}
+	if len(resp.FastPath.FallsBackTo) != len(seqTools) {
+		t.Fatalf("fast_path.falls_back_to = %v, want it to mirror sequence %v", resp.FastPath.FallsBackTo, seqTools)
+	}
+	for i, tool := range resp.FastPath.FallsBackTo {
+		if tool != seqTools[i] {
+			t.Errorf("falls_back_to[%d] = %q, want %q (must mirror sequence)", i, tool, seqTools[i])
+		}
+	}
+	// Notes must explain make_deck (facade) versus the manual primitives.
+	joined := strings.Join(resp.Notes, "\n")
+	if !strings.Contains(joined, "make_deck") {
+		t.Errorf("brief notes must name make_deck; notes:\n%s", joined)
+	}
+	for _, must := range []string{"facade", "primitive"} {
+		if !strings.Contains(strings.ToLower(joined), must) {
+			t.Errorf("brief notes must contrast the %s path; notes:\n%s", must, joined)
+		}
+	}
+}
+
+// TestGetStartedFastPathIsClassifiedFacade is the drift gate for the fast path:
+// when a task advertises a fast_path, the named tool must be a registered MCP
+// tool classified as a workflow_facade. validate-only has no facade and must
+// omit fast_path entirely.
+func TestGetStartedFastPathIsClassifiedFacade(t *testing.T) {
+	registered := map[string]bool{}
+	for _, name := range mcpToolNames() {
+		registered[name] = true
+	}
+	classes := toolClassifications()
+
+	for _, task := range getStartedAvailableTasks() {
+		resp := buildGetStartedResponse(task)
+		switch task {
+		case "validate-only":
+			if resp.FastPath != nil {
+				t.Errorf("task %q must NOT advertise a fast_path (pure diagnostics, no facade); got %q", task, resp.FastPath.Tool)
+			}
+		default:
+			if resp.FastPath == nil {
+				t.Errorf("task %q must advertise a fast_path facade", task)
+				continue
+			}
+			if !registered[resp.FastPath.Tool] {
+				t.Errorf("task %q fast_path.tool %q is not a registered MCP tool", task, resp.FastPath.Tool)
+			}
+			c, ok := classes[resp.FastPath.Tool]
+			if !ok {
+				t.Errorf("task %q fast_path.tool %q has no classification metadata", task, resp.FastPath.Tool)
+				continue
+			}
+			if c.Kind != toolKindWorkflowFacade {
+				t.Errorf("task %q fast_path.tool %q is kind %q, want %q (the fast path must be a workflow facade)",
+					task, resp.FastPath.Tool, c.Kind, toolKindWorkflowFacade)
+			}
+		}
+	}
+}
+
 func TestGetStartedReviseSequence(t *testing.T) {
 	resp := callGetStarted(t, "revise")
 	if resp.Task != "revise" {

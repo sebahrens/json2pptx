@@ -105,7 +105,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **Deck planning** -- `plan_deck` turns a brief into a structured slide outline with rhythm rules
 - **PPTX read-back** -- `read_presentation` extracts placeholders/shapes/tables from an existing PPTX without LibreOffice
 - **HTTP API** -- REST endpoints for programmatic generation
-- **MCP server** -- 30 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair
+- **MCP server** -- 45 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair, including the one-call `make_deck` cold-start facade
 - **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, template setup, and visual QA
 
 ## Installation
@@ -293,7 +293,7 @@ json2pptx ships with three Claude Code skills and an MCP server that let an AI a
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
-### MCP Server (28 Tools)
+### MCP Server (45 Tools)
 
 Start manually for debugging:
 
@@ -301,75 +301,121 @@ Start manually for debugging:
 json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
 ```
 
-The installer configures this automatically in `~/.claude/mcp.json`. Every MCP tool also has a CLI counterpart so you can drive the same workflows from a shell.
+The installer configures this automatically in `~/.claude/mcp.json`. The fastest
+way to learn the workflow at runtime is the `get_started` tool: it returns the
+recommended single-call **fast path** plus the ordered manual **sequence** it
+composes, scoped to `brief` / `revise` / `validate-only`. Each tool carries
+classification metadata in `get_capabilities` (`kind`, `phase`, `cli_counterpart`,
+`mcp_only_reason`, `primitive_alternatives`) so agents can pick the right tool
+without prose-parsing descriptions. The tables below are grouped by the same
+`phase` taxonomy `get_capabilities` reports.
 
-**Generation, validation, read-back**
+Most MCP tools have a 1:1 CLI counterpart so you can drive the same workflows
+from a shell; the **MCP-only** tools below have no direct subcommand (the CLI
+workaround for each is printed by `json2pptx help`).
 
-| Tool | Purpose |
-|------|---------|
-| `generate_presentation` | Render a PPTX from JSON; optional `fit_report`, `verbose_fit`, `strict_unknown_keys` |
-| `validate_input` | Schema + static checks, no render |
-| `preview_presentation_plan` | Resolve layouts/placeholders/findings without rendering |
-| `read_presentation` | Extract placeholders/shapes/tables/notes from an existing PPTX (no LibreOffice required) |
-| `validate_presentation_output` | Validate a generated PPTX for structural and OOXML content correctness |
+**Cold-start fast path** — the workflow facades (`kind: workflow_facade`) that
+collapse a whole chain into one call:
 
-**Planning, recommendation, scoring**
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `make_deck` | ONE call from a natural-language outline to a validated, auto-repaired PPTX (chains `plan_deck` → expand patterns → `auto_repair`). Recommended cold-start entry point. | MCP-only |
+| `auto_repair` | Server-side convergence loop (`generate` → inspect → `repair`) against a configurable quality gate. | MCP-only |
 
-| Tool | Purpose |
-|------|---------|
-| `plan_deck` | Turn a brief into an ordered slide outline with rhythm rules |
-| `recommend_pattern` | Rank named patterns for a slide intent |
-| `recommend_visual` | Unified router across placeholder layouts, patterns, charts, diagrams, raw grids |
-| `score_deck` | Deterministic 0-100 score with composition axis (runs the full pipeline in a tempdir) |
-| `analyze_deck_rhythm` | Pattern repetition, accent balance, density variance, composition score |
-| `repair_slide` | Apply targeted fixes to one slide (11 fix kinds) without regenerating the deck |
+**Discovery / introspection** (`phase: discovery`, read-only)
 
-**Pattern catalog**
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `get_started` | Recommended fast path + ordered manual sequence for a task | `get-started` |
+| `get_capabilities` | Schema version, tool inventory + classification, deprecations, feature flags, vocabularies | `capabilities` |
+| `get_input_schema` | Authoritative JSON Schema for PresentationInput with digest-based caching | `input-schema` |
+| `get_data_format_hints` | Full chart/diagram data-shape hints (with digest for caching) | `data-format-hints` |
+| `list_templates` | Discover bundled/external templates, layouts, palette, canonical taxonomy | `skill-info` |
+| `get_chart_capabilities` | Per-chart limits and label strategy | `capabilities` |
+| `get_diagram_capabilities` | Per-diagram limits and field reference | `capabilities` |
+| `get_shape_catalog` | Preset geometries grouped by use case | `shape-catalog` |
+| `resolve_theme` | Resolve theme colors and fonts for a template | `resolve-theme` |
+| `list_icons` | Bundled icon names by set | `icons` |
+| `preview_icon` | Render a single icon spec to SVG + PNG | `preview-icon` |
+| `list_patterns` | Catalog of named patterns grouped by category | `patterns list` |
+| `show_pattern` | Pattern contract: `use_when`, `not_when`, schema, version | `patterns show` |
+| `table_density_guide` | Table density tiers, hard limits, multiline guidance | `tables` |
+| `list_template_settings` | List template-side named table/cell styles | `template-settings list` |
+| `examine_template` | Deep read-only template capability report (canonical roles, bounds, findings) | `examine-template` |
+| `describe_finding` | Resolve a finding code to summary, severity, remediation steps | `describe-finding` |
 
-| Tool | Purpose |
-|------|---------|
-| `list_patterns` | Catalog of named patterns grouped by category |
-| `show_pattern` | Pattern contract: `use_when`, `not_when`, schema, version |
-| `validate_pattern` | Validate pattern values without expanding |
-| `expand_pattern` | Expand a pattern into a full `shape_grid` |
+**Plan** (`phase: plan`)
 
-**Templates and assets**
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `plan_deck` | Turn a brief into an ordered slide outline with rhythm rules (template-aware) | `plan-deck` |
+| `recommend_visual` | Unified router across placeholder layouts, patterns, charts, diagrams, raw grids | `recommend-visual` |
+| `recommend_pattern` | Rank named patterns for a slide intent (legacy subset of `recommend_visual`) | `recommend-pattern` |
+| `validate_pattern` | Validate pattern values without expanding | `patterns validate` |
+| `expand_pattern` | Expand a pattern into a full `shape_grid` | `patterns expand` |
+| `expand_patterns` | Batch-expand N patterns under one template load | MCP-only |
 
-| Tool | Purpose |
-|------|---------|
-| `list_templates` | Discover bundled and external templates and their capabilities |
-| `resolve_theme` | Resolve theme colors and fonts for a template |
-| `list_template_settings` | List template-side named table/cell styles |
-| `register_template_setting` | Persist a named style (gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`) |
-| `delete_template_setting` | Delete a named style (gated) |
+**Vary** (`phase: vary`)
 
-**Capabilities and catalogs**
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `analyze_deck_rhythm` | Pattern repetition, accent balance, density variance, composition score | `analyze-rhythm` |
+| `score_candidates` | Rank candidate slide JSONs for one slot without rendering | `score-candidates` |
 
-| Tool | Purpose |
-|------|---------|
-| `get_capabilities` | Schema version, tool inventory, deprecated fields, feature flags, vocabularies |
-| `get_chart_capabilities` | Per-chart limits and label strategy |
-| `get_diagram_capabilities` | Per-diagram limits and field reference |
-| `get_data_format_hints` | Full chart/diagram data-shape hints (with digest for caching) |
-| `get_shape_catalog` | Preset geometries grouped by use case |
-| `list_icons` | Bundled icon names by set |
-| `table_density_guide` | Table density tiers, hard limits, multiline guidance |
-| `get_input_schema` | Authoritative JSON Schema for PresentationInput with digest-based caching |
+**Render** (`phase: render`)
 
-**Slide rendering for QA** (require LibreOffice + ImageMagick)
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `validate_input` | Schema + static checks (+ optional `fit_report`), no render | `validate` |
+| `preview_presentation_plan` | Resolve layouts/placeholders/findings without rendering | `preview` |
+| `preview_slide_wireframe` | Annotated per-slide wireframe (SVG + PNG) without LibreOffice | `preview-wireframe` |
+| `validate_presentation_output` | Validate a generated PPTX for structural + OOXML correctness | `validate-output` |
+| `generate_presentation` | Render a PPTX from JSON; optional `fit_report`, `strict_fit`, `strict_unknown_keys` | `generate` |
+| `make_deck` | Cold-start facade (see fast path above) | MCP-only |
 
-| Tool | Purpose |
-|------|---------|
-| `render_slide_image` | Render one PPTX slide to PNG |
-| `render_deck_thumbnails` | Render all slides to low-res thumbnails |
+**Repair** (`phase: repair`)
+
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `repair_slide` | Apply targeted fixes to one slide without regenerating the deck | `repair` |
+| `repair_slides_batch` | Apply fixes to multiple slides in one call | MCP-only |
+| `propose_repairs` | Translate fit/visual-QA findings into ranked `repair_slide` directives | MCP-only |
+| `apply_deck_patch` | Pure deck-JSON transform: bounded structural ops (insert/remove/move/replace) | MCP-only |
+| `auto_repair` | Server-side convergence loop (see fast path above) | MCP-only |
+| `inspect_slide_images` | Vision/heuristic visual QA of rendered slides with pre-mapped fixes | `inspect` |
+| `render_slide_image` | Render one PPTX slide to PNG (requires LibreOffice + ImageMagick) | `render-slide` |
+| `render_slide_image_from_json` | Render one slide directly from its JSON (requires LibreOffice + ImageMagick) | `render-slide-from-json` |
+| `render_deck_thumbnails` | Render all slides to low-res thumbnails (requires LibreOffice + ImageMagick) | `render-thumbnails` |
+| `read_presentation` | Extract placeholders/shapes/tables/notes from an existing PPTX (no LibreOffice) | `read` |
+| `audit_palette` | Render to PNG and report ΔE between chart pics and adjacent solid-filled shapes | `audit-palette` |
+| `score_deck` | Deterministic 0-100 score with composition axis and a quality gate | `score` |
+
+**Settings** (`phase: settings`, gated by `JSON2PPTX_ALLOW_SETTINGS_WRITE=1`)
+
+| Tool | Purpose | CLI |
+|------|---------|-----|
+| `register_template_setting` | Persist a named table/cell style | `template-settings register` |
+| `delete_template_setting` | Delete a named style | `template-settings delete` |
 
 ### Example Workflow
+
+**Fast path (one call).** When the agent does not need to hand-author per-slide
+content, `make_deck` collapses the entire chain into a single tool call:
 
 ```
 You:     "Build a board presentation about our Q1 results.
           Include revenue charts, team growth, and strategic priorities.
           Use midnight-blue template, 10 slides."
 
+Claude:  [calls make_deck -> plans, fills patterns, generates, and auto-repairs
+          to a quality gate -> output/make_deck.pptx]
+```
+
+**Controllable path (manual primitives).** Drive each step yourself when you want
+control over copy, patterns, and layout — this is the `sequence` `get_started`
+returns for `task=brief`:
+
+```
 Claude:  [calls plan_deck -> structured slide outline]
          [presents outline for approval]
          [generates JSON using card grids for KPIs, bar charts for revenue]
@@ -604,29 +650,49 @@ json2pptx skill-info --mode=full --template=my-corporate-theme --templates-dir=m
 
 The `json2pptx` binary is the primary tool: batch converter, HTTP API server, and MCP server.
 
-### Subcommands (25)
+### Subcommands (39)
+
+Run `json2pptx help` for the authoritative list, or `json2pptx <command> -h` for
+per-command flags. A handful of MCP tools have no direct subcommand (e.g.
+`make_deck`, `auto_repair`, `apply_deck_patch`, `repair_slides_batch`,
+`expand_patterns`, `propose_repairs`) — `json2pptx help` prints the CLI workaround
+for each under "MCP-only tools".
 
 | Command | Description |
 |---------|-------------|
 | `generate` | Convert JSON input to PPTX (default if subcommand omitted) |
 | `read` | Read PPTX and output extracted content as JSON |
 | `validate` | Validate JSON input without generating (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
+| `preflight` | Run every static check on a deck (stage-based, emits the finding envelope) |
 | `validate-output` | Check generated PPTX for OOXML correctness |
 | `validate-template` | Check template compatibility |
 | `template-check` | Check template conformance against `docs/TEMPLATE_SPEC.md` |
+| `examine-template` | Emit a full template capability report (visual + XML + canonical roles) |
 | `patterns` | List, show, validate, and expand named patterns |
 | `icons` | List available icon sets and icons |
+| `preview-icon` | Render a single icon spec to SVG + PNG preview |
 | `tables` | Table style guide and density reference |
 | `skill-info` | Show template capabilities for Claude Code skill integration |
-| `capabilities` | Show schema version, tools, features, and vocabularies |
+| `capabilities` | Show schema version, tools (with classification), features, and vocabularies |
+| `get-started` | Print the recommended fast path + manual sequence for a task (brief/revise/validate-only) |
+| `describe-finding` | Print the agent-facing description for a single finding code |
+| `input-schema` | Print the JSON input schema (full or compact) |
 | `resolve-theme` | Resolve theme colors and fonts for a template |
 | `recommend-pattern` | Recommend patterns matching an intent |
+| `recommend-visual` | Recommend visual approaches for a slide intent |
+| `plan-deck` | Plan a deck outline from a brief |
 | `preview` | Preview generation plan without rendering |
+| `preview-wireframe` | Render a slide-plan wireframe (PNG) before generating |
+| `preview-patterns` | Pre-render PNG previews for every named pattern |
 | `repair` | Apply targeted fixes to a single slide |
 | `score` | Score a JSON deck spec for visual quality (deterministic) |
+| `score-candidates` | Rank candidate slides for one slot without rendering |
+| `inspect` | Run vision-based visual QA on rendered slide images |
 | `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
 | `render-slide` | Render a single slide to PNG (requires LibreOffice + ImageMagick) |
+| `render-slide-from-json` | Render one slide directly from JSON (no full deck render) |
 | `render-thumbnails` | Render all slides as PNG thumbnails (requires LibreOffice + ImageMagick) |
+| `audit-palette` | Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes |
 | `template-settings` | Manage named styles (list/register/delete) |
 | `data-format-hints` | Show data format hints for chart/diagram types |
 | `shape-catalog` | List available preset geometries |
@@ -760,7 +826,7 @@ svg:
 
 ```
 cmd/
-  json2pptx/        Main CLI + HTTP API + MCP server (25 subcommands, 30 MCP tools)
+  json2pptx/        Main CLI + HTTP API + MCP server (39 subcommands, 45 MCP tools)
   pptx2jpg/         PPTX to image conversion via LibreOffice
   mktemplate/       Template authoring helper
   debugcolors/      Theme color debugging tool

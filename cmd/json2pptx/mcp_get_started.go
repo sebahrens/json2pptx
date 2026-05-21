@@ -13,8 +13,9 @@ import (
 // ---------------------------------------------------------------------------
 // get_started — first-call discovery tool
 //
-// Surfaces an ordered, task-keyed sequence of MCP tools so agents do not have
-// to reverse-engineer the workflow from the 35+ flat tool catalog returned by
+// Surfaces a recommended single-call fast path (a workflow facade) plus an
+// ordered, task-keyed sequence of MCP primitives so agents do not have to
+// reverse-engineer the workflow from the 45-tool flat catalog returned by
 // get_capabilities. Each step pairs an MCP tool name with a one-line
 // "when to call" hint, in the order an agent should invoke them.
 // ---------------------------------------------------------------------------
@@ -25,12 +26,56 @@ type getStartedStep struct {
 	WhenToCall string `json:"when_to_call"`
 }
 
+// getStartedFastPath names the single-call workflow facade an agent should
+// reach for first, before falling back to the manual primitive Sequence. It is
+// the "best-deck path": one tool call that internally orchestrates the same
+// primitives the Sequence lists step by step.
+type getStartedFastPath struct {
+	Tool       string `json:"tool"`
+	WhenToCall string `json:"when_to_call"`
+	// FallsBackTo is the manual primitive workflow this facade collapses — always
+	// the tool names in this response's Sequence — so an agent knows exactly which
+	// controllable path to drop to when it needs per-step control.
+	FallsBackTo []string `json:"falls_back_to"`
+}
+
 // getStartedResponse is the JSON envelope for get_started.
 type getStartedResponse struct {
-	Task         string           `json:"task"`
-	Sequence     []getStartedStep `json:"sequence"`
-	AvailableTasks []string       `json:"available_tasks"`
-	Notes        []string         `json:"notes,omitempty"`
+	Task string `json:"task"`
+	// FastPath is the recommended single-call facade for this task (make_deck for
+	// brief, auto_repair for revise). Present only for tasks that have a facade;
+	// omitted for validate-only (pure diagnostics, no facade). Sequence remains
+	// the controllable manual path agents drop to when they need per-step control.
+	FastPath       *getStartedFastPath `json:"fast_path,omitempty"`
+	Sequence       []getStartedStep    `json:"sequence"`
+	AvailableTasks []string            `json:"available_tasks"`
+	Notes          []string            `json:"notes,omitempty"`
+}
+
+// fastPathFor returns the workflow-facade fast path for a task, or nil when the
+// task has no facade. FallsBackTo is the tool names in seq, so the facade and
+// the manual path it collapses stay in lockstep automatically.
+func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
+	tools := make([]string, len(seq))
+	for i, s := range seq {
+		tools[i] = s.Tool
+	}
+	switch task {
+	case "brief":
+		return &getStartedFastPath{
+			Tool:        "make_deck",
+			WhenToCall:  "FASTEST PATH (recommended cold start) — ONE call from a natural-language outline to a validated, auto-repaired PPTX. make_deck internally chains plan_deck → expand patterns with exemplar content → auto_repair, so you skip the whole manual sequence. Reach for it when you do NOT need to hand-author per-slide content. Drop to the manual primitives in `sequence` (recommend_visual → … → generate_presentation) when you want per-slide control over copy, patterns, or layout.",
+			FallsBackTo: tools,
+		}
+	case "revise":
+		return &getStartedFastPath{
+			Tool:        "auto_repair",
+			WhenToCall:  "FASTEST PATH — server-side convergence loop (generate → inspect → repair) that drives an existing deck JSON to a configurable quality gate in one call. Reach for it to converge a deck automatically. Drop to the manual primitives in `sequence` (validate_input → preview_presentation_plan → repair_slide → generate_presentation) when you want targeted, per-slide repairs you control.",
+			FallsBackTo: tools,
+		}
+	default:
+		return nil
+	}
 }
 
 // getStartedAvailableTasks is the canonical list of accepted task keys.
@@ -71,6 +116,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "score_deck", WhenToCall: "Final — score the generated deck (0-100) for variety, coverage, and structure."},
 		}
 		notes = []string{
+			"fast_path (make_deck) is the recommended cold-start entry point: one call to a publishable PPTX. The numbered `sequence` is the controllable path you drop to when you want to author per-slide content or drive each primitive yourself — make_deck is the workflow facade, the sequence is the manual primitives it composes.",
 			"This is the canonical new-deck workflow. Each step's output informs the next.",
 			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
 			"validate_input is mandatory per SKILL.md preconditions — skipping it is a workflow violation even when preview_presentation_plan succeeds.",
@@ -87,6 +133,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "score_deck", WhenToCall: "Final — confirm the revision improved the deck score."},
 		}
 		notes = []string{
+			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
 			"Use this when modifying or repairing an existing PPTX deck.",
 			"You MUST supply the authoritative deck JSON for validate_input, preview_presentation_plan, repair_slide, and generate_presentation. read_presentation is a verification aid only — it does not reconstruct a PresentationInput.",
 			"If the original deck JSON is unavailable, re-author it from the brief (see task=brief) rather than trying to round-trip read_presentation through the editing tools.",
@@ -106,6 +153,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 
 	return getStartedResponse{
 		Task:           normalized,
+		FastPath:       fastPathFor(normalized, seq),
 		Sequence:       seq,
 		AvailableTasks: getStartedAvailableTasks(),
 		Notes:          notes,
@@ -114,12 +162,16 @@ func buildGetStartedResponse(task string) getStartedResponse {
 
 func mcpGetStartedTool() mcp.Tool {
 	return mcp.NewTool("get_started",
-		mcp.WithDescription(`Returns the recommended ordered MCP-call sequence for a stated task. Use this as your first call to learn the json2pptx workflow without reading the full 35+ tool catalog.
+		mcp.WithDescription(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full 45-tool catalog.
 
-Pass "task" to scope the sequence:
-- "brief" (default): authoring a new deck — get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
-- "revise": modifying an existing PPTX — get_capabilities → read_presentation (inspection-only; not fed downstream) → validate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
-- "validate-only": just checking a deck JSON is valid — get_capabilities → list_templates → validate_input → preview_presentation_plan.
+The response carries two complementary paths:
+- fast_path: the recommended single-call facade — make_deck for "brief", auto_repair for "revise". Call this alone for a publishable result without orchestrating the tool surface yourself. Its falls_back_to lists the manual primitives it collapses. Omitted for "validate-only" (pure diagnostics, no facade).
+- sequence: the controllable manual path — the ordered primitives to drive by hand when you need per-slide or per-step control.
+
+Pass "task" to scope both paths:
+- "brief" (default): authoring a new deck — fast_path make_deck; manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
+- "revise": modifying an existing PPTX — fast_path auto_repair; manual sequence get_capabilities → read_presentation (inspection-only; not fed downstream) → validate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
+- "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
 
 Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes.`),
 		mcp.WithRawOutputSchema(outputSchemaGetStarted),

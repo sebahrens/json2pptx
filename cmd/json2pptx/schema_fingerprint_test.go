@@ -27,6 +27,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// PresentationInput/Fix.Kind surfaces, so the hash is unchanged.
 	// 4.46.0 added the apply_deck_patch MCP tool, which changes the tool-name
 	// set, so the hash advanced from e597f18f06d5bf07 (4.45.0).
+	// 4.47.0 added tool classification metadata to get_capabilities (response
+	// fields only) — not tool names or PresentationInput/Fix.Kind surfaces, so the
+	// hash is unchanged. 4.48.0 added the get_started `fast_path` response field —
+	// again a response field only, not a tool name or PresentationInput/Fix.Kind
+	// surface, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

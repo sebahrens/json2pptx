@@ -4,6 +4,35 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.48.0 (2026-05-21)
+
+### Added
+
+- **`fast_path` on `get_started`.** The `get_started` response (MCP and
+  `json2pptx get-started`) now leads with a recommended single-call workflow
+  facade alongside the existing manual `sequence`:
+  - `fast_path: {tool, when_to_call, falls_back_to[]}` — `make_deck` for
+    `task=brief`, `auto_repair` for `task=revise`. `falls_back_to[]` echoes the
+    manual primitive tool names in the same response's `sequence`, so the facade
+    and the controllable path it collapses stay in lockstep.
+  - Omitted for `task=validate-only` (pure diagnostics, no facade).
+  - The `brief`/`revise` `notes[]` now explain when to use the facade versus the
+    manual primitives.
+
+  This routes cold-start agents to the best-deck path (`make_deck`) first while
+  keeping the controllable manual workflow one field away. Discovery surfaces —
+  `json2pptx help` (MCP-only tools list), the README MCP tool tables (grouped by
+  `phase`), and `skills/generate-deck/TOOLS.md` — were brought into agreement with
+  the registered tool set and classification metadata in the same change. Drift
+  tests now fail when a registered MCP tool is missing from the README or
+  TOOLS.md, when an MCP-only tool is missing from `json2pptx help`, or when the
+  `get_started` `fast_path` names an unclassified/non-facade tool.
+
+  This is an additive response field and does not change the MCP tool-name set,
+  PresentationInput shape, or Fix.Kind vocabulary, so the schema fingerprint is
+  unchanged; `schema_version` advances to 4.48.0 to mark the new response surface.
+  (bd `go-slide-creator-hec9`.)
+
 ## 4.47.0 (2026-05-21)
 
 ### Added

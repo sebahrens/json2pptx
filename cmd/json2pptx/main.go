@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.47.0"
+const SchemaVersion = "4.48.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -177,10 +177,25 @@ Commands:
   help                Show this help
 
 MCP-only tools (no direct CLI subcommand — use 'json2pptx mcp'):
-  expand_patterns     [MCP-only] Batch-expand multiple patterns under one template load.
-                      CLI workaround: loop 'json2pptx patterns expand' per pattern.
+  make_deck           [MCP-only] Cold-start workflow facade: ONE call from an
+                      outline to a validated, auto-repaired PPTX (plan → expand →
+                      auto_repair). CLI workaround: assemble JSON and call
+                      'json2pptx generate' manually.
+  auto_repair         [MCP-only] Server-side convergence loop (generate → inspect
+                      → repair) against a quality gate. CLI workaround: chain
+                      'json2pptx generate' / 'validate' / 'repair' manually.
+  apply_deck_patch    [MCP-only] Pure deck-JSON transform (bounded structural
+                      ops). CLI workaround: edit the JSON directly or invoke
+                      'json2pptx repair'.
+  expand_patterns     [MCP-only] Batch-expand multiple patterns under one template
+                      load. CLI workaround: loop 'json2pptx patterns expand' per
+                      pattern.
   propose_repairs     [MCP-only] Translate fit/visual QA findings into ranked
-                      repair_slide fix directives (no deck mutation).
+                      repair_slide fix directives (no deck mutation). CLI
+                      workaround: map findings to fixes manually and invoke
+                      'json2pptx repair'.
+  repair_slides_batch [MCP-only] Apply fixes to multiple slides in one call. CLI
+                      workaround: loop 'json2pptx repair' for each slide.
 
 CLI parity gaps (CLI accepts a subset of the matching MCP tool's parameters):
   recommend-visual    CLI takes -intent only. MCP recommend_visual also accepts

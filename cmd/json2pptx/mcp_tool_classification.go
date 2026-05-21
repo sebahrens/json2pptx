@@ -1,5 +1,7 @@
 package main
 
+import "sort"
+
 // Tool classification metadata.
 //
 // Every registered MCP tool carries structured metadata so agents can decide
@@ -78,6 +80,23 @@ type toolClassification struct {
 	// PrimitiveAlternatives lists the primitive tools an agent can drive by hand
 	// instead of this tool. Required for every workflow_facade; empty otherwise.
 	PrimitiveAlternatives []string
+}
+
+// mcpOnlyToolNames returns the sorted names of every registered MCP tool that
+// has no 1:1 CLI subcommand — i.e. its classification carries a non-empty
+// MCPOnlyReason. This is the single source of truth for the "MCP-only tools"
+// list that the CLI help, README, and skills/generate-deck/TOOLS.md must agree
+// on; the discovery-doc drift tests assert each of these surfaces lists every
+// name returned here.
+func mcpOnlyToolNames() []string {
+	var names []string
+	for name, c := range toolClassifications() {
+		if c.MCPOnlyReason != "" {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // validToolKinds is the closed set of accepted Kind values.
