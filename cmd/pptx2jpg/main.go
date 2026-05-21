@@ -1,5 +1,5 @@
 // Package main provides PPTX to JPG conversion using LibreOffice and ImageMagick.
-// This is used for visual inspection in the Ralph loop.
+// It is used for visual QA: converting generated slides to images for inspection.
 package main
 
 import (
