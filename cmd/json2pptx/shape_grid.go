@@ -339,6 +339,95 @@ func needsVirtualLayout(slide SlideInput) bool {
 	return slide.LayoutID == "" || st == "blank" || st == "virtual"
 }
 
+// GridGeometry is the layout-aware geometry resolved for a shape_grid slide:
+// the chrome-safe content zone plus any virtual-layout bounds override. It is
+// the single source of truth shared by generation (json_mode.go), preflight
+// (fit_findings_collect.go), and preview (mcp_preview.go) so all three evaluate
+// shape_grid cells against the SAME coordinates. Before this was shared,
+// preflight resolved grid bounds via generic defaults and could not detect the
+// title/footer overlap class that generation's zone clamping produces
+// (go-slide-creator-s1rd).
+type GridGeometry struct {
+	// Zone is the template-derived safe content area (nil when no layout
+	// geometry could be resolved).
+	Zone *shapegrid.ContentZone
+	// OverrideBounds are virtual-layout-derived grid bounds (nil for slides
+	// resolved against a concrete layout; the grid then derives bounds from
+	// the zone or its own explicit bounds).
+	OverrideBounds *pptx.RectEmu
+	// LayoutID is the base layout selected by virtual resolution (empty for
+	// concrete-layout slides).
+	LayoutID string
+	// VirtualUsed reports whether virtual layout resolution drove the result.
+	VirtualUsed bool
+}
+
+// resolveGridGeometry resolves the ContentZone and any bounds override for a
+// shape_grid slide using the SAME priority rules as generation:
+//
+//   - Blank / virtual slides go through resolveVirtualLayout, which selects a
+//     base layout, derives a chrome-safe zone, and supplies override bounds.
+//   - Slides bound to a concrete layout take their zone from THAT layout's
+//     placeholders (contentZoneFromLayout), falling back to the virtual zone
+//     for chrome protection when the concrete layout has no usable geometry.
+//
+// Returns the zero value when no layouts are available (the grid then falls
+// back to generic default bounds, matching resolveShapeGrid). This mirrors the
+// switch previously inlined in json_mode.go so generation and preflight cannot
+// drift.
+func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) GridGeometry {
+	var g GridGeometry
+	if len(layouts) == 0 {
+		return g
+	}
+	switch {
+	case needsVirtualLayout(slide):
+		if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
+			g.Zone = vl.Zone
+			b := vl.Bounds
+			g.OverrideBounds = &b
+			g.LayoutID = vl.LayoutID
+			g.VirtualUsed = true
+		}
+	default:
+		g.Zone = contentZoneFromLayout(findLayoutByID(layouts, slide.LayoutID), slideWidth, slideHeight)
+		if g.Zone == nil {
+			// Concrete layout had no usable title/body/footer geometry — fall
+			// back to the virtual zone for chrome protection.
+			if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
+				g.Zone = vl.Zone
+			}
+		}
+	}
+	return g
+}
+
+// resolveGridBounds computes the absolute grid bounds for a ShapeGridInput
+// using the precedence shared by generation and preflight:
+//
+//	explicit input.Bounds (clamped to zone) > overrideBounds > zone default > generic default
+//
+// With overrideBounds == nil and zone == nil this reduces to the legacy
+// "explicit bounds or DefaultBounds" behavior, so callers that have no layout
+// geometry get identical results to before.
+func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) pptx.RectEmu {
+	switch {
+	case input.Bounds != nil:
+		bounds := shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
+		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
+		if zone != nil {
+			bounds = shapegrid.ClampBoundsToZone(bounds, *zone)
+		}
+		return bounds
+	case overrideBounds != nil:
+		return *overrideBounds
+	case zone != nil:
+		return shapegrid.DefaultBoundsFromZone(*zone, 9.0)
+	default:
+		return shapegrid.DefaultBounds(slideWidth, slideHeight)
+	}
+}
+
 // resolveShapeGrid converts a ShapeGridInput into a ShapeGridResult containing
 // both raw XML fragments and resolved cell metadata.
 // If overrideBounds is non-nil, it is used instead of DefaultBounds or input.Bounds.
@@ -357,21 +446,10 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		return nil, err
 	}
 
-	// Resolve bounds: explicit input.Bounds > overrideBounds > default
-	var bounds pptx.RectEmu
-	if input.Bounds != nil {
-		bounds = shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
-		// Clamp explicit bounds against ContentZone to prevent overlapping chrome
-		if zone != nil {
-			bounds = shapegrid.ClampBoundsToZone(bounds, *zone)
-		}
-	} else if overrideBounds != nil {
-		bounds = *overrideBounds
-	} else if zone != nil {
-		bounds = shapegrid.DefaultBoundsFromZone(*zone, 9.0)
-	} else {
-		bounds = shapegrid.DefaultBounds(slideWidth, slideHeight)
-	}
+	// Resolve bounds: explicit input.Bounds > overrideBounds > zone default >
+	// generic default. Shared with preflight/preview via resolveGridBounds so
+	// all consumers evaluate against the same geometry (go-slide-creator-s1rd).
+	bounds := resolveGridBounds(input, overrideBounds, zone, slideWidth, slideHeight)
 
 	// Resolve gaps
 	colGap := input.ColGap

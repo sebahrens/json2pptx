@@ -30,7 +30,7 @@ func TestCollectResolvedGridCells_Basic(t *testing.T) {
 		},
 	}
 
-	cells := collectResolvedGridCells(grid, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
+	cells := collectResolvedGridCells(grid, GridGeometry{}, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
 	if len(cells) != 4 {
 		t.Fatalf("expected 4 resolved cells, got %d", len(cells))
 	}
@@ -96,10 +96,10 @@ func TestCollectResolvedGridCells_Basic(t *testing.T) {
 // TestCollectResolvedGridCells_NilOrEmpty asserts that nil and empty grids
 // return no cells (used for non-shape_grid slides).
 func TestCollectResolvedGridCells_NilOrEmpty(t *testing.T) {
-	if cells := collectResolvedGridCells(nil, 0, 0); cells != nil {
+	if cells := collectResolvedGridCells(nil, GridGeometry{}, 0, 0); cells != nil {
 		t.Errorf("nil grid: want nil cells, got %d", len(cells))
 	}
-	if cells := collectResolvedGridCells(&ShapeGridInput{}, 0, 0); cells != nil {
+	if cells := collectResolvedGridCells(&ShapeGridInput{}, GridGeometry{}, 0, 0); cells != nil {
 		t.Errorf("empty grid: want nil cells, got %d", len(cells))
 	}
 }
@@ -120,7 +120,7 @@ func TestCollectResolvedGridCells_SkipsEmptyCells(t *testing.T) {
 		},
 	}
 
-	cells := collectResolvedGridCells(grid, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
+	cells := collectResolvedGridCells(grid, GridGeometry{}, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
 	if len(cells) != 1 {
 		t.Fatalf("expected 1 resolved cell (empty cell omitted), got %d", len(cells))
 	}

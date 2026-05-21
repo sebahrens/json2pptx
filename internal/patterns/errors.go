@@ -35,6 +35,7 @@ const (
 	ErrCodePlaceholderOverflow = "placeholder_overflow"
 	ErrCodeSlideBoundsOverflow = "slide_bounds_overflow"
 	ErrCodeFooterCollision     = "footer_collision"
+	ErrCodeTitleCollision      = "title_collision"
 	ErrCodeTitleWraps          = "title_wraps"
 	ErrCodeSparseLayout        = "sparse_layout"
 	ErrCodePatternUnderfilled  = "pattern_underfilled"

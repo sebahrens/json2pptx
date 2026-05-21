@@ -618,36 +618,38 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 // for shape_grid slides.
 func resolveSlideShapeGrid(slide *SlideInput, tctx *previewTemplateContext, rs *resolvedSlide) {
 	sgr := &resolvedShapeGrid{}
-	if len(tctx.layouts) > 0 {
-		if vl := resolveVirtualLayout(tctx.layouts, tctx.slideWidth, tctx.slideHeight); vl != nil {
-			if needsVirtualLayout(*slide) {
-				sgr.VirtualLayoutUsed = true
-				sgr.LayoutID = vl.LayoutID
-				sgr.Geometry = &resolvedGeom{
-					X:      vl.Bounds.X,
-					Y:      vl.Bounds.Y,
-					Width:  vl.Bounds.CX,
-					Height: vl.Bounds.CY,
-				}
-				rs.LayoutID = vl.LayoutID
-				if lm, ok := tctx.layoutByID[vl.LayoutID]; ok {
-					rs.LayoutName = lm.Name
-				}
+	// Resolve the same layout-aware geometry generation uses so the wireframe
+	// cells preview reports land where they render (go-slide-creator-s1rd).
+	geom := resolveGridGeometry(*slide, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+	if geom.VirtualUsed {
+		sgr.VirtualLayoutUsed = true
+		sgr.LayoutID = geom.LayoutID
+		if geom.OverrideBounds != nil {
+			sgr.Geometry = &resolvedGeom{
+				X:      geom.OverrideBounds.X,
+				Y:      geom.OverrideBounds.Y,
+				Width:  geom.OverrideBounds.CX,
+				Height: geom.OverrideBounds.CY,
 			}
 		}
+		rs.LayoutID = geom.LayoutID
+		if lm, ok := tctx.layoutByID[geom.LayoutID]; ok {
+			rs.LayoutName = lm.Name
+		}
 	}
-	sgr.Cells = collectResolvedGridCells(slide.ShapeGrid, tctx.slideWidth, tctx.slideHeight)
+	sgr.Cells = collectResolvedGridCells(slide.ShapeGrid, geom, tctx.slideWidth, tctx.slideHeight)
 	rs.ShapeGridResolution = sgr
 }
 
 // collectResolvedGridCells resolves a ShapeGridInput to a slice of wireframe
-// cells (row, col, x, y, w, h, kind) in EMUs. Returns nil when the grid cannot
-// be resolved (e.g. invalid column percentages).
-func collectResolvedGridCells(grid *ShapeGridInput, slideWidth, slideHeight int64) []resolvedShapeGridCell {
+// cells (row, col, x, y, w, h, kind) in EMUs using the slide's resolved
+// geometry. Returns nil when the grid cannot be resolved (e.g. invalid column
+// percentages).
+func collectResolvedGridCells(grid *ShapeGridInput, geom GridGeometry, slideWidth, slideHeight int64) []resolvedShapeGridCell {
 	if grid == nil || len(grid.Rows) == 0 {
 		return nil
 	}
-	result := resolveGridForStructural(grid, slideWidth, slideHeight)
+	result := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 	if result == nil || len(result.Cells) == 0 {
 		return nil
 	}

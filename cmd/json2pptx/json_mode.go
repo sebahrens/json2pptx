@@ -936,34 +936,23 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		var contentZone *shapegrid.ContentZone
 
 		// Derive the ContentZone so shape_grid bounds respect the real title
-		// height and footer clearance. A slide with a concrete (explicit or
-		// auto-selected) layout takes its zone from THAT layout's placeholders;
-		// resolveVirtualLayout's blank/blank-title pick can otherwise hand back
-		// title/footer bounds from an unrelated layout, intruding into title
-		// chrome (go-slide-creator-j15r). Only blank/virtual slides go through
-		// virtual resolution, which additionally drives the layout pick and
-		// override bounds.
+		// height and footer clearance. resolveGridGeometry is the shared
+		// contract used by preflight and preview, so the geometry validated
+		// before render matches what generation lays down: a slide with a
+		// concrete (explicit or auto-selected) layout takes its zone from THAT
+		// layout's placeholders, while blank/virtual slides go through virtual
+		// resolution, which also drives the layout pick and override bounds
+		// (go-slide-creator-j15r, go-slide-creator-s1rd).
 		if len(layouts) > 0 {
-			switch {
-			case needsVirtualLayout(slide):
-				if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
-					contentZone = vl.Zone
-					spec.LayoutID = vl.LayoutID
-					overrideBounds = &vl.Bounds
-					slog.Info("virtual layout resolved",
-						slog.Int("slide", i+1),
-						slog.String("layout_id", vl.LayoutID),
-					)
-				}
-			default:
-				contentZone = contentZoneFromLayout(findLayoutByID(layouts, slide.LayoutID), slideWidth, slideHeight)
-				if contentZone == nil {
-					// Concrete layout had no usable title/body/footer geometry —
-					// fall back to the virtual zone for chrome protection.
-					if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
-						contentZone = vl.Zone
-					}
-				}
+			geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+			contentZone = geom.Zone
+			overrideBounds = geom.OverrideBounds
+			if geom.VirtualUsed {
+				spec.LayoutID = geom.LayoutID
+				slog.Info("virtual layout resolved",
+					slog.Int("slide", i+1),
+					slog.String("layout_id", geom.LayoutID),
+				)
 			}
 		}
 

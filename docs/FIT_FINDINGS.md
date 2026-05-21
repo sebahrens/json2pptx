@@ -201,6 +201,31 @@ Only fires when the slide's resolved layout declares a footer placeholder (date,
 }
 ```
 
+### `title_collision`
+
+**Action:** `review` (default) or `refuse` (strict mode)
+**Pattern:** `shape_grid`
+**Fix kind:** `reposition_shape`
+
+A JSON-authored shape's top edge starts above the resolved content zone's title bottom edge — the grid intrudes upward into the title chrome. This is the title-side mirror of `footer_collision`. The action depends on the `strict_fit` setting: `"strict"` produces `refuse`, `"warn"` produces `review`, `"off"` suppresses entirely.
+
+Preflight resolves shape_grid geometry through the **same** layout-aware helper generation uses (`resolveGridGeometry` → `resolveGridBounds`), so the cell coordinates evaluated here match what renders. This is what lets preflight catch the title-overlap class — most commonly a "title at bottom, body/content placeholder above it" layout (roles flipped relative to size) whose virtual-layout fallback anchors the grid above the title — instead of only surfacing it after LibreOffice rendering.
+
+Only fires when a title-anchored content zone was resolved for the slide (`LayoutDeclaresTitle`). Slides whose zone is a generic fallback with no title anchor are skipped.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/0/shape_grid/rows/0/cells/0",
+  "code": "title_collision",
+  "message": "shape top edge (400000 EMU) intrudes 880160 EMU into title area (bottom=1280160 EMU)",
+  "fix": { "kind": "reposition_shape" },
+  "action": "review",
+  "measured": { "width_emu": 4000000, "height_emu": 2000000 },
+  "allowed": { "width_emu": 4000000, "height_emu": 1119840 }
+}
+```
+
 ### `sparse_layout`
 
 **Action:** `review`
@@ -797,10 +822,11 @@ Fit findings are scoped to **JSON-authored content only**. Content inherited fro
 ### What is excluded
 
 - **Layout-inherited shapes** — shapes that come from the template's slide layout or master are never checked. Callers filter these before passing to detectors.
-- **Decorative shapes** — shapes with `role: "background"` or `role: "decor"` are skipped by `slide_bounds_overflow` and `footer_collision`. These are intentionally placed at edges or off-slide.
+- **Decorative shapes** — shapes with `role: "background"` or `role: "decor"` are skipped by `slide_bounds_overflow`, `footer_collision`, and `title_collision`. These are intentionally placed at edges or off-slide.
 - **Sparse grids** — `sparse_layout` fires when the estimated content extent is under 40% of the grid bounds height. Since bounds are authoritative (never shrink), all grids are checked uniformly.
 - **Autofit placeholders** — `placeholder_overflow` is suppressed when the placeholder has `normAutofit` or `spAutoFit` set, because PowerPoint will auto-shrink text to fit.
 - **Layouts without footer** — `footer_collision` only fires when the slide's resolved layout declares a footer placeholder (dt, ftr, or sldNum). No finding is emitted on layouts using heuristic fallback positioning.
+- **Shared geometry** — `slide_bounds_overflow`, `footer_collision`, and `title_collision` resolve shape_grid cell coordinates through the same layout-aware helper (`resolveGridGeometry` → `resolveGridBounds`) generation uses, so preflight evaluates the geometry that will actually render. `title_collision` only fires when a title-anchored content zone could be resolved for the slide.
 
 ## Fix Kinds
 

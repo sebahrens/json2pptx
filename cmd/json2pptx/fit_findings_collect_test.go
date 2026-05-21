@@ -560,7 +560,7 @@ func TestCheckShapeGridStructural_IncludesVisualCells(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
 
 	// All three visual cells should produce bounds overflow findings.
 	boundsCount := 0
@@ -695,7 +695,7 @@ func TestCheckShapeGridStructural_PreflightDiagramNarrow(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
 
 	found := false
 	for _, f := range findings {
@@ -755,7 +755,7 @@ func TestCheckShapeGridStructural_PreflightDiagramAspectMismatch(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
 
 	found := false
 	for _, f := range findings {
@@ -819,7 +819,7 @@ func TestCheckShapeGridStructural_NoDiagramAspectMismatchWhenAligned(t *testing.
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
 	for _, f := range findings {
 		if f.Code == "diagram_aspect_mismatch" {
 			t.Errorf("should not emit diagram_aspect_mismatch for aligned aspect; got finding: %s", f.Message)
@@ -863,7 +863,7 @@ func TestCheckShapeGridStructural_PreflightDiagramAspectConflict(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
 
 	found := false
 	for _, f := range findings {
@@ -928,7 +928,7 @@ func TestCheckShapeGridStructural_NoDiagramNarrowForWideCell(t *testing.T) {
 		},
 	}
 
-	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, false, "")
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
 
 	for _, f := range findings {
 		if f.Code == "grid_diagram_narrow" {
@@ -1109,5 +1109,118 @@ func TestCollectFitFindings_RunsStructuralOnComposeMergedGrid(t *testing.T) {
 	expanded := expandComposeForPreflight(input, 12192000, 6858000)
 	if expanded.Slides[0].ShapeGrid == nil {
 		t.Fatal("compose envelope was never expanded — preflight detectors will keep missing post-merge findings")
+	}
+}
+
+// flippedGeometryLayouts builds a single-layout slice whose body/content
+// placeholder sits ABOVE the title placeholder — the modern-yellow-class
+// "title at bottom, roles flipped" geometry. resolveVirtualLayout's priority-3
+// branch then hands generation (and preflight) override bounds anchored to the
+// body placeholder, so the grid renders intruding into the title band. The
+// CanonicalType is forced to a non-blank value so priority 1/2 (blank /
+// blank-title) are skipped and the priority-3 fallback is exercised.
+func flippedGeometryLayouts() []types.LayoutMetadata {
+	return []types.LayoutMetadata{
+		{
+			ID:            "flipped",
+			Name:          "Flipped Section Divider",
+			CanonicalType: types.CanonicalLayoutOneContent,
+			Placeholders: []types.PlaceholderInfo{
+				// Body placeholder near the top of the slide.
+				{ID: "body", Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 400000, Width: 11277600, Height: 2000000}},
+				// Title placeholder lower down: bottom edge at 4_000_000 EMU.
+				{ID: "title", Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 457200, Y: 3000000, Width: 11277600, Height: 1000000}},
+			},
+		},
+	}
+}
+
+// TestCollectFitFindings_TitleCollisionOnFlippedLayout is the acceptance case
+// for go-slide-creator-s1rd: a synthetic deck whose shape_grid intrudes into
+// the title band must trigger a preflight finding, not only show up after
+// LibreOffice rendering. The slide carries no explicit layout_id, so it goes
+// through virtual layout resolution — the same path generation uses.
+func TestCollectFitFindings_TitleCollisionOnFlippedLayout(t *testing.T) {
+	const (
+		slideWidth  int64 = 12192000
+		slideHeight int64 = 6858000
+	)
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				ShapeGrid: &ShapeGridInput{
+					Columns: json.RawMessage(`1`),
+					Rows: []GridRowInput{
+						{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}},
+					},
+				},
+			},
+		},
+	}
+
+	findings := collectFitFindings(input, flippedGeometryLayouts(), slideWidth, slideHeight, nil)
+
+	found := false
+	for _, f := range findings {
+		if f.Code == patterns.ErrCodeTitleCollision {
+			found = true
+			if f.Action != "review" {
+				t.Errorf("title_collision Action = %q, want review", f.Action)
+			}
+			if f.Fix == nil || f.Fix.Kind != "reposition_shape" {
+				t.Errorf("title_collision Fix = %v, want reposition_shape", f.Fix)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a %s finding for grid intruding into title; got:", patterns.ErrCodeTitleCollision)
+		for _, f := range findings {
+			t.Logf("  %s @ %s", f.Code, f.Path)
+		}
+	}
+}
+
+// TestCollectFitFindings_NoTitleCollisionOnNormalLayout guards against false
+// positives: when the body/content placeholder sits below the title (the normal
+// case), the virtual-layout override bounds clear the title band and no
+// title_collision finding is emitted.
+func TestCollectFitFindings_NoTitleCollisionOnNormalLayout(t *testing.T) {
+	const (
+		slideWidth  int64 = 12192000
+		slideHeight int64 = 6858000
+	)
+	layouts := []types.LayoutMetadata{
+		{
+			ID:            "normal",
+			Name:          "One Content",
+			CanonicalType: types.CanonicalLayoutOneContent,
+			Placeholders: []types.PlaceholderInfo{
+				// Title at the top: bottom edge at 1_000_000 EMU.
+				{ID: "title", Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 457200, Y: 200000, Width: 11277600, Height: 800000}},
+				// Body well below the title.
+				{ID: "body", Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600000, Width: 11277600, Height: 4500000}},
+			},
+		},
+	}
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				ShapeGrid: &ShapeGridInput{
+					Columns: json.RawMessage(`1`),
+					Rows: []GridRowInput{
+						{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}},
+					},
+				},
+			},
+		},
+	}
+
+	for _, f := range collectFitFindings(input, layouts, slideWidth, slideHeight, nil) {
+		if f.Code == patterns.ErrCodeTitleCollision {
+			t.Errorf("unexpected %s finding on a normal (body-below-title) layout: %s", f.Code, f.Path)
+		}
 	}
 }

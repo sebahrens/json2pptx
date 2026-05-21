@@ -22,6 +22,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `title_wraps` | Title placeholder measures >1 line (informational, distinct from `placeholder_overflow`) | `review` | `reduce_text` |
 | `slide_bounds_overflow` | JSON-authored shape center falls outside slide rect (center-based threshold, not corners) | `shrink_or_split` | `reduce_text` |
 | `footer_collision` | Authored shape bbox intersects footer area on a layout that declares a footer placeholder | `review` (strict: `refuse`) | `reduce_text` |
+| `title_collision` | Authored shape top edge intrudes upward into the title chrome (resolved content zone's title bottom). Title-side mirror of `footer_collision`; catches "title at bottom, body above" flipped-geometry layouts. Preflight resolves grid cells with the same layout-aware geometry as generation. Only fires when a title-anchored zone was resolved | `review` (strict: `refuse`) | `reposition_shape` |
 | `fit_overflow` | Per-cell: text needs more lines than cell height allows at the declared font | `refuse` | `split_at_row` / `reduce_text` |
 | `density_exceeded` | Table rows × cols beyond TDR ceiling at the declared font (Rule 20) | `review` | `split_at_row` |
 | `stacked_tables` | Sibling tables in a shape_grid with `row_gap < 4pt` (two-tables-one-grid anti-pattern) | `review` | `split_at_row` |

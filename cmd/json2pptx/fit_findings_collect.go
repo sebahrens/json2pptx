@@ -346,14 +346,25 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 			findings = append(findings, checkPlaceholderFindings(&slide, si, layout)...)
 		}
 
-		// Shape grid: footer collision and bounds overflow.
-		if slide.ShapeGrid != nil && layout != nil {
+		// Shape grid: title/footer collision and bounds overflow. Resolve the
+		// SAME layout-aware geometry generation uses (resolveGridGeometry), so
+		// virtual-layout slides (no explicit layout_id) are checked too and the
+		// resolved cell bounds match render — the gap that let title overlaps
+		// slip past preflight (go-slide-creator-s1rd).
+		if slide.ShapeGrid != nil {
+			geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+			// Footer derivation needs the concrete layout when present, else the
+			// virtual base layout the geometry resolved.
+			footerLayout := layout
+			if footerLayout == nil {
+				footerLayout = findLayoutByID(layouts, geom.LayoutID)
+			}
 			patternName := ""
 			if slide.Pattern != nil {
 				patternName = slide.Pattern.Name
 			}
 			findings = append(findings,
-				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, layout, footerEnabled, patternName)...)
+				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, footerLayout, geom, footerEnabled, patternName)...)
 		}
 	}
 
@@ -421,11 +432,18 @@ type gridContext struct {
 	footerY, footerCY    int64
 	layoutDeclaresFooter bool
 	footerEnabled        bool
-	slideWidth           int64
-	slideHeight          int64
+	// titleBottom is the Y of the resolved content zone's title bottom edge
+	// (EMU). layoutDeclaresTitle gates the title-collision detector so it only
+	// fires when a real title-anchored zone was resolved.
+	titleBottom         int64
+	layoutDeclaresTitle bool
+	slideWidth          int64
+	slideHeight         int64
 }
 
-// resolveGridContext extracts footer and grid origin data from a layout.
+// resolveGridContext extracts footer and grid origin data from a layout. The
+// layout may be nil (e.g. a compose-merged grid resolved without template
+// layouts); footer/grid-origin defaults are then left in place.
 func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slideWidth, slideHeight int64, footerEnabled bool) gridContext {
 	ctx := gridContext{
 		gridX:         457200,  // 0.5 inch default
@@ -435,15 +453,17 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 		slideHeight:   slideHeight,
 	}
 
-	for _, ph := range layout.Placeholders {
-		if ph.Type == types.PlaceholderOther && ph.Bounds.Height > 0 && !ctx.layoutDeclaresFooter {
-			ctx.footerY = ph.Bounds.Y
-			ctx.footerCY = ph.Bounds.Height
-			ctx.layoutDeclaresFooter = true
-		}
-		if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
-			ctx.gridX = ph.Bounds.X
-			ctx.gridY = ph.Bounds.Y
+	if layout != nil {
+		for _, ph := range layout.Placeholders {
+			if ph.Type == types.PlaceholderOther && ph.Bounds.Height > 0 && !ctx.layoutDeclaresFooter {
+				ctx.footerY = ph.Bounds.Y
+				ctx.footerCY = ph.Bounds.Height
+				ctx.layoutDeclaresFooter = true
+			}
+			if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+				ctx.gridX = ph.Bounds.X
+				ctx.gridY = ph.Bounds.Y
+			}
 		}
 	}
 
@@ -467,9 +487,11 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 	return ctx
 }
 
-// checkShapeGridStructural checks shape_grid cells for footer collision,
-// bounds overflow, sparse layout, and approximable non-text visual issues
-// using resolved cell positions from shapegrid.Resolve.
+// checkShapeGridStructural checks shape_grid cells for title collision, footer
+// collision, bounds overflow, sparse layout, and approximable non-text visual
+// issues using resolved cell positions from shapegrid.Resolve. The grid is
+// resolved with the SAME layout-aware geometry (geom) generation uses, so the
+// cells evaluated here match render coordinates (go-slide-creator-s1rd).
 //
 // Non-text grid findings approximable at preflight:
 //   - grid_diagram_narrow: complex diagram in a narrow cell (same logic as render-time)
@@ -479,15 +501,24 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 //   - diagram_render_failed: only knowable when rendering is attempted
 //   - image file/dimension issues: require filesystem access and image decoding
 //   - icon resolution failures: require loading SVG icons from the registry
-func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, footerEnabled bool, patternName string) []patterns.FitFinding {
+func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, geom GridGeometry, footerEnabled bool, patternName string) []patterns.FitFinding {
 	if len(grid.Rows) == 0 {
 		return nil
 	}
 
 	ctx := resolveGridContext(grid, layout, slideWidth, slideHeight, footerEnabled)
 
-	// Resolve the grid to get authoritative cell bounds.
-	result := resolveGridForStructural(grid, slideWidth, slideHeight)
+	// Inject the resolved content zone's title edge so checkCellStructural can
+	// flag cells that intrude upward into the title chrome (go-slide-creator-s1rd).
+	if geom.Zone != nil && geom.Zone.TitleBottom > 0 {
+		ctx.titleBottom = geom.Zone.TitleBottom
+		ctx.layoutDeclaresTitle = true
+	}
+
+	// Resolve the grid to get authoritative cell bounds, using the SAME
+	// layout-aware geometry generation applies (zone clamp / override bounds)
+	// so the cells preflight evaluates land where they will render.
+	result := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 
 	var findings []patterns.FitFinding
 
@@ -551,8 +582,11 @@ func checkGridDiagramPreflight(diagram *types.DiagramSpec, slideIdx, ri, ci int,
 }
 
 // resolveGridForStructural builds and resolves a shapegrid.Grid from a
-// ShapeGridInput using default slide dimensions. Returns nil if resolution fails.
-func resolveGridForStructural(grid *ShapeGridInput, slideWidth, slideHeight int64) *shapegrid.ResolveResult {
+// ShapeGridInput. Bounds are computed via the shared resolveGridBounds helper,
+// so passing overrideBounds/zone yields the SAME geometry generation renders;
+// passing nil/nil reduces to the legacy "explicit bounds or DefaultBounds"
+// behavior. Returns nil if resolution fails.
+func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) *shapegrid.ResolveResult {
 	colWidths, err := resolveColumnsDTO(grid.Columns, grid.Rows)
 	if err != nil {
 		return nil
@@ -574,14 +608,7 @@ func resolveGridForStructural(grid *ShapeGridInput, slideWidth, slideHeight int6
 		slideHeight = shapegrid.DefaultSlideHeightEMU
 	}
 
-	bounds := shapegrid.DefaultBounds(slideWidth, slideHeight)
-	if grid.Bounds != nil {
-		bounds = shapegrid.BoundsFromPercentages(
-			grid.Bounds.X, grid.Bounds.Y,
-			grid.Bounds.Width, grid.Bounds.Height,
-			slideWidth, slideHeight,
-		)
-	}
+	bounds := resolveGridBounds(grid, overrideBounds, zone, slideWidth, slideHeight)
 
 	sgGrid := &shapegrid.Grid{
 		Bounds:  bounds,
@@ -779,6 +806,22 @@ func checkCellStructural(path string, slideIdx int, x, y, cx, cy int64, ctx grid
 		SlideHeight: ctx.slideHeight,
 	}); f != nil {
 		findings = append(findings, *f)
+	}
+
+	if ctx.layoutDeclaresTitle {
+		if f := generator.DetectTitleCollision(generator.TitleCollisionInput{
+			SlideIndex:          slideIdx,
+			Path:                path,
+			ShapeX:              x,
+			ShapeY:              y,
+			ShapeCX:             cx,
+			ShapeCY:             cy,
+			TitleBottom:         ctx.titleBottom,
+			LayoutDeclaresTitle: true,
+			StrictFit:           "warn",
+		}); f != nil {
+			findings = append(findings, *f)
+		}
 	}
 
 	if ctx.footerEnabled && ctx.layoutDeclaresFooter {
@@ -1188,7 +1231,7 @@ func tablePlaceholderBounds(placeholderID string, layout *types.LayoutMetadata) 
 // collectGridTablePreflight walks shape_grid cells and emits table preflight
 // findings for any embedded tables, using the resolved cell bounds.
 func collectGridTablePreflight(grid *ShapeGridInput, slideIdx int) []patterns.FitFinding {
-	result := resolveGridForStructural(grid, 0, 0)
+	result := resolveGridForStructural(grid, nil, nil, 0, 0)
 	if result == nil {
 		return nil
 	}
