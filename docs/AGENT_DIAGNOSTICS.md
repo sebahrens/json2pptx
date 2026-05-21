@@ -200,8 +200,11 @@ the whole convert surface for no agent-recovery gain.
 
 `examine-template` has migrated (CLI): it emits the envelope natively under the
 `findings` key of its `report.json` (see section 4). MCP `examine_template`
-parity is tracked separately. The remaining work is emitting the envelope
-natively from the forthcoming `preflight` subcommand.
+parity is tracked separately.
+
+`preflight` (CLI) emits the `FindingEnvelope` natively as its entire stdout
+payload — stamped with `subcommand: "preflight"` — across every static-check
+stage in one pass (see section 6). MCP `preflight` parity is tracked separately.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
 with `diagnostics.BuildEnvelope` and add any new code to
@@ -289,3 +292,57 @@ can synthesise or overlay from the base layouts (`two-content`, `comparison`,
 `full-image`, `blank-title`, `stat-grid`, `timeline`, `journey`,
 `panel-layout`), each with `ready: true|false` and `missing[]` naming the absent
 prerequisite. It is produced by `template.DerivableLayouts`.
+
+## 6. `preflight` — the single static-check pass
+
+`json2pptx preflight --json <deck.json> --templates-dir <dir> [--strict]` runs
+every static check on a deck JSON without writing a `.pptx` (no LibreOffice, no
+PNG conversion). It is the agent-native counterpart to `validate`: a primitive
+checker that emits deterministic facts and a stage/severity ordering, with no
+repair planning or aesthetic decisions. It shares the canonical
+placeholder-role classifier and the layout-aware `ContentZone` resolver with
+generation, so the geometry it evaluates is the geometry that will render.
+
+Its **entire stdout payload is the `FindingEnvelope`** (pretty-printed JSON),
+stamped with `subcommand: "preflight"` and `input_sha256` for correlation. The
+deck path may be passed via `--json` or as a positional argument; `--json -`
+reads from stdin.
+
+**Stages.** Checks run in a fixed order; every finding is tagged with the stage
+that produced it under `evidence.stage`, and the envelope's `findings[]` are
+ordered by stage then severity:
+
+| # | `evidence.stage`    | Covers                                                              |
+| - | ------------------- | ------------------------------------------------------------------ |
+| 1 | `INPUT`             | JSON parse, structure expansion, unknown keys (warn), enum values, required top-level fields. |
+| 2 | `POLICY`            | Design-mode constraints and the no-emoji content policy.           |
+| 3 | `TEMPLATE`          | Template resolves; layouts parse; canonical roles resolve.         |
+| 4 | `LAYOUT`            | Each slide resolves to a real layout (`unknown_layout_id`, missing `layout_id`/`slide_type`). |
+| 5 | `PLACEHOLDER`       | Per-placeholder fit: char budget vs `MaxChars`, content-type checks, text overflow. |
+| 6 | `GRID`              | shape_grid structure, bounds inside the `ContentZone`, cell fit, contrast. |
+| 7 | `PATTERN`           | Patterns / compose envelopes resolve and required slots are populated. |
+| 8 | `RENDER_PROJECTION` | Dry-render geometry: title-overlaps-body, footer overlap, title wrap. |
+
+The stage tag is the only `preflight`-specific addition to a finding; every
+other field is the standard envelope contract from section 2. Findings keep
+their existing `category` namespace (e.g. an `unknown_layout_id` finding stays
+`INPUT`-namespaced even though its `evidence.stage` is `LAYOUT`) — the stage is
+preflight's execution grouping, not a recategorization.
+
+**Fail-fast.** A stage whose failure makes later stages impossible
+short-circuits the rest: an unparseable deck, a missing required field, a
+template that will not resolve or analyze. Content-policy findings (stage 2) do
+**not** short-circuit — `preflight` is the "run every static check" surface and
+reports the full picture in one pass.
+
+**Exit codes.**
+
+| Code | Meaning                                                                 |
+| ---- | ---------------------------------------------------------------------- |
+| `0`  | No error-severity finding (and, under `--strict`, no warnings either). |
+| `2`  | At least one error-severity finding — or, under `--strict`, any warning. |
+| `3`  | Internal failure (e.g. the envelope was computed but could not be written). |
+
+The envelope's `ok` flag always reflects error severity only; `--strict` raises
+the *exit code* on warnings without changing `ok`, so the wire shape stays
+consistent across surfaces.

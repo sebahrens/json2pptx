@@ -50,6 +50,8 @@ func dispatch() error { //nolint:gocyclo
 		return runMCP()
 	case "validate":
 		return runValidate()
+	case "preflight":
+		return runPreflight()
 	case "validate-template":
 		return runValidateTemplate()
 	case "template-check":
@@ -136,6 +138,7 @@ Commands:
   generate            Convert JSON to PPTX (default if omitted)
   read                Read PPTX and output extracted content as JSON
   validate            Validate input without generating
+  preflight           Run every static check on a deck (stage-based, emits the finding envelope)
   validate-output     Check generated PPTX for OOXML correctness
   validate-template   Check template compatibility
   template-check      Check template conformance against spec

@@ -2,9 +2,9 @@ package diagnostics
 
 // FindingEnvelope is the single agent-facing response shape for every
 // diagnostic-bearing surface in json2pptx: validate, validate-template,
-// template-check, generate -dry-run, repair, inspect, the forthcoming
-// preflight / examine-template subcommands, and their MCP and HTTP serve-mode
-// equivalents. It wraps a slice of Findings with the run-level metadata an
+// template-check, generate -dry-run, repair, inspect, preflight, and
+// examine-template, plus their MCP and HTTP serve-mode equivalents. It wraps a
+// slice of Findings with the run-level metadata an
 // agent needs to correlate the result with its request (which tool ran, the
 // SHA-256 of the input it sent, the template it targeted) and a single OK flag
 // it can branch on.
