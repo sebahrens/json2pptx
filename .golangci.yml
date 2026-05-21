@@ -124,8 +124,17 @@ linters:
           - staticcheck
         text: "QF100"
 
-      # Allow G204 (subprocess) in svg.go where we call external converters
+      # Allow G204 (subprocess) where we shell out to external converters
       - path: internal/generator/svg\.go
+        linters:
+          - gosec
+        text: "G204"
+      # pptx2jpg/render invoke LibreOffice/ImageMagick with caller-controlled paths
+      - path: cmd/pptx2jpg/main\.go
+        linters:
+          - gosec
+        text: "G204"
+      - path: internal/render/render\.go
         linters:
           - gosec
         text: "G204"
@@ -136,11 +145,55 @@ linters:
           - gosec
         text: "G110"
 
-      # Allow G602 (slice bounds) in builder where we check bounds
+      # Allow G602 (slice bounds) where the index is provably bounded by range/len
+      # but gosec's taint analysis can't track the relationship.
       - path: internal/svggen/builder\.go
         linters:
           - gosec
         text: "G602"
+      # i ranges over slides; index is the loop variable itself
+      - path: cmd/json2pptx/resolve_urls\.go
+        linters:
+          - gosec
+        text: "G602"
+      # i ranges over n := len(ratios)
+      - path: internal/template/layout_generator\.go
+        linters:
+          - gosec
+        text: "G602"
+      # edgeLabels has 8 fixed entries; i+3 never exceeds 5
+      - path: internal/testrand/svg_stress\.go
+        linters:
+          - gosec
+        text: "G602"
+      # i ranges over layouts/slides; j/k range over their sub-slices
+      - path: cmd/json2pptx/shape_grid\.go
+        linters:
+          - gosec
+        text: "G602"
+      # i ranges over layouts; j ranges over layouts[i].Placeholders
+      - path: internal/pipeline/overflow\.go
+        linters:
+          - gosec
+        text: "G602"
+
+      # Allow G703 (path traversal taint) where paths are caller-controlled by
+      # design (CLI/library file ops) or derived from fixed names. Kept active
+      # for internal/api production code, which is network-facing.
+      - path: _test\.go
+        linters:
+          - gosec
+        text: "G703"
+      # CLI existence checks on the user-specified template path/dir
+      - path: cmd/json2pptx/template_resolve\.go
+        linters:
+          - gosec
+        text: "G703"
+      # best-effort cache write to a derived slide-%d.png filename
+      - path: internal/render/render\.go
+        linters:
+          - gosec
+        text: "G703"
 
 
 issues:

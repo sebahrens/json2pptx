@@ -687,13 +687,13 @@ func bodyStyleLevels(bulletChar string) string {
 	for i, sz := range sizes {
 		marL := (i + 1) * 384048
 		indent := -384048
-		b.WriteString(fmt.Sprintf(
+		fmt.Fprintf(&b,
 			`<a:lvl%dpPr marL="%d" indent="%d" algn="l" defTabSz="914400" rtl="0" eaLnBrk="1" latinLnBrk="0" hangingPunct="1">`+
 				`<a:lnSpc><a:spcPct val="94000"/></a:lnSpc><a:spcBef><a:spcPts val="800"/></a:spcBef><a:spcAft><a:spcPts val="200"/></a:spcAft>`+
 				`<a:buChar char="%s"/>`+
 				`<a:defRPr sz="%d" kern="1200"><a:solidFill><a:schemeClr val="dk2"/></a:solidFill>`+
 				`<a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/></a:defRPr></a:lvl%dpPr>`,
-			i+1, marL, indent, bulletChar, sz, i+1))
+			i+1, marL, indent, bulletChar, sz, i+1)
 	}
 	return b.String()
 }
@@ -703,11 +703,11 @@ func otherStyleLevels() string {
 	b.WriteString(`<a:defPPr><a:defRPr lang="en-US"/></a:defPPr>`)
 	for i := 1; i <= 9; i++ {
 		marL := (i - 1) * 457200
-		b.WriteString(fmt.Sprintf(
+		fmt.Fprintf(&b,
 			`<a:lvl%dpPr marL="%d" algn="l" defTabSz="914400" rtl="0" eaLnBrk="1" latinLnBrk="0" hangingPunct="1">`+
 				`<a:defRPr sz="1800" kern="1200"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`+
 				`<a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/></a:defRPr></a:lvl%dpPr>`,
-			i, marL, i))
+			i, marL, i)
 	}
 	return b.String()
 }

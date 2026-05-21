@@ -3633,7 +3633,7 @@ func BenchmarkFindMaxShapeID_LargeSlide(b *testing.B) {
 	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?><p:sld><p:cSld><p:spTree>`)
 	sb.WriteString(`<p:nvGrpSpPr><p:cNvPr id="1" name=""/></p:nvGrpSpPr>`)
 	for i := 2; i <= 150; i++ {
-		sb.WriteString(fmt.Sprintf(`<p:sp><p:nvSpPr><p:cNvPr id="%d" name="Shape%d"/></p:nvSpPr></p:sp>`, i, i))
+		fmt.Fprintf(&sb, `<p:sp><p:nvSpPr><p:cNvPr id="%d" name="Shape%d"/></p:nvSpPr></p:sp>`, i, i)
 	}
 	sb.WriteString(`</p:spTree></p:cSld></p:sld>`)
 

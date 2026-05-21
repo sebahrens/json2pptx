@@ -648,7 +648,7 @@ func layoutSignature(placeholders []types.PlaceholderInfo, counts placeholderCou
 		if parts[k] == 1 {
 			sb.WriteString(k)
 		} else {
-			sb.WriteString(fmt.Sprintf("%s*%d", k, parts[k]))
+			fmt.Fprintf(&sb, "%s*%d", k, parts[k])
 		}
 	}
 

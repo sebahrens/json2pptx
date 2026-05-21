@@ -391,7 +391,7 @@ func buildInputSchema() map[string]any {
 
 // reflectStructSchema generates a JSON Schema object for a Go struct type.
 func reflectStructSchema(typeName string, t reflect.Type) map[string]any { //nolint:gocognit
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
@@ -490,7 +490,7 @@ func reflectStructSchema(typeName string, t reflect.Type) map[string]any { //nol
 func reflectFieldSchema(t reflect.Type) map[string]any {
 	// Unwrap pointer.
 	isPtr := false
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 		isPtr = true
 	}

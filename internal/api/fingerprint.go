@@ -25,7 +25,7 @@ const ResponseFingerprintField = "ResponseFingerprint"
 // response_fingerprint field of a parsed response and re-hashing the JSON.
 func ComputeResponseFingerprint(v any) error {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
 		return fmt.Errorf("ComputeResponseFingerprint: v must be a non-nil pointer to a struct")
 	}
 	rs := rv.Elem()

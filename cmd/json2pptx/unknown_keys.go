@@ -26,7 +26,7 @@ import (
 // jsonFieldNames extracts the set of JSON property names from a struct type's
 // tags. Nested/anonymous fields are flattened. The result is sorted.
 func jsonFieldNames(t reflect.Type) []string {
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {

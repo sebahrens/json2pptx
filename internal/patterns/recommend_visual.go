@@ -701,13 +701,13 @@ func summarizeVisualIntent(intent string, hints *VisualHints) string {
 	var sb strings.Builder
 	sb.WriteString(base)
 	if hints.DataPoints > 0 {
-		sb.WriteString(fmt.Sprintf(", data_points=%d", hints.DataPoints))
+		fmt.Fprintf(&sb, ", data_points=%d", hints.DataPoints)
 	}
 	if hints.SeriesCount > 0 {
-		sb.WriteString(fmt.Sprintf(", series_count=%d", hints.SeriesCount))
+		fmt.Fprintf(&sb, ", series_count=%d", hints.SeriesCount)
 	}
 	if hints.Audience != "" {
-		sb.WriteString(fmt.Sprintf(", audience=%q", hints.Audience))
+		fmt.Fprintf(&sb, ", audience=%q", hints.Audience)
 	}
 	return sb.String()
 }

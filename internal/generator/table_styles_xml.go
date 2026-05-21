@@ -46,19 +46,19 @@ func buildTableStylesXML(referencedIDs map[string]bool) string {
 
 	var sb strings.Builder
 	sb.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`)
-	sb.WriteString(fmt.Sprintf(
+	fmt.Fprintf(&sb,
 		`<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="%s">`,
 		types.DefaultTableStyleID,
-	))
+	)
 	for _, id := range ids {
 		name, ok := tableStyleDisplayNames[id]
 		if !ok {
 			name = "Custom Table Style"
 		}
-		sb.WriteString(fmt.Sprintf(
+		fmt.Fprintf(&sb,
 			`<a:tblStyle styleId="%s" styleName="%s"/>`,
 			id, name,
-		))
+		)
 	}
 	sb.WriteString(`</a:tblStyleLst>`)
 	return sb.String()

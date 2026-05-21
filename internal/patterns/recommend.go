@@ -1269,7 +1269,7 @@ func summarizeIntent(intent string, hints *ContentHints) string {
 	sb.WriteString(intent)
 	sb.WriteString("\"")
 	if hints.ItemCount > 0 {
-		sb.WriteString(fmt.Sprintf(", item_count=%d", hints.ItemCount))
+		fmt.Fprintf(&sb, ", item_count=%d", hints.ItemCount)
 	}
 	if hints.HasMetrics {
 		sb.WriteString(", has_metrics=true")
@@ -1278,7 +1278,7 @@ func summarizeIntent(intent string, hints *ContentHints) string {
 		sb.WriteString(", has_chart=true")
 	}
 	if hints.Columns > 0 {
-		sb.WriteString(fmt.Sprintf(", columns=%d", hints.Columns))
+		fmt.Fprintf(&sb, ", columns=%d", hints.Columns)
 	}
 	return sb.String()
 }

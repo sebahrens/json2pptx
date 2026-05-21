@@ -52,7 +52,7 @@ func (errs ValidationErrors) Error() string {
 		return errs[0].Error()
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%d validation errors:\n", len(errs)))
+	fmt.Fprintf(&b, "%d validation errors:\n", len(errs))
 	for i, err := range errs {
 		if i > 0 {
 			b.WriteString("\n")
@@ -604,13 +604,13 @@ func (v *Validator) DumpStructure() string {
 	b.WriteString("PPTX Structure:\n")
 
 	entries := v.pkg.Entries()
-	b.WriteString(fmt.Sprintf("  Total entries: %d\n", len(entries)))
-	b.WriteString(fmt.Sprintf("  Slides: %d\n", v.CountSlides()))
-	b.WriteString(fmt.Sprintf("  Media files: %d\n", v.CountMedia()))
+	fmt.Fprintf(&b, "  Total entries: %d\n", len(entries))
+	fmt.Fprintf(&b, "  Slides: %d\n", v.CountSlides())
+	fmt.Fprintf(&b, "  Media files: %d\n", v.CountMedia())
 
 	b.WriteString("\n  Parts:\n")
 	for _, entry := range entries {
-		b.WriteString(fmt.Sprintf("    - %s\n", entry))
+		fmt.Fprintf(&b, "    - %s\n", entry)
 	}
 
 	return b.String()
