@@ -378,6 +378,122 @@ func TestMCPGetCapabilities(t *testing.T) {
 	})
 }
 
+// TestEveryRegisteredToolIsClassified is the acceptance gate: every tool
+// registered in the MCP server must carry classification metadata, and the
+// classification map must not name a tool that is not registered. It also
+// validates the closed kind/phase vocabularies and the workflow_facade
+// contract (facades list the primitives they compose; non-facades do not).
+func TestEveryRegisteredToolIsClassified(t *testing.T) {
+	classes := toolClassifications()
+	registered := map[string]bool{}
+	for _, name := range mcpToolNames() {
+		registered[name] = true
+	}
+
+	validKinds := validToolKinds()
+	validPhases := validToolPhases()
+
+	// Every registered tool has a valid classification.
+	for _, name := range mcpToolNames() {
+		c, ok := classes[name]
+		if !ok {
+			t.Errorf("registered MCP tool %q has no entry in toolClassifications()", name)
+			continue
+		}
+		if c.Kind == "" {
+			t.Errorf("tool %q: empty kind", name)
+		} else if !validKinds[c.Kind] {
+			t.Errorf("tool %q: invalid kind %q (must be one of primitive/workflow_facade/diagnostic)", name, c.Kind)
+		}
+		if c.Phase == "" {
+			t.Errorf("tool %q: empty phase", name)
+		} else if !validPhases[c.Phase] {
+			t.Errorf("tool %q: invalid phase %q", name, c.Phase)
+		}
+		// Every workflow_facade must decompose into primitives an agent can
+		// drive by hand. Convenience primitives (batch wrappers) may also point
+		// at their singular form, so the field is allowed on any kind.
+		if c.Kind == toolKindWorkflowFacade && len(c.PrimitiveAlternatives) == 0 {
+			t.Errorf("workflow_facade %q must list primitive_alternatives so agents can drive the steps by hand", name)
+		}
+		for _, alt := range c.PrimitiveAlternatives {
+			if alt == name {
+				t.Errorf("tool %q lists itself in primitive_alternatives", name)
+			}
+			if !registered[alt] {
+				t.Errorf("tool %q lists primitive_alternative %q which is not a registered tool", name, alt)
+			}
+		}
+	}
+
+	// The classification map must not carry stale entries for tools that were
+	// removed from the registry.
+	for name := range classes {
+		if !registered[name] {
+			t.Errorf("toolClassifications() has %q but it is not a registered MCP tool", name)
+		}
+	}
+}
+
+// TestWorkflowFacadesAreClassified pins the task's explicit expectations:
+// make_deck and auto_repair are workflow_facade, while the core
+// generate/read/render/validate tools stay primitives or diagnostics (never
+// facades).
+func TestWorkflowFacadesAreClassified(t *testing.T) {
+	classes := toolClassifications()
+
+	for _, name := range []string{"make_deck", "auto_repair"} {
+		if classes[name].Kind != toolKindWorkflowFacade {
+			t.Errorf("%q should be classified as workflow_facade, got %q", name, classes[name].Kind)
+		}
+	}
+
+	notFacade := []string{
+		"generate_presentation", "read_presentation",
+		"render_slide_image", "render_slide_image_from_json", "render_deck_thumbnails",
+		"validate_input", "validate_presentation_output",
+	}
+	for _, name := range notFacade {
+		k := classes[name].Kind
+		if k == toolKindWorkflowFacade {
+			t.Errorf("%q must remain a primitive or diagnostic, not a workflow_facade", name)
+		}
+		if k != toolKindPrimitive && k != toolKindDiagnostic {
+			t.Errorf("%q has unexpected kind %q", name, k)
+		}
+	}
+}
+
+// TestCapabilitiesExposesToolClassification verifies the metadata reaches the
+// get_capabilities response (and therefore the `json2pptx capabilities` CLI,
+// which shares buildCapabilitiesResult).
+func TestCapabilitiesExposesToolClassification(t *testing.T) {
+	resp := getCapabilitiesResult(t)
+	if len(resp.MCPToolsAvailable) == 0 {
+		t.Fatal("mcp_tools_available is empty")
+	}
+	byName := map[string]mcpToolEntry{}
+	for _, e := range resp.MCPToolsAvailable {
+		if e.Kind == "" || e.Phase == "" {
+			t.Errorf("tool %q in mcp_tools_available is missing kind/phase metadata", e.Name)
+		}
+		byName[e.Name] = e
+	}
+	md, ok := byName["make_deck"]
+	if !ok {
+		t.Fatal("make_deck missing from mcp_tools_available")
+	}
+	if md.Kind != toolKindWorkflowFacade {
+		t.Errorf("make_deck kind = %q, want workflow_facade", md.Kind)
+	}
+	if len(md.PrimitiveAlternatives) == 0 {
+		t.Error("make_deck should expose primitive_alternatives in the capabilities response")
+	}
+	if _, ok := resp.Features.FeatureVersions["tool_classification"]; !ok {
+		t.Error("feature_versions should advertise tool_classification")
+	}
+}
+
 // TestMCPToolCatalog_MatchesRegisteredTools parses the s.AddTool calls in mcp.go
 // and verifies every registered tool appears in mcpToolCatalog (and vice versa).
 func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {

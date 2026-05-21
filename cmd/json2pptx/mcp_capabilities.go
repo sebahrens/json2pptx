@@ -76,10 +76,33 @@ type capabilitiesRuntime struct {
 	SchemaFingerprint    string   `json:"schema_fingerprint"`
 }
 
-// mcpToolEntry describes an MCP tool with its version metadata.
+// mcpToolEntry describes an MCP tool with its version and classification
+// metadata. The classification fields (kind, phase, side-effects, CLI
+// counterpart, primitive_alternatives) are merged in by mcpToolCatalog from
+// toolClassifications() so agents can distinguish composable primitives from
+// opinionated workflow facades without parsing tool descriptions.
 type mcpToolEntry struct {
 	Name    string `json:"name"`
 	AddedIn string `json:"added_in"`
+	// Kind is "primitive", "workflow_facade", or "diagnostic".
+	Kind string `json:"kind"`
+	// Phase is the workflow stage: "discovery", "plan", "vary", "render",
+	// "repair", or "settings".
+	Phase string `json:"phase"`
+	// MutatesState is true when the tool persists server-side state.
+	MutatesState bool `json:"mutates_state"`
+	// WritesFiles is true when the tool produces artifact files on disk.
+	WritesFiles bool `json:"writes_files"`
+	// RenderDependency is true when the tool needs LibreOffice + ImageMagick.
+	RenderDependency bool `json:"render_dependency"`
+	// APIKeyDependency is true when the tool uses ANTHROPIC_API_KEY by default.
+	APIKeyDependency bool `json:"api_key_dependency"`
+	// CLICounterpart is the closest CLI subcommand.
+	CLICounterpart string `json:"cli_counterpart,omitempty"`
+	// MCPOnlyReason explains why a tool has no 1:1 CLI subcommand.
+	MCPOnlyReason string `json:"mcp_only_reason,omitempty"`
+	// PrimitiveAlternatives lists the primitives a workflow_facade composes.
+	PrimitiveAlternatives []string `json:"primitive_alternatives,omitempty"`
 }
 
 // capabilitiesVocabularies exposes categorical enums and vocabularies so agents
@@ -281,6 +304,25 @@ func mcpToolCatalog() []mcpToolEntry {
 		// Tools from 4.46.0
 		{Name: "apply_deck_patch", AddedIn: "4.46.0"},
 	}
+	// Merge the per-tool classification metadata so every entry is
+	// self-describing. A missing classification leaves Kind/Phase empty;
+	// TestEveryRegisteredToolIsClassified catches that.
+	classifications := toolClassifications()
+	for i := range entries {
+		c, ok := classifications[entries[i].Name]
+		if !ok {
+			continue
+		}
+		entries[i].Kind = c.Kind
+		entries[i].Phase = c.Phase
+		entries[i].MutatesState = c.MutatesState
+		entries[i].WritesFiles = c.WritesFiles
+		entries[i].RenderDependency = c.RenderDependency
+		entries[i].APIKeyDependency = c.APIKeyDependency
+		entries[i].CLICounterpart = c.CLICounterpart
+		entries[i].MCPOnlyReason = c.MCPOnlyReason
+		entries[i].PrimitiveAlternatives = c.PrimitiveAlternatives
+	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	return entries
 }
@@ -440,6 +482,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"quality_modes":            "4.43.0",
 				"template_aware_recommend": "4.44.0",
 				"template_aware_plan":      "4.45.0",
+				"tool_classification":      "4.47.0",
 			},
 		},
 		Runtime: capabilitiesRuntime{

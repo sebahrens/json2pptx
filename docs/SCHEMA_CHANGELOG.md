@@ -4,6 +4,32 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.47.0 (2026-05-21)
+
+### Added
+
+- **Tool classification metadata on `get_capabilities`.** Every entry in
+  `mcp_tools_available[]` (and the `json2pptx capabilities` CLI) now carries
+  structured classification so agents can distinguish composable primitives from
+  opinionated workflow facades without parsing tool descriptions:
+  - `kind` — `primitive` (composable building block), `workflow_facade`
+    (multi-step orchestration — `make_deck`, `auto_repair`), or `diagnostic`
+    (read-only discovery / validation / inspection / scoring / recommendation).
+    Tools are classed by primary purpose, not side effects.
+  - `phase` — the workflow stage: `discovery`, `plan`, `vary`, `render`,
+    `repair`, or `settings`.
+  - `mutates_state`, `writes_files`, `render_dependency`, `api_key_dependency` —
+    side-effect and dependency flags (default-mode behaviour).
+  - `cli_counterpart` — the closest CLI subcommand; `mcp_only_reason` — why a
+    tool has no 1:1 CLI command.
+  - `primitive_alternatives` — for a `workflow_facade` (and batch convenience
+    tools), the lower-level primitives an agent can drive by hand instead.
+
+  These are additive response fields and do not change the MCP tool-name set,
+  PresentationInput shape, or Fix.Kind vocabulary, so the schema fingerprint is
+  unchanged; `schema_version` advances to 4.47.0 to mark the new response
+  surface. Advertised as `features.feature_versions.tool_classification`.
+
 ## 4.46.0 (2026-05-21)
 
 ### Added

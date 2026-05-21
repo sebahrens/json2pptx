@@ -70,6 +70,26 @@ func TestEveryMCPToolHasCLI(t *testing.T) {
 	}
 }
 
+// TestToolClassificationMatchesCLIParityTable proves the cli_counterpart field
+// carried in get_capabilities (toolClassifications) agrees with the mcpToCLI
+// parity table that the CLI-help drift tests enforce. This is the drift gate
+// required by the acceptance criteria: the classification metadata and the
+// CLI-counterpart mapping cannot silently diverge.
+func TestToolClassificationMatchesCLIParityTable(t *testing.T) {
+	classes := toolClassifications()
+	for tool, cli := range mcpToCLI {
+		c, ok := classes[tool]
+		if !ok {
+			t.Errorf("tool %q is in mcpToCLI but has no classification", tool)
+			continue
+		}
+		if c.CLICounterpart != cli {
+			t.Errorf("tool %q: classification cli_counterpart=%q but mcpToCLI=%q — keep them in sync",
+				tool, c.CLICounterpart, cli)
+		}
+	}
+}
+
 // TestCLISubcommandsExist verifies that each CLI command listed in the parity
 // table is recognized by the dispatch function (prints help rather than
 // "unknown command").

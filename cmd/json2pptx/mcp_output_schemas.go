@@ -1372,9 +1372,18 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "type": "object",
         "properties": {
           "name":     {"type": "string"},
-          "added_in": {"type": "string"}
+          "added_in": {"type": "string"},
+          "kind":     {"type": "string", "enum": ["primitive", "workflow_facade", "diagnostic"]},
+          "phase":    {"type": "string", "enum": ["discovery", "plan", "vary", "render", "repair", "settings"]},
+          "mutates_state":     {"type": "boolean"},
+          "writes_files":      {"type": "boolean"},
+          "render_dependency": {"type": "boolean"},
+          "api_key_dependency": {"type": "boolean"},
+          "cli_counterpart":   {"type": "string"},
+          "mcp_only_reason":   {"type": "string"},
+          "primitive_alternatives": {"type": "array", "items": {"type": "string"}}
         },
-        "required": ["name", "added_in"]
+        "required": ["name", "added_in", "kind", "phase"]
       }
     },
     "tool_list": {

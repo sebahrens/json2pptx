@@ -108,6 +108,14 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 
 **Contract drift detection.** Call `get_capabilities` once per session to fetch `schema_version`, the live tool list, deprecated fields, and feature flags (`features.strict_fit`, `compact_responses`, `fit_report`, `strict_unknown_keys`, `named_patterns`, `template_settings`). Compare `schema_version` against the value you cached last session — a major bump means breaking changes and you should re-read this skill. Prefer `features.strict_fit` and `features.named_patterns` over hardcoding mode lists.
 
+**Tool classification metadata.** Each entry in `get_capabilities().mcp_tools_available[]` (also `json2pptx capabilities`) carries classification fields so you can pick the right tool without parsing descriptions:
+
+- `kind` — `primitive` (composable building block: generate, expand, repair, render, write-setting), `workflow_facade` (opinionated multi-step orchestration — `make_deck`, `auto_repair`), or `diagnostic` (read-only discovery / validation / inspection / scoring / recommendation). Tools are classed by primary purpose, not side effects: `inspect_slide_images` writes thumbnails but exists to return findings, so it is a `diagnostic`.
+- `phase` — the workflow stage: `discovery`, `plan`, `vary`, `render`, `repair`, or `settings` (mirrors the PLAN → VARY → RENDER → REPAIR phases above).
+- `mutates_state` — persists server-side state (only the template-settings writers). `writes_files` — produces artifact files on disk (PPTX/PNG). `render_dependency` — needs LibreOffice + ImageMagick in default mode. `api_key_dependency` — uses `ANTHROPIC_API_KEY` by default (heuristic fallback when unset).
+- `cli_counterpart` — the closest CLI subcommand. `mcp_only_reason` — why a tool has no 1:1 CLI command (the counterpart is then an approximation).
+- `primitive_alternatives` — for a `workflow_facade` (and batch convenience tools), the lower-level primitives you can drive by hand instead. E.g. `make_deck` decomposes into `plan_deck` → `recommend_visual` → `expand_pattern` → `validate_input` → `generate_presentation` → `auto_repair`; `auto_repair` into `generate_presentation` → `score_deck` → `propose_repairs` → `repair_slides_batch`. Reach for the facade for cold starts; drop to the primitives when you need per-step control.
+
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
 
 **Write tools are gated.** `register_template_setting` and `delete_template_setting` require the `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` environment variable on the server. Without it, both return `SETTINGS_WRITE_DISABLED`. Check `get_capabilities().features.template_settings` before attempting writes.

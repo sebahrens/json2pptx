@@ -62,6 +62,34 @@ func TestGetStartedBriefSequence(t *testing.T) {
 	}
 }
 
+// TestGetStartedSequencesAreClassifiedTools is the drift gate for first-call
+// guidance: every tool named in any get_started sequence must be a registered,
+// classified MCP tool. This proves get_started's recommended workflow agrees
+// with the tool catalog and its classification metadata — if a tool is renamed
+// or removed, the guidance breaks loudly here.
+func TestGetStartedSequencesAreClassifiedTools(t *testing.T) {
+	registered := map[string]bool{}
+	for _, name := range mcpToolNames() {
+		registered[name] = true
+	}
+	classes := toolClassifications()
+
+	for _, task := range getStartedAvailableTasks() {
+		resp := buildGetStartedResponse(task)
+		if len(resp.Sequence) == 0 {
+			t.Errorf("task %q: empty sequence", task)
+		}
+		for i, step := range resp.Sequence {
+			if !registered[step.Tool] {
+				t.Errorf("task %q sequence[%d]: %q is not a registered MCP tool", task, i, step.Tool)
+			}
+			if _, ok := classes[step.Tool]; !ok {
+				t.Errorf("task %q sequence[%d]: %q has no classification metadata", task, i, step.Tool)
+			}
+		}
+	}
+}
+
 func TestGetStartedReviseSequence(t *testing.T) {
 	resp := callGetStarted(t, "revise")
 	if resp.Task != "revise" {
