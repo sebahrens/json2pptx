@@ -3,12 +3,6 @@
   "comment": "Allow-list for internal/template/canonical_placeholders_corpus_test.go. Templates whose sha256 appears in 'exceptions' are exempt from the canonical-placeholder-resolution gate. Each entry MUST cite a tracking issue and SHOULD be removed once the template is repaired (the sha256 will then no longer match, restoring the gate). Use `json2pptx template-check --json <file>` (or `shasum -a 256 <file>`) to read the sha256. The list MUST be empty once go-slide-creator-vqad and its children land.",
   "exceptions": [
     {
-      "template": "abstract.pptx",
-      "sha256": "a3d0a6f432df45c13f26c1f2923416672b2eb601bc5e6e30bac22cd6ad45eb3f",
-      "tracking_issue": "go-slide-creator-lenc",
-      "reason": "Designer template: Title Slide missing subtitle; missing Two Content, Blank, Blank+Title; Section Number not named. Repair under parent go-slide-creator-vqad."
-    },
-    {
       "template": "blue-corporate.pptx",
       "sha256": "d9ccc95a09689ea70879d4713aea9fabf9659d2726864fc5e5fa51efbd5162a7",
       "tracking_issue": "go-slide-creator-pxdp",

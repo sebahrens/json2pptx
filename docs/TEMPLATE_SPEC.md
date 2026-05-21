@@ -185,9 +185,11 @@ Exit codes:
 
 ### Known Exceptions
 
-The remaining designer templates (`abstract`, `blue-corporate`, `business-template`, `modern`, `modern-yellow`) still fail `template-check` while their per-template repairs land under the [`go-slide-creator-vqad`](https://github.com/) umbrella. Their SHA-256 fingerprints are listed in `internal/template/testdata/conformance_allowlist.json` and `canonical_placeholders_allowlist.json`; the allow-list entries auto-expire when the fingerprints change after repair.
+The remaining designer templates (`blue-corporate`, `business-template`, `modern`, `modern-yellow`) still fail `template-check` while their per-template repairs land under the [`go-slide-creator-vqad`](https://github.com/) umbrella. Their SHA-256 fingerprints are listed in `internal/template/testdata/conformance_allowlist.json` and `canonical_placeholders_allowlist.json`; the allow-list entries auto-expire when the fingerprints change after repair.
 
 `modern-template.pptx` previously lacked `Two Content`, `Blank`, and `Blank + Title`. Those layouts were authored into the template directly via OOXML edits (preserving all embedded media byte-for-byte) and `modern-template` is no longer allow-listed.
+
+`abstract.pptx` previously lacked a subtitle on Title Slide, was missing `Two Content`, `Blank`, and `Blank + Title`, and its Section Divider had no `Section Number` placeholder. The Title Slide was edited to add a subtitle; `Section Break 1` was renamed to `Section Divider` and a `Section Number` placeholder was added; `Introduction` was renamed to `One Content`; new `Two Content`, `Blank`, and `Blank + Title` layouts were authored. All embedded SVG decorations preserved byte-for-byte; `abstract` is no longer allow-listed.
 
 ### Programmability
 
