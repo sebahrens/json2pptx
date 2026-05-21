@@ -242,7 +242,6 @@ Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with
 
 ## Where to go next
 
-- `SLIDE_FORMAT.md` — even shorter quickstart.
 - `docs/PATTERNS.md` — named-pattern authoring guide.
 - `docs/FIT_FINDINGS.md` — finding-code catalogue.
 - `docs/STYLE_DEFAULTS.md` — deck-level defaults for table and cell styles.

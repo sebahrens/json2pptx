@@ -931,7 +931,7 @@ func buildComposeEntry() *skillComposeEntry {
 // buildDeprecations returns the list of deprecated features with their replacements.
 // buildIconPolicy returns the deck-wide icon contract surfaced to skill-info
 // readers. Mirrors the no-emoji rule documented in
-// skills/generate-deck/SKILL.md (Icon Names) and SLIDE_FORMAT.md (Icons), and
+// skills/generate-deck/SKILL.md (Icon Names) and docs/INPUT_FORMAT.md, and
 // the validators in internal/patterns/{cardgrid,iconrow,herodetail}.go.
 func buildIconPolicy() *skillIconPolicy {
 	return &skillIconPolicy{

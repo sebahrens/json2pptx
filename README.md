@@ -449,7 +449,7 @@ Claude:  [calls repair_slide twice -> patches only the affected slides]
 
 ## JSON Input Format
 
-The authoritative input schema is generated from the Go input structs and published via `get_input_schema` (MCP) or `json2pptx input-schema` (CLI). See [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) and [SLIDE_FORMAT.md](SLIDE_FORMAT.md) for worked-example tutorials, and [docs/PATTERNS.md](docs/PATTERNS.md) for the named-pattern authoring guide.
+The authoritative input schema is generated from the Go input structs and published via `get_input_schema` (MCP) or `json2pptx input-schema` (CLI). See [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) for the worked-example tutorial, and [docs/PATTERNS.md](docs/PATTERNS.md) for the named-pattern authoring guide.
 
 ### Top-Level Schema
 
@@ -985,7 +985,6 @@ make release         # All platforms (requires clean tree)
 
 - `get_input_schema` (MCP) / `json2pptx input-schema` (CLI) -- canonical JSON Schema for `PresentationInput`
 - [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) -- tutorial with worked examples
-- [SLIDE_FORMAT.md](SLIDE_FORMAT.md) -- short quickstart
 - [docs/PATTERNS.md](docs/PATTERNS.md) -- named-pattern authoring guide
 - [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) -- fit findings catalog and action semantics
 - [docs/REPAIR_LOOP.md](docs/REPAIR_LOOP.md) -- structured repair workflow

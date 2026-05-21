@@ -13,7 +13,7 @@ import (
 //   - the validator in enum_validation.go
 //   - the JSON Schema enumMap in mcp_input_schema.go
 //   - the published vocabularies in mcp_capabilities.go (get_capabilities)
-//   - the docs in SLIDE_FORMAT.md
+//   - the docs in docs/INPUT_FORMAT.md
 //
 // Aliases (e.g. "med" -> "medium") are explicitly listed in *Aliases maps.
 // The validator accepts both canonical and alias values for backward

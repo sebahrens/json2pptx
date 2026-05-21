@@ -158,5 +158,5 @@ tests/integration/
 
 1. Create a new JSON file in `json_fixtures/` or YAML file in `svg_fixtures/`
 2. Follow the naming convention: `NN_descriptive_name.json` / `NN_descriptive_name.yaml`
-3. Use the canonical PPTX schema published via `get_input_schema` / `json2pptx input-schema` (worked examples in `SLIDE_FORMAT.md`) or `svggen/core/types.go` (SVG)
+3. Use the canonical PPTX schema published via `get_input_schema` / `json2pptx input-schema` (worked examples in `docs/INPUT_FORMAT.md`) or `svggen/core/types.go` (SVG)
 4. The test runner will automatically pick up new fixtures
