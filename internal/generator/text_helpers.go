@@ -182,6 +182,13 @@ func extractFontSizeFromShape(shape *shapeXML) int {
 	for _, para := range shape.TextBody.Paragraphs {
 		for _, run := range para.Runs {
 			if run.RunProperties != nil {
+				// Templates commonly store sz as an explicit rPr attribute, which is
+				// parsed into RunProperties.FontSize (not Inner). Check it first so the
+				// real title/body font size is detected; otherwise wrap/autofit/truncation
+				// decisions fall back to a default (~20pt) far below the rendered size.
+				if sz, err := strconv.Atoi(run.RunProperties.FontSize); err == nil && sz > 0 {
+					return sz
+				}
 				if sz := parseSzAttr(run.RunProperties.Inner); sz > 0 {
 					return sz
 				}

@@ -29,7 +29,7 @@ func extractTemplateTextStyle(paragraphs []paragraphXML) (*paragraphPropertiesXM
 	// Clone run properties from the first run if present
 	if len(firstPara.Runs) > 0 && firstPara.Runs[0].RunProperties != nil {
 		templateRProps := firstPara.Runs[0].RunProperties
-		if templateRProps.Lang != "" || templateRProps.Inner != "" {
+		if templateRProps.Lang != "" || templateRProps.FontSize != "" || templateRProps.Inner != "" {
 			rProps = cloneRunProperties(templateRProps)
 		}
 	}
@@ -63,7 +63,7 @@ func extractBulletTemplateStyles(paragraphs []paragraphXML) []bulletLevelStyle {
 		// Clone run properties from the first run
 		if len(para.Runs) > 0 && para.Runs[0].RunProperties != nil {
 			rProps := para.Runs[0].RunProperties
-			if rProps.Lang != "" || rProps.Inner != "" {
+			if rProps.Lang != "" || rProps.FontSize != "" || rProps.Inner != "" {
 				style.rProps = cloneRunProperties(rProps)
 			}
 		}
@@ -241,13 +241,14 @@ func cloneRunProperties(props *runPropertiesXML) *runPropertiesXML {
 	if props == nil {
 		return nil
 	}
-	// Check if there's anything to clone (Lang attribute or Inner content)
-	if props.Lang == "" && props.Inner == "" {
+	// Check if there's anything to clone (Lang/FontSize attribute or Inner content)
+	if props.Lang == "" && props.FontSize == "" && props.Inner == "" {
 		return nil
 	}
 	return &runPropertiesXML{
-		Lang:  props.Lang,
-		Inner: strings.Clone(props.Inner),
+		Lang:     props.Lang,
+		FontSize: props.FontSize,
+		Inner:    strings.Clone(props.Inner),
 	}
 }
 
@@ -274,9 +275,10 @@ func createFormattedRuns(text string, templateRProps *runPropertiesXML) []runXML
 		var rProps *runPropertiesXML
 		if templateRProps != nil {
 			rProps = &runPropertiesXML{
-				Lang:   templateRProps.Lang,
-				Italic: templateRProps.Italic,
-				Inner:  templateRProps.Inner,
+				Lang:     templateRProps.Lang,
+				FontSize: templateRProps.FontSize,
+				Italic:   templateRProps.Italic,
+				Inner:    templateRProps.Inner,
 			}
 		} else {
 			rProps = &runPropertiesXML{Lang: "en-US"}

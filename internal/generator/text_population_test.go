@@ -372,6 +372,23 @@ func TestExtractFontSizeFromShape(t *testing.T) {
 			wantSize: 1800,
 		},
 		{
+			// Regression for go-slide-creator-waic: templates store sz as an explicit
+			// rPr attribute, parsed into RunProperties.FontSize (not Inner). This was
+			// ignored, causing extraction to return 0 and underestimating title size.
+			name: "sz as parsed rPr FontSize attribute",
+			shape: &shapeXML{
+				TextBody: &textBodyXML{
+					Paragraphs: []paragraphXML{
+						{Runs: []runXML{{
+							RunProperties: &runPropertiesXML{FontSize: "4400", Lang: "en-US"},
+							Text:          "test",
+						}}},
+					},
+				},
+			},
+			wantSize: 4400,
+		},
+		{
 			name: "sz in paragraph defRPr",
 			shape: &shapeXML{
 				TextBody: &textBodyXML{
@@ -391,6 +408,83 @@ func TestExtractFontSizeFromShape(t *testing.T) {
 				t.Errorf("extractFontSizeFromShape() = %d, want %d", got, tt.wantSize)
 			}
 		})
+	}
+}
+
+// TestExtractFontSizeFromShape_AttrInnerEquivalence verifies that attribute-form
+// sz (stored on rPr and parsed into FontSize) and inner-form sz (captured in the
+// run's innerxml) yield identical results. Regression for go-slide-creator-waic.
+func TestExtractFontSizeFromShape_AttrInnerEquivalence(t *testing.T) {
+	attrForm := &shapeXML{
+		TextBody: &textBodyXML{
+			Paragraphs: []paragraphXML{
+				{Runs: []runXML{{
+					RunProperties: &runPropertiesXML{FontSize: "3600", Lang: "en-US"},
+					Text:          "Title",
+				}}},
+			},
+		},
+	}
+	innerForm := &shapeXML{
+		TextBody: &textBodyXML{
+			Paragraphs: []paragraphXML{
+				{Runs: []runXML{{
+					RunProperties: &runPropertiesXML{Inner: `sz="3600"`, Lang: "en-US"},
+					Text:          "Title",
+				}}},
+			},
+		},
+	}
+
+	gotAttr := extractFontSizeFromShape(attrForm)
+	gotInner := extractFontSizeFromShape(innerForm)
+	if gotAttr != gotInner {
+		t.Errorf("attribute-form (%d) and inner-form (%d) sz disagree", gotAttr, gotInner)
+	}
+	if gotAttr != 3600 {
+		t.Errorf("extractFontSizeFromShape() = %d, want 3600", gotAttr)
+	}
+}
+
+// TestRunFontSizePreservedThroughPopulation verifies that when a template stores
+// the font size as an rPr attribute, the populated run keeps the sz so the rendered
+// title/subtitle matches the template. Regression for go-slide-creator-waic.
+func TestRunFontSizePreservedThroughPopulation(t *testing.T) {
+	shape := &shapeXML{
+		TextBody: &textBodyXML{
+			Paragraphs: []paragraphXML{
+				{Runs: []runXML{{
+					RunProperties: &runPropertiesXML{FontSize: "4400", Lang: "en-US"},
+					Text:          "Placeholder prompt",
+				}}},
+			},
+		},
+	}
+
+	if err := setTextParagraph(shape, "title", "Real Title Text", 4400, ""); err != nil {
+		t.Fatalf("setTextParagraph: %v", err)
+	}
+
+	// extractFontSizeFromShape should still report the template's font size after
+	// population, proving the run-level sz survived clone + formatted-run creation.
+	if got := extractFontSizeFromShape(shape); got != 4400 {
+		t.Errorf("after population, extractFontSizeFromShape() = %d, want 4400", got)
+	}
+
+	var sawRun bool
+	for _, para := range shape.TextBody.Paragraphs {
+		for _, run := range para.Runs {
+			if run.Text == "" {
+				continue
+			}
+			sawRun = true
+			if run.RunProperties == nil || run.RunProperties.FontSize != "4400" {
+				t.Errorf("populated run lost rPr sz: got %+v, want FontSize=4400", run.RunProperties)
+			}
+		}
+	}
+	if !sawRun {
+		t.Fatal("no populated run found after setTextParagraph")
 	}
 }
 
