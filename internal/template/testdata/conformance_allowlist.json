@@ -13,12 +13,6 @@
       "sha256": "fe0cfdb61cf84486a407155153809e398feb7fefff79807d83e21bfee12114d0",
       "tracking_issue": "go-slide-creator-9gxk",
       "reason": "Designer template: Title Slide lacks subtitle; missing 5 layouts; theme dk1=#FFFFFF (polarity wrong). Repair under parent go-slide-creator-vqad."
-    },
-    {
-      "template": "modern.pptx",
-      "sha256": "d8cd3e028b7d90de78b092b205309bcc8dfb12b3b276548b6ecad6188ab965c7",
-      "tracking_issue": "go-slide-creator-4wvi",
-      "reason": "Designer template: missing Two Content, Section Divider, Blank, Blank+Title, Closing. Repair under parent go-slide-creator-vqad."
     }
   ]
 }
