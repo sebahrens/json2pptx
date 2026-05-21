@@ -10,8 +10,12 @@
 #   Flow:
 #   1. testrand visual --template=X → deck.json
 #   2. json2pptx generate -json deck.json → visual_test.pptx
-#   3. LibreOffice → PDF → pdftoppm → JPG slides
+#   3. pptx2jpg (LibreOffice → PDF → ImageMagick) → JPG slides
 #   4. Create inspection report for Claude Code review
+#
+#   Step 3 reuses cmd/pptx2jpg so this script shares a single PPTX→image path
+#   with scripts/test_template_visual_qa.sh instead of hand-rolling the
+#   conversion. Requires LibreOffice + ImageMagick (`convert`) on PATH.
 #
 # USAGE:
 #   # Random single template test (default)
@@ -116,6 +120,12 @@ fi
 echo "  Building PPTX validator..."
 if ! go build -o "${OUTPUT_DIR}/validatepptx" ./cmd/validatepptx; then
     echo "ERROR: PPTX validator build failed"
+    exit 1
+fi
+
+echo "  Building pptx2jpg..."
+if ! go build -o "${OUTPUT_DIR}/pptx2jpg" ./cmd/pptx2jpg; then
+    echo "ERROR: pptx2jpg build failed"
     exit 1
 fi
 
@@ -233,63 +243,40 @@ for TEMPLATE in "${SELECTED_TEMPLATES[@]}"; do
         echo "  PPTX Validation: ${PPTX_SLIDES} slides, ${PPTX_SVG:-0} SVG, ${PPTX_PNG:-0} PNG"
     fi
 
-    # Step 4: Convert PPTX to JPG
-    echo "Step 4: Converting PPTX to JPG..."
+    # Step 4: Convert PPTX to JPG via cmd/pptx2jpg
+    #
+    # Standardize on pptx2jpg (LibreOffice -> PDF -> ImageMagick) so this script
+    # shares one PPTX->image path with scripts/test_template_visual_qa.sh rather
+    # than maintaining its own LibreOffice + pdftoppm/convert pipeline. pptx2jpg
+    # derives its output basename from the input PPTX, so for generated.pptx it
+    # emits generated.pdf and generated-slide-<n>.jpg (0-indexed, ImageMagick
+    # %d). We rename the JPGs to <template>-slide-<n>.jpg below to preserve this
+    # script's stable per-slide image naming contract.
+    echo "Step 4: Converting PPTX to JPG (via pptx2jpg)..."
 
-    LIBREOFFICE_CMD="libreoffice"
-    if command -v soffice &> /dev/null && [[ "$(uname)" == "Darwin" ]]; then
-        LIBREOFFICE_CMD="soffice"
-    fi
-    if ! $LIBREOFFICE_CMD --headless --convert-to pdf --outdir "${TEMPLATE_OUTPUT_DIR}" "${OUTPUT_PPTX}" 2>&1; then
-        echo "ERROR: PDF conversion failed for ${TEMPLATE_NAME}"
-        create_failure_bead "${TEMPLATE_NAME}" "PDF conversion"
+    CONVERT_STATUS=0
+    "${OUTPUT_DIR}/pptx2jpg" \
+        -input "${OUTPUT_PPTX}" \
+        -output "${TEMPLATE_OUTPUT_DIR}" \
+        -density 150 2>&1 || CONVERT_STATUS=$?
+
+    if [ ${CONVERT_STATUS} -ne 0 ]; then
+        echo "ERROR: pptx2jpg conversion failed for ${TEMPLATE_NAME}"
+        create_failure_bead "${TEMPLATE_NAME}" "image conversion"
         FAILED_TEMPLATES=$((FAILED_TEMPLATES + 1))
-        ALL_RESULTS+=("{\"template\": \"${TEMPLATE_NAME}\", \"status\": \"pdf_conversion_failed\", \"score\": 0}")
+        ALL_RESULTS+=("{\"template\": \"${TEMPLATE_NAME}\", \"status\": \"image_conversion_failed\", \"score\": 0}")
         continue
     fi
 
     PDF_FILE="${TEMPLATE_OUTPUT_DIR}/generated.pdf"
-    if [ ! -f "${PDF_FILE}" ]; then
-        echo "ERROR: PDF was not created for ${TEMPLATE_NAME}"
-        create_failure_bead "${TEMPLATE_NAME}" "PDF conversion"
-        FAILED_TEMPLATES=$((FAILED_TEMPLATES + 1))
-        ALL_RESULTS+=("{\"template\": \"${TEMPLATE_NAME}\", \"status\": \"no_pdf\", \"score\": 0}")
-        continue
-    fi
 
-    # Convert PDF to JPG slides
-    if command -v pdftoppm &> /dev/null; then
-        if ! pdftoppm -jpeg -scale-to 1920 "${PDF_FILE}" "${TEMPLATE_OUTPUT_DIR}/${TEMPLATE_NAME}-slide" 2>&1; then
-            echo "ERROR: JPG conversion failed for ${TEMPLATE_NAME}"
-            create_failure_bead "${TEMPLATE_NAME}" "JPG conversion"
-            FAILED_TEMPLATES=$((FAILED_TEMPLATES + 1))
-            ALL_RESULTS+=("{\"template\": \"${TEMPLATE_NAME}\", \"status\": \"jpg_conversion_failed\", \"score\": 0}")
-            continue
-        fi
-        # Rename pdftoppm output from -01.jpg to -0.jpg format (0-indexed)
-        for f in "${TEMPLATE_OUTPUT_DIR}/${TEMPLATE_NAME}-slide-"*.jpg; do
-            if [ -f "$f" ]; then
-                page_num=$(echo "$f" | grep -oE '\-[0-9]+\.jpg$' | grep -oE '[0-9]+')
-                new_num=$((10#${page_num} - 1))
-                new_name="${TEMPLATE_OUTPUT_DIR}/${TEMPLATE_NAME}-slide-${new_num}.jpg"
-                mv "$f" "$new_name" 2>/dev/null || true
-            fi
-        done
-    elif command -v convert &> /dev/null; then
-        if ! convert -density 150 "${PDF_FILE}" -quality 90 "${TEMPLATE_OUTPUT_DIR}/${TEMPLATE_NAME}-slide-%d.jpg" 2>&1; then
-            echo "ERROR: JPG conversion failed for ${TEMPLATE_NAME}"
-            create_failure_bead "${TEMPLATE_NAME}" "JPG conversion"
-            FAILED_TEMPLATES=$((FAILED_TEMPLATES + 1))
-            ALL_RESULTS+=("{\"template\": \"${TEMPLATE_NAME}\", \"status\": \"jpg_conversion_failed\", \"score\": 0}")
-            continue
-        fi
-    else
-        echo "ERROR: No PDF to image converter found (need pdftoppm or convert)"
-        create_failure_bead "${TEMPLATE_NAME}" "missing converter tools"
-        FAILED_TEMPLATES=$((FAILED_TEMPLATES + 1))
-        ALL_RESULTS+=("{\"template\": \"${TEMPLATE_NAME}\", \"status\": \"no_converter\", \"score\": 0}")
-        continue
-    fi
+    # Rename pptx2jpg's generated-slide-<n>.jpg -> <template>-slide-<n>.jpg so
+    # the report and downstream tooling keep seeing the template-prefixed names.
+    for f in "${TEMPLATE_OUTPUT_DIR}/generated-slide-"*.jpg; do
+        [ -f "$f" ] || continue
+        slide_suffix="${f#"${TEMPLATE_OUTPUT_DIR}/generated-slide-"}"
+        mv "$f" "${TEMPLATE_OUTPUT_DIR}/${TEMPLATE_NAME}-slide-${slide_suffix}" 2>/dev/null || true
+    done
 
     SLIDE_COUNT=$(ls -1 "${TEMPLATE_OUTPUT_DIR}"/*-slide-*.jpg 2>/dev/null | wc -l | tr -d ' ')
     echo "Generated ${SLIDE_COUNT} slide images"
