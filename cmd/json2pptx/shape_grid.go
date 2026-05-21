@@ -84,25 +84,85 @@ func resolveVirtualLayout(layouts []types.LayoutMetadata, slideWidth, slideHeigh
 		return chosen
 	}
 
-	// Priority 3: any layout with a body/content placeholder
+	// Priority 3: any layout with a body/content placeholder. Always derive a
+	// ContentZone from that layout's title/footer placeholders so downstream
+	// clamping (ClampBoundsToZone / DefaultBoundsFromZone) protects title and
+	// footer chrome. Without a Zone here, callers fall back to generic
+	// full-slide DefaultBounds and content overlaps the title/footer
+	// (go-slide-creator-ihmo).
 	for i := range layouts {
-		for _, ph := range layouts[i].Placeholders {
-			if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
-				bounds := pptx.RectEmu{
-					X:  ph.Bounds.X,
-					Y:  ph.Bounds.Y,
-					CX: ph.Bounds.Width,
-					CY: ph.Bounds.Height,
-				}
-				return &virtualLayoutResult{
-					LayoutID: layouts[i].ID,
-					Bounds:   shapegrid.BoundsFromPlaceholder(bounds),
-				}
-			}
+		content, ok := firstBodyOrContentBounds(&layouts[i])
+		if !ok {
+			continue
+		}
+		zone := fallbackContentZone(&layouts[i], content, slideWidth, slideHeight)
+		return &virtualLayoutResult{
+			LayoutID: layouts[i].ID,
+			Bounds:   shapegrid.BoundsFromPlaceholder(content),
+			Zone:     &zone,
 		}
 	}
 
 	return nil
+}
+
+// firstBodyOrContentBounds returns the bounds of the first body or content
+// placeholder in layout (in placeholder order). The bool is false when the
+// layout has neither.
+func firstBodyOrContentBounds(layout *types.LayoutMetadata) (pptx.RectEmu, bool) {
+	for _, ph := range layout.Placeholders {
+		if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+			return pptx.RectEmu{
+				X:  ph.Bounds.X,
+				Y:  ph.Bounds.Y,
+				CX: ph.Bounds.Width,
+				CY: ph.Bounds.Height,
+			}, true
+		}
+	}
+	return pptx.RectEmu{}, false
+}
+
+// fallbackContentZone derives a ContentZone for the priority-3 body/content
+// fallback layout. TitleBottom comes from the layout's title placeholder
+// (falling back to the content top), FooterTop from the first utility/footer
+// placeholder (falling back to a minimum bottom margin), and the horizontal
+// extent from the content placeholder. This guarantees resolveVirtualLayout
+// never returns a result with a nil Zone, so chrome-protection clamping runs
+// on every shape_grid slide.
+func fallbackContentZone(layout *types.LayoutMetadata, content pptx.RectEmu, slideWidth, slideHeight int64) shapegrid.ContentZone {
+	sw := slideWidth
+	if sw <= 0 {
+		sw = shapegrid.DefaultSlideWidthEMU
+	}
+	sh := slideHeight
+	if sh <= 0 {
+		sh = shapegrid.DefaultSlideHeightEMU
+	}
+
+	titleBottom := content.Y
+	footerTop := sh - shapegrid.MinBottomMarginEMU
+	hasFooter := false
+	for _, ph := range layout.Placeholders {
+		switch ph.Type {
+		case types.PlaceholderTitle:
+			titleBottom = ph.Bounds.Y + ph.Bounds.Height
+		case types.PlaceholderOther:
+			if !hasFooter {
+				footerTop = ph.Bounds.Y
+				hasFooter = true
+			}
+		}
+	}
+
+	return shapegrid.ContentZone{
+		TitleBottom: titleBottom,
+		FooterTop:   footerTop,
+		LeftMargin:  content.X,
+		RightEdge:   content.X + content.CX,
+		SlideWidth:  sw,
+		SlideHeight: sh,
+	}
 }
 
 // pickBlankLayout tries the blank (with title) layout first, then blank-title.

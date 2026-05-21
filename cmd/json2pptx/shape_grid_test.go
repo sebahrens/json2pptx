@@ -525,6 +525,88 @@ func TestResolveVirtualLayout_ContentFallback(t *testing.T) {
 	if result.Bounds.CX != 8229600 || result.Bounds.CY != 5029200 {
 		t.Errorf("expected bounds from body placeholder, got CX=%d CY=%d", result.Bounds.CX, result.Bounds.CY)
 	}
+	// Regression (go-slide-creator-ihmo): the body/content fallback must also
+	// populate a ContentZone so downstream clamp paths protect title/footer
+	// chrome. A nil Zone here makes resolveShapeGrid fall back to generic
+	// DefaultBounds with no chrome protection.
+	if result.Zone == nil {
+		t.Fatal("expected non-nil Zone for body/content fallback")
+	}
+	// TitleBottom derived from the title placeholder (Y + Height).
+	if got := result.Zone.TitleBottom; got != 274638+461963 {
+		t.Errorf("expected TitleBottom=%d, got %d", 274638+461963, got)
+	}
+	// No footer placeholder → FooterTop = slide height - minimum bottom margin.
+	wantFooterTop := shapegrid.DefaultSlideHeightEMU - shapegrid.MinBottomMarginEMU
+	if got := result.Zone.FooterTop; got != wantFooterTop {
+		t.Errorf("expected FooterTop=%d, got %d", wantFooterTop, got)
+	}
+	// Horizontal extent derived from the body placeholder.
+	if got := result.Zone.LeftMargin; got != 457200 {
+		t.Errorf("expected LeftMargin=457200, got %d", got)
+	}
+	if got := result.Zone.RightEdge; got != 457200+8229600 {
+		t.Errorf("expected RightEdge=%d, got %d", 457200+8229600, got)
+	}
+}
+
+func TestResolveVirtualLayout_ContentFallbackBodyOnly(t *testing.T) {
+	// Body-only layout (no title, no footer): the fallback must still return a
+	// non-nil Zone. TitleBottom falls back to the content top; FooterTop falls
+	// back to the minimum bottom margin (go-slide-creator-ihmo).
+	layouts := []types.LayoutMetadata{
+		{
+			ID:   "layout1",
+			Name: "Body Only",
+			Tags: []string{"content"},
+			Placeholders: []types.PlaceholderInfo{
+				{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 914400, Width: 8229600, Height: 5029200}},
+			},
+		},
+	}
+
+	result := resolveVirtualLayout(layouts, 0, 0)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.Zone == nil {
+		t.Fatal("expected non-nil Zone even when the layout has no title/footer")
+	}
+	// No title → TitleBottom falls back to the content placeholder's top.
+	if got := result.Zone.TitleBottom; got != 914400 {
+		t.Errorf("expected TitleBottom to fall back to content top 914400, got %d", got)
+	}
+	wantFooterTop := shapegrid.DefaultSlideHeightEMU - shapegrid.MinBottomMarginEMU
+	if got := result.Zone.FooterTop; got != wantFooterTop {
+		t.Errorf("expected FooterTop=%d, got %d", wantFooterTop, got)
+	}
+}
+
+func TestResolveVirtualLayout_ContentFallbackWithFooter(t *testing.T) {
+	// Content fallback layout with an explicit utility/footer placeholder: the
+	// Zone's FooterTop must come from the footer rather than the default
+	// bottom margin (go-slide-creator-ihmo).
+	const footerY = 6356350
+	layouts := []types.LayoutMetadata{
+		{
+			ID:   "layout1",
+			Name: "Content With Footer",
+			Tags: []string{"content"},
+			Placeholders: []types.PlaceholderInfo{
+				{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 457200, Y: 274638, Width: 8229600, Height: 461963}},
+				{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 914400, Width: 8229600, Height: 5029200}},
+				{Type: types.PlaceholderOther, Bounds: types.BoundingBox{X: 457200, Y: footerY, Width: 2895600, Height: 365125}},
+			},
+		},
+	}
+
+	result := resolveVirtualLayout(layouts, 0, 0)
+	if result == nil || result.Zone == nil {
+		t.Fatal("expected non-nil result and Zone")
+	}
+	if got := result.Zone.FooterTop; got != footerY {
+		t.Errorf("expected FooterTop=%d from footer placeholder, got %d", footerY, got)
+	}
 }
 
 func TestResolveVirtualLayout_NoSuitableLayout(t *testing.T) {
