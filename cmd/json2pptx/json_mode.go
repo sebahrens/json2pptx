@@ -689,28 +689,17 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 		usedLayouts = make(map[string]int)
 	}
 
-	// Assign section numbers to section divider slides whose body placeholder
-	// would otherwise be cleared, leaving blank whitespace.
+	// Compute the formatted section number for each section-divider slide.
+	// The number is injected into the correct placeholder per-slide, after
+	// layout resolution, so it lands in the decorative section_number frame when
+	// the layout has one and falls back to the body/tagline slot otherwise
+	// (see convertSinglePresentationSlide / injectSectionNumber).
+	sectionNumbers := make([]string, len(slides))
 	sectionNum := 0
 	for i := range slides {
 		if inferSlideType(slides[i]) == types.SlideTypeSection {
 			sectionNum++
-			// Check if any content item targets "body"
-			hasBody := false
-			for _, ci := range slides[i].Content {
-				if ci.PlaceholderID == "body" {
-					hasBody = true
-					break
-				}
-			}
-			if !hasBody {
-				sectionNumStr := fmt.Sprintf("%02d", sectionNum)
-				slides[i].Content = append(slides[i].Content, ContentInput{
-					PlaceholderID: "body",
-					Type:          "text",
-					TextValue:     &sectionNumStr,
-				})
-			}
+			sectionNumbers[i] = fmt.Sprintf("%02d", sectionNum)
 		}
 	}
 
@@ -732,7 +721,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 		spec, slideWarnings, slideFindings, err := convertSinglePresentationSlide(
 			slide, i, slides, specs, layouts, metadata,
 			slideWidth, slideHeight, rhythmGrid, accentStrategy,
-			sectionIndices, usedLayouts, diagCtx,
+			sectionIndices, usedLayouts, diagCtx, sectionNumbers[i],
 		)
 		gridWarnings = append(gridWarnings, slideWarnings...)
 		gridFitFindings = append(gridFitFindings, slideFindings...)
@@ -765,6 +754,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	sectionIndices []int,
 	usedLayouts map[string]int,
 	diagCtx *GridDiagramContext,
+	sectionNumber string,
 ) (generator.SlideSpec, []string, []patterns.FitFinding, error) {
 	var warnings []string
 	var slideFitFindings []patterns.FitFinding
@@ -812,6 +802,9 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 				break
 			}
 		}
+		// Route the auto-assigned section number into the resolved layout's
+		// section_number frame (or body fallback) before virtual IDs are mapped.
+		slide.Content = injectSectionNumber(slide.Content, selectedLayout, sectionNumber)
 		if selectedLayout != nil {
 			slide.Content = autoMapPlaceholders(slide.Content, *selectedLayout)
 		}
@@ -820,14 +813,19 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			// Track explicitly-specified layouts too, for variety scoring
 			usedLayouts[slide.LayoutID]++
 		}
-		// Resolve virtual placeholder IDs even for explicit layout IDs
-		if hasVirtualPlaceholders(slide.Content) {
-			for j := range layouts {
-				if layouts[j].ID == slide.LayoutID {
-					slide.Content = autoMapPlaceholders(slide.Content, layouts[j])
-					break
-				}
+		var selectedLayout *types.LayoutMetadata
+		for j := range layouts {
+			if layouts[j].ID == slide.LayoutID {
+				selectedLayout = &layouts[j]
+				break
 			}
+		}
+		// Route the auto-assigned section number into the resolved layout's
+		// section_number frame (or body fallback) before virtual IDs are mapped.
+		slide.Content = injectSectionNumber(slide.Content, selectedLayout, sectionNumber)
+		// Resolve virtual placeholder IDs even for explicit layout IDs
+		if selectedLayout != nil && hasVirtualPlaceholders(slide.Content) {
+			slide.Content = autoMapPlaceholders(slide.Content, *selectedLayout)
 		}
 	}
 
@@ -2357,6 +2355,76 @@ func autoMapPlaceholders(items []ContentInput, selectedLayout types.LayoutMetada
 	}
 
 	return result
+}
+
+// injectSectionNumber appends an auto-assigned section number to a
+// section-divider slide's content. When the resolved layout exposes a
+// decorative section_number placeholder, the number is routed there via the
+// virtual ID "section_number" (resolved downstream by the generator's
+// section-number alias chain). Otherwise it falls back to the body/tagline slot
+// so templates without a dedicated number frame keep their prior behavior.
+//
+// It is a no-op when num is empty (non-section slide) or when the chosen target
+// is already populated by user-supplied content.
+func injectSectionNumber(content []ContentInput, layout *types.LayoutMetadata, num string) []ContentInput {
+	if num == "" {
+		return content
+	}
+	target := "body"
+	if layout != nil && layoutHasSectionNumberPlaceholder(*layout) {
+		target = "section_number"
+	}
+	if contentTargetsSectionSlot(content, target) {
+		return content
+	}
+	n := num
+	return append(content, ContentInput{
+		PlaceholderID: target,
+		Type:          "text",
+		TextValue:     &n,
+	})
+}
+
+// layoutHasSectionNumberPlaceholder reports whether a layout exposes a
+// decorative section_number placeholder. It trusts the canonical Role
+// classification first, then falls back to alias IDs (section_number, section_no,
+// large_number) and the conventional "Section Number" name.
+func layoutHasSectionNumberPlaceholder(layout types.LayoutMetadata) bool {
+	for _, ph := range layout.Placeholders {
+		if ph.Role == types.PlaceholderRoleSectionNumber {
+			return true
+		}
+		if generator.IsSectionNumberAlias(ph.ID) {
+			return true
+		}
+		lid := strings.ToLower(ph.ID)
+		if strings.Contains(lid, "section") && strings.Contains(lid, "number") {
+			return true
+		}
+	}
+	return false
+}
+
+// contentTargetsSectionSlot reports whether the content already populates the
+// chosen section-number target, so the auto-injection can be skipped. For the
+// "section_number" target it matches any section-number alias or "Section
+// Number" name; for the "body" fallback it matches an exact "body" ID, mirroring
+// the original guard.
+func contentTargetsSectionSlot(content []ContentInput, target string) bool {
+	for _, ci := range content {
+		if target == "section_number" {
+			if generator.IsSectionNumberAlias(ci.PlaceholderID) {
+				return true
+			}
+			lid := strings.ToLower(ci.PlaceholderID)
+			if strings.Contains(lid, "section") && strings.Contains(lid, "number") {
+				return true
+			}
+		} else if ci.PlaceholderID == target {
+			return true
+		}
+	}
+	return false
 }
 
 // hasVirtualPlaceholders returns true if any content item uses a virtual

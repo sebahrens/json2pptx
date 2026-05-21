@@ -1375,6 +1375,121 @@ func TestSectionSlideSharedPlaceholderMerge(t *testing.T) {
 	}
 }
 
+// TestInjectSectionNumber verifies the auto-assigned section number is routed to
+// the layout's decorative section_number placeholder when one exists, and falls
+// back to the body/tagline slot otherwise. Regression for go-slide-creator-5mf7
+// (modern-template injected "01" into the 14pt body tagline, leaving the 96pt
+// Section Number frame blank).
+func TestInjectSectionNumber(t *testing.T) {
+	bodyOnly := types.LayoutMetadata{
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "body", Type: types.PlaceholderBody, Role: types.PlaceholderRoleBody},
+		},
+	}
+	withSectionNumber := types.LayoutMetadata{
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "body", Type: types.PlaceholderBody, Role: types.PlaceholderRoleBody},
+			{ID: "Section Number", Type: types.PlaceholderBody, FontSize: 9600, Role: types.PlaceholderRoleSectionNumber},
+		},
+	}
+
+	t.Run("routes_to_section_number_alias_when_present", func(t *testing.T) {
+		got := injectSectionNumber(nil, &withSectionNumber, "01")
+		if len(got) != 1 {
+			t.Fatalf("len(got) = %d, want 1", len(got))
+		}
+		if !generator.IsSectionNumberAlias(got[0].PlaceholderID) {
+			t.Errorf("injected PlaceholderID = %q, want a section_number alias", got[0].PlaceholderID)
+		}
+		if got[0].TextValue == nil || *got[0].TextValue != "01" {
+			t.Errorf("injected TextValue = %v, want \"01\"", got[0].TextValue)
+		}
+	})
+
+	t.Run("falls_back_to_body_without_section_number", func(t *testing.T) {
+		got := injectSectionNumber(nil, &bodyOnly, "02")
+		if len(got) != 1 || got[0].PlaceholderID != "body" {
+			t.Fatalf("got %+v, want a single body item", got)
+		}
+	})
+
+	t.Run("noop_for_empty_number", func(t *testing.T) {
+		if got := injectSectionNumber(nil, &withSectionNumber, ""); got != nil {
+			t.Errorf("got %+v, want nil (no-op for non-section slide)", got)
+		}
+	})
+
+	t.Run("skips_when_section_number_already_populated", func(t *testing.T) {
+		existing := []ContentInput{{PlaceholderID: "section_number", Type: "text", TextValue: strPtr("99")}}
+		if got := injectSectionNumber(existing, &withSectionNumber, "03"); len(got) != 1 {
+			t.Errorf("len(got) = %d, want 1 (no injection over user content)", len(got))
+		}
+	})
+
+	t.Run("detects_section_number_by_name_without_role", func(t *testing.T) {
+		// Layouts that have not been role-classified must still be detected via
+		// the "Section Number" name fallback.
+		unclassified := types.LayoutMetadata{
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "body", Type: types.PlaceholderBody},
+				{ID: "Section Number", Type: types.PlaceholderBody},
+			},
+		}
+		got := injectSectionNumber(nil, &unclassified, "05")
+		if len(got) != 1 || !generator.IsSectionNumberAlias(got[0].PlaceholderID) {
+			t.Errorf("got %+v, want a single section_number alias item", got)
+		}
+	})
+}
+
+// TestSectionNumberRoutedThroughConversion verifies the end-to-end conversion
+// path: a section-divider layout exposing both a body and a section_number
+// placeholder routes the auto-assigned number to the section_number alias, while
+// the title text stays on the body slot.
+func TestSectionNumberRoutedThroughConversion(t *testing.T) {
+	sectionLayout := types.LayoutMetadata{
+		ID:   "slideLayout5",
+		Name: "Section Divider",
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "body", Type: types.PlaceholderBody, Index: 1, FontSize: 1400, Role: types.PlaceholderRoleBody},
+			{ID: "Section Number", Type: types.PlaceholderBody, Index: 13, FontSize: 9600, Role: types.PlaceholderRoleSectionNumber},
+		},
+		Tags: []string{"section-header"},
+	}
+
+	slides := []SlideInput{
+		{
+			SlideType: "section",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Discovery")},
+			},
+		},
+	}
+
+	specs, _, _, err := convertPresentationSlides(slides, []types.LayoutMetadata{sectionLayout}, 0, 0, nil, nil, "", nil, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(specs) != 1 {
+		t.Fatalf("len(specs) = %d, want 1", len(specs))
+	}
+
+	var foundNumber bool
+	for _, item := range specs[0].Content {
+		v, ok := item.Value.(string)
+		if !ok || !strings.Contains(v, "01") {
+			continue
+		}
+		foundNumber = true
+		if !generator.IsSectionNumberAlias(item.PlaceholderID) {
+			t.Errorf("section number '01' targeted placeholder %q, want a section_number alias", item.PlaceholderID)
+		}
+	}
+	if !foundNumber {
+		t.Errorf("auto-assigned section number '01' not found in specs: %+v", specs[0].Content)
+	}
+}
+
 func TestMergeTextItemsSamePlaceholder(t *testing.T) {
 	t.Run("no_merge_different_placeholders", func(t *testing.T) {
 		items := []generator.ContentItem{

@@ -61,6 +61,24 @@ The `Section Number` placeholder on section divider layouts has specific require
 - **Alignment**: Right-aligned
 - **Color**: Should use an accent color from the theme (typically `accent1`)
 
+**Auto-numbering.** The engine assigns a running section number (`01`, `02`, …) to
+each section-divider slide and injects it automatically. It routes the number to
+the layout's section-number frame whenever one is present — detected via the
+canonical `section_number` placeholder role, a `section_number` / `section_no` /
+`large_number` alias ID, or the conventional `Section Number` name — so the digit
+lands in the large decorative numeral instead of any small body slot. If the
+layout has no section-number frame, the number falls back to the `body`
+placeholder (preserving behavior for templates that display the number inline).
+Auto-injection is skipped when the slide already populates the target slot.
+
+**Optional tagline body.** A section divider may carry an extra `body`
+placeholder alongside `Section Number` (for a section tagline or sub-label).
+Because auto-numbering targets the `Section Number` frame, the `body` slot is
+never overwritten by the running number and is free for optional tagline text;
+it is treated as ordinary body text (caps/autofit), not boosted to section-title
+size. `modern-template`'s Section Divider keeps such a tagline `body` slot
+intentionally — templates need not drop it to be conformant.
+
 ## Typography Constraints
 
 ### Body Text
