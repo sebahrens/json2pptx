@@ -109,9 +109,32 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		"preview-patterns": {
 			AgentFacing: true,
 			CLIOnlyReason: "Pre-renders PNG previews for every named pattern — a local gallery-build/CI step that " +
-				"needs the render toolchain. Agents discover patterns over MCP via list_patterns / show_pattern / " +
-				"recommend_pattern and render specific slides with render_slide_image_from_json, so the batch gallery is CLI-only.",
+				"needs the render toolchain (LibreOffice + ImageMagick). Over MCP, reproduce a single pattern's preview " +
+				"by composing list_patterns -> show_pattern -> expand_pattern -> render_slide_image_from_json, then loop " +
+				"over the patterns/templates you care about and assemble your own manifest; the batch gallery itself stays " +
+				"CLI-only. See skills/generate-deck/TOOLS.md (Composition recipes).",
 		},
+	}
+}
+
+// previewPatternsMCPRecipe lists, in call order, the MCP tools an agent composes
+// to reproduce one tile of the CLI-only `preview-patterns` gallery: discover a
+// pattern, learn its value schema + example_values, expand it against a template
+// theme into a shape_grid, then render that single-slide JSON to a PNG. The agent
+// loops this over the patterns/templates it cares about and assembles its own
+// preview manifest from the returned image hashes.
+//
+// This is the single source of truth behind the preview-patterns CLIOnlyReason
+// (surfaced in get_capabilities().cli_only_commands) and the TOOLS.md
+// "Composition recipes" section. TestPreviewPatternsCompositionRecipe asserts
+// every step is a registered MCP tool and is named on both surfaces, so the
+// documented composition path cannot drift away from the tool catalog.
+func previewPatternsMCPRecipe() []string {
+	return []string{
+		"list_patterns",
+		"show_pattern",
+		"expand_pattern",
+		"render_slide_image_from_json",
 	}
 }
 

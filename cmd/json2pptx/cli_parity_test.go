@@ -414,6 +414,58 @@ func TestCLIOnlyCommandsSurfacedInCapabilities(t *testing.T) {
 	}
 }
 
+// TestPreviewPatternsCompositionRecipe is the "document and test the supported
+// composition path" gate for go-slide-creator-kx6x. preview-patterns stays
+// CLI-only (a batch gallery needing the full render toolchain), but the
+// per-pattern equivalent is reproducible over MCP. This test proves the
+// documented recipe is real and non-drifting across three surfaces at once:
+//
+//  1. every tool named in previewPatternsMCPRecipe() is a registered MCP tool
+//     (so a tool rename cannot leave the recipe pointing at a dead step),
+//  2. the preview-patterns CLIOnlyReason — surfaced in
+//     get_capabilities().cli_only_commands — names every recipe step, and
+//  3. skills/generate-deck/TOOLS.md documents the recipe (a "Composition
+//     recipes" heading plus every recipe tool by name).
+func TestPreviewPatternsCompositionRecipe(t *testing.T) {
+	recipe := previewPatternsMCPRecipe()
+	if len(recipe) == 0 {
+		t.Fatal("previewPatternsMCPRecipe() is empty — the documented composition path has no steps")
+	}
+
+	// 1. Every recipe step must be a registered MCP tool.
+	registered := make(map[string]bool)
+	for _, name := range mcpToolNames() {
+		registered[name] = true
+	}
+	for _, tool := range recipe {
+		if !registered[tool] {
+			t.Errorf("preview-patterns recipe names %q but it is not a registered MCP tool — fix the recipe or the tool name", tool)
+		}
+	}
+
+	// 2. The CLIOnlyReason that reaches get_capabilities must name every step.
+	reason := cliCommandClassifications()["preview-patterns"].CLIOnlyReason
+	if reason == "" {
+		t.Fatal("preview-patterns has no CLIOnlyReason — it must stay documented as CLI-only")
+	}
+	for _, tool := range recipe {
+		if !strings.Contains(reason, tool) {
+			t.Errorf("preview-patterns CLIOnlyReason omits recipe step %q — keep the rationale in sync with previewPatternsMCPRecipe()", tool)
+		}
+	}
+
+	// 3. TOOLS.md must document the recipe under a Composition-recipes heading.
+	doc := readDiscoveryDoc(t, "../../skills/generate-deck/TOOLS.md")
+	if !strings.Contains(doc, "Composition recipes") {
+		t.Error("skills/generate-deck/TOOLS.md must document the supported MCP composition path under a 'Composition recipes' heading")
+	}
+	for _, tool := range recipe {
+		if !strings.Contains(doc, tool) {
+			t.Errorf("skills/generate-deck/TOOLS.md composition recipe omits recipe step %q", tool)
+		}
+	}
+}
+
 // TestResolveThemeCLI_VariationUnknown verifies that -variation errors with
 // a helpful message when the registry has no matching preset. This guards
 // the extension point: as soon as a built-in variation is registered, the

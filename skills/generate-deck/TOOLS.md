@@ -116,7 +116,7 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 - `cli_counterpart` — the closest CLI subcommand. `mcp_only_reason` — why a tool has no 1:1 CLI command (the counterpart is then an approximation).
 - `primitive_alternatives` — for a `workflow_facade` (and batch convenience tools), the lower-level primitives you can drive by hand instead. E.g. `make_deck` decomposes into `plan_deck` → `recommend_visual` → `expand_pattern` → `validate_input` → `generate_presentation` → `auto_repair`; `auto_repair` into `generate_presentation` → `score_deck` → `propose_repairs` → `repair_slides_batch`. Reach for the facade for cold starts; drop to the primitives when you need per-step control.
 
-**CLI-only commands.** `get_capabilities().cli_only_commands[]` is the reverse of `mcp_only_reason`: each `{name, cli_only_reason}` entry is a `json2pptx` CLI command that has no MCP tool, with the reason it is CLI-only. Today: `preflight` (bundles every static-check stage — get the same findings from `validate_input` + `score_deck` / `analyze_deck_rhythm`), `validate-template` / `template-check` (path-targeted template inspection/conformance for authoring/CI — over MCP use `list_templates` / `examine_template`), and `preview-patterns` (batch pattern PNG gallery — over MCP use `list_patterns` / `show_pattern` / `recommend_pattern` and `render_slide_image_from_json`). If you need one of these capabilities, shell out to the CLI; there is no equivalent tool.
+**CLI-only commands.** `get_capabilities().cli_only_commands[]` is the reverse of `mcp_only_reason`: each `{name, cli_only_reason}` entry is a `json2pptx` CLI command that has no MCP tool, with the reason it is CLI-only. Today: `preflight` (bundles every static-check stage — get the same findings from `validate_input` + `score_deck` / `analyze_deck_rhythm`), `validate-template` / `template-check` (path-targeted template inspection/conformance for authoring/CI — over MCP use `list_templates` / `examine_template`), and `preview-patterns` (batch pattern PNG gallery — over MCP reproduce a single pattern's preview by composing `list_patterns` → `show_pattern` → `expand_pattern` → `render_slide_image_from_json`; see **Composition recipes** below). If you need one of these capabilities, shell out to the CLI; there is no equivalent tool.
 
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
 
@@ -140,3 +140,20 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 **Isolated diagram validation.** The separate `svggen-mcp` server exposes `validate_diagram` for checking a diagram payload in isolation. Per-error `next_tool_call` routes shape errors to `get_diagram_schema` and constraint errors back to `validate_diagram`.
 
 **Strict output validation by default.** Both `generate_presentation` (MCP) and `json2pptx generate` (CLI) default `output_validation` / `--output-validation` to `strict`, so every successful response implies a clean OPC + OOXML pass. See [SKILL.md § Output Validation Guarantee](SKILL.md#output-validation-guarantee) for the envelope shape, response protocol, and code catalog.
+
+---
+
+## Composition recipes
+
+A few capabilities have no dedicated MCP tool but are fully reproducible by composing primitives. Each is intentionally CLI-only (it is a local build/CI artifact, not a per-slide authoring step) and is surfaced in `get_capabilities().cli_only_commands[]` with a rationale that points here.
+
+### Pattern preview gallery — the MCP equivalent of `preview-patterns`
+
+The CLI's `preview-patterns` renders a PNG for every named pattern across every template (it needs LibreOffice + ImageMagick). There is deliberately **no `preview_patterns` MCP tool**: the batch gallery is a build artifact, while an agent only ever needs a specific pattern's preview on demand. Reproduce one preview tile by composing four tools, then loop over the patterns and templates you care about and assemble your own manifest from the returned image hashes:
+
+1. **`list_patterns`** — enumerate pattern names (optionally `filter` to a subset).
+2. **`show_pattern`** `{name}` — read the pattern's value schema and `example_values`.
+3. **`expand_pattern`** `{name, values: <example_values>, theme_template: <template>}` — expand into a theme-aware `shape_grid` (the response's `shape_grid` is the slide body; check `density_warnings` / `capacity_warnings` while you are here).
+4. **`render_slide_image_from_json`** `{slide: {shape_grid: <expanded grid>}, template}` — render the one slide to a PNG. Use the returned `path` + `content_hash` as the gallery entry; large images are content-addressed and collision-free across patterns.
+
+To compare several patterns under a single template load, swap steps 2–3 for one **`expand_patterns`** call (batch) before rendering.
