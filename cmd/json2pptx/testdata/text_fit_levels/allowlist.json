@@ -3,12 +3,6 @@
   "comment": "Allow-list for cmd/json2pptx/text_fit_corpus_test.go (TestTextFitCorpus). Templates whose sha256 appears in 'exceptions' are exempt from the text-fit corpus gate. Failures on allow-listed templates are reported via t.Logf so they remain visible in CI output but do not fail the test. Each entry MUST cite a tracking issue and SHOULD be removed once the template is repaired (the sha256 will then no longer match, restoring the gate). Use `shasum -a 256 templates/<file>.pptx` to read the sha256. The list MUST be empty once go-slide-creator-vqad and its children land.",
   "exceptions": [
     {
-      "template": "blue-corporate.pptx",
-      "sha256": "d9ccc95a09689ea70879d4713aea9fabf9659d2726864fc5e5fa51efbd5162a7",
-      "tracking_issue": "go-slide-creator-pxdp",
-      "reason": "Designer template: body placeholder on the 'Title' layout and the body/body_2 placeholders on the 'Section break with image 01' layout overflow at content densities (P0–P2) that other templates handle. Repair under parent go-slide-creator-vqad."
-    },
-    {
       "template": "business-template.pptx",
       "sha256": "ad9957767676406c21d2e0955d2adaece2a2ff2c0fe103cf4db8a61428c5ce86",
       "tracking_issue": "go-slide-creator-mzhu",
