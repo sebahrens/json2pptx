@@ -653,9 +653,10 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
     "total_p1":     {"type": "integer"},
     "total_p2":     {"type": "integer"},
     "total_p3":     {"type": "integer"},
-    "total_issues": {"type": "integer"}
+    "total_issues": {"type": "integer"},
+    "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["slide_count", "results", "total_issues"]
+  "required": ["slide_count", "results", "total_issues", "findings"]
 }`)
 
 // --- score_deck ---

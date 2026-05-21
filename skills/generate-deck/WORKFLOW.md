@@ -170,6 +170,8 @@ for f in findings where f.severity in {"P0","P1"}:
 
 `autofix_visual` consults the same category→kind map server-side and tries each candidate in order until one succeeds — so a `text_overflow` finding tries `reduce_cell_text`, then `split_at_row`, then `reshape_grid`. Three visual QA categories — `image_quality`, `aspect_ratio`, `border_style` — return empty `suggested_fixes[]` and should be surfaced for human review rather than auto-repaired.
 
+The same response also carries a top-level `findings` `FindingEnvelope` — every per-slide finding projected into the shared diagnostics wire shape used by `validate_input`, `repair_slide`, and the MCP error path. P0/P1 map to `error` (so `findings.ok` is `false` exactly when a slide needs repair under the P0/P1 policy below), P2 to `warning`, P3 to `info`; overflow categories namespace as `FIT` and all other visual defects as `RENDER`. Branch on `findings.ok` for a one-flag stop signal, or keep reading `results[slide].findings` when you need the full per-slide `suggested_fixes[]`.
+
 **False-positive policy.** Haiku-vision flags ~60% false positives on layout issues (top-clipping, title-cut) when running on already-correct decks. Treat P2/P3 findings as advisory; only P0/P1 should trigger automatic repair without user confirmation.
 
 ---

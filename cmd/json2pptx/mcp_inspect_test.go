@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // TestHandleInspectSlideImages_MissingArg ensures the handler rejects a call
@@ -159,6 +161,92 @@ func TestHandleInspectSlideImages_NoAPIKey(t *testing.T) {
 	}
 	if strings.Contains(got, "INSPECT_DISABLED") {
 		t.Errorf("did not expect INSPECT_DISABLED in heuristic fallback, got: %s", got)
+	}
+}
+
+// TestInspectSlideImages_FindingsEnvelopeShape verifies that inspect_slide_images
+// returns its per-slide findings projected into a FindingEnvelope under the
+// "findings" key, while keeping the visualqa.Report rollups (mode, results,
+// total_*) at the top level. The envelope is always present so an agent can
+// branch on findings.ok deterministically.
+func TestInspectSlideImages_FindingsEnvelopeShape(t *testing.T) {
+	// Run in heuristic mode for a deterministic, key-free pass.
+	saved := os.Getenv("ANTHROPIC_API_KEY")
+	_ = os.Unsetenv("ANTHROPIC_API_KEY")
+	defer func() {
+		if saved != "" {
+			_ = os.Setenv("ANTHROPIC_API_KEY", saved)
+		}
+	}()
+
+	pngBytes := makeSolidPNG(t, 16, 9, 0xFF, 0xFF, 0xFF)
+	mc := cliMCPConfig("./templates", "./out")
+	result, err := mc.handleInspectSlideImages(context.Background(), makeRequest(map[string]any{
+		"slide_images": []any{
+			map[string]any{
+				"index":      float64(0),
+				"png_base64": base64.StdEncoding.EncodeToString(pngBytes),
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	// Typed view: the envelope is always present and stamped for this surface.
+	var output inspectOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if output.Findings.SchemaVersion != diagnostics.SchemaVersion {
+		t.Errorf("findings.schema_version = %q, want %q", output.Findings.SchemaVersion, diagnostics.SchemaVersion)
+	}
+	if output.Findings.Tool != diagnostics.DefaultTool {
+		t.Errorf("findings.tool = %q, want %q", output.Findings.Tool, diagnostics.DefaultTool)
+	}
+	if output.Findings.Subcommand != "inspect_slide_images" {
+		t.Errorf("findings.subcommand = %q, want inspect_slide_images", output.Findings.Subcommand)
+	}
+	if output.Findings.Findings == nil {
+		t.Error("findings.findings must be non-nil (may be empty)")
+	}
+	// Every projected finding carries a namespaced (dotted) code in the
+	// RENDER/FIT namespaces, an info-or-stronger severity, and the source label
+	// in evidence.
+	for _, f := range output.Findings.Findings {
+		if f.Category != diagnostics.NamespaceRender && f.Category != diagnostics.NamespaceFit {
+			t.Errorf("finding %q category = %q, want RENDER or FIT", f.Code, f.Category)
+		}
+		if !strings.HasPrefix(f.Code, f.Category+".") {
+			t.Errorf("finding code %q is not namespaced under %q", f.Code, f.Category)
+		}
+		if f.Evidence["visual_severity"] == nil {
+			t.Errorf("finding %q missing evidence.visual_severity", f.Code)
+		}
+	}
+
+	// Wire view: the report rollups stay at the top level and "findings" is the
+	// envelope object carrying its required fields.
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(textContent(result)), &raw); err != nil {
+		t.Fatalf("response is not a JSON object: %v", err)
+	}
+	for _, key := range []string{"mode", "results", "total_issues", "findings"} {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("response missing top-level key %q", key)
+		}
+	}
+	var env map[string]any
+	if err := json.Unmarshal(raw["findings"], &env); err != nil {
+		t.Fatalf("findings is not an object: %v", err)
+	}
+	for _, key := range []string{"schema_version", "tool", "subcommand", "ok", "summary", "findings"} {
+		if _, ok := env[key]; !ok {
+			t.Errorf("findings envelope missing required key %q", key)
+		}
 	}
 }
 

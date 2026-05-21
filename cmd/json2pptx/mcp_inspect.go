@@ -22,6 +22,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/visualqa"
 	"github.com/sebahrens/json2pptx/internal/visualqa/heuristic"
 )
@@ -156,11 +157,111 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 	}
 	report.Template = template
 
-	mcpResult, err := api.MCPSuccessResult(ctx, report)
+	output := inspectOutput{
+		Report: report,
+		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+			Subcommand: "inspect_slide_images",
+			Template:   report.Template,
+		}, diagnosticsFromVisualQAReport(report)),
+	}
+
+	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// --- Finding envelope projection ---
+
+// inspectOutput is the inspect_slide_images response. It promotes the full
+// visualqa.Report (mode, results[], and the p0..p3 rollups agents branch on) to
+// the top level and adds a FindingEnvelope projection of every per-slide finding
+// under "findings", so an agent can branch on findings.ok without losing the
+// visual-QA detail. The envelope is always present; findings.findings is empty
+// when the report is clean. See docs/AGENT_DIAGNOSTICS.md.
+type inspectOutput struct {
+	*visualqa.Report
+	Findings diagnostics.FindingEnvelope `json:"findings"`
+}
+
+// visualCategoryNamespace maps a visualqa finding category onto a finding-
+// envelope namespace. Content-overflow categories project to FIT (matching the
+// fit-report findings an agent already handles); every other visual defect
+// projects to RENDER. Categories absent from this map fall through to RENDER.
+var visualCategoryNamespace = map[string]diagnostics.Namespace{
+	"text_overflow":   diagnostics.NamespaceFit,
+	"text_truncation": diagnostics.NamespaceFit,
+}
+
+// diagnosticsFromVisualQAReport flattens every per-slide visualqa finding into a
+// transport-neutral diagnostic, in report order (by slide, then finding), so
+// BuildEnvelope can project them into the shared FindingEnvelope shape.
+func diagnosticsFromVisualQAReport(report *visualqa.Report) []diagnostics.Diagnostic {
+	if report == nil {
+		return nil
+	}
+	var ds []diagnostics.Diagnostic
+	for _, sr := range report.Results {
+		for _, f := range sr.Findings {
+			ds = append(ds, diagnosticFromVisualQAFinding(f))
+		}
+	}
+	return ds
+}
+
+// diagnosticFromVisualQAFinding adapts one visualqa.Finding into a Diagnostic:
+// it severity-maps the P0..P3 level, namespaces the visual category (FIT for
+// overflow, RENDER otherwise), carries the slide location (so the envelope's
+// where.slide is populated), preserves the precise P-level/category/location/
+// source in evidence, and lifts the first suggested repair_slide fix into a
+// remediation.
+func diagnosticFromVisualQAFinding(f visualqa.Finding) diagnostics.Diagnostic {
+	ns := diagnostics.NamespaceRender
+	if mapped, ok := visualCategoryNamespace[f.Category]; ok {
+		ns = mapped
+	}
+	d := diagnostics.Diagnostic{
+		Code:     diagnostics.DottedCode(ns, f.Category),
+		Message:  f.Description,
+		Path:     fmt.Sprintf("slides[%d]", f.SlideIndex),
+		Severity: visualSeverityToDiagnosticSeverity(f.Severity),
+		Details: map[string]any{
+			"visual_severity": string(f.Severity),
+			"visual_category": f.Category,
+		},
+	}
+	if f.Location != "" {
+		d.Details["location"] = f.Location
+	}
+	if f.Source != "" {
+		d.Details["source"] = f.Source
+	}
+	if len(f.SuggestedFixes) > 0 {
+		d.Fix = &diagnostics.Fix{
+			Kind:   f.SuggestedFixes[0].Kind,
+			Params: f.SuggestedFixes[0].Params,
+		}
+	}
+	return d
+}
+
+// visualSeverityToDiagnosticSeverity projects a visualqa P-severity onto the
+// three-level diagnostic vocabulary. P0 (catastrophic) and P1 (major) become
+// errors so findings.ok reports false on a deck that still needs repair — the
+// same P0/P1 threshold the visual-repair loop uses to trigger autofix; P2
+// (minor/cosmetic) is a warning; P3 (nitpick) and any unknown value are
+// advisory info. The precise P-level is preserved in evidence.visual_severity
+// and the report's p0..p3 rollups.
+func visualSeverityToDiagnosticSeverity(s visualqa.Severity) diagnostics.Severity {
+	switch s {
+	case visualqa.SeverityP0, visualqa.SeverityP1:
+		return diagnostics.SeverityError
+	case visualqa.SeverityP2:
+		return diagnostics.SeverityWarning
+	default:
+		return diagnostics.SeverityInfo
+	}
 }
 
 // --- Input parsing ---

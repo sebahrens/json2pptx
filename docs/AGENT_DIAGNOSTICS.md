@@ -171,8 +171,20 @@ name. The lossless agent-recovery fields (`next_tool_call`, `expected_type`,
 icon-name `suggestions`, allowed enum values) in `evidence` — only arbitrary
 nested objects are dropped.
 
-The remaining ad-hoc shapes in `inspect` and HTTP serve mode are still pending,
-along with emitting the envelope natively from the forthcoming `preflight` and
+`inspect` (the `inspect_slide_images` MCP tool and the `inspect` CLI subcommand)
+has migrated: the response keeps the `visualqa.Report` rollups (`mode`,
+`results[]`, `total_p0..p3`, per-finding `suggested_fixes[]`) at the top level and
+adds a `FindingEnvelope` under the `findings` key, projecting every per-slide
+visual finding into the shared shape. The P0..P3 visual severity maps onto the
+three-level diagnostic vocabulary (P0/P1 → `error` so `findings.ok` is false on a
+deck that still needs repair, P2 → `warning`, P3 → `info`); the precise P-level is
+preserved in `evidence.visual_severity` and the report rollups. Visual categories
+are namespaced `FIT` for content overflow (`text_overflow`, `text_truncation`) and
+`RENDER` for every other defect, and the first `suggested_fix` becomes the
+finding's remediation.
+
+The remaining ad-hoc shape in HTTP serve mode is still pending, along with
+emitting the envelope natively from the forthcoming `preflight` and
 `examine-template` subcommands.
 
 When adding a new diagnostic-bearing surface, return a `FindingEnvelope` built
