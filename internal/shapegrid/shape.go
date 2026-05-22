@@ -20,6 +20,30 @@ const defaultTextSizeHPt = 1400 // 14pt
 // so we enforce a readable minimum.
 const minTextSizeHPt = 1200 // 12pt
 
+// MinTextSizePt is the shape_grid renderer's minimum effective font size, in
+// points (the float mirror of minTextSizeHPt). Any explicitly authored size
+// below this is raised to it at render time; text-capacity estimators must
+// apply the same floor so budgets reflect the size text is actually rendered at.
+const MinTextSizePt = float64(minTextSizeHPt) / 100 // 12.0pt
+
+// EffectiveTextSizePt returns the point size shape_grid text with the given
+// authored size is rendered at, after applying the minimum-size floor. This is
+// the single source of truth for that floor, shared by the renderer
+// (buildTextBody / buildParagraphsTextBody) and capacity estimators.
+//
+// An authored size of 0 (unspecified) is passed through unchanged so callers can
+// substitute their own default — the renderer applies defaultTextSizeHPt for
+// that case, but capacity estimators may use a different documented default.
+func EffectiveTextSizePt(authoredPt float64) float64 {
+	if authoredPt <= 0 {
+		return authoredPt
+	}
+	if authoredPt < MinTextSizePt {
+		return MinTextSizePt
+	}
+	return authoredPt
+}
+
 // Bullet list constants — aliases for the shared pptx values, kept for
 // backward compatibility in tests and local references.
 const (
@@ -345,10 +369,7 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 
 	fontSize := defaultTextSizeHPt
 	if sizePt > 0 {
-		fontSize = int(sizePt * 100) // points to hundredths of a point
-	}
-	if fontSize < minTextSizeHPt {
-		fontSize = minTextSizeHPt
+		fontSize = int(EffectiveTextSizePt(sizePt) * 100) // points to hundredths of a point
 	}
 
 	var colorFill pptx.Fill
@@ -409,10 +430,7 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 	for i, d := range defs {
 		fontSize := defaultTextSizeHPt
 		if d.Size > 0 {
-			fontSize = int(d.Size * 100)
-		}
-		if fontSize < minTextSizeHPt {
-			fontSize = minTextSizeHPt
+			fontSize = int(EffectiveTextSizePt(d.Size) * 100)
 		}
 
 		var colorFill pptx.Fill

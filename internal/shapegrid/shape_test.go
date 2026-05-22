@@ -10,6 +10,31 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
+func TestEffectiveTextSizePt(t *testing.T) {
+	tests := []struct {
+		name     string
+		authored float64
+		want     float64
+	}{
+		{"unspecified passes through", 0, 0},
+		{"negative passes through", -3, -3},
+		{"below floor raised to floor", 10, MinTextSizePt},
+		{"just below floor raised", 11.9, MinTextSizePt},
+		{"at floor unchanged", 12, 12},
+		{"above floor unchanged", 14, 14},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := EffectiveTextSizePt(tt.authored); got != tt.want {
+				t.Errorf("EffectiveTextSizePt(%v) = %v, want %v", tt.authored, got, tt.want)
+			}
+		})
+	}
+	if MinTextSizePt != 12.0 {
+		t.Errorf("MinTextSizePt = %v, want 12.0", MinTextSizePt)
+	}
+}
+
 func TestGenerateShapeXML_MinimalRect(t *testing.T) {
 	spec := &ShapeSpec{Geometry: "rect"}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}

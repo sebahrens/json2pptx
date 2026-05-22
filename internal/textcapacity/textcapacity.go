@@ -17,6 +17,11 @@
 //  3. Pattern override (HeaderSize / BodySize on the resolved cell)
 //  4. Default: 11pt
 //
+// For shape_grid cells, any explicitly authored size below the renderer's
+// minimum floor (shapegrid.MinTextSizePt, 12pt) is raised to that floor so the
+// budget matches what the renderer produces. The unspecified-size default above
+// (11pt) is not floored.
+//
 // # Post-markdown rule
 //
 // Character counts (both budget and actual) use post-markdown-conversion
@@ -185,19 +190,31 @@ func buildDensity(b Budget, actualChars int) Density {
 	return d
 }
 
+// defaultCellFontPt is the budget default font size (points) for shape_grid
+// text cells whose size is not explicitly authored. It intentionally stays at
+// the long-standing 11pt budget default and is independent of the shape_grid
+// renderer's larger visual default (shapegrid defaultTextSizeHPt); only the
+// renderer's minimum floor is mirrored here for authored sizes.
+const defaultCellFontPt = 11.0
+
 // extractCellText parses a resolved cell's shape text to determine font size
 // and post-markdown character count. Returns (fontPt, actualChars).
+//
+// Authored sizes below the shape_grid renderer's floor are raised via
+// shapegrid.EffectiveTextSizePt so the budget reflects the size the renderer
+// actually produces (e.g. an authored size of 10 is rendered, and budgeted, at
+// 12pt). Unspecified sizes keep defaultCellFontPt and are not floored.
 func extractCellText(cell shapegrid.ResolvedCell) (float64, int) {
 	if cell.ShapeSpec == nil || len(cell.ShapeSpec.Text) == 0 {
-		return 11.0, 0
+		return defaultCellFontPt, 0
 	}
 
 	raw := cell.ShapeSpec.Text
 
-	// Try string shorthand.
+	// Try string shorthand (no authored size → default).
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
-		return 11.0, len([]rune(stripMarkdown(s)))
+		return defaultCellFontPt, len([]rune(stripMarkdown(s)))
 	}
 
 	// Object form with possible paragraphs array.
@@ -210,12 +227,13 @@ func extractCellText(cell shapegrid.ResolvedCell) (float64, int) {
 		} `json:"paragraphs,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
-		return 11.0, 0
+		return defaultCellFontPt, 0
 	}
 
-	fontPt := obj.Size
-	if fontPt == 0 {
-		fontPt = 11.0
+	// Cell-level authored size, floored to the renderer's minimum.
+	fontPt := defaultCellFontPt
+	if obj.Size > 0 {
+		fontPt = shapegrid.EffectiveTextSizePt(obj.Size)
 	}
 
 	// If paragraphs array is present, concatenate all content.
@@ -223,9 +241,10 @@ func extractCellText(cell shapegrid.ResolvedCell) (float64, int) {
 		total := 0
 		for _, p := range obj.Paragraphs {
 			total += len([]rune(stripMarkdown(p.Content)))
-			// Use largest paragraph font size for budget if specified.
-			if p.Size > 0 && p.Size > fontPt {
-				fontPt = p.Size
+			// Mirror the renderer's per-paragraph floor, then keep the largest
+			// effective paragraph font size for the budget.
+			if eff := shapegrid.EffectiveTextSizePt(p.Size); eff > fontPt {
+				fontPt = eff
 			}
 		}
 		return fontPt, total

@@ -235,6 +235,106 @@ func TestForResolvedGrid_MixedCells(t *testing.T) {
 	t.Logf("cell 2: %+v", densities[2])
 }
 
+// gridWithText builds a single-cell resolved grid whose shape carries the given
+// text JSON, for exercising extractCellText via ForResolvedGrid.
+func gridWithText(raw string) *shapegrid.ResolveResult {
+	return &shapegrid.ResolveResult{
+		Cells: []shapegrid.ResolvedCell{
+			{
+				Kind:       shapegrid.CellKindShape,
+				CellBounds: pptx.RectEmu{CX: 3 * emuInch, CY: 2 * emuInch},
+				ShapeSpec:  &shapegrid.ShapeSpec{Text: json.RawMessage(raw)},
+			},
+		},
+	}
+}
+
+func TestForResolvedGrid_AuthoredFontFloor(t *testing.T) {
+	// The renderer floors shape_grid text below 12pt to 12pt; the budget must
+	// mirror that so dense sub-12pt cards are not under-budgeted. Object form.
+	tests := []struct {
+		name       string
+		text       string
+		wantFontPt float64
+	}{
+		{"size 10 floored to 12", `{"content": "x", "size": 10}`, 12.0},
+		{"size 11.5 floored to 12", `{"content": "x", "size": 11.5}`, 12.0},
+		{"size 12 unchanged", `{"content": "x", "size": 12}`, 12.0},
+		{"size 14 unchanged", `{"content": "x", "size": 14}`, 14.0},
+		{"unspecified keeps 11pt default", `{"content": "x"}`, 11.0},
+		{"string shorthand keeps 11pt default", `"x"`, 11.0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := ForResolvedGrid(gridWithText(tt.text))
+			if len(d) != 1 {
+				t.Fatalf("got %d densities, want 1", len(d))
+			}
+			if d[0].FontPt != tt.wantFontPt {
+				t.Errorf("FontPt=%.1f, want %.1f", d[0].FontPt, tt.wantFontPt)
+			}
+		})
+	}
+}
+
+func TestForResolvedGrid_ParagraphFontFloor(t *testing.T) {
+	// Paragraph-array form: each authored paragraph size is floored, then the
+	// largest effective font size is used for the budget.
+	tests := []struct {
+		name       string
+		text       string
+		wantFontPt float64
+	}{
+		{
+			"all paragraphs below floor",
+			`{"paragraphs": [{"content": "a", "size": 10}, {"content": "b", "size": 9}]}`,
+			12.0,
+		},
+		{
+			"largest paragraph above floor wins",
+			`{"paragraphs": [{"content": "a", "size": 16}, {"content": "b", "size": 10}]}`,
+			16.0,
+		},
+		{
+			"sub-floor paragraph raises 11pt default",
+			`{"paragraphs": [{"content": "a", "size": 10}]}`,
+			12.0,
+		},
+		{
+			"paragraphs without sizes keep 11pt default",
+			`{"paragraphs": [{"content": "a"}, {"content": "b"}]}`,
+			11.0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := ForResolvedGrid(gridWithText(tt.text))
+			if len(d) != 1 {
+				t.Fatalf("got %d densities, want 1", len(d))
+			}
+			if d[0].FontPt != tt.wantFontPt {
+				t.Errorf("FontPt=%.1f, want %.1f", d[0].FontPt, tt.wantFontPt)
+			}
+		})
+	}
+}
+
+func TestForPlaceholder_NotFloored(t *testing.T) {
+	// The shape_grid floor must not bleed into placeholder budgets: a 10pt
+	// placeholder stays 10pt (placeholders have their own autofit handling).
+	ph := types.PlaceholderInfo{
+		Bounds: types.BoundingBox{
+			Width:  4 * int64(emuInch),
+			Height: 2 * int64(emuInch),
+		},
+		FontSize: 1000, // 10pt
+	}
+	d := ForPlaceholder(ph, "test")
+	if d.FontPt != 10.0 {
+		t.Errorf("FontPt=%.1f, want 10.0 (placeholder font not floored)", d.FontPt)
+	}
+}
+
 func TestDensityStatus(t *testing.T) {
 	tests := []struct {
 		actual, max int
