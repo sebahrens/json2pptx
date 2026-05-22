@@ -70,7 +70,7 @@ func TestCollectChartDryRenderFindings_TickThinned(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "warn")
+	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	if len(findings) == 0 {
 		t.Fatalf("expected at least one finding for 20-cat narrow bar chart, got none")
 	}
@@ -97,11 +97,11 @@ func TestCollectChartDryRenderFindings_TickThinned(t *testing.T) {
 // TestCollectChartDryRenderFindings_EmptyInput is a regression guard: passing
 // no slides (or no chart/diagram content) must return nil without panicking.
 func TestCollectChartDryRenderFindings_EmptyInput(t *testing.T) {
-	if got := collectChartDryRenderFindings(nil, nil, "warn"); got != nil {
+	if got := collectChartDryRenderFindings(nil, nil, "", "warn"); got != nil {
 		t.Errorf("nil input: got %v, want nil", got)
 	}
 	empty := &PresentationInput{}
-	if got := collectChartDryRenderFindings(empty, nil, "warn"); got != nil {
+	if got := collectChartDryRenderFindings(empty, nil, "", "warn"); got != nil {
 		t.Errorf("empty input: got %v, want nil", got)
 	}
 	textOnly := &PresentationInput{
@@ -113,7 +113,7 @@ func TestCollectChartDryRenderFindings_EmptyInput(t *testing.T) {
 			},
 		},
 	}
-	if got := collectChartDryRenderFindings(textOnly, nil, "warn"); got != nil {
+	if got := collectChartDryRenderFindings(textOnly, nil, "", "warn"); got != nil {
 		t.Errorf("text-only input: got %d findings, want 0", len(got))
 	}
 }
@@ -141,7 +141,7 @@ func TestCollectChartDryRenderFindings_ShapeGridDiagram(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "warn")
+	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/diagram"
 	assertTickThinnedAt(t, findings, wantPath)
 }
@@ -168,7 +168,7 @@ func TestCollectChartDryRenderFindings_CompositeSubDiagram(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "warn")
+	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/composite/sub_diagram"
 	assertTickThinnedAt(t, findings, wantPath)
 }
@@ -202,7 +202,7 @@ func TestCollectChartDryRenderFindings_NestedGridDiagram(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "warn")
+	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/grid/rows/0/cells/1/diagram"
 	assertTickThinnedAt(t, findings, wantPath)
 }

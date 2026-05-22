@@ -431,6 +431,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	mcpDiagCtx := &GridDiagramContext{
 		ThemeColors: theme.Colors,
 		DataPalette: resolveDataPalette(templateMetadata, theme.Colors),
+		FontFamily:  theme.BodyFont,
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
 	if err != nil {

@@ -38,6 +38,7 @@ type ShapeGridResult struct {
 type GridDiagramContext struct {
 	ThemeColors []types.ThemeColor // Template theme colors for chart styling
 	DataPalette []string           // Ordered hex palette for chart series (from TemplateMetadata)
+	FontFamily  string             // Template body font, injected when a diagram omits style.font_family
 	SlideNum    int                // 1-based slide number for warning messages
 }
 
@@ -983,6 +984,12 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		}
 		if len(diagramSpec.Style.Colors) == 0 && len(diagCtx.DataPalette) > 0 {
 			diagramSpec.Style.DataPalette = diagCtx.DataPalette
+		}
+		// Inject the template body font when the diagram doesn't set one
+		// explicitly, so grid-cell diagrams render with the template's
+		// typography. An explicit style.font_family always wins.
+		if diagramSpec.Style.FontFamily == "" && diagCtx.FontFamily != "" {
+			diagramSpec.Style.FontFamily = diagCtx.FontFamily
 		}
 	}
 

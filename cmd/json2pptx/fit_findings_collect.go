@@ -79,11 +79,13 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// surfaces render-only findings at validate/preview time, closing the
 	// validate → preview → generate feedback loop for visual chart issues.
 	var chartThemeColors []types.ThemeColor
+	var chartBodyFont string
 	if theme != nil {
 		chartThemeColors = theme.Colors
+		chartBodyFont = theme.BodyFont
 	}
 	findings = append(findings,
-		collectChartDryRenderFindings(input, chartThemeColors, "warn")...)
+		collectChartDryRenderFindings(input, chartThemeColors, chartBodyFont, "warn")...)
 
 	// 8. Content lint: headline word count, body word count, bullet nesting
 	// depth. Advisory findings that flag verbose / over-nested authoring

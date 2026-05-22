@@ -3454,3 +3454,68 @@ func TestDiagramCellInserts_DoesNotMutateCallerSpec(t *testing.T) {
 		t.Errorf("cellB SVG aspect %.3f != expected %.3f", aspectB, wantB)
 	}
 }
+
+// fontDiagramCell returns a diagram cell whose spec carries the given explicit
+// style.font_family ("" for none). Each call builds a fresh spec because
+// generateDiagramCellInserts clones the caller's spec per render.
+func fontDiagramCell(id uint32, explicitFont string) shapegrid.ResolvedCell {
+	spec := &types.DiagramSpec{
+		Type:  "bar_chart",
+		Title: "Font",
+		Data: map[string]any{
+			"categories": []any{"Alpha", "Beta"},
+			"series":     []any{map[string]any{"name": "S1", "values": []any{1.0, 2.0}}},
+		},
+	}
+	if explicitFont != "" {
+		spec.Style = &types.DiagramStyle{FontFamily: explicitFont}
+	}
+	return shapegrid.ResolvedCell{
+		ID:          id,
+		Kind:        shapegrid.CellKindDiagram,
+		Bounds:      pptx.RectEmu{X: 0, Y: 0, CX: 5_000_000, CY: 3_000_000},
+		DiagramSpec: spec,
+	}
+}
+
+// TestDiagramCellInserts_InjectsTemplateBodyFont is the shape-grid companion to
+// the placeholder regression test for go-slide-creator-fwi3: a grid-cell
+// diagram with no explicit style.font_family inherits the template body font
+// from GridDiagramContext.FontFamily, two distinct body fonts produce distinct
+// SVG font-family declarations, and an explicit style.font_family always wins.
+func TestDiagramCellInserts_InjectsTemplateBodyFont(t *testing.T) {
+	render := func(t *testing.T, cell shapegrid.ResolvedCell, fontFamily string) string {
+		t.Helper()
+		ctx := &GridDiagramContext{FontFamily: fontFamily, SlideNum: 1}
+		icons, _, err := generateDiagramCellInserts(cell, ctx)
+		if err != nil {
+			t.Fatalf("generateDiagramCellInserts: %v", err)
+		}
+		if len(icons) != 1 || len(icons[0].SVGData) == 0 {
+			t.Fatalf("expected one non-empty SVG, got %d icons", len(icons))
+		}
+		return string(icons[0].SVGData)
+	}
+
+	svgRoboto := render(t, fontDiagramCell(1, ""), "Roboto")
+	if !strings.Contains(svgRoboto, "font-family:Roboto") {
+		t.Errorf("expected grid-cell SVG to use injected body font Roboto")
+	}
+
+	svgGeorgia := render(t, fontDiagramCell(2, ""), "Georgia")
+	if !strings.Contains(svgGeorgia, "font-family:Georgia") {
+		t.Errorf("expected grid-cell SVG to use injected body font Georgia")
+	}
+	if strings.Contains(svgGeorgia, "font-family:Roboto") {
+		t.Errorf("Georgia-context SVG must not contain Roboto font-family")
+	}
+
+	// Explicit per-diagram font_family wins over the injected context font.
+	svgExplicit := render(t, fontDiagramCell(3, "Verdana"), "Roboto")
+	if !strings.Contains(svgExplicit, "font-family:Verdana") {
+		t.Errorf("explicit style.font_family must win over context font")
+	}
+	if strings.Contains(svgExplicit, "font-family:Roboto") {
+		t.Errorf("explicit font_family set; injected context font Roboto must not appear")
+	}
+}

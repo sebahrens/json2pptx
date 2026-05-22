@@ -24,11 +24,19 @@ import (
 // palette the renderer will use. Pass nil when theme isn't available — the
 // pipeline still runs (findings affected by geometry, not color, are emitted).
 //
+// bodyFont is the active template body font. It is forwarded to svggen so
+// label-fit findings (chart.label_clipped, chart.label_truncated,
+// chart.tick_thinned, etc.) are measured under the same typeface the renderer
+// injects via resolveDiagramWithMetadata / generateDiagramCellInserts. A
+// diagram's explicit style.font_family still wins. Pass "" when no template
+// font is available.
+//
 // strictFit threads through to svggen's severity promotion ladder so warn /
 // strict modes promote chart findings consistently with the generate path.
 func collectChartDryRenderFindings(
 	input *PresentationInput,
 	themeColors []types.ThemeColor,
+	bodyFont string,
 	strictFit string,
 ) []patterns.FitFinding {
 	if input == nil || len(input.Slides) == 0 {
@@ -48,14 +56,14 @@ func collectChartDryRenderFindings(
 				spec := chartValueToDiagramSpec(item.ChartValue)
 				path := fmt.Sprintf("slides[%d].content[%d].chart_value", slideIdx, contentIdx)
 				findings = append(findings,
-					dryRenderSpecToFindings(spec, themeColors, strictFit, path)...)
+					dryRenderSpecToFindings(spec, themeColors, bodyFont, strictFit, path)...)
 			case "diagram":
 				if item.DiagramValue == nil {
 					continue
 				}
 				path := fmt.Sprintf("slides[%d].content[%d].diagram_value", slideIdx, contentIdx)
 				findings = append(findings,
-					dryRenderSpecToFindings(item.DiagramValue, themeColors, strictFit, path)...)
+					dryRenderSpecToFindings(item.DiagramValue, themeColors, bodyFont, strictFit, path)...)
 			}
 		}
 
@@ -65,7 +73,7 @@ func collectChartDryRenderFindings(
 		// finding for the same cell agree on the cell identity.
 		if slide.ShapeGrid != nil {
 			findings = append(findings, collectGridDryRenderFindings(
-				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, strictFit)...)
+				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit)...)
 		}
 	}
 	return findings
@@ -86,6 +94,7 @@ func collectGridDryRenderFindings(
 	grid *ShapeGridInput,
 	basePath string,
 	themeColors []types.ThemeColor,
+	bodyFont string,
 	strictFit string,
 ) []patterns.FitFinding {
 	if grid == nil {
@@ -100,15 +109,15 @@ func collectGridDryRenderFindings(
 			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, ri, ci)
 			if cell.Diagram != nil {
 				findings = append(findings, dryRenderSpecToFindings(
-					cell.Diagram, themeColors, strictFit, cellPath+"/diagram")...)
+					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram")...)
 			}
 			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
 				findings = append(findings, dryRenderSpecToFindings(
-					cell.Composite.SubDiagram, themeColors, strictFit, cellPath+"/composite/sub_diagram")...)
+					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram")...)
 			}
 			if cell.Grid != nil {
 				findings = append(findings, collectGridDryRenderFindings(
-					cell.Grid, cellPath+"/grid", themeColors, strictFit)...)
+					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit)...)
 			}
 		}
 	}
@@ -146,6 +155,7 @@ func chartValueToDiagramSpec(c *types.ChartSpec) *types.DiagramSpec { //nolint:s
 func dryRenderSpecToFindings(
 	spec *types.DiagramSpec,
 	themeColors []types.ThemeColor,
+	bodyFont string,
 	strictFit string,
 	path string,
 ) []patterns.FitFinding {
@@ -173,6 +183,17 @@ func dryRenderSpecToFindings(
 	// findings (none currently, but room to grow) see the right palette.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {
 		req.Style.Palette.Colors = spec.Style.Colors
+	}
+	// Font: measure label fit under the same typeface the renderer will use.
+	// An explicit per-diagram style.font_family wins; otherwise fall back to the
+	// template body font (matching resolveDiagramWithMetadata /
+	// generateDiagramCellInserts on the render path). svggen defaults an empty
+	// FontFamily to Arial, so leaving it unset would measure label-fit findings
+	// under a different font than the rendered diagram.
+	if spec.Style != nil && spec.Style.FontFamily != "" {
+		req.Style.FontFamily = spec.Style.FontFamily
+	} else if bodyFont != "" {
+		req.Style.FontFamily = bodyFont
 	}
 	// Theme colors enable contrast-related findings if any are added later.
 	_ = themeColors

@@ -1240,6 +1240,15 @@ func (ctx *singlePassContext) resolveDiagramWithMetadata(slideNum int, item Cont
 	if len(diagramSpec.Style.Colors) == 0 && len(ctx.dataPalette) > 0 {
 		diagramSpec.Style.DataPalette = ctx.dataPalette
 	}
+	// Inject the template body font when the diagram doesn't set one explicitly,
+	// so placeholder diagrams (and placeholder charts, which share this path)
+	// render with the template's typography instead of the svggen default. An
+	// explicit style.font_family always wins. This mirrors the shape-grid
+	// diagram path (generateDiagramCellInserts) so both surfaces resolve font
+	// the same way.
+	if diagramSpec.Style.FontFamily == "" && ctx.themeFontName != "" {
+		diagramSpec.Style.FontFamily = ctx.themeFontName
+	}
 
 	// Use placeholder-aware dimensions if diagram doesn't have explicit dimensions set.
 	if diagramSpec.Width == 0 || diagramSpec.Height == 0 {

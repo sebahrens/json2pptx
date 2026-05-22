@@ -520,6 +520,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	diagCtx := &GridDiagramContext{
 		ThemeColors: templateTheme.Colors,
 		DataPalette: resolveDataPalette(templateMetadata, templateTheme.Colors),
+		FontFamily:  templateTheme.BodyFont,
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx, partial)
 	if err != nil {
@@ -977,6 +978,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			slideDiagCtx = &GridDiagramContext{
 				ThemeColors: diagCtx.ThemeColors,
 				DataPalette: diagCtx.DataPalette,
+				FontFamily:  diagCtx.FontFamily,
 				SlideNum:    i + 1,
 			}
 		}
