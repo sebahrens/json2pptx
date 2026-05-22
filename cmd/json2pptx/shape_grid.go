@@ -717,17 +717,21 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 
 // collectDiagramCellFindings emits render-time fit findings for a resolved
 // diagram cell: narrow-cell legibility and cell/SVG aspect mismatch/conflict.
-// All checks use the post-fit Bounds — the frame the diagram is sized into and
-// placed at by generateDiagramCellInserts — so the findings reflect what is
-// actually rendered (including any cell.fit adjustment) rather than the
-// pre-fit grid allocation.
+// Legibility and conflict checks use the post-fit Bounds — the frame the diagram
+// is sized into and placed at by generateDiagramCellInserts — so the findings
+// reflect what is actually rendered (including any cell.fit adjustment). The
+// aspect-mismatch check additionally receives the original (pre-fit) CellBounds
+// so its evidence can distinguish an authoring mistake from a fit-driven render
+// mismatch.
 func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []patterns.FitFinding {
 	path := slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram")
 	var findings []patterns.FitFinding
 	if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path); f != nil {
 		findings = append(findings, *f)
 	}
-	if f := generator.CheckDiagramAspectMismatchFinding(cell.DiagramSpec, cell.Bounds.CX, cell.Bounds.CY, path); f != nil {
+	cellBox := types.BoundingBox{Width: cell.CellBounds.CX, Height: cell.CellBounds.CY}
+	renderBox := types.BoundingBox{Width: cell.Bounds.CX, Height: cell.Bounds.CY}
+	if f := generator.CheckDiagramAspectMismatchFinding(cell.DiagramSpec, cellBox, renderBox, path); f != nil {
 		findings = append(findings, *f)
 	}
 	if f := generator.CheckDiagramAspectConflictFinding(cell.DiagramSpec, cell.Bounds.CX, cell.Bounds.CY, path); f != nil {

@@ -543,13 +543,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeDiagramAspectMismatch: {
 		Code:        ErrCodeDiagramAspectMismatch,
-		Summary:     "A diagram with explicit width and height has a (post-fit) cell aspect that differs from those pinned dimensions by more than 25%.",
+		Summary:     "A diagram's authored (explicit width×height) aspect differs from the post-fit render frame it is sized into by more than 25%.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight or render-time finds a diagram with BOTH explicit diagram.width and diagram.height whose post-fit cell aspect diverges from that pinned aspect by >25%. Unset or single-axis (width-only / height-only) diagrams adapt to the cell aspect and are not flagged (natural-aspect types are covered by diagram_aspect_conflict).",
+		WhenEmitted: "Pre-flight or render-time finds a diagram with BOTH explicit diagram.width and diagram.height whose authored aspect diverges from the post-fit render frame aspect by >25%. Unset or single-axis (width-only / height-only) diagrams adapt to the frame aspect and are not flagged (natural-aspect types are covered by diagram_aspect_conflict). fix.params carry authored_*, effective_* (+ dimension_source), cell_* (pre-fit), and render_* (post-fit) aspect evidence plus fit_adjusted so an authoring mistake is distinguishable from a fit-driven mismatch.",
 		RemediationSteps: []string{
 			"Reshape the cell to match the diagram's pinned aspect ratio (apply repair_slide(kind=reshape_grid)).",
 			"Or set cell.fit to 'contain' / 'fit-width' / 'fit-height'.",
-			"Or change the explicit diagram.width / diagram.height to match the cell.",
+			"Or change the explicit diagram.width / diagram.height to match the render frame.",
 		},
 		RelatedCodes: []string{ErrCodeDiagramAspectConflict, ErrCodeGridDiagramNarrow},
 	},

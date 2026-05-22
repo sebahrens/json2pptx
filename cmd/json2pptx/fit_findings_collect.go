@@ -545,8 +545,11 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 					// Use the post-fit Bounds (the frame the diagram is sized
 					// into at render) so preflight aspect/legibility findings
 					// match the render-time findings in collectDiagramCellFindings.
+					// CellBounds (pre-fit) is passed alongside so the aspect-
+					// mismatch finding can distinguish authoring intent from the
+					// fit-adjusted render frame.
 					findings = append(findings,
-						checkGridDiagramPreflight(cell.Diagram, slideIdx, ri, ci, rc.Bounds.CX, rc.Bounds.CY)...)
+						checkGridDiagramPreflight(cell.Diagram, slideIdx, ri, ci, rc.CellBounds.CX, rc.CellBounds.CY, rc.Bounds.CX, rc.Bounds.CY)...)
 				}
 
 				cellIdx++
@@ -568,20 +571,27 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 // one resolved grid cell carrying a diagram. Extracted from
 // checkShapeGridStructural to keep that function's cognitive complexity under
 // the gocognit lint threshold.
-func checkGridDiagramPreflight(diagram *types.DiagramSpec, slideIdx, ri, ci int, cellCX, cellCY int64) []patterns.FitFinding {
+//
+// cellCX/cellCY are the original (pre-fit) cell allocation; renderCX/renderCY are
+// the post-fit frame the diagram is sized into. Legibility and conflict checks
+// use the render frame (matching render-time findings); the aspect-mismatch check
+// receives both so its evidence can separate authoring intent from the fit frame.
+func checkGridDiagramPreflight(diagram *types.DiagramSpec, slideIdx, ri, ci int, cellCX, cellCY, renderCX, renderCY int64) []patterns.FitFinding {
 	if diagram == nil {
 		return nil
 	}
 	diagPath := slidepath.GridCellField(slideIdx, ri, ci, "diagram")
 	var findings []patterns.FitFinding
-	if f := generator.CheckDiagramInNarrowBoundsFinding(diagram, cellCX, diagPath); f != nil {
+	if f := generator.CheckDiagramInNarrowBoundsFinding(diagram, renderCX, diagPath); f != nil {
 		findings = append(findings, *f)
 	}
-	if f := generator.CheckDiagramAspectMismatchFinding(diagram, cellCX, cellCY, diagPath); f != nil {
+	cellBox := types.BoundingBox{Width: cellCX, Height: cellCY}
+	renderBox := types.BoundingBox{Width: renderCX, Height: renderCY}
+	if f := generator.CheckDiagramAspectMismatchFinding(diagram, cellBox, renderBox, diagPath); f != nil {
 		findings = append(findings, *f)
 	}
 	// Non-chart diagrams only — chart aspect issues come from svggen dry-render.
-	if f := generator.CheckDiagramAspectConflictFinding(diagram, cellCX, cellCY, diagPath); f != nil {
+	if f := generator.CheckDiagramAspectConflictFinding(diagram, renderCX, renderCY, diagPath); f != nil {
 		findings = append(findings, *f)
 	}
 	return findings

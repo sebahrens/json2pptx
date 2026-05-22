@@ -748,45 +748,59 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 }
 
 // diagramAspectMismatchThreshold is the relative aspect-ratio deviation at
-// which a diagram cell is flagged as a mismatch with its rendered SVG aspect.
-// 0.25 means the cell aspect differs from the SVG aspect by more than 25%
-// (in either direction), at which point svggen's internal preserveAspectRatio
-// behavior can cause noticeable letterboxing or stretching of chart content.
+// which a diagram is flagged as a mismatch between its authored aspect and the
+// post-fit frame it renders into. 0.25 means the render frame aspect differs
+// from the authored aspect by more than 25% (in either direction), at which
+// point svggen's internal preserveAspectRatio behavior can cause noticeable
+// letterboxing or stretching of chart content.
 const diagramAspectMismatchThreshold = 0.25
 
-// CheckDiagramAspectMismatchFinding compares a grid cell's aspect ratio against
-// the diagram's effective rendered SVG aspect ratio. The effective dimensions
-// come from the shared ResolveDiagramRenderDimensions resolver against the cell
-// bounds, so the finding stays in lockstep with what is actually drawn: when the
-// spec omits a dimension the renderer derives it from the cell, the SVG adopts
-// the cell aspect, and no mismatch is reported. Only fully explicit
-// DiagramSpec.Width/Height pin an aspect that can diverge from the cell — those
-// are the sole trigger here. Partial or derived sizing that conflicts for
-// natural-aspect diagram types is covered by diagram_aspect_conflict instead. If
-// the relative deviation exceeds 25%, it returns a structured FitFinding so
-// agents can widen/shorten the cell, switch cell.fit, or change the explicit
-// dimensions. Returns nil when dimensions are non-positive or aspects align.
-func CheckDiagramAspectMismatchFinding(diagramSpec *types.DiagramSpec, cellWidthEMU, cellHeightEMU int64, path string) *patterns.FitFinding {
-	if diagramSpec == nil || cellWidthEMU <= 0 || cellHeightEMU <= 0 {
+// CheckDiagramAspectMismatchFinding compares a diagram's authored aspect against
+// the frame it is actually rendered into. It takes two rects so the finding can
+// distinguish authoring intent from the post-fit reality:
+//
+//   - cellBounds   — the original grid cell rect (pre-fit allocation)
+//   - renderBounds — the post-fit frame the SVG is sized into and placed at
+//     (equal to cellBounds when no cell.fit adjustment applies)
+//
+// The effective render dimensions come from the shared
+// ResolveDiagramRenderDimensions resolver against renderBounds — the same bounds
+// the render path uses — so the finding stays in lockstep with what is actually
+// drawn: when the spec omits a dimension the renderer derives it from the frame,
+// the SVG adopts the frame aspect, and no mismatch is reported. Only fully
+// explicit DiagramSpec.Width/Height pin an aspect that can diverge from the
+// frame — those are the sole trigger here. Partial or derived sizing that
+// conflicts for natural-aspect diagram types is covered by
+// diagram_aspect_conflict instead.
+//
+// The flagged deviation is the authored aspect vs the post-fit render frame (the
+// actual letterbox/stretch). The finding additionally carries the original cell
+// aspect and a fit_adjusted flag as evidence, so an agent can tell apart an
+// authoring mistake (authored dims fight the cell) from a fit-driven render
+// mismatch even when cell.fit reshaped the frame. Returns nil when dimensions
+// are non-positive, the spec is not fully explicit, or the aspects align.
+func CheckDiagramAspectMismatchFinding(diagramSpec *types.DiagramSpec, cellBounds, renderBounds types.BoundingBox, path string) *patterns.FitFinding {
+	if diagramSpec == nil || renderBounds.Width <= 0 || renderBounds.Height <= 0 {
 		return nil
 	}
 
-	// Resolve the dimensions the renderer will use for this cell. Anything other
-	// than fully explicit dims adapts to the cell aspect (so any residual
-	// deviation is rounding/clamp noise, not a real letterbox); skip those.
-	cellBounds := types.BoundingBox{Width: cellWidthEMU, Height: cellHeightEMU}
-	svgW, svgH, source := ResolveDiagramRenderDimensions(diagramSpec, cellBounds)
+	// Resolve the dimensions the renderer will use for the post-fit frame.
+	// Anything other than fully explicit dims adapts to the frame aspect (so any
+	// residual deviation is rounding/clamp noise, not a real letterbox); skip those.
+	svgW, svgH, source := ResolveDiagramRenderDimensions(diagramSpec, renderBounds)
 	if source != DiagramDimsExplicit || svgW <= 0 || svgH <= 0 {
 		return nil
 	}
 
-	svgAspect := float64(svgW) / float64(svgH)
-	cellAspect := float64(cellWidthEMU) / float64(cellHeightEMU)
-	if svgAspect <= 0 || cellAspect <= 0 {
+	authoredAspect := float64(svgW) / float64(svgH)
+	renderAspect := float64(renderBounds.Width) / float64(renderBounds.Height)
+	if authoredAspect <= 0 || renderAspect <= 0 {
 		return nil
 	}
 
-	deviation := (cellAspect - svgAspect) / svgAspect
+	// The rendered mismatch is the authored aspect vs the frame the SVG is
+	// actually sized into (post-fit). This is what stretches or letterboxes.
+	deviation := (renderAspect - authoredAspect) / authoredAspect
 	if deviation < 0 {
 		deviation = -deviation
 	}
@@ -794,41 +808,72 @@ func CheckDiagramAspectMismatchFinding(diagramSpec *types.DiagramSpec, cellWidth
 		return nil
 	}
 
+	// Original (pre-fit) cell aspect, when available, lets an agent see whether a
+	// cell.fit reshaped the frame the diagram renders into.
+	cellAspect := 0.0
+	if cellBounds.Width > 0 && cellBounds.Height > 0 {
+		cellAspect = float64(cellBounds.Width) / float64(cellBounds.Height)
+	}
+	fitAdjusted := cellBounds.Width != renderBounds.Width || cellBounds.Height != renderBounds.Height
+
+	var message string
+	if fitAdjusted && cellAspect > 0 {
+		message = fmt.Sprintf(
+			"%s authored aspect %.2f (explicit %d×%d) differs from the post-fit render frame aspect %.2f by %.0f%% (cell.fit reshaped the frame from cell aspect %.2f) — chart will be stretched or letterboxed; resize the cell, change cell.fit, or change diagram.width/height",
+			diagramSpec.Type, authoredAspect, svgW, svgH, renderAspect, deviation*100, cellAspect,
+		)
+	} else {
+		message = fmt.Sprintf(
+			"%s authored aspect %.2f (explicit %d×%d) differs from the rendered cell aspect %.2f by %.0f%% — chart will be stretched or letterboxed; resize the cell, set cell.fit, or change diagram.width/height",
+			diagramSpec.Type, authoredAspect, svgW, svgH, renderAspect, deviation*100,
+		)
+	}
+
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
-			Path: path,
-			Code: patterns.ErrCodeDiagramAspectMismatch,
-			Message: fmt.Sprintf(
-				"diagram cell aspect %.2f differs from rendered %s SVG aspect %.2f by %.0f%% — chart will be stretched or letterboxed; resize the cell, set cell.fit, or set explicit diagram.width/height",
-				cellAspect,
-				diagramSpec.Type,
-				svgAspect,
-				deviation*100,
-			),
+			Path:    path,
+			Code:    patterns.ErrCodeDiagramAspectMismatch,
+			Message: message,
 			Fix: &patterns.FixSuggestion{
 				Kind: "reshape_grid",
 				Params: map[string]any{
-					"diagram_type":    diagramSpec.Type,
-					"svg_aspect":      svgAspect,
+					"diagram_type": diagramSpec.Type,
+					// Authoring intent: the explicit dims the spec pinned.
+					"authored_width":  svgW,
+					"authored_height": svgH,
+					"authored_aspect": authoredAspect,
+					// Effective render dims the resolver produced for this frame.
+					// For an explicit spec these equal the authored dims; the
+					// source records that the resolver preserved them verbatim.
+					"effective_width":  svgW,
+					"effective_height": svgH,
+					"effective_aspect": authoredAspect,
+					"dimension_source": string(source),
+					// Original (pre-fit) cell allocation.
+					"cell_width_emu":  cellBounds.Width,
+					"cell_height_emu": cellBounds.Height,
 					"cell_aspect":     cellAspect,
-					"deviation":       deviation,
-					"cell_width_emu":  cellWidthEMU,
-					"cell_height_emu": cellHeightEMU,
-					"svg_width":       svgW,
-					"svg_height":      svgH,
+					// Post-fit frame the SVG is actually sized into.
+					"render_width_emu":  renderBounds.Width,
+					"render_height_emu": renderBounds.Height,
+					"render_aspect":     renderAspect,
+					"fit_adjusted":      fitAdjusted,
+					"deviation":         deviation,
 				},
 			},
 		},
 		Action: "review",
+		// Measured is the frame the diagram is sized into (post-fit); Allowed is
+		// the effective render dims it would occupy at its authored aspect.
 		Measured: &patterns.Extent{
-			WidthEMU:  cellWidthEMU,
-			HeightEMU: cellHeightEMU,
+			WidthEMU:  renderBounds.Width,
+			HeightEMU: renderBounds.Height,
 		},
 		Allowed: &patterns.Extent{
 			WidthEMU:  int64(svgW),
 			HeightEMU: int64(svgH),
 		},
-		OverflowRatio: cellAspect / svgAspect,
+		OverflowRatio: renderAspect / authoredAspect,
 	}
 }
 

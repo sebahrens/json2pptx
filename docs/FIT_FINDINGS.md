@@ -318,16 +318,25 @@ A complex diagram (org_chart, fishbone, swot, heatmap, etc.) is placed in a grid
 **Fix kind:** `reshape_grid`
 **Emitted at:** preflight + render time
 
-A diagram with **both** explicit `DiagramSpec.Width` and `Height` has a cell aspect ratio that differs from those pinned dimensions by more than 25%. Because the explicit dimensions fix the rendered SVG aspect regardless of the cell, the chart is either stretched or letterboxed inside the cell, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or change the explicit `diagram.width` / `diagram.height` to match the cell.
+A diagram with **both** explicit `DiagramSpec.Width` and `Height` has a render-frame aspect ratio that differs from those pinned (authored) dimensions by more than 25%. Because the explicit dimensions fix the rendered SVG aspect regardless of the frame, the chart is either stretched or letterboxed, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or change the explicit `diagram.width` / `diagram.height` to match the frame.
 
-This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the cell bounds (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the cell aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) that ignore unset dimensions are covered by [`diagram_aspect_conflict`](#diagram_aspect_conflict) instead. The cell aspect used here is the **post-fit** bounds (after any `cell.fit` adjustment), matching what render emits.
+This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the render frame (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the frame aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) that ignore unset dimensions are covered by [`diagram_aspect_conflict`](#diagram_aspect_conflict) instead.
+
+**Authored vs effective evidence.** The flagged deviation is the **authored** aspect vs the **post-fit render frame** (the frame the SVG is actually sized into — what render emits). The fix params carry four independent aspect signals so an agent can tell apart an authoring mistake (authored dims fight the cell) from a fit-driven render mismatch:
+
+- `authored_width` / `authored_height` / `authored_aspect` — the explicit dimensions the spec pinned.
+- `effective_width` / `effective_height` / `effective_aspect` + `dimension_source` — the dimensions the resolver produced for the frame. For an explicit spec these equal the authored dims and `dimension_source` is `"explicit"`.
+- `cell_width_emu` / `cell_height_emu` / `cell_aspect` — the **original (pre-fit)** cell allocation.
+- `render_width_emu` / `render_height_emu` / `render_aspect` — the **post-fit** frame; `fit_adjusted` is `true` when a `cell.fit` reshaped the cell into a different frame.
+
+When `fit_adjusted` is `true`, the message additionally reports the original cell aspect so the fit's effect is visible.
 
 ```json
 {
   "path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
   "code": "diagram_aspect_mismatch",
-  "message": "diagram cell aspect 0.50 differs from rendered bar_chart SVG aspect 1.33 by 62% — chart will be stretched or letterboxed; resize the cell, set cell.fit, or set explicit diagram.width/height",
-  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "bar_chart", "svg_aspect": 1.333, "cell_aspect": 0.5, "deviation": 0.625, "cell_width_emu": 3000000, "cell_height_emu": 6000000, "svg_width": 800, "svg_height": 600 } },
+  "message": "bar_chart authored aspect 1.33 (explicit 800×600) differs from the rendered cell aspect 0.50 by 62% — chart will be stretched or letterboxed; resize the cell, set cell.fit, or change diagram.width/height",
+  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "bar_chart", "authored_width": 800, "authored_height": 600, "authored_aspect": 1.333, "effective_width": 800, "effective_height": 600, "effective_aspect": 1.333, "dimension_source": "explicit", "cell_width_emu": 3000000, "cell_height_emu": 6000000, "cell_aspect": 0.5, "render_width_emu": 3000000, "render_height_emu": 6000000, "render_aspect": 0.5, "fit_adjusted": false, "deviation": 0.625 } },
   "action": "review",
   "measured": { "width_emu": 3000000, "height_emu": 6000000 },
   "allowed": { "width_emu": 800, "height_emu": 600 },
@@ -335,7 +344,7 @@ This finding does **not** fire for diagrams with unset or single-axis (`width`-o
 }
 ```
 
-> The example above assumes the `bar_chart` carries explicit `diagram.width: 800` / `diagram.height: 600`.
+> The example above assumes the `bar_chart` carries explicit `diagram.width: 800` / `diagram.height: 600` and no `cell.fit` (so `cell_*` and `render_*` coincide). With a `cell.fit`, `render_*` reflects the post-fit frame and `fit_adjusted` is `true`. `measured` is the post-fit render frame; `allowed` is the effective render dimensions.
 
 ### `diagram_aspect_conflict`
 

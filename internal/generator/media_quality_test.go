@@ -2,6 +2,7 @@
 package generator
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -733,18 +734,25 @@ func TestCheckDiagramInNarrowBoundsFinding_NilForSimpleDiagram(t *testing.T) {
 	}
 }
 
+// emuBounds is a test helper building a types.BoundingBox from width/height EMU.
+func emuBounds(w, h int64) types.BoundingBox {
+	return types.BoundingBox{Width: w, Height: h}
+}
+
 // TestCheckDiagramAspectMismatchFinding_FlagsTallCell verifies that a diagram
 // with EXPLICIT 4:3 dimensions (800x600) inside a tall narrow cell is flagged
 // with diagram_aspect_mismatch. Explicit dims pin the rendered aspect, so the
 // mismatch with the cell is real (unlike unset dims, which adapt to the cell).
+// With no cell.fit, cell and render bounds coincide, so the evidence reports
+// fit_adjusted=false and equal cell/render aspects.
 func TestCheckDiagramAspectMismatchFinding_FlagsTallCell(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "bar_chart", Width: 800, Height: 600}
-	// Cell aspect ≈ 0.5 vs SVG aspect 4:3 ≈ 1.333 — deviation ~62% > 25%.
+	// Cell aspect ≈ 0.5 vs authored aspect 4:3 ≈ 1.333 — deviation ~62% > 25%.
 	cellW := int64(3000000)
 	cellH := int64(6000000)
 	path := "/slides/0/shape_grid/rows/0/cells/0/diagram"
 
-	f := CheckDiagramAspectMismatchFinding(spec, cellW, cellH, path)
+	f := CheckDiagramAspectMismatchFinding(spec, emuBounds(cellW, cellH), emuBounds(cellW, cellH), path)
 	if f == nil {
 		t.Fatal("expected finding for tall cell vs explicit 4:3 SVG, got nil")
 	}
@@ -758,7 +766,7 @@ func TestCheckDiagramAspectMismatchFinding_FlagsTallCell(t *testing.T) {
 		t.Errorf("Action = %q, want %q", f.Action, "review")
 	}
 	if f.Fix == nil || f.Fix.Kind != "reshape_grid" {
-		t.Error("expected Fix with kind reshape_grid")
+		t.Fatal("expected Fix with kind reshape_grid")
 	}
 	if f.Measured == nil || f.Measured.WidthEMU != cellW || f.Measured.HeightEMU != cellH {
 		t.Errorf("Measured = %+v, want WidthEMU=%d HeightEMU=%d", f.Measured, cellW, cellH)
@@ -766,62 +774,120 @@ func TestCheckDiagramAspectMismatchFinding_FlagsTallCell(t *testing.T) {
 	if !strings.Contains(f.Message, "bar_chart") {
 		t.Errorf("Message should mention diagram type, got: %s", f.Message)
 	}
+	// Evidence: authored vs effective vs cell vs render must all be present.
+	p := f.Fix.Params
+	if p["authored_width"] != 800 || p["authored_height"] != 600 {
+		t.Errorf("authored dims = %v×%v, want 800×600", p["authored_width"], p["authored_height"])
+	}
+	if p["effective_width"] != 800 || p["effective_height"] != 600 {
+		t.Errorf("effective dims = %v×%v, want 800×600", p["effective_width"], p["effective_height"])
+	}
+	if p["dimension_source"] != "explicit" {
+		t.Errorf("dimension_source = %v, want explicit", p["dimension_source"])
+	}
+	if p["cell_width_emu"] != cellW || p["render_width_emu"] != cellW {
+		t.Errorf("cell/render width = %v/%v, want both %d", p["cell_width_emu"], p["render_width_emu"], cellW)
+	}
+	if fa, ok := p["fit_adjusted"].(bool); !ok || fa {
+		t.Errorf("fit_adjusted = %v, want false (no fit applied)", p["fit_adjusted"])
+	}
+}
+
+// TestCheckDiagramAspectMismatchFinding_FitModeEvidence verifies the fit-mode
+// case: a cell.fit reshapes the original (pre-fit) cell into a different render
+// frame. The finding compares the authored aspect against the post-fit frame
+// (the actual letterbox), and the evidence distinguishes the original cell
+// aspect from the render-frame aspect with fit_adjusted=true.
+func TestCheckDiagramAspectMismatchFinding_FitModeEvidence(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "bar_chart", Width: 1600, Height: 600}
+	// Original cell is tall (3M×6M, aspect 0.5); a contain fit squares it to
+	// 3M×3M (aspect 1.0). Authored aspect ≈ 2.67 vs render 1.0 → ~63% > 25%.
+	cell := emuBounds(3000000, 6000000)
+	render := emuBounds(3000000, 3000000)
+	path := "p"
+
+	f := CheckDiagramAspectMismatchFinding(spec, cell, render, path)
+	if f == nil {
+		t.Fatal("expected finding for authored 8:3 spec in square render frame, got nil")
+	}
+	p := f.Fix.Params
+	if fa, ok := p["fit_adjusted"].(bool); !ok || !fa {
+		t.Errorf("fit_adjusted = %v, want true (cell.fit reshaped the frame)", p["fit_adjusted"])
+	}
+	cellAspect, _ := p["cell_aspect"].(float64)
+	renderAspect, _ := p["render_aspect"].(float64)
+	if cellAspect <= 0 || renderAspect <= 0 || math.Abs(cellAspect-renderAspect) < 1e-9 {
+		t.Errorf("cell_aspect (%.3f) and render_aspect (%.3f) should differ under fit", cellAspect, renderAspect)
+	}
+	if p["cell_width_emu"] != int64(3000000) || p["render_height_emu"] != int64(3000000) {
+		t.Errorf("expected pre-fit cell width 3000000 and post-fit render height 3000000, got cell_width=%v render_height=%v",
+			p["cell_width_emu"], p["render_height_emu"])
+	}
+	// Measured is the post-fit render frame, not the original cell.
+	if f.Measured == nil || f.Measured.HeightEMU != 3000000 {
+		t.Errorf("Measured height = %+v, want post-fit 3000000", f.Measured)
+	}
+	if !strings.Contains(f.Message, "cell.fit") {
+		t.Errorf("fit-adjusted message should mention cell.fit, got: %s", f.Message)
+	}
 }
 
 // TestCheckDiagramAspectMismatchFinding_NilForUnsetSpec verifies that an unset
 // diagram spec never triggers the mismatch finding: the renderer derives the
-// dimensions from the cell, so the SVG adopts the cell aspect regardless of how
-// extreme the cell is. This is the regression for the stale 800x600 finding
-// that fired for grid diagrams that actually render at the cell aspect.
+// dimensions from the render frame, so the SVG adopts the frame aspect regardless
+// of how extreme it is. This is the regression for the stale 800x600 finding
+// that fired for grid diagrams that actually render at the frame aspect.
 func TestCheckDiagramAspectMismatchFinding_NilForUnsetSpec(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "bar_chart"}
 	path := "/slides/0/shape_grid/rows/0/cells/0/diagram"
 
-	// A tall narrow cell that would have flagged against the 4:3 default.
-	if f := CheckDiagramAspectMismatchFinding(spec, 3000000, 6000000, path); f != nil {
-		t.Errorf("expected nil for unset spec in tall cell (adopts cell aspect), got: %+v", f)
+	// A tall narrow frame that would have flagged against the 4:3 default.
+	if f := CheckDiagramAspectMismatchFinding(spec, emuBounds(3000000, 6000000), emuBounds(3000000, 6000000), path); f != nil {
+		t.Errorf("expected nil for unset spec in tall frame (adopts frame aspect), got: %+v", f)
 	}
-	// A wide shallow cell — same expectation.
-	if f := CheckDiagramAspectMismatchFinding(spec, 9000000, 1500000, path); f != nil {
-		t.Errorf("expected nil for unset spec in wide cell (adopts cell aspect), got: %+v", f)
+	// A wide shallow frame — same expectation.
+	if f := CheckDiagramAspectMismatchFinding(spec, emuBounds(9000000, 1500000), emuBounds(9000000, 1500000), path); f != nil {
+		t.Errorf("expected nil for unset spec in wide frame (adopts frame aspect), got: %+v", f)
 	}
-	// A 4:3 cell — within range either way.
-	if f := CheckDiagramAspectMismatchFinding(spec, 5333333, 4000000, path); f != nil {
-		t.Errorf("expected nil for unset spec in 4:3 cell, got: %+v", f)
+	// A 4:3 frame — within range either way.
+	if f := CheckDiagramAspectMismatchFinding(spec, emuBounds(5333333, 4000000), emuBounds(5333333, 4000000), path); f != nil {
+		t.Errorf("expected nil for unset spec in 4:3 frame, got: %+v", f)
+	}
+	// Even when a fit reshaped the frame, an unset spec adapts and is silent.
+	if f := CheckDiagramAspectMismatchFinding(spec, emuBounds(3000000, 6000000), emuBounds(3000000, 3000000), path); f != nil {
+		t.Errorf("expected nil for unset spec under fit (adapts to frame), got: %+v", f)
 	}
 }
 
 // TestCheckDiagramAspectMismatchFinding_NilForPartialSpec verifies that a spec
-// with only one explicit dimension adapts to the cell aspect (the resolver
-// derives the other axis from the cell), so no mismatch is reported.
+// with only one explicit dimension adapts to the frame aspect (the resolver
+// derives the other axis from the frame), so no mismatch is reported.
 func TestCheckDiagramAspectMismatchFinding_NilForPartialSpec(t *testing.T) {
 	path := "p"
 	widthOnly := &types.DiagramSpec{Type: "bar_chart", Width: 600}
-	if f := CheckDiagramAspectMismatchFinding(widthOnly, 3000000, 6000000, path); f != nil {
-		t.Errorf("expected nil for width-only spec (adapts to cell), got: %+v", f)
+	if f := CheckDiagramAspectMismatchFinding(widthOnly, emuBounds(3000000, 6000000), emuBounds(3000000, 6000000), path); f != nil {
+		t.Errorf("expected nil for width-only spec (adapts to frame), got: %+v", f)
 	}
 	heightOnly := &types.DiagramSpec{Type: "bar_chart", Height: 400}
-	if f := CheckDiagramAspectMismatchFinding(heightOnly, 9000000, 1500000, path); f != nil {
-		t.Errorf("expected nil for height-only spec (adapts to cell), got: %+v", f)
+	if f := CheckDiagramAspectMismatchFinding(heightOnly, emuBounds(9000000, 1500000), emuBounds(9000000, 1500000), path); f != nil {
+		t.Errorf("expected nil for height-only spec (adapts to frame), got: %+v", f)
 	}
 }
 
 // TestCheckDiagramAspectMismatchFinding_HonorsExplicitSpecDims verifies that
 // explicit DiagramSpec.Width/Height supersede the defaults for aspect
-// computation, so a square spec matched to a square cell does not trigger.
+// computation, so a square spec matched to a square frame does not trigger.
 func TestCheckDiagramAspectMismatchFinding_HonorsExplicitSpecDims(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "pie_chart", Width: 600, Height: 600}
-	cellW := int64(4000000)
-	cellH := int64(4000000) // square cell, matches square spec
-	if f := CheckDiagramAspectMismatchFinding(spec, cellW, cellH, "p"); f != nil {
+	square := emuBounds(4000000, 4000000) // square frame, matches square spec
+	if f := CheckDiagramAspectMismatchFinding(spec, square, square, "p"); f != nil {
 		t.Errorf("expected nil for matching explicit 1:1 spec, got: %+v", f)
 	}
 
-	// Same square spec in a 16:9 cell should flag (deviation > 25%).
-	cellW = int64(8000000)
-	cellH = int64(4500000)
-	if f := CheckDiagramAspectMismatchFinding(spec, cellW, cellH, "p"); f == nil {
-		t.Error("expected finding for square spec in wide cell, got nil")
+	// Same square spec in a 16:9 frame should flag (deviation > 25%).
+	wide := emuBounds(8000000, 4500000)
+	if f := CheckDiagramAspectMismatchFinding(spec, wide, wide, "p"); f == nil {
+		t.Error("expected finding for square spec in wide frame, got nil")
 	}
 }
 
@@ -829,13 +895,13 @@ func TestCheckDiagramAspectMismatchFinding_HonorsExplicitSpecDims(t *testing.T) 
 // non-positive dimensions are handled gracefully.
 func TestCheckDiagramAspectMismatchFinding_NilOnInvalidDims(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "bar_chart"}
-	if f := CheckDiagramAspectMismatchFinding(spec, 0, 1000, "p"); f != nil {
-		t.Errorf("expected nil for zero width, got: %+v", f)
+	if f := CheckDiagramAspectMismatchFinding(spec, emuBounds(0, 1000), emuBounds(0, 1000), "p"); f != nil {
+		t.Errorf("expected nil for zero render width, got: %+v", f)
 	}
-	if f := CheckDiagramAspectMismatchFinding(spec, 1000, 0, "p"); f != nil {
-		t.Errorf("expected nil for zero height, got: %+v", f)
+	if f := CheckDiagramAspectMismatchFinding(spec, emuBounds(1000, 0), emuBounds(1000, 0), "p"); f != nil {
+		t.Errorf("expected nil for zero render height, got: %+v", f)
 	}
-	if f := CheckDiagramAspectMismatchFinding(nil, 1000, 1000, "p"); f != nil {
+	if f := CheckDiagramAspectMismatchFinding(nil, emuBounds(1000, 1000), emuBounds(1000, 1000), "p"); f != nil {
 		t.Errorf("expected nil for nil spec, got: %+v", f)
 	}
 }
