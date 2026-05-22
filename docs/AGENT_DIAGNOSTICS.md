@@ -193,6 +193,27 @@ are namespaced `FIT` for content overflow (`text_overflow`, `text_truncation`) a
 `RENDER` for every other defect, and the first `suggested_fix` becomes the
 finding's remediation.
 
+A slide whose inspection *failed* — an API/transport/decode error or malformed
+model output in `mode: "vision"`, a vision deadline (`VISION_TIMEOUT`), or an
+undecodable image in `mode: "heuristic"` — is no longer silently dropped. The
+per-slide `SlideResult.error` projects to an **error-severity** finding
+(`RENDER.VISION_INSPECTION_FAILED`, `RENDER.VISION_TIMEOUT`, or
+`RENDER.HEURISTIC_INSPECTION_FAILED`), with the failure mode in
+`evidence.source` (`vision`/`heuristic`) and the source image in
+`evidence.image_path` when known. Because the finding is error-severity,
+`findings.ok` is false even when no visual *defects* were returned. Two new
+top-level fields make the clean-vs-failed distinction explicit without scanning
+findings: `failed_slide_count` (slides whose inspection failed) and
+`inspection_status` (`complete` / `partial` / `failed`). An agent must never read
+an empty findings list as a clean deck when `inspection_status != "complete"`.
+
+The `auto_repair` / `make_deck` `visual_qa` phase carries the same signal: each
+`passes[]` entry adds `failed_slide_count` and `inspection_status`, and the
+`visual_qa` block adds `inspection_complete` (false when any pass had inspection
+failures) and a roll-up `failed_slide_count`. When an inspected pass fails, the
+loop records a `notes[]` entry and does not treat zero actionable findings as a
+clean convergence.
+
 HTTP serve mode has migrated its one diagnostic-bearing endpoint: pattern
 validation (`POST /api/v1/patterns/{name}/validate` and `/expand`) now emits a
 `FindingEnvelope` as the response body — stamped with `subcommand:

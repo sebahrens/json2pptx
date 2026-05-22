@@ -284,6 +284,33 @@ func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
 			if p.RepairsApplied == nil {
 				t.Errorf("pass %d: repairs_applied must be a non-nil array", p.Pass)
 			}
+			// Each pass must classify its inspection so a failed inspection is
+			// distinguishable from a clean one.
+			switch p.InspectionStatus {
+			case inspectionStatusComplete, inspectionStatusPartial, inspectionStatusFailed:
+			default:
+				t.Errorf("pass %d: inspection_status = %q, want complete/partial/failed", p.Pass, p.InspectionStatus)
+			}
+			if p.FailedSlideCount < 0 {
+				t.Errorf("pass %d: failed_slide_count = %d, want >= 0", p.Pass, p.FailedSlideCount)
+			}
+		}
+		// A run with no per-slide inspection failures reports inspection_complete
+		// and a zero failed count; a run with failures records both and explains
+		// the inconclusive result in notes[].
+		failures := 0
+		for _, p := range vqa.Passes {
+			failures += p.FailedSlideCount
+		}
+		if failures == 0 {
+			if !vqa.InspectionComplete {
+				t.Error("inspection_complete should be true when no slide inspection failed")
+			}
+			if vqa.FailedSlideCount != 0 {
+				t.Errorf("failed_slide_count = %d, want 0 on a fully successful inspection", vqa.FailedSlideCount)
+			}
+		} else if vqa.InspectionComplete {
+			t.Error("inspection_complete should be false when a pass had inspection failures")
 		}
 	}
 }

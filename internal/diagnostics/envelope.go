@@ -504,6 +504,8 @@ var classifyMap = func() map[string]Namespace {
 		CodeOutputValidationError, CodeOverlayFailed, CodeAssetTooLarge, CodeURLFetchFailed,
 		CodeURLResolverInit, CodeSVGInvalidRoot, CodeSVGUnsafeXML, CodeSVGParseError,
 		CodeSettingsError, CodeSettingsWriteDisabled, CodeInvalidImage, CodeInspectDisabled,
+		CodeVisionTimeout, CodeVisionInspectionFailed, CodeHeuristicInspectionFailed,
+		CodeLibreOfficeTimeout, CodeImageMagickTimeout,
 		CodeInternal)
 	return m
 }()

@@ -4,6 +4,37 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.54.0 (2026-05-22)
+
+### Added
+
+- **Visual-QA inspection failures surface as diagnostics.** A slide whose visual
+  inspection *failed* (an API/transport/decode error or malformed model output
+  in `mode: "vision"`, a vision deadline, or an undecodable image in
+  `mode: "heuristic"`) was stored only in `SlideResult.error` and dropped by the
+  finding projection, so a run where every vision call failed looked like a clean
+  inspection with zero findings. `inspect_slide_images` now:
+  - Projects each failed slide to an **error-severity** finding —
+    `RENDER.VISION_INSPECTION_FAILED`, `RENDER.VISION_TIMEOUT`, or
+    `RENDER.HEURISTIC_INSPECTION_FAILED` — carrying the failure mode in
+    `evidence.source` and the image in `evidence.image_path`. Because it is
+    error-severity, `findings.ok` is now `false` whenever inspection failed, even
+    if no visual *defects* were returned.
+  - Adds top-level **`failed_slide_count`** (integer) and **`inspection_status`**
+    (`complete` | `partial` | `failed`) so an agent can distinguish a clean
+    inspection from a backend failure without scanning findings. Both are
+    required fields.
+- **`auto_repair` / `make_deck` `visual_qa` phase records failed inspections.**
+  Each `passes[]` entry adds `failed_slide_count` + `inspection_status`, and the
+  `visual_qa` block adds `inspection_complete` (false when any pass had inspection
+  failures) and a roll-up `failed_slide_count`. A pass whose inspection failed no
+  longer counts its zero actionable findings as a clean convergence: it records a
+  `notes[]` entry flagging the result as inconclusive.
+- New finding codes `VISION_INSPECTION_FAILED` and `HEURISTIC_INSPECTION_FAILED`
+  (both resolvable via `describe_finding`). The existing `VISION_TIMEOUT` and the
+  `LIBREOFFICE_TIMEOUT` / `IMAGEMAGICK_TIMEOUT` render codes are now classified
+  into the `RENDER` namespace in the finding envelope.
+
 ## 4.53.0 (2026-05-22)
 
 ### Added

@@ -99,6 +99,18 @@ const (
 	CodeInvalidImage    Code = "INVALID_IMAGE"
 	CodeInspectDisabled Code = "INSPECT_DISABLED"
 	CodeVisionTimeout   Code = "VISION_TIMEOUT"
+
+	// CodeVisionInspectionFailed marks a per-slide vision inspection that did not
+	// produce findings because the Claude vision backend failed: an API error
+	// (non-200 status), a transport/decode error, or malformed model output. It
+	// is distinct from a clean inspection with zero defects, so an agent never
+	// mistakes a backend failure for a passing slide.
+	CodeVisionInspectionFailed Code = "VISION_INSPECTION_FAILED"
+
+	// CodeHeuristicInspectionFailed marks a per-slide heuristic inspection that
+	// could not run (e.g. the image bytes failed to decode). It stays clearly
+	// labeled heuristic/degraded so it is never mixed with vision-backed defects.
+	CodeHeuristicInspectionFailed Code = "HEURISTIC_INSPECTION_FAILED"
 )
 
 // Internal family — unexpected server-side failures.
@@ -178,6 +190,8 @@ func AllCodes() []Code {
 		CodeInvalidImage,
 		CodeInspectDisabled,
 		CodeVisionTimeout,
+		CodeVisionInspectionFailed,
+		CodeHeuristicInspectionFailed,
 		// Internal
 		CodeInternal,
 	}

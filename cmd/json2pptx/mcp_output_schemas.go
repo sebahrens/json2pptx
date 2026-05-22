@@ -673,9 +673,11 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
     "total_p2":     {"type": "integer"},
     "total_p3":     {"type": "integer"},
     "total_issues": {"type": "integer"},
+    "failed_slide_count": {"type": "integer", "description": "Number of slides whose inspection FAILED (an API/transport/decode error in vision mode, or an undecodable image in heuristic mode) rather than completing. >0 means an empty findings list does NOT prove a clean deck."},
+    "inspection_status": {"type": "string", "enum": ["complete", "partial", "failed"], "description": "complete = every slide inspected without error; partial = some slides failed; failed = every slide failed. Each failed slide also emits an error-severity finding (VISION_INSPECTION_FAILED / VISION_TIMEOUT / HEURISTIC_INSPECTION_FAILED) so findings.ok is false — distinguishing a backend failure from a clean inspection even when no visual defects were returned."},
     "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["slide_count", "results", "total_issues", "findings"]
+  "required": ["slide_count", "results", "total_issues", "failed_slide_count", "inspection_status", "findings"]
 }`)
 
 // --- score_deck ---
@@ -1110,6 +1112,8 @@ const visualQAResultSchema = `{
         "requested":       {"type": "boolean"},
         "artifact_consistent": {"type": "boolean", "description": "True when final_presentation matches the PPTX at the response path. Each visual-repair pass is staged: applied, re-rendered, and rolled back in memory if its re-render fails, so JSON and PPTX always advance together. False ONLY in the defensive case where a re-render failed AND the in-memory repairs could not be reverted — final_presentation then reflects changes the PPTX does not, a blocking notes[] entry explains it, and the artifact must not be shipped."},
         "inspection_mode": {"type": "string", "enum": ["vision", "heuristic", "skipped"], "description": "vision = Claude vision API (ANTHROPIC_API_KEY set); heuristic = pure-Go fallback (no key); skipped = render tools unavailable, no inspection ran."},
+        "inspection_complete": {"type": "boolean", "description": "False when any inspected pass had per-slide inspection failures (an API/transport/decode error in vision mode, or an undecodable thumbnail in heuristic mode). When false, an empty visual_findings list does NOT mean the deck is clean — visual QA is inconclusive and a notes[] entry explains it."},
+        "failed_slide_count": {"type": "integer", "description": "Slides whose inspection failed in the last inspected pass. 0 on a fully successful or skipped inspection."},
         "model":           {"type": "string", "description": "Resolved vision model (empty in heuristic/skipped modes)."},
         "requirements": {
           "type": "object",
@@ -1133,6 +1137,8 @@ const visualQAResultSchema = `{
             "properties": {
               "pass":            {"type": "integer"},
               "inspection_mode": {"type": "string"},
+              "failed_slide_count": {"type": "integer", "description": "Slides whose inspection failed during this pass (SlideResult.Error set)."},
+              "inspection_status": {"type": "string", "enum": ["complete", "partial", "failed"], "description": "complete = every slide inspected without error; partial = some failed; failed = every slide failed. When not complete, an empty visual_findings list reflects failed inspection, not a clean deck."},
               "thumbnail_paths": {"type": "array", "items": {"type": "string"}, "description": "Stable on-disk paths to the inspected thumbnails."},
               "visual_findings": {"type": "array", "items": {"type": "object"}, "description": "All visualqa.Finding objects (every severity), in slide order."},
               "proposed_repairs": {
@@ -1141,7 +1147,7 @@ const visualQAResultSchema = `{
               },
               "repairs_applied": {"type": "array", "items": {"type": "string"}}
             },
-            "required": ["pass", "inspection_mode", "thumbnail_paths", "visual_findings", "proposed_repairs", "repairs_applied"]
+            "required": ["pass", "inspection_mode", "failed_slide_count", "inspection_status", "thumbnail_paths", "visual_findings", "proposed_repairs", "repairs_applied"]
           }
         },
         "palette_audit": {
@@ -1155,9 +1161,9 @@ const visualQAResultSchema = `{
           },
           "required": ["available", "violations", "findings"]
         },
-        "notes": {"type": "array", "items": {"type": "string"}, "description": "Human-readable explanations for transparent fallbacks (missing render tools, missing API key, re-render failures, rolled-back repairs)."}
+        "notes": {"type": "array", "items": {"type": "string"}, "description": "Human-readable explanations for transparent fallbacks (missing render tools, missing API key, re-render failures, rolled-back repairs, inconclusive inspections)."}
       },
-      "required": ["requested", "artifact_consistent", "inspection_mode", "requirements", "passes"]
+      "required": ["requested", "artifact_consistent", "inspection_mode", "inspection_complete", "failed_slide_count", "requirements", "passes"]
     }`
 
 // renderEvidenceSchema documents the render_evidence block emitted by

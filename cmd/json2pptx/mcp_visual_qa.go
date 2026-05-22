@@ -140,11 +140,21 @@ type visualQAResult struct {
 	// InspectionMode reports which backend actually ran: "vision" (Claude vision
 	// API), "heuristic" (pure-Go fallback, no API key), or "skipped" (render
 	// tools unavailable — no inspection happened at all).
-	InspectionMode string                `json:"inspection_mode"`
-	Model          string                `json:"model,omitempty"`
-	Requirements   visualQARequirements  `json:"requirements"`
-	Passes         []visualQAPassEntry   `json:"passes"`
-	PaletteAudit   *visualQAPaletteAudit `json:"palette_audit,omitempty"`
+	InspectionMode string `json:"inspection_mode"`
+	// InspectionComplete is false when any inspected pass had per-slide
+	// inspection failures (an API/transport/decode error in vision mode, or an
+	// undecodable thumbnail in heuristic mode). When false, an empty
+	// visual_findings list does NOT mean the deck is visually clean — the
+	// inspection itself did not fully succeed, so visual QA is inconclusive.
+	InspectionComplete bool `json:"inspection_complete"`
+	// FailedSlideCount is the number of slides whose inspection failed in the
+	// last pass that ran inspection. It is 0 on a fully successful inspection and
+	// on a skipped phase.
+	FailedSlideCount int                   `json:"failed_slide_count"`
+	Model            string                `json:"model,omitempty"`
+	Requirements     visualQARequirements  `json:"requirements"`
+	Passes           []visualQAPassEntry   `json:"passes"`
+	PaletteAudit     *visualQAPaletteAudit `json:"palette_audit,omitempty"`
 	// Notes carries human-readable explanations for transparent fallbacks
 	// (missing render tools, missing API key, re-render failures).
 	Notes []string `json:"notes,omitempty"`
@@ -165,12 +175,18 @@ type visualQARequirements struct {
 
 // visualQAPassEntry records one render→inspect→repair iteration.
 type visualQAPassEntry struct {
-	Pass            int                      `json:"pass"`
-	InspectionMode  string                   `json:"inspection_mode"`
-	ThumbnailPaths  []string                 `json:"thumbnail_paths"`
-	VisualFindings  []visualqa.Finding       `json:"visual_findings"`
-	ProposedRepairs []visualQAProposedRepair `json:"proposed_repairs"`
-	RepairsApplied  []string                 `json:"repairs_applied"`
+	Pass           int    `json:"pass"`
+	InspectionMode string `json:"inspection_mode"`
+	// FailedSlideCount is the number of slides whose inspection failed during
+	// this pass (SlideResult.Error set). InspectionStatus classifies the pass as
+	// "complete", "partial", or "failed". When not "complete", an empty
+	// visual_findings list reflects failed inspection, not a clean deck.
+	FailedSlideCount int                      `json:"failed_slide_count"`
+	InspectionStatus string                   `json:"inspection_status"`
+	ThumbnailPaths   []string                 `json:"thumbnail_paths"`
+	VisualFindings   []visualqa.Finding       `json:"visual_findings"`
+	ProposedRepairs  []visualQAProposedRepair `json:"proposed_repairs"`
+	RepairsApplied   []string                 `json:"repairs_applied"`
 }
 
 // visualQAProposedRepair is one ranked directive proposed for a slide from a
@@ -236,6 +252,7 @@ func (mc *mcpConfig) runVisualQALoop(
 	result := &visualQAResult{
 		Requested:          true,
 		ArtifactConsistent: true,
+		InspectionComplete: true,
 		Requirements:       buildVisualQARequirements(cfg),
 		Passes:             []visualQAPassEntry{},
 	}
@@ -262,17 +279,37 @@ func (mc *mcpConfig) runVisualQALoop(
 		report, passMode := mc.inspectVisualQA(ctx, images, cfg.Model)
 		mode = passMode
 
+		failedSlides, inspectionStatus := inspectionFailureStats(report)
 		entry := visualQAPassEntry{
-			Pass:            pass,
-			InspectionMode:  passMode,
-			ThumbnailPaths:  paths,
-			VisualFindings:  flattenVisualFindings(report),
-			ProposedRepairs: []visualQAProposedRepair{},
-			RepairsApplied:  []string{},
+			Pass:             pass,
+			InspectionMode:   passMode,
+			FailedSlideCount: failedSlides,
+			InspectionStatus: inspectionStatus,
+			ThumbnailPaths:   paths,
+			VisualFindings:   flattenVisualFindings(report),
+			ProposedRepairs:  []visualQAProposedRepair{},
+			RepairsApplied:   []string{},
+		}
+
+		// A pass with inspection failures cannot vouch for the slides it failed to
+		// inspect: mark the whole phase incomplete and record the most recent
+		// failure count so an empty visual_findings list is never read as a clean
+		// deck.
+		if failedSlides > 0 {
+			result.InspectionComplete = false
+			result.FailedSlideCount = failedSlides
 		}
 
 		actionable := actionableVisualFindings(entry.VisualFindings)
 		if len(actionable) == 0 {
+			// Zero actionable findings from a pass whose inspection failed reflects
+			// the failure, not a clean deck — surface it explicitly so the loop is
+			// not mistaken for a successful convergence.
+			if failedSlides > 0 {
+				result.Notes = append(result.Notes, fmt.Sprintf(
+					"visual_qa pass %d: inspection %s for %d/%d slide(s); zero actionable findings here reflects failed inspection, not a clean deck — treat visual QA as inconclusive (see VISION_INSPECTION_FAILED / HEURISTIC_INSPECTION_FAILED).",
+					pass, inspectionStatus, failedSlides, len(report.Results)))
+			}
 			result.Passes = append(result.Passes, entry)
 			break
 		}

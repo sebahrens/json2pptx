@@ -53,6 +53,13 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// auto_repair / make_deck responses — response fields only, not tool names,
 	// PresentationInput fields, or the Fix.Kind vocabulary, so the hash is again
 	// unchanged.
+	// 4.54.0 projected visual-QA inspection failures into findings and added
+	// failed_slide_count / inspection_status (inspect_slide_images) plus
+	// inspection_complete / failed_slide_count / per-pass inspection_status
+	// (auto_repair / make_deck visual_qa), plus the VISION_INSPECTION_FAILED /
+	// HEURISTIC_INSPECTION_FAILED finding codes — response fields and finding
+	// codes only, not tool names, PresentationInput fields, or the Fix.Kind
+	// vocabulary, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

@@ -8,12 +8,15 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/visualqa"
 )
 
 // TestHandleInspectSlideImages_MissingArg ensures the handler rejects a call
@@ -250,6 +253,241 @@ func TestInspectSlideImages_FindingsEnvelopeShape(t *testing.T) {
 	}
 }
 
+// TestInspectionFailureStats classifies clean / partial / fully-failed reports.
+func TestInspectionFailureStats(t *testing.T) {
+	tests := []struct {
+		name       string
+		report     *visualqa.Report
+		wantFailed int
+		wantStatus string
+	}{
+		{"nil report", nil, 0, inspectionStatusComplete},
+		{"empty results", &visualqa.Report{}, 0, inspectionStatusComplete},
+		{
+			name: "all clean",
+			report: &visualqa.Report{Results: []visualqa.SlideResult{
+				{SlideIndex: 0}, {SlideIndex: 1},
+			}},
+			wantFailed: 0, wantStatus: inspectionStatusComplete,
+		},
+		{
+			name: "partial failure",
+			report: &visualqa.Report{Results: []visualqa.SlideResult{
+				{SlideIndex: 0, Error: "API returned 500: boom"}, {SlideIndex: 1},
+			}},
+			wantFailed: 1, wantStatus: inspectionStatusPartial,
+		},
+		{
+			name: "all failed",
+			report: &visualqa.Report{Results: []visualqa.SlideResult{
+				{SlideIndex: 0, Error: "API returned 500: boom"},
+				{SlideIndex: 1, Error: "unmarshal response: bad json"},
+			}},
+			wantFailed: 2, wantStatus: inspectionStatusFailed,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			failed, status := inspectionFailureStats(tc.report)
+			if failed != tc.wantFailed {
+				t.Errorf("failed = %d, want %d", failed, tc.wantFailed)
+			}
+			if status != tc.wantStatus {
+				t.Errorf("status = %q, want %q", status, tc.wantStatus)
+			}
+		})
+	}
+}
+
+// TestDiagnosticsFromVisualQAReport_ProjectsSlideErrors verifies that a failed
+// per-slide inspection projects to an error-severity diagnostic — so an empty
+// findings list can never masquerade as a clean inspection — and that the
+// vision/timeout/heuristic failure modes get distinct codes and a source label.
+func TestDiagnosticsFromVisualQAReport_ProjectsSlideErrors(t *testing.T) {
+	report := &visualqa.Report{
+		Mode: "vision",
+		Results: []visualqa.SlideResult{
+			{SlideIndex: 0, SlideType: "title", Error: "API returned 500: internal error"},
+			{SlideIndex: 1, SlideType: "content", Error: visualqa.VisionTimeoutCode + ": vision inspection of slide 1 timed out"},
+			{SlideIndex: 2, SlideType: "chart", Findings: []visualqa.Finding{
+				{SlideIndex: 2, Severity: visualqa.SeverityP1, Category: "text_overflow", Description: "overflow"},
+			}},
+		},
+	}
+	pathByIndex := map[int]string{0: "/tmp/slide-0.png"}
+
+	ds := diagnosticsFromVisualQAReport(report, pathByIndex)
+
+	// 2 error diagnostics + 1 finding diagnostic, in report order.
+	if len(ds) != 3 {
+		t.Fatalf("got %d diagnostics, want 3: %+v", len(ds), ds)
+	}
+	if ds[0].Code != diagnostics.CodeVisionInspectionFailed {
+		t.Errorf("slide 0 code = %q, want %q", ds[0].Code, diagnostics.CodeVisionInspectionFailed)
+	}
+	if ds[0].Severity != diagnostics.SeverityError {
+		t.Errorf("slide 0 severity = %q, want error", ds[0].Severity)
+	}
+	if ds[0].Details["source"] != "vision" {
+		t.Errorf("slide 0 source = %v, want vision", ds[0].Details["source"])
+	}
+	if ds[0].Details["image_path"] != "/tmp/slide-0.png" {
+		t.Errorf("slide 0 image_path = %v, want /tmp/slide-0.png", ds[0].Details["image_path"])
+	}
+	if ds[0].Path != "slides[0]" {
+		t.Errorf("slide 0 path = %q, want slides[0]", ds[0].Path)
+	}
+	if ds[1].Code != diagnostics.CodeVisionTimeout {
+		t.Errorf("slide 1 code = %q, want %q", ds[1].Code, diagnostics.CodeVisionTimeout)
+	}
+	// The clean slide's finding is still projected (not an error code).
+	if ds[2].Code == diagnostics.CodeVisionInspectionFailed || ds[2].Code == diagnostics.CodeVisionTimeout {
+		t.Errorf("slide 2 finding should not be an inspection-failure code, got %q", ds[2].Code)
+	}
+
+	// findings.ok must be false: a backend failure is not a clean inspection.
+	if !diagnostics.HasErrors(ds) {
+		t.Error("expected HasErrors(ds) = true so findings.ok is false")
+	}
+}
+
+// TestDiagnosticsFromVisualQAReport_HeuristicDecodeFailure verifies a heuristic
+// decode failure stays clearly labeled heuristic/degraded, with its own code.
+func TestDiagnosticsFromVisualQAReport_HeuristicDecodeFailure(t *testing.T) {
+	report := &visualqa.Report{
+		Mode: "heuristic",
+		Results: []visualqa.SlideResult{
+			{SlideIndex: 0, SlideType: "content", Error: "decode image: image: unknown format"},
+		},
+	}
+	ds := diagnosticsFromVisualQAReport(report, nil)
+	if len(ds) != 1 {
+		t.Fatalf("got %d diagnostics, want 1", len(ds))
+	}
+	if ds[0].Code != diagnostics.CodeHeuristicInspectionFailed {
+		t.Errorf("code = %q, want %q", ds[0].Code, diagnostics.CodeHeuristicInspectionFailed)
+	}
+	if ds[0].Details["source"] != "heuristic" {
+		t.Errorf("source = %v, want heuristic", ds[0].Details["source"])
+	}
+	if ds[0].Severity != diagnostics.SeverityError {
+		t.Errorf("severity = %q, want error", ds[0].Severity)
+	}
+}
+
+// TestInspectProjection_VisionAPIFailure drives the real vision agent against a
+// mock server returning HTTP 500, then projects the report — covering the
+// API-failure path end to end from transport error to error-severity finding.
+func TestInspectProjection_VisionAPIFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"overloaded"}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	agent, err := visualqa.NewAgent(visualqa.WithAPIURL(srv.URL), visualqa.WithParallelism(1))
+	if err != nil {
+		t.Fatalf("NewAgent: %v", err)
+	}
+	report := agent.InspectAll(context.Background(), []visualqa.SlideImage{
+		{Info: visualqa.SlideInfo{Index: 0, Type: "title"}, Data: []byte{0xFF, 0xD8}},
+	})
+	report.Mode = "vision"
+
+	failed, status := inspectionFailureStats(report)
+	if failed != 1 || status != inspectionStatusFailed {
+		t.Fatalf("stats = (%d, %q), want (1, failed)", failed, status)
+	}
+	ds := diagnosticsFromVisualQAReport(report, nil)
+	if len(ds) != 1 || ds[0].Code != diagnostics.CodeVisionInspectionFailed {
+		t.Fatalf("diagnostics = %+v, want one VISION_INSPECTION_FAILED", ds)
+	}
+	if !diagnostics.HasErrors(ds) {
+		t.Error("API failure must make findings.ok false")
+	}
+}
+
+// TestInspectProjection_VisionMalformedResponse drives the agent against a mock
+// server returning HTTP 200 with a non-JSON body, exercising the decode-error
+// branch (malformed model output) of the inspection-failure projection.
+func TestInspectProjection_VisionMalformedResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("this is not json"))
+	}))
+	defer srv.Close()
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	agent, err := visualqa.NewAgent(visualqa.WithAPIURL(srv.URL), visualqa.WithParallelism(1))
+	if err != nil {
+		t.Fatalf("NewAgent: %v", err)
+	}
+	report := agent.InspectAll(context.Background(), []visualqa.SlideImage{
+		{Info: visualqa.SlideInfo{Index: 0, Type: "title"}, Data: []byte{0xFF, 0xD8}},
+	})
+	report.Mode = "vision"
+
+	ds := diagnosticsFromVisualQAReport(report, nil)
+	if len(ds) != 1 || ds[0].Code != diagnostics.CodeVisionInspectionFailed {
+		t.Fatalf("diagnostics = %+v, want one VISION_INSPECTION_FAILED", ds)
+	}
+}
+
+// TestHandleInspectSlideImages_HeuristicDecodeFailure verifies the full handler
+// surface: a slide image that cannot be decoded in heuristic mode reports
+// failed_slide_count/inspection_status and a non-ok findings envelope, so a
+// failed inspection is never reported as a clean (zero-defect) success.
+func TestHandleInspectSlideImages_HeuristicDecodeFailure(t *testing.T) {
+	saved := os.Getenv("ANTHROPIC_API_KEY")
+	_ = os.Unsetenv("ANTHROPIC_API_KEY")
+	defer func() {
+		if saved != "" {
+			_ = os.Setenv("ANTHROPIC_API_KEY", saved)
+		}
+	}()
+
+	// Valid base64 of bytes that are not a decodable image.
+	notAnImage := base64.StdEncoding.EncodeToString([]byte("definitely not a PNG or JPEG"))
+	mc := cliMCPConfig("./templates", "./out")
+	result, err := mc.handleInspectSlideImages(context.Background(), makeRequest(map[string]any{
+		"slide_images": []any{
+			map[string]any{"index": float64(0), "png_base64": notAnImage},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output inspectOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if output.FailedSlideCount != 1 {
+		t.Errorf("failed_slide_count = %d, want 1", output.FailedSlideCount)
+	}
+	if output.InspectionStatus != inspectionStatusFailed {
+		t.Errorf("inspection_status = %q, want %q", output.InspectionStatus, inspectionStatusFailed)
+	}
+	if output.Findings.OK {
+		t.Error("findings.ok must be false when the only slide failed inspection")
+	}
+	var foundFailure bool
+	for _, f := range output.Findings.Findings {
+		if strings.HasSuffix(f.Code, diagnostics.CodeHeuristicInspectionFailed) {
+			foundFailure = true
+			if f.Severity != diagnostics.SeverityError {
+				t.Errorf("inspection-failure finding severity = %q, want error", f.Severity)
+			}
+		}
+	}
+	if !foundFailure {
+		t.Errorf("expected a HEURISTIC_INSPECTION_FAILED finding, got: %s", textContent(result))
+	}
+}
+
 // makeSolidPNG returns a single-color PNG of the given dimensions.
 func makeSolidPNG(t *testing.T, w, h int, r, g, b uint8) []byte {
 	t.Helper()
@@ -337,7 +575,7 @@ func TestInspectOutputSchema_HasRequiredKeys(t *testing.T) {
 	if !ok {
 		t.Fatal("schema missing required[] array")
 	}
-	want := map[string]bool{"slide_count": false, "results": false, "total_issues": false}
+	want := map[string]bool{"slide_count": false, "results": false, "total_issues": false, "failed_slide_count": false, "inspection_status": false}
 	for _, r := range required {
 		if s, ok := r.(string); ok {
 			if _, expected := want[s]; expected {

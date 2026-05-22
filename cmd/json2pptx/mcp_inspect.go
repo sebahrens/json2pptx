@@ -106,12 +106,18 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		}
 	}
 
-	// Load image bytes + assemble visualqa.SlideImage list.
+	// Load image bytes + assemble visualqa.SlideImage list. pathByIndex carries
+	// each entry's source path (when supplied) so a per-slide inspection failure
+	// can name the offending image in its diagnostic.
 	slideImages := make([]visualqa.SlideImage, 0, len(images))
+	pathByIndex := make(map[int]string, len(images))
 	for _, entry := range images {
 		data, err := loadInspectImage(entry)
 		if err != nil {
 			return api.MCPSimpleError("INVALID_IMAGE", fmt.Sprintf("slide_images[%d]: %v", entry.Index, err)), nil
+		}
+		if entry.Path != "" {
+			pathByIndex[entry.Index] = entry.Path
 		}
 		info := visualqa.SlideInfo{
 			Index: entry.Index,
@@ -157,12 +163,15 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 	}
 	report.Template = template
 
+	failedSlides, inspectionStatus := inspectionFailureStats(report)
 	output := inspectOutput{
-		Report: report,
+		Report:           report,
+		FailedSlideCount: failedSlides,
+		InspectionStatus: inspectionStatus,
 		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 			Subcommand: "inspect_slide_images",
 			Template:   report.Template,
-		}, diagnosticsFromVisualQAReport(report)),
+		}, diagnosticsFromVisualQAReport(report, pathByIndex)),
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
@@ -180,9 +189,53 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 // under "findings", so an agent can branch on findings.ok without losing the
 // visual-QA detail. The envelope is always present; findings.findings is empty
 // when the report is clean. See docs/AGENT_DIAGNOSTICS.md.
+//
+// FailedSlideCount and InspectionStatus disambiguate a clean inspection (zero
+// findings because every slide was inspected and passed) from a backend failure
+// (zero findings because the inspection itself failed): a backend/transport/
+// decode error on a slide projects to an error-severity finding (so findings.ok
+// is false), and these two fields let an agent tell the cases apart even in
+// mode="vision" where SlideResult.Error is set but no visual defects returned.
 type inspectOutput struct {
 	*visualqa.Report
-	Findings diagnostics.FindingEnvelope `json:"findings"`
+	// FailedSlideCount is the number of slides whose inspection failed
+	// (SlideResult.Error set) rather than completing.
+	FailedSlideCount int `json:"failed_slide_count"`
+	// InspectionStatus is "complete" (no slide errors), "partial" (some slides
+	// failed), or "failed" (every slide failed). When not "complete", an empty
+	// findings list does NOT indicate a clean deck.
+	InspectionStatus string                      `json:"inspection_status"`
+	Findings         diagnostics.FindingEnvelope `json:"findings"`
+}
+
+// Inspection status values for inspectOutput.InspectionStatus and the per-pass
+// visual_qa entries.
+const (
+	inspectionStatusComplete = "complete" // every slide inspected without error
+	inspectionStatusPartial  = "partial"  // some slides failed inspection
+	inspectionStatusFailed   = "failed"   // every slide failed inspection
+)
+
+// inspectionFailureStats counts the slides whose inspection failed (their
+// SlideResult.Error is set) and classifies the run as complete/partial/failed.
+// A nil or slide-less report is reported complete with zero failures.
+func inspectionFailureStats(report *visualqa.Report) (failed int, status string) {
+	if report == nil || len(report.Results) == 0 {
+		return 0, inspectionStatusComplete
+	}
+	for _, sr := range report.Results {
+		if sr.Error != "" {
+			failed++
+		}
+	}
+	switch {
+	case failed == 0:
+		return 0, inspectionStatusComplete
+	case failed == len(report.Results):
+		return failed, inspectionStatusFailed
+	default:
+		return failed, inspectionStatusPartial
+	}
 }
 
 // visualCategoryNamespace maps a visualqa finding category onto a finding-
@@ -196,18 +249,65 @@ var visualCategoryNamespace = map[string]diagnostics.Namespace{
 
 // diagnosticsFromVisualQAReport flattens every per-slide visualqa finding into a
 // transport-neutral diagnostic, in report order (by slide, then finding), so
-// BuildEnvelope can project them into the shared FindingEnvelope shape.
-func diagnosticsFromVisualQAReport(report *visualqa.Report) []diagnostics.Diagnostic {
+// BuildEnvelope can project them into the shared FindingEnvelope shape. A slide
+// whose inspection FAILED (SlideResult.Error set — an API/transport/decode error
+// in vision mode, or an undecodable image in heuristic mode) is projected as an
+// error-severity diagnostic so findings.ok reports false: a backend failure can
+// never masquerade as a clean inspection. pathByIndex supplies the source image
+// path per slide index when one is known, so the failure diagnostic can name it.
+func diagnosticsFromVisualQAReport(report *visualqa.Report, pathByIndex map[int]string) []diagnostics.Diagnostic {
 	if report == nil {
 		return nil
 	}
 	var ds []diagnostics.Diagnostic
 	for _, sr := range report.Results {
+		if sr.Error != "" {
+			ds = append(ds, diagnosticFromVisualQASlideError(sr, report.Mode, pathByIndex[sr.SlideIndex]))
+		}
 		for _, f := range sr.Findings {
 			ds = append(ds, diagnosticFromVisualQAFinding(f))
 		}
 	}
 	return ds
+}
+
+// diagnosticFromVisualQASlideError adapts a failed per-slide inspection
+// (SlideResult.Error) into an error-severity Diagnostic. It picks the code from
+// the failure mode — VISION_TIMEOUT for a vision deadline, otherwise
+// VISION_INSPECTION_FAILED for a vision backend/transport/decode failure or
+// HEURISTIC_INSPECTION_FAILED for a heuristic decode failure — keeping the
+// vision/heuristic source distinction so a degraded heuristic run is never
+// mistaken for a vision-backed defect. The slide index drives where.slide and
+// the image path (when known) rides in evidence.
+func diagnosticFromVisualQASlideError(sr visualqa.SlideResult, mode, path string) diagnostics.Diagnostic {
+	source := mode
+	if source == "" {
+		source = "vision"
+	}
+	code := diagnostics.CodeVisionInspectionFailed
+	switch {
+	case strings.HasPrefix(sr.Error, visualqa.VisionTimeoutCode):
+		code = diagnostics.CodeVisionTimeout
+	case mode == "heuristic":
+		code = diagnostics.CodeHeuristicInspectionFailed
+	}
+	d := diagnostics.Diagnostic{
+		Code:     code,
+		Message:  sr.Error,
+		Path:     fmt.Sprintf("slides[%d]", sr.SlideIndex),
+		Severity: diagnostics.SeverityError,
+		Details: map[string]any{
+			"inspection_failed": true,
+			"source":            source,
+		},
+	}
+	if sr.SlideType != "" {
+		d.Details["slide_type"] = sr.SlideType
+	}
+	if path != "" {
+		d.Details["image_path"] = path
+	}
+	return d
 }
 
 // diagnosticFromVisualQAFinding adapts one visualqa.Finding into a Diagnostic:

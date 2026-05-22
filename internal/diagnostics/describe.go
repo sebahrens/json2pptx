@@ -721,6 +721,28 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeInspectDisabled, CodeInvalidImage},
 	},
+	CodeVisionInspectionFailed: {
+		Code:        CodeVisionInspectionFailed,
+		Summary:     "A slide's vision inspection failed, so it produced no findings.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A Claude vision call during inspect_slide_images (or the visual_qa loop) returned an API error, a transport/decode failure, or malformed output for that slide. The slide was NOT inspected — zero findings here means the inspection failed, not that the slide is clean.",
+		RemediationSteps: []string{
+			"Treat the inspection as inconclusive for the affected slide(s) named in inspection_status / failed_slide_count — do not ship on the basis of zero findings.",
+			"Retry the inspection; if it recurs, fall back to the heuristic inspector (unset ANTHROPIC_API_KEY) to degrade gracefully.",
+		},
+		RelatedCodes: []string{CodeVisionTimeout, CodeHeuristicInspectionFailed, CodeInspectDisabled},
+	},
+	CodeHeuristicInspectionFailed: {
+		Code:        CodeHeuristicInspectionFailed,
+		Summary:     "A slide's heuristic inspection could not run (e.g. the image failed to decode).",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "The pure-Go heuristic inspector (used when ANTHROPIC_API_KEY is unset) could not decode a slide image, so it produced no findings for that slide. The result is degraded — absence of findings does not mean the slide is clean.",
+		RemediationSteps: []string{
+			"Re-render the slide to a valid PNG/JPG and re-inspect.",
+			"For a full vision-backed inspection, set ANTHROPIC_API_KEY.",
+		},
+		RelatedCodes: []string{CodeVisionInspectionFailed, CodeInvalidImage},
+	},
 
 	// ---- Internal family — unexpected server-side failures ----
 
