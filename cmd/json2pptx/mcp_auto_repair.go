@@ -158,12 +158,18 @@ When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet
 
 func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	idemKey := idempotencyKey(request)
-	if cached, ok := mc.idempotency.Get("auto_repair", idemKey); ok {
+	idemFingerprint := requestFingerprint(request)
+	switch cached, original, status := mc.idempotency.Lookup("auto_repair", idemKey, idemFingerprint); status {
+	case idempotencyHit:
 		if out, ok := cached.(*autoRepairOutput); ok {
 			clone := *out
 			clone.IdempotentReplay = true
 			return api.MCPSuccessResult(ctx, &clone)
 		}
+	case idempotencyConflict:
+		return idempotencyConflictResult("auto_repair", idemKey, idemFingerprint, original), nil
+	case idempotencyMiss:
+		// fall through and repair.
 	}
 
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
@@ -220,7 +226,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		return errResult, nil
 	}
 
-	mc.idempotency.Set("auto_repair", idemKey, output)
+	mc.idempotency.Set("auto_repair", idemKey, idemFingerprint, output)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {

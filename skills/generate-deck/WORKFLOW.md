@@ -222,7 +222,9 @@ Boundary-error mappings used by the candidate-decision tools:
 
 ## `idempotency_key` — safe retries for generate / auto_repair / make_deck
 
-`generate_presentation`, `auto_repair`, and `make_deck` accept an optional top-level `idempotency_key` string. When set, the server caches the first successful response under that key and replays it on subsequent calls within the cache TTL (1 hour, per-process). The replay response carries `"idempotent_replay": true` so the caller can tell a deduped retry from a fresh run.
+`generate_presentation`, `auto_repair`, and `make_deck` accept an optional top-level `idempotency_key` string. When set, the server caches the first successful response under that key and replays it on subsequent calls within the cache TTL (1 hour, per-process), **but only when the request content is unchanged**. The replay response carries `"idempotent_replay": true` so the caller can tell a deduped retry from a fresh run.
+
+The key is a *retry token*, not a request identity: the server also stores a fingerprint of the normalized request (every argument except `idempotency_key`). Reusing the same key with edited input is treated as a different request — the server refuses with an `IDEMPOTENCY_CONFLICT` error (carrying `current_fingerprint` and `original_fingerprint` in the finding evidence) instead of replaying the original deck for the wrong content. Issue a fresh key for new content, or restore the original input to replay.
 
 Use this to make transport-layer retries safe. Without an idempotency key, every retry runs the full pipeline again and writes a fresh output file (`output.pptx`, `output_1.pptx`, `output_2.pptx`, …); the caller is also billed for the wasted inference + render cost.
 
@@ -238,5 +240,6 @@ Rules of thumb:
 
 - Generate the key from something stable across retries (session id + turn number, or a hash of the input). Never use a timestamp — every retry would get a new key.
 - Keys are scoped per-tool, so the same string used against `generate_presentation` and `auto_repair` will not collide.
+- A replay requires the request to be byte-for-byte equivalent (modulo object-key ordering). If you edit the deck/outline or any other argument and keep the key, you get an `IDEMPOTENCY_CONFLICT` error, never a stale replay — bump the key whenever the content changes.
 - Only successful responses are cached. Error responses surface every time so the agent can fix the underlying input.
 - The cache is in-memory and per-process. Restarting the MCP server drops it — design retries to tolerate a fresh run after a server bounce.

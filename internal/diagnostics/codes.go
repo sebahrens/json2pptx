@@ -21,6 +21,11 @@ const (
 	CodeInvalidPath       Code = "INVALID_PATH"
 	CodeAmbiguousInput    Code = "AMBIGUOUS_INPUT"
 	CodeUnsupported       Code = "UNSUPPORTED"
+
+	// CodeIdempotencyConflict is emitted when a caller reuses an idempotency_key
+	// for a request whose normalized fingerprint differs from the cached one —
+	// replaying would return a deck for the wrong content.
+	CodeIdempotencyConflict Code = "IDEMPOTENCY_CONFLICT"
 )
 
 // Template family — template lookup, parsing, and metadata-validation failures.
@@ -116,6 +121,7 @@ func AllCodes() []Code {
 		CodeInvalidPath,
 		CodeAmbiguousInput,
 		CodeUnsupported,
+		CodeIdempotencyConflict,
 		// Template
 		CodeTemplateNotFound,
 		CodeTemplateError,

@@ -18,10 +18,17 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // idempotencyCacheTTL bounds how long a cached response stays replayable.
@@ -30,9 +37,26 @@ import (
 const idempotencyCacheTTL = time.Hour
 
 type idempotencyEntry struct {
-	data      any
-	expiresAt time.Time
+	data        any
+	fingerprint string
+	expiresAt   time.Time
 }
+
+// idempotencyStatus is the outcome of an idempotency cache lookup.
+type idempotencyStatus int
+
+const (
+	// idempotencyMiss: no live entry for this (tool, key) — caller should run
+	// the request and Set the result.
+	idempotencyMiss idempotencyStatus = iota
+	// idempotencyHit: a live entry exists whose request fingerprint matches —
+	// caller should replay the cached response.
+	idempotencyHit
+	// idempotencyConflict: a live entry exists but its request fingerprint
+	// differs — replaying would hand back a deck for the wrong content, so the
+	// caller must refuse with an IDEMPOTENCY_CONFLICT diagnostic.
+	idempotencyConflict
+)
 
 // idempotencyCache is a simple in-memory cache keyed by `<tool>:<key>` with a
 // TTL. Safe for concurrent use across MCP handler goroutines.
@@ -51,43 +75,113 @@ func newIdempotencyCache(ttl time.Duration) *idempotencyCache {
 	}
 }
 
-// Get returns the cached structured content for the (tool, key) pair, or
-// (nil, false) when absent / expired. Treats nil receivers as "no cache" so
-// callers can leave the field unset in tests without crashing.
-func (c *idempotencyCache) Get(tool, key string) (any, bool) {
+// Lookup returns the cached response for the (tool, key) pair together with the
+// outcome status:
+//
+//   - idempotencyHit: data is the cached response and stored is the matching
+//     fingerprint.
+//   - idempotencyConflict: data is nil and stored is the fingerprint of the
+//     original request held under this key (caller-supplied fingerprint differs).
+//   - idempotencyMiss: data is nil, stored is empty (no live entry, empty key,
+//     or nil receiver).
+//
+// Treats nil receivers as "no cache" so callers can leave the field unset in
+// tests without crashing.
+func (c *idempotencyCache) Lookup(tool, key, fingerprint string) (data any, stored string, status idempotencyStatus) {
 	if c == nil || key == "" {
-		return nil, false
+		return nil, "", idempotencyMiss
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	full := cacheKey(tool, key)
 	entry, ok := c.entries[full]
 	if !ok {
-		return nil, false
+		return nil, "", idempotencyMiss
 	}
 	if c.now().After(entry.expiresAt) {
 		delete(c.entries, full)
-		return nil, false
+		return nil, "", idempotencyMiss
 	}
-	return entry.data, true
+	if entry.fingerprint != fingerprint {
+		return nil, entry.fingerprint, idempotencyConflict
+	}
+	return entry.data, entry.fingerprint, idempotencyHit
 }
 
-// Set stores the structured content under the (tool, key) pair. No-op when
-// the cache is nil, the key is empty, or the data is nil.
-func (c *idempotencyCache) Set(tool, key string, data any) {
+// Set stores the structured content under the (tool, key) pair along with the
+// request fingerprint that produced it. No-op when the cache is nil, the key is
+// empty, or the data is nil.
+func (c *idempotencyCache) Set(tool, key, fingerprint string, data any) {
 	if c == nil || key == "" || data == nil {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.entries[cacheKey(tool, key)] = idempotencyEntry{
-		data:      data,
-		expiresAt: c.now().Add(c.ttl),
+		data:        data,
+		fingerprint: fingerprint,
+		expiresAt:   c.now().Add(c.ttl),
 	}
 }
 
 func cacheKey(tool, key string) string {
 	return tool + ":" + key
+}
+
+// requestFingerprint computes a stable hash over the request arguments that
+// define the requested work, excluding idempotency_key — the key is the retry
+// identity, not part of the request identity. Two calls sharing a key but
+// carrying different fingerprints are different requests and must not replay
+// each other's output.
+//
+// Go's encoding/json marshals maps with sorted keys (recursively) and preserves
+// array order, so logically identical argument sets hash identically regardless
+// of how the caller ordered object members.
+func requestFingerprint(request mcp.CallToolRequest) string {
+	args := request.GetArguments()
+	filtered := make(map[string]any, len(args))
+	for k, v := range args {
+		if k == "idempotency_key" {
+			continue
+		}
+		filtered[k] = v
+	}
+	b, err := json.Marshal(filtered)
+	if err != nil {
+		// MCP arguments were already decoded from JSON, so a marshal failure is
+		// unexpected. Fall back to a sentinel that still differs from any real
+		// hash so an un-marshalable request never silently aliases a cached one.
+		return "unfingerprintable"
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// idempotencyConflictResult builds the MCP error returned when a caller reuses
+// an idempotency_key for a request whose normalized fingerprint differs from
+// the one stored under that key. Replaying the stale response would return a
+// deck for the wrong content, so the server refuses and reports both
+// fingerprints: the agent can either issue a new key (intentional new request)
+// or restore the original input (accidental edit) to replay.
+func idempotencyConflictResult(tool, key, current, original string) *mcp.CallToolResult {
+	return api.MCPDiagnosticsError([]diagnostics.Diagnostic{
+		{
+			Code:     diagnostics.CodeIdempotencyConflict,
+			Severity: diagnostics.SeverityError,
+			Message: fmt.Sprintf(
+				"idempotency_key %q was already used by %s for a different request; "+
+					"reusing a key with changed input would replay the original result. "+
+					"Use a new idempotency_key for new content, or restore the original input to replay.",
+				key, tool,
+			),
+			Details: map[string]any{
+				"idempotency_key":      key,
+				"tool":                 tool,
+				"current_fingerprint":  current,
+				"original_fingerprint": original,
+			},
+		},
+	})
 }
 
 // idempotencyKeyParamDescription documents the idempotency_key MCP parameter

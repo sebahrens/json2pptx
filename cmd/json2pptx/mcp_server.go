@@ -65,6 +65,19 @@ func (mc *mcpConfig) resolvePresentationURLs(slides []SlideInput) ([]diagnostics
 	return findings, resolver.Close, nil
 }
 
+// newServerMCPConfig builds the mcpConfig used by the production stdio server.
+// It wires the idempotency cache so idempotency_key works in real MCP server
+// use (not just the CLI/test helper path) and the long-lived template cache.
+func newServerMCPConfig(cfg config.Config) *mcpConfig {
+	return &mcpConfig{
+		templatesDir: cfg.Templates.Dir,
+		outputDir:    cfg.Storage.OutputDir,
+		cfg:          cfg,
+		cache:        template.NewMemoryCache(24 * time.Hour),
+		idempotency:  newIdempotencyCache(idempotencyCacheTTL),
+	}
+}
+
 // runMCP starts an MCP server over stdio, exposing json2pptx tools.
 func runMCP() error {
 	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
@@ -113,12 +126,7 @@ func runMCP() error {
 	}))
 	slog.SetDefault(logger)
 
-	mc := &mcpConfig{
-		templatesDir: cfg.Templates.Dir,
-		outputDir:    cfg.Storage.OutputDir,
-		cfg:          cfg,
-		cache:        template.NewMemoryCache(24 * time.Hour),
-	}
+	mc := newServerMCPConfig(cfg)
 
 	// The server advertises experimental.compact_responses: true in its
 	// initialize response; compaction itself is controlled by client opt-in

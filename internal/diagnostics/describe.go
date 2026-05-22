@@ -200,6 +200,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeInvalidParameter, CodeUnknownEnum},
 	},
+	CodeIdempotencyConflict: {
+		Code:        CodeIdempotencyConflict,
+		Summary:     "An idempotency_key was reused for a request whose content changed.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "generate_presentation, auto_repair, or make_deck receives an idempotency_key that already cached a successful response, but the new request's normalized fingerprint differs from the original. Replaying would return a deck for the wrong content, so the server refuses.",
+		RemediationSteps: []string{
+			"Use a fresh idempotency_key when the deck/outline or any other argument changes — the key is a retry token, not a request id.",
+			"To replay the original result, restore the exact input that produced it (evidence.original_fingerprint identifies it).",
+		},
+		ExampleBefore: `generate_presentation({"presentation": {/* edited */}, "idempotency_key": "turn-7"})  // key already used for different content`,
+		ExampleAfter:  `generate_presentation({"presentation": {/* edited */}, "idempotency_key": "turn-8"})  // new key for new content`,
+		RelatedCodes:  []string{CodeInvalidParameter},
+	},
 
 	// ---- Template family — template lookup / parsing failures ----
 

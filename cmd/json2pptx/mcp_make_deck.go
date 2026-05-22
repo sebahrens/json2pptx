@@ -159,12 +159,18 @@ Quality gate matches auto_repair semantics: same field names, same defaults. Omi
 
 func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	idemKey := idempotencyKey(request)
-	if cached, ok := mc.idempotency.Get("make_deck", idemKey); ok {
+	idemFingerprint := requestFingerprint(request)
+	switch cached, original, status := mc.idempotency.Lookup("make_deck", idemKey, idemFingerprint); status {
+	case idempotencyHit:
 		if out, ok := cached.(*makeDeckOutput); ok {
 			clone := *out
 			clone.IdempotentReplay = true
 			return api.MCPSuccessResult(ctx, &clone)
 		}
+	case idempotencyConflict:
+		return idempotencyConflictResult("make_deck", idemKey, idemFingerprint, original), nil
+	case idempotencyMiss:
+		// fall through and build.
 	}
 
 	outline, err := request.RequireString("outline")
@@ -253,7 +259,7 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		FinalPresentation: loopOut.FinalPresentation,
 	}
 
-	mc.idempotency.Set("make_deck", idemKey, out)
+	mc.idempotency.Set("make_deck", idemKey, idemFingerprint, out)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, out)
 	if err != nil {

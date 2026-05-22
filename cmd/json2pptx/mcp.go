@@ -201,16 +201,24 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 // --- Tool handlers ---
 
 func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo,gocognit
-	// Idempotency: if a matching key is already in the cache, replay the
-	// cached response instead of regenerating. The cache is per-process and
-	// only holds successful responses, so retries on transient transport
-	// failures dedupe but bad-input retries still surface diagnostics.
+	// Idempotency: if a matching key is already in the cache AND the request
+	// fingerprint matches, replay the cached response instead of regenerating.
+	// The cache is per-process and only holds successful responses, so retries
+	// on transient transport failures dedupe but bad-input retries still
+	// surface diagnostics. A same-key/different-fingerprint call is a different
+	// request reusing a stale token, so it is refused rather than replayed.
 	idemKey := idempotencyKey(request)
-	if cached, ok := mc.idempotency.Get("generate_presentation", idemKey); ok {
+	idemFingerprint := requestFingerprint(request)
+	switch cached, original, status := mc.idempotency.Lookup("generate_presentation", idemKey, idemFingerprint); status {
+	case idempotencyHit:
 		if out, ok := cached.(JSONOutput); ok {
 			out.IdempotentReplay = true
 			return api.MCPSuccessResult(ctx, out)
 		}
+	case idempotencyConflict:
+		return idempotencyConflictResult("generate_presentation", idemKey, idemFingerprint, original), nil
+	case idempotencyMiss:
+		// fall through and generate.
 	}
 
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
@@ -565,7 +573,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		OutputValidationFindings: outputValidationFindings,
 	}
 
-	mc.idempotency.Set("generate_presentation", idemKey, output)
+	mc.idempotency.Set("generate_presentation", idemKey, idemFingerprint, output)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
