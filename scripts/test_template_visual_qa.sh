@@ -37,7 +37,8 @@
 #     deck.json               - copy of the deck JSON used (for findings refs)
 #     template-check.json     - conformance check output
 #     generated.pptx          - rendered deck
-#     <template>-slide-*.jpg  - per-slide JPGs (1-indexed by slide order)
+#     generated-slide-N.jpg   - per-slide JPGs (0-indexed by ImageMagick; sorted
+#                               numerically and relabelled 1-indexed in REPORT.md)
 #     REPORT.md               - report skeleton + embedded screenshots
 #
 # EXIT CODES:
@@ -170,10 +171,15 @@ for TEMPLATE_PATH in "${TEMPLATES[@]}"; do
         continue
     fi
 
+    # pptx2jpg emits unpadded ImageMagick indices (generated-slide-0.jpg ..
+    # generated-slide-10.jpg). A lexicographic sort would order slide-10 before
+    # slide-2, so the 1-indexed REPORT.md labels below would attach screenshots
+    # to the wrong source slide for decks with 10+ slides. `sort -V` (version
+    # sort, matching scripts/e2e_visual_test.sh) orders by the numeric index.
     SLIDE_JPGS=()
     while IFS= read -r jpg; do
         SLIDE_JPGS+=("$(basename "$jpg")")
-    done < <(find "${TEMPLATE_OUT}" -maxdepth 1 -name '*.jpg' | sort)
+    done < <(find "${TEMPLATE_OUT}" -maxdepth 1 -name '*-slide-*.jpg' | sort -V)
 
     if [[ ${#SLIDE_JPGS[@]} -eq 0 ]]; then
         echo "    FAIL: no slide JPGs produced"

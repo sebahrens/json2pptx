@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -35,6 +37,34 @@ func (r *RealCommandRunner) Run(name string, args ...string) error {
 var defaultRunner CommandRunner = &RealCommandRunner{
 	Stdout: os.Stdout,
 	Stderr: os.Stderr,
+}
+
+// slideIndexFromName extracts the integer N from a filename matching
+// "<base>-slide-N.jpg", the unpadded "%d" pattern ImageMagick emits. Returns -1
+// when the name doesn't conform, which sorts non-conforming entries first.
+func slideIndexFromName(path string) int {
+	base := filepath.Base(path)
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	const marker = "-slide-"
+	idx := strings.LastIndex(base, marker)
+	if idx < 0 {
+		return -1
+	}
+	n, err := strconv.Atoi(base[idx+len(marker):])
+	if err != nil {
+		return -1
+	}
+	return n
+}
+
+// sortSlideJPGs orders "<base>-slide-N.jpg" files by the numeric N rather than
+// lexicographically. Because ImageMagick emits unpadded indices, a plain string
+// sort places slide-10 before slide-2; numeric ordering keeps the listing in
+// true slide order for decks with 10+ slides.
+func sortSlideJPGs(files []string) {
+	sort.Slice(files, func(i, j int) bool {
+		return slideIndexFromName(files[i]) < slideIndexFromName(files[j])
+	})
 }
 
 func main() {
@@ -122,6 +152,11 @@ func convertPPTXToJPGWithRunner(pptxPath, outputDir string, density int, runner 
 	if len(files) == 0 {
 		return fmt.Errorf("no JPG files were generated")
 	}
+
+	// Glob returns names in lexicographic order, which misorders the unpadded
+	// "%d" indices (slide-10 before slide-2). Sort numerically so the listing
+	// reflects true slide order.
+	sortSlideJPGs(files)
 
 	fmt.Printf("Generated %d slide images:\n", len(files))
 	for _, f := range files {

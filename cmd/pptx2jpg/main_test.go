@@ -465,3 +465,69 @@ func TestDefaultRunnerIsInitialized(t *testing.T) {
 		t.Error("defaultRunner should be initialized")
 	}
 }
+
+// --- Tests for numeric slide ordering of unpadded ImageMagick filenames ---
+
+func TestSlideIndexFromName(t *testing.T) {
+	cases := []struct {
+		name string
+		want int
+	}{
+		{"generated-slide-0.jpg", 0},
+		{"generated-slide-1.jpg", 1},
+		{"generated-slide-10.jpg", 10},
+		{"generated-slide-11.jpg", 11},
+		// Template names contain dashes; the index is taken from the last marker.
+		{"midnight-blue-slide-7.jpg", 7},
+		{"forest-green-slide-12.jpg", 12},
+		// Non-conforming names sort first (-1).
+		{"cover.jpg", -1},
+		{"generated-slide-.jpg", -1},
+		{"generated-slide-x.jpg", -1},
+	}
+	for _, tc := range cases {
+		if got := slideIndexFromName(tc.name); got != tc.want {
+			t.Errorf("slideIndexFromName(%q) = %d, want %d", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestSortSlideJPGs is the regression test for go-slide-creator-cuhj: unpadded
+// "%d" filenames must order numerically so slide-10 follows slide-9 (not
+// slide-1). A lexicographic sort would place slide-10 and slide-11 right after
+// slide-1, misattaching screenshots to the wrong source slide in QA reports.
+func TestSortSlideJPGs(t *testing.T) {
+	// Deliberately scrambled, with paths to confirm basename-only parsing.
+	files := []string{
+		"/out/generated-slide-10.jpg",
+		"/out/generated-slide-2.jpg",
+		"/out/generated-slide-0.jpg",
+		"/out/generated-slide-11.jpg",
+		"/out/generated-slide-1.jpg",
+		"/out/generated-slide-9.jpg",
+	}
+	sortSlideJPGs(files)
+
+	want := []string{
+		"/out/generated-slide-0.jpg",
+		"/out/generated-slide-1.jpg",
+		"/out/generated-slide-2.jpg",
+		"/out/generated-slide-9.jpg",
+		"/out/generated-slide-10.jpg",
+		"/out/generated-slide-11.jpg",
+	}
+	for i := range want {
+		if files[i] != want[i] {
+			t.Errorf("sortSlideJPGs[%d] = %q, want %q", i, files[i], want[i])
+		}
+	}
+
+	// Indices must be strictly increasing after the sort; a lexicographic sort
+	// would break this (slide-10 would precede slide-2).
+	for i := 1; i < len(files); i++ {
+		prev, cur := slideIndexFromName(files[i-1]), slideIndexFromName(files[i])
+		if prev >= cur {
+			t.Errorf("non-increasing slide order at position %d: %d then %d", i, prev, cur)
+		}
+	}
+}
