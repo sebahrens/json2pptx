@@ -2348,7 +2348,11 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 	img, err := render.RenderSlideOpts(pptxPath, slideIndex, density, force)
 	if err != nil {
 		code := "RENDER_FAILED"
-		if strings.Contains(err.Error(), "not found on PATH") {
+		var te *render.TimeoutError
+		switch {
+		case errors.As(err, &te):
+			code = te.Code // LIBREOFFICE_TIMEOUT / IMAGEMAGICK_TIMEOUT
+		case strings.Contains(err.Error(), "not found on PATH"):
 			if strings.Contains(err.Error(), "libreoffice") {
 				code = "LIBREOFFICE_UNAVAILABLE"
 			} else {
@@ -2406,7 +2410,11 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	deckResult, err := render.RenderDeckOpts(pptxPath, density, maxSlides, force)
 	if err != nil {
 		code := "RENDER_FAILED"
-		if strings.Contains(err.Error(), "not found on PATH") {
+		var te *render.TimeoutError
+		switch {
+		case errors.As(err, &te):
+			code = te.Code // LIBREOFFICE_TIMEOUT / IMAGEMAGICK_TIMEOUT
+		case strings.Contains(err.Error(), "not found on PATH"):
 			if strings.Contains(err.Error(), "libreoffice") {
 				code = "LIBREOFFICE_UNAVAILABLE"
 			} else {

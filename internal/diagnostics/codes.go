@@ -73,6 +73,8 @@ const (
 	CodeRenderFailed           Code = "RENDER_FAILED"
 	CodeLibreOfficeUnavailable Code = "LIBREOFFICE_UNAVAILABLE"
 	CodeImageMagickUnavailable Code = "IMAGEMAGICK_UNAVAILABLE"
+	CodeLibreOfficeTimeout     Code = "LIBREOFFICE_TIMEOUT"
+	CodeImageMagickTimeout     Code = "IMAGEMAGICK_TIMEOUT"
 	CodeOutputDir              Code = "OUTPUT_DIR"
 	CodePatternError           Code = "PATTERN_ERROR"
 	CodeStrictFit              Code = "STRICT_FIT"
@@ -91,6 +93,7 @@ const (
 const (
 	CodeInvalidImage    Code = "INVALID_IMAGE"
 	CodeInspectDisabled Code = "INSPECT_DISABLED"
+	CodeVisionTimeout   Code = "VISION_TIMEOUT"
 )
 
 // Internal family — unexpected server-side failures.
@@ -154,6 +157,8 @@ func AllCodes() []Code {
 		CodeRenderFailed,
 		CodeLibreOfficeUnavailable,
 		CodeImageMagickUnavailable,
+		CodeLibreOfficeTimeout,
+		CodeImageMagickTimeout,
 		CodeOutputDir,
 		CodePatternError,
 		CodeStrictFit,
@@ -166,6 +171,7 @@ func AllCodes() []Code {
 		// Inspect
 		CodeInvalidImage,
 		CodeInspectDisabled,
+		CodeVisionTimeout,
 		// Internal
 		CodeInternal,
 	}

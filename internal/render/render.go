@@ -2,9 +2,11 @@
 package render
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -163,20 +165,28 @@ func DependencyStatus() (available bool, missing []string) {
 }
 
 // pptxToPDF converts a PPTX to PDF via LibreOffice headless.
-// Returns the path to the generated PDF.
-func pptxToPDF(pptxPath, tmpDir string) (string, error) {
+// Returns the path to the generated PDF. The conversion is bounded by
+// libreOfficeTimeout: the LibreOffice mutex is held only for the duration of
+// that deadline, never indefinitely, and a timeout returns a *TimeoutError.
+func pptxToPDF(ctx context.Context, pptxPath, tmpDir string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	cmd := exec.Command("libreoffice",
+	_, stderr, err := runBounded(ctx, toolLibreOffice, pptxPath, libreOfficeTimeout,
+		toolLibreOffice,
 		"--headless",
 		"--convert-to", "pdf",
 		"--outdir", tmpDir,
 		pptxPath,
 	)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	if err := cmd.Run(); err != nil {
+	if err != nil {
+		var te *TimeoutError
+		if errors.As(err, &te) {
+			return "", err // structured timeout; propagate verbatim
+		}
+		if stderr = strings.TrimSpace(stderr); stderr != "" {
+			return "", fmt.Errorf("libreoffice conversion failed: %w: %s", err, stderr)
+		}
 		return "", fmt.Errorf("libreoffice conversion failed: %w", err)
 	}
 
@@ -189,18 +199,25 @@ func pptxToPDF(pptxPath, tmpDir string) (string, error) {
 }
 
 // pdfToPNGs converts a multi-page PDF to individual PNG files using ImageMagick.
-// Returns sorted list of generated PNG paths.
-func pdfToPNGs(pdfPath, outDir string, density int) ([]string, error) {
+// Returns sorted list of generated PNG paths. The conversion is bounded by
+// imageMagickTimeout; a timeout returns a *TimeoutError.
+func pdfToPNGs(ctx context.Context, pdfPath, outDir string, density int) ([]string, error) {
 	pattern := filepath.Join(outDir, "slide-%d.png")
-	cmd := exec.Command("magick", //nolint:gosec // density is a clamped int; paths are internal temp dirs
+	_, stderr, err := runBounded(ctx, toolImageMagick, pdfPath, imageMagickTimeout,
+		toolImageMagick,
 		"-density", fmt.Sprintf("%d", density),
 		pdfPath,
 		"-quality", "95",
 		pattern,
 	)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	if err := cmd.Run(); err != nil {
+	if err != nil {
+		var te *TimeoutError
+		if errors.As(err, &te) {
+			return nil, err // structured timeout; propagate verbatim
+		}
+		if stderr = strings.TrimSpace(stderr); stderr != "" {
+			return nil, fmt.Errorf("imagemagick conversion failed: %w: %s", err, stderr)
+		}
 		return nil, fmt.Errorf("imagemagick conversion failed: %w", err)
 	}
 
@@ -324,12 +341,13 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 		}
 		defer os.RemoveAll(tmpDir)
 
-		pdfPath, err := pptxToPDF(pptxPath, tmpDir)
+		ctx := context.Background()
+		pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
 		if err != nil {
 			return nil, err
 		}
 
-		pngs, err = pdfToPNGs(pdfPath, tmpDir, density)
+		pngs, err = pdfToPNGs(ctx, pdfPath, tmpDir, density)
 		if err != nil {
 			return nil, err
 		}
@@ -378,12 +396,13 @@ func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force boo
 		}
 		defer os.RemoveAll(tmpDir)
 
-		pdfPath, err := pptxToPDF(pptxPath, tmpDir)
+		ctx := context.Background()
+		pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
 		if err != nil {
 			return nil, err
 		}
 
-		pngs, err = pdfToPNGs(pdfPath, tmpDir, density)
+		pngs, err = pdfToPNGs(ctx, pdfPath, tmpDir, density)
 		if err != nil {
 			return nil, err
 		}
@@ -452,12 +471,13 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 		}
 		defer os.RemoveAll(tmpDir)
 
-		pdfPath, err := pptxToPDF(pptxPath, tmpDir)
+		ctx := context.Background()
+		pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
 		if err != nil {
 			return nil, err
 		}
 
-		pngs, err = pdfToPNGs(pdfPath, tmpDir, density)
+		pngs, err = pdfToPNGs(ctx, pdfPath, tmpDir, density)
 		if err != nil {
 			return nil, err
 		}

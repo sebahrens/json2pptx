@@ -559,6 +559,28 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeLibreOfficeUnavailable, CodeRenderFailed},
 	},
+	CodeLibreOfficeTimeout: {
+		Code:        CodeLibreOfficeTimeout,
+		Summary:     "LibreOffice exceeded its render deadline and was killed.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A PPTX→PDF conversion subprocess ran past its bounded deadline; its process group was terminated so it could not hold the render lock indefinitely.",
+		RemediationSteps: []string{
+			"Retry the render (pass force=true) — a single wedged conversion is often transient.",
+			"If it recurs, the LibreOffice environment is likely stuck: restart it, or skip image rendering and ship the .pptx without thumbnails.",
+		},
+		RelatedCodes: []string{CodeImageMagickTimeout, CodeLibreOfficeUnavailable, CodeRenderFailed},
+	},
+	CodeImageMagickTimeout: {
+		Code:        CodeImageMagickTimeout,
+		Summary:     "ImageMagick exceeded its render deadline and was killed.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A PDF→PNG conversion subprocess ran past its bounded deadline and its process group was terminated.",
+		RemediationSteps: []string{
+			"Retry the render (pass force=true).",
+			"If it recurs, lower the render density or skip image rendering and ship the .pptx without thumbnails.",
+		},
+		RelatedCodes: []string{CodeLibreOfficeTimeout, CodeImageMagickUnavailable, CodeRenderFailed},
+	},
 	CodeOutputDir: {
 		Code:        CodeOutputDir,
 		Summary:     "The output directory is missing or not writable.",
@@ -674,6 +696,17 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 			"Skip inspection if the visual-QA agent is unavailable.",
 		},
 		RelatedCodes: []string{CodeInvalidImage},
+	},
+	CodeVisionTimeout: {
+		Code:        CodeVisionTimeout,
+		Summary:     "A vision inspection API call exceeded its deadline.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A Claude vision request during inspect_slide_images (or the visual_qa loop) ran past its per-request or total inspection deadline.",
+		RemediationSteps: []string{
+			"Retry the inspection — a single stalled API call is usually transient.",
+			"If it recurs, reduce parallelism or fall back to the heuristic inspector (unset ANTHROPIC_API_KEY) to degrade gracefully.",
+		},
+		RelatedCodes: []string{CodeInspectDisabled, CodeInvalidImage},
 	},
 
 	// ---- Internal family — unexpected server-side failures ----

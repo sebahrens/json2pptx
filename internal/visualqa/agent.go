@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -19,16 +22,74 @@ const (
 	apiVersion      = "2023-06-01"
 	defaultMaxToks  = 2048
 	defaultParallel = 4
+
+	// defaultHTTPTimeout bounds a single vision request (connect + send +
+	// receive). Without it http.DefaultClient would wait forever on a stalled
+	// API call, blocking the inspection goroutine — and InspectAll, which waits
+	// for every goroutine — indefinitely.
+	defaultHTTPTimeout = 60 * time.Second
+	// defaultTotalTimeout bounds the whole InspectAll fan-out so a deck with many
+	// slides (or several simultaneously stalled calls) still returns in bounded
+	// time even if individual per-request timeouts stack up.
+	defaultTotalTimeout = 5 * time.Minute
 )
+
+// VisionTimeoutCode is the diagnostic code carried by TimeoutError. It mirrors
+// diagnostics.CodeVisionTimeout, declared here so the visualqa package stays free
+// of that dependency.
+const VisionTimeoutCode = "VISION_TIMEOUT"
+
+// TimeoutError is returned by InspectSlide when a vision API call exceeds its
+// deadline. It carries the slide index, elapsed time, and recovery guidance so
+// callers can surface a structured VISION_TIMEOUT diagnostic.
+type TimeoutError struct {
+	Code       string        // always VisionTimeoutCode
+	SlideIndex int           // slide whose inspection timed out
+	Elapsed    time.Duration // wall time before the call was abandoned
+	Timeout    time.Duration // the per-request deadline that was exceeded
+}
+
+// Error implements error. It bundles slide, elapsed, deadline, and recovery
+// action so surfaces that only forward err.Error() stay actionable.
+func (e *TimeoutError) Error() string {
+	return fmt.Sprintf("%s: vision inspection of slide %d timed out after %s (deadline %s). %s",
+		e.Code, e.SlideIndex, e.Elapsed.Round(time.Millisecond), e.Timeout, e.Action())
+}
+
+// Action returns the suggested retry/degrade guidance for this timeout.
+func (e *TimeoutError) Action() string {
+	return "Retry the inspection; if it recurs, reduce parallelism or fall back to the " +
+		"heuristic inspector (unset ANTHROPIC_API_KEY) to degrade gracefully."
+}
+
+// isTimeoutErr reports whether err (or ctx) represents a deadline/timeout, so a
+// stalled vision call is attributed to a VISION_TIMEOUT rather than a generic
+// API error. It catches both the per-request context deadline and the
+// http.Client.Timeout (a net.Error with Timeout()==true).
+func isTimeoutErr(ctx context.Context, err error) bool {
+	if ctx != nil && ctx.Err() == context.DeadlineExceeded {
+		return true
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return true
+	}
+	return false
+}
 
 // Agent performs visual QA on slide images using Claude Haiku's vision API.
 type Agent struct {
-	apiKey      string
-	apiURL      string
-	model       string
-	maxTokens   int
-	parallelism int
-	httpClient  *http.Client
+	apiKey       string
+	apiURL       string
+	model        string
+	maxTokens    int
+	parallelism  int
+	httpClient   *http.Client
+	httpTimeout  time.Duration
+	totalTimeout time.Duration
 }
 
 // DefaultModel returns the Claude model the visual-QA agent uses when no model
@@ -55,16 +116,29 @@ func WithAPIURL(url string) Option {
 	return func(a *Agent) { a.apiURL = url }
 }
 
+// WithHTTPTimeout sets the per-request deadline for a single vision call. It
+// caps both the HTTP client and the per-slide request context.
+func WithHTTPTimeout(d time.Duration) Option {
+	return func(a *Agent) { a.httpTimeout = d }
+}
+
+// WithTotalTimeout sets the overall deadline for an InspectAll fan-out. Zero
+// disables the total cap (per-request timeouts still apply).
+func WithTotalTimeout(d time.Duration) Option {
+	return func(a *Agent) { a.totalTimeout = d }
+}
+
 // NewAgent creates a new visual QA agent.
 // The API key is read from the ANTHROPIC_API_KEY environment variable.
 func NewAgent(opts ...Option) (*Agent, error) {
 	a := &Agent{
-		apiKey:      os.Getenv("ANTHROPIC_API_KEY"),
-		apiURL:      defaultAPIURL,
-		model:       defaultModel,
-		maxTokens:   defaultMaxToks,
-		parallelism: defaultParallel,
-		httpClient:  http.DefaultClient,
+		apiKey:       os.Getenv("ANTHROPIC_API_KEY"),
+		apiURL:       defaultAPIURL,
+		model:        defaultModel,
+		maxTokens:    defaultMaxToks,
+		parallelism:  defaultParallel,
+		httpTimeout:  defaultHTTPTimeout,
+		totalTimeout: defaultTotalTimeout,
 	}
 	for _, o := range opts {
 		o(a)
@@ -72,6 +146,10 @@ func NewAgent(opts ...Option) (*Agent, error) {
 	if a.apiKey == "" {
 		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
 	}
+	// Bind the HTTP client to the resolved per-request timeout so a stalled API
+	// call cannot block an inspection goroutine forever (http.DefaultClient has
+	// no timeout).
+	a.httpClient = &http.Client{Timeout: a.httpTimeout}
 	return a, nil
 }
 
@@ -118,7 +196,16 @@ func (a *Agent) InspectSlide(ctx context.Context, imgData []byte, info SlideInfo
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", a.apiURL, bytes.NewReader(raw))
+	// Derive a per-slide deadline so a stalled call is bounded and attributable
+	// to this slide as a VISION_TIMEOUT, independent of the HTTP client's own cap.
+	reqCtx := ctx
+	if a.httpTimeout > 0 {
+		var cancel context.CancelFunc
+		reqCtx, cancel = context.WithTimeout(ctx, a.httpTimeout)
+		defer cancel()
+	}
+
+	req, err := http.NewRequestWithContext(reqCtx, "POST", a.apiURL, bytes.NewReader(raw))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -126,14 +213,21 @@ func (a *Agent) InspectSlide(ctx context.Context, imgData []byte, info SlideInfo
 	req.Header.Set("x-api-key", a.apiKey)
 	req.Header.Set("anthropic-version", apiVersion)
 
+	start := time.Now()
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
+		if isTimeoutErr(reqCtx, err) {
+			return nil, &TimeoutError{Code: VisionTimeoutCode, SlideIndex: info.Index, Elapsed: time.Since(start), Timeout: a.httpTimeout}
+		}
 		return nil, fmt.Errorf("API call: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		if isTimeoutErr(reqCtx, err) {
+			return nil, &TimeoutError{Code: VisionTimeoutCode, SlideIndex: info.Index, Elapsed: time.Since(start), Timeout: a.httpTimeout}
+		}
 		return nil, fmt.Errorf("read response: %w", err)
 	}
 
@@ -172,8 +266,21 @@ func (a *Agent) InspectSlide(ctx context.Context, imgData []byte, info SlideInfo
 	return result, nil
 }
 
-// InspectAll analyzes multiple slides concurrently.
+// InspectAll analyzes multiple slides concurrently. The whole fan-out is bounded
+// by the total inspection deadline (a.totalTimeout): once it elapses, every
+// in-flight and not-yet-started per-slide call observes the cancelled context and
+// returns a VISION_TIMEOUT promptly, so InspectAll never blocks indefinitely on a
+// stalled API even across many slides.
 func (a *Agent) InspectAll(ctx context.Context, slides []SlideImage) *Report {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if a.totalTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, a.totalTimeout)
+		defer cancel()
+	}
+
 	report := &Report{
 		SlideCount: len(slides),
 		Results:    make([]SlideResult, len(slides)),

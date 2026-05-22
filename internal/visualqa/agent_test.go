@@ -3,10 +3,13 @@ package visualqa
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseFindings(t *testing.T) {
@@ -474,6 +477,100 @@ func TestFindingString(t *testing.T) {
 	for _, want := range []string{"P1", "2", "chart", "text_overflow", "X-axis labels overlap", "bottom"} {
 		if !contains(s, want) {
 			t.Errorf("Finding.String() = %q, missing %q", s, want)
+		}
+	}
+}
+
+// TestInspectSlide_TimeoutReturnsStructuredError points the agent at a server
+// that never responds within the per-request deadline and asserts InspectSlide
+// returns promptly with a structured *TimeoutError (VISION_TIMEOUT) rather than
+// blocking on the stalled call.
+func TestInspectSlide_TimeoutReturnsStructuredError(t *testing.T) {
+	// release lets the slow handler return so srv.Close() doesn't block waiting
+	// for it after the client has already timed out. defers run LIFO, so
+	// close(release) fires before srv.Close().
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done(): // client gave up
+		case <-release:
+		}
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	agent, err := NewAgent(WithAPIURL(srv.URL), WithParallelism(1), WithHTTPTimeout(80*time.Millisecond))
+	if err != nil {
+		t.Fatalf("NewAgent: %v", err)
+	}
+
+	start := time.Now()
+	_, err = agent.InspectSlide(context.Background(), []byte{0xFF, 0xD8}, SlideInfo{Index: 3, Type: "content"})
+	elapsed := time.Since(start)
+
+	if elapsed > 3*time.Second {
+		t.Fatalf("InspectSlide did not return promptly on timeout: took %s", elapsed)
+	}
+	var te *TimeoutError
+	if !errors.As(err, &te) {
+		t.Fatalf("expected *TimeoutError, got %T: %v", err, err)
+	}
+	if te.Code != VisionTimeoutCode {
+		t.Errorf("code = %q, want %q", te.Code, VisionTimeoutCode)
+	}
+	if te.SlideIndex != 3 {
+		t.Errorf("slide index = %d, want 3", te.SlideIndex)
+	}
+	for _, want := range []string{"VISION_TIMEOUT", "slide 3", "Retry"} {
+		if !strings.Contains(te.Error(), want) {
+			t.Errorf("error %q missing %q", te.Error(), want)
+		}
+	}
+}
+
+// TestInspectAll_BoundedByTimeout asserts the InspectAll fan-out returns in
+// bounded time when every backend call stalls, and that each slide carries a
+// VISION_TIMEOUT error string.
+func TestInspectAll_BoundedByTimeout(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-release:
+		}
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	agent, err := NewAgent(WithAPIURL(srv.URL), WithParallelism(2),
+		WithHTTPTimeout(60*time.Millisecond), WithTotalTimeout(800*time.Millisecond))
+	if err != nil {
+		t.Fatalf("NewAgent: %v", err)
+	}
+
+	slides := []SlideImage{
+		{Info: SlideInfo{Index: 0}, Data: []byte{0xFF, 0xD8}},
+		{Info: SlideInfo{Index: 1}, Data: []byte{0xFF, 0xD8}},
+		{Info: SlideInfo{Index: 2}, Data: []byte{0xFF, 0xD8}},
+	}
+
+	start := time.Now()
+	report := agent.InspectAll(context.Background(), slides)
+	elapsed := time.Since(start)
+
+	if elapsed > 3*time.Second {
+		t.Fatalf("InspectAll did not return in bounded time: took %s", elapsed)
+	}
+	if report.SlideCount != 3 {
+		t.Errorf("slide count = %d, want 3", report.SlideCount)
+	}
+	for _, res := range report.Results {
+		if res.Error == "" {
+			t.Errorf("slide %d: expected an error from the timed-out call", res.SlideIndex)
+		} else if !strings.Contains(res.Error, "VISION_TIMEOUT") {
+			t.Errorf("slide %d: error %q should mention VISION_TIMEOUT", res.SlideIndex, res.Error)
 		}
 	}
 }

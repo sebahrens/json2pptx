@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -216,7 +217,11 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 	img, err := render.RenderSlideWithCacheKey(genOut.OutputPath, 0, density, force, jsonCacheKey)
 	if err != nil {
 		code := "RENDER_FAILED"
-		if strings.Contains(err.Error(), "not found on PATH") {
+		var te *render.TimeoutError
+		switch {
+		case errors.As(err, &te):
+			code = te.Code // LIBREOFFICE_TIMEOUT / IMAGEMAGICK_TIMEOUT
+		case strings.Contains(err.Error(), "not found on PATH"):
 			if strings.Contains(err.Error(), "libreoffice") {
 				code = "LIBREOFFICE_UNAVAILABLE"
 			} else {
