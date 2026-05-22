@@ -137,7 +137,7 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 // diagramSpecToSVGGen converts a types.DiagramSpec to an svggen.RequestEnvelope.
 // maxPNGWidth caps the PNG output width (0 = no cap).
 // strictFit is threaded to OutputSpec.StrictFit for future severity promotion.
-func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope { //nolint:gocognit
+func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope { //nolint:gocognit,gocyclo
 	// Build style spec
 	style := svggen.StyleSpec{}
 
@@ -200,6 +200,20 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 			}
 		}
 		style.ThemeColors = themeInputs
+	}
+
+	// Embedded PPTX diagrams must render their theme accents with the exact
+	// <a:schemeClr> hex that native shape_grid fills emit for the same accent
+	// on the same slide. svggen's default StyleGuideFromSpec path runs
+	// EnforceAccentContrast, which mutates low-contrast or near-duplicate
+	// accents for chart legibility and so drifts away from the native palette.
+	// Scope raw-theme parity to this embedded generator bridge only (it is
+	// reached exclusively from PPTX render paths); standalone svggen CLI/MCP
+	// keeps its readability-enforcement default. Explicit user colors arrive
+	// via spec.Style.Colors / DataPalette above and are likewise preserved
+	// verbatim, which is the desired behaviour. See go-slide-creator-gmv5.
+	if len(style.ThemeColors) > 0 {
+		style.DisablePaletteEnforcement = true
 	}
 
 	// Forward lt1 (background) and lt2 (surface) from the effective theme so

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestDiagramSpecToSVGGen(t *testing.T) {
@@ -284,6 +285,134 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 			t.Error("missing chart_style should leave StyleSpec.ChartStyle nil")
 		}
 	})
+}
+
+// TestDiagramSpecToSVGGen_RawPalette verifies that the embedded PPTX bridge
+// opts out of svggen's accent-contrast enforcement whenever it routes theme
+// colors, so diagram accents render with the same raw schemeClr hex as native
+// shape_grid fills (go-slide-creator-gmv5). It also confirms standalone-style
+// usage (no theme colors) leaves the default in place and that data_palette
+// ordering survives the raw path.
+func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
+	// Warm, low-contrast accent set: known to be mutated by EnforceAccentContrast
+	// (mirrors svggen TestStyleGuideFromSpec_DisablePaletteEnforcement fixture).
+	lowContrastTheme := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#FD5108"},
+		{Name: "accent2", RGB: "#FE7C39"},
+		{Name: "accent3", RGB: "#FFAA72"},
+		{Name: "accent4", RGB: "#A1A8B3"},
+		{Name: "accent5", RGB: "#B5BCC4"},
+		{Name: "accent6", RGB: "#CBD1D6"},
+	}
+	rawAccents := []string{"#FD5108", "#FE7C39", "#FFAA72", "#A1A8B3", "#B5BCC4", "#CBD1D6"}
+
+	accentHexes := func(p *svggen.Palette) []string {
+		return []string{
+			p.Accent1.Hex(), p.Accent2.Hex(), p.Accent3.Hex(),
+			p.Accent4.Hex(), p.Accent5.Hex(), p.Accent6.Hex(),
+		}
+	}
+
+	// Caller-supplied template theme colors must flip on raw-theme parity, and
+	// the resulting palette must preserve every accent hex verbatim.
+	t.Run("caller_theme_colors_preserve_raw_accents", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+		}
+		result := diagramSpecToSVGGen(spec, lowContrastTheme, 0, "")
+		if !result.Style.DisablePaletteEnforcement {
+			t.Fatal("DisablePaletteEnforcement = false, want true for embedded theme-color path")
+		}
+
+		// Precondition: with enforcement re-enabled, the same fixture is mutated,
+		// proving the flag does real work rather than passing trivially.
+		enforced := result.Style
+		enforced.DisablePaletteEnforcement = false
+		enforcedGuide := svggen.StyleGuideFromSpec(enforced)
+		if equalStringSlices(accentHexes(enforcedGuide.Palette), rawAccents) {
+			t.Fatal("test precondition failed: enforcement left fixture unchanged; pick a more aggressive palette")
+		}
+
+		rawGuide := svggen.StyleGuideFromSpec(result.Style)
+		got := accentHexes(rawGuide.Palette)
+		for i, want := range rawAccents {
+			if got[i] != want {
+				t.Errorf("Accent%d = %s, want raw %s (must match native schemeClr hex)", i+1, got[i], want)
+			}
+		}
+	})
+
+	// Explicit spec.Style.Colors are promoted to ThemeColors, so the same
+	// raw-theme parity must apply — user-chosen accents render verbatim too.
+	t.Run("explicit_style_colors_disable_enforcement", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+			Style: &types.DiagramStyle{
+				Colors: []string{"#FD5108", "#FE7C39", "#FFAA72"},
+			},
+		}
+		result := diagramSpecToSVGGen(spec, lowContrastTheme, 0, "")
+		if !result.Style.DisablePaletteEnforcement {
+			t.Fatal("DisablePaletteEnforcement = false, want true when spec.Style.Colors drive accents")
+		}
+		guide := svggen.StyleGuideFromSpec(result.Style)
+		if h := guide.Palette.Accent1.Hex(); h != "#FD5108" {
+			t.Errorf("Accent1 = %s, want raw %s (explicit user color must be preserved)", h, "#FD5108")
+		}
+	})
+
+	// data_palette ordering must survive the raw path: each entry maps to the
+	// corresponding accent slot, in order, with the exact input hex.
+	t.Run("data_palette_ordering_preserved", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+			Style: &types.DiagramStyle{
+				DataPalette: []string{"#101010", "#202020", "#303030"},
+			},
+		}
+		result := diagramSpecToSVGGen(spec, lowContrastTheme, 0, "")
+		if !result.Style.DisablePaletteEnforcement {
+			t.Fatal("DisablePaletteEnforcement = false, want true for embedded theme-color path")
+		}
+		guide := svggen.StyleGuideFromSpec(result.Style)
+		want := []string{"#101010", "#202020", "#303030"}
+		got := []string{guide.Palette.Accent1.Hex(), guide.Palette.Accent2.Hex(), guide.Palette.Accent3.Hex()}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("Accent%d = %s, want %s (data_palette ordering must be preserved)", i+1, got[i], want[i])
+			}
+		}
+	})
+
+	// Standalone-style usage (no template theme colors) must NOT touch the flag,
+	// so svggen keeps its readability-enforcement default outside the bridge.
+	t.Run("no_theme_colors_keeps_default", func(t *testing.T) {
+		spec := &types.DiagramSpec{
+			Type: "bar_chart",
+			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
+		}
+		result := diagramSpecToSVGGen(spec, nil, 0, "")
+		if result.Style.DisablePaletteEnforcement {
+			t.Error("DisablePaletteEnforcement = true, want false when no theme colors are routed")
+		}
+	})
+}
+
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestRenderDiagramSpec(t *testing.T) {
