@@ -309,29 +309,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return api.MCPDiagnosticsError(boundaryDiags), nil
 	}
 
-	// Text-fit checking via strict_fit parameter (default: warn).
-	// In warn mode, findings are collected here and merged into the structured
-	// fit_findings response below so MCP clients see them without having to
-	// separately pass fit_report=true. In strict mode, refuse-class findings
-	// abort generation with a diagnostics error.
+	// strict_fit parameter (default: warn) — parsed up front so it can be
+	// forwarded to generation (StrictFit below) even though the text-fit gate
+	// itself now runs after template analysis (see below).
 	strictFit := "warn"
 	if sf, err := request.RequireString("strict_fit"); err == nil && sf != "" {
 		strictFit = sf
-	}
-	var strictFitFindings []patterns.FitFinding
-	if strictFit != "off" {
-		rawFindings, refuseErr := evaluateStrictFit(&input, strictFit)
-		if refuseErr != nil {
-			// Preserve historical stderr NDJSON dump on refuse for CLI/log parity.
-			enc := json.NewEncoder(os.Stderr)
-			for _, f := range rawFindings {
-				_ = enc.Encode(f)
-			}
-			return api.MCPDiagnosticsError(diagnostics.FromJoinedError(refuseErr, "STRICT_FIT")), nil
-		}
-		for _, f := range rawFindings {
-			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
-		}
 	}
 
 	// Create output directory
@@ -377,6 +360,29 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Resolve canonical layout names (e.g. "title", "content", "blank") to
 	// concrete layout IDs using tag-based matching against the target template.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
+
+	// Text-fit checking via strict_fit. Runs AFTER template analysis and
+	// canonical-layout resolution so shape_grid fit checks resolve against the
+	// SAME layout-aware bounds generation renders (go-slide-creator-ur3z). In
+	// warn mode, findings are merged into the structured fit_findings response
+	// below so MCP clients see them without separately passing fit_report=true.
+	// In strict mode, refuse-class findings abort generation with a diagnostics
+	// error.
+	var strictFitFindings []patterns.FitFinding
+	if strictFit != "off" {
+		rawFindings, refuseErr := evaluateStrictFit(&input, strictFit, templateLayouts, slideWidth, slideHeight)
+		if refuseErr != nil {
+			// Preserve historical stderr NDJSON dump on refuse for CLI/log parity.
+			enc := json.NewEncoder(os.Stderr)
+			for _, f := range rawFindings {
+				_ = enc.Encode(f)
+			}
+			return api.MCPDiagnosticsError(diagnostics.FromJoinedError(refuseErr, "STRICT_FIT")), nil
+		}
+		for _, f := range rawFindings {
+			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
+		}
+	}
 
 	// Resolve URL references (background.url, image_value.url, grid image.url,
 	// icon.url, nested shape.icon.url). Mirrors the CLI generate path so MCP

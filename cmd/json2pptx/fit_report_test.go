@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestGenerateFitReport_EmptyDeck(t *testing.T) {
@@ -16,7 +17,7 @@ func TestGenerateFitReport_EmptyDeck(t *testing.T) {
 		Template: "midnight-blue",
 		Slides:   []SlideInput{},
 	}
-	findings := generateFitReport(input)
+	findings := generateFitReport(input, nil, 0, 0)
 	if len(findings) != 0 {
 		t.Errorf("expected 0 findings for empty deck, got %d", len(findings))
 	}
@@ -41,7 +42,7 @@ func TestGenerateFitReport_NoOverflow(t *testing.T) {
 			},
 		},
 	}
-	findings := generateFitReport(input)
+	findings := generateFitReport(input, nil, 0, 0)
 	if len(findings) != 0 {
 		t.Errorf("expected 0 findings for short text, got %d", len(findings))
 	}
@@ -70,7 +71,7 @@ func TestGenerateFitReport_TableOverflow(t *testing.T) {
 			},
 		},
 	}
-	findings := generateFitReport(input)
+	findings := generateFitReport(input, nil, 0, 0)
 	if len(findings) == 0 {
 		t.Fatal("expected at least one finding for overflowing text")
 	}
@@ -128,7 +129,7 @@ func TestGenerateFitReport_DensityExceeded(t *testing.T) {
 			},
 		},
 	}
-	findings := generateFitReport(input)
+	findings := generateFitReport(input, nil, 0, 0)
 
 	found := false
 	for _, f := range findings {
@@ -172,7 +173,7 @@ func TestGenerateFitReport_ShapeGridText(t *testing.T) {
 			},
 		},
 	}
-	findings := generateFitReport(input)
+	findings := generateFitReport(input, nil, 0, 0)
 
 	found := false
 	for _, f := range findings {
@@ -212,7 +213,7 @@ func TestGenerateFitReport_ShapeGridEmbeddedTable(t *testing.T) {
 			},
 		},
 	}
-	findings := generateFitReport(input)
+	findings := generateFitReport(input, nil, 0, 0)
 
 	found := false
 	for _, f := range findings {
@@ -468,7 +469,7 @@ func TestGenerateFitReport_CellUnderfilled_DensityBands(t *testing.T) {
 				},
 			}
 
-			findings := generateFitReport(input)
+			findings := generateFitReport(input, nil, 0, 0)
 
 			if tt.wantNoFinding {
 				for _, f := range findings {
@@ -544,6 +545,83 @@ func TestStrictFit_ChartNoFindings_NoRejection(t *testing.T) {
 	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict", false, "off", "", false)
 	if err != nil {
 		t.Fatalf("strict-fit=strict with zero chart findings should not reject: %v", err)
+	}
+}
+
+// smallBodyLayouts builds a single non-blank layout whose body placeholder is
+// far smaller than the generic default grid bounds. resolveVirtualLayout's
+// priority-3 branch then hands the fit report override bounds anchored to that
+// small body placeholder, so the SAME shape_grid resolves into a tight cell.
+// The CanonicalType is forced to a non-blank value so priority 1/2 (blank /
+// blank-title) are skipped and the priority-3 fallback is exercised — the same
+// path generation takes for a no-layout_id shape_grid slide.
+func smallBodyLayouts() []types.LayoutMetadata {
+	return []types.LayoutMetadata{
+		{
+			ID:            "compact",
+			Name:          "Compact One Content",
+			CanonicalType: types.CanonicalLayoutOneContent,
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "title", Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 457200, Y: 200000, Width: 11277600, Height: 700000}},
+				// Small body placeholder: ~3.0in wide x ~0.7in tall.
+				{ID: "body", Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1100000, Width: 2743200, Height: 640000}},
+			},
+		},
+	}
+}
+
+// TestGenerateFitReport_ShapeGridUsesLayoutBounds is the regression case for
+// go-slide-creator-ur3z: a shape_grid measured by the fit report must resolve
+// against the SAME layout-aware bounds generation renders, not against generic
+// full-slide defaults. The slide carries no explicit layout_id, so it goes
+// through virtual layout resolution. The text fits comfortably in the generic
+// default cell but overflows the small body-placeholder cell — so the finding
+// set differs purely because the bounds differ.
+func TestGenerateFitReport_ShapeGridUsesLayoutBounds(t *testing.T) {
+	const (
+		slideWidth  int64 = 12192000
+		slideHeight int64 = 6858000
+	)
+	text := strings.TrimSpace(strings.Repeat("word ", 120)) // ~599 chars
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				ShapeGrid: &ShapeGridInput{
+					Columns: json.RawMessage(`1`),
+					Rows: []GridRowInput{
+						{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{
+							Geometry: "rect",
+							Text:     json.RawMessage(`{"content":"` + text + `","size":11}`),
+						}}}},
+					},
+				},
+			},
+		},
+	}
+
+	// Generic default bounds (nil layouts): the large cell easily holds the text.
+	for _, f := range generateFitReport(input, nil, 0, 0) {
+		if f.Code == patterns.ErrCodeFitOverflow && strings.Contains(f.Path, "shape_grid") {
+			t.Fatalf("did not expect a shape_grid fit_overflow with generic default bounds; got %s @ %s", f.Code, f.Path)
+		}
+	}
+
+	// Layout-aware bounds: the same grid resolves into the small body
+	// placeholder and the text overflows.
+	layoutFindings := generateFitReport(input, smallBodyLayouts(), slideWidth, slideHeight)
+	found := false
+	for _, f := range layoutFindings {
+		if f.Code == patterns.ErrCodeFitOverflow && strings.Contains(f.Path, "shape_grid") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a shape_grid fit_overflow once the report uses the small body-placeholder bounds; got:")
+		for _, f := range layoutFindings {
+			t.Logf("  %s @ %s", f.Code, f.Path)
+		}
 	}
 }
 

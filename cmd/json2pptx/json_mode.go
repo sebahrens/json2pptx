@@ -425,26 +425,6 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			strings.Join(msgs, "\n  ")))
 	}
 
-	// Run text-fit checking when --strict-fit is warn or strict.
-	// Findings from warn mode are merged into the structured fit_findings
-	// output below so JSON consumers see them without having to separately
-	// pass --fit-report. Strict mode still aborts on refuse-class findings,
-	// and the stderr NDJSON dump is preserved for log-tail parity.
-	var strictFitFindings []patterns.FitFinding
-	if strictFit != "off" {
-		rawFindings, refuseErr := evaluateStrictFit(input, strictFit)
-		if refuseErr != nil {
-			enc := json.NewEncoder(os.Stderr)
-			for _, f := range rawFindings {
-				_ = enc.Encode(f)
-			}
-			return writeJSONError(jsonOutputPath, refuseErr)
-		}
-		for _, f := range rawFindings {
-			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
-		}
-	}
-
 	// Load configuration with CLI overrides
 	cfg, err := loadRunConfig(configPath, templatesDir, outputDir, chartPNG)
 	if err != nil {
@@ -469,6 +449,29 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Resolve canonical layout names (e.g. "title", "content", "closing") to
 	// concrete layout IDs using tag-based matching against the target template.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
+
+	// Run text-fit checking when --strict-fit is warn or strict. This runs
+	// AFTER template analysis and canonical-layout resolution so the shape_grid
+	// fit checks resolve against the SAME layout-aware bounds generation renders
+	// (go-slide-creator-ur3z). Findings from warn mode are merged into the
+	// structured fit_findings output below so JSON consumers see them without
+	// having to separately pass --fit-report. Strict mode still aborts on
+	// refuse-class findings, and the stderr NDJSON dump is preserved for
+	// log-tail parity.
+	var strictFitFindings []patterns.FitFinding
+	if strictFit != "off" {
+		rawFindings, refuseErr := evaluateStrictFit(input, strictFit, templateLayouts, slideWidth, slideHeight)
+		if refuseErr != nil {
+			enc := json.NewEncoder(os.Stderr)
+			for _, f := range rawFindings {
+				_ = enc.Encode(f)
+			}
+			return writeJSONError(jsonOutputPath, refuseErr)
+		}
+		for _, f := range rawFindings {
+			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
+		}
+	}
 
 	// Resolve any URL references (icon.url, image.url, background.url) by downloading
 	// them to a session-scoped cache with SSRF protection.

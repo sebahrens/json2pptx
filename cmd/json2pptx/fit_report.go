@@ -10,11 +10,11 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
-	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // fitFinding is a single fit-report entry written as NDJSON. It extends
@@ -37,8 +37,13 @@ type fitFinding struct {
 // mode, a refuse error when any finding's action is "refuse" or severity is
 // "error". Callers are responsible for deciding how to surface findings
 // (structured response, stderr, etc.).
-func evaluateStrictFit(input *PresentationInput, mode string) ([]fitFinding, error) {
-	findings := generateFitReport(input)
+//
+// layouts/slideWidth/slideHeight carry the resolved template geometry so the
+// shape_grid bounds measured here match what generation renders. Pass nil/0/0
+// when no template has been analyzed (the report then falls back to generic
+// default bounds — identical to the pre-geometry behavior).
+func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) ([]fitFinding, error) {
+	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
 	if len(findings) == 0 {
 		return nil, nil
 	}
@@ -63,7 +68,13 @@ func evaluateStrictFit(input *PresentationInput, mode string) ([]fitFinding, err
 // presentation, measuring text against available cell dimensions. It returns
 // findings for cells that overflow, in canonical
 // (severity_desc, slide_index_asc, code_asc) order.
-func generateFitReport(input *PresentationInput) []fitFinding {
+//
+// layouts/slideWidth/slideHeight supply the resolved template geometry used to
+// place shape_grid cells. They are threaded into walkShapeGrid so the report
+// resolves grids through the SAME layout-aware helpers generation uses
+// (resolveGridGeometry → resolveGridBounds). With nil layouts the result is
+// identical to the legacy generic-default-bounds behavior.
+func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
 	var findings []fitFinding
 
 	for si, slide := range input.Slides {
@@ -80,10 +91,11 @@ func generateFitReport(input *PresentationInput) []fitFinding {
 				measureTable(table, slidepath.ContentIndex(si, ci), si)...)
 		}
 
-		// Walk shape_grid cells.
+		// Walk shape_grid cells using the same layout-aware geometry as
+		// generation so strict_fit / fit-report bounds match render.
 		if slide.ShapeGrid != nil {
 			findings = append(findings,
-				walkShapeGrid(slide.ShapeGrid, si)...)
+				walkShapeGrid(slide, si, layouts, slideWidth, slideHeight)...)
 		}
 	}
 
@@ -234,53 +246,31 @@ func tdrCeilingForFont(fontPt float64) int {
 	}
 }
 
-// walkShapeGrid resolves a shape grid via shapegrid.Resolve and
-// textcapacity.ForResolvedGrid, then emits fit findings for overflowing cells
-// and row max_height violations.
-func walkShapeGrid(grid *ShapeGridInput, slideIdx int) []fitFinding {
-	// Resolve the grid to get authoritative cell bounds.
-	colWidths, err := resolveColumnsDTO(grid.Columns, grid.Rows)
-	if err != nil {
+// walkShapeGrid resolves a shape grid against the SAME layout-aware geometry
+// generation uses (resolveGridGeometry → resolveGridBounds, via
+// resolveGridForStructural) and runs textcapacity.ForResolvedGrid over the
+// result, emitting fit findings for overflowing cells and row max_height
+// violations. Resolving with the template's content-zone / virtual-layout
+// bounds (rather than generic defaults) is what keeps strict_fit and
+// fit-report cell measurements in lockstep with the rendered PPTX
+// (go-slide-creator-ur3z). With nil layouts the geometry reduces to the legacy
+// "explicit bounds or DefaultBounds" behavior.
+func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
+	grid := slide.ShapeGrid
+	if grid == nil {
 		return nil
 	}
-
-	colGap := grid.ColGap
-	if colGap == 0 {
-		colGap = grid.Gap
+	if slideWidth <= 0 {
+		slideWidth = shapegrid.DefaultSlideWidthEMU
 	}
-	rowGap := grid.RowGap
-	if rowGap == 0 {
-		rowGap = grid.Gap
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
 	}
 
-	rows := convertGridRows(grid.Rows)
-
-	// Use default slide dimensions for bounds; apply percentage-based bounds
-	// if specified.
-	bounds := shapegrid.DefaultBounds(shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
-	if grid.Bounds != nil {
-		bounds = shapegrid.BoundsFromPercentages(
-			grid.Bounds.X, grid.Bounds.Y,
-			grid.Bounds.Width, grid.Bounds.Height,
-			shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU,
-		)
-	}
-
-	sgGrid := &shapegrid.Grid{
-		Bounds:  bounds,
-		Columns: colWidths,
-		Rows:    rows,
-		ColGap:  colGap,
-		RowGap:  rowGap,
-	}
-
-	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
-		return nil
-	}
-
-	alloc := pptx.NewShapeIDAllocator(nil)
-	result, err := shapegrid.Resolve(sgGrid, alloc)
-	if err != nil || result == nil {
+	// Resolve the grid to authoritative cell bounds using generation's geometry.
+	geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+	result := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+	if result == nil {
 		return nil
 	}
 

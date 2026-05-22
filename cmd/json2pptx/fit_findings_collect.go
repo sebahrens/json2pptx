@@ -37,8 +37,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// carries ShapeGrid == nil, so checkShapeGridStructural is skipped.
 	input = expandComposeForPreflight(input, slideWidth, slideHeight)
 
-	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid text).
-	for _, tf := range generateFitReport(input) {
+	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid
+	// text). Pass the resolved layout geometry so shape_grid cells are measured
+	// against the SAME bounds generation renders, matching the structural pass
+	// below (go-slide-creator-ur3z).
+	for _, tf := range generateFitReport(input, layouts, slideWidth, slideHeight) {
 		findings = append(findings, convertTextFitFinding(tf))
 	}
 

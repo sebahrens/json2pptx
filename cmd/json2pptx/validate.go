@@ -13,6 +13,7 @@ import (
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // runValidate implements the "validate" subcommand. It validates JSON slide
@@ -126,8 +127,7 @@ func runValidate() error { //nolint:gocognit
 			}
 			applyDefaults(&input)
 
-			findings := generateFitReport(&input)
-			findings = budgetLocalFindings(findings, DefaultFindingBudget, *verboseFit)
+			findings := fitFindingsForInput(&input, *templateName, *templatesDir, *verboseFit)
 			printFitFindingsBySlide(findings)
 			for _, f := range findings {
 				if f.Action == "refuse" {
@@ -146,6 +146,45 @@ func runValidate() error { //nolint:gocognit
 		return fmt.Errorf("validation failed")
 	}
 	return nil
+}
+
+// fitFindingsForInput resolves template geometry for input (preferring the
+// --template override, else the deck's own template), resolves canonical layout
+// IDs against it, and returns the budgeted fit-report findings. Resolving the
+// geometry first means the CLI --fit-report path measures shape_grid cells
+// against the SAME layout-aware bounds generation renders (go-slide-creator-ur3z).
+// Extracted from runValidate to keep its cyclomatic complexity under the linter
+// ceiling.
+func fitFindingsForInput(input *PresentationInput, templateNameOverride, templatesDir string, verboseFit bool) []fitFinding {
+	fitTemplate := input.Template
+	if templateNameOverride != "" {
+		fitTemplate = templateNameOverride
+	}
+	layouts, slideWidth, slideHeight := fitReportGeometry(fitTemplate, templatesDir)
+	if len(layouts) > 0 {
+		resolveCanonicalLayoutIDs(input.Slides, layouts)
+	}
+	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
+	return budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
+}
+
+// fitReportGeometry resolves layout metadata and slide dimensions for the named
+// template so the CLI --fit-report path measures shape_grid cells against the
+// SAME layout-aware bounds generation uses (resolveGridGeometry →
+// resolveGridBounds). It returns nil layouts and zero dimensions when the
+// template name is empty or cannot be resolved/analyzed, so --fit-report still
+// works (with generic default bounds) for inputs without a resolvable template.
+func fitReportGeometry(templateName, templatesDir string) ([]types.LayoutMetadata, int64, int64) {
+	if templateName == "" {
+		return nil, 0, 0
+	}
+	templatePath, cleanup, err := resolveTemplatePath(templateName, templatesDir)
+	if err != nil {
+		return nil, 0, 0
+	}
+	defer cleanup()
+	layouts, _, slideWidth, slideHeight, _, _, _ := analyzeTemplateLayouts(templatePath)
+	return layouts, slideWidth, slideHeight
 }
 
 // validateResult holds the structured validation output for a single file.
