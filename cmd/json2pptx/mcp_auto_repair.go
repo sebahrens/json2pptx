@@ -40,6 +40,24 @@ const (
 	defaultAutoRepairMaxPasses               = 3
 )
 
+// contentProvenance labels where a facade's slide content came from. It is the
+// deciding input for publishability: a deck filled with pattern exemplar values
+// is a skeleton draft and is never publishable as-is, no matter how cleanly it
+// scores. auto_repair runs on caller-authored content; make_deck cold-starts
+// from exemplar placeholders.
+type contentProvenance string
+
+const (
+	// contentProvenanceAuthorSupplied means the caller supplied the slide
+	// content (auto_repair). Such a deck can be publishable once it also passes
+	// the gate on complete evidence.
+	contentProvenanceAuthorSupplied contentProvenance = "author_supplied"
+	// contentProvenanceExemplarSkeleton means the content is pattern exemplar
+	// placeholder values, not the caller's real content (make_deck cold start).
+	// Always requires manual review and is never publishable as-is.
+	contentProvenanceExemplarSkeleton contentProvenance = "exemplar_skeleton"
+)
+
 // --- Response types ---
 
 // autoRepairOutput is the top-level response for auto_repair.
@@ -86,6 +104,45 @@ type autoRepairOutput struct {
 	// rendered PPTX. Always present: a publishable / gate-passed result requires
 	// ran=true and valid=true.
 	OutputValidation *autoRepairOutputValidation `json:"output_validation,omitempty"`
+
+	// --- Agent-native status fields (go-slide-creator-33oo) ---
+	// These collapse the otherwise-scattered signals (transport success,
+	// artifact existence, gate status, evidence completeness, content
+	// provenance) into unambiguous machine-readable flags so an agent never
+	// mistakes a draft, an exemplar skeleton, or a gate-failed result for a
+	// publishable artifact.
+	//
+	// ArtifactStatus describes the rendered PPTX at Path: "generated" (written
+	// and structurally valid) or "generated_invalid" (written but failed the
+	// final structural output validation). The file always exists on a
+	// non-error response — artifact existence alone never implies publishability.
+	ArtifactStatus string `json:"artifact_status"`
+	// ContentStatus and UsesExemplarContent label content provenance:
+	// "author_supplied" (auto_repair — caller-authored slides) or
+	// "exemplar_skeleton" (make_deck — pattern exemplar placeholder values).
+	ContentStatus       string `json:"content_status"`
+	UsesExemplarContent bool   `json:"uses_exemplar_content"`
+	// ValidationStatus folds the deterministic gate and evidence completeness:
+	// "passed" (gate met on complete evidence), "passed_degraded" (gate met but
+	// evidence_complete=false — converged on degraded/static-only evidence), or
+	// "failed" (gate not met).
+	ValidationStatus string `json:"validation_status"`
+	// Publishable is the single authoritative ship-as-is flag: gate passed AND
+	// evidence complete AND structurally valid AND content author-supplied.
+	// Exemplar skeletons, degraded passes, and gate-failed results are never
+	// publishable. Equivalent to len(BlockingReasons)==0.
+	Publishable bool `json:"publishable"`
+	// ManualReviewRequired is the affirmative inverse of Publishable: true
+	// whenever a human or agent must review before the deck ships (gate failed,
+	// evidence incomplete, structurally invalid, or exemplar content). Provided
+	// so agents gating on "show this to a human first?" don't have to negate
+	// publishable.
+	ManualReviewRequired bool `json:"manual_review_required"`
+	// BlockingReasons enumerates every reason the deck is not publishable — the
+	// unmet gate criteria (including final output validation), incomplete
+	// evidence, and exemplar provenance. Empty iff Publishable is true. Superset
+	// of GateReasons (which stays gate-only for backwards compatibility).
+	BlockingReasons []string `json:"blocking_reasons,omitempty"`
 }
 
 // autoRepairOutputValidation summarizes the final pptx.ValidateOutputFile run on
@@ -154,9 +211,11 @@ Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loo
 - max_p1_findings (default 2): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
-Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, visual_qa?}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
+Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
 
-When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
+Publishability is reported explicitly so a successful transport response is never mistaken for a publishable deck: publishable is true ONLY when the gate passed on complete evidence AND the content is caller-authored (auto_repair always reports content_status="author_supplied"). When publishable is false, blocking_reasons enumerates every cause; manual_review_required is its affirmative inverse. artifact_status distinguishes a structurally valid PPTX ("generated") from one written but failed validation ("generated_invalid"); validation_status is "passed" / "passed_degraded" / "failed".
+
+When gate_passed is false (max_passes exhausted), gate_reasons (and the superset blocking_reasons) list every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
 		mcp.WithRawOutputSchema(outputSchemaAutoRepair),
 		mcp.WithObject("presentation",
 			mcp.Required(),
@@ -272,7 +331,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded)
+	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded, contentProvenanceAuthorSupplied)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -304,6 +363,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	vqa visualQAConfig,
 	outputFilename string,
 	allowDegraded bool,
+	provenance contentProvenance,
 ) (*autoRepairOutput, *mcp.CallToolResult) {
 	// Resolve relative local-asset paths (icons, images, background) against
 	// base_dir once, before the convergence loop, mirroring generate_presentation
@@ -468,6 +528,10 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal final presentation: %v", err))
 	}
 
+	// Derive the agent-native publishability status block from the loop's
+	// terminal state (see deriveFacadeStatus).
+	status := deriveFacadeStatus(gatePassed, evidenceComplete, outputValidation.Valid, lastGateReasons, provenance)
+
 	outVal := outputValidation
 	output := &autoRepairOutput{
 		Path:              finalPath,
@@ -481,6 +545,14 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		FinalPresentation: finalPresentation,
 		EvidenceComplete:  evidenceComplete,
 		OutputValidation:  &outVal,
+
+		ArtifactStatus:       status.ArtifactStatus,
+		ContentStatus:        status.ContentStatus,
+		UsesExemplarContent:  status.UsesExemplarContent,
+		ValidationStatus:     status.ValidationStatus,
+		Publishable:          status.Publishable,
+		ManualReviewRequired: status.ManualReviewRequired,
+		BlockingReasons:      status.BlockingReasons,
 	}
 	if !lastRenderEvidence.Complete {
 		re := lastRenderEvidence
@@ -491,6 +563,61 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	}
 	_ = lastFindings
 	return output, nil
+}
+
+// facadeStatus bundles the derived agent-native publishability fields so
+// runAutoRepairLoop stays within complexity limits and the logic lives in one
+// place.
+type facadeStatus struct {
+	ArtifactStatus       string
+	ContentStatus        string
+	UsesExemplarContent  bool
+	ValidationStatus     string
+	Publishable          bool
+	ManualReviewRequired bool
+	BlockingReasons      []string
+}
+
+// deriveFacadeStatus computes the publishability status block from the loop's
+// terminal state. publishable is the single source of truth, defined as "no
+// blocking reasons", so the boolean and the human-readable list can never
+// disagree. blockingReasons folds together every distinct failure: the unmet
+// gate criteria (gateReasons already includes final-output-validation failures),
+// a degraded/incomplete-evidence pass that nonetheless satisfied the gate, and
+// exemplar content provenance.
+func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid bool, gateReasons []string, provenance contentProvenance) facadeStatus {
+	usesExemplar := provenance == contentProvenanceExemplarSkeleton
+	blocking := append([]string(nil), gateReasons...)
+	if gatePassed && !evidenceComplete {
+		blocking = append(blocking,
+			"validation evidence incomplete: gate passed on degraded/static-only evidence (evidence_complete=false); render evidence or final output validation did not complete cleanly")
+	}
+	if usesExemplar {
+		blocking = append(blocking,
+			"content is an exemplar skeleton (pattern placeholder values), not author-supplied; replace per-slide content via repair_slide before publishing")
+	}
+	publishable := len(blocking) == 0
+
+	artifactStatus := "generated"
+	if !outputValid {
+		artifactStatus = "generated_invalid"
+	}
+	validationStatus := "failed"
+	if gatePassed {
+		validationStatus = "passed_degraded"
+		if evidenceComplete {
+			validationStatus = "passed"
+		}
+	}
+	return facadeStatus{
+		ArtifactStatus:       artifactStatus,
+		ContentStatus:        string(provenance),
+		UsesExemplarContent:  usesExemplar,
+		ValidationStatus:     validationStatus,
+		Publishable:          publishable,
+		ManualReviewRequired: !publishable,
+		BlockingReasons:      blocking,
+	}
 }
 
 // --- Gate evaluation ---

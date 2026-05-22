@@ -64,7 +64,7 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 	case "brief":
 		return &getStartedFastPath{
 			Tool:        "make_deck",
-			WhenToCall:  "FASTEST PATH (recommended cold start) — ONE call from a natural-language outline to a validated, auto-repaired PPTX. make_deck internally chains plan_deck → expand patterns with exemplar content → auto_repair, so you skip the whole manual sequence. Reach for it when you do NOT need to hand-author per-slide content. Drop to the manual primitives in `sequence` (recommend_visual → … → generate_presentation) when you want per-slide control over copy, patterns, or layout.",
+			WhenToCall:  "FASTEST PATH (recommended cold start) — ONE call from a natural-language outline to a DRAFT, auto-repaired PPTX. make_deck internally chains plan_deck → expand patterns with exemplar content → auto_repair, so you skip the whole manual sequence. NOTE: the output is a SKELETON, not publishable — it fills slides with pattern exemplar PLACEHOLDER content, so the response reports content_status=\"exemplar_skeleton\", uses_exemplar_content=true, publishable=false even when the gate passes. After the call, replace the exemplar copy via repair_slide and run the rendered visual-QA / manual-review branch (see notes) before shipping. Drop to the manual primitives in `sequence` (recommend_visual → … → generate_presentation) when you want per-slide control over copy, patterns, or layout.",
 			FallsBackTo: tools,
 		}
 	case "revise":
@@ -116,7 +116,8 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "score_deck", WhenToCall: "Final — score the generated deck (0-100) for variety, coverage, and structure."},
 		}
 		notes = []string{
-			"fast_path (make_deck) is the recommended cold-start entry point: one call to a publishable PPTX. The numbered `sequence` is the controllable path you drop to when you want to author per-slide content or drive each primitive yourself — make_deck is the workflow facade, the sequence is the manual primitives it composes.",
+			"fast_path (make_deck) is the recommended cold-start entry point: one call to a DRAFT PPTX skeleton (NOT a publishable deck — it uses pattern exemplar placeholder content, so its response reports content_status=\"exemplar_skeleton\", uses_exemplar_content=true, publishable=false). The numbered `sequence` is the controllable path you drop to when you want to author per-slide content or drive each primitive yourself — make_deck is the workflow facade, the sequence is the manual primitives it composes.",
+			"RENDERED VISUAL-QA / MANUAL-REVIEW BRANCH (do this before publishing anything): the deterministic loop in make_deck / auto_repair / score_deck never looks at a rendered pixel, and a passing gate is NOT the same as a publishable deck. Either pass visual_qa:{enabled:true} to make_deck / auto_repair to run the in-loop vision/heuristic refinement phase, OR render the final PPTX (render_deck_thumbnails / render_slide_image) and inspect it (inspect_slide_images) yourself. Always required when publishable=false / manual_review_required=true (e.g. exemplar-skeleton make_deck output or a degraded/gate-failed run) — branch on the response's blocking_reasons to see what to fix.",
 			"This is the canonical new-deck workflow. Each step's output informs the next.",
 			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
 			"validate_input is mandatory per SKILL.md preconditions — skipping it is a workflow violation even when preview_presentation_plan succeeds.",
@@ -134,6 +135,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		}
 		notes = []string{
 			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
+			"RENDERED VISUAL-QA / MANUAL-REVIEW BRANCH: a passing gate from auto_repair is NOT the same as publishable — the default loop scores from static + render-fit findings only and never inspects a rendered pixel. Check the response's publishable / manual_review_required / blocking_reasons; when review is required, either pass visual_qa:{enabled:true} to auto_repair or render the final PPTX (render_deck_thumbnails / render_slide_image) and inspect it (inspect_slide_images) before shipping.",
 			"Use this when modifying or repairing an existing PPTX deck.",
 			"You MUST supply the authoritative deck JSON for validate_input, preview_presentation_plan, repair_slide, and generate_presentation. read_presentation is a verification aid only — it does not reconstruct a PresentationInput.",
 			"If the original deck JSON is unavailable, re-author it from the brief (see task=brief) rather than trying to round-trip read_presentation through the editing tools.",
@@ -165,7 +167,7 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithDescription(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full 45-tool catalog.
 
 The response carries two complementary paths:
-- fast_path: the recommended single-call facade — make_deck for "brief", auto_repair for "revise". Call this alone for a publishable result without orchestrating the tool surface yourself. Its falls_back_to lists the manual primitives it collapses. Omitted for "validate-only" (pure diagnostics, no facade).
+- fast_path: the recommended single-call facade — make_deck for "brief", auto_repair for "revise". Call this alone for a fast result without orchestrating the tool surface yourself. NOTE: the result is not automatically publishable — make_deck returns a DRAFT skeleton with exemplar placeholder content (publishable=false), and even auto_repair's deterministic gate is not a substitute for the rendered visual-QA / manual-review branch (see notes); branch on the response's publishable / manual_review_required / blocking_reasons. Its falls_back_to lists the manual primitives it collapses. Omitted for "validate-only" (pure diagnostics, no facade).
 - sequence: the controllable manual path — the ordered primitives to drive by hand when you need per-slide or per-step control.
 
 Pass "task" to scope both paths:

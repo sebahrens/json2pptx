@@ -343,6 +343,192 @@ func TestAutoRepair_GateNotMetExhaustsPasses(t *testing.T) {
 	}
 }
 
+// TestFacadeOutputSchemasAdvertisePublishability is the schema-sync gate for
+// go-slide-creator-33oo: both facade output schemas must advertise AND require
+// the agent-native publishability status fields, so MCP clients can rely on
+// them always being present.
+func TestFacadeOutputSchemasAdvertisePublishability(t *testing.T) {
+	required := []string{
+		"artifact_status", "content_status", "uses_exemplar_content",
+		"validation_status", "publishable", "manual_review_required",
+	}
+	for name, schema := range map[string]json.RawMessage{
+		"auto_repair": outputSchemaAutoRepair,
+		"make_deck":   outputSchemaMakeDeck,
+	} {
+		var parsed map[string]any
+		if err := json.Unmarshal(schema, &parsed); err != nil {
+			t.Fatalf("%s schema is not valid JSON: %v", name, err)
+		}
+		props, _ := parsed["properties"].(map[string]any)
+		reqList, _ := parsed["required"].([]any)
+		reqSet := map[string]bool{}
+		for _, r := range reqList {
+			if s, ok := r.(string); ok {
+				reqSet[s] = true
+			}
+		}
+		// blocking_reasons is advertised but omitempty (present only when not
+		// publishable), so it is a property but not required.
+		if _, ok := props["blocking_reasons"]; !ok {
+			t.Errorf("%s schema must advertise blocking_reasons", name)
+		}
+		for _, field := range required {
+			if _, ok := props[field]; !ok {
+				t.Errorf("%s schema must advertise %q", name, field)
+			}
+			if !reqSet[field] {
+				t.Errorf("%s schema must require %q (it is always present)", name, field)
+			}
+		}
+	}
+}
+
+// TestAutoRepair_GateFailedFacadeSuccessNotPublishable pins go-slide-creator-33oo
+// for the gate-failed case: the tool returns a SUCCESSFUL transport response
+// (IsError=false) with a written PPTX even though the gate failed, so the
+// publishability fields must make the failure unambiguous. We force a
+// deterministic gate failure with max_passes=1 (one scoring pass, no repair) on a
+// deck that starts below the score threshold.
+func TestAutoRepair_GateFailedFacadeSuccessNotPublishable(t *testing.T) {
+	mc := repairMC(t)
+
+	// Three BODY_TOO_LONG findings (action=review, weight 5) → score 85. With
+	// min_score=95 the single scoring pass fails the gate, and max_passes=1 means
+	// no repair is attempted, so the failure is deterministic.
+	deckJSON := autoRepairDeck(3)
+
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deckJSON),
+		"gate": map[string]any{
+			"min_score":                  float64(95),
+			"max_p0_findings":            float64(0),
+			"max_p1_findings":            float64(2),
+			"require_takeaway_on_charts": false,
+		},
+		"max_passes":      float64(1),
+		"output_filename": "auto_repair_gate_failed.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// The facade SUCCEEDS at the transport layer even though the gate failed.
+	if result.IsError {
+		t.Fatalf("expected a successful transport response on gate failure, got error: %s", textContent(result))
+	}
+
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if output.GatePassed {
+		t.Fatalf("expected gate_passed=false with min_score=95 and max_passes=1; final_score=%d", output.FinalScore)
+	}
+	// A written artifact must NOT imply publishability.
+	if output.Path == "" {
+		t.Error("expected a written PPTX path even on gate failure")
+	}
+	if output.Publishable {
+		t.Error("gate-failed deck must not be publishable")
+	}
+	if !output.ManualReviewRequired {
+		t.Error("manual_review_required must be true for a gate-failed deck")
+	}
+	if output.ValidationStatus != "failed" {
+		t.Errorf("validation_status = %q, want %q", output.ValidationStatus, "failed")
+	}
+	if len(output.BlockingReasons) == 0 {
+		t.Fatal("gate_passed=false must produce explicit blocking_reasons")
+	}
+	// blocking_reasons is a superset of gate_reasons: every gate reason appears.
+	for _, gr := range output.GateReasons {
+		found := false
+		for _, br := range output.BlockingReasons {
+			if br == gr {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("gate reason %q missing from blocking_reasons %v", gr, output.BlockingReasons)
+		}
+	}
+	// auto_repair operates on caller-authored content — never exemplar.
+	if output.ContentStatus != "author_supplied" {
+		t.Errorf("content_status = %q, want %q", output.ContentStatus, "author_supplied")
+	}
+	if output.UsesExemplarContent {
+		t.Error("uses_exemplar_content must be false for auto_repair")
+	}
+}
+
+// TestAutoRepair_CleanRunIsPublishable asserts the positive path: an
+// author-supplied deck that passes the gate on complete evidence is reported
+// publishable with no blocking reasons. This is the only combination that may be
+// publishable, so it must light up correctly.
+func TestAutoRepair_CleanRunIsPublishable(t *testing.T) {
+	mc := repairMC(t)
+
+	deck := map[string]any{
+		"template": "midnight-blue",
+		"slides": []any{
+			map[string]any{
+				"layout_id": "slideLayout1",
+				"content": []any{
+					map[string]any{
+						"placeholder_id": "title",
+						"type":           "text",
+						"text_value":     "Hello",
+					},
+				},
+			},
+		},
+	}
+	b, _ := json.Marshal(deck)
+
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation":    mustParseJSON(string(b)),
+		"output_filename": "auto_repair_publishable.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if !output.GatePassed {
+		t.Fatalf("expected trivial author-supplied deck to pass the gate; reasons=%v", output.GateReasons)
+	}
+	if !output.EvidenceComplete {
+		t.Fatalf("expected complete evidence on a passing render; render_evidence=%+v output_validation=%+v",
+			output.RenderEvidence, output.OutputValidation)
+	}
+	if !output.Publishable {
+		t.Errorf("a gate-passed, evidence-complete, author-supplied deck must be publishable; blocking_reasons=%v", output.BlockingReasons)
+	}
+	if output.ManualReviewRequired {
+		t.Error("manual_review_required must be false for a publishable deck")
+	}
+	if len(output.BlockingReasons) != 0 {
+		t.Errorf("blocking_reasons must be empty for a publishable deck, got %v", output.BlockingReasons)
+	}
+	if output.ContentStatus != "author_supplied" {
+		t.Errorf("content_status = %q, want %q", output.ContentStatus, "author_supplied")
+	}
+	if output.ValidationStatus != "passed" {
+		t.Errorf("validation_status = %q, want %q", output.ValidationStatus, "passed")
+	}
+	if output.ArtifactStatus != "generated" {
+		t.Errorf("artifact_status = %q, want %q", output.ArtifactStatus, "generated")
+	}
+}
+
 // TestAutoRepair_TraceShapeStable asserts the response carries every required
 // field even on trivial decks so MCP clients can rely on the schema.
 func TestAutoRepair_TraceShapeStable(t *testing.T) {

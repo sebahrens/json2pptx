@@ -47,6 +47,12 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// now points at describe_finding; added repairable / repair_unavailable_reason)
 	// — an error-response shape only, not tool names, PresentationInput fields, or
 	// the Fix.Kind vocabulary, so the hash is again unchanged.
+	// 4.53.0 added the agent-native publishability status block (publishable,
+	// manual_review_required, blocking_reasons, content_status,
+	// uses_exemplar_content, artifact_status, validation_status) to the
+	// auto_repair / make_deck responses — response fields only, not tool names,
+	// PresentationInput fields, or the Fix.Kind vocabulary, so the hash is again
+	// unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

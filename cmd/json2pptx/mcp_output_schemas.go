@@ -1222,9 +1222,16 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. gate_passed cannot be true on incomplete evidence unless allow_degraded_scoring was set, in which case render_evidence.degraded labels the result and evidence_complete stays false."},
     "render_evidence": ` + renderEvidenceSchema + `,
     "output_validation": ` + outputValidationSchema + `,
+    "artifact_status": {"type": "string", "enum": ["generated", "generated_invalid"], "description": "State of the rendered PPTX at path: 'generated' (written and structurally valid) or 'generated_invalid' (written but failed final structural output validation). Artifact existence alone never implies publishability."},
+    "content_status": {"type": "string", "enum": ["author_supplied", "exemplar_skeleton"], "description": "Content provenance. auto_repair always reports 'author_supplied' (caller-authored slides)."},
+    "uses_exemplar_content": {"type": "boolean", "description": "True when slide content is pattern exemplar placeholder values rather than caller content. Always false for auto_repair."},
+    "validation_status": {"type": "string", "enum": ["passed", "passed_degraded", "failed"], "description": "Folds the deterministic gate and evidence completeness: 'passed' (gate met on complete evidence), 'passed_degraded' (gate met but evidence_complete=false), or 'failed'."},
+    "publishable": {"type": "boolean", "description": "Single authoritative ship-as-is flag: true ONLY when the gate passed on complete evidence, the artifact is structurally valid, AND content is author-supplied. Equivalent to blocking_reasons being empty."},
+    "manual_review_required": {"type": "boolean", "description": "Affirmative inverse of publishable: true whenever a human or agent must review before shipping (gate failed, evidence incomplete, structurally invalid, or exemplar content)."},
+    "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — unmet gate criteria (incl. final output validation), incomplete evidence, and exemplar provenance. Present only when publishable=false. Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation", "evidence_complete"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- make_deck ---
@@ -1282,9 +1289,16 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. Mirrors auto_repair.evidence_complete."},
     "render_evidence": ` + renderEvidenceSchema + `,
     "output_validation": ` + outputValidationSchema + `,
+    "artifact_status": {"type": "string", "enum": ["generated", "generated_invalid"], "description": "State of the rendered PPTX at path: 'generated' (written and structurally valid) or 'generated_invalid' (written but failed final structural output validation)."},
+    "content_status": {"type": "string", "enum": ["author_supplied", "exemplar_skeleton"], "description": "Content provenance. make_deck ALWAYS reports 'exemplar_skeleton' — slides are filled with pattern exemplar placeholder values, not caller content."},
+    "uses_exemplar_content": {"type": "boolean", "description": "Always true for make_deck: slide content is pattern exemplar placeholders the caller must replace before publishing."},
+    "validation_status": {"type": "string", "enum": ["passed", "passed_degraded", "failed"], "description": "Folds the deterministic gate and evidence completeness: 'passed', 'passed_degraded', or 'failed'. Independent of publishability — an exemplar skeleton can have validation_status='passed' yet publishable=false."},
+    "publishable": {"type": "boolean", "description": "Single authoritative ship-as-is flag. ALWAYS false for make_deck output because the content is an exemplar skeleton; replace the exemplar content (via repair_slide) before treating the deck as publishable."},
+    "manual_review_required": {"type": "boolean", "description": "Affirmative inverse of publishable: always true for make_deck output (exemplar content requires review/replacement)."},
+    "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — for make_deck this always includes the exemplar-content reason, plus any unmet gate criteria. Present only when publishable=false (always, for make_deck). Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation", "evidence_complete"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- table_density_guide ---

@@ -351,7 +351,7 @@ collapse a whole chain into one call:
 
 | Tool | Purpose | CLI |
 |------|---------|-----|
-| `make_deck` | ONE call from a natural-language outline to a validated, auto-repaired PPTX (chains `plan_deck` → expand patterns → `auto_repair`). Recommended cold-start entry point. | MCP-only |
+| `make_deck` | ONE call from a natural-language outline to a DRAFT, auto-repaired PPTX skeleton (chains `plan_deck` → expand patterns → `auto_repair`). Recommended cold-start entry point. Fills slides with pattern exemplar placeholder content, so the response reports `content_status: "exemplar_skeleton"` / `publishable: false` — replace the content and run visual QA before shipping. | MCP-only |
 | `auto_repair` | Server-side convergence loop (`generate` → inspect → `repair`) against a configurable quality gate. | MCP-only |
 
 **Discovery / introspection** (`phase: discovery`, read-only)

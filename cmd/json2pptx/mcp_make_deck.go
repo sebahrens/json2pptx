@@ -7,7 +7,11 @@
 // generate_presentation → score_deck → propose_repairs → repair_slides_batch →
 // generate_presentation} with a single tool call. The intent is to give
 // cold-start agents (Claude Code / Codex / Amp) a hard-to-misuse entry point
-// that drops them onto a publishable deck without orchestration overhead.
+// that drops them onto a structured DRAFT deck without orchestration overhead.
+// Because the caller supplies no per-slide content, the draft is filled with
+// pattern exemplar placeholders — the response labels it content_status=
+// "exemplar_skeleton" / publishable=false so it is never mistaken for a
+// finished deck (see go-slide-creator-33oo).
 //
 // The full 37-tool surface remains available for power users who want to
 // drive each step manually.
@@ -68,6 +72,20 @@ type makeDeckOutput struct {
 	EvidenceComplete bool                          `json:"evidence_complete"`
 	RenderEvidence   *deterministic.RenderEvidence `json:"render_evidence,omitempty"`
 	OutputValidation *autoRepairOutputValidation   `json:"output_validation,omitempty"`
+	// ArtifactStatus, ContentStatus, UsesExemplarContent, ValidationStatus,
+	// Publishable, ManualReviewRequired, and BlockingReasons mirror auto_repair's
+	// agent-native status block (go-slide-creator-33oo). Because make_deck fills
+	// planned slides from pattern exemplar values rather than caller content,
+	// content_status is always "exemplar_skeleton", uses_exemplar_content is
+	// always true, and the deck is therefore NEVER publishable as-is — even when
+	// the gate passes — until the agent replaces the exemplar content.
+	ArtifactStatus       string   `json:"artifact_status"`
+	ContentStatus        string   `json:"content_status"`
+	UsesExemplarContent  bool     `json:"uses_exemplar_content"`
+	ValidationStatus     string   `json:"validation_status"`
+	Publishable          bool     `json:"publishable"`
+	ManualReviewRequired bool     `json:"manual_review_required"`
+	BlockingReasons      []string `json:"blocking_reasons,omitempty"`
 }
 
 // makeDeckPlanSummary captures the plan_deck decisions that produced the
@@ -100,13 +118,13 @@ type makeDeckStyleHints struct {
 
 func mcpMakeDeckTool() mcp.Tool {
 	return mcp.NewTool("make_deck",
-		mcp.WithDescription(`Cold-start facade: ONE call from a natural-language outline to a validated PPTX. Internally chains plan_deck → expand patterns with exemplar content → auto_repair (generate → inspect → repair) until the quality gate passes or max_repair_passes is exhausted.
+		mcp.WithDescription(`Cold-start facade: ONE call from a natural-language outline to a DRAFT PPTX skeleton. Internally chains plan_deck → expand patterns with exemplar content → auto_repair (generate → inspect → repair) until the quality gate passes or max_repair_passes is exhausted.
 
-Use this when you want a publishable deck without orchestrating the 37-tool surface yourself. The full surface remains available for fine-grained control; make_deck is intended as the recommended starting point for cold-start agents.
+IMPORTANT — the output is a SKELETON, not a publishable deck. When the caller supplies no per-slide content, make_deck fills every planned slide with the pattern's exemplar PLACEHOLDER values, so the response always reports content_status="exemplar_skeleton", uses_exemplar_content=true, and publishable=false — even when the quality gate passes. Treat it as a structured first draft: inspect plan.slides[] and final_presentation, replace the exemplar copy with real content via repair_slide, then re-run auto_repair / validate_input / generate_presentation. Reach for it to skip orchestrating the 37-tool surface yourself; the full surface remains available for fine-grained control.
 
 Quality mode (truth-labeled in the response as quality_mode): like auto_repair, the DEFAULT is "deterministic" — the internal loop scores the deck from static + render-fit findings only, with no rendering and no API key. Pass visual_qa.enabled=true to additionally run the opt-in vision/heuristic visual refinement phase (quality_mode "deterministic+visual_qa"); it inherits auto_repair's visual_qa semantics, requirements, and transparent fallbacks.
 
-Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
+Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. publishable / manual_review_required / blocking_reasons make the skeleton status unambiguous (publishable is always false for exemplar content; blocking_reasons names the exemplar-content reason plus any unmet gate criteria). plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
 
 Style hints (all optional):
 - slide_budget: target deck size, clamped to [3, 30] (default 10).
@@ -254,7 +272,10 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded)
+	// make_deck fills slides from pattern exemplar values, so it always declares
+	// exemplar provenance — the loop then marks the result non-publishable
+	// regardless of how cleanly it scores.
+	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded, contentProvenanceExemplarSkeleton)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -273,6 +294,14 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		EvidenceComplete:  loopOut.EvidenceComplete,
 		RenderEvidence:    loopOut.RenderEvidence,
 		OutputValidation:  loopOut.OutputValidation,
+
+		ArtifactStatus:       loopOut.ArtifactStatus,
+		ContentStatus:        loopOut.ContentStatus,
+		UsesExemplarContent:  loopOut.UsesExemplarContent,
+		ValidationStatus:     loopOut.ValidationStatus,
+		Publishable:          loopOut.Publishable,
+		ManualReviewRequired: loopOut.ManualReviewRequired,
+		BlockingReasons:      loopOut.BlockingReasons,
 	}
 
 	mc.idempotency.Set("make_deck", idemKey, idemFingerprint, out)

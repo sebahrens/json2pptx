@@ -4,6 +4,46 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.53.0 (2026-05-22)
+
+### Added
+
+- **Unambiguous publishability status on the `make_deck` / `auto_repair`
+  facades.** Both facades returned a successful MCP transport response with a
+  `path` even when the deck was an exemplar skeleton or had failed the quality
+  gate, conflating transport success, artifact existence, gate status,
+  validation status, content provenance, and publishability into fields an agent
+  had to infer. Agents could therefore ship an exemplar-filled or gate-failed
+  deck because the call succeeded and returned a path. Both responses now carry
+  explicit machine-readable status fields (all backwards-compatible additions —
+  the prior fields are unchanged):
+  - **`publishable`** (boolean) — the single authoritative ship-as-is flag.
+    `true` only when the gate passed on complete evidence, the artifact is
+    structurally valid, **and** content is author-supplied. Equivalent to
+    `blocking_reasons` being empty.
+  - **`manual_review_required`** (boolean) — affirmative inverse of
+    `publishable`.
+  - **`blocking_reasons[]`** — every reason the deck is not publishable; a
+    superset of `gate_reasons[]` that also folds in incomplete-evidence and
+    exemplar-content causes. Present only when `publishable: false`.
+  - **`content_status`** (`author_supplied` | `exemplar_skeleton`) +
+    **`uses_exemplar_content`** (boolean) — content provenance. `make_deck`
+    always reports `exemplar_skeleton` / `true` and is therefore **never**
+    `publishable: true`, no matter how cleanly it scores; `auto_repair` always
+    reports `author_supplied` / `false`.
+  - **`artifact_status`** (`generated` | `generated_invalid`) and
+    **`validation_status`** (`passed` | `passed_degraded` | `failed`).
+- `get_started` now surfaces the rendered visual-QA / manual-review branch in
+  its `brief` and `revise` notes, and the `make_deck` fast path is advertised as
+  a draft skeleton (not a publishable deck).
+- Docs (`README.md`, `skills/generate-deck/TOOLS.md`,
+  `skills/generate-deck/SKILL.md`) no longer describe exemplar-backed
+  `make_deck` output as publishable without qualification.
+
+  Response-shape additions only; the `PresentationInput` schema, MCP tool-name
+  set, and `Fix.Kind` vocabulary are unchanged, so the schema fingerprint does
+  not move. `schema_version` advances to 4.53.0. (bd `go-slide-creator-33oo`.)
+
 ## 4.52.0 (2026-05-22)
 
 ### Changed

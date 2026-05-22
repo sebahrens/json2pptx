@@ -146,6 +146,75 @@ func TestMakeDeck_ReturnsFinalPresentation(t *testing.T) {
 	}
 }
 
+// TestMakeDeck_ExemplarContentNeverPublishable pins the core go-slide-creator-33oo
+// guarantee: because make_deck fills slides with pattern exemplar placeholder
+// content, the response must mark the deck an exemplar skeleton and NEVER report
+// it publishable — even when the quality gate passes. Agents branch on these
+// machine-readable fields, so a clean transport response must not look like a
+// finished deck.
+func TestMakeDeck_ExemplarContentNeverPublishable(t *testing.T) {
+	mc := repairMC(t)
+
+	result, err := mc.handleMakeDeck(context.Background(), makeRequest(map[string]any{
+		"outline":         "Pitch our Series B for an AI infrastructure company",
+		"template":        "midnight-blue",
+		"output_filename": "make_deck_exemplar_status.pptx",
+		"style_hints": map[string]any{
+			"slide_budget": float64(5),
+		},
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+
+	var output makeDeckOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	// Content provenance must be unambiguous.
+	if output.ContentStatus != "exemplar_skeleton" {
+		t.Errorf("content_status = %q, want %q", output.ContentStatus, "exemplar_skeleton")
+	}
+	if !output.UsesExemplarContent {
+		t.Error("uses_exemplar_content must be true for make_deck cold-start output")
+	}
+
+	// Publishability is the headline guarantee: exemplar content is never
+	// publishable, regardless of gate_passed.
+	if output.Publishable {
+		t.Errorf("make_deck exemplar output must never be publishable (gate_passed=%v)", output.GatePassed)
+	}
+	if !output.ManualReviewRequired {
+		t.Error("manual_review_required must be true when the deck is not publishable")
+	}
+	if len(output.BlockingReasons) == 0 {
+		t.Fatal("blocking_reasons must explain why an exemplar skeleton is not publishable")
+	}
+	// At least one blocking reason must name the exemplar-content cause.
+	exemplarNamed := false
+	for _, r := range output.BlockingReasons {
+		if strings.Contains(strings.ToLower(r), "exemplar") {
+			exemplarNamed = true
+		}
+	}
+	if !exemplarNamed {
+		t.Errorf("blocking_reasons must name the exemplar-content cause; got %v", output.BlockingReasons)
+	}
+
+	// artifact_status is independent of publishability — the file is written.
+	if output.ArtifactStatus != "generated" && output.ArtifactStatus != "generated_invalid" {
+		t.Errorf("artifact_status = %q, want generated|generated_invalid", output.ArtifactStatus)
+	}
+	// publishable is exactly "no blocking reasons".
+	if output.Publishable != (len(output.BlockingReasons) == 0) {
+		t.Errorf("publishable=%v inconsistent with blocking_reasons=%v", output.Publishable, output.BlockingReasons)
+	}
+}
+
 // TestMakeDeck_MissingOutlineReturnsArgError asserts the tool refuses to run
 // without an outline rather than silently producing an empty plan.
 func TestMakeDeck_MissingOutlineReturnsArgError(t *testing.T) {
