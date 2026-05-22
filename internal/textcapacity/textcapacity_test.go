@@ -319,6 +319,111 @@ func TestForResolvedGrid_ParagraphFontFloor(t *testing.T) {
 	}
 }
 
+func TestForResolvedGrid_OverlayInsetsReduceCapacity(t *testing.T) {
+	// Icon overlays add ResolvedCell.TextInsets that shrink the usable text box;
+	// the budget must reserve that space the same way the renderer does.
+	text := json.RawMessage(`{"content": "Some descriptive card body text"}`)
+	density := func(insets [4]int64) Density {
+		cell := shapegrid.ResolvedCell{
+			Kind:       shapegrid.CellKindShape,
+			CellBounds: pptx.RectEmu{CX: 3 * emuInch, CY: 2 * emuInch},
+			TextInsets: insets,
+			ShapeSpec:  &shapegrid.ShapeSpec{Text: text},
+		}
+		return ForResolvedGrid(&shapegrid.ResolveResult{Cells: []shapegrid.ResolvedCell{cell}})[0]
+	}
+
+	base := density([4]int64{})
+	left := density([4]int64{emuInch, 0, 0, 0}) // left icon → extra left inset
+	top := density([4]int64{0, emuInch, 0, 0})  // top icon → extra top inset
+
+	if left.WidthEMU >= base.WidthEMU {
+		t.Errorf("left-overlay WidthEMU=%d, want < base %d", left.WidthEMU, base.WidthEMU)
+	}
+	if left.MaxChars >= base.MaxChars {
+		t.Errorf("left-overlay MaxChars=%d, want < base %d", left.MaxChars, base.MaxChars)
+	}
+	if top.HeightEMU >= base.HeightEMU {
+		t.Errorf("top-overlay HeightEMU=%d, want < base %d", top.HeightEMU, base.HeightEMU)
+	}
+	if top.MaxChars >= base.MaxChars {
+		t.Errorf("top-overlay MaxChars=%d, want < base %d", top.MaxChars, base.MaxChars)
+	}
+}
+
+func TestForResolvedGrid_AuthoredInsetsReduceCapacity(t *testing.T) {
+	// Authored inset_left/right/top/bottom (points) reduce the usable rectangle
+	// for both the plain object form and the paragraphs-array form.
+	density := func(raw string) Density {
+		return ForResolvedGrid(gridWithText(raw))[0]
+	}
+
+	base := density(`{"content": "Some descriptive card body text"}`)
+
+	horiz := density(`{"content": "Some descriptive card body text", "inset_left": 36, "inset_right": 36}`)
+	if horiz.WidthEMU >= base.WidthEMU {
+		t.Errorf("authored horizontal insets WidthEMU=%d, want < base %d", horiz.WidthEMU, base.WidthEMU)
+	}
+	// 36pt left + 36pt right = 72pt = 1in reduction.
+	if want := 3*emuInch - int64(types.FromPoints(72)); horiz.WidthEMU != want {
+		t.Errorf("authored horizontal insets WidthEMU=%d, want %d", horiz.WidthEMU, want)
+	}
+
+	vert := density(`{"content": "Some descriptive card body text", "inset_top": 36, "inset_bottom": 36}`)
+	if vert.HeightEMU >= base.HeightEMU {
+		t.Errorf("authored vertical insets HeightEMU=%d, want < base %d", vert.HeightEMU, base.HeightEMU)
+	}
+
+	// Paragraph-array form reads the same top-level inset_* fields.
+	paraBase := density(`{"paragraphs": [{"content": "a"}, {"content": "b"}]}`)
+	para := density(`{"paragraphs": [{"content": "a"}, {"content": "b"}], "inset_left": 36, "inset_right": 36}`)
+	if para.WidthEMU >= paraBase.WidthEMU {
+		t.Errorf("paragraph authored insets WidthEMU=%d, want < base %d", para.WidthEMU, paraBase.WidthEMU)
+	}
+}
+
+func TestForResolvedGrid_InsetsClampWithoutPanic(t *testing.T) {
+	// Overlay insets larger than the cell clamp to a zero rectangle and a zero
+	// budget rather than going negative or panicking.
+	cell := shapegrid.ResolvedCell{
+		Kind:       shapegrid.CellKindShape,
+		CellBounds: pptx.RectEmu{CX: emuInch, CY: emuInch},
+		TextInsets: [4]int64{2 * emuInch, 2 * emuInch, 0, 0},
+		ShapeSpec:  &shapegrid.ShapeSpec{Text: json.RawMessage(`{"content": "x"}`)},
+	}
+	d := ForResolvedGrid(&shapegrid.ResolveResult{Cells: []shapegrid.ResolvedCell{cell}})
+	if len(d) != 1 {
+		t.Fatalf("got %d densities, want 1", len(d))
+	}
+	if d[0].WidthEMU != 0 || d[0].HeightEMU != 0 {
+		t.Errorf("over-large overlay insets: WidthEMU=%d HeightEMU=%d, want 0/0", d[0].WidthEMU, d[0].HeightEMU)
+	}
+	if d[0].MaxChars != 0 {
+		t.Errorf("over-large overlay insets: MaxChars=%d, want 0", d[0].MaxChars)
+	}
+
+	// Authored insets far larger than the cell also clamp (no panic).
+	huge := ForResolvedGrid(gridWithText(`{"content": "x", "inset_left": 5000, "inset_right": 5000}`))
+	if huge[0].WidthEMU != 0 {
+		t.Errorf("over-large authored inset: WidthEMU=%d, want 0", huge[0].WidthEMU)
+	}
+	if huge[0].MaxChars != 0 {
+		t.Errorf("over-large authored inset: MaxChars=%d, want 0", huge[0].MaxChars)
+	}
+}
+
+func TestForResolvedGrid_NoInsetsUnchanged(t *testing.T) {
+	// Without any overlay or authored insets the budget is computed against the
+	// full cell bounds, preserving prior behavior.
+	d := ForResolvedGrid(gridWithText(`{"content": "Some descriptive card body text"}`))[0]
+	if d.WidthEMU != 3*emuInch {
+		t.Errorf("WidthEMU=%d, want %d (full cell width)", d.WidthEMU, 3*emuInch)
+	}
+	if d.HeightEMU != 2*emuInch {
+		t.Errorf("HeightEMU=%d, want %d (full cell height)", d.HeightEMU, 2*emuInch)
+	}
+}
+
 func TestForPlaceholder_NotFloored(t *testing.T) {
 	// The shape_grid floor must not bleed into placeholder budgets: a 10pt
 	// placeholder stays 10pt (placeholders have their own autofit handling).

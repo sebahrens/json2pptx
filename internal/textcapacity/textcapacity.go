@@ -97,11 +97,34 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 			densities[i] = Density{Status: StatusUnderfilled}
 			continue
 		}
-		fontPt, actualChars := extractCellText(cell)
-		budget := computeBudget(cell.CellBounds.CX, cell.CellBounds.CY, fontPt)
+		fontPt, actualChars, authoredInsets := extractCellText(cell)
+		// The renderer lays text out inside a box smaller than the cell: both the
+		// icon-overlay insets (ResolvedCell.TextInsets) and the authored text
+		// insets are subtracted before text is placed (see
+		// shapegrid.GenerateShapeXML, which adds the overlay insets onto the
+		// authored Insets from buildTextBody). Mirror that here so the budget
+		// reflects the box PowerPoint actually receives, not the full cell.
+		w, h := effectiveTextRect(cell.CellBounds, cell.TextInsets, authoredInsets)
+		budget := computeBudget(w, h, fontPt)
 		densities[i] = buildDensity(budget, actualChars)
 	}
 	return densities
+}
+
+// effectiveTextRect subtracts the icon-overlay insets and authored text insets
+// (both [L,T,R,B] in EMU) from a cell's bounds and returns the usable text
+// width and height. Results are clamped at zero so over-large insets cannot
+// yield a negative rectangle.
+func effectiveTextRect(bounds pptx.RectEmu, overlay, authored [4]int64) (int64, int64) {
+	w := bounds.CX - overlay[0] - overlay[2] - authored[0] - authored[2]
+	h := bounds.CY - overlay[1] - overlay[3] - authored[1] - authored[3]
+	if w < 0 {
+		w = 0
+	}
+	if h < 0 {
+		h = 0
+	}
+	return w, h
 }
 
 // computeBudget determines how many characters fit in the given EMU rectangle
@@ -197,37 +220,55 @@ func buildDensity(b Budget, actualChars int) Density {
 // renderer's minimum floor is mirrored here for authored sizes.
 const defaultCellFontPt = 11.0
 
-// extractCellText parses a resolved cell's shape text to determine font size
-// and post-markdown character count. Returns (fontPt, actualChars).
+// extractCellText parses a resolved cell's shape text to determine font size,
+// post-markdown character count, and any authored text insets. Returns
+// (fontPt, actualChars, authoredInsets) where authoredInsets is [L,T,R,B] in
+// EMU.
 //
 // Authored sizes below the shape_grid renderer's floor are raised via
 // shapegrid.EffectiveTextSizePt so the budget reflects the size the renderer
 // actually produces (e.g. an authored size of 10 is rendered, and budgeted, at
 // 12pt). Unspecified sizes keep defaultCellFontPt and are not floored.
-func extractCellText(cell shapegrid.ResolvedCell) (float64, int) {
+//
+// Authored inset_left/right/top/bottom values (points) are converted to EMU
+// mirroring shapegrid.buildTextBody, so the capacity path reserves the same
+// usable text rectangle the renderer produces. They are read from the same
+// top-level fields for both the plain object and paragraphs-array forms.
+func extractCellText(cell shapegrid.ResolvedCell) (float64, int, [4]int64) {
 	if cell.ShapeSpec == nil || len(cell.ShapeSpec.Text) == 0 {
-		return defaultCellFontPt, 0
+		return defaultCellFontPt, 0, [4]int64{}
 	}
 
 	raw := cell.ShapeSpec.Text
 
-	// Try string shorthand (no authored size → default).
+	// Try string shorthand (no authored size or insets → default).
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
-		return defaultCellFontPt, len([]rune(stripMarkdown(s)))
+		return defaultCellFontPt, len([]rune(stripMarkdown(s))), [4]int64{}
 	}
 
 	// Object form with possible paragraphs array.
 	var obj struct {
-		Content    string  `json:"content"`
-		Size       float64 `json:"size,omitempty"`
-		Paragraphs []struct {
+		Content     string  `json:"content"`
+		Size        float64 `json:"size,omitempty"`
+		InsetLeft   float64 `json:"inset_left,omitempty"`
+		InsetRight  float64 `json:"inset_right,omitempty"`
+		InsetTop    float64 `json:"inset_top,omitempty"`
+		InsetBottom float64 `json:"inset_bottom,omitempty"`
+		Paragraphs  []struct {
 			Content string  `json:"content"`
 			Size    float64 `json:"size,omitempty"`
 		} `json:"paragraphs,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
-		return defaultCellFontPt, 0
+		return defaultCellFontPt, 0, [4]int64{}
+	}
+
+	insets := [4]int64{
+		pointsToEMU(obj.InsetLeft),
+		pointsToEMU(obj.InsetTop),
+		pointsToEMU(obj.InsetRight),
+		pointsToEMU(obj.InsetBottom),
 	}
 
 	// Cell-level authored size, floored to the renderer's minimum.
@@ -247,10 +288,20 @@ func extractCellText(cell shapegrid.ResolvedCell) (float64, int) {
 				fontPt = eff
 			}
 		}
-		return fontPt, total
+		return fontPt, total, insets
 	}
 
-	return fontPt, len([]rune(stripMarkdown(obj.Content)))
+	return fontPt, len([]rune(stripMarkdown(obj.Content))), insets
+}
+
+// pointsToEMU converts an authored point inset to EMU, mirroring the renderer's
+// shapegrid.buildTextBody conversion. Non-positive insets yield 0 so a missing
+// or negative authored inset never expands the budgeted rectangle.
+func pointsToEMU(pt float64) int64 {
+	if pt <= 0 {
+		return 0
+	}
+	return int64(types.FromPoints(pt))
 }
 
 // stripMarkdown removes markdown emphasis markers from text and returns the
