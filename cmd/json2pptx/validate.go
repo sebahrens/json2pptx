@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -29,6 +30,7 @@ func runValidate() error { //nolint:gocognit
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
 	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are validation errors; when false (default), they are warnings. Mirrors MCP validate_input strict_unknown_keys.")
 	placeholderPolicy := fs.String("placeholder-policy", "warn", "Unresolved __FILL__ skeleton-placeholder policy: off (skip), warn (default; report tokens with JSON paths), or strict (treat unresolved tokens as errors). Mirrors MCP validate_input placeholder_policy.")
+	baseDir := fs.String("base-dir", "", "Absolute directory used to resolve relative asset paths (icons, images, backgrounds). Defaults to each input file's own directory (matching `generate`); stdin falls back to the process CWD. Mirrors MCP validate_input base_dir.")
 	_ = fs.Bool("partial", false, "Accepted for CLI compatibility (validation always reports per-slide diagnostics)")
 
 	fs.Usage = func() {
@@ -49,7 +51,8 @@ func runValidate() error { //nolint:gocognit
 		fmt.Fprintf(os.Stderr, "  json2pptx validate --fit-report --verbose-fit slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate --format=json slides.json\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json chapter2.json chapter3.json\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx validate --strict-unknown-keys slides.json   # fail-fast on typo'd fields\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate --strict-unknown-keys slides.json   # fail-fast on typo'd fields\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx validate --base-dir /assets slides.json      # resolve relative assets from /assets\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -84,7 +87,7 @@ func runValidate() error { //nolint:gocognit
 	}
 
 	if effectiveFormat == "json" || effectiveFormat == "ndjson" {
-		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, *placeholderPolicy, effectiveJSONPath)
+		return runValidateMCPFormat(args, *templatesDir, *baseDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, *placeholderPolicy, effectiveJSONPath)
 	}
 
 	// Suppress unused warnings for flags consumed below.
@@ -94,7 +97,7 @@ func runValidate() error { //nolint:gocognit
 	var results []validateResult
 
 	for _, filePath := range args {
-		result := validateJSONFile(filePath, *templatesDir, *strictUnknownKeys, *placeholderPolicy)
+		result := validateJSONFile(filePath, *templatesDir, *baseDir, *strictUnknownKeys, *placeholderPolicy)
 		results = append(results, result)
 		if !result.Valid {
 			hasErrors = true
@@ -172,7 +175,12 @@ type validateResult struct {
 // fit_report is intentionally disabled on this MCP call: the CLI surfaces fit
 // findings on a separate stderr path (gated by --fit-report). Promoting them
 // into Warnings/Errors here would duplicate output.
-func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool, placeholderPolicy string) validateResult {
+//
+// baseDirOverride is the value of --base-dir (empty when unset). Relative asset
+// references resolve against validateBaseDir(filePath, baseDirOverride): the
+// file's own directory by default, mirroring `generate`'s
+// filepath.Dir(jsonPath) behavior, or the override when supplied.
+func validateJSONFile(filePath, templatesDir, baseDirOverride string, strictUnknownKeys bool, placeholderPolicy string) validateResult {
 	result := validateResult{
 		File:     filePath,
 		Valid:    true,
@@ -205,7 +213,7 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool, pla
 
 	mc := cliMCPConfig(templatesDir, "")
 	mcpResult, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(
-		mcpHumanValidateArgs(presentation, strictUnknownKeys, placeholderPolicy),
+		mcpHumanValidateArgs(presentation, validateBaseDir(filePath, baseDirOverride), strictUnknownKeys, placeholderPolicy),
 	))
 	if err != nil {
 		result.Valid = false
@@ -225,12 +233,53 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool, pla
 // fit_report is disabled because the CLI surfaces fit findings on a separate
 // stderr path gated by --fit-report; promoting them into Warnings/Errors here
 // would duplicate output.
-func mcpHumanValidateArgs(presentation any, strictUnknownKeys bool, placeholderPolicy string) map[string]any {
-	return map[string]any{
+//
+// baseDir is added only when non-empty so the stdin/CWD-fallback path stays
+// byte-identical to the legacy request (no base_dir key -> resolveBaseDir uses
+// the process CWD).
+func mcpHumanValidateArgs(presentation any, baseDir string, strictUnknownKeys bool, placeholderPolicy string) map[string]any {
+	args := map[string]any{
 		"presentation":        presentation,
 		"strict_unknown_keys": strictUnknownKeys,
 		"placeholder_policy":  placeholderPolicy,
 		"fit_report":          false,
+	}
+	if baseDir != "" {
+		args["base_dir"] = baseDir
+	}
+	return args
+}
+
+// validateBaseDir computes the directory CLI validate should treat as the root
+// for resolving relative asset references (icons, images, backgrounds) in one
+// input, mirroring how `generate` resolves assets against
+// filepath.Dir(jsonPath) (see json_mode.go).
+//
+//   - An explicit --base-dir override wins for every input (including stdin).
+//   - Otherwise a real file path resolves assets from the file's own directory.
+//   - stdin ("-") with no override returns "" so the shared validator keeps the
+//     historical process-CWD fallback (see resolveBaseDir).
+//
+// The returned path is absolute when non-empty so it satisfies resolveBaseDir's
+// absolute-path contract regardless of how the path was spelled on the command
+// line. filepath.Abs only fails when the process CWD is unreadable, which the
+// CWD fallback itself depends on; in that case the unmodified path is returned
+// and resolveBaseDir surfaces a structured INVALID_PARAMETER diagnostic.
+func validateBaseDir(filePath, override string) string {
+	switch {
+	case override != "":
+		if abs, err := filepath.Abs(override); err == nil {
+			return abs
+		}
+		return override
+	case filePath == "-":
+		return ""
+	default:
+		dir := filepath.Dir(filePath)
+		if abs, err := filepath.Abs(dir); err == nil {
+			return abs
+		}
+		return dir
 	}
 }
 
@@ -378,12 +427,16 @@ func legacyFindingCode(code string) string {
 // to the MCP handler so the JSON output matches what validate_input would
 // return for the same flag value.
 //
+// baseDirOverride is --base-dir (empty when unset); each file resolves relative
+// assets via validateBaseDir(filePath, baseDirOverride) so structured-JSON
+// validation agrees with `generate` on which assets a relative path points to.
+//
 // outputPath selects the destination: "" or "-" means stdout; any other value
 // is a file path. For --format=ndjson the output is one JSON object per file,
 // per line. For --format=json each file's response is pretty-printed; when
 // multiple files are validated, their pretty-printed objects are concatenated
 // (matching the prior --format=json behavior).
-func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, placeholderPolicy string, outputPath string) error {
+func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, placeholderPolicy string, outputPath string) error {
 	mc := cliMCPConfig(templatesDir, "")
 	hasErrors := false
 
@@ -414,6 +467,12 @@ func runValidateMCPFormat(files []string, templatesDir string, fitReport, verbos
 			"verbose_fit":         verboseFit,
 			"strict_unknown_keys": strictUnknownKeys,
 			"placeholder_policy":  placeholderPolicy,
+		}
+		// Resolve relative assets from the input file's directory (or --base-dir
+		// override). stdin keeps the CWD fallback: validateBaseDir returns "" and
+		// no base_dir key is set, so resolveBaseDir uses the process CWD.
+		if bd := validateBaseDir(filePath, baseDirOverride); bd != "" {
+			args["base_dir"] = bd
 		}
 
 		result, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(args))

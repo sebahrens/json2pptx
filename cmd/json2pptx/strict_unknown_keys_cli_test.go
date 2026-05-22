@@ -43,7 +43,7 @@ func writeTempJSON(t *testing.T, body string) string {
 
 func TestValidateJSONFile_UnknownKey_DefaultWarning(t *testing.T) {
 	path := writeTempJSON(t, inputWithTypo)
-	result := validateJSONFile(path, "../../templates", false, "warn")
+	result := validateJSONFile(path, "../../templates", "", false, "warn")
 	if !result.Valid {
 		t.Fatalf("expected Valid=true with default mode, got errors: %v", result.Errors)
 	}
@@ -54,7 +54,7 @@ func TestValidateJSONFile_UnknownKey_DefaultWarning(t *testing.T) {
 
 func TestValidateJSONFile_UnknownKey_StrictError(t *testing.T) {
 	path := writeTempJSON(t, inputWithTypo)
-	result := validateJSONFile(path, "../../templates", true, "warn")
+	result := validateJSONFile(path, "../../templates", "", true, "warn")
 	if result.Valid {
 		t.Fatalf("expected Valid=false with strict=true")
 	}
