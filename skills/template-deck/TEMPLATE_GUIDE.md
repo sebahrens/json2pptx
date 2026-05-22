@@ -79,7 +79,11 @@ Use the **canonical ID** in `layout_id` — not the display name:
 | Image slide | `image-left`, `image-right` | `title`, `body` |
 | Chart slide | `content` | `title`, `body` (charts render as SVG in body) |
 | Closing | `closing` | `title`, `subtitle` |
-| Blank | `blank` | `title` only (body goes in `shape_grid`) |
+| Blank + Title | `blank-title` | `title` only (body goes in `shape_grid`) |
+| Blank (empty canvas) | `blank-canvas` | none — `shape_grid`/`pattern` only, no title |
+| Blank (legacy alias) | `blank` | resolves to `blank-title`; prefer the explicit IDs above |
+
+> **Two blank roles.** Templates ship two distinct blank layouts: a **Blank + Title** title canvas (target with `blank-title`) and a truly empty **Blank** canvas with no placeholders (target with `blank-canvas`). The legacy `blank` ID resolves to **Blank + Title** for backward compatibility (it falls back to the empty Blank only when no Blank + Title exists). Use `blank-title` or `blank-canvas` to pick a role unambiguously.
 
 ## Discovering Templates at Runtime
 

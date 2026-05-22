@@ -48,11 +48,11 @@
       ]
     },
     {
-      "slide_type": "blank",
+      "layout_id": "blank-canvas",
       "content": []
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Blank + Title — title only, no body"}
       ]
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "layout_id": "blank",
+      "layout_id": "blank-title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "shape_grid — hand-built three-card row"}
       ],

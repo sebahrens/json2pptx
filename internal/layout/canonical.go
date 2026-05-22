@@ -25,19 +25,38 @@ type canonicalRule struct {
 }
 
 // canonicalNames maps human-friendly layout names to tag-based resolution rules.
+//
+// Two distinct template roles share the word "blank" (see the "blank" /
+// "blank-title" classifier tags in internal/template/classifier.go):
+//   - "blank-canvas" targets the truly empty Blank layout (tag "blank", zero
+//     content placeholders) — for slides whose entire content is a shape_grid or
+//     pattern with no slide title.
+//   - "blank-title" targets the Blank + Title layout (tag "blank-title", a title
+//     placeholder and nothing else) — a title canvas used to host a shape_grid or
+//     pattern below a slide title.
+//
+// "blank" is a LEGACY alias retained for backward compatibility. Historically it
+// resolved to a title-bearing canvas (Blank + Title preferred via the "title"
+// nameHint, falling back to the true Blank when no Blank + Title exists), and the
+// bundled skeletons/skill examples still pass layout_id:"blank" for shape_grid
+// slides that need a title. Its blank-title-preferred semantics are kept stable;
+// author new decks with the unambiguous "blank-title" / "blank-canvas" IDs.
 var canonicalNames = map[string]canonicalRule{
-	"title":                   {requireTags: []string{"title-slide"}, excludeTags: []string{"blank-title", "closing"}},
-	"content":                 {requireTags: []string{"content"}, excludeTags: []string{"two-column", "section-header"}},
-	"section":                 {requireTags: []string{"section-header"}},
-	"closing":                 {requireTags: []string{"closing"}},
-	"blank":                   {requireTags: []string{"blank-title", "blank"}, nameHint: "title"},
-	"two-column":              {requireTags: []string{"two-column"}, nameHint: "50"},
-	"two-column-wide-narrow":  {requireTags: []string{"two-column"}, nameHint: "60"},
-	"two-column-narrow-wide":  {requireTags: []string{"two-column"}, nameHint: "40/60"},
-	"image-left":              {requireTags: []string{"image-left"}},
-	"image-right":             {requireTags: []string{"image-right"}},
-	"quote":                   {requireTags: []string{"quote", "statement"}},
-	"agenda":                  {requireTags: []string{"agenda"}},
+	"title":                  {requireTags: []string{"title-slide"}, excludeTags: []string{"blank-title", "closing"}},
+	"content":                {requireTags: []string{"content"}, excludeTags: []string{"two-column", "section-header"}},
+	"section":                {requireTags: []string{"section-header"}},
+	"closing":                {requireTags: []string{"closing"}},
+	"blank":                  {requireTags: []string{"blank-title", "blank"}, nameHint: "title"},
+	"blank-title":            {requireTags: []string{"blank-title"}},
+	"blank+title":            {requireTags: []string{"blank-title"}},
+	"blank-canvas":           {requireTags: []string{"blank"}},
+	"two-column":             {requireTags: []string{"two-column"}, nameHint: "50"},
+	"two-column-wide-narrow": {requireTags: []string{"two-column"}, nameHint: "60"},
+	"two-column-narrow-wide": {requireTags: []string{"two-column"}, nameHint: "40/60"},
+	"image-left":             {requireTags: []string{"image-left"}},
+	"image-right":            {requireTags: []string{"image-right"}},
+	"quote":                  {requireTags: []string{"quote", "statement"}},
+	"agenda":                 {requireTags: []string{"agenda"}},
 }
 
 // ResolveCanonicalLayoutID resolves a layout name to a concrete layout ID using

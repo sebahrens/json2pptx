@@ -25,7 +25,7 @@ These pattern-rich decks are the best entry points for AI agents building new de
 
 | File | Description | Template |
 |------|-------------|----------|
-| `template-qa-deck.json` | Fixed reference deck used by `scripts/test_template_visual_qa.sh`. Exercises every mandatory layout role (title, content, two-column, section, blank, blank+title, closing) plus three representative pattern families (hand-built `shape_grid`, `comparison-2col`, `journey-maturity-model`). Layouts are pinned by canonical name so the same deck renders against every template. | any (override with `-template`) |
+| `template-qa-deck.json` | Fixed reference deck used by `scripts/test_template_visual_qa.sh`. Exercises every mandatory layout role (title, content, two-column, section, blank-canvas, blank-title, closing) plus three representative pattern families (hand-built `shape_grid`, `comparison-2col`, `journey-maturity-model`). The two blank roles are pinned by their explicit canonical IDs (`blank-canvas` for the empty canvas, `blank-title` for the title canvas) so the same deck renders against every template. | any (override with `-template`) |
 
 ### Placeholder-first examples
 
@@ -138,7 +138,9 @@ Each built-in template provides six layouts. Use **canonical layout IDs** (not r
 | `two-column` | Two Content | `title`, `body`, `body_2` |
 | `section` | Section Divider | `title` |
 | `closing` | Closing | `title`, `subtitle` |
-| `blank` | Blank | `title` only (body content via `shape_grid` or `pattern`) |
+| `blank-title` | Blank + Title | `title` only (body content via `shape_grid` or `pattern`) |
+| `blank-canvas` | Blank | none — `shape_grid`/`pattern` only, no title |
+| `blank` (legacy) | Blank + Title | alias for `blank-title`; prefer the explicit IDs above |
 
 ### Content types
 

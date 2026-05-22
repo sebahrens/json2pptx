@@ -11,7 +11,7 @@
 #     2. Generates a PPTX from the fixed reference deck
 #        (examples/template-qa-deck.json) for that template — the deck covers
 #        all 7 mandatory layout roles (title, content, two-column, section,
-#        blank, blank+title, closing) and 3 representative patterns
+#        blank-canvas, blank-title, closing) and 3 representative patterns
 #        (shape_grid, comparison-2col, journey-maturity-model).
 #     3. Converts the PPTX to per-slide JPGs via cmd/pptx2jpg.
 #     4. Writes a REPORT.md skeleton under output/visual-qa/<template>/REPORT.md

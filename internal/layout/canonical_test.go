@@ -35,6 +35,20 @@ var modernLayouts = []types.LayoutMetadata{
 	{ID: "slideLayout5", Name: "Agenda", Tags: []string{"content", "agenda"}},
 }
 
+// midnightBlueLayouts mirrors the bundled midnight-blue template, which ships both
+// a true Blank layout (tag "blank", no content placeholders) and a Blank + Title
+// layout (tag "blank-title", title only). It exercises the two distinct blank
+// roles that legacy layout_id:"blank" cannot disambiguate.
+var midnightBlueLayouts = []types.LayoutMetadata{
+	{ID: "slideLayout1", Name: "Title Slide", Tags: []string{"title-slide"}},
+	{ID: "slideLayout2", Name: "One Content", Tags: []string{"content"}},
+	{ID: "slideLayout3", Name: "Two Content", Tags: []string{"content", "two-column", "comparison"}},
+	{ID: "slideLayout4", Name: "Section Divider", Tags: []string{"section-header"}},
+	{ID: "slideLayout5", Name: "Closing", Tags: []string{"title-slide", "closing"}},
+	{ID: "slideLayout6", Name: "Blank", Tags: []string{"blank"}},
+	{ID: "slideLayout7", Name: "Blank + Title", Tags: []string{"title-slide", "blank-title"}},
+}
+
 func TestResolveCanonicalLayoutID_Passthrough(t *testing.T) {
 	// slideLayoutN passes through unchanged
 	id, ok := ResolveCanonicalLayoutID("slideLayout3", consultingLayouts)
@@ -69,10 +83,10 @@ func TestResolveCanonicalLayoutID_Aliases(t *testing.T) {
 
 func TestResolveCanonicalLayoutID_ConsultingTemplate(t *testing.T) {
 	tests := []struct {
-		name       string
-		canonical  string
-		wantID     string
-		wantOK     bool
+		name      string
+		canonical string
+		wantID    string
+		wantOK    bool
 	}{
 		{"title", "title", "slideLayout1", true},
 		{"content", "content", "slideLayout3", true},
@@ -142,6 +156,54 @@ func TestResolveCanonicalLayoutID_Modern(t *testing.T) {
 					tt.canonical, id, ok, tt.wantID, tt.wantOK)
 			}
 		})
+	}
+}
+
+// TestResolveCanonicalLayoutID_BlankRoles verifies that the two distinct blank
+// template roles can be targeted unambiguously, and that legacy layout_id:"blank"
+// keeps resolving to the title-bearing Blank + Title canvas.
+func TestResolveCanonicalLayoutID_BlankRoles(t *testing.T) {
+	tests := []struct {
+		name      string
+		canonical string
+		wantID    string
+		wantOK    bool
+	}{
+		// Legacy alias: Blank + Title preferred via the "title" nameHint.
+		{"legacy blank → blank+title", "blank", "slideLayout7", true},
+		// Unambiguous explicit roles.
+		{"blank-canvas → true blank", "blank-canvas", "slideLayout6", true},
+		{"blank-title → blank+title", "blank-title", "slideLayout7", true},
+		{"blank+title spelling", "blank+title", "slideLayout7", true},
+		// Case-insensitive, like every other canonical name.
+		{"uppercase blank-canvas", "Blank-Canvas", "slideLayout6", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, ok := ResolveCanonicalLayoutID(tt.canonical, midnightBlueLayouts)
+			if id != tt.wantID || ok != tt.wantOK {
+				t.Errorf("ResolveCanonicalLayoutID(%q) = (%q, %v), want (%q, %v)",
+					tt.canonical, id, ok, tt.wantID, tt.wantOK)
+			}
+		})
+	}
+}
+
+// TestResolveCanonicalLayoutID_BlankCanvasUnavailable verifies that "blank-canvas"
+// does not silently resolve to a Blank + Title layout when the template has no
+// truly empty Blank layout — it reports a non-resolution instead.
+func TestResolveCanonicalLayoutID_BlankCanvasUnavailable(t *testing.T) {
+	// warmCoral has only a blank-title layout (slideLayout6), no true blank.
+	id, ok := ResolveCanonicalLayoutID("blank-canvas", warmCoralLayouts)
+	if ok || id != "blank-canvas" {
+		t.Errorf("blank-canvas without a true Blank layout: got (%q, %v), want (\"blank-canvas\", false)", id, ok)
+	}
+
+	// blank-title still resolves on warmCoral.
+	id, ok = ResolveCanonicalLayoutID("blank-title", warmCoralLayouts)
+	if !ok || id != "slideLayout6" {
+		t.Errorf("blank-title on warmCoral: got (%q, %v), want (\"slideLayout6\", true)", id, ok)
 	}
 }
 
@@ -226,6 +288,33 @@ func TestResolveAllCanonicalLayouts(t *testing.T) {
 	// Verify two-column resolves
 	if _, ok := got["two-column"]; !ok {
 		t.Error("warmCoral should resolve 'two-column'")
+	}
+}
+
+// TestResolveAllCanonicalLayouts_BlankRoles verifies the resolved map (the source
+// of the agent-facing canonical_layout_ids) exposes both blank roles when the
+// template ships both, and only blank-title when there is no true Blank layout.
+func TestResolveAllCanonicalLayouts_BlankRoles(t *testing.T) {
+	// midnight-blue ships both a true Blank and a Blank + Title.
+	got := ResolveAllCanonicalLayouts(midnightBlueLayouts)
+	for name, wantID := range map[string]string{
+		"blank":        "slideLayout7", // legacy alias → Blank + Title
+		"blank-title":  "slideLayout7",
+		"blank+title":  "slideLayout7",
+		"blank-canvas": "slideLayout6",
+	} {
+		if got[name] != wantID {
+			t.Errorf("midnight-blue canonical %q: got %q, want %q", name, got[name], wantID)
+		}
+	}
+
+	// warmCoral has no true Blank — blank-canvas must be absent.
+	gotWarm := ResolveAllCanonicalLayouts(warmCoralLayouts)
+	if id, ok := gotWarm["blank-canvas"]; ok {
+		t.Errorf("warmCoral should not resolve 'blank-canvas' (no true Blank layout), got %q", id)
+	}
+	if gotWarm["blank-title"] != "slideLayout6" {
+		t.Errorf("warmCoral canonical 'blank-title': got %q, want %q", gotWarm["blank-title"], "slideLayout6")
 	}
 }
 

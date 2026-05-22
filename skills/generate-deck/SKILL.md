@@ -462,9 +462,11 @@ When building a slide and unsure which visual approach to use, follow this decis
 | Layout | Placeholders | Use when |
 |--------|-------------|----------|
 | `content` | `title` + `body` | Slide content goes into the body placeholder — text, bullets, charts, tables, or diagrams |
-| `blank` | `title` only | Slide content is a `shape_grid` or `pattern` — no body placeholder; all visual content is rendered as positioned shapes below the title |
+| `blank-title` | `title` only | Slide content is a `shape_grid` or `pattern` rendered below a slide title — no body placeholder |
+| `blank-canvas` | none | Fully custom canvas with **no** title — all content is a `shape_grid`/`pattern`; nothing reserved for a title |
+| `blank` (legacy) | `title` only | Backward-compatible alias that resolves to `blank-title` (falls back to the empty Blank only if the template has no Blank + Title). Prefer `blank-title`/`blank-canvas` in new decks |
 
-`content` is body-capable: the engine populates a body placeholder with your content item. `blank` is shape-grid-oriented: there is no body placeholder, so all content must come from `shape_grid` or `pattern`. Setting `slide_type: "blank"` (or omitting `layout_id` when `shape_grid`/`pattern` is present) triggers auto-selection of a blank layout with title and computed grid bounds.
+`content` is body-capable: the engine populates a body placeholder with your content item. The blank layouts are shape-grid-oriented: there is no body placeholder, so all content must come from `shape_grid` or `pattern`. `blank-title` keeps a title slot; `blank-canvas` reserves nothing. Setting `slide_type: "blank"` (or omitting `layout_id` when `shape_grid`/`pattern` is present) triggers auto-selection of a blank layout with title and computed grid bounds — equivalent to `blank-title`.
 
 ---
 
