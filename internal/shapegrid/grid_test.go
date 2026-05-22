@@ -1427,6 +1427,55 @@ func TestResolve_ShapeWithIconOverlay_AutoDetect(t *testing.T) {
 	}
 }
 
+func TestResolve_ShapeWithIconOverlay_ParagraphsText(t *testing.T) {
+	// A cell whose text is authored as a paragraphs array with non-empty content
+	// must be treated as text-present, so the icon auto-positions to top/left with
+	// text insets rather than centering with no inset.
+	wideGrid := &Grid{
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 4000, CY: 1000},
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{{
+				Shape: &ShapeSpec{
+					Fill: json.RawMessage(`"accent1"`),
+					Text: json.RawMessage(`{"paragraphs":[{"content":"hello"},{"content":"world"}]}`),
+				},
+				Icon: &IconSpec{Name: "shield"}, // no explicit position
+			}},
+		}},
+	}
+	result, err := Resolve(wideGrid, newAlloc(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Wide cell with paragraph text → left position → left text inset set.
+	if result.Cells[0].TextInsets[0] == 0 {
+		t.Error("wide cell with paragraphs text should auto-detect 'left' position with left text inset")
+	}
+
+	// Empty paragraphs (and empty content) remain text-absent → center, no insets.
+	emptyGrid := &Grid{
+		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 4000, CY: 1000},
+		Columns: []float64{100},
+		Rows: []Row{{
+			Cells: []Cell{{
+				Shape: &ShapeSpec{
+					Fill: json.RawMessage(`"accent1"`),
+					Text: json.RawMessage(`{"paragraphs":[{"content":""},{"content":"   "}]}`),
+				},
+				Icon: &IconSpec{Name: "shield"},
+			}},
+		}},
+	}
+	result2, err := Resolve(emptyGrid, newAlloc(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result2.Cells[0].TextInsets[0] != 0 || result2.Cells[0].TextInsets[1] != 0 {
+		t.Error("cell with empty paragraphs should auto-detect 'center' position with no text insets")
+	}
+}
+
 func TestResolve_ImageDefaultContain(t *testing.T) {
 	// Images should also default to contain mode.
 	// Tall cell (2000x4000) with image should produce 2000x2000 centered.

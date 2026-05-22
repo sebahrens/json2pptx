@@ -815,7 +815,11 @@ type iconOverlayLayout struct {
 const iconOverlayGapEMU = 3 * 12700
 
 // hasNonEmptyText checks whether a json.RawMessage text field contains actual
-// non-empty text content (not just an empty string or object with empty content).
+// non-empty text content. It mirrors the shape text renderer (ResolveTextInput)
+// by recognizing all three authored forms: a plain string, an object with a
+// "content" field, and an object carrying a "paragraphs" array. An empty string,
+// an object with empty content and no non-empty paragraphs, and empty paragraphs
+// all count as text-absent.
 func hasNonEmptyText(text json.RawMessage) bool {
 	if len(text) == 0 || string(text) == "null" {
 		return false
@@ -825,12 +829,23 @@ func hasNonEmptyText(text json.RawMessage) bool {
 	if json.Unmarshal(text, &s) == nil {
 		return strings.TrimSpace(s) != ""
 	}
-	// If it's an object, check the "content" field.
+	// If it's an object, check the "content" field and any "paragraphs" entries.
 	var obj struct {
-		Content string `json:"content"`
+		Content    string `json:"content"`
+		Paragraphs []struct {
+			Content string `json:"content"`
+		} `json:"paragraphs"`
 	}
 	if json.Unmarshal(text, &obj) == nil {
-		return strings.TrimSpace(obj.Content) != ""
+		if strings.TrimSpace(obj.Content) != "" {
+			return true
+		}
+		for _, p := range obj.Paragraphs {
+			if strings.TrimSpace(p.Content) != "" {
+				return true
+			}
+		}
+		return false
 	}
 	return true
 }
