@@ -175,6 +175,64 @@ func TestHandlePreviewSlideWireframe_SVGOnly(t *testing.T) {
 	}
 }
 
+// TestHandlePreviewSlideWireframe_StructuralOnlyContract verifies that
+// every wireframe response carries the machine-readable structural-only
+// inspection contract (inspection_kind / contract / not_text_flow_safe /
+// limitations) and emits NO visual-QA categories, severities, or quality
+// verdicts. Regression guard for go-slide-creator-5lr1.
+func TestHandlePreviewSlideWireframe_StructuralOnlyContract(t *testing.T) {
+	mc := cliMCPConfig("../../templates", "")
+	res, err := mc.handlePreviewSlideWireframe(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{
+			"template": "midnight-blue",
+			"slides":   []any{map[string]any{"layout_id": "slideLayout1"}},
+		},
+		"slide_index": float64(0),
+		"format":      "svg",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || res.IsError {
+		t.Fatalf("expected success, got error result")
+	}
+
+	text := extractMCPTextContent(res)
+	if text == "" {
+		t.Fatal("result missing text content")
+	}
+	var out struct {
+		InspectionKind  string   `json:"inspection_kind"`
+		Contract        string   `json:"contract"`
+		NotTextFlowSafe bool     `json:"not_text_flow_safe"`
+		Limitations     []string `json:"limitations"`
+	}
+	if err := json.Unmarshal([]byte(text), &out); err != nil {
+		t.Fatalf("failed to parse response: %v\nbody: %s", err, text)
+	}
+
+	if out.InspectionKind != "wireframe_structural" {
+		t.Errorf("inspection_kind = %q, want %q", out.InspectionKind, "wireframe_structural")
+	}
+	if out.Contract != "structural_only" {
+		t.Errorf("contract = %q, want %q", out.Contract, "structural_only")
+	}
+	if !out.NotTextFlowSafe {
+		t.Error("not_text_flow_safe = false, want true")
+	}
+	if len(out.Limitations) == 0 {
+		t.Error("limitations is empty, want a non-empty list of structural-only caveats")
+	}
+
+	// A wireframe must NOT emit visual-QA categories, severities, or
+	// quality verdicts — those belong to inspect_slide_images / score_deck.
+	for _, banned := range []string{`"severity"`, `"category"`, `"score"`, `"quality_gate"`, `"verdict"`} {
+		if strings.Contains(text, banned) {
+			t.Errorf("wireframe response leaked visual-QA field %s: %s", banned, text[:min(400, len(text))])
+		}
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

@@ -577,8 +577,12 @@ var outputSchemaPreviewSlideWireframe = json.RawMessage(`{
   "type": "object",
   "properties": {
     "index":             {"type": "integer"},
+    "inspection_kind":   {"type": "string", "enum": ["wireframe_structural"], "description": "Always \"wireframe_structural\". Marks this output as a LibreOffice-free structural geometry preview, NOT a rendered-pixel inspection. Do NOT treat the SVG/PNG as visual-QA evidence — it proves layout geometry only."},
+    "contract":          {"type": "string", "enum": ["structural_only"], "description": "Always \"structural_only\". The wireframe emits no visual-QA categories, severities, or quality verdicts. Rendered visual inspection (render_slide_image + inspect_slide_images) is still required before a deck counts as visually verified."},
+    "not_text_flow_safe": {"type": "boolean", "description": "Always true. The wireframe does NOT model PowerPoint text wrapping / font metrics, so it cannot prove that text fits or flows correctly. A passing wireframe is not proof of text fit."},
+    "limitations":       {"type": "array", "items": {"type": "string"}, "description": "Human-readable list of checks this structural preview cannot perform (rendered text flow, icon/text collisions, SVG readability, font metrics, image fidelity, visual polish). Use rendered visual QA to cover these."},
     "svg":               {"type": "string", "description": "SVG document (omitted when format=\"png\")."},
-    "png_base64":        {"type": "string", "description": "Base64-encoded PNG (omitted when format=\"svg\")."},
+    "png_base64":        {"type": "string", "description": "Base64-encoded PNG (omitted when format=\"svg\"). Structural geometry only — NOT a rendered-pixel image suitable for visual QA."},
     "width":             {"type": "integer", "description": "Canvas width in pixels."},
     "height":            {"type": "integer", "description": "Canvas height in pixels."},
     "cell_count":        {"type": "integer", "description": "Number of resolved grid cells drawn."},
@@ -590,7 +594,7 @@ var outputSchemaPreviewSlideWireframe = json.RawMessage(`{
     "warnings":          {"type": "array", "items": {"type": "string"}},
     "errors":            {"type": "array", "items": {"type": "string"}}
   },
-  "required": ["index", "cell_count", "placeholder_count", "finding_count"]
+  "required": ["index", "inspection_kind", "contract", "not_text_flow_safe", "limitations", "cell_count", "placeholder_count", "finding_count"]
 }`)
 
 // --- render_deck_thumbnails ---

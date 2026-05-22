@@ -124,7 +124,12 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
      ]
    }
    ```
-3. **Render to images.** Call `render_slide_image` (one slide) or `render_deck_thumbnails` (whole deck) over MCP — preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out. Both paths require LibreOffice + ImageMagick on the server's PATH; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done. To get a deck-level quality signal, also call `score_deck` — it returns a 0-100 score plus structured findings keyed to the same `code` vocabulary as fit-report.
+3. **Render to images, then inspect them.** Three distinct steps — do not conflate them:
+   - **Structural wireframe** (`preview_slide_wireframe`) is geometry only. Its response is stamped `inspection_kind: "wireframe_structural"`, `contract: "structural_only"`, `not_text_flow_safe: true`. It does NOT model text wrapping, font metrics, icon/text collisions, SVG readability, or image fidelity, and emits no quality verdict. **A wireframe never satisfies visual QA** — it is a cheap pre-render sanity check, nothing more.
+   - **Rendered-image generation** (`render_slide_image` for one slide / `render_deck_thumbnails` for the whole deck, preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out) produces real pixels via LibreOffice + ImageMagick. **Generating the PNG is not the same as inspecting it** — an unviewed render is evidence you have not yet read.
+   - **Rendered visual inspection** is the verification step: the rendered pixels must actually be inspected — by `inspect_slide_images` (Claude vision / heuristic) or by an agent looking at the images — before the deck counts as visually verified.
+
+   Both render paths require LibreOffice + ImageMagick on the server's PATH; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done. To get a deck-level quality signal, also call `score_deck` — it returns a 0-100 score plus structured findings keyed to the same `code` vocabulary as fit-report.
 4. **Inspection checklist (per slide).** Before handing back to the user, confirm:
    - [ ] Text fits its shape or cell — no clipping, no visible overflow.
    - [ ] Chart axes/legends are readable at deck-viewing size.

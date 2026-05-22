@@ -461,43 +461,43 @@ func TestMCPPatternValidate_ContractShape(t *testing.T) {
 // is valid JSON and has the expected top-level "type" field.
 func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
 	schemas := map[string]json.RawMessage{
-		"generate_presentation":      outputSchemaGenerate,
-		"validate_input":             outputSchemaValidate,
-		"list_templates":             outputSchemaListTemplates,
-		"get_data_format_hints":      outputSchemaGetDataFormatHints,
-		"get_chart_capabilities":     outputSchemaGetChartCapabilities,
-		"get_diagram_capabilities":   outputSchemaGetDiagramCapabilities,
-		"list_patterns":              outputSchemaListPatterns,
-		"show_pattern":               outputSchemaShowPattern,
-		"validate_pattern":           outputSchemaValidatePattern,
-		"expand_pattern":             outputSchemaExpandPattern,
-		"expand_patterns":            outputSchemaExpandPatterns,
-		"recommend_pattern":          outputSchemaRecommendPattern,
-		"recommend_visual":           outputSchemaRecommendVisual,
-		"list_icons":                 outputSchemaListIcons,
-		"preview_icon":               outputSchemaPreviewIcon,
-		"get_shape_catalog":          outputSchemaGetShapeCatalog,
+		"generate_presentation":        outputSchemaGenerate,
+		"validate_input":               outputSchemaValidate,
+		"list_templates":               outputSchemaListTemplates,
+		"get_data_format_hints":        outputSchemaGetDataFormatHints,
+		"get_chart_capabilities":       outputSchemaGetChartCapabilities,
+		"get_diagram_capabilities":     outputSchemaGetDiagramCapabilities,
+		"list_patterns":                outputSchemaListPatterns,
+		"show_pattern":                 outputSchemaShowPattern,
+		"validate_pattern":             outputSchemaValidatePattern,
+		"expand_pattern":               outputSchemaExpandPattern,
+		"expand_patterns":              outputSchemaExpandPatterns,
+		"recommend_pattern":            outputSchemaRecommendPattern,
+		"recommend_visual":             outputSchemaRecommendVisual,
+		"list_icons":                   outputSchemaListIcons,
+		"preview_icon":                 outputSchemaPreviewIcon,
+		"get_shape_catalog":            outputSchemaGetShapeCatalog,
 		"render_slide_image":           outputSchemaRenderSlideImage,
 		"render_slide_image_from_json": outputSchemaRenderSlideImage,
 		"render_deck_thumbnails":       outputSchemaRenderDeckThumbnails,
-		"score_deck":                 outputSchemaScoreDeck,
-		"inspect_slide_images":       outputSchemaInspectSlideImages,
-		"preview_presentation_plan":  outputSchemaPreviewPlan,
-		"preview_slide_wireframe":    outputSchemaPreviewSlideWireframe,
-		"repair_slide":               outputSchemaRepairSlide,
-		"propose_repairs":            outputSchemaProposeRepairs,
-		"table_density_guide":        outputSchemaTableDensityGuide,
-		"resolve_theme":              outputSchemaResolveTheme,
-		"list_template_settings":     outputSchemaListTemplateSettings,
-		"register_template_setting":  outputSchemaRegisterTemplateSetting,
-		"delete_template_setting":    outputSchemaDeleteTemplateSetting,
-		"get_capabilities":           outputSchemaGetCapabilities,
-		"read_presentation":          outputSchemaReadPresentation,
-		"analyze_deck_rhythm":        outputSchemaAnalyzeDeckRhythm,
-		"plan_deck":                  outputSchemaPlanDeck,
-		"describe_finding":           outputSchemaDescribeFinding,
-		"audit_palette":              outputSchemaAuditPalette,
-		"examine_template":           outputSchemaExamineTemplate,
+		"score_deck":                   outputSchemaScoreDeck,
+		"inspect_slide_images":         outputSchemaInspectSlideImages,
+		"preview_presentation_plan":    outputSchemaPreviewPlan,
+		"preview_slide_wireframe":      outputSchemaPreviewSlideWireframe,
+		"repair_slide":                 outputSchemaRepairSlide,
+		"propose_repairs":              outputSchemaProposeRepairs,
+		"table_density_guide":          outputSchemaTableDensityGuide,
+		"resolve_theme":                outputSchemaResolveTheme,
+		"list_template_settings":       outputSchemaListTemplateSettings,
+		"register_template_setting":    outputSchemaRegisterTemplateSetting,
+		"delete_template_setting":      outputSchemaDeleteTemplateSetting,
+		"get_capabilities":             outputSchemaGetCapabilities,
+		"read_presentation":            outputSchemaReadPresentation,
+		"analyze_deck_rhythm":          outputSchemaAnalyzeDeckRhythm,
+		"plan_deck":                    outputSchemaPlanDeck,
+		"describe_finding":             outputSchemaDescribeFinding,
+		"audit_palette":                outputSchemaAuditPalette,
+		"examine_template":             outputSchemaExamineTemplate,
 	}
 
 	for name, schema := range schemas {
@@ -513,55 +513,102 @@ func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
 	}
 }
 
+// TestMCPOutputSchema_WireframeStructuralContract verifies that the
+// preview_slide_wireframe output schema declares the structural-only
+// inspection-contract fields and marks them required, so agents can
+// machine-detect that a wireframe is not rendered visual-QA evidence.
+// Regression guard for go-slide-creator-5lr1.
+func TestMCPOutputSchema_WireframeStructuralContract(t *testing.T) {
+	var parsed struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		Required   []string                   `json:"required"`
+	}
+	if err := json.Unmarshal(outputSchemaPreviewSlideWireframe, &parsed); err != nil {
+		t.Fatalf("wireframe schema is not valid JSON: %v", err)
+	}
+
+	contractFields := []string{"inspection_kind", "contract", "not_text_flow_safe", "limitations"}
+	for _, f := range contractFields {
+		if _, ok := parsed.Properties[f]; !ok {
+			t.Errorf("wireframe schema missing property %q", f)
+		}
+	}
+
+	requiredSet := make(map[string]bool, len(parsed.Required))
+	for _, r := range parsed.Required {
+		requiredSet[r] = true
+	}
+	for _, f := range contractFields {
+		if !requiredSet[f] {
+			t.Errorf("wireframe schema field %q must be in required[]", f)
+		}
+	}
+
+	// The structural-only contract values are fixed: assert the enums pin
+	// them so a future edit cannot loosen the contract silently.
+	for field, want := range map[string]string{"inspection_kind": "wireframe_structural", "contract": "structural_only"} {
+		var prop struct {
+			Enum []string `json:"enum"`
+		}
+		if err := json.Unmarshal(parsed.Properties[field], &prop); err != nil {
+			t.Errorf("wireframe schema field %q is not an object: %v", field, err)
+			continue
+		}
+		if len(prop.Enum) != 1 || prop.Enum[0] != want {
+			t.Errorf("wireframe schema field %q enum = %v, want [%q]", field, prop.Enum, want)
+		}
+	}
+}
+
 // TestMCPOutputSchemas_AllToolsCovered verifies that every registered MCP tool
 // has a corresponding output schema defined.
 func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 	covered := map[string]bool{
-		"generate_presentation":      true,
-		"validate_input":             true,
-		"list_templates":             true,
-		"get_data_format_hints":      true,
-		"get_chart_capabilities":     true,
-		"get_diagram_capabilities":   true,
-		"list_patterns":              true,
-		"show_pattern":               true,
-		"validate_pattern":           true,
-		"expand_pattern":             true,
-		"expand_patterns":            true,
-		"recommend_pattern":          true,
-		"list_icons":                 true,
-		"preview_icon":               true,
-		"get_shape_catalog":          true,
+		"generate_presentation":        true,
+		"validate_input":               true,
+		"list_templates":               true,
+		"get_data_format_hints":        true,
+		"get_chart_capabilities":       true,
+		"get_diagram_capabilities":     true,
+		"list_patterns":                true,
+		"show_pattern":                 true,
+		"validate_pattern":             true,
+		"expand_pattern":               true,
+		"expand_patterns":              true,
+		"recommend_pattern":            true,
+		"list_icons":                   true,
+		"preview_icon":                 true,
+		"get_shape_catalog":            true,
 		"render_slide_image":           true,
 		"render_slide_image_from_json": true,
 		"render_deck_thumbnails":       true,
-		"score_deck":                 true,
-		"score_candidates":           true,
-		"inspect_slide_images":       true,
-		"preview_presentation_plan":  true,
-		"preview_slide_wireframe":    true,
-		"repair_slide":               true,
-		"repair_slides_batch":        true,
-		"propose_repairs":            true,
-		"auto_repair":                true,
-		"make_deck":                  true,
-		"table_density_guide":        true,
-		"resolve_theme":              true,
-		"list_template_settings":     true,
-		"register_template_setting":  true,
-		"delete_template_setting":    true,
-		"get_capabilities":           true,
-		"read_presentation":          true,
-		"analyze_deck_rhythm":        true,
-		"plan_deck":                  true,
-		"recommend_visual":           true,
-		"get_input_schema":               true,
-		"validate_presentation_output":   true,
-		"get_started":                    true,
-		"describe_finding":               true,
-		"audit_palette":                  true,
-		"examine_template":               true,
-		"apply_deck_patch":               true,
+		"score_deck":                   true,
+		"score_candidates":             true,
+		"inspect_slide_images":         true,
+		"preview_presentation_plan":    true,
+		"preview_slide_wireframe":      true,
+		"repair_slide":                 true,
+		"repair_slides_batch":          true,
+		"propose_repairs":              true,
+		"auto_repair":                  true,
+		"make_deck":                    true,
+		"table_density_guide":          true,
+		"resolve_theme":                true,
+		"list_template_settings":       true,
+		"register_template_setting":    true,
+		"delete_template_setting":      true,
+		"get_capabilities":             true,
+		"read_presentation":            true,
+		"analyze_deck_rhythm":          true,
+		"plan_deck":                    true,
+		"recommend_visual":             true,
+		"get_input_schema":             true,
+		"validate_presentation_output": true,
+		"get_started":                  true,
+		"describe_finding":             true,
+		"audit_palette":                true,
+		"examine_template":             true,
+		"apply_deck_patch":             true,
 	}
 
 	for _, name := range mcpToolNames() {
@@ -574,13 +621,34 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 // mcpAllToolDefs returns all MCP tool definitions by calling their constructors.
 func mcpAllToolDefs() []struct{ Name, Description string } {
 	tools := []struct{ Name, Description string }{
-		func() struct{ Name, Description string } { t := mcpGenerateTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
-		func() struct{ Name, Description string } { t := mcpListTemplatesTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
-		func() struct{ Name, Description string } { t := mcpGetDataFormatHintsTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
-		func() struct{ Name, Description string } { t := mcpGetChartCapabilitiesTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
-		func() struct{ Name, Description string } { t := mcpGetDiagramCapabilitiesTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
-		func() struct{ Name, Description string } { t := mcpValidateTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
-		func() struct{ Name, Description string } { t := mcpRepairSlideTool(); return struct{ Name, Description string }{t.Name, t.Description} }(),
+		func() struct{ Name, Description string } {
+			t := mcpGenerateTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
+		func() struct{ Name, Description string } {
+			t := mcpListTemplatesTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
+		func() struct{ Name, Description string } {
+			t := mcpGetDataFormatHintsTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
+		func() struct{ Name, Description string } {
+			t := mcpGetChartCapabilitiesTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
+		func() struct{ Name, Description string } {
+			t := mcpGetDiagramCapabilitiesTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
+		func() struct{ Name, Description string } {
+			t := mcpValidateTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
+		func() struct{ Name, Description string } {
+			t := mcpRepairSlideTool()
+			return struct{ Name, Description string }{t.Name, t.Description}
+		}(),
 	}
 	return tools
 }
