@@ -51,6 +51,31 @@ func nextCallInspectSlideImages() *patterns.ToolCallSuggestion {
 	}
 }
 
+// nextCallReadPresentation suggests read_presentation against a concrete file
+// path. Used as the recovery hop when an existing PPTX could not be validated:
+// the deterministic reader surfaces what the file actually contains so the agent
+// can decide whether to regenerate or repair.
+func nextCallReadPresentation(pptxPath string) *patterns.ToolCallSuggestion {
+	return &patterns.ToolCallSuggestion{
+		Tool: "read_presentation",
+		ArgsTemplate: map[string]any{
+			"pptx_path": pptxPath,
+		},
+	}
+}
+
+// nextCallValidateOutput suggests validate_presentation_output against a concrete
+// file path. Used as the recovery hop when an existing PPTX could not be read:
+// the structural validator explains why the OPC package is malformed.
+func nextCallValidateOutput(pptxPath string) *patterns.ToolCallSuggestion {
+	return &patterns.ToolCallSuggestion{
+		Tool: "validate_presentation_output",
+		ArgsTemplate: map[string]any{
+			"path": pptxPath,
+		},
+	}
+}
+
 // nextCallRetry suggests retrying the same tool with a corrected argument.
 // requiredArg is the name of the missing/invalid required parameter; the
 // args template uses a placeholder string the agent must replace.

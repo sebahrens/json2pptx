@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
@@ -37,17 +38,24 @@ type validateOutputResponse struct {
 func handleValidateOutput(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	path, err := request.RequireString("path")
 	if err != nil || path == "" {
-		return argMissing("validate_output", "path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argMissing("validate_presentation_output", "path", "string", "/tmp/out/deck.pptx", nil), nil
+	}
+
+	// Reject malformed paths (traversal, wrong extension) with the same
+	// structured INVALID_PATH envelope read_presentation uses, so an agent that
+	// passes a bad path to either introspection tool gets a consistent contract.
+	if err := api.ValidatePptxPath(path); err != nil {
+		return argInvalidValue("validate_presentation_output", diagnostics.CodeInvalidPath, "path", err.Error(), "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	// Check file exists
 	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
-		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("file not found: %s", path)), nil
+		return mcpFileNotFoundError("validate_presentation_output", "path", path), nil
 	}
 
 	report, err := pptx.ValidateOutputFile(path)
 	if err != nil {
-		return api.MCPSimpleError("VALIDATION_FAILED", fmt.Sprintf("failed to validate: %v", err)), nil
+		return mcpValidationFailedError(path, err), nil
 	}
 
 	blocking := report.Blocking()

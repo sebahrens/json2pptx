@@ -40,20 +40,19 @@ func handleReadPresentation(_ context.Context, request mcp.CallToolRequest) (*mc
 	}
 
 	if _, err := os.Stat(pptxPath); os.IsNotExist(err) {
-		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
+		return mcpFileNotFoundError("read_presentation", "pptx_path", pptxPath), nil
 	}
 
 	pres, err := pptxread.ReadFile(pptxPath)
 	if err != nil {
-		return api.MCPSimpleError("READ_FAILED", fmt.Sprintf("failed to read presentation: %v", err)), nil
+		return mcpReadFailedError(pptxPath, err), nil
 	}
 
 	// Filter to a single slide if requested.
 	if v, ok := request.GetArguments()["slide_index"].(float64); ok {
 		idx := int(v)
 		if idx < 0 || idx >= len(pres.Slides) {
-			return api.MCPSimpleError("INVALID_SLIDE_INDEX",
-				fmt.Sprintf("slide_index %d out of range (presentation has %d slides)", idx, len(pres.Slides))), nil
+			return mcpInvalidSlideIndexError(idx, len(pres.Slides)), nil
 		}
 		pres.Slides = []pptxread.Slide{pres.Slides[idx]}
 	}
