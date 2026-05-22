@@ -4,17 +4,21 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // collectChartDryRenderFindings iterates every slide's chart_value /
-// diagram_value content item and invokes svggen.DryRender, converting the
-// returned chart.* findings into patterns.FitFinding entries. This closes the
+// diagram_value content item AND every diagram surface embedded in a slide's
+// shape_grid (cell diagrams, composite sub_diagrams, and recursively nested
+// sub-grids), invoking svggen.DryRender and converting the returned chart.*
+// findings into patterns.FitFinding entries. This closes the
 // validate → preview feedback loop for render-only findings (chart.tick_thinned,
 // chart.label_clipped, chart.legend_overflow_dropped, chart.label_truncated,
 // chart.scatter_label_skipped, etc.) so agents see them before paying the
-// cost of a full generate.
+// cost of a full generate — including for the embedded-diagram paths used in
+// complex shape_grid slides (go-slide-creator-kzzl).
 //
 // themeColors is forwarded to svggen so dry-run findings reflect the same
 // palette the renderer will use. Pass nil when theme isn't available — the
@@ -32,6 +36,9 @@ func collectChartDryRenderFindings(
 	}
 	var findings []patterns.FitFinding
 	for slideIdx, slide := range input.Slides {
+		// Placeholder content charts/diagrams. Paths use the legacy bracket
+		// notation these findings have always emitted (preserved for callers
+		// and tests that key off it).
 		for contentIdx, item := range slide.Content {
 			switch item.Type {
 			case "chart":
@@ -49,6 +56,59 @@ func collectChartDryRenderFindings(
 				path := fmt.Sprintf("slides[%d].content[%d].diagram_value", slideIdx, contentIdx)
 				findings = append(findings,
 					dryRenderSpecToFindings(item.DiagramValue, themeColors, strictFit, path)...)
+			}
+		}
+
+		// Shape-grid diagram surfaces. Paths use the slidepath JSON Pointer
+		// convention shared with the structural detectors (e.g.
+		// checkGridDiagramPreflight), so a dry-render finding and a structural
+		// finding for the same cell agree on the cell identity.
+		if slide.ShapeGrid != nil {
+			findings = append(findings, collectGridDryRenderFindings(
+				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, strictFit)...)
+		}
+	}
+	return findings
+}
+
+// collectGridDryRenderFindings recursively walks a shape grid's rows and cells,
+// invoking svggen.DryRender for every embedded diagram surface: a cell's direct
+// diagram, a composite cell's sub_diagram, and any diagram inside a recursively
+// nested sub-grid.
+//
+// basePath is the slidepath JSON Pointer of the grid itself —
+// "/slides/{i}/shape_grid" for a top-level grid, or ".../cells/{c}/grid" for a
+// nested one. Row/cell/field segments are appended so each finding pins the
+// owning cell and subfield. For a top-level cell diagram this yields exactly
+// slidepath.GridCellField(slideIdx, ri, ci, "diagram"), matching the path the
+// structural diagram detectors emit.
+func collectGridDryRenderFindings(
+	grid *ShapeGridInput,
+	basePath string,
+	themeColors []types.ThemeColor,
+	strictFit string,
+) []patterns.FitFinding {
+	if grid == nil {
+		return nil
+	}
+	var findings []patterns.FitFinding
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, ri, ci)
+			if cell.Diagram != nil {
+				findings = append(findings, dryRenderSpecToFindings(
+					cell.Diagram, themeColors, strictFit, cellPath+"/diagram")...)
+			}
+			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
+				findings = append(findings, dryRenderSpecToFindings(
+					cell.Composite.SubDiagram, themeColors, strictFit, cellPath+"/composite/sub_diagram")...)
+			}
+			if cell.Grid != nil {
+				findings = append(findings, collectGridDryRenderFindings(
+					cell.Grid, cellPath+"/grid", themeColors, strictFit)...)
 			}
 		}
 	}
