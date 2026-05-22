@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/render"
@@ -11,6 +12,149 @@ import (
 	// Ensure all patterns are registered via init().
 	_ "github.com/sebahrens/json2pptx/internal/patterns"
 )
+
+// heavyVisualRepairDeck returns a one-slide deck whose body carries six bullets,
+// plus a P1 visual finding proposing a reduce_text(max_items:2) repair. The pair
+// drives the deterministic visual-repair mapping (visualqa.Finding →
+// proposeRepairs → applyProposedRepairs) without rendering or an API key — the
+// foundation for exercising the staged apply/re-render/rollback contract.
+func heavyVisualRepairDeck() (PresentationInput, proposeRepairsOutput) {
+	deck := PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				LayoutID: "slideLayout2",
+				Content: []ContentInput{
+					{PlaceholderID: "title", Type: "text", TextValue: strPtr("Heavy slide")},
+					{PlaceholderID: "body", Type: "bullets", BulletsValue: &[]string{
+						"one", "two", "three", "four", "five", "six",
+					}},
+				},
+			},
+		},
+	}
+	findings := []visualqa.Finding{
+		{
+			SlideIndex:  0,
+			SlideType:   "content",
+			Severity:    visualqa.SeverityP1,
+			Category:    "font_size",
+			Description: "body text too dense",
+			SuggestedFixes: []visualqa.SuggestedFix{
+				{Kind: "reduce_text", Params: map[string]any{"max_items": float64(2)}},
+			},
+		},
+	}
+	proposed := proposeRepairs(&deck, visualFindingsToProposeFindings(actionableVisualFindings(findings)))
+	return deck, proposed
+}
+
+func bulletCount(t *testing.T, deck PresentationInput) int {
+	t.Helper()
+	body := deck.Slides[0].Content[1]
+	if body.BulletsValue == nil {
+		return -1
+	}
+	return len(*body.BulletsValue)
+}
+
+// TestApplyAndReRenderVisualRepairs_RollsBackOnReRenderFailure forces a
+// re-render failure AFTER a visual repair has mutated the deck and asserts the
+// staged update rolls the mutation back: the in-memory deck (and therefore the
+// marshaled final_presentation) returns to its pre-repair state so it stays
+// consistent with the still-on-disk pre-repair PPTX. This is the core guard the
+// bug demanded — repaired JSON must never point at an un-repaired PPTX.
+func TestApplyAndReRenderVisualRepairs_RollsBackOnReRenderFailure(t *testing.T) {
+	deck, proposed := heavyVisualRepairDeck()
+	if got := bulletCount(t, deck); got != 6 {
+		t.Fatalf("precondition: expected 6 bullets before repair, got %d", got)
+	}
+
+	rerenderErr := errors.New("simulated re-render failure")
+	outcome := applyAndReRenderVisualRepairs(&deck, proposed, func() error {
+		// The repair must already be applied to the deck by the time the
+		// re-render runs — that is exactly the window where the bug lived.
+		if got := bulletCount(t, deck); got != 2 {
+			t.Errorf("re-render saw %d bullets, expected the repair (2) applied before re-render", got)
+		}
+		return rerenderErr
+	})
+
+	if !outcome.RolledBack {
+		t.Errorf("outcome.RolledBack = false, want true after a re-render failure")
+	}
+	if !outcome.Consistent {
+		t.Errorf("outcome.Consistent = false, want true (rollback restores consistency)")
+	}
+	if len(outcome.Applied) != 0 {
+		t.Errorf("outcome.Applied = %v, want empty after rollback", outcome.Applied)
+	}
+	if !errors.Is(outcome.Err, rerenderErr) {
+		t.Errorf("outcome.Err = %v, want the re-render error", outcome.Err)
+	}
+	if got := bulletCount(t, deck); got != 6 {
+		t.Errorf("expected deck rolled back to 6 bullets, got %d — final_presentation would diverge from the PPTX", got)
+	}
+}
+
+// TestApplyAndReRenderVisualRepairs_KeepsRepairsOnSuccess asserts the happy path
+// is unchanged: when the re-render succeeds, the repair is kept and reported, and
+// JSON + PPTX have advanced together.
+func TestApplyAndReRenderVisualRepairs_KeepsRepairsOnSuccess(t *testing.T) {
+	deck, proposed := heavyVisualRepairDeck()
+
+	outcome := applyAndReRenderVisualRepairs(&deck, proposed, func() error { return nil })
+
+	if outcome.RolledBack {
+		t.Errorf("outcome.RolledBack = true, want false on a successful re-render")
+	}
+	if !outcome.Consistent {
+		t.Errorf("outcome.Consistent = false, want true on success")
+	}
+	if len(outcome.Applied) == 0 {
+		t.Errorf("outcome.Applied is empty, want the applied repair reported on success")
+	}
+	if outcome.Err != nil {
+		t.Errorf("outcome.Err = %v, want nil on success", outcome.Err)
+	}
+	if got := bulletCount(t, deck); got != 2 {
+		t.Errorf("expected repaired deck trimmed to 2 bullets, got %d", got)
+	}
+}
+
+// TestApplyAndReRenderVisualRepairs_NoRepairsIsConsistent asserts that a pass
+// that applies nothing reports a consistent, non-rolled-back outcome and never
+// invokes the re-render closure (there is nothing new to render).
+func TestApplyAndReRenderVisualRepairs_NoRepairsIsConsistent(t *testing.T) {
+	deck := PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				LayoutID: "slideLayout1",
+				Content:  []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Hello")}},
+			},
+		},
+	}
+
+	rerendered := false
+	outcome := applyAndReRenderVisualRepairs(&deck, proposeRepairsOutput{}, func() error {
+		rerendered = true
+		return nil
+	})
+
+	if rerendered {
+		t.Error("re-render closure should not run when no repair was applied")
+	}
+	if outcome.RolledBack {
+		t.Error("outcome.RolledBack = true, want false when nothing was applied")
+	}
+	if !outcome.Consistent {
+		t.Error("outcome.Consistent = false, want true when nothing changed")
+	}
+	if len(outcome.Applied) != 0 {
+		t.Errorf("outcome.Applied = %v, want empty when nothing was applied", outcome.Applied)
+	}
+}
 
 // trivialDeckJSON returns a one-slide deck that passes the deterministic gate
 // on pass 1 with no repairs — keeps these tests focused on the visual_qa
@@ -97,6 +241,9 @@ func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
 	vqa := output.VisualQA
 	if !vqa.Requested {
 		t.Error("visual_qa.requested should be true")
+	}
+	if !vqa.ArtifactConsistent {
+		t.Error("visual_qa.artifact_consistent should be true on a normal run (no un-rollback-able re-render failure)")
 	}
 	if vqa.Requirements.APIKeyEnv != "ANTHROPIC_API_KEY" {
 		t.Errorf("requirements.api_key_env = %q, want ANTHROPIC_API_KEY", vqa.Requirements.APIKeyEnv)
@@ -333,6 +480,33 @@ func TestVisualFindingMapping_AppliesRepair(t *testing.T) {
 			got = len(*body.BulletsValue)
 		}
 		t.Errorf("expected body trimmed to 2 bullets, got %d", got)
+	}
+}
+
+// TestVisualQASchemaAdvertisesArtifactConsistent asserts the shared visual_qa
+// fragment documents and requires the artifact_consistent guard, so MCP clients
+// can rely on it being present on every visual_qa block.
+func TestVisualQASchemaAdvertisesArtifactConsistent(t *testing.T) {
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(visualQAResultSchema), &parsed); err != nil {
+		t.Fatalf("visualQAResultSchema is not valid JSON: %v", err)
+	}
+	props, ok := parsed["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("visual_qa schema missing properties")
+	}
+	if _, ok := props["artifact_consistent"]; !ok {
+		t.Error("visual_qa schema must advertise artifact_consistent")
+	}
+	req, _ := parsed["required"].([]any)
+	found := false
+	for _, r := range req {
+		if r == "artifact_consistent" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("visual_qa schema must require artifact_consistent (it is always present)")
 	}
 }
 

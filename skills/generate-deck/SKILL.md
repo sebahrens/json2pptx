@@ -270,7 +270,9 @@ To add the agent-grade visual refinement loop, pass `visual_qa: {enabled: true}`
 - Render tools missing → `visual_qa.inspection_mode: "skipped"` with an explanatory `notes[]` entry; the deterministic deck is preserved.
 - `ANTHROPIC_API_KEY` unset → `inspection_mode: "heuristic"` (pure-Go fallback, advisory P3 findings) instead of vision.
 
-`visual_qa.passes[]` records each iteration: `{pass, inspection_mode, thumbnail_paths[], visual_findings[], proposed_repairs[], repairs_applied[]}`. When `audit_palette: true`, `visual_qa.palette_audit` carries `{available, violations, findings, note?}`. Discover the mode at runtime via `get_capabilities` → `features.quality_modes`.
+**Atomic artifact updates** — each visual-repair pass is staged: the engine applies the repairs, re-renders, and **rolls the in-memory edits back if that re-render fails**, so the returned `final_presentation` and the PPTX at `path` always advance together. `visual_qa.artifact_consistent` (always present) reports the guarantee: `true` means `final_presentation` matches the PPTX you'd inspect or ship. It is `false` only in the defensive case where a re-render failed *and* the rollback could not be performed — then `final_presentation` is ahead of the PPTX, a blocking `notes[]` entry explains it, and you must **not** ship that artifact (re-run `auto_repair` / `generate_presentation` from the returned JSON instead). A rolled-back pass leaves `artifact_consistent: true` and records the revert in `notes[]`.
+
+`visual_qa.passes[]` records each iteration: `{pass, inspection_mode, thumbnail_paths[], visual_findings[], proposed_repairs[], repairs_applied[]}` — `repairs_applied[]` lists only repairs that survived in the final deck (a reverted pass reports an empty array). When `audit_palette: true`, `visual_qa.palette_audit` carries `{available, violations, findings, note?}`. Discover the mode at runtime via `get_capabilities` → `features.quality_modes`.
 
 ---
 

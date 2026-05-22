@@ -127,6 +127,16 @@ func extractVisualQAConfig(request mcp.CallToolRequest) visualQAConfig {
 type visualQAResult struct {
 	// Requested is always true (the struct is only built when the mode is on).
 	Requested bool `json:"requested"`
+	// ArtifactConsistent reports whether the returned final_presentation matches
+	// the PPTX written at the response path. It is true on every normal run
+	// (including transparent fallbacks): each visual-repair pass is staged —
+	// applied, re-rendered, and rolled back in memory if the re-render fails — so
+	// the JSON and the on-disk PPTX always advance together. It is false ONLY in
+	// the defensive case where a re-render failed AND the in-memory repairs could
+	// not be reverted; final_presentation then reflects changes the PPTX does not,
+	// a blocking note explains the divergence, and the artifact must not be
+	// shipped.
+	ArtifactConsistent bool `json:"artifact_consistent"`
 	// InspectionMode reports which backend actually ran: "vision" (Claude vision
 	// API), "heuristic" (pure-Go fallback, no API key), or "skipped" (render
 	// tools unavailable — no inspection happened at all).
@@ -201,9 +211,12 @@ func buildVisualQARequirements(cfg visualQAConfig) visualQARequirements {
 // --- Loop ---
 
 // runVisualQALoop renders the just-generated deck, inspects the thumbnails,
-// maps visual findings to repairs, applies them, and re-renders. It mutates
-// input in place (so the caller's final_presentation reflects visual repairs)
-// and rewrites outputPath so the on-disk PPTX reflects the repaired deck.
+// maps visual findings to repairs, applies them, and re-renders. Each pass is
+// staged atomically (see applyAndReRenderVisualRepairs): the in-memory mutation
+// to input and the on-disk PPTX at outputPath advance together, or — if the
+// re-render of the repaired deck fails — the mutation is rolled back so the
+// caller's final_presentation stays consistent with the PPTX. result.Notes and
+// result.ArtifactConsistent record any such failure.
 //
 // It never returns an error: every failure mode degrades to a recorded note so
 // the deterministic deck the caller already produced is preserved. The returned
@@ -221,9 +234,10 @@ func (mc *mcpConfig) runVisualQALoop(
 	cfg visualQAConfig,
 ) *visualQAResult {
 	result := &visualQAResult{
-		Requested:    true,
-		Requirements: buildVisualQARequirements(cfg),
-		Passes:       []visualQAPassEntry{},
+		Requested:          true,
+		ArtifactConsistent: true,
+		Requirements:       buildVisualQARequirements(cfg),
+		Passes:             []visualQAPassEntry{},
 	}
 
 	if !result.Requirements.RenderAvailable {
@@ -265,18 +279,38 @@ func (mc *mcpConfig) runVisualQALoop(
 
 		proposed := proposeRepairs(input, visualFindingsToProposeFindings(actionable))
 		entry.ProposedRepairs = flattenProposedRepairs(proposed)
-		entry.RepairsApplied = applyProposedRepairs(input, proposed)
+
+		// Stage the repairs atomically: apply them, re-render, and roll back the
+		// in-memory mutation if the re-render fails. This keeps the marshaled
+		// final_presentation and the on-disk PPTX consistent — they advance
+		// together or neither does, so a re-render failure can never leave the
+		// caller with repaired JSON pointing at a pre-repair PPTX.
+		outcome := applyAndReRenderVisualRepairs(input, proposed, func() error {
+			_, rerr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath)
+			return rerr
+		})
+		entry.RepairsApplied = outcome.Applied
+		if entry.RepairsApplied == nil {
+			entry.RepairsApplied = []string{}
+		}
 		result.Passes = append(result.Passes, entry)
 
-		if len(entry.RepairsApplied) == 0 {
-			break
+		switch {
+		case outcome.RolledBack:
+			result.Notes = append(result.Notes, fmt.Sprintf(
+				"visual_qa pass %d: re-render after repair failed (%v); reverted the in-memory repair(s) so final_presentation stays consistent with the on-disk PPTX at the returned path.",
+				pass, outcome.Err))
+		case !outcome.Consistent:
+			result.ArtifactConsistent = false
+			result.Notes = append(result.Notes, fmt.Sprintf(
+				"visual_qa pass %d: re-render after repair failed (%v) and the in-memory repairs could not be reverted; final_presentation reflects changes the on-disk PPTX at the returned path does NOT — artifact_consistent=false, do not ship this artifact.",
+				pass, outcome.Err))
 		}
 
-		// Re-render so the on-disk PPTX (and the next pass's thumbnails) reflect
-		// the repairs just applied. A re-render failure stops the loop but keeps
-		// the repairs in input — the caller still marshals the repaired JSON.
-		if _, rerr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath); rerr != nil {
-			result.Notes = append(result.Notes, fmt.Sprintf("visual_qa pass %d: re-render after repair failed: %v", pass, rerr))
+		// Stop when nothing more landed, the repairs were reverted, or the
+		// artifacts diverged. Otherwise the re-render succeeded and the next pass
+		// inspects the freshly rendered deck.
+		if len(outcome.Applied) == 0 || outcome.RolledBack || !outcome.Consistent {
 			break
 		}
 	}
@@ -295,6 +329,58 @@ func (mc *mcpConfig) runVisualQALoop(
 	}
 
 	return result
+}
+
+// visualRepairOutcome reports how one staged visual-repair pass resolved.
+type visualRepairOutcome struct {
+	// Applied lists the repairs that landed in the FINAL deck. It is empty when
+	// no repair applied, or when repairs were applied but reverted after a
+	// re-render failure (RolledBack).
+	Applied []string
+	// RolledBack is true when repairs were applied, the re-render failed, and the
+	// in-memory mutation was reverted to keep the deck consistent with the
+	// on-disk PPTX.
+	RolledBack bool
+	// Consistent is true when the in-memory deck matches the last successfully
+	// rendered PPTX. It is false only when a re-render failed AND the rollback
+	// could not be performed — leaving the JSON ahead of the PPTX.
+	Consistent bool
+	// Err is the re-render error, if any.
+	Err error
+}
+
+// applyAndReRenderVisualRepairs applies proposed repairs to input, then invokes
+// rerender so the on-disk PPTX reflects them. It snapshots the pre-repair deck
+// first so a re-render failure can be rolled back: on failure it restores input
+// to the snapshot, keeping the marshaled final_presentation consistent with the
+// still-on-disk pre-repair PPTX. Repairs and the rendered artifact therefore
+// advance atomically — both or neither. Consistency is lost only in the
+// defensive case where the rollback itself cannot be performed.
+func applyAndReRenderVisualRepairs(input *PresentationInput, proposed proposeRepairsOutput, rerender func() error) visualRepairOutcome {
+	// Snapshot before mutating so we can roll back on a re-render failure.
+	snapshot, snapErr := json.Marshal(input)
+
+	applied := applyProposedRepairs(input, proposed)
+	if len(applied) == 0 {
+		// Nothing changed; the on-disk PPTX already matches input.
+		return visualRepairOutcome{Consistent: true}
+	}
+
+	if rerr := rerender(); rerr != nil {
+		// The repaired deck failed to re-render. Roll back so the returned
+		// final_presentation matches the pre-repair PPTX still on disk.
+		if snapErr == nil {
+			var restored PresentationInput
+			if rbErr := json.Unmarshal(snapshot, &restored); rbErr == nil {
+				*input = restored
+				return visualRepairOutcome{RolledBack: true, Consistent: true, Err: rerr}
+			}
+		}
+		// Could not roll back: input reflects repairs the on-disk PPTX does not.
+		return visualRepairOutcome{Applied: applied, Consistent: false, Err: rerr}
+	}
+
+	return visualRepairOutcome{Applied: applied, Consistent: true}
 }
 
 // inspectVisualQA runs the vision agent when ANTHROPIC_API_KEY is set, otherwise

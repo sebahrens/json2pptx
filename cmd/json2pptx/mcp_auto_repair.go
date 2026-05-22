@@ -359,9 +359,11 @@ func (mc *mcpConfig) runAutoRepairLoop(
 
 	// Opt-in visual-QA phase. Runs only when enabled; it mutates input (applying
 	// any visual repairs) and rewrites finalPath so the on-disk PPTX and the
-	// marshaled final_presentation below both reflect the visual repairs. It
-	// never errors — failures degrade to recorded notes — so the deterministic
-	// deck is always preserved.
+	// marshaled final_presentation below both reflect the visual repairs. Repairs
+	// are staged atomically: a re-render failure rolls back the in-memory mutation
+	// so final_presentation never advances past the PPTX at finalPath (see
+	// visual_qa.artifact_consistent). It never errors — failures degrade to
+	// recorded notes — so the deterministic deck is always preserved.
 	var vqaResult *visualQAResult
 	if vqa.Enabled {
 		vqaResult = mc.runVisualQALoop(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, finalPath, vqa)

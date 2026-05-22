@@ -1107,6 +1107,7 @@ const visualQAResultSchema = `{
       "description": "Visual-QA phase report. Present only when visual_qa mode was requested. Records the inspection backend, per-pass thumbnail paths/findings/repairs, and optional palette audit. Any repairs applied here are also reflected in final_presentation.",
       "properties": {
         "requested":       {"type": "boolean"},
+        "artifact_consistent": {"type": "boolean", "description": "True when final_presentation matches the PPTX at the response path. Each visual-repair pass is staged: applied, re-rendered, and rolled back in memory if its re-render fails, so JSON and PPTX always advance together. False ONLY in the defensive case where a re-render failed AND the in-memory repairs could not be reverted — final_presentation then reflects changes the PPTX does not, a blocking notes[] entry explains it, and the artifact must not be shipped."},
         "inspection_mode": {"type": "string", "enum": ["vision", "heuristic", "skipped"], "description": "vision = Claude vision API (ANTHROPIC_API_KEY set); heuristic = pure-Go fallback (no key); skipped = render tools unavailable, no inspection ran."},
         "model":           {"type": "string", "description": "Resolved vision model (empty in heuristic/skipped modes)."},
         "requirements": {
@@ -1153,9 +1154,9 @@ const visualQAResultSchema = `{
           },
           "required": ["available", "violations", "findings"]
         },
-        "notes": {"type": "array", "items": {"type": "string"}, "description": "Human-readable explanations for transparent fallbacks (missing render tools, missing API key, re-render failures)."}
+        "notes": {"type": "array", "items": {"type": "string"}, "description": "Human-readable explanations for transparent fallbacks (missing render tools, missing API key, re-render failures, rolled-back repairs)."}
       },
-      "required": ["requested", "inspection_mode", "requirements", "passes"]
+      "required": ["requested", "artifact_consistent", "inspection_mode", "requirements", "passes"]
     }`
 
 var outputSchemaAutoRepair = json.RawMessage(`{
