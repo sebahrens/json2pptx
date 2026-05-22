@@ -74,7 +74,7 @@ Examples from finding codes:
 | `sparse_layout` | `/slides/1/shape_grid` |
 | `fit_overflow` | `/slides/0/content/0/rows/3/1` |
 | `density_exceeded` | `/slides/0/content/0` |
-| `contrast_autofixed` | `/slides/1/content/body` |
+| `contrast_autofixed` | `/slides/3/shape_grid/shapes/2` (layout/run text uses the slide-level `/slides/1`) |
 
 ## Use in repair_slide
 

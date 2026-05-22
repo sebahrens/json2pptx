@@ -124,7 +124,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	if input.slideSpec.ContrastCheck == nil || *input.slideSpec.ContrastCheck {
 		bgHex := extractLayoutBackgroundColor(layoutData, ctx.themeColors)
 		if bgHex != "" {
-			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors)
+			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
 		}
 	}

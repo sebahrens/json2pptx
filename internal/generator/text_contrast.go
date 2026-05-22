@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -22,6 +23,26 @@ type ContrastSwap struct {
 	BackgroundColor string // e.g. "#FFFFFF"
 	RatioBefore    float64 // contrast ratio before fix
 	RatioAfter     float64 // contrast ratio after fix
+
+	// Location provenance. The low-level fix functions record only the
+	// color/ratio evidence above; the enforcement caller that knows the owning
+	// surface stamps these via annotateContrastSwaps so contrast_autofixed
+	// findings can be mapped back to the offending slide / cell / text.
+	SlideIndex int    // 0-based slide index; -1 when unknown
+	Path       string // JSON pointer to the surface, e.g. "/slides/3/shape_grid/shapes/2"
+	Source     string // surface label: "shape_grid", "lstStyle", "run"
+}
+
+// annotateContrastSwaps stamps slide/path/source provenance onto a batch of
+// freshly recorded swaps. Swaps are reslices of the caller's accumulator, so
+// mutating them in place updates the originals. Callers that know the owning
+// surface invoke this immediately after a fix pass that may have appended swaps.
+func annotateContrastSwaps(swaps []ContrastSwap, slideIndex int, path, source string) {
+	for i := range swaps {
+		swaps[i].SlideIndex = slideIndex
+		swaps[i].Path = path
+		swaps[i].Source = source
+	}
 }
 
 // =============================================================================
@@ -134,8 +155,9 @@ var schemeClrInFillRegexp = regexp.MustCompile(
 //   - themeColors: theme colors for resolving scheme color references
 //
 // Returns a slice of ContrastSwap records for each color replacement made.
-// This function mutates the slide's shapes in place.
-func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor) []ContrastSwap {
+// This function mutates the slide's shapes in place. slideIndex is the 0-based
+// index into the input slides array, recorded on each swap for finding paths.
+func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int) []ContrastSwap {
 	if bgHex == "" || slide == nil {
 		return nil
 	}
@@ -149,26 +171,31 @@ func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []typ
 	var swaps []ContrastSwap
 	for i := range slide.CommonSlideData.ShapeTree.Shapes {
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
-		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors)...)
+		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors, slideIndex)...)
 	}
 	return swaps
 }
 
 // enforceTextContrastInShape checks and fixes text color contrast in a single shape.
 // It processes both the lstStyle (inherited styling) and individual run properties.
-func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor) []ContrastSwap {
+// Recorded swaps are stamped with slideIndex and the slide-level JSON path; the
+// source label distinguishes lstStyle-inherited from run-level replacements.
+func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, slideIndex int) []ContrastSwap {
 	if shape.TextBody == nil {
 		return nil
 	}
 
 	var swaps []ContrastSwap
+	slidePath := slidepath.Slide(slideIndex)
 
 	// Fix lstStyle inherited text colors
 	if shape.TextBody.ListStyle != nil && shape.TextBody.ListStyle.Inner != "" {
+		start := len(swaps)
 		shape.TextBody.ListStyle.Inner = fixSchemeColorsForContrast(
 			shape.TextBody.ListStyle.Inner, bgColor, bgHex, themeColors, &swaps,
 			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
 		)
+		annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "lstStyle")
 	}
 
 	// Fix run-level text colors
@@ -177,10 +204,12 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 		for ri := range para.Runs {
 			run := &para.Runs[ri]
 			if run.RunProperties != nil && run.RunProperties.Inner != "" {
+				start := len(swaps)
 				run.RunProperties.Inner = fixSchemeColorsForContrast(
 					run.RunProperties.Inner, bgColor, bgHex, themeColors, &swaps,
 					shape.NonVisualProperties.ConnectionNonVisual.Name, "run", false,
 				)
+				annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "run")
 			}
 		}
 	}
@@ -388,11 +417,20 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string
 //
 // This is called after the standard enforceTextContrastInSlide pass, which
 // handles parsed slide shapes with template-inherited colors.
-func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool) ([][]byte, []ContrastSwap) {
+//
+// slideIndex is the 0-based index into the input slides array. Each shape's
+// swaps are stamped with a per-shape JSON path
+// ("/slides/{slideIndex}/shape_grid/shapes/{i}") so contrast_autofixed findings
+// point back to the specific rendered cell. The flat shape index is used because
+// the original grid row/cell coordinates are not retained on the raw shape XML
+// at render time.
+func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideIndex int) ([][]byte, []ContrastSwap) {
 	var allSwaps []ContrastSwap
+	gridPath := slidepath.ShapeGrid(slideIndex)
 	for i, shape := range shapes {
 		var swaps []ContrastSwap
 		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors, whiteTextSafeHex)
+		annotateContrastSwaps(swaps, slideIndex, slidepath.Join(gridPath, fmt.Sprintf("shapes/%d", i)), "shape_grid")
 		allSwaps = append(allSwaps, swaps...)
 	}
 	return shapes, allSwaps

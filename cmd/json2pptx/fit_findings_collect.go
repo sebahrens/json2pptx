@@ -976,8 +976,22 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 	}
 	findings := make([]patterns.FitFinding, 0, len(swaps))
 	for _, s := range swaps {
+		params := map[string]any{
+			"original_color":        s.OriginalColor,
+			"replacement_color":     s.ReplacedColor,
+			"background_color":      s.BackgroundColor,
+			"contrast_ratio_before": s.RatioBefore,
+			"contrast_ratio_after":  s.RatioAfter,
+		}
+		// Surface the offending surface so an agent can locate the swap. The
+		// owning slide is carried by the finding Path (slide index is derived
+		// from it like every other finding); source names the text surface.
+		if s.Source != "" {
+			params["source"] = s.Source
+		}
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
+				Path: s.Path,
 				Code: "contrast_autofixed",
 				Message: fmt.Sprintf(
 					"auto-fixed low-contrast text: %s → %s (on %s, ratio %.1f → %.1f)",
@@ -985,14 +999,8 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 					s.RatioBefore, s.RatioAfter,
 				),
 				Fix: &patterns.FixSuggestion{
-					Kind: "replace_color",
-					Params: map[string]any{
-						"original_color":       s.OriginalColor,
-						"replacement_color":    s.ReplacedColor,
-						"background_color":     s.BackgroundColor,
-						"contrast_ratio_before": s.RatioBefore,
-						"contrast_ratio_after":  s.RatioAfter,
-					},
+					Kind:   "replace_color",
+					Params: params,
 				},
 			},
 			Action: "info",

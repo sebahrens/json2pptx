@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sebahrens/json2pptx/svggen"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // consultingThemeColors returns consulting-style theme colors for testing.
@@ -224,7 +225,7 @@ func TestEnforceTextContrastInSlide(t *testing.T) {
 		},
 	}
 
-	enforceTextContrastInSlide(slide, bgHex, tc)
+	enforceTextContrastInSlide(slide, bgHex, tc, 0)
 
 	lstInner := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 
@@ -269,7 +270,7 @@ func TestEnforceTextContrastInSlide_NoBackground(t *testing.T) {
 	original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 
 	// No background = should not change anything
-	enforceTextContrastInSlide(slide, "", tc)
+	enforceTextContrastInSlide(slide, "", tc, 0)
 
 	after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 	if after != original {
@@ -299,7 +300,7 @@ func TestEnforceTextContrastInSlide_GoodContrastUnchanged(t *testing.T) {
 	}
 
 	original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
-	enforceTextContrastInSlide(slide, "#FFFFFF", tc)
+	enforceTextContrastInSlide(slide, "#FFFFFF", tc, 0)
 
 	after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 	if after != original {
@@ -390,7 +391,7 @@ func TestEnforceShapeGridContrast_FixesHexFill(t *testing.T) {
 
 	original0 := string(shapes[0])
 	original1 := string(shapes[1])
-	result, _ := enforceShapeGridContrast(shapes, tc, nil)
+	result, _ := enforceShapeGridContrast(shapes, tc, nil, 0)
 
 	if len(result) != 2 {
 		t.Fatalf("expected 2 shapes, got %d", len(result))
@@ -483,7 +484,7 @@ func TestEnforceShapeGridContrast_FixesBothFillTypes(t *testing.T) {
 		[]byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="FFB6C1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`),
 	}
 
-	result, _ := enforceShapeGridContrast(shapes, lightTheme, nil)
+	result, _ := enforceShapeGridContrast(shapes, lightTheme, nil, 0)
 
 	// First shape (semantic fill): should be modified
 	if string(result[0]) == string([]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>KPI</a:t></a:r></a:p></p:txBody></p:sp>`)) {
@@ -568,7 +569,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 		// nil ContrastCheck → enforce (default behavior)
 		var cc *bool
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc)
+			enforceTextContrastInSlide(slide, bgHex, tc, 0)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -586,7 +587,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 
 		cc := boolPtr(true)
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc)
+			enforceTextContrastInSlide(slide, bgHex, tc, 0)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -601,7 +602,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 
 		cc := boolPtr(false)
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc)
+			enforceTextContrastInSlide(slide, bgHex, tc, 0)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -622,7 +623,7 @@ func TestContrastCheckOptOut_ShapeGrid(t *testing.T) {
 		shapes := [][]byte{shapeXML}
 		var cc *bool
 		if cc == nil || *cc {
-			shapes, _ = enforceShapeGridContrast(shapes, tc, nil)
+			shapes, _ = enforceShapeGridContrast(shapes, tc, nil, 0)
 		}
 		if string(shapes[0]) == string(shapeXML) {
 			t.Error("expected shape_grid contrast enforcement to modify low-contrast text")
@@ -633,7 +634,7 @@ func TestContrastCheckOptOut_ShapeGrid(t *testing.T) {
 		shapes := [][]byte{shapeXML}
 		cc := boolPtr(false)
 		if cc == nil || *cc {
-			shapes, _ = enforceShapeGridContrast(shapes, tc, nil)
+			shapes, _ = enforceShapeGridContrast(shapes, tc, nil, 0)
 		}
 		if string(shapes[0]) != string(shapeXML) {
 			t.Error("expected no change when contrast_check=false")
@@ -663,7 +664,7 @@ func TestEnforceTextContrastInSlide_ReturnsSwaps(t *testing.T) {
 		},
 	}
 
-	swaps := enforceTextContrastInSlide(slide, bgHex, tc)
+	swaps := enforceTextContrastInSlide(slide, bgHex, tc, 0)
 
 	if len(swaps) == 0 {
 		t.Fatal("expected at least 1 contrast swap, got 0")
@@ -699,7 +700,7 @@ func TestEnforceShapeGridContrast_ReturnsSwaps(t *testing.T) {
 		[]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>Bad2</a:t></a:r></a:p></p:txBody></p:sp>`),
 	}
 
-	_, swaps := enforceShapeGridContrast(shapes, lightTheme, nil)
+	_, swaps := enforceShapeGridContrast(shapes, lightTheme, nil, 0)
 
 	// Expect swaps from shape 2 (scheme lt1→fixed) and shape 3 (sRGB FFFFFF→fixed)
 	if len(swaps) < 2 {
@@ -743,7 +744,7 @@ func TestEnforceShapeGridContrast_WhiteTextSafe(t *testing.T) {
 
 	t.Run("with_allowlist_preserves_white_text", func(t *testing.T) {
 		shapes := [][]byte{append([]byte{}, shapeScheme...), append([]byte{}, shapeHex...)}
-		result, swaps := enforceShapeGridContrast(shapes, tc, safeHex)
+		result, swaps := enforceShapeGridContrast(shapes, tc, safeHex, 0)
 
 		if len(swaps) > 0 {
 			t.Errorf("expected no swaps when fill is white-text-safe and text is white, got %d", len(swaps))
@@ -759,7 +760,7 @@ func TestEnforceShapeGridContrast_WhiteTextSafe(t *testing.T) {
 	t.Run("without_allowlist_still_passes", func(t *testing.T) {
 		// Without allowlist, these shapes should still pass since contrast IS adequate
 		shapes := [][]byte{append([]byte{}, shapeScheme...), append([]byte{}, shapeHex...)}
-		result, _ := enforceShapeGridContrast(shapes, tc, nil)
+		result, _ := enforceShapeGridContrast(shapes, tc, nil, 0)
 
 		// Dark blue (#1B2A4A) vs white has high contrast — should pass WCAG check anyway
 		if string(result[0]) != string(shapeScheme) {
@@ -773,7 +774,7 @@ func TestEnforceShapeGridContrast_WhiteTextSafe(t *testing.T) {
 		shapeDarkText := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Bad</a:t></a:r></a:p></p:txBody></p:sp>`)
 
 		shapes := [][]byte{append([]byte{}, shapeDarkText...)}
-		result, swaps := enforceShapeGridContrast(shapes, tc, safeHex)
+		result, swaps := enforceShapeGridContrast(shapes, tc, safeHex, 0)
 
 		if len(swaps) == 0 {
 			t.Error("expected dark text on dark fill to be fixed even with allowlist")
@@ -815,7 +816,7 @@ func TestEnforceShapeGridContrast_FlipsWhiteOnLightFill(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			shapes := [][]byte{append([]byte{}, tt.shape...)}
-			result, swaps := enforceShapeGridContrast(shapes, tc, nil)
+			result, swaps := enforceShapeGridContrast(shapes, tc, nil, 0)
 
 			if len(swaps) == 0 {
 				t.Fatalf("expected a contrast swap for white text on light-yellow fill")
@@ -831,6 +832,106 @@ func TestEnforceShapeGridContrast_FlipsWhiteOnLightFill(t *testing.T) {
 				t.Errorf("white text was lerped to mid-gray instead of flipping to dk1: %s", got)
 			}
 		})
+	}
+}
+
+// TestEnforceShapeGridContrast_RecordsSwapLocation is a regression test for
+// go-slide-creator-p51w: a shape_grid white-on-light-fill swap must carry the
+// owning slide index, a JSON path pointing at the offending cell shape, and the
+// "shape_grid" source label, in addition to the existing color/ratio evidence.
+func TestEnforceShapeGridContrast_RecordsSwapLocation(t *testing.T) {
+	tc := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent3", RGB: "#E8A838"}, // light yellow/orange
+	}
+
+	// Shape 0: black-on-light — adequate contrast, no swap.
+	// Shape 1: white-on-light — low contrast, swap expected. Its index (1) must
+	// surface in the recorded path.
+	okShape := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent3"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>OK</a:t></a:r></a:p></p:txBody></p:sp>`)
+	badShape := []byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="E8A838"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>Bad</a:t></a:r></a:p></p:txBody></p:sp>`)
+
+	const slideIndex = 3
+	shapes := [][]byte{append([]byte{}, okShape...), append([]byte{}, badShape...)}
+	_, swaps := enforceShapeGridContrast(shapes, tc, nil, slideIndex)
+
+	if len(swaps) != 1 {
+		t.Fatalf("expected exactly 1 swap (for shape 1), got %d", len(swaps))
+	}
+	s := swaps[0]
+
+	if s.SlideIndex != slideIndex {
+		t.Errorf("swap SlideIndex = %d, want %d", s.SlideIndex, slideIndex)
+	}
+	wantPath := "/slides/3/shape_grid/shapes/1"
+	if s.Path != wantPath {
+		t.Errorf("swap Path = %q, want %q", s.Path, wantPath)
+	}
+	if s.Source != "shape_grid" {
+		t.Errorf("swap Source = %q, want %q", s.Source, "shape_grid")
+	}
+
+	// Existing color/ratio evidence must be preserved.
+	if s.OriginalColor == "" || s.ReplacedColor == "" || s.BackgroundColor == "" {
+		t.Errorf("color evidence not preserved: %+v", s)
+	}
+	if s.RatioBefore <= 0 || s.RatioAfter < svggen.WCAGAALarge {
+		t.Errorf("ratio evidence not preserved: before=%.2f after=%.2f", s.RatioBefore, s.RatioAfter)
+	}
+
+	// The path must resolve back to the owning slide via the canonical extractor
+	// the fit-report uses for slide-index ordering.
+	if got := slidepath.SlideIndex(s.Path); got != slideIndex {
+		t.Errorf("slidepath.SlideIndex(%q) = %d, want %d", s.Path, got, slideIndex)
+	}
+}
+
+// TestEnforceTextContrastInSlide_RecordsSwapLocation verifies that layout-text
+// (lstStyle / run) swaps carry the slide index, a slide-level path, and the
+// surface source label.
+func TestEnforceTextContrastInSlide_RecordsSwapLocation(t *testing.T) {
+	tc := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent3", RGB: "#E8A838"}, // light yellow — low contrast on white
+	}
+
+	// accent3 (#E8A838) on a white layout background has poor contrast, so the
+	// lstStyle-inherited color is swapped.
+	slide := &slideXML{
+		CommonSlideData: commonSlideDataXML{
+			ShapeTree: shapeTreeXML{
+				Shapes: []shapeXML{
+					{
+						TextBody: &textBodyXML{
+							ListStyle: &listStyleXML{
+								Inner: `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent3"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
+							},
+							Paragraphs: []paragraphXML{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	const slideIndex = 5
+	swaps := enforceTextContrastInSlide(slide, "#FFFFFF", tc, slideIndex)
+
+	if len(swaps) == 0 {
+		t.Fatal("expected at least one swap for accent3 text on white background")
+	}
+	for _, s := range swaps {
+		if s.SlideIndex != slideIndex {
+			t.Errorf("swap SlideIndex = %d, want %d", s.SlideIndex, slideIndex)
+		}
+		if s.Path != "/slides/5" {
+			t.Errorf("swap Path = %q, want %q", s.Path, "/slides/5")
+		}
+		if s.Source != "run" && s.Source != "lstStyle" {
+			t.Errorf("swap Source = %q, want \"run\" or \"lstStyle\"", s.Source)
+		}
 	}
 }
 

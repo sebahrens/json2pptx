@@ -767,25 +767,26 @@ The detector walks shape-grid cells that author both a fill color (on the shape)
 ### `contrast_autofixed`
 
 **Action:** `info`
-**Pattern:** `placeholder`
 **Fix kind:** `replace_color`
 
-Text color was automatically replaced to meet WCAG AA contrast requirements against the resolved layout background. This is informational — the fix has already been applied. The `fix.params` include the original and replacement colors, the background color, and the contrast ratios before and after the swap.
+Text color was automatically replaced to meet WCAG AA contrast requirements against the resolved background. This is informational — the fix has already been applied. The `fix.params` include the original and replacement colors, the background color, the contrast ratios before and after the swap, and the text surface `source`.
+
+The finding's `path` locates the swap so an agent can map it back to the offending element. For `shape_grid` cell swaps the path is the flat rendered-shape index `"/slides/{i}/shape_grid/shapes/{n}"` (the original grid row/cell coordinates are not retained on the raw shape XML at render time). For template layout text (the `lstStyle`/`run` sources) the path is the slide-level `"/slides/{i}"`. The owning slide index is derived from `path` like every other finding. `fix.params.source` names the surface: `shape_grid`, `lstStyle`, or `run`.
 
 ```json
 {
-  "pattern": "placeholder",
-  "path": "/slides/1/content/body",
+  "path": "/slides/3/shape_grid/shapes/2",
   "code": "contrast_autofixed",
-  "message": "auto-fixed low-contrast text: #FFFFFF → #1A1A1A (on #F5F5F5, ratio 1.3 → 15.2)",
+  "message": "auto-fixed low-contrast text: #FFFFFF → #1A1A1A (on #E8A838, ratio 1.6 → 14.7)",
   "fix": {
     "kind": "replace_color",
     "params": {
       "original_color": "#FFFFFF",
       "replacement_color": "#1A1A1A",
-      "background_color": "#F5F5F5",
-      "contrast_ratio_before": 1.3,
-      "contrast_ratio_after": 15.2
+      "background_color": "#E8A838",
+      "contrast_ratio_before": 1.6,
+      "contrast_ratio_after": 14.7,
+      "source": "shape_grid"
     }
   },
   "action": "info"

@@ -120,6 +120,9 @@ func TestContrastSwapsToFindings(t *testing.T) {
 			BackgroundColor: "#FFE8D4",
 			RatioBefore:     2.1,
 			RatioAfter:      4.6,
+			SlideIndex:      1,
+			Path:            "/slides/1",
+			Source:          "lstStyle",
 		},
 		{
 			OriginalColor:   "#FFFFFF",
@@ -127,6 +130,9 @@ func TestContrastSwapsToFindings(t *testing.T) {
 			BackgroundColor: "#FFB6C1",
 			RatioBefore:     1.65,
 			RatioAfter:      8.2,
+			SlideIndex:      3,
+			Path:            "/slides/3/shape_grid/shapes/2",
+			Source:          "shape_grid",
 		},
 	}
 
@@ -151,6 +157,14 @@ func TestContrastSwapsToFindings(t *testing.T) {
 		}
 		if !strings.Contains(f.Message, swaps[i].OriginalColor) {
 			t.Errorf("finding[%d].Message should contain original color %q, got %q", i, swaps[i].OriginalColor, f.Message)
+		}
+		// Location provenance must propagate to the finding so agents can map
+		// the swap back to the offending slide / cell / text.
+		if f.Path != swaps[i].Path {
+			t.Errorf("finding[%d].Path = %q, want %q", i, f.Path, swaps[i].Path)
+		}
+		if got := f.Fix.Params["source"]; got != swaps[i].Source {
+			t.Errorf("finding[%d].Fix.Params[source] = %v, want %q", i, got, swaps[i].Source)
 		}
 	}
 }

@@ -719,7 +719,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        "contrast_autofixed",
 		Summary:     "Render-time text color was auto-replaced to meet WCAG AA contrast.",
 		Severity:    "info",
-		WhenEmitted: "Generator's contrast pass detects low-contrast text against the resolved background and swaps the color; finding records the before/after colors and ratios.",
+		WhenEmitted: "Generator's contrast pass detects low-contrast text against the resolved background and swaps the color; finding records the before/after colors and ratios, the text surface (fix.params.source: shape_grid, lstStyle, or run), and a path locating the swap (/slides/{i}/shape_grid/shapes/{n} for grid cells, /slides/{i} for layout/run text).",
 		RemediationSteps: []string{
 			"Author the replacement color directly upstream to make the swap explicit.",
 			"Or accept the swap — it is informational and the deck rendered correctly.",
