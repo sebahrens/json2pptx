@@ -635,6 +635,7 @@ See [cmd/README.md](cmd/README.md) for the full command index — purpose, a usa
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/v1/health` | Health check with version info |
+| `GET` | `/api/v1/capabilities` | Machine-readable HTTP feature boundary (supported fields, MCP-only features, endpoint list) |
 | `GET` | `/api/v1/templates` | List available templates |
 | `GET` | `/api/v1/templates/{name}` | Template details (layouts, colors, fonts) |
 | `GET` | `/api/v1/slide-types` | List supported slide types |

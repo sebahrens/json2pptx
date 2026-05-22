@@ -48,8 +48,8 @@ var mcpToCLI = map[string]string{
 	"delete_template_setting":      "template-settings delete",
 	"get_data_format_hints":        "data-format-hints",
 	"get_shape_catalog":            "shape-catalog",
-	"get_chart_capabilities":       "capabilities",
-	"get_diagram_capabilities":     "capabilities",
+	"get_chart_capabilities":       "skill-info", // detailed chart_capabilities array is inlined in skill-info, not `capabilities`
+	"get_diagram_capabilities":     "skill-info", // detailed diagram_capabilities array is inlined in skill-info, not `capabilities`
 	"analyze_deck_rhythm":          "analyze-rhythm",
 	"plan_deck":                    "plan-deck",
 	"recommend_visual":             "recommend-visual",

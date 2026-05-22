@@ -76,6 +76,11 @@ type capabilitiesRegistry struct {
 	Patterns []string `json:"patterns"`
 }
 
+// runtimeDirUnconfigured is the explicit value reported in the runtime block
+// for templates_dir / output_dir when the caller supplied no directory context,
+// so an empty path is never silently emitted as "".
+const runtimeDirUnconfigured = "(not configured)"
+
 // capabilitiesRuntime exposes environment-dependent state that complements
 // the static feature flags: whether write operations are gated on, whether
 // render dependencies are installed, which directories the server uses, and
@@ -398,15 +403,27 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 
 	renderAvail, renderMissing := render.DependencyStatus()
 
-	// Resolve the actual templates directory path for the runtime section.
+	// Resolve the actual templates directory path for the runtime section. An
+	// empty dir means the caller has no runtime context (e.g. a programmatic
+	// invocation); report that explicitly rather than emitting a blank string,
+	// so an agent can tell "unconfigured" apart from a resolved path. The CLI
+	// and MCP entry points both pass non-empty defaults, so this sentinel only
+	// surfaces for direct callers that omit the context.
 	resolvedTemplatesDir := templatesDir
-	if resolvedTemplatesDir != "" {
+	if resolvedTemplatesDir == "" {
+		resolvedTemplatesDir = runtimeDirUnconfigured
+	} else {
 		dir, embedded := resolveTemplatesDir(resolvedTemplatesDir)
 		if embedded {
 			resolvedTemplatesDir = "(embedded)"
 		} else {
 			resolvedTemplatesDir = dir
 		}
+	}
+
+	resolvedOutputDir := outputDir
+	if resolvedOutputDir == "" {
+		resolvedOutputDir = runtimeDirUnconfigured
 	}
 
 	deprecations := buildDeprecatedFields()
@@ -507,7 +524,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			RenderAvailable:      renderAvail,
 			RenderMissingCmds:    renderMissing,
 			TemplatesDir:         resolvedTemplatesDir,
-			OutputDir:            outputDir,
+			OutputDir:            resolvedOutputDir,
 			SchemaFingerprint:    schemaFingerprint(),
 		},
 		Vocabularies:    buildVocabularies(),

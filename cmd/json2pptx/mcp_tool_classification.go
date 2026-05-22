@@ -135,8 +135,13 @@ func toolClassifications() map[string]toolClassification {
 		// true. Pass read_only=true to suppress those cache writes; the response
 		// side_effects block reports what happened.
 		"list_templates":           {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, WritesFiles: true, CLICounterpart: "skill-info"},
-		"get_chart_capabilities":   {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
-		"get_diagram_capabilities": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
+		// The detailed chart/diagram capability arrays these tools return are
+		// inlined in `json2pptx skill-info` (supported_types.chart_capabilities /
+		// diagram_capabilities), not in `json2pptx capabilities` (which carries
+		// only the type-name registry). skill-info is therefore the accurate CLI
+		// counterpart — see TestChartDiagramCapabilitiesCLICounterpartIsSkillInfo.
+		"get_chart_capabilities":   {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "skill-info"},
+		"get_diagram_capabilities": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "skill-info"},
 		"get_shape_catalog":        {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "shape-catalog"},
 		"resolve_theme":            {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "resolve-theme"},
 		"list_icons":               {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "icons"},
