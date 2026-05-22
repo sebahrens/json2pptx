@@ -66,7 +66,13 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 			continue
 		}
 
-		replacement := svggen.EnsureContrast(fg, bg, svggen.WCAGAALarge)
+		// Use the same replacement algorithm the renderer applies, classifying
+		// the foreground from its *authored* form (p.Foreground) so a pure
+		// neutral authored as a scheme name (e.g. "lt1") flips just as the
+		// render-time pass would. This keeps the predicted color identical to
+		// the contrast_autofixed swap. replacement_mode discloses which branch
+		// produced it.
+		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors)
 		newRatio := replacement.ContrastWith(bg)
 		source := p.Source
 		if source == "" {
@@ -90,6 +96,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 						"background_color":      strings.ToUpper(bgHex),
 						"contrast_ratio_before": math.Round(ratio*100) / 100,
 						"contrast_ratio_after":  math.Round(newRatio*100) / 100,
+						"replacement_mode":      mode,
 						"source":                source,
 					},
 				},

@@ -734,23 +734,29 @@ Slide selection:
 **Pattern:** *(none — preflight)*
 **Fix kind:** `replace_color`
 
-Preflight prediction that the renderer's contrast auto-fix pass would replace a text color to meet WCAG AA Large (3:1) contrast against its background. Emitted by `validate` and `preview_presentation_plan` (and downstream tools like `repair_slide` / `score_candidates`) using only theme colors and JSON content — no rendering. When the same input is generated, the corresponding `contrast_autofixed` finding will fire at render time with matching colors.
+Preflight prediction that the renderer's contrast auto-fix pass would replace a text color to meet WCAG AA Large (3:1) contrast against its background. Emitted by `validate` and `preview_presentation_plan` (and downstream tools like `repair_slide` / `score_candidates`) using only theme colors and JSON content — no rendering. The predictor calls the **same replacement algorithm** the renderer uses (`contrastReplacement`), so the predicted color matches the `contrast_autofixed` swap that fires when the same input is generated.
 
 The detector walks shape-grid cells that author both a fill color (on the shape) and a text color (on `shape.text` or on a paragraph in `shape.text.paragraphs`). Scheme names (`accent1`, `lt1`, …) are resolved against the template theme. Pairs that cannot be parsed are skipped.
+
+`fix.params.replacement_mode` discloses which branch of the algorithm produced the color:
+
+- `flip` — the foreground is a pure neutral (literal white/black, or scheme `lt1`/`bg1`/`dk1`/`tx1`); it is snapped to the opposite theme extreme (`dk1`/`lt1`). This is why white text on a light accent predicts a clean dark color rather than a muddy mid-gray.
+- `lerp` — any other foreground; it is darkened or lightened toward black/white via `EnsureContrast` until it clears 3:1.
 
 ```json
 {
   "path": "/slides/1/shape_grid/rows/0/cells/0/shape/text",
   "code": "contrast_predicted",
-  "message": "predicted: low-contrast text will be auto-replaced — #FFFFFF → #595959 (on #FFE8D4, ratio 1.3 → 3.0)",
+  "message": "predicted: low-contrast text will be auto-replaced — #FFFFFF → #1A1A1A (on #FFE8D4, ratio 1.3 → 14.7)",
   "fix": {
     "kind": "replace_color",
     "params": {
       "original_color": "#FFFFFF",
-      "predicted_replacement": "#595959",
+      "predicted_replacement": "#1A1A1A",
       "background_color": "#FFE8D4",
       "contrast_ratio_before": 1.3,
-      "contrast_ratio_after": 3.0,
+      "contrast_ratio_after": 14.7,
+      "replacement_mode": "flip",
       "source": "shape_grid"
     }
   },

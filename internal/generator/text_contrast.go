@@ -283,6 +283,55 @@ func isNeutralExtremeScheme(name string) bool {
 	return false
 }
 
+// Contrast replacement mode tags. They label which algorithm produced a
+// replacement color so preflight findings can explain any difference from the
+// render-time swap (today the two always agree because both call
+// contrastReplacement).
+const (
+	contrastModeFlip = "flip" // snapped to the opposite theme extreme (dk1/lt1)
+	contrastModeLerp = "lerp" // lerped toward black/white via EnsureContrast
+)
+
+// isNeutralForeground reports whether an authored foreground color — supplied
+// either as a hex string ("#RRGGBB" / "RRGGBB") or as a scheme name ("lt1",
+// "dk1", …) — is a pure neutral (white or black) for which a clean flip to the
+// opposite theme extreme is the correct contrast fix. It mirrors the per-form
+// checks the render-time pass applies to sRGB (isNeutralExtremeHex) and scheme
+// (isNeutralExtremeScheme) text colors, so both the renderer and the preflight
+// predictor classify the same authored value identically.
+func isNeutralForeground(value string) bool {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return false
+	}
+	if strings.HasPrefix(v, "#") || (len(v) == 6 && isHex(v)) {
+		return isNeutralExtremeHex(v)
+	}
+	return isNeutralExtremeScheme(v)
+}
+
+// contrastReplacement computes the high-contrast replacement color for a
+// low-contrast foreground, and is the single source of truth shared by the
+// render-time contrast pass (fixSrgbColorsForContrast / fixSchemeColorsForContrast)
+// and the preflight predictor (DetectContrastPreflight). Sharing it guarantees
+// validate-time advice matches generated output.
+//
+// originalFg is the foreground exactly as authored (a hex string or a scheme
+// name); fgColor is its resolved color and bgColor the resolved background.
+// Pure-neutral foregrounds (white/black, or scheme lt1/bg1/dk1/tx1) snap to the
+// opposite theme extreme (dk1/lt1) via pickFlippedTextColor — avoiding the
+// muddy mid-gray that EnsureContrast yields when both fg and target sit near one
+// extreme (e.g. white on light yellow). Every other foreground is lerped toward
+// contrast via EnsureContrast. The returned mode is contrastModeFlip or
+// contrastModeLerp.
+func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string) {
+	if isNeutralForeground(originalFg) {
+		flipped, _ := pickFlippedTextColor(bgColor, themeColors)
+		return flipped, contrastModeFlip
+	}
+	return svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge), contrastModeLerp
+}
+
 // =============================================================================
 // Shape Grid Contrast Enforcement
 // =============================================================================
@@ -441,12 +490,7 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 			return match // Contrast is adequate (large text threshold: 3:1)
 		}
 
-		var fixedColor svggen.Color
-		if isNeutralExtremeHex(hexVal) {
-			fixedColor, _ = pickFlippedTextColor(bgColor, themeColors)
-		} else {
-			fixedColor = svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge)
-		}
+		fixedColor, _ := contrastReplacement(hexVal, fgColor, bgColor, themeColors)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Info("text contrast fix: replacing low-contrast sRGB color",
@@ -516,15 +560,11 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		}
 
 		// Compute a high-contrast replacement color. For pure-neutral scheme
-		// foregrounds (lt1/bg1/dk1/tx1) snap to the opposite theme extreme
-		// rather than lerping into a muddy gray — this fixes the white-on-
-		// light-yellow case where EnsureContrast otherwise produces ~#606060.
-		var fixedColor svggen.Color
-		if isNeutralExtremeScheme(schemeName) {
-			fixedColor, _ = pickFlippedTextColor(bgColor, themeColors)
-		} else {
-			fixedColor = svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge)
-		}
+		// foregrounds (lt1/bg1/dk1/tx1) contrastReplacement snaps to the opposite
+		// theme extreme rather than lerping into a muddy gray — this fixes the
+		// white-on-light-yellow case where EnsureContrast otherwise produces
+		// ~#606060.
+		fixedColor, _ := contrastReplacement(schemeName, fgColor, bgColor, themeColors)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Info("text contrast fix: replacing low-contrast scheme color",
