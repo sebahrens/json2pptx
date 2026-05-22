@@ -933,6 +933,49 @@ func TestResolveShapeGrid_InlineSVGDataIconCell(t *testing.T) {
 	}
 }
 
+func TestConvertGridCell_IconScale(t *testing.T) {
+	tests := []struct {
+		name      string
+		cell      *GridCellInput
+		wantScale float64
+	}{
+		{
+			name:      "direct cell icon carries scale",
+			cell:      &GridCellInput{Icon: &IconInput{Name: "shield", Scale: 0.4}},
+			wantScale: 0.4,
+		},
+		{
+			name: "nested shape.icon carries scale",
+			cell: &GridCellInput{Shape: &ShapeSpecInput{
+				Geometry: "rect",
+				Icon:     &IconInput{Name: "shield", Scale: 0.5},
+			}},
+			wantScale: 0.5,
+		},
+		{
+			name:      "unset scale defaults to zero (renderer applies overlay default)",
+			cell:      &GridCellInput{Icon: &IconInput{Name: "shield"}},
+			wantScale: 0,
+		},
+		{
+			name:      "out-of-range scale copied verbatim (renderer clamps)",
+			cell:      &GridCellInput{Icon: &IconInput{Name: "shield", Scale: 1.5}},
+			wantScale: 1.5,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cell := convertGridCell(tt.cell)
+			if cell.Icon == nil {
+				t.Fatal("expected cell.Icon to be set")
+			}
+			if cell.Icon.Scale != tt.wantScale {
+				t.Errorf("Scale = %v, want %v", cell.Icon.Scale, tt.wantScale)
+			}
+		})
+	}
+}
+
 func TestResolveShapeGrid_MixedShapesAndIcons(t *testing.T) {
 	grid := &ShapeGridInput{
 		Columns: json.RawMessage(`2`),

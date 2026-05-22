@@ -8,6 +8,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`icon.scale` plumbed through the public JSON surface.** Shape-grid icons
+  (`cells[].icon` and nested `shape.icon`, plus the polymorphic pattern icon
+  slot) now accept an optional `scale` (`0 < scale <= 1`) that shrinks an icon
+  overlaid on a shape; `convertGridCell` and `IconRef.Resolve` copy it into
+  `shapegrid.IconSpec`, where `iconOverlayBounds` already honored it (out-of-range
+  or unset values fall back to the `0.6` overlay default). Backward-compatible:
+  decks without `scale` are unchanged. Schema fingerprint and `schema_version`
+  are unaffected (the field lives on `IconInput`, which is outside the fingerprint
+  surface).
+
 - **Visual-QA inspection failures surface as diagnostics.** A slide whose visual
   inspection *failed* (an API/transport/decode error or malformed model output
   in `mode: "vision"`, a vision deadline, or an undecodable image in

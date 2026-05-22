@@ -66,7 +66,7 @@ func (r IconRef) MarshalJSON() ([]byte, error) {
 	// Compact shorthand path: bundled-name-only refs marshal as a JSON string
 	// to keep size-budgeted goldens and on-the-wire payloads tight.
 	if r.Name != "" && r.Path == "" && r.URL == "" && r.SVGData == "" &&
-		r.Fill == "" && r.Alt == "" && r.Position == "" {
+		r.Fill == "" && r.Alt == "" && r.Position == "" && r.Scale == 0 {
 		return json.Marshal(r.Name)
 	}
 	return json.Marshal(jsonschema.IconInput(r))

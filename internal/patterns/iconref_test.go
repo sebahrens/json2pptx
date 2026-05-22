@@ -58,6 +58,7 @@ func TestIconRef_MarshalJSON_StringShortcut(t *testing.T) {
 	}{
 		{"bundled_name_only", IconRef{Name: "rocket"}, `"rocket"`},
 		{"name_with_fill_emits_object", IconRef{Name: "rocket", Fill: "#FF0000"}, `{"name":"rocket","fill":"#FF0000"}`},
+		{"name_with_scale_emits_object", IconRef{Name: "shield", Scale: 0.4}, `{"name":"shield","scale":0.4}`},
 		{"path_emits_object", IconRef{Path: "logo.svg"}, `{"path":"logo.svg"}`},
 		{"url_emits_object", IconRef{URL: "https://x.io/i.svg"}, `{"url":"https://x.io/i.svg"}`},
 	}

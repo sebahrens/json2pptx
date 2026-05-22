@@ -142,13 +142,14 @@ type GridImageTextInput struct {
 // run against the expanded path. The same expansion rules apply to
 // ImageInput.Path, GridImageInput.Path, and BackgroundInput.Image.
 type IconInput struct {
-	Name     string `json:"name,omitempty"`      // Bundled icon name (e.g., "chart-pie", "filled:alert-circle")
-	Path     string `json:"path,omitempty"`      // File path to a custom SVG icon (relative to JSON input directory; supports leading "~/" and "$VAR"/"${VAR}" expansion)
-	URL      string `json:"url,omitempty"`       // HTTP/HTTPS URL to download an SVG icon from
-	SVGData  string `json:"svg_data,omitempty"`  // Inline SVG markup (e.g., output of svggen-mcp render_diagram). When set, no disk I/O is performed.
-	Alt      string `json:"alt,omitempty"`       // Alt text / description for accessibility. Falls back to name/path/"icon" when empty.
-	Fill     string `json:"fill,omitempty"`      // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons. Ignored for inline svg_data — emits ICON_FILL_IGNORED_ON_INLINE warning if both are set.
-	Position string `json:"position,omitempty"`  // Icon position relative to text: "left", "top", "center". Auto-detected if empty.
+	Name     string  `json:"name,omitempty"`     // Bundled icon name (e.g., "chart-pie", "filled:alert-circle")
+	Path     string  `json:"path,omitempty"`     // File path to a custom SVG icon (relative to JSON input directory; supports leading "~/" and "$VAR"/"${VAR}" expansion)
+	URL      string  `json:"url,omitempty"`      // HTTP/HTTPS URL to download an SVG icon from
+	SVGData  string  `json:"svg_data,omitempty"` // Inline SVG markup (e.g., output of svggen-mcp render_diagram). When set, no disk I/O is performed.
+	Alt      string  `json:"alt,omitempty"`      // Alt text / description for accessibility. Falls back to name/path/"icon" when empty.
+	Fill     string  `json:"fill,omitempty"`     // Optional fill color override (hex, e.g., "#FF0000"). Applies to bundled and custom SVG icons. Ignored for inline svg_data — emits ICON_FILL_IGNORED_ON_INLINE warning if both are set.
+	Position string  `json:"position,omitempty"` // Icon position relative to text: "left", "top", "center". Auto-detected if empty.
+	Scale    float64 `json:"scale,omitempty"`    // Optional overlay icon scale factor (0 < scale <= 1). Reduces the icon footprint when overlaid on a shape; out-of-range values fall back to the 0.6 overlay default. Has no effect on standalone icon cells.
 }
 
 // ShapeSpecInput defines a preset geometry shape with fill, line, and text.

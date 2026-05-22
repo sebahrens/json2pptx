@@ -645,6 +645,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 			Alt:      c.Icon.Alt,
 			Fill:     c.Icon.Fill,
 			Position: c.Icon.Position,
+			Scale:    c.Icon.Scale,
 		}
 	}
 	// Support icon nested inside shape (e.g. {"shape": {"fill": "accent1", "icon": {"name": "shield"}}})
@@ -656,6 +657,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 			Alt:      c.Shape.Icon.Alt,
 			Fill:     c.Shape.Icon.Fill,
 			Position: c.Shape.Icon.Position,
+			Scale:    c.Shape.Icon.Scale,
 		}
 	}
 	if c.Image != nil {

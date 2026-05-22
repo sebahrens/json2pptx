@@ -2310,3 +2310,27 @@ func TestDefaultBoundsFromZone_HorizontallyCentered(t *testing.T) {
 		t.Errorf("DefaultBoundsFromZone: asymmetric margins left=%d right=%d", leftMargin, rightMargin)
 	}
 }
+
+func TestIconOverlayBounds_Scale(t *testing.T) {
+	// Square shape with text → "top" overlay position; icon is sized to
+	// minDim * scale, so a smaller scale must yield a smaller icon footprint.
+	shape := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 1000000}
+
+	def := iconOverlayBounds(&IconSpec{}, shape, true)
+	if def.Bounds.CX <= 0 || def.Bounds.CY <= 0 {
+		t.Fatalf("default overlay produced non-positive bounds: %+v", def.Bounds)
+	}
+
+	scaled := iconOverlayBounds(&IconSpec{Scale: 0.4}, shape, true)
+	if scaled.Bounds.CX >= def.Bounds.CX || scaled.Bounds.CY >= def.Bounds.CY {
+		t.Errorf("scale 0.4 should shrink overlay icon: scaled=%+v default=%+v", scaled.Bounds, def.Bounds)
+	}
+
+	// Out-of-range scales fall back to the 0.6 overlay default.
+	for _, s := range []float64{0, 1.5, -0.2} {
+		oor := iconOverlayBounds(&IconSpec{Scale: s}, shape, true)
+		if oor.Bounds.CX != def.Bounds.CX || oor.Bounds.CY != def.Bounds.CY {
+			t.Errorf("scale %v should fall back to default bounds: got=%+v default=%+v", s, oor.Bounds, def.Bounds)
+		}
+	}
+}
