@@ -96,15 +96,19 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		},
 		"validate-template": {
 			AgentFacing: true,
-			CLIOnlyReason: "Inspects a .pptx template file's layouts/placeholders for compatibility from a path " +
-				"(authoring/CI). Template introspection over MCP is served by list_templates and examine_template " +
-				"against named/registered templates, so the path-targeted form has no deck-input tool equivalent.",
+			CLIOnlyReason: "Emits the standalone validate-template verdict (valid flag + detected capabilities) for a " +
+				".pptx path (authoring/CI). MCP agents inspect a registered template via list_templates / " +
+				"examine_template(template_name=...), or a not-yet-registered local file via the guarded " +
+				"examine_template(template_path=..., base_dir=...) form — whose findings envelope already folds the " +
+				"validate-template metadata diagnostics. The boolean valid verdict and the capabilities roll-up are " +
+				"not separately surfaced, so this stays CLI-only.",
 		},
 		"template-check": {
 			AgentFacing: true,
 			CLIOnlyReason: "Checks a template against the conformance spec (internal/template/conformance.go) for " +
-				"template authors/CI; the same logic backs the conformance corpus test. It maps to no agent " +
-				"deck-authoring step, so it is not exposed as an MCP tool.",
+				"template authors/CI; the same logic backs the conformance corpus test. examine_template(template_path=...) " +
+				"now gives MCP agents guarded path-based structural inspection, but the conformance ConformanceReport (which " +
+				"the CLI merges into conformance.json) is not surfaced over MCP, so this stays CLI-only.",
 		},
 		"preview-patterns": {
 			AgentFacing: true,

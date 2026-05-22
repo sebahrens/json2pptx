@@ -60,6 +60,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// HEURISTIC_INSPECTION_FAILED finding codes — response fields and finding
 	// codes only, not tool names, PresentationInput fields, or the Fix.Kind
 	// vocabulary, so the hash is again unchanged.
+	// 4.55.0 added the guarded template_path + base_dir input params to the
+	// existing examine_template tool (path-based inspection parity) and added
+	// examine_template to the get_capabilities base_dir list — input params /
+	// response fields only, not tool names, PresentationInput fields, or the
+	// Fix.Kind vocabulary, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

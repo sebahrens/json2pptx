@@ -4,6 +4,39 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.55.0 (2026-05-22)
+
+### Added
+
+- **Guarded path-based template inspection on `examine_template`.** The MCP tool
+  previously accepted only `template_name` (resolved through the registered/embedded
+  template lookup), so an MCP-only agent could not inspect a newly supplied template
+  file until it had been installed in the server's template directory — even though
+  the CLI `examine-template` accepts any local path. `examine_template` now accepts
+  **one of** two mutually-exclusive forms:
+  - `template_name` (string) — registered/embedded template, unchanged default form.
+  - `template_path` (string) — a local `.pptx` path, resolved against the new
+    optional `base_dir` (string; falls back to the server CWD when absent). The
+    resolved file must, after `~`/`$ENV` expansion and symlink evaluation, be a
+    regular `.pptx` contained within `base_dir`. A path escaping that allowed root
+    (a `..` traversal, or an absolute/symlinked path pointing outside) returns a
+    clear `INVALID_PATH` forbidden-path diagnostic; a missing file returns
+    `FILE_NOT_FOUND`; a non-`.pptx` extension or a directory returns
+    `INVALID_PARAMETER`. Supplying both forms returns `AMBIGUOUS_INPUT`; supplying
+    neither returns `MISSING_PARAMETER`.
+  - `examine_template` is added to the `get_capabilities` `features.base_dir` list.
+  - The report shape is unchanged; its findings envelope already folds the
+    validate-template metadata diagnostics. The standalone validate-template verdict
+    (the boolean `valid` + capabilities roll-up) and the template-check
+    `ConformanceReport` (which the CLI merges into `conformance.json`) remain
+    CLI-only — the `cli_only_commands` entries for `validate-template` and
+    `template-check` in `get_capabilities` now document the path workflow and this
+    limitation.
+
+  Backward-compatible: existing `template_name` calls are unchanged. The schema
+  fingerprint and tool-name set are unaffected (input params + a capability list
+  entry, not new tools or `PresentationInput`/`Fix.Kind` surfaces).
+
 ## 4.54.0 (2026-05-22)
 
 ### Added
