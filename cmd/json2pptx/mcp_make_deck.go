@@ -23,6 +23,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/deckplan"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
 const (
@@ -59,6 +60,14 @@ type makeDeckOutput struct {
 	// IdempotentReplay is true when this response was served from the
 	// idempotency cache instead of regenerated.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
+	// EvidenceComplete, RenderEvidence, and OutputValidation mirror
+	// auto_repair: evidence_complete is the authoritative flag that the render
+	// pass and final structural output validation both completed cleanly;
+	// gate_passed cannot be true on incomplete evidence unless degraded scoring
+	// was explicitly permitted.
+	EvidenceComplete bool                          `json:"evidence_complete"`
+	RenderEvidence   *deterministic.RenderEvidence `json:"render_evidence,omitempty"`
+	OutputValidation *autoRepairOutputValidation   `json:"output_validation,omitempty"`
 }
 
 // makeDeckPlanSummary captures the plan_deck decisions that produced the
@@ -151,6 +160,9 @@ Quality gate matches auto_repair semantics: same field names, same defaults. Omi
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths in any exemplar content that references local files (image_value.path, background.image, shape_grid image/icon paths). When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory. Same contract as generate_presentation."),
 		),
+		mcp.WithBoolean("allow_degraded_scoring",
+			mcp.Description("Inherited from auto_repair. Default false: a render failure during the internal loop emits a blocking RENDER_EVIDENCE_INCOMPLETE finding so gate_passed cannot be true on static-only evidence. Set true to converge on static analysis alone — render_evidence.degraded is then set and evidence_complete stays false. Final structural output validation still runs and still blocks regardless."),
+		),
 		idempotencyKeyToolParam(),
 	)
 }
@@ -235,13 +247,14 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMakeDeckMaxPasses(request)
 	vqa := extractVisualQAConfig(request)
+	allowDegraded := extractAllowDegradedScoring(request)
 
 	outputFilename := "make_deck.pptx"
 	if reqFilename, ferr := request.RequireString("output_filename"); ferr == nil && reqFilename != "" {
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename)
+	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -257,6 +270,9 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		VisualQA:          loopOut.VisualQA,
 		Plan:              planSummaryFromInput(plan, input, templateName),
 		FinalPresentation: loopOut.FinalPresentation,
+		EvidenceComplete:  loopOut.EvidenceComplete,
+		RenderEvidence:    loopOut.RenderEvidence,
+		OutputValidation:  loopOut.OutputValidation,
 	}
 
 	mc.idempotency.Set("make_deck", idemKey, idemFingerprint, out)

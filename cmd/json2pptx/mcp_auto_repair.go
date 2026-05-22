@@ -24,6 +24,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
@@ -70,6 +71,52 @@ type autoRepairOutput struct {
 	// IdempotentReplay is true when this response was served from the
 	// idempotency cache instead of regenerated.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
+	// EvidenceComplete is the single authoritative flag that all required
+	// validation evidence was collected AND clean: the render-time finding pass
+	// for the scoring iteration completed, and final structural output
+	// validation ran and found no blocking issues. gate_passed can only be true
+	// on complete evidence unless the caller explicitly opted into degraded
+	// scoring (in which case render_evidence.degraded labels the result).
+	EvidenceComplete bool `json:"evidence_complete"`
+	// RenderEvidence is present only when the render pass that backs the score
+	// did not complete. complete=false means findings reflect static analysis
+	// only; an explicit RENDER_EVIDENCE_INCOMPLETE finding accompanies it.
+	RenderEvidence *deterministic.RenderEvidence `json:"render_evidence,omitempty"`
+	// OutputValidation reports the final structural/output validation of the
+	// rendered PPTX. Always present: a publishable / gate-passed result requires
+	// ran=true and valid=true.
+	OutputValidation *autoRepairOutputValidation `json:"output_validation,omitempty"`
+}
+
+// autoRepairOutputValidation summarizes the final pptx.ValidateOutputFile run on
+// the rendered deck. The deck can only be reported gate-passed / publishable
+// when Ran=true and Valid=true; Blocking lists the structural findings that
+// forced the gate open otherwise.
+type autoRepairOutputValidation struct {
+	Ran      bool     `json:"ran"`
+	Valid    bool     `json:"valid"`
+	Blocking []string `json:"blocking,omitempty"`
+}
+
+// validateAutoRepairFinalOutput runs the unified output-validation suite on the
+// rendered deck. It never returns an error: a read/parse failure is itself a
+// blocking condition (Ran=true, Valid=false) so the caller refuses to mark the
+// result publishable. This is the final evidence gate and runs regardless of
+// degraded scoring — a structurally corrupt PPTX can never pass.
+func validateAutoRepairFinalOutput(path string) autoRepairOutputValidation {
+	report, err := pptx.ValidateOutputFile(path)
+	if err != nil {
+		return autoRepairOutputValidation{Ran: true, Valid: false, Blocking: []string{fmt.Sprintf("output validation could not run: %v", err)}}
+	}
+	blocking := report.Blocking()
+	if len(blocking) == 0 {
+		return autoRepairOutputValidation{Ran: true, Valid: true}
+	}
+	msgs := make([]string, len(blocking))
+	for i, f := range blocking {
+		msgs[i] = f.Error()
+	}
+	return autoRepairOutputValidation{Ran: true, Valid: false, Blocking: msgs}
 }
 
 // autoRepairTraceEntry is one iteration of the loop.
@@ -150,6 +197,9 @@ When gate_passed is false (max_passes exhausted), gate_reasons lists every unmet
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory. Same contract as generate_presentation."),
 		),
+		mcp.WithBoolean("allow_degraded_scoring",
+			mcp.Description("Permit the loop to proceed when a per-pass render fails (slide conversion, temp-dir creation, or generation). Default false: a render failure emits a blocking RENDER_EVIDENCE_INCOMPLETE finding (refuse action) so gate_passed cannot be true on static-only evidence. Set true to converge on static analysis alone — render_evidence.degraded is then set and evidence_complete stays false even when gate_passed is true. Final structural output validation still runs and still blocks regardless of this flag."),
+		),
 		idempotencyKeyToolParam(),
 	)
 }
@@ -212,6 +262,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMaxPasses(request)
 	vqa := extractVisualQAConfig(request)
+	allowDegraded := extractAllowDegradedScoring(request)
 
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)
 	if outputFilename == "" {
@@ -221,7 +272,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename)
+	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -252,6 +303,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	maxPasses int,
 	vqa visualQAConfig,
 	outputFilename string,
+	allowDegraded bool,
 ) (*autoRepairOutput, *mcp.CallToolResult) {
 	// Resolve relative local-asset paths (icons, images, background) against
 	// base_dir once, before the convergence loop, mirroring generate_presentation
@@ -313,6 +365,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	var lastFindings []patterns.FitFinding
 	var lastScore int
 	var lastGateReasons []string
+	var lastRenderEvidence deterministic.RenderEvidence
 	gatePassed := false
 	passesRun := 0
 
@@ -320,8 +373,18 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		passesRun = pass
 
 		findings := collectFitFindings(input, layouts, slideWidth, slideHeight, &analysis.Theme)
-		renderFindings := mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		renderFindings, renderEvidence := mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
 		findings = append(findings, renderFindings...)
+
+		// A failed render pass must not look like a clean one: surface a
+		// RENDER_EVIDENCE_INCOMPLETE finding so the gate sees a refuse finding
+		// (default) and cannot pass on static-only evidence. allow_degraded
+		// downgrades it to advisory and labels the score degraded.
+		if !renderEvidence.Complete {
+			renderEvidence.Degraded = allowDegraded
+			findings = append(findings, renderEvidenceFinding(renderEvidence))
+		}
+		lastRenderEvidence = renderEvidence
 
 		ds := deterministic.ScoreFromFindings(findings, len(input.Slides))
 		gateReasons := evaluateAutoRepairGate(ds, findings, gate)
@@ -375,6 +438,26 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		vqaResult = mc.runVisualQALoop(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, finalPath, vqa)
 	}
 
+	// Final structural/output validation — the last evidence gate. Runs on the
+	// on-disk PPTX AFTER the visual-QA phase (which can re-render it) and
+	// regardless of degraded scoring: a structurally corrupt deck can never be
+	// reported gate-passed / publishable. Blocking findings reopen the gate even
+	// if the convergence loop had satisfied it.
+	outputValidation := validateAutoRepairFinalOutput(finalPath)
+	if !outputValidation.Valid {
+		gatePassed = false
+		for _, b := range outputValidation.Blocking {
+			lastGateReasons = append(lastGateReasons, "final output validation: "+b)
+		}
+	}
+
+	// evidence_complete is true only when the render pass that backed the score
+	// completed AND final output validation passed. It is independent of the
+	// degraded opt-in: a degraded run can still report gate_passed=true, but
+	// evidence_complete stays false so the result is never mistaken for a clean
+	// pass.
+	evidenceComplete := lastRenderEvidence.Complete && outputValidation.Valid
+
 	// Marshal the final repaired deck. input reflects every repair applied
 	// during the loop (and visual_qa phase) plus the up-front asset-path and
 	// canonical-layout resolution, so the JSON round-trips back into
@@ -385,6 +468,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal final presentation: %v", err))
 	}
 
+	outVal := outputValidation
 	output := &autoRepairOutput{
 		Path:              finalPath,
 		FinalScore:        lastScore,
@@ -395,6 +479,12 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		QualityMode:       qualityModeLabel(vqa.Enabled),
 		VisualQA:          vqaResult,
 		FinalPresentation: finalPresentation,
+		EvidenceComplete:  evidenceComplete,
+		OutputValidation:  &outVal,
+	}
+	if !lastRenderEvidence.Complete {
+		re := lastRenderEvidence
+		output.RenderEvidence = &re
 	}
 	if gatePassed {
 		output.GateReasons = nil

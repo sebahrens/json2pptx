@@ -62,6 +62,37 @@ type DeckScore struct {
 	Summary      DeckSummary        `json:"summary"`
 	QualityGate  *QualityGate       `json:"quality_gate,omitempty"`
 	ModeUsed     string             `json:"mode_used"`
+	// RenderEvidence is present only when the render-time finding pass that
+	// backs the score did NOT complete (slide conversion, temp-dir creation, or
+	// generation failed). Its presence is the unambiguous signal that the score
+	// and quality gate reflect static analysis only — the absence of render-time
+	// findings is the result of an internal failure, not a clean render. When it
+	// is present an explicit RENDER_EVIDENCE_INCOMPLETE finding also appears in
+	// the findings set / quality gate.
+	RenderEvidence *RenderEvidence `json:"render_evidence,omitempty"`
+}
+
+// RenderEvidence reports whether the render-time finding pass behind a
+// deterministic score ran to completion. Render-time findings (contrast swaps,
+// autofit shrink, pagination, clamping) only materialize when the deck is
+// actually generated; when that generation step fails, an empty render-finding
+// set must NOT be read as evidence of a clean render. RenderEvidence makes the
+// failure machine-readable so callers (and quality gates) refuse to treat
+// absence-of-findings as a pass.
+type RenderEvidence struct {
+	// Complete is true when slide conversion, temp-dir creation, and the
+	// generation pass all succeeded.
+	Complete bool `json:"complete"`
+	// Stage names the failed step when Complete is false: "convert", "tempdir",
+	// or "generate". Empty when Complete is true.
+	Stage string `json:"stage,omitempty"`
+	// Detail carries the underlying error text for the failed stage.
+	Detail string `json:"detail,omitempty"`
+	// Degraded is true when the caller explicitly permitted scoring to proceed
+	// on incomplete render evidence (allow_degraded_scoring). The incompleteness
+	// is then advisory rather than blocking, but the score is still labeled
+	// degraded so it can never be confused with a clean pass.
+	Degraded bool `json:"degraded,omitempty"`
 }
 
 // QualityGate is the machine-readable "definition of done" for a deck. Passed

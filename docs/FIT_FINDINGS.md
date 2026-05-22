@@ -842,6 +842,24 @@ Preflight (`generate -preflight`) always runs the scan at warning severity in it
 }
 ```
 
+### `RENDER_EVIDENCE_INCOMPLETE`
+
+**Action:** `refuse` (default; `review` when `allow_degraded_scoring` is set)
+**Category:** `RENDER`
+**Fix kind:** none (not source-repairable)
+
+Emitted by the scoring facades (`score_deck`, `auto_repair`, `make_deck`) — **not** by the `validate -fit-report` pipeline — when the render pass that backs the deterministic score fails to complete. The render pass (`collectRenderFindings`) generates the deck to a temp directory so the score can capture render-time effects (contrast swaps, autofit shrink, pagination, clamping); when slide conversion, temp-dir creation, or generation fails, the render finding set is empty. That empty set must not be read as a clean render, so this synthetic finding makes the failure explicit. As a `refuse` finding it counts toward the P0 gate criterion, so it blocks `score_deck`'s `quality_gate` and `auto_repair`/`make_deck`'s `gate_passed`.
+
+The facades also surface a structured `render_evidence` block (`{complete:false, stage, detail, degraded}`) alongside the finding. With `allow_degraded_scoring: true`, the finding drops to advisory (`review`) and `render_evidence.degraded` is set, but `evidence_complete` stays false and the facades' final `output_validation` still blocks a structurally invalid deck. See the skill's [Validation evidence on the repair facades](../skills/generate-deck/SKILL.md) for the response contract.
+
+```json
+{
+  "code": "RENDER_EVIDENCE_INCOMPLETE",
+  "action": "refuse",
+  "message": "render-time validation evidence is incomplete: the \"generate\" stage failed (…); reported findings reflect static analysis only and may miss render-time defects (contrast swaps, autofit shrink, pagination, clamping)"
+}
+```
+
 ## Scope Rules
 
 Fit findings are scoped to **JSON-authored content only**. Content inherited from template layouts or masters is never checked.

@@ -54,6 +54,9 @@ Use this after generate_presentation to get structured visual feedback without b
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory. Same contract as generate_presentation."),
 		),
+		mcp.WithBoolean("allow_degraded_scoring",
+			mcp.Description("Permit scoring to proceed when the render pass fails (slide conversion, temp-dir creation, or generation). Default false: a render failure emits a blocking RENDER_EVIDENCE_INCOMPLETE finding (refuse action) so the quality gate cannot pass on static-only evidence. Set true to score on static analysis alone — the response then carries render_evidence with complete=false and degraded=true, and the diagnostic drops to advisory (review action)."),
+		),
 	)
 }
 
@@ -197,14 +200,8 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	//    for iterative per-slide refinement) and remap finding paths from the
 	//    subset index space back to the original deck index space.
 	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
-	var renderFindings []patterns.FitFinding
-	if len(slideIndices) > 0 {
-		subset, subsetToOrig := buildSlideSubset(&input, slideIndices)
-		renderFindings = mc.collectRenderFindings(ctx, subset, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
-		renderFindings = remapFindingsSlideIndex(renderFindings, subsetToOrig)
-	} else {
-		renderFindings = mc.collectRenderFindings(ctx, &input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
-	}
+	allowDegraded := extractAllowDegradedScoring(request)
+	renderFindings, renderEvidence := mc.collectScoreDeckRenderFindings(ctx, &input, slideIndices, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, allowDegraded)
 	findings = append(findings, renderFindings...)
 
 	// 3. Append synthesis findings (template-level).
@@ -230,6 +227,14 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	//    have no slide index).
 	ds.QualityGate = deterministic.EvaluateQualityGate(ds, gateFindings, deterministic.DefaultQualityGateCriteria())
 
+	// Surface render-evidence completeness on the response when the render pass
+	// failed, so the score can never be mistaken for a clean pass. Present only
+	// on incomplete evidence; a clean render omits the field.
+	if !renderEvidence.Complete {
+		re := renderEvidence
+		ds.RenderEvidence = &re
+	}
+
 	mcpResult, err := api.MCPSuccessResult(ctx, ds)
 	if err != nil {
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("score_deck", "presentation")), nil
@@ -240,6 +245,14 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 // collectRenderFindings runs the generation pipeline to a temp directory and
 // returns findings that only materialize at render time: contrast swaps,
 // autofit shrink/truncation, clamping, etc.
+//
+// The second return value reports whether the render pass completed. When a
+// stage fails (slide conversion, temp-dir creation, or generation) the findings
+// slice is empty and the returned RenderEvidence has Complete=false with the
+// failing stage and detail. Callers MUST treat that empty slice as missing
+// evidence — never as a clean render — and surface a RENDER_EVIDENCE_INCOMPLETE
+// diagnostic (see renderEvidenceFinding) instead of silently scoring on static
+// findings alone.
 func (mc *mcpConfig) collectRenderFindings(
 	ctx context.Context,
 	input *PresentationInput,
@@ -249,7 +262,7 @@ func (mc *mcpConfig) collectRenderFindings(
 	syntheticFiles map[string][]byte,
 	templateMetadata *types.TemplateMetadata,
 	dataPalette []string,
-) []patterns.FitFinding {
+) ([]patterns.FitFinding, deterministic.RenderEvidence) {
 	// Resolve deck-level rhythm grid when configured.
 	var rhythmGrid *resolvedGrid
 	if input.Grid != nil {
@@ -259,14 +272,13 @@ func (mc *mcpConfig) collectRenderFindings(
 	// Convert slides to generator specs.
 	slideSpecs, _, _, err := convertPresentationSlides(input.Slides, layouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), nil, false)
 	if err != nil {
-		// If conversion fails, skip render findings (static findings still apply).
-		return nil
+		return nil, deterministic.RenderEvidence{Complete: false, Stage: "convert", Detail: err.Error()}
 	}
 
 	// Create temp directory for the generation output.
 	tmpDir, err := os.MkdirTemp("", "score-deck-*")
 	if err != nil {
-		return nil
+		return nil, deterministic.RenderEvidence{Complete: false, Stage: "tempdir", Detail: err.Error()}
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -302,14 +314,90 @@ func (mc *mcpConfig) collectRenderFindings(
 
 	result, err := generator.Generate(ctx, genReq)
 	if err != nil {
-		// Generation failed — skip render findings.
-		return nil
+		return nil, deterministic.RenderEvidence{Complete: false, Stage: "generate", Detail: err.Error()}
 	}
 
 	var renderFindings []patterns.FitFinding
 	renderFindings = append(renderFindings, result.FitFindings...)
 	renderFindings = append(renderFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
-	return renderFindings
+	return renderFindings, deterministic.RenderEvidence{Complete: true}
+}
+
+// collectScoreDeckRenderFindings runs the render pass for score_deck, handling
+// both the full-deck and slide-subset paths, and converts an incomplete render
+// into an explicit RENDER_EVIDENCE_INCOMPLETE finding so the empty render-finding
+// set is never mistaken for a clean render. The diagnostic is a refuse finding
+// (fails the quality gate) by default; with allow_degraded_scoring it drops to
+// advisory and the caller labels the score degraded via the returned evidence.
+func (mc *mcpConfig) collectScoreDeckRenderFindings(
+	ctx context.Context,
+	input *PresentationInput,
+	slideIndices []int,
+	templatePath string,
+	layouts []types.LayoutMetadata,
+	slideWidth, slideHeight int64,
+	syntheticFiles map[string][]byte,
+	templateMetadata *types.TemplateMetadata,
+	dataPalette []string,
+	allowDegraded bool,
+) ([]patterns.FitFinding, deterministic.RenderEvidence) {
+	var renderFindings []patterns.FitFinding
+	var evidence deterministic.RenderEvidence
+	if len(slideIndices) > 0 {
+		subset, subsetToOrig := buildSlideSubset(input, slideIndices)
+		renderFindings, evidence = mc.collectRenderFindings(ctx, subset, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+		renderFindings = remapFindingsSlideIndex(renderFindings, subsetToOrig)
+	} else {
+		renderFindings, evidence = mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette)
+	}
+	if !evidence.Complete {
+		evidence.Degraded = allowDegraded
+		renderFindings = append(renderFindings, renderEvidenceFinding(evidence))
+	}
+	return renderFindings, evidence
+}
+
+// renderEvidenceIncompleteCode is the stable, machine-readable code for the
+// synthetic finding emitted when render-time evidence collection failed. It is
+// distinct from any pattern fit-finding code so agents can branch on it.
+const renderEvidenceIncompleteCode = "RENDER_EVIDENCE_INCOMPLETE"
+
+// renderEvidenceFinding converts an incomplete RenderEvidence into a
+// machine-readable fit finding. By default the action is "refuse" so it counts
+// as a P0 finding — it lowers the score, fails the quality gate, and blocks
+// auto_repair's gate, because a deck whose render couldn't be validated must not
+// be reported as clean. When the caller explicitly permitted degraded scoring
+// (ev.Degraded), the action drops to "review" (advisory): the gate may pass but
+// the score is still labeled degraded.
+func renderEvidenceFinding(ev deterministic.RenderEvidence) patterns.FitFinding {
+	action := "refuse"
+	if ev.Degraded {
+		action = "review"
+	}
+	msg := fmt.Sprintf("render-time validation evidence is incomplete: the %q stage failed (%s); reported findings reflect static analysis only and may miss render-time defects (contrast swaps, autofit shrink, pagination, clamping)", ev.Stage, ev.Detail)
+	if ev.Degraded {
+		msg += " — degraded scoring was explicitly permitted by the caller (allow_degraded_scoring)"
+	}
+	return patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Code:    renderEvidenceIncompleteCode,
+			Message: msg,
+		},
+		Action: action,
+	}
+}
+
+// extractAllowDegradedScoring reads the optional allow_degraded_scoring boolean
+// (default false). When false, an incomplete render pass produces a blocking
+// (refuse) diagnostic; when true, scoring proceeds on static evidence with the
+// result labeled degraded.
+func extractAllowDegradedScoring(request mcp.CallToolRequest) bool {
+	if raw, ok := request.GetArguments()["allow_degraded_scoring"]; ok {
+		if b, ok := raw.(bool); ok {
+			return b
+		}
+	}
+	return false
 }
 
 // compositionAxis runs analyze_deck_rhythm on the input slides and converts

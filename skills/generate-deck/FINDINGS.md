@@ -106,6 +106,12 @@ Emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and 
 |------|---------|----------|------------|
 | `unresolved_placeholder` | A user-visible string still holds the `__FILL__` skeleton placeholder that `plan_deck` emits. The JSON-based scan covers placeholder text values, bullets, speaker notes, shape_grid cell text, table cells, chart/diagram labels, and pattern values. Controlled by the `placeholder_policy` parameter (`off`\|`warn`\|`strict`, default `warn`): `warn` reports each token with its JSON path while keeping `valid: true`; `strict` promotes them to errors that fail validation / refuse generation (the publishable/gated mode). `fix.params: {path, token, hint}`; `next_tool_call` re-runs `validate_input`. Agent action: replace every `__FILL__` with real content before publishable generation | `warning` (strict: `error`) | `replace_placeholder` |
 
+### Scoring-facade evidence codes — emitted by `score_deck` / `auto_repair` / `make_deck`
+
+| Code | Meaning | Action | `fix.kind` |
+|------|---------|--------|------------|
+| `RENDER_EVIDENCE_INCOMPLETE` | The render pass that backs the deterministic score failed (slide conversion, temp-dir creation, or generation), so the score reflects static analysis only. Emitted so an empty render-finding set is never mistaken for a clean render; it counts toward the P0 gate criterion and blocks `quality_gate` / `gate_passed`. The facades also attach a structured `render_evidence` block (`{complete, stage, detail, degraded}`). Pass `allow_degraded_scoring: true` to drop it to advisory (`review`) and converge on static analysis alone — `evidence_complete` then stays `false` and final `output_validation` still blocks. See [Validation evidence on the repair facades](SKILL.md). Not source-repairable. | `refuse` (degraded: `review`) | none |
+
 ### Action semantics (shared with chart codes)
 
 - `refuse` — with `strict_fit: "strict"`, generation is blocked and MCP returns `IsError=true`; with `warn`, emits finding only

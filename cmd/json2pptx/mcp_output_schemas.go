@@ -741,7 +741,8 @@ var outputSchemaScoreDeck = json.RawMessage(`{
       },
       "required": ["passed", "reasons", "criteria"]
     },
-    "mode_used": {"type": "string"}
+    "mode_used": {"type": "string"},
+    "render_evidence": ` + renderEvidenceSchema + `
   },
   "required": ["overall_score", "per_slide", "summary", "mode_used"]
 }`)
@@ -1159,6 +1160,36 @@ const visualQAResultSchema = `{
       "required": ["requested", "artifact_consistent", "inspection_mode", "requirements", "passes"]
     }`
 
+// renderEvidenceSchema documents the render_evidence block emitted by
+// score_deck / auto_repair / make_deck when the render pass that backs the
+// score did not complete. Its presence is the unambiguous "not a clean pass"
+// signal.
+const renderEvidenceSchema = `{
+      "type": "object",
+      "description": "Present only when the render pass that backs the score did NOT complete (slide conversion, temp-dir creation, or generation failed). Its presence means the score and gate reflect static analysis only; an explicit RENDER_EVIDENCE_INCOMPLETE finding accompanies it.",
+      "properties": {
+        "complete": {"type": "boolean", "description": "False when render-time evidence is incomplete (the block is only emitted in that case)."},
+        "stage":    {"type": "string", "enum": ["convert", "tempdir", "generate"], "description": "Which render stage failed."},
+        "detail":   {"type": "string", "description": "Underlying error text for the failed stage."},
+        "degraded": {"type": "boolean", "description": "True when the caller passed allow_degraded_scoring=true, so the incompleteness is advisory rather than blocking. The score is still labeled degraded and must not be treated as a clean pass."}
+      },
+      "required": ["complete"]
+    }`
+
+// outputValidationSchema documents the final structural/output validation block
+// emitted by auto_repair / make_deck. A publishable / gate-passed result
+// requires ran=true and valid=true.
+const outputValidationSchema = `{
+      "type": "object",
+      "description": "Final structural/output validation of the rendered PPTX (pptx.ValidateOutputFile), run after any visual-QA re-render and regardless of degraded scoring. A gate-passed / publishable result requires ran=true and valid=true.",
+      "properties": {
+        "ran":      {"type": "boolean", "description": "Whether the validation suite ran."},
+        "valid":    {"type": "boolean", "description": "True when the rendered PPTX has no blocking structural findings."},
+        "blocking": {"type": "array", "items": {"type": "string"}, "description": "Formatted blocking findings that forced the gate open. Present only when valid=false."}
+      },
+      "required": ["ran", "valid"]
+    }`
+
 var outputSchemaAutoRepair = json.RawMessage(`{
   "type": "object",
   "properties": {
@@ -1188,9 +1219,12 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "final_presentation": {"type": "object", "description": "The full repaired deck JSON after the convergence loop (same schema as generate_presentation's presentation input). Always present on success, including zero-repair runs. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without reconstructing state from the trace."},
     "quality_mode": ` + visualQAQualityModeSchema + `,
     "visual_qa": ` + visualQAResultSchema + `,
+    "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. gate_passed cannot be true on incomplete evidence unless allow_degraded_scoring was set, in which case render_evidence.degraded labels the result and evidence_complete stays false."},
+    "render_evidence": ` + renderEvidenceSchema + `,
+    "output_validation": ` + outputValidationSchema + `,
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation", "evidence_complete"]
 }`)
 
 // --- make_deck ---
@@ -1245,9 +1279,12 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "final_presentation": {"type": "object", "description": "The full deck JSON the engine authored and repaired (same schema as generate_presentation's presentation input). Always present on success. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without rebuilding it from the plan summary or trace."},
     "quality_mode": ` + visualQAQualityModeSchema + `,
     "visual_qa": ` + visualQAResultSchema + `,
+    "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. Mirrors auto_repair.evidence_complete."},
+    "render_evidence": ` + renderEvidenceSchema + `,
+    "output_validation": ` + outputValidationSchema + `,
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation", "evidence_complete"]
 }`)
 
 // --- table_density_guide ---
