@@ -59,10 +59,14 @@ func TestMCPGenerate_StrictOutputValidationIsDefault(t *testing.T) {
 }
 
 // TestMCPOutputValidationError_EnvelopeShape pins the structured-error contract
-// that agents depend on when strict output validation rejects a generated
-// deck. The shape is: {summary, findings[], next_tool_call:{tool:"repair_slide",
-// args_template:{slide_index, fixes:[]}}}. This is the machine-readable hook
-// that lets agents chain a fix without re-deriving the protocol from prose.
+// that agents depend on when strict output validation rejects a generated deck.
+// The shape is: {summary, findings[], repairable:false, repair_unavailable_reason,
+// next_tool_call:{tool:"describe_finding", args_template:{code}}}. The recovery
+// hint points at describe_finding — a directly-executable call — instead of
+// repair_slide with an empty fixes array, which repair_slide rejects
+// (go-slide-creator-gy8j). The full finding context (code/scope/source_path/
+// slide_index) is preserved so an agent can map a finding to a repair_slide
+// directive itself.
 func TestMCPOutputValidationError_EnvelopeShape(t *testing.T) {
 	report := &pptx.Report{
 		Findings: []pptx.Finding{
@@ -101,10 +105,21 @@ func TestMCPOutputValidationError_EnvelopeShape(t *testing.T) {
 		t.Fatalf("envelope is not a JSON object: %v", err)
 	}
 
-	for _, field := range []string{"summary", "findings", "next_tool_call"} {
+	for _, field := range []string{"summary", "findings", "repairable", "next_tool_call"} {
 		if _, ok := raw[field]; !ok {
 			t.Errorf("envelope missing required field %q (raw=%s)", field, string(b))
 		}
+	}
+
+	var repairable bool
+	if err := json.Unmarshal(raw["repairable"], &repairable); err != nil {
+		t.Fatalf("repairable is not a bool: %v", err)
+	}
+	if repairable {
+		t.Error("repairable should be false for output-validation findings")
+	}
+	if _, ok := raw["repair_unavailable_reason"]; !ok {
+		t.Errorf("envelope missing repair_unavailable_reason when repairable=false (raw=%s)", string(b))
 	}
 
 	var findings []pptx.Finding
@@ -114,6 +129,10 @@ func TestMCPOutputValidationError_EnvelopeShape(t *testing.T) {
 	if len(findings) != 1 || findings[0].Code != "OOXML_INVALID_COLOR" {
 		t.Errorf("findings did not roundtrip: %+v", findings)
 	}
+	// Slide/path/code context must survive so agents can target a repair.
+	if findings[0].SlideIndex != 2 || findings[0].SourcePath != "/slides/2" || findings[0].Scope != pptx.RepairScopeSource {
+		t.Errorf("finding lost slide/path/scope context: %+v", findings[0])
+	}
 
 	var next struct {
 		Tool         string         `json:"tool"`
@@ -122,60 +141,67 @@ func TestMCPOutputValidationError_EnvelopeShape(t *testing.T) {
 	if err := json.Unmarshal(raw["next_tool_call"], &next); err != nil {
 		t.Fatalf("next_tool_call is not an object: %v", err)
 	}
-	if next.Tool != "repair_slide" {
-		t.Errorf("next_tool_call.tool = %q, want %q", next.Tool, "repair_slide")
+	if next.Tool != "describe_finding" {
+		t.Errorf("next_tool_call.tool = %q, want %q", next.Tool, "describe_finding")
 	}
-	if got, _ := next.ArgsTemplate["slide_index"].(float64); int(got) != 2 {
-		t.Errorf("args_template.slide_index = %v, want 2", next.ArgsTemplate["slide_index"])
+	if next.ArgsTemplate["fixes"] != nil {
+		t.Errorf("next_tool_call must not advertise repair_slide fixes, got %v", next.ArgsTemplate["fixes"])
 	}
-	fixes, ok := next.ArgsTemplate["fixes"].([]any)
-	if !ok {
-		t.Errorf("args_template.fixes is not an array, got %T", next.ArgsTemplate["fixes"])
-	} else if len(fixes) != 0 {
-		t.Errorf("args_template.fixes = %v, want empty array", fixes)
+	code, ok := next.ArgsTemplate["code"].(string)
+	if !ok || code == "" {
+		t.Errorf("args_template.code = %v, want a non-empty string", next.ArgsTemplate["code"])
 	}
 }
 
-// TestMCPOutputValidationError_MultiSlideSentinel verifies that when blocking
-// findings span more than one source slide, the next_tool_call.args_template
-// encodes slide_index=-1. Agents are expected to fill in the slide_index from
-// each finding's slide_index field; the sentinel is the explicit hand-off.
-func TestMCPOutputValidationError_MultiSlideSentinel(t *testing.T) {
-	report := &pptx.Report{
-		Findings: []pptx.Finding{
-			{
-				Code:       "OOXML_INVALID_COLOR",
-				Severity:   pptx.SeverityBlocking,
-				SlideIndex: 1,
-				Scope:      pptx.RepairScopeSource,
+// TestMCPOutputValidationError_NextCallIsExecutable is the contract test the
+// task (go-slide-creator-gy8j) requires: every emitted next_tool_call must be
+// directly executable. It builds the envelope from a multi-slide report with a
+// mix of describable and non-describable codes, then actually invokes the
+// suggested describe_finding call and asserts it does NOT return an error
+// result — i.e. the args satisfy describe_finding's schema and the code
+// resolves to a real description.
+func TestMCPOutputValidationError_NextCallIsExecutable(t *testing.T) {
+	reports := map[string]*pptx.Report{
+		"specific-code-not-describable": {
+			Findings: []pptx.Finding{
+				{Code: "OOXML_INVALID_COLOR", Severity: pptx.SeverityBlocking, SlideIndex: 1, Scope: pptx.RepairScopeSource},
+				{Code: "OOXML_DUPLICATE_ID", Severity: pptx.SeverityBlocking, SlideIndex: 4, Scope: pptx.RepairScopeGenerator},
 			},
-			{
-				Code:       "OOXML_DUPLICATE_ID",
-				Severity:   pptx.SeverityBlocking,
-				SlideIndex: 4,
-				Scope:      pptx.RepairScopeSource,
+		},
+		"umbrella-fallback-no-codes": {
+			Findings: []pptx.Finding{
+				{Code: "", Severity: pptx.SeverityBlocking, SlideIndex: -1},
 			},
 		},
 	}
 
-	result := mcpOutputValidationError(report)
-	if !result.IsError {
-		t.Fatal("expected IsError=true")
-	}
+	for name, report := range reports {
+		t.Run(name, func(t *testing.T) {
+			result := mcpOutputValidationError(report)
+			b, _ := json.Marshal(result.StructuredContent)
+			var raw map[string]json.RawMessage
+			if err := json.Unmarshal(b, &raw); err != nil {
+				t.Fatalf("envelope is not a JSON object: %v", err)
+			}
+			var next struct {
+				Tool         string         `json:"tool"`
+				ArgsTemplate map[string]any `json:"args_template"`
+			}
+			if err := json.Unmarshal(raw["next_tool_call"], &next); err != nil {
+				t.Fatalf("next_tool_call missing or malformed: %v", err)
+			}
+			if next.Tool != "describe_finding" {
+				t.Fatalf("next_tool_call.tool = %q, want describe_finding", next.Tool)
+			}
 
-	b, _ := json.Marshal(result.StructuredContent)
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(b, &raw); err != nil {
-		t.Fatalf("envelope is not a JSON object: %v", err)
-	}
-	var next struct {
-		ArgsTemplate map[string]any `json:"args_template"`
-	}
-	if err := json.Unmarshal(raw["next_tool_call"], &next); err != nil {
-		t.Fatalf("next_tool_call missing or malformed: %v", err)
-	}
-	got, _ := next.ArgsTemplate["slide_index"].(float64)
-	if int(got) != -1 {
-		t.Errorf("multi-slide envelope: slide_index = %v, want -1", next.ArgsTemplate["slide_index"])
+			// Execute the suggested call verbatim.
+			execResult, err := handleDescribeFinding(context.Background(), makeRequest(next.ArgsTemplate))
+			if err != nil {
+				t.Fatalf("executing suggested describe_finding returned a transport error: %v", err)
+			}
+			if execResult.IsError {
+				t.Fatalf("suggested describe_finding call was rejected — recovery hint is not executable: %+v", execResult.StructuredContent)
+			}
+		})
 	}
 }

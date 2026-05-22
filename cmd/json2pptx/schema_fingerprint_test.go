@@ -43,6 +43,10 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// generate_presentation) + the `unresolved_placeholder` POLICY finding code —
 	// an input param and a finding code only, not tool names, PresentationInput
 	// fields, or the Fix.Kind vocabulary, so the hash is again unchanged.
+	// 4.52.0 reshaped the strict output-validation error envelope (next_tool_call
+	// now points at describe_finding; added repairable / repair_unavailable_reason)
+	// — an error-response shape only, not tool names, PresentationInput fields, or
+	// the Fix.Kind vocabulary, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

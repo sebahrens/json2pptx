@@ -4,6 +4,32 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.52.0 (2026-05-22)
+
+### Changed
+
+- **Strict output-validation error envelope now emits an *executable* recovery
+  hint.** When `generate_presentation` refuses with `output_validation: "strict"`,
+  the structured error envelope previously set `next_tool_call.tool =
+  "repair_slide"` with an empty `fixes: []` array. `repair_slide` rejects an empty
+  `fixes` array, so an agent that followed the hint verbatim got a second
+  `INVALID_PARAMETER`-style error instead of a repair. The envelope now:
+  - points `next_tool_call` at **`describe_finding`** with
+    `args_template.code` set to the first blocking finding's own code when it is
+    in the describe vocabulary, otherwise the umbrella `OUTPUT_VALIDATION_ERROR`
+    code (the specific `OPC_*`/`OOXML_*` codes are not individually registered) —
+    a call that always satisfies the target tool's schema and resolves to real
+    remediation steps;
+  - adds `repairable` (always `false` here) and `repair_unavailable_reason`,
+    explicitly marking that no executable `repair_slide` call is offered because
+    output-validation findings carry no auto-derivable fix params;
+  - preserves the full `findings[]` context (`code`, `scope`, `source_path`,
+    `slide_index`) so the agent constructs the `repair_slide` directive itself.
+
+  This is a response-shape change to an error envelope only; the
+  `PresentationInput` schema, MCP tool-name set, and `Fix.Kind` vocabulary are
+  unchanged. `schema_version` advances to 4.52.0. (bd `go-slide-creator-gy8j`.)
+
 ## 4.51.0 (2026-05-22)
 
 ### Added

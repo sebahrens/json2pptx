@@ -350,12 +350,16 @@ When strict validation fails, the tool returns an error `CallToolResult` (`isErr
       "message": "..."
     }
   ],
+  "repairable": false,
+  "repair_unavailable_reason": "output-validation findings are structural OPC/OOXML problems with no auto-derivable repair_slide directive; inspect each finding's code, scope, and source_path, then construct the appropriate repair_slide fix ...",
   "next_tool_call": {
-    "tool": "repair_slide",
-    "args_template": {"slide_index": 2, "fixes": []}
+    "tool": "describe_finding",
+    "args_template": {"code": "OUTPUT_VALIDATION_ERROR"}
   }
 }
 ```
+
+`repairable` is always `false` here: output-validation findings carry no fix directive, so the engine cannot pre-fill an executable `repair_slide` call (it has no way to know the replacement color, target layout, etc.). `next_tool_call` therefore points at `describe_finding` — a directly-executable call that resolves the finding's meaning and remediation steps — rather than at `repair_slide` with an empty `fixes` array, which `repair_slide` rejects. `args_template.code` is the first blocking finding's own `code` when that code is in the describe vocabulary, otherwise the umbrella `OUTPUT_VALIDATION_ERROR` code (as shown above, since the specific `OPC_*`/`OOXML_*` codes are not individually registered). You still construct the actual repair from the preserved `findings[]` context.
 
 Every finding carries a `scope` field classifying responsibility:
 
@@ -368,8 +372,8 @@ Every finding carries a `scope` field classifying responsibility:
 ### Responding to a validation error
 
 1. **Inspect every blocking finding's `code` and `scope`.** `scope: "source"` is repairable; `template` and `generator` usually are not.
-2. **Use `next_tool_call.args_template` as a starting point.** When every blocking finding pins to one slide, `slide_index` is populated; otherwise it is `-1` and you must fill it in from `findings[].slide_index`. The `fixes` array is empty because output-validation codes do not share a single canonical fix kind.
-3. **Look up unfamiliar codes** in `internal/pptx/output_validator.go` (`opcCodeMap`, `ooxmlCodeMap`) before guessing a remedy. Each finding's `message` field also explains why it fired.
+2. **Run the `next_tool_call` first — it is `describe_finding`, not `repair_slide`.** The envelope never advertises a `repair_slide` call (`repairable: false`) because output-validation codes carry no auto-derivable fix params. Invoking `describe_finding` with the supplied `code` returns the finding's `remediation_steps[]`. You then build the `repair_slide` directive yourself from the preserved `findings[]` context — `slide_index` comes from `findings[].slide_index`.
+3. **Look up unfamiliar codes** via `describe_finding` (or in `internal/pptx/output_validator.go` — `opcCodeMap`, `ooxmlCodeMap`) before guessing a remedy. Each finding's `message` field also explains why it fired.
 4. **Pick the right `repair_slide` directive** based on the finding's `code` and `source_path`. Common mappings:
    - `OOXML_INVALID_COLOR` / `OOXML_INVALID_SCHEME` → `replace_color` or `use_semantic_color`
    - `OOXML_ILLEGAL_XML_CHAR` → `reduce_text` after stripping the offending byte
