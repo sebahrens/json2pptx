@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // ensure patterns package init runs
@@ -276,7 +277,7 @@ func TestExpandPattern_NoCalloutNilDoesNothing(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-template callout rendering (all 4 templates)
+// Cross-template callout rendering (core built-in corpus)
 // ---------------------------------------------------------------------------
 
 func TestCalloutCrossTemplate(t *testing.T) {
@@ -290,7 +291,9 @@ func TestCalloutCrossTemplate(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join(projectRoot, "templates")
-	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+	// Core built-in corpus, shared with the other cross-template matrices via
+	// the discovery helper (internal/testutil/templates.go).
+	templates := testutil.CoreTemplateNames()
 
 	fixtures := []string{
 		filepath.Join(projectRoot, "tests", "integration", "json_fixtures", "50_pattern_cardgrid_callout.json"),

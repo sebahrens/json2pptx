@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // TestShapeGridCrossTemplate runs all shape_grid integration fixtures across all
@@ -41,8 +43,11 @@ func TestShapeGridCrossTemplate(t *testing.T) {
 		t.Fatal("no shape_grid fixtures found")
 	}
 
-	// Available templates
-	templates := []string{"midnight-blue", "forest-green", "warm-coral", "modern-template"}
+	// Core built-in templates exercised by the full cross-template matrix.
+	// Shared with the other cross-template tests via the discovery helper so
+	// the curated corpus has a single source of truth; TierSmoke built-ins are
+	// covered by cheaper load/smoke tests (see internal/testutil/templates.go).
+	templates := testutil.CoreTemplateNames()
 
 	// Verify templates exist
 	for _, tmpl := range templates {

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -373,11 +374,19 @@ func TestTableStyleIndex_EmptyStyleList(t *testing.T) {
 }
 
 func TestTableStyleIndex_AllBundledTemplates(t *testing.T) {
-	// All four bundled templates must load without error; lookup must not panic
-	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+	// Every shipped built-in template (core + smoke tiers) must load without
+	// error and survive a table-style lookup without panicking. This is the
+	// cheap smoke/load test that gives the TierSmoke built-ins — which are
+	// excluded from the expensive cross-template matrices — at least baseline
+	// coverage. The corpus comes from the shared discovery helper so the list
+	// stays in sync with templates/ (see internal/testutil/templates.go).
+	templates := testutil.AllBuiltinTemplateNames()
+	if len(templates) == 0 {
+		t.Fatal("AllBuiltinTemplateNames() returned no templates")
+	}
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
-			reader, err := OpenTemplate(filepath.Join("..", "..", "templates", tmpl+".pptx"))
+			reader, err := OpenTemplate(filepath.Join(testutil.TemplatesDir(), tmpl+".pptx"))
 			if err != nil {
 				t.Fatalf("Failed to open template: %v", err)
 			}
