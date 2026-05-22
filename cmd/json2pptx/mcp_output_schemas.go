@@ -1104,10 +1104,23 @@ var outputSchemaRepairSlidesBatch = json.RawMessage(`{
 }`)
 
 // --- auto_repair ---
-// visualQAQualityModeSchema and visualQAResultSchema are shared by the
-// auto_repair and make_deck output schemas so the two stay in lockstep. They
-// describe the truth-labeled quality_mode and the opt-in visual_qa phase report.
-const visualQAQualityModeSchema = `{"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "Truth-label for which inspection regime ran. \"deterministic\" (default) = static + render-fit findings only, no rendering or API key. \"deterministic+visual_qa\" = the deterministic loop followed by the opt-in vision/heuristic visual refinement phase (set visual_qa.enabled=true)."}`
+// visualQAQualityModeSchema, qualityReportSchema, and visualQAResultSchema are
+// shared by the auto_repair and make_deck output schemas so the two stay in
+// lockstep. They describe the truth-labeled quality_mode, the requested-vs-actual
+// quality report, and the opt-in visual_qa phase report.
+const visualQAQualityModeSchema = `{"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "Truth-label for which inspection regime ACTUALLY ran (alias of quality.actual). \"deterministic\" (default) = static + render-fit findings only, no rendering or API key. \"deterministic+visual_qa\" = the deterministic loop followed by a visual refinement phase that actually inspected slides. A requested visual-QA phase that was skipped (e.g. render tools unavailable) reports \"deterministic\" here — see quality.requested / quality.fallback_reasons for what was asked for and why it degraded."}`
+
+const qualityReportSchema = `{
+      "type": "object",
+      "description": "Requested-vs-actual quality report. Separates the inspection regime the caller asked for from the one that actually ran, so an agent never assumes vision/heuristic inspection happened when it was skipped.",
+      "properties": {
+        "requested":       {"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "The quality mode requested, derived purely from the request (visual_qa.enabled)."},
+        "actual":          {"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "The quality mode that actually ran. \"deterministic+visual_qa\" only when a visual inspection (vision or heuristic) actually executed; degrades to \"deterministic\" when a requested visual-QA phase inspected no slide (e.g. render tools unavailable). quality_mode is an alias of this field."},
+        "inspection_mode": {"type": "string", "enum": ["vision", "heuristic", "skipped"], "description": "Which visual-QA backend ran: vision (Claude API), heuristic (pure-Go fallback, no API key), or skipped (render tools unavailable). Omitted when visual QA was not requested."},
+        "fallback_reasons": {"type": "array", "items": {"type": "string"}, "description": "Explains any divergence between requested and actual (render tools unavailable, render failure, or missing-API-key heuristic fallback). Present only when a fallback occurred."}
+      },
+      "required": ["requested", "actual"]
+}`
 
 const visualQAResultSchema = `{
       "type": "object",
@@ -1264,6 +1277,7 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "final_presentation": {"type": "object", "description": "The full repaired deck JSON after the convergence loop (same schema as generate_presentation's presentation input). Always present on success, including zero-repair runs. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without reconstructing state from the trace."},
     "next_state": ` + loopNextStateSchema + `,
     "quality_mode": ` + visualQAQualityModeSchema + `,
+    "quality": ` + qualityReportSchema + `,
     "visual_qa": ` + visualQAResultSchema + `,
     "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. gate_passed cannot be true on incomplete evidence unless allow_degraded_scoring was set, in which case render_evidence.degraded labels the result and evidence_complete stays false."},
     "render_evidence": ` + renderEvidenceSchema + `,
@@ -1277,7 +1291,7 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — unmet gate criteria (incl. final output validation), incomplete evidence, and exemplar provenance. Present only when publishable=false. Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "quality", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- make_deck ---
@@ -1332,6 +1346,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "final_presentation": {"type": "object", "description": "The full deck JSON the engine authored and repaired (same schema as generate_presentation's presentation input). Always present on success. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without rebuilding it from the plan summary or trace."},
     "next_state": ` + loopNextStateSchema + `,
     "quality_mode": ` + visualQAQualityModeSchema + `,
+    "quality": ` + qualityReportSchema + `,
     "visual_qa": ` + visualQAResultSchema + `,
     "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. Mirrors auto_repair.evidence_complete."},
     "render_evidence": ` + renderEvidenceSchema + `,
@@ -1345,7 +1360,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — for make_deck this always includes the exemplar-content reason, plus any unmet gate criteria. Present only when publishable=false (always, for make_deck). Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "quality", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- table_density_guide ---

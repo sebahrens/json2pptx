@@ -232,8 +232,37 @@ func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
 		t.Fatalf("unmarshal response: %v", err)
 	}
 
-	if output.QualityMode != qualityModeVisualQA {
-		t.Errorf("quality_mode = %q, want %q", output.QualityMode, qualityModeVisualQA)
+	// quality always reports both the requested and the actual regime. requested
+	// is request-derived (always deterministic+visual_qa here); actual and its
+	// quality_mode alias reflect what truly ran, which depends on render
+	// availability. This is the crux of go-slide-creator-6ght: a requested-but-
+	// skipped phase must NOT be labeled as a completed visual pass.
+	if output.Quality == nil {
+		t.Fatal("expected quality block (always present)")
+	}
+	if output.Quality.Requested != qualityModeVisualQA {
+		t.Errorf("quality.requested = %q, want %q", output.Quality.Requested, qualityModeVisualQA)
+	}
+	if output.QualityMode != output.Quality.Actual {
+		t.Errorf("quality_mode (%q) must alias quality.actual (%q)", output.QualityMode, output.Quality.Actual)
+	}
+	if renderAvail, _ := render.DependencyStatus(); renderAvail {
+		if output.Quality.Actual != qualityModeVisualQA {
+			t.Errorf("quality.actual = %q, want %q when render tools present", output.Quality.Actual, qualityModeVisualQA)
+		}
+	} else {
+		// Render unavailable: the requested visual-QA phase is skipped, so the
+		// ACTUAL mode degrades to deterministic with a fallback reason — an agent
+		// must not believe a vision pass ran.
+		if output.Quality.Actual != qualityModeDeterministic {
+			t.Errorf("quality.actual = %q, want %q when render tools absent", output.Quality.Actual, qualityModeDeterministic)
+		}
+		if output.Quality.InspectionMode != "skipped" {
+			t.Errorf("quality.inspection_mode = %q, want skipped when render tools absent", output.Quality.InspectionMode)
+		}
+		if len(output.Quality.FallbackReasons) == 0 {
+			t.Error("quality.fallback_reasons should explain the skipped visual-QA phase")
+		}
 	}
 	if output.VisualQA == nil {
 		t.Fatal("expected visual_qa block when mode is enabled")
@@ -378,7 +407,9 @@ func TestMakeDeck_VisualQADefault(t *testing.T) {
 	}
 }
 
-// TestExtractVisualQAConfig covers parsing, defaults, and clamping.
+// TestExtractVisualQAConfig covers parsing, defaults, and clamping for well-
+// formed (and absent) visual_qa blocks. Malformed blocks are covered separately
+// by TestExtractVisualQAConfig_MalformedFailsFast.
 func TestExtractVisualQAConfig(t *testing.T) {
 	tests := []struct {
 		name string
@@ -413,12 +444,130 @@ func TestExtractVisualQAConfig(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := extractVisualQAConfig(makeRequest(tc.args))
+			got, errResult := extractVisualQAConfig(makeRequest(tc.args))
+			if errResult != nil {
+				t.Fatalf("extractVisualQAConfig() unexpected error result: %s", textContent(errResult))
+			}
 			if got != tc.want {
 				t.Errorf("extractVisualQAConfig() = %+v, want %+v", got, tc.want)
 			}
 		})
 	}
+}
+
+// TestExtractVisualQAConfig_MalformedFailsFast asserts a PRESENT but malformed
+// visual_qa block fails fast with INVALID_PARAMETER instead of silently
+// disabling the requested mode (REL-007 / go-slide-creator-6ght).
+func TestExtractVisualQAConfig_MalformedFailsFast(t *testing.T) {
+	tests := []struct {
+		name string
+		args map[string]any
+	}{
+		{
+			name: "scalar instead of object",
+			args: map[string]any{"visual_qa": true},
+		},
+		{
+			name: "array instead of object",
+			args: map[string]any{"visual_qa": []any{"enabled"}},
+		},
+		{
+			name: "wrong-typed enabled field",
+			args: map[string]any{"visual_qa": map[string]any{"enabled": "yes"}},
+		},
+		{
+			name: "wrong-typed max_passes field",
+			args: map[string]any{"visual_qa": map[string]any{"enabled": true, "max_passes": "lots"}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, errResult := extractVisualQAConfig(makeRequest(tc.args))
+			if errResult == nil {
+				t.Fatalf("expected INVALID_PARAMETER error result, got config %+v", got)
+			}
+			requireStructuredError(t, errResult, "INVALID_PARAMETER")
+		})
+	}
+}
+
+// TestExtractVisualQAConfig_AbsentKeepsDeterministicDefault asserts an absent
+// (or null) visual_qa block keeps the deterministic default without error.
+func TestExtractVisualQAConfig_AbsentKeepsDeterministicDefault(t *testing.T) {
+	for _, args := range []map[string]any{
+		{},
+		{"visual_qa": nil},
+	} {
+		got, errResult := extractVisualQAConfig(makeRequest(args))
+		if errResult != nil {
+			t.Fatalf("absent visual_qa should not error: %s", textContent(errResult))
+		}
+		if got.Enabled {
+			t.Errorf("absent visual_qa should disable the mode, got %+v", got)
+		}
+	}
+}
+
+// TestBuildQualityReport covers the requested-vs-actual mapping across the
+// vision / heuristic / skipped backends and the not-requested default.
+func TestBuildQualityReport(t *testing.T) {
+	t.Run("not requested keeps deterministic default", func(t *testing.T) {
+		qr := buildQualityReport(visualQAConfig{Enabled: false}, nil)
+		if qr.Requested != qualityModeDeterministic || qr.Actual != qualityModeDeterministic {
+			t.Errorf("requested=%q actual=%q, want both %q", qr.Requested, qr.Actual, qualityModeDeterministic)
+		}
+		if qr.InspectionMode != "" || len(qr.FallbackReasons) != 0 {
+			t.Errorf("unexpected inspection_mode=%q fallback_reasons=%v", qr.InspectionMode, qr.FallbackReasons)
+		}
+	})
+
+	t.Run("vision available reports visual_qa actual", func(t *testing.T) {
+		qr := buildQualityReport(visualQAConfig{Enabled: true}, &visualQAResult{InspectionMode: "vision"})
+		if qr.Requested != qualityModeVisualQA {
+			t.Errorf("requested=%q, want %q", qr.Requested, qualityModeVisualQA)
+		}
+		if qr.Actual != qualityModeVisualQA {
+			t.Errorf("actual=%q, want %q", qr.Actual, qualityModeVisualQA)
+		}
+		if len(qr.FallbackReasons) != 0 {
+			t.Errorf("vision run should have no fallback reasons, got %v", qr.FallbackReasons)
+		}
+	})
+
+	t.Run("heuristic fallback stays visual_qa but flags the backend", func(t *testing.T) {
+		qr := buildQualityReport(visualQAConfig{Enabled: true}, &visualQAResult{
+			InspectionMode: "heuristic",
+			Requirements:   visualQARequirements{APIKeyEnv: "ANTHROPIC_API_KEY"},
+		})
+		if qr.Actual != qualityModeVisualQA {
+			t.Errorf("heuristic actual=%q, want %q (visual QA still ran)", qr.Actual, qualityModeVisualQA)
+		}
+		if qr.InspectionMode != "heuristic" {
+			t.Errorf("inspection_mode=%q, want heuristic", qr.InspectionMode)
+		}
+		if len(qr.FallbackReasons) == 0 {
+			t.Error("heuristic fallback should record a fallback reason")
+		}
+	})
+
+	t.Run("render-unavailable skip degrades actual to deterministic", func(t *testing.T) {
+		qr := buildQualityReport(visualQAConfig{Enabled: true}, &visualQAResult{
+			InspectionMode: "skipped",
+			Notes:          []string{"visual_qa skipped: render tools unavailable ([libreoffice magick])."},
+		})
+		if qr.Requested != qualityModeVisualQA {
+			t.Errorf("requested=%q, want %q", qr.Requested, qualityModeVisualQA)
+		}
+		if qr.Actual != qualityModeDeterministic {
+			t.Errorf("skipped actual=%q, want %q", qr.Actual, qualityModeDeterministic)
+		}
+		if qr.InspectionMode != "skipped" {
+			t.Errorf("inspection_mode=%q, want skipped", qr.InspectionMode)
+		}
+		if len(qr.FallbackReasons) == 0 {
+			t.Error("skipped phase should record fallback reasons including the phase note")
+		}
+	})
 }
 
 // TestActionableVisualFindings_FiltersBySeverity asserts only P0/P1 findings

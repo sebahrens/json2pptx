@@ -4,6 +4,43 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.57.0 (2026-05-22)
+
+### Added
+
+- **Requested-vs-actual quality reporting on `auto_repair` and `make_deck`.** Both
+  facades now return an always-present **`quality`** object so an agent can tell
+  the inspection regime it *asked for* apart from the one that *actually ran* —
+  previously `quality_mode` was request-derived and could claim
+  `"deterministic+visual_qa"` even when visual QA was skipped (render tools
+  unavailable).
+  - `quality` = `{requested, actual, inspection_mode?, fallback_reasons[]?}`.
+    `requested` is request-derived (`visual_qa.enabled`); `actual` reflects what
+    truly ran and degrades to `"deterministic"` when a requested visual-QA phase
+    inspected no slide; `inspection_mode` ∈ {`vision`, `heuristic`, `skipped`};
+    `fallback_reasons[]` explains any divergence (render tools unavailable, render
+    failure, missing-API-key heuristic fallback).
+  - **`quality_mode` is now an alias of `quality.actual`** — it reports the regime
+    that ACTUALLY ran rather than the one requested. A requested-but-skipped
+    visual-QA phase now reports `quality_mode: "deterministic"` (was
+    `"deterministic+visual_qa"`). The value stays within the existing enum, so it
+    is schema-shape-compatible, but it is now truthful.
+  - `quality` is added to both facade output schemas (always required).
+
+### Changed
+
+- **Malformed `visual_qa` now fails fast.** A *present* but malformed `visual_qa`
+  argument (a scalar/array instead of an object, or a wrong-typed field) returns
+  an `INVALID_PARAMETER` error instead of silently disabling visual QA, so an
+  agent that requested pixel/vision inspection is never told it ran deterministic
+  checks without warning (REL-007). An **absent** or `null` `visual_qa` block
+  still defaults to deterministic with no error.
+
+Backward-compatible for well-formed callers: existing fresh-run calls gain a
+populated `quality` block and a now-truthful `quality_mode`. No new tools;
+`PresentationInput`/`Fix.Kind` surfaces and the schema fingerprint are
+unaffected.
+
 ## 4.56.0 (2026-05-22)
 
 ### Added

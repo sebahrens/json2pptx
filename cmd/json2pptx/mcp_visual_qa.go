@@ -23,6 +23,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -55,6 +56,58 @@ func qualityModeLabel(visualQAEnabled bool) string {
 	return qualityModeDeterministic
 }
 
+// qualityReport separates the quality mode the caller REQUESTED from the one
+// that ACTUALLY ran. Requested is derived purely from the request
+// (visual_qa.enabled); Actual reflects which inspection regime actually executed
+// and degrades to "deterministic" when a requested visual-QA phase inspected no
+// slide (e.g. render tools unavailable). FallbackReasons explains any divergence
+// so an agent never overestimates the inspection rigor that ran. quality_mode in
+// the response is an alias of Actual.
+type qualityReport struct {
+	Requested       string   `json:"requested"`
+	Actual          string   `json:"actual"`
+	InspectionMode  string   `json:"inspection_mode,omitempty"`
+	FallbackReasons []string `json:"fallback_reasons,omitempty"`
+}
+
+// buildQualityReport derives the requested-vs-actual quality report. cfg is the
+// parsed request; result is the visual-QA phase report (nil when visual QA was
+// not requested). Actual is "deterministic+visual_qa" only when a visual
+// inspection (vision or heuristic) actually ran; a skipped phase degrades Actual
+// back to "deterministic" and records why under FallbackReasons.
+func buildQualityReport(cfg visualQAConfig, result *visualQAResult) qualityReport {
+	qr := qualityReport{
+		Requested: qualityModeLabel(cfg.Enabled),
+		Actual:    qualityModeDeterministic,
+	}
+	if !cfg.Enabled || result == nil {
+		return qr
+	}
+	qr.InspectionMode = result.InspectionMode
+	switch result.InspectionMode {
+	case "vision":
+		qr.Actual = qualityModeVisualQA
+	case "heuristic":
+		// Visual QA ran, so the actual mode is still deterministic+visual_qa — but
+		// the lower-rigor heuristic backend stood in for vision; flag it so the
+		// agent does not assume a vision pass happened.
+		qr.Actual = qualityModeVisualQA
+		qr.FallbackReasons = append(qr.FallbackReasons, fmt.Sprintf(
+			"%s not set: visual QA ran with the pure-Go heuristic inspector (advisory P3 findings) instead of the Claude vision backend.",
+			result.Requirements.APIKeyEnv))
+	default:
+		// "skipped" (or an unexpected empty mode): the requested visual-QA phase
+		// inspected nothing, so only the deterministic loop actually ran. Carry the
+		// phase's own notes (render tools unavailable, render failure, ...) so the
+		// agent gets the specific cause.
+		qr.Actual = qualityModeDeterministic
+		qr.FallbackReasons = append(qr.FallbackReasons,
+			"visual_qa requested but no slide was visually inspected; only the deterministic loop ran.")
+		qr.FallbackReasons = append(qr.FallbackReasons, result.Notes...)
+	}
+	return qr
+}
+
 // --- Config ---
 
 // visualQAConfig is the parsed visual_qa request block. Every field is optional;
@@ -68,18 +121,22 @@ type visualQAConfig struct {
 }
 
 // extractVisualQAConfig parses the visual_qa object argument, applying defaults
-// and clamping. A missing block returns the disabled zero value. A malformed
-// block (present but not an object) is tolerated: it disables the mode rather
-// than failing the whole call, so a typo never blocks deck generation.
-func extractVisualQAConfig(request mcp.CallToolRequest) visualQAConfig {
+// and clamping. A missing block returns the disabled zero value (the
+// deterministic default) with a nil error. A PRESENT but malformed block (not an
+// object, or wrong-typed fields) fails fast with an INVALID_PARAMETER error
+// result rather than silently disabling the mode — so an agent that requested
+// pixel/vision inspection is told its request was rejected instead of
+// unknowingly losing it.
+func extractVisualQAConfig(request mcp.CallToolRequest) (visualQAConfig, *mcp.CallToolResult) {
 	cfg := visualQAConfig{MaxPasses: defaultVisualQAMaxPasses, Density: defaultVisualQADensity}
 	raw, ok := request.GetArguments()["visual_qa"]
 	if !ok || raw == nil {
-		return visualQAConfig{} // disabled
+		return visualQAConfig{}, nil // absent: deterministic default
 	}
 	data, err := json.Marshal(raw)
 	if err != nil {
-		return visualQAConfig{}
+		return visualQAConfig{}, api.MCPSimpleError("INVALID_PARAMETER", fmt.Sprintf(
+			"visual_qa is present but could not be processed (%v); pass an object like {\"enabled\": true} or omit it for the deterministic default.", err))
 	}
 	var parsed struct {
 		Enabled      *bool  `json:"enabled"`
@@ -89,7 +146,8 @@ func extractVisualQAConfig(request mcp.CallToolRequest) visualQAConfig {
 		Density      *int   `json:"density"`
 	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return visualQAConfig{}
+		return visualQAConfig{}, api.MCPSimpleError("INVALID_PARAMETER", fmt.Sprintf(
+			"visual_qa must be an object with optional fields {enabled:bool, model:string, audit_palette:bool, max_passes:int, density:int}: %v. Omit visual_qa for the deterministic default.", err))
 	}
 	if parsed.Enabled != nil {
 		cfg.Enabled = *parsed.Enabled
@@ -116,7 +174,7 @@ func extractVisualQAConfig(request mcp.CallToolRequest) visualQAConfig {
 	if cfg.Density > maxVisualQADensity {
 		cfg.Density = maxVisualQADensity
 	}
-	return cfg
+	return cfg, nil
 }
 
 // --- Response types ---

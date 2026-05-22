@@ -492,7 +492,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				Modes:         []string{qualityModeDeterministic, qualityModeVisualQA},
 				VisualQAOptIn: true,
 				Version:       "4.43.0",
-				UsageHint:     "auto_repair / make_deck default to the deterministic loop (static + render-fit findings, no rendering or API key). Pass visual_qa:{enabled:true} to add the opt-in vision/heuristic visual refinement phase (needs libreoffice + magick; ANTHROPIC_API_KEY for vision, else heuristic fallback). The response's visual_qa.requirements reports resolved preconditions and cost; quality_mode truth-labels which ran.",
+				UsageHint:     "auto_repair / make_deck default to the deterministic loop (static + render-fit findings, no rendering or API key). Pass visual_qa:{enabled:true} to add the opt-in vision/heuristic visual refinement phase (needs libreoffice + magick; ANTHROPIC_API_KEY for vision, else heuristic fallback). The response's visual_qa.requirements reports resolved preconditions and cost. quality_mode reports the regime that ACTUALLY ran (alias of quality.actual); the quality block ({requested, actual, inspection_mode?, fallback_reasons[]?}) separates the requested mode from the one that ran, so a requested-but-skipped visual phase reads deterministic rather than overstating rigor. A present-but-malformed visual_qa fails fast with INVALID_PARAMETER.",
 			},
 			FeatureVersions: map[string]string{
 				"strict_fit":               "2.0.0",

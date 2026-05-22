@@ -68,12 +68,23 @@ type autoRepairOutput struct {
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
-	// QualityMode truth-labels which inspection regime ran: "deterministic"
-	// (static + render-fit findings only — the default) or
-	// "deterministic+visual_qa" (the deterministic loop followed by the opt-in
-	// vision/heuristic visual refinement phase). final_score and trace always
-	// describe the deterministic loop; visual-QA detail lives under visual_qa.
+	// QualityMode truth-labels which inspection regime ACTUALLY ran:
+	// "deterministic" (static + render-fit findings only — the default) or
+	// "deterministic+visual_qa" (the deterministic loop followed by a visual
+	// refinement phase that actually inspected slides). It is an alias of
+	// Quality.Actual, preserved for backward compatibility: a requested visual-QA
+	// phase that was skipped (e.g. render tools unavailable) reports
+	// "deterministic" here, NOT "deterministic+visual_qa". final_score and trace
+	// always describe the deterministic loop; visual-QA detail lives under
+	// visual_qa.
 	QualityMode string `json:"quality_mode"`
+	// Quality separates the REQUESTED quality mode from the one that ACTUALLY ran,
+	// so an agent never assumes vision/heuristic inspection happened when it was
+	// skipped. Always present: requested is request-derived, actual mirrors
+	// QualityMode, inspection_mode names the visual-QA backend, and
+	// fallback_reasons explains any divergence (render tools unavailable, missing
+	// API key heuristic fallback).
+	Quality *qualityReport `json:"quality"`
 	// VisualQA is present only when visual_qa mode was requested. It carries the
 	// inspection mode, thumbnail paths, visual findings, proposed/applied
 	// repairs, and optional palette audit. Any repairs it applied are also
@@ -350,7 +361,10 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMaxPasses(request)
-	vqa := extractVisualQAConfig(request)
+	vqa, vqaErr := extractVisualQAConfig(request)
+	if vqaErr != nil {
+		return vqaErr, nil
+	}
 	allowDegraded := extractAllowDegradedScoring(request)
 
 	outputFilename := sanitizeOutputFilename(input.OutputFilename)
@@ -649,6 +663,11 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	// terminal state (see deriveFacadeStatus).
 	status := deriveFacadeStatus(gatePassed, evidenceComplete, outputValidation.Valid, lastGateReasons, provenance)
 
+	// Report requested-vs-actual quality from the resolved visual-QA result rather
+	// than the request alone, so a skipped/heuristic phase is never mislabeled as
+	// a completed vision pass. quality_mode aliases quality.actual.
+	quality := buildQualityReport(vqa, vqaResult)
+
 	outVal := outputValidation
 	output := &autoRepairOutput{
 		Path:              finalPath,
@@ -657,7 +676,8 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		Passes:            passesRun,
 		Trace:             trace,
 		GateReasons:       lastGateReasons,
-		QualityMode:       qualityModeLabel(vqa.Enabled),
+		QualityMode:       quality.Actual,
+		Quality:           &quality,
 		VisualQA:          vqaResult,
 		FinalPresentation: finalPresentation,
 		EvidenceComplete:  evidenceComplete,

@@ -47,10 +47,14 @@ type makeDeckOutput struct {
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
-	// QualityMode truth-labels the inspection regime: "deterministic" (default)
-	// or "deterministic+visual_qa" when visual_qa.enabled was passed through.
-	// Mirrors auto_repair.quality_mode.
+	// QualityMode truth-labels the inspection regime that ACTUALLY ran:
+	// "deterministic" (default) or "deterministic+visual_qa" when a visual
+	// refinement phase actually inspected slides. Alias of Quality.Actual. Mirrors
+	// auto_repair.quality_mode.
 	QualityMode string `json:"quality_mode"`
+	// Quality separates the requested quality mode from the one that actually ran.
+	// Mirrors auto_repair.quality.
+	Quality *qualityReport `json:"quality"`
 	// VisualQA is present only when visual_qa mode was requested. Same shape as
 	// auto_repair.visual_qa.
 	VisualQA *visualQAResult      `json:"visual_qa,omitempty"`
@@ -287,7 +291,10 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 
 	gate := extractAutoRepairGate(request)
 	maxPasses := extractMakeDeckMaxPasses(request)
-	vqa := extractVisualQAConfig(request)
+	vqa, vqaErr := extractVisualQAConfig(request)
+	if vqaErr != nil {
+		return vqaErr, nil
+	}
 	allowDegraded := extractAllowDegradedScoring(request)
 
 	outputFilename := "make_deck.pptx"
@@ -327,6 +334,7 @@ func makeDeckOutputFromLoop(loopOut *autoRepairOutput, plan *makeDeckPlanSummary
 		Trace:             loopOut.Trace,
 		GateReasons:       loopOut.GateReasons,
 		QualityMode:       loopOut.QualityMode,
+		Quality:           loopOut.Quality,
 		VisualQA:          loopOut.VisualQA,
 		Plan:              plan,
 		FinalPresentation: loopOut.FinalPresentation,

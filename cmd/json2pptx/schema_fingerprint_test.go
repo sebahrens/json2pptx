@@ -65,6 +65,13 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// examine_template to the get_capabilities base_dir list — input params /
 	// response fields only, not tool names, PresentationInput fields, or the
 	// Fix.Kind vocabulary, so the hash is again unchanged.
+	// 4.56.0 added next_state / resume_token to auto_repair / make_deck — input
+	// params / response fields only, so the hash is unchanged.
+	// 4.57.0 added the requested-vs-actual `quality` object to auto_repair /
+	// make_deck (and made quality_mode an alias of quality.actual), plus
+	// fail-fast INVALID_PARAMETER on malformed visual_qa — response fields and an
+	// error-response behavior only, not tool names, PresentationInput fields, or
+	// the Fix.Kind vocabulary, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 
