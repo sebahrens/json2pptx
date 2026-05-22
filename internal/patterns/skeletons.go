@@ -19,9 +19,12 @@ const FillPlaceholder = "__FILL__"
 // occurrence with real content.
 //
 // Numeric and boolean leaves are preserved so structural defaults (grid
-// dimensions, flags) survive the round-trip and the skeleton remains valid for
-// validate_input as-is — FillPlaceholder is a non-empty string and satisfies
-// required-string checks.
+// dimensions, flags) survive the round-trip and the skeleton remains
+// structurally valid for validate_input as-is — FillPlaceholder is a non-empty
+// string and satisfies required-string checks. The unresolved-placeholder scan
+// (internal/policy/placeholder) still reports any FillPlaceholder left in place
+// as an advisory finding, so callers must replace every token before publishable
+// generation (or pass placeholder_policy=strict to make leftovers blocking).
 //
 // Returns nil when the pattern is unknown or does not implement Exemplar.
 func SkeletonForPattern(reg *Registry, patternName, narrativeRole string) (json.RawMessage, error) {

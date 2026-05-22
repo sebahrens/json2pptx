@@ -28,6 +28,7 @@ func runValidate() error { //nolint:gocognit
 	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget limit")
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
 	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are validation errors; when false (default), they are warnings. Mirrors MCP validate_input strict_unknown_keys.")
+	placeholderPolicy := fs.String("placeholder-policy", "warn", "Unresolved __FILL__ skeleton-placeholder policy: off (skip), warn (default; report tokens with JSON paths), or strict (treat unresolved tokens as errors). Mirrors MCP validate_input placeholder_policy.")
 	_ = fs.Bool("partial", false, "Accepted for CLI compatibility (validation always reports per-slide diagnostics)")
 
 	fs.Usage = func() {
@@ -57,6 +58,12 @@ func runValidate() error { //nolint:gocognit
 		return err
 	}
 
+	switch *placeholderPolicy {
+	case "off", "warn", "strict":
+	default:
+		return fmt.Errorf("invalid --placeholder-policy value %q: must be off, warn, or strict", *placeholderPolicy)
+	}
+
 	args := fs.Args()
 	if len(args) == 0 {
 		fs.Usage()
@@ -77,7 +84,7 @@ func runValidate() error { //nolint:gocognit
 	}
 
 	if effectiveFormat == "json" || effectiveFormat == "ndjson" {
-		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, effectiveJSONPath)
+		return runValidateMCPFormat(args, *templatesDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, *placeholderPolicy, effectiveJSONPath)
 	}
 
 	// Suppress unused warnings for flags consumed below.
@@ -87,7 +94,7 @@ func runValidate() error { //nolint:gocognit
 	var results []validateResult
 
 	for _, filePath := range args {
-		result := validateJSONFile(filePath, *templatesDir, *strictUnknownKeys)
+		result := validateJSONFile(filePath, *templatesDir, *strictUnknownKeys, *placeholderPolicy)
 		results = append(results, result)
 		if !result.Valid {
 			hasErrors = true
@@ -165,7 +172,7 @@ type validateResult struct {
 // fit_report is intentionally disabled on this MCP call: the CLI surfaces fit
 // findings on a separate stderr path (gated by --fit-report). Promoting them
 // into Warnings/Errors here would duplicate output.
-func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) validateResult {
+func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool, placeholderPolicy string) validateResult {
 	result := validateResult{
 		File:     filePath,
 		Valid:    true,
@@ -198,7 +205,7 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) val
 
 	mc := cliMCPConfig(templatesDir, "")
 	mcpResult, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(
-		mcpHumanValidateArgs(presentation, strictUnknownKeys),
+		mcpHumanValidateArgs(presentation, strictUnknownKeys, placeholderPolicy),
 	))
 	if err != nil {
 		result.Valid = false
@@ -218,10 +225,11 @@ func validateJSONFile(filePath, templatesDir string, strictUnknownKeys bool) val
 // fit_report is disabled because the CLI surfaces fit findings on a separate
 // stderr path gated by --fit-report; promoting them into Warnings/Errors here
 // would duplicate output.
-func mcpHumanValidateArgs(presentation any, strictUnknownKeys bool) map[string]any {
+func mcpHumanValidateArgs(presentation any, strictUnknownKeys bool, placeholderPolicy string) map[string]any {
 	return map[string]any{
 		"presentation":        presentation,
 		"strict_unknown_keys": strictUnknownKeys,
+		"placeholder_policy":  placeholderPolicy,
 		"fit_report":          false,
 	}
 }
@@ -375,7 +383,7 @@ func legacyFindingCode(code string) string {
 // per line. For --format=json each file's response is pretty-printed; when
 // multiple files are validated, their pretty-printed objects are concatenated
 // (matching the prior --format=json behavior).
-func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, outputPath string) error {
+func runValidateMCPFormat(files []string, templatesDir string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, placeholderPolicy string, outputPath string) error {
 	mc := cliMCPConfig(templatesDir, "")
 	hasErrors := false
 
@@ -405,6 +413,7 @@ func runValidateMCPFormat(files []string, templatesDir string, fitReport, verbos
 			"fit_report":          fitReport,
 			"verbose_fit":         verboseFit,
 			"strict_unknown_keys": strictUnknownKeys,
+			"placeholder_policy":  placeholderPolicy,
 		}
 
 		result, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(args))

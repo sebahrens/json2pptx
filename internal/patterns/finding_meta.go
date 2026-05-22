@@ -702,6 +702,19 @@ var findingMetaRegistry = map[string]FindingMeta{
 
 	// ---- String-literal codes (not in errors.go const block) ----
 
+	"unresolved_placeholder": {
+		Code:        "unresolved_placeholder",
+		Summary:     "A user-visible string still holds the __FILL__ skeleton placeholder.",
+		Severity:    "review",
+		WhenEmitted: "validate_input / generate_presentation scan the deck and find a plan_deck skeleton token (__FILL__) that was never replaced with real content. Warning by default; an error when placeholder_policy=strict.",
+		RemediationSteps: []string{
+			"Replace the __FILL__ token at the reported path with the slide's real content.",
+			"plan_deck skeletons are draft scaffolding — overwrite every __FILL__ before publishable generation.",
+			"For publishable/gated output, pass placeholder_policy=strict so unresolved tokens block instead of warn.",
+		},
+		ExampleBefore: `{"placeholder_id":"title","type":"text","text_value":"__FILL__"}`,
+		ExampleAfter:  `{"placeholder_id":"title","type":"text","text_value":"Q3 Revenue Growth"}`,
+	},
 	"contrast_autofixed": {
 		Code:        "contrast_autofixed",
 		Summary:     "Render-time text color was auto-replaced to meet WCAG AA contrast.",

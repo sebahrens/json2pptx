@@ -32,7 +32,7 @@ func TestValidateJSONFile_ShapeGridValid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, testTemplatesDir, false)
+	result := validateJSONFile(path, testTemplatesDir, false, "warn")
 	if !result.Valid {
 		t.Fatalf("expected valid, got errors: %v", result.Errors)
 	}
@@ -61,7 +61,7 @@ func TestValidateJSONFile_ShapeGridInvalidGeometry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, testTemplatesDir, false)
+	result := validateJSONFile(path, testTemplatesDir, false, "warn")
 	if result.Valid {
 		t.Fatal("expected invalid due to unknown geometry, but got valid")
 	}
@@ -94,7 +94,7 @@ func TestValidateJSONFile_ShapeGridEmptyRows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, testTemplatesDir, false)
+	result := validateJSONFile(path, testTemplatesDir, false, "warn")
 	if result.Valid {
 		t.Fatal("expected invalid due to empty rows, but got valid")
 	}
@@ -123,7 +123,7 @@ func TestValidateJSONFile_ShapeGridBadFillColor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, testTemplatesDir, false)
+	result := validateJSONFile(path, testTemplatesDir, false, "warn")
 	// Bad fill color is a warning, not an error — should still be valid.
 	if !result.Valid {
 		t.Fatalf("expected valid (bad fill is a warning), got errors: %v", result.Errors)
@@ -157,7 +157,7 @@ func TestValidateJSONFile_SlideTypeAlternativeToLayoutID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, testTemplatesDir, false)
+	result := validateJSONFile(path, testTemplatesDir, false, "warn")
 	if !result.Valid {
 		t.Fatalf("expected valid (slide_type is alternative to layout_id), got errors: %v", result.Errors)
 	}
@@ -184,7 +184,7 @@ func TestValidateJSONFile_MissingLayoutAndSlideType(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := validateJSONFile(path, testTemplatesDir, false)
+	result := validateJSONFile(path, testTemplatesDir, false, "warn")
 	if result.Valid {
 		t.Fatal("expected invalid when both layout_id and slide_type are missing")
 	}
@@ -257,7 +257,7 @@ func TestValidateJSONFile_MCPParity(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			result := validateJSONFile(path, testTemplatesDir, tc.strict)
+			result := validateJSONFile(path, testTemplatesDir, tc.strict, "warn")
 			cliCodes := make(map[string]bool)
 			for _, d := range result.Diagnostics {
 				cliCodes[d.Code] = true

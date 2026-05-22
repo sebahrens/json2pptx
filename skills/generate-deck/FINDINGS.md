@@ -100,6 +100,12 @@ Emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and 
 | `ICON_MISSING` | No icon source field is set on an `icon` node. `severity: error`. `details: {slide_index, remediation, example}`. Message includes a 4-line copy-paste example block, one per source variant. Agent action: pick the variant that fits the use case |
 | `ICON_FILL_IGNORED_ON_INLINE` | `icon.fill` is set together with `icon.svg_data`. The inline SVG is rendered verbatim, so `fill` has no effect. `severity: warning` (non-blocking). `details: {input_value, slide_index, remediation}`. Agent action: either pre-color the inline `svg_data` markup, or remove `svg_data` and use `name`/`path` with `fill` |
 
+### Content-policy codes — emitted by `validate_input` / `generate_presentation` over user-visible text
+
+| Code | Meaning | Severity | `fix.kind` |
+|------|---------|----------|------------|
+| `unresolved_placeholder` | A user-visible string still holds the `__FILL__` skeleton placeholder that `plan_deck` emits. The JSON-based scan covers placeholder text values, bullets, speaker notes, shape_grid cell text, table cells, chart/diagram labels, and pattern values. Controlled by the `placeholder_policy` parameter (`off`\|`warn`\|`strict`, default `warn`): `warn` reports each token with its JSON path while keeping `valid: true`; `strict` promotes them to errors that fail validation / refuse generation (the publishable/gated mode). `fix.params: {path, token, hint}`; `next_tool_call` re-runs `validate_input`. Agent action: replace every `__FILL__` with real content before publishable generation | `warning` (strict: `error`) | `replace_placeholder` |
+
 ### Action semantics (shared with chart codes)
 
 - `refuse` — with `strict_fit: "strict"`, generation is blocked and MCP returns `IsError=true`; with `warn`, emits finding only

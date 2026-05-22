@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.51.0 (2026-05-22)
+
+### Added
+
+- **`placeholder_policy` parameter + `unresolved_placeholder` finding.**
+  `plan_deck` skeletons carry `__FILL__` tokens for agent-supplied content. They
+  remain structurally valid (`__FILL__` is a non-empty string), so previously an
+  agent could generate a publishable deck with leftover tokens and get no
+  corrective finding. Both `validate_input` and `generate_presentation` now scan
+  every user-visible string (placeholder text, bullets, speaker notes, shape_grid
+  cell text, table cells, chart/diagram labels, pattern values) for the token via
+  the shared `internal/policy/placeholder` scanner:
+  - New `placeholder_policy` parameter (`off` | `warn` | `strict`, default
+    `warn`) on `generate_presentation` and `validate_input`; CLI `validate` gains
+    `--placeholder-policy`. `warn` reports each token with its JSON path while
+    keeping `valid: true`; `strict` promotes them to errors that fail validation /
+    refuse generation (the publishable/gated mode); `off` skips the scan.
+  - New finding code `unresolved_placeholder` (category `POLICY`, `fix.kind:
+    replace_placeholder`), documented in `docs/FIT_FINDINGS.md` and the
+    describe-finding registry. Preflight (`generate -preflight`) emits it at
+    warning severity in its `POLICY` stage.
+  - `get_capabilities.features.placeholder_policy` advertises the ladder.
+
+  These are additive input params and a new finding code; they do not change the
+  MCP tool-name set, PresentationInput shape, or `Fix.Kind` repair vocabulary, so
+  the schema fingerprint is unchanged. `schema_version` advances to 4.51.0 to mark
+  the new surface. (bd `go-slide-creator-737h`.)
+
 ## 4.50.0 (2026-05-21)
 
 ### Added

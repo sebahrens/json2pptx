@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/emoji"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -161,9 +162,13 @@ func runPreflightCore(inputData []byte, opts preflightOptions) diagnostics.Findi
 	}
 	acc.add(preflightStageInput, requiredTopLevelDiags(input)...)
 
-	// STAGE 2: POLICY — design-mode constraints and the no-emoji content policy.
+	// STAGE 2: POLICY — design-mode constraints, the no-emoji content policy, and
+	// unresolved skeleton placeholders. Placeholder findings are advisory here
+	// (warn) so the full static-check report still surfaces them without the
+	// preflight refusing — strict gating lives on generate_presentation.
 	acc.add(preflightStagePolicy, designModeDiagnostics(validateDesignMode(input))...)
 	acc.add(preflightStagePolicy, noEmojiDiagnostics(emoji.ValidateNoEmojiInText(input))...)
+	acc.add(preflightStagePolicy, placeholderDiagnostics(placeholder.Scan(input), false)...)
 
 	// Fail-fast: a deck missing a template (or slides) cannot resolve a
 	// template or validate layouts, so stop after INPUT/POLICY. Policy findings

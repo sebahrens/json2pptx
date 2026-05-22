@@ -87,6 +87,16 @@ func TestMCPGetCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("features has placeholder_policy ladder", func(t *testing.T) {
+		resp := getCapabilitiesResult(t)
+		if len(resp.Features.PlaceholderPolicy) != 3 {
+			t.Errorf("expected 3 placeholder_policy levels, got %d", len(resp.Features.PlaceholderPolicy))
+		}
+		if _, ok := resp.Features.FeatureVersions["placeholder_policy"]; !ok {
+			t.Error("feature_versions should include placeholder_policy")
+		}
+	})
+
 	t.Run("vocabularies are populated", func(t *testing.T) {
 		resp := getCapabilitiesResult(t)
 		v := resp.Vocabularies

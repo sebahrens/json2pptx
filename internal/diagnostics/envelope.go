@@ -493,6 +493,10 @@ var classifyMap = func() map[string]Namespace {
 		CodeTemplateSectionNumberNaming)
 	add(NamespaceGrid, CodePatternError)
 	add(NamespaceFit, CodeStrictFit)
+	// Content-policy string-literal code (not declared in codes.go). It must map
+	// explicitly: a "placeholder" substring heuristic would misroute the FIT/INPUT
+	// codes placeholder_overflow / placeholder_not_found / placeholder_remapped.
+	add(NamespacePolicy, "unresolved_placeholder")
 	add(NamespaceRender,
 		CodeGenerationFailed, CodeReadFailed, CodeRenderFailed, CodeLibreOfficeUnavailable,
 		CodeImageMagickUnavailable, CodeOutputDir, CodeValidationFailed,

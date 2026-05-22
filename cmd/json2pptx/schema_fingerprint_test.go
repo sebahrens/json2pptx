@@ -39,6 +39,10 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// response block (and flipped list_templates writes_files to true) — input
 	// params / response fields / a classification flag only, not tool names or
 	// PresentationInput/Fix.Kind surfaces, so the hash is again unchanged.
+	// 4.51.0 added the `placeholder_policy` input param (validate_input /
+	// generate_presentation) + the `unresolved_placeholder` POLICY finding code —
+	// an input param and a finding code only, not tool names, PresentationInput
+	// fields, or the Fix.Kind vocabulary, so the hash is again unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "968385126256b966"
 

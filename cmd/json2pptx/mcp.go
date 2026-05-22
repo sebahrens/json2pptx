@@ -101,6 +101,11 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 			mcp.Enum("off", "warn", "strict"),
 			mcp.DefaultString("strict"),
 		),
+		mcp.WithString("placeholder_policy",
+			mcp.Description("Unresolved skeleton-placeholder policy for the __FILL__ tokens plan_deck skeletons carry: off (skip the scan), warn (default; report each remaining __FILL__ token with its JSON path as a warning), or strict (refuse generation until every token is replaced — set this for publishable/gated output)."),
+			mcp.Enum("off", "warn", "strict"),
+			mcp.DefaultString("warn"),
+		),
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory."),
 		),
@@ -181,6 +186,11 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 		),
 		mcp.WithBoolean("strict_unknown_keys",
 			mcp.Description("When true, unknown JSON keys are errors that block validation. When false (default), unknown keys are reported as warnings."),
+		),
+		mcp.WithString("placeholder_policy",
+			mcp.Description("Unresolved skeleton-placeholder policy for the __FILL__ tokens plan_deck skeletons carry: off (skip the scan), warn (default; report each remaining __FILL__ token with its JSON path), or strict (treat unresolved tokens as validation errors — use to gate publishable output)."),
+			mcp.Enum("off", "warn", "strict"),
+			mcp.DefaultString("warn"),
 		),
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths during pre-flight (image_value.path, background.image, shape_grid image/icon paths). Same contract as generate_presentation: must be absolute and exist. Omit only if every asset reference is absolute or a URL."),
@@ -276,6 +286,14 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Authors must use bundled SVG icons (see svggen/icons) or user-provided icons.
 	if emojiViolations := emoji.ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
+	}
+
+	// Unresolved skeleton placeholders (__FILL__) — warnings by default so the
+	// agent sees which fields still need real content; placeholder_policy=strict
+	// refuses generation (publishable/gated output) until every token is
+	// replaced. plan_deck skeletons are draft scaffolding, not finished decks.
+	if phDiags, _ := scanPlaceholderDiagnostics(&input, placeholderPolicyFromRequest(request)); len(phDiags) > 0 {
+		boundaryDiags = append(boundaryDiags, phDiags...)
 	}
 
 	// Fail fast if any boundary diagnostic is an error.
@@ -861,6 +879,14 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
 	if emojiViolations := emoji.ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
 		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
+	}
+
+	// Unresolved skeleton placeholders (__FILL__) — reported with JSON paths so
+	// agents know which fields still need real content. Warnings by default
+	// (validate_input surfaces them without failing); placeholder_policy=strict
+	// promotes them to errors for a publishable/gated validation pass.
+	if phDiags, _ := scanPlaceholderDiagnostics(&input, placeholderPolicyFromRequest(request)); len(phDiags) > 0 {
+		boundaryDiags = append(boundaryDiags, phDiags...)
 	}
 
 	// URL preflight: download URL-based assets so agents see broken URLs

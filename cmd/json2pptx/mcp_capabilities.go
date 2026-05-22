@@ -177,6 +177,7 @@ type capabilitiesFeatures struct {
 	SupportsInlineMarkup []string                   `json:"supports_inline_markup"`
 	SupportsSpeakerNotes bool                       `json:"supports_speaker_notes"`
 	OutputValidation     []string                   `json:"output_validation"`
+	PlaceholderPolicy    []string                   `json:"placeholder_policy"`
 	Compose              composeFeatureCapabilities `json:"compose"`
 	// ComposeEnvelope is a top-level boolean signaling that recommend_visual
 	// can return Category=="compose" candidates and that ComposeInput is a
@@ -435,6 +436,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			SupportsInlineMarkup: []string{"b", "i", "u"},
 			SupportsSpeakerNotes: true,
 			OutputValidation:     []string{"off", "warn", "strict"},
+			PlaceholderPolicy:    []string{"off", "warn", "strict"},
 			Compose:              composeCapabilities(),
 			ComposeEnvelope:      true,
 			BaseDir: []string{
@@ -484,6 +486,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"supports_inline_markup":   "2.5.0",
 				"supports_speaker_notes":   "2.5.0",
 				"output_validation":        "4.6.0",
+				"placeholder_policy":       "4.51.0",
 				"compose":                  "4.10.0",
 				"compose_envelope":         "4.11.0",
 				"base_dir":                 "4.25.0",

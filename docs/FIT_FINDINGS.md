@@ -809,6 +809,39 @@ Emitted both pre-flight (from `preview_presentation_plan` / `generate_presentati
 }
 ```
 
+### `unresolved_placeholder`
+
+**Action:** `review` (warning by default; `refuse`/error under `placeholder_policy: "strict"`)
+**Category:** `POLICY`
+**Fix kind:** `replace_placeholder`
+
+A user-visible string still holds the `__FILL__` skeleton placeholder that `plan_deck` emits for agent-supplied content. Skeletons are draft scaffolding: `__FILL__` is a non-empty string, so the deck stays structurally valid (`valid: true`), but a finished deck must not ship the token. The scan is JSON-based (marshal + recursive string walk, mirroring the no-emoji policy; implemented in `internal/policy/placeholder`), so it covers placeholder text values, bullets, speaker notes, shape_grid cell text, table cells, chart/diagram labels, and pattern values in one pass.
+
+Controlled by the `placeholder_policy` parameter on `validate_input` and `generate_presentation` (CLI: `--placeholder-policy` on `validate`):
+
+- `warn` (default) — report each token with its JSON path as a warning; validation/generation still succeeds.
+- `strict` — promote unresolved tokens to errors that fail validation and refuse generation. Use for publishable/gated output.
+- `off` — skip the scan entirely.
+
+Preflight (`generate -preflight`) always runs the scan at warning severity in its `POLICY` stage.
+
+```json
+{
+  "code": "unresolved_placeholder",
+  "path": "slides[0].content[0].text_value",
+  "severity": "warning",
+  "message": "slides[0].content[0].text_value still holds the unresolved skeleton placeholder \"__FILL__\" — replace it with real content before publishable generation (pass placeholder_policy=strict to block on it)",
+  "fix": {
+    "kind": "replace_placeholder",
+    "params": {
+      "path": "slides[0].content[0].text_value",
+      "token": "__FILL__",
+      "hint": "overwrite the __FILL__ token with the slide's real content — plan_deck skeletons are scaffolding, not finished text"
+    }
+  }
+}
+```
+
 ## Scope Rules
 
 Fit findings are scoped to **JSON-authored content only**. Content inherited from template layouts or masters is never checked.
