@@ -720,11 +720,13 @@ func TestCheckShapeGridStructural_PreflightDiagramNarrow(t *testing.T) {
 
 // TestCheckShapeGridStructural_PreflightDiagramAspectMismatch verifies that
 // the preflight structural check emits diagram_aspect_mismatch when a grid
-// cell's aspect differs from the diagram's rendered SVG aspect by more than
-// 25% (default svggen aspect is 4:3 unless DiagramSpec.Width/Height override).
+// cell's aspect differs from a diagram's EXPLICIT 4:3 dimensions by more than
+// 25%. Explicit dims pin the rendered aspect, so the mismatch is real; unset
+// dims adapt to the cell and are covered by the *NoDiagramAspectMismatchForUnset
+// regression below.
 func TestCheckShapeGridStructural_PreflightDiagramAspectMismatch(t *testing.T) {
 	// Grid has 4 narrow columns; the diagram cell occupies one column, giving
-	// a tall narrow cell aspect that is well below the SVG's default 4:3.
+	// a tall narrow cell aspect that is well below the explicit 4:3 aspect.
 	grid := &ShapeGridInput{
 		Columns: json.RawMessage(`4`),
 		Rows: []GridRowInput{
@@ -732,7 +734,9 @@ func TestCheckShapeGridStructural_PreflightDiagramAspectMismatch(t *testing.T) {
 				Height: 100,
 				Cells: []*GridCellInput{
 					{Diagram: &types.DiagramSpec{
-						Type: "bar_chart",
+						Type:   "bar_chart",
+						Width:  800,
+						Height: 600,
 						Data: map[string]any{
 							"categories": []any{"A", "B"},
 							"series":     []any{map[string]any{"name": "S", "values": []any{1.0, 2.0}}},
@@ -823,6 +827,52 @@ func TestCheckShapeGridStructural_NoDiagramAspectMismatchWhenAligned(t *testing.
 	for _, f := range findings {
 		if f.Code == "diagram_aspect_mismatch" {
 			t.Errorf("should not emit diagram_aspect_mismatch for aligned aspect; got finding: %s", f.Message)
+		}
+	}
+}
+
+// TestCheckShapeGridStructural_NoDiagramAspectMismatchForUnsetSpec verifies the
+// preflight check does NOT emit diagram_aspect_mismatch for a diagram with no
+// explicit dimensions, even in an extreme cell: the renderer derives the size
+// from the cell, so the rendered SVG adopts the cell aspect. This guards against
+// the stale 800x600 finding that previously fired for adapting grid diagrams.
+func TestCheckShapeGridStructural_NoDiagramAspectMismatchForUnsetSpec(t *testing.T) {
+	// 4 narrow columns -> a tall narrow cell that would have flagged against the
+	// old 4:3 default.
+	grid := &ShapeGridInput{
+		Columns: json.RawMessage(`4`),
+		Rows: []GridRowInput{
+			{
+				Height: 100,
+				Cells: []*GridCellInput{
+					{Diagram: &types.DiagramSpec{
+						Type: "bar_chart",
+						Data: map[string]any{
+							"categories": []any{"A", "B"},
+							"series":     []any{map[string]any{"name": "S", "values": []any{1.0, 2.0}}},
+						},
+					}},
+					nil,
+					nil,
+					nil,
+				},
+			},
+		},
+	}
+
+	slideWidth := int64(12192000)
+	slideHeight := int64(6858000)
+	layout := &types.LayoutMetadata{
+		ID: "blank",
+		Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 457200, Y: 1600200, Width: 11277600, Height: 4800600}},
+		},
+	}
+
+	findings := checkShapeGridStructural(grid, 0, slideWidth, slideHeight, layout, GridGeometry{}, false, "")
+	for _, f := range findings {
+		if f.Code == "diagram_aspect_mismatch" {
+			t.Errorf("should not emit diagram_aspect_mismatch for unset spec; got finding: %s", f.Message)
 		}
 	}
 }

@@ -543,13 +543,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeDiagramAspectMismatch: {
 		Code:        ErrCodeDiagramAspectMismatch,
-		Summary:     "A diagram cell's aspect differs from the rendered SVG aspect by more than 25%.",
+		Summary:     "A diagram with explicit width and height has a (post-fit) cell aspect that differs from those pinned dimensions by more than 25%.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight or render-time finds a chart-typed diagram whose cell aspect ratio diverges from the SVG's natural aspect by >25%.",
+		WhenEmitted: "Pre-flight or render-time finds a diagram with BOTH explicit diagram.width and diagram.height whose post-fit cell aspect diverges from that pinned aspect by >25%. Unset or single-axis (width-only / height-only) diagrams adapt to the cell aspect and are not flagged (natural-aspect types are covered by diagram_aspect_conflict).",
 		RemediationSteps: []string{
-			"Reshape the cell to match the SVG aspect ratio (apply repair_slide(kind=reshape_grid)).",
+			"Reshape the cell to match the diagram's pinned aspect ratio (apply repair_slide(kind=reshape_grid)).",
 			"Or set cell.fit to 'contain' / 'fit-width' / 'fit-height'.",
-			"Or supply explicit diagram.width / diagram.height matching the cell.",
+			"Or change the explicit diagram.width / diagram.height to match the cell.",
 		},
 		RelatedCodes: []string{ErrCodeDiagramAspectConflict, ErrCodeGridDiagramNarrow},
 	},

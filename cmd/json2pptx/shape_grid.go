@@ -714,21 +714,21 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 }
 
 // collectDiagramCellFindings emits render-time fit findings for a resolved
-// diagram cell: narrow-cell legibility and cell/SVG aspect mismatch. The
-// narrow-cell check uses the post-fit Bounds.CX (matching the actual rendered
-// width), while the aspect-mismatch check uses CellBounds (the authoritative
-// grid allocation) so the finding reflects the original cell aspect, not the
-// post-FitMode adjustment.
+// diagram cell: narrow-cell legibility and cell/SVG aspect mismatch/conflict.
+// All checks use the post-fit Bounds — the frame the diagram is sized into and
+// placed at by generateDiagramCellInserts — so the findings reflect what is
+// actually rendered (including any cell.fit adjustment) rather than the
+// pre-fit grid allocation.
 func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []patterns.FitFinding {
 	path := slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram")
 	var findings []patterns.FitFinding
 	if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path); f != nil {
 		findings = append(findings, *f)
 	}
-	if f := generator.CheckDiagramAspectMismatchFinding(cell.DiagramSpec, cell.CellBounds.CX, cell.CellBounds.CY, path); f != nil {
+	if f := generator.CheckDiagramAspectMismatchFinding(cell.DiagramSpec, cell.Bounds.CX, cell.Bounds.CY, path); f != nil {
 		findings = append(findings, *f)
 	}
-	if f := generator.CheckDiagramAspectConflictFinding(cell.DiagramSpec, cell.CellBounds.CX, cell.CellBounds.CY, path); f != nil {
+	if f := generator.CheckDiagramAspectConflictFinding(cell.DiagramSpec, cell.Bounds.CX, cell.Bounds.CY, path); f != nil {
 		findings = append(findings, *f)
 	}
 	return findings
@@ -980,19 +980,20 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		}
 	}
 
-	// Forward cell bounds into svggen's OutputSpec so the rendered SVG matches
-	// the target cell's aspect ratio. Without this, grid-cell diagrams default
-	// to 800x600 and silently letterbox inside non-4:3 cells. The placeholder
-	// path uses the same helper (see media.go processDiagramContent).
-	if diagramSpec.Width == 0 || diagramSpec.Height == 0 {
-		cellBox := types.BoundingBox{
-			X:      cell.Bounds.X,
-			Y:      cell.Bounds.Y,
-			Width:  cell.Bounds.CX,
-			Height: cell.Bounds.CY,
-		}
-		diagramSpec.Width, diagramSpec.Height = generator.GetOptimalRenderDimensions(diagramSpec, cellBox)
+	// Resolve the effective render dimensions once via the shared resolver so the
+	// rendered SVG matches the post-fit cell aspect and the aspect/fit findings
+	// (which resolve the same way against the same Bounds) agree with what is
+	// drawn. Without this, grid-cell diagrams default to 800x600 and silently
+	// letterbox inside non-4:3 cells. Explicit dims are preserved verbatim; a
+	// single author-set dimension keeps that axis and derives the other from the
+	// cell aspect. The placeholder path uses the same resolver (see media.go).
+	cellBox := types.BoundingBox{
+		X:      cell.Bounds.X,
+		Y:      cell.Bounds.Y,
+		Width:  cell.Bounds.CX,
+		Height: cell.Bounds.CY,
 	}
+	diagramSpec.Width, diagramSpec.Height, _ = generator.ResolveDiagramRenderDimensions(diagramSpec, cellBox)
 
 	result, err := generator.RenderDiagramSpecWithMetadata(diagramSpec, themeColors, 0, true)
 	if err != nil {

@@ -318,7 +318,9 @@ A complex diagram (org_chart, fishbone, swot, heatmap, etc.) is placed in a grid
 **Fix kind:** `reshape_grid`
 **Emitted at:** preflight + render time
 
-A diagram cell's aspect ratio differs from the rendered SVG's aspect ratio by more than 25% (the default svggen output is 4:3 — 800×600 — unless `DiagramSpec.Width`/`Height` overrides it). At that point, the chart is either stretched (when svggen ignores aspect) or letterboxed inside the cell, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or pass explicit `diagram.width` / `diagram.height` matched to the cell.
+A diagram with **both** explicit `DiagramSpec.Width` and `Height` has a cell aspect ratio that differs from those pinned dimensions by more than 25%. Because the explicit dimensions fix the rendered SVG aspect regardless of the cell, the chart is either stretched or letterboxed inside the cell, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or change the explicit `diagram.width` / `diagram.height` to match the cell.
+
+This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the cell bounds (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the cell aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) that ignore unset dimensions are covered by [`diagram_aspect_conflict`](#diagram_aspect_conflict) instead. The cell aspect used here is the **post-fit** bounds (after any `cell.fit` adjustment), matching what render emits.
 
 ```json
 {
@@ -332,6 +334,8 @@ A diagram cell's aspect ratio differs from the rendered SVG's aspect ratio by mo
   "overflow_ratio": 0.375
 }
 ```
+
+> The example above assumes the `bar_chart` carries explicit `diagram.width: 800` / `diagram.height: 600`.
 
 ### `diagram_aspect_conflict`
 

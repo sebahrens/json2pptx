@@ -539,8 +539,11 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 				findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
 
 				if cell.Diagram != nil {
+					// Use the post-fit Bounds (the frame the diagram is sized
+					// into at render) so preflight aspect/legibility findings
+					// match the render-time findings in collectDiagramCellFindings.
 					findings = append(findings,
-						checkGridDiagramPreflight(cell.Diagram, slideIdx, ri, ci, rc.CellBounds.CX, rc.CellBounds.CY)...)
+						checkGridDiagramPreflight(cell.Diagram, slideIdx, ri, ci, rc.Bounds.CX, rc.Bounds.CY)...)
 				}
 
 				cellIdx++

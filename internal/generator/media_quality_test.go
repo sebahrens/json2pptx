@@ -734,10 +734,11 @@ func TestCheckDiagramInNarrowBoundsFinding_NilForSimpleDiagram(t *testing.T) {
 }
 
 // TestCheckDiagramAspectMismatchFinding_FlagsTallCell verifies that a diagram
-// rendered at default 4:3 aspect (800x600) inside a tall narrow cell is
-// flagged with diagram_aspect_mismatch.
+// with EXPLICIT 4:3 dimensions (800x600) inside a tall narrow cell is flagged
+// with diagram_aspect_mismatch. Explicit dims pin the rendered aspect, so the
+// mismatch with the cell is real (unlike unset dims, which adapt to the cell).
 func TestCheckDiagramAspectMismatchFinding_FlagsTallCell(t *testing.T) {
-	spec := &types.DiagramSpec{Type: "bar_chart"}
+	spec := &types.DiagramSpec{Type: "bar_chart", Width: 800, Height: 600}
 	// Cell aspect ≈ 0.5 vs SVG aspect 4:3 ≈ 1.333 — deviation ~62% > 25%.
 	cellW := int64(3000000)
 	cellH := int64(6000000)
@@ -745,7 +746,7 @@ func TestCheckDiagramAspectMismatchFinding_FlagsTallCell(t *testing.T) {
 
 	f := CheckDiagramAspectMismatchFinding(spec, cellW, cellH, path)
 	if f == nil {
-		t.Fatal("expected finding for tall cell vs 4:3 SVG, got nil")
+		t.Fatal("expected finding for tall cell vs explicit 4:3 SVG, got nil")
 	}
 	if f.Code != "diagram_aspect_mismatch" {
 		t.Errorf("Code = %q, want %q", f.Code, "diagram_aspect_mismatch")
@@ -767,16 +768,41 @@ func TestCheckDiagramAspectMismatchFinding_FlagsTallCell(t *testing.T) {
 	}
 }
 
-// TestCheckDiagramAspectMismatchFinding_NilForMatchingAspect verifies no
-// finding when cell aspect is close to the rendered SVG aspect.
-func TestCheckDiagramAspectMismatchFinding_NilForMatchingAspect(t *testing.T) {
+// TestCheckDiagramAspectMismatchFinding_NilForUnsetSpec verifies that an unset
+// diagram spec never triggers the mismatch finding: the renderer derives the
+// dimensions from the cell, so the SVG adopts the cell aspect regardless of how
+// extreme the cell is. This is the regression for the stale 800x600 finding
+// that fired for grid diagrams that actually render at the cell aspect.
+func TestCheckDiagramAspectMismatchFinding_NilForUnsetSpec(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "bar_chart"}
-	// Cell aspect 4:3 — within 25% of default SVG aspect (also 4:3).
-	cellW := int64(5333333)
-	cellH := int64(4000000)
-	f := CheckDiagramAspectMismatchFinding(spec, cellW, cellH, "/slides/0/shape_grid/rows/0/cells/0/diagram")
-	if f != nil {
-		t.Errorf("expected nil for matching aspect, got: %+v", f)
+	path := "/slides/0/shape_grid/rows/0/cells/0/diagram"
+
+	// A tall narrow cell that would have flagged against the 4:3 default.
+	if f := CheckDiagramAspectMismatchFinding(spec, 3000000, 6000000, path); f != nil {
+		t.Errorf("expected nil for unset spec in tall cell (adopts cell aspect), got: %+v", f)
+	}
+	// A wide shallow cell — same expectation.
+	if f := CheckDiagramAspectMismatchFinding(spec, 9000000, 1500000, path); f != nil {
+		t.Errorf("expected nil for unset spec in wide cell (adopts cell aspect), got: %+v", f)
+	}
+	// A 4:3 cell — within range either way.
+	if f := CheckDiagramAspectMismatchFinding(spec, 5333333, 4000000, path); f != nil {
+		t.Errorf("expected nil for unset spec in 4:3 cell, got: %+v", f)
+	}
+}
+
+// TestCheckDiagramAspectMismatchFinding_NilForPartialSpec verifies that a spec
+// with only one explicit dimension adapts to the cell aspect (the resolver
+// derives the other axis from the cell), so no mismatch is reported.
+func TestCheckDiagramAspectMismatchFinding_NilForPartialSpec(t *testing.T) {
+	path := "p"
+	widthOnly := &types.DiagramSpec{Type: "bar_chart", Width: 600}
+	if f := CheckDiagramAspectMismatchFinding(widthOnly, 3000000, 6000000, path); f != nil {
+		t.Errorf("expected nil for width-only spec (adapts to cell), got: %+v", f)
+	}
+	heightOnly := &types.DiagramSpec{Type: "bar_chart", Height: 400}
+	if f := CheckDiagramAspectMismatchFinding(heightOnly, 9000000, 1500000, path); f != nil {
+		t.Errorf("expected nil for height-only spec (adapts to cell), got: %+v", f)
 	}
 }
 

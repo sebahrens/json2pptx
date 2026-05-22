@@ -4,6 +4,7 @@ package generator
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -49,45 +50,132 @@ const narrowPlaceholderThreshold int64 = 6096000 // 12192000 * 0.50
 // Simple diagrams (e.g., an org chart with 3 nodes) render fine at half-width.
 const complexityItemThreshold = 8
 
-// GetOptimalRenderDimensions determines the best rendering dimensions for a
-// diagram/chart based on placeholder size.
+// minRenderDimension is the floor (in points) for any derived diagram render
+// dimension, preserving the historical clamp so very small target bounds still
+// produce a legible raster.
+const minRenderDimension = 100
+
+// DiagramDimensionSource records how a diagram's effective render dimensions
+// were derived. Fit findings use it to tell apart an aspect the author pinned
+// (explicit) from one that adapts to the target bounds (everything else), so an
+// adapting diagram is never flagged for an aspect it will not actually render at.
+type DiagramDimensionSource string
+
+const (
+	// DiagramDimsExplicit: both Width and Height were author-set and are
+	// preserved verbatim; the rendered aspect is fixed regardless of bounds.
+	DiagramDimsExplicit DiagramDimensionSource = "explicit"
+	// DiagramDimsWidthOnly: Width was author-set; Height is derived from the
+	// target aspect so the diagram fills the bounds without letterboxing.
+	DiagramDimsWidthOnly DiagramDimensionSource = "width_only"
+	// DiagramDimsHeightOnly: Height was author-set; Width is derived from the
+	// target aspect.
+	DiagramDimsHeightOnly DiagramDimensionSource = "height_only"
+	// DiagramDimsBounds: neither dimension was set; both are derived from the
+	// target bounds, so the rendered aspect equals the bounds aspect.
+	DiagramDimsBounds DiagramDimensionSource = "bounds"
+	// DiagramDimsUnresolved: no explicit dimensions and no usable target bounds;
+	// callers should treat the diagram as unsized.
+	DiagramDimsUnresolved DiagramDimensionSource = "unresolved"
+)
+
+// ResolveDiagramRenderDimensions computes the effective width/height (in points)
+// the renderer will use for a diagram, given the spec's explicit dimensions and
+// the target bounds it will be placed in. It is the single source of truth
+// shared by the render paths (placeholder + grid cell) and the aspect/fit
+// findings, so a finding never disagrees with what is actually drawn.
 //
-// The SVG is rendered at the placeholder's point dimensions so that the SVG
-// viewBox matches the PPTX placeholder size exactly. This prevents LibreOffice
-// from scaling text incorrectly: LibreOffice scales SVG shapes proportionally
-// when fitting to a placeholder but does NOT scale text, causing ~1.8x oversized
-// text when the viewBox is larger than the placeholder (e.g., 1600px viewBox in
-// an 828pt placeholder). By matching dimensions, no scaling is needed.
+// The SVG is sized in points so its viewBox matches the PPTX placeholder/cell
+// exactly. This prevents LibreOffice from scaling text incorrectly: it scales
+// SVG shapes proportionally when fitting to a placeholder but does NOT scale
+// text, causing oversized text when the viewBox is larger than the frame. PNG
+// quality is maintained via the Scale factor independent of the SVG coordinate
+// space.
 //
-// PNG quality is maintained via the Scale factor (default 2.0×) which produces
-// high-resolution raster output independent of the SVG coordinate space.
+// Semantics for partial author intent (deliberately defined here so single-axis
+// sizing is no longer silently discarded):
+//   - both Width and Height set -> preserved verbatim (DiagramDimsExplicit)
+//   - Width only  -> Width preserved, Height = round(Width / targetAspect) (DiagramDimsWidthOnly)
+//   - Height only -> Height preserved, Width = round(Height * targetAspect) (DiagramDimsHeightOnly)
+//   - neither set -> both derived from bounds in points (DiagramDimsBounds)
 //
-// If the diagramSpec already has explicit dimensions set, they are preserved.
-func GetOptimalRenderDimensions(diagramSpec *types.DiagramSpec, placeholderBounds types.BoundingBox) (width, height int) {
-	// If explicit dimensions are set, use them
-	if diagramSpec.Width > 0 && diagramSpec.Height > 0 {
-		return diagramSpec.Width, diagramSpec.Height
+// targetAspect is the bounds aspect when bounds are positive, falling back to the
+// default chart aspect otherwise. Derived dimensions are clamped to
+// minRenderDimension. When neither dimension is set and bounds are non-positive,
+// the result is (0, 0, DiagramDimsUnresolved).
+func ResolveDiagramRenderDimensions(diagramSpec *types.DiagramSpec, bounds types.BoundingBox) (width, height int, source DiagramDimensionSource) {
+	if diagramSpec == nil {
+		return 0, 0, DiagramDimsUnresolved
+	}
+	hasW := diagramSpec.Width > 0
+	hasH := diagramSpec.Height > 0
+
+	// Both explicit: preserve author intent verbatim.
+	if hasW && hasH {
+		return diagramSpec.Width, diagramSpec.Height, DiagramDimsExplicit
 	}
 
-	// If no placeholder bounds, return zeros (caller should handle)
-	if placeholderBounds.Width <= 0 || placeholderBounds.Height <= 0 {
-		return 0, 0
+	boundsValid := bounds.Width > 0 && bounds.Height > 0
+	aspect := targetRenderAspect(bounds, boundsValid)
+
+	switch {
+	case hasW:
+		// Width-only: keep width, derive height from the target aspect.
+		h := int(math.Round(float64(diagramSpec.Width) / aspect))
+		if h < minRenderDimension {
+			h = minRenderDimension
+		}
+		return diagramSpec.Width, h, DiagramDimsWidthOnly
+	case hasH:
+		// Height-only: keep height, derive width from the target aspect.
+		w := int(math.Round(float64(diagramSpec.Height) * aspect))
+		if w < minRenderDimension {
+			w = minRenderDimension
+		}
+		return w, diagramSpec.Height, DiagramDimsHeightOnly
 	}
 
-	// Convert EMU placeholder dimensions to points. The SVG builder interprets
-	// its width/height as points (1pt = 0.3528mm), so using point dimensions
-	// makes the SVG viewBox match the placeholder size exactly.
+	// Neither dimension set: derive both from the target bounds.
+	if !boundsValid {
+		return 0, 0, DiagramDimsUnresolved
+	}
+	w, h := boundsToRenderPoints(bounds)
+	return w, h, DiagramDimsBounds
+}
+
+// targetRenderAspect returns the width/height aspect of the target bounds, or
+// the default chart aspect when bounds are unavailable.
+func targetRenderAspect(bounds types.BoundingBox, boundsValid bool) float64 {
+	if boundsValid {
+		return float64(bounds.Width) / float64(bounds.Height)
+	}
+	return float64(types.DefaultChartWidth) / float64(types.DefaultChartHeight)
+}
+
+// boundsToRenderPoints converts EMU bounds to point dimensions for the SVG
+// viewBox, clamped to minRenderDimension. The SVG builder interprets its
+// width/height as points (1pt = 0.3528mm), so point dimensions make the viewBox
+// match the placeholder/cell size exactly.
+func boundsToRenderPoints(bounds types.BoundingBox) (width, height int) {
 	const emuPerPoint = int64(types.EMUPerPoint) // 12700
-	w := int(placeholderBounds.Width / emuPerPoint)
-	h := int(placeholderBounds.Height / emuPerPoint)
+	w := int(bounds.Width / emuPerPoint)
+	h := int(bounds.Height / emuPerPoint)
+	if w < minRenderDimension {
+		w = minRenderDimension
+	}
+	if h < minRenderDimension {
+		h = minRenderDimension
+	}
+	return w, h
+}
 
-	// Clamp to reasonable minimums
-	if w < 100 {
-		w = 100
-	}
-	if h < 100 {
-		h = 100
-	}
+// GetOptimalRenderDimensions determines the best rendering dimensions for a
+// diagram/chart based on placeholder size. It is a thin wrapper over
+// ResolveDiagramRenderDimensions kept for callers that only need the
+// dimensions; see that function for the partial-dimension semantics and the
+// rationale for matching the SVG viewBox to the placeholder.
+func GetOptimalRenderDimensions(diagramSpec *types.DiagramSpec, placeholderBounds types.BoundingBox) (width, height int) {
+	w, h, _ := ResolveDiagramRenderDimensions(diagramSpec, placeholderBounds)
 	return w, h
 }
 
@@ -667,25 +755,28 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 const diagramAspectMismatchThreshold = 0.25
 
 // CheckDiagramAspectMismatchFinding compares a grid cell's aspect ratio against
-// the diagram's rendered SVG aspect ratio (from DiagramSpec.Width/Height, or
-// the default chart dimensions when unset). If the relative deviation exceeds
-// 25%, it returns a structured FitFinding so agents can either widen/shorten
-// the cell, switch cell.fit, or pass explicit DiagramSpec dimensions. Returns
-// nil when dimensions are non-positive or aspects align closely.
+// the diagram's effective rendered SVG aspect ratio. The effective dimensions
+// come from the shared ResolveDiagramRenderDimensions resolver against the cell
+// bounds, so the finding stays in lockstep with what is actually drawn: when the
+// spec omits a dimension the renderer derives it from the cell, the SVG adopts
+// the cell aspect, and no mismatch is reported. Only fully explicit
+// DiagramSpec.Width/Height pin an aspect that can diverge from the cell — those
+// are the sole trigger here. Partial or derived sizing that conflicts for
+// natural-aspect diagram types is covered by diagram_aspect_conflict instead. If
+// the relative deviation exceeds 25%, it returns a structured FitFinding so
+// agents can widen/shorten the cell, switch cell.fit, or change the explicit
+// dimensions. Returns nil when dimensions are non-positive or aspects align.
 func CheckDiagramAspectMismatchFinding(diagramSpec *types.DiagramSpec, cellWidthEMU, cellHeightEMU int64, path string) *patterns.FitFinding {
 	if diagramSpec == nil || cellWidthEMU <= 0 || cellHeightEMU <= 0 {
 		return nil
 	}
 
-	svgW := diagramSpec.Width
-	svgH := diagramSpec.Height
-	if svgW <= 0 {
-		svgW = types.DefaultChartWidth
-	}
-	if svgH <= 0 {
-		svgH = types.DefaultChartHeight
-	}
-	if svgW <= 0 || svgH <= 0 {
+	// Resolve the dimensions the renderer will use for this cell. Anything other
+	// than fully explicit dims adapts to the cell aspect (so any residual
+	// deviation is rounding/clamp noise, not a real letterbox); skip those.
+	cellBounds := types.BoundingBox{Width: cellWidthEMU, Height: cellHeightEMU}
+	svgW, svgH, source := ResolveDiagramRenderDimensions(diagramSpec, cellBounds)
+	if source != DiagramDimsExplicit || svgW <= 0 || svgH <= 0 {
 		return nil
 	}
 
