@@ -1196,6 +1196,41 @@ const outputValidationSchema = `{
       "required": ["ran", "valid"]
     }`
 
+// loopNextStateSchema documents the resumable per-pass state block returned by
+// auto_repair / make_deck (go-slide-creator-yope). Always present. completion
+// labels how the convergence loop terminated so a partial/degraded result is
+// never mistaken for a converged one; resume_token continues the session from
+// the saved post-repair deck without repeating completed passes.
+const loopNextStateSchema = `{
+      "type": "object",
+      "description": "Resumable per-pass state snapshot. Always present. Pass resume_token back as the resume_token argument to continue the convergence loop from the saved post-repair deck WITHOUT repeating completed passes; gate and max_passes may be overridden on that call.",
+      "properties": {
+        "completion":  {"type": "string", "enum": ["converged", "converged_degraded", "max_passes_exhausted", "no_progress", "render_incomplete"], "description": "How the loop terminated: 'converged' (gate met on complete evidence; not resumable), 'converged_degraded' (gate met on degraded/static-only evidence), 'max_passes_exhausted' (budget ran out with the gate unmet), 'no_progress' (a pass applied no repairs), or 'render_incomplete' (the backing render did not complete)."},
+        "resumable":   {"type": "boolean", "description": "True when calling the tool again with resume_token can make further progress (every status except a clean 'converged' run)."},
+        "resume_token":{"type": "string", "description": "Opaque handle to continue this session. Present whenever a checkpoint was stored (per-process, expires after 1 hour)."},
+        "next_action": {"type": "string", "description": "One-line suggested next move given completion."},
+        "passes_run":  {"type": "integer", "description": "Total passes run across the whole session (equals trace length)."},
+        "next_pass":   {"type": "integer", "description": "Global pass index a resume would start at. Present only when resumable."},
+        "max_passes":  {"type": "integer", "description": "Per-call pass budget that produced this result."},
+        "artifact_path": {"type": "string", "description": "On-disk PPTX written for this checkpoint (mirrors top-level path)."},
+        "remaining_findings": {
+          "type": "array",
+          "description": "Findings still open after the last pass, capped at 25. Empty on a converged run.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code":    {"type": "string"},
+              "path":    {"type": "string"},
+              "message": {"type": "string"},
+              "action":  {"type": "string"}
+            },
+            "required": ["code"]
+          }
+        }
+      },
+      "required": ["completion", "resumable", "next_action", "passes_run", "max_passes"]
+    }`
+
 var outputSchemaAutoRepair = json.RawMessage(`{
   "type": "object",
   "properties": {
@@ -1223,6 +1258,7 @@ var outputSchemaAutoRepair = json.RawMessage(`{
       "items": {"type": "string"}
     },
     "final_presentation": {"type": "object", "description": "The full repaired deck JSON after the convergence loop (same schema as generate_presentation's presentation input). Always present on success, including zero-repair runs. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without reconstructing state from the trace."},
+    "next_state": ` + loopNextStateSchema + `,
     "quality_mode": ` + visualQAQualityModeSchema + `,
     "visual_qa": ` + visualQAResultSchema + `,
     "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. gate_passed cannot be true on incomplete evidence unless allow_degraded_scoring was set, in which case render_evidence.degraded labels the result and evidence_complete stays false."},
@@ -1237,7 +1273,7 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — unmet gate criteria (incl. final output validation), incomplete evidence, and exemplar provenance. Present only when publishable=false. Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- make_deck ---
@@ -1290,6 +1326,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
       "required": ["template", "slide_budget", "slides"]
     },
     "final_presentation": {"type": "object", "description": "The full deck JSON the engine authored and repaired (same schema as generate_presentation's presentation input). Always present on success. Reflects any visual_qa repairs. Feed it straight back into validate_input / generate_presentation / repair_slide to continue editing without rebuilding it from the plan summary or trace."},
+    "next_state": ` + loopNextStateSchema + `,
     "quality_mode": ` + visualQAQualityModeSchema + `,
     "visual_qa": ` + visualQAResultSchema + `,
     "evidence_complete": {"type": "boolean", "description": "True only when the render pass that backed the score completed AND final structural output validation passed. Mirrors auto_repair.evidence_complete."},
@@ -1304,7 +1341,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — for make_deck this always includes the exemplar-content reason, plus any unmet gate criteria. Present only when publishable=false (always, for make_deck). Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
+  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- table_density_guide ---

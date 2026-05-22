@@ -21,6 +21,7 @@ func repairMC(t *testing.T) *mcpConfig {
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),
 		cache:        template.NewMemoryCache(24 * time.Hour),
+		loopSessions: newLoopSessionStore(loopSessionTTL),
 	}
 }
 

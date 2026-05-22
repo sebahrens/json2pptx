@@ -4,6 +4,39 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.56.0 (2026-05-22)
+
+### Added
+
+- **Resumable per-pass state on `auto_repair` and `make_deck`.** Both convergence
+  facades now return an always-present **`next_state`** block and accept an
+  optional **`resume_token`** argument, so an agent can inspect a partial result
+  and continue the loop from where it stopped instead of restarting from scratch.
+  - `next_state` =
+    `{completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]}`.
+    `completion` ∈ {`converged`, `converged_degraded`, `max_passes_exhausted`,
+    `no_progress`, `render_incomplete`} classifies how the loop terminated so a
+    partial/degraded result is never mistaken for a clean convergence;
+    `remaining_findings[]` (capped at 25) echoes the still-open findings.
+  - Passing `resume_token` reloads the saved post-repair deck, accumulated
+    `trace`, and content provenance from a per-process session (1-hour TTL) and
+    continues at `next_pass` with **continuous global pass numbering — completed
+    passes are never re-run**. On resume, `presentation` (auto_repair) / `outline`
+    (make_deck) are ignored; `gate` and `max_passes`/`max_repair_passes` may be
+    overridden; `base_dir`, `visual_qa`, `allow_degraded_scoring`, and
+    `output_filename` are inherited. make_deck preserves its `plan` across the
+    resume without re-planning. Unknown/expired tokens return
+    `RESUME_TOKEN_NOT_FOUND`; cross-tool tokens return `RESUME_TOKEN_MISMATCH`.
+  - `next_state` is added to both facade output schemas (always required);
+    `resume_token` is added as an input parameter. `presentation` (auto_repair)
+    and `outline` (make_deck) are no longer schema-`required` because a resume
+    call does not supply them — they remain required for a fresh run and are
+    enforced at the handler.
+
+  Backward-compatible: existing fresh-run calls are unchanged (they simply gain a
+  populated `next_state`). No new tools; `PresentationInput`/`Fix.Kind` surfaces
+  and the schema fingerprint are unaffected.
+
 ## 4.55.0 (2026-05-22)
 
 ### Added

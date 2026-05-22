@@ -95,6 +95,7 @@ func cliMCPConfig(templatesDir, outputDir string) *mcpConfig {
 		cfg:          config.DefaultConfig(),
 		cache:        template.NewMemoryCache(24 * time.Hour),
 		idempotency:  newIdempotencyCache(idempotencyCacheTTL),
+		loopSessions: newLoopSessionStore(loopSessionTTL),
 	}
 }
 

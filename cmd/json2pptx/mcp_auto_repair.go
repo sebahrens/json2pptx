@@ -143,6 +143,18 @@ type autoRepairOutput struct {
 	// evidence, and exemplar provenance. Empty iff Publishable is true. Superset
 	// of GateReasons (which stays gate-only for backwards compatibility).
 	BlockingReasons []string `json:"blocking_reasons,omitempty"`
+
+	// NextState is the resumable per-pass state snapshot (go-slide-creator-yope):
+	// completion status, a resume_token, the pass accounting, the remaining
+	// findings, and a suggested next action. Always present. Pass
+	// next_state.resume_token back as resume_token to continue the convergence
+	// loop from this deck state without repeating completed passes.
+	NextState *loopNextState `json:"next_state"`
+
+	// checkpoint carries the server-side resumable snapshot from
+	// runAutoRepairLoop to the handler, which finalizes the resume token and
+	// persists it. Unexported so it never serializes into the response.
+	checkpoint *loopCheckpoint `json:"-"`
 }
 
 // autoRepairOutputValidation summarizes the final pptx.ValidateOutputFile run on
@@ -211,15 +223,16 @@ Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loo
 - max_p1_findings (default 2): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
-Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
+Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
+
+Resumable per-pass state (next_state, always present): {completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]}. completion classifies how the loop stopped — "converged" (gate met on complete evidence; not resumable), "converged_degraded", "max_passes_exhausted", "no_progress", or "render_incomplete" — so a partial or degraded result is never mistaken for a converged one. When resumable is true, call auto_repair again with resume_token to continue from the saved post-repair deck WITHOUT repeating completed passes; gate and max_passes may be overridden on that call (e.g. relaxed bounds or a larger budget) while presentation is ignored. next_action is the suggested move; remaining_findings echoes the still-open findings (capped).
 
 Publishability is reported explicitly so a successful transport response is never mistaken for a publishable deck: publishable is true ONLY when the gate passed on complete evidence AND the content is caller-authored (auto_repair always reports content_status="author_supplied"). When publishable is false, blocking_reasons enumerates every cause; manual_review_required is its affirmative inverse. artifact_status distinguishes a structurally valid PPTX ("generated") from one written but failed validation ("generated_invalid"); validation_status is "passed" / "passed_degraded" / "failed".
 
 When gate_passed is false (max_passes exhausted), gate_reasons (and the superset blocking_reasons) list every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
 		mcp.WithRawOutputSchema(outputSchemaAutoRepair),
 		mcp.WithObject("presentation",
-			mcp.Required(),
-			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),
+			mcp.Description(`Full presentation definition. Same schema as generate_presentation. Required for a fresh run; ignored (and not needed) when resume_token is supplied.`),
 			mcp.Properties(map[string]any{
 				"template": map[string]any{"type": "string", "description": "Template name"},
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
@@ -259,6 +272,7 @@ When gate_passed is false (max_passes exhausted), gate_reasons (and the superset
 		mcp.WithBoolean("allow_degraded_scoring",
 			mcp.Description("Permit the loop to proceed when a per-pass render fails (slide conversion, temp-dir creation, or generation). Default false: a render failure emits a blocking RENDER_EVIDENCE_INCOMPLETE finding (refuse action) so gate_passed cannot be true on static-only evidence. Set true to converge on static analysis alone — render_evidence.degraded is then set and evidence_complete stays false even when gate_passed is true. Final structural output validation still runs and still blocks regardless of this flag."),
 		),
+		resumeTokenToolParam(),
 		idempotencyKeyToolParam(),
 	)
 }
@@ -279,6 +293,22 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		return idempotencyConflictResult("auto_repair", idemKey, idemFingerprint, original), nil
 	case idempotencyMiss:
 		// fall through and repair.
+	}
+
+	// Resume path: continue a saved convergence session from where it stopped.
+	// The deck, trace, and provenance come from the checkpoint; presentation is
+	// ignored. gate / max_passes / output_filename may be overridden on this
+	// call, the rest inherited.
+	if tok := resumeToken(request); tok != "" {
+		cp, errResult := mc.loadResumeCheckpoint("auto_repair", tok)
+		if errResult != nil {
+			return errResult, nil
+		}
+		output, errResult := mc.runLoopResume(ctx, request, cp)
+		if errResult != nil {
+			return errResult, nil
+		}
+		return mc.respondAutoRepair(ctx, output, idemKey, idemFingerprint)
 	}
 
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
@@ -331,11 +361,61 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		outputFilename = sanitizeOutputFilename(reqFilename)
 	}
 
-	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded, contentProvenanceAuthorSupplied)
+	output, errResult := mc.runAutoRepairLoop(ctx, &input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded, contentProvenanceAuthorSupplied, "auto_repair", nil)
 	if errResult != nil {
 		return errResult, nil
 	}
 
+	return mc.respondAutoRepair(ctx, output, idemKey, idemFingerprint)
+}
+
+// runLoopResume continues a saved convergence session (auto_repair or make_deck)
+// from its checkpoint. gate, max_passes (or max_repair_passes for make_deck),
+// and output_filename may be overridden on the resume call; the deck, base_dir,
+// visual_qa, allow_degraded_scoring, and provenance are inherited from the
+// checkpoint so the resumed loop behaves like the original. cp.Tool — already
+// validated to match the calling tool — labels the new checkpoint.
+func (mc *mcpConfig) runLoopResume(ctx context.Context, request mcp.CallToolRequest, cp *loopCheckpoint) (*autoRepairOutput, *mcp.CallToolResult) {
+	gate := extractAutoRepairGateOver(request, cp.Gate)
+	maxPasses := extractResumeMaxPasses(request, cp.MaxPasses)
+	outputFilename := cp.OutputFilename
+	if reqFilename, err := request.RequireString("output_filename"); err == nil && reqFilename != "" {
+		outputFilename = sanitizeOutputFilename(reqFilename)
+	}
+	// Deep-copy the checkpoint's deck: runAutoRepairLoop mutates the input in
+	// place (resolution + repairs), so resuming the live cp.Input would corrupt
+	// the stored snapshot and make a second resume of the same token start from a
+	// half-repaired deck. The copy keeps every resume of a token deterministic.
+	deck, errResult := cloneResumeDeck(cp.Input)
+	if errResult != nil {
+		return nil, errResult
+	}
+	resume := &loopResumeState{StartPass: cp.NextPass, Trace: cp.Trace}
+	return mc.runAutoRepairLoop(ctx, deck, cp.BaseDir, gate, maxPasses, cp.VQA, outputFilename, cp.AllowDegraded, cp.Provenance, cp.Tool, resume)
+}
+
+// cloneResumeDeck returns an independent copy of a checkpoint's deck via a JSON
+// round-trip, so the convergence loop can mutate it without touching the stored
+// checkpoint. Returns an INTERNAL error result on the (unexpected) marshal
+// failure rather than aliasing the stored deck.
+func cloneResumeDeck(src *PresentationInput) (*PresentationInput, *mcp.CallToolResult) {
+	data, err := json.Marshal(src)
+	if err != nil {
+		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to clone resume deck: %v", err))
+	}
+	var dst PresentationInput
+	if err := json.Unmarshal(data, &dst); err != nil {
+		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to clone resume deck: %v", err))
+	}
+	return &dst, nil
+}
+
+// respondAutoRepair finalizes an auto_repair output: it persists the resumable
+// checkpoint (minting the resume token echoed in next_state), caches the result
+// for idempotent replay, and wraps it as an MCP success response. Shared by the
+// fresh and resume paths so both attach the resume token before caching.
+func (mc *mcpConfig) respondAutoRepair(ctx context.Context, output *autoRepairOutput, idemKey, idemFingerprint string) (*mcp.CallToolResult, error) {
+	mc.finalizeResumeToken(output)
 	mc.idempotency.Set("auto_repair", idemKey, idemFingerprint, output)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
@@ -343,6 +423,18 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// finalizeResumeToken persists the loop checkpoint and writes the minted token
+// into next_state.resume_token. Callers that need tool-specific checkpoint data
+// (e.g. make_deck's plan) must set it on output.checkpoint before calling. A nil
+// store or absent checkpoint leaves resume_token empty (resume simply not
+// offered).
+func (mc *mcpConfig) finalizeResumeToken(output *autoRepairOutput) {
+	if output == nil || output.checkpoint == nil || output.NextState == nil {
+		return
+	}
+	output.NextState.ResumeToken = mc.loopSessions.Save(output.checkpoint)
 }
 
 // runAutoRepairLoop encapsulates the template-resolution + convergence-loop +
@@ -354,6 +446,14 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 // result the caller should pass straight through. Callers must wrap the
 // successful output in api.MCPSuccessResult themselves so they can attach
 // facade-specific fields (e.g. the deck plan summary in make_deck).
+//
+// tool labels which facade is running ("auto_repair" / "make_deck") so the
+// stored checkpoint can be resumed only by the tool that created it. resume is
+// nil for a fresh run; on resume it carries the global start pass and the trace
+// to extend, and input is the checkpoint's post-repair deck — so the loop
+// continues from where it stopped without repeating completed passes. The
+// function builds output.checkpoint and output.NextState (minus the resume
+// token, which the handler mints when it persists the checkpoint).
 func (mc *mcpConfig) runAutoRepairLoop(
 	ctx context.Context,
 	input *PresentationInput,
@@ -364,6 +464,8 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	outputFilename string,
 	allowDegraded bool,
 	provenance contentProvenance,
+	tool string,
+	resume *loopResumeState,
 ) (*autoRepairOutput, *mcp.CallToolResult) {
 	// Resolve relative local-asset paths (icons, images, background) against
 	// base_dir once, before the convergence loop, mirroring generate_presentation
@@ -420,16 +522,27 @@ func (mc *mcpConfig) runAutoRepairLoop(
 
 	outputPath := filepath.Join(mc.outputDir, outputFilename)
 
-	// Convergence loop.
+	// Convergence loop. On a fresh run it covers passes 1..maxPasses. On resume
+	// it starts at the checkpoint's NextPass and runs up to maxPasses MORE passes
+	// (global pass numbering continues), seeding the trace with the prior session
+	// so len(trace) always equals the total passes run. Each call therefore grants
+	// a fresh budget of maxPasses passes from wherever the session left off.
+	startPass := 1
 	trace := make([]autoRepairTraceEntry, 0, maxPasses)
+	if resume != nil {
+		startPass = resume.StartPass
+		trace = append(trace, resume.Trace...)
+	}
+	endPass := startPass + maxPasses - 1
 	var lastFindings []patterns.FitFinding
 	var lastScore int
 	var lastGateReasons []string
 	var lastRenderEvidence deterministic.RenderEvidence
 	gatePassed := false
-	passesRun := 0
+	stalled := false
+	passesRun := startPass - 1
 
-	for pass := 1; pass <= maxPasses; pass++ {
+	for pass := startPass; pass <= endPass; pass++ {
 		passesRun = pass
 
 		findings := collectFitFindings(input, layouts, slideWidth, slideHeight, &analysis.Theme)
@@ -466,7 +579,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 			break
 		}
 
-		if pass >= maxPasses {
+		if pass >= endPass {
 			trace = append(trace, entry)
 			break
 		}
@@ -477,6 +590,10 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		trace = append(trace, entry)
 
 		if len(applied) == 0 {
+			// The loop stalled: no repair landed yet the gate is unmet. Another
+			// automatic pass would re-derive the same findings, so stop and let
+			// next_state report no_progress.
+			stalled = true
 			break
 		}
 	}
@@ -561,7 +678,52 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	if gatePassed {
 		output.GateReasons = nil
 	}
-	_ = lastFindings
+
+	// Build the resumable per-pass state (go-slide-creator-yope). completion
+	// classifies how the loop terminated so a partial/degraded result is never
+	// mistaken for a converged one; next_state exposes the resume affordance and
+	// the findings still open. The handler mints and attaches the resume token
+	// when it persists the checkpoint.
+	completion := deriveLoopCompletion(gatePassed, evidenceComplete, lastRenderEvidence.Complete, stalled)
+	nextState := &loopNextState{
+		Completion:        completion,
+		Resumable:         completion != loopCompletionConverged,
+		NextAction:        nextActionForCompletion(completion),
+		PassesRun:         passesRun,
+		MaxPasses:         maxPasses,
+		ArtifactPath:      finalPath,
+		RemainingFindings: summarizeRemainingFindings(lastFindings),
+	}
+	if nextState.Resumable {
+		nextState.NextPass = passesRun + 1
+	}
+	output.NextState = nextState
+
+	// Snapshot the post-repair deck from the marshaled JSON (not the live
+	// pointer) so the stored checkpoint is exactly the returned
+	// final_presentation, decoupled from any later mutation. A resume continues
+	// from this deck at NextPass, so completed passes never repeat.
+	var checkpointInput PresentationInput
+	if err := json.Unmarshal(finalPresentation, &checkpointInput); err != nil {
+		return nil, api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to snapshot deck for resume: %v", err))
+	}
+	output.checkpoint = &loopCheckpoint{
+		Tool:            tool,
+		Input:           &checkpointInput,
+		Trace:           trace,
+		NextPass:        passesRun + 1,
+		LastScore:       lastScore,
+		LastGateReasons: lastGateReasons,
+		GatePassed:      gatePassed,
+		Completion:      completion,
+		Gate:            gate,
+		MaxPasses:       maxPasses,
+		VQA:             vqa,
+		OutputFilename:  outputFilename,
+		BaseDir:         baseDir,
+		AllowDegraded:   allowDegraded,
+		Provenance:      provenance,
+	}
 	return output, nil
 }
 

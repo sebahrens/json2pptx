@@ -32,6 +32,13 @@ type mcpConfig struct {
 	// receiver and degrade to no-op behaviour.
 	idempotency *idempotencyCache
 
+	// loopSessions stores resumable per-pass checkpoints for auto_repair and
+	// make_deck so a caller can continue a convergence loop via resume_token
+	// without repeating completed passes. Per-process and TTL'd, like
+	// idempotency. Nil in tests that don't exercise resume — Save/Load tolerate
+	// a nil receiver (resume is simply not offered).
+	loopSessions *loopSessionStore
+
 	// resolverOpts customizes the URL resource resolver used by
 	// handleGenerate / handleValidate. Production leaves this zero-valued
 	// (SSRF-safe defaults). Tests inject a custom HTTPClient so they can
@@ -75,6 +82,7 @@ func newServerMCPConfig(cfg config.Config) *mcpConfig {
 		cfg:          cfg,
 		cache:        template.NewMemoryCache(24 * time.Hour),
 		idempotency:  newIdempotencyCache(idempotencyCacheTTL),
+		loopSessions: newLoopSessionStore(loopSessionTTL),
 	}
 }
 

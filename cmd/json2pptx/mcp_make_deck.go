@@ -86,6 +86,12 @@ type makeDeckOutput struct {
 	Publishable          bool     `json:"publishable"`
 	ManualReviewRequired bool     `json:"manual_review_required"`
 	BlockingReasons      []string `json:"blocking_reasons,omitempty"`
+	// NextState mirrors auto_repair.next_state: the resumable per-pass snapshot
+	// (completion, resume_token, remaining findings, next action). Always
+	// present. Pass next_state.resume_token back as resume_token to continue the
+	// internal convergence loop from the saved skeleton without repeating
+	// completed passes; the returned plan is preserved across the resume.
+	NextState *loopNextState `json:"next_state"`
 }
 
 // makeDeckPlanSummary captures the plan_deck decisions that produced the
@@ -124,7 +130,7 @@ IMPORTANT — the output is a SKELETON, not a publishable deck. When the caller 
 
 Quality mode (truth-labeled in the response as quality_mode): like auto_repair, the DEFAULT is "deterministic" — the internal loop scores the deck from static + render-fit findings only, with no rendering and no API key. Pass visual_qa.enabled=true to additionally run the opt-in vision/heuristic visual refinement phase (quality_mode "deterministic+visual_qa"); it inherits auto_repair's visual_qa semantics, requirements, and transparent fallbacks.
 
-Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. publishable / manual_review_required / blocking_reasons make the skeleton status unambiguous (publishable is always false for exemplar content; blocking_reasons names the exemplar-content reason plus any unmet gate criteria). plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
+Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. next_state mirrors auto_repair: {completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]} — pass next_state.resume_token back as resume_token to continue the internal convergence loop from the saved skeleton without repeating completed passes (the plan is preserved across the resume; outline is ignored). publishable / manual_review_required / blocking_reasons make the skeleton status unambiguous (publishable is always false for exemplar content; blocking_reasons names the exemplar-content reason plus any unmet gate criteria). plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
 
 Style hints (all optional):
 - slide_budget: target deck size, clamped to [3, 30] (default 10).
@@ -135,8 +141,7 @@ Style hints (all optional):
 Quality gate matches auto_repair semantics: same field names, same defaults. Omit it to use the engine defaults (min_score=75, max_p0_findings=0, max_p1_findings=2, require_takeaway_on_charts=true).`),
 		mcp.WithRawOutputSchema(outputSchemaMakeDeck),
 		mcp.WithString("outline",
-			mcp.Required(),
-			mcp.Description(`Natural-language brief describing the deck purpose and content (e.g., "Pitch our Series B for an AI infra company"). Used as the brief for plan_deck — the planner derives slide-level narrative roles and pattern recommendations from it.`),
+			mcp.Description(`Natural-language brief describing the deck purpose and content (e.g., "Pitch our Series B for an AI infra company"). Used as the brief for plan_deck — the planner derives slide-level narrative roles and pattern recommendations from it. Required for a fresh run; ignored (and not needed) when resume_token is supplied.`),
 		),
 		mcp.WithString("template",
 			mcp.Description("Template name (default: midnight-blue). Use list_templates to see options."),
@@ -181,6 +186,7 @@ Quality gate matches auto_repair semantics: same field names, same defaults. Omi
 		mcp.WithBoolean("allow_degraded_scoring",
 			mcp.Description("Inherited from auto_repair. Default false: a render failure during the internal loop emits a blocking RENDER_EVIDENCE_INCOMPLETE finding so gate_passed cannot be true on static-only evidence. Set true to converge on static analysis alone — render_evidence.degraded is then set and evidence_complete stays false. Final structural output validation still runs and still blocks regardless."),
 		),
+		resumeTokenToolParam(),
 		idempotencyKeyToolParam(),
 	)
 }
@@ -201,6 +207,23 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		return idempotencyConflictResult("make_deck", idemKey, idemFingerprint, original), nil
 	case idempotencyMiss:
 		// fall through and build.
+	}
+
+	// Resume path: continue a saved skeleton's convergence loop without
+	// re-planning. The deck, trace, provenance, and plan summary come from the
+	// checkpoint; outline / style_hints are ignored. gate and max_passes
+	// (max_repair_passes) may be overridden on this call.
+	if tok := resumeToken(request); tok != "" {
+		cp, errResult := mc.loadResumeCheckpoint("make_deck", tok)
+		if errResult != nil {
+			return errResult, nil
+		}
+		loopOut, errResult := mc.runMakeDeckResume(ctx, request, cp)
+		if errResult != nil {
+			return errResult, nil
+		}
+		out := makeDeckOutputFromLoop(loopOut, cp.Plan)
+		return mc.respondMakeDeck(ctx, out, loopOut, idemKey, idemFingerprint)
 	}
 
 	outline, err := request.RequireString("outline")
@@ -275,12 +298,28 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 	// make_deck fills slides from pattern exemplar values, so it always declares
 	// exemplar provenance — the loop then marks the result non-publishable
 	// regardless of how cleanly it scores.
-	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded, contentProvenanceExemplarSkeleton)
+	loopOut, errResult := mc.runAutoRepairLoop(ctx, input, baseDir, gate, maxPasses, vqa, outputFilename, allowDegraded, contentProvenanceExemplarSkeleton, "make_deck", nil)
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	out := &makeDeckOutput{
+	out := makeDeckOutputFromLoop(loopOut, planSummaryFromInput(plan, input, templateName))
+	return mc.respondMakeDeck(ctx, out, loopOut, idemKey, idemFingerprint)
+}
+
+// runMakeDeckResume continues a saved make_deck session from its checkpoint,
+// reusing the shared loop-resume path (the checkpoint already carries the
+// exemplar deck, provenance, and plan).
+func (mc *mcpConfig) runMakeDeckResume(ctx context.Context, request mcp.CallToolRequest, cp *loopCheckpoint) (*autoRepairOutput, *mcp.CallToolResult) {
+	return mc.runLoopResume(ctx, request, cp)
+}
+
+// makeDeckOutputFromLoop projects a shared auto_repair loop result plus a plan
+// summary into the make_deck response. Used by both the fresh and resume paths
+// so the response shape stays identical; respondMakeDeck attaches next_state and
+// the resume token.
+func makeDeckOutputFromLoop(loopOut *autoRepairOutput, plan *makeDeckPlanSummary) *makeDeckOutput {
+	return &makeDeckOutput{
 		Path:              loopOut.Path,
 		FinalScore:        loopOut.FinalScore,
 		GatePassed:        loopOut.GatePassed,
@@ -289,7 +328,7 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		GateReasons:       loopOut.GateReasons,
 		QualityMode:       loopOut.QualityMode,
 		VisualQA:          loopOut.VisualQA,
-		Plan:              planSummaryFromInput(plan, input, templateName),
+		Plan:              plan,
 		FinalPresentation: loopOut.FinalPresentation,
 		EvidenceComplete:  loopOut.EvidenceComplete,
 		RenderEvidence:    loopOut.RenderEvidence,
@@ -303,6 +342,18 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 		ManualReviewRequired: loopOut.ManualReviewRequired,
 		BlockingReasons:      loopOut.BlockingReasons,
 	}
+}
+
+// respondMakeDeck finalizes a make_deck output: it carries the plan summary into
+// the resumable checkpoint, surfaces next_state (with the minted resume token),
+// caches the result for idempotent replay, and wraps it as an MCP success
+// response. Shared by the fresh and resume paths.
+func (mc *mcpConfig) respondMakeDeck(ctx context.Context, out *makeDeckOutput, loopOut *autoRepairOutput, idemKey, idemFingerprint string) (*mcp.CallToolResult, error) {
+	if loopOut.checkpoint != nil {
+		loopOut.checkpoint.Plan = out.Plan
+	}
+	out.NextState = loopOut.NextState
+	mc.finalizeResumeToken(loopOut)
 
 	mc.idempotency.Set("make_deck", idemKey, idemFingerprint, out)
 
