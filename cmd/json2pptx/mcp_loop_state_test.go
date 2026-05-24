@@ -153,10 +153,14 @@ func TestSummarizeRemainingFindings_Caps(t *testing.T) {
 		t.Errorf("expected the summary to cap at %d, got %d", maxNextStateFindings, len(got))
 	}
 
-	one := []patterns.FitFinding{{Action: "refuse"}}
-	one[0].Code = "CHART_PLACEHOLDER_EMPTY"
-	one[0].Path = "slides[0]"
-	one[0].Message = "boom"
+	one := []patterns.FitFinding{{
+		ValidationError: patterns.ValidationError{
+			Code:    "CHART_PLACEHOLDER_EMPTY",
+			Path:    "slides[0]",
+			Message: "boom",
+		},
+		Action: "refuse",
+	}}
 	s := summarizeRemainingFindings(one)
 	if len(s) != 1 || s[0].Code != "CHART_PLACEHOLDER_EMPTY" || s[0].Path != "slides[0]" || s[0].Message != "boom" || s[0].Action != "refuse" {
 		t.Errorf("finding fields not copied through: %+v", s)
