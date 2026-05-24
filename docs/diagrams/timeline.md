@@ -57,6 +57,11 @@ For `activity` and `phase` types:
 For `milestone` type:
 - `date` - Milestone date (ISO 8601: `YYYY-MM-DD`)
 
+> **Point-in-time events:** An `activity` (or untyped item) that has a
+> `start_date` but no `end_date` (and no `date`) is treated as a **milestone** —
+> an event with only a start is a moment in time, not a duration. It renders as a
+> diamond at its start date rather than a zero-length bar.
+
 ## Optional Fields
 
 | Field | Type | Default | Description |

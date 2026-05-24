@@ -218,6 +218,11 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 		return fmt.Errorf("timeline has no activities to render")
 	}
 
+	// Normalize point-in-time events (start date only) into milestones before
+	// any layout or date-range work depends on activity types. Operates on a
+	// copy, so the caller's data is untouched.
+	data.Activities = normalizeTimelineActivities(data.Activities)
+
 	b := tc.builder
 	style := b.StyleGuide()
 
@@ -535,6 +540,30 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	return nil
 }
 
+// normalizeTimelineActivities returns a copy of the activities with point-in-time
+// events normalized to milestones. An event that carries only a start date (no
+// end date and no explicit milestone date) is semantically a milestone — a
+// moment in time, not a duration — so it is retyped as one with its Date set to
+// that start. Without this, such items would render as zero-length bars and, when
+// every item lacks an end date, collapse the computed date range (see
+// calculateDateRange). Phases and real duration activities are left untouched.
+// The input slice is never mutated.
+func normalizeTimelineActivities(activities []TimelineActivity) []TimelineActivity {
+	out := make([]TimelineActivity, len(activities))
+	copy(out, activities)
+	for i := range out {
+		act := &out[i]
+		if act.Type == TimelineActivityTypePhase {
+			continue
+		}
+		if act.Date.IsZero() && act.EndDate.IsZero() && !act.StartDate.IsZero() {
+			act.Type = TimelineActivityTypeMilestone
+			act.Date = act.StartDate
+		}
+	}
+	return out
+}
+
 // calculateDateRange determines the timeline's date range.
 func (tc *TimelineChart) calculateDateRange(data TimelineData) timelineRange {
 	var minDate, maxDate time.Time
@@ -570,6 +599,24 @@ func (tc *TimelineChart) calculateDateRange(data TimelineData) timelineRange {
 				maxDate = actEnd
 			}
 		}
+	}
+
+	// Defensive fallback: if no end date was found (e.g. every item is a
+	// point-in-time event that escaped normalization), derive maxDate from the
+	// latest start/date so the range doesn't collapse to the zero time and map
+	// every real date to ~the same pixel. minDate likewise falls back so the
+	// range stays well-formed.
+	if maxDate.IsZero() {
+		for _, activity := range data.Activities {
+			for _, d := range []time.Time{activity.StartDate, activity.Date} {
+				if !d.IsZero() && (maxDate.IsZero() || d.After(maxDate)) {
+					maxDate = d
+				}
+			}
+		}
+	}
+	if minDate.IsZero() {
+		minDate = maxDate
 	}
 
 	// Store unpadded data boundaries for tick filtering

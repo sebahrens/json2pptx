@@ -366,13 +366,13 @@ func TestGanttChart_AutoSizeLabelWidth(t *testing.T) {
 			name:    "medium labels fit within default with real metrics",
 			labels:  []string{"Backend Development", "Frontend Development", "Integration Testing"},
 			wantMin: config.LabelWidth, // real font metrics show these fit the default
-			wantMax: plotArea.W * 0.40,
+			wantMax: plotArea.W * 0.55,
 		},
 		{
-			name:    "extremely long labels capped at 40%",
+			name:    "extremely long labels capped at 55%",
 			labels:  []string{"This Is An Extremely Long Task Name That Definitely Should Be Capped Because It Keeps Going And Going On"},
-			wantMin: plotArea.W * 0.39, // close to cap
-			wantMax: plotArea.W * 0.40,
+			wantMin: plotArea.W * 0.54, // close to cap
+			wantMax: plotArea.W * 0.55,
 		},
 	}
 

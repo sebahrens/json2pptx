@@ -859,7 +859,8 @@ func (gc *GanttChart) drawRowLabel(label string, rowY, labelX, labelWidth float6
 
 	// Reserve a gap on the right side of the label column so text never
 	// visually collides with the bar area that starts immediately after.
-	gap := style.Spacing.MD
+	// The label sits flush-right 6pt (SM) from the y-axis.
+	gap := style.Spacing.SM
 	availableWidth := labelWidth - style.Spacing.MD - gap
 
 	// Use LabelFitStrategy for consistent shrink → truncate cascade.
@@ -933,11 +934,12 @@ func (gc *GanttChart) drawBarLabel(label string, barX, barY, barW, barH float64,
 
 		textW, _ := b.MeasureText(label)
 		if textW <= availableW {
-			// Label fits inside — draw it centered with contrast-aware color
+			// Label fits inside — draw it left-aligned 6pt (padX) from the
+			// bar's left edge, with contrast-aware color. Left alignment keeps
+			// every bar label consistent with the external-fallback case below.
 			b.SetTextColor(fillColor.TextColorFor())
-			cx := barX + barW/2
 			cy := barY + barH/2
-			b.DrawText(label, cx, cy, TextAlignCenter, TextBaselineMiddle)
+			b.DrawText(label, barX+padX, cy, TextAlignLeft, TextBaselineMiddle)
 			b.Pop()
 			return
 		}
@@ -1010,12 +1012,15 @@ func (gc *GanttChart) autoSizeLabelWidth(rows []ganttRow, plotArea Rect, style *
 
 	neededWidth := maxTextWidth + padding
 
-	// Use the larger of configured and needed, but cap at 40% of plot width
+	// Use the larger of configured and needed, but cap at 55% of plot width.
+	// Row labels are the primary readable content of a Gantt chart, so a wider
+	// label column is worth a narrower bar area: bars are relative and
+	// self-explanatory, while a truncated task name is not.
 	labelWidth := gc.config.LabelWidth
 	if neededWidth > labelWidth {
 		labelWidth = neededWidth
 	}
-	maxWidth := plotArea.W * 0.40
+	maxWidth := plotArea.W * 0.55
 	if labelWidth > maxWidth {
 		labelWidth = maxWidth
 	}
