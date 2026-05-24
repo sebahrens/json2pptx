@@ -1514,8 +1514,13 @@ var needsFullWidthDiagramTypes = map[string]bool{
 	"venn":                  true,
 	// Funnel — bottom segments too narrow for inside labels
 	"funnel":                true,
-	// Panel layout — multiple side-by-side panels with icons, titles, and body text
+	// Panel layout — multiple side-by-side panels with icons, titles, and body text.
+	// The icon_columns/icon_rows/stat_cards aliases resolve to panel_layout and
+	// must share its full-width preference.
 	"panel_layout":          true,
+	"icon_columns":          true,
+	"icon_rows":             true,
+	"stat_cards":            true,
 }
 
 // penalizeNarrowDiagramSlot returns a penalty (0.0–0.5) when a chart/diagram

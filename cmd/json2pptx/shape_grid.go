@@ -1149,6 +1149,130 @@ func resolveIconPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnos
 //
 // URL-only and inline-svg fields are skipped — they are resolved elsewhere
 // (resolveURLs for URLs; inline svg_data needs no resolution).
+//
+// panelFamilyDiagramTypes are the diagram types rendered by the native panel
+// path that accept a per-panel icon.
+var panelFamilyDiagramTypes = map[string]bool{
+	"panel_layout": true,
+	"icon_columns": true,
+	"icon_rows":    true,
+	"stat_cards":   true,
+}
+
+// resolvePanelDiagramIcons resolves file-path icons inside panel-family diagram
+// content into inline svg_data (read from disk and recolored) so the generator
+// embeds them as native SVG, exactly as shape_grid icon paths are handled.
+// Bundled-name, inline-svg, data-URI, and URL icons are left untouched for the
+// generator's resolver. Path resolution and traversal-safety reuse
+// resolveIconInputPath; the read + fill reuse resolveIconSVG.
+func resolvePanelDiagramIcons(slide *SlideInput, baseDir string, slideIdx int) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
+	for j := range slide.Content {
+		c := &slide.Content[j]
+		if c.Type != "diagram" || c.DiagramValue == nil || !panelFamilyDiagramTypes[c.DiagramValue.Type] {
+			continue
+		}
+		panels, ok := c.DiagramValue.Data["panels"].([]any)
+		if !ok {
+			continue
+		}
+		jsonPath := slidepath.ContentField(slideIdx, j, "diagram_value/data/panels")
+		for k := range panels {
+			m, ok := panels[k].(map[string]any)
+			if !ok {
+				continue
+			}
+			raw, ok := m["icon"]
+			if !ok {
+				continue
+			}
+			icon := panelIconToInput(raw)
+			if icon == nil || icon.Path == "" {
+				continue // only file-path icons need cmd-side resolution
+			}
+			if diags := resolveIconInputPath(icon, baseDir, slideIdx, jsonPath); len(diags) > 0 {
+				findings = append(findings, diags...)
+				if anyDiagnosticError(diags) {
+					continue
+				}
+			}
+			svg, err := resolveIconSVG(&shapegrid.IconSpec{Path: icon.Path, Fill: icon.Fill})
+			if err != nil {
+				findings = append(findings, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeIconPath,
+					Message:  fmt.Sprintf("panel icon path %q: %v", icon.Path, err),
+					Path:     jsonPath,
+					Severity: diagnostics.SeverityError,
+					Details:  map[string]any{"slide_index": slideIdx, "asset_kind": "icon"},
+				})
+				continue
+			}
+			// Replace the path icon with pre-resolved, pre-recolored inline SVG.
+			m["icon"] = map[string]any{"svg_data": string(svg), "alt": icon.Alt}
+		}
+	}
+	return findings
+}
+
+// panelIconToInput converts a panel "icon" field (string shorthand or object)
+// into an *IconInput. A bare string is treated as a .svg file path only when it
+// carries a .svg extension; bundled names, inline SVG, URLs, and data URIs leave
+// Path empty so they fall through to the generator's resolver.
+func panelIconToInput(raw any) *IconInput {
+	switch v := raw.(type) {
+	case string:
+		s := strings.TrimSpace(v)
+		if s == "" {
+			return nil
+		}
+		ii := &IconInput{}
+		lower := strings.ToLower(s)
+		switch {
+		case strings.HasPrefix(lower, "<svg"), strings.HasPrefix(lower, "http://"),
+			strings.HasPrefix(lower, "https://"), strings.HasPrefix(lower, "data:"):
+			// inline / url / data URI — handled elsewhere.
+		case strings.HasSuffix(lower, ".svg"):
+			ii.Path = s
+		default:
+			ii.Name = s
+		}
+		return ii
+	case map[string]any:
+		ii := &IconInput{}
+		if s, ok := v["name"].(string); ok {
+			ii.Name = s
+		}
+		if s, ok := v["path"].(string); ok {
+			ii.Path = s
+		}
+		if s, ok := v["url"].(string); ok {
+			ii.URL = s
+		}
+		if s, ok := v["svg_data"].(string); ok {
+			ii.SVGData = s
+		}
+		if s, ok := v["fill"].(string); ok {
+			ii.Fill = s
+		}
+		if s, ok := v["alt"].(string); ok {
+			ii.Alt = s
+		}
+		return ii
+	default:
+		return nil
+	}
+}
+
+// anyDiagnosticError reports whether any diagnostic has error severity.
+func anyDiagnosticError(diags []diagnostics.Diagnostic) bool {
+	for i := range diags {
+		if diags[i].Severity == diagnostics.SeverityError {
+			return true
+		}
+	}
+	return false
+}
+
 func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnostic {
 	var findings []diagnostics.Diagnostic
 	// Reuse the existing icon walker so its tests stay authoritative.
@@ -1178,6 +1302,9 @@ func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int) []diagn
 		findings = append(findings, applyLocalAssetPath(&c.ImageValue.Path, baseDir,
 			diagnostics.CodeImagePath, "image", slideIdx, path)...)
 	}
+	// Resolve file-path icons inside panel-family diagrams into inline svg_data so
+	// the generator embeds them as native SVG (matching shape_grid icon handling).
+	findings = append(findings, resolvePanelDiagramIcons(slide, baseDir, slideIdx)...)
 	if slide.ShapeGrid == nil {
 		return findings
 	}

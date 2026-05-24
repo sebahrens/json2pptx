@@ -29,7 +29,7 @@ type ChartCapability struct {
 // DiagramPlacement describes a supported placement context and its render pipeline.
 type DiagramPlacement struct {
 	// Context is "placeholder" (standard content placeholder) or "shape_grid" (grid cell).
-	Context  string `json:"context"`
+	Context string `json:"context"`
 	// Pipeline is the render strategy: "native_ooxml" (grouped shapes) or "svg" (SVG/PNG raster).
 	Pipeline string `json:"pipeline"`
 }
@@ -465,30 +465,36 @@ func DiagramCapabilities() []DiagramCapability {
 			Status:           "ready",
 		},
 		{
+			// Alias for panel_layout with layout="columns"; same panels[] schema.
+			// Each panel accepts an icon (bundled name, inline svg_data, data URI,
+			// or .svg file path) embedded as native SVG, with optional fill recolor.
 			Type:             "icon_columns",
 			MaxNodes:         intPtr(5),
 			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("error if <3 or >5 items"),
-			RequiredFields:   []string{"values"},
-			OptionalFields:   []string{"icon", "caption", "accent"},
+			OverflowBehavior: strPtr("font reduction for many panels"),
+			RequiredFields:   []string{"panels"},
+			OptionalFields:   []string{"title", "body", "icon", "color"},
 			Status:           "ready",
 		},
 		{
+			// Alias for panel_layout with layout="rows".
 			Type:             "icon_rows",
 			MaxNodes:         intPtr(5),
 			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("error if <3 or >5 items"),
-			RequiredFields:   []string{"values"},
-			OptionalFields:   []string{"icon", "caption", "accent"},
+			OverflowBehavior: strPtr("font reduction for many panels"),
+			RequiredFields:   []string{"panels"},
+			OptionalFields:   []string{"title", "body", "icon", "color"},
 			Status:           "ready",
 		},
 		{
+			// Alias for panel_layout with layout="stat_cards"; panels use a hero
+			// "value" plus optional icon.
 			Type:             "stat_cards",
 			MaxNodes:         intPtr(4),
 			MaxDepth:         intPtr(1),
 			OverflowBehavior: strPtr("fixed 3-4 card layout"),
-			RequiredFields:   []string{"values"},
-			OptionalFields:   []string{"big", "small", "accent"},
+			RequiredFields:   []string{"panels"},
+			OptionalFields:   []string{"title", "value", "icon", "color"},
 			Status:           "ready",
 		},
 	}

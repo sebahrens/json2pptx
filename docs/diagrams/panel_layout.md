@@ -6,7 +6,7 @@ Display content in structured card panels with optional icons, values, and callo
 
 `panel_layout`
 
-**Aliases:** `icon_columns`, `icon_rows`, `stat_cards`, `panel`, `icon_panel`, `number_tiles`, `callout_cards`
+**Aliases:** `icon_columns` (→ `layout: "columns"`), `icon_rows` (→ `layout: "rows"`), `stat_cards` (→ `layout: "stat_cards"`). Each alias is a registered, native-OOXML diagram type that expands to `panel_layout` with the matching layout; an explicit `data.layout` still wins if both are set.
 
 ## Use Cases
 
@@ -45,7 +45,7 @@ Display content in structured card panels with optional icons, values, and callo
 |-------|------|---------|-------------|
 | `title` | `string` | - | Layout title |
 | `subtitle` | `string` | - | Subtitle below title |
-| `panels[].icon` | `string` | - | Icon name |
+| `panels[].icon` | `string` \| `object` | - | Panel icon, embedded as **native SVG** (`asvg:svgBlip`, never rasterized to PNG). Accepts a bundled name (`"rocket"`), inline `<svg>…</svg>`, a `data:image/svg+xml` URI, a `.svg` file path, or an object `{name\|path\|url\|svg_data, fill?, alt?}`. `fill` recolors `currentColor` for bundled **and** external sources. Rendered across all four layout modes (columns: above the title; rows: left column; stat_cards: above the value; stylish_panels: centered on the accent band, white by default). |
 | `panels[].body` | `string` | - | Content text |
 | `panels[].value` | `string` | - | Numeric display (for stat cards) |
 | `layout` | `string` | - | `"columns"`, `"rows"`, `"stat_cards"`, or `"stylish_panels"` (auto-inferred from alias) |

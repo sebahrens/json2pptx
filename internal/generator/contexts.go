@@ -100,6 +100,13 @@ type nativePanelData struct {
 	iconBytes     []byte // nil if icon load failed
 	iconMediaFile string // Set during allocation
 	iconRelID     string // Set during allocation
+
+	// iconSVG holds resolved SVG markup for the panel icon (bundled name, inline
+	// svg_data, or external file). It is embedded as a native OOXML SVG image
+	// (asvg:svgBlip + transparent stub) — never rasterized to PNG. nil means the
+	// panel has no icon. iconAlt is the accessibility description.
+	iconSVG []byte
+	iconAlt string
 }
 
 // MediaContext holds media tracking state for single-pass generation.

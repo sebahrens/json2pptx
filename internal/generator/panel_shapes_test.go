@@ -730,6 +730,23 @@ func TestIsPanelNativeLayout(t *testing.T) {
 			spec:     &types.DiagramSpec{Type: "bar_chart", Data: map[string]any{}},
 			expected: false,
 		},
+		{
+			// Advertised native_ooxml alias — must be intercepted by the native
+			// panel path, not fall through to svggen (which has no renderer).
+			name:     "icon_columns alias",
+			spec:     &types.DiagramSpec{Type: "icon_columns", Data: map[string]any{"panels": []any{}}},
+			expected: true,
+		},
+		{
+			name:     "icon_rows alias",
+			spec:     &types.DiagramSpec{Type: "icon_rows", Data: map[string]any{"panels": []any{}}},
+			expected: true,
+		},
+		{
+			name:     "stat_cards alias",
+			spec:     &types.DiagramSpec{Type: "stat_cards", Data: map[string]any{"panels": []any{}}},
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -767,6 +784,29 @@ func TestPanelLayoutMode(t *testing.T) {
 			name:     "stat_cards",
 			spec:     &types.DiagramSpec{Type: "panel_layout", Data: map[string]any{"layout": "stat_cards"}},
 			expected: "stat_cards",
+		},
+		{
+			// Alias type with no explicit data.layout: the layout is inferred
+			// from the alias name.
+			name:     "icon_columns alias infers columns",
+			spec:     &types.DiagramSpec{Type: "icon_columns", Data: map[string]any{}},
+			expected: "columns",
+		},
+		{
+			name:     "icon_rows alias infers rows",
+			spec:     &types.DiagramSpec{Type: "icon_rows", Data: map[string]any{}},
+			expected: "rows",
+		},
+		{
+			name:     "stat_cards alias infers stat_cards",
+			spec:     &types.DiagramSpec{Type: "stat_cards", Data: map[string]any{}},
+			expected: "stat_cards",
+		},
+		{
+			// Explicit data.layout wins over the alias-derived mode.
+			name:     "explicit layout overrides alias",
+			spec:     &types.DiagramSpec{Type: "icon_rows", Data: map[string]any{"layout": "columns"}},
+			expected: "columns",
 		},
 	}
 

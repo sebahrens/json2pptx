@@ -353,15 +353,43 @@ const (
 	panelBulletSchemeColor = "accent1"
 )
 
-// isPanelNativeLayout returns true if the diagram spec is a panel_layout
-// with a layout mode supported by native OOXML shape generation (columns,
-// rows, or stat_cards).
+// panelAliasLayoutMode maps a panel-family alias diagram type to the panel
+// layout mode it represents. The aliases icon_columns / icon_rows / stat_cards
+// are advertised as native_ooxml panel shapes in the diagram capability registry
+// (svggen.diagramAuthoringSurface and diagramPlacementRegistry); this is the
+// single place that resolves each alias to its layout. Returns "" for non-alias
+// types, including the canonical "panel_layout".
+func panelAliasLayoutMode(diagramType string) string {
+	switch diagramType {
+	case "icon_columns":
+		return "columns"
+	case "icon_rows":
+		return "rows"
+	case "stat_cards":
+		return "stat_cards"
+	default:
+		return ""
+	}
+}
+
+// isPanelNativeLayout returns true if the diagram spec is rendered by the native
+// OOXML panel path: either the canonical "panel_layout" with a supported layout
+// mode (columns, rows, stat_cards, stylish_panels), or one of the advertised
+// panel aliases (icon_columns, icon_rows, stat_cards). Returning false for an
+// advertised alias would let it fall through to svggen, which has no panel
+// renderer and would reject it ("unknown diagram type"), degrading the slide to
+// a placeholder image.
 func isPanelNativeLayout(spec *types.DiagramSpec) bool {
+	if spec == nil {
+		return false
+	}
+	if panelAliasLayoutMode(spec.Type) != "" {
+		return true
+	}
 	if spec.Type != "panel_layout" {
 		return false
 	}
-	// Check explicit layout field in data; default is "columns"
-	// (mirrors inferLayout logic in svggen/panel_layout.go).
+	// Check explicit layout field in data; default is "columns".
 	if layout, ok := spec.Data["layout"].(string); ok && layout != "" {
 		switch layout {
 		case "columns", "rows", "stat_cards", "stylish_panels":
@@ -373,11 +401,15 @@ func isPanelNativeLayout(spec *types.DiagramSpec) bool {
 	return true // default layout is "columns"
 }
 
-// panelLayoutMode extracts the layout mode string from a panel_layout DiagramSpec.
-// Returns "columns" as the default if no explicit layout is set.
+// panelLayoutMode extracts the layout mode string from a panel-family DiagramSpec.
+// An explicit data.layout wins; otherwise the mode is inferred from an alias type
+// (icon_columns/icon_rows/stat_cards); otherwise it defaults to "columns".
 func panelLayoutMode(spec *types.DiagramSpec) string {
 	if layout, ok := spec.Data["layout"].(string); ok && layout != "" {
 		return layout
+	}
+	if mode := panelAliasLayoutMode(spec.Type); mode != "" {
+		return mode
 	}
 	return "columns"
 }
@@ -500,29 +532,30 @@ func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, s
 	gapTotal := int64(n-1) * panelGap
 	panelWidth := (totalWidth - gapTotal) / int64(n)
 
-	// Height proportions from audit reference.
-	headerCY := int64(float64(totalHeight) * panelHeaderHeightRatio)
-	gapCY := int64(float64(totalHeight) * panelGapHeightRatio)
-	bodyCY := totalHeight - headerCY - gapCY
+	// Reserve an icon band at the top when any panel carries an icon; otherwise
+	// the header/body geometry matches the pre-icon layout exactly.
+	hasIcons := panelsHaveIcons(panels)
+	iconBandCY, headerCY, gapCY, bodyCY := panelColumnsBands(totalHeight, hasIcons)
 
 	// Generate child shapes for each panel
 	var children [][]byte
 	for i, panel := range panels {
 		panelX := bounds.X + int64(i)*(panelWidth+panelGap)
 		panelY := bounds.Y
+		headerY := panelY + iconBandCY
 
 		headerID := shapeIDBase + uint32(i*2) + 1
 		bodyID := shapeIDBase + uint32(i*2) + 2
 
 		headerXML := generatePanelHeaderXML(
 			panel.title,
-			panelX, panelY, panelWidth, headerCY,
+			panelX, headerY, panelWidth, headerCY,
 			headerID,
 			panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff,
 		)
 		children = append(children, []byte(headerXML))
 
-		bodyY := panelY + headerCY + gapCY
+		bodyY := headerY + headerCY + gapCY
 		bodyXML := generatePanelBodyXML(
 			panel.body,
 			panelX, bodyY, panelWidth, bodyCY,
@@ -580,9 +613,16 @@ func generatePanelRowsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 	gapTotal := int64(n-1) * rowGap
 	rowHeight := (totalHeight - gapTotal) / int64(n)
 
-	// Header/body width split.
-	headerCX := int64(float64(totalWidth) * rowHeaderWidthRatio)
-	bodyCX := totalWidth - headerCX - rowHeaderBodyGap
+	// Reserve a left icon column when any row carries an icon; otherwise the
+	// header/body split is identical to the pre-icon layout.
+	hasIcons := panelsHaveIcons(panels)
+	iconBandCX := panelRowsIconBandCX(totalWidth, hasIcons)
+	contentWidth := totalWidth - iconBandCX
+	rowX := bounds.X + iconBandCX
+
+	// Header/body width split (of the content region right of the icon column).
+	headerCX := int64(float64(contentWidth) * rowHeaderWidthRatio)
+	bodyCX := contentWidth - headerCX - rowHeaderBodyGap
 
 	var children [][]byte
 	for i, panel := range panels {
@@ -594,7 +634,7 @@ func generatePanelRowsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 		// Header rect — scheme-colored fill, vertically centered bold text
 		headerXML := generatePanelHeaderXML(
 			panel.title,
-			bounds.X, rowY, headerCX, rowHeight,
+			rowX, rowY, headerCX, rowHeight,
 			headerID,
 			panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff,
 		)
@@ -603,7 +643,7 @@ func generatePanelRowsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 		// Body rect — bordered with bulleted text
 		bodyXML := generatePanelBodyXML(
 			panel.body,
-			bounds.X+headerCX+rowHeaderBodyGap, rowY, bodyCX, rowHeight,
+			rowX+headerCX+rowHeaderBodyGap, rowY, bodyCX, rowHeight,
 			bodyID,
 			panelBodyBorderSchemeColor,
 			panelBodyFontSize,
@@ -796,6 +836,9 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 		})
 	}
 
+	// When the card has an icon, reserve a top band so the text sits below it.
+	topInset := statCardInset + statCardIconBandCY(cy, len(panel.iconSVG) > 0)
+
 	// Single rect with light fill and all text in one text body
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
@@ -810,7 +853,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
-			Insets:     [4]int64{statCardInset, statCardInset, statCardInset, statCardInset},
+			Insets:     [4]int64{statCardInset, topInset, statCardInset, statCardInset},
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
@@ -871,7 +914,6 @@ func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 
 				// Allocate media filename
 				panel.iconMediaFile = ctx.allocPNG(fmt.Sprintf("panelicon-s%d-i%d-j%d", slideNum, i, j))
-
 
 				// Allocate relationship ID
 				panel.iconRelID = fmt.Sprintf("rId%d", nextRelID)
@@ -1021,6 +1063,7 @@ func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item Conten
 
 	// Determine layout mode for routing.
 	layoutMode := panelLayoutMode(diagramSpec)
+	iconDefaultFill := panelIconDefaultFill(layoutMode)
 
 	var panels []nativePanelData
 	for _, item := range panelsRaw {
@@ -1039,8 +1082,17 @@ func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item Conten
 		if body, ok := m["body"].(string); ok {
 			panel.body = body
 		}
-		// Icon bytes are not loaded here — that's handled by the caller or
-		// deferred to allocatePanelIconRelIDs (pptx-z27).
+		// Resolve the optional icon into native SVG markup (bundled name, inline
+		// svg_data, or data URI). Embedded later as an asvg:svgBlip overlay, never
+		// rasterized. File-path/URL icons arrive pre-resolved as svg_data.
+		if icon, ok := m["icon"]; ok {
+			if svg, alt, skip := resolvePanelIcon(icon, iconDefaultFill); len(svg) > 0 {
+				panel.iconSVG = svg
+				panel.iconAlt = alt
+			} else if skip != "" {
+				slog.Warn("panel native shapes: icon not embedded", "slide", slideNum, "reason", skip)
+			}
+		}
 		panels = append(panels, panel)
 	}
 
@@ -1068,6 +1120,103 @@ func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item Conten
 		statCardsMode:     layoutMode == "stat_cards",
 		stylishPanelsMode: layoutMode == "stylish_panels",
 	})
+
+	// Register panel icons as native SVG overlays (asvg:svgBlip) positioned over
+	// each card. Done here (not in the deferred group-XML pass) because the card
+	// geometry is derived from placeholderBounds, which is known now.
+	ctx.registerPanelIconInserts(slideNum, layoutMode, placeholderBounds, panels)
+}
+
+// registerPanelIconInserts appends a native SVG insert for each panel that has a
+// resolved icon, positioned within that card's icon zone. The geometry mirrors
+// the card generators so the overlay aligns with the reserved icon band.
+func (ctx *singlePassContext) registerPanelIconInserts(slideNum int, layoutMode string, bounds types.BoundingBox, panels []nativePanelData) {
+	if !panelsHaveIcons(panels) {
+		return
+	}
+	n := len(panels)
+	if n == 0 {
+		return
+	}
+	rects := panelIconRects(layoutMode, bounds, panels)
+	for i := range panels {
+		if len(panels[i].iconSVG) == 0 {
+			continue
+		}
+		rect := rects[i]
+		if rect.CX <= 0 || rect.CY <= 0 {
+			continue
+		}
+		alt := panels[i].iconAlt
+		if alt == "" {
+			alt = panels[i].title
+		}
+		svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("panelicon-s%d-p%d", slideNum, i))
+		ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
+			svgData:        panels[i].iconSVG,
+			pngData:        transparentPNG1x1,
+			svgMediaFile:   svgMediaFile,
+			pngMediaFile:   pngMediaFile,
+			description:    alt,
+			offsetX:        rect.X,
+			offsetY:        rect.Y,
+			extentCX:       rect.CX,
+			extentCY:       rect.CY,
+			placeholderIdx: -1, // overlay; no placeholder to remove
+		})
+	}
+}
+
+// panelIconRects returns the per-panel icon bounds for the given layout mode,
+// mirroring the geometry used by the card generators so overlays align with the
+// reserved icon band. Entries are zero-size for panels without an icon or for
+// layout modes that do not render panel icons.
+func panelIconRects(layoutMode string, bounds types.BoundingBox, panels []nativePanelData) []pptx.RectEmu {
+	n := len(panels)
+	rects := make([]pptx.RectEmu, n)
+	switch layoutMode {
+	case "columns", "":
+		gapTotal := int64(n-1) * panelGap
+		panelWidth := (bounds.Width - gapTotal) / int64(n)
+		iconBandCY, _, _, _ := panelColumnsBands(bounds.Height, true)
+		for i := range panels {
+			panelX := bounds.X + int64(i)*(panelWidth+panelGap)
+			rects[i] = panelColumnsIconRect(panelX, bounds.Y, panelWidth, iconBandCY)
+		}
+	case "rows":
+		gapTotal := int64(n-1) * rowGap
+		rowHeight := (bounds.Height - gapTotal) / int64(n)
+		iconBandCX := panelRowsIconBandCX(bounds.Width, true)
+		for i := range panels {
+			rowY := bounds.Y + int64(i)*(rowHeight+rowGap)
+			rects[i] = panelRowsIconRect(bounds.X, rowY, iconBandCX, rowHeight)
+		}
+	case "stat_cards":
+		cols, rows := statCardGridLayout(n)
+		hGapTotal := int64(cols-1) * statCardGap
+		vGapTotal := int64(rows-1) * statCardGap
+		cardW := (bounds.Width - hGapTotal) / int64(cols)
+		cardH := (bounds.Height - vGapTotal) / int64(rows)
+		for idx := range panels {
+			row := idx / cols
+			col := idx % cols
+			cardX := bounds.X + int64(col)*(cardW+statCardGap)
+			cardY := bounds.Y + int64(row)*(cardH+statCardGap)
+			iconBandCY := statCardIconBandCY(cardH, len(panels[idx].iconSVG) > 0)
+			rects[idx] = statCardIconRect(cardX, cardY, cardW, iconBandCY)
+		}
+	case "stylish_panels":
+		gapTotal := int64(n-1) * stylishPanelGap
+		panelWidth := (bounds.Width - gapTotal) / int64(n)
+		accentCY := int64(float64(bounds.Height) * stylishAccentHeightRatio)
+		for i := range panels {
+			panelX := bounds.X + int64(i)*(panelWidth+stylishPanelGap)
+			rects[i] = stylishPanelsIconRect(panelX, bounds.Y, panelWidth, accentCY)
+		}
+	default:
+		// Other panel modes do not define an icon zone.
+	}
+	return rects
 }
 
 // removePanelPlaceholders removes placeholder shapes that are being replaced by
