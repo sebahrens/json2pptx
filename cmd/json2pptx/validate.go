@@ -289,10 +289,11 @@ func mcpHumanValidateArgs(presentation any, baseDir string, strictUnknownKeys bo
 	return args
 }
 
-// validateBaseDir computes the directory CLI validate should treat as the root
-// for resolving relative asset references (icons, images, backgrounds) in one
-// input, mirroring how `generate` resolves assets against
-// filepath.Dir(jsonPath) (see json_mode.go).
+// validateBaseDir computes the directory the CLI should treat as the root for
+// resolving relative asset references (icons, images, backgrounds) in one input.
+// Both `validate` and `generate` (see json_mode.go) call it so the two surfaces
+// resolve relative assets identically — from the input file's own directory,
+// absolutized.
 //
 //   - An explicit --base-dir override wins for every input (including stdin).
 //   - Otherwise a real file path resolves assets from the file's own directory.

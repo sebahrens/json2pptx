@@ -181,6 +181,72 @@ func TestValidateJSONFile_BaseDirOverride(t *testing.T) {
 	}
 }
 
+// writeTinySVG writes a minimal valid SVG so icon file-path resolution and
+// native-SVG embedding both succeed.
+func writeTinySVG(t *testing.T, path string) {
+	t.Helper()
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" fill="none"><circle cx="12" cy="12" r="9"/></svg>`
+	if err := os.WriteFile(path, []byte(svg), 0644); err != nil {
+		t.Fatalf("write svg: %v", err)
+	}
+}
+
+// deckWithPanelIconPath returns a minimal valid deck whose stat_cards panel
+// carries a relative .svg icon file path — the asset kind that flows through
+// resolvePanelDiagramIcons -> resolveIconInputPath (whose symlink-escape check
+// assumes an absolute base dir).
+func deckWithPanelIconPath(iconPath string) string {
+	return `{
+  "template": "midnight-blue",
+  "slides": [{
+    "layout_id": "slideLayout2",
+    "slide_type": "content",
+    "content": [
+      {"placeholder_id": "title", "type": "text", "text_value": "Stats"},
+      {"placeholder_id": "body", "type": "diagram", "diagram_value": {
+        "type": "stat_cards",
+        "data": {"panels": [
+          {"title": "Revenue", "value": "$4.2M", "icon": {"path": "` + iconPath + `"}},
+          {"title": "Growth", "value": "32%"},
+          {"title": "Margin", "value": "18%"}
+        ]}
+      }}
+    ]
+  }]
+}`
+}
+
+// TestGenerateRelativeJSONPathResolvesIconPath is the regression guard for the
+// generate/validate base-dir drift: `generate -json deck.json` (a *relative*
+// -json path, as an agent runs it from beside the deck) must resolve a relative
+// icon file path from the deck's own directory, exactly as validate does.
+//
+// Before the fix, generate computed inputDir := filepath.Dir("deck.json") == "."
+// and passed that relative base dir straight through. resolveIconInputPath
+// absolutizes only the base side of its symlink-escape comparison, so the
+// relative resolved path could not be made relative to the absolute base and the
+// valid icon was falsely flagged ICON_PATH_SYMLINK_ESCAPE. Absolutizing the base
+// dir (via validateBaseDir, shared with validate) fixes it.
+func TestGenerateRelativeJSONPathResolvesIconPath(t *testing.T) {
+	absTemplates := absTemplatesForTest(t)
+
+	deckDir := t.TempDir()
+	writeTinySVG(t, filepath.Join(deckDir, "icon.svg"))
+	if err := os.WriteFile(filepath.Join(deckDir, "deck.json"),
+		[]byte(deckWithPanelIconPath("icon.svg")), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(deckDir)
+
+	outDir := t.TempDir()
+	// The relative -json path is the crux: filepath.Dir("deck.json") == "." pre-fix.
+	genErr := runJSONMode("deck.json", filepath.Join(outDir, "out.json"), absTemplates, outDir,
+		"", false, false, "", "off", false, "off", "", false)
+	if genErr != nil {
+		t.Fatalf("generate with relative -json path: expected success, got: %v", genErr)
+	}
+}
+
 // TestValidateGenerateAssetParity proves validate and generate agree on whether
 // a deck's relative assets resolve, for a deck living in its own directory: both
 // succeed when the asset is present and both fail when it is missing.

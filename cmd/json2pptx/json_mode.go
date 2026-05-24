@@ -495,7 +495,15 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// ICON_FILL_IGNORED_ON_INLINE) flow into inputWarnings so the user sees
 	// them in the success output instead of having generation refused.
 	if jsonPath != "-" {
-		inputDir := filepath.Dir(jsonPath)
+		// Resolve relative assets against the deck's own directory, absolutized so
+		// the base dir satisfies the absolute-path contract that the MCP base_dir
+		// resolver enforces and that resolveIconInputPath's symlink-escape check
+		// assumes. A raw filepath.Dir(jsonPath) leaves the base dir relative (".")
+		// when -json is itself relative (e.g. `generate -json deck.json`), which
+		// makes a valid relative icon *file path* falsely trip
+		// ICON_PATH_SYMLINK_ESCAPE. validate already absolutizes via
+		// validateBaseDir; sharing it keeps the two CLI surfaces in lockstep.
+		inputDir := validateBaseDir(jsonPath, "")
 		assetFindings := resolveLocalAssetPaths(input.Slides, inputDir)
 		if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
 			return writeJSONError(jsonOutputPath, assetErr)
