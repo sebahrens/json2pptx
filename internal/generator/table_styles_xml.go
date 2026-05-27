@@ -2,11 +2,13 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // tableStyleDisplayNames maps well-known OOXML built-in table style GUIDs to
@@ -64,10 +66,110 @@ func buildTableStylesXML(referencedIDs map[string]bool) string {
 	return sb.String()
 }
 
+// parseTemplateStyleIDs extracts the set of styleId attribute values already
+// declared in the template's ppt/tableStyles.xml. Returns an empty map when
+// the XML has no <a:tblStyle> children (e.g. the common self-closing stub
+// templates use: <a:tblStyleLst def="..."/>).
+func parseTemplateStyleIDs(data []byte) map[string]bool {
+	ids := make(map[string]bool)
+	// Walk the raw bytes looking for styleId="..." occurrences.  We only care
+	// about the attribute value, not the full element structure, so a simple
+	// byte scan is enough and avoids a full XML decode of potentially large
+	// template files.
+	const attr = `styleId="`
+	remaining := data
+	for {
+		idx := bytes.Index(remaining, []byte(attr))
+		if idx == -1 {
+			break
+		}
+		after := remaining[idx+len(attr):]
+		end := bytes.IndexByte(after, '"')
+		if end == -1 {
+			break
+		}
+		ids[string(after[:end])] = true
+		remaining = after[end+1:]
+	}
+	return ids
+}
+
+// buildStubElements returns the XML fragment for stub <a:tblStyle> elements
+// for the given GUIDs, sorted for deterministic output.
+func buildStubElements(missingIDs []string) string {
+	sorted := make([]string, len(missingIDs))
+	copy(sorted, missingIDs)
+	sort.Strings(sorted)
+
+	var sb strings.Builder
+	for _, id := range sorted {
+		name, ok := tableStyleDisplayNames[id]
+		if !ok {
+			name = "Custom Table Style"
+		}
+		fmt.Fprintf(&sb, `<a:tblStyle styleId="%s" styleName="%s"/>`, id, name)
+	}
+	return sb.String()
+}
+
+// mergeTemplateWithStubs takes the template's raw tableStyles.xml and returns
+// a merged version that preserves all existing <a:tblStyle> elements (with
+// their full formatting rules) while appending stub elements for every GUID
+// in missingIDs.
+//
+// Handles both the common self-closing form:
+//
+//	<a:tblStyleLst def="..."/>
+//
+// and the full open/close form:
+//
+//	<a:tblStyleLst def="...">...</a:tblStyleLst>
+//
+// Returns nil when the template XML cannot be recognised as a valid
+// tblStyleLst element (caller should fall back to the synthetic approach).
+func mergeTemplateWithStubs(templateXML []byte, missingIDs []string) []byte {
+	if len(missingIDs) == 0 {
+		return templateXML
+	}
+	stubs := buildStubElements(missingIDs)
+
+	// Case 1: template has a proper closing tag — insert stubs before it.
+	const closing = "</a:tblStyleLst>"
+	if closeIdx := bytes.LastIndex(templateXML, []byte(closing)); closeIdx != -1 {
+		result := make([]byte, 0, len(templateXML)+len(stubs))
+		result = append(result, templateXML[:closeIdx]...)
+		result = append(result, []byte(stubs)...)
+		result = append(result, templateXML[closeIdx:]...)
+		return result
+	}
+
+	// Case 2: template uses a self-closing <a:tblStyleLst ... /> — convert to
+	// open/close form and inject the stubs.  The self-closing case means the
+	// element has no children, so finding `/>` here is unambiguous.
+	const selfClose = "/>"
+	if scIdx := bytes.LastIndex(templateXML, []byte(selfClose)); scIdx != -1 {
+		if bytes.Contains(templateXML[:scIdx+2], []byte("<a:tblStyleLst")) {
+			result := make([]byte, 0, len(templateXML)+len(stubs)+len(closing))
+			result = append(result, templateXML[:scIdx]...)
+			result = append(result, '>')
+			result = append(result, []byte(stubs)...)
+			result = append(result, []byte(closing)...)
+			return result
+		}
+	}
+
+	return nil // unrecognised format; caller falls back to synthetic
+}
+
 // installTableStylesOverride writes a populated ppt/tableStyles.xml into
 // syntheticFiles when at least one rendered table referenced a style GUID.
 // writeTemplateFiles will then skip copying the template's original file and
 // writeSyntheticFiles will emit this version instead.
+//
+// When the template already declares a full <a:tblStyle> element for every
+// referenced GUID, no override is written and the template's own file passes
+// through unchanged — preserving brand-specific formatting rules that the
+// synthetic approach would otherwise destroy.
 //
 // Called from writeOutput before writeTemplateFiles. A no-op when no tables
 // rendered.
@@ -75,6 +177,44 @@ func (ctx *singlePassContext) installTableStylesOverride() {
 	if len(ctx.tableStyleIDsUsed) == 0 {
 		return
 	}
+
+	// Try to read the template's existing tableStyles.xml so we can preserve
+	// full <a:tblStyle> elements (which carry brand-specific formatting rules)
+	// rather than replacing them with empty stubs.
+	templateXML, err := utils.ReadFileFromZipIndex(ctx.templateIndex, PathTableStyles)
+	if err == nil && len(templateXML) > 0 {
+		defined := parseTemplateStyleIDs(templateXML)
+
+		// Collect GUIDs referenced by the rendered tables that the template
+		// does not already declare.
+		var missing []string
+		for id := range ctx.tableStyleIDsUsed {
+			if id != "" && !defined[id] {
+				missing = append(missing, id)
+			}
+		}
+
+		if len(missing) == 0 {
+			// Template already declares all referenced GUIDs — no override
+			// needed.  writeTemplateFiles will copy the original file as-is,
+			// preserving every <a:tblStyle> formatting rule.
+			return
+		}
+
+		// Template exists but is missing some GUIDs — merge: preserve all
+		// existing <a:tblStyle> elements and append stubs only for the new
+		// GUIDs that the template doesn't declare.
+		if merged := mergeTemplateWithStubs(templateXML, missing); merged != nil {
+			if ctx.syntheticFiles == nil {
+				ctx.syntheticFiles = make(map[string][]byte)
+			}
+			ctx.syntheticFiles[PathTableStyles] = merged
+			return
+		}
+	}
+
+	// No template file, empty template, or unrecognised format — fall back to
+	// the fully-synthetic approach (stubs only, engine-default def attribute).
 	if ctx.syntheticFiles == nil {
 		ctx.syntheticFiles = make(map[string][]byte)
 	}
