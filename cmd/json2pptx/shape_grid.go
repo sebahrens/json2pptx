@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1949,15 +1950,18 @@ func applyIconFill(svgData []byte, fill string) []byte {
 	tag := s[svgStart:tagEnd]
 	modified := false
 
+	// Escape fill for safe insertion as an XML attribute value.
+	escapedFill := html.EscapeString(fill)
+
 	// Replace stroke="currentColor" so outline icons show the requested color
 	if i := strings.Index(tag, ` stroke="currentColor"`); i >= 0 {
-		tag = tag[:i] + fmt.Sprintf(` stroke="%s"`, fill) + tag[i+len(` stroke="currentColor"`):]
+		tag = tag[:i] + fmt.Sprintf(` stroke="%s"`, escapedFill) + tag[i+len(` stroke="currentColor"`):]
 		modified = true
 	}
 
 	// Replace fill="currentColor" for filled icons
 	if i := strings.Index(tag, ` fill="currentColor"`); i >= 0 {
-		tag = tag[:i] + fmt.Sprintf(` fill="%s"`, fill) + tag[i+len(` fill="currentColor"`):]
+		tag = tag[:i] + fmt.Sprintf(` fill="%s"`, escapedFill) + tag[i+len(` fill="currentColor"`):]
 		modified = true
 	}
 
@@ -1968,10 +1972,10 @@ func applyIconFill(svgData []byte, fill string) []byte {
 			// Replace existing fill value
 			end := strings.Index(tag[i+7:], `"`)
 			if end >= 0 {
-				tag = tag[:i] + fmt.Sprintf(` fill="%s"`, fill) + tag[i+7+end+1:]
+				tag = tag[:i] + fmt.Sprintf(` fill="%s"`, escapedFill) + tag[i+7+end+1:]
 			}
 		} else {
-			tag = tag + fmt.Sprintf(` fill="%s"`, fill)
+			tag = tag + fmt.Sprintf(` fill="%s"`, escapedFill)
 		}
 	}
 

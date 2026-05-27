@@ -145,7 +145,7 @@ func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.Pattern
 		ColSpan: numCols,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Fill:     jsonStringRaw(accent),
 			Text:     textContent,
 		},
 	}

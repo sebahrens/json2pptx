@@ -280,7 +280,7 @@ func prependBannerRow(grid *jsonschema.ShapeGridInput, banner *patterns.BannerSp
 		ColSpan: numCols,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Fill:     jsonStringRaw(accent),
 			Text:     textContent,
 		},
 	}

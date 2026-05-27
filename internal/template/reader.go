@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -75,7 +77,11 @@ func (r *Reader) validateStructure() error {
 	// Check for at least one slide layout
 	hasLayout := false
 	for _, f := range r.zip.File {
-		if matched, _ := filepath.Match("ppt/slideLayouts/slideLayout*.xml", f.Name); matched {
+		name, ok := safeZipName(f.Name)
+		if !ok {
+			continue
+		}
+		if matched, _ := filepath.Match("ppt/slideLayouts/slideLayout*.xml", name); matched {
 			hasLayout = true
 			break
 		}
@@ -89,8 +95,16 @@ func (r *Reader) validateStructure() error {
 
 // hasFile checks if a file exists in the ZIP archive.
 func (r *Reader) hasFile(name string) bool {
+	safe, ok := safeZipName(name)
+	if !ok {
+		return false
+	}
 	for _, f := range r.zip.File {
-		if f.Name == name {
+		entryName, entryOK := safeZipName(f.Name)
+		if !entryOK {
+			continue
+		}
+		if entryName == safe {
 			return true
 		}
 	}
@@ -99,8 +113,16 @@ func (r *Reader) hasFile(name string) bool {
 
 // ReadFile reads a file from the ZIP archive.
 func (r *Reader) ReadFile(name string) ([]byte, error) {
+	safe, ok := safeZipName(name)
+	if !ok {
+		return nil, fmt.Errorf("unsafe file name: %q", name)
+	}
 	for _, f := range r.zip.File {
-		if f.Name == name {
+		entryName, entryOK := safeZipName(f.Name)
+		if !entryOK {
+			continue
+		}
+		if entryName == safe {
 			rc, err := f.Open()
 			if err != nil {
 				return nil, fmt.Errorf("failed to open %s: %w", name, err)
@@ -117,17 +139,32 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 	return nil, fmt.Errorf("file not found in template: %s", name)
 }
 
+// safeZipName returns the entry name only if it is safe (no absolute path or
+// ".." traversal). ZIP entries always use forward slashes per the PKZIP spec.
+func safeZipName(name string) (string, bool) {
+	clean := path.Clean(name)
+	if path.IsAbs(clean) || strings.HasPrefix(clean, "..") {
+		return "", false
+	}
+	return clean, true
+}
+
 // ListFiles returns all file names in the ZIP archive matching the pattern.
 // Pattern uses filepath.Match syntax (e.g., "ppt/slideLayouts/*.xml").
+// Entries whose names contain path-traversal sequences are silently skipped.
 func (r *Reader) ListFiles(pattern string) ([]string, error) {
 	var matches []string
 	for _, f := range r.zip.File {
-		matched, err := filepath.Match(pattern, f.Name)
+		name, ok := safeZipName(f.Name)
+		if !ok {
+			continue
+		}
+		matched, err := filepath.Match(pattern, name)
 		if err != nil {
 			return nil, fmt.Errorf("invalid pattern %s: %w", pattern, err)
 		}
 		if matched {
-			matches = append(matches, f.Name)
+			matches = append(matches, name)
 		}
 	}
 	return matches, nil

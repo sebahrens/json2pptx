@@ -190,3 +190,11 @@ func readJSONObject(path string) (any, error) {
 	}
 	return obj, nil
 }
+
+// jsonStringRaw encodes s as a JSON string, producing a json.RawMessage like
+// `"accent1"`. Using json.Marshal instead of fmt.Sprintf prevents a crafted s
+// containing '"' from producing malformed JSON.
+func jsonStringRaw(s string) json.RawMessage {
+	b, _ := json.Marshal(s)
+	return json.RawMessage(b)
+}
