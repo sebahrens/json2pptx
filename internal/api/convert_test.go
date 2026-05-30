@@ -351,6 +351,94 @@ func TestConvertMissingTemplate(t *testing.T) {
 	}
 }
 
+// TestConvertInvalidSlideType tests that an unknown non-empty slide type is
+// rejected with HTTP 400 and INVALID_SLIDE_TYPE before generation.
+func TestConvertInvalidSlideType(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	reqBody := ConvertRequest{
+		Template: "test-template",
+		Slides: []APISlide{
+			{Type: "content", Title: "Valid"},
+			{Type: "contnet", Title: "Typo"},
+		},
+	}
+
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+
+	var resp apierrors.Response
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if resp.Error.Code != apierrors.CodeInvalidSlideType {
+		t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidSlideType, resp.Error.Code)
+	}
+
+	if !strings.Contains(resp.Error.Message, "contnet") {
+		t.Errorf("Expected error message to mention invalid type, got: %s", resp.Error.Message)
+	}
+
+	if resp.Error.Details["field"] != "slides[1].type" {
+		t.Errorf("Expected field slides[1].type, got %v", resp.Error.Details["field"])
+	}
+
+	if _, ok := resp.Error.Details["supported_slide_types"]; !ok {
+		t.Error("Expected supported_slide_types in error details")
+	}
+}
+
+// TestConvertEmptySlideTypeDefaults verifies that an empty slide type passes
+// validation (it defaults to content during conversion).
+func TestConvertEmptySlideTypeDefaults(t *testing.T) {
+	tempDir := t.TempDir()
+	templatesDir := tempDir + "/templates"
+	outputDir := tempDir + "/output"
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
+	}
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+
+	testTemplate := createTestTemplate(t, templatesDir, "test-template")
+	defer func() { _ = os.Remove(testTemplate) }()
+
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(templatesDir, cache, false)
+	conversionPipeline := pipeline.NewPipeline()
+	service := NewConvertService(templatesDir, outputDir, templateService, conversionPipeline)
+
+	reqBody := ConvertRequest{
+		Template: "test-template",
+		Slides: []APISlide{
+			{Title: "Welcome", Content: APIContent{Body: "No explicit type."}},
+		},
+		Options: &ConvertOptions{OutputFormat: "file"},
+	}
+
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200 for empty slide type, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 // TestConvertInvalidJSON tests handling of malformed request body.
 func TestConvertInvalidJSON(t *testing.T) {
 	tempDir := t.TempDir()

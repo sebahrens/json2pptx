@@ -267,6 +267,25 @@ func (cs *ConvertService) parseAndValidateRequest(w http.ResponseWriter, r *http
 		return nil, "", fmt.Errorf("validation failed")
 	}
 
+	// Validate slide types. An empty type preserves the default-to-content
+	// behavior of apiSlidesToPresentation; any non-empty value must be one of
+	// the supported slide types so unknown types are rejected before generation.
+	for i, slide := range req.Slides {
+		if slide.Type == "" {
+			continue
+		}
+		if !types.IsValidSlideType(slide.Type) {
+			writeError(w, http.StatusBadRequest, apierrors.CodeInvalidSlideType,
+				fmt.Sprintf("Invalid slide type: %q", slide.Type),
+				map[string]interface{}{
+					"field":                 fmt.Sprintf("slides[%d].type", i),
+					"value":                 slide.Type,
+					"supported_slide_types": types.SupportedSlideTypes(),
+				})
+			return nil, "", fmt.Errorf("validation failed")
+		}
+	}
+
 	// Apply defaults
 	if req.Options == nil {
 		req.Options = &ConvertOptions{}
