@@ -493,14 +493,27 @@ func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticR
 
 // semanticDiagFromCompile adapts a semantic compile/validate diagnostic into the
 // compact render diagnostic. These diagnostics are authored against the semantic
-// DeckSpec, so their path is already a semantic source path.
+// DeckSpec, so their path is already a semantic source path. Post-compile raw
+// preflight findings additionally stash the originating raw path and a
+// recommended semantic edit under Details (see internal/semantic/preflight.go);
+// they are lifted onto the compact fields here so an agent sees the same fix
+// guidance a render-time fit finding carries.
 func semanticDiagFromCompile(d diagnostics.Diagnostic) semanticDiagnostic {
-	return semanticDiagnostic{
+	sd := semanticDiagnostic{
 		Code:         d.Code,
 		Severity:     string(d.Severity),
 		Message:      d.Message,
 		SemanticPath: d.Path,
 	}
+	if d.Details != nil {
+		if rp, ok := d.Details["raw_path"].(string); ok {
+			sd.RawPath = rp
+		}
+		if e, ok := d.Details["recommended_edit"].(*semantic.SemanticEdit); ok {
+			sd.RecommendedEdit = e
+		}
+	}
+	return sd
 }
 
 // semanticDiagFromFit adapts a raw render fit finding into the compact render

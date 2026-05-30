@@ -389,7 +389,7 @@ func evidenceFromDiagnostic(d Diagnostic) map[string]any {
 	ev := map[string]any{}
 	for k, v := range d.Details {
 		switch k {
-		case "measured", "allowed", "overflow_ratio", "action", "pattern", "segment_index":
+		case "measured", "allowed", "overflow_ratio", "action", "pattern", "segment_index", "recommended_edit":
 			ev[k] = v
 		default:
 			if isCarryableFact(v) {

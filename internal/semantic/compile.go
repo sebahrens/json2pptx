@@ -98,6 +98,19 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		input.Slides = append(input.Slides, *compiled)
 	}
 
+	// Post-compile raw preflight: validate the emitted patterns against the raw
+	// pattern registry — the same gate the renderer applies — so known-invalid
+	// raw JSON is caught here and traced back to the semantic source, rather than
+	// failing later at render. Failures are blocking; a clean preflight is a
+	// proxy for "the compiled deck renders without a pattern-validation refusal".
+	if pf := preflightRawPatterns(input, ir.SourceMap); len(pf) > 0 {
+		diags = append(diags, pf...)
+		result.Diagnostics = diags
+		if diagnostics.HasErrors(pf) {
+			return nil, result, fmt.Errorf("semantic deck cannot compile: %d raw preflight error(s)", countErrors(pf))
+		}
+	}
+
 	return input, result, nil
 }
 

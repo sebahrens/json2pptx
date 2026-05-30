@@ -73,7 +73,7 @@ Initial slide kinds:
 
 ### Slide kind → compiled visual
 
-Each content-bearing kind compiles to the named pattern its plan advertises (the same pattern `semantic explain` reports), so explain and compile stay in lock-step. When a payload falls outside the pattern's shape the slide **degrades** to a safe content slide (title + readable bullets — never a Go `map[...]` dump) and semantic validation emits a `SEMANTIC_DENSITY` advisory naming the count that caused the degradation.
+Each content-bearing kind compiles to the named pattern its plan advertises (the same pattern `semantic explain` reports), so explain and compile stay in lock-step. When a payload falls outside the pattern's shape the slide **degrades** to a safe content slide (title + readable bullets — never a Go `map[...]` dump) and semantic validation emits a `SEMANTIC_DENSITY` advisory naming the count that caused the degradation. A `kpi_snapshot` additionally degrades to the bullet fallback when an individual metric value is too long for the compact KPI cards (e.g. `CHF 142.3M` exceeds the big-number budget): a value that satisfies the schema but not the rendered card is lowered to readable bullets rather than emitted as raw JSON the renderer would reject.
 
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
@@ -136,6 +136,10 @@ internal/
 ## Diagnostics and repair
 
 Semantic validation returns the shared `FindingEnvelope` from `internal/diagnostics`. Findings prefer semantic paths such as `slides[2].kpis[1].label`. When a compiled raw deck triggers a fit or output-validation finding, the compiler maps the raw JSON pointer back through its `SourceMap` (exact match first, then nearest ancestor) and preserves the generated pointer as fallback evidence. The semantic slide index is recovered from the raw `slides[N]` prefix even when no mapping exists, so a finding always carries at least a slide-level locator. For the common density/overflow failures — an overlong metric label/value, an overfull KPI snapshot, an overlong takeaway, a dense comparison side, or a crowded roadmap phase list — the finding also carries a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`, `simplify_side`, or `split_phases`) so an agent repairs the semantic source it authored rather than the generated shape_grid JSON.
+
+### Post-compile raw preflight
+
+After lowering a `DeckSpec` to a raw `PresentationInput`, `Compile` runs a **post-compile raw preflight** (`internal/semantic/preflight.go`) over every emitted pattern slide. It applies the same pattern-validation gate the renderer enforces in `expandPattern` (via the reusable `deckinput.ValidatePattern` helper) without expanding the grid, so a slide whose lowered pattern would be rejected at render — for example a KPI cell value that exceeds the `kpi-Nup` big-number budget, or a list with the wrong item count — is caught **at compile/validate time** instead of failing deep in generation. Preflight findings are error severity and block the compile (no `PresentationInput` is emitted), each mapped back through the `SourceMap` to the semantic source path with the raw pattern pointer retained under `evidence.raw_path` and a `recommended_edit` attached for the length/count failures. Because this runs inside `Compile`, it applies uniformly to `compile_deck_spec`, `render_deck_spec`, and the HTTP `compile`/`render` endpoints. The `kpi_snapshot` length degradation above pre-empts the preflight for the one kind that has a natural bullet fallback; other kinds surface the blocking preflight finding so the author edits the offending field.
 
 Agents should repair semantic YAML/JSON first. Raw `PresentationInput` and `repair_slide` remain available for mechanical fixes and advanced escape-hatch workflows.
 

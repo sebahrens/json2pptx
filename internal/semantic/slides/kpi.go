@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // kpiCell is the raw kpi-Nup cell shape: a big number and a short caption.
@@ -15,14 +16,30 @@ type kpiCell struct {
 
 // CompileKPISnapshot compiles a KPI-snapshot slide. With 2–6 metrics it emits a
 // kpi-Nup pattern (the variant selected by metric count) under a title
-// placeholder; with a count outside that range it falls back to a content slide
-// listing the metrics as bullets, so the slide always validates.
+// placeholder; with a count outside that range — or when a metric is too long
+// or dense for the compact cards — it falls back to a content slide listing the
+// metrics as bullets, so the slide always validates.
 func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	cells, srcField := kpiCells(in.Body)
 
 	// kpi-Nup is registered only for N in 2..6. Outside that range there is no
 	// matching pattern, so degrade to a safe content slide.
 	if len(cells) < 2 || len(cells) > 6 {
+		return compileKPIFallback(in, cells, srcField)
+	}
+
+	values, err := json.Marshal(cells)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal kpi values: %w", err)
+	}
+	patternName := fmt.Sprintf("kpi-%dup", len(cells))
+
+	// A KPI value can be valid semantically yet too long for the compact kpi-Nup
+	// cards (e.g. "CHF 142.3M" exceeds the big-number budget). Rather than emit
+	// raw JSON the renderer will reject, degrade to the bullet fallback, which
+	// always validates. This pre-empts the post-compile raw preflight for the one
+	// kind that has a natural fallback (see internal/semantic/preflight.go).
+	if deckinput.ValidatePattern(&deckinput.PatternInput{Name: patternName, Values: values}, patterns.Default()) != nil {
 		return compileKPIFallback(in, cells, srcField)
 	}
 
@@ -37,12 +54,8 @@ func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		})
 	}
 
-	values, err := json.Marshal(cells)
-	if err != nil {
-		return nil, nil, fmt.Errorf("marshal kpi values: %w", err)
-	}
 	slide.Pattern = &deckinput.PatternInput{
-		Name:   fmt.Sprintf("kpi-%dup", len(cells)),
+		Name:   patternName,
 		Values: values,
 	}
 	for k := range cells {

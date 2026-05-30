@@ -64,8 +64,13 @@ as `slides[1].kpis[1]` with the raw path preserved only as fallback evidence
 (`evidence.raw_path`) when useful, and — for the common density/overflow
 failures — a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`,
 `simplify_side`, or `split_phases`) naming the semantic edit that resolves it.
-Agents should edit the semantic spec first; compiled raw JSON is an escape hatch
-for advanced repairs.
+A **post-compile raw preflight** runs the renderer's pattern-validation gate over
+the lowered deck inside `Compile`, so a lowered pattern that would be rejected at
+render (e.g. a KPI value too long for the `kpi-Nup` cards) surfaces as a blocking
+finding from `compile_deck_spec`/`render_deck_spec` — mapped to the semantic path
+with the same `evidence.raw_path` and `recommended_edit` — rather than only at
+render time. Agents should edit the semantic spec first; compiled raw JSON is an
+escape hatch for advanced repairs.
 
 ## 2. The envelope contract
 

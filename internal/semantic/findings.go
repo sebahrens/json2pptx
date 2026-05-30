@@ -138,10 +138,17 @@ func suggestSemanticEdit(code, action, semanticPath string) *SemanticEdit {
 // isLengthFinding reports whether a finding describes content that is too long
 // or too dense for its slot — the failures a semantic edit can address. It keys
 // off the finding code and the fit action (refuse / shrink_or_split both mean
-// the content does not fit).
+// the content does not fit), and also recognizes the raw pattern-validation
+// codes the post-compile preflight surfaces (a value over its max length, or a
+// list with the wrong item count, both mean the authored content does not fit
+// the chosen pattern).
 func isLengthFinding(code, action string) bool {
 	switch action {
 	case "refuse", "shrink_or_split":
+		return true
+	}
+	switch code {
+	case "max_length", "count_mismatch", "max_items", "min_items":
 		return true
 	}
 	c := strings.ToUpper(code)
@@ -153,10 +160,15 @@ func isLengthFinding(code, action string) bool {
 	return false
 }
 
-// isCountFinding reports whether a finding is about having too many items (as
-// opposed to items being individually too long), which calls for a split rather
-// than a shorten.
+// isCountFinding reports whether a finding is about having the wrong number of
+// items (as opposed to items being individually too long), which calls for a
+// split rather than a shorten. It covers both the fit "TOO_MANY" codes and the
+// raw pattern count-validation codes surfaced by the preflight.
 func isCountFinding(code string) bool {
+	switch code {
+	case "count_mismatch", "max_items", "min_items":
+		return true
+	}
 	return strings.Contains(strings.ToUpper(code), "TOO_MANY")
 }
 
