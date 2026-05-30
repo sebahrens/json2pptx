@@ -572,6 +572,112 @@ func TestSemantic_HelpListsSubcommands(t *testing.T) {
 	}
 }
 
+// TestSemantic_SubcommandHelpExitsZero guards that a per-subcommand -h/--help
+// exits cleanly (nil error → exit 0). The flag package returns flag.ErrHelp after
+// printing usage; runSemantic must translate that to success so automated CI
+// probes do not treat `semantic <sub> --help` as a failure.
+func TestSemantic_SubcommandHelpExitsZero(t *testing.T) {
+	subs := []string{"validate", "compile", "render", "explain", "schema"}
+	for _, sub := range subs {
+		for _, flagForm := range []string{"-h", "--help"} {
+			t.Run(sub+" "+flagForm, func(t *testing.T) {
+				if _, err := runSemanticArgs(t, sub, flagForm); err != nil {
+					t.Errorf("semantic %s %s returned error (want exit 0): %v", sub, flagForm, err)
+				}
+			})
+		}
+	}
+}
+
+// TestSemanticCompile_Envelope verifies that --envelope emits the structured
+// compile result (compiled_json + the shared finding envelope) instead of raw
+// JSON, so a compile-only flow can read non-blocking diagnostics without a
+// separate validate pass.
+func TestSemanticCompile_Envelope(t *testing.T) {
+	path := writeSpec(t, "deck.yaml", validSemanticSpec)
+
+	out, err := runSemanticArgs(t, "compile", "--spec", path, "--envelope")
+	if err != nil {
+		t.Fatalf("semantic compile --envelope returned error: %v\noutput=%s", err, out)
+	}
+
+	var env semanticCompileEnvelope
+	if jerr := json.Unmarshal([]byte(out), &env); jerr != nil {
+		t.Fatalf("output is not a semanticCompileEnvelope: %v\noutput=%s", jerr, out)
+	}
+	if !env.OK {
+		t.Errorf("envelope ok = false on a clean spec; error=%q", env.Error)
+	}
+	if env.SlideCount != 2 {
+		t.Errorf("slide_count = %d, want 2", env.SlideCount)
+	}
+	if env.Template != "midnight-blue" {
+		t.Errorf("template = %q, want midnight-blue", env.Template)
+	}
+	if env.Findings.Subcommand != "semantic compile" {
+		t.Errorf("findings.subcommand = %q, want %q", env.Findings.Subcommand, "semantic compile")
+	}
+	// compiled_json must round-trip into a usable PresentationInput.
+	var input PresentationInput
+	if jerr := json.Unmarshal(env.CompiledJSON, &input); jerr != nil {
+		t.Fatalf("compiled_json is not valid PresentationInput JSON: %v", jerr)
+	}
+	if len(input.Slides) != 2 {
+		t.Errorf("compiled_json has %d slides, want 2", len(input.Slides))
+	}
+}
+
+// TestSemanticCompile_EnvelopeBlockingError verifies that a blocking parse/compile
+// failure under --envelope still emits the (ok=false) envelope on stdout and
+// returns a non-nil error so the process exits non-zero.
+func TestSemanticCompile_EnvelopeBlockingError(t *testing.T) {
+	path := writeSpec(t, "bad.yaml", invalidSemanticSpec)
+
+	out, err := runSemanticArgs(t, "compile", "--spec", path, "--envelope")
+	if err == nil {
+		t.Fatalf("semantic compile --envelope succeeded on invalid spec; output=%s", out)
+	}
+	var env semanticCompileEnvelope
+	if jerr := json.Unmarshal([]byte(out), &env); jerr != nil {
+		t.Fatalf("blocking output is not a semanticCompileEnvelope: %v\noutput=%s", jerr, out)
+	}
+	if env.OK {
+		t.Error("envelope ok = true on a blocking failure")
+	}
+	if env.Error == "" {
+		t.Error("envelope is missing the blocking error reason")
+	}
+}
+
+// TestSemanticCompile_StdinSpec verifies that --spec - reads the spec from
+// os.Stdin (the Windows-portable path) rather than /dev/stdin.
+func TestSemanticCompile_StdinSpec(t *testing.T) {
+	origStdin := os.Stdin
+	defer func() { os.Stdin = origStdin }()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	go func() {
+		_, _ = w.WriteString(validSemanticSpec)
+		_ = w.Close()
+	}()
+	os.Stdin = r
+
+	out, err := runSemanticArgs(t, "compile", "--spec", "-", "--output", "-")
+	if err != nil {
+		t.Fatalf("semantic compile --spec - returned error: %v\noutput=%s", err, out)
+	}
+	var input PresentationInput
+	if jerr := json.Unmarshal([]byte(out), &input); jerr != nil {
+		t.Fatalf("stdin compile output is not valid PresentationInput JSON: %v\noutput=%s", jerr, out)
+	}
+	if input.Template != "midnight-blue" {
+		t.Errorf("compiled template = %q, want midnight-blue", input.Template)
+	}
+}
+
 // TestSemanticClassificationRegistered guards that the semantic command is
 // recorded in the CLI command classification map (the reverse-parity gate reads
 // it), since dispatch now recognizes it. The semantic group now has MCP parity

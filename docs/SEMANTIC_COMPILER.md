@@ -92,10 +92,15 @@ CLI:
 ```bash
 json2pptx semantic validate --spec deck.yaml
 json2pptx semantic compile --spec deck.yaml --output compiled.json
+json2pptx semantic compile --spec deck.yaml --envelope          # compiled_json + diagnostics
 json2pptx semantic render --spec deck.yaml --output deck.pptx
 json2pptx semantic explain --spec deck.yaml
 json2pptx semantic schema
 ```
+
+Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
+
+`semantic compile` writes the raw `PresentationInput` JSON by default. Add `--envelope` to emit a structured result instead — `{ok, slide_count, template, findings, compiled_json}` — so a compile-only flow surfaces non-blocking diagnostics (density, rhythm, raw-pattern preflight) without a separate `validate` run. This mirrors the HTTP `POST /api/v1/semantic/compile?include_compiled_json=true` response shape. A blocking parse/compile failure still emits the (`ok:false`) envelope and exits non-zero.
 
 MCP:
 
@@ -110,8 +115,8 @@ HTTP:
 
 - `GET /api/v1/semantic/schema`
 - `POST /api/v1/semantic/validate`
-- `POST /api/v1/semantic/compile`
-- `POST /api/v1/semantic/render`
+- `POST /api/v1/semantic/compile` (add `?include_compiled_json=true` for the raw deck)
+- `POST /api/v1/semantic/render` — **deferred, returns HTTP 501**; the render orchestration lives in the CLI layer, so use `json2pptx semantic render` (CLI) or `render_deck_spec` (MCP)
 
 ## Package layout
 

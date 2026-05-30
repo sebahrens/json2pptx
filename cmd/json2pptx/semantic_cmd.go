@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,22 @@ func runSemantic() error {
 	// Shift args so each sub-subcommand sees its own flags (mirrors dispatch).
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 
+	err := dispatchSemanticSub(sub)
+	// A subcommand's `-h`/`--help` makes flag.Parse return flag.ErrHelp after the
+	// flag package has already printed usage to stderr. Help is a successful,
+	// intentional invocation, so translate it to a clean exit (code 0) rather than
+	// letting it bubble up to main as an error — automated probes treat a non-zero
+	// `--help` as a failure.
+	if errors.Is(err, flag.ErrHelp) {
+		return nil
+	}
+	return err
+}
+
+// dispatchSemanticSub routes a semantic sub-subcommand to its handler. It is split
+// out of runSemantic so the caller can uniformly translate flag.ErrHelp (returned
+// by any handler's flag parsing on -h/--help) into a clean exit.
+func dispatchSemanticSub(sub string) error {
 	switch sub {
 	case "validate":
 		return runSemanticValidate()
@@ -73,6 +90,8 @@ Examples:
   json2pptx semantic validate --spec deck.yaml --strict strict
   json2pptx semantic compile --spec deck.yaml --output compiled.json
   json2pptx semantic compile --spec deck.yaml --output -      # stdout
+  json2pptx semantic compile --spec deck.yaml --envelope      # JSON + diagnostics
+  json2pptx semantic compile --spec - --envelope < deck.yaml  # read stdin
   json2pptx semantic render --spec deck.yaml --output deck.pptx
   json2pptx semantic explain --spec deck.yaml
   json2pptx semantic schema
@@ -120,7 +139,7 @@ func runSemanticValidate() error {
 		return err
 	}
 
-	data, err := os.ReadFile(specReadPath(*specPath))
+	data, err := readSpec(*specPath)
 	if err != nil {
 		return fmt.Errorf("semantic validate: read %s: %w", *specPath, err)
 	}
@@ -140,23 +159,49 @@ func runSemanticValidate() error {
 	return nil
 }
 
+// semanticCompileEnvelope is the structured result emitted by "semantic compile
+// --envelope". It mirrors the HTTP POST /api/v1/semantic/compile response shape
+// so the surfaces stay aligned: on success ok is true, slide_count/template
+// summarize the compiled deck, and compiled_json carries the full raw
+// PresentationInput; on a blocking parse/compile failure ok is false and error
+// names the blocking reason. findings always carries the shared envelope of
+// compile diagnostics, so an agent driving a compile-only flow sees non-blocking
+// warnings (density, rhythm, raw-pattern preflight) without a separate validate
+// run.
+type semanticCompileEnvelope struct {
+	OK           bool                        `json:"ok"`
+	SlideCount   int                         `json:"slide_count,omitempty"`
+	Template     string                      `json:"template,omitempty"`
+	Findings     diagnostics.FindingEnvelope `json:"findings"`
+	CompiledJSON json.RawMessage             `json:"compiled_json,omitempty"`
+	Error        string                      `json:"error,omitempty"`
+}
+
 // runSemanticCompile implements "semantic compile". It parses, validates, and
 // compiles a semantic spec into a raw PresentationInput and writes the indented
 // JSON to --output (a path, or - for stdout). The raw JSON is consumable by
 // `json2pptx validate` and `json2pptx generate` for debugging or advanced edits.
 // Blocking (error-severity) findings abort the compile: the finding envelope is
 // printed to stderr and the process exits non-zero.
+//
+// With --envelope, the command instead emits the structured semanticCompileEnvelope
+// (compiled_json plus the shared finding envelope) to --output/stdout, so a
+// compile-only flow can read non-blocking diagnostics without a separate validate
+// pass. A blocking failure under --envelope still writes the (ok=false) envelope
+// and exits non-zero.
 func runSemanticCompile() error {
 	fs := flag.NewFlagSet("semantic compile", flag.ContinueOnError)
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
-	output := fs.String("output", "-", "Where to write the raw PresentationInput JSON; use - for stdout")
+	output := fs.String("output", "-", "Where to write the output; use - for stdout")
 	strict := fs.String("strict", "warn", "Advisory-rule strictness: off, warn, or strict")
 	templateName := fs.String("template", "", "Default template used when the spec pins none")
+	envelopeMode := fs.Bool("envelope", false, "Emit a structured envelope (compiled_json + diagnostics) instead of raw JSON")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic compile --spec <file> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Compile a semantic deck spec to raw PresentationInput JSON.\n")
-		fmt.Fprintf(os.Stderr, "The output is accepted by 'json2pptx validate' and 'json2pptx generate'.\n\n")
+		fmt.Fprintf(os.Stderr, "The output is accepted by 'json2pptx validate' and 'json2pptx generate'.\n")
+		fmt.Fprintf(os.Stderr, "Pass --envelope to wrap the compiled JSON with non-blocking diagnostics.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -173,17 +218,24 @@ func runSemanticCompile() error {
 		return err
 	}
 
-	data, err := os.ReadFile(specReadPath(*specPath))
+	data, err := readSpec(*specPath)
 	if err != nil {
 		return fmt.Errorf("semantic compile: read %s: %w", *specPath, err)
 	}
 
+	envOpts := diagnostics.EnvelopeOptions{
+		Subcommand:  "semantic compile",
+		InputSHA256: diagnostics.ComputeInputSHA256(data),
+	}
+
 	spec, parseDiags := semantic.Parse(*specPath, data)
 	if parseDiags.HasErrors() {
-		envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
-			Subcommand:  "semantic compile",
-			InputSHA256: diagnostics.ComputeInputSHA256(data),
-		}, parseDiags.ToDiagnostics())
+		envelope := diagnostics.BuildEnvelope(envOpts, parseDiags.ToDiagnostics())
+		if *envelopeMode {
+			res := semanticCompileEnvelope{OK: false, Findings: envelope, Error: "semantic compile: spec could not be parsed"}
+			_ = writeCompileOutput(*output, res)
+			return fmt.Errorf("semantic compile: spec could not be parsed")
+		}
 		_ = fprintJSONIndent(os.Stderr, envelope)
 		return fmt.Errorf("semantic compile: spec could not be parsed")
 	}
@@ -193,12 +245,37 @@ func runSemanticCompile() error {
 		DefaultTemplate: *templateName,
 	})
 	if err != nil {
-		envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
-			Subcommand:  "semantic compile",
-			InputSHA256: diagnostics.ComputeInputSHA256(data),
-		}, result.Diagnostics)
+		var ds []diagnostics.Diagnostic
+		if result != nil {
+			ds = result.Diagnostics
+		}
+		envelope := diagnostics.BuildEnvelope(envOpts, ds)
+		if *envelopeMode {
+			res := semanticCompileEnvelope{OK: false, Findings: envelope, Error: fmt.Sprintf("semantic compile: %v", err)}
+			_ = writeCompileOutput(*output, res)
+			return fmt.Errorf("semantic compile: %w", err)
+		}
 		_ = fprintJSONIndent(os.Stderr, envelope)
 		return fmt.Errorf("semantic compile: %w", err)
+	}
+
+	if *envelopeMode {
+		var ds []diagnostics.Diagnostic
+		if result != nil {
+			ds = result.Diagnostics
+		}
+		compiled, marshalErr := json.Marshal(input)
+		if marshalErr != nil {
+			return fmt.Errorf("semantic compile: marshal compiled deck: %w", marshalErr)
+		}
+		res := semanticCompileEnvelope{
+			OK:           true,
+			SlideCount:   len(input.Slides),
+			Template:     input.Template,
+			Findings:     diagnostics.BuildEnvelope(envOpts, ds),
+			CompiledJSON: compiled,
+		}
+		return writeCompileOutput(*output, res)
 	}
 
 	raw, err := json.MarshalIndent(input, "", "  ")
@@ -295,7 +372,7 @@ func runSemanticRender() error {
 		return err
 	}
 
-	data, err := os.ReadFile(specReadPath(*specPath))
+	data, err := readSpec(*specPath)
 	if err != nil {
 		return fmt.Errorf("semantic render: read %s: %w", *specPath, err)
 	}
@@ -575,7 +652,7 @@ func runSemanticExplain() error {
 		return fmt.Errorf("--spec is required")
 	}
 
-	data, err := os.ReadFile(specReadPath(*specPath))
+	data, err := readSpec(*specPath)
 	if err != nil {
 		return fmt.Errorf("semantic explain: read %s: %w", *specPath, err)
 	}
@@ -616,13 +693,33 @@ func runSemanticSchema() error {
 	return err
 }
 
-// specReadPath maps the --spec value to a path readable by os.ReadFile, routing
-// "-" to stdin via /dev/stdin (matching readJSONInput's stdin convention).
-func specReadPath(path string) string {
+// readSpec reads the semantic spec named by the --spec value. "-" reads the whole
+// of os.Stdin directly (portable to Windows, which has no /dev/stdin); any other
+// value is read as a file path.
+func readSpec(path string) ([]byte, error) {
 	if path == "-" {
-		return "/dev/stdin"
+		return io.ReadAll(os.Stdin)
 	}
-	return path
+	return os.ReadFile(path)
+}
+
+// writeCompileOutput marshals v as indented JSON (with a trailing newline) and
+// writes it to the "semantic compile" --output destination: stdout when output is
+// "" or "-", otherwise the named file. It centralizes the envelope-mode output so
+// success and blocking-failure paths share one destination convention.
+func writeCompileOutput(output string, v any) error {
+	if output == "" || output == "-" {
+		return printJSONIndent(v)
+	}
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal JSON: %w", err)
+	}
+	out = append(out, '\n')
+	if err := os.WriteFile(output, out, 0o644); err != nil { //nolint:gosec // generated deck JSON is not sensitive
+		return fmt.Errorf("semantic compile: write %s: %w", output, err)
+	}
+	return nil
 }
 
 // printJSONIndent writes v as indented JSON (with a trailing newline) to stdout.

@@ -11,9 +11,11 @@ info:
 
     `POST /api/v1/convert` supports **basic text and bullet slides only**. For
     normal agent-authored business decks, prefer the semantic endpoints under
-    `/api/v1/semantic/*`; they compile compact YAML/JSON deck specs to the raw
-    `PresentationInput` model and render through the same engine as the CLI/MCP
-    surfaces. For raw features not expressible in the semantic schema (charts,
+    `/api/v1/semantic/*`; they validate and compile compact YAML/JSON deck specs
+    to the raw `PresentationInput` model. Rendering to a `.pptx` is **not yet
+    available over HTTP** (`POST /api/v1/semantic/render` returns **501**); use
+    `json2pptx semantic render` (CLI) or `render_deck_spec` (MCP), which drive the
+    same engine. For raw features not expressible in the semantic schema (charts,
     diagrams, tables, images, shape grids, named patterns, deck structure, theme
     overrides, accent strategies), use the **MCP interface** (`json2pptx mcp`) or
     the **CLI** (`json2pptx generate`).
