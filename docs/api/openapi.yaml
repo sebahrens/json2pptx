@@ -119,10 +119,16 @@ paths:
       tags:
         - Semantic
       summary: Validate a semantic deck spec
-      description: Validates YAML or JSON semantic input and returns a FindingEnvelope with semantic-path diagnostics.
+      description: >
+        Validates a semantic deck spec. The request body is the spec document
+        itself (JSON or YAML by Content-Type). Always responds 200; the result
+        lives in the returned FindingEnvelope. `valid` mirrors `findings.ok`.
       operationId: validateSemanticDeckSpec
+      parameters:
+        - $ref: '#/components/parameters/SemanticStrict'
       requestBody:
         required: true
+        description: The semantic deck spec document.
         content:
           application/json:
             schema:
@@ -137,21 +143,55 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [valid, findings]
                 properties:
                   valid:
                     type: boolean
+                    description: True when no finding has error severity (mirrors findings.ok).
                   findings:
                     $ref: '#/components/schemas/FindingEnvelope'
+        '400':
+          description: Empty body or invalid strict value (transport error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Content-Type (must be application/json or application/x-yaml)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/semantic/compile:
     post:
       tags:
         - Semantic
       summary: Compile a semantic deck spec
-      description: Compiles semantic YAML/JSON to raw PresentationInput JSON plus explanation/source-map metadata.
+      description: >
+        Compiles a semantic deck spec into raw PresentationInput. The request
+        body is the spec document (JSON or YAML by Content-Type). Responds 200
+        on success; 422 with `{ok:false, error, findings}` when the spec cannot
+        compile.
       operationId: compileSemanticDeckSpec
+      parameters:
+        - $ref: '#/components/parameters/SemanticStrict'
+        - name: template
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Default template used when the spec pins none.
+        - name: include_compiled_json
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: When true, include the full compiled PresentationInput under compiled_json.
       requestBody:
         required: true
+        description: The semantic deck spec document.
         content:
           application/json:
             schema:
@@ -161,44 +201,43 @@ paths:
               type: string
       responses:
         '200':
-          description: Compiled PresentationInput
+          description: Compile result
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/SemanticCompileResponse'
+        '422':
+          description: Spec could not be parsed or compiled (blocking findings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SemanticCompileResponse'
+        '415':
+          description: Unsupported Content-Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/semantic/render:
     post:
       tags:
         - Semantic
-      summary: Render a semantic deck spec
-      description: Compiles a semantic deck spec, runs the normal render/output-validation pipeline, and returns PPTX output plus semantic diagnostics.
+      summary: Render a semantic deck spec (deferred)
+      description: >
+        Deferred. The render orchestration still lives in the CLI layer, so this
+        endpoint returns 501 (UNSUPPORTED_FEATURE) with the available
+        alternatives. Use the `json2pptx semantic render` CLI or the
+        `render_deck_spec` MCP tool, or compile via POST /api/v1/semantic/compile
+        and feed the raw PresentationInput to generate_presentation.
       operationId: renderSemanticDeckSpec
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-          application/x-yaml:
-            schema:
-              type: string
       responses:
-        '200':
-          description: Render result
+        '501':
+          description: Render is not yet available over HTTP
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  pptx_path:
-                    type: string
-                  quality_summary:
-                    type: object
-                  findings:
-                    $ref: '#/components/schemas/FindingEnvelope'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/templates:
     get:
@@ -1667,3 +1706,43 @@ components:
       properties:
         shape_grid:
           $ref: '#/components/schemas/ShapeGridInput'
+
+    SemanticCompileResponse:
+      type: object
+      description: >
+        Result of POST /api/v1/semantic/compile. On success (HTTP 200) ok is true
+        and slide_count/template summarize the compiled deck. On a blocking
+        parse/compile failure (HTTP 422) ok is false and error names the reason.
+        findings always carries the shared compile-diagnostics envelope.
+      required:
+        - ok
+        - findings
+      properties:
+        ok:
+          type: boolean
+          description: True when the spec compiled cleanly.
+        slide_count:
+          type: integer
+          description: Number of compiled slides (present on success).
+        template:
+          type: string
+          description: Resolved template name (present on success).
+        findings:
+          $ref: '#/components/schemas/FindingEnvelope'
+        compiled_json:
+          type: object
+          description: Full compiled raw PresentationInput; present only when include_compiled_json=true.
+        error:
+          type: string
+          description: Blocking error message (present on failure).
+
+  parameters:
+    SemanticStrict:
+      name: strict
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [off, warn, strict]
+        default: warn
+      description: Advisory-rule strictness for semantic validation.

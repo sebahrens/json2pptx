@@ -69,13 +69,17 @@ Transport and request errors follow a consistent JSON structure:
 }
 ```
 
-> **Exception — diagnostic-bearing endpoints.** The semantic validation/render
+> **Exception — diagnostic-bearing endpoints.** The semantic validate/compile
 > endpoints and the pattern validation endpoints (`POST /api/v1/patterns/{name}/validate`
-> and `/expand`) return a
-> `FindingEnvelope` on a validation failure (HTTP 400) instead of the shape
-> above — the same agent-facing diagnostic contract emitted by the CLI and MCP
-> surfaces (see [docs/AGENT_DIAGNOSTICS.md](../AGENT_DIAGNOSTICS.md)). Transport
-> failures on those endpoints (404/415/413/500) still use the simple shape.
+> and `/expand`) carry a `FindingEnvelope` — the same agent-facing diagnostic
+> contract emitted by the CLI and MCP surfaces (see
+> [docs/AGENT_DIAGNOSTICS.md](../AGENT_DIAGNOSTICS.md)). `POST /api/v1/semantic/validate`
+> always responds **HTTP 200** with `{valid, findings}` (validation completing is
+> the success case; `valid`/`findings.ok` report the result).
+> `POST /api/v1/semantic/compile` responds **HTTP 200** on success and **HTTP 422**
+> with `{ok:false, error, findings}` when the spec cannot compile. Pattern
+> validation failures use **HTTP 400**. Transport failures on these endpoints
+> (404/413/415/500) still use the simple shape above.
 
 ### Error Codes
 
@@ -376,27 +380,45 @@ curl -X POST http://localhost:8080/api/v1/convert \
 ### Semantic Deck Specs
 
 Author compact semantic YAML/JSON and let json2pptx compile it to the raw
-`PresentationInput` model before rendering.
+`PresentationInput` model. The **request body is the spec document itself** —
+`Content-Type: application/json` is parsed as JSON, `application/x-yaml` as YAML.
+Tuning options ride as query parameters so the body stays a clean spec.
 
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /api/v1/semantic/schema` | Return the semantic deck-spec JSON Schema |
-| `POST /api/v1/semantic/validate` | Validate a semantic spec and return semantic-path findings |
+| `POST /api/v1/semantic/validate` | Validate a semantic spec; returns `{valid, findings}` (HTTP 200) |
 | `POST /api/v1/semantic/compile` | Compile a semantic spec to raw `PresentationInput` JSON |
-| `POST /api/v1/semantic/render` | Compile and render a semantic spec to a `.pptx` |
+| `POST /api/v1/semantic/render` | **Deferred (HTTP 501)** — use the CLI/MCP render surfaces |
+
+Query parameters (validate/compile):
+
+| Parameter | Endpoint | Default | Description |
+|-----------|----------|---------|-------------|
+| `strict` | both | `warn` | Advisory-rule severity: `off`, `warn`, or `strict` |
+| `template` | compile | — | Default template when the spec pins none |
+| `include_compiled_json` | compile | `false` | When `true`, include the full compiled `PresentationInput` under `compiled_json` |
 
 Example request:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/semantic/render \
+curl -X POST "http://localhost:8080/api/v1/semantic/compile?include_compiled_json=true" \
   -H "Content-Type: application/x-yaml" \
   --data-binary @qbr.yaml
 ```
 
 Semantic findings point to source fields such as `slides[2].metrics[1].label`.
-When a raw fit/output validator emits a generated JSON pointer, the semantic
-source map translates it back to the closest semantic field and preserves the
-raw path as fallback evidence.
+When a raw validator emits a generated JSON pointer, the semantic source map
+translates it back to the closest semantic field and preserves the raw path as
+fallback evidence.
+
+> **Render is deferred.** The render orchestration still lives in the CLI layer,
+> so `POST /api/v1/semantic/render` returns **HTTP 501** (`UNSUPPORTED_FEATURE`)
+> with the available alternatives. To render a semantic spec today, use the
+> `json2pptx semantic render` CLI or the `render_deck_spec` MCP tool; or call
+> `POST /api/v1/semantic/compile` to obtain the raw `PresentationInput` JSON and
+> feed it to `generate_presentation` / `json2pptx generate`. See
+> `GET /api/v1/capabilities` (`semantic` block) for the machine-readable boundary.
 
 ---
 

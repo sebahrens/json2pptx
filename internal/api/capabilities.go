@@ -7,12 +7,13 @@ import (
 // CapabilitiesResponse describes the machine-readable feature boundary
 // of the HTTP API surface.
 type CapabilitiesResponse struct {
-	Surface              string              `json:"surface"`
-	Version              string              `json:"version"`
-	ConvertCapabilities  ConvertCapabilities `json:"convert"`
-	AvailableEndpoints   []string            `json:"available_endpoints"`
-	MCPOnlyFeatures      []string            `json:"mcp_only_features"`
-	RecommendedInterface string              `json:"recommended_interface"`
+	Surface              string               `json:"surface"`
+	Version              string               `json:"version"`
+	ConvertCapabilities  ConvertCapabilities  `json:"convert"`
+	SemanticCapabilities SemanticCapabilities `json:"semantic"`
+	AvailableEndpoints   []string             `json:"available_endpoints"`
+	MCPOnlyFeatures      []string             `json:"mcp_only_features"`
+	RecommendedInterface string               `json:"recommended_interface"`
 }
 
 // ConvertCapabilities describes what POST /api/v1/convert supports.
@@ -20,6 +21,17 @@ type ConvertCapabilities struct {
 	SupportedSlideFields   []string `json:"supported_slide_fields"`
 	SupportedContentFields []string `json:"supported_content_fields"`
 	UnsupportedFeatures    []string `json:"unsupported_features"`
+}
+
+// SemanticCapabilities describes what the /api/v1/semantic/* endpoints support.
+// Render is deferred until the render orchestration is extracted into internal/,
+// so it is advertised as unavailable with its CLI/MCP alternatives.
+type SemanticCapabilities struct {
+	SupportedOperations []string `json:"supported_operations"`
+	DeferredOperations  []string `json:"deferred_operations"`
+	RequestBody         string   `json:"request_body"`
+	QueryParameters     []string `json:"query_parameters"`
+	DiagnosticContract  string   `json:"diagnostic_contract"`
 }
 
 // CapabilitiesHandler returns a handler for GET /api/v1/capabilities.
@@ -57,12 +69,26 @@ func CapabilitiesHandler() http.HandlerFunc {
 					"contrast_check (MCP/CLI only)",
 				},
 			},
+			SemanticCapabilities: SemanticCapabilities{
+				SupportedOperations: []string{"schema", "validate", "compile"},
+				DeferredOperations: []string{
+					"render (use `json2pptx semantic render` CLI or render_deck_spec MCP; HTTP returns 501)",
+				},
+				RequestBody:     "Raw semantic deck spec document; application/json parsed as JSON, application/x-yaml as YAML.",
+				QueryParameters: []string{"strict (off|warn|strict, default warn)", "template", "include_compiled_json (compile only)"},
+				DiagnosticContract: "Diagnostic-bearing responses use the shared FindingEnvelope; " +
+					"transport/request errors use the simple error envelope.",
+			},
 			AvailableEndpoints: []string{
 				"GET  /api/v1/health",
 				"GET  /api/v1/capabilities",
 				"GET  /api/v1/templates",
 				"GET  /api/v1/templates/{name}",
 				"GET  /api/v1/slide-types",
+				"GET  /api/v1/semantic/schema",
+				"POST /api/v1/semantic/validate",
+				"POST /api/v1/semantic/compile",
+				"POST /api/v1/semantic/render",
 				"POST /api/v1/convert",
 				"GET  /api/v1/download/{filename}",
 				"GET  /api/v1/patterns",
