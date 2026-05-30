@@ -607,6 +607,14 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						if vw := validateTableStyleID(table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
 						}
+						// Reject conditional-format fills that are neither a scheme
+						// color nor a 6-digit hex value. resolveConditionalFill drops
+						// such values to prevent malformed/injected OOXML, so surface
+						// a clear error instead of silently losing the fill.
+						for _, d := range invalidConditionalFillDiagnostics(table, tablePath, i) {
+							output.Valid = false
+							output.Diagnostics = append(output.Diagnostics, d)
+						}
 					}
 				}
 			}
@@ -936,6 +944,57 @@ func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, sty
 		Message: msg,
 		Fix:     fix,
 	}
+}
+
+// condFillRe matches the strict allowlist for table conditional-format fills:
+// an optional leading '#' followed by exactly six hexadecimal digits.
+var condFillRe = regexp.MustCompile(`^#?[0-9a-fA-F]{6}$`)
+
+// isValidConditionalFill reports whether a table conditional-format fill value
+// is allowed by generator.resolveConditionalFill: a scheme color name, or a
+// 6-digit hex color (with or without a leading '#'). Any other value — a typo
+// or an attribute/element injection attempt — is rejected.
+func isValidConditionalFill(fill string) bool {
+	if condFillRe.MatchString(fill) {
+		return true
+	}
+	// A '#'-prefixed value that is not exactly six hex digits (e.g. "#FFF") is
+	// not something resolveConditionalFill can emit, so reject it here too.
+	if strings.HasPrefix(fill, "#") {
+		return false
+	}
+	// The only remaining valid values are scheme color names.
+	return isValidFillColor(fill)
+}
+
+// invalidConditionalFillDiagnostics returns an error diagnostic for every cell
+// whose conditional-format fill is neither a scheme color nor a 6-digit hex
+// value. The renderer drops such values (see generator.resolveConditionalFill)
+// to avoid malformed or injected OOXML, so the deck is reported invalid with a
+// clear, actionable message instead of silently losing the fill.
+func invalidConditionalFillDiagnostics(table *TableInput, tablePath string, slideIdx int) []diagnostics.Diagnostic {
+	if table == nil {
+		return nil
+	}
+	var out []diagnostics.Diagnostic
+	for ri, row := range table.Rows {
+		for ci, cell := range row {
+			if cell.Conditional == nil || cell.Conditional.Fill == "" {
+				continue
+			}
+			if isValidConditionalFill(cell.Conditional.Fill) {
+				continue
+			}
+			out = append(out, diagnostics.Diagnostic{
+				Code: diagnostics.CodeInvalidParameter,
+				Path: fmt.Sprintf("%s.rows[%d][%d].conditional.fill", tablePath, ri, ci),
+				Message: fmt.Sprintf("slide %d: table conditional fill %q is invalid; use a scheme color (e.g. accent2) or a 6-digit hex value (e.g. #CC0000)",
+					slideIdx+1, cell.Conditional.Fill),
+				Severity: diagnostics.SeverityError,
+			})
+		}
+	}
+	return out
 }
 
 // writeDryRunOutput writes the dry-run result as JSON to stdout. The accumulated

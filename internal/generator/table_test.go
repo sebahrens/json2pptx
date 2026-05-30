@@ -2112,3 +2112,40 @@ func TestGenerateTableXML_ConditionalFormat(t *testing.T) {
 		t.Error("expected accent2 fill for negative conditional")
 	}
 }
+
+func TestResolveConditionalFill_Allowlist(t *testing.T) {
+	tests := []struct {
+		name      string
+		fill      string
+		wantSub   string // expected substring (ignored when wantEmpty)
+		wantEmpty bool   // true when the value must be dropped (no fill emitted)
+	}{
+		{name: "scheme color", fill: "accent2", wantSub: `<a:schemeClr val="accent2">`},
+		{name: "hex with hash", fill: "#1A2B3C", wantSub: `<a:srgbClr val="1A2B3C"/>`},
+		{name: "hex without hash", fill: "1A2B3C", wantSub: `<a:srgbClr val="1A2B3C"/>`},
+		{name: "lowercase hex", fill: "#aabbcc", wantSub: `<a:srgbClr val="aabbcc"/>`},
+		{name: "xml injection", fill: `bad"/><a:evil/>`, wantEmpty: true},
+		{name: "non-hex typo", fill: "reddish", wantEmpty: true},
+		{name: "short hex", fill: "#FFF", wantEmpty: true},
+		{name: "too-long hex", fill: "1A2B3C4D", wantEmpty: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveConditionalFill(&types.ConditionalFormat{Rule: "threshold", Fill: tt.fill})
+			if tt.wantEmpty {
+				if got != "" {
+					t.Errorf("resolveConditionalFill(%q) = %q, want empty (value should be dropped)", tt.fill, got)
+				}
+				// Guard explicitly against attribute/element injection leaking through.
+				if strings.Contains(got, "evil") || strings.Contains(got, "><") {
+					t.Errorf("resolveConditionalFill(%q) leaked raw markup: %q", tt.fill, got)
+				}
+				return
+			}
+			if !strings.Contains(got, tt.wantSub) {
+				t.Errorf("resolveConditionalFill(%q) = %q, want substring %q", tt.fill, got, tt.wantSub)
+			}
+		})
+	}
+}

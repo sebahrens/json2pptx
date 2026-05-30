@@ -849,8 +849,31 @@ func resolveConditionalFill(cond *types.ConditionalFormat) string {
 	if pptx.IsSchemeColor(fill) {
 		return fmt.Sprintf(`<a:solidFill><a:schemeClr val="%s"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill>`, fill)
 	}
-	// Hex color fallback
-	return fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, strings.TrimPrefix(fill, "#"))
+	// Hex color fallback — only emit when the value is a strict 6-digit hex
+	// color (optionally prefixed with '#'). Anything else (typos or injection
+	// attempts such as `bad"/><a:evil/>`) is dropped so arbitrary text never
+	// reaches the srgbClr val attribute.
+	hex := strings.TrimPrefix(fill, "#")
+	if isValidHexColor(hex) {
+		return fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, hex)
+	}
+	return ""
+}
+
+// isValidHexColor reports whether s is exactly six hexadecimal digits
+// (case-insensitive, no leading '#'). It gates conditional-format fill
+// values before they are emitted into OOXML color attributes.
+func isValidHexColor(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // cellBorderOverrides controls which borders to suppress for merged cells.
