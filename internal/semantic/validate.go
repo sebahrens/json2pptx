@@ -374,6 +374,8 @@ func mapParseCode(code string) string {
 	switch code {
 	case CodeUnknownKind, CodeInvalidKindType:
 		return diagnostics.CodeSemanticUnknownKind
+	case CodeUnknownField:
+		return diagnostics.CodeSemanticUnknownField
 	case CodeMissingKind:
 		return diagnostics.CodeSemanticRequired
 	case CodeUnknownArchetype:

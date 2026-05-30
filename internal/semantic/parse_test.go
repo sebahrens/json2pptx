@@ -3,6 +3,7 @@ package semantic
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -119,6 +120,102 @@ slides:
 	_, ds := ParseYAML([]byte(src))
 	if !hasCodeAtPath(ds, CodeUnknownArchetype, "meta.archetype") {
 		t.Fatalf("expected %s at meta.archetype, got %v", CodeUnknownArchetype, ds)
+	}
+}
+
+func TestParseUnknownTopLevelFieldDeckSuggestsMeta(t *testing.T) {
+	// The common stale shape: a top-level "deck" object instead of "meta".
+	src := `
+deck:
+  title: Bad Deck
+slides:
+  - kind: title
+    title: Bad Deck
+`
+	_, ds := ParseYAML([]byte(src))
+	if !hasCodeAtPath(ds, CodeUnknownField, "deck") {
+		t.Fatalf("expected %s at deck, got %v", CodeUnknownField, ds)
+	}
+	var found *Diagnostic
+	for i := range ds {
+		if ds[i].Code == CodeUnknownField {
+			found = &ds[i]
+			break
+		}
+	}
+	if found.Severity != SeverityError {
+		t.Errorf("severity = %q, want %q", found.Severity, SeverityError)
+	}
+	if want := `did you mean "meta"?`; !strings.Contains(found.Message, want) {
+		t.Errorf("message = %q, want it to contain %q", found.Message, want)
+	}
+}
+
+func TestParseUnknownTopLevelFieldTypoSuggestsClosest(t *testing.T) {
+	// A near-miss typo should be steered to the closest valid key.
+	src := `
+meta:
+  title: Good Deck
+slide:
+  - kind: title
+    title: Hi
+`
+	_, ds := ParseYAML([]byte(src))
+	var found *Diagnostic
+	for i := range ds {
+		if ds[i].Code == CodeUnknownField && ds[i].Path == "slide" {
+			found = &ds[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected %s at slide, got %v", CodeUnknownField, ds)
+	}
+	if want := `did you mean "slides"?`; !strings.Contains(found.Message, want) {
+		t.Errorf("message = %q, want it to contain %q", found.Message, want)
+	}
+}
+
+func TestParseUnknownTopLevelFieldNoCloseMatchListsValidKeys(t *testing.T) {
+	// An unrelated key gets a generic diagnostic listing the valid top-level keys.
+	src := `
+meta:
+  title: Good Deck
+slides:
+  - kind: title
+    title: Hi
+xyzzy_foobar: 1
+`
+	_, ds := ParseYAML([]byte(src))
+	var found *Diagnostic
+	for i := range ds {
+		if ds[i].Code == CodeUnknownField && ds[i].Path == "xyzzy_foobar" {
+			found = &ds[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected %s at xyzzy_foobar, got %v", CodeUnknownField, ds)
+	}
+	if want := "expected one of meta, slides"; !strings.Contains(found.Message, want) {
+		t.Errorf("message = %q, want it to contain %q", found.Message, want)
+	}
+}
+
+func TestParseKnownTopLevelFieldsAreClean(t *testing.T) {
+	// meta + slides only — no unknown-field diagnostic.
+	src := `
+meta:
+  title: Good Deck
+slides:
+  - kind: title
+    title: Hi
+`
+	_, ds := ParseYAML([]byte(src))
+	for _, d := range ds {
+		if d.Code == CodeUnknownField {
+			t.Fatalf("unexpected %s diagnostic: %v", CodeUnknownField, d)
+		}
 	}
 }
 

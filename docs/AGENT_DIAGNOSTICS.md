@@ -38,7 +38,7 @@ surfaces (`json2pptx semantic validate`, `json2pptx semantic render`,
 findings whose `evidence.path` points to the semantic authoring field whenever
 possible. The semantic family is `INPUT`-namespaced and declared in
 `internal/diagnostics/codes.go`: the per-spec gates `SEMANTIC_REQUIRED`,
-`SEMANTIC_UNKNOWN_KIND`, `SEMANTIC_UNKNOWN_ARCHETYPE`,
+`SEMANTIC_UNKNOWN_KIND`, `SEMANTIC_UNKNOWN_FIELD`, `SEMANTIC_UNKNOWN_ARCHETYPE`,
 `SEMANTIC_TAKEAWAY_REQUIRED`, `SEMANTIC_DENSITY`, `SEMANTIC_WEAK_CONTENT`, plus
 the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`,
 `SEMANTIC_RHYTHM_SECTIONING`, and `SEMANTIC_RHYTHM_SYNTHESIS`. Each resolves via

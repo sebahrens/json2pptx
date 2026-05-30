@@ -772,6 +772,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "title", "title": "Hello"}`,
 		RelatedCodes:  []string{CodeSemanticRequired, CodeSemanticUnknownArchetype},
 	},
+	CodeSemanticUnknownField: {
+		Code:        CodeSemanticUnknownField,
+		Summary:     "A top-level field in the semantic deck spec is not recognized.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "semantic parsing finds a top-level key other than meta or slides — most often a stale spec using deck instead of meta. The suggestion in the message names the field it was likely meant to be.",
+		RemediationSteps: []string{
+			"Rename the unknown top-level field to the suggested key (e.g. deck -> meta), or remove it.",
+			"A semantic deck spec has exactly two top-level fields: meta and slides. See json2pptx semantic schema.",
+		},
+		ExampleBefore: `{"deck": {"title": "Q2 Review"}, "slides": [...]}`,
+		ExampleAfter:  `{"meta": {"title": "Q2 Review"}, "slides": [...]}`,
+		RelatedCodes:  []string{CodeSemanticRequired, CodeSemanticUnknownKind},
+	},
 	CodeSemanticUnknownArchetype: {
 		Code:        CodeSemanticUnknownArchetype,
 		Summary:     "meta.archetype is not one of the registered deck archetypes.",

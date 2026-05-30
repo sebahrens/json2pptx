@@ -122,6 +122,7 @@ const (
 const (
 	CodeSemanticRequired         Code = "SEMANTIC_REQUIRED"
 	CodeSemanticUnknownKind      Code = "SEMANTIC_UNKNOWN_KIND"
+	CodeSemanticUnknownField     Code = "SEMANTIC_UNKNOWN_FIELD"
 	CodeSemanticUnknownArchetype Code = "SEMANTIC_UNKNOWN_ARCHETYPE"
 	CodeSemanticTakeawayRequired Code = "SEMANTIC_TAKEAWAY_REQUIRED"
 	CodeSemanticDensity          Code = "SEMANTIC_DENSITY"
@@ -217,6 +218,7 @@ func AllCodes() []Code {
 		// Semantic
 		CodeSemanticRequired,
 		CodeSemanticUnknownKind,
+		CodeSemanticUnknownField,
 		CodeSemanticUnknownArchetype,
 		CodeSemanticTakeawayRequired,
 		CodeSemanticDensity,
