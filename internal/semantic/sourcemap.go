@@ -1,6 +1,9 @@
 package semantic
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // SourceMap records the correspondence between raw json2pptx JSON paths in the
 // generated PresentationInput and the semantic source paths they were compiled
@@ -75,6 +78,40 @@ func (m *SourceMap) Lookup(rawPath string) (SourceEntry, bool) {
 		}
 		p = parent
 	}
+}
+
+// ResolveSemantic resolves a raw path to a semantic location for diagnostics:
+// the semantic path (an exact match first, then the nearest registered
+// ancestor), the semantic slide index, and whether any mapping was found. When
+// no mapping exists it still recovers the slide index from the raw "slides[N]"
+// prefix (returning -1 only when the path carries no slide), so a mapped
+// finding always carries at least a slide-level locator even on a full miss.
+func (m *SourceMap) ResolveSemantic(rawPath string) (semanticPath string, slideIndex int, mapped bool) {
+	if e, ok := m.Lookup(rawPath); ok {
+		return e.SemanticPath, e.SlideIndex, true
+	}
+	return "", slideIndexFromRawPath(rawPath), false
+}
+
+// slideIndexFromRawPath extracts N from a path beginning with "slides[N]" (after
+// normalization), returning -1 when the path is not slide-scoped or N is not a
+// non-negative integer.
+func slideIndexFromRawPath(p string) int {
+	p = normalizePath(p)
+	const prefix = "slides["
+	if !strings.HasPrefix(p, prefix) {
+		return -1
+	}
+	rest := p[len(prefix):]
+	end := strings.IndexByte(rest, ']')
+	if end < 0 {
+		return -1
+	}
+	n, err := strconv.Atoi(rest[:end])
+	if err != nil || n < 0 {
+		return -1
+	}
+	return n
 }
 
 // Entries returns the registered entries keyed by normalized raw path. The

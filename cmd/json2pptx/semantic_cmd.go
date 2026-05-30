@@ -237,16 +237,20 @@ type semanticRenderResult struct {
 }
 
 // semanticDiagnostic is one compact finding in a render result. SemanticPath
-// points at the field in the semantic DeckSpec the author wrote; RawPath is set
-// only as a fallback when a raw render finding could not be traced back to a
-// semantic source path.
+// points at the field in the semantic DeckSpec the author wrote; RawPath is the
+// originating generated pointer, retained as fallback evidence (and the only
+// locator when a finding could not be traced back to a semantic source path).
+// SlideIndex is the semantic slide the finding belongs to, or -1. RecommendedEdit
+// names a semantic edit that should resolve the finding, when one is known.
 type semanticDiagnostic struct {
-	Code         string `json:"code"`
-	Severity     string `json:"severity,omitempty"`
-	Message      string `json:"message"`
-	SemanticPath string `json:"semantic_path,omitempty"`
-	RawPath      string `json:"raw_path,omitempty"`
-	Action       string `json:"action,omitempty"`
+	Code            string                 `json:"code"`
+	Severity        string                 `json:"severity,omitempty"`
+	Message         string                 `json:"message"`
+	SemanticPath    string                 `json:"semantic_path,omitempty"`
+	RawPath         string                 `json:"raw_path,omitempty"`
+	SlideIndex      *int                   `json:"slide_index,omitempty"`
+	Action          string                 `json:"action,omitempty"`
+	RecommendedEdit *semantic.SemanticEdit `json:"recommended_edit,omitempty"`
 }
 
 // runSemanticRender implements "semantic render": the target one-command flow
@@ -455,18 +459,30 @@ func semanticDiagFromCompile(d diagnostics.Diagnostic) semanticDiagnostic {
 
 // semanticDiagFromFit adapts a raw render fit finding into the compact render
 // diagnostic, mapping its raw JSON path back to the semantic source path the
-// author wrote. When the source map has no entry for the raw path, the raw path
-// is retained as a fallback so the finding is never silently dropped.
+// author wrote (exact match first, then nearest ancestor). The raw path is
+// always retained as fallback evidence so the precise generated location is
+// never lost, the semantic slide index is recovered even on a full miss, and a
+// recommended semantic edit is attached for common density/overflow failures.
 func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semanticDiagnostic {
+	mapped := semantic.MapFinding(sm, semantic.RawFinding{
+		Code:     f.Code,
+		Message:  f.Message,
+		Severity: diagnostics.FromFitFinding(f).Severity,
+		Action:   f.Action,
+		RawPath:  f.Path,
+	})
 	d := semanticDiagnostic{
-		Code:    f.Code,
-		Message: f.Message,
-		Action:  f.Action,
+		Code:            mapped.Code,
+		Severity:        string(mapped.Severity),
+		Message:         mapped.Message,
+		SemanticPath:    mapped.SemanticPath,
+		RawPath:         mapped.RawPath,
+		Action:          mapped.Action,
+		RecommendedEdit: mapped.Edit,
 	}
-	if e, ok := sm.Lookup(f.Path); ok {
-		d.SemanticPath = e.SemanticPath
-	} else {
-		d.RawPath = f.Path
+	if mapped.SlideIndex >= 0 {
+		idx := mapped.SlideIndex
+		d.SlideIndex = &idx
 	}
 	return d
 }
