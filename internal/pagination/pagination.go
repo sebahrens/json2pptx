@@ -271,7 +271,7 @@ func effectiveMaxBullets(layouts []types.LayoutMetadata) int {
 			best = l.Capacity.MaxBullets
 		}
 	}
-	if best > 0 && best < DefaultMaxBullets {
+	if best > 0 {
 		return best
 	}
 	return DefaultMaxBullets

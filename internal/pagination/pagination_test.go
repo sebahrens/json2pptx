@@ -381,13 +381,22 @@ func TestEffectiveMaxBullets(t *testing.T) {
 			want: 4,
 		},
 		{
-			name: "layout capacity higher than default uses default",
+			name: "layout capacity equal to default",
+			layouts: []types.LayoutMetadata{
+				{Name: "Default Content", Placeholders: []types.PlaceholderInfo{
+					{Type: types.PlaceholderBody},
+				}, Capacity: types.CapacityEstimate{MaxBullets: DefaultMaxBullets}},
+			},
+			want: DefaultMaxBullets,
+		},
+		{
+			name: "layout capacity higher than default is honored",
 			layouts: []types.LayoutMetadata{
 				{Name: "Big Content", Placeholders: []types.PlaceholderInfo{
 					{Type: types.PlaceholderBody},
 				}, Capacity: types.CapacityEstimate{MaxBullets: 12}},
 			},
-			want: DefaultMaxBullets,
+			want: 12,
 		},
 		{
 			name: "uses highest text-capable layout",
