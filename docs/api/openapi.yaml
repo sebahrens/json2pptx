@@ -2,17 +2,21 @@ openapi: 3.0.3
 info:
   title: Go Slide Creator API
   description: |
-    REST API for converting JSON slide definitions into professional PowerPoint presentations.
+    REST API for converting JSON slide definitions and semantic deck specifications into professional PowerPoint presentations.
 
     The Go Slide Creator service accepts structured JSON input, selects optimal layouts from
     PPTX templates, and generates production-ready presentations.
 
     ## HTTP API Feature Boundary
 
-    The HTTP API supports **basic text and bullet slides only**. For advanced features
-    (charts, diagrams, tables, images, shape grids, named patterns, deck structure,
-    theme overrides, accent strategies), use the **MCP interface** (`json2pptx mcp`)
-    or the **CLI** (`json2pptx generate`).
+    `POST /api/v1/convert` supports **basic text and bullet slides only**. For
+    normal agent-authored business decks, prefer the semantic endpoints under
+    `/api/v1/semantic/*`; they compile compact YAML/JSON deck specs to the raw
+    `PresentationInput` model and render through the same engine as the CLI/MCP
+    surfaces. For raw features not expressible in the semantic schema (charts,
+    diagrams, tables, images, shape grids, named patterns, deck structure, theme
+    overrides, accent strategies), use the **MCP interface** (`json2pptx mcp`) or
+    the **CLI** (`json2pptx generate`).
 
     Use `GET /api/v1/capabilities` for a machine-readable feature boundary.
 
@@ -20,6 +24,7 @@ info:
 
     - **Template-based generation**: Leverage existing PPTX templates with multiple layouts
     - **JSON input**: Structured slide definitions with text and bullet content
+    - **Semantic input**: Compact deck specs with slide kinds such as `kpi_snapshot`, `chart_insight`, and `decision`
     - **Layout intelligence**: Automatic layout selection based on slide type
     - **Multiple output formats**: Download file URL or inline base64 data
     - **Pattern library**: Browse, validate, and expand named patterns (read-only; use MCP/CLI to generate slides from expanded patterns)
@@ -48,6 +53,8 @@ tags:
     description: Service metadata
   - name: Patterns
     description: Named pattern library (reusable shape_grid skeletons)
+  - name: Semantic
+    description: Semantic deck-spec validation, compilation, and rendering
 
 paths:
   /api/v1/health:
@@ -91,6 +98,107 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CapabilitiesResponse'
+
+  /api/v1/semantic/schema:
+    get:
+      tags:
+        - Semantic
+      summary: Get semantic deck-spec schema
+      description: Returns the JSON Schema for compact semantic deck specs.
+      operationId: getSemanticSchema
+      responses:
+        '200':
+          description: Semantic JSON Schema
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/semantic/validate:
+    post:
+      tags:
+        - Semantic
+      summary: Validate a semantic deck spec
+      description: Validates YAML or JSON semantic input and returns a FindingEnvelope with semantic-path diagnostics.
+      operationId: validateSemanticDeckSpec
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          application/x-yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Semantic validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  findings:
+                    $ref: '#/components/schemas/FindingEnvelope'
+
+  /api/v1/semantic/compile:
+    post:
+      tags:
+        - Semantic
+      summary: Compile a semantic deck spec
+      description: Compiles semantic YAML/JSON to raw PresentationInput JSON plus explanation/source-map metadata.
+      operationId: compileSemanticDeckSpec
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          application/x-yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Compiled PresentationInput
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/semantic/render:
+    post:
+      tags:
+        - Semantic
+      summary: Render a semantic deck spec
+      description: Compiles a semantic deck spec, runs the normal render/output-validation pipeline, and returns PPTX output plus semantic diagnostics.
+      operationId: renderSemanticDeckSpec
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          application/x-yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Render result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  pptx_path:
+                    type: string
+                  quality_summary:
+                    type: object
+                  findings:
+                    $ref: '#/components/schemas/FindingEnvelope'
 
   /api/v1/templates:
     get:

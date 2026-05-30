@@ -30,6 +30,31 @@ converters remain the **adapter input**: callers build envelopes from
 `Finding` values. This keeps a single conversion point from the legacy shapes
 (`patterns.ValidationError`, `patterns.FitFinding`, joined errors).
 
+### Semantic deck-spec diagnostics
+
+The semantic compiler uses the same envelope. Semantic validation and render
+surfaces (`json2pptx semantic validate`, `json2pptx semantic render`,
+`validate_deck_spec`, `render_deck_spec`, and the semantic HTTP endpoints) emit
+findings whose `evidence.path` points to the semantic authoring field whenever
+possible:
+
+```json
+{
+  "code": "INPUT.SEMANTIC_DENSITY",
+  "severity": "error",
+  "message": "kpi_snapshot supports at most 6 metrics; found 9",
+  "evidence": {"path": "slides[2].metrics"},
+  "remediation": {"primary": {"action": "split_slide"}}
+}
+```
+
+After compilation, raw validation/fit/output findings are mapped back through
+the semantic source map. For example, a raw overflow at
+`/slides/2/shape_grid/rows/0/cells/1/shape/text/content` is reported to agents
+as `slides[1].metrics[1]` with the raw path preserved only as fallback evidence
+(`evidence.raw_path`) when useful. Agents should edit the semantic spec first;
+compiled raw JSON is an escape hatch for advanced repairs.
+
 ## 2. The envelope contract
 
 ### 2.1 Top-level envelope

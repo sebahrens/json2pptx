@@ -4,6 +4,22 @@ The repair loop is a protocol for agents to self-correct dense or overflowing sl
 It wraps `json2pptx validate --fit-report` with an anti-thrash cap to prevent infinite
 shrink-font cycles.
 
+For semantic deck specs, run the same loop one layer higher: validate or render
+the semantic spec, read diagnostics at semantic paths, edit the semantic YAML/JSON,
+and only drop to raw `PresentationInput` / `repair_slide` when the finding is a
+mechanical layout fix that the semantic compiler mapped safely.
+
+```text
+semantic YAML/JSON
+  → semantic validate/render
+  → diagnostics at slides[N].<semantic field>
+  → edit semantic spec
+  → re-render through existing raw engine
+```
+
+Compiled raw JSON is a debugging artifact and power-user escape hatch, not the
+normal repair target for agents.
+
 ## Protocol
 
 ```

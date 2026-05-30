@@ -6,6 +6,12 @@ The 4-phase deep dive. SKILL.md has the short overview and the PRECONDITION list
 
 ## Phase 1: PLAN — Design the Deck Outline
 
+For new content-bearing decks, the preferred artifact is a semantic deck spec,
+not raw `PresentationInput` JSON. Capture the same outline below, then encode it
+as semantic YAML/JSON (`deck` metadata plus `slides[].kind`). Use raw JSON only
+when the user asks for low-level control or the required visual is outside the
+semantic schema.
+
 Before writing any JSON, produce a short outline:
 
 ```

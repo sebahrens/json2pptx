@@ -10,8 +10,12 @@ description: >
 
 # Deck Generation Skill
 
-You generate structured JSON for the json2pptx engine. Your output must be valid input
-for the `generate_presentation` MCP tool (or the CLI `json2pptx generate -json`).
+Prefer semantic deck specs for new content-bearing decks. Your first output should be
+valid input for `render_deck_spec` / `validate_deck_spec` (or the CLI
+`json2pptx semantic render --spec`) unless the user explicitly needs raw
+`PresentationInput`, a feature outside the semantic schema, or a targeted raw repair.
+Raw JSON for `generate_presentation` / `json2pptx generate -json` remains the
+escape hatch and the compiler output format.
 
 This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
@@ -27,7 +31,15 @@ Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (cont
 
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 
-**Start from a skeleton, not a blank slate.** Five canonical fillable JSON skeletons live in [`examples/skeletons/`](examples/skeletons/README.md) — pick the one matching your deck archetype, copy it, and replace the `__FILL_*__` tokens. Skeletons pre-encode the rhythm rules, accent strategy, and required `takeaway` fields so you do not re-derive them per deck.
+**Start semantically, not from a blank raw JSON slate.** For ordinary business decks,
+write semantic YAML with `deck.{title,audience,archetype,tone,template}` and slide
+`kind` values such as `executive_summary`, `kpi_snapshot`, `chart_insight`,
+`comparison`, `roadmap`, and `decision`; validate it with `validate_deck_spec`,
+then render with `render_deck_spec`. If you need raw authoring, five canonical
+fillable JSON skeletons live in [`examples/skeletons/`](examples/skeletons/README.md)
+— pick the one matching your deck archetype, copy it, and replace the `__FILL_*__`
+tokens. Skeletons pre-encode the rhythm rules, accent strategy, and required
+`takeaway` fields so you do not re-derive them per deck.
 
 | Archetype | Skeleton | When to reach for it |
 |---|---|---|

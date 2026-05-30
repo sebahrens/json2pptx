@@ -11,8 +11,9 @@ json2pptx has two audiences. Jump straight to yours:
 
 | I want to… | Go to |
 |------------|-------|
-| **Run the CLI or Go library** — generate decks from JSON in a shell, script, or program | [Install](#installation) → [CLI Quick Start](#cli-quick-start) |
-| **Integrate via MCP** — let an AI agent (e.g. Claude Code) plan, build, validate, and repair decks | [Claude Code Integration](#mcp-integration) → [MCP Server (45 tools)](#mcp-server-45-tools) |
+| **Author a deck semantically** — write compact YAML/JSON describing slide intent and content | [Semantic Quick Start](#semantic-quick-start) |
+| **Run the raw CLI or Go library** — generate decks from compiled `PresentationInput` JSON in a shell, script, or program | [Install](#installation) → [Raw JSON CLI Quick Start](#raw-json-cli-quick-start) |
+| **Integrate via MCP** — let an AI agent plan, build, validate, and repair decks | [Claude Code Integration](#mcp-integration) → [MCP Server (51 tools)](#mcp-server-51-tools) |
 
 New here? The [Philosophy](#philosophy) and [How It Works](#how-it-works) sections give the mental model first.
 
@@ -40,8 +41,8 @@ JSON (content) + Template (.pptx)  -->  json2pptx  -->  Presentation (.pptx)
 ```
 
 1. **Template** -- A real PowerPoint file with pre-designed slide layouts, colors, and fonts (e.g., `midnight-blue.pptx`). You never edit this directly.
-2. **JSON** -- Your content: what goes on each slide, which layout/pattern to use, and what type of content (text, bullets, charts, diagrams, tables, shape grids, named patterns).
-3. **The binary** -- `json2pptx generate` reads both, matches content to template placeholders, expands patterns, runs fit/contrast checks, and writes the final `.pptx`.
+2. **Semantic spec or raw JSON** -- Agents usually write a compact semantic deck spec (`kind: kpi_snapshot`, `kind: decision`, etc.). Power users can still write the compiled raw `PresentationInput` JSON directly.
+3. **The binary** -- `json2pptx semantic render` compiles semantic specs to raw `PresentationInput`; `json2pptx generate` renders raw input. Both paths use the same template analysis, validation, fit checks, contrast correction, and output validator.
 
 ### Slides, Layouts, and Placeholders
 
@@ -67,9 +68,9 @@ You don't need to know internal layout IDs. The system resolves them automatical
 
 | Level | When to use | What you write |
 |-------|-------------|----------------|
-| **Placeholders** | Standard slides (title, bullets, single chart) | `content[]` items targeting placeholder IDs |
-| **Named patterns** | Recurring layouts (KPIs, comparisons, BMC, timelines) | `pattern: {name, values, style}` -- expands into a typed shape grid |
-| **Raw shape grid** | Custom geometry the patterns don't cover | `shape_grid: {columns, rows, cells}` with explicit shapes/tables/icons |
+| **Semantic deck spec** | Default for agents and most new decks | YAML/JSON slide kinds such as `kpi_snapshot`, `chart_insight`, `comparison`, `roadmap`, `decision` |
+| **Raw placeholders and named patterns** | Debugging, advanced automation, or compiled output edits | `content[]` items plus `pattern: {name, values, style}` envelopes |
+| **Raw shape grid** | Custom geometry the semantic compiler and patterns do not cover | `shape_grid: {columns, rows, cells}` with explicit shapes/tables/icons |
 
 You can also combine patterns on one slide with a `compose` envelope (e.g. a hero stat above a row of icons).
 
@@ -116,7 +117,8 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **Deck planning** -- `plan_deck` turns a brief into a structured slide outline with rhythm rules
 - **PPTX read-back** -- `read_presentation` extracts placeholders/shapes/tables from an existing PPTX without LibreOffice
 - **HTTP API** -- REST endpoints for programmatic generation
-- **MCP server** -- 45 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair, including the one-call `make_deck` cold-start facade
+- **Semantic compiler** -- compact YAML/JSON deck specs compile to raw `PresentationInput`, render through the existing engine, and return diagnostics mapped back to semantic paths
+- **MCP server** -- 51 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair, including semantic deck-spec tools and the one-call `make_deck` cold-start facade
 - **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, template setup, and visual QA
 
 ## Installation
@@ -230,9 +232,51 @@ docker run -d \
 
 ## Quick Start
 
-<a id="cli-quick-start"></a>
+<a id="semantic-quick-start"></a>
 
-### CLI Usage
+### Semantic Usage (Recommended for Agents)
+
+Write compact YAML that describes slide intent and content; json2pptx chooses patterns, raw layouts, and safe defaults, then renders through the same engine as raw JSON:
+
+```yaml
+deck:
+  title: Q2 Business Review
+  audience: board
+  archetype: qbr
+  tone: executive
+  template: midnight-blue
+
+slides:
+  - kind: title
+    title: Q2 Business Review
+    subtitle: Momentum improving, execution risk remains
+  - kind: kpi_snapshot
+    title: Quarter at a glance
+    takeaway: Growth recovered, but margin remains below target
+    metrics:
+      - {label: Revenue, value: "$12.4M", delta: "+18%", status: good}
+      - {label: Gross margin, value: "61%", delta: "-3pp", status: watch}
+  - kind: decision
+    title: Approve EMEA sales capacity
+    recommendation: Add four enterprise AEs in Q3
+    rationale: [EMEA pipeline coverage is 3.8x, Win rate improved to 28%]
+    risks: [Ramp time delays impact]
+    ask: Approve $1.2M incremental annualized spend
+```
+
+```sh
+json2pptx semantic validate --spec qbr.yaml
+json2pptx semantic compile --spec qbr.yaml --output qbr.compiled.json
+json2pptx semantic render --spec qbr.yaml --output qbr.pptx
+json2pptx semantic explain --spec qbr.yaml
+json2pptx semantic schema
+```
+
+Semantic diagnostics use paths like `slides[1].metrics[0].label`; when a raw fit or output finding comes from generated JSON, the semantic compiler maps it back through its source map and only includes the raw JSON pointer as fallback evidence.
+
+<a id="raw-json-cli-quick-start"></a>
+
+### Raw JSON CLI Usage
 
 ```sh
 # Generate a deck
@@ -325,7 +369,7 @@ json2pptx ships with three Claude Code skills and an MCP server that let an AI a
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
-### MCP Server (45 Tools)
+### MCP Server (51 Tools)
 
 Start manually for debugging:
 
@@ -360,6 +404,8 @@ collapse a whole chain into one call:
 |------|---------|-----|
 | `get_started` | Recommended fast path + ordered manual sequence for a task | `get-started` |
 | `get_capabilities` | Schema version, tool inventory + classification, deprecations, feature flags, vocabularies | `capabilities` |
+| `list_deck_archetypes` | Semantic deck archetypes with default rhythm policies and examples | `semantic explain` / `semantic schema` |
+| `list_slide_kinds` | Semantic slide-kind catalogue with compact examples | `semantic schema` |
 | `get_input_schema` | Authoritative JSON Schema for PresentationInput with digest-based caching | `input-schema` |
 | `get_data_format_hints` | Full chart/diagram data-shape hints (with digest for caching) | `data-format-hints` |
 | `list_templates` | Discover bundled/external templates, layouts, palette, canonical taxonomy | `skill-info` |
@@ -380,6 +426,9 @@ collapse a whole chain into one call:
 
 | Tool | Purpose | CLI |
 |------|---------|-----|
+| `validate_deck_spec` | Validate semantic YAML/JSON and return semantic-path diagnostics | `semantic validate` |
+| `compile_deck_spec` | Compile semantic YAML/JSON to raw `PresentationInput`; full raw JSON is opt-in | `semantic compile` |
+| `explain_deck_spec` | Explain archetype, rhythm, density, and pattern/layout choices without rendering | `semantic explain` |
 | `plan_deck` | Turn a brief into an ordered slide outline with rhythm rules (template-aware) | `plan-deck` |
 | `recommend_visual` | Unified router across placeholder layouts, patterns, charts, diagrams, raw grids | `recommend-visual` |
 | `recommend_pattern` | Rank named patterns for a slide intent (legacy subset of `recommend_visual`) | `recommend-pattern` |
@@ -398,6 +447,7 @@ collapse a whole chain into one call:
 
 | Tool | Purpose | CLI |
 |------|---------|-----|
+| `render_deck_spec` | Compile and render a semantic deck spec; returns PPTX path, quality summary, and semantic diagnostics | `semantic render` |
 | `validate_input` | Schema + static checks (+ optional `fit_report`), no render | `validate` |
 | `preview_presentation_plan` | Resolve layouts/placeholders/findings without rendering | `preview` |
 | `preview_slide_wireframe` | Annotated per-slide wireframe (SVG + PNG) without LibreOffice | `preview-wireframe` |
@@ -551,7 +601,7 @@ json2pptx skill-info --mode=full --template=my-corporate-theme --templates-dir=m
 
 The `json2pptx` binary is the primary tool: batch converter, HTTP API server, and MCP server.
 
-### Subcommands (39)
+### Subcommands (40)
 
 Run `json2pptx help` for the authoritative list, or `json2pptx <command> -h` for
 per-command flags. A handful of MCP tools have no direct subcommand (e.g.
@@ -562,6 +612,7 @@ for each under "MCP-only tools".
 | Command | Description |
 |---------|-------------|
 | `generate` | Convert JSON input to PPTX (default if subcommand omitted) |
+| `semantic` | Validate, compile, render, explain, and print schema for semantic deck specs |
 | `read` | Read PPTX and output extracted content as JSON |
 | `validate` | Validate JSON input without generating (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
 | `preflight` | Run every static check on a deck (stage-based, emits the finding envelope) |
@@ -645,6 +696,10 @@ See [cmd/README.md](cmd/README.md) for the full command index — purpose, a usa
 | `GET` | `/api/v1/patterns/{name}` | Pattern details and schema |
 | `POST` | `/api/v1/patterns/{name}/validate` | Validate input against a pattern's schema |
 | `POST` | `/api/v1/patterns/{name}/expand` | Expand a pattern into a shape grid |
+| `GET` | `/api/v1/semantic/schema` | Semantic deck-spec JSON Schema |
+| `POST` | `/api/v1/semantic/validate` | Validate semantic YAML/JSON and return semantic diagnostics |
+| `POST` | `/api/v1/semantic/compile` | Compile semantic specs to raw `PresentationInput` JSON |
+| `POST` | `/api/v1/semantic/render` | Compile and render semantic specs to PPTX |
 
 See [docs/api/README.md](docs/api/README.md) for complete API documentation.
 
@@ -731,7 +786,7 @@ svg:
 
 ```
 cmd/
-  json2pptx/        Main CLI + HTTP API + MCP server (39 subcommands, 45 MCP tools)
+  json2pptx/        Main CLI + HTTP API + MCP server (40 subcommands, 51 MCP tools)
   pptx2jpg/         PPTX to image conversion via LibreOffice
   mktemplate/       Template authoring helper
   debugcolors/      Theme color debugging tool
@@ -864,6 +919,8 @@ make release         # All platforms (requires clean tree)
 ## Documentation
 
 - `get_input_schema` (MCP) / `json2pptx input-schema` (CLI) -- canonical JSON Schema for `PresentationInput`
+- `list_deck_archetypes` / `list_slide_kinds` / `json2pptx semantic schema` -- canonical semantic deck-spec discovery
+- [docs/SEMANTIC_COMPILER.md](docs/SEMANTIC_COMPILER.md) -- semantic deck-spec model, compiler stages, source maps, and target architecture
 - [docs/INPUT_FORMAT.md](docs/INPUT_FORMAT.md) -- tutorial with worked examples
 - [docs/PATTERNS.md](docs/PATTERNS.md) -- named-pattern authoring guide
 - [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) -- fit findings catalog and action semantics

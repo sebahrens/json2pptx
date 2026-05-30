@@ -1,13 +1,29 @@
 # JSON Input Format — Tutorial
 
-`json2pptx` accepts a JSON object describing a presentation and renders it into a `.pptx` file. This page walks through the format with worked examples; for the **canonical list of fields, types, enums, and required-vs-optional flags**, query the schema directly.
+`json2pptx` accepts a JSON object describing a presentation and renders it into a `.pptx` file. This page documents the **raw compiled `PresentationInput` format** with worked examples; for the **canonical list of fields, types, enums, and required-vs-optional flags**, query the schema directly.
+
+For new agent-authored decks, prefer the semantic deck spec instead of hand-authoring this raw format. The semantic compiler accepts compact YAML/JSON slide kinds such as `kpi_snapshot`, `chart_insight`, `comparison`, `roadmap`, and `decision`, then compiles them to the raw `PresentationInput` described here:
+
+```bash
+json2pptx semantic schema
+json2pptx semantic validate --spec deck.yaml
+json2pptx semantic compile --spec deck.yaml --output compiled.json
+json2pptx semantic render --spec deck.yaml --output deck.pptx
+```
+
+Raw `PresentationInput` remains the power-user escape hatch, the compiler output format, and the contract for low-level MCP tools such as `validate_input`, `preview_presentation_plan`, `generate_presentation`, and `repair_slide`.
 
 ## Canonical schema (single source of truth)
 
 - MCP: `get_input_schema` — returns the JSON Schema for `PresentationInput`, with `x-field-scope` (`deck` / `slide` / `content` / `shape` / `split`), inline `enum` arrays, and discriminator constraints. Digest-cacheable.
 - CLI: `json2pptx input-schema` — same payload, printed to stdout.
 
-Both are generated from the Go input structs in `cmd/json2pptx/json_schema.go`. This tutorial only describes shapes and gives examples; the schema is authoritative on field names, types, and required-vs-optional.
+Semantic specs have their own schema:
+
+- MCP: `list_deck_archetypes`, `list_slide_kinds`, and `validate_deck_spec` expose the supported semantic contract.
+- CLI: `json2pptx semantic schema` — prints the semantic JSON Schema.
+
+The raw schema is generated from the Go input structs in `internal/deckinput` (aliased through `cmd/json2pptx/json_schema.go` for CLI compatibility). This tutorial only describes shapes and gives examples; the schema is authoritative on field names, types, and required-vs-optional.
 
 ## Minimum complete deck
 
@@ -242,6 +258,7 @@ Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with
 
 ## Where to go next
 
+- `docs/SEMANTIC_COMPILER.md` — semantic deck-spec model, compiler stages, and implementation roadmap.
 - `docs/PATTERNS.md` — named-pattern authoring guide.
 - `docs/FIT_FINDINGS.md` — finding-code catalogue.
 - `docs/STYLE_DEFAULTS.md` — deck-level defaults for table and cell styles.

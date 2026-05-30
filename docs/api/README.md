@@ -13,6 +13,7 @@ A REST API for converting JSON slide definitions into professional PowerPoint pr
   - [List Templates](#list-templates)
   - [Get Template Details](#get-template-details)
   - [Convert Slides](#convert-slides)
+  - [Semantic Deck Specs](#semantic-deck-specs)
   - [Download File](#download-file)
   - [List Slide Types](#list-slide-types)
 - [Patterns](#patterns)
@@ -28,17 +29,20 @@ A REST API for converting JSON slide definitions into professional PowerPoint pr
 
 ## Overview
 
-The Go Slide Creator HTTP API enables programmatic generation of PowerPoint presentations from structured JSON slide definitions. The service:
+The Go Slide Creator HTTP API enables programmatic generation of PowerPoint presentations from structured JSON and semantic deck specifications. The service:
 
 - Accepts JSON input with **text and bullet content**
+- Accepts semantic deck specs for content-bearing business decks (`kpi_snapshot`, `chart_insight`, `decision`, etc.)
 - Analyzes PPTX templates to discover available layouts
 - Automatically selects optimal layouts based on slide type
 - Generates production-ready PPTX files
 - Provides read-only access to the named pattern library
 
-> **Feature boundary:** The HTTP API supports basic text and bullet slides only.
-> For charts, diagrams, tables, images, shape grids, named patterns, and deck
-> structure features, use the **MCP interface** (`json2pptx mcp`) or the **CLI**
+> **Feature boundary:** `POST /api/v1/convert` remains the basic text/bullet
+> endpoint. For normal agent-authored decks, prefer `/api/v1/semantic/*` or the
+> semantic MCP/CLI surfaces. For raw charts, diagrams, tables, images, shape
+> grids, named patterns, and deck-structure features that are not expressible in
+> the semantic schema, use the **MCP interface** (`json2pptx mcp`) or the **CLI**
 > (`json2pptx generate`). See `GET /api/v1/capabilities` for the machine-readable boundary.
 
 ## Base URL
@@ -65,8 +69,9 @@ Transport and request errors follow a consistent JSON structure:
 }
 ```
 
-> **Exception — diagnostic-bearing endpoints.** The pattern validation endpoints
-> (`POST /api/v1/patterns/{name}/validate` and `/expand`) return a
+> **Exception — diagnostic-bearing endpoints.** The semantic validation/render
+> endpoints and the pattern validation endpoints (`POST /api/v1/patterns/{name}/validate`
+> and `/expand`) return a
 > `FindingEnvelope` on a validation failure (HTTP 400) instead of the shape
 > above — the same agent-facing diagnostic contract emitted by the CLI and MCP
 > surfaces (see [docs/AGENT_DIAGNOSTICS.md](../AGENT_DIAGNOSTICS.md)). Transport
@@ -365,6 +370,33 @@ curl -X POST http://localhost:8080/api/v1/convert \
   }
 }
 ```
+
+---
+
+### Semantic Deck Specs
+
+Author compact semantic YAML/JSON and let json2pptx compile it to the raw
+`PresentationInput` model before rendering.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/semantic/schema` | Return the semantic deck-spec JSON Schema |
+| `POST /api/v1/semantic/validate` | Validate a semantic spec and return semantic-path findings |
+| `POST /api/v1/semantic/compile` | Compile a semantic spec to raw `PresentationInput` JSON |
+| `POST /api/v1/semantic/render` | Compile and render a semantic spec to a `.pptx` |
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/semantic/render \
+  -H "Content-Type: application/x-yaml" \
+  --data-binary @qbr.yaml
+```
+
+Semantic findings point to source fields such as `slides[2].metrics[1].label`.
+When a raw fit/output validator emits a generated JSON pointer, the semantic
+source map translates it back to the closest semantic field and preserves the
+raw path as fallback evidence.
 
 ---
 

@@ -20,8 +20,17 @@ reference.
 
 ## json2pptx
 
-The main CLI: a batch JSON→PPTX converter that also hosts the HTTP API
-(`serve`) and the MCP server (`mcp`). This is the only tool most users need.
+The main CLI: a semantic deck compiler, batch JSON→PPTX converter, HTTP API
+host (`serve`), and MCP server (`mcp`). This is the only tool most users need.
+
+For agent-authored decks, start with semantic specs:
+
+```bash
+json2pptx semantic validate --spec examples/semantic/qbr.yaml
+json2pptx semantic render --spec examples/semantic/qbr.yaml --output /tmp/qbr.pptx
+```
+
+Use raw JSON when debugging compiled output or exercising low-level features:
 
 ```bash
 json2pptx generate -json examples/basic-deck.json -template midnight-blue \
