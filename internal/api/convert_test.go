@@ -409,6 +409,99 @@ func TestConvertInvalidJSONSyntaxIncludesOffset(t *testing.T) {
 	}
 }
 
+// TestConvertTrailingObject verifies a valid object followed by a second JSON
+// document is rejected as invalid JSON rather than silently accepted.
+func TestConvertTrailingObject(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	body := `{"template":"x","slides":[{"type":"content","title":"A"}]} {"unexpected":true}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("Expected status 400, got %d (body: %s)", w.Code, w.Body.String())
+	}
+
+	var resp apierrors.Response
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	if resp.Error.Code != apierrors.CodeInvalidJSON {
+		t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidJSON, resp.Error.Code)
+	}
+}
+
+// TestConvertTrailingJunk verifies a valid object followed by trailing
+// non-JSON garbage is rejected as invalid JSON.
+func TestConvertTrailingJunk(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(tempDir, cache, false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+
+	body := `{"template":"x","slides":[{"type":"content","title":"A"}]} not-json`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("Expected status 400, got %d (body: %s)", w.Code, w.Body.String())
+	}
+
+	var resp apierrors.Response
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	if resp.Error.Code != apierrors.CodeInvalidJSON {
+		t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidJSON, resp.Error.Code)
+	}
+}
+
+// TestConvertTrailingWhitespaceAccepted verifies a valid object followed by
+// only trailing whitespace is still accepted and converted successfully.
+func TestConvertTrailingWhitespaceAccepted(t *testing.T) {
+	tempDir := t.TempDir()
+	templatesDir := tempDir + "/templates"
+	outputDir := tempDir + "/output"
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
+	}
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+	createTestTemplate(t, templatesDir, "test-template")
+
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(templatesDir, cache, false)
+	conversionPipeline := pipeline.NewPipeline()
+	service := NewConvertService(templatesDir, outputDir, templateService, conversionPipeline)
+
+	reqBody := ConvertRequest{
+		Template: "test-template",
+		Slides: []APISlide{
+			{Type: "content", Title: "Welcome", Content: APIContent{Body: "First slide."}},
+		},
+		Options: &ConvertOptions{OutputFormat: "file"},
+	}
+	body, _ := json.Marshal(reqBody)
+	body = append(body, []byte("  \n\t  ")...) // trailing whitespace only
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	service.ConvertHandler()(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d (body: %s)", w.Code, w.Body.String())
+	}
+}
+
 // TestConvertInvalidOutputFormat tests validation of output format.
 func TestConvertInvalidOutputFormat(t *testing.T) {
 	tempDir := t.TempDir()

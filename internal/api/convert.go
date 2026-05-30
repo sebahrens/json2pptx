@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -230,6 +231,26 @@ func (cs *ConvertService) parseAndValidateRequest(w http.ResponseWriter, r *http
 				})
 			return nil, "", err
 		}
+		writeJSONParseError(w, err)
+		return nil, "", err
+	}
+
+	// Reject bodies containing trailing tokens after the JSON object (e.g. a
+	// second JSON document or trailing junk). A well-formed request body must
+	// decode to exactly one value followed by EOF.
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			err = fmt.Errorf("unexpected trailing data after JSON request body")
+			writeError(w, http.StatusBadRequest, apierrors.CodeInvalidJSON,
+				"Request body must contain a single JSON object", nil)
+			return nil, "", err
+		}
+		if err.Error() == "http: request body too large" {
+			writeError(w, http.StatusRequestEntityTooLarge, apierrors.CodeRequestTooLarge,
+				fmt.Sprintf("Request body exceeds maximum size of %d bytes", MaxRequestBodySize), nil)
+			return nil, "", err
+		}
+		slog.Warn("trailing data after request body", "error", err)
 		writeJSONParseError(w, err)
 		return nil, "", err
 	}
