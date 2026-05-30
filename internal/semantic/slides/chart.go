@@ -1,0 +1,133 @@
+package slides
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/types"
+)
+
+// chartInsightsValues mirrors patterns.ChartInsightsSplitValues for emission.
+type chartInsightsValues struct {
+	Chart         *types.DiagramSpec `json:"chart,omitempty"`
+	InsightsTitle string             `json:"insights_title,omitempty"`
+	Insights      []string           `json:"insights"`
+	Source        string             `json:"source,omitempty"`
+}
+
+// CompileChartInsight compiles a chart-insight slide. When the payload exposes
+// 1–6 insight bullets it emits a chart-insights-split pattern (left chart panel
+// + right insights), including the chart only when it carries a type and a
+// non-empty data payload — the pattern renders insights full-width otherwise.
+// Without usable insights it degrades to a content slide so the deck still
+// compiles.
+func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	insights, insightsField := chartInsights(in.Body)
+
+	if len(insights) == 0 || len(insights) > 6 {
+		return compileChartFallback(in, insights, insightsField)
+	}
+
+	slide := &deckinput.SlideInput{SlideType: "content"}
+	var links []SourceLink
+
+	if in.Title != "" {
+		idx := appendContent(slide, textContent("title", in.Title))
+		links = append(links, SourceLink{
+			RawPath:      fmt.Sprintf("%s.content[%d].text_value", in.rawSlide(), idx),
+			SemanticPath: in.semSlide() + ".title",
+		})
+	}
+
+	vals := chartInsightsValues{Insights: insights}
+	if chart := chartSpec(in.Body); chart != nil {
+		vals.Chart = chart
+		links = append(links, SourceLink{
+			RawPath:      in.rawSlide() + ".pattern.values.chart",
+			SemanticPath: in.semSlide() + ".chart",
+		})
+	}
+	if src := strField(in.Body, "source"); src != "" {
+		vals.Source = src
+		links = append(links, SourceLink{
+			RawPath:      in.rawSlide() + ".pattern.values.source",
+			SemanticPath: in.semSlide() + ".source",
+		})
+	}
+
+	encoded, err := json.Marshal(vals)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal chart-insights-split values: %w", err)
+	}
+	slide.Pattern = &deckinput.PatternInput{
+		Name:   "chart-insights-split",
+		Values: encoded,
+	}
+	links = append(links, SourceLink{
+		RawPath:      in.rawSlide() + ".pattern.values.insights",
+		SemanticPath: in.semSlide() + "." + insightsField,
+	})
+
+	links = append(links, applyTakeaway(slide, in)...)
+	return slide, links, nil
+}
+
+// compileChartFallback renders a content slide carrying the title, any insight
+// bullets, and the takeaway when the chart-insights-split shape does not fit.
+func compileChartFallback(in Input, insights []string, insightsField string) (*deckinput.SlideInput, []SourceLink, error) {
+	slide := &deckinput.SlideInput{SlideType: "content"}
+	var links []SourceLink
+
+	if in.Title != "" {
+		idx := appendContent(slide, textContent("title", in.Title))
+		links = append(links, SourceLink{
+			RawPath:      fmt.Sprintf("%s.content[%d].text_value", in.rawSlide(), idx),
+			SemanticPath: in.semSlide() + ".title",
+		})
+	}
+
+	if len(insights) > 0 {
+		idx := appendContent(slide, bulletsContent("body", insights))
+		links = append(links, SourceLink{
+			RawPath:      fmt.Sprintf("%s.content[%d].bullets_value", in.rawSlide(), idx),
+			SemanticPath: in.semSlide() + "." + insightsField,
+		})
+	}
+
+	links = append(links, applyTakeaway(slide, in)...)
+	return slide, links, nil
+}
+
+// chartInsights collects the insight bullets from the payload, preferring the
+// "insights" list, then the single "insight" string. The returned string is the
+// semantic field the bullets came from.
+func chartInsights(body map[string]any) ([]string, string) {
+	if list, ok := stringList(body, "insights"); ok && len(list) > 0 {
+		return list, "insights"
+	}
+	if s := strField(body, "insight"); s != "" {
+		return []string{s}, "insight"
+	}
+	return nil, "insights"
+}
+
+// chartSpec builds a DiagramSpec from the payload's "chart" field, returning nil
+// when no chart, no type, or no data is present (the pattern requires a typed,
+// data-bearing chart to render the left panel).
+func chartSpec(body map[string]any) *types.DiagramSpec {
+	raw, ok := body["chart"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	ctype := strField(raw, "type")
+	data, hasData := raw["data"].(map[string]any)
+	if ctype == "" || !hasData || len(data) == 0 {
+		return nil
+	}
+	return &types.DiagramSpec{
+		Type:  ctype,
+		Title: strField(raw, "title"),
+		Data:  data,
+	}
+}

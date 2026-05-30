@@ -1,0 +1,63 @@
+# Quarterly Business Review — semantic authoring example.
+#
+# This compact semantic spec compiles (via internal/semantic.Compile) to the raw
+# json2pptx PresentationInput model and exercises the MVP slide kinds: title,
+# executive_summary, kpi_snapshot, chart_insight, decision, and closing.
+meta:
+  title: Q2 FY26 Business Review
+  subtitle: Revenue, Retention, and the Path to H2
+  archetype: qbr
+  template: midnight-blue
+  audience: Executive leadership team
+
+slides:
+  - kind: title
+    title: Q2 FY26 Business Review
+    subtitle: Revenue, Retention, and the Path to H2
+
+  - kind: executive_summary
+    title: Where We Stand
+    takeaway: Strong top-line growth, but retention needs deliberate investment in H2.
+    points:
+      - Revenue grew 18% quarter-over-quarter, ahead of the 12% plan.
+      - Net revenue retention held at 118%, driven by enterprise expansion.
+      - Logo churn ticked up to 2.4%, concentrated in the SMB segment.
+      - Sales cycle shortened to 41 days after the onboarding redesign.
+
+  - kind: kpi_snapshot
+    title: The Quarter in Numbers
+    takeaway: Every headline metric improved except SMB churn.
+    kpis:
+      - { value: "$48M", label: "Annual recurring revenue" }
+      - { value: "118%", label: "Net revenue retention" }
+      - { value: "41d", label: "Average sales cycle" }
+      - { value: "2.4%", label: "Logo churn (SMB-weighted)" }
+
+  - kind: chart_insight
+    title: Revenue Trajectory
+    insight: Q4 acceleration reflects the EMEA launch landing ahead of schedule.
+    chart:
+      type: bar_chart
+      title: Quarterly revenue ($M)
+      data:
+        categories: ["Q1", "Q2", "Q3", "Q4"]
+        series:
+          - name: Revenue
+            values: [34, 40, 44, 48]
+    insights:
+      - Revenue grew 41% across the fiscal year, led by enterprise adoption.
+      - The Q4 step-up reflects the EMEA market launch landing early.
+      - Pipeline coverage points to continued acceleration into H2.
+
+  - kind: decision
+    title: The H2 Retention Bet
+    takeaway: Fund a dedicated SMB success pod now to protect net retention.
+    recommendation: Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.
+    options:
+      - Hold the current generalist coverage and accept rising SMB churn.
+      - Fund a dedicated SMB success pod (recommended).
+      - Offshore SMB support to cut cost at the expense of response time.
+
+  - kind: closing
+    title: Questions & Discussion
+    subtitle: Thank you — let's talk through H2 priorities.

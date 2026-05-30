@@ -1,0 +1,156 @@
+{
+  "template": "midnight-blue",
+  "design_mode": "constrained",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Q2 FY26 Business Review"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Revenue, Retention, and the Path to H2"
+        }
+      ]
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Where We Stand"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "Revenue grew 18% quarter-over-quarter, ahead of the 12% plan.",
+            "Net revenue retention held at 118%, driven by enterprise expansion.",
+            "Logo churn ticked up to 2.4%, concentrated in the SMB segment.",
+            "Sales cycle shortened to 41 days after the onboarding redesign."
+          ]
+        }
+      ],
+      "takeaway": "Strong top-line growth, but retention needs deliberate investment in H2."
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Quarter in Numbers"
+        }
+      ],
+      "pattern": {
+        "name": "kpi-4up",
+        "values": [
+          {
+            "big": "$48M",
+            "small": "Annual recurring revenue"
+          },
+          {
+            "big": "118%",
+            "small": "Net revenue retention"
+          },
+          {
+            "big": "41d",
+            "small": "Average sales cycle"
+          },
+          {
+            "big": "2.4%",
+            "small": "Logo churn (SMB-weighted)"
+          }
+        ]
+      },
+      "takeaway": "Every headline metric improved except SMB churn."
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Revenue Trajectory"
+        }
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "bar_chart",
+            "title": "Quarterly revenue ($M)",
+            "data": {
+              "categories": [
+                "Q1",
+                "Q2",
+                "Q3",
+                "Q4"
+              ],
+              "series": [
+                {
+                  "name": "Revenue",
+                  "values": [
+                    34,
+                    40,
+                    44,
+                    48
+                  ]
+                }
+              ]
+            }
+          },
+          "insights": [
+            "Revenue grew 41% across the fiscal year, led by enterprise adoption.",
+            "The Q4 step-up reflects the EMEA market launch landing early.",
+            "Pipeline coverage points to continued acceleration into H2."
+          ]
+        }
+      },
+      "takeaway": "Q4 acceleration reflects the EMEA launch landing ahead of schedule."
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The H2 Retention Bet"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.",
+            "bullets": [
+              "Hold the current generalist coverage and accept rising SMB churn.",
+              "Fund a dedicated SMB success pod (recommended).",
+              "Offshore SMB support to cut cost at the expense of response time."
+            ]
+          }
+        }
+      ],
+      "takeaway": "Fund a dedicated SMB success pod now to protect net retention."
+    },
+    {
+      "slide_type": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Questions \u0026 Discussion"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Thank you — let's talk through H2 priorities."
+        }
+      ]
+    }
+  ]
+}
