@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/utils"
@@ -112,32 +113,30 @@ func splitOnNewlines(text string) []string {
 }
 
 // xmlEscapeString escapes special XML characters and strips XML 1.0 illegal
-// control characters (U+0000-U+0008, U+000B, U+000C, U+000E-U+001F).
-// Tab (0x09), newline (0x0A), and carriage return (0x0D) are preserved.
+// control characters (see pptx.IsIllegalXMLChar). Tab, newline, and carriage
+// return are preserved.
 func xmlEscapeString(s string) string {
-	var buf []byte
-	for i := 0; i < len(s); i++ {
-		b := s[i]
-		switch {
-		case b == '&':
-			buf = append(buf, []byte("&amp;")...)
-		case b == '<':
-			buf = append(buf, []byte("&lt;")...)
-		case b == '>':
-			buf = append(buf, []byte("&gt;")...)
-		case b == '"':
-			buf = append(buf, []byte("&quot;")...)
-		case b == '\'':
-			buf = append(buf, []byte("&apos;")...)
-		case b == '\t', b == '\n', b == '\r':
-			buf = append(buf, b)
-		case b < 0x20:
-			// Strip XML 1.0 illegal control characters
+	var buf strings.Builder
+	for _, r := range s {
+		switch r {
+		case '&':
+			buf.WriteString("&amp;")
+		case '<':
+			buf.WriteString("&lt;")
+		case '>':
+			buf.WriteString("&gt;")
+		case '"':
+			buf.WriteString("&quot;")
+		case '\'':
+			buf.WriteString("&apos;")
 		default:
-			buf = append(buf, b)
+			if pptx.IsIllegalXMLChar(r) {
+				continue
+			}
+			buf.WriteRune(r)
 		}
 	}
-	return string(buf)
+	return buf.String()
 }
 
 // generateNotesSlideRels creates the relationships file for a notes slide.

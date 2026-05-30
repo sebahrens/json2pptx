@@ -1048,7 +1048,8 @@ func mapToSchemeColor(colorName string) string {
 	return "accent1" // Default to accent1 for unrecognized names
 }
 
-// escapeXMLText escapes special characters for XML text content.
+// escapeXMLText escapes special characters for XML text content and strips XML
+// 1.0 illegal control characters (see pptx.IsIllegalXMLChar).
 func escapeXMLText(s string) string {
 	var buf strings.Builder
 	for _, r := range s {
@@ -1064,6 +1065,9 @@ func escapeXMLText(s string) string {
 		case '\'':
 			buf.WriteString("&apos;")
 		default:
+			if pptx.IsIllegalXMLChar(r) {
+				continue
+			}
 			buf.WriteRune(r)
 		}
 	}

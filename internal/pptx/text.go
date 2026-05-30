@@ -214,7 +214,8 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 	}
 }
 
-// escapeXMLText escapes special characters for XML text content.
+// escapeXMLText escapes special characters for XML text content and strips XML
+// 1.0 illegal control characters (see IsIllegalXMLChar).
 func escapeXMLText(s string) string {
 	var buf bytes.Buffer
 	for _, r := range s {
@@ -226,6 +227,9 @@ func escapeXMLText(s string) string {
 		case '>':
 			buf.WriteString("&gt;")
 		default:
+			if IsIllegalXMLChar(r) {
+				continue
+			}
 			buf.WriteRune(r)
 		}
 	}

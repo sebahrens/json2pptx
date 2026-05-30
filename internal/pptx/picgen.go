@@ -223,7 +223,8 @@ func GeneratePicWithSVG(id uint32, pngRelID, svgRelID string, x, y, cx, cy int64
 	})
 }
 
-// escapeXMLAttr escapes special characters for XML attribute values.
+// escapeXMLAttr escapes special characters for XML attribute values and strips
+// XML 1.0 illegal control characters (see IsIllegalXMLChar).
 func escapeXMLAttr(s string) string {
 	var buf bytes.Buffer
 	for _, r := range s {
@@ -237,6 +238,9 @@ func escapeXMLAttr(s string) string {
 		case '>':
 			buf.WriteString("&gt;")
 		default:
+			if IsIllegalXMLChar(r) {
+				continue
+			}
 			buf.WriteRune(r)
 		}
 	}

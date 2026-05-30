@@ -764,6 +764,64 @@ func TestEscapeXMLText(t *testing.T) {
 	}
 }
 
+// TestEscapeXMLText_StripsIllegalControls verifies that XML 1.0 illegal control
+// characters carried in JSON string input are stripped before reaching raw
+// table cell XML, while legal whitespace and metacharacters are preserved.
+func TestEscapeXMLText_StripsIllegalControls(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"null byte", "hello\x00world", "helloworld"},
+		{"assorted c0 controls", "a\x01b\x08c\x0Bd\x0Ce\x0Ef\x1Fg", "abcdefg"},
+		{"tab newline cr preserved", "a\tb\nc\rd", "a\tb\nc\rd"},
+		{"controls mixed with metachars", "x\x00<y\x1F> & \"z\x07\"", "x&lt;y&gt; &amp; &quot;z&quot;"},
+		{"valid unicode preserved", "café €", "café €"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := escapeXMLText(tc.input); got != tc.expected {
+				t.Errorf("escapeXMLText(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestGenerateTableXML_StripsIllegalControlChars is an end-to-end regression
+// guard: a table cell whose content carries an XML 1.0 illegal control
+// character must not emit that raw byte into the slide XML (which would make
+// Office reject the file as non-well-formed).
+func TestGenerateTableXML_StripsIllegalControlChars(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Col\x00A", "ColB"},
+		Rows: [][]types.TableCell{
+			{{Content: "good\x07cell", ColSpan: 1, RowSpan: 1}, {Content: "ok", ColSpan: 1, RowSpan: 1}},
+		},
+		Style: types.DefaultTableStyle,
+	}
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 457200, Y: 914400, Width: 8229600, Height: 4572000},
+		Style:  table.Style,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, bad := range []string{"\x00", "\x07"} {
+		if strings.Contains(result.XML, bad) {
+			t.Errorf("generated XML contains raw illegal control byte %q", bad)
+		}
+	}
+	if !strings.Contains(result.XML, "ColA") {
+		t.Errorf("expected sanitized header %q in XML", "ColA")
+	}
+	if !strings.Contains(result.XML, "goodcell") {
+		t.Errorf("expected sanitized cell content %q in XML", "goodcell")
+	}
+}
+
 // TestGenerateTableXML_NumericHeaderRightAligned asserts that header cells in
 // columns flagged as numeric (number / currency / percent / delta via
 // Style.ColumnTypes) render right-aligned, matching the existing data-cell
