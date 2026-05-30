@@ -55,17 +55,6 @@ func (ctx *singlePassContext) allocateBackgroundRelIDs() {
 			nextRelID += len(nativeSVGs) * 2
 		}
 
-		// Count panel icon rels
-		if panelInserts, ok := ctx.panelShapeInserts[slideNum]; ok {
-			for _, ins := range panelInserts {
-				for _, panel := range ins.panels {
-					if panel.iconRelID != "" {
-						nextRelID++
-					}
-				}
-			}
-		}
-
 		bgMedia.relID = fmt.Sprintf("rId%d", nextRelID)
 		ctx.slideBgMedia[slideNum] = bgMedia
 	}

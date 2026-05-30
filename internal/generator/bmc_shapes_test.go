@@ -318,7 +318,7 @@ func TestAllocatePanelIconRelIDs_BMCMode(t *testing.T) {
 		},
 	}
 
-	ctx.allocatePanelIconRelIDs()
+	ctx.finalizePanelGroupXML()
 
 	inserts := ctx.panelShapeInserts[1]
 	if len(inserts) != 1 {

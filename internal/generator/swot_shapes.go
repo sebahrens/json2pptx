@@ -129,7 +129,7 @@ func (ctx *singlePassContext) processSWOTNativeShapes(slideNum int, item Content
 		placeholderIdx: shapeIdx,
 		bounds:         placeholderBounds,
 		panels:         panels,
-		// groupXML is generated during allocatePanelIconRelIDs via generateSWOTGroupXML
+		// groupXML is generated during finalizePanelGroupXML via generateSWOTGroupXML
 		swotMode: true,
 	})
 }

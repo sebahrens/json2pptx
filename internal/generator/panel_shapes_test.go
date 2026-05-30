@@ -365,7 +365,7 @@ func TestGeneratePanelGroupXML_Empty(t *testing.T) {
 
 func TestGeneratePanelGroupXML_MissingIcon(t *testing.T) {
 	panels := []nativePanelData{
-		{title: "Panel 1", body: "- Content", iconBytes: nil},
+		{title: "Panel 1", body: "- Content"},
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
@@ -499,7 +499,7 @@ func TestGeneratePanelGroupXML_MultiPanelPositions(t *testing.T) {
 	}
 }
 
-func TestAllocatePanelIconRelIDs_IconAndNoIcon(t *testing.T) {
+func TestFinalizePanelGroupXML_GeneratesXML(t *testing.T) {
 	ctx := &singlePassContext{
 		SlideContext: SlideContext{
 			panelShapeInserts: map[int][]panelShapeInsert{
@@ -508,8 +508,8 @@ func TestAllocatePanelIconRelIDs_IconAndNoIcon(t *testing.T) {
 						placeholderIdx: 0,
 						bounds:         types.BoundingBox{X: 0, Y: 0, Width: 6000000, Height: 4000000},
 						panels: []nativePanelData{
-							{title: "With Icon", body: "- Content", iconBytes: []byte{0x89, 0x50, 0x4E, 0x47}},
-							{title: "No Icon", body: "- Other content", iconBytes: nil},
+							{title: "Panel A", body: "- Content"},
+							{title: "Panel B", body: "- Other content"},
 						},
 					},
 				},
@@ -526,39 +526,16 @@ func TestAllocatePanelIconRelIDs_IconAndNoIcon(t *testing.T) {
 		},
 	}
 
-	ctx.allocatePanelIconRelIDs()
+	ctx.finalizePanelGroupXML()
 
 	inserts := ctx.panelShapeInserts[3]
 	if len(inserts) != 1 {
 		t.Fatalf("expected 1 insert, got %d", len(inserts))
 	}
 
-	panels := inserts[0].panels
-
-	// Panel with icon should get rel ID and media file
-	if panels[0].iconRelID == "" {
-		t.Error("panel with iconBytes should have iconRelID allocated")
-	}
-	if panels[0].iconMediaFile == "" {
-		t.Error("panel with iconBytes should have iconMediaFile allocated")
-	}
-
-	// Panel without icon should have empty rel ID
-	if panels[1].iconRelID != "" {
-		t.Errorf("panel without iconBytes should have empty iconRelID, got %q", panels[1].iconRelID)
-	}
-	if panels[1].iconMediaFile != "" {
-		t.Errorf("panel without iconBytes should have empty iconMediaFile, got %q", panels[1].iconMediaFile)
-	}
-
-	// usedExtensions should include "png"
-	if !ctx.usedExtensions["png"] {
-		t.Error("usedExtensions should include 'png' after icon allocation")
-	}
-
-	// groupXML should be non-empty (generated during allocation)
+	// groupXML should be non-empty (generated during finalization)
 	if inserts[0].groupXML == "" {
-		t.Error("groupXML should be generated during allocatePanelIconRelIDs")
+		t.Error("groupXML should be generated during finalizePanelGroupXML")
 	}
 
 	// groupXML should NOT contain PANEL_ICON_REL placeholder tokens
@@ -573,8 +550,8 @@ func TestAllocatePanelIconRelIDs_IconAndNoIcon(t *testing.T) {
 	}
 }
 
-func TestAllocatePanelIconRelIDs_RelIDAfterExistingRels(t *testing.T) {
-	// Verify that icon rel IDs come after media and SVG rel IDs.
+func TestFinalizePanelGroupXML_WithExistingRels(t *testing.T) {
+	// Verify group XML is still generated when media and SVG rels already exist.
 	ctx := &singlePassContext{
 		SlideContext: SlideContext{
 			panelShapeInserts: map[int][]panelShapeInsert{
@@ -583,7 +560,7 @@ func TestAllocatePanelIconRelIDs_RelIDAfterExistingRels(t *testing.T) {
 						placeholderIdx: 0,
 						bounds:         types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 3000000},
 						panels: []nativePanelData{
-							{title: "Icon Panel", body: "- text", iconBytes: []byte{0x01}},
+							{title: "Panel", body: "- text"},
 						},
 					},
 				},
@@ -606,16 +583,14 @@ func TestAllocatePanelIconRelIDs_RelIDAfterExistingRels(t *testing.T) {
 		},
 	}
 
-	ctx.allocatePanelIconRelIDs()
+	ctx.finalizePanelGroupXML()
 
-	panels := ctx.panelShapeInserts[5][0].panels
-	// rId1 = layout, rId2 = media, rId3+rId4 = SVG, so icon should be rId5
-	if panels[0].iconRelID != "rId5" {
-		t.Errorf("icon relID should be rId5 (after 1 media + 2 SVG rels), got %q", panels[0].iconRelID)
+	if ctx.panelShapeInserts[5][0].groupXML == "" {
+		t.Error("groupXML should be generated even when other rels exist")
 	}
 }
 
-func TestAllocatePanelIconRelIDs_NoPanels(t *testing.T) {
+func TestFinalizePanelGroupXML_NoPanels(t *testing.T) {
 	// Verify no-op when there are no panel inserts.
 	ctx := &singlePassContext{
 		SlideContext: SlideContext{
@@ -633,7 +608,7 @@ func TestAllocatePanelIconRelIDs_NoPanels(t *testing.T) {
 	}
 
 	// Should not panic
-	ctx.allocatePanelIconRelIDs()
+	ctx.finalizePanelGroupXML()
 }
 
 func TestInsertPanelGroups(t *testing.T) {
@@ -1026,7 +1001,7 @@ func TestStatCardGridLayout(t *testing.T) {
 }
 
 // =============================================================================
-// allocatePanelIconRelIDs routing tests
+// finalizePanelGroupXML routing tests
 // =============================================================================
 
 func TestAllocatePanelIconRelIDs_RowsMode(t *testing.T) {
@@ -1055,7 +1030,7 @@ func TestAllocatePanelIconRelIDs_RowsMode(t *testing.T) {
 		},
 	}
 
-	ctx.allocatePanelIconRelIDs()
+	ctx.finalizePanelGroupXML()
 
 	inserts := ctx.panelShapeInserts[1]
 	if len(inserts) == 0 || inserts[0].groupXML == "" {
@@ -1093,7 +1068,7 @@ func TestAllocatePanelIconRelIDs_StatCardsMode(t *testing.T) {
 		},
 	}
 
-	ctx.allocatePanelIconRelIDs()
+	ctx.finalizePanelGroupXML()
 
 	inserts := ctx.panelShapeInserts[1]
 	if len(inserts) == 0 || inserts[0].groupXML == "" {

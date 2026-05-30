@@ -865,22 +865,20 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 	return string(b)
 }
 
-// allocatePanelIconRelIDs allocates relationship IDs for panel icon images and
-// generates the final group XML for each panelShapeInsert.
+// finalizePanelGroupXML generates the final group XML for each panelShapeInsert.
 //
-// This solves the chicken-and-egg problem: p:pic elements inside the group need
-// r:embed relationship IDs, but IDs can only be allocated during writeOutput()
-// after all other rel IDs are known. So processPanelNativeShapes() stores the
-// raw icon bytes, and this function runs later to allocate IDs and build XML.
-//
-// For panels without icons (iconBytes == nil), no p:pic is emitted and no
-// relationship is allocated — this is the normal case per the reference file.
-func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
+// p:pic elements inside the group can only reference relationship IDs that are
+// known after all other rel IDs are allocated, so processPanelNativeShapes()
+// defers XML generation and this function runs later (during writeOutput) to
+// build the group XML with the correct shape ID base. Panel icons now embed via
+// the native-SVG path (ctx.nativeSVGInserts), so no per-panel PNG relationships
+// are allocated here.
+func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 	// We need a global shape ID counter that avoids conflicts across slides.
 	// Start at a high base to avoid conflicts with typical OOXML IDs.
 	nextShapeID := uint32(10000)
 
-	// Sort slide numbers for deterministic shape ID and rel ID allocation.
+	// Sort slide numbers for deterministic shape ID allocation.
 	// Map iteration order is non-deterministic in Go; without sorting,
 	// nextShapeID and media allocator state would vary between runs.
 	slideNums := make([]int, 0, len(ctx.panelShapeInserts))
@@ -891,37 +889,9 @@ func (ctx *singlePassContext) allocatePanelIconRelIDs() { //nolint:gocyclo
 
 	for _, slideNum := range slideNums {
 		inserts := ctx.panelShapeInserts[slideNum]
-		// Compute next available rel ID for this slide.
-		// rId1 = layout, then media, then native SVGs, then panel icons.
-		nextRelID := 2
-
-		// Account for regular media relationships
-		if mediaRels, hasMedia := ctx.slideRelUpdates[slideNum]; hasMedia {
-			nextRelID += len(mediaRels)
-		}
-
-		// Account for native SVG relationships (2 per insert: PNG + SVG)
-		if nativeSVGs, hasSVG := ctx.nativeSVGInserts[slideNum]; hasSVG {
-			nextRelID += len(nativeSVGs) * 2
-		}
 
 		for i := range inserts {
-			for j := range inserts[i].panels {
-				panel := &inserts[i].panels[j]
-				if len(panel.iconBytes) == 0 {
-					continue
-				}
-
-				// Allocate media filename
-				panel.iconMediaFile = ctx.allocPNG(fmt.Sprintf("panelicon-s%d-i%d-j%d", slideNum, i, j))
-
-				// Allocate relationship ID
-				panel.iconRelID = fmt.Sprintf("rId%d", nextRelID)
-				nextRelID++
-			}
-
-			// Generate the final group XML with real rel IDs (if any icons)
-			// and the correct shape ID base.
+			// Generate the final group XML with the correct shape ID base.
 			switch {
 			case inserts[i].swotMode:
 				inserts[i].groupXML = generateSWOTGroupXML(

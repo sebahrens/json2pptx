@@ -277,7 +277,7 @@ func TestGenerate_Determinism_PanelLayout(t *testing.T) {
 	}
 
 	// 4-panel columns layout with icons and bullet text, spread across
-	// two slides to exercise sorted map iteration in allocatePanelIconRelIDs.
+	// two slides to exercise sorted map iteration in finalizePanelGroupXML.
 	panelSlide := func(title string, panels []any) SlideSpec {
 		return SlideSpec{
 			LayoutID: "slideLayout2",

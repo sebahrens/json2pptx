@@ -71,7 +71,7 @@ type panelShapeInsert struct {
 	placeholderIdx int                // Shape index to remove
 	bounds         types.BoundingBox  // Placeholder EMU bounds
 	panels         []nativePanelData  // Parsed panel data
-	groupXML       string             // Populated during allocatePanelIconRelIDs()
+	groupXML       string             // Populated during finalizePanelGroupXML()
 	swotMode       bool               // True for SWOT 2x2 grid layout (vs column panels)
 	pestelMode     bool               // True for PESTEL 3x2 grid layout
 	nineBoxMode    bool               // True for Nine Box Talent 3x3 grid layout
@@ -96,10 +96,7 @@ type panelShapeInsert struct {
 type nativePanelData struct {
 	title         string // Panel title
 	body          string // May contain \n and "- " bullets
-	value         string // Hero value for stat_cards mode (e.g., "10%", "$1.2M")
-	iconBytes     []byte // nil if icon load failed
-	iconMediaFile string // Set during allocation
-	iconRelID     string // Set during allocation
+	value string // Hero value for stat_cards mode (e.g., "10%", "$1.2M")
 
 	// iconSVG holds resolved SVG markup for the panel icon (bundled name, inline
 	// svg_data, or external file). It is embedded as a native OOXML SVG image

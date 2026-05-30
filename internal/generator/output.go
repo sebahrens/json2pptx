@@ -44,9 +44,9 @@ func (ctx *singlePassContext) writeOutput() error {
 		return fmt.Errorf("failed to allocate native SVG relationship IDs: %w", err)
 	}
 
-	// Pre-allocate relationship IDs for panel icon images and generate final group XML.
-	// This must be done after allocateNativeSVGRelIDs() so rel IDs don't conflict.
-	ctx.allocatePanelIconRelIDs()
+	// Generate the final panel group XML. Must run after allocateNativeSVGRelIDs()
+	// so native-SVG panel icon rel IDs are already assigned.
+	ctx.finalizePanelGroupXML()
 
 	// Pre-allocate relationship IDs for background images.
 	// This must be done after all other rel ID allocations so IDs don't conflict.
@@ -1023,24 +1023,6 @@ func (ctx *singlePassContext) writeNewSlideRelationships(slideNum int, layoutID 
 		nextRelID += len(nativeSVGs) * 2
 	}
 
-	// Add relationships for panel icon images if present.
-	// Use the pre-allocated rIds from allocatePanelIconRelIDs().
-	if panelInserts, hasPanel := ctx.panelShapeInserts[slideNum]; hasPanel {
-		for _, ins := range panelInserts {
-			for _, panel := range ins.panels {
-				if panel.iconRelID == "" {
-					continue
-				}
-				rels.Relationships = append(rels.Relationships, pptx.RelationshipXML{
-					ID:     panel.iconRelID,
-					Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
-					Target: "../media/" + panel.iconMediaFile,
-				})
-				nextRelID++
-			}
-		}
-	}
-
 	// Add relationship for background image if present (uses pre-allocated relID)
 	if bgMedia, hasBg := ctx.slideBgMedia[slideNum]; hasBg && bgMedia.relID != "" {
 		rels.Relationships = append(rels.Relationships, pptx.RelationshipXML{
@@ -1292,9 +1274,6 @@ func (ctx *singlePassContext) writeMediaFiles() error {
 	// Write native SVG media files (both SVG and PNG for each insert)
 	ctx.writeNativeSVGMedia()
 
-	// Write panel icon media files (PNG images from iconBytes)
-	ctx.writePanelIconMedia()
-
 	return nil
 }
 
@@ -1387,31 +1366,6 @@ func (ctx *singlePassContext) writeNativeSVGMedia() {
 				if err := streamImageToZip(ctx.outputWriter, svg.pngPath, pngMediaPath); err != nil {
 					ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to stream PNG fallback %s: %v", svg.pngPath, err))
 					continue
-				}
-			}
-		}
-	}
-}
-
-// writePanelIconMedia writes panel icon image files to the output ZIP.
-// Only panels with non-nil iconBytes and an allocated iconMediaFile are written.
-func (ctx *singlePassContext) writePanelIconMedia() {
-	// Sort slide numbers for deterministic output ordering
-	slideNums := make([]int, 0, len(ctx.panelShapeInserts))
-	for slideNum := range ctx.panelShapeInserts {
-		slideNums = append(slideNums, slideNum)
-	}
-	sort.Ints(slideNums)
-
-	for _, slideNum := range slideNums {
-		for _, ins := range ctx.panelShapeInserts[slideNum] {
-			for _, panel := range ins.panels {
-				if len(panel.iconBytes) == 0 || panel.iconMediaFile == "" {
-					continue
-				}
-				mediaPath := MediaPath(panel.iconMediaFile)
-				if err := streamBytesToZip(ctx.outputWriter, panel.iconBytes, mediaPath); err != nil {
-					ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to write panel icon %s: %v", panel.iconMediaFile, err))
 				}
 			}
 		}
