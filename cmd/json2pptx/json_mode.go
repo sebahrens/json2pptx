@@ -427,177 +427,125 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return writeJSONError(jsonOutputPath, err)
 	}
 
-	// Create output directory
-	if err := os.MkdirAll(cfg.Storage.OutputDir, 0755); err != nil {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("failed to create output directory: %w", err))
-	}
+	// urlResolverCleanup releases any URL-download cache opened by the PreConvert
+	// hook. Held here so it survives until after generation (the resolved local
+	// paths are embedded in the slides). Defaulted to a no-op.
+	urlResolverCleanup := func() {}
+	defer func() { urlResolverCleanup() }()
 
-	// Resolve template path using search path (flag, env, home, cwd, embedded)
-	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, cfg.Templates.Dir)
-	if err != nil {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("%s", templateNotFoundError(input.Template, cfg.Templates.Dir)))
-	}
-	defer templateCleanup()
+	// preConvertErr captures a fatal error raised inside the PreConvert hook so
+	// it can be surfaced with the original CLI error shape (the hook itself only
+	// returns a sentinel; the real error is stored here).
+	var preConvertErr error
 
-	// Analyze template for layout metadata, synthetic files, and dimensions
-	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, templateTheme, synthesisFindings := analyzeTemplateLayouts(templatePath)
+	// Run the shared raw generation pipeline. RunPresentation performs, in the
+	// same order as before: output-dir creation, template resolution, template
+	// analysis, canonical layout resolution, strict_fit, then (via PreConvert)
+	// URL + relative-asset resolution, then rhythm-grid resolution, slide
+	// conversion, generation, and output validation.
+	runRes, renderCleanup, renderErr := RunPresentation(context.Background(), input, RenderOptions{
+		OutputDir:        cfg.Storage.OutputDir,
+		TemplatesDir:     cfg.Templates.Dir,
+		StrictFit:        strictFit,
+		OutputValidation: outputValidation,
+		AccentStrategy:   patterns.AccentStrategy(input.AccentStrategy),
+		Partial:          partial,
+		SVGStrategy:      string(cfg.SVG.Strategy),
+		SVGScale:         cfg.SVG.Scale,
+		SVGNativeCompat:  string(cfg.SVG.NativeCompatibility),
+		MaxPNGWidth:      cfg.SVG.MaxPNGWidth,
+		PreConvert: func() error {
+			// Resolve any URL references (icon.url, image.url, background.url) by
+			// downloading them to a session-scoped cache with SSRF protection.
+			if hasURLReferences(input.Slides) {
+				resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
+				if resolverErr != nil {
+					preConvertErr = fmt.Errorf("resource resolver: %w", resolverErr)
+					return preConvertErr
+				}
+				urlResolverCleanup = func() { resolver.Close() }
+				if urlFindings := resolveURLs(input.Slides, resolver); len(urlFindings) > 0 {
+					preConvertErr = iconFindingsToError(urlFindings)
+					return preConvertErr
+				}
+			}
 
-	// Resolve canonical layout names (e.g. "title", "content", "closing") to
-	// concrete layout IDs using tag-based matching against the target template.
-	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
-
-	// Run text-fit checking when --strict-fit is warn or strict. This runs
-	// AFTER template analysis and canonical-layout resolution so the shape_grid
-	// fit checks resolve against the SAME layout-aware bounds generation renders
-	// (go-slide-creator-ur3z). Findings from warn mode are merged into the
-	// structured fit_findings output below so JSON consumers see them without
-	// having to separately pass --fit-report. Strict mode still aborts on
-	// refuse-class findings, and the stderr NDJSON dump is preserved for
-	// log-tail parity.
-	var strictFitFindings []patterns.FitFinding
-	if strictFit != "off" {
-		rawFindings, refuseErr := evaluateStrictFit(input, strictFit, templateLayouts, slideWidth, slideHeight)
-		if refuseErr != nil {
+			// Resolve relative asset paths (icon.path, content image_value.path,
+			// shape_grid cell image.path, slide background.image) against the JSON
+			// input directory. This must happen before convertPresentationSlides so
+			// that downstream specs see absolute paths.
+			//
+			// Errors abort with an aggregated message; non-blocking warnings (e.g.
+			// ICON_FILL_IGNORED_ON_INLINE) flow into inputWarnings so the user sees
+			// them in the success output instead of having generation refused.
+			if jsonPath != "-" {
+				// Resolve relative assets against the deck's own directory, absolutized so
+				// the base dir satisfies the absolute-path contract that the MCP base_dir
+				// resolver enforces and that resolveIconInputPath's symlink-escape check
+				// assumes. A raw filepath.Dir(jsonPath) leaves the base dir relative (".")
+				// when -json is itself relative (e.g. `generate -json deck.json`), which
+				// makes a valid relative icon *file path* falsely trip
+				// ICON_PATH_SYMLINK_ESCAPE. validate already absolutizes via
+				// validateBaseDir; sharing it keeps the two CLI surfaces in lockstep.
+				inputDir := validateBaseDir(jsonPath, "")
+				assetFindings := resolveLocalAssetPaths(input.Slides, inputDir)
+				if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
+					preConvertErr = assetErr
+					return preConvertErr
+				}
+				for _, d := range assetFindings {
+					if d.Severity != diagnostics.SeverityError {
+						inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
+					}
+				}
+			}
+			return nil
+		},
+	})
+	defer renderCleanup()
+	if renderErr != nil {
+		// Preserve each historical error shape:
+		//   - PreConvert (URL/asset) failures surface verbatim, as before.
+		//   - strict_fit refusal dumps NDJSON to stderr then returns the error.
+		//   - output-validation strict failure aggregates blocking findings.
+		if preConvertErr != nil {
+			return writeJSONError(jsonOutputPath, preConvertErr)
+		}
+		switch e := renderErr.(type) {
+		case *StrictFitRefusal:
 			enc := json.NewEncoder(os.Stderr)
-			for _, f := range rawFindings {
+			for _, f := range e.Findings {
 				_ = enc.Encode(f)
 			}
-			return writeJSONError(jsonOutputPath, refuseErr)
-		}
-		for _, f := range rawFindings {
-			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
-		}
-	}
-
-	// Resolve any URL references (icon.url, image.url, background.url) by downloading
-	// them to a session-scoped cache with SSRF protection.
-	if hasURLReferences(input.Slides) {
-		resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
-		if resolverErr != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("resource resolver: %w", resolverErr))
-		}
-		defer resolver.Close()
-		if urlFindings := resolveURLs(input.Slides, resolver); len(urlFindings) > 0 {
-			return writeJSONError(jsonOutputPath, iconFindingsToError(urlFindings))
-		}
-	}
-
-	// Resolve relative asset paths (icon.path, content image_value.path,
-	// shape_grid cell image.path, slide background.image) against the JSON
-	// input directory. This must happen before convertPresentationSlides so
-	// that downstream specs see absolute paths.
-	//
-	// Errors abort with an aggregated message; non-blocking warnings (e.g.
-	// ICON_FILL_IGNORED_ON_INLINE) flow into inputWarnings so the user sees
-	// them in the success output instead of having generation refused.
-	if jsonPath != "-" {
-		// Resolve relative assets against the deck's own directory, absolutized so
-		// the base dir satisfies the absolute-path contract that the MCP base_dir
-		// resolver enforces and that resolveIconInputPath's symlink-escape check
-		// assumes. A raw filepath.Dir(jsonPath) leaves the base dir relative (".")
-		// when -json is itself relative (e.g. `generate -json deck.json`), which
-		// makes a valid relative icon *file path* falsely trip
-		// ICON_PATH_SYMLINK_ESCAPE. validate already absolutizes via
-		// validateBaseDir; sharing it keeps the two CLI surfaces in lockstep.
-		inputDir := validateBaseDir(jsonPath, "")
-		assetFindings := resolveLocalAssetPaths(input.Slides, inputDir)
-		if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
-			return writeJSONError(jsonOutputPath, assetErr)
-		}
-		for _, d := range assetFindings {
-			if d.Severity != diagnostics.SeverityError {
-				inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
-			}
-		}
-	}
-
-	// Resolve deck-level rhythm grid when configured.
-	var rhythmGrid *resolvedGrid
-	if input.Grid != nil {
-		if err := validateGridConfig(input.Grid); err != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("grid: %w", err))
-		}
-		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
-	}
-
-	// Convert typed slides to generator specs (uses templateLayouts for auto-layout selection)
-	diagCtx := &GridDiagramContext{
-		ThemeColors: templateTheme.Colors,
-		DataPalette: resolveDataPalette(templateMetadata, templateTheme.Colors),
-		FontFamily:  templateTheme.BodyFont,
-	}
-	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), diagCtx, partial)
-	if err != nil {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("invalid slide specification: %w", err))
-	}
-	inputWarnings = append(inputWarnings, gridDiagWarnings...)
-	// Pre-validate chart/diagram data structures via svggen Validate().
-	// Issues are collected as warnings so generation still proceeds.
-	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
-	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
-
-	// Determine output filename — sanitize to prevent path traversal.
-	outputFilename := sanitizeOutputFilename(input.OutputFilename)
-	outputPath := filepath.Join(cfg.Storage.OutputDir, outputFilename)
-
-	// Generate PPTX
-	// ExcludeTemplateSlides=true removes the template's example slides from output,
-	// so only our generated slides are in the final PPTX
-	genReq := generator.GenerationRequest{
-		TemplatePath:          templatePath,
-		OutputPath:            outputPath,
-		Slides:                slideSpecs,
-		SVGStrategy:           string(cfg.SVG.Strategy),
-		SVGScale:              cfg.SVG.Scale,
-		SVGNativeCompat:       string(cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:           cfg.SVG.MaxPNGWidth,
-		ExcludeTemplateSlides: true,
-		SyntheticFiles:        syntheticFiles,
-		StrictFit:             strictFit,
-		DataPalette:           resolveDataPalette(templateMetadata, templateTheme.Colors),
-	}
-
-	// Wire footer/chrome configuration.
-	// Chrome supersedes footer — if both are set, chrome wins.
-	if input.Chrome != nil {
-		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs))
-		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
-	} else if input.Footer != nil && input.Footer.Enabled {
-		genReq.Footer = &generator.FooterConfig{
-			Enabled:  true,
-			LeftText: input.Footer.LeftText,
-		}
-	}
-
-	// Wire theme override
-	if input.ThemeOverride != nil {
-		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
-	}
-
-	result, err := generator.Generate(context.Background(), genReq)
-	if err != nil {
-		return writeJSONError(jsonOutputPath, fmt.Errorf("failed to generate PPTX: %w", err))
-	}
-
-	// Post-generation output validation via --output-validation flag (default: strict).
-	var outputValidationFindings []pptx.Finding
-	if outputValidation != "off" {
-		report, valErr := pptx.ValidateOutputFile(outputPath)
-		if valErr != nil {
-			return writeJSONError(jsonOutputPath, fmt.Errorf("output validation failed: %w", valErr))
-		}
-		outputValidationFindings = report.Findings
-
-		// In strict mode, fail if any blocking findings exist.
-		if outputValidation == "strict" && !report.IsValid() {
-			blocking := report.Blocking()
+			return writeJSONError(jsonOutputPath, e.Err)
+		case *OutputValidationFailure:
+			blocking := e.Report.Blocking()
 			msgs := make([]string, 0, len(blocking))
 			for _, f := range blocking {
 				msgs = append(msgs, f.Error())
 			}
 			return writeJSONError(jsonOutputPath, fmt.Errorf("output validation failed (strict): %s", strings.Join(msgs, "; ")))
+		default:
+			return writeJSONError(jsonOutputPath, renderErr)
 		}
 	}
+
+	// Unpack render results into the local names the rest of runJSONMode uses.
+	templateLayouts := runRes.TemplateLayouts
+	syntheticFiles := runRes.SyntheticFiles
+	synthesisFindings := runRes.SynthesisFindings
+	strictFitFindings := runRes.StrictFitFindings
+	slideSpecs := runRes.SlideSpecs
+	gridVisualFindings := runRes.GridVisualFindings
+	outputPath := runRes.OutputPath
+	outputValidationFindings := runRes.OutputValidationFindings
+	result := runRes.GenResult
+
+	inputWarnings = append(inputWarnings, runRes.GridDiagWarnings...)
+	// Pre-validate chart/diagram data structures via svggen Validate().
+	// Issues are collected as warnings so generation still proceeds.
+	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
+	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
 	// Merge input-layer warnings with generation warnings
 	allWarnings := append(inputWarnings, result.Warnings...)
