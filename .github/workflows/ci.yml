@@ -432,3 +432,50 @@ jobs:
 
       - name: Run corpus headless round-trip
         run: go test -tags=integration ./cmd/json2pptx/... -run Corpus -count=1 -timeout=30m -v
+
+  render-integration:
+    # Exercises the tool-gated render and SVG-conversion tests that skip by
+    # default when LibreOffice/ImageMagick/rsvg-convert are absent. Without this
+    # job the internal/render integration tests (TestIntegrationRenderSlide,
+    # TestIntegrationRenderDeck) and the rsvg/EMF SVG-converter tests never run
+    # in CI, so a default `go test ./...` can be green while real render paths
+    # are unexercised. See docs/TESTING.md for the test-tier classification.
+    # Tracked by go-slide-creator-p9vi.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install fonts and render toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-liberation fonts-dejavu-core \
+            libreoffice-impress libreoffice-common librsvg2-bin imagemagick
+
+      - name: Build json2pptx
+        run: go build -o ./bin/json2pptx ./cmd/json2pptx
+
+      - name: Generate render fixture deck
+        run: |
+          mkdir -p /tmp/render-test
+          ./bin/json2pptx generate \
+            -json examples/basic-deck.json \
+            -template midnight-blue \
+            -templates-dir templates \
+            -output /tmp/render-test
+          # The render integration tests look for a fixed filename; normalise
+          # whatever name the generator emitted to the expected path.
+          generated=$(ls -t /tmp/render-test/*.pptx | head -1)
+          mv "$generated" /tmp/render-test/basic-deck.pptx
+          ls -l /tmp/render-test/
+
+      - name: Run render + SVG-conversion integration tests
+        env:
+          RENDER_TEST_PPTX: /tmp/render-test/basic-deck.pptx
+        run: |
+          go test ./internal/render/... -run Integration -count=1 -v -timeout=10m
+          go test ./internal/generator/... -run 'SVGConverter|SVG_' -count=1 -v -timeout=10m
