@@ -1,0 +1,33 @@
+# Deliberately invalid semantic spec — a teaching fixture for diagnostics.
+#
+# Every problem below is intentional. The spec is the negative example for
+# `json2pptx semantic validate`: it trips several distinct SEMANTIC_* diagnostic
+# codes, each anchored to a stable semantic source path, so agents can see what
+# the validator reports and where. Running `semantic validate --spec` on this
+# file exits non-zero. The accompanying tests pin the (code, path) pairs.
+meta:
+  # meta.title is omitted on purpose -> SEMANTIC_REQUIRED @ meta.title
+  subtitle: A spec that gets everything wrong on purpose
+  # meta.archetype is not a registered archetype -> SEMANTIC_UNKNOWN_ARCHETYPE @ meta.archetype
+  archetype: not_a_real_archetype
+
+slides:
+  # slides[0]: too few points for an executive summary, and no takeaway.
+  - kind: executive_summary
+    title: Sparse Summary
+    points:
+      - The only point on the slide.
+
+  # slides[1]: a KPI snapshot missing its required `kpis` field, and no takeaway.
+  - kind: kpi_snapshot
+    title: Numbers, But No Numbers
+
+  # slides[2]: an unregistered slide kind.
+  - kind: mystery_kind
+    title: What Even Is This
+
+  # slides[3]: placeholder/filler title, a chart with no data series, no insight.
+  - kind: chart_insight
+    title: TODO write a real headline
+    chart:
+      type: bar_chart

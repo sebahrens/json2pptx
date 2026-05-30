@@ -1,0 +1,180 @@
+{
+  "template": "warm-coral",
+  "design_mode": "constrained",
+  "slides": [
+    {
+      "slide_type": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Acme Analytics"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Turn your operational data into decisions"
+        }
+      ]
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Opportunity"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "bullets",
+          "bullets_value": [
+            "Operations teams export the same reports by hand every week.",
+            "Decisions wait days for analysts who are already over capacity.",
+            "Competitors using real-time signals are reacting twice as fast.",
+            "The raw data already exists; nothing turns it into a decision."
+          ]
+        }
+      ],
+      "takeaway": "Your teams are data-rich but decision-poor — and the gap is widening."
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "A Market Moving to Real Time"
+        }
+      ],
+      "pattern": {
+        "name": "chart-insights-split",
+        "values": {
+          "chart": {
+            "type": "bar_chart",
+            "title": "Decision-analytics spend ($B)",
+            "data": {
+              "categories": [
+                "2023",
+                "2024",
+                "2025",
+                "2026"
+              ],
+              "series": [
+                {
+                  "name": "Batch reporting",
+                  "values": [
+                    12,
+                    11,
+                    10,
+                    9
+                  ]
+                },
+                {
+                  "name": "Real-time decisioning",
+                  "values": [
+                    6,
+                    10,
+                    16,
+                    24
+                  ]
+                }
+              ]
+            }
+          },
+          "insights": [
+            "Real-time decisioning overtakes batch reporting within the window.",
+            "Buyers are consolidating onto platforms that close the loop.",
+            "Early adopters report faster cycle times within a quarter."
+          ]
+        }
+      },
+      "takeaway": "Spend is shifting decisively from batch reporting to live decisioning."
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Traction So Far"
+        }
+      ],
+      "pattern": {
+        "name": "kpi-4up",
+        "values": [
+          {
+            "big": "60+",
+            "small": "Operations teams live"
+          },
+          {
+            "big": "4.2x",
+            "small": "Faster decision cycle"
+          },
+          {
+            "big": "98%",
+            "small": "Logo retention"
+          },
+          {
+            "big": "11wk",
+            "small": "Median time to value"
+          }
+        ]
+      },
+      "takeaway": "Early customers are already seeing the decision gap close."
+    },
+    {
+      "slide_type": "section",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "The Partnership We Propose"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "A scoped pilot with a clear path to rollout"
+        }
+      ]
+    },
+    {
+      "slide_type": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Where We Go From Here"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.",
+            "bullets": [
+              "Stand up a 90-day pilot on the two highest-cost workflows (recommended).",
+              "Begin with a paid discovery to map data sources before committing.",
+              "Defer to next budget cycle and revisit once headcount frees up."
+            ]
+          }
+        }
+      ],
+      "takeaway": "Start with a focused pilot on one operations team, then scale on proof."
+    },
+    {
+      "slide_type": "title",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Let's Build the Pilot"
+        },
+        {
+          "placeholder_id": "subtitle",
+          "type": "text",
+          "text_value": "Thank you — we're ready to start when you are."
+        }
+      ]
+    }
+  ]
+}

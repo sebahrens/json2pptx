@@ -1,0 +1,72 @@
+# Sales pitch — semantic authoring example.
+#
+# A compact semantic spec for a sales/pitch deck. It exercises a different
+# archetype (sales_pitch, which prefers the warm-coral template and is not an
+# "executive" archetype) and a different slide rhythm than the QBR example:
+# it opens with the opportunity, sizes the market, shows traction, breaks with a
+# `section` divider, and lands a partnership ask. The mix of structural / text /
+# chart / kpi families is deliberately varied so the deck-rhythm rules stay
+# quiet — this file is meant to validate cleanly at the default strictness.
+meta:
+  title: Acme Analytics — Partnership Proposal
+  subtitle: Turn your operational data into decisions
+  archetype: sales_pitch
+  audience: VP of Operations and the buying committee
+
+slides:
+  - kind: title
+    title: Acme Analytics
+    subtitle: Turn your operational data into decisions
+
+  - kind: executive_summary
+    title: The Opportunity
+    takeaway: Your teams are data-rich but decision-poor — and the gap is widening.
+    points:
+      - Operations teams export the same reports by hand every week.
+      - Decisions wait days for analysts who are already over capacity.
+      - Competitors using real-time signals are reacting twice as fast.
+      - The raw data already exists; nothing turns it into a decision.
+
+  - kind: chart_insight
+    title: A Market Moving to Real Time
+    insight: Spend is shifting decisively from batch reporting to live decisioning.
+    chart:
+      type: bar_chart
+      title: Decision-analytics spend ($B)
+      data:
+        categories: ["2023", "2024", "2025", "2026"]
+        series:
+          - name: Batch reporting
+            values: [12, 11, 10, 9]
+          - name: Real-time decisioning
+            values: [6, 10, 16, 24]
+    insights:
+      - Real-time decisioning overtakes batch reporting within the window.
+      - Buyers are consolidating onto platforms that close the loop.
+      - Early adopters report faster cycle times within a quarter.
+
+  - kind: kpi_snapshot
+    title: Traction So Far
+    takeaway: Early customers are already seeing the decision gap close.
+    kpis:
+      - { value: "60+", label: "Operations teams live" }
+      - { value: "4.2x", label: "Faster decision cycle" }
+      - { value: "98%", label: "Logo retention" }
+      - { value: "11wk", label: "Median time to value" }
+
+  - kind: section
+    title: The Partnership We Propose
+    subtitle: A scoped pilot with a clear path to rollout
+
+  - kind: decision
+    title: Where We Go From Here
+    takeaway: Start with a focused pilot on one operations team, then scale on proof.
+    recommendation: Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.
+    options:
+      - Stand up a 90-day pilot on the two highest-cost workflows (recommended).
+      - Begin with a paid discovery to map data sources before committing.
+      - Defer to next budget cycle and revisit once headcount frees up.
+
+  - kind: closing
+    title: Let's Build the Pilot
+    subtitle: Thank you — we're ready to start when you are.

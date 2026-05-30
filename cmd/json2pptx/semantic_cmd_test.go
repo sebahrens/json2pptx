@@ -233,6 +233,48 @@ func TestSemanticRender_QBRExample(t *testing.T) {
 	}
 }
 
+// salesPitchSemanticExample is the bundled sales-pitch semantic example,
+// relative to the package dir. It renders on a second template (warm-coral)
+// than the QBR example, widening render-smoke template coverage.
+const salesPitchSemanticExample = "../../examples/semantic/sales_pitch.yaml"
+
+func TestSemanticRender_SalesPitchExample(t *testing.T) {
+	if _, err := os.Stat(salesPitchSemanticExample); err != nil {
+		t.Skipf("sales_pitch example missing: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "sales_pitch.pptx")
+
+	stdout, err := runSemanticArgs(t, "render",
+		"--spec", salesPitchSemanticExample,
+		"--output", out,
+		"--templates-dir", testTemplatesDir)
+	if err != nil {
+		t.Fatalf("semantic render returned error: %v\noutput=%s", err, stdout)
+	}
+
+	var res semanticRenderResult
+	if jerr := json.Unmarshal([]byte(stdout), &res); jerr != nil {
+		t.Fatalf("render output is not a semanticRenderResult: %v\noutput=%s", jerr, stdout)
+	}
+	if !res.OK {
+		t.Errorf("render result OK = false; error=%q", res.Error)
+	}
+	if res.SlideCount != 7 {
+		t.Errorf("slide_count = %d, want 7", res.SlideCount)
+	}
+	if _, statErr := os.Stat(out); statErr != nil {
+		t.Errorf("render did not write the .pptx: %v", statErr)
+	}
+
+	report, valErr := pptx.ValidateOutputFile(out)
+	if valErr != nil {
+		t.Fatalf("validate-output failed: %v", valErr)
+	}
+	if !report.IsValid() {
+		t.Errorf("rendered deck failed validate-output: %d blocking finding(s)", len(report.Blocking()))
+	}
+}
+
 func TestSemanticRender_InvalidSpecFails(t *testing.T) {
 	path := writeSpec(t, "bad.yaml", invalidSemanticSpec)
 	out := filepath.Join(t.TempDir(), "bad.pptx")
