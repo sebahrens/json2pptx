@@ -40,6 +40,20 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	// Available width/height after subtracting gaps
 	totalColGap := colGapEMU * int64(numCols-1)
 	totalRowGap := rowGapEMU * int64(numRows-1)
+
+	// Guard against gap totals that exceed the grid bounds. Without this,
+	// availW/availH go negative and flow through distributeEMU into DrawingML
+	// extents as negative cx/cy, producing invalid <a:ext> geometry. A gap
+	// total exactly equal to the bounds (including the 0-gap, 0-bounds case
+	// used by height-deferred patterns) yields zero — not negative — extents
+	// and is left to the existing zero-size handling, so use a strict compare.
+	if totalColGap > gridW {
+		return nil, fmt.Errorf("shape_grid: total column gap (%d EMU across %d columns at col_gap=%gpt) exceeds grid width (%d EMU); reduce col_gap or the number of columns", totalColGap, numCols, colGap, gridW)
+	}
+	if totalRowGap > gridH {
+		return nil, fmt.Errorf("shape_grid: total row gap (%d EMU across %d rows at row_gap=%gpt) exceeds grid height (%d EMU); reduce row_gap or the number of rows", totalRowGap, numRows, rowGap, gridH)
+	}
+
 	availW := gridW - totalColGap
 	availH := gridH - totalRowGap
 
@@ -583,6 +597,13 @@ func distributeEMU(pcts []float64, totalEMU int64) []int64 {
 	n := len(pcts)
 	if n == 0 {
 		return nil
+	}
+
+	// Defensive: a non-positive total cannot be distributed into valid
+	// extents. Return zero-width entries so callers never emit negative
+	// DrawingML cx/cy even if upstream gap/bounds validation is bypassed.
+	if totalEMU <= 0 {
+		return make([]int64, n)
 	}
 
 	// Compute the sum of percentages to normalise against.
