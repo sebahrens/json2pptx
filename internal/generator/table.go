@@ -147,7 +147,11 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// IMPORTANT: The row height floor here MUST match the rendering floor
 	// below (defaultRowHeight). Using a lower floor causes the truncation
 	// check to overestimate capacity, leading to table overflow.
-	summaryRowIdx := -1 // index into table.Rows; -1 means no truncation
+	// renderRows is the row set actually emitted. Rendering must be pure over
+	// the input spec, so truncation builds a fresh slice here instead of
+	// mutating the caller-owned table.Rows (and its shared backing array).
+	renderRows := table.Rows
+	summaryRowIdx := -1 // index into renderRows; -1 means no truncation
 	if config.Bounds.Height > 0 {
 		fontRatio := float64(config.DefaultSize) / float64(defaultFontSize)
 		scaledRowHeight := int64(float64(defaultRowHeight) * fontRatio)
@@ -162,7 +166,11 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		}
 		if len(table.Rows) > dataRowCapacity {
 			overflow := len(table.Rows) - dataRowCapacity + 1 // +1 to make room for summary row
-			truncatedRows := table.Rows[:len(table.Rows)-overflow]
+			keep := len(table.Rows) - overflow
+			// Copy the retained rows into a fresh slice so the append below
+			// cannot write the summary row into the caller's backing array.
+			truncatedRows := make([][]types.TableCell, keep, keep+1)
+			copy(truncatedRows, table.Rows[:keep])
 			// Build summary row with the correct number of columns
 			summaryRow := make([]types.TableCell, numCols)
 			summaryRow[0] = types.TableCell{
@@ -173,9 +181,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			for i := 1; i < numCols; i++ {
 				summaryRow[i] = types.TableCell{Content: "", ColSpan: 1, RowSpan: 1}
 			}
-			table.Rows = append(truncatedRows, summaryRow)
-			summaryRowIdx = len(table.Rows) - 1
-			numRows = len(table.Rows) + 1 // +1 for header
+			renderRows = append(truncatedRows, summaryRow)
+			summaryRowIdx = len(renderRows) - 1
+			numRows = len(renderRows) + 1 // +1 for header
 
 			// Warn about truncation so users don't ship decks with missing data.
 			tableID := strings.Join(table.Headers, ", ")
@@ -202,7 +210,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	}
 
 	// Calculate dimensions
-	colWidths, colWidthDeficit := calculateColumnWidthsWithDiag(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+	colWidths, colWidthDeficit := calculateColumnWidthsWithDiag(numCols, config.Bounds.Width, table.Headers, renderRows, config.DefaultSize)
 
 	// Site 10: emit warning when column widths fell back to global floor.
 	if colWidthDeficit {
@@ -291,11 +299,11 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	}
 
 	// Data rows
-	lastDataRowIdx := len(table.Rows) - 1
+	lastDataRowIdx := len(renderRows) - 1
 	if summaryRowIdx >= 0 {
 		lastDataRowIdx = summaryRowIdx - 1
 	}
-	for rowIdx, row := range table.Rows {
+	for rowIdx, row := range renderRows {
 		if rowIdx == summaryRowIdx {
 			xml.WriteString(generateSummaryRow(row, rowIdx, rowHeight, config))
 		} else {

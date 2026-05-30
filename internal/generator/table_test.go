@@ -2208,3 +2208,66 @@ func TestBuildTableStylesXML_DropsMalformedID(t *testing.T) {
 		t.Errorf("expected engine default GUID in output, got: %s", xml)
 	}
 }
+
+// TestGenerateTableXML_DoesNotMutateCallerRowsOnTruncation verifies that
+// rendering is pure over the input spec: when rows overflow the allocated
+// height and are truncated with a summary row, the caller-owned
+// TableSpec.Rows (and its backing array) is left unchanged. Regression for
+// go-slide-creator-rki8.
+func TestGenerateTableXML_DoesNotMutateCallerRowsOnTruncation(t *testing.T) {
+	// Build a tall table with many data rows.
+	const numDataRows = 40
+	rows := make([][]types.TableCell, numDataRows)
+	for i := range rows {
+		rows[i] = []types.TableCell{
+			{Content: fmt.Sprintf("r%d-c0", i), ColSpan: 1, RowSpan: 1},
+			{Content: fmt.Sprintf("r%d-c1", i), ColSpan: 1, RowSpan: 1},
+		}
+	}
+	table := &types.TableSpec{
+		Headers: []string{"Col A", "Col B"},
+		Rows:    rows,
+		Style:   types.DefaultTableStyle,
+	}
+
+	// Snapshot the original row count and the content of the row that the
+	// buggy append would overwrite in the shared backing array.
+	originalRowCount := len(table.Rows)
+	snapshot := make([]string, numDataRows)
+	for i, row := range table.Rows {
+		snapshot[i] = row[0].Content
+	}
+
+	config := TableRenderConfig{
+		// Very short height forces overflow truncation.
+		Bounds: types.BoundingBox{X: 914400, Y: 914400, Width: 8229600, Height: 914400},
+		Style:  types.DefaultTableStyle,
+	}
+
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The render must have actually truncated (otherwise the test proves nothing).
+	if !strings.Contains(result.XML, "more rows") {
+		t.Fatalf("expected truncation summary row in output; height too generous to force truncation")
+	}
+
+	// Caller-owned spec must be unchanged: same length...
+	if len(table.Rows) != originalRowCount {
+		t.Errorf("TableSpec.Rows mutated: length changed from %d to %d", originalRowCount, len(table.Rows))
+	}
+	// ...and same content in every original row (backing array untouched).
+	for i, row := range table.Rows {
+		if row[0].Content != snapshot[i] {
+			t.Errorf("TableSpec.Rows[%d] mutated: got %q, want %q", i, row[0].Content, snapshot[i])
+		}
+	}
+	// No summary row should have leaked into the caller's spec.
+	for i, row := range table.Rows {
+		if strings.Contains(row[0].Content, "more rows") {
+			t.Errorf("summary row leaked into caller spec at row %d: %q", i, row[0].Content)
+		}
+	}
+}
