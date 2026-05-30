@@ -201,7 +201,7 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		// attached by a later compiler phase, so a missing/empty series is an
 		// advisory richness finding rather than a hard error.
 		if chart, ok := slide.Body["chart"].(map[string]any); ok {
-			if n, ok := listLen(chart, "series"); !ok || n == 0 {
+			if !chartHasSeries(chart) {
 				s.advisory(path+".chart.series", diagnostics.CodeSemanticDensity,
 					"chart_insight chart declares no data series")
 			}
@@ -209,6 +209,22 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	case KindComparison:
 		validateComparison(path, slide, s)
 	}
+}
+
+// chartHasSeries reports whether a chart_insight payload declares at least one
+// data series. It accepts the documented chart.data.series shape (used by
+// examples/semantic/qbr.yaml and docs/SEMANTIC_COMPILER.md) as well as a flat
+// chart.series fallback for older specs.
+func chartHasSeries(chart map[string]any) bool {
+	if n, ok := listLen(chart, "series"); ok && n > 0 {
+		return true
+	}
+	if data, ok := chart["data"].(map[string]any); ok {
+		if n, ok := listLen(data, "series"); ok && n > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // validateComparison checks that a comparison has at least two columns and that
