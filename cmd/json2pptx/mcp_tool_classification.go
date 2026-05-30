@@ -212,5 +212,13 @@ func toolClassifications() map[string]toolClassification {
 		// --- Settings (gated writes) ---
 		"register_template_setting": {Kind: toolKindPrimitive, Phase: toolPhaseSettings, MutatesState: true, CLICounterpart: "template-settings register"},
 		"delete_template_setting":   {Kind: toolKindPrimitive, Phase: toolPhaseSettings, MutatesState: true, CLICounterpart: "template-settings delete"},
+
+		// --- Semantic compiler (compact DeckSpec authoring; recommended default for new decks) ---
+		"validate_deck_spec":   {Kind: toolKindDiagnostic, Phase: toolPhaseRender, CLICounterpart: "semantic validate"},
+		"compile_deck_spec":    {Kind: toolKindPrimitive, Phase: toolPhaseRender, CLICounterpart: "semantic compile"},
+		"render_deck_spec":     {Kind: toolKindPrimitive, Phase: toolPhaseRender, WritesFiles: true, CLICounterpart: "semantic render"},
+		"explain_deck_spec":    {Kind: toolKindDiagnostic, Phase: toolPhasePlan, CLICounterpart: "semantic explain"},
+		"list_deck_archetypes": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic schema"},
+		"list_slide_kinds":     {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic schema"},
 	}
 }

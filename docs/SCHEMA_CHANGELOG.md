@@ -4,6 +4,39 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.58.0 (2026-05-30)
+
+### Added
+
+- **Semantic compiler MCP tools — the compact `DeckSpec` authoring surface.** Six
+  new MCP tools expose `internal/semantic` so an agent can author a NEW deck from
+  a compact semantic spec instead of the raw `PresentationInput` model. They are
+  thin adapters over the same entry points the `json2pptx semantic` CLI uses, so
+  the two surfaces cannot drift.
+  - `validate_deck_spec` — validate a `DeckSpec` and return the shared
+    `FindingEnvelope` (`{schema_version, tool, subcommand, ok, summary, findings[]}`).
+  - `compile_deck_spec` — lower a `DeckSpec` to raw `PresentationInput`. Returns a
+    **compact** result (`{ok, slide_count, template, diagnostics[]}`) by default;
+    pass `include_compiled_json: true` to also receive the full compiled JSON
+    under `compiled_json`.
+  - `render_deck_spec` — compile and render straight to a `.pptx`. Returns
+    `{ok, success, pptx_path, template, slide_count, content_hash, duration_ms,
+    quality_summary, warnings[], diagnostics[], explanation_summary}` — render
+    findings are mapped back to the semantic source paths the author wrote.
+  - `explain_deck_spec` — project the compiler's planned decisions (archetype,
+    template, per-slide kind/role/visual_family/density/pattern/layout) and
+    deck-rhythm warnings without compiling or rendering.
+  - `list_deck_archetypes` — enumerate deck archetypes
+    (`{archetype, summary, default_template, executive}`).
+  - `list_slide_kinds` — enumerate slide kinds
+    (`{kind, summary, required_fields, typical_fields}`).
+  - `spec` accepts a JSON object (the `DeckSpec`) or a raw YAML/JSON string. The
+    raw tools (`generate_presentation`, `validate_input`, …) remain available; the
+    semantic tools are the recommended default for new decks.
+  - The `json2pptx semantic` CLI command group now has MCP parity (the
+    `validate|compile|render|explain|schema` subcommands map to these tools), so it
+    is no longer classified as CLI-only.
+
 ## 4.57.0 (2026-05-22)
 
 ### Added

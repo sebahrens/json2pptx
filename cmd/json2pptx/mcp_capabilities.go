@@ -322,6 +322,13 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "examine_template", AddedIn: "4.41.0"},
 		// Tools from 4.46.0
 		{Name: "apply_deck_patch", AddedIn: "4.46.0"},
+		// Tools from 4.58.0 — semantic compiler (compact DeckSpec authoring)
+		{Name: "validate_deck_spec", AddedIn: "4.58.0"},
+		{Name: "compile_deck_spec", AddedIn: "4.58.0"},
+		{Name: "render_deck_spec", AddedIn: "4.58.0"},
+		{Name: "explain_deck_spec", AddedIn: "4.58.0"},
+		{Name: "list_deck_archetypes", AddedIn: "4.58.0"},
+		{Name: "list_slide_kinds", AddedIn: "4.58.0"},
 	}
 	// Merge the per-tool classification metadata so every entry is
 	// self-describing. A missing classification leaves Kind/Phase empty;
@@ -683,6 +690,12 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpAuditPaletteTool,
 		mcpExamineTemplateTool,
 		mcpApplyDeckPatchTool,
+		mcpValidateDeckSpecTool,
+		mcpCompileDeckSpecTool,
+		mcpRenderDeckSpecTool,
+		mcpExplainDeckSpecTool,
+		mcpListDeckArchetypesTool,
+		mcpListSlideKindsTool,
 	}
 	out := make(map[string]func() mcp.Tool, len(ctors))
 	for _, c := range ctors {

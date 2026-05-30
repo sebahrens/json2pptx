@@ -140,6 +140,12 @@ func TestMCPArgErrors_EnvelopeShape(t *testing.T) {
 		// examine_template — requires one of template_name / template_path; with
 		// neither supplied the missing-param diagnostic points at template_name.
 		{name: "examine_template/missing", handler: wrap(mc.handleExamineTemplate), args: map[string]any{}, wantPath: "template_name"},
+
+		// Semantic compiler tools — required: spec (object|string)
+		{name: "validate_deck_spec/missing", handler: handleValidateDeckSpec, args: map[string]any{}, wantPath: "spec"},
+		{name: "compile_deck_spec/missing", handler: handleCompileDeckSpec, args: map[string]any{}, wantPath: "spec"},
+		{name: "render_deck_spec/missing", handler: wrap(mc.handleRenderDeckSpec), args: map[string]any{}, wantPath: "spec"},
+		{name: "explain_deck_spec/missing", handler: handleExplainDeckSpec, args: map[string]any{}, wantPath: "spec"},
 	}
 
 	for _, tc := range cases {

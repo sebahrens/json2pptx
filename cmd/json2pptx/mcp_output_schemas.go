@@ -2077,3 +2077,170 @@ var outputSchemaAuditPalette = json.RawMessage(`{
     }
   }
 }`)
+
+// --- semantic compiler tools (compact DeckSpec authoring) ---
+
+// semanticDiagnostic shape, reused across compile/render results.
+var outputSchemaValidateDeckSpec = json.RawMessage(`{
+  "type": "object",
+  "description": "The shared finding envelope produced by validating a semantic DeckSpec.",
+  "properties": {
+    "schema_version": {"type": "string"},
+    "tool":           {"type": "string"},
+    "subcommand":     {"type": "string"},
+    "input_sha256":   {"type": "string"},
+    "ok":             {"type": "boolean", "description": "True when no finding has error severity."},
+    "summary":        {"type": "string"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":       {"type": "string"},
+          "code":     {"type": "string", "description": "Namespaced finding code."},
+          "category": {"type": "string"},
+          "severity": {"type": "string", "enum": ["error", "warning", "info"]},
+          "message":  {"type": "string"},
+          "path":     {"type": "string", "description": "Semantic source path the finding points at."}
+        },
+        "required": ["id", "code", "category", "severity", "message"]
+      }
+    }
+  },
+  "required": ["schema_version", "tool", "subcommand", "ok", "summary", "findings"]
+}`)
+
+var outputSchemaCompileDeckSpec = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "ok":          {"type": "boolean", "description": "True when the spec compiled without a blocking error."},
+    "slide_count": {"type": "integer"},
+    "template":    {"type": "string", "description": "The resolved template of the compiled deck."},
+    "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/semantic_diagnostic"}},
+    "compiled_json": {"type": "object", "description": "Full compiled raw PresentationInput; present only when include_compiled_json=true."},
+    "error":       {"type": "string", "description": "Blocking failure reason when ok=false."}
+  },
+  "required": ["ok"],
+  "$defs": {
+    "semantic_diagnostic": {
+      "type": "object",
+      "properties": {
+        "code":          {"type": "string"},
+        "severity":      {"type": "string", "enum": ["error", "warning", "info"]},
+        "message":       {"type": "string"},
+        "semantic_path": {"type": "string", "description": "Field in the semantic DeckSpec the author wrote."},
+        "raw_path":      {"type": "string", "description": "Originating generated pointer, retained as fallback evidence."},
+        "slide_index":   {"type": "integer"},
+        "action":        {"type": "string"},
+        "recommended_edit": {"type": "object"}
+      },
+      "required": ["code", "message"]
+    }
+  }
+}`)
+
+var outputSchemaRenderDeckSpec = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "ok":              {"type": "boolean"},
+    "success":         {"type": "boolean", "description": "True when the .pptx artifact was written (mirrors ok)."},
+    "pptx_path":       {"type": "string", "description": "Path to the rendered .pptx artifact."},
+    "template":        {"type": "string"},
+    "slide_count":     {"type": "integer"},
+    "content_hash":    {"type": "string"},
+    "duration_ms":     {"type": "integer"},
+    "quality_summary": {"type": "object", "description": "Quality score computed over the compiled slides."},
+    "warnings":        {"type": "array", "items": {"type": "string"}},
+    "diagnostics":     {"type": "array", "items": {"$ref": "#/$defs/semantic_diagnostic"}},
+    "explanation_summary": {"type": "object", "description": "The compiler's planned decisions (archetype, template, per-slide kind/role/family/density/pattern) and rhythm warnings."},
+    "error":           {"type": "string", "description": "Blocking failure reason when success=false."}
+  },
+  "required": ["ok", "success"],
+  "$defs": {
+    "semantic_diagnostic": {
+      "type": "object",
+      "properties": {
+        "code":          {"type": "string"},
+        "severity":      {"type": "string", "enum": ["error", "warning", "info"]},
+        "message":       {"type": "string"},
+        "semantic_path": {"type": "string", "description": "Field in the semantic DeckSpec the author wrote."},
+        "raw_path":      {"type": "string", "description": "Originating generated pointer, retained as fallback evidence."},
+        "slide_index":   {"type": "integer"},
+        "action":        {"type": "string"},
+        "recommended_edit": {"type": "object"}
+      },
+      "required": ["code", "message"]
+    }
+  }
+}`)
+
+var outputSchemaExplainDeckSpec = json.RawMessage(`{
+  "type": "object",
+  "description": "The compiler's planned decisions for a semantic DeckSpec.",
+  "properties": {
+    "title":     {"type": "string"},
+    "archetype": {"type": "string"},
+    "template":  {"type": "string"},
+    "rhythm":    {"type": "object"},
+    "rhythm_warnings": {"type": "array", "items": {"type": "object"}},
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index":         {"type": "integer"},
+          "kind":          {"type": "string"},
+          "role":          {"type": "string"},
+          "visual_family": {"type": "string"},
+          "density":       {"type": "string"},
+          "title":         {"type": "string"},
+          "takeaway":      {"type": "string"},
+          "pattern":       {"type": "string"},
+          "layout":        {"type": "string"}
+        },
+        "required": ["index", "kind"]
+      }
+    }
+  },
+  "required": ["slides"]
+}`)
+
+var outputSchemaListDeckArchetypes = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "archetypes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "archetype":        {"type": "string"},
+          "summary":          {"type": "string"},
+          "default_template": {"type": "string"},
+          "executive":        {"type": "boolean", "description": "True when the archetype expects a synthesis/decision slide."}
+        },
+        "required": ["archetype", "summary"]
+      }
+    }
+  },
+  "required": ["archetypes"]
+}`)
+
+var outputSchemaListSlideKinds = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "slide_kinds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind":            {"type": "string"},
+          "summary":         {"type": "string"},
+          "required_fields": {"type": "array", "items": {"type": "string"}},
+          "typical_fields":  {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["kind", "summary"]
+      }
+    }
+  },
+  "required": ["slide_kinds"]
+}`)

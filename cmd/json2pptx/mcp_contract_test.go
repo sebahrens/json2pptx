@@ -498,6 +498,12 @@ func TestMCPOutputSchemas_ValidJSON(t *testing.T) {
 		"describe_finding":             outputSchemaDescribeFinding,
 		"audit_palette":                outputSchemaAuditPalette,
 		"examine_template":             outputSchemaExamineTemplate,
+		"validate_deck_spec":           outputSchemaValidateDeckSpec,
+		"compile_deck_spec":            outputSchemaCompileDeckSpec,
+		"render_deck_spec":             outputSchemaRenderDeckSpec,
+		"explain_deck_spec":            outputSchemaExplainDeckSpec,
+		"list_deck_archetypes":         outputSchemaListDeckArchetypes,
+		"list_slide_kinds":             outputSchemaListSlideKinds,
 	}
 
 	for name, schema := range schemas {
@@ -609,6 +615,12 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"audit_palette":                true,
 		"examine_template":             true,
 		"apply_deck_patch":             true,
+		"validate_deck_spec":           true,
+		"compile_deck_spec":            true,
+		"render_deck_spec":             true,
+		"explain_deck_spec":            true,
+		"list_deck_archetypes":         true,
+		"list_slide_kinds":             true,
 	}
 
 	for _, name := range mcpToolNames() {

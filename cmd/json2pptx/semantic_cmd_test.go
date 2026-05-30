@@ -410,7 +410,11 @@ func TestSemantic_HelpListsSubcommands(t *testing.T) {
 
 // TestSemanticClassificationRegistered guards that the semantic command is
 // recorded in the CLI command classification map (the reverse-parity gate reads
-// it), since dispatch now recognizes it.
+// it), since dispatch now recognizes it. The semantic group now has MCP parity
+// via the semantic-compiler MCP tools (validate_deck_spec / compile_deck_spec /
+// render_deck_spec / explain_deck_spec / list_deck_archetypes / list_slide_kinds),
+// so it must be AgentFacing AND must NOT carry a CLIOnlyReason — a command with
+// MCP parity cannot also be marked CLI-only (TestEveryCLICommandHasMCPParityOrException).
 func TestSemanticClassificationRegistered(t *testing.T) {
 	c, ok := cliCommandClassifications()["semantic"]
 	if !ok {
@@ -419,7 +423,7 @@ func TestSemanticClassificationRegistered(t *testing.T) {
 	if !c.AgentFacing {
 		t.Error("semantic should be classified AgentFacing")
 	}
-	if strings.TrimSpace(c.CLIOnlyReason) == "" {
-		t.Error("semantic (CLI-only, no MCP tool) must carry a CLIOnlyReason")
+	if strings.TrimSpace(c.CLIOnlyReason) != "" {
+		t.Error("semantic now has MCP parity via the semantic-compiler tools and must NOT carry a CLIOnlyReason")
 	}
 }

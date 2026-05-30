@@ -60,6 +60,13 @@ var mcpToCLI = map[string]string{
 	"audit_palette":                "audit-palette",
 	"examine_template":             "examine-template",
 	"apply_deck_patch":             "repair", // [MCP-only] pure deck JSON transform; CLI users edit the JSON directly or invoke 'json2pptx repair'
+	// Semantic compiler tools (compact DeckSpec authoring)
+	"validate_deck_spec":   "semantic validate",
+	"compile_deck_spec":    "semantic compile",
+	"render_deck_spec":     "semantic render",
+	"explain_deck_spec":    "semantic explain",
+	"list_deck_archetypes": "semantic schema", // archetype enum is embedded in `semantic schema`
+	"list_slide_kinds":     "semantic schema", // slide-kind enum is embedded in `semantic schema`
 }
 
 // TestEveryMCPToolHasCLI asserts that every tool registered in the MCP server

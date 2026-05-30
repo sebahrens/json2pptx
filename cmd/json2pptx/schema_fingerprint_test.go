@@ -72,8 +72,12 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// fail-fast INVALID_PARAMETER on malformed visual_qa — response fields and an
 	// error-response behavior only, not tool names, PresentationInput fields, or
 	// the Fix.Kind vocabulary, so the hash is again unchanged.
+	// 4.58.0 added the six semantic-compiler MCP tools (validate_deck_spec,
+	// compile_deck_spec, render_deck_spec, explain_deck_spec, list_deck_archetypes,
+	// list_slide_kinds), which change the tool-name set, so the hash advanced from
+	// 968385126256b966 (4.57.0).
 	// If this fails, see file header comment.
-	const wantFingerprint = "968385126256b966"
+	const wantFingerprint = "24b985854165d81f"
 
 	got := schemaFingerprint()
 
