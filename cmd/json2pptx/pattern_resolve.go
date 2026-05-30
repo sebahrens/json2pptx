@@ -6,21 +6,14 @@ import (
 	"log/slog"
 	"strconv"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // PatternInput is the JSON schema for pattern-based slides.
-// Placed at the same level as shape_grid in SlideInput (XOR — D1).
-type PatternInput struct {
-	Name          string                        `json:"name"`
-	Values        json.RawMessage               `json:"values"`
-	Overrides     json.RawMessage               `json:"overrides,omitempty"`
-	CellOverrides map[string]json.RawMessage     `json:"cell_overrides,omitempty"`
-	Callout       *patterns.PatternCallout       `json:"callout,omitempty"`
-	Bounds        *jsonschema.GridBoundsInput    `json:"bounds,omitempty"`
-	MaxHeightPct  float64                        `json:"max_height_pct,omitempty"`
-}
+// Defined in internal/deckinput; aliased here so package-main call sites are unchanged.
+type PatternInput = deckinput.PatternInput
 
 // expandPattern looks up the named pattern in the registry, unmarshals the
 // typed Values/Overrides/CellOverrides, validates, and expands to a

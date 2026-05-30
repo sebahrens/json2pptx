@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -62,72 +63,27 @@ func composeCapabilities() composeFeatureCapabilities {
 	}
 }
 
-// ComposeInput defines a composition envelope that arranges multiple patterns
-// on a single slide. Each segment is independently validated and expanded,
-// then the resulting grids are merged into a single ShapeGridInput.
-//
-// Banner and Callout are envelope-level decorations rendered respectively
-// above and below the merged grid. They do NOT consume a segment slot, so
-// agents can add a Strategy-House-style banner without sacrificing a segment
-// budget to a faux-banner pattern like pull-quote.
-type ComposeInput struct {
-	Direction    string                   `json:"direction"`                // "vertical" or "horizontal"
-	Gap          float64                  `json:"gap,omitempty"`            // Gap in points between segments (default: 8)
-	SmartCompose bool                     `json:"smart_compose,omitempty"`  // Auto-balance segment sizes by content density
-	Segments     []SegmentInput           `json:"segments"`
-	Banner       *patterns.BannerSpec     `json:"banner,omitempty"`         // Optional banner band rendered above the merged grid
-	Callout      *patterns.PatternCallout `json:"callout,omitempty"`        // Optional callout band rendered below the merged grid
-}
+// ComposeInput is defined in internal/deckinput; aliased here so package-main
+// call sites are unchanged.
+type ComposeInput = deckinput.ComposeInput
 
 // bannerLikePatterns enumerates leaf patterns whose first row is intrinsically
 // a banner. When ComposeInput.Banner is set and the first segment uses one of
 // these patterns, validateCompose rejects the envelope to prevent a duplicate
 // banner stacking on top of the pattern's own banner.
 //
-// - strategy-house: emits an explicit objective banner as its first row.
-// - pull-quote: agents commonly used this as a makeshift banner before the
-//   envelope-level Banner was available; stacking a real banner on top of it
-//   produces visual redundancy.
+//   - strategy-house: emits an explicit objective banner as its first row.
+//   - pull-quote: agents commonly used this as a makeshift banner before the
+//     envelope-level Banner was available; stacking a real banner on top of it
+//     produces visual redundancy.
 var bannerLikePatterns = map[string]bool{
 	"strategy-house": true,
 	"pull-quote":     true,
 }
 
-// SegmentInput defines one child within a compose envelope. A segment hosts
-// exactly one of `pattern` (a leaf pattern expansion), `compose` (a nested
-// envelope that recursively expands and merges into the parent grid), or
-// `diagram` (a standalone svggen-rendered diagram placed in its own region
-// of the merged grid). The XOR is enforced by validateCompose. Nesting depth
-// is capped at composeMaxNestingDepth and the total number of leaf segments
-// (pattern + diagram) across the tree is capped at composeMaxLeafPatterns.
-//
-// Diagram segments are the canonical way to let a native pattern coexist
-// with an svggen chart/diagram on the same slide without flattening the
-// pattern through a single-cell grid: each segment owns its own merged
-// region, and the envelope's gap/gutter applies uniformly across all three
-// segment kinds. See go-slide-creator-zg8q.6.
-type SegmentInput struct {
-	Pattern PatternInput       `json:"pattern,omitempty"`
-	Compose *ComposeInput      `json:"compose,omitempty"`
-	Diagram *types.DiagramSpec `json:"diagram,omitempty"`
-	SizePct float64            `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
-}
-
-// hasPattern reports whether the segment carries a leaf pattern (non-empty
-// pattern name). An empty Pattern struct is treated as "unset" so the XOR
-// check in validateCompose can distinguish leaves from nested compose
-// segments.
-func (s SegmentInput) hasPattern() bool {
-	return s.Pattern.Name != ""
-}
-
-// hasDiagram reports whether the segment carries a standalone diagram.
-// A nil DiagramSpec is treated as "unset" so the XOR check in
-// validateCompose can distinguish diagram segments from pattern / compose
-// segments.
-func (s SegmentInput) hasDiagram() bool {
-	return s.Diagram != nil
-}
+// SegmentInput (with exported HasPattern/HasDiagram) is defined in
+// internal/deckinput; aliased here so package-main call sites are unchanged.
+type SegmentInput = deckinput.SegmentInput
 
 // expandCompose validates and expands a compose envelope into a single
 // ShapeGridInput by expanding each segment's pattern and merging the results.
@@ -168,7 +124,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 			continue
 		}
 
-		if seg.hasDiagram() {
+		if seg.HasDiagram() {
 			// Diagram segments synthesize a single-cell ShapeGridInput whose
 			// only cell hosts the diagram. The cell participates in the
 			// parent merge identically to a pattern-expanded grid, so
@@ -396,9 +352,9 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 	// pattern / compose / diagram.
 	var totalPct float64
 	for i, seg := range c.Segments {
-		hasPattern := seg.hasPattern()
+		hasPattern := seg.HasPattern()
 		hasCompose := seg.Compose != nil
-		hasDiagram := seg.hasDiagram()
+		hasDiagram := seg.HasDiagram()
 		setCount := 0
 		if hasPattern {
 			setCount++
@@ -449,7 +405,7 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 	// banners landing on the same slide.
 	if c.Banner != nil && len(c.Segments) > 0 {
 		first := c.Segments[0]
-		if first.hasPattern() && bannerLikePatterns[first.Pattern.Name] {
+		if first.HasPattern() && bannerLikePatterns[first.Pattern.Name] {
 			return fmt.Errorf(
 				"compose: banner conflicts with first segment pattern %q — that pattern already provides a banner-like header row; remove compose.banner or replace the first segment with a non-banner pattern",
 				first.Pattern.Name,
@@ -476,9 +432,9 @@ func countComposeLeafPatterns(c *ComposeInput) int {
 		switch {
 		case seg.Compose != nil:
 			n += countComposeLeafPatterns(seg.Compose)
-		case seg.hasPattern():
+		case seg.HasPattern():
 			n++
-		case seg.hasDiagram():
+		case seg.HasDiagram():
 			n++
 		}
 	}

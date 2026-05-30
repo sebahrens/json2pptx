@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/config"
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
@@ -21,9 +22,9 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
-	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ConversionResult holds the result of a single file conversion.
@@ -57,13 +58,8 @@ type JSONInput struct {
 }
 
 // JSONFooter configures slide footer injection.
-type JSONFooter struct {
-	// Enabled is the master switch — when false, no footers are injected
-	Enabled bool `json:"enabled"`
-
-	// LeftText is the left footer text (e.g., "Acme Corp | Confidential")
-	LeftText string `json:"left_text,omitempty"`
-}
+// Defined in internal/deckinput; aliased here so package-main call sites are unchanged.
+type JSONFooter = deckinput.JSONFooter
 
 // JSONSlide represents a single slide in JSON input format.
 type JSONSlide struct {
@@ -121,29 +117,29 @@ type JSONContentItem struct {
 // It tells agents which layout was actually used (after auto-selection / fallback),
 // which placeholders received content, and whether synthesis or pagination applied.
 type SlideResolution struct {
-	Index              int      `json:"index"`
-	ResolvedLayoutID   string   `json:"resolved_layout_id"`
-	PlaceholdersUsed   []string `json:"placeholders_used"`
-	WasSynthesized     bool     `json:"was_synthesized_layout,omitempty"`
-	WasAutoSelected    bool     `json:"was_auto_selected,omitempty"`
-	OccupancyPct       int      `json:"occupancy_pct,omitempty"`
+	Index            int      `json:"index"`
+	ResolvedLayoutID string   `json:"resolved_layout_id"`
+	PlaceholdersUsed []string `json:"placeholders_used"`
+	WasSynthesized   bool     `json:"was_synthesized_layout,omitempty"`
+	WasAutoSelected  bool     `json:"was_auto_selected,omitempty"`
+	OccupancyPct     int      `json:"occupancy_pct,omitempty"`
 }
 
 // JSONOutput represents the JSON output for headless mode.
 type JSONOutput struct {
-	Success     bool          `json:"success"`
-	OutputPath  string        `json:"output_path,omitempty"`
-	SlideCount  int           `json:"slide_count,omitempty"`
-	ContentHash string        `json:"content_hash,omitempty"`
-	DurationMs  int64         `json:"duration_ms,omitempty"`
-	Error       string        `json:"error,omitempty"`
-	Warnings    []string      `json:"warnings,omitempty"`
-	SlideErrors []SlideError  `json:"slide_errors,omitempty"`
-	Quality                    *QualityScore              `json:"quality,omitempty"`
-	ValidationErrors           []*patterns.ValidationError `json:"validation_errors,omitempty"`
-	FitFindings                []patterns.FitFinding       `json:"fit_findings,omitempty"`
-	Slides                     []SlideResolution           `json:"slides,omitempty"`
-	OutputValidationFindings   []pptx.Finding              `json:"output_validation_findings,omitempty"`
+	Success                  bool                        `json:"success"`
+	OutputPath               string                      `json:"output_path,omitempty"`
+	SlideCount               int                         `json:"slide_count,omitempty"`
+	ContentHash              string                      `json:"content_hash,omitempty"`
+	DurationMs               int64                       `json:"duration_ms,omitempty"`
+	Error                    string                      `json:"error,omitempty"`
+	Warnings                 []string                    `json:"warnings,omitempty"`
+	SlideErrors              []SlideError                `json:"slide_errors,omitempty"`
+	Quality                  *QualityScore               `json:"quality,omitempty"`
+	ValidationErrors         []*patterns.ValidationError `json:"validation_errors,omitempty"`
+	FitFindings              []patterns.FitFinding       `json:"fit_findings,omitempty"`
+	Slides                   []SlideResolution           `json:"slides,omitempty"`
+	OutputValidationFindings []pptx.Finding              `json:"output_validation_findings,omitempty"`
 	// IdempotentReplay is true when this response was served from the
 	// idempotency cache instead of regenerated. Only set on MCP responses
 	// when an idempotency_key was supplied and matched a prior call.
@@ -163,15 +159,15 @@ type SlideError struct {
 
 // QualityScore provides an overall quality estimate for the generated deck.
 type QualityScore struct {
-	Score       float64        `json:"score"`                    // 0.0-1.0 overall quality estimate
-	SlideScores []SlideQuality `json:"slide_scores,omitempty"`  // per-slide breakdown
-	Issues      []string       `json:"issues,omitempty"`        // quality concerns
+	Score       float64        `json:"score"`                  // 0.0-1.0 overall quality estimate
+	SlideScores []SlideQuality `json:"slide_scores,omitempty"` // per-slide breakdown
+	Issues      []string       `json:"issues,omitempty"`       // quality concerns
 }
 
 // SlideQuality provides quality metrics for a single slide.
 type SlideQuality struct {
 	SlideNumber int      `json:"slide_number"`
-	Score       float64  `json:"score"`           // 0.0-1.0
+	Score       float64  `json:"score"` // 0.0-1.0
 	Issues      []string `json:"issues,omitempty"`
 }
 
@@ -1213,7 +1209,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				item.Value = chart.ToDiagramSpec()
 			} else {
 				// Legacy path: parse from Value json.RawMessage
-				var chart types.ChartSpec                                    //nolint:staticcheck // backward compatibility
+				var chart types.ChartSpec                                //nolint:staticcheck // backward compatibility
 				if err := json.Unmarshal(ci.Value, &chart); err != nil { //nolint:staticcheck // backward compatibility
 					return nil, fmt.Errorf("slide %d, content %d: invalid chart value: %w", slideNum, j+1, err)
 				}
@@ -1744,10 +1740,10 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 	}
 
 	const (
-		maxBullets      = 8
-		maxTitleLen     = 60
-		maxSubtitleLen  = 120
-		maxContent      = 6
+		maxBullets     = 8
+		maxTitleLen    = 60
+		maxSubtitleLen = 120
+		maxContent     = 6
 	)
 
 	var slideScores []SlideQuality
@@ -2264,7 +2260,9 @@ func jsonSlideToDefinition(slide SlideInput) types.SlideDefinition { //nolint:go
 			if img, ok := resolved.(*ImageInput); ok {
 				def.Content.ImagePath = img.Path
 			} else if len(item.Value) > 0 {
-				var img struct{ Path string `json:"path"` }
+				var img struct {
+					Path string `json:"path"`
+				}
 				if json.Unmarshal(item.Value, &img) == nil {
 					def.Content.ImagePath = img.Path
 				}

@@ -34,7 +34,7 @@ func buildExpandedCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patt
 				return nil
 			}
 			expandedGrids[i] = inner
-		case seg.hasDiagram():
+		case seg.HasDiagram():
 			expandedGrids[i] = diagramSegmentGrid(seg.Diagram)
 		default:
 			grid, _, err := expandPattern(&seg.Pattern, ctx, reg)

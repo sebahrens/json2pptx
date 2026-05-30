@@ -12,21 +12,22 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 )
 
-// SplitSlideInput represents a split_slide entry in the slides array.
-type SplitSlideInput struct {
-	Type  string      `json:"type"` // must be "split_slide"
-	Base  SlideInput  `json:"base"`
-	Split SplitConfig `json:"split"`
-}
+// SplitSlideInput and SplitConfig are defined in internal/deckinput; aliased
+// here so package-main call sites (mcp_repair.go, tests) are unchanged. The
+// expansion logic (expandSplitSlide) stays in this package and is registered
+// with deckinput via init() so PresentationInput.UnmarshalJSON can expand
+// split_slide entries.
+type SplitSlideInput = deckinput.SplitSlideInput
 
 // SplitConfig controls how the base slide's table data is windowed.
-type SplitConfig struct {
-	By            string `json:"by"`                       // only "table.rows"
-	GroupSize     int    `json:"group_size"`                // rows per page
-	TitleSuffix   string `json:"title_suffix,omitempty"`    // e.g. " ({page}/{total})"
-	RepeatHeaders bool   `json:"repeat_headers,omitempty"`  // repeat table headers on each page
+type SplitConfig = deckinput.SplitConfig
+
+func init() {
+	deckinput.SplitSlideExpander = expandSplitSlide
 }
 
 // expandSplitSlide validates and expands a SplitSlideInput into N regular SlideInputs.
