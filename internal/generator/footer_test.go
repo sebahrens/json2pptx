@@ -21,7 +21,7 @@ func TestGenerateFooterShapes(t *testing.T) {
 		},
 	}
 
-	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"})
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"}, 100)
 
 	// Verify left and right footer shapes are present (no center)
 	if !strings.Contains(result, "Footer Left") {
@@ -60,12 +60,13 @@ func TestGenerateFooterShapes(t *testing.T) {
 		t.Error("expected right alignment for right footer")
 	}
 
-	// Verify shape IDs
-	if !strings.Contains(result, `id="990"`) {
-		t.Error("expected shape ID 990 for left footer")
+	// Verify shape IDs are allocated sequentially from the supplied base (100).
+	// Left footer consumes the base ID, right footer the next.
+	if !strings.Contains(result, `id="100"`) {
+		t.Error("expected shape ID 100 for left footer")
 	}
-	if !strings.Contains(result, `id="992"`) {
-		t.Error("expected shape ID 992 for right footer")
+	if !strings.Contains(result, `id="101"`) {
+		t.Error("expected shape ID 101 for right footer")
 	}
 }
 
@@ -86,7 +87,7 @@ func TestGenerateFooterShapes_EmptyLeftAndCenter(t *testing.T) {
 	}
 
 	// No left text — only slide number should appear
-	result := generateFooterShapes(positions, &FooterConfig{Enabled: true})
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true}, 100)
 
 	if strings.Contains(result, "Footer Left") {
 		t.Error("left footer should not appear when text is empty")
@@ -896,7 +897,7 @@ func TestGenerateFooterShapes_FormattedPageNumbers(t *testing.T) {
 		TotalSlides:      30,
 	}
 
-	result := generateFooterShapes(positions, config)
+	result := generateFooterShapes(positions, config, 100)
 
 	if !strings.Contains(result, "Confidential") {
 		t.Error("expected left text")

@@ -8,12 +8,8 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
-// Footer shape IDs — high values to avoid conflicts with content shapes and source note (999).
-const (
-	footerLeftShapeID  uint32 = 990
-	footerRightShapeID uint32 = 992
-	footerFontSize            = 1050 // 10.5pt in hundredths of a point
-)
+// footerFontSize is the footer text size in hundredths of a point.
+const footerFontSize = 1050 // 10.5pt in hundredths of a point
 
 // defaultSlideHeightEMU is the standard 16:9 slide height used as a fallback
 // when the actual slide height is unknown.
@@ -90,20 +86,25 @@ func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text s
 }
 
 // generateFooterShapes creates the p:sp elements for the footer zones.
-func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig) string {
+// nextID is the first slide-unique shape ID to assign; each emitted footer
+// shape consumes one ID, allocated sequentially so the left and right footers
+// never collide with each other or with existing slide shapes.
+func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32) string {
 	var shapes []string
 
 	// Left footer (dt position): configurable text
 	if pos, ok := positions["type:dt"]; ok && config.LeftText != "" {
-		shapes = append(shapes, generateFooterShape(footerLeftShapeID, "Footer Left", pos, config.LeftText, "l"))
+		shapes = append(shapes, generateFooterShape(nextID, "Footer Left", pos, config.LeftText, "l"))
+		nextID++
 	}
 
-	// Right footer (sldNum position): auto-updating slide number field
+	// Right footer (sldNum position): auto-updating slide number field.
+	// This is the last footer zone, so nextID is consumed but not advanced.
 	if pos, ok := positions["type:sldNum"]; ok {
 		if config.PageNumberFormat != "" {
-			shapes = append(shapes, generateFormattedSlideNumShape(footerRightShapeID, "Footer Right", pos, config.PageNumberFormat, config.TotalSlides))
+			shapes = append(shapes, generateFormattedSlideNumShape(nextID, "Footer Right", pos, config.PageNumberFormat, config.TotalSlides))
 		} else {
-			shapes = append(shapes, generateSlideNumShape(footerRightShapeID, "Footer Right", pos))
+			shapes = append(shapes, generateSlideNumShape(nextID, "Footer Right", pos))
 		}
 	}
 
@@ -258,7 +259,9 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 		return slideData, nil
 	}
 
-	footerXML := generateFooterShapes(positions, footerConfig)
+	// Allocate slide-unique IDs above any existing shape (including the
+	// takeaway/source-note shapes injected earlier on this slide).
+	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1)
 	if footerXML == "" {
 		return slideData, nil
 	}

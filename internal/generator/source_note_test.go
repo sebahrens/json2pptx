@@ -6,7 +6,7 @@ import (
 )
 
 func TestGenerateSourceNoteShape(t *testing.T) {
-	shape := generateSourceNoteShape("Company Annual Report, FY2025")
+	shape := generateSourceNoteShape("Company Annual Report, FY2025", 100)
 
 	// Check it contains the source text
 	if !strings.Contains(shape, "Source: Company Annual Report, FY2025") {
@@ -29,7 +29,7 @@ func TestGenerateSourceNoteShape(t *testing.T) {
 }
 
 func TestGenerateSourceNoteShapeXMLEscaping(t *testing.T) {
-	shape := generateSourceNoteShape("Smith & Jones <2025>")
+	shape := generateSourceNoteShape("Smith & Jones <2025>", 100)
 
 	if !strings.Contains(shape, "Smith &amp; Jones &lt;2025&gt;") {
 		t.Error("special XML characters should be escaped")

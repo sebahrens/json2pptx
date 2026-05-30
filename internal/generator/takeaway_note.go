@@ -16,7 +16,6 @@ const (
 	takeawayOffsetY  = 6200000  // ~0.45 inch above the source note row
 	takeawayExtentCX = 11277600 // ~12.4 inches wide (matches source note row)
 	takeawayExtentCY = 360000   // ~28pt — accommodates a 12pt bold line + padding
-	takeawayShapeID  = 998      // High ID to avoid conflicts; one less than source note
 )
 
 // takeawayFontSize is the takeaway font size in hundredths of a point.
@@ -26,9 +25,11 @@ var takeawayFontSize = tokens.CardTitleMinHPt // 12pt
 
 // generateTakeawayShape creates a p:sp element for slide takeaway text.
 // The shape sits in the lower content band with bold, dark-gray text.
-func generateTakeawayShape(takeawayText string) string {
+// shapeID must be unique within the slide's shape tree; callers allocate it
+// from findMaxShapeID(slideData)+1 just before insertion.
+func generateTakeawayShape(takeawayText string, shapeID uint32) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       takeawayShapeID,
+		ID:       shapeID,
 		Name:     "Takeaway",
 		Bounds:   pptx.RectEmu{X: takeawayOffsetX, Y: takeawayOffsetY, CX: takeawayExtentCX, CY: takeawayExtentCY},
 		Geometry: pptx.GeomRect,
@@ -61,6 +62,8 @@ func generateTakeawayShape(takeawayText string) string {
 // It finds the closing </p:spTree> tag and inserts the shape before it,
 // so the takeaway renders on top of any overlapping content.
 func insertTakeaway(slideData []byte, takeawayText string) ([]byte, error) {
-	shapeXML := generateTakeawayShape(takeawayText)
+	// Allocate a slide-unique ID above any existing shape so the takeaway
+	// cannot collide with content shapes or other late injections.
+	shapeXML := generateTakeawayShape(takeawayText, findMaxShapeID(slideData)+1)
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

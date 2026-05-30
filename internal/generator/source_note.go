@@ -13,14 +13,15 @@ const (
 	sourceNoteExtentCX = 11277600 // ~12.4 inches wide (full width minus margins)
 	sourceNoteExtentCY = 200000   // ~15.7pt — sufficient for 8pt text with zero margins
 	sourceNoteFontSize = 800      // 8pt in hundredths of a point
-	sourceNoteShapeID  = 999      // High ID to avoid conflicts
 )
 
 // generateSourceNoteShape creates a p:sp element for source attribution text.
 // The shape is positioned at the bottom of the slide with small, gray text.
-func generateSourceNoteShape(sourceText string) string {
+// shapeID must be unique within the slide's shape tree; callers allocate it
+// from findMaxShapeID(slideData)+1 just before insertion.
+func generateSourceNoteShape(sourceText string, shapeID uint32) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       sourceNoteShapeID,
+		ID:       shapeID,
 		Name:     "Source Note",
 		Bounds:   pptx.RectEmu{X: sourceNoteOffsetX, Y: sourceNoteOffsetY, CX: sourceNoteExtentCX, CY: sourceNoteExtentCY},
 		Geometry: pptx.GeomRect,
@@ -52,7 +53,9 @@ func generateSourceNoteShape(sourceText string) string {
 // insertSourceNote inserts a source attribution text shape into the slide XML.
 // It finds the closing </p:spTree> tag and inserts the shape before it.
 func insertSourceNote(slideData []byte, sourceText string) ([]byte, error) {
-	shapeXML := generateSourceNoteShape(sourceText)
+	// Allocate a slide-unique ID above any existing shape (including shapes
+	// injected earlier on this slide, which are already present in slideData).
+	shapeXML := generateSourceNoteShape(sourceText, findMaxShapeID(slideData)+1)
 
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

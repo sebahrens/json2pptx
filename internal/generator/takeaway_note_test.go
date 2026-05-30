@@ -8,7 +8,7 @@ import (
 // TestGenerateTakeawayShape verifies that the takeaway shape XML contains
 // the expected text, bold formatting, font size, and dark text color.
 func TestGenerateTakeawayShape(t *testing.T) {
-	xml := generateTakeawayShape("Revenue doubled year over year.")
+	xml := generateTakeawayShape("Revenue doubled year over year.", 100)
 	if xml == "" {
 		t.Fatal("generateTakeawayShape returned empty string")
 	}
