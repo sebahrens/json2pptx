@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "title": "Q2 Board Update",
+    "subtitle": "Financial & Operational Review",
+    "archetype": "board_update",
+    "template": "midnight-blue",
+    "audience": "Board of Directors"
+  },
+  "slides": [
+    {
+      "kind": "title",
+      "title": "Q2 Board Update",
+      "subtitle": "May 2026"
+    },
+    {
+      "kind": "executive_summary",
+      "title": "Executive Summary",
+      "points": [
+        "Revenue up 18% QoQ",
+        "Net retention at 118%",
+        "Churn down to 2.1%"
+      ]
+    },
+    {
+      "kind": "kpi_snapshot",
+      "title": "Key Metrics",
+      "kpis": [
+        { "label": "ARR", "value": "$42M" },
+        { "label": "NRR", "value": "118%" }
+      ]
+    },
+    {
+      "kind": "chart_insight",
+      "title": "Revenue Trend",
+      "chart": { "type": "line" },
+      "insight": "Sustained growth across all segments."
+    },
+    {
+      "kind": "closing",
+      "title": "Questions?"
+    }
+  ]
+}
