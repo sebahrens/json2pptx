@@ -130,6 +130,14 @@ type DeckIR struct {
 	Audience  string    `json:"audience,omitempty"`
 	Author    string    `json:"author,omitempty"`
 	Date      string    `json:"date,omitempty"`
+	// ArchetypeTemplate is the template the deck's archetype prefers (empty when
+	// no archetype is set or it has no preference). It is the lowest-priority
+	// template source: the spec's own Template wins, then a caller default, then
+	// this. Carried on the IR so compile and explain resolve it identically.
+	ArchetypeTemplate string `json:"archetype_template,omitempty"`
+	// Executive is true when the deck's archetype expects a synthesis/decision
+	// slide; it drives the rhythm synthesis rule.
+	Executive bool `json:"executive,omitempty"`
 	// Slides are the normalized, planned slides in source order.
 	Slides []SlideIR `json:"slides"`
 	// Rhythm is the deck-level rhythm summary.
@@ -225,6 +233,10 @@ func Normalize(spec *DeckSpec) *DeckIR {
 	ir.Audience = spec.Meta.Audience
 	ir.Author = spec.Meta.Author
 	ir.Date = spec.Meta.Date
+
+	defaults := DefaultsFor(spec.Meta.Archetype)
+	ir.ArchetypeTemplate = defaults.Template
+	ir.Executive = defaults.Executive
 
 	ir.Slides = make([]SlideIR, 0, len(spec.Slides))
 	for i := range spec.Slides {

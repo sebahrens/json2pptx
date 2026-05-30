@@ -113,6 +113,11 @@ func Check(filename string, data []byte, strict Strictness) []diagnostics.Diagno
 	out := parseDiags.ToDiagnostics()
 	if spec != nil {
 		out = append(out, Validate(spec, strict)...)
+		// Deck-rhythm advisories are computed from the normalized IR so `semantic
+		// validate` surfaces the same monotony/structure findings the compile and
+		// render paths emit. Compile gathers these itself (it does not call Check),
+		// so there is no double-emit.
+		out = append(out, rhythmDiagnostics(Normalize(spec), strict)...)
 	}
 	return out
 }

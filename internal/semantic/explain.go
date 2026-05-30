@@ -23,13 +23,17 @@ type SlideExplanation struct {
 }
 
 // DeckExplanation is the deck-level account: the deck title and archetype, the
-// rhythm summary, and the per-slide explanations in source order.
+// resolved template, the rhythm summary and warnings, and the per-slide
+// explanations in source order.
 type DeckExplanation struct {
-	Title     string             `json:"title,omitempty"`
-	Archetype Archetype          `json:"archetype,omitempty"`
-	Template  string             `json:"template,omitempty"`
-	Rhythm    RhythmPlan         `json:"rhythm"`
-	Slides    []SlideExplanation `json:"slides"`
+	Title     string     `json:"title,omitempty"`
+	Archetype Archetype  `json:"archetype,omitempty"`
+	Template  string     `json:"template,omitempty"`
+	Rhythm    RhythmPlan `json:"rhythm"`
+	// RhythmWarnings are the deck-rhythm advisories (monotony, missing structure)
+	// the author should address before rendering. Empty when the deck reads well.
+	RhythmWarnings []RhythmWarning    `json:"rhythm_warnings,omitempty"`
+	Slides         []SlideExplanation `json:"slides"`
 }
 
 // Explain renders the planned decisions held in the DeckIR as a
@@ -41,11 +45,12 @@ func (ir *DeckIR) Explain() DeckExplanation {
 		return DeckExplanation{Rhythm: newRhythmPlan()}
 	}
 	out := DeckExplanation{
-		Title:     ir.Title,
-		Archetype: ir.Archetype,
-		Template:  ir.Template,
-		Rhythm:    ir.Rhythm,
-		Slides:    make([]SlideExplanation, 0, len(ir.Slides)),
+		Title:          ir.Title,
+		Archetype:      ir.Archetype,
+		Template:       firstNonEmptyStr(ir.Template, ir.ArchetypeTemplate),
+		Rhythm:         ir.Rhythm,
+		RhythmWarnings: ir.RhythmWarnings(),
+		Slides:         make([]SlideExplanation, 0, len(ir.Slides)),
 	}
 	for _, s := range ir.Slides {
 		out.Slides = append(out.Slides, SlideExplanation{

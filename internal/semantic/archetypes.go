@@ -38,6 +38,39 @@ var archetypeRegistry = map[Archetype]ArchetypeInfo{
 	ArchetypeMarketAnalysis:   {Archetype: ArchetypeMarketAnalysis, Summary: "Market or competitive analysis."},
 }
 
+// ArchetypeDefaults are the deterministic deck-level biases an archetype
+// applies during normalization when the author leaves a choice unset. They are
+// pure data (no I/O, no randomness) so compile and explain reach the same
+// decisions on every run.
+type ArchetypeDefaults struct {
+	// Template is the json2pptx template the archetype prefers. It fills the
+	// emitted deck's template only when neither the spec nor the caller pins one
+	// (spec template > CLI --template > archetype default).
+	Template string
+	// Executive marks archetypes whose decks are expected to land a message with
+	// a synthesis (executive_summary) or decision slide. It drives the rhythm
+	// synthesis rule (see rhythm.go).
+	Executive bool
+}
+
+// archetypeDefaults is the canonical, deterministic defaults table. Template
+// choices map each purpose onto a bundled template with a fitting tone; the
+// Executive flag marks decks that should carry a synthesis/decision slide.
+var archetypeDefaults = map[Archetype]ArchetypeDefaults{
+	ArchetypeBoardUpdate:      {Template: "midnight-blue", Executive: true},
+	ArchetypeQBR:              {Template: "midnight-blue", Executive: true},
+	ArchetypeSalesPitch:       {Template: "warm-coral", Executive: false},
+	ArchetypeStrategyProposal: {Template: "forest-green", Executive: true},
+	ArchetypeProjectRoadmap:   {Template: "modern-template", Executive: false},
+	ArchetypeMarketAnalysis:   {Template: "forest-green", Executive: false},
+}
+
+// DefaultsFor returns the archetype's deterministic defaults. An unknown or
+// empty archetype yields the zero value (no template preference, not executive).
+func DefaultsFor(a Archetype) ArchetypeDefaults {
+	return archetypeDefaults[a]
+}
+
 // LookupArchetype returns the ArchetypeInfo and whether it is registered.
 func LookupArchetype(a Archetype) (ArchetypeInfo, bool) {
 	info, ok := archetypeRegistry[a]

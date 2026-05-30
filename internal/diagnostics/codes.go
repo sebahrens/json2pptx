@@ -126,6 +126,13 @@ const (
 	CodeSemanticTakeawayRequired Code = "SEMANTIC_TAKEAWAY_REQUIRED"
 	CodeSemanticDensity          Code = "SEMANTIC_DENSITY"
 	CodeSemanticWeakContent      Code = "SEMANTIC_WEAK_CONTENT"
+	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
+	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
+	// and missing narrative structure before a deck is rendered.
+	CodeSemanticRhythmMonotony   Code = "SEMANTIC_RHYTHM_MONOTONY"
+	CodeSemanticRhythmDensity    Code = "SEMANTIC_RHYTHM_DENSITY"
+	CodeSemanticRhythmSectioning Code = "SEMANTIC_RHYTHM_SECTIONING"
+	CodeSemanticRhythmSynthesis  Code = "SEMANTIC_RHYTHM_SYNTHESIS"
 )
 
 // Internal family — unexpected server-side failures.
@@ -214,6 +221,10 @@ func AllCodes() []Code {
 		CodeSemanticTakeawayRequired,
 		CodeSemanticDensity,
 		CodeSemanticWeakContent,
+		CodeSemanticRhythmMonotony,
+		CodeSemanticRhythmDensity,
+		CodeSemanticRhythmSectioning,
+		CodeSemanticRhythmSynthesis,
 		// Internal
 		CodeInternal,
 	}

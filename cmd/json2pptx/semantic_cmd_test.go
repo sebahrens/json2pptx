@@ -276,6 +276,100 @@ func TestSemanticRender_MissingOutputFlag(t *testing.T) {
 	}
 }
 
+// repetitiveSemanticSpec is an executive (board_update) deck of three
+// consecutive KPI snapshots with no synthesis slide — it trips both the
+// monotony and synthesis rhythm rules, and pins no template so the archetype
+// default applies.
+const repetitiveSemanticSpec = `meta:
+  title: Repetitive Board Update
+  archetype: board_update
+slides:
+  - kind: kpi_snapshot
+    title: Metrics A
+    takeaway: A
+    kpis:
+      - {label: ARR, value: "$1M"}
+      - {label: NRR, value: "110%"}
+  - kind: kpi_snapshot
+    title: Metrics B
+    takeaway: B
+    kpis:
+      - {label: ARR, value: "$2M"}
+      - {label: NRR, value: "112%"}
+  - kind: kpi_snapshot
+    title: Metrics C
+    takeaway: C
+    kpis:
+      - {label: ARR, value: "$3M"}
+      - {label: NRR, value: "114%"}
+`
+
+func TestSemanticExplain_ShowsPlanAndRhythmWarnings(t *testing.T) {
+	path := writeSpec(t, "deck.yaml", repetitiveSemanticSpec)
+
+	out, err := runSemanticArgs(t, "explain", "--spec", path)
+	if err != nil {
+		t.Fatalf("semantic explain returned error: %v\noutput=%s", err, out)
+	}
+
+	var exp struct {
+		Archetype string `json:"archetype"`
+		Template  string `json:"template"`
+		Slides    []struct {
+			Kind         string `json:"kind"`
+			Role         string `json:"role"`
+			VisualFamily string `json:"visual_family"`
+			Density      string `json:"density"`
+			Pattern      string `json:"pattern"`
+			Layout       string `json:"layout"`
+		} `json:"slides"`
+		RhythmWarnings []struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Path    string `json:"path"`
+		} `json:"rhythm_warnings"`
+	}
+	if jerr := json.Unmarshal([]byte(out), &exp); jerr != nil {
+		t.Fatalf("explain output is not a DeckExplanation: %v\noutput=%s", jerr, out)
+	}
+
+	if exp.Archetype != "board_update" {
+		t.Errorf("archetype = %q, want board_update", exp.Archetype)
+	}
+	// Pins no template -> archetype default (board_update -> midnight-blue).
+	if exp.Template != "midnight-blue" {
+		t.Errorf("template = %q, want midnight-blue (archetype default)", exp.Template)
+	}
+	if len(exp.Slides) != 3 {
+		t.Fatalf("explanation has %d slides, want 3", len(exp.Slides))
+	}
+	for i, s := range exp.Slides {
+		if s.Kind == "" || s.VisualFamily == "" || s.Density == "" {
+			t.Errorf("slides[%d] missing kind/family/density: %+v", i, s)
+		}
+		if s.Pattern == "" && s.Layout == "" {
+			t.Errorf("slides[%d] has neither pattern nor layout", i)
+		}
+	}
+
+	codes := map[string]bool{}
+	for _, w := range exp.RhythmWarnings {
+		codes[w.Code] = true
+	}
+	if !codes["SEMANTIC_RHYTHM_MONOTONY"] {
+		t.Errorf("expected SEMANTIC_RHYTHM_MONOTONY in rhythm_warnings, got %+v", exp.RhythmWarnings)
+	}
+	if !codes["SEMANTIC_RHYTHM_SYNTHESIS"] {
+		t.Errorf("expected SEMANTIC_RHYTHM_SYNTHESIS in rhythm_warnings, got %+v", exp.RhythmWarnings)
+	}
+}
+
+func TestSemanticExplain_MissingSpecFlag(t *testing.T) {
+	if _, err := runSemanticArgs(t, "explain"); err == nil {
+		t.Error("expected error when --spec is omitted")
+	}
+}
+
 func TestSemanticSchema_PrintsJSONSchema(t *testing.T) {
 	out, err := runSemanticArgs(t, "schema")
 	if err != nil {

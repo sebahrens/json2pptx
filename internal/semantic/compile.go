@@ -56,6 +56,10 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 
 	diags := Validate(spec, strict)
 	ir := Normalize(spec)
+	// Deck-rhythm advisories are deck-level (read from the normalized IR), so they
+	// are gathered here rather than in the per-slide Validate pass. Under strict
+	// they become errors and block the compile alongside structural errors.
+	diags = append(diags, rhythmDiagnostics(ir, strict)...)
 	result := &CompileResult{IR: ir, SourceMap: ir.SourceMap, Diagnostics: diags}
 
 	if diagnostics.HasErrors(diags) {
@@ -63,7 +67,9 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	}
 
 	input := &deckinput.PresentationInput{
-		Template:       firstNonEmptyStr(ir.Template, opts.DefaultTemplate),
+		// Template precedence: the spec's own pin wins, then the caller default,
+		// then the archetype's preferred template.
+		Template:       firstNonEmptyStr(ir.Template, opts.DefaultTemplate, ir.ArchetypeTemplate),
 		OutputFilename: opts.OutputFilename,
 		DesignMode:     "constrained",
 	}

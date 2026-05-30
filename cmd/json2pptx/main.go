@@ -173,7 +173,7 @@ Commands:
   data-format-hints   Show data format hints for chart/diagram types
   shape-catalog       List available preset geometries
   audit-palette       Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes
-  semantic            Validate/compile/inspect compact semantic deck specs (validate|compile|schema)
+  semantic            Validate/compile/inspect compact semantic deck specs (validate|compile|render|explain|schema)
   serve               Start HTTP API server
   mcp                 Start MCP (Model Context Protocol) server over stdio
   version             Show version information

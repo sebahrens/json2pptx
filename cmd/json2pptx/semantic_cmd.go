@@ -41,6 +41,8 @@ func runSemantic() error {
 		return runSemanticCompile()
 	case "render":
 		return runSemanticRender()
+	case "explain":
+		return runSemanticExplain()
 	case "schema":
 		return runSemanticSchema()
 	case "help", "-h", "--help":
@@ -62,6 +64,7 @@ Subcommands:
   validate   Validate a semantic spec; emit the shared finding envelope
   compile    Compile a semantic spec to raw PresentationInput JSON
   render     Compile a semantic spec and render it straight to a .pptx
+  explain    Print the compiler's planned decisions and rhythm warnings
   schema     Print the DeckSpec JSON Schema (draft 2020-12)
 
 Examples:
@@ -70,6 +73,7 @@ Examples:
   json2pptx semantic compile --spec deck.yaml --output compiled.json
   json2pptx semantic compile --spec deck.yaml --output -      # stdout
   json2pptx semantic render --spec deck.yaml --output deck.pptx
+  json2pptx semantic explain --spec deck.yaml
   json2pptx semantic schema
 
 Run 'json2pptx semantic <subcommand> -h' for subcommand-specific help.
@@ -465,6 +469,53 @@ func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semantic
 		d.RawPath = f.Path
 	}
 	return d
+}
+
+// runSemanticExplain implements "semantic explain". It parses a semantic spec,
+// normalizes it to the compiler IR, and prints the planned decisions — selected
+// archetype and resolved template, plus per-slide kind, narrative role, visual
+// family, density, and the chosen pattern/layout — together with the deck-rhythm
+// warnings the author should address before rendering. It is a read-only
+// projection of the compiler's plan: no raw PresentationInput or .pptx is
+// emitted, so it works even on specs that still carry advisory findings. A parse
+// error is fatal (the spec cannot be planned); it prints the finding envelope to
+// stderr and exits non-zero.
+func runSemanticExplain() error {
+	fs := flag.NewFlagSet("semantic explain", flag.ContinueOnError)
+	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
+
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic explain --spec <file>\n\n")
+		fmt.Fprintf(os.Stderr, "Print the compiler's planned decisions (archetype, template, per-slide\n")
+		fmt.Fprintf(os.Stderr, "kind/role/family/density/pattern) and deck-rhythm warnings as JSON.\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		printDoubleDashUsage(fs)
+	}
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		return err
+	}
+	if *specPath == "" {
+		fs.Usage()
+		return fmt.Errorf("--spec is required")
+	}
+
+	data, err := os.ReadFile(specReadPath(*specPath))
+	if err != nil {
+		return fmt.Errorf("semantic explain: read %s: %w", *specPath, err)
+	}
+
+	spec, parseDiags := semantic.Parse(*specPath, data)
+	if parseDiags.HasErrors() {
+		envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+			Subcommand:  "semantic explain",
+			InputSHA256: diagnostics.ComputeInputSHA256(data),
+		}, parseDiags.ToDiagnostics())
+		_ = fprintJSONIndent(os.Stderr, envelope)
+		return fmt.Errorf("semantic explain: spec could not be parsed")
+	}
+
+	return printJSONIndent(semantic.ExplainSpec(spec))
 }
 
 // runSemanticSchema implements "semantic schema". It prints the DeckSpec JSON

@@ -817,6 +817,48 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "section", "title": "Financial Review"}`,
 		RelatedCodes:  []string{CodeSemanticRequired},
 	},
+	CodeSemanticRhythmMonotony: {
+		Code:        CodeSemanticRhythmMonotony,
+		Summary:     "Three or more consecutive slides share the same visual family.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent slides that compile to the same visual family (e.g. three KPI slides back-to-back), which reads as monotonous. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Vary the slide kinds across the run, or move a section divider into the middle of it.",
+			"Reorder slides so similar treatments are not adjacent.",
+		},
+		RelatedCodes: []string{CodeSemanticRhythmDensity, CodeSemanticRhythmSectioning},
+	},
+	CodeSemanticRhythmDensity: {
+		Code:        CodeSemanticRhythmDensity,
+		Summary:     "Three or more consecutive slides are content-dense.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "deck-rhythm analysis finds a run of 3+ adjacent heavy-density slides, which fatigues the audience. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Break the run with a lighter slide (a section divider, a single statistic, or a pull quote).",
+			"Split a dense slide's content across two slides so each carries less.",
+		},
+		RelatedCodes: []string{CodeSemanticRhythmMonotony, CodeSemanticDensity},
+	},
+	CodeSemanticRhythmSectioning: {
+		Code:        CodeSemanticRhythmSectioning,
+		Summary:     "A long deck has no section dividers to break it into chapters.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "deck-rhythm analysis finds a deck of more than 8 slides with no section/transition slide. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Add one or more `section` slides to group the deck into chapters.",
+		},
+		RelatedCodes: []string{CodeSemanticRhythmMonotony},
+	},
+	CodeSemanticRhythmSynthesis: {
+		Code:        CodeSemanticRhythmSynthesis,
+		Summary:     "An executive deck carries no synthesis or decision slide.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "deck-rhythm analysis finds an executive-archetype deck (e.g. board_update, qbr, strategy_proposal) with no executive_summary or decision slide to land the message. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Add an `executive_summary` slide near the front or a `decision` slide near the end.",
+		},
+		RelatedCodes: []string{CodeSemanticTakeawayRequired},
+	},
 
 	// ---- Internal family — unexpected server-side failures ----
 
