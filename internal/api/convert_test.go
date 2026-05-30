@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
@@ -1055,4 +1056,95 @@ func TestSVGScaleDefaultsToZero(t *testing.T) {
 	if capturedSVGScale != 0 {
 		t.Errorf("Expected svg_scale to default to 0, got %v", capturedSVGScale)
 	}
+}
+
+// TestFileResponseExpiresAtMatchesRetention validates that the expires_at in a
+// file-download response is derived from the configured file retention (the
+// same duration the OutputCleaner enforces), not a hardcoded one hour.
+func TestFileResponseExpiresAtMatchesRetention(t *testing.T) {
+	tempDir := t.TempDir()
+	templatesDir := filepath.Join(tempDir, "templates")
+	outputDir := filepath.Join(tempDir, "output")
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
+	}
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+
+	testTemplate := createTestTemplate(t, templatesDir, "test-template")
+	defer func() { _ = os.Remove(testTemplate) }()
+
+	mockPipe := &mockPipeline{
+		convertFunc: func(_ context.Context, req pipeline.ConvertRequest) (*pipeline.ConvertResult, error) {
+			input, err := os.ReadFile(testTemplate)
+			if err != nil {
+				return nil, err
+			}
+			if err := os.WriteFile(req.OutputPath, input, 0644); err != nil {
+				return nil, err
+			}
+			return &pipeline.ConvertResult{OutputPath: req.OutputPath, SlideCount: 1}, nil
+		},
+	}
+
+	cache := template.NewMemoryCache(24 * 60 * 60)
+	templateService := NewTemplateService(templatesDir, cache, false)
+
+	doRequest := func(t *testing.T, retention time.Duration) time.Time {
+		t.Helper()
+		service := NewConvertService(templatesDir, outputDir, templateService, mockPipe)
+		service.SetFileRetention(retention)
+
+		reqBody := ConvertRequest{
+			Template: "test-template",
+			Slides:   []APISlide{{Type: "content", Title: "Welcome"}},
+			Options:  &ConvertOptions{OutputFormat: "file"},
+		}
+		body, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+
+		before := time.Now()
+		service.ConvertHandler()(w, req)
+		after := time.Now()
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var resp ConvertResponseFile
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("Failed to parse response: %v; body=%s", err, w.Body.String())
+		}
+		expiresAt, err := time.Parse(time.RFC3339, resp.ExpiresAt)
+		if err != nil {
+			t.Fatalf("Failed to parse expires_at %q: %v", resp.ExpiresAt, err)
+		}
+
+		// expires_at must fall within [before+retention, after+retention].
+		eff := retention
+		if eff <= 0 {
+			eff = DefaultFileRetention
+		}
+		lo := before.Add(eff).Add(-time.Second)
+		hi := after.Add(eff).Add(time.Second)
+		if expiresAt.Before(lo) || expiresAt.After(hi) {
+			t.Errorf("expires_at %v outside expected window [%v, %v] for retention %v",
+				expiresAt, lo, hi, retention)
+		}
+		return expiresAt
+	}
+
+	t.Run("short retention", func(t *testing.T) {
+		doRequest(t, 5*time.Minute)
+	})
+
+	t.Run("long retention", func(t *testing.T) {
+		doRequest(t, 6*time.Hour)
+	})
+
+	t.Run("zero retention falls back to default", func(t *testing.T) {
+		doRequest(t, 0)
+	})
 }

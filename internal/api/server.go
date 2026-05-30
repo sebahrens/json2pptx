@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"time"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -44,6 +45,10 @@ type ServerConfig struct {
 	Version          string
 	CommitSHA        string
 	BuildTime        string
+	// FileRetention is the lifetime of generated download files, used to
+	// compute the expires_at advertised in file responses so it matches the
+	// OutputCleaner policy. Zero/negative falls back to DefaultFileRetention.
+	FileRetention time.Duration
 }
 
 // NewServer creates a new API server with all handlers configured.
@@ -55,6 +60,7 @@ func NewServer(cfg ServerConfig) *Server {
 	templateService := NewTemplateService(cfg.TemplatesDir, cfg.Cache, cfg.StrictValidation)
 	conversionPipeline := pipeline.NewPipeline()
 	convertService := NewConvertService(cfg.TemplatesDir, cfg.OutputDir, templateService, conversionPipeline)
+	convertService.SetFileRetention(cfg.FileRetention)
 	healthHandler := NewHealthHandler(cfg.Logger, HealthConfig{
 		Version:   cfg.Version,
 		CommitSHA: cfg.CommitSHA,

@@ -123,6 +123,7 @@ func runServe() error {
 		Cache:            cache,
 		Logger:           logger,
 		StrictValidation: cfg.Templates.IsStrictValidation(),
+		FileRetention:    cfg.Storage.FileRetention,
 	})
 
 	// Start output file cleanup daemon (enforces FileRetention policy)

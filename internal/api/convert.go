@@ -23,12 +23,22 @@ import (
 // DefaultConvertTimeout is the default timeout for convert operations (2 minutes).
 const DefaultConvertTimeout = 2 * time.Minute
 
+// DefaultFileRetention is the fallback retention used to compute download
+// expiry when no positive retention is configured. It matches the historic
+// hardcoded one-hour expiry and the default StorageConfig.FileRetention.
+const DefaultFileRetention = 1 * time.Hour
+
 // ConvertService handles presentation conversion.
 type ConvertService struct {
 	templatesDir     string
 	outputDir        string
 	templateAnalyzer TemplateAnalyzer
 	pipeline         pipeline.Pipeline
+	// fileRetention controls the expires_at advertised for file downloads.
+	// It should match the OutputCleaner retention so clients aren't told a
+	// link lives longer (or shorter) than the file actually survives. A
+	// zero/negative value falls back to DefaultFileRetention.
+	fileRetention time.Duration
 }
 
 // NewConvertService creates a new convert service.
@@ -39,6 +49,21 @@ func NewConvertService(templatesDir, outputDir string, templateAnalyzer Template
 		templateAnalyzer: templateAnalyzer,
 		pipeline:         p,
 	}
+}
+
+// SetFileRetention configures the retention used to compute download expiry.
+// A zero or negative duration preserves the DefaultFileRetention fallback.
+func (cs *ConvertService) SetFileRetention(d time.Duration) {
+	cs.fileRetention = d
+}
+
+// effectiveFileRetention returns the configured retention, or
+// DefaultFileRetention when none (or an invalid value) was set.
+func (cs *ConvertService) effectiveFileRetention() time.Duration {
+	if cs.fileRetention > 0 {
+		return cs.fileRetention
+	}
+	return DefaultFileRetention
 }
 
 // MaxRequestBodySize is the maximum allowed size for request bodies (10MB).
@@ -336,7 +361,7 @@ func (cs *ConvertService) sendFileResponse(
 	genResult *generationResult,
 	processingTimeMs int64,
 ) {
-	expiresAt := time.Now().Add(1 * time.Hour)
+	expiresAt := time.Now().Add(cs.effectiveFileRetention())
 
 	resp := ConvertResponseFile{
 		Success:   true,
