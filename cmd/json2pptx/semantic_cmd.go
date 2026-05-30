@@ -14,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -334,10 +335,11 @@ func runSemanticRender() error {
 	}
 
 	// Apply the shared pre-render prep that a compiled deck still needs: deck
-	// defaults (table/cell styles) and named style references. The compiled deck
-	// already has flat slides, constrained design mode, and no URL/asset refs, so
-	// structure expansion, design-mode revalidation, and the URL/asset PreConvert
-	// hook do not apply here.
+	// defaults (table/cell styles) and named style references. Most compiled
+	// slides carry constrained design mode and no URL/asset refs, so structure
+	// expansion and design-mode revalidation do not apply — but the raw_json2pptx
+	// escape hatch passes author-authored slide payloads straight through, so the
+	// URL/asset resolution PreConvert hook below still does (see preConvert).
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(*templatesDir, input)
 
@@ -346,6 +348,48 @@ func runSemanticRender() error {
 	cfg := config.DefaultConfig()
 	if *templatesDir != "" {
 		cfg.Templates.Dir = *templatesDir
+	}
+
+	// A raw_json2pptx slide can still contain image/icon URLs or relative asset
+	// paths that need the same guarded resolution `generate` performs, so a deck
+	// using the escape hatch behaves identically under render and generate. The
+	// resolver cache must outlive generation because resolved local paths are
+	// embedded in the slides; the cleanup is deferred here and installed by the
+	// hook. Asset-resolution warnings (non-error findings) are collected and
+	// merged into the success result's warnings, mirroring `generate`.
+	urlResolverCleanup := func() {}
+	defer func() { urlResolverCleanup() }()
+	var preConvertWarnings []string
+	preConvert := func() error {
+		// Resolve URL references (icon.url, image.url, background.url) by
+		// downloading them to a session-scoped cache with SSRF protection.
+		if hasURLReferences(input.Slides) {
+			resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
+			if resolverErr != nil {
+				return fmt.Errorf("resource resolver: %w", resolverErr)
+			}
+			urlResolverCleanup = func() { resolver.Close() }
+			if urlFindings := resolveURLs(input.Slides, resolver); len(urlFindings) > 0 {
+				return iconFindingsToError(urlFindings)
+			}
+		}
+		// Resolve relative asset paths against the spec's own directory so a raw
+		// slide's relative image path resolves the same way `generate` resolves
+		// it against the deck JSON's directory. Skipped for stdin specs, which
+		// have no base directory (mirrors generate's jsonPath != "-" guard).
+		if *specPath != "-" {
+			baseDir := validateBaseDir(*specPath, "")
+			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+			if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
+				return assetErr
+			}
+			for _, d := range assetFindings {
+				if d.Severity != diagnostics.SeverityError {
+					preConvertWarnings = append(preConvertWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
+				}
+			}
+		}
+		return nil
 	}
 
 	runRes, cleanup, renderErr := RunPresentation(context.Background(), input, RenderOptions{
@@ -357,6 +401,7 @@ func runSemanticRender() error {
 		SVGScale:         cfg.SVG.Scale,
 		SVGNativeCompat:  string(cfg.SVG.NativeCompatibility),
 		MaxPNGWidth:      cfg.SVG.MaxPNGWidth,
+		PreConvert:       preConvert,
 	})
 	defer cleanup()
 	if renderErr != nil {
@@ -366,6 +411,7 @@ func runSemanticRender() error {
 	}
 
 	res := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
+	res.Warnings = append(res.Warnings, preConvertWarnings...)
 	return printJSONIndent(res)
 }
 

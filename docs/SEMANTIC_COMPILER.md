@@ -131,7 +131,7 @@ internal/
     schema.go       # semantic JSON Schema export
 ```
 
-`cmd/json2pptx` owns the CLI and MCP adapters. The raw render runner is factored so semantic render and existing raw generation use the same validation/generation/output-validation path.
+`cmd/json2pptx` owns the CLI and MCP adapters. The raw render runner is factored so semantic render and existing raw generation use the same validation/generation/output-validation path. This includes asset resolution: a `raw_json2pptx` escape-hatch slide can carry image/icon URLs or relative asset paths, so `semantic render` runs the same guarded URL download and relative-path resolution `generate` does, resolving relative paths against the **spec's own directory**. Unreachable URLs or missing/oversized/wrong-extension local assets are rejected with the same `URL_FETCH_FAILED` / `IMAGE_PATH` / `BACKGROUND_IMAGE_PATH` diagnostics, so the escape hatch behaves identically under `render` and `generate`.
 
 ## Diagnostics and repair
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -308,6 +309,127 @@ func TestSemanticRender_InvalidSpecFails(t *testing.T) {
 	}
 	if !sawSemanticPath {
 		t.Errorf("failure result carried no semantic_path diagnostics: %+v", res.Diagnostics)
+	}
+}
+
+// rawImageSemanticSpec builds a semantic deck whose second slide uses the
+// raw_json2pptx escape hatch to embed a content image by relative path. The
+// %s is the image filename, resolved relative to the spec's own directory —
+// the parity case for go-slide-creator-6wss.4 (raw asset refs under
+// `semantic render` must resolve against the spec dir, just like `generate`
+// resolves them against the deck JSON's directory).
+const rawImageSemanticSpec = `meta:
+  title: Raw Asset Deck
+  template: midnight-blue
+slides:
+  - kind: title
+    title: Raw Asset Deck
+  - kind: raw_json2pptx
+    slide:
+      slide_type: content
+      content:
+        - placeholder_id: title
+          type: text
+          text_value: Brand Logo
+        - placeholder_id: body
+          type: image
+          image_value:
+            path: %s
+`
+
+// writeSpecWithImage writes the spec to a temp dir and, when imageName is
+// non-empty, copies the bundled small test PNG into the same dir under that
+// name so a relative image reference resolves against the spec directory. It
+// returns the spec path.
+func writeSpecWithImage(t *testing.T, specName, specContent, imageName string) string {
+	t.Helper()
+	dir := t.TempDir()
+	specPath := filepath.Join(dir, specName)
+	if err := os.WriteFile(specPath, []byte(specContent), 0o600); err != nil {
+		t.Fatalf("write spec %s: %v", specPath, err)
+	}
+	if imageName != "" {
+		src, err := os.ReadFile("../../internal/generator/testdata/test_image_small.png")
+		if err != nil {
+			t.Fatalf("read test image: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, imageName), src, 0o600); err != nil {
+			t.Fatalf("write test image: %v", err)
+		}
+	}
+	return specPath
+}
+
+// TestSemanticRender_RawSlideResolvesRelativeImage is the resolution half of the
+// go-slide-creator-6wss.4 parity fix: a raw_json2pptx slide carrying a relative
+// image path must have that path resolved against the spec's own directory (the
+// image lives beside the spec, NOT in the test's CWD), so the render succeeds.
+// Before the fix, `semantic render` skipped asset resolution entirely and the
+// relative path leaked to the generator as an unresolvable reference.
+func TestSemanticRender_RawSlideResolvesRelativeImage(t *testing.T) {
+	specPath := writeSpecWithImage(t, "deck.yaml", fmt.Sprintf(rawImageSemanticSpec, "logo.png"), "logo.png")
+	out := filepath.Join(t.TempDir(), "raw.pptx")
+
+	stdout, err := runSemanticArgs(t, "render",
+		"--spec", specPath,
+		"--output", out,
+		"--templates-dir", testTemplatesDir)
+	if err != nil {
+		t.Fatalf("semantic render returned error: %v\noutput=%s", err, stdout)
+	}
+
+	var res semanticRenderResult
+	if jerr := json.Unmarshal([]byte(stdout), &res); jerr != nil {
+		t.Fatalf("render output is not a semanticRenderResult: %v\noutput=%s", jerr, stdout)
+	}
+	if !res.OK {
+		t.Errorf("render result OK = false; error=%q", res.Error)
+	}
+	if _, statErr := os.Stat(out); statErr != nil {
+		t.Errorf("render did not write the .pptx: %v", statErr)
+	}
+	// Proof the path was resolved against the spec dir: had resolution been
+	// skipped, "logo.png" would have leaked to the generator relative to the
+	// test's CWD (where it does not exist), surfacing an "image file not found"
+	// warning instead of embedding the image.
+	for _, w := range res.Warnings {
+		if strings.Contains(w, "not found") {
+			t.Errorf("relative image was not resolved against the spec dir: %q", w)
+		}
+	}
+}
+
+// TestSemanticRender_RawSlideRejectsMissingImage is the rejection half of the
+// parity fix: a raw_json2pptx slide referencing a relative image that does not
+// exist beside the spec must be rejected with a clear IMAGE_PATH diagnostic —
+// the same failure `generate` produces — rather than silently leaking the
+// unresolved path through to generation.
+func TestSemanticRender_RawSlideRejectsMissingImage(t *testing.T) {
+	specPath := writeSpecWithImage(t, "deck.yaml", fmt.Sprintf(rawImageSemanticSpec, "missing.png"), "")
+	out := filepath.Join(t.TempDir(), "raw.pptx")
+
+	orig := os.Args
+	defer func() { os.Args = orig }()
+	os.Args = []string{"json2pptx", "render", "--spec", specPath, "--output", out, "--templates-dir", testTemplatesDir}
+
+	var err error
+	stderr := captureStderr(t, func() { err = runSemantic() })
+	if err == nil {
+		t.Fatalf("expected render to fail on a missing relative image; stderr=%s", stderr)
+	}
+	if _, statErr := os.Stat(out); statErr == nil {
+		t.Error("render wrote an output file despite the missing-asset rejection")
+	}
+
+	var res semanticRenderResult
+	if jerr := json.Unmarshal([]byte(stderr), &res); jerr != nil {
+		t.Fatalf("failure result is not a semanticRenderResult: %v\nstderr=%s", jerr, stderr)
+	}
+	if res.OK {
+		t.Error("failure result OK = true")
+	}
+	if !strings.Contains(res.Error, string(diagnostics.CodeImagePath)) {
+		t.Errorf("failure error does not mention %s: %q", diagnostics.CodeImagePath, res.Error)
 	}
 }
 
