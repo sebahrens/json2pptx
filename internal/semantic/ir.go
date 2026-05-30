@@ -164,8 +164,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 	KindTitle:   {role: RoleOpening, family: FamilyStructural, density: DensityLight, layout: "title"},
 	KindSection: {role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "section"},
 	KindExecutiveSummary: {
+		// The MVP compiles an executive summary to a content slide (title + bullet
+		// points), not a named pattern, so the plan advertises a layout only — the
+		// explain projection must match what compile emits (explain/compile parity).
 		role: RoleSummary, family: FamilyText, density: DensityMedium, layout: "content",
-		pattern: func(map[string]any) string { return "scqa-summary" },
 	},
 	KindKPISnapshot: {
 		role: RoleEvidence, family: FamilyKPI, density: DensityMedium, layout: "content",
@@ -188,8 +190,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		pattern: func(map[string]any) string { return "phase-roadmap" },
 	},
 	KindDecision: {
+		// The MVP compiles a decision to a content slide (recommendation lead-in +
+		// option bullets), not a named pattern, so the plan advertises a layout only
+		// — keeping the explain projection in step with what compile emits.
 		role: RoleRecommendation, family: FamilyText, density: DensityMedium, layout: "content",
-		pattern: func(map[string]any) string { return "scqa-summary" },
 	},
 	KindClosing:      {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "title"},
 	KindRawJSON2pptx: passthroughPlan,

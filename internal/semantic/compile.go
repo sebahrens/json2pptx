@@ -116,6 +116,12 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileKPISnapshot(in)
 	case KindChartInsight:
 		return slides.CompileChartInsight(in)
+	case KindComparison:
+		return slides.CompileComparison(in)
+	case KindProcess:
+		return slides.CompileProcess(in)
+	case KindRoadmap:
+		return slides.CompileRoadmap(in)
 	case KindDecision:
 		return slides.CompileDecision(in)
 	case KindClosing:

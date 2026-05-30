@@ -798,7 +798,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Code:        CodeSemanticDensity,
 		Summary:     "A slide's item count falls outside its recommended density range.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "semantic validation finds a count outside the advisory range for the slide kind — e.g. kpi_snapshot kpis not in 2–6, executive_summary points not in 3–5, or a comparison with fewer than two (or unbalanced) columns. Promoted to an error under strict validation.",
+		WhenEmitted: "semantic validation finds a count outside the advisory range for the slide kind — e.g. kpi_snapshot kpis not in 2–6, executive_summary points not in 3–5, process steps not in 3–8, roadmap phases not in 3–6, or a comparison with other than two (or unbalanced) columns. A count outside the visual pattern's range degrades the slide to a bullet list instead of the planned visual. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Adjust the item count at evidence.path into the recommended range.",
 			"Split overflowing content across multiple slides, or merge sparse slides.",

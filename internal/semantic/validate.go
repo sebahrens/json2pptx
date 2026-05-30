@@ -208,6 +208,16 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		}
 	case KindComparison:
 		validateComparison(path, slide, s)
+	case KindProcess:
+		if n, ok := listLen(slide.Body, "steps"); ok && (n < 3 || n > 8) {
+			s.advisory(path+".steps", diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("process has %d steps; 3–8 render as a process-flow visual (otherwise it degrades to a bullet list)", n))
+		}
+	case KindRoadmap:
+		if n, ok := listLen(slide.Body, "phases"); ok && (n < 3 || n > 6) {
+			s.advisory(path+".phases", diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("roadmap has %d phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
+		}
 	}
 }
 
@@ -235,9 +245,9 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 	if !ok {
 		return
 	}
-	if len(cols) < 2 {
+	if len(cols) != 2 {
 		s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("a comparison needs at least two columns; found %d", len(cols)))
+			fmt.Sprintf("a comparison renders exactly two columns as a comparison-2col visual; found %d (otherwise it degrades to a bullet list)", len(cols)))
 		return
 	}
 	counts := make([]int, 0, len(cols))

@@ -131,6 +131,17 @@ func stringList(body map[string]any, key string) ([]string, bool) {
 			if s := strings.TrimSpace(t); s != "" {
 				out = append(out, s)
 			}
+		case map[string]any:
+			// An object entry (e.g. a {title, description} step) must never be
+			// stringified with fmt's default %v, which leaks Go "map[...]" syntax
+			// into slide body content. Render it as a readable label line instead;
+			// drop it when it carries no usable text.
+			if s := objectText(t); s != "" {
+				out = append(out, s)
+			}
+		case []any:
+			// Nested lists have no sensible single-line rendering here; skip them
+			// rather than emit a Go "[...]" dump.
 		case nil:
 			// skip
 		default:
@@ -138,6 +149,31 @@ func stringList(body map[string]any, key string) ([]string, bool) {
 		}
 	}
 	return out, true
+}
+
+// objectText renders a structured list entry (a map) as a single readable line:
+// its primary label, optionally followed by " — <detail>". It is the guard that
+// keeps Go "map[...]" syntax out of generated slide content when a payload list
+// holds objects rather than strings. It returns "" when the entry carries no
+// usable text.
+func objectText(m map[string]any) string {
+	label := firstNonEmpty(
+		strField(m, "title"), strField(m, "label"), strField(m, "name"),
+		strField(m, "heading"), strField(m, "step"), strField(m, "phase"),
+		strField(m, "text"),
+	)
+	detail := firstNonEmpty(
+		strField(m, "description"), strField(m, "detail"),
+		strField(m, "summary"), strField(m, "caption"), strField(m, "body"),
+	)
+	switch {
+	case label != "" && detail != "":
+		return label + " — " + detail
+	case label != "":
+		return label
+	default:
+		return detail
+	}
 }
 
 // mapList returns the map entries of a list-valued payload field, preserving

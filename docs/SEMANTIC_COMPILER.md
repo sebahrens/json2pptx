@@ -71,6 +71,20 @@ Initial slide kinds:
 - `closing`
 - `raw_json2pptx`
 
+### Slide kind → compiled visual
+
+Each content-bearing kind compiles to the named pattern its plan advertises (the same pattern `semantic explain` reports), so explain and compile stay in lock-step. When a payload falls outside the pattern's shape the slide **degrades** to a safe content slide (title + readable bullets — never a Go `map[...]` dump) and semantic validation emits a `SEMANTIC_DENSITY` advisory naming the count that caused the degradation.
+
+| Kind | Pattern | Payload | Fits the visual when |
+|------|---------|---------|----------------------|
+| `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label}]` | 2–6 KPIs |
+| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]` | 1–6 insights |
+| `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]` | exactly 2 columns with equal, non-empty item counts (≤10 rows) |
+| `process` | `process-flow` | `steps: [{title, description?, type?}]` | 3–8 steps with labels |
+| `roadmap` | `phase-roadmap` | `phases: [{name, date_label?, description?, active?, milestone?}]` | 3–6 named phases |
+
+`executive_summary` and `decision` compile to plain content slides (bullet points / recommendation lead-in), so their plan advertises a layout only — no pattern. Structural kinds (`title`, `section`, `closing`) and the `raw_json2pptx` escape hatch carry no pattern either. The explain↔compile parity gate (`internal/semantic.TestExplainCompileParity`) asserts every kind's advertised pattern equals the one compile emits.
+
 ## Surfaces
 
 CLI:
