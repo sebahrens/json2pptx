@@ -239,11 +239,11 @@ docker run -d \
 Write compact YAML that describes slide intent and content; json2pptx chooses patterns, raw layouts, and safe defaults, then renders through the same engine as raw JSON:
 
 ```yaml
-deck:
+meta:
   title: Q2 Business Review
-  audience: board
+  subtitle: Momentum improving, execution risk remains
   archetype: qbr
-  tone: executive
+  audience: board
   template: midnight-blue
 
 slides:
@@ -252,17 +252,20 @@ slides:
     subtitle: Momentum improving, execution risk remains
   - kind: kpi_snapshot
     title: Quarter at a glance
-    takeaway: Growth recovered, but margin remains below target
-    metrics:
-      - {label: Revenue, value: "$12.4M", delta: "+18%", status: good}
-      - {label: Gross margin, value: "61%", delta: "-3pp", status: watch}
+    takeaway: Growth recovered, but margin remains below target.
+    kpis:
+      - { value: "$12.4M", label: "Revenue" }
+      - { value: "61%", label: "Gross margin" }
   - kind: decision
     title: Approve EMEA sales capacity
-    recommendation: Add four enterprise AEs in Q3
-    rationale: [EMEA pipeline coverage is 3.8x, Win rate improved to 28%]
-    risks: [Ramp time delays impact]
-    ask: Approve $1.2M incremental annualized spend
+    takeaway: Add enterprise sales capacity now to convert EMEA pipeline.
+    recommendation: Add four enterprise AEs in Q3.
+    options:
+      - Hold current coverage and accept slower EMEA conversion.
+      - Add four enterprise AEs in Q3 (recommended).
 ```
+
+Deck-level intent lives under `meta`; each slide is a `kind`-tagged payload whose remaining fields are that kind's content. Use `list_slide_kinds` / `json2pptx semantic schema` for the per-kind fields, and [examples/semantic/qbr.yaml](examples/semantic/qbr.yaml) for a fuller, test-verified spec.
 
 ```sh
 json2pptx semantic validate --spec qbr.yaml
@@ -272,7 +275,7 @@ json2pptx semantic explain --spec qbr.yaml
 json2pptx semantic schema
 ```
 
-Semantic diagnostics use paths like `slides[1].metrics[0].label`; when a raw fit or output finding comes from generated JSON, the semantic compiler maps it back through its source map and only includes the raw JSON pointer as fallback evidence.
+Semantic diagnostics use paths like `slides[1].kpis[0].label`; when a raw fit or output finding comes from generated JSON, the semantic compiler maps it back through its source map and only includes the raw JSON pointer as fallback evidence.
 
 <a id="raw-json-cli-quick-start"></a>
 

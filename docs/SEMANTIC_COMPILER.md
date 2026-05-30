@@ -19,12 +19,14 @@ The compiler depends on renderer-owned knowledge: pattern schemas and exemplars,
 
 Semantic specs accept YAML and JSON:
 
+Deck-level intent lives under `meta`; each slide is a `kind`-tagged payload whose remaining fields are the kind's content (see `list_slide_kinds` / `json2pptx semantic schema` for the per-kind fields). A larger, test-verified example lives at [examples/semantic/qbr.yaml](../examples/semantic/qbr.yaml).
+
 ```yaml
-deck:
+meta:
   title: Q2 Business Review
-  audience: board
+  subtitle: Momentum improving, execution risk remains
   archetype: qbr
-  tone: executive
+  audience: board
   template: midnight-blue
 
 slides:
@@ -33,16 +35,17 @@ slides:
     subtitle: Momentum improving, execution risk remains
   - kind: kpi_snapshot
     title: Quarter at a glance
-    takeaway: Growth recovered, but margin remains below target
-    metrics:
-      - {label: Revenue, value: "$12.4M", delta: "+18%", status: good}
-      - {label: Gross margin, value: "61%", delta: "-3pp", status: watch}
+    takeaway: Growth recovered, but margin remains below target.
+    kpis:
+      - { value: "$12.4M", label: "Revenue" }
+      - { value: "61%", label: "Gross margin" }
   - kind: decision
     title: Approve EMEA sales capacity
-    recommendation: Add four enterprise AEs in Q3
-    rationale: [EMEA pipeline coverage is 3.8x, Win rate improved to 28%]
-    risks: [Ramp time delays impact]
-    ask: Approve $1.2M incremental annualized spend
+    takeaway: Add enterprise sales capacity now to convert EMEA pipeline.
+    recommendation: Add four enterprise AEs in Q3.
+    options:
+      - Hold current coverage and accept slower EMEA conversion.
+      - Add four enterprise AEs in Q3 (recommended).
 ```
 
 Initial archetypes:
@@ -118,7 +121,7 @@ internal/
 
 ## Diagnostics and repair
 
-Semantic validation returns the shared `FindingEnvelope` from `internal/diagnostics`. Findings prefer semantic paths such as `slides[2].metrics[1].label`. When a compiled raw deck triggers a fit or output-validation finding, the compiler maps the raw JSON pointer back through its `SourceMap` (exact match first, then nearest ancestor) and preserves the generated pointer as fallback evidence. The semantic slide index is recovered from the raw `slides[N]` prefix even when no mapping exists, so a finding always carries at least a slide-level locator. For the common density/overflow failures — an overlong metric label/value, an overfull KPI snapshot, an overlong takeaway, a dense comparison side, or a crowded roadmap phase list — the finding also carries a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`, `simplify_side`, or `split_phases`) so an agent repairs the semantic source it authored rather than the generated shape_grid JSON.
+Semantic validation returns the shared `FindingEnvelope` from `internal/diagnostics`. Findings prefer semantic paths such as `slides[2].kpis[1].label`. When a compiled raw deck triggers a fit or output-validation finding, the compiler maps the raw JSON pointer back through its `SourceMap` (exact match first, then nearest ancestor) and preserves the generated pointer as fallback evidence. The semantic slide index is recovered from the raw `slides[N]` prefix even when no mapping exists, so a finding always carries at least a slide-level locator. For the common density/overflow failures — an overlong metric label/value, an overfull KPI snapshot, an overlong takeaway, a dense comparison side, or a crowded roadmap phase list — the finding also carries a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`, `simplify_side`, or `split_phases`) so an agent repairs the semantic source it authored rather than the generated shape_grid JSON.
 
 Agents should repair semantic YAML/JSON first. Raw `PresentationInput` and `repair_slide` remain available for mechanical fixes and advanced escape-hatch workflows.
 

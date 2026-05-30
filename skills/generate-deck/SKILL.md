@@ -32,9 +32,10 @@ Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (cont
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 
 **Start semantically, not from a blank raw JSON slate.** For ordinary business decks,
-write semantic YAML with `deck.{title,audience,archetype,tone,template}` and slide
+write semantic YAML with `meta.{title,subtitle,archetype,audience,template}` and slide
 `kind` values such as `executive_summary`, `kpi_snapshot`, `chart_insight`,
-`comparison`, `roadmap`, and `decision`; validate it with `validate_deck_spec`,
+`comparison`, `roadmap`, and `decision` (call `list_slide_kinds` /
+`json2pptx semantic schema` for each kind's fields); validate it with `validate_deck_spec`,
 then render with `render_deck_spec`. If you need raw authoring, five canonical
 fillable JSON skeletons live in [`examples/skeletons/`](examples/skeletons/README.md)
 — pick the one matching your deck archetype, copy it, and replace the `__FILL_*__`

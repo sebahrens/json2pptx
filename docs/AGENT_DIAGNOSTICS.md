@@ -36,24 +36,36 @@ The semantic compiler uses the same envelope. Semantic validation and render
 surfaces (`json2pptx semantic validate`, `json2pptx semantic render`,
 `validate_deck_spec`, `render_deck_spec`, and the semantic HTTP endpoints) emit
 findings whose `evidence.path` points to the semantic authoring field whenever
-possible:
+possible. The semantic family is `INPUT`-namespaced and declared in
+`internal/diagnostics/codes.go`: the per-spec gates `SEMANTIC_REQUIRED`,
+`SEMANTIC_UNKNOWN_KIND`, `SEMANTIC_UNKNOWN_ARCHETYPE`,
+`SEMANTIC_TAKEAWAY_REQUIRED`, `SEMANTIC_DENSITY`, `SEMANTIC_WEAK_CONTENT`, plus
+the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`,
+`SEMANTIC_RHYTHM_SECTIONING`, and `SEMANTIC_RHYTHM_SYNTHESIS`. Each resolves via
+`json2pptx describe-finding <code>` like any other code. For example:
 
 ```json
 {
   "code": "INPUT.SEMANTIC_DENSITY",
   "severity": "error",
-  "message": "kpi_snapshot supports at most 6 metrics; found 9",
-  "evidence": {"path": "slides[2].metrics"},
-  "remediation": {"primary": {"action": "split_slide"}}
+  "where": {"slide": 2},
+  "message": "kpi snapshot has 9 KPIs; 2–6 is recommended",
+  "evidence": {"path": "slides[2].kpis"},
+  "describe_command": "json2pptx describe-finding SEMANTIC_DENSITY"
 }
 ```
 
-After compilation, raw validation/fit/output findings are mapped back through
-the semantic source map. For example, a raw overflow at
+(`SEMANTIC_DENSITY` and the other advisory codes are `info`/`warning` by
+default and become `error` under `strict`; they carry no `remediation` of their
+own.) After compilation, raw validation/fit/output findings are mapped back
+through the semantic source map. For example, a raw overflow at
 `/slides/2/shape_grid/rows/0/cells/1/shape/text/content` is reported to agents
-as `slides[1].metrics[1]` with the raw path preserved only as fallback evidence
-(`evidence.raw_path`) when useful. Agents should edit the semantic spec first;
-compiled raw JSON is an escape hatch for advanced repairs.
+as `slides[1].kpis[1]` with the raw path preserved only as fallback evidence
+(`evidence.raw_path`) when useful, and — for the common density/overflow
+failures — a `recommended_edit` (`shorten_text`, `split_slide`, `reduce_items`,
+`simplify_side`, or `split_phases`) naming the semantic edit that resolves it.
+Agents should edit the semantic spec first; compiled raw JSON is an escape hatch
+for advanced repairs.
 
 ## 2. The envelope contract
 
