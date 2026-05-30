@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // validSemanticSpec is a minimal, clean semantic deck spec (title + closing)
@@ -180,6 +181,98 @@ func TestSemanticCompile_BlockingErrorsAbort(t *testing.T) {
 	}
 	if _, err := os.Stat(out); err == nil {
 		t.Error("compile wrote an output file despite blocking findings")
+	}
+}
+
+// qbrSemanticExample is the bundled QBR semantic authoring example, relative to
+// the package dir. It is the acceptance fixture for `semantic render`.
+const qbrSemanticExample = "../../examples/semantic/qbr.yaml"
+
+func TestSemanticRender_QBRExample(t *testing.T) {
+	if _, err := os.Stat(qbrSemanticExample); err != nil {
+		t.Skipf("qbr example missing: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "qbr.pptx")
+
+	stdout, err := runSemanticArgs(t, "render",
+		"--spec", qbrSemanticExample,
+		"--output", out,
+		"--templates-dir", testTemplatesDir)
+	if err != nil {
+		t.Fatalf("semantic render returned error: %v\noutput=%s", err, stdout)
+	}
+
+	var res semanticRenderResult
+	if jerr := json.Unmarshal([]byte(stdout), &res); jerr != nil {
+		t.Fatalf("render output is not a semanticRenderResult: %v\noutput=%s", jerr, stdout)
+	}
+	if !res.OK {
+		t.Errorf("render result OK = false; error=%q", res.Error)
+	}
+	if res.OutputPath != out {
+		t.Errorf("output_path = %q, want %q", res.OutputPath, out)
+	}
+	if res.SlideCount != 6 {
+		t.Errorf("slide_count = %d, want 6", res.SlideCount)
+	}
+	if res.ContentHash == "" {
+		t.Error("render result missing content_hash")
+	}
+	if _, statErr := os.Stat(out); statErr != nil {
+		t.Errorf("render did not write the .pptx: %v", statErr)
+	}
+
+	// A successful render passed strict output validation internally; confirm the
+	// artifact also passes the standalone validate-output path.
+	report, valErr := pptx.ValidateOutputFile(out)
+	if valErr != nil {
+		t.Fatalf("validate-output failed: %v", valErr)
+	}
+	if !report.IsValid() {
+		t.Errorf("rendered deck failed validate-output: %d blocking finding(s)", len(report.Blocking()))
+	}
+}
+
+func TestSemanticRender_InvalidSpecFails(t *testing.T) {
+	path := writeSpec(t, "bad.yaml", invalidSemanticSpec)
+	out := filepath.Join(t.TempDir(), "bad.pptx")
+
+	orig := os.Args
+	defer func() { os.Args = orig }()
+	os.Args = []string{"json2pptx", "render", "--spec", path, "--output", out, "--templates-dir", testTemplatesDir}
+
+	var err error
+	stderr := captureStderr(t, func() { err = runSemantic() })
+	if err == nil {
+		t.Fatal("expected render to fail on a spec with blocking findings")
+	}
+	if _, statErr := os.Stat(out); statErr == nil {
+		t.Error("render wrote an output file despite blocking findings")
+	}
+
+	var res semanticRenderResult
+	if jerr := json.Unmarshal([]byte(stderr), &res); jerr != nil {
+		t.Fatalf("failure result is not a semanticRenderResult: %v\nstderr=%s", jerr, stderr)
+	}
+	if res.OK {
+		t.Error("failure result OK = true")
+	}
+	// The failure response must surface semantic source paths, not raw paths.
+	var sawSemanticPath bool
+	for _, d := range res.Diagnostics {
+		if d.SemanticPath != "" {
+			sawSemanticPath = true
+		}
+	}
+	if !sawSemanticPath {
+		t.Errorf("failure result carried no semantic_path diagnostics: %+v", res.Diagnostics)
+	}
+}
+
+func TestSemanticRender_MissingOutputFlag(t *testing.T) {
+	path := writeSpec(t, "deck.yaml", validSemanticSpec)
+	if _, err := runSemanticArgs(t, "render", "--spec", path); err == nil {
+		t.Error("expected error when --output is omitted")
 	}
 }
 

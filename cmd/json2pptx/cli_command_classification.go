@@ -112,9 +112,10 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		},
 		"semantic": {
 			AgentFacing: true,
-			CLIOnlyReason: "Command group (validate|compile|schema) over the compact semantic DeckSpec authoring " +
+			CLIOnlyReason: "Command group (validate|compile|render|schema) over the compact semantic DeckSpec authoring " +
 				"model (internal/semantic): validate emits the shared finding envelope, compile lowers a spec to raw " +
-				"PresentationInput JSON, and schema prints the DeckSpec JSON Schema. The equivalent MCP semantic tools " +
+				"PresentationInput JSON, render compiles a spec and renders it straight to a .pptx (mapping raw findings " +
+				"back to semantic source paths), and schema prints the DeckSpec JSON Schema. The equivalent MCP semantic tools " +
 				"are tracked separately (go-slide-creator-m0jg.11); until they land this surface stays CLI-only, and an " +
 				"agent can already reach the same outcome by composing validate_input / generate over the compiled JSON.",
 		},

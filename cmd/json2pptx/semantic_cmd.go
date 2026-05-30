@@ -1,12 +1,19 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
@@ -32,6 +39,8 @@ func runSemantic() error {
 		return runSemanticValidate()
 	case "compile":
 		return runSemanticCompile()
+	case "render":
+		return runSemanticRender()
 	case "schema":
 		return runSemanticSchema()
 	case "help", "-h", "--help":
@@ -52,6 +61,7 @@ PresentationInput model.
 Subcommands:
   validate   Validate a semantic spec; emit the shared finding envelope
   compile    Compile a semantic spec to raw PresentationInput JSON
+  render     Compile a semantic spec and render it straight to a .pptx
   schema     Print the DeckSpec JSON Schema (draft 2020-12)
 
 Examples:
@@ -59,6 +69,7 @@ Examples:
   json2pptx semantic validate --spec deck.yaml --strict strict
   json2pptx semantic compile --spec deck.yaml --output compiled.json
   json2pptx semantic compile --spec deck.yaml --output -      # stdout
+  json2pptx semantic render --spec deck.yaml --output deck.pptx
   json2pptx semantic schema
 
 Run 'json2pptx semantic <subcommand> -h' for subcommand-specific help.
@@ -200,6 +211,260 @@ func runSemanticCompile() error {
 	}
 	fmt.Fprintf(os.Stderr, "Wrote %d slide(s) to %s\n", len(input.Slides), *output)
 	return nil
+}
+
+// semanticRenderResult is the compact, machine-readable result of "semantic
+// render". On success it carries the artifact path, slide count, content hash, a
+// quality summary, and any advisory diagnostics. On failure OK is false, Error
+// names the blocking reason, and Diagnostics carry the findings — each pointing
+// at the semantic source path the author wrote (raw paths only as a fallback
+// when no mapping exists).
+type semanticRenderResult struct {
+	OK          bool                 `json:"ok"`
+	OutputPath  string               `json:"output_path,omitempty"`
+	Template    string               `json:"template,omitempty"`
+	SlideCount  int                  `json:"slide_count,omitempty"`
+	ContentHash string               `json:"content_hash,omitempty"`
+	DurationMs  int64                `json:"duration_ms,omitempty"`
+	Quality     *QualityScore        `json:"quality,omitempty"`
+	Warnings    []string             `json:"warnings,omitempty"`
+	Diagnostics []semanticDiagnostic `json:"diagnostics,omitempty"`
+	Error       string               `json:"error,omitempty"`
+}
+
+// semanticDiagnostic is one compact finding in a render result. SemanticPath
+// points at the field in the semantic DeckSpec the author wrote; RawPath is set
+// only as a fallback when a raw render finding could not be traced back to a
+// semantic source path.
+type semanticDiagnostic struct {
+	Code         string `json:"code"`
+	Severity     string `json:"severity,omitempty"`
+	Message      string `json:"message"`
+	SemanticPath string `json:"semantic_path,omitempty"`
+	RawPath      string `json:"raw_path,omitempty"`
+	Action       string `json:"action,omitempty"`
+}
+
+// runSemanticRender implements "semantic render": the target one-command flow
+// from a compact semantic spec to a rendered .pptx. It parses and validates the
+// spec, compiles it to a raw PresentationInput, runs the shared in-memory render
+// runner (RunPresentation, which keeps strict output validation as the default),
+// maps raw render findings back to the semantic source paths the author wrote
+// (falling back to the raw path only when no mapping exists), and prints a
+// compact result with a quality summary. Blocking failures print the same
+// compact result (OK=false) to stderr and exit non-zero.
+func runSemanticRender() error {
+	fs := flag.NewFlagSet("semantic render", flag.ContinueOnError)
+	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
+	output := fs.String("output", "", "Output .pptx path (or directory); required")
+	strict := fs.String("strict", "warn", "Advisory-rule strictness: off, warn, or strict")
+	templateName := fs.String("template", "", "Default template used when the spec pins none")
+	templatesDir := fs.String("templates-dir", "", "Template search directory")
+	outputValidation := fs.String("output-validation", "strict", "Post-generation output validation: off, warn, or strict")
+
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx semantic render --spec <file> --output <file.pptx> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Compile a semantic deck spec and render it straight to a .pptx using the\n")
+		fmt.Fprintf(os.Stderr, "shared generation pipeline. Strict output validation is the default.\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		printDoubleDashUsage(fs)
+	}
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		return err
+	}
+	if *specPath == "" {
+		fs.Usage()
+		return fmt.Errorf("--spec is required")
+	}
+	if *output == "" {
+		fs.Usage()
+		return fmt.Errorf("--output is required")
+	}
+	strictness, err := parseStrictness(*strict)
+	if err != nil {
+		return err
+	}
+
+	data, err := os.ReadFile(specReadPath(*specPath))
+	if err != nil {
+		return fmt.Errorf("semantic render: read %s: %w", *specPath, err)
+	}
+
+	startTime := time.Now()
+
+	// Parse the spec. A parse error is fatal and has no source map yet, so the
+	// findings carry their native semantic paths.
+	spec, parseDiags := semantic.Parse(*specPath, data)
+	if parseDiags.HasErrors() {
+		res := semanticRenderResult{OK: false, Error: "semantic render: spec could not be parsed"}
+		for _, d := range parseDiags.ToDiagnostics() {
+			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
+		}
+		_ = fprintJSONIndent(os.Stderr, res)
+		return fmt.Errorf("%s", res.Error)
+	}
+
+	// Validate + compile to a raw PresentationInput. Blocking findings abort the
+	// render with the diagnostics surfaced on the result.
+	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{
+		Strict:          strictness,
+		DefaultTemplate: *templateName,
+	})
+	if err != nil {
+		res := buildSemanticRenderFailure(compileResult, err)
+		_ = fprintJSONIndent(os.Stderr, res)
+		return fmt.Errorf("semantic render: %w", err)
+	}
+
+	// Accept a .pptx file path or a directory for --output (mirrors `generate`):
+	// a file destination splits into parent dir + filename.
+	outputDir := *output
+	if strings.HasSuffix(strings.ToLower(outputDir), ".pptx") {
+		input.OutputFilename = filepath.Base(outputDir)
+		outputDir = filepath.Dir(outputDir)
+	}
+
+	// Apply the shared pre-render prep that a compiled deck still needs: deck
+	// defaults (table/cell styles) and named style references. The compiled deck
+	// already has flat slides, constrained design mode, and no URL/asset refs, so
+	// structure expansion, design-mode revalidation, and the URL/asset PreConvert
+	// hook do not apply here.
+	applyDefaults(input)
+	resolveInputNamedSettingsForDir(*templatesDir, input)
+
+	// Default SVG knobs from the standard config so charts/diagrams render with
+	// the same native-SVG strategy the CLI generate path uses.
+	cfg := config.DefaultConfig()
+	if *templatesDir != "" {
+		cfg.Templates.Dir = *templatesDir
+	}
+
+	runRes, cleanup, renderErr := RunPresentation(context.Background(), input, RenderOptions{
+		OutputDir:        outputDir,
+		TemplatesDir:     cfg.Templates.Dir,
+		OutputValidation: *outputValidation,
+		AccentStrategy:   patterns.AccentStrategy(input.AccentStrategy),
+		SVGStrategy:      string(cfg.SVG.Strategy),
+		SVGScale:         cfg.SVG.Scale,
+		SVGNativeCompat:  string(cfg.SVG.NativeCompatibility),
+		MaxPNGWidth:      cfg.SVG.MaxPNGWidth,
+	})
+	defer cleanup()
+	if renderErr != nil {
+		res := buildSemanticRenderFailure(compileResult, renderErr)
+		_ = fprintJSONIndent(os.Stderr, res)
+		return fmt.Errorf("semantic render: %w", renderErr)
+	}
+
+	res := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
+	return printJSONIndent(res)
+}
+
+// buildSemanticRenderSuccess assembles the compact success result: compile-time
+// advisory diagnostics (already semantic-path-scoped) plus render-time fit
+// findings mapped back to semantic source paths, a merged warnings list, and a
+// quality summary computed over the compiled slides.
+func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileResult, rr RenderResult, start time.Time) semanticRenderResult {
+	var sm *semantic.SourceMap
+	if cr != nil {
+		sm = cr.SourceMap
+	}
+
+	var diags []semanticDiagnostic
+	if cr != nil {
+		for _, d := range cr.Diagnostics {
+			diags = append(diags, semanticDiagFromCompile(d))
+		}
+	}
+
+	var fit []patterns.FitFinding
+	fit = append(fit, rr.SynthesisFindings...)
+	if rr.GenResult != nil {
+		fit = append(fit, rr.GenResult.FitFindings...)
+	}
+	fit = append(fit, rr.StrictFitFindings...)
+	fit = append(fit, rr.GridVisualFindings...)
+	for _, f := range fit {
+		diags = append(diags, semanticDiagFromFit(sm, f))
+	}
+
+	var warnings []string
+	warnings = append(warnings, rr.GridDiagWarnings...)
+	if rr.GenResult != nil {
+		warnings = append(warnings, rr.GenResult.Warnings...)
+	}
+
+	res := semanticRenderResult{
+		OK:          true,
+		OutputPath:  rr.OutputPath,
+		Template:    input.Template,
+		DurationMs:  time.Since(start).Milliseconds(),
+		Warnings:    warnings,
+		Diagnostics: diags,
+		Quality:     computeQualityScore(input.Slides, warnings),
+	}
+	if rr.GenResult != nil {
+		res.SlideCount = rr.GenResult.SlideCount
+		res.ContentHash = rr.GenResult.ContentHash
+	}
+	return res
+}
+
+// buildSemanticRenderFailure assembles a compact failure result from the
+// compile diagnostics (when compilation got far enough to produce them) and any
+// render-time refusal findings, mapping the latter back to semantic source
+// paths where the source map allows it.
+func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticRenderResult {
+	res := semanticRenderResult{OK: false, Error: err.Error()}
+
+	var sm *semantic.SourceMap
+	if cr != nil {
+		sm = cr.SourceMap
+		for _, d := range cr.Diagnostics {
+			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
+		}
+	}
+
+	// A strict_fit refusal carries raw text-fit findings; trace each back to its
+	// semantic source path via the source map (raw path only as a fallback).
+	var refusal *StrictFitRefusal
+	if errors.As(err, &refusal) {
+		for _, f := range refusal.Findings {
+			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFit(sm, convertTextFitFinding(f)))
+		}
+	}
+	return res
+}
+
+// semanticDiagFromCompile adapts a semantic compile/validate diagnostic into the
+// compact render diagnostic. These diagnostics are authored against the semantic
+// DeckSpec, so their path is already a semantic source path.
+func semanticDiagFromCompile(d diagnostics.Diagnostic) semanticDiagnostic {
+	return semanticDiagnostic{
+		Code:         d.Code,
+		Severity:     string(d.Severity),
+		Message:      d.Message,
+		SemanticPath: d.Path,
+	}
+}
+
+// semanticDiagFromFit adapts a raw render fit finding into the compact render
+// diagnostic, mapping its raw JSON path back to the semantic source path the
+// author wrote. When the source map has no entry for the raw path, the raw path
+// is retained as a fallback so the finding is never silently dropped.
+func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semanticDiagnostic {
+	d := semanticDiagnostic{
+		Code:    f.Code,
+		Message: f.Message,
+		Action:  f.Action,
+	}
+	if e, ok := sm.Lookup(f.Path); ok {
+		d.SemanticPath = e.SemanticPath
+	} else {
+		d.RawPath = f.Path
+	}
+	return d
 }
 
 // runSemanticSchema implements "semantic schema". It prints the DeckSpec JSON
