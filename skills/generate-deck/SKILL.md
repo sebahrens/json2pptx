@@ -600,14 +600,16 @@ For multi-table decks, set shared styles once in the top-level `defaults` block 
 ```json
 {
   "defaults": {
-    "table_style": {"style_id": "grid-accent1", "header_background": "accent1"},
+    "table_style": {"style_id": "@template-default", "header_background": "accent1"},
     "cell_style": {"align": "l", "vertical_align": "ctr"}
   },
   "slides": [ ... ]
 }
 ```
 
-**Semantics (V1).** Swap-only: any inline field on a table/cell fully replaces the corresponding defaults field for that field (no deep merge). Supported kinds: `table_style`, `cell_style`. See `../../docs/STYLE_DEFAULTS.md` for scope rules and the `@template-default` sentinel. Table styles available per template are listed in `list_templates`'s `table_styles[]` array.
+**Semantics (V1).** Swap-only: any inline field on a table/cell fully replaces the corresponding defaults field for that field (no deep merge). Supported kinds: `table_style`, `cell_style`. See `../../docs/STYLE_DEFAULTS.md` for scope rules and the `@template-default` sentinel. Table styles available per template are listed in `list_templates`'s `table_styles[]` array — each entry's `id` is a `{8-4-4-4-12}` OOXML GUID.
+
+**`style_id` validation.** A `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (e.g. one of the `id` values from `list_templates`'s `table_styles[]`). Any other value — a friendly name, a typo, or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into the deck. A well-formed GUID the template does not declare is allowed but yields the advisory `unknown_table_style_id` warning.
 
 **Per-template named settings.** Beyond per-deck `defaults`, you can register named `table_styles` and `cell_styles` per template via `register_template_setting`, then reference them by name from any deck. List existing names with `list_template_settings{template_name}`. Both write tools (`register_template_setting`, `delete_template_setting`) require `JSON2PPTX_ALLOW_SETTINGS_WRITE=1` on the server and return `SETTINGS_WRITE_DISABLED` otherwise; the read tool is always available.
 
