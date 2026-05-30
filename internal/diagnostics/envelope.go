@@ -486,7 +486,9 @@ var classifyMap = func() map[string]Namespace {
 		CodeIconPath, CodeIconNotFound, CodeIconPathExtInvalid, CodeIconPathTraversal,
 		CodeIconPathSymlinkEscape, CodeIconAmbiguous, CodeIconMissing, CodeIconList,
 		CodeIconBundledNameUnknown, CodeIconFillIgnoredInline, CodeImagePath,
-		CodeBackgroundImagePath, CodeAssetPathEnvUnset)
+		CodeBackgroundImagePath, CodeAssetPathEnvUnset,
+		CodeSemanticRequired, CodeSemanticUnknownKind, CodeSemanticUnknownArchetype,
+		CodeSemanticTakeawayRequired, CodeSemanticDensity, CodeSemanticWeakContent)
 	add(NamespaceTemplate,
 		CodeTemplateNotFound, CodeTemplateError, CodeTemplatesDir,
 		CodeTemplateMetadataParse, CodeTemplateMetadataVersion,

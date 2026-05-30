@@ -744,6 +744,80 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		RelatedCodes: []string{CodeVisionInspectionFailed, CodeInvalidImage},
 	},
 
+	// ---- Semantic family — compact semantic deck-spec validation gates ----
+
+	CodeSemanticRequired: {
+		Code:        CodeSemanticRequired,
+		Summary:     "A required field is missing from the semantic deck spec.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "semantic validation finds a required field absent — e.g. meta.title, a slide's kind-specific required payload, or a chart_insight series.",
+		RemediationSteps: []string{
+			"Add the field named in evidence.path to the semantic spec.",
+			"Consult the semantic schema (json2pptx semantic schema) for the required fields of each slide kind.",
+		},
+		ExampleBefore: `{"meta": {}, "slides": [...]}`,
+		ExampleAfter:  `{"meta": {"title": "Q2 Board Update"}, "slides": [...]}`,
+		RelatedCodes:  []string{CodeSemanticUnknownKind, CodeSemanticTakeawayRequired},
+	},
+	CodeSemanticUnknownKind: {
+		Code:        CodeSemanticUnknownKind,
+		Summary:     "A slide declares a kind that is not in the semantic vocabulary.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "semantic validation finds a slide whose kind is missing or not one of the registered slide kinds.",
+		RemediationSteps: []string{
+			"Set the slide's kind at evidence.path to a registered kind.",
+			"List the registered kinds via json2pptx semantic schema.",
+		},
+		ExampleBefore: `{"kind": "bogus_kind", "title": "Oops"}`,
+		ExampleAfter:  `{"kind": "title", "title": "Hello"}`,
+		RelatedCodes:  []string{CodeSemanticRequired, CodeSemanticUnknownArchetype},
+	},
+	CodeSemanticUnknownArchetype: {
+		Code:        CodeSemanticUnknownArchetype,
+		Summary:     "meta.archetype is not one of the registered deck archetypes.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "semantic validation finds meta.archetype set to a value outside the registered archetype vocabulary.",
+		RemediationSteps: []string{
+			"Set meta.archetype to a registered archetype, or remove it.",
+			"List the registered archetypes via json2pptx semantic schema.",
+		},
+		RelatedCodes: []string{CodeSemanticUnknownKind},
+	},
+	CodeSemanticTakeawayRequired: {
+		Code:        CodeSemanticTakeawayRequired,
+		Summary:     "A content slide carries no one-line takeaway.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds a content-bearing slide (executive_summary, kpi_snapshot, chart_insight, comparison, process, roadmap, decision) with no takeaway (or insight) line. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Add a takeaway line at evidence.path stating the slide's single message.",
+			"For a chart_insight slide an insight line satisfies the requirement.",
+		},
+		RelatedCodes: []string{CodeSemanticWeakContent, CodeSemanticDensity},
+	},
+	CodeSemanticDensity: {
+		Code:        CodeSemanticDensity,
+		Summary:     "A slide's item count falls outside its recommended density range.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds a count outside the advisory range for the slide kind — e.g. kpi_snapshot kpis not in 2–6, executive_summary points not in 3–5, or a comparison with fewer than two (or unbalanced) columns. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Adjust the item count at evidence.path into the recommended range.",
+			"Split overflowing content across multiple slides, or merge sparse slides.",
+		},
+		RelatedCodes: []string{CodeSemanticTakeawayRequired, CodeSemanticRequired},
+	},
+	CodeSemanticWeakContent: {
+		Code:        CodeSemanticWeakContent,
+		Summary:     "A field still contains placeholder or filler text.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds placeholder markers (TBD, lorem ipsum, __FILL__, TODO, FIXME, placeholder) in a text field. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Replace the placeholder text at evidence.path with real content.",
+		},
+		ExampleBefore: `{"kind": "section", "title": "TBD"}`,
+		ExampleAfter:  `{"kind": "section", "title": "Financial Review"}`,
+		RelatedCodes:  []string{CodeSemanticRequired},
+	},
+
 	// ---- Internal family — unexpected server-side failures ----
 
 	CodeInternal: {

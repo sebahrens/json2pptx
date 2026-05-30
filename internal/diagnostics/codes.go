@@ -113,6 +113,21 @@ const (
 	CodeHeuristicInspectionFailed Code = "HEURISTIC_INSPECTION_FAILED"
 )
 
+// Semantic family — compact semantic deck-spec validation gates.
+//
+// These are emitted by internal/semantic.Validate when a semantic DeckSpec
+// violates an authoring rule (missing required field, unknown kind/archetype,
+// out-of-range density, missing takeaway, placeholder/weak content). They live
+// in the INPUT namespace (see classifyMap in envelope.go).
+const (
+	CodeSemanticRequired         Code = "SEMANTIC_REQUIRED"
+	CodeSemanticUnknownKind      Code = "SEMANTIC_UNKNOWN_KIND"
+	CodeSemanticUnknownArchetype Code = "SEMANTIC_UNKNOWN_ARCHETYPE"
+	CodeSemanticTakeawayRequired Code = "SEMANTIC_TAKEAWAY_REQUIRED"
+	CodeSemanticDensity          Code = "SEMANTIC_DENSITY"
+	CodeSemanticWeakContent      Code = "SEMANTIC_WEAK_CONTENT"
+)
+
 // Internal family — unexpected server-side failures.
 const (
 	CodeInternal Code = "INTERNAL"
@@ -192,6 +207,13 @@ func AllCodes() []Code {
 		CodeVisionTimeout,
 		CodeVisionInspectionFailed,
 		CodeHeuristicInspectionFailed,
+		// Semantic
+		CodeSemanticRequired,
+		CodeSemanticUnknownKind,
+		CodeSemanticUnknownArchetype,
+		CodeSemanticTakeawayRequired,
+		CodeSemanticDensity,
+		CodeSemanticWeakContent,
 		// Internal
 		CodeInternal,
 	}
