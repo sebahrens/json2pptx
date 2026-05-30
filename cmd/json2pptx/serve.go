@@ -123,6 +123,9 @@ func runServe() error {
 		Cache:            cache,
 		Logger:           logger,
 		StrictValidation: cfg.Templates.IsStrictValidation(),
+		Version:          Version,
+		CommitSHA:        CommitSHA,
+		BuildTime:        BuildTime,
 		FileRetention:    cfg.Storage.FileRetention,
 	})
 

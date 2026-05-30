@@ -56,6 +56,52 @@ func TestNewServer(t *testing.T) {
 	}
 }
 
+// TestNewServer_HealthMetadata verifies that build metadata supplied in
+// ServerConfig is threaded through to the /api/v1/health response. This guards
+// the wiring regression where runServe constructed the server without passing
+// Version/CommitSHA/BuildTime, so health reported defaults while startup logs
+// and `json2pptx version` showed the real ldflags-injected values.
+func TestNewServer_HealthMetadata(t *testing.T) {
+	tempDir := t.TempDir()
+	templatesDir := filepath.Join(tempDir, "templates")
+	if err := os.MkdirAll(templatesDir, 0755); err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
+	}
+
+	server := NewServer(ServerConfig{
+		TemplatesDir: templatesDir,
+		OutputDir:    filepath.Join(tempDir, "output"),
+		Cache:        template.NewMemoryCache(1 * time.Hour),
+		Logger:       slog.Default(),
+		Version:      "9.9.9",
+		CommitSHA:    "deadbeef",
+		BuildTime:    "2026-05-30T12:00:00Z",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp HealthResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.Version != "9.9.9" {
+		t.Errorf("version = %q, want %q", resp.Version, "9.9.9")
+	}
+	if resp.CommitSHA != "deadbeef" {
+		t.Errorf("commit_sha = %q, want %q", resp.CommitSHA, "deadbeef")
+	}
+	if resp.BuildTime != "2026-05-30T12:00:00Z" {
+		t.Errorf("build_time = %q, want %q", resp.BuildTime, "2026-05-30T12:00:00Z")
+	}
+}
+
 // TestServerRouting validates that all routes are properly configured.
 func TestServerRouting(t *testing.T) {
 	tempDir := t.TempDir()
