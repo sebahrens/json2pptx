@@ -110,6 +110,14 @@ func cliCommandClassifications() map[string]cliCommandClass {
 				"now gives MCP agents guarded path-based structural inspection, but the conformance ConformanceReport (which " +
 				"the CLI merges into conformance.json) is not surfaced over MCP, so this stays CLI-only.",
 		},
+		"semantic": {
+			AgentFacing: true,
+			CLIOnlyReason: "Command group (validate|compile|schema) over the compact semantic DeckSpec authoring " +
+				"model (internal/semantic): validate emits the shared finding envelope, compile lowers a spec to raw " +
+				"PresentationInput JSON, and schema prints the DeckSpec JSON Schema. The equivalent MCP semantic tools " +
+				"are tracked separately (go-slide-creator-m0jg.11); until they land this surface stays CLI-only, and an " +
+				"agent can already reach the same outcome by composing validate_input / generate over the compiled JSON.",
+		},
 		"preview-patterns": {
 			AgentFacing: true,
 			CLIOnlyReason: "Pre-renders PNG previews for every named pattern — a local gallery-build/CI step that " +
