@@ -154,27 +154,7 @@ are unaffected.
 
 ### Per-slide chart-style overrides
 
-Add a `chart_style` block on a `chart_value` (or `diagram_value`) to flip an
-executive-default token for one chart. Omit the block to keep the deck-wide
-defaults. Each field is optional:
-
-| field | type | default | effect |
-|---|---|---|---|
-| `show_vertical_gridlines` | bool | `false` | When `true`, draws vertical gridlines on bar/line/area charts in addition to the horizontal ones. |
-| `show_single_series_legend` | bool | `false` | When `true`, renders the legend even when the chart has a single series (default suppresses it because the title carries the label). |
-
-```json
-{
-  "type": "chart",
-  "chart_value": {
-    "type": "bar",
-    "data": {"Q1": 12, "Q2": 18, "Q3": 22, "Q4": 31},
-    "chart_style": {
-      "show_vertical_gridlines": true
-    }
-  }
-}
-```
+Add an optional `chart_style` block on a `chart_value` (or `diagram_value`) to flip an executive-default token for one chart; omit it to keep the deck-wide defaults. `show_vertical_gridlines` (default `false`) draws vertical gridlines on bar/line/area charts in addition to the horizontal ones, and `show_single_series_legend` (default `false`) renders the legend even for a single-series chart (normally suppressed because the title carries the label). See the schema for the authoritative field set.
 
 ```json
 {
