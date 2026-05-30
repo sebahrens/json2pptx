@@ -50,15 +50,34 @@ func runGenerate() error {
 
 	// Reconcile the deprecated --json-output flag with its preferred alias
 	// --json-output-report. Both name the same JSON result report destination.
-	var jsonOutputSet, jsonOutputReportSet bool
+	// We also record whether --templates-dir/--output were explicitly provided so
+	// their non-empty default flag values don't silently overwrite config-file or
+	// environment-derived directories (config/env precedence regression).
+	var jsonOutputSet, jsonOutputReportSet, templatesDirSet, outputDirSet bool
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "json-output":
 			jsonOutputSet = true
 		case "json-output-report":
 			jsonOutputReportSet = true
+		case "templates-dir":
+			templatesDirSet = true
+		case "output":
+			outputDirSet = true
 		}
 	})
+
+	// Pass directory overrides only when the user explicitly set the flag. An
+	// empty string downstream means "no override" — config-file and environment
+	// values win, falling back to config.DefaultConfig() (./templates, ./output).
+	effTemplatesDir := ""
+	if templatesDirSet {
+		effTemplatesDir = *templatesDir
+	}
+	effOutputDir := ""
+	if outputDirSet {
+		effOutputDir = *outputDir
+	}
 	resolvedJSONOutput, err := resolveJSONOutputReport(*jsonOutput, *jsonOutputReport, jsonOutputSet, jsonOutputReportSet)
 	if err != nil {
 		return err
@@ -101,9 +120,9 @@ func runGenerate() error {
 	}
 
 	if *dryRun {
-		return runJSONDryRun(*jsonInput, *templatesDir, *configPath, *designMode, *strictUnknownKeys)
+		return runJSONDryRun(*jsonInput, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
-	return runJSONMode(*jsonInput, resolvedJSONOutput, *templatesDir, *outputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+	return runJSONMode(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
 }
 
 // resolveJSONOutputReport reconciles the deprecated --json-output flag with its

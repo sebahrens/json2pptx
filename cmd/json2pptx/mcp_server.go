@@ -105,26 +105,36 @@ func runMCP() error {
 		return err
 	}
 
+	// Record whether the directory flags were explicitly provided so their
+	// non-empty default values don't overwrite config-file/env directories.
+	var templatesDirSet, outputDirSet bool
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "templates-dir":
+			templatesDirSet = true
+		case "output":
+			outputDirSet = true
+		}
+	})
+
 	// Fail fast if the font subsystem is broken.
 	if err := fontcache.Verify(); err != nil {
 		return fmt.Errorf("font subsystem check failed: %w", err)
 	}
 
-	// Load configuration
-	cfg := config.DefaultConfig()
-	if *configPath != "" {
-		var err error
-		cfg, err = config.Load(*configPath)
-		if err != nil {
-			return fmt.Errorf("load config: %w", err)
-		}
+	// Load configuration. config.Load is always called (even with an empty
+	// path) so environment overrides apply without --config.
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
 	}
 
-	// Apply flag overrides
-	if *templatesDir != "" {
+	// Apply flag overrides only when the flag was explicitly set, so default
+	// flag values don't clobber config-file/env values.
+	if templatesDirSet {
 		cfg.Templates.Dir = *templatesDir
 	}
-	if *outputDir != "" {
+	if outputDirSet {
 		cfg.Storage.OutputDir = *outputDir
 	}
 

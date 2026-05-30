@@ -185,8 +185,27 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	applyDefaults(&input)
 	output.template = input.Template
 
+	// Load configuration (config file + env overrides) before resolving
+	// template-dependent settings, so named-style resolution and template
+	// lookup share one effective templates dir. config.Load is always called
+	// (even with an empty path) so environment overrides apply without --config.
+	// An empty templatesDir means --templates-dir was not explicitly set, so the
+	// config-file/env/default value is preserved.
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		output.Valid = false
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+			Code: "SETTINGS_ERROR", Message: fmt.Sprintf("failed to load config: %v", err),
+			Severity: diagnostics.SeverityError,
+		})
+		return writeDryRunOutput(output)
+	}
+	if templatesDir != "" {
+		cfg.Templates.Dir = templatesDir
+	}
+
 	// Resolve named style references from template settings (shared with MCP).
-	resolveInputNamedSettingsForDir(templatesDir, &input)
+	resolveInputNamedSettingsForDir(cfg.Templates.Dir, &input)
 
 	// Check for unknown keys (additionalProperties:false). Warnings by default;
 	// when --strict-unknown-keys is set, unknown keys become errors (mirroring
@@ -225,23 +244,6 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 	}
 	if !output.Valid {
 		return writeDryRunOutput(output)
-	}
-
-	// Load configuration
-	cfg := config.DefaultConfig()
-	if configPath != "" {
-		cfg, err = config.Load(configPath)
-		if err != nil {
-			output.Valid = false
-			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-				Code: "SETTINGS_ERROR", Message: fmt.Sprintf("failed to load config: %v", err),
-				Severity: diagnostics.SeverityError,
-			})
-			return writeDryRunOutput(output)
-		}
-	}
-	if templatesDir != "" {
-		cfg.Templates.Dir = templatesDir
 	}
 
 	// Resolve template for validation

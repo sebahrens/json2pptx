@@ -249,15 +249,14 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	return &input, warnings, nil
 }
 
-// loadRunConfig loads configuration from configPath (or defaults) and applies CLI overrides.
+// loadRunConfig loads configuration from configPath (always, so environment
+// overrides apply even when no --config is supplied) and then applies explicit
+// CLI overrides. An empty templatesDir/outputDir means the flag was not
+// explicitly set, so the config-file/env/default value is preserved.
 func loadRunConfig(configPath, templatesDir, outputDir string, chartPNG bool) (config.Config, error) {
-	cfg := config.DefaultConfig()
-	if configPath != "" {
-		var err error
-		cfg, err = config.Load(configPath)
-		if err != nil {
-			return cfg, fmt.Errorf("failed to load config: %w", err)
-		}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to load config: %w", err)
 	}
 	if templatesDir != "" {
 		cfg.Templates.Dir = templatesDir
@@ -348,8 +347,16 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(input)
 
+	// Load configuration (config file + env overrides) with explicit CLI
+	// overrides before resolving template-dependent settings, so named-style
+	// resolution and the rest of the pipeline share one effective templates dir.
+	cfg, err := loadRunConfig(configPath, templatesDir, outputDir, chartPNG)
+	if err != nil {
+		return writeJSONError(jsonOutputPath, err)
+	}
+
 	// Resolve named style references from template settings (shared with MCP).
-	resolveInputNamedSettingsForDir(templatesDir, input)
+	resolveInputNamedSettingsForDir(cfg.Templates.Dir, input)
 
 	// Expand structure block into flat slides (mutually exclusive with top-level slides).
 	if input.Structure != nil {
@@ -419,12 +426,6 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return writeJSONError(jsonOutputPath, fmt.Errorf(
 			"no_emoji policy violation(s):\n  %s",
 			strings.Join(msgs, "\n  ")))
-	}
-
-	// Load configuration with CLI overrides
-	cfg, err := loadRunConfig(configPath, templatesDir, outputDir, chartPNG)
-	if err != nil {
-		return writeJSONError(jsonOutputPath, err)
 	}
 
 	// urlResolverCleanup releases any URL-download cache opened by the PreConvert
