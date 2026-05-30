@@ -38,7 +38,10 @@ func buildTableStylesXML(referencedIDs map[string]bool) string {
 	ids = append(ids, types.DefaultTableStyleID)
 	seen[types.DefaultTableStyleID] = true
 	for id := range referencedIDs {
-		if id == "" || seen[id] {
+		// Skip empties, duplicates, and any value that is not a well-formed
+		// table style GUID so user-controlled text never reaches the
+		// styleId="" attribute.
+		if id == "" || seen[id] || !types.IsValidTableStyleID(id) {
 			continue
 		}
 		ids = append(ids, id)
@@ -103,6 +106,10 @@ func buildStubElements(missingIDs []string) string {
 
 	var sb strings.Builder
 	for _, id := range sorted {
+		// Defensive: never declare a styleId that is not a well-formed GUID.
+		if !types.IsValidTableStyleID(id) {
+			continue
+		}
 		name, ok := tableStyleDisplayNames[id]
 		if !ok {
 			name = "Custom Table Style"
@@ -189,7 +196,7 @@ func (ctx *singlePassContext) installTableStylesOverride() {
 		// does not already declare.
 		var missing []string
 		for id := range ctx.tableStyleIDsUsed {
-			if id != "" && !defined[id] {
+			if id != "" && types.IsValidTableStyleID(id) && !defined[id] {
 				missing = append(missing, id)
 			}
 		}

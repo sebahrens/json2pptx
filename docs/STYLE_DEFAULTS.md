@@ -122,6 +122,8 @@ Resolution rules:
 
 The `@template-default` sentinel lives in a separate namespace from user-authored style IDs — there is no collision risk with OOXML GUIDs.
 
+**Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning.
+
 ## Template Surface Properties
 
 Templates expose two additional style-related properties via their embedded metadata (`ppt/go-slide-creator-metadata.json`). These are **not** user-settable in the input JSON — they are authored into the template and consumed automatically by the generator and pattern system.

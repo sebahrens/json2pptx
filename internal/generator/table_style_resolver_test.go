@@ -45,7 +45,9 @@ type stubResolver struct {
 func (s stubResolver) ResolveTableStyleID(_ string) string { return s.resolved }
 
 func TestPopulateTableInShape_WithResolver(t *testing.T) {
-	customGUID := "{CUSTOM-GUID-1234}"
+	// A well-formed OOXML table style GUID — the render sink only emits
+	// GUID-shaped style IDs (see types.IsValidTableStyleID).
+	customGUID := "{ABCDEF01-1234-5678-9ABC-DEF012345678}"
 	table := &types.TableSpec{
 		Headers: []string{"A", "B"},
 		Rows: [][]types.TableCell{

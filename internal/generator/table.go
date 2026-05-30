@@ -271,7 +271,11 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			xml.WriteString(generateTableLevelBorders(config.Style.Borders))
 		}
 	}
-	if config.Style.StyleID != "" {
+	// Only emit a tableStyleId reference for a GUID-shaped OOXML style ID. A
+	// non-GUID value (typo or an injection attempt such as `bad"&<`) is dropped
+	// so raw user-controlled text can never reach the <a:tableStyleId> sink and
+	// produce malformed/attacker-influenced DrawingML.
+	if types.IsValidTableStyleID(config.Style.StyleID) {
 		fmt.Fprintf(&xml, `<a:tableStyleId>%s</a:tableStyleId>`, config.Style.StyleID)
 	}
 	xml.WriteString(`</a:tblPr>`)

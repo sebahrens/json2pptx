@@ -601,9 +601,16 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 								output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(collisionVE))
 							}
 						}
+						// Reject style_id values that the renderer would drop because
+						// they are not GUID-shaped (typos or XML-metacharacter
+						// injection attempts). Error, since they can never render.
+						if d := invalidTableStyleIDDiagnostic(table, tablePath, i); d != nil {
+							output.Valid = false
+							output.Diagnostics = append(output.Diagnostics, *d)
+						}
 						// Validate style_id against template's declared table styles.
-						// Advisory only — an unknown style_id does not invalidate the
-						// deck (Valid is left unchanged), so it is a warning.
+						// Advisory only — an unknown (but well-formed) style_id does
+						// not invalidate the deck (Valid is left unchanged).
 						if vw := validateTableStyleID(table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
 						}
@@ -699,6 +706,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				for cellIdx, cell := range row.Cells {
 					if cell != nil && cell.Table != nil {
 						tablePath := slidepath.GridCellField(i, rowIdx, cellIdx, "table")
+						if d := invalidTableStyleIDDiagnostic(cell.Table, tablePath, i); d != nil {
+							output.Valid = false
+							output.Diagnostics = append(output.Diagnostics, *d)
+						}
 						if vw := validateTableStyleID(cell.Table, tablePath, i, tableStyleByID, availableStyleIDs); vw != nil {
 							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
 						}
@@ -943,6 +954,34 @@ func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, sty
 		Code:    patterns.ErrCodeUnknownTableStyleID,
 		Message: msg,
 		Fix:     fix,
+	}
+}
+
+// invalidTableStyleIDDiagnostic returns an error diagnostic when an authored
+// style_id is neither empty, the @template-default sentinel, nor a well-formed
+// OOXML table style GUID. The renderer only emits GUID-shaped style IDs (see
+// generator.IsValidTableStyleID / types.IsValidTableStyleID) and drops anything
+// else to prevent malformed or injected OOXML, so surface a clear error —
+// rather than silently losing the style_id — when an XML-metacharacter or typo
+// value is authored.
+//
+// This is distinct from validateTableStyleID, which only warns when a
+// well-formed GUID is not declared by the template (advisory). Here the value
+// can never render at all, so the deck is reported invalid.
+func invalidTableStyleIDDiagnostic(table *TableInput, tablePath string, slideIdx int) *diagnostics.Diagnostic {
+	if table == nil || table.Style == nil {
+		return nil
+	}
+	styleID := table.Style.StyleID
+	if styleID == "" || styleID == template.TemplateDefaultSentinel || types.IsValidTableStyleID(styleID) {
+		return nil
+	}
+	return &diagnostics.Diagnostic{
+		Code: diagnostics.CodeInvalidParameter,
+		Path: tablePath + ".style.style_id",
+		Message: fmt.Sprintf("slide %d: table style_id %q is invalid; use %q or a table style GUID such as %q",
+			slideIdx+1, styleID, template.TemplateDefaultSentinel, types.DefaultTableStyleID),
+		Severity: diagnostics.SeverityError,
 	}
 }
 

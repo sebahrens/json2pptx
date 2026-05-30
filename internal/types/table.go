@@ -1,5 +1,7 @@
 package types
 
+import "regexp"
+
 // TableSpec represents a parsed markdown table.
 type TableSpec struct {
 	Headers          []string     // Column headers (expanded: merged cells have empty strings)
@@ -49,6 +51,21 @@ type ConditionalFormat struct {
 // DefaultTableStyleID is the OOXML GUID for "Medium Style 2 - Accent 1",
 // a professional themed table style that adapts to the presentation color scheme.
 const DefaultTableStyleID = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
+
+// tableStyleIDPattern matches an OOXML ST_Guid table style identifier: braces
+// around five hyphen-separated hexadecimal groups (8-4-4-4-12). This is the
+// only shape PowerPoint and stricter readers accept for the value of
+// <a:tableStyleId> and the styleId attribute in ppt/tableStyles.xml.
+var tableStyleIDPattern = regexp.MustCompile(`^\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}$`)
+
+// IsValidTableStyleID reports whether id is a GUID-shaped OOXML table style
+// identifier. It gates user-authored style_id values before they reach the
+// OOXML sinks: any other value — a typo, or an XML attribute/element injection
+// attempt such as `bad"&<` — is rejected so raw text can never be emitted into
+// <a:tableStyleId> text or a styleId="..." attribute.
+func IsValidTableStyleID(id string) bool {
+	return tableStyleIDPattern.MatchString(id)
+}
 
 // DefaultTableStyle provides sensible defaults for table styling.
 // HeaderBackground is intentionally empty so the table style's firstRow

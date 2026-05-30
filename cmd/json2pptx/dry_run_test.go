@@ -455,6 +455,34 @@ func TestValidateTableStyleID(t *testing.T) {
 			t.Errorf("unexpected unknown_table_style_id warning when no style_id set")
 		}
 	})
+
+	t.Run("malicious non-GUID style_id is rejected as an error", func(t *testing.T) {
+		output := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
+		slides := []SlideInput{{
+			LayoutID: "content-slide",
+			Content: []ContentInput{{
+				PlaceholderID: "body",
+				Type:          "table",
+				TableValue: &TableInput{
+					Headers: []string{"A", "B"},
+					Rows:    [][]TableCellInput{{{Content: "1"}, {Content: "2"}}},
+					Style:   &TableStyleInput{StyleID: `bad"&<>`},
+				},
+			}},
+		}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+
+		if output.Valid {
+			t.Error("expected deck to be marked invalid for a malformed style_id")
+		}
+		found := findDiagByCode(output.Diagnostics, string(diagnostics.CodeInvalidParameter))
+		if found == nil {
+			t.Fatal("expected an INVALID_PARAMETER diagnostic for malformed style_id")
+		}
+		if found.Severity != diagnostics.SeverityError {
+			t.Errorf("expected error severity, got %q", found.Severity)
+		}
+	})
 }
 
 func TestValidateShapeFillColor_HexWarning(t *testing.T) {

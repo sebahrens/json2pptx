@@ -2149,3 +2149,62 @@ func TestResolveConditionalFill_Allowlist(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateTableXML_StyleIDAllowlist(t *testing.T) {
+	tests := []struct {
+		name     string
+		styleID  string
+		wantEmit bool // expect a <a:tableStyleId> referencing styleID
+	}{
+		{name: "engine default GUID", styleID: types.DefaultTableStyleID, wantEmit: true},
+		{name: "custom GUID", styleID: "{ABCDEF01-1234-5678-9ABC-DEF012345678}", wantEmit: true},
+		{name: "empty drops", styleID: "", wantEmit: false},
+		{name: "xml injection drops", styleID: `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/><a:evil/>`, wantEmit: false},
+		{name: "raw metacharacters drop", styleID: `bad"&<>`, wantEmit: false},
+		{name: "non-guid typo drops", styleID: "MyStyle", wantEmit: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			table := &types.TableSpec{
+				Headers: []string{"H"},
+				Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
+				Style:   types.TableStyle{StyleID: tt.styleID, Borders: "all"},
+			}
+			config := TableRenderConfig{
+				Bounds: types.BoundingBox{Width: 1000000},
+				Style:  table.Style,
+			}
+			result, err := GenerateTableXML(table, config)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			hasStyleID := strings.Contains(result.XML, "<a:tableStyleId>")
+			if hasStyleID != tt.wantEmit {
+				t.Errorf("styleID %q: emitted tableStyleId = %v, want %v; XML: %s",
+					tt.styleID, hasStyleID, tt.wantEmit, result.XML)
+			}
+			// Regardless of emission, raw injection markup must never leak.
+			if strings.Contains(result.XML, "<a:evil") || strings.Contains(result.XML, `bad"&<`) {
+				t.Errorf("styleID %q leaked raw markup into XML: %s", tt.styleID, result.XML)
+			}
+		})
+	}
+}
+
+func TestBuildTableStylesXML_DropsMalformedID(t *testing.T) {
+	malicious := `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/><a:evil/>`
+	xml := buildTableStylesXML(map[string]bool{malicious: true, "notaguid": true})
+
+	if strings.Contains(xml, "<a:evil") {
+		t.Errorf("buildTableStylesXML leaked malformed styleId into output: %s", xml)
+	}
+	if strings.Contains(xml, "notaguid") {
+		t.Errorf("buildTableStylesXML declared a non-GUID styleId: %s", xml)
+	}
+	// The engine default must still be present.
+	if !strings.Contains(xml, types.DefaultTableStyleID) {
+		t.Errorf("expected engine default GUID in output, got: %s", xml)
+	}
+}
