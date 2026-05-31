@@ -2240,7 +2240,29 @@ func jsonSlideToDefinition(slide SlideInput) types.SlideDefinition { //nolint:go
 		}
 	}
 
+	// Pattern, compose, and shape_grid slides expand into a full-area shape grid
+	// rendered into the body content zone. Their `content` array usually carries
+	// only a title, so inferSlideType classifies them as title-type slides — and
+	// the heuristic then happily assigns a Section Divider / title / closing
+	// layout whose tiny content area (~0.58in tall) the expanded grid overflows
+	// (silently dropped under --partial, hard error otherwise). Model them as
+	// full-area visual slides so layout selection reuses isLayoutSuitable's
+	// rejection of section-header/closing/two-column layouts and its minimum
+	// body-placeholder size guard, steering to a real content layout instead.
+	// Explicit slide_type hints are respected — inferSlideType returns them
+	// verbatim, so only auto-inferred types are overridden here.
+	if slide.SlideType == "" && hasPatternContent(slide) {
+		def.Type = types.SlideTypeDiagram
+	}
+
 	return def
+}
+
+// hasPatternContent reports whether a slide carries pattern, compose, or
+// shape_grid content that expands into a full-area shape grid. These three
+// envelopes are mutually exclusive (XOR-enforced in convertSinglePresentationSlide).
+func hasPatternContent(slide SlideInput) bool {
+	return slide.Pattern != nil || slide.Compose != nil || slide.ShapeGrid != nil
 }
 
 // synthesizeContentSlots derives a slot map from the distinct content-bearing

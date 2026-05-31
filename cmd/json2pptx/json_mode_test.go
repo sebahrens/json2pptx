@@ -1085,6 +1085,63 @@ func TestJsonSlideToDefinition(t *testing.T) {
 			t.Error("HasSlots() = true, want false for title + subtitle")
 		}
 	})
+
+	t.Run("pattern slide models as full-area visual type", func(t *testing.T) {
+		// Regression for go-slide-creator-ced3: a pattern slide whose content
+		// array carries only a title would otherwise infer SlideTypeTitle, letting
+		// the heuristic assign a Section Divider layout whose tiny content area the
+		// expanded grid overflows. Model it as a full-area visual slide instead.
+		slide := SlideInput{
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Our Key Metrics")},
+			},
+			Pattern: &PatternInput{Name: "kpi-4up"},
+		}
+		def := jsonSlideToDefinition(slide)
+		if def.Type != types.SlideTypeDiagram {
+			t.Errorf("Type = %q, want %q for pattern slide", def.Type, types.SlideTypeDiagram)
+		}
+	})
+
+	t.Run("compose slide models as full-area visual type", func(t *testing.T) {
+		slide := SlideInput{
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Overview")},
+			},
+			Compose: &ComposeInput{Direction: "vertical"},
+		}
+		def := jsonSlideToDefinition(slide)
+		if def.Type != types.SlideTypeDiagram {
+			t.Errorf("Type = %q, want %q for compose slide", def.Type, types.SlideTypeDiagram)
+		}
+	})
+
+	t.Run("shape_grid slide models as full-area visual type", func(t *testing.T) {
+		slide := SlideInput{
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Section Overview")},
+			},
+			ShapeGrid: &ShapeGridInput{},
+		}
+		def := jsonSlideToDefinition(slide)
+		if def.Type != types.SlideTypeDiagram {
+			t.Errorf("Type = %q, want %q for shape_grid slide", def.Type, types.SlideTypeDiagram)
+		}
+	})
+
+	t.Run("explicit slide_type on pattern slide is respected", func(t *testing.T) {
+		slide := SlideInput{
+			SlideType: "section",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Part Two")},
+			},
+			Pattern: &PatternInput{Name: "agenda"},
+		}
+		def := jsonSlideToDefinition(slide)
+		if def.Type != types.SlideTypeSection {
+			t.Errorf("Type = %q, want %q (explicit slide_type must win)", def.Type, types.SlideTypeSection)
+		}
+	})
 }
 
 // --- autoMapPlaceholders ---
