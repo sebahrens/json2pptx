@@ -200,7 +200,14 @@ func (ctx *singlePassContext) prepareImages() error {
 		resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes)
 		ctx.warnings = append(ctx.warnings, resolver.warnings...)
 
-		for _, item := range slideSpec.Content {
+		// Track which shapes have already received a visual content block. A
+		// placeholder can host at most one visual (chart/table/image/diagram);
+		// a second visual resolving to the same shape would render on top of the
+		// first at identical bounds, silently burying it. Detect that collision
+		// and emit a CONTENT_DROPPED finding rather than overlapping the content.
+		claimedVisualShapes := make(map[int]int) // shapeIdx -> content index of the visual that claimed it
+
+		for contentIdx, item := range slideSpec.Content {
 			// Check for visual content types
 			switch item.Type {
 			case ContentImage, ContentDiagram, ContentTable:
@@ -216,6 +223,22 @@ func (ctx *singlePassContext) prepareImages() error {
 				ctx.warnings = append(ctx.warnings, PlaceholderNotFoundError(item.PlaceholderID, layoutID, available))
 				continue
 			}
+
+			// A visual already occupies this placeholder. Rendering this one too
+			// would overlap it, so drop it and surface a machine-actionable
+			// CONTENT_DROPPED finding suggesting the author split the slide or use
+			// `compose` to give each visual its own region.
+			if firstIdx, claimed := claimedVisualShapes[shapeIdx]; claimed {
+				locator := fmt.Sprintf("content block %d (%s)", contentIdx+1, item.Type)
+				reason := fmt.Sprintf(
+					"placeholder %q already holds a visual content block (block %d); a placeholder can host only one chart/table/image — split the slide or use `compose` to give each visual its own region",
+					item.PlaceholderID, firstIdx+1)
+				ctx.emitFitFinding(patterns.ContentDropped(
+					slidepath.ContentIndex(slideNum-1, contentIdx), locator, reason))
+				ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: %s dropped — %s", slideNum, locator, reason))
+				continue
+			}
+			claimedVisualShapes[shapeIdx] = contentIdx
 
 			// Log non-exact resolutions for observability (matches populateTextInSlide behavior).
 			if tier != TierExact {

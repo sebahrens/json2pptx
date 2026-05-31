@@ -747,7 +747,7 @@ The single, shared signal for **any** path that fails to place author-provided c
 
 The drop has *already happened* by the time the finding is emitted — it is advisory and never blocks generation (action `review`). The fix carries `params.locator` (a short label for what was dropped — `"slide 4"`, `"content block 3"`, `"left column"`) and `params.reason` (why placement failed) so an agent can route the repair without re-deriving the cause. There is no single deterministic auto-fix (fix kind `review`, mirroring `diagram_render_failed`): the agent restructures or splits the slide, or fixes the underlying spec error.
 
-Emitted today from the partial-mode slide-skip path in slide conversion; other drop paths (`>2` content blocks, dense-pattern section-divider overflow) adopt the same `patterns.ContentDropped(path, locator, reason)` constructor as they are hardened.
+Emitted today from the partial-mode slide-skip path in slide conversion, and from the **multi-visual collision** path in image preparation — when two or more visual content blocks (chart / table / image / diagram) resolve to the *same* placeholder, only the first is rendered and each subsequent one is dropped (rather than silently overlapping the first at identical bounds), each with its own `CONTENT_DROPPED` finding pointing at `/slides/{i}/content/{n}` and a `reason` suggesting the author split the slide or use `compose` to give each visual its own region. Other drop paths (dense-pattern section-divider overflow) adopt the same `patterns.ContentDropped(path, locator, reason)` constructor as they are hardened.
 
 ```json
 {
