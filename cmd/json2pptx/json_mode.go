@@ -591,7 +591,15 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return writeJSONOutput(jsonOutputPath, output)
 	}
 
-	// Otherwise print summary to stdout
+	// Otherwise print summary to stdout. Surface every collected warning so the
+	// human-readable CLI path is not silent about partial-mode dropped slides and
+	// other non-fatal issues that the JSON path already reports via the
+	// "warnings" field. Without this, --partial could drop slides with no message
+	// (e.g. 44 inputs -> 41 outputs and nothing explaining the 3 that vanished).
+	for _, w := range allWarnings {
+		slog.Warn(w)
+	}
+
 	slog.Info("JSON conversion complete",
 		"output", outputPath,
 		"slides", result.SlideCount,

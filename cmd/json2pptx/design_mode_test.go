@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -369,6 +371,60 @@ func TestRunJSONMode_PartialSkipsDesignModeViolations(t *testing.T) {
 	}
 	if !foundWarning {
 		t.Errorf("expected warning about slide 1 being skipped in partial mode for design_mode violation, got warnings: %v", result.Warnings)
+	}
+}
+
+// TestRunJSONMode_PartialDropWarningsSurfacedOnStdout verifies that when no
+// -json-output path is given (the human-readable CLI summary path), partial-mode
+// dropped-slide warnings are still printed via the logger. Regression for
+// go-slide-creator-nvdz: --partial silently produced fewer slides than the input
+// with no message naming the dropped slides.
+func TestRunJSONMode_PartialDropWarningsSurfacedOnStdout(t *testing.T) {
+	tmpDir := t.TempDir()
+	jsonPath := filepath.Join(tmpDir, "deck.json")
+	templatesDir := filepath.Join("..", "..", "templates")
+
+	// Slide 1 has a raw hex fill (constrained-mode violation -> dropped in partial
+	// mode); slide 2 is clean and renders.
+	input := `{
+		"template": "midnight-blue",
+		"output_filename": "out.pptx",
+		"slides": [
+			{
+				"layout_id": "title",
+				"shape_grid": {
+					"rows": [
+						{"cells": [{"shape": {"geometry": "rect", "fill": "#FF0000"}}]}
+					]
+				}
+			},
+			{
+				"layout_id": "title",
+				"content": [
+					{"placeholder_id": "title", "type": "text", "text_value": "Clean Slide"}
+				]
+			}
+		]
+	}`
+	if err := os.WriteFile(jsonPath, []byte(input), 0644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	// Capture the default logger output (the stdout-summary path logs via slog).
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(prev)
+
+	// jsonOutputPath is empty -> exercises the human-readable summary branch.
+	err := runJSONMode(jsonPath, "", templatesDir, tmpDir, "", false, false, "", "off", true, "off", "", false)
+	if err != nil {
+		t.Fatalf("runJSONMode (partial=true): unexpected error: %v", err)
+	}
+
+	logged := buf.String()
+	if !strings.Contains(logged, "slide 1") || !strings.Contains(logged, "skipped (partial mode)") {
+		t.Errorf("expected logged warning naming the dropped slide, got logger output:\n%s", logged)
 	}
 }
 
