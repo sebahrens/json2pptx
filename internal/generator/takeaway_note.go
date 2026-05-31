@@ -18,6 +18,14 @@ const (
 	takeawayExtentCY = 360000   // ~28pt — accommodates a 12pt bold line + padding
 )
 
+// TakeawayBandTopEMU is the Y coordinate (EMU) of the top edge of the fixed
+// lower band where the takeaway headline renders. It is the single source of
+// truth for that boundary: layout code that lays out full-area content (e.g.
+// the shape-grid content zone) reserves space above this line when a slide
+// carries a takeaway, so cards do not crowd or touch the takeaway text
+// (go-slide-creator-rdtn).
+const TakeawayBandTopEMU int64 = takeawayOffsetY
+
 // takeawayFontSize is the takeaway font size in hundredths of a point.
 // Sourced from the tokens package so the rendered takeaway tracks the
 // CardTitle typography role published in skills/generate-deck/RULES.md.

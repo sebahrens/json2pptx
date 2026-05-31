@@ -924,8 +924,11 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 
 		// Rhythm grid: override content zone to enforce consistent positioning.
 		if rhythmGrid != nil {
-			gridZone := gridToContentZone(rhythmGrid)
-			contentZone = gridZone
+			// Reserve the takeaway band on the rhythm zone too, so the
+			// shared-contract reservation in resolveGridGeometry is not lost
+			// when the rhythm grid takes precedence (go-slide-creator-rdtn).
+			rhythmGeom := reserveTakeawayBand(GridGeometry{Zone: gridToContentZone(rhythmGrid)}, slide)
+			contentZone = rhythmGeom.Zone
 			// Clear override bounds — the grid zone takes precedence.
 			overrideBounds = nil
 		}

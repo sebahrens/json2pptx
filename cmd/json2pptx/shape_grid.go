@@ -401,6 +401,46 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 			}
 		}
 	}
+	return reserveTakeawayBand(g, slide)
+}
+
+// gridChromeGapPt is the standard gap (points) reserved between grid content and
+// surrounding chrome (title/footer/takeaway). Matches the gap resolveVirtualLayout
+// applies between the title/footer edges and the content area.
+const gridChromeGapPt = 9.0
+
+// reserveTakeawayBand pulls the content zone's FooterTop above the fixed
+// takeaway band when the slide carries a takeaway headline, so full-area
+// patterns (e.g. kpi-Nup) leave a clear gap instead of extending their cards
+// down to the footer/min-margin line and crowding the takeaway text
+// (go-slide-creator-rdtn). Returns g unchanged when there is no takeaway, no
+// zone, or the footer chrome already sits above the band. When the zone carries
+// virtual override bounds, their bottom edge is clamped to leave the same gap
+// above the band. This runs inside the shared geometry contract so generation,
+// preflight, fit-report, and preview all reserve the band identically.
+func reserveTakeawayBand(g GridGeometry, slide SlideInput) GridGeometry {
+	if slide.Takeaway == "" || g.Zone == nil {
+		return g
+	}
+	bandTop := generator.TakeawayBandTopEMU
+	if g.Zone.FooterTop <= bandTop {
+		return g
+	}
+	adjusted := *g.Zone
+	adjusted.FooterTop = bandTop
+	g.Zone = &adjusted
+
+	if g.OverrideBounds != nil {
+		maxBottom := bandTop - int64(gridChromeGapPt*12700)
+		b := *g.OverrideBounds
+		if b.Y+b.CY > maxBottom {
+			b.CY = maxBottom - b.Y
+			if b.CY < 0 {
+				b.CY = 0
+			}
+			g.OverrideBounds = &b
+		}
+	}
 	return g
 }
 
