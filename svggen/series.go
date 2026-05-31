@@ -300,10 +300,10 @@ func (bs *BarSeries) drawValueLabel(x, y, value, width, baseY float64) {
 		switch bs.config.ValuePosition {
 		case ValuePositionTop:
 			if barHeight >= 0 {
-				labelY = y - style.Spacing.XS
+				labelY = y - style.Spacing.SM
 				baseline = TextBaselineBottom
 			} else {
-				labelY = y + style.Spacing.XS
+				labelY = y + style.Spacing.SM
 				baseline = TextBaselineTop
 			}
 		case ValuePositionCenter:
@@ -518,7 +518,7 @@ func (ls *LineSeries) draw(coords []Point, baseY float64, points []DataPoint) {
 		b.SetFontSize(style.Typography.SizeSmall).SetFontWeight(style.Typography.WeightNormal)
 		for i, c := range coords {
 			label := formatValue(points[i].Y, ls.config.ValueFormat)
-			labelY := c.Y - ls.config.MarkerSize - style.Spacing.XS
+			labelY := c.Y - ls.config.MarkerSize - style.Spacing.SM
 			b.DrawText(label, c.X, labelY, TextAlignCenter, TextBaselineBottom)
 		}
 	}

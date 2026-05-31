@@ -434,7 +434,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 		// Annotations not supported on log-scale charts (no linear yScale)
 	} else {
-		yScale := NewLinearScale(yMin, yMax)
+		yScale := NewLinearScale(yMin, withBarTopHeadroom(yMax))
 		yScale.SetRangeLinear(plotArea.H, 0)
 		yScale.Nice(true)
 
@@ -577,7 +577,7 @@ func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData,
 	if yMin > 0 {
 		yMin = 0
 	}
-	yScale := NewLinearScale(yMin, yMax)
+	yScale := NewLinearScale(yMin, withBarTopHeadroom(yMax))
 	yScale.SetRangeLinear(plotArea.H, 0)
 	yScale.Nice(true)
 
@@ -595,8 +595,9 @@ func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData,
 		v := series.Values[lastCatIdx]
 		barCenterX := xScale.ScaleStart(lastCat) + (bandwidth-groupWidth)/2 + barWidth*float64(i) + barWidth/2
 		barTopY := plotArea.Y + yScale.Scale(v)
-		// Place label one ex-height above the bar top, clamped inside the plot area.
-		labelY := barTopY - style.Spacing.XS
+		// Place label above the bar top with a small gap, clamped inside the
+		// plot area. Uses SM (not XS) so the label clears the bar top cleanly.
+		labelY := barTopY - style.Spacing.SM
 		if labelY < plotArea.Y+style.Typography.SizeSmall {
 			labelY = plotArea.Y + style.Typography.SizeSmall
 		}
@@ -649,6 +650,29 @@ func (bc *BarChart) calculateDomain(data ChartData) (min, max float64) {
 	}
 
 	return min, max
+}
+
+// barTopHeadroomFactor expands a bar chart's positive y-domain max so the
+// tallest bar leaves clearance for a value/direct label above its top instead
+// of touching the plot ceiling. Linear bars rely on Nice() rounding for
+// headroom, but when the data max already lands on a tick boundary (e.g. a
+// max of 100 with a step of 20) Nice() adds nothing and the bar — plus its
+// top-anchored label — crowds the plot edge. This mirrors the ~5% top padding
+// line/area charts apply in calculateYDomain, using a slightly larger factor
+// because bar value labels sit *above* the bar top rather than at the data
+// point, so they need more clearance.
+const barTopHeadroomFactor = 1.08
+
+// withBarTopHeadroom expands a positive domain max by barTopHeadroomFactor and
+// leaves non-positive maxima (negative-only or all-zero data) untouched so
+// Nice() still anchors the axis at a sensible boundary. The same expansion is
+// applied wherever a bar y-scale is built so the bars and their direct labels
+// stay aligned.
+func withBarTopHeadroom(yMax float64) float64 {
+	if yMax > 0 {
+		return yMax * barTopHeadroomFactor
+	}
+	return yMax
 }
 
 // needsLogScale returns true when the chart data spans enough orders of
