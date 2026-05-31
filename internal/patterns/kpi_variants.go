@@ -75,7 +75,7 @@ var kpiVariants = []KPINupConfig{
 type Kpi3upCell = KPICell
 
 // Kpi3upValues is the values type: exactly 3 KPI cells.
-type Kpi3upValues = []KPICell
+type Kpi3upValues = KPINupValues
 
 // Kpi3upOverrides contains pattern-level overrides for kpi-3up.
 type Kpi3upOverrides = KPIOverrides
@@ -84,7 +84,7 @@ type Kpi3upOverrides = KPIOverrides
 type Kpi3upCellOverride = KPICellOverride
 
 // Kpi4upValues is the values type: exactly 4 KPI cells.
-type Kpi4upValues = []KPICell
+type Kpi4upValues = KPINupValues
 
 // Kpi4upOverrides contains pattern-level overrides for kpi-4up.
 type Kpi4upOverrides = KPIOverrides

@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +23,11 @@ type KPICell struct {
 	Icon  *IconRef `json:"icon,omitempty"`
 }
 
-// UnmarshalJSON supports string shorthand "Big | Small" or object {big, small}.
+// UnmarshalJSON supports string shorthand "Big | Small" or an object. The object
+// canonical keys are {big, small}, but the intuitive aliases {value|number} and
+// {label|caption} are also accepted so agents that reach for the natural field
+// names ("$127M" as value, "Revenue" as label) succeed instead of silently
+// producing empty cells.
 func (c *KPICell) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {
@@ -34,12 +39,59 @@ func (c *KPICell) UnmarshalJSON(data []byte) error {
 		c.Small = parts[1]
 		return nil
 	}
-	type alias KPICell
-	var a alias
-	if err := json.Unmarshal(data, &a); err != nil {
-		return fmt.Errorf("KPICell must be string \"Big | Small\" or {big, small}: %w", err)
+	var obj struct {
+		Big     string   `json:"big"`
+		Small   string   `json:"small"`
+		Value   string   `json:"value"`
+		Number  string   `json:"number"`
+		Label   string   `json:"label"`
+		Caption string   `json:"caption"`
+		Icon    *IconRef `json:"icon"`
 	}
-	*c = KPICell(a)
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return fmt.Errorf("KPICell must be a string \"Big | Small\" or an object {big, small} (aliases value/number, label/caption): %w", err)
+	}
+	c.Big = firstNonEmpty(obj.Big, obj.Value, obj.Number)
+	c.Small = firstNonEmpty(obj.Small, obj.Label, obj.Caption)
+	c.Icon = obj.Icon
+	return nil
+}
+
+// firstNonEmpty returns the first non-empty string in vs, or "".
+func firstNonEmpty(vs ...string) string {
+	for _, v := range vs {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// KPINupValues is the values type for every kpi-Nup / kpi-inline variant: an
+// ordered list of KPI cells.
+type KPINupValues []KPICell
+
+// UnmarshalJSON accepts the canonical JSON array of cells and, as a tolerance
+// affordance, a single bare cell (object or string). A lone object/string is
+// wrapped into a one-element slice so that passing one KPI surfaces a clear
+// count validation error ("exactly N cells") rather than the cryptic
+// "cannot unmarshal object into Go value of type []patterns.KPICell".
+func (v *KPINupValues) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		var cells []KPICell
+		if err := json.Unmarshal(data, &cells); err != nil {
+			return err
+		}
+		*v = cells
+		return nil
+	}
+	// Single object or string shorthand — wrap into a one-element slice.
+	var cell KPICell
+	if err := json.Unmarshal(data, &cell); err != nil {
+		return fmt.Errorf("values must be a JSON array of KPI cells (or a single cell): %w", err)
+	}
+	*v = KPINupValues{cell}
 	return nil
 }
 

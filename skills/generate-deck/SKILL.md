@@ -614,11 +614,22 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
   "layout_id": "blank",
   "pattern": {
     "name": "kpi-3up",
-    "values": { ... },
+    "values": [
+      {"big": "$127M", "small": "Revenue"},
+      {"big": "43%",   "small": "Gross margin"},
+      {"big": "2.1x",  "small": "YoY growth"}
+    ],
     "callout": {"text": "Takeaway", "emphasis": "accent1"}
   }
 }
 ```
+
+**KPI `values` is always a JSON array of cells**, one per metric (`kpi-2up`…`kpi-6up`, `kpi-inline`). Each cell is either:
+
+- an object `{"big": "$127M", "small": "Revenue"}` — `big` is the headline number (≤ 8 chars), `small` is the caption. The intuitive aliases `value`/`number` (→ `big`) and `label`/`caption` (→ `small`) are also accepted.
+- a pipe-delimited string shorthand `"$127M | Revenue"` (exactly one ` | ` separator).
+
+Both forms validate and expand identically; you may mix them within one `values` array. Passing a single bare cell instead of an array is tolerated (wrapped into a one-element list), so the result is a clear "exactly N cells" count error rather than an unmarshal failure.
 
 **Do NOT hand-roll shape grids when a named pattern exists.**
 

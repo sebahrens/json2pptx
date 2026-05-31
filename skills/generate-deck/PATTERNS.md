@@ -21,11 +21,17 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
   "layout_id": "blank",
   "pattern": {
     "name": "kpi-3up",
-    "values": { ... },
+    "values": [
+      {"big": "$127M", "small": "Revenue"},
+      {"big": "43%",   "small": "Gross margin"},
+      {"big": "2.1x",  "small": "YoY growth"}
+    ],
     "callout": {"text": "Takeaway", "emphasis": "accent1"}
   }
 }
 ```
+
+KPI `values` is a JSON **array** of cells (one per metric). Each cell is an object `{"big", "small"}` (aliases `value`/`number` → `big`, `label`/`caption` → `small`) or a pipe-delimited string `"$127M | Revenue"`. The two forms are interchangeable and may be mixed in one array.
 
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 

@@ -17,6 +17,9 @@ func TestKPICellUnmarshalJSON(t *testing.T) {
 		wantErr bool
 	}{
 		{"object_form", `{"big":"$4.2M","small":"ARR"}`, "$4.2M", "ARR", false},
+		{"alias_value_label", `{"value":"$4.2M","label":"ARR"}`, "$4.2M", "ARR", false},
+		{"alias_number_caption", `{"number":"42","caption":"NPS"}`, "42", "NPS", false},
+		{"canonical_wins_over_alias", `{"big":"$4.2M","value":"ignored","small":"ARR","label":"ignored"}`, "$4.2M", "ARR", false},
 		{"string_shorthand", `"$4.2M | ARR"`, "$4.2M", "ARR", false},
 		{"shorthand_with_pipe_in_small", `"99% | Win | Loss"`, "99%", "Win | Loss", false},
 		{"string_no_pipe", `"just_a_value"`, "", "", true},
@@ -43,6 +46,48 @@ func TestKPICellUnmarshalJSON(t *testing.T) {
 			}
 		})
 	}
+
+	// A bare single cell (object or string) is wrapped into a one-element slice
+	// so the agent gets a clear count error, not a cryptic slice unmarshal error.
+	t.Run("single_object_wrapped_into_slice", func(t *testing.T) {
+		var vals KPINupValues
+		if err := json.Unmarshal([]byte(`{"big":"$4.2M","small":"ARR"}`), &vals); err != nil {
+			t.Fatalf("unmarshal single object: %v", err)
+		}
+		if len(vals) != 1 {
+			t.Fatalf("expected 1 wrapped cell, got %d", len(vals))
+		}
+		if vals[0].Big != "$4.2M" || vals[0].Small != "ARR" {
+			t.Errorf("wrapped cell = %+v", vals[0])
+		}
+	})
+
+	t.Run("single_string_wrapped_into_slice", func(t *testing.T) {
+		var vals KPINupValues
+		if err := json.Unmarshal([]byte(`"$4.2M | ARR"`), &vals); err != nil {
+			t.Fatalf("unmarshal single string: %v", err)
+		}
+		if len(vals) != 1 || vals[0].Big != "$4.2M" {
+			t.Fatalf("unexpected wrap result: %+v", vals)
+		}
+	})
+
+	// The intuitive value/label object array (what agents reach for) decodes and
+	// validates identically to the canonical big/small form.
+	t.Run("alias_array_validate_equivalence", func(t *testing.T) {
+		aliasForm := `[{"value":"$4.2M","label":"ARR"},{"value":"127%","label":"NRR"},{"value":"12d","label":"Cycle"}]`
+		var cells Kpi3upValues
+		if err := json.Unmarshal([]byte(aliasForm), &cells); err != nil {
+			t.Fatalf("unmarshal alias form: %v", err)
+		}
+		p, ok := Default().Get("kpi-3up")
+		if !ok {
+			t.Fatal("kpi-3up not registered")
+		}
+		if err := p.Validate(&cells, nil, nil); err != nil {
+			t.Fatalf("validate alias form: %v", err)
+		}
+	})
 
 	// Shorthand values should validate and expand identically to object form.
 	t.Run("shorthand_validate_expand_equivalence", func(t *testing.T) {

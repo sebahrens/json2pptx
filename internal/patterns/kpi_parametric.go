@@ -80,9 +80,6 @@ func (k *kpiNup) ExemplarValues() any {
 	return &vals
 }
 
-// KPINupValues is the values type for any kpi-Nup variant.
-type KPINupValues = []KPICell
-
 func (k *kpiNup) NewValues() any       { return &KPINupValues{} }
 func (k *kpiNup) NewOverrides() any    { return &KPIOverrides{} }
 func (k *kpiNup) NewCellOverride() any { return &KPICellOverride{} }
