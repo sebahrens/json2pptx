@@ -1031,6 +1031,59 @@ func TestJsonSlideToDefinition(t *testing.T) {
 			t.Error("HasSlots() = true, want false for slide without slot markers")
 		}
 	})
+
+	t.Run("two distinct content placeholders synthesize slots", func(t *testing.T) {
+		// Regression for go-slide-creator-6knv: a two-column slide using
+		// body + body_2 (no ::slotN:: markers) must be modeled as multi-slot so
+		// layout selection requires a layout with two content placeholders
+		// instead of collapsing both columns into one.
+		slide := SlideInput{
+			SlideType: "two-column",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Title")},
+				{PlaceholderID: "body", Type: "bullets", BulletsValue: &[]string{"L1", "L2", "L3"}},
+				{PlaceholderID: "body_2", Type: "bullets", BulletsValue: &[]string{"R1", "R2", "R3"}},
+			},
+		}
+		def := jsonSlideToDefinition(slide)
+		if !def.HasSlots() {
+			t.Fatal("HasSlots() = false, want true for body + body_2 content")
+		}
+		if len(def.Slots) != 2 {
+			t.Errorf("Slots count = %d, want 2", len(def.Slots))
+		}
+	})
+
+	t.Run("left and right aliases synthesize slots", func(t *testing.T) {
+		slide := SlideInput{
+			SlideType: "comparison",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Title")},
+				{PlaceholderID: "left", Type: "bullets", BulletsValue: &[]string{"a"}},
+				{PlaceholderID: "right", Type: "bullets", BulletsValue: &[]string{"b"}},
+			},
+		}
+		def := jsonSlideToDefinition(slide)
+		if len(def.Slots) != 2 {
+			t.Errorf("Slots count = %d, want 2 for left + right content", len(def.Slots))
+		}
+	})
+
+	t.Run("title plus subtitle does not synthesize slots", func(t *testing.T) {
+		// Title-area placeholders are chrome, not content columns: a title slide
+		// with title + subtitle must not be treated as a two-slot slide.
+		slide := SlideInput{
+			SlideType: "title",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Title")},
+				{PlaceholderID: "subtitle", Type: "text", TextValue: strPtr("Subtitle")},
+			},
+		}
+		def := jsonSlideToDefinition(slide)
+		if def.HasSlots() {
+			t.Error("HasSlots() = true, want false for title + subtitle")
+		}
+	})
 }
 
 // --- autoMapPlaceholders ---

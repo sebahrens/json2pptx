@@ -2219,7 +2219,84 @@ func jsonSlideToDefinition(slide SlideInput) types.SlideDefinition { //nolint:go
 		}
 	}
 
+	// When the content array (no explicit ::slotN:: markers) targets two or more
+	// distinct content placeholders (e.g., body + body_2, or left + right), model
+	// the slide as multi-slot so layout selection requires a layout with enough
+	// content placeholders. Without this, a two-column slide whose per-column
+	// bullet counts exceed a multi-content layout's small MaxBullets is scored
+	// down on capacity and loses to a single-content layout — collapsing both
+	// columns into one placeholder (the second silently overwrites the first).
+	if len(def.Slots) == 0 {
+		if slots := synthesizeContentSlots(slide.Content); len(slots) >= 2 {
+			def.Slots = slots
+		}
+	}
+
 	return def
+}
+
+// synthesizeContentSlots derives a slot map from the distinct content-bearing
+// placeholder IDs referenced by a slide's content array. Title, subtitle, and
+// section-number placeholders are excluded because they are chrome, not content
+// columns. Slot numbers are assigned 1..N in order of first appearance so that
+// downstream position-sensitive checks (narrow-diagram penalty, per-slot height
+// guards) map slots to content placeholders left-to-right.
+func synthesizeContentSlots(content []ContentInput) map[int]*types.SlotContent {
+	slots := make(map[int]*types.SlotContent)
+	order := make(map[string]int) // normalized placeholder ID -> slot number
+	next := 1
+
+	for _, item := range content {
+		id := item.PlaceholderID
+		if id == "" {
+			continue
+		}
+		if isTitlePlaceholderID(id) || isLikelySubtitle(id) || generator.IsSectionNumberAlias(id) {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(id))
+		if _, seen := order[key]; seen {
+			continue
+		}
+		slotNum := next
+		next++
+		order[key] = slotNum
+
+		sc := &types.SlotContent{SlotNumber: slotNum}
+		switch item.Type {
+		case "bullets":
+			sc.Type = types.SlotContentBullets
+		case "body_and_bullets":
+			sc.Type = types.SlotContentBodyAndBullets
+		case "bullet_groups":
+			sc.Type = types.SlotContentBulletGroups
+		case "chart":
+			sc.Type = types.SlotContentChart
+		case "diagram":
+			sc.Type = types.SlotContentInfographic
+		case "table":
+			sc.Type = types.SlotContentTable
+		case "image":
+			sc.Type = types.SlotContentImage
+		case "text":
+			sc.Type = types.SlotContentText
+		}
+		// Attach the diagram spec so width-sensitive scoring (narrow-diagram
+		// penalty) can evaluate this slot's placeholder.
+		if sc.Type == types.SlotContentChart || sc.Type == types.SlotContentInfographic {
+			if resolved, err := item.ResolveValue(); err == nil {
+				switch v := resolved.(type) {
+				case *types.DiagramSpec:
+					sc.DiagramSpec = v
+				case *types.ChartSpec: //nolint:staticcheck // backward compat
+					sc.DiagramSpec = v.ToDiagramSpec()
+				}
+			}
+		}
+		slots[slotNum] = sc
+	}
+
+	return slots
 }
 
 // autoMapPlaceholders assigns placeholder IDs to content items that lack them,
