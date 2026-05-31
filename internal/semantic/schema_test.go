@@ -50,6 +50,58 @@ func TestSchemaKindEnumMatchesRegistry(t *testing.T) {
 	}
 }
 
+func TestSchemaEmitsPerKindVariants(t *testing.T) {
+	schema := Schema()
+	defs := schema["$defs"].(map[string]any)
+	slide := defs["SlideSpec"].(map[string]any)
+
+	// SlideSpec is a discriminated union: one oneOf $ref per registered kind.
+	oneOf, ok := slide["oneOf"].([]any)
+	if !ok {
+		t.Fatal("SlideSpec missing oneOf discriminated union")
+	}
+	if len(oneOf) != len(slideKindRegistry) {
+		t.Errorf("oneOf has %d variants, registry has %d", len(oneOf), len(slideKindRegistry))
+	}
+
+	for k, info := range slideKindRegistry {
+		name := kindDefName(k)
+		variant, ok := defs[name].(map[string]any)
+		if !ok {
+			t.Errorf("missing $defs.%s for kind %q", name, k)
+			continue
+		}
+		props := variant["properties"].(map[string]any)
+
+		// kind is pinned via const.
+		kindProp, ok := props["kind"].(map[string]any)
+		if !ok || kindProp["const"] != string(k) {
+			t.Errorf("kind %q: variant does not pin kind via const, got %v", k, props["kind"])
+		}
+
+		// Every required field is a documented property and listed in required.
+		req := variant["required"].([]any)
+		reqSet := make(map[string]bool, len(req))
+		for _, r := range req {
+			reqSet[r.(string)] = true
+		}
+		for _, f := range info.RequiredFields {
+			if _, ok := props[f]; !ok {
+				t.Errorf("kind %q: required field %q missing from variant properties", k, f)
+			}
+			if !reqSet[f] {
+				t.Errorf("kind %q: required field %q missing from variant required list", k, f)
+			}
+		}
+		// Every typical field is a documented property.
+		for _, f := range info.TypicalFields {
+			if _, ok := props[f]; !ok {
+				t.Errorf("kind %q: typical field %q missing from variant properties", k, f)
+			}
+		}
+	}
+}
+
 func TestSchemaArchetypeEnumMatchesRegistry(t *testing.T) {
 	schema := Schema()
 	defs := schema["$defs"].(map[string]any)

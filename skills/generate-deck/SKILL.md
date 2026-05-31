@@ -59,8 +59,11 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > ⚠️ **Unknown payload fields are silently ignored.** The DeckSpec payload accepts arbitrary keys
 > (`additionalProperties: true`), so a misspelled or invented field name — `points` written as
 > `bullets`, `kpis` as `metrics_list`, a column's `items` as `rows` — is dropped without error and
-> its content never reaches a slide. Use **exactly** the field names in the table. (Strict rejection
-> of unknown payload fields lands with go-slide-creator-7dk4; until then, mismatches fail silently.)
+> its content never reaches a slide. Use **exactly** the field names in the table. `semantic schema`
+> now declares each kind's payload fields as a discriminated union (`$defs.Slide_<kind>`, pinned by
+> `kind` const, referenced from `SlideSpec.oneOf`), so a JSON-Schema validator can flag missing
+> required or unknown fields — but the compiler itself still ignores unknown keys at render time, so
+> validate the spec against the schema rather than relying on the engine to reject mistakes.
 
 | kind | required | typical / optional | item-object fields (exact) |
 |---|---|---|---|
