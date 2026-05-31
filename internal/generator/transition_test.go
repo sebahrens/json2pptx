@@ -186,11 +186,11 @@ func TestInsertTransitionAndBuild(t *testing.T) {
 		if !strings.Contains(s, `<p:fade/>`) {
 			t.Error("missing fade element")
 		}
-		// Verify transition comes before clrMapOvr
+		// CT_Slide schema order requires transition AFTER clrMapOvr.
 		transIdx := strings.Index(s, "<p:transition")
 		clrIdx := strings.Index(s, "<p:clrMapOvr")
-		if transIdx >= clrIdx {
-			t.Error("transition should come before clrMapOvr")
+		if transIdx <= clrIdx {
+			t.Error("transition should come after clrMapOvr (CT_Slide schema order)")
 		}
 	})
 
@@ -222,6 +222,22 @@ func TestInsertTransitionAndBuild(t *testing.T) {
 		}
 	})
 
+	t.Run("self-closing clrMapOvr", func(t *testing.T) {
+		selfClosing := []byte(`<p:sld>
+  <p:cSld>
+    <p:spTree></p:spTree>
+  </p:cSld>
+  <p:clrMapOvr bg1="lt1" tx1="dk1"/>
+</p:sld>`)
+		got := insertTransitionAndBuild(selfClosing, "fade", "", "")
+		s := string(got)
+		transIdx := strings.Index(s, "<p:transition")
+		clrEnd := strings.Index(s, `tx1="dk1"/>`)
+		if transIdx == -1 || clrEnd == -1 || transIdx <= clrEnd {
+			t.Errorf("transition should be inserted after self-closing clrMapOvr; got %q", s)
+		}
+	})
+
 	t.Run("fallback to closing sld tag", func(t *testing.T) {
 		noClrMap := []byte(`<p:sld>
   <p:cSld>
@@ -233,5 +249,43 @@ func TestInsertTransitionAndBuild(t *testing.T) {
 		if !strings.Contains(s, "<p:transition") {
 			t.Error("missing transition element in fallback case")
 		}
+		// Must still precede </p:sld>.
+		if strings.Index(s, "<p:transition") >= strings.Index(s, "</p:sld>") {
+			t.Error("transition should be inserted before </p:sld>")
+		}
 	})
+}
+
+// TestInsertTransitionAndBuild_PipelineOrder is a regression test for the bug where
+// insertTransitionAndBuild ran BEFORE fixOOXMLNamespaces and silently no-oped because
+// its <p:clrMapOvr>/</p:sld> anchors did not yet exist in the bare-tag XML. It mirrors
+// the real generation order: bare tags -> fixOOXMLNamespaces -> insertTransitionAndBuild.
+func TestInsertTransitionAndBuild_PipelineOrder(t *testing.T) {
+	// Bare (un-prefixed) slide XML, as produced before fixOOXMLNamespaces.
+	bare := []byte(`<sld><cSld><spTree></spTree></cSld><clrMapOvr><masterClrMapping/></clrMapOvr></sld>`)
+
+	fixed := fixOOXMLNamespaces(bare)
+	got := string(insertTransitionAndBuild(fixed, "fade", "fast", "bullets"))
+
+	for _, want := range []string{
+		`<p:transition spd="fast">`,
+		`<p:fade/>`,
+		`<p:timing>`,
+		`<p:bldLst>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("pipeline output missing %q; got:\n%s", want, got)
+		}
+	}
+
+	// Verify CT_Slide child order: clrMapOvr < transition < timing < </p:sld>.
+	clr := strings.Index(got, "<p:clrMapOvr")
+	clrEnd := strings.Index(got, "</p:clrMapOvr>")
+	trans := strings.Index(got, "<p:transition")
+	timing := strings.Index(got, "<p:timing>")
+	sldEnd := strings.Index(got, "</p:sld>")
+	if !(clr < clrEnd && clrEnd < trans && trans < timing && timing < sldEnd) {
+		t.Errorf("elements out of CT_Slide schema order: clrMapOvr=%d clrEnd=%d transition=%d timing=%d /sld=%d\n%s",
+			clr, clrEnd, trans, timing, sldEnd, got)
+	}
 }

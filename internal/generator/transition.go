@@ -184,7 +184,14 @@ func buildBulletBuildTimingXML() string {
 }
 
 // insertTransitionAndBuild inserts <p:transition> and <p:timing> elements into slide XML.
-// These elements go after </p:cSld> and before <p:clrMapOvr> in the OOXML slide structure.
+//
+// The OOXML CT_Slide schema fixes the child order as: cSld, clrMapOvr, transition,
+// timing, extLst. So the transition and timing elements must be inserted AFTER the
+// clrMapOvr element (not before it) to produce schema-valid output.
+//
+// IMPORTANT: this must run on slide XML that has already had its namespace prefixes
+// applied (see fixOOXMLNamespaces). The anchors below match the prefixed tags
+// (<p:clrMapOvr>, </p:cSld>, </p:sld>); calling it on bare-tag XML is a silent no-op.
 func insertTransitionAndBuild(slideData []byte, transition, speed, build string) []byte {
 	transXML := buildTransitionXML(transition, speed)
 	var buildXML string
@@ -196,14 +203,9 @@ func insertTransitionAndBuild(slideData []byte, transition, speed, build string)
 		return slideData
 	}
 
-	// Insert before <p:clrMapOvr> (which comes after </p:cSld>)
-	insertPoint := bytes.Index(slideData, []byte("<p:clrMapOvr"))
+	insertPoint := transitionInsertPoint(slideData)
 	if insertPoint == -1 {
-		// Fallback: insert before </p:sld>
-		insertPoint = bytes.LastIndex(slideData, []byte("</p:sld>"))
-		if insertPoint == -1 {
-			return slideData // Can't find insertion point
-		}
+		return slideData // Can't find insertion point
 	}
 
 	var insertion string
@@ -213,11 +215,36 @@ func insertTransitionAndBuild(slideData []byte, transition, speed, build string)
 	if buildXML != "" {
 		insertion += "\n" + buildXML
 	}
-	insertion += "\n"
 
 	result := make([]byte, 0, len(slideData)+len(insertion))
 	result = append(result, slideData[:insertPoint]...)
 	result = append(result, insertion...)
 	result = append(result, slideData[insertPoint:]...)
 	return result
+}
+
+// transitionInsertPoint returns the byte offset at which <p:transition>/<p:timing>
+// should be spliced into the (namespace-prefixed) slide XML so the result stays
+// schema-valid. Preference order: right after the clrMapOvr element, else after
+// </p:cSld>, else immediately before </p:sld>. Returns -1 if none are found.
+func transitionInsertPoint(slideData []byte) int {
+	// After the clrMapOvr element. It may be paired (<p:clrMapOvr>...</p:clrMapOvr>)
+	// or self-closing (<p:clrMapOvr .../>).
+	if start := bytes.Index(slideData, []byte("<p:clrMapOvr")); start != -1 {
+		if end := bytes.Index(slideData[start:], []byte("</p:clrMapOvr>")); end != -1 {
+			return start + end + len("</p:clrMapOvr>")
+		}
+		if end := bytes.Index(slideData[start:], []byte("/>")); end != -1 {
+			return start + end + len("/>")
+		}
+	}
+	// No clrMapOvr: place after the closing cSld tag.
+	if idx := bytes.Index(slideData, []byte("</p:cSld>")); idx != -1 {
+		return idx + len("</p:cSld>")
+	}
+	// Last resort: just before the closing slide tag.
+	if idx := bytes.LastIndex(slideData, []byte("</p:sld>")); idx != -1 {
+		return idx
+	}
+	return -1
 }

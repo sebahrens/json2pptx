@@ -792,13 +792,15 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
-	// Insert transition and build animation XML if present
+	// Fix OOXML namespace prefixes for compatibility with LibreOffice/PowerPoint
+	slideData = fixOOXMLNamespaces(slideData)
+
+	// Insert transition and build animation XML if present. This MUST run after
+	// fixOOXMLNamespaces: the insertion anchors (<p:clrMapOvr>, </p:cSld>,
+	// </p:sld>) only exist once prefixes have been applied.
 	if spec, ok := ctx.slideContentMap[slideNum]; ok {
 		slideData = insertTransitionAndBuild(slideData, spec.Transition, spec.TransitionSpeed, spec.Build)
 	}
-
-	// Fix OOXML namespace prefixes for compatibility with LibreOffice/PowerPoint
-	slideData = fixOOXMLNamespaces(slideData)
 
 	// Insert background image after namespace fix (uses already-prefixed p: and a: tags)
 	if bgMedia, hasBg := ctx.slideBgMedia[slideNum]; hasBg && bgMedia.relID != "" {
