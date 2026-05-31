@@ -563,6 +563,38 @@ func TestComparison2col(t *testing.T) {
 		}
 	})
 
+	t.Run("expand_body_rows_zebra_striped_by_default", func(t *testing.T) {
+		// Three body rows, no headers, no explicit row_fill: body rows should
+		// alternate between two surface tints so sparse rows read as grouped.
+		vals := Comparison2colValues{
+			Rows: []Comparison2colRow{
+				{Left: "A1", Right: "B1"},
+				{Left: "A2", Right: "B2"},
+				{Left: "A3", Right: "B3"},
+			},
+		}
+		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if len(grid.Rows) != 3 {
+			t.Fatalf("expected 3 body rows, got %d", len(grid.Rows))
+		}
+		// Empty metadata -> ResolveSurface falls back to lt1/lt2.
+		wantFills := []string{"lt1", "lt2", "lt1"}
+		for i, row := range grid.Rows {
+			for j, cell := range row.Cells {
+				var fill string
+				if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
+					t.Fatalf("row[%d].cell[%d] fill unmarshal: %v", i, j, err)
+				}
+				if fill != wantFills[i] {
+					t.Errorf("row[%d].cell[%d] fill = %q, want %q (zebra striping)", i, j, fill, wantFills[i])
+				}
+			}
+		}
+	})
+
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := Comparison2colValues{

@@ -89,7 +89,7 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
+            "fill": "lt2",
             "text": {
               "paragraphs": [
                 {
@@ -107,7 +107,7 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt1",
+            "fill": "lt2",
             "text": {
               "paragraphs": [
                 {

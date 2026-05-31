@@ -155,7 +155,10 @@ func (v Comparison2colValues) MarshalJSON() ([]byte, error) {
 // body row background color (e.g. "lt2", "#F5F0E8").
 type Comparison2colOverrides struct {
 	TextOverrides
-	RowFill string `json:"row_fill,omitempty"` // scheme color or hex for body row backgrounds (default "lt1")
+	// RowFill paints every body row the same background color (scheme name or
+	// hex). When omitted, body rows are zebra-striped between two surface tints
+	// as a grouping cue; setting row_fill disables striping.
+	RowFill string `json:"row_fill,omitempty"`
 }
 
 // Comparison2colCellOverride is an alias for the shared CellOverride struct.
@@ -203,7 +206,7 @@ func (c *comparison2col) Schema() *Schema {
 			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
 			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
-			"row_fill":         StringSchema(0).WithDescription("Background fill color for body rows (scheme name like 'lt2' or hex like '#F5F0E8'; default 'lt1')"),
+			"row_fill":         StringSchema(0).WithDescription("Uniform background fill for body rows (scheme name like 'lt2' or hex like '#F5F0E8'). Omit to zebra-stripe body rows between two surface tints as a grouping cue; setting this paints every body row the same color."),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -307,10 +310,16 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	headerSize := ResolveSize(ovr.HeaderSize, 18.0)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
 	cellAccentMode := ovr.CellAccentMode
-	rowFill := ovr.RowFill
-	if rowFill == "" {
-		rowFill = "lt1"
-	}
+
+	// Body-row fills. When no explicit row_fill is given, alternate body rows
+	// between two surface tints (zebra striping). The banding is a grouping cue:
+	// it makes each left/right pair read as one unit and keeps sparse 3-row
+	// comparisons from looking like floating, ungrouped cells. An explicit
+	// row_fill overrides striping and paints every body row the same color.
+	striped := ovr.RowFill == ""
+	stripeFillA := ctx.ResolveSurface("subtle", "lt1") // even body rows
+	stripeFillB := ctx.ResolveSurface("paper", "lt2")  // odd body rows
+	uniformFill := ovr.RowFill
 
 	hasHeaders := vals.HeaderLeft != "" || vals.HeaderRight != ""
 	cellIdx := 0 // running cell index for cell_overrides
@@ -351,8 +360,16 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	}
 
 	// Body rows — apply inline markdown emphasis (**bold**, *italic*)
-	rowFillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, rowFill))
-	for _, row := range vals.Rows {
+	for bi, row := range vals.Rows {
+		rowFill := uniformFill
+		if striped {
+			rowFill = stripeFillA
+			if bi%2 == 1 {
+				rowFill = stripeFillB
+			}
+		}
+		rowFillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, rowFill))
+
 		leftText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, "dk1", "l")
 		rightText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, "dk1", "l")
 
