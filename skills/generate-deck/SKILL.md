@@ -10,12 +10,11 @@ description: >
 
 # Deck Generation Skill
 
-Prefer semantic deck specs for new content-bearing decks. Your first output should be
-valid input for `render_deck_spec` / `validate_deck_spec` (or the CLI
-`json2pptx semantic render --spec`) unless the user explicitly needs raw
-`PresentationInput`, a feature outside the semantic schema, or a targeted raw repair.
-Raw JSON for `generate_presentation` / `json2pptx generate -json` remains the
-escape hatch and the compiler output format.
+For new content-bearing decks, author a semantic **DeckSpec** and render it with
+`render_deck_spec` (CLI `json2pptx semantic render`) — see [Semantic deck specs](#semantic-deck-specs--the-default-authoring-path)
+below. Drop to raw `PresentationInput` via `generate_presentation` / `json2pptx generate -json`
+only when the user needs a feature outside the semantic schema or a targeted raw repair;
+raw JSON is also the compiler's own output format.
 
 This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
@@ -31,15 +30,55 @@ Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (cont
 
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 
-**Start semantically, not from a blank raw JSON slate.** For ordinary business decks,
-write semantic YAML with `meta.{title,subtitle,archetype,audience,template}` and slide
-`kind` values such as `executive_summary`, `kpi_snapshot`, `chart_insight`,
-`comparison`, `roadmap`, and `decision` (call `list_slide_kinds` /
-`json2pptx semantic schema` for each kind's fields); validate it with `validate_deck_spec`,
-then render with `render_deck_spec`. If you need raw authoring, five canonical
-fillable JSON skeletons live in [`examples/skeletons/`](examples/skeletons/README.md)
-— pick the one matching your deck archetype, copy it, and replace the `__FILL_*__`
-tokens. Skeletons pre-encode the rhythm rules, accent strategy, and required
+## Semantic deck specs — the default authoring path
+
+For ordinary business decks, author a compact **DeckSpec** (`meta` + `slides[].kind`) and let
+the compiler choose patterns, layouts, accents, and rhythm — a spec is far shorter than the raw
+`PresentationInput` it lowers to. Write it as YAML or JSON; both the MCP `spec` arg and the CLI
+`--spec` accept either.
+
+**Tools** (MCP `json2pptx-mcp` · CLI `json2pptx semantic <sub>`):
+
+| Step | MCP tool | CLI | Purpose |
+|---|---|---|---|
+| Discover | `list_deck_archetypes`, `list_slide_kinds` | `semantic schema` | Enumerate `meta.archetype` / `slides[].kind` and each kind's required + typical fields. `semantic schema` prints the full DeckSpec JSON Schema (draft 2020-12). |
+| Validate | `validate_deck_spec` | `semantic validate` | First check: unknown kinds/archetypes, missing required payload fields, rhythm/density advisories. Returns the shared finding envelope; `ok=false` ⇒ ≥1 error-severity finding (`--strict off\|warn\|strict` controls advisory severity). |
+| Preview plan | `explain_deck_spec` | `semantic explain` | Read-only projection: resolved archetype/template, deck `rhythm` + `rhythm_warnings[]`, and per slide `{index, kind, role, visual_family, density, title, takeaway, pattern, layout}` — **without** compiling or rendering. Use during planning. |
+| Render | `render_deck_spec` | `semantic render` | One-call spec → `.pptx`. Strict output validation by default (`output_validation off\|warn\|strict`). Returns `{success, pptx_path, quality_summary, diagnostics[], explanation_summary}`. |
+| Lower to raw | `compile_deck_spec` (`include_compiled_json: true`) | `semantic compile --envelope` | Escape hatch: emit the compiled `PresentationInput` to hand-edit, then drive `validate_input` / `generate_presentation`. Default output is compact (`{ok, slide_count, template, diagnostics[]}`). |
+
+**`meta.archetype`** ∈ `board_update`, `qbr`, `sales_pitch`, `strategy_proposal`,
+`project_roadmap`, `market_analysis` — biases template choice, default rhythm, and whether a
+synthesis/decision slide is expected (call `list_deck_archetypes` for each one's default template +
+`executive` flag).
+
+**`slides[].kind`** (required field in parens; `list_slide_kinds` gives required + typical fields
+per kind): `title`(title) · `section`(title) · `executive_summary`(title) · `kpi_snapshot`(kpis) ·
+`chart_insight`(chart) · `comparison`(columns) · `process`(steps) · `roadmap`(phases) ·
+`decision`(title) · `closing`(title) · `raw_json2pptx`(slide — per-slide raw escape hatch,
+validated then passed through). Template resolution order: spec `meta.template` > tool/CLI
+`template` arg > archetype default.
+
+**Repair stays in the spec.** `render_deck_spec` maps every render-time fit finding back to the
+semantic source you wrote: each `diagnostics[]` entry carries `semantic_path` (the DeckSpec field
+to edit), `raw_path` (compiled-pointer fallback), `slide_index`, `action`, and often a
+`recommended_edit`. **Edit the spec at `semantic_path` and re-render** — do not patch the compiled
+JSON unless you have deliberately dropped to the raw escape hatch.
+
+```yaml
+meta: {title: "Q3 Review", archetype: board_update, template: midnight-blue}
+slides:
+  - {kind: title, title: "Q3 Review", subtitle: "Board update"}
+  - {kind: executive_summary, title: "Bottom line", points: [...], takeaway: "..."}
+  - {kind: kpi_snapshot, title: "Where we stand", kpis: [...]}
+  - {kind: chart_insight, title: "Revenue", chart: {...}, insight: "..."}
+  - {kind: decision, title: "Recommendation", options: [...], recommendation: "..."}
+```
+
+**Raw authoring (escape hatch).** When you need raw `PresentationInput` directly — a feature
+outside the semantic schema, or a targeted raw repair — five fillable JSON skeletons live in
+[`examples/skeletons/`](examples/skeletons/README.md): pick the one matching your archetype, copy
+it, replace the `__FILL_*__` tokens. Skeletons pre-encode rhythm, accent strategy, and required
 `takeaway` fields so you do not re-derive them per deck.
 
 | Archetype | Skeleton | When to reach for it |
@@ -236,8 +275,8 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 | `validate_input` | RENDER | Cheapest precondition gate — full-deck schema + optional `fit_report` + optional `strict_unknown_keys` for fail-fast on typo'd fields + optional `placeholder_policy` (default `warn`) to surface leftover `__FILL__` skeleton tokens. Always run before `generate_presentation`. |
 | `generate_presentation` | RENDER | Render the PPTX. Defaults to `output_validation: "strict"` (see [Output Validation Guarantee](#output-validation-guarantee)); `strict_fit` controls overflow promotion (see [FINDINGS.md](FINDINGS.md)); `placeholder_policy` (default `warn`) warns on unresolved `__FILL__` tokens — set it to `"strict"` for publishable/gated output so leftover skeleton tokens block generation. |
 | `repair_slide` | REPAIR | Apply targeted fixes to a single slide using the `Fix.Kind` vocabulary fit-report emits. For multi-slide fixes, run `propose_repairs` first to translate findings into ranked directives. |
-| `auto_repair` | REPAIR | Server-side convergence loop: each pass runs `generate→inspect→repair` against a configurable gate (`min_score`, `max_p0_findings`, `max_p1_findings`, `require_takeaway_on_charts`). Returns `{path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, quality, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}`. Replaces hand-coded `generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation` loops. Default `max_passes` is 3; the final deck is always rendered, with `gate_passed` reporting whether convergence succeeded. `final_presentation` is the full repaired deck JSON (always present, including zero-repair runs) — feed it back into `validate_input` / `generate_presentation` / `repair_slide` to keep editing without rebuilding state from the trace. **Resumable per-pass state** (see [Resumable convergence](#resumable-convergence-resume_token--next_state)): `next_state` (always present) carries `{completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]}`; when `resumable` is `true`, call `auto_repair` again with `resume_token` to continue from the saved post-repair deck **without repeating completed passes** (override `gate` / `max_passes` to relax bounds or grant more passes; `presentation` is ignored). **Publishability** (see [Validation evidence on the repair facades](#validation-evidence-on-the-repair-facades)): `publishable` is the single ship-as-is flag — `true` only when the gate passed on complete evidence AND content is author-supplied (auto_repair always reports `content_status: "author_supplied"`); `manual_review_required` is its inverse; `blocking_reasons[]` (superset of `gate_reasons[]`) names every cause when not publishable; `artifact_status` ∈ {`generated`, `generated_invalid`}; `validation_status` ∈ {`passed`, `passed_degraded`, `failed`}. **Validation evidence**: `gate_passed` can only be `true` on complete evidence — the per-pass render succeeded **and** the final structural output validation passed. `evidence_complete` (always present) is the authoritative clean-evidence flag; `output_validation` (always present) reports the final `pptx.ValidateOutputFile` run; `render_evidence` appears only when a render pass failed (then a `RENDER_EVIDENCE_INCOMPLETE` refuse finding blocks the gate). Pass `allow_degraded_scoring: true` to converge on static analysis alone when renders fail — the diagnostic drops to advisory and `render_evidence.degraded` labels the result, but final output validation still blocks. **Quality mode** (`quality_mode` + `quality`): defaults to `"deterministic"` — static + render-fit findings only, no rendering or API key. Pass `visual_qa:{enabled:true}` for the opt-in `"deterministic+visual_qa"` mode that adds a vision/heuristic visual refinement phase (render thumbnails → `inspect_slide_images` → repair → re-render) plus optional `audit_palette`. `quality_mode` reports the regime that **actually** ran (alias of `quality.actual`); the always-present `quality` block (`{requested, actual, inspection_mode?, fallback_reasons[]?}`) separates what you asked for from what ran, so a requested-but-skipped visual phase reports `quality_mode: "deterministic"` rather than overstating rigor; see [Visual-QA mode](#visual-qa-mode-auto_repair--make_deck). |
-| `make_deck` | COLD-START | One-call facade: hand it an `outline` (natural-language brief) and it chains `plan_deck → expand patterns with exemplar content → auto_repair` internally, returning a **DRAFT PPTX skeleton** in a single tool call. **The output is not publishable as-is** — with no caller content it fills every slide with pattern exemplar PLACEHOLDER values, so the response ALWAYS reports `content_status: "exemplar_skeleton"`, `uses_exemplar_content: true`, and `publishable: false` (the exemplar reason appears in `blocking_reasons[]`) even when the gate passes; replace the exemplar copy via `repair_slide` and run the rendered visual-QA / manual-review branch before shipping. Same `gate` vocabulary as `auto_repair`. Optional `style_hints` (`slide_budget`, `audience`, `accent_strategy`, `must_include`), `max_repair_passes` (default 3, clamped to [1, 10]), `allow_degraded_scoring`, and the same opt-in `visual_qa` block as `auto_repair`. Returns `{path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, quality, plan, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}` where `plan.slides[]` exposes the per-slide pattern + role + title so you can target `repair_slide` follow-ups without re-planning, and `final_presentation` is the full authored+repaired deck JSON (feed it back into `validate_input` / `generate_presentation` / `repair_slide` to keep editing without rebuilding it from the plan or trace). `publishable` / `manual_review_required` / `blocking_reasons` / `artifact_status` / `validation_status` and the `evidence_complete` / `output_validation` / `render_evidence` validation-evidence contract are identical to `auto_repair`. `next_state` and `resume_token` work exactly as in `auto_repair` (see [Resumable convergence](#resumable-convergence-resume_token--next_state)) — resuming a make_deck token preserves the returned `plan` and continues the internal loop without re-planning; `outline` is ignored on resume. Use this as the recommended starting point when you don't need fine control; switch to the precondition workflow (`recommend_visual` → `expand_pattern` → `validate_input` → `generate_presentation`) when you want to author per-slide content yourself. |
+| `auto_repair` | REPAIR | Server-side `generate→inspect→repair` convergence loop against a tunable `gate` (`min_score`, `max_p0_findings`, `max_p1_findings`, `require_takeaway_on_charts`); replaces hand-coded score→propose→repair→regenerate loops. Default `max_passes` 3; the final deck is always rendered. Returns `final_presentation` (full repaired JSON, always present — feed back into `validate_input`/`generate_presentation`/`repair_slide`), `gate_passed`, the publishability/evidence fields (`publishable`, `manual_review_required`, `blocking_reasons[]`, `content_status`, `evidence_complete`, `output_validation`, `render_evidence?`), and `next_state`/`resume_token` for resuming. **Default deterministic** (static + render-fit only, no rendering/API key); pass `visual_qa:{enabled:true}` to add a vision pass, `allow_degraded_scoring:true` to converge when renders fail. Full contract below: [Output Validation Guarantee](#output-validation-guarantee), [Visual-QA mode](#visual-qa-mode-auto_repair--make_deck), [Resumable convergence](#resumable-convergence-resume_token--next_state); per-field detail in [TOOLS.md](TOOLS.md). |
+| `make_deck` | COLD-START | One-call facade: hand it an `outline` (natural-language brief) → chains `plan_deck → expand patterns with exemplar content → auto_repair`, returning a **DRAFT** PPTX skeleton. Output is **never publishable** — with no caller content it fills slides with pattern exemplar PLACEHOLDER values, so it always reports `content_status: "exemplar_skeleton"`, `uses_exemplar_content: true`, `publishable: false` even when the gate passes; replace exemplar copy via `repair_slide`, then run visual QA / manual review before shipping. Same `gate`, `next_state`/`resume_token`, and publishability/evidence contract as `auto_repair`; adds `plan.slides[]` (per-slide pattern/role/title, for targeting `repair_slide` without re-planning) and `final_presentation` (full authored+repaired JSON). Optional `style_hints` (`slide_budget`, `audience`, `accent_strategy`, `must_include`), `max_repair_passes`, `allow_degraded_scoring`, `visual_qa`. Prefer this for cold starts; switch to the precondition workflow when authoring per-slide content yourself. Detail in [TOOLS.md](TOOLS.md). |
 
 **Stop when the quality gate passes.** Every `score_deck` response carries a `quality_gate` block — the **machine-readable definition of done**:
 

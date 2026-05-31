@@ -6,11 +6,13 @@ The 4-phase deep dive. SKILL.md has the short overview and the PRECONDITION list
 
 ## Phase 1: PLAN — Design the Deck Outline
 
-For new content-bearing decks, the preferred artifact is a semantic deck spec,
+For new content-bearing decks, the preferred artifact is a semantic **DeckSpec**,
 not raw `PresentationInput` JSON. Capture the same outline below, then encode it
-as semantic YAML/JSON (`deck` metadata plus `slides[].kind`). Use raw JSON only
-when the user asks for low-level control or the required visual is outside the
-semantic schema.
+as semantic YAML/JSON (`meta` metadata plus `slides[].kind`) and render it with
+`render_deck_spec` — see [SKILL.md → Semantic deck specs](SKILL.md#semantic-deck-specs--the-default-authoring-path)
+for the tool table, archetype/kind enums, and the spec-level repair contract. Use
+raw JSON only when the user asks for low-level control or the required visual is
+outside the semantic schema.
 
 Before writing any JSON, produce a short outline:
 
