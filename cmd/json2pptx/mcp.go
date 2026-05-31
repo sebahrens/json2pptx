@@ -290,6 +290,13 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		boundaryDiags = append(boundaryDiags, designModeDiagnostics(violations)...)
 	}
 
+	// Diagram data colors silently dropped in constrained mode — advisory warning
+	// (never blocks) so the agent knows custom colors were ignored and can opt
+	// into design_mode "free" to honor them.
+	if dropped := collectDroppedDiagramColorWarnings(&input); len(dropped) > 0 {
+		boundaryDiags = append(boundaryDiags, droppedDiagramColorDiagnostics(dropped)...)
+	}
+
 	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
 	// Authors must use bundled SVG icons (see svggen/icons) or user-provided icons.
 	if emojiViolations := emoji.ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {

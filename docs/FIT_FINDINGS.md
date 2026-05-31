@@ -765,6 +765,32 @@ Emitted today from the partial-mode slide-skip path in slide conversion, and fro
 }
 ```
 
+### `CUSTOM_COLOR_DROPPED`
+
+**Action:** `info`
+**Pattern:** `design_mode`
+**Fix kind:** `set_design_mode_free`
+
+Advisory signal that a diagram's **data payload** embeds raw hex colors in per-item fields (e.g. `pyramid` `levels[].color`) which the engine ignores in **constrained** design mode (the default) — the diagram renders with the template scheme instead. Unlike the documented `diagram_value.style.colors` / `style.background` surface (which constrained mode *refuses* as a `design_mode_violation`, blocking generation), these data-embedded colors are not part of the validated override surface, so they were previously dropped **silently**. This finding turns that drop into a visible, machine-actionable signal.
+
+The drop is intended behavior in constrained mode (brand consistency), so the finding never blocks generation (action `info`). The fix carries `params.dropped_colors` (the raw hex values that were ignored) and `params.path` (the diagram data path). On the MCP boundary the equivalent diagnostic is emitted at `warning` severity with a `next_tool_call` suggesting `generate_presentation` with `design_mode: "free"` — rerun in free mode to honor the custom colors. Scheme-color names (`accent1`, `dk1`, …) inside the same data payload are allowed and never reported.
+
+```json
+{
+  "path": "/slides/2/content/0/diagram_value/data",
+  "code": "CUSTOM_COLOR_DROPPED",
+  "message": "slide 3: pyramid data embeds custom color(s) #FF0000, #00FF00 — constrained mode (default) renders with the template scheme and ignores them; rerun with design_mode \"free\" to honor custom colors",
+  "fix": {
+    "kind": "set_design_mode_free",
+    "params": {
+      "path": "/slides/2/content/0/diagram_value/data",
+      "dropped_colors": ["#FF0000", "#00FF00"]
+    }
+  },
+  "action": "info"
+}
+```
+
 ### `contrast_predicted`
 
 **Action:** `info`

@@ -265,23 +265,27 @@ func checkRawMessageColor(raw json.RawMessage, slideNum int, path string) *patte
 	return nil
 }
 
+// isRawHexColor reports whether color is a raw hex value (with or without a
+// leading "#") rather than an allowed scheme-color name or sentinel. This is the
+// shared predicate behind both the constrained-mode refusal (checkColorField)
+// and the diagram-data drop warning (collectDroppedDiagramColorWarnings).
+func isRawHexColor(color string) bool {
+	if color == "" || color == "none" {
+		return false
+	}
+	if pptx.IsSchemeColor(color) {
+		return false
+	}
+	return isHexString(strings.TrimPrefix(color, "#"))
+}
+
 // checkColorField returns a fit finding if the color is a raw hex value.
 func checkColorField(color string, slideNum int, path string) *patterns.FitFinding {
-	if color == "" || color == "none" {
+	if !isRawHexColor(color) {
 		return nil
 	}
 
-	// If it's a scheme color, it's allowed
-	if pptx.IsSchemeColor(color) {
-		return nil
-	}
-
-	// Check if it looks like a hex color (with or without #)
 	hex := strings.TrimPrefix(color, "#")
-	if !isHexString(hex) {
-		return nil // Not a recognized color format, skip
-	}
-
 	nearest := suggestNearestSchemeColor(hex)
 
 	return &patterns.FitFinding{
@@ -367,6 +371,95 @@ func checkContentInput(ci *ContentInput, slideNum, contentNum int) []patterns.Fi
 	}
 
 	return findings
+}
+
+// collectDroppedDiagramColorWarnings returns advisory (info) findings for
+// constrained-mode decks whose diagram data payloads embed raw hex colors in
+// per-item fields (e.g. pyramid levels[].color). Unlike the documented
+// diagram_value.style.colors surface — which the constrained-mode validator
+// refuses outright — these data-embedded colors are not part of the validated
+// override surface, so the engine silently renders them with the template scheme
+// instead of aborting. This collector turns that silent drop into a visible
+// signal that tells the author design_mode "free" is required to honor the
+// custom colors. It never blocks generation (action "info").
+//
+// The caller is responsible for only invoking this in constrained mode; it is a
+// no-op for free decks because raw colors pass through there.
+func collectDroppedDiagramColorWarnings(input *PresentationInput) []patterns.FitFinding {
+	if effectiveDesignMode(input) != designModeConstrained {
+		return nil
+	}
+
+	var findings []patterns.FitFinding
+	for i := range input.Slides {
+		slide := &input.Slides[i]
+		slideNum := i + 1
+		for j := range slide.Content {
+			ci := &slide.Content[j]
+			if ci.DiagramValue == nil || len(ci.DiagramValue.Data) == 0 {
+				continue
+			}
+			if rawColors := rawHexColorsInData(ci.DiagramValue.Data); len(rawColors) > 0 {
+				basePath := slidepath.ContentIndex(slideNum-1, j) + ".diagram_value.data"
+				findings = append(findings, droppedDiagramColorFinding(slideNum, basePath, ci.DiagramValue.Type, rawColors))
+			}
+		}
+	}
+	return findings
+}
+
+// droppedDiagramColorFinding builds the CUSTOM_COLOR_DROPPED info finding for a
+// single diagram whose data embeds raw hex colors that constrained mode ignores.
+func droppedDiagramColorFinding(slideNum int, path, diagramType string, rawColors []string) patterns.FitFinding {
+	diagramLabel := diagramType
+	if diagramLabel == "" {
+		diagramLabel = "diagram"
+	}
+	return patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: "design_mode",
+			Path:    path,
+			Code:    patterns.ErrCodeCustomColorDropped,
+			Message: fmt.Sprintf("slide %d: %s data embeds custom color(s) %s — constrained mode (default) renders with the template scheme and ignores them; rerun with design_mode \"free\" to honor custom colors",
+				slideNum, diagramLabel, strings.Join(rawColors, ", ")),
+			Fix: &patterns.FixSuggestion{
+				Kind:   "set_design_mode_free",
+				Params: map[string]any{"path": path, "dropped_colors": rawColors},
+			},
+		},
+		Action: "info",
+	}
+}
+
+// rawHexColorsInData walks a decoded diagram data payload and returns the
+// distinct raw hex color values found under color-like keys (e.g. "color",
+// "fill"). Scheme-color names and non-color values are ignored. Insertion order
+// is preserved (first occurrence wins) so messages are deterministic.
+func rawHexColorsInData(data map[string]any) []string {
+	seen := map[string]bool{}
+	var ordered []string
+	var walk func(v any)
+	walk = func(v any) {
+		switch t := v.(type) {
+		case map[string]any:
+			for k, val := range t {
+				if s, ok := val.(string); ok {
+					if isColorKey(k) && isRawHexColor(s) && !seen[s] {
+						seen[s] = true
+						ordered = append(ordered, s)
+					}
+					continue
+				}
+				walk(val)
+			}
+		case []any:
+			for _, item := range t {
+				walk(item)
+			}
+		}
+	}
+	walk(data)
+	return ordered
 }
 
 // checkDiagramStyleColors checks a slice of color strings for raw hex values.
@@ -514,6 +607,34 @@ func designModeDiagnostics(violations []patterns.FitFinding) []diagnostics.Diagn
 		}
 		if v.Fix != nil {
 			d.Fix = &diagnostics.Fix{Kind: v.Fix.Kind, Params: v.Fix.Params}
+		}
+		diags = append(diags, d)
+	}
+	return diags
+}
+
+// droppedDiagramColorDiagnostics converts CUSTOM_COLOR_DROPPED info findings into
+// warning-severity Diagnostics for the MCP boundary. These are advisory — they
+// flow through alongside errors without blocking generation — and carry the same
+// design_mode:"free" next_tool_call hint as the hard refusals so an agent can
+// opt into honoring the custom colors.
+func droppedDiagramColorDiagnostics(findings []patterns.FitFinding) []diagnostics.Diagnostic {
+	diags := make([]diagnostics.Diagnostic, 0, len(findings))
+	for _, f := range findings {
+		d := diagnostics.Diagnostic{
+			Code:     f.Code,
+			Path:     f.Path,
+			Message:  f.Message,
+			Severity: diagnostics.SeverityWarning,
+			NextToolCall: &patterns.ToolCallSuggestion{
+				Tool: "generate_presentation",
+				ArgsTemplate: map[string]any{
+					"design_mode": "free",
+				},
+			},
+		}
+		if f.Fix != nil {
+			d.Fix = &diagnostics.Fix{Kind: f.Fix.Kind, Params: f.Fix.Params}
 		}
 		diags = append(diags, d)
 	}

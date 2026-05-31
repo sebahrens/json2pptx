@@ -8,7 +8,110 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+// pyramidWithLevelColors builds a constrained-by-default deck whose pyramid
+// diagram embeds per-level hex colors in its data payload.
+func pyramidWithLevelColors(designMode string) *PresentationInput {
+	return &PresentationInput{
+		Template:   "midnight-blue",
+		DesignMode: designMode,
+		Slides: []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						Type: "diagram",
+						DiagramValue: &types.DiagramSpec{
+							Type: "pyramid",
+							Data: map[string]any{
+								"levels": []any{
+									map[string]any{"label": "Top", "color": "#FF0000"},
+									map[string]any{"label": "Mid", "color": "#00FF00"},
+									map[string]any{"label": "Base", "color": "accent1"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestCollectDroppedDiagramColorWarnings_ConstrainedFlagsLevelColors(t *testing.T) {
+	findings := collectDroppedDiagramColorWarnings(pyramidWithLevelColors(""))
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 dropped-color finding, got %d: %v", len(findings), findings)
+	}
+	f := findings[0]
+	if f.Code != "CUSTOM_COLOR_DROPPED" {
+		t.Errorf("expected code CUSTOM_COLOR_DROPPED, got %q", f.Code)
+	}
+	if f.Action != "info" {
+		t.Errorf("expected action info, got %q", f.Action)
+	}
+	// Raw hex colors are reported; the scheme color is not.
+	if !strings.Contains(f.Message, "#FF0000") || !strings.Contains(f.Message, "#00FF00") {
+		t.Errorf("expected message to list both raw hex colors, got %q", f.Message)
+	}
+	if strings.Contains(f.Message, "accent1") {
+		t.Errorf("scheme color accent1 should not be reported as dropped, got %q", f.Message)
+	}
+	if !strings.Contains(f.Message, "design_mode") || !strings.Contains(f.Message, "free") {
+		t.Errorf("expected message to mention design_mode free, got %q", f.Message)
+	}
+}
+
+func TestCollectDroppedDiagramColorWarnings_FreeModeNoWarning(t *testing.T) {
+	findings := collectDroppedDiagramColorWarnings(pyramidWithLevelColors("free"))
+	if len(findings) != 0 {
+		t.Errorf("expected no findings in free mode, got %d: %v", len(findings), findings)
+	}
+}
+
+func TestCollectDroppedDiagramColorWarnings_SchemeColorsOnly(t *testing.T) {
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{
+			{
+				Content: []ContentInput{
+					{
+						Type: "diagram",
+						DiagramValue: &types.DiagramSpec{
+							Type: "pyramid",
+							Data: map[string]any{
+								"levels": []any{
+									map[string]any{"label": "Top", "color": "accent1"},
+									map[string]any{"label": "Base", "color": "accent2"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	if findings := collectDroppedDiagramColorWarnings(input); len(findings) != 0 {
+		t.Errorf("expected no findings for scheme-only colors, got %d: %v", len(findings), findings)
+	}
+}
+
+func TestDroppedDiagramColorDiagnostics_WarningSeverity(t *testing.T) {
+	findings := collectDroppedDiagramColorWarnings(pyramidWithLevelColors(""))
+	diags := droppedDiagramColorDiagnostics(findings)
+	if len(diags) != 1 {
+		t.Fatalf("expected 1 diagnostic, got %d", len(diags))
+	}
+	d := diags[0]
+	if d.Severity != "warning" {
+		t.Errorf("expected warning severity (non-blocking), got %q", d.Severity)
+	}
+	if d.NextToolCall == nil || d.NextToolCall.ArgsTemplate["design_mode"] != "free" {
+		t.Errorf("expected next_tool_call suggesting design_mode free, got %+v", d.NextToolCall)
+	}
+}
 
 func TestValidateDesignMode_ConstrainedRejectsHexFill(t *testing.T) {
 	input := &PresentationInput{

@@ -58,6 +58,13 @@ const (
 	// machine-actionable signal. Advisory; never blocks render.
 	ErrCodeContentDropped = "CONTENT_DROPPED"
 
+	// Custom-color drop diagnostic — emitted in constrained design mode when a
+	// diagram's data payload carries raw hex colors (e.g. pyramid levels[].color)
+	// that the engine ignores in favor of the template scheme. Advisory (info);
+	// never blocks render. Tells the author to rerun with design_mode "free" to
+	// honor the custom colors.
+	ErrCodeCustomColorDropped = "CUSTOM_COLOR_DROPPED"
+
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced     = "chart_value_coerced"
 	ErrCodeChartShapeInferred    = "chart_shape_inferred"

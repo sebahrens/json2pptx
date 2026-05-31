@@ -549,6 +549,15 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
 	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
+	// Constrained-mode diagram data colors (e.g. pyramid levels[].color) are
+	// rendered with the template scheme and otherwise silently ignored. Surface
+	// an advisory finding/warning so the author knows the custom colors were
+	// dropped and that design_mode "free" is required to honor them.
+	droppedColorFindings := collectDroppedDiagramColorWarnings(input)
+	for _, f := range droppedColorFindings {
+		inputWarnings = append(inputWarnings, f.Message)
+	}
+
 	// Merge input-layer warnings with generation warnings
 	allWarnings := append(inputWarnings, result.Warnings...)
 
@@ -563,6 +572,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
 	allFitFindings = append(allFitFindings, chartDiagFindings...)
 	allFitFindings = append(allFitFindings, gridVisualFindings...)
+	allFitFindings = append(allFitFindings, droppedColorFindings...)
 	// Append strict_fit findings collected before generation so CLI JSON
 	// consumers see warn-mode overflow diagnostics in the structured response.
 	allFitFindings = append(allFitFindings, strictFitFindings...)
