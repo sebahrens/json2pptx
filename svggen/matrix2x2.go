@@ -744,7 +744,7 @@ type Matrix2x2Diagram struct{ BaseDiagram }
 // Validate checks that the request data is valid for matrix 2x2 charts.
 func (d *Matrix2x2Diagram) Validate(req *RequestEnvelope) error {
 	if req.Data == nil {
-		return fmt.Errorf("matrix_2x2 chart requires data. Expected format: {\"x_axis_label\": \"Impact\", \"y_axis_label\": \"Effort\", \"points\": [{\"label\": \"Task A\", \"x\": 0.8, \"y\": 0.6}]}")
+		return fmt.Errorf("matrix_2x2 chart requires data. x/y use a 0-100 scale by default (origin bottom-left, quadrant split at 50). Expected format: {\"x_axis_label\": \"Impact\", \"y_axis_label\": \"Effort\", \"points\": [{\"label\": \"Task A\", \"x\": 80, \"y\": 60}]}")
 	}
 
 	// Points are optional - can show empty matrix

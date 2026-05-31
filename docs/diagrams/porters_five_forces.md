@@ -34,11 +34,45 @@ Analyze industry competitive dynamics using Michael Porter's framework.
 
 ## Required Fields
 
+Two input shapes are accepted: the **array form** (`forces`) and the **object-keyed form**. Use either one.
+
+### Array form
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `forces` | `object[]` | The five forces data |
-| `forces[].type` | `string` | Force type (see below) |
-| `forces[].intensity` | `number` | Force strength (0.0 to 1.0) |
+| `forces[].type` | `string` | Force type — **must be one of the canonical values** `rivalry`, `new_entrants`, `substitutes`, `suppliers`, `buyers` (the array form does **not** accept synonyms; an unrecognized `type` is dropped and that box falls back to defaults) |
+| `forces[].intensity` | `number` | Force strength, `0.0` to `1.0` (default `0.5` if omitted) |
+
+### Object-keyed form
+
+Instead of an array, each force can be a top-level key in `data`. This form **does** accept synonyms (mapped to the canonical force). Forces are rendered in fixed layout order regardless of key order.
+
+```json
+{
+  "type": "porters_five_forces",
+  "data": {
+    "industry_name": "Cloud Computing",
+    "rivalry":        {"label": "Competitive Rivalry", "intensity": 0.8, "description": "Many hyperscalers"},
+    "new_entrants":   {"intensity": 0.4, "factors": ["High capital", "Economies of scale"]},
+    "substitutes":    {"intensity": 0.3},
+    "supplier_power": {"intensity": 0.5},
+    "buyer_power":    {"intensity": 0.7}
+  }
+}
+```
+
+| Canonical force | Accepted keys (synonyms) |
+|-----------------|--------------------------|
+| `rivalry` | `rivalry`, `competitive_rivalry` |
+| `new_entrants` | `new_entrants`, `threat_of_new_entrants` |
+| `substitutes` | `substitutes`, `threat_of_substitutes` |
+| `suppliers` | `suppliers`, `supplier_power`, `bargaining_power_of_suppliers` |
+| `buyers` | `buyers`, `buyer_power`, `bargaining_power_of_buyers` |
+
+Each force object takes `{label?, intensity (0.0-1.0), factors?: string[], description?}`. When `factors` is absent, a `description` string is shown as a single supporting line.
+
+> **Note:** an object-keyed payload with **no** recognized force keys renders a blank diagram. If a slide comes back empty, check that your keys match the table above.
 
 ## Force Types
 

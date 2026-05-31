@@ -34,14 +34,57 @@ Position items on two dimensions for prioritization or analysis.
 }
 ```
 
+## Coordinate System
+
+Point coordinates use a **0-100 scale by default** — `x` increases left→right, `y` increases bottom→top (origin at bottom-left). The quadrant boundary is the **midpoint (50)** on each axis, so a point at `{x: 50, y: 50}` sits dead center.
+
+> **Common mistake (do not do this):** 0-1 normalized coordinates like `{x: 0.8, y: 0.6}` are **not** rescaled — against the default 0-100 range they collapse into the bottom-left corner. Either use 0-100 values, or explicitly set the axis range to 0-1 with `x_max`/`y_max` (see below).
+
+To use a different scale, set the axis range explicitly:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `x_min` | `number` | `0` | Left-edge x value |
+| `x_max` | `number` | `100` | Right-edge x value (set to `1` for 0-1 normalized x) |
+| `y_min` | `number` | `0` | Bottom-edge y value |
+| `y_max` | `number` | `100` | Top-edge y value (set to `1` for 0-1 normalized y) |
+
 ## Required Fields
+
+Provide **one** of two mutually exclusive forms: `points` (explicit coordinates) or `quadrants` (coordinate-free, auto-placed at quadrant centers). If both are present, `points` wins.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `points` | `object[]` | Items to plot |
 | `points[].label` | `string` | Point label |
-| `points[].x` | `number` | X coordinate (0-100) |
-| `points[].y` | `number` | Y coordinate (0-100) |
+| `points[].x` | `number` | X coordinate (0-100 by default — see Coordinate System) |
+| `points[].y` | `number` | Y coordinate (0-100 by default — see Coordinate System) |
+
+### `quadrants` form (coordinate-free)
+
+When you only know which quadrant an item belongs to (not exact coordinates), list items by quadrant and the engine places them near that quadrant's center automatically:
+
+```json
+{
+  "type": "matrix_2x2",
+  "data": {
+    "x_axis_label": "Effort",
+    "y_axis_label": "Value",
+    "quadrants": [
+      {"position": "top-left",  "title": "Quick Wins",     "items": ["Feature A", "Feature B"]},
+      {"position": "top-right", "title": "Major Projects",  "items": ["Platform Rebuild"]},
+      {"position": "bottom-left",  "title": "Fill-Ins",     "items": ["Docs polish"]},
+      {"position": "bottom-right", "title": "Thankless",    "items": ["Legacy migration"]}
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `quadrants[].position` | `string` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` (underscores also accepted) |
+| `quadrants[].title` | `string` | Quadrant label (also sets `quadrant_labels`; `label` accepted as a synonym) |
+| `quadrants[].items` | `string[]` or `object[]` | Items to place; objects use a `label` field |
 
 ## Optional Fields
 

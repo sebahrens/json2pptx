@@ -235,6 +235,12 @@ Standalone SVG renderer with its own diagram/chart registry. **Distinct connecta
 
 When a `validate_diagram` call returns errors, the per-error `fix.kind` values come from the chart-finding enum (`align_series`, `truncate_or_split`, `replace_value`, `explicit_scale`, `reduce_items`) — see FINDINGS.md.
 
+**Diagram data-shape gotchas** (always copy from `get_diagram_schema.example_values` rather than guessing — these three are easy to get wrong and fail silently):
+
+- **`matrix_2x2`** — points go in `points` (not `items`); `x`/`y` are on a **0-100 scale** by default (origin bottom-left, quadrant split at 50). 0-1 values collapse into the bottom-left corner — for normalized coords set `x_max`/`y_max` to `1`. To skip coordinates, use `quadrants: [{position, title, items}]`. Full reference: [docs/diagrams/matrix_2x2.md](../../docs/diagrams/matrix_2x2.md).
+- **`nine_box_talent`** — auto-routed people go in `employees: [{name, performance, potential}]` where `performance`/`potential` are the **strings** `"low"`/`"medium"`/`"high"` (numbers are ignored and dump everyone in the center cell). Or place people explicitly with `cells: [{position: {row, col}, items}]` (row 0 = top/high potential, col 0 = left/low performance). Full reference: [docs/diagrams/nine_box_talent.md](../../docs/diagrams/nine_box_talent.md).
+- **`porters_five_forces`** — each force needs a canonical `type` (`rivalry`, `new_entrants`, `substitutes`, `suppliers`, `buyers`) and an `intensity` from `0.0` to `1.0` (not `position`/`level`). An object-keyed form (top-level `rivalry`/`supplier_power`/`buyer_power`… keys, synonyms accepted) also works; an unrecognized shape renders a blank diagram. Full reference: [docs/diagrams/porters_five_forces.md](../../docs/diagrams/porters_five_forces.md).
+
 **Keeping the SVG palette in sync with the deck template (one-shot copy):**
 
 Call `resolve_theme` once per deck and pass its `theme_colors` array straight through to every `render_diagram` call. No hand-pivoting from the `colors` map — typos in scheme names would otherwise be silent.

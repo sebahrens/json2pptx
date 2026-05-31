@@ -1089,13 +1089,13 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"matrix_2x2": {
 			RequiredKeys: []string{},
-			OptionalKeys: []string{"points", "quadrants", "x_label", "y_label", "quadrant_labels"},
-			Description:  "points: [{label, x, y, size?, color?}] or quadrants: [{position, title, items}]; x_label/y_label for axes",
+			OptionalKeys: []string{"points", "quadrants", "x_axis_label", "y_axis_label", "quadrant_labels", "x_min", "x_max", "y_min", "y_max"},
+			Description:  "points: [{label, x, y, size?, color?}] with x/y on a 0-100 scale by default (origin bottom-left; quadrant split at 50, NOT 0-1) — override the range with x_min/x_max/y_min/y_max (set max=1 to use 0-1 coords); OR quadrants: [{position: \"top-left\"|\"top-right\"|\"bottom-left\"|\"bottom-right\", title, items}] for coordinate-free placement",
 		},
 		"porters_five_forces": {
 			RequiredKeys: []string{},
 			OptionalKeys: []string{"forces", "industry_name", "rivalry", "new_entrants", "substitutes", "suppliers", "buyers"},
-			Description:  "forces: [{type, label, intensity, description?}] or map of force-type keys; industry_name: string",
+			Description:  "forces: [{type: \"rivalry\"|\"new_entrants\"|\"substitutes\"|\"suppliers\"|\"buyers\" (canonical only in array form), label?, intensity: 0.0-1.0, factors?: string[], description?}]; OR object-keyed: top-level force keys (rivalry/new_entrants/substitutes/supplier_power/buyer_power, synonyms accepted) each {label?, intensity: 0.0-1.0, description?|factors?}; industry_name: string",
 		},
 		"house_diagram": {
 			RequiredKeys: []string{},
@@ -1114,8 +1114,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"nine_box_talent": {
 			RequiredKeys: []string{},
-			OptionalKeys: []string{"employees", "cells", "x_label", "y_label"},
-			Description:  "employees: [{name, performance: 1-3, potential: 1-3}] or cells: [{position, items}]",
+			OptionalKeys: []string{"employees", "cells", "x_axis_label", "y_axis_label", "x_axis_labels", "y_axis_labels"},
+			Description:  "employees: [{name, performance, potential}] where performance/potential are \"low\"|\"medium\"|\"high\" strings (NOT 1-3 numbers) — performance picks column (low=left), potential picks row (high=top); OR cells: [{position: {row, col} 0-2 (row 0=top/high potential, col 0=left/low performance), label?, items: string[] or [{name}]}]",
 		},
 		"kpi_dashboard": {
 			RequiredKeys: []string{"metrics"},

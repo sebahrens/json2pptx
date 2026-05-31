@@ -51,12 +51,41 @@ LOW      │   Under   │  Average  │   Solid   │  row 2
 
 ## Required Fields
 
+Provide **one** of two mutually exclusive forms: explicit `cells` (most reliable) or `employees` (auto-routed). If both are present, `cells` wins.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `cells` | `object[]` | Cell data |
 | `cells[].position` | `object` | Grid position |
-| `cells[].position.row` | `number` | Row (0=top/high, 2=bottom/low) |
-| `cells[].position.col` | `number` | Column (0=left/low, 2=right/high) |
+| `cells[].position.row` | `number` | Row (0=top/high potential, 2=bottom/low) |
+| `cells[].position.col` | `number` | Column (0=left/low performance, 2=right/high) |
+
+> Flat `cells[].row` / `cells[].col` are also accepted as an alternative to the nested `position` object.
+
+### `employees` form (auto-routed)
+
+Instead of placing people in explicit cells, supply a flat `employees` list and let the engine route each person to a cell from their performance/potential rating:
+
+```json
+{
+  "type": "nine_box_talent",
+  "data": {
+    "employees": [
+      {"name": "Alice", "performance": "high", "potential": "high"},
+      {"name": "Bob",   "performance": "medium", "potential": "medium"},
+      {"name": "Dave",  "performance": "low",  "potential": "low"}
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `employees[].name` | `string` | Person name (required; blank entries are skipped) |
+| `employees[].performance` | `string` | **`"low"` \| `"medium"` \| `"high"`** — picks the column (low=left, medium=center, high=right). **Must be a string, not a number.** |
+| `employees[].potential` | `string` | **`"low"` \| `"medium"` \| `"high"`** — picks the row (high=top, medium=center, low=bottom). **Must be a string, not a number.** |
+
+> **Common mistake (do not do this):** numeric ratings like `"performance": 1` or `"potential": 3` are **ignored** — they are not strings, so every employee silently falls through to the center "Core Employee" cell. Always use the words `"low"`, `"medium"`, or `"high"`.
 
 ## Optional Fields
 

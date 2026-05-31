@@ -847,22 +847,23 @@ func getSchemaForType(typ string) diagramSchema {
 			},
 		},
 		"matrix_2x2": {
-			description: "2x2 matrix/quadrant diagram with labeled axes and items.",
+			description: "2x2 matrix/quadrant diagram with labeled axes and points. Points go in 'points' (NOT 'items'); x/y are on a 0-100 scale by default (origin bottom-left, quadrant split at 50). Use the 'quadrants' form for coordinate-free placement.",
 			minimal: map[string]any{
-				"x_axis": "X",
-				"y_axis": "Y",
-				"items": []any{
-					map[string]any{"label": "Item", "x": 0.5, "y": 0.5},
+				"x_axis_label": "X",
+				"y_axis_label": "Y",
+				"points": []any{
+					map[string]any{"label": "Item", "x": 50, "y": 50},
 				},
 			},
 			realistic: map[string]any{
-				"x_axis": "Effort",
-				"y_axis": "Impact",
-				"items": []any{
-					map[string]any{"label": "Quick Win", "x": 0.2, "y": 0.8},
-					map[string]any{"label": "Major Project", "x": 0.8, "y": 0.9},
-					map[string]any{"label": "Fill In", "x": 0.3, "y": 0.3},
-					map[string]any{"label": "Avoid", "x": 0.8, "y": 0.2},
+				"x_axis_label":    "Effort",
+				"y_axis_label":    "Impact",
+				"quadrant_labels": []any{"Quick Wins", "Major Projects", "Fill-Ins", "Thankless Tasks"},
+				"points": []any{
+					map[string]any{"label": "Quick Win", "x": 20, "y": 80},
+					map[string]any{"label": "Major Project", "x": 80, "y": 90},
+					map[string]any{"label": "Fill In", "x": 30, "y": 30},
+					map[string]any{"label": "Avoid", "x": 80, "y": 20},
 				},
 			},
 		},
@@ -959,23 +960,24 @@ func getSchemaForType(typ string) diagramSchema {
 			},
 		},
 		"porters_five_forces": {
-			description: "Porter's Five Forces competitive analysis diagram.",
+			description: "Porter's Five Forces competitive analysis diagram. Each force is keyed by 'type' (canonical: rivalry, new_entrants, substitutes, suppliers, buyers) with an 'intensity' from 0.0 to 1.0 (NOT 'position'/'level'). An object-keyed form is also accepted (top-level rivalry/new_entrants/substitutes/supplier_power/buyer_power keys).",
 			minimal: map[string]any{
-				"center": "Rivalry",
 				"forces": []any{
-					map[string]any{"position": "top", "label": "New Entrants"},
-					map[string]any{"position": "bottom", "label": "Substitutes"},
-					map[string]any{"position": "left", "label": "Suppliers"},
-					map[string]any{"position": "right", "label": "Buyers"},
+					map[string]any{"type": "rivalry", "intensity": 0.5},
+					map[string]any{"type": "new_entrants", "intensity": 0.4},
+					map[string]any{"type": "substitutes", "intensity": 0.3},
+					map[string]any{"type": "suppliers", "intensity": 0.5},
+					map[string]any{"type": "buyers", "intensity": 0.6},
 				},
 			},
 			realistic: map[string]any{
-				"center": "Industry Rivalry",
+				"industry_name": "Enterprise SaaS",
 				"forces": []any{
-					map[string]any{"position": "top", "label": "Threat of New Entrants", "level": "high"},
-					map[string]any{"position": "bottom", "label": "Threat of Substitutes", "level": "medium"},
-					map[string]any{"position": "left", "label": "Supplier Power", "level": "low"},
-					map[string]any{"position": "right", "label": "Buyer Power", "level": "high"},
+					map[string]any{"type": "rivalry", "label": "Competitive Rivalry", "intensity": 0.8, "factors": []any{"Many competitors", "Low switching costs"}},
+					map[string]any{"type": "new_entrants", "label": "Threat of New Entrants", "intensity": 0.4},
+					map[string]any{"type": "substitutes", "label": "Threat of Substitutes", "intensity": 0.3},
+					map[string]any{"type": "suppliers", "label": "Supplier Power", "intensity": 0.5},
+					map[string]any{"type": "buyers", "label": "Buyer Power", "intensity": 0.7},
 				},
 			},
 		},
@@ -998,18 +1000,18 @@ func getSchemaForType(typ string) diagramSchema {
 			},
 		},
 		"nine_box_talent": {
-			description: "9-box talent grid with performance and potential axes.",
+			description: "9-box talent grid with performance and potential axes. People go in 'employees' (NOT 'people'); performance/potential are the strings \"low\"|\"medium\"|\"high\" (NOT numbers — numeric values are ignored and dump everyone in the center cell). Axis names use x_axis_label/y_axis_label. Alternatively place people explicitly via 'cells'.",
 			minimal: map[string]any{
-				"x_axis": "Performance",
-				"y_axis": "Potential",
-				"people": []any{
+				"x_axis_label": "Performance",
+				"y_axis_label": "Potential",
+				"employees": []any{
 					map[string]any{"name": "Person", "performance": "medium", "potential": "medium"},
 				},
 			},
 			realistic: map[string]any{
-				"x_axis": "Performance",
-				"y_axis": "Potential",
-				"people": []any{
+				"x_axis_label": "Performance",
+				"y_axis_label": "Potential",
+				"employees": []any{
 					map[string]any{"name": "Alice", "performance": "high", "potential": "high"},
 					map[string]any{"name": "Bob", "performance": "medium", "potential": "high"},
 					map[string]any{"name": "Carol", "performance": "high", "potential": "medium"},

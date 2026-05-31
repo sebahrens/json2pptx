@@ -296,6 +296,8 @@ Position items on two dimensions (e.g., Value vs. Effort).
 }
 ```
 
+> `x`/`y` are on a **0-100 scale** by default (origin bottom-left, quadrant split at 50) — 0-1 values collapse into the bottom-left corner. To skip coordinates entirely, use the `quadrants: [{position, title, items}]` form. See [matrix_2x2.md](./matrix_2x2.md).
+
 #### Porter's Five Forces (`porters_five_forces`)
 Analyze industry competitive dynamics.
 
@@ -382,6 +384,8 @@ HR performance/potential assessment.
   }
 }
 ```
+
+> Alternatively use the auto-routed `employees: [{name, performance, potential}]` form — but `performance`/`potential` must be the **strings** `"low"`/`"medium"`/`"high"`, not numbers. Numeric ratings are ignored and dump everyone in the center cell. See [nine_box_talent.md](./nine_box_talent.md).
 
 #### House Diagram (`house_diagram`)
 Radial relationship diagram (e.g., McKinsey 7S).
