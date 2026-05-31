@@ -201,27 +201,53 @@ func (ctx *singlePassContext) processPortersFiveForceNativeShapes(slideNum int, 
 	})
 }
 
-// parsePorterForces extracts force data from the Porter's Five Forces diagram data map.
+// porterDefaultLabels maps each force type to its default display label.
+var porterDefaultLabels = map[porterForceType]string{
+	porterRivalry:    "Competitive Rivalry",
+	porterNewEntrant: "Threat of New Entrants",
+	porterSubstitute: "Threat of Substitutes",
+	porterSupplier:   "Supplier Power",
+	porterBuyer:      "Buyer Power",
+}
+
+// porterForceKeyAliases maps object-keyed force keys (and common synonyms) to a
+// canonical porterForceType. Used when the diagram data is supplied as a map of
+// force objects keyed by name (e.g. {"rivalry": {...}, "buyer_power": {...}})
+// rather than as a "forces" array.
+var porterForceKeyAliases = map[string]porterForceType{
+	"rivalry":                       porterRivalry,
+	"competitive_rivalry":           porterRivalry,
+	"new_entrants":                  porterNewEntrant,
+	"threat_of_new_entrants":        porterNewEntrant,
+	"substitutes":                   porterSubstitute,
+	"threat_of_substitutes":         porterSubstitute,
+	"buyers":                        porterBuyer,
+	"buyer_power":                   porterBuyer,
+	"bargaining_power_of_buyers":    porterBuyer,
+	"suppliers":                     porterSupplier,
+	"supplier_power":                porterSupplier,
+	"bargaining_power_of_suppliers": porterSupplier,
+}
+
+// parsePorterForces extracts force data from the Porter's Five Forces diagram
+// data map. Two input shapes are supported:
+//
+//   - Array form: data["forces"] is a list of {type, label, intensity, factors}
+//     objects.
+//   - Object-keyed form: data has top-level keys naming each force (e.g.
+//     "rivalry", "new_entrants", "substitutes", "buyer_power", "supplier_power")
+//     whose values are {label, intensity, description|factors} objects.
 func parsePorterForces(data map[string]any) []porterForceData {
-	forcesRaw, ok := data["forces"]
-	if !ok {
-		return nil
+	if forcesRaw, ok := data["forces"]; ok {
+		if forceSlice, ok := forcesRaw.([]any); ok {
+			return parsePorterForcesArray(forceSlice)
+		}
 	}
+	return parsePorterForcesObjectKeyed(data)
+}
 
-	forceSlice, ok := forcesRaw.([]any)
-	if !ok {
-		return nil
-	}
-
-	// Default labels for each force type.
-	defaultLabels := map[porterForceType]string{
-		porterRivalry:    "Competitive Rivalry",
-		porterNewEntrant: "Threat of New Entrants",
-		porterSubstitute: "Threat of Substitutes",
-		porterSupplier:   "Supplier Power",
-		porterBuyer:      "Buyer Power",
-	}
-
+// parsePorterForcesArray handles the data["forces"] = []{...} array form.
+func parsePorterForcesArray(forceSlice []any) []porterForceData {
 	var forces []porterForceData
 	for _, item := range forceSlice {
 		m, ok := item.(map[string]any)
@@ -237,30 +263,74 @@ func parsePorterForces(data map[string]any) []porterForceData {
 			continue
 		}
 
-		label := defaultLabels[ft]
-		if l, ok := m["label"].(string); ok && l != "" {
-			label = l
-		}
+		forces = append(forces, porterForceFromMap(ft, m))
+	}
+	return forces
+}
 
-		intensity := 0.5
-		if v, ok := m["intensity"].(float64); ok {
-			intensity = v
+// parsePorterForcesObjectKeyed handles the object-keyed form where each force is
+// a top-level key in the data map. Forces are emitted in canonical layout order
+// (rivalry, new entrants, substitutes, suppliers, buyers) for deterministic output.
+func parsePorterForcesObjectKeyed(data map[string]any) []porterForceData {
+	// Collect parsed forces by canonical type so synonyms collapse correctly.
+	byType := make(map[porterForceType]porterForceData)
+	for key, raw := range data {
+		ft, ok := porterForceKeyAliases[strings.ToLower(strings.TrimSpace(key))]
+		if !ok {
+			continue
 		}
-
-		var factors []string
-		if f, ok := m["factors"]; ok {
-			factors = parseSWOTStringList(f) // reuse existing string list parser
+		m, ok := raw.(map[string]any)
+		if !ok {
+			continue
 		}
-
-		forces = append(forces, porterForceData{
-			forceType: ft,
-			label:     label,
-			intensity: intensity,
-			factors:   factors,
-		})
+		if _, seen := byType[ft]; seen {
+			continue // first occurrence wins
+		}
+		byType[ft] = porterForceFromMap(ft, m)
 	}
 
+	// Emit in fixed layout order.
+	order := []porterForceType{porterRivalry, porterNewEntrant, porterSubstitute, porterSupplier, porterBuyer}
+	var forces []porterForceData
+	for _, ft := range order {
+		if f, ok := byType[ft]; ok {
+			forces = append(forces, f)
+		}
+	}
 	return forces
+}
+
+// porterForceFromMap builds a porterForceData from a force object map, applying
+// the default label for the force type when none is supplied.
+func porterForceFromMap(ft porterForceType, m map[string]any) porterForceData {
+	label := porterDefaultLabels[ft]
+	if l, ok := m["label"].(string); ok && l != "" {
+		label = l
+	}
+
+	intensity := 0.5
+	if v, ok := m["intensity"].(float64); ok {
+		intensity = v
+	}
+
+	// Prefer an explicit "factors" list; otherwise fall back to a "description"
+	// string as a single supporting line (object-keyed decks commonly use this).
+	var factors []string
+	if f, ok := m["factors"]; ok {
+		factors = parseSWOTStringList(f) // reuse existing string list parser
+	}
+	if len(factors) == 0 {
+		if d, ok := m["description"].(string); ok && d != "" {
+			factors = []string{d}
+		}
+	}
+
+	return porterForceData{
+		forceType: ft,
+		label:     label,
+		intensity: intensity,
+		factors:   factors,
+	}
 }
 
 // generatePortersFiveGroupXML produces the complete <p:grpSp> XML for a Porter's

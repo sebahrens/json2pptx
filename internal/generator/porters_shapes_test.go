@@ -101,6 +101,76 @@ func TestParsePorterForces_Basic(t *testing.T) {
 	}
 }
 
+func TestParsePorterForces_ObjectKeyed(t *testing.T) {
+	// Field-test 1.3 shape: top-level force keys with {label, intensity, description}.
+	data := map[string]any{
+		"rivalry":        map[string]any{"label": "Competitive Rivalry", "intensity": 0.85, "description": "Price wars"},
+		"new_entrants":   map[string]any{"label": "New Entrants", "intensity": 0.35, "description": "High barriers"},
+		"substitutes":    map[string]any{"label": "Substitutes", "intensity": 0.30, "description": "Open source"},
+		"buyer_power":    map[string]any{"label": "Buyer Power", "intensity": 0.70, "description": "Multi-vendor"},
+		"supplier_power": map[string]any{"label": "Supplier Power", "intensity": 0.45, "description": "Cloud providers"},
+	}
+
+	forces := parsePorterForces(data)
+	if len(forces) != 5 {
+		t.Fatalf("expected 5 forces from object-keyed data, got %d", len(forces))
+	}
+
+	// Emitted in canonical layout order: rivalry, new_entrants, substitutes, suppliers, buyers.
+	wantOrder := []porterForceType{porterRivalry, porterNewEntrant, porterSubstitute, porterSupplier, porterBuyer}
+	for i, want := range wantOrder {
+		if forces[i].forceType != want {
+			t.Errorf("force[%d] type = %q, want %q", i, forces[i].forceType, want)
+		}
+	}
+
+	// buyer_power should map to the buyers force type.
+	if forces[4].forceType != porterBuyer {
+		t.Errorf("expected buyer_power to map to porterBuyer, got %q", forces[4].forceType)
+	}
+	if forces[0].intensity != 0.85 {
+		t.Errorf("expected rivalry intensity 0.85, got %f", forces[0].intensity)
+	}
+	// description should become a single factor line.
+	if len(forces[0].factors) != 1 || forces[0].factors[0] != "Price wars" {
+		t.Errorf("expected description as single factor, got %v", forces[0].factors)
+	}
+}
+
+func TestParsePorterForces_ObjectKeyedFactorsList(t *testing.T) {
+	// Object-keyed with an explicit factors array takes precedence over description.
+	data := map[string]any{
+		"rivalry": map[string]any{
+			"intensity":   0.9,
+			"description": "ignored when factors present",
+			"factors":     []any{"Price wars", "Feature parity"},
+		},
+	}
+	forces := parsePorterForces(data)
+	if len(forces) != 1 {
+		t.Fatalf("expected 1 force, got %d", len(forces))
+	}
+	if forces[0].label != "Competitive Rivalry" {
+		t.Errorf("expected default label, got %q", forces[0].label)
+	}
+	if len(forces[0].factors) != 2 {
+		t.Errorf("expected 2 factors from list, got %v", forces[0].factors)
+	}
+}
+
+func TestParsePorterForces_ObjectKeyedSynonyms(t *testing.T) {
+	data := map[string]any{
+		"competitive_rivalry":           map[string]any{"intensity": 0.8},
+		"threat_of_new_entrants":        map[string]any{"intensity": 0.4},
+		"bargaining_power_of_buyers":    map[string]any{"intensity": 0.6},
+		"bargaining_power_of_suppliers": map[string]any{"intensity": 0.5},
+	}
+	forces := parsePorterForces(data)
+	if len(forces) != 4 {
+		t.Fatalf("expected 4 forces from synonym keys, got %d", len(forces))
+	}
+}
+
 func TestParsePorterForces_Empty(t *testing.T) {
 	forces := parsePorterForces(map[string]any{})
 	if len(forces) != 0 {
