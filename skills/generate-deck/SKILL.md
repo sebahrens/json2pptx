@@ -52,16 +52,41 @@ the compiler choose patterns, layouts, accents, and rhythm — a spec is far sho
 synthesis/decision slide is expected (call `list_deck_archetypes` for each one's default template +
 `executive` flag).
 
-**`slides[].kind`** (required field in parens; `list_slide_kinds` gives required + typical fields
-per kind): `title`(title) · `section`(title) · `executive_summary`(title) · `kpi_snapshot`(kpis) ·
-`chart_insight`(chart) · `comparison`(columns) · `process`(steps) · `roadmap`(phases) ·
-`decision`(title) · `closing`(title) · `raw_json2pptx`(slide — per-slide raw escape hatch,
-validated then passed through). Template resolution order: spec `meta.template` > tool/CLI
-`template` arg > archetype default.
+**`slides[].kind`** — `list_slide_kinds` (CLI `semantic schema`) is the **single source of truth**
+for each kind's required + typical fields; the table below mirrors it exactly. Template resolution
+order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 
-> `executive_summary` body bullets come from `points` **or** `takeaways` (plural array, preferring
-> `points` when both are present). Keep `takeaway` (singular string) for the one-line footer insight —
-> it is distinct from the `takeaways` body array.
+> ⚠️ **Unknown payload fields are silently ignored.** The DeckSpec payload accepts arbitrary keys
+> (`additionalProperties: true`), so a misspelled or invented field name — `points` written as
+> `bullets`, `kpis` as `metrics_list`, a column's `items` as `rows` — is dropped without error and
+> its content never reaches a slide. Use **exactly** the field names in the table. (Strict rejection
+> of unknown payload fields lands with go-slide-creator-7dk4; until then, mismatches fail silently.)
+
+| kind | required | typical / optional | item-object fields (exact) |
+|---|---|---|---|
+| `title` | `title` | `subtitle`, `eyebrow` | — |
+| `section` | `title` | `subtitle` | — |
+| `executive_summary` | `title` | `points` (body bullets), `takeaway` (footer one-liner) | — |
+| `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label}` |
+| `chart_insight` | `chart` | `insights[]`, `title`, `source`, `takeaway` | chart: `{type, data, title?}` |
+| `comparison` | `columns` (exactly 2 → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
+| `process` | `steps` (3–8 → visual) | `title`, `takeaway` | each step: string or `{label, type?}` |
+| `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?}` |
+| `decision` | `title` | `recommendation`, `options[]`, `takeaway` | each option: string or `{label}` |
+| `closing` | `title` | `subtitle` | — |
+| `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, validated then passed through |
+
+> **`executive_summary` body vs footer:** body bullets come from `points` (preferred) **or**
+> `takeaways` (plural array); `takeaway` (singular string) is the one-line footer insight — distinct
+> from the `takeaways` body array.
+>
+> **Compiler-accepted aliases** (resilience only — prefer the canonical names above): `kpi_snapshot`
+> `kpis`↔`metrics` with `{value↔big, label↔small/caption}`; `chart_insight` `insights[]`↔`insight`
+> (singular string); `comparison` column `header`↔`title`/`label`/`name`; `process` step
+> `label`↔`title`/`name`/`step`/`text`/`description`; `roadmap` phase `name`↔`title`/`label`/`phase`,
+> `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary`; `decision` option
+> `label`↔`title`/`name`. Counts outside a visual's range degrade to a readable content slide (with a
+> `SEMANTIC_DENSITY` advisory) rather than failing.
 
 **Repair stays in the spec.** `render_deck_spec` maps every render-time fit finding back to the
 semantic source you wrote: each `diagnostics[]` entry carries `semantic_path` (the DeckSpec field
