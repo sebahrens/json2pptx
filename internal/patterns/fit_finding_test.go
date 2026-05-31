@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 )
 
@@ -93,6 +94,38 @@ func TestSortCanonical(t *testing.T) {
 			t.Errorf("single-element slice was mutated: %+v", single)
 		}
 	})
+}
+
+func TestContentDropped(t *testing.T) {
+	f := ContentDropped("/slides/3", "slide 4", "skipped in partial mode: invalid layout_id")
+
+	if f.Code != ErrCodeContentDropped {
+		t.Errorf("Code = %q, want %q", f.Code, ErrCodeContentDropped)
+	}
+	if f.Action != "review" {
+		t.Errorf("Action = %q, want review (content-drop diagnostics must never block)", f.Action)
+	}
+	if f.Path != "/slides/3" {
+		t.Errorf("Path = %q, want /slides/3", f.Path)
+	}
+	if f.Fix == nil || f.Fix.Kind != "review" {
+		t.Fatalf("Fix = %+v, want kind=review (no deterministic auto-fix)", f.Fix)
+	}
+	if got := f.Fix.Params["locator"]; got != "slide 4" {
+		t.Errorf("Fix.Params[locator] = %v, want \"slide 4\"", got)
+	}
+	if got, _ := f.Fix.Params["reason"].(string); got == "" {
+		t.Error("Fix.Params[reason] should carry the drop reason")
+	}
+
+	// The code must be registered so AllFitFindingCodes + the finding-meta
+	// drift guarantee cover it (errors.Is + describe_finding rely on this).
+	if !errors.Is(&f.ValidationError, ErrContentDropped) {
+		t.Error("ContentDropped finding does not unwrap to ErrContentDropped sentinel")
+	}
+	if _, ok := GetFindingMeta(ErrCodeContentDropped); !ok {
+		t.Error("CONTENT_DROPPED missing from findingMetaRegistry")
+	}
 }
 
 func TestActionRankOrdering(t *testing.T) {

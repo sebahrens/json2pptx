@@ -481,6 +481,21 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodeHeadlineTooLong, ErrCodeTitleWraps},
 	},
 
+	ErrCodeContentDropped: {
+		Code:        ErrCodeContentDropped,
+		Summary:     "Author-provided content could not be placed and was dropped (a skipped slide, an unplaced content block, a truncated column, or a dropped payload field).",
+		Severity:    "review",
+		WhenEmitted: "Any engine path that fails to place author-supplied content emits this shared signal instead of dropping silently — e.g. a slide skipped in partial mode, a content block with no available placeholder, or a column that did not fit. The drop has already happened; the finding makes it visible and repairable.",
+		RemediationSteps: []string{
+			"Read the fix.params.locator and fix.params.reason to identify exactly what was dropped and why.",
+			"Restructure the slide so the content fits: split it across two slides, move the dropped item to its own slide, or reduce the surrounding content.",
+			"If the drop was caused by an invalid slide spec (partial mode), fix the underlying error so the slide is no longer skipped.",
+		},
+		ExampleBefore: `slide 4 silently omitted because its layout_id was invalid`,
+		ExampleAfter:  `slide 4 fixed (or split out) so all author content renders`,
+		RelatedCodes:  []string{ErrCodePlaceholderRemapped, ErrCodeTextTrimmed, ErrCodeTableRowsTruncated},
+	},
+
 	// ---- Chart data diagnostic codes ----
 
 	ErrCodeChartValueCoerced: {

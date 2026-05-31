@@ -1,6 +1,9 @@
 package patterns
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 // Extent represents a measured or allowed dimension in EMU.
 type Extent struct {
@@ -46,6 +49,38 @@ type FitFinding struct {
 	// segment-scoped (i.e. the slide is not a compose slide or the finding is
 	// emitted against the merged grid rather than a specific segment).
 	SegmentIndex *int `json:"segment_index,omitempty"`
+}
+
+// ContentDropped builds a CONTENT_DROPPED fit finding for a path where
+// author-provided content could not be placed and was dropped. This is the
+// single, shared diagnostic that every silent content-drop path (dropped
+// slides in partial mode, unplaced content blocks, truncated columns, dropped
+// unknown payload fields) should emit so agents see one consistent,
+// machine-actionable signal instead of silence.
+//
+//   - path is the JSON Pointer to the dropped element (e.g. "/slides/3" for a
+//     whole slide, "/slides/3/content/2" for a content block).
+//   - locator is a short human label for what was dropped (e.g. "slide",
+//     "content block 3", "left column").
+//   - reason explains why placement failed.
+//
+// The finding is advisory (action "review") — it never blocks generation; its
+// purpose is to turn a silent drop into a visible, repairable signal. Fix kind
+// is "review": there is no single deterministic auto-fix, so the agent must
+// restructure or split the slide.
+func ContentDropped(path, locator, reason string) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Path:    path,
+			Code:    ErrCodeContentDropped,
+			Message: fmt.Sprintf("author-provided content dropped (%s): %s", locator, reason),
+			Fix: &FixSuggestion{
+				Kind:   "review",
+				Params: map[string]any{"locator": locator, "reason": reason},
+			},
+		},
+		Action: "review",
+	}
 }
 
 // actionRanks maps action strings to severity ranks. Higher rank = more severe.

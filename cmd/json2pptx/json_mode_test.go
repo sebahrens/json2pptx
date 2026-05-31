@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -1301,7 +1302,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 			// Slide 3: valid
 			{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Also OK")}}},
 		}
-		specs, warnings, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, true)
+		specs, warnings, findings, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, true)
 		if err != nil {
 			t.Fatalf("partial mode should not return error, got: %v", err)
 		}
@@ -1318,6 +1319,24 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("expected warning about skipped slide, got warnings: %v", warnings)
+		}
+		// A machine-actionable CONTENT_DROPPED finding must accompany the
+		// human-readable warning so the dropped slide is repairable, not silent.
+		var dropped *patterns.FitFinding
+		for i := range findings {
+			if findings[i].Code == patterns.ErrCodeContentDropped {
+				dropped = &findings[i]
+				break
+			}
+		}
+		if dropped == nil {
+			t.Fatalf("expected a CONTENT_DROPPED finding for the skipped slide, got findings: %v", findings)
+		}
+		if dropped.Path != "/slides/1" {
+			t.Errorf("CONTENT_DROPPED path = %q, want /slides/1 (the skipped slide)", dropped.Path)
+		}
+		if dropped.Action != "review" {
+			t.Errorf("CONTENT_DROPPED action = %q, want review", dropped.Action)
 		}
 	})
 

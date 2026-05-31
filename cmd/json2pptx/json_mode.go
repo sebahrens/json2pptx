@@ -22,6 +22,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -687,8 +688,15 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 			if !partial {
 				return nil, nil, nil, err
 			}
-			// Partial mode: skip the failing slide and record a warning.
+			// Partial mode: skip the failing slide and record a warning plus a
+			// machine-actionable CONTENT_DROPPED finding so the dropped slide is
+			// a repairable signal, not just a human-readable string.
 			gridWarnings = append(gridWarnings, fmt.Sprintf("slide %d: skipped (partial mode): %v", i+1, err))
+			gridFitFindings = append(gridFitFindings, patterns.ContentDropped(
+				slidepath.Slide(i),
+				fmt.Sprintf("slide %d", i+1),
+				fmt.Sprintf("skipped in partial mode: %v", err),
+			))
 			continue
 		}
 		specs = append(specs, spec)

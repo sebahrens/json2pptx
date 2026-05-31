@@ -737,6 +737,34 @@ Slide selection:
 }
 ```
 
+### `CONTENT_DROPPED`
+
+**Action:** `review`
+**Pattern:** *(none — shared content-drop diagnostic)*
+**Fix kind:** `review` (no deterministic auto-fix)
+
+The single, shared signal for **any** path that fails to place author-provided content. Today several paths can drop content — a slide skipped in `--partial` mode, a content block with no available placeholder, a column that did not fit, an unknown payload field stripped during semantic parsing. Each used to drop silently (or only as a free-text warning); `CONTENT_DROPPED` turns every such drop into one consistent, machine-actionable finding so an agent sees the loss and can repair it.
+
+The drop has *already happened* by the time the finding is emitted — it is advisory and never blocks generation (action `review`). The fix carries `params.locator` (a short label for what was dropped — `"slide 4"`, `"content block 3"`, `"left column"`) and `params.reason` (why placement failed) so an agent can route the repair without re-deriving the cause. There is no single deterministic auto-fix (fix kind `review`, mirroring `diagram_render_failed`): the agent restructures or splits the slide, or fixes the underlying spec error.
+
+Emitted today from the partial-mode slide-skip path in slide conversion; other drop paths (`>2` content blocks, dense-pattern section-divider overflow) adopt the same `patterns.ContentDropped(path, locator, reason)` constructor as they are hardened.
+
+```json
+{
+  "path": "/slides/3",
+  "code": "CONTENT_DROPPED",
+  "message": "author-provided content dropped (slide 4): skipped in partial mode: slide 4: layout_id is required (no template layouts available for auto-selection)",
+  "fix": {
+    "kind": "review",
+    "params": {
+      "locator": "slide 4",
+      "reason": "skipped in partial mode: slide 4: layout_id is required (no template layouts available for auto-selection)"
+    }
+  },
+  "action": "review"
+}
+```
+
 ### `contrast_predicted`
 
 **Action:** `info`

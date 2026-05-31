@@ -52,6 +52,12 @@ const (
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
 
+	// Shared content-drop diagnostic — emitted from any path that fails to place
+	// author-provided content (a dropped slide, an unplaced content block, a
+	// truncated column, etc.). Turns silent content loss into one consistent,
+	// machine-actionable signal. Advisory; never blocks render.
+	ErrCodeContentDropped = "CONTENT_DROPPED"
+
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced     = "chart_value_coerced"
 	ErrCodeChartShapeInferred    = "chart_shape_inferred"
@@ -125,6 +131,7 @@ var (
 	ErrBulletNestingDeep = errors.New("bullet list nests more than two levels deep")
 	ErrMissingAltText    = errors.New("image or icon asset is missing alt text")
 	ErrDuplicateTitle    = errors.New("slide title duplicates another content slide's title")
+	ErrContentDropped    = errors.New("author-provided content was dropped without being placed")
 
 	ErrChartValueCoerced     = errors.New("non-numeric chart value coerced to zero")
 	ErrChartShapeInferred    = errors.New("chart data shape inferred from flat input")
@@ -187,6 +194,7 @@ var codeSentinel = map[string]error{
 	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,
 	ErrCodeMissingAltText:        ErrMissingAltText,
 	ErrCodeDuplicateTitle:        ErrDuplicateTitle,
+	ErrCodeContentDropped:        ErrContentDropped,
 	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
 	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
 	ErrCodeChartDataEmpty:        ErrChartDataEmpty,

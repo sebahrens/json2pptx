@@ -61,6 +61,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 
 | Code | When emitted |
 |------|-------------|
+| `CONTENT_DROPPED` | Shared signal for **any** path that fails to place author-provided content (a slide skipped in `--partial` mode, an unplaced content block, a truncated column, a dropped payload field). The drop has already happened — advisory, never blocks. `action: review`, `fix.kind: review` (no deterministic auto-fix). `fix.params: {locator, reason}` — `locator` labels what was dropped (`"slide 4"`, `"content block 3"`), `reason` explains why. Path targets the dropped element (`/slides/{i}` for a whole slide). Agent action: read `locator`/`reason`, then restructure or split the slide, or fix the underlying spec error so the content is no longer dropped |
 | `text_trimmed` | Trailing paragraphs trimmed to fit placeholder |
 | `text_overflow` | Text still overflows placeholder after trimming |
 | `readability_trimmed` | Paragraphs trimmed for readability floor |
