@@ -328,7 +328,8 @@ func TestPhaseRoadmap_Expand_MilestoneRowOnlyWhenSet(t *testing.T) {
 
 	// Add a milestone on one phase -> 5 rows including a milestone row whose
 	// cells without milestone text use no-fill, and cells with text use an
-	// accent-filled roundRect.
+	// accent-filled roundRect. The milestone row renders directly under the
+	// date labels (row index 3), above the description row (row index 4).
 	v := validPhaseRoadmapValues()
 	v.Phases[2].Milestone = "Pilot go-live"
 	grid, err = p.Expand(ExpandContext{}, v, nil, nil)
@@ -338,7 +339,7 @@ func TestPhaseRoadmap_Expand_MilestoneRowOnlyWhenSet(t *testing.T) {
 	if got := len(grid.Rows); got != 5 {
 		t.Fatalf("expected 5 rows with milestones, got %d", got)
 	}
-	milestoneRow := grid.Rows[4]
+	milestoneRow := grid.Rows[3]
 	if len(milestoneRow.Cells) != 4 {
 		t.Fatalf("expected 4 milestone cells, got %d", len(milestoneRow.Cells))
 	}

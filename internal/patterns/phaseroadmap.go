@@ -223,17 +223,23 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 	}
 
-	// Cell index layout (used by cell_overrides):
+	// Cell index layout (used by cell_overrides), matching top-to-bottom render
+	// order. The milestone row renders directly under the date labels (when any
+	// phase sets a milestone) so milestone badges stay tucked into the roadmap
+	// body rather than orphaned below the descriptions near the slide footer:
 	//   0..n-1     : phase label boxes (row 0)
 	//   n          : timeline bar (row 1, single colspan cell)
 	//   n+1..2n    : date labels (row 2)
-	//   2n+1..3n   : description callouts (row 3)
-	//   3n+1..4n   : milestone callouts (row 4, only when hasMilestones)
+	//   2n+1..3n   : milestone callouts (row 3, only when hasMilestones)
+	//   then       : description callouts (last row)
 	phaseIdx0 := 0
 	timelineIdx := n
 	dateIdx0 := n + 1
+	milestoneIdx0 := 2*n + 1
 	descIdx0 := 2*n + 1
-	milestoneIdx0 := 3*n + 1
+	if hasMilestones {
+		descIdx0 = 3*n + 1
+	}
 
 	var rows []jsonschema.GridRowInput
 
@@ -255,16 +261,18 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	}
 	rows = append(rows, jsonschema.GridRowInput{Height: 20, Cells: phaseCells})
 
-	// Row 2 — continuous timeline bar spanning all phases
+	// Row 2 — continuous timeline bar spanning all phases. Rendered as a slim
+	// accent "spine" (not a heavy dk1 band) so the phase boxes remain the
+	// dominant anchors and the bar reads as a brand-coloured connector.
 	timelineCell := &jsonschema.GridCellInput{
 		ColSpan: n,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"dk1"`),
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
 		},
 	}
 	applyPhaseRoadmapOverride(timelineCell, cellOverrides, timelineIdx, accent)
-	rows = append(rows, jsonschema.GridRowInput{Height: 8, Cells: []*jsonschema.GridCellInput{timelineCell}})
+	rows = append(rows, jsonschema.GridRowInput{Height: 6, Cells: []*jsonschema.GridCellInput{timelineCell}})
 
 	// Row 3 — date range labels (centred under each phase)
 	dateCells := make([]*jsonschema.GridCellInput, n)
@@ -280,21 +288,9 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	}
 	rows = append(rows, jsonschema.GridRowInput{Height: 8, Cells: dateCells})
 
-	// Row 4 — per-phase description callouts (left-aligned small font)
-	descCells := make([]*jsonschema.GridCellInput, n)
-	for i, p := range vals.Phases {
-		descCells[i] = &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(`"none"`),
-				Text:     buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(p.Description), bodySize, false, "dk1", "l"),
-			},
-		}
-		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
-	}
-	rows = append(rows, jsonschema.GridRowInput{Cells: descCells})
-
-	// Row 5 (optional) — milestone callouts as small accent badges
+	// Row 4 (optional) — milestone callouts as small accent badges, placed
+	// directly under the date labels so they stay anchored to the timeline
+	// rather than floating below the descriptions near the slide footer.
 	if hasMilestones {
 		milestoneCells := make([]*jsonschema.GridCellInput, n)
 		for i, p := range vals.Phases {
@@ -318,6 +314,20 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 		rows = append(rows, jsonschema.GridRowInput{Height: 14, Cells: milestoneCells})
 	}
+
+	// Final row — per-phase description callouts (left-aligned small font).
+	descCells := make([]*jsonschema.GridCellInput, n)
+	for i, p := range vals.Phases {
+		descCells[i] = &jsonschema.GridCellInput{
+			Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     json.RawMessage(`"none"`),
+				Text:     buildPhaseRoadmapPlainText(pptx.ConvertMarkdownEmphasis(p.Description), bodySize, false, "dk1", "l"),
+			},
+		}
+		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
+	}
+	rows = append(rows, jsonschema.GridRowInput{Cells: descCells})
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
