@@ -59,6 +59,10 @@ per kind): `title`(title) · `section`(title) · `executive_summary`(title) · `
 validated then passed through). Template resolution order: spec `meta.template` > tool/CLI
 `template` arg > archetype default.
 
+> `executive_summary` body bullets come from `points` **or** `takeaways` (plural array, preferring
+> `points` when both are present). Keep `takeaway` (singular string) for the one-line footer insight —
+> it is distinct from the `takeaways` body array.
+
 **Repair stays in the spec.** `render_deck_spec` maps every render-time fit finding back to the
 semantic source you wrote: each `diagnostics[]` entry carries `semantic_path` (the DeckSpec field
 to edit), `raw_path` (compiled-pointer fallback), `slide_index`, `action`, and often a
@@ -69,7 +73,7 @@ JSON unless you have deliberately dropped to the raw escape hatch.
 meta: {title: "Q3 Review", archetype: board_update, template: midnight-blue}
 slides:
   - {kind: title, title: "Q3 Review", subtitle: "Board update"}
-  - {kind: executive_summary, title: "Bottom line", points: [...], takeaway: "..."}
+  - {kind: executive_summary, title: "Bottom line", takeaways: [...], takeaway: "..."}
   - {kind: kpi_snapshot, title: "Where we stand", kpis: [...]}
   - {kind: chart_insight, title: "Revenue", chart: {...}, insight: "..."}
   - {kind: decision, title: "Recommendation", options: [...], recommendation: "..."}

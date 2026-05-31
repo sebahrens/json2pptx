@@ -22,16 +22,34 @@ func CompileExecutiveSummary(in Input) (*deckinput.SlideInput, []SourceLink, err
 		})
 	}
 
-	if points, ok := stringList(in.Body, "points"); ok && len(points) > 0 {
-		idx := appendContent(slide, bulletsContent("body", points))
+	// Body bullets may be authored as "points" or, more commonly in the field,
+	// as "takeaways" (the plural array, distinct from the singular "takeaway"
+	// one-liner that becomes the slide footer). Prefer "points" for back-compat;
+	// fall back to "takeaways" so the body content is never silently dropped.
+	if bulletField, bullets := executiveSummaryBullets(in.Body); len(bullets) > 0 {
+		idx := appendContent(slide, bulletsContent("body", bullets))
 		links = append(links, SourceLink{
 			RawPath:      fmt.Sprintf("%s.content[%d].bullets_value", in.rawSlide(), idx),
-			SemanticPath: in.semSlide() + ".points",
+			SemanticPath: in.semSlide() + "." + bulletField,
 		})
 	}
 
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// executiveSummaryBullets selects the body-bullets source for an executive
+// summary slide. It prefers the canonical "points" field, then falls back to
+// the "takeaways" plural array. The returned field name is "" when neither is
+// present so callers can skip the bullets block.
+func executiveSummaryBullets(body map[string]any) (string, []string) {
+	if points, ok := stringList(body, "points"); ok && len(points) > 0 {
+		return "points", points
+	}
+	if takeaways, ok := stringList(body, "takeaways"); ok && len(takeaways) > 0 {
+		return "takeaways", takeaways
+	}
+	return "", nil
 }
 
 // CompileDecision compiles a decision slide as a safe content slide: a title,

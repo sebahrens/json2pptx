@@ -64,7 +64,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Kind:           KindExecutiveSummary,
 		Summary:        "High-level summary of the deck's key messages.",
 		RequiredFields: []string{"title"},
-		TypicalFields:  []string{"points", "takeaway"},
+		TypicalFields:  []string{"points", "takeaways", "takeaway"},
 	},
 	KindKPISnapshot: {
 		Kind:           KindKPISnapshot,

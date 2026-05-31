@@ -136,6 +136,29 @@ func TestCompileExecutiveSummary(t *testing.T) {
 	}
 }
 
+func TestCompileExecutiveSummaryTakeaways(t *testing.T) {
+	// Regression: the plural "takeaways" array is the body content and must be
+	// compiled into a bullets block, not silently dropped (go-slide-creator-weyf).
+	in := Input{
+		Title:    "Summary",
+		Takeaway: "We should ship",
+		Body: map[string]any{
+			"takeaways": []any{"finding a", "finding b", "finding c", "finding d"},
+		},
+	}
+	slide, links, err := CompileExecutiveSummary(in)
+	if err != nil {
+		t.Fatalf("CompileExecutiveSummary: %v", err)
+	}
+	if len(slide.Content) != 2 {
+		t.Fatalf("Content len = %d, want 2 (title + takeaways bullets)", len(slide.Content))
+	}
+	if slide.Content[1].BulletsValue == nil || len(*slide.Content[1].BulletsValue) != 4 {
+		t.Errorf("takeaways not rendered as bullets: %+v", slide.Content[1])
+	}
+	assertHasLink(t, links, in.semSlide()+".takeaways")
+}
+
 func TestCompileDecision_RecommendationAndOptions(t *testing.T) {
 	in := Input{
 		Title: "Pick One",
