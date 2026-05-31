@@ -68,6 +68,24 @@ func (p *processFlow) ExemplarValues() any {
 // Types
 // ---------------------------------------------------------------------------
 
+// processFlowDefaultFontPt returns the default step-label font size, shrinking
+// it as the step count grows so 3-8 short labels stay on one line inside the
+// progressively narrower boxes instead of wrapping awkwardly. n<=4 keeps the
+// historical 12pt default; an explicit body_size override always wins via
+// ResolveSize. Kept in lockstep between process-flow and process-flow-compact.
+func processFlowDefaultFontPt(n int) float64 {
+	switch {
+	case n >= 7:
+		return 9
+	case n == 6:
+		return 10
+	case n == 5:
+		return 11
+	default:
+		return 12
+	}
+}
+
 // ProcessFlowStep is a single step in the process flow.
 type ProcessFlowStep struct {
 	Label string `json:"label"`
@@ -182,7 +200,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
 	cellAccentMode := ovr.CellAccentMode
 
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))

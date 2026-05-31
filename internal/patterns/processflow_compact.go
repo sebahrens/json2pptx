@@ -146,7 +146,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
 	cellAccentMode := ovr.CellAccentMode
 
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
