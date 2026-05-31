@@ -167,6 +167,26 @@ func TestResolveTextInput_Object(t *testing.T) {
 	}
 }
 
+// TestResolveTextInput_ParagraphSpaceAfter verifies the per-paragraph
+// space_after field (points) is converted to hundredths of a point on the
+// resulting paragraph, giving patterns control over vertical rhythm.
+func TestResolveTextInput_ParagraphSpaceAfter(t *testing.T) {
+	raw := json.RawMessage(`{"paragraphs":[{"content":"A","size":12,"space_after":6},{"content":"B","size":12}]}`)
+	tb, err := ResolveTextInput(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tb.Paragraphs) != 2 {
+		t.Fatalf("expected 2 paragraphs, got %d", len(tb.Paragraphs))
+	}
+	if tb.Paragraphs[0].SpaceAfter != 600 {
+		t.Errorf("expected SpaceAfter=600 (6pt) on first paragraph, got %d", tb.Paragraphs[0].SpaceAfter)
+	}
+	if tb.Paragraphs[1].SpaceAfter != 0 {
+		t.Errorf("expected SpaceAfter=0 on second paragraph, got %d", tb.Paragraphs[1].SpaceAfter)
+	}
+}
+
 // TestResolveTextInput_VerticalAlignDefaultCenter is a regression test for
 // go-slide-creator-hjgz: bar/box text in shape grid cells must default to
 // vertical-anchor=center, so colored bars (numbered takeaways, before-after

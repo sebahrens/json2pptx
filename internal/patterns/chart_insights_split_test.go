@@ -178,6 +178,47 @@ func TestChartInsightsSplit(t *testing.T) {
 		}
 	})
 
+	t.Run("expand_insights_panel_has_paragraph_spacing", func(t *testing.T) {
+		v := &ChartInsightsSplitValues{
+			Chart: &types.DiagramSpec{
+				Type: "bar_chart",
+				Data: map[string]any{
+					"categories": []any{"A", "B"},
+					"series":     []any{map[string]any{"name": "x", "values": []any{1, 2}}},
+				},
+			},
+			Insights: []string{"First takeaway.", "Second takeaway.", "Third takeaway."},
+		}
+		grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var panel struct {
+			Paragraphs []struct {
+				Content    string  `json:"content"`
+				SpaceAfter float64 `json:"space_after"`
+			} `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &panel); err != nil {
+			t.Fatalf("unmarshal insights panel text: %v", err)
+		}
+		// Title (index 0) plus three bullets.
+		if len(panel.Paragraphs) != 4 {
+			t.Fatalf("expected 4 paragraphs (title + 3 bullets), got %d", len(panel.Paragraphs))
+		}
+		if panel.Paragraphs[0].SpaceAfter <= 0 {
+			t.Errorf("expected title paragraph to carry space_after, got %v", panel.Paragraphs[0].SpaceAfter)
+		}
+		// All bullets except the last carry inter-bullet spacing.
+		if panel.Paragraphs[1].SpaceAfter <= 0 || panel.Paragraphs[2].SpaceAfter <= 0 {
+			t.Errorf("expected non-final bullets to carry space_after, got %v / %v",
+				panel.Paragraphs[1].SpaceAfter, panel.Paragraphs[2].SpaceAfter)
+		}
+		if panel.Paragraphs[3].SpaceAfter != 0 {
+			t.Errorf("expected final bullet to omit trailing space_after, got %v", panel.Paragraphs[3].SpaceAfter)
+		}
+	})
+
 	t.Run("expand_without_chart_renders_full_width", func(t *testing.T) {
 		v := &ChartInsightsSplitValues{
 			Insights: []string{"Only insight."},

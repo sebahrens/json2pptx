@@ -284,13 +284,14 @@ func ResolveLineInput(raw json.RawMessage) (pptx.Line, error) {
 
 // paragraphDef defines a single paragraph with individual styling in the paragraphs array form.
 type paragraphDef struct {
-	Content string  `json:"content"`
-	Size    float64 `json:"size,omitempty"`
-	Bold    bool    `json:"bold,omitempty"`
-	Italic  bool    `json:"italic,omitempty"`
-	Align   string  `json:"align,omitempty"`
-	Color   string  `json:"color,omitempty"`
-	Font    string  `json:"font,omitempty"`
+	Content    string  `json:"content"`
+	Size       float64 `json:"size,omitempty"`
+	Bold       bool    `json:"bold,omitempty"`
+	Italic     bool    `json:"italic,omitempty"`
+	Align      string  `json:"align,omitempty"`
+	Color      string  `json:"color,omitempty"`
+	Font       string  `json:"font,omitempty"`
+	SpaceAfter float64 `json:"space_after,omitempty"` // Space below this paragraph in points (e.g. 6 = 6pt)
 }
 
 // ResolveTextInput parses text from string shorthand, object form, or paragraphs array form.
@@ -467,6 +468,9 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 		paragraphs[i] = pptx.Paragraph{
 			Align: align,
 			Runs:  runs,
+		}
+		if d.SpaceAfter > 0 {
+			paragraphs[i].SpaceAfter = int(d.SpaceAfter * 100)
 		}
 	}
 

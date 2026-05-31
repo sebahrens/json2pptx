@@ -318,18 +318,33 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 	return grid, nil
 }
 
+// Vertical rhythm (in points) for the insights panel. The title reads as a
+// header with extra separation below it, and each bullet gets breathing room
+// so the right column does not render as a dense, hard-to-scan block.
+const (
+	insightsTitleSpaceAfterPt  = 8.0
+	insightsBulletSpaceAfterPt = 6.0
+)
+
 // buildInsightsPanel constructs the right-column cell containing the
 // accent-coloured title label and a bullet list of insights.
 func buildInsightsPanel(title string, insights []string, accent string, titleSize, bulletSize float64) *jsonschema.GridCellInput {
 	paras := []chartInsightsParagraph{
-		{Content: title, Size: titleSize, Bold: true, Color: accent, Align: "l"},
+		{Content: title, Size: titleSize, Bold: true, Color: accent, Align: "l", SpaceAfter: insightsTitleSpaceAfterPt},
 	}
-	for _, ins := range insights {
+	for i, ins := range insights {
+		// Omit the trailing gap after the last bullet so the block stays
+		// top-anchored without padding the panel bottom.
+		spaceAfter := insightsBulletSpaceAfterPt
+		if i == len(insights)-1 {
+			spaceAfter = 0
+		}
 		paras = append(paras, chartInsightsParagraph{
-			Content: "• " + pptx.ConvertMarkdownEmphasis(ins),
-			Size:    bulletSize,
-			Color:   "dk1",
-			Align:   "l",
+			Content:    "• " + pptx.ConvertMarkdownEmphasis(ins),
+			Size:       bulletSize,
+			Color:      "dk1",
+			Align:      "l",
+			SpaceAfter: spaceAfter,
 		})
 	}
 
@@ -393,12 +408,13 @@ func clampPct(v, fallback, min, max float64) float64 {
 
 // chartInsightsParagraph is a text paragraph for JSON marshalling.
 type chartInsightsParagraph struct {
-	Content string  `json:"content"`
-	Size    float64 `json:"size"`
-	Bold    bool    `json:"bold,omitempty"`
-	Italic  bool    `json:"italic,omitempty"`
-	Color   string  `json:"color,omitempty"`
-	Align   string  `json:"align,omitempty"`
+	Content    string  `json:"content"`
+	Size       float64 `json:"size"`
+	Bold       bool    `json:"bold,omitempty"`
+	Italic     bool    `json:"italic,omitempty"`
+	Color      string  `json:"color,omitempty"`
+	Align      string  `json:"align,omitempty"`
+	SpaceAfter float64 `json:"space_after,omitempty"`
 }
 
 // chartInsightsText is the text object for JSON marshalling.
