@@ -22,6 +22,29 @@ func TestCheckDependencies(t *testing.T) {
 	}
 }
 
+func TestCheckDependenciesAcceptsSofficeWhenLibreOfficeMissing(t *testing.T) {
+	binDir := t.TempDir()
+	writeFakeExecutable(t, filepath.Join(binDir, "soffice"))
+	writeFakeExecutable(t, filepath.Join(binDir, "magick"))
+	t.Setenv("PATH", binDir)
+
+	if err := CheckDependencies(); err != nil {
+		t.Fatalf("CheckDependencies() error = %v, want nil with soffice + magick on PATH", err)
+	}
+
+	available, missing := DependencyStatus()
+	if !available {
+		t.Fatalf("DependencyStatus() available = false, missing = %v; want available with soffice + magick", missing)
+	}
+}
+
+func writeFakeExecutable(t *testing.T, path string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake executable %s: %v", path, err)
+	}
+}
+
 func TestRenderSlide_FileNotFound(t *testing.T) {
 	_, err := RenderSlide("/tmp/nonexistent-deck.pptx", 0, 100)
 	if err == nil {

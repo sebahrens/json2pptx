@@ -145,9 +145,21 @@ func checkDep(name string) error {
 	return nil
 }
 
+// officeCommand returns the LibreOffice-compatible binary available on PATH.
+// macOS Homebrew installs the CLI as soffice, while Linux packages commonly
+// expose libreoffice.
+func officeCommand() (string, error) {
+	for _, name := range []string{"libreoffice", "soffice"} {
+		if _, err := exec.LookPath(name); err == nil {
+			return name, nil
+		}
+	}
+	return "", fmt.Errorf("libreoffice/soffice not found on PATH: install LibreOffice to use render tools")
+}
+
 // CheckDependencies verifies LibreOffice and ImageMagick are available.
 func CheckDependencies() error {
-	if err := checkDep("libreoffice"); err != nil {
+	if _, err := officeCommand(); err != nil {
 		return err
 	}
 	return checkDep("magick")
@@ -156,10 +168,11 @@ func CheckDependencies() error {
 // DependencyStatus checks each render dependency and returns whether rendering
 // is available and which commands are missing.
 func DependencyStatus() (available bool, missing []string) {
-	for _, cmd := range []string{"libreoffice", "magick"} {
-		if checkDep(cmd) != nil {
-			missing = append(missing, cmd)
-		}
+	if _, err := officeCommand(); err != nil {
+		missing = append(missing, "libreoffice/soffice")
+	}
+	if checkDep("magick") != nil {
+		missing = append(missing, "magick")
 	}
 	return len(missing) == 0, missing
 }
@@ -172,8 +185,13 @@ func pptxToPDF(ctx context.Context, pptxPath, tmpDir string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	office, err := officeCommand()
+	if err != nil {
+		return "", err
+	}
+
 	_, stderr, err := runBounded(ctx, toolLibreOffice, pptxPath, libreOfficeTimeout,
-		toolLibreOffice,
+		office,
 		"--headless",
 		"--convert-to", "pdf",
 		"--outdir", tmpDir,
