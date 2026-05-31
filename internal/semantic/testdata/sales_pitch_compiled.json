@@ -130,11 +130,6 @@
           "placeholder_id": "title",
           "type": "text",
           "text_value": "The Partnership We Propose"
-        },
-        {
-          "placeholder_id": "subtitle",
-          "type": "text",
-          "text_value": "A scoped pilot with a clear path to rollout"
         }
       ]
     },

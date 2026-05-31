@@ -57,8 +57,11 @@ func TestCompileSection(t *testing.T) {
 	if slide.SlideType != "section" {
 		t.Errorf("SlideType = %q, want section", slide.SlideType)
 	}
-	if len(slide.Content) != 2 {
-		t.Fatalf("Content len = %d, want 2", len(slide.Content))
+	if len(slide.Content) != 1 {
+		t.Fatalf("Content len = %d, want 1", len(slide.Content))
+	}
+	if slide.Content[0].PlaceholderID != "title" {
+		t.Errorf("Content[0] placeholder = %q, want title", slide.Content[0].PlaceholderID)
 	}
 }
 

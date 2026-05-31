@@ -39,8 +39,10 @@ func CompileTitle(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	return slide, links, nil
 }
 
-// CompileSection compiles a section-divider slide: a section title and an
-// optional subtitle.
+// CompileSection compiles a section-divider slide. Shipped templates reserve
+// section divider body placeholders for decorative section numbers, so the
+// semantic subtitle is intentionally not emitted as placeholder content: doing
+// so would be remapped into the section-number slot by placeholder fallback.
 func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: "section"}
 	var links []SourceLink
@@ -50,14 +52,6 @@ func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		links = append(links, SourceLink{
 			RawPath:      fmt.Sprintf("%s.content[%d].text_value", in.rawSlide(), idx),
 			SemanticPath: in.semSlide() + ".title",
-		})
-	}
-
-	if subtitle := strField(in.Body, "subtitle"); subtitle != "" {
-		idx := appendContent(slide, textContent("subtitle", subtitle))
-		links = append(links, SourceLink{
-			RawPath:      fmt.Sprintf("%s.content[%d].text_value", in.rawSlide(), idx),
-			SemanticPath: in.semSlide() + ".subtitle",
 		})
 	}
 
