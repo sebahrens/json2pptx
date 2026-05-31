@@ -282,7 +282,7 @@ func roadmapPhases(body map[string]any) []phaseRoadmapPhase {
 			phase := phaseRoadmapPhase{
 				Name:        name,
 				DateLabel:   firstNonEmpty(strField(t, "date_label"), strField(t, "dates"), strField(t, "date"), strField(t, "period")),
-				Description: firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary")),
+				Description: foldPhaseItems(firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary")), phaseItems(t)),
 				Milestone:   strField(t, "milestone"),
 			}
 			if active, ok := t["active"].(bool); ok {
@@ -292,6 +292,41 @@ func roadmapPhases(body map[string]any) []phaseRoadmapPhase {
 		}
 	}
 	return phases
+}
+
+// phaseItems extracts a phase object's "items" (or "bullets") sub-bullet list,
+// keeping only non-empty string entries.
+func phaseItems(t map[string]any) []string {
+	raw, ok := t["items"].([]any)
+	if !ok {
+		raw, ok = t["bullets"].([]any)
+		if !ok {
+			return nil
+		}
+	}
+	var out []string
+	for _, e := range raw {
+		if s, ok := e.(string); ok {
+			if s = strings.TrimSpace(s); s != "" {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}
+
+// foldPhaseItems folds a phase's sub-bullet items into its single description
+// cell so per-phase detail is not dropped. Items are joined with " · " and,
+// when a description is already present, appended after it.
+func foldPhaseItems(desc string, items []string) string {
+	if len(items) == 0 {
+		return desc
+	}
+	joined := strings.Join(items, " · ")
+	if strings.TrimSpace(desc) == "" {
+		return joined
+	}
+	return desc + " · " + joined
 }
 
 // compilePhaseBulletsFallback renders roadmap phases as readable bullets on a
@@ -308,7 +343,7 @@ func compilePhaseBulletsFallback(in Input) (*deckinput.SlideInput, []SourceLink,
 			case map[string]any:
 				name := firstNonEmpty(strField(t, "name"), strField(t, "title"), strField(t, "label"), strField(t, "phase"))
 				date := firstNonEmpty(strField(t, "date_label"), strField(t, "dates"), strField(t, "date"), strField(t, "period"))
-				desc := firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary"))
+				desc := foldPhaseItems(firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary")), phaseItems(t))
 				line := name
 				if date != "" {
 					line = strings.TrimSpace(line + " (" + date + ")")

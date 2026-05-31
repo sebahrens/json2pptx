@@ -74,7 +74,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `chart_insight` | `chart` | `insights[]`, `title`, `source`, `takeaway` | chart: `{type, data, title?}` |
 | `comparison` | `columns` (exactly 2 → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
 | `process` | `steps` (3–8 → visual) | `title`, `takeaway` | each step: string or `{label, type?}` |
-| `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?}` |
+| `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
 | `decision` | `title` | `recommendation`, `options[]`, `takeaway` | each option: string or `{label}` |
 | `closing` | `title` | `subtitle` | — |
 | `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, validated then passed through |
@@ -87,7 +87,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > `kpis`↔`metrics` with `{value↔big, label↔small/caption}`; `chart_insight` `insights[]`↔`insight`
 > (singular string); `comparison` column `header`↔`title`/`label`/`name`; `process` step
 > `label`↔`title`/`name`/`step`/`text`/`description`; `roadmap` phase `name`↔`title`/`label`/`phase`,
-> `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary`; `decision` option
+> `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary` (plus `items`/`bullets` folded in); `decision` option
 > `label`↔`title`/`name`. Counts outside a visual's range degrade to a readable content slide (with a
 > `SEMANTIC_DENSITY` advisory) rather than failing.
 
