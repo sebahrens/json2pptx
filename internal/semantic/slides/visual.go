@@ -71,8 +71,8 @@ func comparisonRows(body map[string]any) (headers []string, rows []comparison2co
 	if len(cols) != 2 {
 		return nil, nil, false
 	}
-	left, _ := stringList(cols[0], "items")
-	right, _ := stringList(cols[1], "items")
+	left := columnItems(cols[0])
+	right := columnItems(cols[1])
 	if len(left) == 0 || len(left) != len(right) || len(left) > 10 {
 		return nil, nil, false
 	}
@@ -92,13 +92,33 @@ func columnHeader(col map[string]any) string {
 	return firstNonEmpty(strField(col, "header"), strField(col, "title"), strField(col, "label"), strField(col, "name"))
 }
 
+// columnItems returns a comparison column's row items. It prefers an explicit
+// "items" list; when that is absent it synthesises items from "pros"/"cons"
+// arrays so pro/con-shaped columns are not silently dropped (field-test 2.2).
+// Each of pros and cons collapses to a single labelled line ("Pros: a; b"),
+// which keeps the two columns balanced for the comparison-2col visual and
+// preserves the distinction in the readable fallback.
+func columnItems(col map[string]any) []string {
+	if items, _ := stringList(col, "items"); len(items) > 0 {
+		return items
+	}
+	var out []string
+	if pros, _ := stringList(col, "pros"); len(pros) > 0 {
+		out = append(out, "Pros: "+strings.Join(pros, "; "))
+	}
+	if cons, _ := stringList(col, "cons"); len(cons) > 0 {
+		out = append(out, "Cons: "+strings.Join(cons, "; "))
+	}
+	return out
+}
+
 // compileComparisonFallback renders the comparison as a content slide, one
 // bullet per column ("Header: item; item; …"), so unbalanced or many-column
 // comparisons still produce readable, valid output.
 func compileComparisonFallback(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	var bullets []string
 	for _, col := range mapList(in.Body, "columns") {
-		items, _ := stringList(col, "items")
+		items := columnItems(col)
 		line := strings.Join(items, "; ")
 		if h := columnHeader(col); h != "" {
 			if line != "" {

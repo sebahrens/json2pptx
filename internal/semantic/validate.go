@@ -256,7 +256,7 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 		if !ok {
 			return
 		}
-		n, ok := listLen(m, "items")
+		n, ok := comparisonColumnItemCount(m)
 		if !ok {
 			return
 		}
@@ -336,6 +336,30 @@ func listLen(body map[string]any, field string) (int, bool) {
 		return len(l), true
 	}
 	return 0, false
+}
+
+// comparisonColumnItemCount reports the rendered row count for one comparison
+// column, mirroring the slides compiler: an explicit "items" list is counted
+// verbatim, otherwise "pros"/"cons" each collapse to a single rendered line.
+// ok is false only when the column exposes none of these shapes.
+func comparisonColumnItemCount(m map[string]any) (int, bool) {
+	if n, ok := listLen(m, "items"); ok {
+		return n, true
+	}
+	count, found := 0, false
+	if n, ok := listLen(m, "pros"); ok {
+		found = true
+		if n > 0 {
+			count++
+		}
+	}
+	if n, ok := listLen(m, "cons"); ok {
+		found = true
+		if n > 0 {
+			count++
+		}
+	}
+	return count, found
 }
 
 // sortedKeys returns the keys of a map in sorted order for deterministic walks.

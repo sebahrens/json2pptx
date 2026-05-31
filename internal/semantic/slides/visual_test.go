@@ -71,6 +71,77 @@ func TestCompileComparison_DegradesWhenUnbalanced(t *testing.T) {
 	assertNoGoMapLeak(t, slide)
 }
 
+// TestCompileComparison_ProsConsEmitsPattern is the regression for field-test
+// 2.2: a comparison whose columns carry pros/cons arrays (rather than "items")
+// must still render that content, not collapse to a flat list of column labels.
+func TestCompileComparison_ProsConsEmitsPattern(t *testing.T) {
+	in := Input{
+		Title: "Build vs Buy",
+		Body: map[string]any{
+			"columns": []any{
+				map[string]any{
+					"label": "Build",
+					"pros":  []any{"Full control", "Tailored"},
+					"cons":  []any{"Slower"},
+				},
+				map[string]any{
+					"label": "Buy",
+					"pros":  []any{"Fast to deploy", "Supported"},
+					"cons":  []any{"Vendor lock-in"},
+				},
+			},
+		},
+	}
+	slide, _, err := CompileComparison(in)
+	if err != nil {
+		t.Fatalf("CompileComparison: %v", err)
+	}
+	if slide.Pattern == nil || slide.Pattern.Name != "comparison-2col" {
+		t.Fatalf("expected comparison-2col pattern, got %+v", slide.Pattern)
+	}
+	var vals comparison2colValues
+	decodePattern(t, slide.Pattern.Values, &vals)
+	if len(vals.Rows) != 2 {
+		t.Fatalf("rows = %d, want 2 (pros line + cons line)", len(vals.Rows))
+	}
+	if !strings.Contains(vals.Rows[0].Left, "Full control") || !strings.Contains(vals.Rows[0].Right, "Fast to deploy") {
+		t.Errorf("pros row lost content: %+v", vals.Rows[0])
+	}
+	if !strings.Contains(vals.Rows[1].Left, "Slower") || !strings.Contains(vals.Rows[1].Right, "Vendor lock-in") {
+		t.Errorf("cons row lost content: %+v", vals.Rows[1])
+	}
+}
+
+// TestCompileComparison_ProsConsFallbackKeepsContent covers the degrade path
+// (unbalanced pros/cons across >2 columns): pros/cons text must survive in the
+// fallback bullets rather than being dropped to bare column labels.
+func TestCompileComparison_ProsConsFallbackKeepsContent(t *testing.T) {
+	in := Input{
+		Title: "Three Options",
+		Body: map[string]any{
+			"columns": []any{
+				map[string]any{"label": "A", "pros": []any{"cheap"}},
+				map[string]any{"label": "B", "pros": []any{"robust"}, "cons": []any{"costly"}},
+				map[string]any{"label": "C", "cons": []any{"slow"}},
+			},
+		},
+	}
+	slide, _, err := CompileComparison(in)
+	if err != nil {
+		t.Fatalf("CompileComparison: %v", err)
+	}
+	if slide.Pattern != nil {
+		t.Fatalf("expected content fallback for 3 columns, got %+v", slide.Pattern)
+	}
+	assertNoGoMapLeak(t, slide)
+	joined := strings.Join(*slide.Content[len(slide.Content)-1].BulletsValue, " || ")
+	for _, want := range []string{"cheap", "robust", "costly", "slow"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("fallback dropped %q; bullets = %q", want, joined)
+		}
+	}
+}
+
 func TestCompileComparison_DegradesWhenNotTwoColumns(t *testing.T) {
 	in := Input{
 		Title: "Three Ways",
