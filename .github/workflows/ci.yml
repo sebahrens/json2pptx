@@ -470,7 +470,9 @@ jobs:
           # The render integration tests look for a fixed filename; normalise
           # whatever name the generator emitted to the expected path.
           generated=$(ls -t /tmp/render-test/*.pptx | head -1)
-          mv "$generated" /tmp/render-test/basic-deck.pptx
+          if [ "$generated" != "/tmp/render-test/basic-deck.pptx" ]; then
+            mv "$generated" /tmp/render-test/basic-deck.pptx
+          fi
           ls -l /tmp/render-test/
 
       - name: Run render + SVG-conversion integration tests

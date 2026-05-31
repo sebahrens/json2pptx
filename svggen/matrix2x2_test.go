@@ -50,6 +50,9 @@ func TestMaybeScaleNormalizedPoints(t *testing.T) {
 			{Label: "B", X: 1.0, Y: 0.0},
 		}
 		maybeScaleNormalizedPoints(pts, 0, 100, 0, 100)
+		if len(pts) != 2 {
+			t.Fatalf("expected 2 points, got %d", len(pts))
+		}
 		if pts[0].X != 20 || pts[0].Y != 80 {
 			t.Errorf("A: got (%v,%v), want (20,80)", pts[0].X, pts[0].Y)
 		}
@@ -65,6 +68,9 @@ func TestMaybeScaleNormalizedPoints(t *testing.T) {
 			{Label: "B", X: 75, Y: 30},
 		}
 		maybeScaleNormalizedPoints(pts, 0, 100, 0, 100)
+		if len(pts) != 2 {
+			t.Fatalf("expected 2 points, got %d", len(pts))
+		}
 		if pts[0].X != 20 || pts[1].X != 75 {
 			t.Errorf("0-100 data was modified: %v", pts)
 		}
