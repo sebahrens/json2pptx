@@ -635,8 +635,12 @@ func parseNineBoxEmployees(employees []any) []nineBoxCellData {
 			continue
 		}
 
-		performance, _ := emp["performance"].(string)
-		potential, _ := emp["potential"].(string)
+		// Accept both the documented string form (low|medium|high) and a
+		// numeric 1-3 scale. Field agents frequently send numbers; without
+		// normalization the string assertion failed and every employee fell
+		// through to the center "Core Employee" cell (go-slide-creator-pc2a).
+		performance := normalizeNineBoxLevel(emp["performance"])
+		potential := normalizeNineBoxLevel(emp["potential"])
 
 		row, col := employeeToGridPos(performance, potential)
 		key := posKey{row, col}
@@ -652,6 +656,47 @@ func parseNineBoxEmployees(employees []any) []nineBoxCellData {
 		})
 	}
 	return cells
+}
+
+// normalizeNineBoxLevel coerces a performance/potential value into the
+// canonical low|medium|high token. It accepts the documented string form
+// (case-insensitive, plus common synonyms) as well as a numeric 1-3 scale
+// (1=low, 2=medium, 3=high) that agents commonly supply. Unrecognized values
+// return "" so employeeToGridPos falls back to its medium default.
+func normalizeNineBoxLevel(v any) string {
+	switch t := v.(type) {
+	case string:
+		switch strings.ToLower(strings.TrimSpace(t)) {
+		case "low", "1":
+			return "low"
+		case "medium", "med", "mid", "moderate", "2":
+			return "medium"
+		case "high", "3":
+			return "high"
+		default:
+			return ""
+		}
+	case float64:
+		return numericNineBoxLevel(t)
+	case int:
+		return numericNineBoxLevel(float64(t))
+	case int64:
+		return numericNineBoxLevel(float64(t))
+	}
+	return ""
+}
+
+// numericNineBoxLevel maps a numeric 1-3 scale onto low|medium|high using
+// thresholds so fractional values (e.g. 1.5) still resolve sensibly.
+func numericNineBoxLevel(n float64) string {
+	switch {
+	case n <= 1:
+		return "low"
+	case n >= 3:
+		return "high"
+	default:
+		return "medium"
+	}
 }
 
 // employeeToGridPos converts performance/potential strings to grid position.

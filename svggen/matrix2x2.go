@@ -857,17 +857,32 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		}
 
 		// Apply axis ranges
+		xRangeSet := false
+		yRangeSet := false
 		if xMin, ok := req.Data["x_min"].(float64); ok {
 			config.XAxisMin = xMin
+			xRangeSet = true
 		}
 		if xMax, ok := req.Data["x_max"].(float64); ok {
 			config.XAxisMax = xMax
+			xRangeSet = true
 		}
 		if yMin, ok := req.Data["y_min"].(float64); ok {
 			config.YAxisMin = yMin
+			yRangeSet = true
 		}
 		if yMax, ok := req.Data["y_max"].(float64); ok {
 			config.YAxisMax = yMax
+			yRangeSet = true
+		}
+
+		// Rescale normalized 0-1 coordinates to the axis range. Agents sometimes
+		// supply x/y in [0,1] instead of the documented 0-100 scale; without
+		// rescaling every point collapses into the bottom-left quadrant
+		// (go-slide-creator-pc2a). Only applies when axis ranges are left at
+		// their defaults so explicit ranges are always respected.
+		if !xRangeSet && !yRangeSet {
+			maybeScaleNormalizedPoints(data.Points, config.XAxisMin, config.XAxisMax, config.YAxisMin, config.YAxisMax)
 		}
 
 		chart := NewMatrix2x2Chart(builder, config)
@@ -938,6 +953,43 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
 	}
 
 	return data, nil
+}
+
+// maybeScaleNormalizedPoints detects matrix points provided on a normalized
+// 0-1 scale and rescales them to the configured axis range. Agents sometimes
+// supply x/y in [0,1] instead of the documented 0-100 scale; without rescaling
+// they all collapse into the bottom-left quadrant (go-slide-creator-pc2a).
+//
+// To avoid mis-firing it only rescales when (a) the axis spans a much larger
+// range than [0,1], (b) every coordinate is within [0,1], and (c) at least one
+// coordinate is strictly positive (so genuinely all-zero data isn't "scaled").
+func maybeScaleNormalizedPoints(points []Matrix2x2Point, xMin, xMax, yMin, yMax float64) {
+	if len(points) == 0 {
+		return
+	}
+	xSpan := xMax - xMin
+	ySpan := yMax - yMin
+	// If the axis is itself a small range (already 0-1-ish), the data is
+	// presumably already in the right units — leave it alone.
+	if math.Abs(xSpan) <= 2 || math.Abs(ySpan) <= 2 {
+		return
+	}
+	anyPositive := false
+	for _, p := range points {
+		if p.X < 0 || p.X > 1 || p.Y < 0 || p.Y > 1 {
+			return // a point outside [0,1] → not normalized data
+		}
+		if p.X > 0 || p.Y > 0 {
+			anyPositive = true
+		}
+	}
+	if !anyPositive {
+		return
+	}
+	for i := range points {
+		points[i].X = xMin + points[i].X*xSpan
+		points[i].Y = yMin + points[i].Y*ySpan
+	}
 }
 
 // quadrantPositionIndex returns the index (0-3) for a normalized quadrant position string.

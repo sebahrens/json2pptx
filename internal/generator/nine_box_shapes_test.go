@@ -134,6 +134,67 @@ func TestEmployeeToGridPos(t *testing.T) {
 	}
 }
 
+func TestParseNineBoxEmployees_NumericLevels(t *testing.T) {
+	// Agents commonly send a numeric 1-3 scale instead of low|medium|high.
+	// These must route into the grid rather than collapsing to the center
+	// "Core Employee" cell (go-slide-creator-pc2a).
+	data := map[string]any{
+		"employees": []any{
+			map[string]any{"name": "Alice", "performance": float64(3), "potential": float64(3)},
+			map[string]any{"name": "Bob", "performance": float64(1), "potential": float64(1)},
+			map[string]any{"name": "Carol", "performance": float64(2), "potential": float64(2)},
+		},
+	}
+
+	cells := parseNineBoxCells(data)
+
+	got := map[string]struct{ row, col int }{}
+	for _, c := range cells {
+		for _, name := range c.items {
+			got[name] = struct{ row, col int }{c.row, c.col}
+		}
+	}
+
+	// performance->col (low=0,med=1,high=2), potential->row (high=0,med=1,low=2)
+	want := map[string]struct{ row, col int }{
+		"Alice": {0, 2}, // high/high
+		"Bob":   {2, 0}, // low/low
+		"Carol": {1, 1}, // medium/medium
+	}
+	for name, w := range want {
+		if got[name] != w {
+			t.Errorf("%s: got (%d,%d), want (%d,%d)", name, got[name].row, got[name].col, w.row, w.col)
+		}
+	}
+}
+
+func TestNormalizeNineBoxLevel(t *testing.T) {
+	tests := []struct {
+		in   any
+		want string
+	}{
+		{"high", "high"},
+		{"High", "high"},
+		{" Medium ", "medium"},
+		{"moderate", "medium"},
+		{"1", "low"},
+		{"2", "medium"},
+		{"3", "high"},
+		{float64(1), "low"},
+		{float64(2), "medium"},
+		{float64(3), "high"},
+		{int(3), "high"},
+		{1.5, "medium"},
+		{"unknown", ""},
+		{nil, ""},
+	}
+	for _, tt := range tests {
+		if got := normalizeNineBoxLevel(tt.in); got != tt.want {
+			t.Errorf("normalizeNineBoxLevel(%v): got %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
 func TestEncodeDecodeNineBoxAxes(t *testing.T) {
 	xTitle := "Performance"
 	yTitle := "Potential"

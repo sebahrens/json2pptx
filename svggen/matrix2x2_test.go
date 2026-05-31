@@ -42,6 +42,53 @@ func TestMatrix2x2Chart_BasicRender(t *testing.T) {
 	}
 }
 
+func TestMaybeScaleNormalizedPoints(t *testing.T) {
+	// Normalized 0-1 coords on the default 0-100 axis should scale to 0-100.
+	t.Run("scales normalized data", func(t *testing.T) {
+		pts := []Matrix2x2Point{
+			{Label: "A", X: 0.2, Y: 0.8},
+			{Label: "B", X: 1.0, Y: 0.0},
+		}
+		maybeScaleNormalizedPoints(pts, 0, 100, 0, 100)
+		if pts[0].X != 20 || pts[0].Y != 80 {
+			t.Errorf("A: got (%v,%v), want (20,80)", pts[0].X, pts[0].Y)
+		}
+		if pts[1].X != 100 || pts[1].Y != 0 {
+			t.Errorf("B: got (%v,%v), want (100,0)", pts[1].X, pts[1].Y)
+		}
+	})
+
+	// Already-0-100 data must be left untouched.
+	t.Run("leaves 0-100 data unchanged", func(t *testing.T) {
+		pts := []Matrix2x2Point{
+			{Label: "A", X: 20, Y: 80},
+			{Label: "B", X: 75, Y: 30},
+		}
+		maybeScaleNormalizedPoints(pts, 0, 100, 0, 100)
+		if pts[0].X != 20 || pts[1].X != 75 {
+			t.Errorf("0-100 data was modified: %v", pts)
+		}
+	})
+
+	// All-zero data should not be spuriously rescaled.
+	t.Run("ignores all-zero data", func(t *testing.T) {
+		pts := []Matrix2x2Point{{Label: "A", X: 0, Y: 0}}
+		maybeScaleNormalizedPoints(pts, 0, 100, 0, 100)
+		if pts[0].X != 0 || pts[0].Y != 0 {
+			t.Errorf("all-zero data was modified: %v", pts)
+		}
+	})
+
+	// A small axis range (already 0-1-ish) must not trigger scaling.
+	t.Run("respects small axis range", func(t *testing.T) {
+		pts := []Matrix2x2Point{{Label: "A", X: 0.2, Y: 0.8}}
+		maybeScaleNormalizedPoints(pts, 0, 1, 0, 1)
+		if pts[0].X != 0.2 || pts[0].Y != 0.8 {
+			t.Errorf("small-range data was modified: %v", pts)
+		}
+	})
+}
+
 func TestMatrix2x2Chart_EmptyPoints(t *testing.T) {
 	builder := NewSVGBuilder(800, 600)
 
