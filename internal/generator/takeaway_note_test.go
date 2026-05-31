@@ -6,7 +6,8 @@ import (
 )
 
 // TestGenerateTakeawayShape verifies that the takeaway shape XML contains
-// the expected text, bold formatting, font size, and dark text color.
+// the expected text, bold formatting, font size, dark text color, and the
+// distinct accent-tinted band fill plus accent rule (go-slide-creator-5ovr).
 func TestGenerateTakeawayShape(t *testing.T) {
 	xml := generateTakeawayShape("Revenue doubled year over year.", 100)
 	if xml == "" {
@@ -16,14 +17,24 @@ func TestGenerateTakeawayShape(t *testing.T) {
 	wants := []string{
 		"Revenue doubled year over year.",
 		`name="Takeaway"`,
-		`sz="1200"`, // 12pt
-		`b="1"`,     // bold
-		"1F1F1F",    // dark gray text color
+		`sz="1200"`,                  // 12pt
+		`b="1"`,                      // bold
+		"1F1F1F",                     // dark gray text color
+		`<a:schemeClr val="accent1"`, // accent-driven band fill / rule
+		`<a:lumMod val="20000"/>`,    // light wash: 20% luminance retained
+		`<a:lumOff val="80000"/>`,    // light wash: +80% luminance
+		`<a:ln w="12700"`,            // 1pt accent rule framing the band
 	}
 	for _, want := range wants {
 		if !strings.Contains(xml, want) {
 			t.Errorf("generateTakeawayShape() missing %q in:\n%s", want, xml)
 		}
+	}
+
+	// The band must NOT render as a plain no-fill text box — the QA finding
+	// that triggered the band treatment.
+	if strings.Contains(xml, "<a:noFill/>") {
+		t.Errorf("takeaway should have a band fill, not noFill:\n%s", xml)
 	}
 }
 
