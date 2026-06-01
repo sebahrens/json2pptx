@@ -223,10 +223,17 @@ func buildSlideSpec(path string, m map[string]any, ds *Diagnostics) SlideSpec {
 			fmt.Sprintf("slide is missing the required \"kind\" field; expected one of %s", joinKinds()))
 	default:
 		kindStr, isStr := kindRaw.(string)
-		if !isStr {
+		switch {
+		case !isStr:
 			ds.add(path+".kind", CodeInvalidKindType,
 				fmt.Sprintf("kind must be a string, got %T", kindRaw))
-		} else {
+		case strings.TrimSpace(kindStr) == "":
+			// A present-but-blank kind ("" or whitespace-only) carries no usable
+			// discriminator, so it is treated as absent and left for validateSlide
+			// to report a single, canonical missing-kind finding. Emitting an
+			// "unknown slide kind \"\"" diagnostic here as well would double up with
+			// that finding under the same code and path with a contradictory message.
+		default:
 			slide.Kind = SlideKind(kindStr)
 			if !slide.Kind.Valid() {
 				ds.add(path+".kind", CodeUnknownKind,

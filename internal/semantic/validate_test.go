@@ -110,6 +110,35 @@ func TestValidateUnknownKindAndArchetype(t *testing.T) {
 	}
 }
 
+// TestCheckBlankKindEmitsSingleMissingFinding guards against the regression
+// where a present-but-blank kind ("" or whitespace) was reported twice: the
+// parse pass emitted "unknown slide kind \"\"" while validateSlide separately
+// emitted "missing the required \"kind\" field", two findings at the same code
+// and path with contradictory messages. A blank kind must now yield exactly one
+// canonical missing-kind finding.
+func TestCheckBlankKindEmitsSingleMissingFinding(t *testing.T) {
+	for _, kind := range []string{"", "   ", "\t"} {
+		src := fmt.Sprintf(`{"meta":{"title":"X"},"slides":[{"kind":%q,"title":"x"}]}`, kind)
+		ds := Check("spec.json", []byte(src), StrictnessWarn)
+		var atKind []diagnostics.Diagnostic
+		for _, d := range ds {
+			if d.Path == "slides[0].kind" {
+				atKind = append(atKind, d)
+			}
+		}
+		if len(atKind) != 1 {
+			t.Fatalf("kind=%q: expected exactly 1 finding at slides[0].kind, got %d: %v", kind, len(atKind), atKind)
+		}
+		d := atKind[0]
+		if d.Code != diagnostics.CodeSemanticUnknownKind {
+			t.Errorf("kind=%q: code = %q, want %q", kind, d.Code, diagnostics.CodeSemanticUnknownKind)
+		}
+		if !strings.Contains(d.Message, "missing the required") {
+			t.Errorf("kind=%q: message = %q, want the canonical missing-kind message", kind, d.Message)
+		}
+	}
+}
+
 func TestValidateRequiredPayloadField(t *testing.T) {
 	// kpi_snapshot requires "kpis".
 	spec := &DeckSpec{
