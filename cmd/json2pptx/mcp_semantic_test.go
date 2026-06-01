@@ -242,6 +242,11 @@ func TestSemanticMCP_ListArchetypesAndKinds(t *testing.T) {
 			if len(k.RequiredFields) == 0 {
 				t.Error("kpi_snapshot should list required_fields")
 			}
+			// The "metrics" alias for "kpis" must be discoverable, so an agent
+			// knows a metrics-only spec is accepted (go-slide-creator-i2p4).
+			if got := k.RequiredAliases["kpis"]; len(got) == 0 || got[0] != "metrics" {
+				t.Errorf("kpi_snapshot should expose required_aliases kpis->[metrics], got %v", k.RequiredAliases)
+			}
 		}
 	}
 	if !sawKPI {

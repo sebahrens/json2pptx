@@ -476,15 +476,16 @@ func handleListDeckArchetypes(ctx context.Context, _ mcp.CallToolRequest) (*mcp.
 // slideKindListEntry is one row of list_slide_kinds: the kind discriminator, a
 // one-line summary, and the required/typical payload fields for that kind.
 type slideKindListEntry struct {
-	Kind           string   `json:"kind"`
-	Summary        string   `json:"summary"`
-	RequiredFields []string `json:"required_fields,omitempty"`
-	TypicalFields  []string `json:"typical_fields,omitempty"`
+	Kind            string              `json:"kind"`
+	Summary         string              `json:"summary"`
+	RequiredFields  []string            `json:"required_fields,omitempty"`
+	RequiredAliases map[string][]string `json:"required_aliases,omitempty"`
+	TypicalFields   []string            `json:"typical_fields,omitempty"`
 }
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, typical_fields}]}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, and typical_fields are common optional keys. Call this when authoring a NEW deck spec to choose each slide's kind and learn which fields it expects. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
+		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields}]}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), and typical_fields are common optional keys. Call this when authoring a NEW deck spec to choose each slide's kind and learn which fields it expects. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
 		mcp.WithRawOutputSchema(outputSchemaListSlideKinds),
 	)
 }
@@ -494,10 +495,11 @@ func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Call
 	for _, k := range semantic.AllSlideKinds() {
 		info, _ := semantic.LookupKind(k)
 		out = append(out, slideKindListEntry{
-			Kind:           string(k),
-			Summary:        info.Summary,
-			RequiredFields: info.RequiredFields,
-			TypicalFields:  info.TypicalFields,
+			Kind:            string(k),
+			Summary:         info.Summary,
+			RequiredFields:  info.RequiredFields,
+			RequiredAliases: info.RequiredAliases,
+			TypicalFields:   info.TypicalFields,
 		})
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, map[string]any{"slide_kinds": out})

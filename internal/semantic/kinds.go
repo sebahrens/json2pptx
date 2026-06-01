@@ -44,6 +44,15 @@ type KindInfo struct {
 	RequiredFields []string `json:"required_fields,omitempty"`
 	// TypicalFields lists common optional payload keys, for authoring hints.
 	TypicalFields []string `json:"typical_fields,omitempty"`
+	// RequiredAliases maps a canonical required field (one listed in
+	// RequiredFields) to alternative payload keys the compiler accepts in its
+	// place. The requirement is satisfied when the canonical field OR any of its
+	// aliases carries usable content (required-one-of semantics). This keeps the
+	// validator, schema, and discovery from requiring a key the compiler treats
+	// as interchangeable — e.g. kpi_snapshot reads "metrics" as an alias for
+	// "kpis", so a spec using only "metrics" must validate and compile, not be
+	// blocked before compile.
+	RequiredAliases map[string][]string `json:"required_aliases,omitempty"`
 }
 
 // slideKindRegistry is the canonical source of known slide kinds.
@@ -67,10 +76,11 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		TypicalFields:  []string{"points", "takeaways", "takeaway"},
 	},
 	KindKPISnapshot: {
-		Kind:           KindKPISnapshot,
-		Summary:        "Snapshot of big-number key performance indicators.",
-		RequiredFields: []string{"kpis"},
-		TypicalFields:  []string{"title", "takeaway"},
+		Kind:            KindKPISnapshot,
+		Summary:         "Snapshot of big-number key performance indicators.",
+		RequiredFields:  []string{"kpis"},
+		RequiredAliases: map[string][]string{"kpis": {"metrics"}},
+		TypicalFields:   []string{"title", "takeaway"},
 	},
 	KindChartInsight: {
 		Kind:           KindChartInsight,

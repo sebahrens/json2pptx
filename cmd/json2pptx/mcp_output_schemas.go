@@ -2236,6 +2236,7 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "kind":            {"type": "string"},
           "summary":         {"type": "string"},
           "required_fields": {"type": "array", "items": {"type": "string"}},
+          "required_aliases": {"type": "object", "description": "Maps a required field to accepted alias keys (required-one-of: the field or any alias satisfies the requirement).", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
           "typical_fields":  {"type": "array", "items": {"type": "string"}}
         },
         "required": ["kind", "summary"]

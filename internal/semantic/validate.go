@@ -172,13 +172,24 @@ func (s *semDiags) advisory(path, code, msg string) {
 // it is a missing-content condition, matching the required-field gate. It
 // returns true only when usable > 0, so callers can gate density/range
 // advisories on real content.
-func (s *semDiags) requireUsableContent(path, field string, body map[string]any, usable int) bool {
+func (s *semDiags) requireUsableContent(path, field string, body map[string]any, usable int, aliases ...string) bool {
 	if usable > 0 {
 		return true
 	}
-	if hasNonEmpty(body, field) {
-		s.hard(path+"."+field, diagnostics.CodeSemanticRequired,
-			fmt.Sprintf("%q is present but every entry is blank; provide at least one entry with usable content", field))
+	// Report against whichever key the author actually supplied (the canonical
+	// field or an accepted alias), so the path points at real payload content.
+	present := field
+	if !hasNonEmpty(body, field) {
+		for _, a := range aliases {
+			if hasNonEmpty(body, a) {
+				present = a
+				break
+			}
+		}
+	}
+	if hasNonEmpty(body, present) {
+		s.hard(path+"."+present, diagnostics.CodeSemanticRequired,
+			fmt.Sprintf("%q is present but every entry is blank; provide at least one entry with usable content", present))
 	}
 	return false
 }
@@ -270,11 +281,16 @@ func validateSlide(i int, slide SlideSpec, s *semDiags) {
 	}
 
 	// Every kind-specific required payload field must be present and non-empty.
+	// A field with registered aliases is satisfied when the canonical name OR any
+	// alias carries content (required-one-of): the compiler reads the aliases
+	// interchangeably, so requiring only the canonical name would block an
+	// otherwise-compileable spec (e.g. kpi_snapshot's "metrics" alias for "kpis").
 	for _, field := range info.RequiredFields {
-		if !hasNonEmpty(slide.Body, field) {
-			s.hard(path+"."+field, diagnostics.CodeSemanticRequired,
-				fmt.Sprintf("%s slide requires a %q field", slide.Kind, field))
+		if fieldOrAliasPresent(slide.Body, field, info.RequiredAliases[field]) {
+			continue
 		}
+		s.hard(path+"."+field, diagnostics.CodeSemanticRequired,
+			fmt.Sprintf("%s slide requires a %s field", slide.Kind, requiredFieldPhrase(field, info.RequiredAliases[field])))
 	}
 
 	// Flag payload fields present with the wrong JSON type for the kind. The
@@ -340,7 +356,7 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		// list of blank/labelless cells passes the required-field gate but
 		// compiles to a title-only slide. Below 1 usable cell is a blocking error;
 		// otherwise the 2–6 density range is advisory.
-		if n := slides.UsableKPICount(slide.Body); s.requireUsableContent(path, "kpis", slide.Body, n) && (n < 2 || n > 6) {
+		if n := slides.UsableKPICount(slide.Body); s.requireUsableContent(path, "kpis", slide.Body, n, "metrics") && (n < 2 || n > 6) {
 			s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
 				fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 is recommended", n))
 		}
@@ -473,6 +489,35 @@ func weakMarker(v string) string {
 		}
 	}
 	return ""
+}
+
+// fieldOrAliasPresent reports whether the canonical field or any of its aliases
+// carries non-empty content. It backs required-one-of enforcement: the compiler
+// reads aliases interchangeably, so any one of them satisfies the requirement.
+func fieldOrAliasPresent(body map[string]any, field string, aliases []string) bool {
+	if hasNonEmpty(body, field) {
+		return true
+	}
+	for _, a := range aliases {
+		if hasNonEmpty(body, a) {
+			return true
+		}
+	}
+	return false
+}
+
+// requiredFieldPhrase renders the field name for a missing-required message,
+// listing accepted aliases so the agent learns both keys (e.g. `kpis` (or
+// `metrics`)).
+func requiredFieldPhrase(field string, aliases []string) string {
+	if len(aliases) == 0 {
+		return fmt.Sprintf("%q", field)
+	}
+	quoted := make([]string, len(aliases))
+	for i, a := range aliases {
+		quoted[i] = fmt.Sprintf("%q", a)
+	}
+	return fmt.Sprintf("%q (or %s)", field, strings.Join(quoted, ", "))
 }
 
 // hasNonEmpty reports whether body has a present, non-empty value for field. A

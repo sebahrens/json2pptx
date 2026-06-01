@@ -121,6 +121,59 @@ func TestValidateRequiredPayloadField(t *testing.T) {
 	}
 }
 
+// TestValidateRequiredFieldAlias is the regression guard for
+// go-slide-creator-i2p4: the kpi_snapshot compiler reads "metrics" as an alias
+// for "kpis", so a spec using only "metrics" must validate (and compile), not be
+// blocked by the required-field gate. The validator, schema, and discovery must
+// agree the alias is reachable.
+func TestValidateRequiredFieldAlias(t *testing.T) {
+	cells := []any{
+		map[string]any{"value": "42%", "label": "Win rate"},
+		map[string]any{"value": "$1.2M", "label": "ARR"},
+		map[string]any{"value": "12", "label": "Logos"},
+	}
+
+	t.Run("metrics alias satisfies the required-one-of gate", func(t *testing.T) {
+		spec := &DeckSpec{
+			Meta: DeckMeta{Title: "Deck"},
+			Slides: []SlideSpec{{Kind: KindKPISnapshot, Body: map[string]any{
+				"title":    "Metrics",
+				"metrics":  cells,
+				"takeaway": "Numbers that matter.",
+			}}},
+		}
+		ds := Validate(spec, StrictnessStrict)
+		if hasErrorAt(ds, "slides[0].kpis") {
+			t.Fatalf("metrics alias must not trigger a missing-kpis error, got %v", ds)
+		}
+	})
+
+	t.Run("a kpi_snapshot with neither kpis nor metrics is still blocked", func(t *testing.T) {
+		spec := &DeckSpec{
+			Meta:   DeckMeta{Title: "Deck"},
+			Slides: []SlideSpec{{Kind: KindKPISnapshot, Body: map[string]any{"title": "Metrics"}}},
+		}
+		ds := Validate(spec, StrictnessWarn)
+		if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides[0].kpis"); !ok {
+			t.Fatalf("expected SEMANTIC_REQUIRED at slides[0].kpis when both kpis and metrics are absent, got %v", ds)
+		}
+	})
+
+	t.Run("all-blank metrics is blocked, not silently dropped", func(t *testing.T) {
+		spec := &DeckSpec{
+			Meta: DeckMeta{Title: "Deck"},
+			Slides: []SlideSpec{{Kind: KindKPISnapshot, Body: map[string]any{
+				"title":   "Metrics",
+				"metrics": []any{map[string]any{}, map[string]any{}},
+			}}},
+		}
+		ds := Validate(spec, StrictnessWarn)
+		if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides[0].metrics"); !ok {
+			t.Fatalf("expected blocking SEMANTIC_REQUIRED at slides[0].metrics for all-blank metrics, got %v", ds)
+		}
+	})
+}
+
 // TestValidateRawEscapeHatchStructure is the regression guard for
 // go-slide-creator-8kor: a raw_json2pptx slide whose "slide" payload is an
 // object but not a valid, renderable raw json2pptx slide must fail fast at

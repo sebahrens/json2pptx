@@ -79,15 +79,36 @@ func TestSchemaEmitsPerKindVariants(t *testing.T) {
 			t.Errorf("kind %q: variant does not pin kind via const, got %v", k, props["kind"])
 		}
 
-		// Every required field is a documented property and listed in required.
+		// Every required field is a documented property. A field with no aliases is
+		// listed in the flat required array; a field with aliases is expressed as
+		// required-one-of (an anyOf over the field and its aliases, under allOf) so
+		// an alias-only spec stays schema-valid.
 		req := variant["required"].([]any)
 		reqSet := make(map[string]bool, len(req))
 		for _, r := range req {
 			reqSet[r.(string)] = true
 		}
+		oneOfRequired := requiredOneOfFields(variant)
 		for _, f := range info.RequiredFields {
 			if _, ok := props[f]; !ok {
 				t.Errorf("kind %q: required field %q missing from variant properties", k, f)
+			}
+			if aliases := info.RequiredAliases[f]; len(aliases) > 0 {
+				if reqSet[f] {
+					t.Errorf("kind %q: aliased required field %q must not be in the flat required list (use required-one-of)", k, f)
+				}
+				if !oneOfRequired[f] {
+					t.Errorf("kind %q: aliased required field %q missing from required-one-of (allOf/anyOf)", k, f)
+				}
+				for _, a := range aliases {
+					if _, ok := props[a]; !ok {
+						t.Errorf("kind %q: alias %q for %q missing from variant properties", k, a, f)
+					}
+					if !oneOfRequired[a] {
+						t.Errorf("kind %q: alias %q missing from required-one-of (allOf/anyOf)", k, a)
+					}
+				}
+				continue
 			}
 			if !reqSet[f] {
 				t.Errorf("kind %q: required field %q missing from variant required list", k, f)
@@ -100,6 +121,43 @@ func TestSchemaEmitsPerKindVariants(t *testing.T) {
 			}
 		}
 	}
+}
+
+// requiredOneOfFields collects the field names named in a variant's
+// required-one-of clauses (allOf -> anyOf -> {required:[field]}), so a test can
+// assert that an aliased required field and its aliases are expressed there.
+func requiredOneOfFields(variant map[string]any) map[string]bool {
+	out := map[string]bool{}
+	groups, ok := variant["allOf"].([]any)
+	if !ok {
+		return out
+	}
+	for _, g := range groups {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		opts, ok := gm["anyOf"].([]any)
+		if !ok {
+			continue
+		}
+		for _, o := range opts {
+			om, ok := o.(map[string]any)
+			if !ok {
+				continue
+			}
+			req, ok := om["required"].([]any)
+			if !ok {
+				continue
+			}
+			for _, r := range req {
+				if name, ok := r.(string); ok {
+					out[name] = true
+				}
+			}
+		}
+	}
+	return out
 }
 
 func TestSchemaArchetypeEnumMatchesRegistry(t *testing.T) {

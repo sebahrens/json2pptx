@@ -133,7 +133,7 @@ var payloadFieldType = map[string]string{
 	"title": "string", "subtitle": "string", "eyebrow": "string",
 	"takeaway": "string", "source": "string", "insight": "string",
 	"recommendation": "string",
-	"points":         "array", "takeaways": "array", "kpis": "array",
+	"points":         "array", "takeaways": "array", "kpis": "array", "metrics": "array",
 	"columns": "array", "steps": "array", "phases": "array",
 	"options": "array", "insights": "array",
 	"chart": "object", "slide": "object",
@@ -153,18 +153,46 @@ func payloadFieldSchema(name string, required bool) map[string]any {
 	return s
 }
 
+// payloadAliasSchema describes an accepted alias for a required field: it shares
+// the canonical field's type hint and notes which field it stands in for.
+func payloadAliasSchema(name, canonical string) map[string]any {
+	s := map[string]any{}
+	if t, ok := payloadFieldType[name]; ok {
+		s["type"] = t
+	}
+	s["description"] = fmt.Sprintf("Accepted alias for the required %q field.", canonical)
+	return s
+}
+
 // kindVariantSchema renders the discriminated-union variant for one slide kind:
 // a const-pinned `kind`, the kind's required + typical payload fields as
-// properties, and required set to {kind} ∪ RequiredFields. additionalProperties
-// stays true so compiler-accepted aliases and extra keys are not rejected.
+// properties, and required set to {kind} ∪ RequiredFields. A required field that
+// has registered aliases is expressed as required-one-of (an anyOf over the
+// canonical name and each alias) rather than a flat required entry, so a spec
+// using only an alias is schema-valid — matching the validator and compiler,
+// which read the aliases interchangeably. additionalProperties stays true so
+// compiler-accepted aliases and extra keys are not rejected.
 func kindVariantSchema(info KindInfo) map[string]any {
 	props := map[string]any{
 		"kind": map[string]any{"const": string(info.Kind)},
 	}
 	required := []any{"kind"}
+	var oneOfGroups []any
 	for _, f := range info.RequiredFields {
 		props[f] = payloadFieldSchema(f, true)
-		required = append(required, f)
+		aliases := info.RequiredAliases[f]
+		if len(aliases) == 0 {
+			required = append(required, f)
+			continue
+		}
+		// required-one-of: the canonical field or any alias satisfies the
+		// requirement. Document each alias as a property too so it is discoverable.
+		opts := []any{map[string]any{"required": []any{f}}}
+		for _, a := range aliases {
+			props[a] = payloadAliasSchema(a, f)
+			opts = append(opts, map[string]any{"required": []any{a}})
+		}
+		oneOfGroups = append(oneOfGroups, map[string]any{"anyOf": opts})
 	}
 	for _, f := range info.TypicalFields {
 		if _, exists := props[f]; exists {
@@ -172,7 +200,7 @@ func kindVariantSchema(info KindInfo) map[string]any {
 		}
 		props[f] = payloadFieldSchema(f, false)
 	}
-	return map[string]any{
+	variant := map[string]any{
 		"type":                 "object",
 		"title":                string(info.Kind) + " slide",
 		"description":          info.Summary,
@@ -180,6 +208,12 @@ func kindVariantSchema(info KindInfo) map[string]any {
 		"properties":           props,
 		"additionalProperties": true,
 	}
+	// Each alias group becomes its own anyOf; all groups must hold, so they are
+	// combined under allOf.
+	if len(oneOfGroups) > 0 {
+		variant["allOf"] = oneOfGroups
+	}
+	return variant
 }
 
 func kindEnum() []any {

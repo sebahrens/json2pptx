@@ -41,7 +41,7 @@ the compiler choose patterns, layouts, accents, and rhythm — a spec is far sho
 
 | Step | MCP tool | CLI | Purpose |
 |---|---|---|---|
-| Discover | `list_deck_archetypes`, `list_slide_kinds` | `semantic schema` | Enumerate `meta.archetype` / `slides[].kind` and each kind's required + typical fields. `semantic schema` prints the full DeckSpec JSON Schema (draft 2020-12). |
+| Discover | `list_deck_archetypes`, `list_slide_kinds` | `semantic schema` | Enumerate `meta.archetype` / `slides[].kind` and each kind's required + typical fields (plus `required_aliases`: required-one-of alias keys, e.g. `kpi_snapshot` accepts `metrics` for `kpis`). `semantic schema` prints the full DeckSpec JSON Schema (draft 2020-12). |
 | Validate | `validate_deck_spec` | `semantic validate` | First check: unknown kinds/archetypes, missing required payload fields, rhythm/density advisories. Returns the shared finding envelope; `ok=false` ⇒ ≥1 error-severity finding (`--strict off\|warn\|strict` controls advisory severity). |
 | Preview plan | `explain_deck_spec` | `semantic explain` | Read-only projection: resolved archetype/template, deck `rhythm` + `rhythm_warnings[]`, and per slide `{index, kind, role, visual_family, density, title, takeaway, pattern, layout}` — **without** compiling or rendering. Use during planning. |
 | Render | `render_deck_spec` | `semantic render` | One-call spec → `.pptx`. Strict output validation by default (`output_validation off\|warn\|strict`). Returns `{success, pptx_path, quality_summary, diagnostics[], explanation_summary}`. |
@@ -84,7 +84,9 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > from the `takeaways` body array.
 >
 > **Compiler-accepted aliases** (resilience only — prefer the canonical names above): `kpi_snapshot`
-> `kpis`↔`metrics` with `{value↔big, label↔small/caption}`; `chart_insight` `insights[]`↔`insight`
+> `kpis`↔`metrics` with `{value↔big, label↔small/caption}` (a **blessed required-one-of alias**: a
+> spec providing only `metrics` validates and compiles — it appears in `list_slide_kinds`
+> `required_aliases` and the schema's required-one-of clause, not just at compile time); `chart_insight` `insights[]`↔`insight`
 > (singular string); `comparison` column `header`↔`title`/`label`/`name`; `process` step
 > `label`↔`title`/`name`/`step`/`text`/`description`; `roadmap` phase `name`↔`title`/`label`/`phase`,
 > `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary` (plus `items`/`bullets` folded in); `decision` option
