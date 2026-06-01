@@ -396,6 +396,107 @@ func TestRecommend_VarietyPenaltyDemotsRepeated(t *testing.T) {
 	t.Logf("Broad intent candidates: %v", result2.Candidates)
 }
 
+// TestRecommend_OrderedStepsRouting locks J2P-RECO-006: ordered-steps and
+// table-of-contents intents route to numbered-step-strip / agenda and away from
+// process-flow, while genuine branching / cross-functional flows still keep
+// process-flow / swimlane.
+func TestRecommend_OrderedStepsRouting(t *testing.T) {
+	reg := NewRegistry()
+	for _, name := range []string{
+		"numbered-step-strip", "agenda", "process-flow", "process-flow-compact",
+		"swimlane", "card-grid",
+	} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	scoreOf := func(cs []Candidate, name string) (float64, bool) {
+		for _, c := range cs {
+			if c.PatternName == name {
+				return c.Score, true
+			}
+		}
+		return 0, false
+	}
+
+	t.Run("selection process ranks numbered-step-strip above process-flow", func(t *testing.T) {
+		res := Recommend(reg, "four step selection process for AI tool criteria", nil, 10)
+		if len(res.Candidates) == 0 {
+			t.Fatal("no candidates")
+		}
+		top := res.Candidates[0].PatternName
+		if top != "numbered-step-strip" && top != "agenda" {
+			t.Errorf("top=%q, want numbered-step-strip or agenda (candidates=%v)", top, res.Candidates)
+		}
+		nss, _ := scoreOf(res.Candidates, "numbered-step-strip")
+		if pf, ok := scoreOf(res.Candidates, "process-flow"); ok && pf >= nss {
+			t.Errorf("process-flow (%.2f) should rank below numbered-step-strip (%.2f)", pf, nss)
+		}
+	})
+
+	t.Run("decision thresholds avoid the diamond flowchart", func(t *testing.T) {
+		res := Recommend(reg, "decision thresholds reject pause pilot approve", nil, 10)
+		if len(res.Candidates) == 0 {
+			t.Fatal("no candidates")
+		}
+		if res.Candidates[0].PatternName == "process-flow" {
+			t.Errorf("process-flow should not be top for non-branching decision thresholds (candidates=%v)", res.Candidates)
+		}
+		nss, ok := scoreOf(res.Candidates, "numbered-step-strip")
+		if !ok {
+			t.Fatalf("expected numbered-step-strip candidate, got %v", res.Candidates)
+		}
+		if pf, ok := scoreOf(res.Candidates, "process-flow"); ok && pf >= nss {
+			t.Errorf("process-flow (%.2f) should rank below numbered-step-strip (%.2f)", pf, nss)
+		}
+	})
+
+	t.Run("cross-functional workflow keeps process-flow / swimlane", func(t *testing.T) {
+		res := Recommend(reg, "cross-functional workflow with handoffs and decisions", nil, 10)
+		if len(res.Candidates) == 0 {
+			t.Fatal("no candidates")
+		}
+		top := res.Candidates[0].PatternName
+		if top != "process-flow" && top != "swimlane" {
+			t.Errorf("top=%q, want process-flow or swimlane (candidates=%v)", top, res.Candidates)
+		}
+		// Branching signal present → process-flow must NOT be demoted.
+		if pf, ok := scoreOf(res.Candidates, "process-flow"); ok && pf < 0.85 {
+			t.Errorf("process-flow demoted to %.2f despite explicit branching/workflow terms", pf)
+		}
+	})
+
+	t.Run("table of contents ranks agenda, never process-flow", func(t *testing.T) {
+		res := Recommend(reg, "table of contents for the deck", nil, 10)
+		if len(res.Candidates) == 0 {
+			t.Fatal("no candidates")
+		}
+		if res.Candidates[0].PatternName != "agenda" && res.Candidates[0].PatternName != "numbered-step-strip" {
+			t.Errorf("top=%q, want agenda or numbered-step-strip (candidates=%v)", res.Candidates[0].PatternName, res.Candidates)
+		}
+		if _, ok := scoreOf(res.Candidates, "process-flow"); ok {
+			t.Errorf("process-flow should not appear for a table-of-contents intent (candidates=%v)", res.Candidates)
+		}
+	})
+}
+
+// TestRecommend_SparseLowDensityDemotesProcessFlow verifies the sparse
+// single-row signal: a low-density 3–6 item count with no branching term
+// demotes process-flow even without an explicit ordered-steps keyword.
+func TestRecommend_SparseLowDensityDemotesProcessFlow(t *testing.T) {
+	reg := NewRegistry()
+	for _, name := range []string{"process-flow", "numbered-step-strip"} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	hints := &ContentHints{ItemCount: 4, DensityHint: "low"}
+	res := Recommend(reg, "our process steps", hints, 10)
+	for _, c := range res.Candidates {
+		if c.PatternName == "process-flow" && c.Score >= 0.9 {
+			t.Errorf("process-flow should be demoted for sparse low-density steps, got %.2f", c.Score)
+		}
+	}
+}
+
 func TestRecommend_ConfidenceBand(t *testing.T) {
 	reg := NewRegistry()
 	reg.Register(&stubPattern{name: "bmc-canvas", desc: "bmc", useWhen: "bmc", version: 1})

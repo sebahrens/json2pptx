@@ -115,6 +115,44 @@ func TestRecommendVisual_AgendaReachable(t *testing.T) {
 	}
 }
 
+// TestRecommendVisual_OrderedStepsRouting verifies J2P-RECO-006 at the visual
+// layer: an ordered-steps intent ranks the numbered-step-strip pattern above the
+// process_flow diagram, while a branching/cross-functional intent still lets the
+// process_flow diagram surface strongly.
+func TestRecommendVisual_OrderedStepsRouting(t *testing.T) {
+	reg := Default()
+
+	scoreOf := func(cs []VisualCandidate, name string) (float64, bool) {
+		for _, c := range cs {
+			if c.Name == name {
+				return c.Score, true
+			}
+		}
+		return 0, false
+	}
+
+	t.Run("ordered-steps demotes process_flow diagram", func(t *testing.T) {
+		res := RecommendVisual(reg, "four step selection process for AI tool criteria", nil, 10)
+		if len(res.Candidates) == 0 {
+			t.Fatal("no candidates")
+		}
+		nss, ok := scoreOf(res.Candidates, "numbered-step-strip")
+		if !ok {
+			t.Fatalf("expected numbered-step-strip candidate, got %+v", res.Candidates)
+		}
+		if pf, ok := scoreOf(res.Candidates, "process_flow"); ok && pf >= nss {
+			t.Errorf("process_flow diagram (%.2f) should rank below numbered-step-strip (%.2f)", pf, nss)
+		}
+	})
+
+	t.Run("branching intent keeps process_flow diagram strong", func(t *testing.T) {
+		res := RecommendVisual(reg, "cross-functional workflow with handoffs and decision branches", nil, 10)
+		if pf, ok := scoreOf(res.Candidates, "process_flow"); ok && pf < 0.85 {
+			t.Errorf("process_flow diagram demoted to %.2f despite explicit branching terms", pf)
+		}
+	})
+}
+
 func TestRecommendVisual_AllRegisteredPatternsReachable(t *testing.T) {
 	reg := Default()
 	allPatterns := reg.List()

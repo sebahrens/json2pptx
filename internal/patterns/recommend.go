@@ -328,6 +328,19 @@ var rules = []rule{
 		itemMin:   3,
 		itemMax:   6,
 	},
+	{
+		// Ordered-steps intent family (J2P-RECO-006): selection logic, criteria
+		// steps, approval paths, and decision thresholds are ordered lists, not
+		// branching flowcharts. They fire numbered-step-strip and — via
+		// applyOrderedStepsRouting — demote process-flow when no branching/actor
+		// term is present.
+		pattern:   "numbered-step-strip",
+		keywords:  []string{"selection process", "selection logic", "selection criteria", "step selection", "criteria steps", "ranked criteria", "approval path", "approval steps", "approval process", "decision thresholds", "decision criteria"},
+		baseScore: 0.90,
+		rationale: "Ordered selection / criteria / approval steps without branching — a numbered strip, not a decision-diamond flowchart",
+		itemMin:   3,
+		itemMax:   6,
+	},
 
 	// Process grid 2-row — double-track processes with two parallel rows sharing N columns
 	{
@@ -915,7 +928,83 @@ func scoreAndDedup(intentLower string, hints *ContentHints) []scored {
 	for _, c := range best {
 		flat = append(flat, c)
 	}
+
+	// Route ordered-steps / ToC intents away from process-flow.
+	applyOrderedStepsRouting(flat, intentLower, hints)
+
 	return flat
+}
+
+// orderedStepsIntentKeywords signal an ordered list of steps or a
+// table-of-contents — content that belongs on numbered-step-strip / agenda /
+// value-chain / phase-roadmap, NOT on a process-flow flowchart. A match (with
+// no competing flowchart term) demotes the process-flow family.
+var orderedStepsIntentKeywords = []string{
+	"ordered steps", "ordered step", "numbered steps", "numbered step",
+	"step selection", "selection process", "selection logic", "selection criteria",
+	"criteria steps", "ranked criteria", "approval path", "approval steps",
+	"approval process", "decision thresholds", "decision criteria",
+	"table of contents", "agenda",
+}
+
+// flowchartIntentKeywords keep process-flow in play: they imply genuine
+// branching, decision gateways, loops, or actor handoffs that a flat numbered
+// strip cannot express. When any is present, the ordered-steps demotion is
+// skipped so cross-functional / branching flows still route to
+// process-flow / swimlane. Note: bare "decision" is intentionally absent —
+// only an explicit decision *diamond* / *point* / *gateway* qualifies, so
+// "decision thresholds" still demotes.
+var flowchartIntentKeywords = []string{
+	"flowchart", "flow chart", "branch", "branching", "yes/no", "yes / no",
+	"decision diamond", "decision point", "decision gateway", "gateway",
+	"loop", "handoff", "handover", "workflow",
+	"swimlane", "swim lane", "cross-functional", "cross functional", "raci",
+}
+
+// processFlowDemotionPenalty is subtracted from process-flow-family candidates
+// when an ordered-steps / ToC intent is detected with no branching signal.
+const processFlowDemotionPenalty = 0.35
+
+// processFlowDemotion reports whether process-flow-family candidates should be
+// demoted for this intent. It returns true when the content reads as an ordered
+// list of steps / a table of contents (or a sparse low-density 3–6 item count)
+// AND carries no branching, decision-gateway, or actor-handoff signal.
+func processFlowDemotion(intentLower string, hints *ContentHints) bool {
+	for _, kw := range flowchartIntentKeywords {
+		if strings.Contains(intentLower, kw) {
+			return false
+		}
+	}
+	for _, kw := range orderedStepsIntentKeywords {
+		if strings.Contains(intentLower, kw) {
+			return true
+		}
+	}
+	// Sparse single-row signal: a low-density 3–6 item count with no branching
+	// term is a short numbered list, not a flowchart.
+	if hints != nil && hints.DensityHint == "low" && hints.ItemCount >= 3 && hints.ItemCount <= 6 {
+		return true
+	}
+	return false
+}
+
+// applyOrderedStepsRouting demotes process-flow / process-flow-compact when the
+// intent reads as ordered steps or a table of contents with no branching or
+// actor-handoff signal. Such content belongs on numbered-step-strip / agenda,
+// which imply no decision diamonds.
+func applyOrderedStepsRouting(flat []scored, intentLower string, hints *ContentHints) {
+	if !processFlowDemotion(intentLower, hints) {
+		return
+	}
+	for i := range flat {
+		switch flat[i].rule.pattern {
+		case "process-flow", "process-flow-compact":
+			flat[i].score -= processFlowDemotionPenalty
+			if flat[i].score < 0 {
+				flat[i].score = 0
+			}
+		}
+	}
 }
 
 // applyRecencyDecay penalizes patterns that appear in the recency map.

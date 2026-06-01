@@ -250,6 +250,18 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	// declared compose-affinity (PatternTaxonomy.ComposesWith).
 	all = append(all, scoreCompose(reg, intentLower, patternCandidates)...)
 
+	// Route ordered-steps / ToC intents away from the process_flow diagram. The
+	// process-flow *pattern* is already demoted inside scoreAndDedup; here we
+	// apply the same demotion to the flowchart diagram so a short numbered list
+	// doesn't surface a decision-diamond diagram as the top visual.
+	if processFlowDemotion(intentLower, &hints.ContentHints) {
+		for i := range all {
+			if all[i].Category == VisualCategoryDiagram && all[i].Name == "process_flow" {
+				all[i].Score = roundScore(math.Max(0, all[i].Score-processFlowDemotionPenalty))
+			}
+		}
+	}
+
 	// Sort by score descending.
 	sort.Slice(all, func(i, j int) bool {
 		if all[i].Score != all[j].Score {
