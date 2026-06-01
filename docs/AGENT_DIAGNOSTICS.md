@@ -49,7 +49,7 @@ the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`
   "code": "INPUT.SEMANTIC_DENSITY",
   "severity": "error",
   "where": {"slide": 2},
-  "message": "kpi snapshot has 9 KPIs; 2–6 is recommended",
+  "message": "kpi snapshot has 9 usable KPIs; 2–6 is recommended",
   "evidence": {"path": "slides[2].kpis"},
   "describe_command": "json2pptx describe-finding SEMANTIC_DENSITY"
 }
@@ -57,7 +57,16 @@ the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`
 
 (`SEMANTIC_DENSITY` and the other advisory codes are `info`/`warning` by
 default and become `error` under `strict`; they carry no `remediation` of their
-own.) After compilation, raw validation/fit/output findings are mapped back
+own.) Content-bearing list fields are counted **after** the compiler's own
+trimming/extraction, not by raw entry count: a required list whose entries are
+all blank or labelless (e.g. `steps: ["", " "]`, KPI cells with neither a number
+nor a caption, columns with no header or items) clears the raw presence gate but
+compiles to a title-only slide, so validation emits a blocking `SEMANTIC_REQUIRED`
+at the field path — always an error regardless of strictness, since it is a
+missing-content condition — instead of letting the body silently drop. The
+`SEMANTIC_DENSITY` range checks (process 3–8 steps, roadmap 3–6 phases, kpi 2–6
+KPIs) likewise use the usable count, so validation and compile agree on whether a
+visual pattern will be emitted. After compilation, raw validation/fit/output findings are mapped back
 through the semantic source map. For example, a raw overflow at
 `/slides/2/shape_grid/rows/0/cells/1/shape/text/content` is reported to agents
 as `slides[1].kpis[1]` with the raw path preserved only as fallback evidence

@@ -3,6 +3,7 @@ package semantic
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -300,6 +301,96 @@ func TestValidateWeakContent(t *testing.T) {
 	ds := Validate(spec, StrictnessWarn)
 	if _, ok := findAt(ds, diagnostics.CodeSemanticWeakContent, "slides[0].title"); !ok {
 		t.Fatalf("expected SEMANTIC_WEAK_CONTENT at slides[0].title, got %v", ds)
+	}
+}
+
+// TestValidateBlankListEntriesBlock is the regression guard for go-slide-creator-qald:
+// a required content-bearing list whose entries are all blank passes the raw
+// presence/length gate but compiles to a title-only slide. Validation must count
+// usable (post-extraction) entries and fail fast with a blocking error so the
+// disagreement between validate and compile cannot ship an empty slide.
+func TestValidateBlankListEntriesBlock(t *testing.T) {
+	cases := []struct {
+		name string
+		kind SlideKind
+		body map[string]any
+		path string
+	}{
+		{
+			name: "process all-blank steps",
+			kind: KindProcess,
+			body: map[string]any{"title": "How", "steps": []any{"", "  ", "\t"}, "takeaway": "x"},
+			path: "slides[0].steps",
+		},
+		{
+			name: "roadmap nameless phases",
+			kind: KindRoadmap,
+			body: map[string]any{"title": "Plan", "phases": []any{
+				map[string]any{"description": "no name"}, map[string]any{"date": "Q1"},
+			}, "takeaway": "x"},
+			path: "slides[0].phases",
+		},
+		{
+			name: "kpi cells without number or caption",
+			kind: KindKPISnapshot,
+			body: map[string]any{"title": "Metrics", "kpis": []any{
+				map[string]any{"note": "n/a"}, map[string]any{},
+			}, "takeaway": "x"},
+			path: "slides[0].kpis",
+		},
+		{
+			name: "comparison columns all blank",
+			kind: KindComparison,
+			body: map[string]any{"title": "A vs B", "columns": []any{
+				map[string]any{"items": []any{""}}, map[string]any{},
+			}, "takeaway": "x"},
+			path: "slides[0].columns",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: tc.kind, Body: tc.body}}}
+			ds := Validate(spec, StrictnessWarn)
+			d, ok := findAt(ds, diagnostics.CodeSemanticRequired, tc.path)
+			if !ok {
+				t.Fatalf("expected SEMANTIC_REQUIRED at %s for all-blank entries, got %v", tc.path, ds)
+			}
+			if d.Severity != diagnostics.SeverityError {
+				t.Errorf("severity = %q, want error (content-drop must block even under warn)", d.Severity)
+			}
+			// Blocking even under off: this is a missing-content condition, not an
+			// advisory the strictness policy may suppress.
+			if !diagnostics.HasErrors(Validate(spec, StrictnessOff)) {
+				t.Errorf("all-blank required content must block under off, got clean validate")
+			}
+		})
+	}
+}
+
+// TestValidateUsableDensityMatchesCompile guards that density advisories count
+// the entries compile will render, not raw list length: a process with two real
+// steps padded by blanks compiles to a degraded bullet list, so validation must
+// see two usable steps (below the 3–8 process-flow range), not five.
+func TestValidateUsableDensityMatchesCompile(t *testing.T) {
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Deck"},
+		Slides: []SlideSpec{{Kind: KindProcess, Body: map[string]any{
+			"title":    "How it works",
+			"steps":    []any{"one", "two", "", "  ", "\t"},
+			"takeaway": "x",
+		}}},
+	}
+	ds := Validate(spec, StrictnessWarn)
+	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].steps")
+	if !ok {
+		t.Fatalf("expected SEMANTIC_DENSITY at slides[0].steps for 2 usable steps, got %v", ds)
+	}
+	if !strings.Contains(d.Message, "2 usable steps") {
+		t.Errorf("density message = %q, want it to report 2 usable steps", d.Message)
+	}
+	// Two real steps are still usable content, so it must not be a blocking error.
+	if hasCode(ds, diagnostics.CodeSemanticRequired) {
+		t.Errorf("two usable steps must not trip the zero-usable blocking error, got %v", ds)
 	}
 }
 

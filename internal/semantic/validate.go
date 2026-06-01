@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 // Strictness controls how strictly the advisory semantic rules are enforced.
@@ -81,6 +82,26 @@ func (s *semDiags) advisory(path, code, msg string) {
 		Path:     path,
 		Severity: sev,
 	})
+}
+
+// requireUsableContent reports whether a required content-bearing list field
+// yields at least one entry the compiler can render. When the field cleared the
+// raw presence gate (so the required-field loop stayed silent) but every entry
+// is blank or labelless — extracting to zero usable content — it emits a
+// blocking error: the silent content-drop that otherwise compiles to a
+// title-only slide. The error is always-hard (independent of strictness) because
+// it is a missing-content condition, matching the required-field gate. It
+// returns true only when usable > 0, so callers can gate density/range
+// advisories on real content.
+func (s *semDiags) requireUsableContent(path, field string, body map[string]any, usable int) bool {
+	if usable > 0 {
+		return true
+	}
+	if hasNonEmpty(body, field) {
+		s.hard(path+"."+field, diagnostics.CodeSemanticRequired,
+			fmt.Sprintf("%q is present but every entry is blank; provide at least one entry with usable content", field))
+	}
+	return false
 }
 
 // Validate enforces the MVP semantic authoring rules over a parsed DeckSpec and
@@ -201,9 +222,13 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 				fmt.Sprintf("executive summary has %d points; 3–5 is recommended", n))
 		}
 	case KindKPISnapshot:
-		if n, ok := listLen(slide.Body, "kpis"); ok && (n < 2 || n > 6) {
+		// Count KPIs the compiler can actually render, not raw list entries: a
+		// list of blank/labelless cells passes the required-field gate but
+		// compiles to a title-only slide. Below 1 usable cell is a blocking error;
+		// otherwise the 2–6 density range is advisory.
+		if n := slides.UsableKPICount(slide.Body); s.requireUsableContent(path, "kpis", slide.Body, n) && (n < 2 || n > 6) {
 			s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("kpi snapshot has %d KPIs; 2–6 is recommended", n))
+				fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 is recommended", n))
 		}
 	case KindChartInsight:
 		// The semantic chart payload is minimal at this layer: series data may be
@@ -218,14 +243,17 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	case KindComparison:
 		validateComparison(path, slide, s)
 	case KindProcess:
-		if n, ok := listLen(slide.Body, "steps"); ok && (n < 3 || n > 8) {
+		// Count steps the compiler can render (blank entries are dropped), so a
+		// process of all-blank steps fails fast instead of compiling to a
+		// title-only slide, and the 3–8 process-flow range reflects real content.
+		if n := slides.UsableStepCount(slide.Body); s.requireUsableContent(path, "steps", slide.Body, n) && (n < 3 || n > 8) {
 			s.advisory(path+".steps", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("process has %d steps; 3–8 render as a process-flow visual (otherwise it degrades to a bullet list)", n))
+				fmt.Sprintf("process has %d usable steps; 3–8 render as a process-flow visual (otherwise it degrades to a bullet list)", n))
 		}
 	case KindRoadmap:
-		if n, ok := listLen(slide.Body, "phases"); ok && (n < 3 || n > 6) {
+		if n := slides.UsablePhaseCount(slide.Body); s.requireUsableContent(path, "phases", slide.Body, n) && (n < 3 || n > 6) {
 			s.advisory(path+".phases", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("roadmap has %d phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
+				fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
 		}
 	case KindRawJSON2pptx:
 		// The escape hatch carries a verbatim raw slide; validate it structurally
@@ -257,6 +285,15 @@ func chartHasSeries(chart map[string]any) bool {
 func validateComparison(path string, slide SlideSpec, s *semDiags) {
 	cols, ok := slide.Body["columns"].([]any)
 	if !ok {
+		return
+	}
+	// Columns present but every column blank (no header, no items) compiles to a
+	// title-only slide; fail fast on the dropped comparison instead of passing it.
+	if slides.UsableComparisonColumnCount(slide.Body) == 0 {
+		if hasNonEmpty(slide.Body, "columns") {
+			s.hard(path+".columns", diagnostics.CodeSemanticRequired,
+				"comparison \"columns\" carry no usable header or items; provide content for at least one column")
+		}
 		return
 	}
 	if len(cols) != 2 {
