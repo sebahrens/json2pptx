@@ -54,6 +54,46 @@ func TestValidateMissingTitleIsRequired(t *testing.T) {
 	}
 }
 
+// TestValidateMissingSlidesIsRequired is the regression guard for
+// go-slide-creator-444x: a deck with a title but no slides field (or an explicit
+// empty array) must fail fast with a blocking error at slides rather than
+// validating clean and compiling to a zero-slide deck.
+func TestValidateMissingSlidesIsRequired(t *testing.T) {
+	cases := []struct {
+		name string
+		spec *DeckSpec
+	}{
+		{"nil slides", &DeckSpec{Meta: DeckMeta{Title: "Empty Deck"}}},
+		{"empty slices", &DeckSpec{Meta: DeckMeta{Title: "Empty Deck"}, Slides: []SlideSpec{}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ds := Validate(tc.spec, StrictnessWarn)
+			d, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides")
+			if !ok {
+				t.Fatalf("expected SEMANTIC_REQUIRED at slides, got %v", ds)
+			}
+			if d.Severity != diagnostics.SeverityError {
+				t.Errorf("slides severity = %q, want error", d.Severity)
+			}
+		})
+	}
+}
+
+// TestCheckMissingSlidesViaParse mirrors the bug's reproduction: a YAML doc with
+// only meta must surface the blocking slides finding through the full
+// parse+validate path that both the CLI and MCP surfaces share.
+func TestCheckMissingSlidesViaParse(t *testing.T) {
+	const doc = "meta:\n  title: Empty Deck\n"
+	ds := Check("no-slides.yaml", []byte(doc), StrictnessWarn)
+	if !diagnostics.HasErrors(ds) {
+		t.Fatalf("expected blocking errors for a deck with no slides, got %v", ds)
+	}
+	if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides"); !ok {
+		t.Fatalf("expected SEMANTIC_REQUIRED at slides, got %v", ds)
+	}
+}
+
 func TestValidateUnknownKindAndArchetype(t *testing.T) {
 	spec := &DeckSpec{
 		Meta:   DeckMeta{Title: "Deck", Archetype: Archetype("nope")},

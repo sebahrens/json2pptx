@@ -99,6 +99,15 @@ func Validate(spec *DeckSpec, strict Strictness) []diagnostics.Diagnostic {
 		return s.out
 	}
 	validateMeta(spec, s)
+	// The slides array is required and must hold at least one slide. The lenient
+	// decoder turns an absent or empty slides field into a zero-length slice, so
+	// both the missing-array case and an explicit empty array land here. Blocking
+	// early keeps a zero-slide deck from compiling to a null/empty deck behind a
+	// green validate gate.
+	if len(spec.Slides) == 0 {
+		s.hard("slides", diagnostics.CodeSemanticRequired,
+			"deck must contain at least one slide; the required \"slides\" array is missing or empty")
+	}
 	for i := range spec.Slides {
 		validateSlide(i, spec.Slides[i], s)
 	}

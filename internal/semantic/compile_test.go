@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -178,6 +179,27 @@ func TestCompile_BlockingErrorsDoNotEmit(t *testing.T) {
 	}
 	if result == nil || len(result.Diagnostics) == 0 {
 		t.Fatal("blocking compile should still return diagnostics on the result")
+	}
+}
+
+// TestCompile_ZeroSlidesRefuses is the compile-path half of the
+// go-slide-creator-444x guard: a deck with a valid title but no slides must not
+// compile to a null/empty deck — Compile must refuse and surface the blocking
+// slides finding instead.
+func TestCompile_ZeroSlidesRefuses(t *testing.T) {
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Empty Deck"}}
+	input, result, err := Compile(spec, CompileOptions{})
+	if err == nil {
+		t.Fatal("expected a blocking error for a deck with no slides")
+	}
+	if input != nil {
+		t.Error("no PresentationInput should be emitted for a zero-slide deck")
+	}
+	if result == nil {
+		t.Fatal("blocking compile should still return a result")
+	}
+	if _, ok := findAt(result.Diagnostics, diagnostics.CodeSemanticRequired, "slides"); !ok {
+		t.Fatalf("expected SEMANTIC_REQUIRED at slides, got %v", result.Diagnostics)
 	}
 }
 
