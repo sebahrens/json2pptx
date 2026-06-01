@@ -39,7 +39,8 @@ findings whose `evidence.path` points to the semantic authoring field whenever
 possible. The semantic family is `INPUT`-namespaced and declared in
 `internal/diagnostics/codes.go`: the per-spec gates `SEMANTIC_REQUIRED`,
 `SEMANTIC_UNKNOWN_KIND`, `SEMANTIC_UNKNOWN_FIELD`, `SEMANTIC_UNKNOWN_ARCHETYPE`,
-`SEMANTIC_TAKEAWAY_REQUIRED`, `SEMANTIC_DENSITY`, `SEMANTIC_WEAK_CONTENT`, plus
+`SEMANTIC_TAKEAWAY_REQUIRED`, `SEMANTIC_DENSITY`, `SEMANTIC_WEAK_CONTENT`,
+`SEMANTIC_FIELD_TYPE`, plus
 the deck-rhythm advisories `SEMANTIC_RHYTHM_MONOTONY`, `SEMANTIC_RHYTHM_DENSITY`,
 `SEMANTIC_RHYTHM_SECTIONING`, and `SEMANTIC_RHYTHM_SYNTHESIS`. Each resolves via
 `json2pptx describe-finding <code>` like any other code. For example:
@@ -63,7 +64,13 @@ all blank or labelless (e.g. `steps: ["", " "]`, KPI cells with neither a number
 nor a caption, columns with no header or items) clears the raw presence gate but
 compiles to a title-only slide, so validation emits a blocking `SEMANTIC_REQUIRED`
 at the field path — always an error regardless of strictness, since it is a
-missing-content condition — instead of letting the body silently drop. The
+missing-content condition — instead of letting the body silently drop. A
+payload field present with the wrong JSON type for its kind (a numeric/boolean
+title, `points`/`steps`/`columns` given as a scalar instead of an array) is
+silently dropped by the per-kind compilers, so validation emits a
+`SEMANTIC_FIELD_TYPE` advisory at the field path naming the expected type —
+`warning` under `warn`, `error` under `strict` — rather than shipping the
+content-less slide behind a green gate. The
 `SEMANTIC_DENSITY` range checks (process 3–8 steps, roadmap 3–6 phases, kpi 2–6
 KPIs) likewise use the usable count, so validation and compile agree on whether a
 visual pattern will be emitted. After compilation, raw validation/fit/output findings are mapped back

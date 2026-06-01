@@ -89,7 +89,11 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > `label`↔`title`/`name`/`step`/`text`/`description`; `roadmap` phase `name`↔`title`/`label`/`phase`,
 > `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary` (plus `items`/`bullets` folded in); `decision` option
 > `label`↔`title`/`name`. Counts outside a visual's range degrade to a readable content slide (with a
-> `SEMANTIC_DENSITY` advisory) rather than failing.
+> `SEMANTIC_DENSITY` advisory) rather than failing. A field present with the **wrong JSON type** for its
+> kind (a numeric title, `points`/`steps`/`columns` given as a bare string instead of an array) is
+> flagged with a `SEMANTIC_FIELD_TYPE` advisory (`warning` under `warn`, `error` under `strict`) — the
+> compiler would otherwise drop the wrong-typed value silently, so wrap single list values in `[ ]` and
+> keep scalar fields as strings.
 >
 > **`raw_json2pptx` structural contract:** the `slide` payload is decoded as a raw `PresentationInput`
 > slide and must be a valid one, or validate/compile **blocks** (`SEMANTIC_REQUIRED` / `SEMANTIC_UNKNOWN_FIELD`

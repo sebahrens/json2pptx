@@ -830,6 +830,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "section", "title": "Financial Review"}`,
 		RelatedCodes:  []string{CodeSemanticRequired},
 	},
+	CodeSemanticFieldType: {
+		Code:        CodeSemanticFieldType,
+		Summary:     "A payload field is present but has the wrong JSON type for its slide kind.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds a field whose value is not the type its kind's compiler reads — e.g. a numeric or boolean title, or points/steps/columns supplied as a scalar instead of an array. The compiler silently drops wrong-typed values, so the content would otherwise vanish without a finding. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Give the field at evidence.path the expected type: a string for title/subtitle/takeaway/insight/source/recommendation, an array for points/steps/phases/columns/options/insights/kpis.",
+			"For list fields, wrap a single value in an array (e.g. \"points\": [\"one point\"] rather than \"points\": \"one point\").",
+		},
+		ExampleBefore: `{"kind": "executive_summary", "title": "Q3", "points": "single point"}`,
+		ExampleAfter:  `{"kind": "executive_summary", "title": "Q3", "points": ["single point"]}`,
+		RelatedCodes:  []string{CodeSemanticRequired, CodeSemanticDensity},
+	},
 	CodeSemanticRhythmMonotony: {
 		Code:        CodeSemanticRhythmMonotony,
 		Summary:     "Three or more consecutive slides share the same visual family.",

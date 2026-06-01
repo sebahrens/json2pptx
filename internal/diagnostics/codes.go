@@ -127,6 +127,11 @@ const (
 	CodeSemanticTakeawayRequired Code = "SEMANTIC_TAKEAWAY_REQUIRED"
 	CodeSemanticDensity          Code = "SEMANTIC_DENSITY"
 	CodeSemanticWeakContent      Code = "SEMANTIC_WEAK_CONTENT"
+	// CodeSemanticFieldType flags a payload field that is present but carries the
+	// wrong JSON type for its kind (e.g. a numeric title, or points given as a
+	// string instead of an array). The compiler silently drops wrong-typed values,
+	// so without this finding the content vanishes behind a green validate gate.
+	CodeSemanticFieldType Code = "SEMANTIC_FIELD_TYPE"
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
@@ -223,6 +228,7 @@ func AllCodes() []Code {
 		CodeSemanticTakeawayRequired,
 		CodeSemanticDensity,
 		CodeSemanticWeakContent,
+		CodeSemanticFieldType,
 		CodeSemanticRhythmMonotony,
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,

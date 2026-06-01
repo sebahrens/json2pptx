@@ -49,6 +49,85 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindDecision:         true,
 }
 
+// shapeKind names the JSON type a kind's compiler expects for a payload field.
+// A field present with a different type is silently dropped by the per-kind
+// compilers (strField/stringList/mapList all skip wrong-typed values), so
+// validation flags the mismatch instead of letting the content vanish.
+type shapeKind int
+
+const (
+	shapeString shapeKind = iota
+	shapeArray
+	shapeObject
+)
+
+// label returns the human-readable expected-type phrase for a finding message.
+func (k shapeKind) label() string {
+	switch k {
+	case shapeArray:
+		return "an array"
+	case shapeObject:
+		return "an object"
+	default:
+		return "a string"
+	}
+}
+
+// kindFieldShapes is the per-kind payload-shape contract: for each slide kind it
+// lists the payload fields whose compiler reads a fixed JSON type, mapping each
+// to that expected type. A field present with a mismatching type compiles to
+// nothing (the extractors drop it), so validation emits a SEMANTIC_FIELD_TYPE
+// finding rather than shipping an empty/incomplete slide. Fields a kind does not
+// read are absent here and left untouched (a later phase may interpret them).
+// raw_json2pptx's "slide" is validated structurally by validateRawEscapeHatch.
+var kindFieldShapes = map[SlideKind]map[string]shapeKind{
+	KindTitle:            {"title": shapeString, "subtitle": shapeString, "eyebrow": shapeString},
+	KindSection:          {"title": shapeString, "subtitle": shapeString},
+	KindExecutiveSummary: {"title": shapeString, "points": shapeArray, "takeaways": shapeArray, "takeaway": shapeString},
+	KindKPISnapshot:      {"title": shapeString, "kpis": shapeArray, "metrics": shapeArray, "takeaway": shapeString},
+	KindChartInsight:     {"title": shapeString, "chart": shapeObject, "insights": shapeArray, "insight": shapeString, "source": shapeString, "takeaway": shapeString},
+	KindComparison:       {"title": shapeString, "columns": shapeArray, "takeaway": shapeString},
+	KindProcess:          {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
+	KindRoadmap:          {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
+	KindDecision:         {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
+	KindClosing:          {"title": shapeString, "subtitle": shapeString},
+}
+
+// shapeMatches reports whether v has the JSON type the shape expects.
+func shapeMatches(v any, k shapeKind) bool {
+	switch k {
+	case shapeString:
+		_, ok := v.(string)
+		return ok
+	case shapeArray:
+		_, ok := v.([]any)
+		return ok
+	case shapeObject:
+		_, ok := v.(map[string]any)
+		return ok
+	}
+	return false
+}
+
+// jsonTypeName returns the article+name of a decoded JSON value's type, for
+// finding messages. JSON numbers decode to float64 under the lenient decoder.
+func jsonTypeName(v any) string {
+	switch v.(type) {
+	case string:
+		return "a string"
+	case []any:
+		return "an array"
+	case map[string]any:
+		return "an object"
+	case bool:
+		return "a boolean"
+	case float64, int, int64:
+		return "a number"
+	default:
+		return "an unexpected type"
+	}
+}
+
 // semDiags accumulates validation diagnostics, applying the strictness policy to
 // advisory findings as they are added.
 type semDiags struct {
@@ -198,6 +277,13 @@ func validateSlide(i int, slide SlideSpec, s *semDiags) {
 		}
 	}
 
+	// Flag payload fields present with the wrong JSON type for the kind. The
+	// compilers silently drop wrong-typed values, so without this the content
+	// disappears behind a green validate gate (a numeric title, points given as a
+	// string). This is advisory (warn/error by strictness); a required list that
+	// extracts to zero usable content is separately blocked by requireUsableContent.
+	validateFieldShapes(path, slide, s)
+
 	validateKindRules(path, slide, s)
 
 	// Content-bearing slides should carry a one-line takeaway (insight counts
@@ -210,6 +296,34 @@ func validateSlide(i int, slide SlideSpec, s *semDiags) {
 	}
 
 	scanWeakBody(path, slide.Body, s)
+}
+
+// validateFieldShapes emits a SEMANTIC_FIELD_TYPE advisory for each payload
+// field present with a JSON type the kind's compiler cannot read. It consults
+// kindFieldShapes, the per-kind payload-shape contract, and walks the body in
+// sorted key order for deterministic diagnostics. A null value is treated as
+// absent (presence is the required-field loop's job); only a present, wrong-
+// typed value is flagged. The finding is advisory so it warns under warn and
+// errors under strict, matching the other authoring advisories; total content
+// loss on a required list is separately blocked by requireUsableContent.
+func validateFieldShapes(path string, slide SlideSpec, s *semDiags) {
+	shapes, ok := kindFieldShapes[slide.Kind]
+	if !ok {
+		return
+	}
+	for _, field := range sortedKeys(slide.Body) {
+		want, governed := shapes[field]
+		if !governed {
+			continue
+		}
+		v := slide.Body[field]
+		if v == nil || shapeMatches(v, want) {
+			continue
+		}
+		s.advisory(path+"."+field, diagnostics.CodeSemanticFieldType,
+			fmt.Sprintf("%q must be %s but is %s; a %q slide drops the wrong-typed value, losing this content",
+				field, want.label(), jsonTypeName(v), slide.Kind))
+	}
 }
 
 // validateKindRules applies the density and richness rules that are specific to

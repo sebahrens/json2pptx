@@ -412,6 +412,66 @@ func TestValidateWrapsIntoEnvelope(t *testing.T) {
 	}
 }
 
+// TestValidateWrongTypedScalarFieldFlagged is the regression guard for
+// go-slide-creator-88g8 repro 1: a numeric title is silently dropped by the
+// compiler (strField reads only strings), so without a finding the content
+// vanishes behind a green validate gate. Validation must emit SEMANTIC_FIELD_TYPE
+// at the field path, as a warning under warn and an error under strict.
+func TestValidateWrongTypedScalarFieldFlagged(t *testing.T) {
+	const doc = `{"meta":{"title":"X"},"slides":[{"kind":"executive_summary","title":12345,"points":["a","b","c"]}]}`
+
+	warn := Check("t9.json", []byte(doc), StrictnessWarn)
+	d, ok := findAt(warn, diagnostics.CodeSemanticFieldType, "slides[0].title")
+	if !ok {
+		t.Fatalf("expected SEMANTIC_FIELD_TYPE at slides[0].title for a numeric title, got %v", warn)
+	}
+	if d.Severity != diagnostics.SeverityWarning {
+		t.Errorf("under warn, field-type severity = %q, want warning", d.Severity)
+	}
+
+	strict := Check("t9.json", []byte(doc), StrictnessStrict)
+	d, ok = findAt(strict, diagnostics.CodeSemanticFieldType, "slides[0].title")
+	if !ok {
+		t.Fatalf("expected SEMANTIC_FIELD_TYPE at slides[0].title under strict, got %v", strict)
+	}
+	if d.Severity != diagnostics.SeverityError {
+		t.Errorf("under strict, field-type severity = %q, want error", d.Severity)
+	}
+}
+
+// TestValidateWrongTypedListFieldFlagged is the regression guard for
+// go-slide-creator-88g8 repro 3: points supplied as a bare string (not an array)
+// is silently skipped by stringList, dropping the content. Validation must emit
+// SEMANTIC_FIELD_TYPE at slides[0].points naming the expected array type.
+func TestValidateWrongTypedListFieldFlagged(t *testing.T) {
+	const doc = `{"meta":{"title":"X"},"slides":[{"kind":"executive_summary","title":"S","points":"one point not an array","takeaway":"t"}]}`
+	ds := Check("t11.json", []byte(doc), StrictnessWarn)
+	d, ok := findAt(ds, diagnostics.CodeSemanticFieldType, "slides[0].points")
+	if !ok {
+		t.Fatalf("expected SEMANTIC_FIELD_TYPE at slides[0].points for a string-valued points, got %v", ds)
+	}
+	if !strings.Contains(d.Message, "an array") {
+		t.Errorf("field-type message = %q, want it to name the expected array type", d.Message)
+	}
+}
+
+// TestValidateWrongTypedListElementsBlocksEmptySlide is the regression guard for
+// go-slide-creator-88g8 repro 2: kpis given as numbers clear the raw presence and
+// array-shape gates, but every element extracts to zero usable content
+// (kpiCells reads only string subfields), so the slide compiles to a blank
+// content:null. The usable-content gate must turn this into a blocking error
+// rather than letting it pass validation as a renderable slide.
+func TestValidateWrongTypedListElementsBlocksEmptySlide(t *testing.T) {
+	const doc = `{"meta":{"title":"X"},"slides":[{"kind":"kpi_snapshot","kpis":[42,99,7]}]}`
+	ds := Check("t10.json", []byte(doc), StrictnessWarn)
+	if !diagnostics.HasErrors(ds) {
+		t.Fatalf("a kpi_snapshot whose kpis extract to zero usable content must not validate clean, got %v", ds)
+	}
+	if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides[0].kpis"); !ok {
+		t.Fatalf("expected blocking SEMANTIC_REQUIRED at slides[0].kpis for numeric kpis, got %v", ds)
+	}
+}
+
 func TestToDiagnosticsBridgesParseFindings(t *testing.T) {
 	src := "slides:\n  - kind: bogus_kind\n    title: Oops\n"
 	_, parseDiags := ParseYAML([]byte(src))
