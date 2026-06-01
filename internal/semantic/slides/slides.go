@@ -14,8 +14,10 @@
 package slides
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
@@ -144,7 +146,22 @@ func stringList(body map[string]any, key string) ([]string, bool) {
 			// rather than emit a Go "[...]" dump.
 		case nil:
 			// skip
+		case float64:
+			// JSON numbers decode to float64; the default %v uses %g, which
+			// switches to exponent form for large/small magnitudes (1e+06,
+			// 1e-07) and leaks scientific notation into slide bullets. Format as
+			// a plain decimal with the minimal digits needed to round-trip.
+			out = append(out, strconv.FormatFloat(t, 'f', -1, 64))
+		case json.Number:
+			// Rendered verbatim if the decoder is ever switched to UseNumber, so
+			// the author's exact numeric literal survives.
+			out = append(out, t.String())
+		case bool:
+			// Stringify booleans deliberately rather than letting %v emit a Go
+			// literal incidentally.
+			out = append(out, strconv.FormatBool(t))
 		default:
+			// Integer and other scalar types render without exponent risk.
 			out = append(out, fmt.Sprintf("%v", t))
 		}
 	}

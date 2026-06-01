@@ -3,6 +3,7 @@ package slides
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -403,6 +404,31 @@ func hasRawPath(links []SourceLink, raw string) bool {
 		}
 	}
 	return false
+}
+
+// TestStringListScalarFormatting is a regression for go-slide-creator-ndbl:
+// JSON numbers decode to float64 and must render as plain decimals, never in
+// scientific notation, and booleans must stringify deliberately rather than
+// leaking through fmt's default formatting.
+func TestStringListScalarFormatting(t *testing.T) {
+	body := map[string]any{
+		// Mirrors the bead's reproduction: values as they decode from JSON.
+		"points": []any{float64(1000000), float64(0.0000001), true, float64(3.14159265358979)},
+	}
+	list, ok := stringList(body, "points")
+	if !ok {
+		t.Fatal("stringList ok = false, want true")
+	}
+	want := []string{"1000000", "0.0000001", "true", "3.14159265358979"}
+	if !reflect.DeepEqual(list, want) {
+		t.Errorf("stringList = %#v, want %#v", list, want)
+	}
+	for _, s := range list {
+		if strings.Contains(s, "e+") || strings.Contains(s, "e-") ||
+			strings.Contains(s, "E+") || strings.Contains(s, "E-") {
+			t.Errorf("bullet %q contains exponent notation", s)
+		}
+	}
 }
 
 func TestHelpers(t *testing.T) {
