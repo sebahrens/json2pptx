@@ -11,6 +11,7 @@ package semantic
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -33,8 +34,15 @@ const (
 	StrictnessStrict Strictness = "strict"
 )
 
-// weakMarkers are case-insensitive substrings that flag placeholder/filler text.
-var weakMarkers = []string{"tbd", "lorem ipsum", "__fill__", "todo", "fixme", "placeholder"}
+// weakSubstringMarkers are distinctive enough (multi-word or sentinel-shaped)
+// that any case-insensitive substring match reliably indicates placeholder text.
+var weakSubstringMarkers = []string{"lorem ipsum", "__fill__", "placeholder"}
+
+// weakTokenRE matches the short alpha filler markers (tbd, todo, fixme) only as
+// whole words. Matching them as substrings false-positives on ordinary words
+// (e.g. "Mastodon" contains "todo"). Word boundaries keep "TODO:" or "(tbd)"
+// tripping while embedded occurrences do not.
+var weakTokenRE = regexp.MustCompile(`\b(tbd|todo|fixme)\b`)
 
 // kindNeedsTakeaway lists the content-bearing slide kinds expected to carry a
 // one-line takeaway (or, for chart_insight, an insight). Structural slides
@@ -499,10 +507,13 @@ func scanWeak(path string, v any, s *semDiags) {
 // weakMarker returns the first placeholder marker found in v, or "" if none.
 func weakMarker(v string) string {
 	l := strings.ToLower(v)
-	for _, m := range weakMarkers {
+	for _, m := range weakSubstringMarkers {
 		if strings.Contains(l, m) {
 			return m
 		}
+	}
+	if m := weakTokenRE.FindString(l); m != "" {
+		return m
 	}
 	return ""
 }

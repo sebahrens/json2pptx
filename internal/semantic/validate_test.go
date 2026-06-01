@@ -480,6 +480,39 @@ func TestValidateWeakContent(t *testing.T) {
 	}
 }
 
+// TestWeakMarkerWordBoundary is the regression guard for go-slide-creator-j572:
+// the short alpha markers (tbd/todo/fixme) must match only as whole tokens so
+// ordinary words that merely embed them ("Mastodon" -> "todo") do not trip the
+// placeholder detector, while genuine placeholders still do.
+func TestWeakMarkerWordBoundary(t *testing.T) {
+	clean := []string{
+		"Mastodon Migration Strategy",
+		"Automated Backups Roadmap",
+		"subtotal",
+		"fixmestreadymarket", // embedded fixme
+		"tbdesign",           // embedded tbd
+	}
+	for _, s := range clean {
+		if m := weakMarker(s); m != "" {
+			t.Errorf("weakMarker(%q) = %q, want no marker", s, m)
+		}
+	}
+
+	flagged := map[string]string{
+		"TODO: fill this in":  "todo",
+		"status is still TBD": "tbd",
+		"(fixme) wording":     "fixme",
+		"lorem ipsum dolor":   "lorem ipsum",
+		"__fill__":            "__fill__",
+		"placeholder text":    "placeholder",
+	}
+	for s, want := range flagged {
+		if m := weakMarker(s); m != want {
+			t.Errorf("weakMarker(%q) = %q, want %q", s, m, want)
+		}
+	}
+}
+
 // TestValidateBlankListEntriesBlock is the regression guard for go-slide-creator-qald:
 // a required content-bearing list whose entries are all blank passes the raw
 // presence/length gate but compiles to a title-only slide. Validation must count
