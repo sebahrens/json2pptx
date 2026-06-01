@@ -227,6 +227,11 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 			s.advisory(path+".phases", diagnostics.CodeSemanticDensity,
 				fmt.Sprintf("roadmap has %d phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
 		}
+	case KindRawJSON2pptx:
+		// The escape hatch carries a verbatim raw slide; validate it structurally
+		// so an invalid payload fails fast here instead of compiling to an empty
+		// slide. See validateRawEscapeHatch.
+		validateRawEscapeHatch(path, slide.Body, s)
 	}
 }
 

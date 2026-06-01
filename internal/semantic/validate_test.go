@@ -120,6 +120,81 @@ func TestValidateRequiredPayloadField(t *testing.T) {
 	}
 }
 
+// TestValidateRawEscapeHatchStructure is the regression guard for
+// go-slide-creator-8kor: a raw_json2pptx slide whose "slide" payload is an
+// object but not a valid, renderable raw json2pptx slide must fail fast at
+// validate (and therefore compile) rather than passing the lenient
+// required-field check and compiling to an empty slide. Unknown raw fields must
+// be reported instead of silently dropped.
+func TestValidateRawEscapeHatchStructure(t *testing.T) {
+	rawSpec := func(payload any) *DeckSpec {
+		return &DeckSpec{
+			Meta: DeckMeta{Title: "Raw"},
+			Slides: []SlideSpec{
+				{Kind: KindTitle, Body: map[string]any{"title": "Raw"}},
+				{Kind: KindRawJSON2pptx, Body: map[string]any{"slide": payload}},
+			},
+		}
+	}
+
+	t.Run("unknown raw field is rejected, not dropped", func(t *testing.T) {
+		ds := Validate(rawSpec(map[string]any{"foo": "bar"}), StrictnessWarn)
+		if _, ok := findAt(ds, diagnostics.CodeSemanticUnknownField, "slides[1].slide"); !ok {
+			t.Fatalf("expected SEMANTIC_UNKNOWN_FIELD at slides[1].slide for unknown raw field, got %v", ds)
+		}
+	})
+
+	t.Run("missing slide_type and layout_id is blocked", func(t *testing.T) {
+		ds := Validate(rawSpec(map[string]any{
+			"content": []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Hi"}},
+		}), StrictnessWarn)
+		if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides[1].slide"); !ok {
+			t.Fatalf("expected SEMANTIC_REQUIRED at slides[1].slide for missing slide_type/layout_id, got %v", ds)
+		}
+	})
+
+	t.Run("slide_type with no renderable content is blocked", func(t *testing.T) {
+		ds := Validate(rawSpec(map[string]any{"slide_type": "content"}), StrictnessWarn)
+		if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides[1].slide"); !ok {
+			t.Fatalf("expected SEMANTIC_REQUIRED at slides[1].slide for empty content slide, got %v", ds)
+		}
+	})
+
+	t.Run("non-object slide payload is blocked", func(t *testing.T) {
+		ds := Validate(rawSpec("just a string"), StrictnessWarn)
+		if _, ok := findAt(ds, diagnostics.CodeSemanticRequired, "slides[1].slide"); !ok {
+			t.Fatalf("expected SEMANTIC_REQUIRED at slides[1].slide for non-object payload, got %v", ds)
+		}
+	})
+
+	t.Run("valid content slide passes", func(t *testing.T) {
+		ds := Validate(rawSpec(map[string]any{
+			"slide_type": "content",
+			"content":    []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Hi"}},
+		}), StrictnessWarn)
+		if hasCode(ds, diagnostics.CodeSemanticUnknownField) || hasErrorAt(ds, "slides[1].slide") {
+			t.Fatalf("valid raw content slide should not be flagged, got %v", ds)
+		}
+	})
+
+	t.Run("blank canvas is exempt from the content requirement", func(t *testing.T) {
+		ds := Validate(rawSpec(map[string]any{"slide_type": "blank", "eyebrow": "RAW"}), StrictnessWarn)
+		if hasErrorAt(ds, "slides[1].slide") {
+			t.Fatalf("blank raw slide should be allowed without content, got %v", ds)
+		}
+	})
+}
+
+// hasErrorAt reports whether ds carries an error-severity diagnostic at path.
+func hasErrorAt(ds []diagnostics.Diagnostic, path string) bool {
+	for _, d := range ds {
+		if d.Path == path && d.Severity == diagnostics.SeverityError {
+			return true
+		}
+	}
+	return false
+}
+
 func TestValidateKPIDensity(t *testing.T) {
 	spec := &DeckSpec{
 		Meta: DeckMeta{Title: "Deck"},

@@ -85,6 +85,8 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 
 `executive_summary` and `decision` compile to plain content slides (bullet points / recommendation lead-in), so their plan advertises a layout only — no pattern. Structural kinds (`title`, `section`, `closing`) and the `raw_json2pptx` escape hatch carry no pattern either. The explain↔compile parity gate (`internal/semantic.TestExplainCompileParity`) asserts every kind's advertised pattern equals the one compile emits.
 
+The `raw_json2pptx` escape hatch is structurally validated before it is passed through (`internal/semantic.validateRawEscapeHatch`, gating both `validate` and `compile`). The `slide` payload is decoded strictly as a raw `deckinput.SlideInput`: it must be a JSON object, carry no unknown fields (`DisallowUnknownFields` — a typo'd key surfaces as a blocking `SEMANTIC_UNKNOWN_FIELD` rather than being silently dropped), set a `slide_type` or `layout_id`, and carry renderable content (`content`, `shape_grid`, `pattern`, or `compose`). The `blank` slide_type is exempt from the content requirement (a deliberate content-free canvas). Failures are hard `SEMANTIC_REQUIRED`/`SEMANTIC_UNKNOWN_FIELD` errors at `slides[i].slide`, so a malformed escape-hatch payload fails fast at validate/compile time instead of compiling to an empty slide.
+
 ## Surfaces
 
 CLI:

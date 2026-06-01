@@ -77,7 +77,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
 | `decision` | `title` | `recommendation`, `options[]`, `takeaway` | each option: string or `{label}` |
 | `closing` | `title` | `subtitle` | — |
-| `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, validated then passed through |
+| `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, structurally validated then passed through (see note) |
 
 > **`executive_summary` body vs footer:** body bullets come from `points` (preferred) **or**
 > `takeaways` (plural array); `takeaway` (singular string) is the one-line footer insight — distinct
@@ -90,6 +90,12 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary` (plus `items`/`bullets` folded in); `decision` option
 > `label`↔`title`/`name`. Counts outside a visual's range degrade to a readable content slide (with a
 > `SEMANTIC_DENSITY` advisory) rather than failing.
+>
+> **`raw_json2pptx` structural contract:** the `slide` payload is decoded as a raw `PresentationInput`
+> slide and must be a valid one, or validate/compile **blocks** (`SEMANTIC_REQUIRED` / `SEMANTIC_UNKNOWN_FIELD`
+> at `slides[i].slide`): it must be a JSON object, carry **no unknown fields** (typo'd keys are reported, not
+> silently dropped), set a `slide_type` or `layout_id`, and carry renderable content (`content`, `shape_grid`,
+> `pattern`, or `compose`). The `blank` slide_type is the one content-free exception (a deliberate empty canvas).
 
 **Repair stays in the spec.** `render_deck_spec` maps every render-time fit finding back to the
 semantic source you wrote: each `diagnostics[]` entry carries `semantic_path` (the DeckSpec field
