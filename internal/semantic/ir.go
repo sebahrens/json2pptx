@@ -13,6 +13,8 @@ package semantic
 // SourceMap are left empty here; the compiler populates them as it emits the
 // PresentationInput in a later phase.
 
+import "github.com/sebahrens/json2pptx/internal/semantic/slides"
+
 // NarrativeRole names the role a slide plays in the deck's narrative arc. It is
 // derived from the slide kind and biases rhythm and emphasis decisions.
 type NarrativeRole string
@@ -179,7 +181,7 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 	},
 	KindComparison: {
 		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "two-column",
-		pattern: func(map[string]any) string { return "comparison-2col" },
+		pattern: comparisonPattern,
 	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "diagram",
@@ -201,6 +203,18 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 
 // passthroughPlan is the fallback for unknown or raw escape-hatch slides.
 var passthroughPlan = kindPlan{role: RolePassthrough, family: FamilyRaw, density: DensityMedium, layout: ""}
+
+// comparisonPattern advertises comparison-2col only when the payload will
+// actually compile to it (two balanced columns within the row cap); otherwise it
+// returns "" so the explain projection matches compile's content fallback rather
+// than over-promising a visual the renderer will not emit (explain/compile
+// parity for degraded/over-cap inputs).
+func comparisonPattern(body map[string]any) string {
+	if slides.ComparisonPatternFeasible(body) {
+		return "comparison-2col"
+	}
+	return ""
+}
 
 // kpiPattern selects the kpi-Nup pattern matching the declared KPI count,
 // clamped to the registered 2up–6up range.

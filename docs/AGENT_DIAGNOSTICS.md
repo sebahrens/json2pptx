@@ -72,8 +72,10 @@ silently dropped by the per-kind compilers, so validation emits a
 `warning` under `warn`, `error` under `strict` — rather than shipping the
 content-less slide behind a green gate. The
 `SEMANTIC_DENSITY` range checks (process 3–8 steps, roadmap 3–6 phases, kpi 2–6
-KPIs) likewise use the usable count, so validation and compile agree on whether a
-visual pattern will be emitted. After compilation, raw validation/fit/output findings are mapped back
+KPIs, comparison 1–10 balanced rows per column) likewise use the usable count, so
+validation and compile agree on whether a visual pattern will be emitted — a
+balanced comparison whose columns exceed the 10-row cap degrades to a bullet list,
+so validation flags the over-cap count rather than passing the raw shape. After compilation, raw validation/fit/output findings are mapped back
 through the semantic source map. For example, a raw overflow at
 `/slides/2/shape_grid/rows/0/cells/1/shape/text/content` is reported to agents
 as `slides[1].kpis[1]` with the raw path preserved only as fallback evidence

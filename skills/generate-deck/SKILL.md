@@ -72,7 +72,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `executive_summary` | `title` | `points` (body bullets), `takeaway` (footer one-liner) | — |
 | `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label}` |
 | `chart_insight` | `chart` | `insights[]`, `title`, `source`, `takeaway` | chart: `{type, data, title?}` |
-| `comparison` | `columns` (exactly 2 → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
+| `comparison` | `columns` (exactly 2, balanced, ≤10 rows each → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
 | `process` | `steps` (3–8 → visual) | `title`, `takeaway` | each step: string or `{label, type?}` |
 | `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
 | `decision` | `title` | `recommendation`, `options[]`, `takeaway` | each option: string or `{label}` |

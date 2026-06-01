@@ -1,6 +1,7 @@
 package semantic
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -306,6 +307,68 @@ func TestValidateComparisonBalance(t *testing.T) {
 	ds := Validate(spec, StrictnessWarn)
 	if _, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].columns"); !ok {
 		t.Fatalf("expected SEMANTIC_DENSITY (unbalanced) at slides[0].columns, got %v", ds)
+	}
+}
+
+// TestValidateComparisonOverCap is the regression guard for go-slide-creator-wzd4:
+// two balanced columns with more rows than the comparison-2col cap validate
+// cleanly today, but compile degrades to a bullet list. Validation must flag the
+// over-cap count (warning under warn, error under strict) so an agent can split
+// or shorten before shipping a degraded slide.
+func TestValidateComparisonOverCap(t *testing.T) {
+	rows := func(n int) []any {
+		items := make([]any, n)
+		for i := range items {
+			items[i] = fmt.Sprintf("row %d", i+1)
+		}
+		return items
+	}
+	newSpec := func() *DeckSpec {
+		return &DeckSpec{
+			Meta: DeckMeta{Title: "Deck"},
+			Slides: []SlideSpec{{Kind: KindComparison, Body: map[string]any{
+				"title":    "A vs B",
+				"takeaway": "Pick A.",
+				"columns": []any{
+					map[string]any{"header": "A", "items": rows(11)},
+					map[string]any{"header": "B", "items": rows(11)},
+				},
+			}}},
+		}
+	}
+
+	warnDS := Validate(newSpec(), StrictnessWarn)
+	d, ok := findAt(warnDS, diagnostics.CodeSemanticDensity, "slides[0].columns")
+	if !ok {
+		t.Fatalf("expected SEMANTIC_DENSITY (over-cap) at slides[0].columns, got %v", warnDS)
+	}
+	if d.Severity != diagnostics.SeverityWarning {
+		t.Errorf("warn severity = %q, want warning", d.Severity)
+	}
+
+	strictDS := Validate(newSpec(), StrictnessStrict)
+	d, ok = findAt(strictDS, diagnostics.CodeSemanticDensity, "slides[0].columns")
+	if !ok {
+		t.Fatalf("expected over-cap finding under strict, got %v", strictDS)
+	}
+	if d.Severity != diagnostics.SeverityError {
+		t.Errorf("strict severity = %q, want error", d.Severity)
+	}
+
+	// A balanced comparison at the cap must NOT trip the over-cap advisory.
+	atCap := &DeckSpec{
+		Meta: DeckMeta{Title: "Deck"},
+		Slides: []SlideSpec{{Kind: KindComparison, Body: map[string]any{
+			"title":    "A vs B",
+			"takeaway": "Pick A.",
+			"columns": []any{
+				map[string]any{"header": "A", "items": rows(10)},
+				map[string]any{"header": "B", "items": rows(10)},
+			},
+		}}},
+	}
+	if hasCode(Validate(atCap, StrictnessWarn), diagnostics.CodeSemanticDensity) {
+		t.Errorf("balanced comparison at the row cap must not emit SEMANTIC_DENSITY")
 	}
 }
 

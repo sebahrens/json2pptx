@@ -118,6 +118,44 @@ func TestExplainCompileParity(t *testing.T) {
 	}
 }
 
+// TestExplainCompileParity_ComparisonOverCap is the explain/compile parity guard
+// for go-slide-creator-wzd4: a balanced comparison whose columns exceed the
+// comparison-2col row cap degrades to a content slide at compile, so explain must
+// not advertise the comparison-2col pattern for it.
+func TestExplainCompileParity_ComparisonOverCap(t *testing.T) {
+	rows := func(n int) []any {
+		items := make([]any, n)
+		for i := range items {
+			items[i] = "row"
+		}
+		return items
+	}
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Deck", Template: "midnight-blue"},
+		Slides: []SlideSpec{{Kind: KindComparison, Body: map[string]any{
+			"title":    "A vs B",
+			"takeaway": "Pick A.",
+			"columns": []any{
+				map[string]any{"header": "A", "items": rows(11)},
+				map[string]any{"header": "B", "items": rows(11)},
+			},
+		}}},
+	}
+
+	exp := ExplainSpec(spec)
+	if got := exp.Slides[0].Pattern; got != "" {
+		t.Errorf("explain advertises pattern %q for an over-cap comparison; want none", got)
+	}
+
+	input, _, err := Compile(spec, CompileOptions{})
+	if err != nil {
+		t.Fatalf("compile over-cap comparison: %v", err)
+	}
+	if p := input.Slides[0].Pattern; p != nil {
+		t.Errorf("compile emitted pattern %q for an over-cap comparison; want none (content fallback)", p.Name)
+	}
+}
+
 // TestExplainCompileParity_PatternsValidate confirms every pattern the every-kind
 // deck compiles to decodes and validates against the registry — so "compiles to
 // the advertised visual" also means "renders", not just "names a pattern".

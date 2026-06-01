@@ -450,6 +450,14 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 			return
 		}
 	}
+	// Balanced two-column comparisons still degrade to a bullet list when a column
+	// exceeds the comparison-2col row cap. Validation alone passes the raw shape,
+	// so flag the over-cap count here (blocking under strict) to keep validate in
+	// step with what compile emits.
+	if counts[0] > slides.ComparisonMaxRows {
+		s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("comparison-2col renders 1–%d rows per column; found %d — split or shorten the comparison (otherwise it degrades to a bullet list)", slides.ComparisonMaxRows, counts[0]))
+	}
 }
 
 // scanWeakBody scans a slide payload for placeholder/filler content.

@@ -62,20 +62,37 @@ func CompileComparison(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	return slide, links, nil
 }
 
-// comparisonRows builds the comparison-2col headers and rows from a comparison
-// payload's two columns. It reports ok=false (degrade) when the payload does not
-// have exactly two columns whose item lists are non-empty, equal in length, and
-// within the pattern's 10-row cap.
-func comparisonRows(body map[string]any) (headers []string, rows []comparison2colRow, ok bool) {
+// ComparisonMaxRows is the per-column row cap of the comparison-2col pattern.
+// Beyond it the compiler degrades to a bullet content slide, so validation and
+// the explain planner share this bound to stay in step with compile.
+const ComparisonMaxRows = 10
+
+// ComparisonPatternFeasible reports whether a comparison payload will compile to
+// the comparison-2col pattern (rather than degrading to a content fallback): it
+// must have exactly two columns whose item lists are non-empty, equal in length,
+// and within ComparisonMaxRows. Validation and the explain planner consult this
+// so neither flags nor advertises a treatment that disagrees with compile.
+func ComparisonPatternFeasible(body map[string]any) bool {
 	cols := mapList(body, "columns")
 	if len(cols) != 2 {
-		return nil, nil, false
+		return false
 	}
 	left := columnItems(cols[0])
 	right := columnItems(cols[1])
-	if len(left) == 0 || len(left) != len(right) || len(left) > 10 {
+	return len(left) > 0 && len(left) == len(right) && len(left) <= ComparisonMaxRows
+}
+
+// comparisonRows builds the comparison-2col headers and rows from a comparison
+// payload's two columns. It reports ok=false (degrade) when the payload does not
+// have exactly two columns whose item lists are non-empty, equal in length, and
+// within the pattern's ComparisonMaxRows cap.
+func comparisonRows(body map[string]any) (headers []string, rows []comparison2colRow, ok bool) {
+	if !ComparisonPatternFeasible(body) {
 		return nil, nil, false
 	}
+	cols := mapList(body, "columns")
+	left := columnItems(cols[0])
+	right := columnItems(cols[1])
 	rows = make([]comparison2colRow, len(left))
 	for i := range left {
 		rows[i] = comparison2colRow{Left: left[i], Right: right[i]}
