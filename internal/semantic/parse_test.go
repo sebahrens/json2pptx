@@ -237,6 +237,107 @@ func TestParseInvalidJSONIsParseError(t *testing.T) {
 	}
 }
 
+// noLeakedInternals asserts the diagnostic messages never expose internal Go or
+// YAML decoder type names to the agent.
+func noLeakedInternals(t *testing.T, ds Diagnostics) {
+	t.Helper()
+	leaks := []string{"rawDeck", "DeckMeta", "interface {}", "map[string]", "semantic.", "yaml: unmarshal"}
+	for _, d := range ds {
+		for _, bad := range leaks {
+			if strings.Contains(d.Message, bad) {
+				t.Errorf("diagnostic message leaks internal detail %q: %q", bad, d.Message)
+			}
+		}
+	}
+}
+
+func TestParseRootArrayIsInvalidRoot(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		fn   func([]byte) (*DeckSpec, Diagnostics)
+		src  string
+	}{
+		{"json", ParseJSON, `[{"kind":"title"}]`},
+		{"yaml", ParseYAML, "- kind: title\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ds := tc.fn([]byte(tc.src))
+			if !hasCodeAtPath(ds, CodeInvalidRoot, "") {
+				t.Fatalf("expected %s at root, got %v", CodeInvalidRoot, ds)
+			}
+			noLeakedInternals(t, ds)
+		})
+	}
+}
+
+func TestParseStringMetaIsInvalidMeta(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		fn   func([]byte) (*DeckSpec, Diagnostics)
+		src  string
+	}{
+		{"json", ParseJSON, `{"meta":"hello","slides":[]}`},
+		{"yaml", ParseYAML, "meta: hello\nslides: []\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ds := tc.fn([]byte(tc.src))
+			if !hasCodeAtPath(ds, CodeInvalidMeta, "meta") {
+				t.Fatalf("expected %s at meta, got %v", CodeInvalidMeta, ds)
+			}
+			noLeakedInternals(t, ds)
+		})
+	}
+}
+
+func TestParseStringSlidesIsInvalidSlides(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		fn   func([]byte) (*DeckSpec, Diagnostics)
+		src  string
+	}{
+		{"json", ParseJSON, `{"meta":{},"slides":"nope"}`},
+		{"yaml", ParseYAML, "meta: {}\nslides: nope\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ds := tc.fn([]byte(tc.src))
+			if !hasCodeAtPath(ds, CodeInvalidSlides, "slides") {
+				t.Fatalf("expected %s at slides, got %v", CodeInvalidSlides, ds)
+			}
+			noLeakedInternals(t, ds)
+		})
+	}
+}
+
+func TestParseScalarRootIsInvalidRoot(t *testing.T) {
+	// A bare scalar document is not a usable deck spec root.
+	_, ds := ParseJSON([]byte(`"just a string"`))
+	if !hasCodeAtPath(ds, CodeInvalidRoot, "") {
+		t.Fatalf("expected %s at root, got %v", CodeInvalidRoot, ds)
+	}
+	if want := "got a string"; !strings.Contains(ds[0].Message, want) {
+		t.Errorf("message = %q, want it to contain %q", ds[0].Message, want)
+	}
+}
+
+func TestParseValidContainersStillParse(t *testing.T) {
+	// The generic container pre-check must not reject a well-formed deck: a
+	// valid object root with an object meta and array slides parses cleanly.
+	src := `
+meta:
+  title: Good Deck
+slides:
+  - kind: title
+    title: Hi
+`
+	spec, ds := ParseYAML([]byte(src))
+	if ds.HasErrors() {
+		t.Fatalf("unexpected diagnostics for a valid deck: %v", ds)
+	}
+	if spec == nil || len(spec.Slides) != 1 {
+		t.Fatalf("expected a 1-slide spec, got %+v", spec)
+	}
+}
+
 func hasCodeAtPath(ds Diagnostics, code, path string) bool {
 	for _, d := range ds {
 		if d.Code == code && d.Path == path {

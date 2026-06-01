@@ -569,7 +569,7 @@ func mapParseCode(code string) string {
 		return diagnostics.CodeSemanticRequired
 	case CodeUnknownArchetype:
 		return diagnostics.CodeSemanticUnknownArchetype
-	case CodeParseError, CodeInvalidRoot, CodeInvalidSlides, CodeInvalidSlide:
+	case CodeParseError, CodeInvalidRoot, CodeInvalidMeta, CodeInvalidSlides, CodeInvalidSlide:
 		return diagnostics.CodeInvalidJSON
 	default:
 		return diagnostics.CodeInvalidParameter

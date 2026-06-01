@@ -33,6 +33,8 @@ const (
 	CodeParseError = "parse_error"
 	// CodeInvalidRoot indicates the document root is not a mapping/object.
 	CodeInvalidRoot = "invalid_root"
+	// CodeInvalidMeta indicates the meta field is present but not a mapping/object.
+	CodeInvalidMeta = "invalid_meta"
 	// CodeInvalidSlides indicates the slides field is present but not a list.
 	CodeInvalidSlides = "invalid_slides"
 	// CodeInvalidSlide indicates a slide entry is not a mapping/object.

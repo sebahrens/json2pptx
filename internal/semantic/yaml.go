@@ -38,12 +38,23 @@ func ParseYAML(data []byte) (*DeckSpec, Diagnostics) {
 	limits := safeyaml.DefaultLimits()
 	limits.MaxSize = maxSpecSize
 
+	// Decode generically first so malformed top-level container shapes (a
+	// non-object root, a non-object meta, a non-array slides) fail fast with
+	// path-scoped diagnostics instead of leaking the YAML decoder's internal
+	// Go type names through a typed-struct decode error.
+	var root any
+	if err := safeyaml.UnmarshalWithLimits(data, &root, limits); err != nil {
+		return nil, parseErrorDiagnostics(err)
+	}
+	if ds := validateContainerShapes(root); ds.HasErrors() {
+		return nil, ds
+	}
+
 	var raw rawDeck
 	if err := safeyaml.UnmarshalWithLimits(data, &raw, limits); err != nil {
 		return nil, parseErrorDiagnostics(err)
 	}
-	var top map[string]any
-	_ = safeyaml.UnmarshalWithLimits(data, &top, limits)
+	top, _ := root.(map[string]any)
 	return buildDeckSpec(raw, top)
 }
 
@@ -52,13 +63,76 @@ func ParseJSON(data []byte) (*DeckSpec, Diagnostics) {
 	if len(data) > maxSpecSize {
 		return nil, parseErrorDiagnostics(fmt.Errorf("document exceeds maximum size of %d bytes", maxSpecSize))
 	}
+	// Decode generically first so malformed top-level container shapes fail
+	// fast with path-scoped diagnostics rather than leaking decoder internals
+	// (see validateContainerShapes and ParseYAML).
+	var root any
+	if err := json.Unmarshal(data, &root); err != nil {
+		return nil, parseErrorDiagnostics(err)
+	}
+	if ds := validateContainerShapes(root); ds.HasErrors() {
+		return nil, ds
+	}
+
 	var raw rawDeck
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, parseErrorDiagnostics(err)
 	}
-	var top map[string]any
-	_ = json.Unmarshal(data, &top)
+	top, _ := root.(map[string]any)
 	return buildDeckSpec(raw, top)
+}
+
+// validateContainerShapes checks the generic decode of a deck document for the
+// top-level container shapes the semantic model requires: an object root with an
+// optional object "meta" and an optional array "slides". It returns path-scoped
+// diagnostics so a malformed container fails fast with an actionable message
+// instead of leaking the decoder's internal Go/YAML type names to the agent.
+//
+// Per-slide element shapes are intentionally left to the slide-element decode
+// path; this gate covers only the root/meta/slides containers.
+func validateContainerShapes(root any) Diagnostics {
+	var ds Diagnostics
+	m, ok := root.(map[string]any)
+	if !ok {
+		ds.add("", CodeInvalidRoot,
+			fmt.Sprintf("deck spec root must be an object with %s, got %s",
+				strings.Join(knownTopLevelKeys, " and "), jsonShapeName(root)))
+		return ds
+	}
+	if meta, present := m["meta"]; present {
+		if _, isMap := meta.(map[string]any); !isMap {
+			ds.add("meta", CodeInvalidMeta,
+				fmt.Sprintf("meta must be an object, got %s", jsonShapeName(meta)))
+		}
+	}
+	if slides, present := m["slides"]; present {
+		if _, isSlice := slides.([]any); !isSlice {
+			ds.add("slides", CodeInvalidSlides,
+				fmt.Sprintf("slides must be an array, got %s", jsonShapeName(slides)))
+		}
+	}
+	return ds
+}
+
+// jsonShapeName returns a friendly name for the JSON/YAML shape of v, used in
+// container-shape diagnostics so messages stay free of internal Go type names.
+func jsonShapeName(v any) string {
+	switch v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "a boolean"
+	case string:
+		return "a string"
+	case float64, int, int64:
+		return "a number"
+	case []any:
+		return "an array"
+	case map[string]any:
+		return "an object"
+	default:
+		return "a non-object value"
+	}
 }
 
 // parseErrorDiagnostics wraps a decode error as a root-scoped diagnostic.
