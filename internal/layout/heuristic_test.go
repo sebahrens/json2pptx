@@ -126,6 +126,106 @@ func TestSelectLayout_TitleSlide(t *testing.T) {
 	}
 }
 
+// Regression for go-slide-creator-07ap: a title-kind slide must select the
+// title-slide canonical-family layout over a Blank layout even when the Title
+// Slide layout failed the strict structural "title-slide" tag heuristic (e.g.
+// because it carries an extra body placeholder). The canonical classifier still
+// marks it CanonicalLayoutTitleSlide, and the heuristic must honor that.
+func TestSelectLayout_TitleSlide_CanonicalFamilyOverBlank(t *testing.T) {
+	// Title Slide layout WITHOUT the structural "title-slide" tag (a stray body
+	// placeholder suppresses it) but classified into the title-slide family.
+	// Note: not VisualFocused, so it loses the sparse visual-balance sub-score to
+	// the Blank layout below — exactly the pwc-template condition. Only the
+	// canonical title-slide typeScore should make it win.
+	titleByCanonical := types.LayoutMetadata{
+		ID:            "slideLayout1",
+		Name:          "Title Slide",
+		CanonicalType: types.CanonicalLayoutTitleSlide,
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "ctrTitle", Type: types.PlaceholderTitle, MaxChars: 100},
+			{ID: "subTitle", Type: types.PlaceholderSubtitle, MaxChars: 80},
+		},
+		Capacity: types.CapacityEstimate{},
+	}
+	blank := types.LayoutMetadata{
+		ID:            "slideLayout5",
+		Name:          "Blank",
+		Tags:          []string{"blank"},
+		CanonicalType: types.CanonicalLayoutBlank,
+		// VisualFocused → wins the sparse visual-balance sub-score, so on the
+		// pre-fix logic (both layouts at typeScore 0) Blank strictly outscores
+		// the untagged Title Slide.
+		Capacity: types.CapacityEstimate{VisualFocused: true},
+	}
+
+	req := SelectionRequest{
+		Slide: types.SlideDefinition{
+			Index: 0,
+			Title: "My Presentation",
+			Type:  types.SlideTypeTitle,
+		},
+		Layouts: []types.LayoutMetadata{blank, titleByCanonical},
+		Context: SelectionContext{Position: 0, TotalSlides: 10},
+	}
+
+	result, err := SelectLayout(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.LayoutID != "slideLayout1" {
+		t.Errorf("expected slideLayout1 (Title Slide), got %s", result.LayoutID)
+	}
+}
+
+// Regression for go-slide-creator-07ap: the "blank-title" utility layout also
+// carries the structural "title-slide" tag, but it is a content canvas, not a
+// cover. A real Title Slide must win the position-0 title bonus over it.
+func TestSelectLayout_TitleSlide_PrefersCoverOverBlankTitle(t *testing.T) {
+	// blank-title is VisualFocused so it would win the sparse visual-balance
+	// sub-score; on the pre-fix logic it ties the cover on typeScore (both carry
+	// the "title-slide" tag) and then wins the tie-break. The blank-title
+	// exclusion is what must flip the result to the real cover.
+	blankTitle := types.LayoutMetadata{
+		ID:            "slideLayout7",
+		Name:          "Blank + Title",
+		Tags:          []string{"title-slide", "blank-title"},
+		CanonicalType: types.CanonicalLayoutBlankTitle,
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "title-1", Type: types.PlaceholderTitle, MaxChars: 100},
+		},
+		Capacity: types.CapacityEstimate{VisualFocused: true},
+	}
+	// A real cover: title-slide tag, but NOT VisualFocused, so it loses balance.
+	cover := types.LayoutMetadata{
+		ID:            "slideLayout1",
+		Name:          "Title Slide",
+		Tags:          []string{"title-slide"},
+		CanonicalType: types.CanonicalLayoutTitleSlide,
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "ctrTitle", Type: types.PlaceholderTitle, MaxChars: 100},
+			{ID: "subTitle", Type: types.PlaceholderSubtitle, MaxChars: 80},
+		},
+	}
+
+	req := SelectionRequest{
+		Slide: types.SlideDefinition{
+			Index: 0,
+			Title: "My Presentation",
+			Type:  types.SlideTypeTitle,
+		},
+		Layouts: []types.LayoutMetadata{blankTitle, cover},
+		Context: SelectionContext{Position: 0, TotalSlides: 10},
+	}
+
+	result, err := SelectLayout(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.LayoutID != "slideLayout1" {
+		t.Errorf("expected slideLayout1 (cover), got %s", result.LayoutID)
+	}
+}
+
 // AC2: Content Fitting
 func TestSelectLayout_ContentFitting(t *testing.T) {
 	layouts := []types.LayoutMetadata{

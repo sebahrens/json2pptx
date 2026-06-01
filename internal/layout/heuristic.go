@@ -455,7 +455,7 @@ func containsProminentNumber(text string) bool {
 // scoreTypeMatch checks if layout tags match slide type and position.
 func scoreTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinition, ctx SelectionContext) float64 {
 	// Position-based bonus for first slide
-	if ctx.Position == 0 && hasTag(layout.Tags, "title-slide") {
+	if ctx.Position == 0 && isTitleSlideLayout(layout) {
 		return scorePerfectMatch
 	}
 
@@ -532,8 +532,30 @@ func scoreSlideTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinitio
 	}
 }
 
-func scoreTitleSlide(layout types.LayoutMetadata) float64 {
+// isTitleSlideLayout reports whether a layout is a genuine cover/title-slide
+// layout. It accepts a layout that either carries the structural "title-slide"
+// tag OR classifies into the title-slide canonical family — the latter covers
+// real-world templates whose Title Slide layout fails the strict tag heuristic
+// (e.g. it also carries a stray body placeholder) yet is unambiguously a cover
+// per the authoritative canonical classifier.
+//
+// The "blank-title" utility layout is excluded: a bare title canvas (title
+// placeholder only, used to host a shape_grid below a heading) also earns the
+// structural "title-slide" tag, but it is a content canvas, not a cover. This
+// mirrors the canonicalNames["title"] rule in canonical.go, which requires the
+// "title-slide" tag while excluding "blank-title".
+func isTitleSlideLayout(layout types.LayoutMetadata) bool {
+	if hasTag(layout.Tags, "blank-title") {
+		return false
+	}
 	if hasTag(layout.Tags, "title-slide") {
+		return true
+	}
+	return layout.CanonicalType.Family() == types.LayoutFamilyTitleSlide
+}
+
+func scoreTitleSlide(layout types.LayoutMetadata) float64 {
+	if isTitleSlideLayout(layout) {
 		return scorePerfectMatch
 	}
 	return scoreNoMatch
