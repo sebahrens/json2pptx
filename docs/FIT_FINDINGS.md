@@ -292,6 +292,30 @@ A pattern grid exceeds the pattern's recommended maximum cell count. The fix sug
 }
 ```
 
+### `SPARSE_SINGLE_ROW_FLOW`
+
+**Action:** `review`
+**Pattern:** `process-flow` or `timeline-horizontal`
+**Fix kind:** `swap_pattern`
+
+A slide-level single-row sequence pattern — `process-flow`, or the default single-row `dots` style of `timeline-horizontal` — of 3–6 cells whose average per-cell text is below the sparse threshold (~40 chars) and which has no `bounds` / `max_height_pct` cap. Its lone row is left to fill the slide's content area, so the boxes stretch vertically into oversized shapes around a few words (the diamond/box aspect ratio drives the row height).
+
+The check reads `slide.pattern` directly, so it fires only for a standalone slide-level pattern. Compose envelopes and nested cell patterns are exempt — a second zone already absorbs the slide height. The multi-row `chevron` and `gantt` timeline styles are also exempt (they are not single-row).
+
+The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (whose per-step detail zone fills the vertical space), with `process-grid-2row` (two parallel tracks) and `phase-roadmap` (dated milestones with descriptions) as alternatives. Setting `max_height_pct` on the existing pattern also clears the finding. `fix.params` carry `from`, `item_count`, `avg_chars`, `reason: "single_row_sparse"`, and `suggested: [{to, rationale}, …]`.
+
+```json
+{
+  "pattern": "process-flow",
+  "path": "/slides/3/pattern",
+  "code": "SPARSE_SINGLE_ROW_FLOW",
+  "message": "slide 4: process-flow is a single horizontal row of 4 sparse cells (avg 6 chars) with no height cap — boxes stretch to fill the slide; switch to numbered-step-strip / process-grid-2row / phase-roadmap, or set max_height_pct",
+  "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "item_count": 4, "avg_chars": 6, "reason": "single_row_sparse", "suggested": [{ "to": "numbered-step-strip", "rationale": "ordered steps with a per-step detail zone fill the vertical space" }] } },
+  "action": "review",
+  "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 0 } }
+}
+```
+
 ### `grid_diagram_narrow`
 
 **Action:** `review`

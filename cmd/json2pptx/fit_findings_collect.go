@@ -60,6 +60,13 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 4. Grid occupancy: pattern_underfilled / pattern_overcrowded.
 	findings = append(findings, collectGridOccupancyFindings(input)...)
 
+	// 4b. Sparse single-row flow guard: a slide-level process-flow /
+	// timeline-horizontal ("dots") with sparse labels and no height cap stretches
+	// its lone row to fill the slide (SPARSE_SINGLE_ROW_FLOW). Reads slide.Pattern
+	// directly, so compose / nested-cell patterns (which have a second zone) are
+	// exempt by construction.
+	findings = append(findings, collectSparseSingleRowFlowFindings(input)...)
+
 	// 5. Preflight predictions for render-time-only findings: table_font_scaled,
 	// table_rows_truncated, column_width_deficit, text_trimmed,
 	// readability_trimmed. These mirror the renderer's scaling/trimming logic

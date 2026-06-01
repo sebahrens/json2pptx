@@ -83,6 +83,49 @@ func ContentDropped(path, locator, reason string) FitFinding {
 	}
 }
 
+// SparseSingleRowFlow builds a SPARSE_SINGLE_ROW_FLOW fit finding for a
+// slide-level single-row sequence pattern (process-flow or the single-row
+// "dots" style of timeline-horizontal) that carries sparse per-cell text and
+// has no height cap, so its boxes stretch vertically to fill the slide.
+//
+//   - patternName is the offending pattern ("process-flow" / "timeline-horizontal").
+//   - path is the JSON Pointer to the slide's pattern field (e.g. "/slides/3/pattern").
+//   - slideIdx is the 0-based slide index (used only to humanise the message).
+//   - itemCount is the number of steps / stops in the single row.
+//   - avgChars is the average per-cell text length that tripped the sparse gate.
+//
+// The finding is advisory (action "review"): it never blocks generation. The
+// fix is a swap_pattern suggestion ranked toward numbered-step-strip (which adds
+// a per-step detail zone), with process-grid-2row and phase-roadmap as
+// alternatives; setting max_height_pct on the existing pattern also clears it.
+func SparseSingleRowFlow(patternName, path string, slideIdx, itemCount int, avgChars float64) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Pattern: patternName,
+			Path:    path,
+			Code:    ErrCodeSparseSingleRowFlow,
+			Message: fmt.Sprintf(
+				"slide %d: %s is a single horizontal row of %d sparse cells (avg %.0f chars) with no height cap — boxes stretch to fill the slide; switch to numbered-step-strip / process-grid-2row / phase-roadmap, or set max_height_pct",
+				slideIdx+1, patternName, itemCount, avgChars),
+			Fix: &FixSuggestion{
+				Kind: "swap_pattern",
+				Params: map[string]any{
+					"from":       patternName,
+					"item_count": itemCount,
+					"avg_chars":  avgChars,
+					"reason":     "single_row_sparse",
+					"suggested": []any{
+						map[string]any{"to": "numbered-step-strip", "rationale": "ordered steps with a per-step detail zone fill the vertical space"},
+						map[string]any{"to": "process-grid-2row", "rationale": "use two parallel tracks when the steps split into two lanes"},
+						map[string]any{"to": "phase-roadmap", "rationale": "milestones with dates/descriptions belong on a phased roadmap"},
+					},
+				},
+			},
+		},
+		Action: "review",
+	}
+}
+
 // actionRanks maps action strings to severity ranks. Higher rank = more severe.
 var actionRanks = map[string]int{
 	"info":           0,

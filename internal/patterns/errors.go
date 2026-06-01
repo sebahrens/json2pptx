@@ -44,6 +44,12 @@ const (
 	ErrCodeTakeawayMissing     = "takeaway_missing"
 	ErrCodeAccentOverload      = "accent_overload"
 
+	// Layout-guard code — emitted when a single-row sequence pattern
+	// (process-flow / timeline-horizontal "dots") with sparse per-cell text is
+	// left to fill the whole slide (no bounds / max_height_pct cap), so its
+	// boxes stretch vertically. Advisory; never blocks render.
+	ErrCodeSparseSingleRowFlow = "SPARSE_SINGLE_ROW_FLOW"
+
 	// Content lint codes — emitted when slide text exceeds readability budgets
 	// or bullet lists nest more than two levels. Advisory; never block render.
 	ErrCodeHeadlineTooLong   = "HEADLINE_TOO_LONG"
@@ -132,6 +138,7 @@ var (
 	ErrCellUnderfilled     = errors.New("cell content is well below capacity")
 	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
 	ErrAccentOverload      = errors.New("slide uses more than two distinct accent hues")
+	ErrSparseSingleRowFlow = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
 
 	ErrHeadlineTooLong   = errors.New("headline exceeds word count budget")
 	ErrBodyTooLong       = errors.New("body text block exceeds word count budget")
@@ -196,6 +203,7 @@ var codeSentinel = map[string]error{
 	ErrCodeCellUnderfilled:       ErrCellUnderfilled,
 	ErrCodeTakeawayMissing:       ErrTakeawayMissing,
 	ErrCodeAccentOverload:        ErrAccentOverload,
+	ErrCodeSparseSingleRowFlow:   ErrSparseSingleRowFlow,
 	ErrCodeHeadlineTooLong:       ErrHeadlineTooLong,
 	ErrCodeBodyTooLong:           ErrBodyTooLong,
 	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,

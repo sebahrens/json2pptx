@@ -416,6 +416,21 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodeMixedFillScheme, ErrCodeHexFillNonBrand},
 	},
 
+	ErrCodeSparseSingleRowFlow: {
+		Code:        ErrCodeSparseSingleRowFlow,
+		Summary:     "A single-row sequence pattern with sparse per-cell text fills the whole slide, so its boxes stretch vertically.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a slide-level process-flow (or single-row \"dots\" timeline-horizontal) of 3–6 cells whose average per-cell text is below the sparse threshold, with no bounds / max_height_pct cap. Compose segments and nested cell patterns are exempt (a second zone already absorbs the height).",
+		RemediationSteps: []string{
+			"Swap to numbered-step-strip via recommend_pattern — its per-step detail zone fills the vertical space.",
+			"Or swap to process-grid-2row when the steps split into two parallel tracks, or phase-roadmap for dated milestones with descriptions.",
+			"Or keep the pattern and set max_height_pct (e.g. 35) so the row no longer stretches to fill the slide.",
+		},
+		ExampleBefore: `{"pattern":{"name":"process-flow","values":{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"}]}}}`,
+		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"title":"Plan","detail":"…"},{"title":"Build","detail":"…"},{"title":"Ship","detail":"…"}]}}}`,
+		RelatedCodes:  []string{ErrCodeSparseLayout, ErrCodeCellUnderfilled, ErrCodeWrongPattern},
+	},
+
 	// ---- Content-lint codes (advisory text-budget checks) ----
 
 	ErrCodeHeadlineTooLong: {
