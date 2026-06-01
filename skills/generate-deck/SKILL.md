@@ -197,6 +197,28 @@ when a data-driven or topologically complex diagram is needed.
 Use shape_grid patterns for structural/text layouts.
 ```
 
+### Refined consulting layouts (prefer over generic card-grid / process-flow)
+
+`card-grid` is a fallback, not a destination. When the content carries a recognizable
+consulting shape, reach for the refined family first — `recommend_visual` now biases these
+above `card-grid` even when you describe the slide with generic "cards"/"grid" wording, so
+trust the higher-scoring refined candidate rather than defaulting to a tile grid:
+
+| Content shape | Refined layout (use this) | Not |
+|---|---|---|
+| Ranked / weighted scorecard (vendors, options, drivers) | `horizontal-bar-with-callouts` | card-grid, kpi-Nup |
+| Value / cost decomposition (metric = sum of branches) | `driver-tree` | card-grid |
+| Governance / strategy pillars (+ foundation) | `strategy-house` · `stylish-panels` | card-grid |
+| Capability / digital maturity, staged progression | `journey-maturity-model` | card-grid, plain bullets |
+| Described phase plan (phases + dates + descriptions) | `phase-roadmap` | card-grid, process-flow |
+| Operational sequence, each step with a description | `value-chain` | process-flow, card-grid |
+| Pillars / capabilities as titled bullet blocks | `stylish-panels` | card-grid |
+| Table of contents / agenda | `agenda` · `numbered-step-strip` (style:toc) | card-grid, process-flow |
+
+Only fall back to `card-grid` for genuinely flat catalog content (N titled tiles with no
+ranking, decomposition, sequence, or hierarchy). See the sparse-sequence rule below for why a
+lone strip of boxes also fails — refined families avoid that by carrying per-item mass.
+
 ### Sparse-sequence rule (hard)
 
 **Never fill a whole slide with a single row of 3-6 boxes** — a lone `process-flow`

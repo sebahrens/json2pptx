@@ -356,8 +356,10 @@ var rules = []rule{
 	},
 	{
 		pattern:   "value-chain",
+		// Refined-consulting bias (J2P-STYLE-008): an operational sequence with
+		// per-step descriptions is a value-chain, above card-grid's 0.80 fallback.
 		keywords:  []string{"value chain", "supply chain", "operations chain"},
-		baseScore: 0.78,
+		baseScore: 0.82,
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
 	},
 
@@ -388,25 +390,31 @@ var rules = []rule{
 	},
 	{
 		pattern:   "driver-tree",
-		keywords:  []string{"driver", "decompose", "decomposition", "breakdown", "contributors"},
-		baseScore: 0.68,
-		rationale: "Driver-tree when content reads as 'metric X = sum of branch metrics, each backed by 1-4 leaf items'",
+		// Refined-consulting bias (J2P-STYLE-008): value/cost decomposition is a
+		// driver-tree, not a card-grid. Lifted above card-grid's 0.80 fallback.
+		keywords:  []string{"driver", "drivers", "value driver", "value drivers", "cost driver", "cost drivers", "decompose", "decomposition", "breakdown", "contributors"},
+		baseScore: 0.82,
+		rationale: "Driver-tree when content reads as 'metric X = sum of branch metrics, each backed by 1-4 leaf items', preferred over card-grid for value/cost decomposition",
 	},
 
 	// Horizontal bar with callouts — ranked horizontal bars with per-bar insight
 	{
 		pattern:   "horizontal-bar-with-callouts",
-		keywords:  []string{"ranked horizontal", "horizontal bars", "vendor scoring", "vendor scorecard", "opportunity sizing", "driver list", "ranked drivers", "ranked vendors", "bar with insight", "bars with callouts", "per-bar callout", "per-bar insight"},
+		keywords:  []string{"ranked horizontal", "horizontal bars", "vendor scoring", "vendor scorecard", "weighted scorecard", "weighted scoring", "weighted criteria", "opportunity sizing", "driver list", "ranked drivers", "ranked vendors", "bar with insight", "bars with callouts", "per-bar callout", "per-bar insight"},
 		baseScore: 0.92,
-		rationale: "Ranked horizontal bars (3-8) with one accent-anchored insight callout per bar",
+		rationale: "Ranked horizontal bars (3-8) with one accent-anchored insight callout per bar — the refined consulting layout for weighted scorecards and ranked comparisons",
 		itemMin:   3,
 		itemMax:   8,
 	},
 	{
 		pattern:   "horizontal-bar-with-callouts",
-		keywords:  []string{"ranked", "vendor", "opportunity", "driver", "scorecard", "ranking", "bars"},
-		baseScore: 0.70,
-		rationale: "Horizontal bar comparison pattern with per-item insights",
+		// Refined-consulting bias (J2P-STYLE-008): weighted/ranked scoring intents
+		// belong on this polished layout, not a generic card-grid. baseScore is
+		// lifted above card-grid's 0.80 fallback so generic "cards"/"ranking"
+		// wording still routes to bar-with-callouts.
+		keywords:  []string{"ranked", "vendor", "opportunity", "driver", "scorecard", "ranking", "weighted", "rated", "rating", "scored", "bars"},
+		baseScore: 0.82,
+		rationale: "Horizontal bar comparison pattern with per-item insights, preferred over card-grid for ranked or weighted-scoring content",
 	},
 
 	// Journey maturity model — N-stage horizontal maturity ladder with current-state marker
@@ -420,8 +428,10 @@ var rules = []rule{
 	},
 	{
 		pattern:   "journey-maturity-model",
-		keywords:  []string{"customer journey", "transformation journey", "maturity assessment", "maturity curve", "maturity stage", "where we are", "current state"},
-		baseScore: 0.78,
+		// Refined-consulting bias (J2P-STYLE-008): staged maturity/progression
+		// belongs on the maturity ladder, above card-grid's 0.80 fallback.
+		keywords:  []string{"customer journey", "transformation journey", "maturity assessment", "maturity curve", "maturity stage", "capability progression", "stage progression", "where we are", "current state"},
+		baseScore: 0.82,
 		rationale: "Maturity-journey ladder when content describes ordered stages with descriptions and highlights a single present state",
 		itemMin:   3,
 		itemMax:   6,
@@ -466,8 +476,10 @@ var rules = []rule{
 	},
 	{
 		pattern:   "phase-roadmap",
+		// Refined-consulting bias (J2P-STYLE-008): a described phase plan is a
+		// phase-roadmap, above card-grid's 0.80 fallback.
 		keywords:  []string{"phases", "milestone", "milestones", "active phase", "current phase", "phase timeline", "phase callouts"},
-		baseScore: 0.78,
+		baseScore: 0.82,
 		rationale: "Phase-roadmap when content names project phases with dates and short descriptions; supports a highlighted active phase and per-phase milestone callouts",
 		itemMin:   3,
 		itemMax:   6,
@@ -633,9 +645,11 @@ var rules = []rule{
 	},
 	{
 		pattern:   "stylish-panels",
-		keywords:  []string{"pillar", "capability", "workstream", "panel"},
-		baseScore: 0.75,
-		rationale: "Stylish panel layout for titled content blocks with bullet lists",
+		// Refined-consulting bias (J2P-STYLE-008): pillar/capability bullets
+		// belong on stylish-panels, above card-grid's 0.80 fallback.
+		keywords:  []string{"pillar", "pillar bullets", "capability", "capabilities with bullets", "workstream", "panel"},
+		baseScore: 0.82,
+		rationale: "Stylish panel layout for titled content blocks with bullet lists, preferred over card-grid for pillar / capability bullets",
 	},
 
 	// Strategy house — objective banner + pillars + foundation
@@ -649,8 +663,10 @@ var rules = []rule{
 	},
 	{
 		pattern:   "strategy-house",
+		// Refined-consulting bias (J2P-STYLE-008): governance/strategy pillars
+		// belong on a strategy-house, above card-grid's 0.80 fallback.
 		keywords:  []string{"strategy", "foundation", "objective", "pillar", "pillars", "house"},
-		baseScore: 0.78,
+		baseScore: 0.82,
 		rationale: "Strategy-house pattern when content has an objective above pillars above a foundation",
 		itemMin:   3,
 		itemMax:   5,

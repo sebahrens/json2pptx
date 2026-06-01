@@ -136,6 +136,29 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Callout / testimonial | `pull-quote` | Attributed quotation |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quote bubbles in a 3-column grid (voice-of-customer slides) |
 
+### Refined-consulting bias in the recommender (J2P-STYLE-008)
+
+The keyword scorer in `internal/patterns/recommend.go` (shared by `recommend_pattern` and
+`recommend_visual`) intentionally biases the refined consulting families above the generic
+`card-grid` fallback. `card-grid`'s broadest rule scores `0.80`; each refined family below
+carries a secondary rule at `baseScore: 0.82` so that even generic "cards"/"grid"/"ranking"
+wording routes to the polished layout rather than a tile grid:
+
+| Refined family | Generic-intent signal it now wins | Secondary `baseScore` |
+|---|---|---|
+| `horizontal-bar-with-callouts` | weighted scorecard, ranked vendors/options/drivers, rating | `0.82` |
+| `driver-tree` | value/cost driver, decomposition, breakdown, contributors | `0.82` |
+| `strategy-house` | strategy/governance pillars over a foundation | `0.82` |
+| `journey-maturity-model` | capability/digital maturity, staged progression | `0.82` |
+| `phase-roadmap` | described phase plan with dates | `0.82` |
+| `value-chain` | operational sequence with per-step descriptions | `0.82` |
+| `stylish-panels` | pillar / capability bullet blocks | `0.82` |
+
+When adding or tuning a refined family, keep its fallback rule at or above `0.82` so the bias
+holds; the regression is locked by `TestRecommend_RefinedConsultingBias` in
+`recommend_test.go`. `card-grid` is reserved for genuinely flat catalog content (titled tiles
+with no ranking, decomposition, sequence, or hierarchy).
+
 ## Taxonomy fields
 
 Every pattern must implement `Taxonomy() PatternTaxonomy` returning classification metadata used by `recommend_pattern` and `analyze_deck_rhythm`:

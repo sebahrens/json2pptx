@@ -545,3 +545,54 @@ func TestRecommend_DensityHintPreference(t *testing.T) {
 	}
 }
 
+// TestRecommend_RefinedConsultingBias locks J2P-STYLE-008: when a slide intent
+// signals a refined consulting family (weighted scorecard, value/cost
+// decomposition, strategy pillars, staged maturity), the refined pattern must
+// rank above the generic card-grid fallback — even when the intent also uses
+// generic "cards"/"grid" wording.
+func TestRecommend_RefinedConsultingBias(t *testing.T) {
+	reg := NewRegistry()
+	for _, name := range []string{
+		"card-grid", "horizontal-bar-with-callouts", "driver-tree",
+		"strategy-house", "stylish-panels", "journey-maturity-model",
+	} {
+		reg.Register(&stubPattern{name: name, desc: name, useWhen: name, version: 1})
+	}
+
+	cases := []struct {
+		intent  string
+		hints   *ContentHints
+		wantTop string
+	}{
+		{intent: "grid of vendors ranked by weighted score", hints: &ContentHints{ItemCount: 5}, wantTop: "horizontal-bar-with-callouts"},
+		{intent: "grid for each value driver", hints: nil, wantTop: "driver-tree"},
+		{intent: "grid of our strategy pillars over a foundation", hints: &ContentHints{ItemCount: 4}, wantTop: "strategy-house"},
+		{intent: "grid showing maturity stage progression where we are today", hints: &ContentHints{ItemCount: 4}, wantTop: "journey-maturity-model"},
+	}
+
+	for _, tc := range cases {
+		result := Recommend(reg, tc.intent, tc.hints, 5)
+		if len(result.Candidates) == 0 {
+			t.Errorf("intent=%q: no candidates returned", tc.intent)
+			continue
+		}
+		top := result.Candidates[0].PatternName
+		if top != tc.wantTop {
+			t.Errorf("intent=%q: top=%q, want %q (candidates=%v)", tc.intent, top, tc.wantTop, result.Candidates)
+		}
+		// card-grid must never edge out the refined family.
+		var refinedScore, cardScore float64
+		for _, c := range result.Candidates {
+			switch c.PatternName {
+			case tc.wantTop:
+				refinedScore = c.Score
+			case "card-grid":
+				cardScore = c.Score
+			}
+		}
+		if cardScore > 0 && cardScore >= refinedScore {
+			t.Errorf("intent=%q: card-grid (%.2f) should rank below %s (%.2f)", tc.intent, cardScore, tc.wantTop, refinedScore)
+		}
+	}
+}
+
