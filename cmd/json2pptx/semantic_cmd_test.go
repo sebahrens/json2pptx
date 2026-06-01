@@ -440,6 +440,24 @@ func TestSemanticRender_MissingOutputFlag(t *testing.T) {
 	}
 }
 
+// TestSemanticRender_BadOutputValidation asserts that a typo'd
+// --output-validation value (e.g. "stric") is rejected at argument parsing and
+// fails fast — before any spec read or render — instead of silently passing the
+// unrecognized mode into the runner, where only the exact "strict" value blocks
+// on findings. A green render of a typo'd flag would let a caller believe strict
+// output validation ran when it did not.
+func TestSemanticRender_BadOutputValidation(t *testing.T) {
+	path := writeSpec(t, "deck.yaml", validSemanticSpec)
+	out := filepath.Join(t.TempDir(), "out.pptx")
+	if _, err := runSemanticArgs(t, "render", "--spec", path, "--output", out,
+		"--templates-dir", testTemplatesDir, "--output-validation", "stric"); err == nil {
+		t.Error("expected error on invalid --output-validation value")
+	}
+	if _, statErr := os.Stat(out); !os.IsNotExist(statErr) {
+		t.Errorf("expected no output file to be written for an invalid --output-validation typo, but %s exists", out)
+	}
+}
+
 // repetitiveSemanticSpec is an executive (board_update) deck of three
 // consecutive KPI snapshots with no synthesis slide — it trips both the
 // monotony and synthesis rhythm rules, and pins no template so the archetype

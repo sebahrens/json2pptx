@@ -111,6 +111,23 @@ func parseStrictness(v string) (semantic.Strictness, error) {
 	}
 }
 
+// parseOutputValidation validates a post-generation output-validation mode,
+// rejecting typos so the CLI cannot silently fall back to a non-strict run. The
+// render runner treats only the exact "strict" value as blocking, so an
+// unrecognized value (e.g. a "stric" typo) would quietly skip strict gating
+// while still exiting 0 — leaving the caller to believe strict validation ran.
+// Failing fast here keeps `semantic render` in parity with MCP render_deck_spec,
+// which already rejects the same typos. The validated value is returned
+// unchanged for passing straight to RunPresentation.
+func parseOutputValidation(v string) (string, error) {
+	switch v {
+	case "off", "warn", "strict":
+		return v, nil
+	default:
+		return "", fmt.Errorf("invalid --output-validation value %q: must be off, warn, or strict", v)
+	}
+}
+
 // runSemanticValidate implements "semantic validate". It parses and validates a
 // semantic spec and prints the shared FindingEnvelope (the same shape every
 // other diagnostic-bearing surface emits) to stdout. The process exits non-zero
@@ -369,6 +386,11 @@ func runSemanticRender() error {
 	}
 	strictness, err := parseStrictness(*strict)
 	if err != nil {
+		return err
+	}
+	// Reject an --output-validation typo before any spec read or render so the
+	// caller cannot believe strict output validation was applied when it was not.
+	if _, err = parseOutputValidation(*outputValidation); err != nil {
 		return err
 	}
 
