@@ -175,8 +175,11 @@ func generateOnePatternPreview(
 		return fmt.Errorf("empty grid result")
 	}
 
-	// Pick a blank-ish layout (fewest placeholders)
-	layoutID := pickPreviewLayout(analysis.Layouts)
+	// Pick a blank-ish layout (fewest placeholders) that physically exists in
+	// the template package. Preview generation runs against the original
+	// TemplatePath without materializing synthetic layout files, so a
+	// synthesized-only ID would make generator.Generate fail to resolve it.
+	layoutID := pickPreviewLayout(analysis.Layouts, analysis.Synthesis)
 
 	// Build single-slide spec
 	spec := generator.SlideSpec{
@@ -232,18 +235,52 @@ func generateOnePatternPreview(
 	return nil
 }
 
-// pickPreviewLayout selects a layout with few placeholders for clean pattern rendering.
-func pickPreviewLayout(layouts []types.LayoutMetadata) string {
-	if len(layouts) == 0 {
-		return "slideLayout1"
-	}
-	best := layouts[0]
-	for _, l := range layouts[1:] {
-		if len(l.Placeholders) < len(best.Placeholders) {
-			best = l
+// pickPreviewLayout selects a layout with few placeholders for clean pattern
+// rendering. It skips synthesized-only layouts — those minted by template
+// synthesis (e.g. a "slideLayout5" present only in the SynthesisManifest, not in
+// the physical template package). Preview generation runs against the original
+// TemplatePath without materializing synthetic files, so returning a synthesized
+// ID makes generator.Generate fail with "layout_id ... not found".
+func pickPreviewLayout(layouts []types.LayoutMetadata, synthesis *types.SynthesisManifest) string {
+	synthetic := syntheticLayoutIDs(synthesis)
+	bestID := ""
+	bestCount := 0
+	for i := range layouts {
+		if synthetic[layouts[i].ID] {
+			continue
+		}
+		n := len(layouts[i].Placeholders)
+		if bestID == "" || n < bestCount {
+			bestID = layouts[i].ID
+			bestCount = n
 		}
 	}
-	return best.ID
+	if bestID == "" {
+		// No physical layout available (empty list, or every layout is
+		// synthesized): fall back to the canonical first layout, which is
+		// always present in a well-formed package.
+		return "slideLayout1"
+	}
+	return bestID
+}
+
+// syntheticLayoutIDs returns the set of layout IDs that exist only in the
+// synthesis manifest (e.g. "slideLayout5") and are therefore absent from the
+// physical template package. Manifest keys are layout XML paths such as
+// "ppt/slideLayouts/slideLayout5.xml"; the matching .rels entries are ignored.
+func syntheticLayoutIDs(synthesis *types.SynthesisManifest) map[string]bool {
+	ids := make(map[string]bool)
+	if synthesis == nil {
+		return ids
+	}
+	for path := range synthesis.SyntheticFiles {
+		base := filepath.Base(path)
+		if filepath.Ext(base) != ".xml" {
+			continue // skip .rels and any non-layout entries
+		}
+		ids[strings.TrimSuffix(base, ".xml")] = true
+	}
+	return ids
 }
 
 // findPatternPreviewPNGs looks for pre-generated pattern preview PNGs in the
