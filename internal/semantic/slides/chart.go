@@ -16,12 +16,41 @@ type chartInsightsValues struct {
 	Source        string             `json:"source,omitempty"`
 }
 
+// ChartInsightMaxInsights is the insight-bullet cap of the chart-insights-split
+// pattern. Beyond it the compiler degrades to a content slide and drops the
+// chart entirely, so validation and the explain planner share this bound to stay
+// in step with compile.
+const ChartInsightMaxInsights = 6
+
+// ChartInsightInsightCount returns the number of insight bullets a chart_insight
+// payload will compile with, mirroring CompileChartInsight: the "insights" list
+// (or the single "insight") — or, when those are absent but a renderable chart
+// and a "takeaway" are present, the takeaway counts as a single insight (the
+// takeaway-as-lone-insight fallback). Validation and the explain planner consult
+// this so neither flags nor advertises a treatment that disagrees with compile.
+func ChartInsightInsightCount(body map[string]any) int {
+	insights, _ := chartInsights(body)
+	if len(insights) == 0 && strField(body, "takeaway") != "" && chartSpec(body) != nil {
+		return 1
+	}
+	return len(insights)
+}
+
+// ChartInsightPatternFeasible reports whether a chart_insight payload will
+// compile to the chart-insights-split pattern rather than degrading to a content
+// fallback (which drops the chart): it must resolve to 1–ChartInsightMaxInsights
+// usable insight bullets.
+func ChartInsightPatternFeasible(body map[string]any) bool {
+	n := ChartInsightInsightCount(body)
+	return n >= 1 && n <= ChartInsightMaxInsights
+}
+
 // CompileChartInsight compiles a chart-insight slide. When the payload exposes
-// 1–6 insight bullets it emits a chart-insights-split pattern (left chart panel
-// + right insights), including the chart only when it carries a type and a
-// non-empty data payload — the pattern renders insights full-width otherwise.
-// Without usable insights it degrades to a content slide so the deck still
-// compiles.
+// 1–ChartInsightMaxInsights insight bullets it emits a chart-insights-split
+// pattern (left chart panel + right insights), including the chart only when it
+// carries a type and a non-empty data payload — the pattern renders insights
+// full-width otherwise. Without usable insights (or beyond the cap) it degrades
+// to a content slide so the deck still compiles.
 func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	insights, insightsField := chartInsights(in.Body)
 
@@ -36,7 +65,7 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 		insightsField = "takeaway"
 	}
 
-	if len(insights) == 0 || len(insights) > 6 {
+	if len(insights) == 0 || len(insights) > ChartInsightMaxInsights {
 		return compileChartFallback(in, insights, insightsField)
 	}
 

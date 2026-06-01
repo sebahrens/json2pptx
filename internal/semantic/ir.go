@@ -177,7 +177,7 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 	},
 	KindChartInsight: {
 		role: RoleEvidence, family: FamilyChart, density: DensityMedium, layout: "chart",
-		pattern: func(map[string]any) string { return "chart-insights-split" },
+		pattern: chartInsightPattern,
 	},
 	KindComparison: {
 		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "two-column",
@@ -212,6 +212,18 @@ var passthroughPlan = kindPlan{role: RolePassthrough, family: FamilyRaw, density
 func comparisonPattern(body map[string]any) string {
 	if slides.ComparisonPatternFeasible(body) {
 		return "comparison-2col"
+	}
+	return ""
+}
+
+// chartInsightPattern advertises chart-insights-split only when the payload will
+// actually compile to it (1–6 usable insight bullets); otherwise it returns ""
+// so the explain projection matches compile's content fallback rather than
+// over-promising a chart+insights visual the renderer will not emit and which
+// drops the chart (explain/compile parity for over-cap inputs).
+func chartInsightPattern(body map[string]any) string {
+	if slides.ChartInsightPatternFeasible(body) {
+		return "chart-insights-split"
 	}
 	return ""
 }

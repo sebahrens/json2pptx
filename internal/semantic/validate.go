@@ -370,6 +370,14 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 					"chart_insight chart declares no data series")
 			}
 		}
+		// chart-insights-split renders 1–6 insights alongside the chart; beyond the
+		// cap the compiler degrades to a bullet content slide and drops the chart
+		// entirely. Validation alone passes the raw shape, so flag the over-cap
+		// count here (blocking under strict) to keep validate in step with compile.
+		if n := slides.ChartInsightInsightCount(slide.Body); n > slides.ChartInsightMaxInsights {
+			s.advisory(path+".insights", diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("chart-insights-split renders 1–%d insights alongside the chart; found %d — split or shorten the insights (otherwise it degrades to a bullet list and drops the chart)", slides.ChartInsightMaxInsights, n))
+		}
 	case KindComparison:
 		validateComparison(path, slide, s)
 	case KindProcess:

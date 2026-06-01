@@ -292,6 +292,66 @@ func TestValidateChartSeriesAdvisory(t *testing.T) {
 	}
 }
 
+// TestValidateChartInsightOverCap is the regression guard for go-slide-creator-hadk:
+// a chart_insight with more than 6 insights validates cleanly today but compile
+// degrades to a bullet list and drops the chart. Validation must flag the
+// over-cap count (warning under warn, error under strict) so an agent can split
+// or shorten before shipping a slide that loses its chart.
+func TestValidateChartInsightOverCap(t *testing.T) {
+	insights := func(n int) []any {
+		items := make([]any, n)
+		for i := range items {
+			items[i] = fmt.Sprintf("insight %d", i+1)
+		}
+		return items
+	}
+	newSpec := func() *DeckSpec {
+		return &DeckSpec{
+			Meta: DeckMeta{Title: "Deck"},
+			Slides: []SlideSpec{{Kind: KindChartInsight, Body: map[string]any{
+				"title":    "Revenue",
+				"takeaway": "It grew.",
+				"chart": map[string]any{
+					"type": "bar_chart",
+					"data": map[string]any{"series": []any{map[string]any{"name": "Rev", "values": []any{1, 2}}}},
+				},
+				"insights": insights(7),
+			}}},
+		}
+	}
+
+	warnDS := Validate(newSpec(), StrictnessWarn)
+	d, ok := findAt(warnDS, diagnostics.CodeSemanticDensity, "slides[0].insights")
+	if !ok {
+		t.Fatalf("expected SEMANTIC_DENSITY (over-cap) at slides[0].insights, got %v", warnDS)
+	}
+	if d.Severity != diagnostics.SeverityWarning {
+		t.Errorf("warn severity = %q, want warning", d.Severity)
+	}
+
+	strictDS := Validate(newSpec(), StrictnessStrict)
+	d, ok = findAt(strictDS, diagnostics.CodeSemanticDensity, "slides[0].insights")
+	if !ok {
+		t.Fatalf("expected over-cap finding under strict, got %v", strictDS)
+	}
+	if d.Severity != diagnostics.SeverityError {
+		t.Errorf("strict severity = %q, want error", d.Severity)
+	}
+
+	// A chart_insight at the cap must NOT trip the over-cap advisory.
+	atCap := &DeckSpec{
+		Meta: DeckMeta{Title: "Deck"},
+		Slides: []SlideSpec{{Kind: KindChartInsight, Body: map[string]any{
+			"title":    "Revenue",
+			"takeaway": "It grew.",
+			"insights": insights(6),
+		}}},
+	}
+	if _, ok := findAt(Validate(atCap, StrictnessWarn), diagnostics.CodeSemanticDensity, "slides[0].insights"); ok {
+		t.Errorf("chart_insight at the insight cap must not emit SEMANTIC_DENSITY at .insights")
+	}
+}
+
 func TestValidateComparisonBalance(t *testing.T) {
 	spec := &DeckSpec{
 		Meta: DeckMeta{Title: "Deck"},

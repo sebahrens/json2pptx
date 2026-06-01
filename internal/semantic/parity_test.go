@@ -156,6 +156,48 @@ func TestExplainCompileParity_ComparisonOverCap(t *testing.T) {
 	}
 }
 
+// TestExplainCompileParity_ChartInsightOverCap is the explain/compile parity
+// guard for go-slide-creator-hadk: a chart_insight with more than 6 insights
+// degrades to a content slide at compile (dropping the chart), so explain must
+// not advertise the chart-insights-split pattern for it.
+func TestExplainCompileParity_ChartInsightOverCap(t *testing.T) {
+	insights := func(n int) []any {
+		items := make([]any, n)
+		for i := range items {
+			items[i] = "insight"
+		}
+		return items
+	}
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Deck", Template: "midnight-blue"},
+		Slides: []SlideSpec{{Kind: KindChartInsight, Body: map[string]any{
+			"title":    "Revenue",
+			"takeaway": "It grew.",
+			"chart": map[string]any{
+				"type": "bar_chart",
+				"data": map[string]any{
+					"categories": []any{"Q1", "Q2"},
+					"series":     []any{map[string]any{"name": "Rev", "values": []any{1, 2}}},
+				},
+			},
+			"insights": insights(7),
+		}}},
+	}
+
+	exp := ExplainSpec(spec)
+	if got := exp.Slides[0].Pattern; got != "" {
+		t.Errorf("explain advertises pattern %q for an over-cap chart_insight; want none", got)
+	}
+
+	input, _, err := Compile(spec, CompileOptions{})
+	if err != nil {
+		t.Fatalf("compile over-cap chart_insight: %v", err)
+	}
+	if p := input.Slides[0].Pattern; p != nil {
+		t.Errorf("compile emitted pattern %q for an over-cap chart_insight; want none (content fallback)", p.Name)
+	}
+}
+
 // TestExplainCompileParity_PatternsValidate confirms every pattern the every-kind
 // deck compiles to decodes and validates against the registry — so "compiles to
 // the advertised visual" also means "renders", not just "names a pattern".
