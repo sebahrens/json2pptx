@@ -219,6 +219,119 @@ slides:
 	}
 }
 
+func TestParseUnknownMetaFieldTyposSuggestClosest(t *testing.T) {
+	// Per the schema's DeckMeta.additionalProperties:false, near-miss meta typos
+	// must each surface a suggestion instead of being silently dropped.
+	src := `
+meta:
+  tilte: Typo Title
+  archetpe: qbr
+slides:
+  - kind: title
+    title: Hi
+`
+	_, ds := ParseYAML([]byte(src))
+	for _, tc := range []struct {
+		path    string
+		suggest string
+	}{
+		{"meta.tilte", `did you mean "title"?`},
+		{"meta.archetpe", `did you mean "archetype"?`},
+	} {
+		var found *Diagnostic
+		for i := range ds {
+			if ds[i].Code == CodeUnknownField && ds[i].Path == tc.path {
+				found = &ds[i]
+				break
+			}
+		}
+		if found == nil {
+			t.Fatalf("expected %s at %s, got %v", CodeUnknownField, tc.path, ds)
+		}
+		if found.Severity != SeverityError {
+			t.Errorf("%s severity = %q, want %q", tc.path, found.Severity, SeverityError)
+		}
+		if !strings.Contains(found.Message, tc.suggest) {
+			t.Errorf("%s message = %q, want it to contain %q", tc.path, found.Message, tc.suggest)
+		}
+	}
+	noLeakedInternals(t, ds)
+}
+
+func TestParseUnknownMetaFieldMigrationAlias(t *testing.T) {
+	// A well-known alias is steered to its migration target before fuzzy matching.
+	src := `
+meta:
+  name: Aliased Title
+slides:
+  - kind: title
+    title: Hi
+`
+	_, ds := ParseYAML([]byte(src))
+	var found *Diagnostic
+	for i := range ds {
+		if ds[i].Code == CodeUnknownField && ds[i].Path == "meta.name" {
+			found = &ds[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected %s at meta.name, got %v", CodeUnknownField, ds)
+	}
+	if want := `did you mean "title"?`; !strings.Contains(found.Message, want) {
+		t.Errorf("message = %q, want it to contain %q", found.Message, want)
+	}
+}
+
+func TestParseUnknownMetaFieldNoCloseMatchListsValidKeys(t *testing.T) {
+	// An unrelated meta key gets a generic diagnostic listing the valid meta keys.
+	src := `
+meta:
+  title: Good Deck
+  xyzzy_foobar: 1
+slides:
+  - kind: title
+    title: Hi
+`
+	_, ds := ParseYAML([]byte(src))
+	var found *Diagnostic
+	for i := range ds {
+		if ds[i].Code == CodeUnknownField && ds[i].Path == "meta.xyzzy_foobar" {
+			found = &ds[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected %s at meta.xyzzy_foobar, got %v", CodeUnknownField, ds)
+	}
+	if want := "expected one of title, subtitle, archetype"; !strings.Contains(found.Message, want) {
+		t.Errorf("message = %q, want it to contain %q", found.Message, want)
+	}
+}
+
+func TestParseKnownMetaFieldsAreClean(t *testing.T) {
+	// Every recognized meta field present — no unknown-field diagnostic.
+	src := `
+meta:
+  title: Good Deck
+  subtitle: A subtitle
+  archetype: board_update
+  template: midnight-blue
+  audience: Board
+  author: Jane
+  date: 2026-06-01
+slides:
+  - kind: title
+    title: Hi
+`
+	_, ds := ParseYAML([]byte(src))
+	for _, d := range ds {
+		if d.Code == CodeUnknownField {
+			t.Fatalf("unexpected %s diagnostic: %v", CodeUnknownField, d)
+		}
+	}
+}
+
 func TestParseInvalidYAMLIsParseError(t *testing.T) {
 	// Unterminated flow mapping — malformed YAML.
 	_, ds := ParseYAML([]byte("slides: [ {kind: title"))

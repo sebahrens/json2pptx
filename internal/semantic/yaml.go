@@ -155,6 +155,23 @@ var topLevelMigrations = map[string]string{
 	"subtitle":     "meta.subtitle",
 }
 
+// knownMetaKeys are the only fields the meta object carries. They mirror
+// DeckMeta's json tags and the schema's DeckMeta.additionalProperties:false, so
+// unknown meta keys are reported rather than silently dropped by the struct
+// decode of rawDeck.Meta.
+var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date"}
+
+// metaMigrations maps a common stale/alias meta key onto the field it should be,
+// checked before the generic fuzzy suggestion (mirrors topLevelMigrations).
+var metaMigrations = map[string]string{
+	"name":      "title",
+	"heading":   "title",
+	"type":      "archetype",
+	"category":  "archetype",
+	"theme":     "template",
+	"presenter": "author",
+}
+
 // buildDeckSpec converts the lenient rawDeck into a DeckSpec, validating the
 // archetype and each slide's kind discriminator and emitting path-scoped
 // diagnostics for anything unrecognized. top is the same document decoded into a
@@ -164,6 +181,7 @@ func buildDeckSpec(raw rawDeck, top map[string]any) (*DeckSpec, Diagnostics) {
 	var ds Diagnostics
 
 	checkUnknownTopLevel(top, &ds)
+	checkUnknownMeta(top, &ds)
 
 	spec := &DeckSpec{Meta: raw.Meta}
 
@@ -262,6 +280,65 @@ func suggestTopLevel(key string) string {
 	}
 	best, bestDist := "", -1
 	for _, k := range knownTopLevelKeys {
+		d := editDistance(lower, k)
+		if bestDist < 0 || d < bestDist {
+			best, bestDist = k, d
+		}
+	}
+	if bestDist >= 0 && bestDist <= 2 {
+		return best
+	}
+	return ""
+}
+
+// checkUnknownMeta emits a diagnostic for every key inside the meta object that
+// is not a recognized DeckMeta field, mirroring the schema's
+// DeckMeta.additionalProperties:false. Without this, unknown meta keys vanish in
+// the struct decode of rawDeck.Meta, so a typo like "tilte" produces no hint.
+//
+// top is the generic decode of the document root (nil when the root is not a
+// mapping). A present-but-non-object meta is reported separately as
+// CodeInvalidMeta before this runs, so a failed type assertion here is simply a
+// no-op.
+func checkUnknownMeta(top map[string]any, ds *Diagnostics) {
+	if top == nil {
+		return
+	}
+	meta, ok := top["meta"].(map[string]any)
+	if !ok {
+		return
+	}
+	known := make(map[string]bool, len(knownMetaKeys))
+	for _, k := range knownMetaKeys {
+		known[k] = true
+	}
+	keys := make([]string, 0, len(meta))
+	for k := range meta {
+		if !known[k] {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		msg := fmt.Sprintf("unknown meta field %q; expected one of %s",
+			k, strings.Join(knownMetaKeys, ", "))
+		if sug := suggestMeta(k); sug != "" {
+			msg = fmt.Sprintf("unknown meta field %q; did you mean %q?", k, sug)
+		}
+		ds.add("meta."+k, CodeUnknownField, msg)
+	}
+}
+
+// suggestMeta returns the meta field an unknown key was most likely meant to be:
+// a known migration target, then the closest valid key within a small edit
+// distance, or "" when nothing is close enough (mirrors suggestTopLevel).
+func suggestMeta(key string) string {
+	lower := strings.ToLower(key)
+	if hint, ok := metaMigrations[lower]; ok {
+		return hint
+	}
+	best, bestDist := "", -1
+	for _, k := range knownMetaKeys {
 		d := editDistance(lower, k)
 		if bestDist < 0 || d < bestDist {
 			best, bestDist = k, d
