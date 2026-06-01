@@ -750,6 +750,215 @@ func TestCardGridStyles(t *testing.T) {
 	})
 }
 
+func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
+	p := &cardGrid{}
+	cells := []CardGridCell{
+		{Header: "Card 1", Body: "Description 1"},
+		{Header: "Card 2", Body: "Description 2"},
+	}
+	vals := &CardGridValues{Columns: 2, Rows: 1, Cells: cells}
+
+	// soft-card: pale surface fill (lt1 fallback), explicit no border, dark text.
+	t.Run("soft_card_style", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "soft-card"}
+		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		shape := grid.Rows[0].Cells[0].Shape
+		var fill string
+		if err := json.Unmarshal(shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "lt1" {
+			t.Errorf("soft-card: fill = %q, want lt1 (surface fallback)", fill)
+		}
+		var line string
+		if err := json.Unmarshal(shape.Line, &line); err != nil {
+			t.Fatalf("line unmarshal: %v", err)
+		}
+		if line != "none" {
+			t.Errorf("soft-card: line = %q, want %q (no visible border)", line, "none")
+		}
+		// Body text must stay dark (dk1) for contrast on the pale surface.
+		var text map[string]any
+		if err := json.Unmarshal(shape.Text, &text); err != nil {
+			t.Fatalf("text unmarshal: %v", err)
+		}
+		paras := text["paragraphs"].([]any)
+		if got := paras[1].(map[string]any)["color"]; got != "dk1" {
+			t.Errorf("soft-card: body color = %v, want dk1", got)
+		}
+		if grid.Rows[0].Cells[0].AccentBar != nil {
+			t.Error("soft-card: expected no accent bar")
+		}
+	})
+
+	// card_fill paints a caller-supplied hex surface across styles (#FFF5ED).
+	t.Run("card_fill_override_soft_card", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "soft-card", CardFill: "#FFF5ED"}
+		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var fill string
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "#FFF5ED" {
+			t.Errorf("card_fill: fill = %q, want %q", fill, "#FFF5ED")
+		}
+	})
+
+	// numbered-badge can coexist with a soft surface via card_fill (text stays dark).
+	t.Run("card_fill_coexists_with_numbered_badge", func(t *testing.T) {
+		badgeCells := []CardGridCell{
+			{Header: "1. Launch", Body: "Description"},
+			{Header: "2. Growth", Body: "Description"},
+		}
+		bv := &CardGridValues{Columns: 2, Rows: 1, Cells: badgeCells}
+		ovr := &CardGridOverrides{Style: "numbered-badge", CardFill: "#FFF5ED"}
+		grid, err := p.Expand(ExpandContext{}, bv, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		shape := grid.Rows[0].Cells[0].Shape
+		var fill string
+		if err := json.Unmarshal(shape.Fill, &fill); err != nil {
+			t.Fatalf("fill unmarshal: %v", err)
+		}
+		if fill != "#FFF5ED" {
+			t.Errorf("numbered-badge+card_fill: fill = %q, want %q", fill, "#FFF5ED")
+		}
+		// numbered-badge keeps its dark header/body paragraphs.
+		var text map[string]any
+		if err := json.Unmarshal(shape.Text, &text); err != nil {
+			t.Fatalf("text unmarshal: %v", err)
+		}
+		paras := text["paragraphs"].([]any)
+		if len(paras) != 3 {
+			t.Fatalf("numbered-badge: expected 3 paragraphs (badge+header+body), got %d", len(paras))
+		}
+		if got := paras[2].(map[string]any)["color"]; got != "dk1" {
+			t.Errorf("numbered-badge+card_fill: body color = %v, want dk1", got)
+		}
+	})
+
+	// explicit line_color/line_width produces an object line override.
+	t.Run("line_color_width_override", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "soft-card", LineColor: "#888888", LineWidth: 0.75}
+		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var line struct {
+			Color string  `json:"color"`
+			Width float64 `json:"width"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Line, &line); err != nil {
+			t.Fatalf("line unmarshal: %v", err)
+		}
+		if line.Color != "#888888" || line.Width != 0.75 {
+			t.Errorf("line override = %+v, want {#888888 0.75}", line)
+		}
+	})
+
+	// border:accent uses the resolved accent color at 1pt.
+	t.Run("border_accent", func(t *testing.T) {
+		ovr := &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent2"}, Style: "soft-card", Border: "accent"}
+		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		var line struct {
+			Color string  `json:"color"`
+			Width float64 `json:"width"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Line, &line); err != nil {
+			t.Fatalf("line unmarshal: %v", err)
+		}
+		if line.Color != "accent2" || line.Width != 1 {
+			t.Errorf("border:accent line = %+v, want {accent2 1}", line)
+		}
+	})
+
+	// Validation: bad color, bad border keyword, out-of-range width.
+	t.Run("validate_rejects_bad_overrides", func(t *testing.T) {
+		bad := []struct {
+			name    string
+			ovr     *CardGridOverrides
+			wantErr string
+		}{
+			{"bad_card_fill", &CardGridOverrides{CardFill: "salmon"}, "card_fill"},
+			{"bad_line_color", &CardGridOverrides{LineColor: "zzz"}, "line_color"},
+			{"line_width_too_high", &CardGridOverrides{LineWidth: 99}, "line_width"},
+			{"bad_border", &CardGridOverrides{Border: "thick"}, "border"},
+		}
+		for _, tc := range bad {
+			t.Run(tc.name, func(t *testing.T) {
+				err := p.Validate(vals, tc.ovr, nil)
+				if err == nil {
+					t.Fatal("expected validation error, got nil")
+				}
+				if !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("error %q should mention %q", err.Error(), tc.wantErr)
+				}
+			})
+		}
+	})
+
+	// Valid overrides pass validation, including hex without "#".
+	t.Run("validate_accepts_good_overrides", func(t *testing.T) {
+		ovr := &CardGridOverrides{Style: "soft-card", CardFill: "FFF5ED", LineColor: "dk1", LineWidth: 1, Border: "none"}
+		if err := p.Validate(vals, ovr, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestCardGridSoftCardGolden(t *testing.T) {
+	p := &cardGrid{}
+	vals := CardGridValues{
+		Columns: 2,
+		Rows:    2,
+		Cells: []CardGridCell{
+			{Header: "Card 1", Body: "Description 1"},
+			{Header: "Card 2", Body: "Description 2"},
+			{Header: "Card 3", Body: "Description 3"},
+			{Header: "Card 4", Body: "Description 4"},
+		},
+	}
+	ovr := &CardGridOverrides{Style: "soft-card", CardFill: "#FFF5ED"}
+	grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	got, err := json.MarshalIndent(grid, "", "  ")
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "card-grid", "soft-card.golden.json")
+	if os.Getenv("UPDATE_GOLDEN") == "1" {
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
+			t.Fatalf("write golden: %v", err)
+		}
+		t.Log("golden file updated")
+		return
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatalf("read golden (run with UPDATE_GOLDEN=1 to create): %v", err)
+	}
+	if string(got) != string(want) {
+		t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 func TestExtractNumberPrefix(t *testing.T) {
 	tests := []struct {
 		header        string

@@ -125,10 +125,27 @@ type CardGridValues struct {
 	Cells   []CardGridCell `json:"cells"`
 }
 
-// CardGridOverrides extends TextOverrides with a Style field for visual variants.
+// CardGridOverrides extends TextOverrides with a Style field for visual variants
+// plus generic surface overrides (card_fill, line_color, line_width, border) that
+// apply on top of any style. The surface overrides let a caller paint cards with a
+// pale brand surface (e.g. card_fill "#FFF5ED") and control the card border without
+// hardcoding any template-specific color in the engine.
 type CardGridOverrides struct {
 	TextOverrides
-	Style string `json:"style,omitempty"` // "filled" (default), "accent-stripe", "numbered-badge", "icon-card", "tinted"
+	Style string `json:"style,omitempty"` // "filled" (default), "accent-stripe", "numbered-badge", "icon-card", "tinted", "soft-card"
+	// CardFill overrides every card's fill with a caller-supplied hex (e.g. "#FFF5ED")
+	// or scheme color name. Applies across all styles.
+	CardFill string `json:"card_fill,omitempty"`
+	// LineColor sets an explicit card border color (hex or scheme name). Takes
+	// precedence over Border when set.
+	LineColor string `json:"line_color,omitempty"`
+	// LineWidth sets the card border width in points (0–12). Takes precedence over
+	// Border when set; defaults to 1pt when LineColor is set without a width.
+	LineWidth float64 `json:"line_width,omitempty"`
+	// Border is a convenience border keyword: "none" (explicit no border), "subtle"
+	// (thin dk1 hairline), or "accent" (1pt accent-colored border). Ignored when
+	// LineColor/LineWidth are set.
+	Border string `json:"border,omitempty"`
 }
 
 // validCardGridStyles enumerates the allowed style values.
@@ -139,6 +156,15 @@ var validCardGridStyles = map[string]bool{
 	"numbered-badge": true,
 	"icon-card":      true,
 	"tinted":         true,
+	"soft-card":      true,
+}
+
+// validCardGridBorders enumerates the allowed border keyword values.
+var validCardGridBorders = map[string]bool{
+	"":       true,
+	"none":   true,
+	"subtle": true,
+	"accent": true,
 }
 
 // CardGridCellOverride is an alias for the shared CellOverride struct.
@@ -182,8 +208,12 @@ func (c *cardGrid) Schema() *Schema {
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
 			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-			"style":            EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (bundled SVG icon badge above header), tinted (alternating lt1/lt2 backgrounds)").WithDefault("filled"),
+			"style":            EnumSchema("filled", "accent-stripe", "numbered-badge", "icon-card", "tinted", "soft-card").WithDescription("Visual style: filled (default solid accent cards), accent-stripe (left accent bar on light cards), numbered-badge (circled number badges), icon-card (bundled SVG icon badge above header), tinted (alternating lt1/lt2 backgrounds), soft-card (single pale surface, dark text, no border)").WithDefault("filled"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
+			"card_fill":        StringSchema(0).WithDescription("Override every card's fill with a hex color (e.g. \"#FFF5ED\") or scheme color name. Applies across all styles; pair with soft-card or accent-stripe for a pale surface."),
+			"line_color":       StringSchema(0).WithDescription("Card border color as a hex value or scheme color name. Takes precedence over border when set."),
+			"line_width":       NumberSchema(0, 12).WithDescription("Card border width in points (0–12). Defaults to 1 when line_color is set without a width."),
+			"border":           EnumSchema("none", "subtle", "accent").WithDescription("Border keyword: none (explicit no border), subtle (thin dk1 hairline), accent (1pt accent-colored border). Ignored when line_color/line_width are set."),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -305,7 +335,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		for col := 0; col < vals.Columns; col++ {
 			cell := vals.Cells[cellIdx]
 			accent := ResolveCellAccent(baseAccent, cellIdx, cellAccentMode)
-			gc := c.expandCell(ctx, cell, cellIdx, style, accent, headerSize, bodySize)
+			gc := c.expandCell(ctx, cell, cellIdx, style, accent, headerSize, bodySize, ovr)
 
 			// Apply cell overrides
 			if co, ok := cellOverrides[cellIdx]; ok {
@@ -337,7 +367,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 }
 
 // expandCell produces a single GridCellInput based on the selected visual style.
-func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, style, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, style, accent string, headerSize, bodySize float64, ovr *CardGridOverrides) *jsonschema.GridCellInput {
 	var gc *jsonschema.GridCellInput
 	switch style {
 	case "accent-stripe":
@@ -348,9 +378,13 @@ func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, sty
 		gc = c.expandIconCard(cell, accent, headerSize, bodySize)
 	case "tinted":
 		gc = c.expandTinted(ctx, cell, idx, accent, headerSize, bodySize)
+	case "soft-card":
+		gc = c.expandSoftCard(ctx, cell, accent, headerSize, bodySize)
 	default: // "filled"
 		gc = c.expandFilled(cell, accent, headerSize, bodySize)
 	}
+	// Apply generic surface overrides (card_fill / border) on top of the style.
+	applyCardGridSurfaceOverrides(gc, ovr, accent)
 	// Add SVG icon overlay when a bundled icon name or rich icon spec is provided.
 	if cell.Icon != nil && gc.Shape != nil && gc.Shape.Icon == nil {
 		gc.Shape.Icon = cell.Icon.Resolve(accent, "top")
@@ -438,6 +472,70 @@ func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, a
 	}
 }
 
+// expandSoftCard: a single pale surface card with dark text and no visible border.
+// The default surface is resolved from template metadata (subtle role → lt1
+// fallback); callers paint a brand surface (e.g. "#FFF5ED") via the card_fill
+// override. The border line is explicitly suppressed so no theme-default outline
+// leaks through.
+func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
+	fill := ctx.ResolveSurface("subtle", "lt1")
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "roundRect",
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+			Line:     json.RawMessage(`"none"`),
+			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
+		},
+	}
+}
+
+// applyCardGridSurfaceOverrides applies the generic card_fill / border overrides
+// onto an already-styled card shape. It is a no-op when no surface overrides are
+// set, preserving each style's native fill and border behavior.
+func applyCardGridSurfaceOverrides(gc *jsonschema.GridCellInput, ovr *CardGridOverrides, accent string) {
+	if gc == nil || gc.Shape == nil || ovr == nil {
+		return
+	}
+	if ovr.CardFill != "" {
+		gc.Shape.Fill = json.RawMessage(fmt.Sprintf("%q", ovr.CardFill))
+	}
+	if line := buildCardGridLineOverride(ovr, accent); line != nil {
+		gc.Shape.Line = line
+	}
+}
+
+// buildCardGridLineOverride resolves the card border from the line_color/line_width
+// or border overrides, returning nil when neither is set (style default preserved).
+func buildCardGridLineOverride(ovr *CardGridOverrides, accent string) json.RawMessage {
+	// Explicit color/width take precedence over the border keyword.
+	if ovr.LineColor != "" || ovr.LineWidth > 0 {
+		color := ovr.LineColor
+		if color == "" {
+			color = "dk1"
+		}
+		width := ovr.LineWidth
+		if width <= 0 {
+			width = 1
+		}
+		return json.RawMessage(fmt.Sprintf(`{"color":%q,"width":%s}`, color, formatFloat(width)))
+	}
+	switch ovr.Border {
+	case "none":
+		return json.RawMessage(`"none"`)
+	case "subtle":
+		return json.RawMessage(`{"color":"dk1","width":0.5}`)
+	case "accent":
+		return json.RawMessage(fmt.Sprintf(`{"color":%q,"width":1}`, accent))
+	}
+	return nil
+}
+
+// formatFloat renders a float without a trailing ".0" so widths stay compact in
+// the emitted JSON (e.g. 1 → "1", 0.75 → "0.75").
+func formatFloat(f float64) string {
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.4f", f), "0"), ".")
+}
+
 // validateCardGridOverrides checks card-grid-specific override enums.
 func validateCardGridOverrides(name string, overrides any) []error {
 	if overrides == nil {
@@ -453,13 +551,67 @@ func validateCardGridOverrides(name string, overrides any) []error {
 			Pattern: name,
 			Path:    "overrides.style",
 			Code:    "invalid_enum",
-			Message: fmt.Sprintf("card-grid: overrides.style must be one of filled, accent-stripe, numbered-badge, icon-card, tinted; got %q", ovr.Style),
+			Message: fmt.Sprintf("card-grid: overrides.style must be one of filled, accent-stripe, numbered-badge, icon-card, tinted, soft-card; got %q", ovr.Style),
+		})
+	}
+	if ovr.CardFill != "" && !isCardGridColor(ovr.CardFill) {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "overrides.card_fill",
+			Code:    "invalid_color",
+			Message: fmt.Sprintf("card-grid: overrides.card_fill must be a hex color (e.g. \"#FFF5ED\") or scheme color name; got %q", ovr.CardFill),
+		})
+	}
+	if ovr.LineColor != "" && !isCardGridColor(ovr.LineColor) {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "overrides.line_color",
+			Code:    "invalid_color",
+			Message: fmt.Sprintf("card-grid: overrides.line_color must be a hex color (e.g. \"#888888\") or scheme color name; got %q", ovr.LineColor),
+		})
+	}
+	if ovr.LineWidth < 0 || ovr.LineWidth > 12 {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "overrides.line_width",
+			Code:    "out_of_range",
+			Message: fmt.Sprintf("card-grid: overrides.line_width must be between 0 and 12 points; got %g", ovr.LineWidth),
+		})
+	}
+	if ovr.Border != "" && !validCardGridBorders[ovr.Border] {
+		errs = append(errs, &ValidationError{
+			Pattern: name,
+			Path:    "overrides.border",
+			Code:    "invalid_enum",
+			Message: fmt.Sprintf("card-grid: overrides.border must be one of none, subtle, accent; got %q", ovr.Border),
 		})
 	}
 	if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 		errs = append(errs, err)
 	}
 	return errs
+}
+
+// isCardGridColor reports whether s is an accepted color value for the card-grid
+// surface overrides: a scheme color name (accent1, lt1, dk1, …) or a 3-/6-digit
+// hex string (with or without a leading "#").
+func isCardGridColor(s string) bool {
+	if s == "" {
+		return false
+	}
+	if pptx.SchemeColorNames[s] {
+		return true
+	}
+	hex := strings.TrimPrefix(s, "#")
+	if len(hex) != 3 && len(hex) != 6 {
+		return false
+	}
+	for _, ch := range hex {
+		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // ---------------------------------------------------------------------------

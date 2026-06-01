@@ -84,6 +84,22 @@ Per-cell overrides are narrowly scoped to text/style/decoration adjustments only
 
 **MUST NOT** accept arbitrary nested `shape_grid` fragments or geometry changes. Cells are addressed by zero-based index as string keys (`"0"`, `"1"`, ...). The pattern's `Validate` must reject unknown override keys with an error citing the D15 whitelist.
 
+## card-grid styles + surface overrides
+
+`card-grid` (`cardgrid.go`) exposes two complementary knobs through pattern-level `overrides` (distinct from the per-cell `cell_overrides` whitelist above):
+
+- `style` — visual treatment enum: `filled` (default, solid accent + light text), `accent-stripe`, `numbered-badge`, `icon-card`, `tinted` (alternating lt1/lt2), `soft-card` (single pale surface, dark text, explicit no-border line).
+- Generic surface overrides that apply on top of **any** style:
+
+| Override | Type | Effect |
+|---|---|---|
+| `card_fill` | string (hex or scheme name) | Repaints every card's fill. A raw hex (e.g. `#FFF5ED`) is accepted only when the caller supplies it; the engine never hardcodes a brand surface. Constrained `design_mode` rejects raw hex — pass a scheme color there. |
+| `line_color` | string (hex or scheme name) | Explicit card border color. Takes precedence over `border`. |
+| `line_width` | number (0–12 pt) | Card border width; defaults to 1 pt when `line_color` is set without a width. |
+| `border` | `none` / `subtle` / `accent` | Keyword border: `none` emits an explicit no-fill line (suppresses theme default), `subtle` is a thin dk1 hairline, `accent` is a 1 pt accent-colored border. Ignored when `line_color`/`line_width` are set. |
+
+Validation rejects unknown colors (non-hex, non-scheme), `line_width` outside 0–12, and unknown `border`/`style` keywords. `soft-card` plus `card_fill` is the canonical recipe for a no-border pale brand surface that keeps dark, contrast-safe text.
+
 ## Writing use_when / not_when text (D6, wobw contract)
 
 The `UseWhen()` and `NotWhen()` strings together form an **anti-misuse guardrail**. They tell agents (and humans) when this pattern is — and is not — the right choice.

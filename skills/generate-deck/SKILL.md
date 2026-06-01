@@ -219,6 +219,22 @@ Only fall back to `card-grid` for genuinely flat catalog content (N titled tiles
 ranking, decomposition, sequence, or hierarchy). See the sparse-sequence rule below for why a
 lone strip of boxes also fails — refined families avoid that by carrying per-item mass.
 
+**`card-grid` visual styles + surface overrides.** `overrides.style` selects the card
+treatment: `filled` (default, solid accent cards with light text), `accent-stripe`,
+`numbered-badge`, `icon-card`, `tinted` (alternating lt1/lt2), and `soft-card` (a single
+pale surface with dark text and an explicit no-border line). Independently of style, four
+generic surface overrides apply on top of any style:
+
+- `card_fill` — repaint every card with a scheme color (`lt2`) or, in `design_mode: "free"`,
+  a raw hex like `"#FFF5ED"`. Constrained mode rejects raw hex; use a scheme color instead.
+- `line_color` + `line_width` (0–12 pt) — draw an explicit card border. `line_color` takes
+  precedence over `border`.
+- `border` — keyword shortcut: `none` (explicit no border), `subtle` (thin dk1 hairline),
+  `accent` (1 pt accent-colored border).
+
+Pair `style: "soft-card"` (or `numbered-badge`) with `card_fill` for a pale brand surface
+that keeps dark, contrast-safe text — e.g. `{"style":"soft-card","card_fill":"#FFF5ED"}`.
+
 ### Sparse-sequence rule (hard)
 
 **Never fill a whole slide with a single row of 3-6 boxes** — a lone `process-flow`
