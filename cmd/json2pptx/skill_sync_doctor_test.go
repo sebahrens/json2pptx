@@ -53,9 +53,6 @@ var knownSkillDrift = map[string]string{
 	"chart_data_empty":     "pre-flight chart diagnostic, SKILL.md lists chart.* variant",
 	"chart_shape_inferred": "pre-flight chart diagnostic, SKILL.md lists chart.* variant",
 	"chart_value_coerced":  "pre-flight chart diagnostic, SKILL.md lists chart.* variant",
-	"pattern_overcrowded":  "documented in FIT_FINDINGS.md but not yet in SKILL.md table",
-	"pattern_underfilled":  "documented in FIT_FINDINGS.md but not yet in SKILL.md table",
-	"sparse_layout":        "documented in FIT_FINDINGS.md but not yet in SKILL.md table",
 }
 
 // knownFitDocDrift lists codes emitted in Go but not yet documented in

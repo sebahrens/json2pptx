@@ -32,6 +32,12 @@ type ScoreFinding struct {
 	Severity string                  `json:"severity"` // "error", "warning", "info"
 	Message  string                  `json:"message"`
 	Fix      *patterns.FixSuggestion `json:"fix,omitempty"`
+	// Class separates a poor pattern choice ("pattern_choice") from a rendering
+	// problem ("rendering") or a content-authoring problem ("content"). It is
+	// derived from the finding code via patterns.FindingClass so a QA report can
+	// tell whether a finding is a layout mistake to swap away from or a
+	// rendering issue to fix.
+	Class string `json:"class"`
 }
 
 // SlideScore holds the score and findings for a single slide.
@@ -277,6 +283,7 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 				Severity: actionToSeverity(f.Action),
 				Message:  f.Message,
 				Fix:      f.Fix,
+				Class:    patterns.FindingClass(f.Code),
 			})
 		}
 
@@ -353,6 +360,7 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 				Severity: actionToSeverity(f.Action),
 				Message:  f.Message,
 				Fix:      f.Fix,
+				Class:    patterns.FindingClass(f.Code),
 			})
 		}
 

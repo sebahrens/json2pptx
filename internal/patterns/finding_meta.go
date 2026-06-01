@@ -431,6 +431,63 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodeSparseLayout, ErrCodeCellUnderfilled, ErrCodeWrongPattern},
 	},
 
+	// ---- Pattern-choice / rendering QA heuristics (J2P-VQA-009) ----
+
+	ErrCodeOvertallFlowLane: {
+		Code:        ErrCodeOvertallFlowLane,
+		Summary:     "A single-row flow lane occupies more than half the content height with short labels, so its boxes stretch vertically.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a slide-level process-flow / timeline-horizontal whose estimated lane height exceeds ~50% of the content area with short average per-cell text, in cases SPARSE_SINGLE_ROW_FLOW does not cover (a max_height_pct cap that is still too tall, or a 7–8 step row). The two never fire on the same slide.",
+		RemediationSteps: []string{
+			"Swap to numbered-step-strip — its per-step detail zone fills the vertical space instead of stretching the boxes.",
+			"Or swap to process-grid-2row when the steps split into two parallel tracks.",
+			"Or set max_height_pct to ~35 so the lane no longer occupies half the slide.",
+		},
+		ExampleBefore: `{"pattern":{"name":"process-flow","max_height_pct":60,"values":{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"},{"label":"Review"},{"label":"Iterate"},{"label":"Ship"}]}}}`,
+		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"title":"Plan","detail":"…"}]}}}`,
+		RelatedCodes:  []string{ErrCodeSparseSingleRowFlow, ErrCodeSparseLayout, ErrCodeWrongPattern},
+	},
+	ErrCodeFlowDiamondNoContent: {
+		Code:        ErrCodeFlowDiamondNoContent,
+		Summary:     "A standalone process-flow carries a decision diamond but has no supporting zone to explain the branch outcomes.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a slide-level process-flow with at least one step of type \"decision\" (a diamond) and no second content zone. A lone single-row flow cannot show the yes/no paths a decision implies. Compose envelopes and nested cell patterns are exempt (a second zone carries the explanation).",
+		RemediationSteps: []string{
+			"Switch to numbered-step-strip with per-step detail so each decision outcome is explained.",
+			"Or pair the flow with an explanatory panel using a compose envelope so the branch outcomes are visible.",
+			"Or remove the decision diamond if the step is not actually a branch.",
+		},
+		ExampleBefore: `{"pattern":{"name":"process-flow","values":{"steps":[{"label":"Request"},{"label":"Review","type":"decision"},{"label":"Deploy"}]}}}`,
+		ExampleAfter:  `{"compose":{"direction":"vertical","segments":[{"pattern":{"name":"process-flow","values":{"steps":[…]}}},{"pattern":{"name":"card-grid","values":{…branch outcomes…}}}]}}`,
+		RelatedCodes:  []string{ErrCodeSparseSingleRowFlow, ErrCodeWrongPattern},
+	},
+	ErrCodeTocFlowchartVocab: {
+		Code:        ErrCodeTocFlowchartVocab,
+		Summary:     "An agenda / table-of-contents slide is drawn with sequential flowchart vocabulary (process-flow / swimlane / timeline).",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a slide whose title matches agenda / table-of-contents vocabulary while the slide's pattern is a sequential flow (process-flow, process-flow-compact, swimlane, timeline-horizontal). A contents list is not a sequence with arrows.",
+		RemediationSteps: []string{
+			"Switch to the agenda pattern — a numbered section list is the canonical table-of-contents layout.",
+			"Or use numbered-step-strip in 'toc' style for a contents list without flowchart arrows.",
+		},
+		ExampleBefore: `{"content":[{"placeholder_id":"title","type":"text","text_value":"Agenda"}],"pattern":{"name":"process-flow","values":{"steps":[…]}}}`,
+		ExampleAfter:  `{"content":[{"placeholder_id":"title","type":"text","text_value":"Agenda"}],"pattern":{"name":"agenda","values":{"items":[…]}}}`,
+		RelatedCodes:  []string{ErrCodeSparseSingleRowFlow, ErrCodeWrongPattern},
+	},
+	ErrCodeMatrixAxisImbalance: {
+		Code:        ErrCodeMatrixAxisImbalance,
+		Summary:     "A spanning text band is rotated ~90°/270°, so it renders wide-short (or tall-narrow) and intrudes into adjacent cells.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a shape_grid cell whose text-bearing shape is rotated within ~15° of 90° or 270° and spans rows or columns (an axis band). Rotating the whole band flips its width/height about its center (the J2P-MATRIX-005 anti-pattern). matrix-2x2 now uses vert270 text in an unrotated band, so the check guards against regressions and hand-authored rotated bands.",
+		RemediationSteps: []string{
+			"Set the band shape's rotation to 0 and rotate only the text via vert=\"vert270\" (vertical text direction) so the fill geometry is never transformed.",
+			"Or use the matrix-2x2 pattern, which renders axis labels correctly.",
+		},
+		ExampleBefore: `{"shape":{"geometry":"rect","rotation":270,"text":{"content":"Market Growth"}}}  // row_span 2 band`,
+		ExampleAfter:  `{"shape":{"geometry":"rect","text":{"content":"Market Growth","vert":"vert270"}}}`,
+		RelatedCodes:  []string{ErrCodeDividerTooThin},
+	},
+
 	// ---- Content-lint codes (advisory text-budget checks) ----
 
 	ErrCodeHeadlineTooLong: {

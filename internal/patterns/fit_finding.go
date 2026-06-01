@@ -126,6 +126,151 @@ func SparseSingleRowFlow(patternName, path string, slideIdx, itemCount int, avgC
 	}
 }
 
+// OvertallFlowLane builds an OVERTALL_FLOW_LANE fit finding for a single-row
+// flow pattern (process-flow / timeline-horizontal) whose lane occupies more
+// than half the content height with short per-cell labels. It is the
+// complement to SparseSingleRowFlow: it covers the cases that guard does not —
+// a height cap that is still too tall, or a 7–8 step row whose narrow boxes
+// still stretch vertically. The two never fire on the same slide (the detector
+// defers to SPARSE_SINGLE_ROW_FLOW when that guard owns the case).
+//
+//   - patternName is the offending pattern ("process-flow" / "timeline-horizontal").
+//   - path is the JSON Pointer to the slide's pattern field (e.g. "/slides/3/pattern").
+//   - slideIdx is the 0-based slide index (used only to humanise the message).
+//   - itemCount is the number of steps / stops in the single row.
+//   - laneHeightPct is the estimated lane height as a percentage of the content area.
+//   - avgChars is the average per-cell text length.
+func OvertallFlowLane(patternName, path string, slideIdx, itemCount int, laneHeightPct, avgChars float64) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Pattern: patternName,
+			Path:    path,
+			Code:    ErrCodeOvertallFlowLane,
+			Message: fmt.Sprintf(
+				"slide %d: %s lane of %d sparse cells (avg %.0f chars) occupies ~%.0f%% of the content height — the boxes stretch vertically around a few words; switch to numbered-step-strip / process-grid-2row, or cap max_height_pct to ~35",
+				slideIdx+1, patternName, itemCount, avgChars, laneHeightPct),
+			Fix: &FixSuggestion{
+				Kind: "swap_pattern",
+				Params: map[string]any{
+					"from":            patternName,
+					"item_count":      itemCount,
+					"avg_chars":       avgChars,
+					"lane_height_pct": laneHeightPct,
+					"reason":          "overtall_flow_lane",
+					"suggested": []any{
+						map[string]any{"to": "numbered-step-strip", "rationale": "per-step detail zone fills the vertical space instead of stretching the boxes"},
+						map[string]any{"to": "process-grid-2row", "rationale": "two parallel tracks use the height when the steps split into lanes"},
+					},
+				},
+			},
+		},
+		Action: "review",
+	}
+}
+
+// FlowDiamondNoContent builds a FLOW_DIAMOND_NO_CONTENT fit finding for a
+// standalone process-flow that carries at least one decision diamond
+// (step.type == "decision") but has no supporting content zone — a single-row
+// flow has nowhere to explain what the branch outcomes are. Compose envelopes
+// and nested cell patterns are exempt (a second zone already carries the
+// explanation), enforced by the caller reading slide.Pattern directly.
+//
+//   - path is the JSON Pointer to the slide's pattern field.
+//   - slideIdx is the 0-based slide index (humanises the message only).
+//   - diamondCount is the number of decision steps in the flow.
+func FlowDiamondNoContent(path string, slideIdx, diamondCount int) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Pattern: "process-flow",
+			Path:    path,
+			Code:    ErrCodeFlowDiamondNoContent,
+			Message: fmt.Sprintf(
+				"slide %d: process-flow has %d decision diamond(s) but no supporting content zone to explain the branch outcomes — a lone single-row flow cannot show the yes/no paths; add an explanatory zone via compose, or switch to numbered-step-strip with per-step detail",
+				slideIdx+1, diamondCount),
+			Fix: &FixSuggestion{
+				Kind: "swap_pattern",
+				Params: map[string]any{
+					"from":          "process-flow",
+					"diamond_count": diamondCount,
+					"reason":        "decision_without_branch_zone",
+					"suggested": []any{
+						map[string]any{"to": "numbered-step-strip", "rationale": "per-step detail zone explains each decision outcome"},
+						map[string]any{"to": "compose", "rationale": "pair the flow with an explanatory panel so the branch outcomes are visible"},
+					},
+				},
+			},
+		},
+		Action: "review",
+	}
+}
+
+// TocFlowchartVocab builds a TOC_FLOWCHART_VOCAB fit finding for an agenda /
+// table-of-contents slide rendered with sequential flowchart vocabulary
+// (process-flow / swimlane / timeline-horizontal). A contents list is not a
+// sequence with arrows; the flowchart vocabulary implies a causal/temporal
+// order the agenda does not have.
+//
+//   - patternName is the offending sequential pattern.
+//   - path is the JSON Pointer to the slide's pattern field.
+//   - slideIdx is the 0-based slide index (humanises the message only).
+//   - title is the slide's title text that matched the agenda/ToC vocabulary.
+func TocFlowchartVocab(patternName, path string, slideIdx int, title string) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Pattern: patternName,
+			Path:    path,
+			Code:    ErrCodeTocFlowchartVocab,
+			Message: fmt.Sprintf(
+				"slide %d: agenda / table-of-contents slide (%q) is drawn with %s flowchart vocabulary — a contents list is not a sequence with arrows; use the agenda pattern or numbered-step-strip in 'toc' style",
+				slideIdx+1, title, patternName),
+			Fix: &FixSuggestion{
+				Kind: "swap_pattern",
+				Params: map[string]any{
+					"from":   patternName,
+					"reason": "toc_as_flowchart",
+					"suggested": []any{
+						map[string]any{"to": "agenda", "rationale": "numbered section list is the canonical agenda / table-of-contents layout"},
+						map[string]any{"to": "numbered-step-strip", "rationale": "use the 'toc' style for a contents list without flowchart arrows"},
+					},
+				},
+			},
+		},
+		Action: "review",
+	}
+}
+
+// MatrixAxisImbalance builds a MATRIX_AXIS_IMBALANCE fit finding for a rotated
+// text band (an axis label rotated ~90°/270°) that spans rows or columns.
+// Rotating the whole band flips its width/height about its center, so a
+// narrow-tall axis band renders wide-short (or vice versa) and intrudes into
+// the adjacent quadrants/cells (the J2P-MATRIX-005 anti-pattern). This is a
+// rendering-geometry smell, not a pattern-choice one (see FindingClass).
+//
+//   - path is the JSON Pointer to the offending grid cell's shape.
+//   - slideIdx is the 0-based slide index (humanises the message only).
+//   - rotationDeg is the shape's rotation in degrees.
+func MatrixAxisImbalance(path string, slideIdx int, rotationDeg float64) FitFinding {
+	return FitFinding{
+		ValidationError: ValidationError{
+			Pattern: "shape_grid",
+			Path:    path,
+			Code:    ErrCodeMatrixAxisImbalance,
+			Message: fmt.Sprintf(
+				"slide %d: a spanning text band is rotated %.0f° — rotating the band flips its width/height about its center, so it renders wide-short (or tall-narrow) and intrudes into the adjacent cells; render the label with vert text direction (vert270) in an unrotated band instead of rotating the shape",
+				slideIdx+1, rotationDeg),
+			Fix: &FixSuggestion{
+				Kind: "autofix_visual",
+				Params: map[string]any{
+					"reason":       "rotated_band_aspect_flip",
+					"rotation_deg": rotationDeg,
+					"guidance":     "set the band shape rotation to 0 and rotate only the text via vert=\"vert270\" (vertical text direction) so the fill geometry is never transformed",
+				},
+			},
+		},
+		Action: "review",
+	}
+}
+
 // actionRanks maps action strings to severity ranks. Higher rank = more severe.
 var actionRanks = map[string]int{
 	"info":           0,

@@ -67,6 +67,13 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// exempt by construction.
 	findings = append(findings, collectSparseSingleRowFlowFindings(input)...)
 
+	// 4c. Pattern-choice & rendering-geometry QA heuristics (J2P-VQA-009):
+	// over-tall single-row flow lanes (the cases SPARSE_SINGLE_ROW_FLOW does not
+	// cover), decision diamonds with no branch zone, agenda slides drawn as
+	// flowcharts, and rotated axis bands that intrude after rotation. Each
+	// carries a rendering-vs-pattern-choice class via patterns.FindingClass.
+	findings = append(findings, collectPatternChoiceFindings(input)...)
+
 	// 5. Preflight predictions for render-time-only findings: table_font_scaled,
 	// table_rows_truncated, column_width_deficit, text_trimmed,
 	// readability_trimmed. These mirror the renderer's scaling/trimming logic

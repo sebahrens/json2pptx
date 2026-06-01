@@ -316,6 +316,99 @@ The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (whos
 }
 ```
 
+### `OVERTALL_FLOW_LANE`
+
+**Action:** `review`
+**Pattern:** `process-flow` or `timeline-horizontal`
+**Fix kind:** `swap_pattern`
+**Class:** `pattern_choice`
+
+The complement to [`SPARSE_SINGLE_ROW_FLOW`](#sparse_single_row_flow): a slide-level `process-flow` / single-row `timeline-horizontal` whose estimated lane height exceeds ~50% of the content area with short average per-cell text (< ~40 chars), in the cases the sparse guard does **not** cover:
+
+- a `max_height_pct` cap that is still too tall (≥ 50), or
+- a 7–8 step row whose narrow boxes still stretch vertically (the sparse guard caps at 6 items).
+
+The detector defers to `SPARSE_SINGLE_ROW_FLOW` whenever that guard owns the case (uncapped, 3–6 items), so the two never fire on the same slide. The lane height is estimated from `max_height_pct` / `bounds.height` when set, else ~100% (an uncapped single-row flow fills the content zone).
+
+The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (whose per-step detail zone fills the vertical space) or `process-grid-2row`; capping `max_height_pct` to ~35 also clears it. `fix.params` carry `from`, `item_count`, `avg_chars`, `lane_height_pct`, `reason: "overtall_flow_lane"`, and `suggested: [{to, rationale}, …]`.
+
+```json
+{
+  "pattern": "process-flow",
+  "path": "/slides/8/pattern",
+  "code": "OVERTALL_FLOW_LANE",
+  "message": "slide 9: process-flow lane of 7 sparse cells (avg 8 chars) occupies ~100% of the content height — the boxes stretch vertically around a few words; switch to numbered-step-strip / process-grid-2row, or cap max_height_pct to ~35",
+  "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "item_count": 7, "avg_chars": 8, "lane_height_pct": 100, "reason": "overtall_flow_lane", "suggested": [{ "to": "numbered-step-strip", "rationale": "per-step detail zone fills the vertical space instead of stretching the boxes" }] } },
+  "action": "review"
+}
+```
+
+### `FLOW_DIAMOND_NO_CONTENT`
+
+**Action:** `review`
+**Pattern:** `process-flow`
+**Fix kind:** `swap_pattern`
+**Class:** `pattern_choice`
+
+A standalone `process-flow` carries at least one decision diamond (`steps[].type: "decision"`) but has no supporting content zone. A lone single-row flow has nowhere to explain the yes/no branch outcomes a decision implies. The detector reads `slide.pattern` directly, so compose envelopes and nested cell patterns are exempt (a second zone carries the explanation).
+
+The fix is a `swap_pattern` suggestion toward `numbered-step-strip` (per-step detail) or `compose` (pair the flow with an explanatory panel). `fix.params` carry `from`, `diamond_count`, `reason: "decision_without_branch_zone"`, and `suggested: [{to, rationale}, …]`.
+
+```json
+{
+  "pattern": "process-flow",
+  "path": "/slides/3/pattern",
+  "code": "FLOW_DIAMOND_NO_CONTENT",
+  "message": "slide 4: process-flow has 1 decision diamond(s) but no supporting content zone to explain the branch outcomes — a lone single-row flow cannot show the yes/no paths; add an explanatory zone via compose, or switch to numbered-step-strip with per-step detail",
+  "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "diamond_count": 1, "reason": "decision_without_branch_zone", "suggested": [{ "to": "numbered-step-strip", "rationale": "per-step detail zone explains each decision outcome" }] } },
+  "action": "review"
+}
+```
+
+### `TOC_FLOWCHART_VOCAB`
+
+**Action:** `review`
+**Pattern:** `process-flow` / `process-flow-compact` / `swimlane` / `timeline-horizontal`
+**Fix kind:** `swap_pattern`
+**Class:** `pattern_choice`
+
+An agenda / table-of-contents slide is drawn with sequential flowchart vocabulary. The slide's title must match the agenda vocabulary (`agenda`, `table of contents`, `what we'll cover` / `what we will cover`) **and** the slide-level pattern must be one of the flowchart families. A contents list is not a sequence with arrows; the flowchart vocabulary implies a causal/temporal order the agenda does not have.
+
+The fix is a `swap_pattern` suggestion toward `agenda` (numbered section list) or `numbered-step-strip` in `toc` style. `fix.params` carry `from`, `reason: "toc_as_flowchart"`, and `suggested: [{to, rationale}, …]`.
+
+```json
+{
+  "pattern": "process-flow",
+  "path": "/slides/1/pattern",
+  "code": "TOC_FLOWCHART_VOCAB",
+  "message": "slide 2: agenda / table-of-contents slide (\"Agenda\") is drawn with process-flow flowchart vocabulary — a contents list is not a sequence with arrows; use the agenda pattern or numbered-step-strip in 'toc' style",
+  "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "reason": "toc_as_flowchart", "suggested": [{ "to": "agenda", "rationale": "numbered section list is the canonical agenda / table-of-contents layout" }] } },
+  "action": "review"
+}
+```
+
+### `MATRIX_AXIS_IMBALANCE`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `autofix_visual`
+**Class:** `rendering`
+
+A `shape_grid` cell whose text-bearing shape is rotated within ~15° of 90°/270° and spans rows or columns (an axis band). Rotating the whole band flips its width/height about its center, so a narrow-tall axis band renders wide-short (or vice versa) and intrudes into the adjacent quadrants/cells — the J2P-MATRIX-005 anti-pattern. This is a rendering-geometry smell, not a pattern-choice one: `matrix-2x2` now renders axis labels with `vert270` text direction in an **unrotated** band, so the check guards against regressions and hand-authored rotated bands.
+
+The fix is `autofix_visual`: set the band shape's rotation to 0 and rotate only the text via `vert: "vert270"` so the fill geometry is never transformed. `fix.params` carry `reason: "rotated_band_aspect_flip"`, `rotation_deg`, and `guidance`.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/7/shape_grid/rows/1/cells/0/shape",
+  "code": "MATRIX_AXIS_IMBALANCE",
+  "message": "slide 8: a spanning text band is rotated 270° — rotating the band flips its width/height about its center, so it renders wide-short (or tall-narrow) and intrudes into the adjacent cells; render the label with vert text direction (vert270) in an unrotated band instead of rotating the shape",
+  "fix": { "kind": "autofix_visual", "params": { "reason": "rotated_band_aspect_flip", "rotation_deg": 270, "guidance": "set the band shape rotation to 0 and rotate only the text via vert=\"vert270\" (vertical text direction) so the fill geometry is never transformed" } },
+  "action": "review"
+}
+```
+
 ### `grid_diagram_narrow`
 
 **Action:** `review`

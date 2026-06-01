@@ -50,6 +50,32 @@ const (
 	// boxes stretch vertically. Advisory; never blocks render.
 	ErrCodeSparseSingleRowFlow = "SPARSE_SINGLE_ROW_FLOW"
 
+	// Pattern-choice QA heuristics (J2P-VQA-009) — visual-quality smells that a
+	// rendered deck review caught but static validation passed. They flag a
+	// "poor pattern choice" rather than a rendering bug (see FindingClass).
+	// All advisory (action "review"); none block render.
+	//
+	//   - OvertallFlowLane: a single-row process-flow / timeline-horizontal lane
+	//     occupies more than half the content height with short labels, in cases
+	//     SPARSE_SINGLE_ROW_FLOW does not cover (a height cap that is still too
+	//     tall, or a 7–8 step row whose boxes still stretch vertically).
+	//   - FlowDiamondNoContent: a standalone process-flow carries a decision
+	//     diamond but has no supporting content zone to explain the branch.
+	//   - TocFlowchartVocab: an agenda / table-of-contents slide is rendered with
+	//     sequential flowchart vocabulary (process-flow / swimlane / timeline)
+	//     instead of a list / agenda layout.
+	ErrCodeOvertallFlowLane     = "OVERTALL_FLOW_LANE"
+	ErrCodeFlowDiamondNoContent = "FLOW_DIAMOND_NO_CONTENT"
+	ErrCodeTocFlowchartVocab    = "TOC_FLOWCHART_VOCAB"
+
+	// Rendering-geometry QA heuristic (J2P-VQA-009) — a rotated text band (an
+	// axis label rotated ~90°/270°) that spans rows/columns renders wide-short
+	// or tall-narrow and intrudes into the adjacent quadrants/cells. This is a
+	// rendering-geometry smell (see FindingClass → "rendering"), the J2P-MATRIX-005
+	// anti-pattern; matrix-2x2 now uses vert270 text in an unrotated band, so the
+	// check guards against regressions and hand-authored rotated bands. Advisory.
+	ErrCodeMatrixAxisImbalance = "MATRIX_AXIS_IMBALANCE"
+
 	// Content lint codes — emitted when slide text exceeds readability budgets
 	// or bullet lists nest more than two levels. Advisory; never block render.
 	ErrCodeHeadlineTooLong   = "HEADLINE_TOO_LONG"
@@ -139,6 +165,10 @@ var (
 	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
 	ErrAccentOverload      = errors.New("slide uses more than two distinct accent hues")
 	ErrSparseSingleRowFlow = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
+	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
+	ErrFlowDiamondNoContent = errors.New("process-flow decision diamond has no supporting content zone")
+	ErrTocFlowchartVocab    = errors.New("agenda / table-of-contents slide uses sequential flowchart vocabulary")
+	ErrMatrixAxisImbalance  = errors.New("rotated axis band spans rows/columns and intrudes after rotation")
 
 	ErrHeadlineTooLong   = errors.New("headline exceeds word count budget")
 	ErrBodyTooLong       = errors.New("body text block exceeds word count budget")
@@ -204,6 +234,10 @@ var codeSentinel = map[string]error{
 	ErrCodeTakeawayMissing:       ErrTakeawayMissing,
 	ErrCodeAccentOverload:        ErrAccentOverload,
 	ErrCodeSparseSingleRowFlow:   ErrSparseSingleRowFlow,
+	ErrCodeOvertallFlowLane:      ErrOvertallFlowLane,
+	ErrCodeFlowDiamondNoContent:  ErrFlowDiamondNoContent,
+	ErrCodeTocFlowchartVocab:     ErrTocFlowchartVocab,
+	ErrCodeMatrixAxisImbalance:   ErrMatrixAxisImbalance,
 	ErrCodeHeadlineTooLong:       ErrHeadlineTooLong,
 	ErrCodeBodyTooLong:           ErrBodyTooLong,
 	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,
