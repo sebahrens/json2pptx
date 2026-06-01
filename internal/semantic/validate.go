@@ -247,6 +247,34 @@ func Check(filename string, data []byte, strict Strictness) []diagnostics.Diagno
 		// so there is no double-emit.
 		out = append(out, rhythmDiagnostics(Normalize(spec), strict)...)
 	}
+	// The parse and validate passes both report an unregistered, non-empty kind
+	// at the same code+path+message (parse: CodeUnknownKind→SEMANTIC_UNKNOWN_KIND;
+	// validateSlide: SEMANTIC_UNKNOWN_KIND), so an unknown kind surfaces twice in
+	// the merged slice. Each pass must keep emitting standalone — the parser feeds
+	// callers that never validate, and Validate runs without a parse pass on the
+	// compile path — so collapse exact duplicates here, where both passes meet.
+	return dedupExact(out)
+}
+
+// dedupExact drops findings that are byte-identical to an earlier one
+// (code+path+message+severity), preserving first-occurrence order. Two findings
+// indistinguishable on all four fields carry no extra signal for the consuming
+// agent, so collapsing them removes double-emit noise without losing diagnostics
+// that differ in any field (e.g. the same path with a different message).
+func dedupExact(in []diagnostics.Diagnostic) []diagnostics.Diagnostic {
+	if len(in) < 2 {
+		return in
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := in[:0]
+	for _, d := range in {
+		key := string(d.Severity) + "\x00" + d.Code + "\x00" + d.Path + "\x00" + d.Message
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, d)
+	}
 	return out
 }
 

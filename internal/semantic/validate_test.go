@@ -139,6 +139,33 @@ func TestCheckBlankKindEmitsSingleMissingFinding(t *testing.T) {
 	}
 }
 
+// TestCheckUnknownKindEmitsSingleFinding guards go-slide-creator-v1d9: a
+// non-empty but unregistered kind (e.g. "foo") was reported twice — the parse
+// pass (CodeUnknownKind→SEMANTIC_UNKNOWN_KIND) and validateSlide both emit an
+// identical "unknown slide kind" finding at slides[0].kind, and Check merged them
+// without dedup. Both passes must keep emitting standalone, so Check collapses the
+// exact duplicate: exactly one finding must reach the caller.
+func TestCheckUnknownKindEmitsSingleFinding(t *testing.T) {
+	src := `{"meta":{"title":"X"},"slides":[{"kind":"foo","title":"x"}]}`
+	ds := Check("spec.json", []byte(src), StrictnessWarn)
+	var atKind []diagnostics.Diagnostic
+	for _, d := range ds {
+		if d.Path == "slides[0].kind" {
+			atKind = append(atKind, d)
+		}
+	}
+	if len(atKind) != 1 {
+		t.Fatalf("expected exactly 1 finding at slides[0].kind, got %d: %v", len(atKind), atKind)
+	}
+	d := atKind[0]
+	if d.Code != diagnostics.CodeSemanticUnknownKind {
+		t.Errorf("code = %q, want %q", d.Code, diagnostics.CodeSemanticUnknownKind)
+	}
+	if !strings.Contains(d.Message, `unknown slide kind "foo"`) {
+		t.Errorf("message = %q, want the unknown-kind message for \"foo\"", d.Message)
+	}
+}
+
 func TestValidateRequiredPayloadField(t *testing.T) {
 	// kpi_snapshot requires "kpis".
 	spec := &DeckSpec{
