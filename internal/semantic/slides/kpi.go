@@ -8,10 +8,12 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
-// kpiCell is the raw kpi-Nup cell shape: a big number and a short caption.
+// kpiCell is the raw kpi-Nup cell shape: a big number, a short caption, and an
+// optional delta/trend annotation.
 type kpiCell struct {
 	Big   string `json:"big"`
 	Small string `json:"small"`
+	Sub   string `json:"sub,omitempty"`
 }
 
 // CompileKPISnapshot compiles a KPI-snapshot slide. With 2–6 metrics it emits a
@@ -86,7 +88,11 @@ func compileKPIFallback(in Input, cells []kpiCell, srcField string) (*deckinput.
 	if len(cells) > 0 {
 		bullets := make([]string, len(cells))
 		for i, c := range cells {
-			bullets[i] = fmt.Sprintf("%s — %s", c.Big, c.Small)
+			if c.Sub != "" {
+				bullets[i] = fmt.Sprintf("%s (%s) — %s", c.Big, c.Sub, c.Small)
+			} else {
+				bullets[i] = fmt.Sprintf("%s — %s", c.Big, c.Small)
+			}
 		}
 		idx := appendContent(slide, bulletsContent("body", bullets))
 		links = append(links, SourceLink{
@@ -114,10 +120,11 @@ func kpiCells(body map[string]any) ([]kpiCell, string) {
 	for _, o := range objs {
 		big := firstNonEmpty(strField(o, "big"), strField(o, "value"))
 		small := firstNonEmpty(strField(o, "small"), strField(o, "label"), strField(o, "caption"))
+		sub := firstNonEmpty(strField(o, "sub"), strField(o, "delta"), strField(o, "trend"), strField(o, "change"))
 		if big == "" && small == "" {
 			continue
 		}
-		out = append(out, kpiCell{Big: big, Small: small})
+		out = append(out, kpiCell{Big: big, Small: small, Sub: sub})
 	}
 	return out, field
 }

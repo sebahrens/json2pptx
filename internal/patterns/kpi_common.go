@@ -12,14 +12,19 @@ import (
 // Shared KPI types and helpers used by kpi-3up, kpi-4up, etc.
 // ---------------------------------------------------------------------------
 
-// KPICell is a single KPI cell: a big number and a short caption.
+// KPICell is a single KPI cell: a big number, a short caption, and an optional
+// sub annotation (a delta/trend value such as "+5%").
 // Supports string shorthand: "Big | Small" unmarshals to {big:"Big", small:"Small"}.
+//
+// Sub accepts the canonical key "sub" or the intuitive aliases delta/trend/change,
+// so a KPI delta is rendered instead of being silently dropped.
 //
 // Icon accepts either a bundled-name string shorthand or a full IconRef object
 // (path / url / svg_data / fill / alt / position). See IconRef and IconRefSchema.
 type KPICell struct {
 	Big   string   `json:"big"`
 	Small string   `json:"small"`
+	Sub   string   `json:"sub,omitempty"`
 	Icon  *IconRef `json:"icon,omitempty"`
 }
 
@@ -46,13 +51,18 @@ func (c *KPICell) UnmarshalJSON(data []byte) error {
 		Number  string   `json:"number"`
 		Label   string   `json:"label"`
 		Caption string   `json:"caption"`
+		Sub     string   `json:"sub"`
+		Delta   string   `json:"delta"`
+		Trend   string   `json:"trend"`
+		Change  string   `json:"change"`
 		Icon    *IconRef `json:"icon"`
 	}
 	if err := json.Unmarshal(data, &obj); err != nil {
-		return fmt.Errorf("KPICell must be a string \"Big | Small\" or an object {big, small} (aliases value/number, label/caption): %w", err)
+		return fmt.Errorf("KPICell must be a string \"Big | Small\" or an object {big, small} (aliases value/number, label/caption, sub/delta/trend/change): %w", err)
 	}
 	c.Big = firstNonEmpty(obj.Big, obj.Value, obj.Number)
 	c.Small = firstNonEmpty(obj.Small, obj.Label, obj.Caption)
+	c.Sub = firstNonEmpty(obj.Sub, obj.Delta, obj.Trend, obj.Change)
 	c.Icon = obj.Icon
 	return nil
 }
@@ -254,7 +264,7 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 }
 
 // kpiCellSchema returns the JSON Schema for a single KPI cell.
-// Accepts either the object form {big, small, icon?} or the shorthand string "Big | Small".
+// Accepts either the object form {big, small, sub?, icon?} or the shorthand string "Big | Small".
 //
 // The icon field is polymorphic: it accepts a bundled-name string shorthand
 // (e.g. "rocket") or a full IconRef object (path / url / svg_data / fill / alt
@@ -266,11 +276,12 @@ func kpiCellSchema() *Schema {
 			map[string]*Schema{
 				"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
 				"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
+				"sub":   StringSchema(12).WithDescription("Optional delta/trend annotation rendered below the number (e.g. \"+5%\"); aliases delta/trend/change"),
 				"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
 			},
 			[]string{"big", "small"},
 		).WithAdditionalProperties(false),
-	).WithDescription("KPI cell: string \"Big | Small\" or {big, small, icon?}")
+	).WithDescription("KPI cell: string \"Big | Small\" or {big, small, sub?, icon?}")
 }
 
 
@@ -289,7 +300,11 @@ func kpiOverridesSchema() *Schema {
 }
 
 // buildKPITextContent creates a JSON text object with paragraphs for a KPI cell.
-func buildKPITextContent(big string, bigSize float64, small string, smallSize float64) json.RawMessage {
+// When sub is non-empty (a delta/trend annotation, e.g. "+5%"), it is rendered
+// as a smaller paragraph between the big number and the caption. The text color
+// stays "lt1" so it remains readable on the accent-colored card fill (the
+// direction is conveyed by the value's own sign, e.g. "+5%" / "-0.4%").
+func buildKPITextContent(big string, bigSize float64, small string, smallSize float64, sub string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -298,19 +313,34 @@ func buildKPITextContent(big string, bigSize float64, small string, smallSize fl
 		Align   string  `json:"align,omitempty"`
 	}
 
+	paragraphs := []paragraph{
+		{Content: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
+	}
+	if sub != "" {
+		paragraphs = append(paragraphs, paragraph{Content: sub, Size: kpiSubSize(smallSize), Color: "lt1", Align: "ctr"})
+	}
+	paragraphs = append(paragraphs, paragraph{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"})
+
 	textObj := struct {
 		Paragraphs    []paragraph `json:"paragraphs"`
 		Align         string      `json:"align"`
 		VerticalAlign string      `json:"vertical_align"`
 	}{
-		Paragraphs: []paragraph{
-			{Content: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
-			{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"},
-		},
+		Paragraphs:    paragraphs,
 		Align:         "ctr",
 		VerticalAlign: "ctr",
 	}
 
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// kpiSubSize returns the font size for the sub/delta annotation: ~85% of the
+// caption size, floored at 8pt so it stays legible.
+func kpiSubSize(smallSize float64) float64 {
+	s := smallSize * 0.85
+	if s < 8 {
+		return 8
+	}
+	return s
 }

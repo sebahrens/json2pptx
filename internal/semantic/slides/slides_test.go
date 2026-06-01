@@ -288,6 +288,58 @@ func TestCompileKPISnapshot_Fallback(t *testing.T) {
 	}
 }
 
+func TestCompileKPISnapshot_DeltaPreserved(t *testing.T) {
+	// Regression (go-slide-creator-09pa): KPI delta/trend fields must reach the
+	// compiled kpi-Nup cells as `sub`, not be silently dropped.
+	in := Input{
+		Title: "Key Performance Indicators",
+		Body: map[string]any{
+			"kpis": []any{
+				map[string]any{"label": "Revenue", "value": "$50M", "delta": "+5%"},
+				map[string]any{"label": "NRR", "value": "127%", "trend": "+3%"},
+				map[string]any{"label": "Churn", "value": "2.1%", "change": "-0.4%"},
+			},
+		},
+	}
+	slide, _, err := CompileKPISnapshot(in)
+	if err != nil {
+		t.Fatalf("CompileKPISnapshot: %v", err)
+	}
+	if slide.Pattern == nil {
+		t.Fatal("expected Pattern, got nil")
+	}
+	var cells []map[string]string
+	if err := json.Unmarshal(slide.Pattern.Values, &cells); err != nil {
+		t.Fatalf("unmarshal pattern values: %v", err)
+	}
+	wantSubs := []string{"+5%", "+3%", "-0.4%"}
+	for i, want := range wantSubs {
+		if cells[i]["sub"] != want {
+			t.Errorf("cell[%d].sub = %q, want %q", i, cells[i]["sub"], want)
+		}
+	}
+}
+
+func TestCompileKPISnapshot_DeltaInFallbackBullet(t *testing.T) {
+	// A single metric falls back to bullets; the delta must still appear.
+	in := Input{
+		Title: "One",
+		Body: map[string]any{
+			"metrics": []any{
+				map[string]any{"value": "99", "label": "Solo", "delta": "+1%"},
+			},
+		},
+	}
+	slide, _, err := CompileKPISnapshot(in)
+	if err != nil {
+		t.Fatalf("CompileKPISnapshot: %v", err)
+	}
+	body := slide.Content[len(slide.Content)-1]
+	if body.BulletsValue == nil || (*body.BulletsValue)[0] != "99 (+1%) — Solo" {
+		t.Errorf("fallback bullet = %+v, want '99 (+1%%) — Solo'", body.BulletsValue)
+	}
+}
+
 func TestCompileChartInsight_PatternWithChart(t *testing.T) {
 	in := Input{
 		Title: "Trend",

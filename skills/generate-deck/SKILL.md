@@ -70,7 +70,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `title` | `title` | `subtitle`, `eyebrow` | — |
 | `section` | `title` | `subtitle` | — |
 | `executive_summary` | `title` | `points` (body bullets), `takeaway` (footer one-liner) | — |
-| `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label}` |
+| `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label, delta?}` (`delta` ≤12 chars, e.g. `"+5%"`, renders a small annotation; aliases `sub`/`trend`/`change`) |
 | `chart_insight` | `chart` | `insights[]` (1–6 → chart+insights visual), `title`, `source`, `takeaway` | chart: `{type, data, title?}` |
 | `comparison` | `columns` (exactly 2, balanced, ≤10 rows each → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
 | `process` | `steps` (3–8 → visual) | `title`, `takeaway` | each step: string or `{label, type?}` |
@@ -84,7 +84,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > from the `takeaways` body array.
 >
 > **Compiler-accepted aliases** (resilience only — prefer the canonical names above): `kpi_snapshot`
-> `kpis`↔`metrics` with `{value↔big, label↔small/caption}` (a **blessed required-one-of alias**: a
+> `kpis`↔`metrics` with `{value↔big, label↔small/caption, delta/trend/change↔sub}` (a **blessed required-one-of alias**: a
 > spec providing only `metrics` validates and compiles — it appears in `list_slide_kinds`
 > `required_aliases` and the schema's required-one-of clause, not just at compile time); `chart_insight` `insights[]`↔`insight`
 > (singular string); `comparison` column `header`↔`title`/`label`/`name`; `process` step
@@ -747,7 +747,7 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 
 **KPI `values` is always a JSON array of cells**, one per metric (`kpi-2up`…`kpi-6up`, `kpi-inline`). Each cell is either:
 
-- an object `{"big": "$127M", "small": "Revenue"}` — `big` is the headline number (≤ 8 chars), `small` is the caption. The intuitive aliases `value`/`number` (→ `big`) and `label`/`caption` (→ `small`) are also accepted.
+- an object `{"big": "$127M", "small": "Revenue"}` — `big` is the headline number (≤ 8 chars), `small` is the caption. The intuitive aliases `value`/`number` (→ `big`) and `label`/`caption` (→ `small`) are also accepted. An optional `sub` (≤ 12 chars) renders a small delta/trend annotation between the number and the caption (e.g. `{"big": "$50M", "small": "Revenue", "sub": "+5%"}`); the aliases `delta`/`trend`/`change` map to `sub`. Put the sign in the value itself (`"+5%"` / `"-0.4%"`) — the annotation stays in the card's light text color rather than green/red so it remains legible on the accent fill.
 - a pipe-delimited string shorthand `"$127M | Revenue"` (exactly one ` | ` separator).
 
 Both forms validate and expand identically; you may mix them within one `values` array. Passing a single bare cell instead of an array is tolerated (wrapped into a one-element list), so the result is a clear "exactly N cells" count error rather than an unmarshal failure.

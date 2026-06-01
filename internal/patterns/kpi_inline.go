@@ -142,7 +142,7 @@ func (k *kpiInline) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize)
+		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub)
 		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
 
 		shape := &jsonschema.ShapeSpecInput{
