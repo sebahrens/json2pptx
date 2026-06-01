@@ -163,15 +163,15 @@ Compare 2 options / states
   side-by-side text                    → comparison-2col
   before / after transition            → before-after (or -compact)
   2×2 axes positioning                 → matrix-2x2  ·  svggen: matrix_2x2
-Process / sequence
-  linear steps (3-8)                   → process-flow (or -compact)
-  ordered steps / annotated ToC (no branching) → numbered-step-strip (chevron / stacked-box / toc; never diamonds)
-  two parallel tracks (3-6 phases)     → process-grid-2row
-  phases + dates                       → phase-roadmap
-  workstreams × phases                 → roadmap-phased
-  cross-actor / cross-functional       → swimlane
-  date-based milestones                → timeline-horizontal
-  value / supply chain (4-10 steps)    → value-chain
+Process / sequence   ⚠ sparse-sequence rule below — NOT one row of 3-6 boxes on a bare slide
+  short ordered steps (3-6, no branch) → numbered-step-strip (chevron / stacked-box / toc; never diamonds)
+  ordered steps + a description each    → value-chain (4-10) · or numbered-step-strip detail zone
+  flowchart WITH branching / decisions → process-flow (or -compact)  ← reserve for real branches
+  two parallel / aligned tracks (3-6)  → process-grid-2row
+  planned phases anchored to dates      → phase-roadmap
+  workstreams × phases                  → roadmap-phased
+  cross-actor / cross-functional        → swimlane
+  true calendar milestones (real dates) → timeline-horizontal
   maturity ladder (3-6 stages, current state) → journey-maturity-model
   gantt schedule data                  → svggen: gantt
 Cause-effect / structure
@@ -196,6 +196,68 @@ RULE: prefer diagram types (svggen-rendered) over shape_grid patterns
 when a data-driven or topologically complex diagram is needed.
 Use shape_grid patterns for structural/text layouts.
 ```
+
+### Sparse-sequence rule (hard)
+
+**Never fill a whole slide with a single row of 3-6 boxes** — a lone `process-flow`
+or `timeline-horizontal` strip stranded in a sea of whitespace reads as unfinished.
+`process-flow` and `timeline-horizontal` earn a full slide only when they carry their
+own weight:
+
+- `process-flow` → **only when the sequence actually branches** (decision diamonds, merges).
+  A straight 1→2→3→4 chain is not a flowchart.
+- `timeline-horizontal` → **only for true calendar milestones** with real dates, not for
+  generic ordered steps.
+
+For a short ordered sequence, pick (in rough order of preference):
+
+1. `numbered-step-strip` — ordered steps with an optional **per-step detail zone** for body text.
+2. `agenda` / `agenda-with-images` — when it reads as a table-of-contents / section list.
+3. `value-chain` — steps that each carry a one-line description.
+4. `phase-roadmap` — steps anchored to dates/phases.
+5. `process-grid-2row` — when there are **two aligned tracks** sharing the same columns.
+6. A hand-built `shape_grid` **lane + detail zone** (skeleton below) when no named pattern fits.
+
+**Lane + detail-zone skeleton.** A top "lane" row of numbered step boxes plus an aligned
+detail row below — the two rows share the same column count so steps and details line up
+vertically, and the detail row gives the slide real vertical mass instead of one floating strip:
+
+```json
+{
+  "layout_id": "blank",
+  "content": [{"placeholder_id": "title", "type": "text", "text_value": "How the model selects a tool"}],
+  "shape_grid": {
+    "gap": 14,
+    "rows": [
+      {
+        "height": 16,
+        "cells": [
+          {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "1  Intake",  "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+          {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "2  Route",   "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+          {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "3  Execute", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+          {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "4  Verify",  "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+        ]
+      },
+      {
+        "auto_height": true,
+        "cells": [
+          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Capture the request and the context it needs.", "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 8, "inset_right": 8, "inset_bottom": 8}}},
+          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Pick the tool family that fits the intent.",    "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 8, "inset_right": 8, "inset_bottom": 8}}},
+          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Run the tool and collect the result.",         "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 8, "inset_right": 8, "inset_bottom": 8}}},
+          {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Check the output before returning it.",        "align": "l", "vertical_align": "t", "inset_top": 10, "inset_left": 8, "inset_right": 8, "inset_bottom": 8}}}
+        ]
+      }
+    ]
+  }
+}
+```
+
+> Constrained mode: omit absolute `size` (template manages it) and use scheme colors
+> (`lt1`, `accent1`, …), never raw hex — the validator rejects both. This exact slide
+> passes `json2pptx validate`.
+
+Prefer `numbered-step-strip` (with its detail zone) over hand-rolling this; reach for the raw
+`shape_grid` lane only when you need a layout no named pattern covers.
 
 ---
 
@@ -669,7 +731,7 @@ Non-negotiable. Full catalog with rationale and examples in [RULES.md](RULES.md)
 - **Silent traps (Rules 17–19):** `footer` is an object not a string; never prefix `source` with "Source: "; content fields need `_value` suffix (`chart_value`, `table_value`).
 - **Table density (Rule 20 — enforced):** MUST split if rows > 7 OR cols > 6 OR font < 9pt. Multiline cells count as N logical rows.
 - **No emoji codepoints (hard rule):** emoji glyphs are rejected by pattern validators in `card-grid`, `icon-row`, `herodetail`, etc. Use a bundled SVG icon name or supply a user icon via `path` / `url` / `svg_data`. See the [Icon Names](#icon-names) section.
-- **Anti-patterns:** two-tables-one-grid, hex-fill mix, pattern monotony (no 3-in-a-row), accent monotony.
+- **Anti-patterns:** two-tables-one-grid, hex-fill mix, pattern monotony (no 3-in-a-row), accent monotony, sparse single-row flow (no full-slide `process-flow`/`timeline-horizontal` for 3-6 short labels — see the Sparse-sequence rule).
 - **Cell accent variety:** `cell_accent_mode` ∈ {`uniform`, `alternate`, `progressive`} — use `progressive` for 4+ peer cells.
 
 For the full finding-code catalog (`fit_overflow`, `cell_underfilled`, `placeholder_overflow`, `chart.*` family, render-time codes like `contrast_autofixed`, `text_trimmed`, `diagram_clamped`, etc.) and the `fix.kind` enums, see [FINDINGS.md](FINDINGS.md).

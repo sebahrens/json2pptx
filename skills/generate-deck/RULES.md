@@ -186,6 +186,24 @@ Rules: no pattern should appear 3+ times consecutively. Insert a narrative-break
 
 Using the default `accent_strategy: "primary"` on a 10+ slide deck makes every shape the same color. Set `"rotate"` or `"section-keyed"` for longer decks, or manually assign different accents to shape fills.
 
+### Sparse single-row flow
+
+Filling a whole slide with one row of 3-6 short boxes — a lone `process-flow` or `timeline-horizontal` strip floating in whitespace — reads as unfinished. `process-flow` earns a full slide only when the sequence actually **branches** (decision diamonds); `timeline-horizontal` only for **true calendar milestones** with real dates.
+
+Bad — a straight 4-step chain stretched across a bare slide:
+```
+Slide 2: process-flow — "Intake → Route → Execute → Verify"   (no branches, no detail)
+```
+
+Good — give the sequence vertical mass and a named pattern that fits:
+```
+Slide 2: numbered-step-strip — 4 steps, each with a per-step detail zone
+   (or value-chain for described steps · phase-roadmap for dated phases ·
+    process-grid-2row for two aligned tracks · a shape_grid lane + detail zone)
+```
+
+See the **Sparse-sequence rule (hard)** and the lane + detail-zone skeleton in SKILL.md's Quick Pattern Selector for the full decision list and a copyable example.
+
 ---
 
 ## Cell Accent Variety
