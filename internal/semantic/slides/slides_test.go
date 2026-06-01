@@ -430,6 +430,19 @@ func TestCompileRaw_MissingPayload(t *testing.T) {
 	}
 }
 
+// TestCompileRaw_NonObjectPayload is a regression for go-slide-creator-p9rp: a
+// non-object "slide" payload must fail without leaking the internal Go target
+// type (deckinput.SlideInput) from the json.Unmarshal error.
+func TestCompileRaw_NonObjectPayload(t *testing.T) {
+	_, _, err := CompileRaw(Input{Body: map[string]any{"slide": "i am a string not an object"}})
+	if err == nil {
+		t.Fatal("expected error for non-object slide payload, got nil")
+	}
+	if strings.Contains(err.Error(), "deckinput.SlideInput") {
+		t.Errorf("CompileRaw error leaks internal type name: %v", err)
+	}
+}
+
 // hasRawPath reports whether any link carries the given RawPath.
 func hasRawPath(links []SourceLink, raw string) bool {
 	for _, l := range links {

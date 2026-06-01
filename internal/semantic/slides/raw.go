@@ -22,7 +22,12 @@ func CompileRaw(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	}
 	var slide deckinput.SlideInput
 	if err := json.Unmarshal(encoded, &slide); err != nil {
-		return nil, nil, fmt.Errorf("decode raw slide payload: %w", err)
+		// Don't surface the raw json.Unmarshal error: it names the internal Go
+		// target type (deckinput.SlideInput), which leaks an implementation
+		// detail to the caller. validateRawEscapeHatch blocks non-object/invalid
+		// payloads before compile, so this is defensive; keep the message in the
+		// author's vocabulary ("slide" payload) rather than Go's.
+		return nil, nil, fmt.Errorf("raw_json2pptx %q payload is not a valid json2pptx slide object", "slide")
 	}
 	links := []SourceLink{{
 		RawPath:      in.rawSlide(),

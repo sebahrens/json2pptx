@@ -2,10 +2,55 @@ package semantic
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
+
+// TestRawNonObjectValidateCompileParity is the validate↔compile parity gate for
+// go-slide-creator-p9rp: a raw_json2pptx slide whose "slide" payload is a scalar
+// (not an object) must be rejected identically by validate and compile. Before
+// the fix, validate passed (ok:true) but compile crashed with an opaque Go error
+// that leaked the internal deckinput.SlideInput type outside the finding
+// envelope. The "spec that passes semantic validation always compiles" contract
+// requires the two stages to agree, and any compile-stage failure must be a
+// structured finding, not a bare type-leaking error string.
+func TestRawNonObjectValidateCompileParity(t *testing.T) {
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Raw", Template: "midnight-blue"},
+		Slides: []SlideSpec{
+			{Kind: KindTitle, Body: map[string]any{"title": "Raw"}},
+			{Kind: KindRawJSON2pptx, Body: map[string]any{"slide": "i am a string not an object"}},
+		},
+	}
+
+	// validate rejects with a path-scoped hard finding.
+	vd := Validate(spec, StrictnessWarn)
+	if _, ok := findAt(vd, diagnostics.CodeSemanticRequired, "slides[1].slide"); !ok {
+		t.Fatalf("validate: expected SEMANTIC_REQUIRED at slides[1].slide, got %v", vd)
+	}
+
+	// compile rejects the same input: it returns an error AND surfaces the same
+	// finding through the envelope (result.Diagnostics), rather than emitting a
+	// degraded slide or a bare Go error.
+	input, result, err := Compile(spec, CompileOptions{})
+	if err == nil {
+		t.Fatalf("compile: expected a blocking error for a non-object raw payload, got nil (input=%v)", input)
+	}
+	if input != nil {
+		t.Errorf("compile: expected nil presentation input on rejection, got %v", input)
+	}
+	if result == nil {
+		t.Fatal("compile: expected a result envelope carrying diagnostics, got nil")
+	} else if _, ok := findAt(result.Diagnostics, diagnostics.CodeSemanticRequired, "slides[1].slide"); !ok {
+		t.Errorf("compile: envelope diagnostics missing SEMANTIC_REQUIRED at slides[1].slide, got %v", result.Diagnostics)
+	}
+	if strings.Contains(err.Error(), "deckinput.SlideInput") {
+		t.Errorf("compile error leaks internal type name outside the envelope: %v", err)
+	}
+}
 
 // everyKindSpec is a deck exercising every registered slide kind with a valid,
 // non-degrading payload, so each first-class visual kind compiles to the named
