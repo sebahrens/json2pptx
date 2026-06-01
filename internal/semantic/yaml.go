@@ -14,12 +14,13 @@ import (
 // single chart definition, while still guarding against runaway input.
 const maxSpecSize = 1 << 20 // 1 MiB
 
-// rawDeck is the lenient decode target. Slides are decoded as generic maps so
-// that an unknown or malformed slide kind surfaces as a path-scoped semantic
-// diagnostic rather than an opaque decoder error.
+// rawDeck is the lenient decode target. Slides are decoded as generic values
+// (not maps) so that a slide element which is not an object — as well as an
+// unknown or malformed slide kind — surfaces as a path-scoped semantic
+// diagnostic rather than an opaque decoder error that leaks internal Go types.
 type rawDeck struct {
-	Meta   DeckMeta         `json:"meta" yaml:"meta"`
-	Slides []map[string]any `json:"slides" yaml:"slides"`
+	Meta   DeckMeta `json:"meta" yaml:"meta"`
+	Slides []any    `json:"slides" yaml:"slides"`
 }
 
 // Parse decodes a semantic deck document, dispatching on the filename
@@ -192,8 +193,18 @@ func buildDeckSpec(raw rawDeck, top map[string]any) (*DeckSpec, Diagnostics) {
 	}
 
 	spec.Slides = make([]SlideSpec, 0, len(raw.Slides))
-	for i, m := range raw.Slides {
+	for i, elem := range raw.Slides {
 		path := fmt.Sprintf("slides[%d]", i)
+		m, ok := elem.(map[string]any)
+		if !ok {
+			// A non-object slide element (string, number, array, null) is not a
+			// usable slide. Report it path-scoped and keep validating the rest so
+			// the agent sees every problem at once, instead of aborting the whole
+			// decode with an opaque type error.
+			ds.add(path, CodeInvalidSlide,
+				fmt.Sprintf("slide must be an object, got %s", jsonShapeName(elem)))
+			continue
+		}
 		slide := buildSlideSpec(path, m, &ds)
 		spec.Slides = append(spec.Slides, slide)
 	}

@@ -421,6 +421,55 @@ func TestParseStringSlidesIsInvalidSlides(t *testing.T) {
 	}
 }
 
+func TestParseNonObjectSlideElementIsInvalidSlide(t *testing.T) {
+	// A slide-list element that is not an object must fail fast with a
+	// path-scoped diagnostic naming the bad index, not an opaque decoder error
+	// that leaks the rawDeck struct field type.
+	for _, tc := range []struct {
+		name      string
+		fn        func([]byte) (*DeckSpec, Diagnostics)
+		src       string
+		wantShape string
+	}{
+		{"json string", ParseJSON, `{"meta":{"title":"X"},"slides":["not a slide"]}`, "a string"},
+		{"json number", ParseJSON, `{"meta":{"title":"X"},"slides":[42]}`, "a number"},
+		{"json array", ParseJSON, `{"meta":{"title":"X"},"slides":[[]]}`, "an array"},
+		{"json null", ParseJSON, `{"meta":{"title":"X"},"slides":[null]}`, "null"},
+		{"yaml string", ParseYAML, "meta:\n  title: X\nslides:\n  - not a slide\n", "a string"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ds := tc.fn([]byte(tc.src))
+			if !hasCodeAtPath(ds, CodeInvalidSlide, "slides[0]") {
+				t.Fatalf("expected %s at slides[0], got %v", CodeInvalidSlide, ds)
+			}
+			if !ds.HasErrors() {
+				t.Fatalf("expected a blocking error, got %v", ds)
+			}
+			if want := "got " + tc.wantShape; !strings.Contains(ds[0].Message, want) {
+				t.Errorf("message = %q, want it to contain %q", ds[0].Message, want)
+			}
+			noLeakedInternals(t, ds)
+		})
+	}
+}
+
+func TestParseNonObjectSlideStillValidatesOthers(t *testing.T) {
+	// One bad element must not abort the whole decode: the valid slide after it
+	// is still converted, and the bad one is reported at its own index.
+	src := `{"meta":{"title":"X"},"slides":["bad",{"kind":"title","title":"Hi"}]}`
+	spec, ds := ParseJSON([]byte(src))
+	if !hasCodeAtPath(ds, CodeInvalidSlide, "slides[0]") {
+		t.Fatalf("expected %s at slides[0], got %v", CodeInvalidSlide, ds)
+	}
+	if spec == nil || len(spec.Slides) != 1 {
+		t.Fatalf("expected the one valid slide to survive, got %+v", spec)
+	}
+	if spec.Slides[0].Kind != KindTitle {
+		t.Errorf("surviving slide kind = %q, want %q", spec.Slides[0].Kind, KindTitle)
+	}
+	noLeakedInternals(t, ds)
+}
+
 func TestParseScalarRootIsInvalidRoot(t *testing.T) {
 	// A bare scalar document is not a usable deck spec root.
 	_, ds := ParseJSON([]byte(`"just a string"`))
