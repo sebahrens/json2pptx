@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/templates"
@@ -25,13 +26,28 @@ const (
 	userTemplatesDirLegacy = ".md2pptx/templates"
 )
 
+// localAppDataTemplatesDir returns the Windows-conventional templates directory
+// (%LOCALAPPDATA%\json2pptx\templates). It returns "" when not running on Windows
+// or when LOCALAPPDATA is unset.
+func localAppDataTemplatesDir() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData == "" {
+		return ""
+	}
+	return filepath.Join(localAppData, "json2pptx", "templates")
+}
+
 // resolveTemplatesDir finds the best templates directory based on priority.
 // Search order:
 //  1. flagValue (explicit --templates-dir flag, if non-empty and not the default)
 //  2. $JSON2PPTX_TEMPLATES_DIR environment variable (falls back to $MD2PPTX_TEMPLATES_DIR)
-//  3. ~/.json2pptx/templates/ (falls back to ~/.md2pptx/templates/)
-//  4. ./templates/ (current working directory)
-//  5. Embedded templates (lowest priority, always available)
+//  3. %LOCALAPPDATA%\json2pptx\templates\ (Windows only, preferred over the home dotfile)
+//  4. ~/.json2pptx/templates/ (falls back to ~/.md2pptx/templates/)
+//  5. ./templates/ (current working directory)
+//  6. Embedded templates (lowest priority, always available)
 //
 // Returns the resolved path and whether it's using embedded templates.
 // When using embedded templates, the returned path is empty.
@@ -59,7 +75,13 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 		}
 	}
 
-	// 3. User home directory (new name first, then legacy fallback)
+	// 3. Windows %LOCALAPPDATA%\json2pptx\templates (preferred over the home dotfile on Windows)
+	if winDir := localAppDataTemplatesDir(); winDir != "" && dirExists(winDir) {
+		slog.Debug("templates dir: using LOCALAPPDATA", "path", winDir)
+		return winDir, false
+	}
+
+	// 4. User home directory (new name first, then legacy fallback)
 	if home, err := os.UserHomeDir(); err == nil {
 		for _, subdir := range []string{userTemplatesDir, userTemplatesDirLegacy} {
 			homeDir := filepath.Join(home, subdir)
@@ -70,7 +92,7 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 		}
 	}
 
-	// 4. Current working directory
+	// 5. Current working directory
 	if dirExists("./templates") {
 		abs, err := filepath.Abs("./templates")
 		if err == nil {
@@ -80,7 +102,7 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 		return "./templates", false
 	}
 
-	// 5. Embedded templates (always available)
+	// 6. Embedded templates (always available)
 	slog.Debug("templates dir: using embedded templates")
 	return "", true
 }
@@ -113,13 +135,18 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(),
 		}
 	}
 
-	// 3. User home directory (new name first, then legacy)
+	// 3. Windows %LOCALAPPDATA%\json2pptx\templates (preferred over the home dotfile on Windows)
+	if winDir := localAppDataTemplatesDir(); winDir != "" {
+		candidates = append(candidates, winDir)
+	}
+
+	// 4. User home directory (new name first, then legacy)
 	if home, err := os.UserHomeDir(); err == nil {
 		candidates = append(candidates, filepath.Join(home, userTemplatesDir))
 		candidates = append(candidates, filepath.Join(home, userTemplatesDirLegacy))
 	}
 
-	// 4. Current directory
+	// 5. Current directory
 	candidates = append(candidates, "./templates")
 
 	noop := func() {}

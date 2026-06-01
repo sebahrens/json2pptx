@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -118,6 +119,47 @@ func TestResolveTemplatesDir_FallsBackToEmbedded(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("expected empty path for embedded, got %q", got)
+	}
+}
+
+func TestLocalAppDataTemplatesDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		base := `C:\Users\test\AppData\Local`
+		t.Setenv("LOCALAPPDATA", base)
+		got := localAppDataTemplatesDir()
+		want := filepath.Join(base, "json2pptx", "templates")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+		t.Setenv("LOCALAPPDATA", "")
+		if got := localAppDataTemplatesDir(); got != "" {
+			t.Errorf("expected empty path when LOCALAPPDATA unset, got %q", got)
+		}
+		return
+	}
+	// On non-Windows the dotfile convention applies, so the helper is a no-op.
+	if got := localAppDataTemplatesDir(); got != "" {
+		t.Errorf("expected empty path on %s, got %q", runtime.GOOS, got)
+	}
+}
+
+func TestResolveTemplatesDir_LocalAppDataPreferredOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("LOCALAPPDATA resolution is Windows-only")
+	}
+	withClearedTemplateEnv(t)
+	localAppData := t.TempDir()
+	winDir := filepath.Join(localAppData, "json2pptx", "templates")
+	if err := os.MkdirAll(winDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("LOCALAPPDATA", localAppData)
+	got, embedded := resolveTemplatesDir("")
+	if embedded {
+		t.Error("expected non-embedded resolution from LOCALAPPDATA")
+	}
+	if got != winDir {
+		t.Errorf("got %q, want %q", got, winDir)
 	}
 }
 

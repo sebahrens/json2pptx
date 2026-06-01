@@ -33,7 +33,7 @@ Options:
 
 Installs:
   <Prefix>\bin\json2pptx.exe                CLI binary (also serves as MCP server)
-  ~\.json2pptx\templates\                   PPTX template files
+  %LOCALAPPDATA%\json2pptx\templates\       PPTX template files
   ~\.claude\skills\*\                       Claude Code skill files (3 skills)
   ~\.claude\mcp.json                        MCP server configuration
 "@
@@ -141,7 +141,7 @@ if (-not $SkipTemplates) {
     Write-Host ""
     Write-Host "==> Installing templates..."
     $TemplatesSrc = Join-Path $ScriptDir "templates"
-    $TemplatesDst = Join-Path $env:USERPROFILE ".json2pptx\templates"
+    $TemplatesDst = Join-Path $env:LOCALAPPDATA "json2pptx\templates"
     New-Item -ItemType Directory -Force -Path $TemplatesDst | Out-Null
 
     $PptxFiles = Get-ChildItem (Join-Path $TemplatesSrc "*.pptx") -ErrorAction SilentlyContinue
@@ -190,7 +190,7 @@ if (-not $SkipMcp) {
     $McpFile = Join-Path $env:USERPROFILE ".claude\mcp.json"
     # Use forward slashes in JSON paths for cross-platform compatibility
     $BinaryPath = (Join-Path $InstallBinDir "json2pptx.exe") -replace '\\', '/'
-    $TemplatesPath = (Join-Path $env:USERPROFILE ".json2pptx\templates") -replace '\\', '/'
+    $TemplatesPath = (Join-Path $env:LOCALAPPDATA "json2pptx\templates") -replace '\\', '/'
 
     $NewServer = @{
         command = $BinaryPath
@@ -234,7 +234,7 @@ Write-Host "==> Done!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Binaries:  $InstallBinDir\"
 if (-not $SkipTemplates) {
-    Write-Host "  Templates: $env:USERPROFILE\.json2pptx\templates\"
+    Write-Host "  Templates: $env:LOCALAPPDATA\json2pptx\templates\"
 }
 if (-not $SkipSkill) {
     Write-Host "  Skills:    ~\.claude\skills\{template-deck,generate-deck,slide-visual-qa}\"
