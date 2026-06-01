@@ -68,12 +68,52 @@ func semanticSpecBytes(tool string, request mcp.CallToolRequest) ([]byte, string
 	}
 }
 
+// semanticOptionalString reads an optional string-typed MCP argument,
+// distinguishing absence from a present-but-wrong-type value. An absent (or
+// JSON-null) argument returns ("", false, nil) so the caller can apply its
+// default. A value present with any non-string JSON type fails fast with a
+// structured INVALID_PARAMETER result instead of being silently dropped — the
+// covert-leniency bug where {"strict": true} quietly defaulted to warn. A
+// present string (including "") returns (value, true, nil).
+func semanticOptionalString(tool, path string, request mcp.CallToolRequest) (string, bool, *mcp.CallToolResult) {
+	raw, ok := request.GetArguments()[path]
+	if !ok || raw == nil {
+		return "", false, nil
+	}
+	s, ok := raw.(string)
+	if !ok {
+		return "", false, argInvalidValue(tool, "INVALID_PARAMETER", path,
+			fmt.Sprintf("%s must be a string, got %T", path, raw), "string", nil, nil)
+	}
+	return s, true, nil
+}
+
+// semanticOptionalBool reads an optional bool-typed MCP argument, failing fast
+// on a present-but-wrong-type value rather than silently treating it as false.
+// An absent (or JSON-null) argument returns (false, nil).
+func semanticOptionalBool(tool, path string, request mcp.CallToolRequest) (bool, *mcp.CallToolResult) {
+	raw, ok := request.GetArguments()[path]
+	if !ok || raw == nil {
+		return false, nil
+	}
+	b, ok := raw.(bool)
+	if !ok {
+		return false, argInvalidValue(tool, "INVALID_PARAMETER", path,
+			fmt.Sprintf("%s must be a boolean, got %T", path, raw), "boolean", nil, nil)
+	}
+	return b, nil
+}
+
 // semanticStrictArg parses the optional `strict` advisory-rule strictness
-// argument, defaulting to warn. An unrecognized value yields a structured
-// arg-validation error result.
+// argument, defaulting to warn when absent. A present-but-wrong-type value or an
+// unrecognized string yields a structured arg-validation error result rather
+// than silently falling back to warn.
 func semanticStrictArg(tool string, request mcp.CallToolRequest) (semantic.Strictness, *mcp.CallToolResult) {
-	s, err := request.RequireString("strict")
-	if err != nil || s == "" {
+	s, present, errRes := semanticOptionalString(tool, "strict", request)
+	if errRes != nil {
+		return "", errRes
+	}
+	if !present || s == "" {
 		return semantic.StrictnessWarn, nil
 	}
 	strictness, perr := parseStrictness(s)
@@ -166,8 +206,14 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 	if errRes != nil {
 		return errRes, nil
 	}
-	templateName, _ := request.RequireString("template")
-	includeJSON, _ := request.GetArguments()["include_compiled_json"].(bool)
+	templateName, _, errRes := semanticOptionalString("compile_deck_spec", "template", request)
+	if errRes != nil {
+		return errRes, nil
+	}
+	includeJSON, errRes := semanticOptionalBool("compile_deck_spec", "include_compiled_json", request)
+	if errRes != nil {
+		return errRes, nil
+	}
 
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
@@ -280,17 +326,21 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if errRes != nil {
 		return errRes, nil
 	}
-	templateName, _ := request.RequireString("template")
+	templateName, _, errRes := semanticOptionalString("render_deck_spec", "template", request)
+	if errRes != nil {
+		return errRes, nil
+	}
 
 	outputValidation := "strict"
-	if v, _ := request.RequireString("output_validation"); v != "" {
-		switch v {
-		case "off", "warn", "strict":
-			outputValidation = v
-		default:
+	if v, present, errRes := semanticOptionalString("render_deck_spec", "output_validation", request); errRes != nil {
+		return errRes, nil
+	} else if present && v != "" {
+		parsed, perr := parseOutputValidation(v)
+		if perr != nil {
 			return argInvalidValue("render_deck_spec", "INVALID_PARAMETER", "output_validation",
 				fmt.Sprintf("invalid output_validation %q: must be off, warn, or strict", v), "string", "strict", nil), nil
 		}
+		outputValidation = parsed
 	}
 
 	startTime := time.Now()

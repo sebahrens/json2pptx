@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mark3labs/mcp-go/mcp"
+
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
@@ -274,5 +276,89 @@ func TestSemanticMCP_SpecAsObject(t *testing.T) {
 	}
 	if compact.SlideCount != 2 {
 		t.Errorf("slide_count = %d, want 2", compact.SlideCount)
+	}
+}
+
+// TestSemanticMCP_WrongTypedEnumArgs asserts that semantic MCP tools fail fast
+// on optional enum/string/bool arguments supplied with the wrong JSON type
+// instead of silently treating the wrong-typed value as absent and defaulting.
+// A present-but-wrong-type `strict`, `template`, `output_validation`, or
+// `include_compiled_json` must yield a structured INVALID_PARAMETER finding
+// pointing at the offending path — not a quiet warn-mode / non-strict run.
+func TestSemanticMCP_WrongTypedEnumArgs(t *testing.T) {
+	ctx := context.Background()
+	mc := semanticTestConfig(t)
+
+	cases := []struct {
+		name     string
+		handler  func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+		args     map[string]any
+		wantPath string
+	}{
+		{
+			name:     "validate/strict_bool",
+			handler:  handleValidateDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "strict": true},
+			wantPath: "strict",
+		},
+		{
+			name:     "compile/strict_number",
+			handler:  handleCompileDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "strict": 1},
+			wantPath: "strict",
+		},
+		{
+			name:     "compile/template_number",
+			handler:  handleCompileDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "template": 42},
+			wantPath: "template",
+		},
+		{
+			name:     "compile/include_compiled_json_string",
+			handler:  handleCompileDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "include_compiled_json": "true"},
+			wantPath: "include_compiled_json",
+		},
+		{
+			name:     "render/strict_bool",
+			handler:  mc.handleRenderDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "strict": true},
+			wantPath: "strict",
+		},
+		{
+			name:     "render/template_bool",
+			handler:  mc.handleRenderDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "template": true},
+			wantPath: "template",
+		},
+		{
+			name:     "render/output_validation_bool",
+			handler:  mc.handleRenderDeckSpec,
+			args:     map[string]any{"spec": validSemanticSpec, "output_validation": true},
+			wantPath: "output_validation",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := tc.handler(ctx, makeRequest(tc.args))
+			if err != nil {
+				t.Fatalf("handler returned go error: %v", err)
+			}
+			if !res.IsError {
+				t.Fatalf("wrong-typed %s must be a tool error, not a silent default", tc.wantPath)
+			}
+			env := parseMCPError(t, res)
+			if len(env.Diagnostics) == 0 {
+				t.Fatal("expected at least one diagnostic")
+			}
+			d := env.Diagnostics[0]
+			if d.Code != "INVALID_PARAMETER" {
+				t.Errorf("code = %q, want INVALID_PARAMETER", d.Code)
+			}
+			if d.Path != tc.wantPath {
+				t.Errorf("path = %q, want %q", d.Path, tc.wantPath)
+			}
+		})
 	}
 }
