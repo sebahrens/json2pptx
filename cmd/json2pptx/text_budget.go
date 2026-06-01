@@ -125,6 +125,19 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			Row2Label:  "Row two",
 			Row2Phases: row2,
 		}
+	case "numbered-step-strip":
+		// cols = number of steps (3-6), rows is always 1 (chevron ribbon).
+		steps := make([]patterns.NumberedStepStripStep, cols)
+		for i := range steps {
+			steps[i] = patterns.NumberedStepStripStep{
+				Label: "Step",
+				Body:  "Supporting detail text",
+			}
+		}
+		return &patterns.NumberedStepStripValues{
+			Style: "chevron",
+			Steps: steps,
+		}
 	case "before-after":
 		// Grid is always 3 columns × 2 rows; items fill the body cells
 		return &patterns.BeforeAfterValues{

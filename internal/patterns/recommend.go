@@ -309,6 +309,26 @@ var rules = []rule{
 		rationale: "Height-capped process flow for supporting context",
 	},
 
+	// Numbered step strip — ordered steps WITHOUT decision branching, with an
+	// optional per-step detail zone. Routes ordered-steps & ToC away from
+	// process-flow (which implies a flowchart with decision diamonds).
+	{
+		pattern:   "numbered-step-strip",
+		keywords:  []string{"numbered steps", "ordered steps", "step strip", "key steps", "stages", "how it works", "three steps", "four steps", "five steps", "phases without dates", "our approach", "the process in steps"},
+		baseScore: 0.93,
+		rationale: "Ordered numbered steps (3-6) without decision diamonds, with an optional per-step detail zone (chevron / stacked-box / toc styles)",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "numbered-step-strip",
+		keywords:  []string{"table of contents", "toc", "agenda with detail", "annotated agenda", "numbered list with descriptions"},
+		baseScore: 0.82,
+		rationale: "High-polish numbered table-of-contents (toc style) with optional per-item descriptions",
+		itemMin:   3,
+		itemMax:   6,
+	},
+
 	// Process grid 2-row — double-track processes with two parallel rows sharing N columns
 	{
 		pattern:   "process-grid-2row",

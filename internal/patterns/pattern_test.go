@@ -182,6 +182,7 @@ func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 		"value-chain":          true,
 		"horizontal-bar-with-callouts": true,
 		"driver-tree":          true,
+		"numbered-step-strip":  true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)
