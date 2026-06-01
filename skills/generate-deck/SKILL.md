@@ -119,6 +119,13 @@ slides:
   - {kind: decision, title: "Recommendation", options: [...], recommendation: "..."}
 ```
 
+**Worked spec examples + schema.** Complete runnable DeckSpecs live in
+[`../../examples/semantic/`](../../examples/semantic/) (`qbr.yaml`, `sales_pitch.yaml`, plus
+`invalid.yaml` showing the findings a malformed spec returns). Run `json2pptx semantic schema` for
+the authoritative DeckSpec JSON Schema (the same enum `list_slide_kinds` / `list_deck_archetypes`
+expose), and see [`../../docs/SEMANTIC_COMPILER.md`](../../docs/SEMANTIC_COMPILER.md) for the
+compiler's normalize → validate → compile pipeline.
+
 **Raw authoring (escape hatch).** When you need raw `PresentationInput` directly — a feature
 outside the semantic schema, or a targeted raw repair — five fillable JSON skeletons live in
 [`examples/skeletons/`](examples/skeletons/README.md): pick the one matching your archetype, copy
