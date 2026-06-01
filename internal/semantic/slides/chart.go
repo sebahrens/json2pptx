@@ -25,6 +25,17 @@ type chartInsightsValues struct {
 func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	insights, insightsField := chartInsights(in.Body)
 
+	// A chart_insight may carry a usable chart and a takeaway but no explicit
+	// insight bullets. The content fallback below cannot render a chart, so
+	// without this the chart silently disappears even though validation passed.
+	// Treat the takeaway as the single insight so the chart-insights-split
+	// pattern still emits the chart — mirroring the "insight" alias, where the
+	// same line already serves as both the lone insight bullet and the takeaway.
+	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil {
+		insights = []string{in.Takeaway}
+		insightsField = "takeaway"
+	}
+
 	if len(insights) == 0 || len(insights) > 6 {
 		return compileChartFallback(in, insights, insightsField)
 	}

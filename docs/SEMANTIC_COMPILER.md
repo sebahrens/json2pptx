@@ -78,7 +78,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
 | `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label}]` | 2–6 KPIs |
-| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]` | 1–6 insights |
+| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]` | 1–6 insights (a usable chart with no `insights`/`insight` falls back to the `takeaway` as the single insight, so the chart is never silently dropped) |
 | `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]` | exactly 2 columns with equal, non-empty item counts (≤10 rows) |
 | `process` | `process-flow` | `steps: [{title, description?, type?}]` | 3–8 steps with labels |
 | `roadmap` | `phase-roadmap` | `phases: [{name, date_label?, description?, active?, milestone?}]` | 3–6 named phases |

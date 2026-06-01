@@ -350,6 +350,40 @@ func TestCompileChartInsight_PatternNoChart(t *testing.T) {
 	}
 }
 
+func TestCompileChartInsight_TakeawayPreservesChart(t *testing.T) {
+	// A usable chart + takeaway but no explicit insights must still emit the
+	// chart-insights-split pattern with the chart — the takeaway becomes the
+	// single insight. Regression for the silent chart drop (go-slide-creator-q7hf).
+	in := Input{
+		Title:    "Trend",
+		Takeaway: "Revenue is accelerating",
+		Body: map[string]any{
+			"takeaway": "Revenue is accelerating",
+			"chart": map[string]any{
+				"type": "bar",
+				"data": map[string]any{"series": []any{1, 2, 3}},
+			},
+		},
+	}
+	slide, _, err := CompileChartInsight(in)
+	if err != nil {
+		t.Fatalf("CompileChartInsight: %v", err)
+	}
+	if slide.Pattern == nil || slide.Pattern.Name != "chart-insights-split" {
+		t.Fatalf("Pattern = %+v, want chart-insights-split (chart must not be dropped)", slide.Pattern)
+	}
+	var vals chartInsightsValues
+	if err := json.Unmarshal(slide.Pattern.Values, &vals); err != nil {
+		t.Fatalf("unmarshal values: %v", err)
+	}
+	if vals.Chart == nil || vals.Chart.Type != "bar" {
+		t.Errorf("chart not embedded: %+v", vals.Chart)
+	}
+	if len(vals.Insights) != 1 || vals.Insights[0] != "Revenue is accelerating" {
+		t.Errorf("insights = %v, want [takeaway]", vals.Insights)
+	}
+}
+
 func TestCompileChartInsight_Fallback(t *testing.T) {
 	// No insights at all -> fallback content slide.
 	in := Input{Title: "Empty", Body: map[string]any{}}
