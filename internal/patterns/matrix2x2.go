@@ -284,7 +284,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 	// Layout: 3 columns [y-axis label, left quadrants, right quadrants]
 	// Row 0: [empty corner, x-axis label (col_span=2)]
-	// Row 1: [y-axis label (row_span=2, rotation=270), TL quadrant, TR quadrant]
+	// Row 1: [y-axis label (row_span=2, vertical text), TL quadrant, TR quadrant]
 	// Row 2: [BL quadrant, BR quadrant]  (y-axis spans from row 1)
 
 	// X-axis label cell
@@ -293,7 +293,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     buildMatrix2x2LabelContent(vals.XAxisLabel, labelSize, "lt1", "ctr"),
+			Text:     buildMatrix2x2LabelContent(vals.XAxisLabel, labelSize, "lt1", "ctr", ""),
 		},
 	}
 
@@ -305,14 +305,18 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		},
 	}
 
-	// Y-axis label cell (row_span=2, rotated 270° for vertical reading)
+	// Y-axis label cell (row_span=2). The colored band stays an UNROTATED
+	// narrow-tall rect; only the TEXT is rotated to read bottom-to-top via the
+	// bodyPr vert="vert270" attribute. Rotating the whole cell (Rotation:270)
+	// flips its width/height about its center, making the band render wide-short
+	// and intrude into the quadrants (J2P-MATRIX-005); vert270 avoids that
+	// because the fill geometry is never transformed.
 	yAxisCell := &jsonschema.GridCellInput{
 		RowSpan: 2,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     buildMatrix2x2LabelContent(vals.YAxisLabel, labelSize, "lt1", "ctr"),
-			Rotation: 270,
+			Text:     buildMatrix2x2LabelContent(vals.YAxisLabel, labelSize, "lt1", "ctr", "vert270"),
 		},
 	}
 
@@ -369,7 +373,10 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 }
 
 // buildMatrix2x2LabelContent creates a JSON text object for an axis label.
-func buildMatrix2x2LabelContent(content string, size float64, color, align string) json.RawMessage {
+// When vert is non-empty (e.g. "vert270"), the text is rendered with that
+// OOXML text-direction so a label can read vertically inside an unrotated band
+// without rotating the band's fill geometry.
+func buildMatrix2x2LabelContent(content string, size float64, color, align, vert string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -381,12 +388,14 @@ func buildMatrix2x2LabelContent(content string, size float64, color, align strin
 		Paragraphs    []paragraph `json:"paragraphs"`
 		Align         string      `json:"align"`
 		VerticalAlign string      `json:"vertical_align"`
+		Vert          string      `json:"vert,omitempty"`
 	}{
 		Paragraphs: []paragraph{
 			{Content: content, Size: size, Bold: true, Color: color, Align: align},
 		},
 		Align:         align,
 		VerticalAlign: "ctr",
+		Vert:          vert,
 	}
 	data, _ := json.Marshal(textObj)
 	return data

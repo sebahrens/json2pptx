@@ -258,9 +258,35 @@ func TestMatrix2x2(t *testing.T) {
 			t.Errorf("x-axis fill = %q, want %q", xFill, "accent1")
 		}
 
-		// Y-axis label should have rotation=270
-		if grid.Rows[1].Cells[0].Shape.Rotation != 270 {
-			t.Errorf("y-axis rotation = %v, want 270", grid.Rows[1].Cells[0].Shape.Rotation)
+		// Y-axis band must NOT rotate the whole cell: rotating a narrow-tall
+		// rect about its center flips its width/height so the colored band
+		// renders wide-short and intrudes into the quadrants (J2P-MATRIX-005).
+		// The fill geometry stays unrotated; only the text reads vertically.
+		yShape := grid.Rows[1].Cells[0].Shape
+		if yShape.Rotation != 0 {
+			t.Errorf("y-axis cell rotation = %v, want 0 (band must not rotate; J2P-MATRIX-005)", yShape.Rotation)
+		}
+		// Y-axis label text must carry vert270 so it reads bottom-to-top inside
+		// the unrotated band.
+		var yText struct {
+			Vert string `json:"vert"`
+		}
+		if err := json.Unmarshal(yShape.Text, &yText); err != nil {
+			t.Fatalf("y-axis text unmarshal: %v", err)
+		}
+		if yText.Vert != "vert270" {
+			t.Errorf("y-axis text vert = %q, want %q", yText.Vert, "vert270")
+		}
+
+		// The x-axis label must stay horizontal (no vert direction).
+		var xText struct {
+			Vert string `json:"vert"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &xText); err != nil {
+			t.Fatalf("x-axis text unmarshal: %v", err)
+		}
+		if xText.Vert != "" {
+			t.Errorf("x-axis text vert = %q, want empty (horizontal)", xText.Vert)
 		}
 
 		// Y-axis label should have row_span=2

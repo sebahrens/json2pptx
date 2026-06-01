@@ -55,9 +55,9 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
-            },
-            "rotation": 270
+              "vertical_align": "ctr",
+              "vert": "vert270"
+            }
           }
         },
         {

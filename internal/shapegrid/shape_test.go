@@ -155,6 +155,38 @@ func TestResolveTextInput_Multiline(t *testing.T) {
 	}
 }
 
+// TestResolveTextInput_Vert verifies the optional "vert" text-direction field
+// threads onto the resulting TextBody (both the content and paragraphs forms)
+// and is emitted as a bodyPr vert attribute. This lets a label read vertically
+// inside an unrotated shape without flipping the shape's fill geometry
+// (see matrix-2x2 y-axis band, J2P-MATRIX-005).
+func TestResolveTextInput_Vert(t *testing.T) {
+	for _, raw := range []json.RawMessage{
+		json.RawMessage(`{"content":"Y Axis","vert":"vert270"}`),
+		json.RawMessage(`{"paragraphs":[{"content":"Y Axis","size":14}],"vert":"vert270"}`),
+	} {
+		tb, err := ResolveTextInput(raw)
+		if err != nil {
+			t.Fatalf("ResolveTextInput(%s): %v", raw, err)
+		}
+		if tb.Vert != "vert270" {
+			t.Errorf("ResolveTextInput(%s): Vert = %q, want %q", raw, tb.Vert, "vert270")
+		}
+		spec := &ShapeSpec{Geometry: "rect", Text: raw}
+		xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000})
+		if err != nil {
+			t.Fatalf("GenerateShapeXML(%s): %v", raw, err)
+		}
+		if !strings.Contains(string(xml), `vert="vert270"`) {
+			t.Errorf("GenerateShapeXML(%s): expected bodyPr vert=\"vert270\" in output", raw)
+		}
+		// The shape itself must not be rotated.
+		if strings.Contains(string(xml), `rot=`) {
+			t.Errorf("GenerateShapeXML(%s): shape must not carry a rot attribute when only text is vertical", raw)
+		}
+	}
+}
+
 func TestResolveTextInput_Object(t *testing.T) {
 	raw := json.RawMessage(`{"content":"Bold Title","size":16,"bold":true,"align":"ctr","color":"#FFFFFF"}`)
 	tb, err := ResolveTextInput(raw)

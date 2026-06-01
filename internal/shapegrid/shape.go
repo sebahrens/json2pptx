@@ -311,6 +311,7 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 		Italic        bool            `json:"italic,omitempty"`
 		Align         string          `json:"align,omitempty"`
 		VerticalAlign string          `json:"vertical_align,omitempty"`
+		Vert          string          `json:"vert,omitempty"`
 		Color         string          `json:"color,omitempty"`
 		Font          string          `json:"font,omitempty"`
 		InsetLeft     float64         `json:"inset_left,omitempty"`
@@ -322,14 +323,24 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 		return nil, fmt.Errorf("text must be a string, object with \"content\", or object with \"paragraphs\" array: %w", err)
 	}
 
+	var tb *pptx.TextBody
 	// Paragraphs array form: individually styled paragraphs
 	if len(obj.Paragraphs) > 0 {
-		return buildParagraphsTextBody(obj.Paragraphs, obj.Align, obj.VerticalAlign, obj.Font,
-			obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom), nil
+		tb = buildParagraphsTextBody(obj.Paragraphs, obj.Align, obj.VerticalAlign, obj.Font,
+			obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom)
+	} else {
+		tb = buildTextBody(obj.Content, obj.Size, obj.Bold, obj.Italic, obj.Align, obj.VerticalAlign, obj.Color, obj.Font,
+			obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom)
 	}
 
-	return buildTextBody(obj.Content, obj.Size, obj.Bold, obj.Italic, obj.Align, obj.VerticalAlign, obj.Color, obj.Font,
-		obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom), nil
+	// Optional OOXML text-direction (e.g. "vert270") rotates only the text
+	// within an otherwise-unrotated shape, so a vertical axis label can sit in a
+	// colored band without flipping the band's fill geometry.
+	if obj.Vert != "" {
+		tb.Vert = obj.Vert
+	}
+
+	return tb, nil
 }
 
 // normalizeVerticalAlign maps verbose anchor names ("top","center","middle",
