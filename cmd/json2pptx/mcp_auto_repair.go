@@ -520,6 +520,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		Theme:        template.ParseTheme(reader),
 	}
 	template.SynthesizeIfNeeded(reader, analysis)
+	layouts = analysis.Layouts
 	var syntheticFiles map[string][]byte
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles

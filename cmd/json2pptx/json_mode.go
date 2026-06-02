@@ -743,6 +743,12 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	var warnings []string
 	var slideFitFindings []patterns.FitFinding
 
+	if slide.LayoutID != "" && len(layouts) > 0 {
+		if resolved, ok := layout.ResolveCanonicalLayoutID(slide.LayoutID, layouts); ok {
+			slide.LayoutID = resolved
+		}
+	}
+
 	if slide.LayoutID == "" {
 		if len(layouts) == 0 {
 			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: layout_id is required (no template layouts available for auto-selection)", i+1)

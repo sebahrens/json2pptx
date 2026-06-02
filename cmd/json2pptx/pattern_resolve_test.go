@@ -44,6 +44,82 @@ func TestExpandPattern_KPI3Up(t *testing.T) {
 	}
 }
 
+func TestExpandPattern_MaxHeightPctMarksContentRelativeBounds(t *testing.T) {
+	input := &PatternInput{
+		Name:         "process-flow",
+		MaxHeightPct: 35,
+		Values: json.RawMessage(`{
+			"steps": [
+				{"label": "Plan"},
+				{"label": "Build"},
+				{"label": "Launch"}
+			]
+		}`),
+	}
+
+	grid, _, err := expandPattern(input, patterns.ExpandContext{}, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern failed: %v", err)
+	}
+	if grid.Bounds == nil {
+		t.Fatal("expected max_height_pct to create bounds")
+	}
+	if !grid.BoundsRelativeToContentArea {
+		t.Fatal("max_height_pct bounds must be resolved relative to the content area")
+	}
+	if got := grid.Bounds.Height; got != 35 {
+		t.Fatalf("bounds height = %v, want 35", got)
+	}
+}
+
+func TestExpandPattern_PatternAuthoredBoundsAreContentRelative(t *testing.T) {
+	input := &PatternInput{
+		Name: "before-after-compact",
+		Values: json.RawMessage(`{
+			"before": {"header": "Before", "items": ["Slow"]},
+			"after": {"header": "After", "items": ["Fast"]}
+		}`),
+	}
+
+	grid, _, err := expandPattern(input, patterns.ExpandContext{}, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern failed: %v", err)
+	}
+	if grid.Bounds == nil {
+		t.Fatal("expected compact pattern to create bounds")
+	}
+	if !grid.BoundsRelativeToContentArea {
+		t.Fatal("pattern-authored compact bounds must be resolved relative to the content area")
+	}
+	if got := grid.Bounds.Height; got != 60 {
+		t.Fatalf("bounds height = %v, want 60", got)
+	}
+}
+
+func TestExpandPattern_ExplicitBoundsStaySlideRelative(t *testing.T) {
+	input := &PatternInput{
+		Name: "before-after-compact",
+		Bounds: &GridBoundsInput{
+			X:      0,
+			Y:      0,
+			Width:  100,
+			Height: 60,
+		},
+		Values: json.RawMessage(`{
+			"before": {"header": "Before", "items": ["Slow"]},
+			"after": {"header": "After", "items": ["Fast"]}
+		}`),
+	}
+
+	grid, _, err := expandPattern(input, patterns.ExpandContext{}, patterns.Default())
+	if err != nil {
+		t.Fatalf("expandPattern failed: %v", err)
+	}
+	if grid.BoundsRelativeToContentArea {
+		t.Fatal("caller-supplied explicit bounds must stay slide-relative")
+	}
+}
+
 func TestExpandPattern_UnknownPattern(t *testing.T) {
 	input := &PatternInput{
 		Name:   "nonexistent-pattern",

@@ -682,6 +682,8 @@ When building a slide and unsure which visual approach to use, follow this decis
 
 `content` is body-capable: the engine populates a body placeholder with your content item. The blank layouts are shape-grid-oriented: there is no body placeholder, so all content must come from `shape_grid` or `pattern`. `blank-title` keeps a title slot; `blank-canvas` reserves nothing. Setting `slide_type: "blank"` (or omitting `layout_id` when `shape_grid`/`pattern` is present) triggers auto-selection of a blank layout with title and computed grid bounds — equivalent to `blank-title`.
 
+**Canonical `layout_id` is resolved against the active template.** An explicit canonical name (`title`, `content`, `blank`, `blank-title`, `blank-canvas`, `section`, `closing`, `two-column`, `image-left`, …) is resolved by tag-based matching to whichever concrete `slideLayoutN` the chosen template provides — you do **not** pass raw `slideLayoutN` IDs, and the same canonical name stays portable across templates (e.g. `blank` → the template's Blank + Title, falling back to its empty Blank). A concrete `slideLayoutN` ID, a generated layout ID (`content-2-50-50`, `grid-2x2`), or a known alias (`2-col`, …) is passed through unchanged. If a name resolves to nothing, it is left as-is and falls through to the normal layout lookup / auto-selection path.
+
 ---
 
 ## Workflow: Plan → Vary → Render → Repair

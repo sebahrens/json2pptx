@@ -818,12 +818,12 @@ func TestIsLikelySubtitle(t *testing.T) {
 
 func TestInferSlideType(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		slide SlideInput
 		want  types.SlideType
 	}{
 		{
-			name: "explicit slide_type overrides inference",
+			name:  "explicit slide_type overrides inference",
 			slide: SlideInput{SlideType: "section"},
 			want:  types.SlideTypeSection,
 		},
@@ -896,7 +896,7 @@ func TestInferSlideType(t *testing.T) {
 			want: types.SlideTypeContent,
 		},
 		{
-			name: "empty slide infers title",
+			name:  "empty slide infers title",
 			slide: SlideInput{Content: []ContentInput{}},
 			want:  types.SlideTypeTitle,
 		},
@@ -1299,6 +1299,14 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 			Capacity: types.CapacityEstimate{MaxBullets: 6},
 			Tags:     []string{"content"},
 		},
+		{
+			ID:   "slideLayout9",
+			Name: "Blank + Title",
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "title", Type: types.PlaceholderTitle, Index: 1},
+			},
+			Tags: []string{"blank-title", "virtual-base"},
+		},
 	}
 
 	t.Run("auto-selects layout when layout_id is empty", func(t *testing.T) {
@@ -1337,6 +1345,24 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 		}
 		if specs[0].LayoutID != "slideLayout1" {
 			t.Errorf("LayoutID = %q, want 'slideLayout1'", specs[0].LayoutID)
+		}
+	})
+
+	t.Run("canonical explicit layout_id is resolved", func(t *testing.T) {
+		slides := []SlideInput{
+			{
+				LayoutID: "blank",
+				Content: []ContentInput{
+					{PlaceholderID: "title", Type: "text", TextValue: strPtr("Hello")},
+				},
+			},
+		}
+		specs, _, _, err := convertPresentationSlides(slides, layouts, 0, 0, nil, nil, "", nil, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if specs[0].LayoutID != "slideLayout9" {
+			t.Errorf("LayoutID = %q, want 'slideLayout9'", specs[0].LayoutID)
 		}
 	})
 
@@ -2059,7 +2085,7 @@ func TestValidateSlidesChartDiagnostics(t *testing.T) {
 func TestBuildSlideResolutions_Basic(t *testing.T) {
 	inputSlides := []SlideInput{
 		{LayoutID: "slideLayout1"},  // explicit
-		{LayoutID: ""},             // auto-selected -> resolved to slideLayout2
+		{LayoutID: ""},              // auto-selected -> resolved to slideLayout2
 		{LayoutID: "slideLayout99"}, // synthesized
 	}
 

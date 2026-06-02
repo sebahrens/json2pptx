@@ -629,6 +629,90 @@ func TestResolveVirtualLayout_NoSuitableLayout(t *testing.T) {
 	}
 }
 
+func TestResolveGridBounds_MaxHeightPctUsesContentArea(t *testing.T) {
+	zone := shapegrid.ContentZone{
+		TitleBottom: 4_500_000,
+		FooterTop:   6_500_000,
+		LeftMargin:  600_000,
+		RightEdge:   11_000_000,
+		SlideWidth:  shapegrid.DefaultSlideWidthEMU,
+		SlideHeight: shapegrid.DefaultSlideHeightEMU,
+	}
+	input := &ShapeGridInput{
+		Bounds: &GridBoundsInput{
+			X:      0,
+			Y:      0,
+			Width:  100,
+			Height: 60,
+		},
+		BoundsRelativeToContentArea: true,
+	}
+
+	got := resolveGridBounds(input, nil, &zone, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
+	contentBounds := shapegrid.DefaultBoundsFromZone(zone, gridChromeGapPt)
+	want := pptx.RectEmu{
+		X:  contentBounds.X,
+		Y:  contentBounds.Y,
+		CX: contentBounds.CX,
+		CY: shapegrid.PctToEMU(60, contentBounds.CY),
+	}
+
+	if got != want {
+		t.Fatalf("content-relative bounds = %+v, want %+v", got, want)
+	}
+	if got.CY <= 0 {
+		t.Fatal("max_height_pct should resolve to a positive content-area height")
+	}
+}
+
+func TestResolveGridBounds_ExplicitBoundsStaySlideRelative(t *testing.T) {
+	zone := shapegrid.ContentZone{
+		TitleBottom: 4_500_000,
+		FooterTop:   6_500_000,
+		LeftMargin:  600_000,
+		RightEdge:   11_000_000,
+		SlideWidth:  shapegrid.DefaultSlideWidthEMU,
+		SlideHeight: shapegrid.DefaultSlideHeightEMU,
+	}
+	input := &ShapeGridInput{
+		Bounds: &GridBoundsInput{
+			X:      0,
+			Y:      0,
+			Width:  100,
+			Height: 60,
+		},
+	}
+
+	got := resolveGridBounds(input, nil, &zone, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
+	if got.CY != 0 {
+		t.Fatalf("explicit slide-relative bounds should clamp to zero in this geometry, got height %d", got.CY)
+	}
+}
+
+func TestResolveGridBounds_ContentRelativeUsesOverrideWhenNoZone(t *testing.T) {
+	override := pptx.RectEmu{X: 1000, Y: 2000, CX: 8000, CY: 5000}
+	input := &ShapeGridInput{
+		Bounds: &GridBoundsInput{
+			X:      10,
+			Y:      20,
+			Width:  50,
+			Height: 40,
+		},
+		BoundsRelativeToContentArea: true,
+	}
+
+	got := resolveGridBounds(input, &override, nil, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU)
+	want := pptx.RectEmu{
+		X:  override.X + shapegrid.PctToEMU(10, override.CX),
+		Y:  override.Y + shapegrid.PctToEMU(20, override.CY),
+		CX: shapegrid.PctToEMU(50, override.CX),
+		CY: shapegrid.PctToEMU(40, override.CY),
+	}
+	if got != want {
+		t.Fatalf("override-relative bounds = %+v, want %+v", got, want)
+	}
+}
+
 func TestFindLayoutByID(t *testing.T) {
 	layouts := []types.LayoutMetadata{
 		{ID: "a", Name: "Alpha"},

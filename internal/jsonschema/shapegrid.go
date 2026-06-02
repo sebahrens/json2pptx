@@ -16,12 +16,13 @@ import (
 
 // ShapeGridInput defines a grid of preset geometry shapes placed on a slide.
 type ShapeGridInput struct {
-	Bounds     *GridBoundsInput `json:"bounds,omitempty"`
-	Gap        float64          `json:"gap,omitempty"`         // Gap in points (default 8pt). Applies to both col and row gaps.
-	ColGap     float64          `json:"col_gap,omitempty"`     // Column gap in points (overrides gap)
-	RowGap     float64          `json:"row_gap,omitempty"`     // Row gap in points (overrides gap)
-	Columns    json.RawMessage  `json:"columns,omitempty"`     // number | number[]
-	Rows       []GridRowInput   `json:"rows"`
+	Bounds                      *GridBoundsInput `json:"bounds,omitempty"`
+	BoundsRelativeToContentArea bool             `json:"-"`
+	Gap                         float64          `json:"gap,omitempty"`     // Gap in points (default 8pt). Applies to both col and row gaps.
+	ColGap                      float64          `json:"col_gap,omitempty"` // Column gap in points (overrides gap)
+	RowGap                      float64          `json:"row_gap,omitempty"` // Row gap in points (overrides gap)
+	Columns                     json.RawMessage  `json:"columns,omitempty"` // number | number[]
+	Rows                        []GridRowInput   `json:"rows"`
 }
 
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.
@@ -46,7 +47,7 @@ type GridRowInput struct {
 	MinHeight  float64             `json:"min_height,omitempty"`  // Minimum row height in points (0 = no minimum)
 	MaxHeight  float64             `json:"max_height,omitempty"`  // Maximum row height in points (0 = no maximum)
 	Cells      []*GridCellInput    `json:"cells"`
-	Connector  *ConnectorSpecInput `json:"connector,omitempty"`   // Optional connector lines between adjacent cells
+	Connector  *ConnectorSpecInput `json:"connector,omitempty"` // Optional connector lines between adjacent cells
 }
 
 // ConnectorSpecInput defines the style of connector lines between adjacent cells in a row.
@@ -70,14 +71,14 @@ type ConnectorSpecInput struct {
 type GridCellInput struct {
 	ColSpan    int                `json:"col_span,omitempty"`
 	RowSpan    int                `json:"row_span,omitempty"`
-	Fit        string             `json:"fit,omitempty"` // "contain", "fit-width", "fit-height" (default: stretch)
+	Fit        string             `json:"fit,omitempty"`   // "contain", "fit-width", "fit-height" (default: stretch)
 	Group      bool               `json:"group,omitempty"` // Wrap cell content in a p:grpSp group shape
 	Shape      *ShapeSpecInput    `json:"shape,omitempty"`
 	Table      *TableInput        `json:"table,omitempty"`
 	Icon       *IconInput         `json:"icon,omitempty"`
 	Image      *GridImageInput    `json:"image,omitempty"`
-	Diagram    *types.DiagramSpec `json:"diagram,omitempty"` // Chart/diagram rendered via svggen
-	Composite  *CompositeInput    `json:"composite,omitempty"` // Composite stack: native text + sub-diagram (KPI + sparkline)
+	Diagram    *types.DiagramSpec `json:"diagram,omitempty"`     // Chart/diagram rendered via svggen
+	Composite  *CompositeInput    `json:"composite,omitempty"`   // Composite stack: native text + sub-diagram (KPI + sparkline)
 	Pattern    json.RawMessage    `json:"pattern,omitempty"`     // Nested PatternInput (expanded to a sub-grid before resolution)
 	Grid       *ShapeGridInput    `json:"grid,omitempty"`        // Recursive sub-grid rendered within the cell rectangle
 	AccentBar  *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
@@ -196,8 +197,8 @@ type OverlayShapeInput struct {
 // OverlayPointInput specifies a position via percent-of-slide or via
 // cell-anchor reference. AnchorCell, when set, overrides X/Y.
 type OverlayPointInput struct {
-	X          float64                `json:"x,omitempty"`           // Percent of slide width (0–100)
-	Y          float64                `json:"y,omitempty"`           // Percent of slide height (0–100)
+	X          float64                 `json:"x,omitempty"`           // Percent of slide width (0–100)
+	Y          float64                 `json:"y,omitempty"`           // Percent of slide height (0–100)
 	AnchorCell *OverlayAnchorCellInput `json:"anchor_cell,omitempty"` // Optional cell reference (overrides x/y)
 }
 

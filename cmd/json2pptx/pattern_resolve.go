@@ -84,12 +84,16 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	if err != nil {
 		return nil, nil, fmt.Errorf("pattern %q: expand failed: %w", p.Name, err)
 	}
+	if grid.Bounds != nil {
+		grid.BoundsRelativeToContentArea = true
+	}
 
 	// Apply bounds_override: explicit bounds or max_height_pct convenience alias.
 	// This constrains the grid to a sub-region of the layout area, which also
 	// corrects density math (cell_budgets uses grid.Bounds when present).
-	if b := resolvePatternBounds(p); b != nil {
+	if b, relativeToContentArea := resolvePatternBounds(p); b != nil {
 		grid.Bounds = b
+		grid.BoundsRelativeToContentArea = relativeToContentArea
 	}
 
 	// Post-expand callout decorator (D18): append full-width callout row
@@ -231,10 +235,10 @@ func expandNestedCellPatterns(grid *jsonschema.ShapeGridInput, ctx patterns.Expa
 // resolvePatternBounds returns a GridBoundsInput from PatternInput's bounds
 // fields, applying the max_height_pct convenience alias. Returns nil if no
 // bounds override was specified.
-func resolvePatternBounds(p *PatternInput) *jsonschema.GridBoundsInput {
+func resolvePatternBounds(p *PatternInput) (*jsonschema.GridBoundsInput, bool) {
 	if p.Bounds != nil {
 		// Explicit bounds take priority — use as-is.
-		return p.Bounds
+		return p.Bounds, false
 	}
 	if p.MaxHeightPct > 0 && p.MaxHeightPct < 100 {
 		// Convenience alias: constrain height while preserving full width.
@@ -244,7 +248,7 @@ func resolvePatternBounds(p *PatternInput) *jsonschema.GridBoundsInput {
 			Y:      0,
 			Width:  100,
 			Height: p.MaxHeightPct,
-		}
+		}, true
 	}
-	return nil
+	return nil, false
 }

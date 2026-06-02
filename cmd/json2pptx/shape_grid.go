@@ -455,6 +455,10 @@ func reserveTakeawayBand(g GridGeometry, slide SlideInput) GridGeometry {
 func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) pptx.RectEmu {
 	switch {
 	case input.Bounds != nil:
+		if input.BoundsRelativeToContentArea {
+			contentBounds := contentRelativeBoundsBase(overrideBounds, zone, slideWidth, slideHeight)
+			return boundsFromRectPercentages(contentBounds, input.Bounds)
+		}
 		bounds := shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
 		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
 		if zone != nil {
@@ -467,6 +471,26 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 		return shapegrid.DefaultBoundsFromZone(*zone, 9.0)
 	default:
 		return shapegrid.DefaultBounds(slideWidth, slideHeight)
+	}
+}
+
+func contentRelativeBoundsBase(overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) pptx.RectEmu {
+	switch {
+	case zone != nil:
+		return shapegrid.DefaultBoundsFromZone(*zone, gridChromeGapPt)
+	case overrideBounds != nil:
+		return *overrideBounds
+	default:
+		return shapegrid.DefaultBounds(slideWidth, slideHeight)
+	}
+}
+
+func boundsFromRectPercentages(base pptx.RectEmu, pct *GridBoundsInput) pptx.RectEmu {
+	return pptx.RectEmu{
+		X:  base.X + shapegrid.PctToEMU(pct.X, base.CX),
+		Y:  base.Y + shapegrid.PctToEMU(pct.Y, base.CY),
+		CX: shapegrid.PctToEMU(pct.Width, base.CX),
+		CY: shapegrid.PctToEMU(pct.Height, base.CY),
 	}
 }
 
