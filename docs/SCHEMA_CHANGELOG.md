@@ -41,6 +41,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`generate_presentation`'s inline pattern example is schema-true
+  (go-slide-creator-e5tm).** The `presentation` parameter description carried a
+  hand-written `{"pattern":{"name":"kpi-3up","values":{"items":[{"label","value"}]}}}`
+  example — a shape no pattern accepts. Copying it passed `validate_input` and
+  then failed `generate_presentation` with `INPUT.INVALID_SLIDE`. The snippet is
+  now generated from the registry's own `ExemplarValues()` at tool-definition
+  time, so it cannot drift from the schema, and a test runs every complete JSON
+  example in the tool descriptions through the real pattern validator.
 - **Icon cells keep the default text padding (go-slide-creator-jzb1).**
   `resolveIconOverlay` returned text insets of `{iconWidth+gap, 0, 0, 0}` (icon
   left) or `{0, iconZoneH, 0, 0}` (icon top). `buildTextBody` writes all four
