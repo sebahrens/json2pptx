@@ -207,13 +207,33 @@ func (s *LinearScale) Ticks(count int) []float64 {
 	return ticks
 }
 
+// maxTickPrecision caps the decimal places a tick label may carry. Beyond a
+// few decimals the label is unreadable at chart sizes, and an uncapped value
+// can overflow the format string itself.
+const maxTickPrecision = 6
+
 // TickFormat returns a format string for tick values.
+//
+// A degenerate domain (every value identical — an all-zero series, a single
+// data point, a null coerced to 0) makes tickStep return 0. log10(0) is -Inf,
+// so the old precision computation produced math.MaxInt and the format string
+// became "%.9223372036854775807f", which fmt rejects: the literal Go error
+// "%!(NOVERB)%!(EXTRA float64=0)" was drawn onto the slide as the axis label
+// (go-slide-creator-m7ga). Precision is now derived only from a finite,
+// non-zero step and is clamped.
 func (s *LinearScale) TickFormat(count int) string {
 	span := math.Abs(s.domainMax - s.domainMin)
-	step := tickStep(s.domainMin, s.domainMax, count)
+	step := math.Abs(tickStep(s.domainMin, s.domainMax, count))
 
-	// Determine precision based on step size
-	precision := int(math.Max(0, -math.Floor(math.Log10(math.Abs(step)))))
+	precision := 0
+	if step > 0 && !math.IsInf(step, 0) && !math.IsNaN(step) {
+		if p := -math.Floor(math.Log10(step)); p > 0 {
+			if p > maxTickPrecision {
+				p = maxTickPrecision
+			}
+			precision = int(p)
+		}
+	}
 
 	if precision == 0 && span >= 1 {
 		return "%.0f"
