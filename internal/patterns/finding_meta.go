@@ -381,12 +381,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeCellUnderfilled: {
 		Code:        ErrCodeCellUnderfilled,
-		Summary:     "A shape-grid cell's text uses less than 60% of its character capacity.",
-		Severity:    "review",
-		WhenEmitted: "Pre-flight finds a cell whose text length is under 60% of the textcapacity.MaxChars estimate (info at 40–59%, warning <40%).",
+		Summary:     "A shape grid's text cells use well under their character capacity — reported once per slide, not once per cell.",
+		Severity:    "info",
+		WhenEmitted: "Pre-flight finds cells whose text is under 60% of the textcapacity.MaxChars estimate and folds them into ONE finding per slide, listing each in fix.params.cells[]. Metric values and short labels/captions are exempt: a KPI card holding \"$12.4M\" is correct, not underfilled, so a character-count model does not apply to it. The finding is advisory unless the grid as a whole carries under 30% of its text capacity across 3+ cells, in which case the slide really is mostly empty and it escalates to review.",
 		RemediationSteps: []string{
-			"Add detail to the cell's text content.",
-			"Or use a smaller grid pattern that better fits the content density.",
+			"Check fix.params.slide_mostly_empty first — when false this is advisory and a deliberately airy layout is a fine reason to ignore it.",
+			"When it is true, add detail to the cells listed in fix.params.cells[], or swap to a pattern with fewer/smaller cells.",
+			"fix.params.slide_fill_pct is the grid's overall fill; min_density_pct locates the sparsest cell.",
 		},
 		RelatedCodes: []string{ErrCodeSparseLayout, ErrCodePatternUnderfilled},
 	},

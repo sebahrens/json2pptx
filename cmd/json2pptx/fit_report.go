@@ -14,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -311,6 +312,16 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 		})
 	}
 
+	// Underfilled cells are accumulated and reported ONCE per slide. Emitting
+	// one per cell made cell_underfilled by far the most common finding in the
+	// system (395 occurrences over 50 decks) and let a slide of KPI cards
+	// accumulate 20+ review-weight findings, bottoming its score out at 0 while
+	// a genuinely broken layout cost 5 — a 53:1 severity inversion
+	// (go-slide-creator-xpz8).
+	var underfilled []underfilledCell
+	measuredTextCells := 0
+	filledChars, totalCapacity := 0, 0
+
 	// Walk cells: emit overflow findings from density and handle embedded tables.
 	cellIdx := 0
 	for ri, row := range grid.Rows {
@@ -329,53 +340,15 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 			// Shape text density via textcapacity.
 			d := densities[cellIdx]
 			if d.MaxChars > 0 {
-				switch {
-				case d.DensityPct > 130:
-					// Severe overflow — error severity.
-					findings = append(findings, fitFinding{
-						Code:             patterns.ErrCodeFitOverflow,
-						Path:             slidepath.Join(pathPrefix, "shape/text"),
-						Severity:         "error",
-						Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
-						Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
-						BindingDimension: "height",
-						RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
-						AllocatedPt:      float64(d.HeightEMU) / 12700.0,
-						Action:           "refuse",
-					})
-				case d.DensityPct > 110:
-					// Moderate overflow — warning severity.
-					findings = append(findings, fitFinding{
-						Code:             patterns.ErrCodeFitOverflow,
-						Path:             slidepath.Join(pathPrefix, "shape/text"),
-						Severity:         "warning",
-						Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
-						Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
-						BindingDimension: "height",
-						RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
-						AllocatedPt:      float64(d.HeightEMU) / 12700.0,
-						Action:           "review",
-					})
-				case d.DensityPct < 40 && d.ActualChars > 0:
-					// Very underfilled — warning severity.
-					findings = append(findings, fitFinding{
-						Code:     patterns.ErrCodeCellUnderfilled,
-						Path:     slidepath.Join(pathPrefix, "shape/text"),
-						Severity: "warning",
-						Message:  fmt.Sprintf("cell content is %d chars (%d%% of capacity) — consider adding detail or smaller grid", d.ActualChars, d.DensityPct),
-						Fix:      &patterns.FixSuggestion{Kind: "add_detail_or_resize", Params: map[string]any{"current_density_pct": d.DensityPct}},
-						Action:   "review",
-					})
-				case d.DensityPct >= 40 && d.DensityPct < 60 && d.ActualChars > 0:
-					// Underfilled — info severity.
-					findings = append(findings, fitFinding{
-						Code:     patterns.ErrCodeCellUnderfilled,
-						Path:     slidepath.Join(pathPrefix, "shape/text"),
-						Severity: "info",
-						Message:  fmt.Sprintf("cell content is %d chars (%d%% of capacity) — consider adding detail or smaller grid", d.ActualChars, d.DensityPct),
-						Fix:      &patterns.FixSuggestion{Kind: "add_detail_or_resize", Params: map[string]any{"current_density_pct": d.DensityPct}},
-						Action:   "review",
-					})
+				cellFindings, counted, under := cellDensityFindings(d, pathPrefix)
+				findings = append(findings, cellFindings...)
+				if counted {
+					measuredTextCells++
+					filledChars += d.ActualChars
+					totalCapacity += d.MaxChars
+				}
+				if under != nil {
+					underfilled = append(underfilled, *under)
 				}
 			}
 
@@ -383,10 +356,158 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 		}
 	}
 
+	if f := aggregateUnderfilledFinding(slideIdx, underfilled, measuredTextCells, filledChars, totalCapacity); f != nil {
+		findings = append(findings, *f)
+	}
+
 	return findings
 }
 
+// cellDensityFindings classifies one cell's text density. It returns any
+// immediate findings (overflow), whether the cell counts toward the slide's
+// measured text capacity, and — when the cell is underfilled — the cell held
+// back for the per-slide aggregate.
+//
+// Only overflow is reported per cell. Underfill is aggregated, because one
+// finding per cell let a slide of cards accumulate 20+ review-weight findings
+// (go-slide-creator-xpz8).
+func cellDensityFindings(d textcapacity.Density, pathPrefix string) (findings []fitFinding, counted bool, under *underfilledCell) {
+	if d.ActualChars == 0 || underfillExemptRole(d.FontPt, d.ActualChars) {
+		// An empty cell has no density to judge, and a metric or label's
+		// character count says nothing about whether it is "full".
+		return nil, false, nil
+	}
+	counted = true
 
+	textPath := slidepath.Join(pathPrefix, "shape/text")
+	overflow := func(severity, action string) fitFinding {
+		return fitFinding{
+			Code:             patterns.ErrCodeFitOverflow,
+			Path:             textPath,
+			Severity:         severity,
+			Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
+			Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
+			BindingDimension: "height",
+			RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
+			AllocatedPt:      float64(d.HeightEMU) / 12700.0,
+			Action:           action,
+		}
+	}
+
+	switch {
+	case d.DensityPct > 130:
+		// Severe overflow — error severity.
+		findings = append(findings, overflow("error", "refuse"))
+	case d.DensityPct > 110:
+		// Moderate overflow — warning severity.
+		findings = append(findings, overflow("warning", "review"))
+	case d.DensityPct < 60:
+		under = &underfilledCell{
+			path:       textPath,
+			chars:      d.ActualChars,
+			maxChars:   d.MaxChars,
+			densityPct: d.DensityPct,
+		}
+	}
+	return findings, counted, under
+}
+
+// underfilledCell is one cell held back for the per-slide cell_underfilled
+// aggregate.
+type underfilledCell struct {
+	path       string
+	chars      int
+	maxChars   int
+	densityPct int
+}
+
+// underfillSlideFillPct is the slide-level fill below which a shape grid is
+// genuinely mostly empty and worth acting on. Counting sparse CELLS was the
+// wrong measure: a card grid whose bodies are one deliberate sentence each has
+// every cell "sparse" while the slide reads fine. Measuring the slide's total
+// characters against its total capacity distinguishes a deliberately airy
+// layout from one that has barely any content in it
+// (go-slide-creator-xpz8).
+const underfillSlideFillPct = 30
+
+// underfillSparseSlideMinCells is the smallest number of underfilled cells that
+// can make a slide "mostly empty". Below this a slide is too small for the
+// measure to mean anything.
+const underfillSparseSlideMinCells = 3
+
+// underfillExemptRole reports whether a cell's text role makes the
+// character-count capacity model meaningless. A KPI value ("$12.4M") and a
+// label or chip caption ("Revenue", a chevron step name) are CORRECT when
+// short — reporting them as underfilled is noise, and it was the dominant
+// source of it (go-slide-creator-xpz8).
+func underfillExemptRole(fontPt float64, chars int) bool {
+	switch cellTextRole(fontPt, false, chars) {
+	case tokens.TextRoleKPIValue, tokens.TextRoleCaption:
+		return true
+	default:
+		return false
+	}
+}
+
+// aggregateUnderfilledFinding folds a slide's underfilled cells into a single
+// finding. It is advisory (action "info") unless the grid as a whole carries
+// barely any content, in which case the slide really is mostly empty.
+func aggregateUnderfilledFinding(slideIdx int, cells []underfilledCell, measuredTextCells, filledChars, totalCapacity int) *fitFinding {
+	if len(cells) == 0 {
+		return nil
+	}
+
+	paths := make([]any, 0, len(cells))
+	minDensity := 100
+	for _, c := range cells {
+		paths = append(paths, map[string]any{
+			"path":        c.path,
+			"chars":       c.chars,
+			"density_pct": c.densityPct,
+		})
+		if c.densityPct < minDensity {
+			minDensity = c.densityPct
+		}
+	}
+
+	slideFillPct := 0
+	if totalCapacity > 0 {
+		slideFillPct = filledChars * 100 / totalCapacity
+	}
+	mostlyEmpty := len(cells) >= underfillSparseSlideMinCells &&
+		totalCapacity > 0 &&
+		slideFillPct < underfillSlideFillPct
+
+	action, severity := "info", "info"
+	message := fmt.Sprintf(
+		"%d of %d text cells are under 60%% of their capacity (slide fill %d%%, sparsest cell %d%%) — the grid may be larger than the content needs",
+		len(cells), measuredTextCells, slideFillPct, minDensity)
+	if mostlyEmpty {
+		action, severity = "review", "warning"
+		message = fmt.Sprintf(
+			"the shape grid carries only %d%% of its text capacity across %d cells (sparsest %d%%) — the slide is mostly empty; add detail or use a smaller grid",
+			slideFillPct, measuredTextCells, minDensity)
+	}
+
+	return &fitFinding{
+		Code:     patterns.ErrCodeCellUnderfilled,
+		Path:     slidepath.ShapeGrid(slideIdx),
+		Severity: severity,
+		Message:  message,
+		Fix: &patterns.FixSuggestion{
+			Kind: "add_detail_or_resize",
+			Params: map[string]any{
+				"cells":               paths,
+				"underfilled_cells":   len(cells),
+				"measured_text_cells": measuredTextCells,
+				"min_density_pct":     minDensity,
+				"slide_fill_pct":      slideFillPct,
+				"slide_mostly_empty":  mostlyEmpty,
+			},
+		},
+		Action: action,
+	}
+}
 
 // writeFitReportNDJSON writes fit findings as NDJSON to the given writer.
 func writeFitReportNDJSON(w io.Writer, findings []fitFinding) {
@@ -446,7 +567,6 @@ func printFitFindingsBySlide(findings []fitFinding) {
 	}
 }
 
-
 // tablePreflightLocalFindings runs the pre-generation table predictor and
 // converts its findings into the local fitFinding shape the CLI fit report and
 // the strict-fit gate share.
@@ -468,7 +588,6 @@ func tablePreflightLocalFindings(input *PresentationInput, layouts []types.Layou
 	}
 	return out
 }
-
 
 // chartDryRenderLocalFindings dry-renders every chart and diagram surface and
 // converts the resulting findings into the local fitFinding shape the CLI fit

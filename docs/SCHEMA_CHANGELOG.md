@@ -10,6 +10,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`cell_underfilled` is one finding per slide, and exempts metrics and labels
+  (go-slide-creator-xpz8).** It was emitted once per cell with no aggregation —
+  by far the most common finding in the system (395 occurrences over 50 decks) —
+  so a slide of KPI cards accumulated 20+ review-weight findings and bottomed
+  its score out at 0, while the one genuinely broken layout on the same deck cost
+  5 points. Three changes: cells whose role is a metric value or a short
+  label/caption are exempt (a KPI card holding `$12.4M` is correct, not
+  underfilled); the rest fold into one finding per slide listing each in
+  `fix.params.cells[]`; and the finding is advisory (`action: info`) unless the
+  grid carries under 30% of its text capacity across 3+ cells, measured as total
+  characters over total capacity rather than by counting sparse cells — a card
+  grid whose bodies are one deliberate sentence each is a design, not a defect.
+  Measured on the bundled examples: `kpi-big-numbers` 26 findings → 0,
+  `consulting-layouts` 53 → 7 (1 escalated), `visual-maturity-stress-test`
+  81 → 7, `sovereign-ai-strategy` 71 → 10.
+
 - **Unknown chart/diagram types get a vocabulary, and a grey placeholder blocks
   (go-slide-creator-rrjj).** Asking for an unregistered type (combo, sankey,
   choropleth, or a typo like `barchart`) produced a slide-sized grey

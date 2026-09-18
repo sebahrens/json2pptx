@@ -405,25 +405,24 @@ func TestGenerateFitReport_CellUnderfilled_DensityBands(t *testing.T) {
 		wantNoFinding    bool // expect no cell_underfilled or fit_overflow finding
 	}{
 		{
-			name:         "very_underfilled_warning",
-			textRepeat:   3,
-			fontSz:       11,
-			boundsWidth:  90,
-			boundsHeight: 50,
-			wantCode:     "cell_underfilled",
-			wantSeverity: "warning",
+			// A 3-char cell is a LABEL, not an underfilled paragraph: the
+			// character-count capacity model does not apply to it, so it is
+			// exempt (go-slide-creator-xpz8).
+			name:          "short_label_is_exempt",
+			textRepeat:    3,
+			fontSz:        11,
+			boundsWidth:   90,
+			boundsHeight:  50,
+			wantNoFinding: true,
 		},
 		{
-			// fontSz 11 floors to the shape_grid 12pt minimum for budgeting
-			// (cell allows 80 chars at 12pt with point-sized glyph metrics);
-			// 40 chars = 50% → info band.
-			name:         "underfilled_info",
-			textRepeat:   40,
-			fontSz:       11,
-			boundsWidth:  30,
-			boundsHeight: 10,
-			wantCode:     "cell_underfilled",
-			wantSeverity: "info",
+			// Likewise a 40-char caption.
+			name:          "caption_is_exempt",
+			textRepeat:    40,
+			fontSz:        11,
+			boundsWidth:   30,
+			boundsHeight:  10,
+			wantNoFinding: true,
 		},
 		{
 			// 64 chars = 80% of the 80-char 12pt budget → optimal band.
@@ -629,3 +628,152 @@ func TestGenerateFitReport_ShapeGridUsesLayoutBounds(t *testing.T) {
 	}
 }
 
+
+// go-slide-creator-xpz8: cell_underfilled was emitted once per cell with no
+// aggregation, so a slide of KPI cards accumulated 20+ review-weight findings
+// and bottomed its score out at 0 — while the one genuinely broken thing on the
+// same deck cost 5 points. It is now one finding per slide, advisory unless the
+// slide really is mostly empty.
+func TestCellUnderfilled_AggregatedPerSlide(t *testing.T) {
+	// Six cells of long-but-sparse card body copy in a generous grid.
+	body := strings.Repeat("word ", 12) // 60 chars: card-body, not a caption
+	cells := make([]*GridCellInput, 0, 3)
+	for i := 0; i < 3; i++ {
+		cells = append(cells, &GridCellInput{Shape: &ShapeSpecInput{
+			Geometry: "rect",
+			Text:     json.RawMessage(fmt.Sprintf(`{"content":%q,"size":11}`, body)),
+		}})
+	}
+
+	input := &PresentationInput{
+		Template: "midnight-blue",
+		Slides: []SlideInput{{
+			LayoutID: "blank",
+			ShapeGrid: &ShapeGridInput{
+				Bounds:  &GridBoundsInput{X: 5, Y: 5, Width: 90, Height: 80},
+				Columns: json.RawMessage(`3`),
+				Rows:    []GridRowInput{{Cells: cells}},
+			},
+		}},
+	}
+
+	findings := generateFitReport(input, nil, 0, 0)
+
+	var underfills []fitFinding
+	for _, f := range findings {
+		if f.Code == patterns.ErrCodeCellUnderfilled {
+			underfills = append(underfills, f)
+		}
+	}
+	if len(underfills) != 1 {
+		t.Fatalf("expected exactly 1 aggregated cell_underfilled finding, got %d: %+v", len(underfills), underfills)
+	}
+
+	f := underfills[0]
+	if f.Fix == nil {
+		t.Fatal("aggregate must carry a fix")
+	}
+	list, ok := f.Fix.Params["cells"].([]any)
+	if !ok || len(list) == 0 {
+		t.Fatalf("fix.params.cells must enumerate the offending cells, got %v", f.Fix.Params["cells"])
+	}
+	// Each entry must locate the cell and carry its density.
+	first, ok := list[0].(map[string]any)
+	if !ok {
+		t.Fatalf("cells[0] = %T, want an object", list[0])
+	}
+	for _, key := range []string{"path", "chars", "density_pct"} {
+		if _, ok := first[key]; !ok {
+			t.Errorf("cells[0] missing %q: %v", key, first)
+		}
+	}
+	if _, ok := f.Fix.Params["slide_mostly_empty"]; !ok {
+		t.Error("fix.params must say whether the whole slide is underused")
+	}
+	// The path must address the slide's grid, not one cell inside it.
+	if !strings.HasSuffix(f.Path, "/shape_grid") {
+		t.Errorf("aggregate path = %q, want the slide's shape_grid", f.Path)
+	}
+}
+
+// A KPI card holding "$12.4M" is CORRECT, not underfilled.
+func TestUnderfillExemptRole(t *testing.T) {
+	tests := []struct {
+		name   string
+		fontPt float64
+		chars  int
+		want   bool
+	}{
+		{"kpi value at display size", 32, 6, true},
+		{"short label", 11, 8, true},
+		{"chevron step name", 12, 18, true},
+		{"caption at the 40-char boundary", 11, 40, true},
+		{"card body copy", 11, 60, false},
+		{"long paragraph", 11, 300, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := underfillExemptRole(tt.fontPt, tt.chars); got != tt.want {
+				t.Errorf("underfillExemptRole(%v, %d) = %v, want %v", tt.fontPt, tt.chars, got, tt.want)
+			}
+		})
+	}
+}
+
+// The aggregate escalates only when the grid as a whole carries barely any
+// content. Counting sparse CELLS was the wrong measure: a card grid whose
+// bodies are one deliberate sentence each has every cell "sparse" while the
+// slide reads fine.
+func TestAggregateUnderfilledFinding_EscalatesOnlyWhenSlideIsEmpty(t *testing.T) {
+	// A cell holding 20 of 200 possible characters: 10% fill.
+	veryEmpty := underfilledCell{path: "/slides/0/shape_grid/rows/0/cells/0/shape/text", chars: 20, maxChars: 200, densityPct: 10}
+	// A cell holding 110 of 200: sparse by the 60% cell rule, but substantial.
+	airy := underfilledCell{path: "/slides/0/shape_grid/rows/0/cells/1/shape/text", chars: 110, maxChars: 200, densityPct: 55}
+
+	t.Run("a nearly empty grid escalates", func(t *testing.T) {
+		f := aggregateUnderfilledFinding(0, []underfilledCell{veryEmpty, veryEmpty, veryEmpty}, 3, 60, 600)
+		if f == nil {
+			t.Fatal("expected a finding")
+		}
+		if f.Action != "review" {
+			t.Errorf("action = %q, want review at 10 percent slide fill", f.Action)
+		}
+		if !strings.Contains(f.Message, "mostly empty") {
+			t.Errorf("message should say the slide is mostly empty, got: %s", f.Message)
+		}
+		if pct, ok := f.Fix.Params["slide_fill_pct"].(int); !ok || pct != 10 {
+			t.Errorf("fix.params.slide_fill_pct = %v, want 10", f.Fix.Params["slide_fill_pct"])
+		}
+	})
+
+	t.Run("a deliberately airy grid stays advisory", func(t *testing.T) {
+		// Every cell is "sparse" by the per-cell rule, but the grid carries 55%
+		// of its capacity — a legitimate design, not a defect.
+		f := aggregateUnderfilledFinding(0, []underfilledCell{airy, airy, airy, airy}, 4, 440, 800)
+		if f == nil {
+			t.Fatal("expected a finding")
+		}
+		if f.Action != "info" {
+			t.Errorf("action = %q, want info at 55 percent slide fill", f.Action)
+		}
+		if mostly, _ := f.Fix.Params["slide_mostly_empty"].(bool); mostly {
+			t.Error("a grid carrying 55 percent of its capacity must not be reported as mostly empty")
+		}
+	})
+
+	t.Run("too few cells to judge stays advisory", func(t *testing.T) {
+		f := aggregateUnderfilledFinding(0, []underfilledCell{veryEmpty, veryEmpty}, 2, 40, 400)
+		if f == nil {
+			t.Fatal("expected a finding")
+		}
+		if f.Action != "info" {
+			t.Errorf("action = %q, want info below the minimum-cell floor", f.Action)
+		}
+	})
+
+	t.Run("no underfilled cells produces no finding", func(t *testing.T) {
+		if aggregateUnderfilledFinding(0, nil, 4, 400, 500) != nil {
+			t.Error("expected no finding")
+		}
+	})
+}

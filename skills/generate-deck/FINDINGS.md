@@ -38,7 +38,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `hex_fill_non_brand` | Non-allowlisted `#RRGGBB` fill on a shape | `review` | `use_semantic_color` |
 | `mixed_fill_scheme` | Slide mixes semantic (`accent1`, `lt2`) and hex fills (hex-fill mix anti-pattern) | `review` | `use_semantic_color` |
 | `accent_overload` | Slide uses more than two distinct accent hues (`accent1`..`accent6`) — pick one base accent and use `cell_accent_mode` for variety | `review` | `consolidate_accents` |
-| `cell_underfilled` | Per-cell: text uses <60% of cell character capacity (density bands: <40% = warning, 40-59% = info) | `review` | `add_detail_or_resize` |
+| `cell_underfilled` | **One finding per slide**, not per cell: the grid's text cells are under 60% of their character capacity. Metric values and short labels/captions are exempt (a KPI card holding `$12.4M` is correct, not underfilled). `fix.params.cells[]` lists each offending cell with its `path`, `chars` and `density_pct`; `slide_fill_pct` is the grid's overall fill. Advisory (`info`) unless `fix.params.slide_mostly_empty` is true — the grid carries under 30% of its capacity across 3+ cells — which escalates it to `review` | `info` / `review` when mostly empty | `add_detail_or_resize` |
 | `CHART_PLACEHOLDER_EMPTY` | `chart-insights-split` pattern rendered without a `chart` spec — left panel collapses and insights expand to full width. `action: review`. Agent action: supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`) | `review` | — |
 | `HEADLINE_TOO_LONG` | Title-class placeholder text exceeds 12 whitespace-separated words. Fires on `title`, `headline`, `ctrTitle` text content items. Advisory — never blocks render. `fix.params: {current_words, max_words}` | `review` | `shorten_title` |
 | `BODY_TOO_LONG` | A single text block exceeds 80 whitespace-separated words. Applies to `text`, `bullets`, `body_and_bullets`, and `bullet_groups` content items (bullet words aggregate per block). Advisory — never blocks render. `fix.params: {current_words, max_words}` | `review` | `reduce_text` |
@@ -63,8 +63,10 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | >130% | `fit_overflow` | `error` | `refuse` | Must reduce text — blocks under `strict_fit: "strict"` |
 | 110–130% | `fit_overflow` | `warning` | `review` | Should reduce text before shipping |
 | 60–110% | *(none)* | — | — | Healthy range — no finding emitted |
-| 40–59% | `cell_underfilled` | `info` | `review` | Consider adding detail; not blocking |
-| <40% | `cell_underfilled` | `warning` | `review` | Strongly consider adding detail or using a smaller grid |
+| <60% | `cell_underfilled` | `info` | `info` | Collected into ONE per-slide finding; advisory |
+| <60% on a grid under 30% full | `cell_underfilled` | `warning` | `review` | The slide is mostly empty — add detail or use a smaller grid |
+
+Underfill is aggregated because it used to be emitted per cell: a slide of KPI cards accumulated 20+ review-weight findings and bottomed its score out, while a genuinely broken layout on the same deck cost 5 points. Metric and label roles are exempt from the check entirely.
 
 **How to triage capacity findings:**
 - **`info` severity** — consider acting; not blocking under any `strict_fit` mode
