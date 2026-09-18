@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -168,8 +169,85 @@ func TestNumberedStepStrip_Expand_ChevronWithBodyAddsDetailRow(t *testing.T) {
 	if len(grid.Rows) != 2 {
 		t.Fatalf("expected chevron row + detail row when body present, got %d rows", len(grid.Rows))
 	}
-	if grid.Bounds != nil {
-		t.Error("expected full-height layout (no compact bounds) when body present")
+	// The strip is sized to its content: chevrons + a text-sized detail row
+	// directly beneath them, never a flex row that fills the slide.
+	if grid.Bounds == nil || grid.Bounds.Height >= 100 {
+		t.Fatalf("expected content-sized bounds when body present, got %+v", grid.Bounds)
+	}
+	if grid.Rows[0].Height <= 0 || grid.Rows[0].Height >= 100 {
+		t.Errorf("chevron row should have a fixed share of the strip, got %v", grid.Rows[0].Height)
+	}
+}
+
+func TestNumberedStepStrip_Chevron_NotchInsetAndSizes(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	for _, n := range []int{3, 4, 5, 6} {
+		ctx := testThemeCtx()
+		v := validNumberedStepStripValues("chevron", n)
+		grid, err := p.Expand(ctx, v, nil, nil)
+		if err != nil {
+			t.Fatalf("n=%d Expand failed: %v", n, err)
+		}
+		geo := chevronStripGeometry(ctx, n)
+		if geo.stepWPt < 2*geo.chevHPt-0.01 {
+			t.Errorf("n=%d: chevron %.1fx%.1fpt must be at least twice as wide as tall", n, geo.stepWPt, geo.chevHPt)
+		}
+		for i, cell := range grid.Rows[0].Cells {
+			if cell.Shape.Geometry != "chevron" {
+				t.Fatalf("n=%d cell %d: geometry %q", n, i, cell.Shape.Geometry)
+			}
+			adj := cell.Shape.Adjustments["adj"]
+			if adj <= 0 || adj > 50000 {
+				t.Errorf("n=%d cell %d: adj %d out of range", n, i, adj)
+			}
+			notchPt := float64(adj) / 100000 * geo.chevHPt
+			var text struct {
+				InsetLeft  float64 `json:"inset_left"`
+				InsetRight float64 `json:"inset_right"`
+			}
+			if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+				t.Fatalf("text: %v", err)
+			}
+			if text.InsetLeft < notchPt {
+				t.Errorf("n=%d cell %d: lIns %.1fpt < notch depth %.1fpt", n, i, text.InsetLeft, notchPt)
+			}
+			if text.InsetRight < notchPt {
+				t.Errorf("n=%d cell %d: rIns %.1fpt < point depth %.1fpt", n, i, text.InsetRight, notchPt)
+			}
+		}
+		for i, cell := range grid.Rows[1].Cells {
+			var text struct {
+				VerticalAlign string `json:"vertical_align"`
+				Paragraphs    []struct {
+					Size float64 `json:"size"`
+				} `json:"paragraphs"`
+			}
+			if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+				t.Fatalf("desc text: %v", err)
+			}
+			if text.Paragraphs[0].Size < 12 {
+				t.Errorf("n=%d desc %d: size %.1f < 12pt", n, i, text.Paragraphs[0].Size)
+			}
+			if text.VerticalAlign != "t" {
+				t.Errorf("n=%d desc %d: want top-anchored description, got %q", n, i, text.VerticalAlign)
+			}
+		}
+	}
+}
+
+func TestEstimateWrappedLines(t *testing.T) {
+	if got := estimateWrappedLines("short", 12, 200); got != 1 {
+		t.Errorf("short text: %d lines", got)
+	}
+	long := strings.Repeat("word ", 40)
+	if got := estimateWrappedLines(long, 12, 120); got < 5 {
+		t.Errorf("long text wrapped to only %d lines", got)
+	}
+	if got := estimateWrappedLines("a\nb", 12, 200); got != 2 {
+		t.Errorf("explicit newline: %d lines", got)
+	}
+	if got := estimateWrappedLines("x", 12, 0); got != 1 {
+		t.Errorf("zero width: %d", got)
 	}
 }
 
