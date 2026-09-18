@@ -387,7 +387,7 @@ func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, sty
 	applyCardGridSurfaceOverrides(gc, ovr, accent)
 	// Add SVG icon overlay when a bundled icon name or rich icon spec is provided.
 	if cell.Icon != nil && gc.Shape != nil && gc.Shape.Icon == nil {
-		gc.Shape.Icon = cell.Icon.Resolve(accent, "top")
+		gc.Shape.Icon = cell.Icon.Resolve(iconFillOn(ctx, gc.Shape.Fill, accent), "top")
 	}
 	// When a secondary chart is attached, convert the cell to a composite
 	// stack so the existing text shape is rendered on top and the chart below.

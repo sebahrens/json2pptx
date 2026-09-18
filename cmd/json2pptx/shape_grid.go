@@ -882,7 +882,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
-			s, icons, err := generateShapeCellXML(cell, alloc)
+			s, icons, err := generateShapeCellXML(cell, alloc, overlayThemeColors(diagCtx))
 			if err != nil {
 				return nil, err
 			}
@@ -905,7 +905,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			}
 			cellShapes = append(cellShapes, []byte(tblResult.XML))
 		case shapegrid.CellKindIcon:
-			svgData, err := resolveIconSVG(cell.IconSpec)
+			svgData, err := resolveIconSVGThemed(cell.IconSpec, overlayThemeColors(diagCtx))
 			if err != nil {
 				return nil, fmt.Errorf("icon in grid: %w", err)
 			}
@@ -981,7 +981,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 }
 
 // generateShapeCellXML produces XML and icon inserts for a shape cell.
-func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator) ([][]byte, []generator.IconInsert, error) {
+func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator, themeColors []types.ThemeColor) ([][]byte, []generator.IconInsert, error) {
 	xml, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
 	if err != nil {
 		return nil, nil, fmt.Errorf("shape id %d: %w", cell.ID, err)
@@ -989,7 +989,7 @@ func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator)
 	shapes := [][]byte{xml}
 	var icons []generator.IconInsert
 	if cell.IconSpec != nil {
-		svgData, err := resolveIconSVG(cell.IconSpec)
+		svgData, err := resolveIconSVGThemed(cell.IconSpec, themeColors)
 		if err != nil {
 			return nil, nil, fmt.Errorf("icon overlay on shape id %d: %w", cell.ID, err)
 		}
@@ -1947,6 +1947,22 @@ func iconFindingsToError(findings []diagnostics.Diagnostic) error {
 // For custom icons (Path set), it reads the SVG file from disk.
 // Fill color override is applied to both bundled and custom SVG icons.
 func resolveIconSVG(spec *shapegrid.IconSpec) ([]byte, error) {
+	return resolveIconSVGThemed(spec, nil)
+}
+
+// resolveIconSVGThemed is resolveIconSVG with template theme colors available,
+// so scheme-color fills ("accent1", "lt1", "tx1", ...) are resolved to a
+// concrete "#RRGGBB" before being written into the SVG. SVG has no notion of
+// OOXML scheme colors: writing stroke="accent1" verbatim is an invalid paint
+// value and every viewer renders the icon as nothing. Fills that cannot be
+// resolved to hex (unknown name, or a scheme name with no theme available)
+// leave the icon's own currentColor paint untouched instead of corrupting it.
+func resolveIconSVGThemed(spec *shapegrid.IconSpec, themeColors []types.ThemeColor) ([]byte, error) {
+	if spec.Fill != "" && spec.SVGData == "" {
+		resolved := *spec
+		resolved.Fill = resolveIconFillHex(spec.Fill, themeColors)
+		spec = &resolved
+	}
 	limits := svgSizeLimits()
 	if spec.SVGData != "" {
 		// Inline SVG markup — no disk I/O, no fill recolor (agent supplies pre-styled SVG).
@@ -2040,6 +2056,36 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 	return pptx.GenerateConnector(opts)
 }
 
+// resolveIconFillHex resolves an icon fill reference (scheme color name such
+// as "accent1"/"lt1"/"tx1", "#RRGGBB", "#RGB", or bare "RRGGBB") to a
+// "#RRGGBB" string suitable for an SVG paint attribute. Returns "" when the
+// reference cannot be resolved to a valid hex color.
+func resolveIconFillHex(fill string, themeColors []types.ThemeColor) string {
+	return normalizeSVGHexColor(resolveColorRefToHex(fill, themeColors))
+}
+
+// normalizeSVGHexColor validates a "#RGB" / "#RRGGBB" / "#RRGGBBAA" string (or
+// the bare-hex equivalent) and returns it as "#RRGGBB" (alpha dropped).
+// Returns "" for anything that is not a hex color.
+func normalizeSVGHexColor(s string) string {
+	h := strings.TrimPrefix(strings.TrimSpace(s), "#")
+	switch len(h) {
+	case 3:
+		h = string([]byte{h[0], h[0], h[1], h[1], h[2], h[2]})
+	case 6:
+	case 8:
+		h = h[:6]
+	default:
+		return ""
+	}
+	for _, c := range h {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return ""
+		}
+	}
+	return "#" + strings.ToUpper(h)
+}
+
 // applyIconFill recolors an SVG icon by replacing color attributes on the root <svg> element.
 //
 // Outline icons (Lucide/Tabler) use fill="none" + stroke="currentColor":
@@ -2051,6 +2097,14 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 //
 // This avoids creating duplicate attributes (invalid XML that LibreOffice rejects).
 func applyIconFill(svgData []byte, fill string) []byte {
+	// Only concrete hex colors are valid SVG paint here. Scheme names must be
+	// resolved against the template theme first (resolveIconSVGThemed); any
+	// other value is ignored so the icon keeps its currentColor paint rather
+	// than being rendered invisible by an invalid attribute.
+	fill = normalizeSVGHexColor(fill)
+	if fill == "" {
+		return svgData
+	}
 	s := string(svgData)
 	// Find the opening <svg tag
 	svgStart := strings.Index(s, "<svg")

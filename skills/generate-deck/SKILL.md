@@ -996,7 +996,7 @@ A bare string is classified at parse time: bundled name → `name`, `http(s)://`
 
 **KPI icon placement and value fit.** `kpi-2up`…`kpi-6up` default the icon to `left` on landscape cards and `top` on square/narrow cards (explicit `position` wins), and shrink `big` uniformly (floor 16pt) so values like `$4.2M` / `12 days` never break across lines — you do not need to lower `big_size` by hand to avoid wraps.
 
-**Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide.
+**Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide. At generation time scheme names (incl. `tx1`/`bg1` aliases) are resolved to the template's hex before being written into the SVG; a `fill` that is neither a scheme name nor hex is ignored (the icon keeps its default colour). `preview_icon` loads no template, so it only honours hex fills and warns on scheme names. Embedded icons also ship a rasterized PNG fallback for viewers that ignore SVG. When you omit `fill` on a pattern icon (kpi-*, icon-row, card-grid, hero-detail, matrix-2x2), the pattern picks a colour that contrasts with the card (≥ 3:1): `lt1` on solid accent cards, the accent on light cards — so leave `fill` unset unless you need a specific colour.
 
 ---
 

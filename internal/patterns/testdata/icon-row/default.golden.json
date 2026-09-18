@@ -22,7 +22,7 @@
             },
             "icon": {
               "name": "rocket",
-              "fill": "accent1",
+              "fill": "lt1",
               "position": "top"
             }
           }
@@ -45,7 +45,7 @@
             },
             "icon": {
               "name": "trending-up",
-              "fill": "accent1",
+              "fill": "lt1",
               "position": "top"
             }
           }
@@ -68,7 +68,7 @@
             },
             "icon": {
               "name": "currency-dollar",
-              "fill": "accent1",
+              "fill": "lt1",
               "position": "top"
             }
           }

@@ -239,7 +239,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			Text:     captionContent,
 		}
 		if item.Icon != nil {
-			shape.Icon = item.Icon.Resolve(accent, "top")
+			shape.Icon = item.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "top")
 		}
 
 		gc := &jsonschema.GridCellInput{

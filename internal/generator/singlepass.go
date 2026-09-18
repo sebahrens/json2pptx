@@ -385,7 +385,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 			svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(sourceID)
 			ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 				svgData:        icon.SVGData,
-				pngData:        transparentPNG1x1,
+				pngData:        iconFallbackPNG(icon.SVGData),
 				svgMediaFile:   svgMediaFile,
 				pngMediaFile:   pngMediaFile,
 				description:    icon.Alt,
