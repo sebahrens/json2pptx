@@ -161,7 +161,8 @@ type SlideError struct {
 
 // QualityScore provides an overall quality estimate for the generated deck.
 type QualityScore struct {
-	Score       float64                   `json:"score"`                  // 0.0-1.0 overall quality estimate
+	Score       float64                   `json:"score"`                  // 0-100 input-heuristic quality estimate
+	Basis       string                    `json:"basis"`                  // always scoreBasisInput
 	SlideScores []SlideQuality            `json:"slide_scores,omitempty"` // per-slide breakdown
 	Issues      []string                  `json:"issues,omitempty"`       // quality concerns
 	Scope       string                    `json:"scope"`                  // input_heuristic; never a visual verdict
@@ -171,7 +172,7 @@ type QualityScore struct {
 // SlideQuality provides quality metrics for a single slide.
 type SlideQuality struct {
 	SlideNumber int      `json:"slide_number"`
-	Score       float64  `json:"score"` // 0.0-1.0
+	Score       float64  `json:"score"` // 0-100
 	Issues      []string `json:"issues,omitempty"`
 }
 
@@ -1751,6 +1752,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 	if len(slides) == 0 {
 		return &QualityScore{
 			Score:  0.0,
+			Basis:  scoreBasisInput,
 			Scope:  "input_heuristic",
 			Issues: []string{"no slides in presentation"},
 		}
@@ -1891,7 +1893,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 
 		slideScores = append(slideScores, SlideQuality{
 			SlideNumber: i + 1,
-			Score:       slideScore,
+			Score:       toScore100(slideScore),
 			Issues:      issues,
 		})
 		totalScore += slideScore
@@ -1918,11 +1920,9 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 		overallScore = 1
 	}
 
-	// Round to 2 decimal places
-	overallScore = float64(int(overallScore*100+0.5)) / 100
-
 	return &QualityScore{
-		Score:       overallScore,
+		Score:       toScore100(overallScore),
+		Basis:       scoreBasisInput,
 		Scope:       "input_heuristic",
 		SlideScores: slideScores,
 		Issues:      globalIssues,

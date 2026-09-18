@@ -180,7 +180,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 
 func mcpGetStartedTool() mcp.Tool {
 	return mcp.NewTool("get_started",
-		mcp.WithDescription(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full 45-tool catalog.
+		mcp.WithDescription(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
 
 The response carries two complementary paths:
 - fast_path: the recommended single-call facade — make_deck for "brief", auto_repair for "revise". Call this alone for a fast result without orchestrating the tool surface yourself. NOTE: the result is not automatically publishable — make_deck returns a DRAFT skeleton with exemplar placeholder content (publishable=false), and even auto_repair's deterministic gate is not a substitute for the rendered visual-QA / manual-review branch (see notes); branch on the response's publishable / manual_review_required / blocking_reasons. Its falls_back_to lists the manual primitives it collapses. Omitted for "validate-only" (pure diagnostics, no facade).

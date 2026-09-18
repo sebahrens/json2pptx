@@ -355,7 +355,7 @@ func TestComputeQualityScore_TableContent(t *testing.T) {
 	if score == nil {
 		t.Fatal("score is nil")
 	}
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for valid table, got %f", score.Score)
 	}
 }
@@ -442,7 +442,7 @@ func TestComputeQualityScore_BodyAndBullets(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.8 {
+	if score.Score < 80 {
 		t.Errorf("expected good score for body_and_bullets, got %f", score.Score)
 	}
 }
@@ -457,7 +457,7 @@ func TestComputeQualityScore_BulletGroups(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.8 {
+	if score.Score < 80 {
 		t.Errorf("expected good score for bullet_groups, got %f", score.Score)
 	}
 }
@@ -473,7 +473,7 @@ func TestComputeQualityScore_TooManyBullets(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score >= 1.0 {
+	if score.Score >= 100 {
 		t.Errorf("expected penalty for 10 bullets, got perfect score %f", score.Score)
 	}
 	found := false
@@ -499,7 +499,7 @@ func TestComputeQualityScore_Warnings(t *testing.T) {
 		{LayoutID: "l1", Content: []ContentInput{{PlaceholderID: "t", Type: "text", Value: json.RawMessage(`"hi"`)}}},
 	}
 	score := computeQualityScore(slides, []string{"warning1", "warning2"})
-	if score.Score >= 1.0 {
+	if score.Score >= 100 {
 		t.Errorf("expected penalty for warnings, got %f", score.Score)
 	}
 }
@@ -516,7 +516,7 @@ func TestComputeQualityScore_WaterfallMissingPoints(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score >= 1.0 {
+	if score.Score >= 100 {
 		t.Errorf("expected penalty for waterfall without points, got %f", score.Score)
 	}
 	found := false
@@ -540,7 +540,7 @@ func TestComputeQualityScore_WaterfallWithPoints(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for valid waterfall, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
 }
@@ -555,7 +555,7 @@ func TestComputeQualityScore_FunnelMissingStages(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score >= 1.0 {
+	if score.Score >= 100 {
 		t.Errorf("expected penalty for funnel without stages, got %f", score.Score)
 	}
 	found := false
@@ -579,7 +579,7 @@ func TestComputeQualityScore_FunnelWithStages(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for valid funnel, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
 }
@@ -636,7 +636,7 @@ func TestComputeQualityScore_GaugeComplete(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for valid gauge, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
 }
@@ -672,7 +672,7 @@ func TestComputeQualityScore_PortersWithForces(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for valid porter's, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
 }
@@ -688,7 +688,7 @@ func TestComputeQualityScore_PortersDirectKeys(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for porter's with direct keys, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
 }
@@ -704,7 +704,7 @@ func TestComputeQualityScore_ChartAliasHandling(t *testing.T) {
 		},
 	}
 	score := computeQualityScore(slides, nil)
-	if score.Score < 0.9 {
+	if score.Score < 90 {
 		t.Errorf("expected high score for funnel alias with data, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
 }

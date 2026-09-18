@@ -46,7 +46,7 @@ func nextCallInspectSlideImages() *patterns.ToolCallSuggestion {
 	return &patterns.ToolCallSuggestion{
 		Tool: "inspect_slide_images",
 		ArgsTemplate: map[string]any{
-			"slide_images": "<array of {index, path|png_base64} from render_deck_thumbnails>",
+			"slide_images": "<array of {index, path} from render_deck_thumbnails slides[]>",
 		},
 	}
 }

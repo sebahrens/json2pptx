@@ -4,6 +4,58 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.59.0 (2026-09-18)
+
+### Changed
+
+- **Render tools return MCP ImageContent (go-slide-creator-cn3h).**
+  `render_slide_image`, `render_slide_image_from_json`, and
+  `render_deck_thumbnails` now deliver pixels as native MCP `image` content
+  blocks (`image/jpeg`, downscaled to max 1280px wide, quality 80) so the client
+  model can actually see the slides. `content[0]` is a compact JSON metadata
+  block (also `structuredContent`) with **no base64**: `delivery:
+  "image_content"`, per-slide `index`, `path` (content-addressed full-resolution
+  PNG, always materialized), `width`/`height`, `content_hash`,
+  `image_content_index`, `image_mime_type`, `image_width`, `image_height`.
+  `render_deck_thumbnails` hoists the deck-wide `source_hash` / `cleanup` to the
+  top level. New input `include_base64_json` (bool, default false) restores the
+  legacy base64-PNG-in-JSON envelope unchanged; the CLI render subcommands always
+  use it.
+
+- **MCP tool profiles (go-slide-creator-vdxa).** `json2pptx mcp` now takes
+  `--tools core|all` (env `JSON2PPTX_MCP_TOOLS`), default `core`. The core
+  profile's `tools/list` advertises 19 tools (cap 20) without `outputSchema`
+  (~45KB vs ~215KB); `all` advertises the full, unchanged catalogue. Every tool
+  is still registered, so non-core tools remain callable by name. New
+  `get_capabilities().mcp_tools_available[].in_core_profile` boolean. The tool
+  NAME set is unchanged, so the schema fingerprint is unchanged.
+
+### Fixed
+
+- **Stale tool counts and CLI flag in docs (go-slide-creator-og5i).** The
+  `get_started` / `make_deck` descriptions, SKILL.md, TOOLS.md, and README no
+  longer hard-code tool counts ("45-tool", "37-tool", "40+", "51 tools"), and
+  SKILL.md's `json2pptx mcp` line uses the real `--output` flag (not the
+  non-existent `-output-dir`). `TestSkillDocCLIFlagsExist` now verifies every
+  `json2pptx <cmd> --flag` shown in SKILL.md / TOOLS.md / WORKFLOW.md against the
+  command's real flag set, and `TestNoHardcodedToolCounts` rejects new counts.
+
+### Changed (value scale)
+
+- **One 0-100 score scale with an explicit basis (go-slide-creator-n1t7).**
+  `generate_presentation.quality.score` / `slide_scores[].score` (CLI
+  `--json-output` too) and `render_deck_spec.quality_summary.score` move from
+  0.0-1.0 to the shared **0-100** integer-valued scale (a former `0.87` is now
+  `87`) and gain `basis: "input"`. `score_deck` gains `basis: "structural"`;
+  `auto_repair` / `make_deck` gain `score_basis: "structural"`. Basis enum:
+  `input` (static input-JSON heuristics) | `structural` (deterministic rules over
+  the generated deck, no pixels) | `rendered` (reserved for pixel-derived
+  scores). The `generate_presentation` output schema's stale `quality_score`
+  definition (overall/variety/coverage/structure) is replaced by the real shape,
+  and `render_deck_spec.quality_summary` now references it. `score_deck` and
+  `render_deck_spec` descriptions state exactly what each score measured.
+  Agents comparing `quality.score` against 0-1 thresholds must rescale.
+
 ## Unreleased — plan_deck deck-quality fixes (go-slide-creator-xmpb)
 
 ### Changed

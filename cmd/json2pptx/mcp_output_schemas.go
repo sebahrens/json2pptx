@@ -42,15 +42,7 @@ var outputSchemaGenerate = json.RawMessage(`{
   },
   "required": ["success"],
   "$defs": {
-    "quality_score": {
-      "type": "object",
-      "properties": {
-        "overall":    {"type": "integer"},
-        "variety":    {"type": "integer"},
-        "coverage":   {"type": "integer"},
-        "structure":  {"type": "integer"}
-      }
-    },
+    "quality_score": ` + qualityScoreSchema + `,
     "validation_error": {
       "type": "object",
       "properties": {
@@ -568,6 +560,22 @@ var outputSchemaPreviewIcon = json.RawMessage(`{
   "required": ["svg_data", "alt", "source_kind"]
 }`)
 
+// qualityScoreSchema describes QualityScore (generate_presentation.quality,
+// render_deck_spec.quality_summary): an input-heuristic score on the shared
+// 0-100 scale with basis "input" (go-slide-creator-n1t7).
+const qualityScoreSchema = `{
+      "type": "object",
+      "description": "Input-heuristic quality estimate over the input JSON (title length, bullet counts, chart data shape). NOT a rendered or structural verdict — use score_deck for the structural score and render tools for pixels.",
+      "properties": {
+        "score":        {"type": "number", "minimum": 0, "maximum": 100, "description": "0-100 (shared score scale)."},
+        "basis":        {"type": "string", "enum": ["input"], "description": "What the score measured: input = static heuristics over the input JSON."},
+        "scope":        {"type": "string", "enum": ["input_heuristic"]},
+        "slide_scores": {"type": "array", "items": {"type": "object", "properties": {"slide_number": {"type": "integer"}, "score": {"type": "number", "minimum": 0, "maximum": 100}, "issues": {"type": "array", "items": {"type": "string"}}}}},
+        "issues":       {"type": "array", "items": {"type": "string"}},
+        "evidence":     {"type": "object"}
+      }
+    }`
+
 // --- render_slide_image ---
 var outputSchemaRenderSlideImage = json.RawMessage(`{
   "type": "object",
@@ -580,7 +588,12 @@ var outputSchemaRenderSlideImage = json.RawMessage(`{
     "size_error":   {"type": "string"},
     "content_hash": {"type": "string", "description": "SHA-256 of the rendered PNG bytes. Stable identity of this image regardless of delivery (inline or path)."},
     "source_hash":  {"type": "string", "description": "Identity of the upstream artifact this image was rendered from: the PPTX file content hash, or the caller-supplied cache key for keyed renders."},
-    "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned; empty for inline png_base64."}
+    "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned; empty for inline png_base64."},
+    "delivery":     {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when the pixels are delivered as an MCP image content block after this JSON (no png_base64). Absent in the legacy include_base64_json=true envelope."},
+    "image_content_index": {"type": "integer", "description": "Position of this slide's image block in the result content array (content[0] is this JSON)."},
+    "image_mime_type":     {"type": "string", "description": "MIME type of the delivered image block (image/jpeg)."},
+    "image_width":         {"type": "integer", "description": "Pixel width of the delivered (downscaled) image block."},
+    "image_height":        {"type": "integer", "description": "Pixel height of the delivered (downscaled) image block."}
   },
   "required": ["index"]
 }`)
@@ -627,12 +640,19 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
           "size_error":   {"type": "string"},
           "content_hash": {"type": "string", "description": "SHA-256 of the rendered thumbnail PNG bytes."},
           "source_hash":  {"type": "string", "description": "PPTX file content hash this thumbnail was rendered from."},
-          "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned."}
+          "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned."},
+          "image_content_index": {"type": "integer", "description": "Position of this slide's image block in the result content array (content[0] is this JSON)."},
+          "image_mime_type":     {"type": "string"},
+          "image_width":         {"type": "integer"},
+          "image_height":        {"type": "integer"}
         },
         "required": ["index"]
       }
     },
-    "truncated": {"type": "boolean"}
+    "truncated": {"type": "boolean"},
+    "delivery":  {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when thumbnails are delivered as MCP image content blocks (one per slide, in order) after this JSON. Absent in the legacy include_base64_json=true envelope."},
+    "source_hash": {"type": "string", "description": "image_content mode: PPTX content hash shared by every slide (hoisted from slides[])."},
+    "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."}
   },
   "required": ["slides", "truncated"]
 }`)
@@ -701,7 +721,8 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
 var outputSchemaScoreDeck = json.RawMessage(`{
   "type": "object",
   "properties": {
-    "overall_score": {"type": "integer"},
+    "overall_score": {"type": "integer", "minimum": 0, "maximum": 100, "description": "0-100 (shared score scale)."},
+    "basis":         {"type": "string", "enum": ["structural"], "description": "What the score measured: structural = deterministic rules over the generated deck (fit findings, pagination, autofit, contrast swaps, rhythm). Never inspects rendered pixels."},
     "per_slide": {
       "type": "array",
       "items": {
@@ -1284,6 +1305,7 @@ var outputSchemaAutoRepair = json.RawMessage(`{
   "properties": {
     "path":        {"type": "string", "description": "Absolute path to the final rendered PPTX. Written regardless of whether the gate ultimately passed."},
     "final_score": {"type": "integer", "description": "Overall_score of the last (post-repair) pass, in [0, 100]."},
+    "score_basis": {"type": "string", "enum": ["structural"], "description": "What final_score / trace[].score measured: structural = score_deck rules over the generated deck, no pixels."},
     "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_passes iterations."},
     "passes":      {"type": "integer", "description": "Number of iterations actually run (≤ max_passes)."},
     "trace": {
@@ -1331,6 +1353,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
   "properties": {
     "path":        {"type": "string", "description": "Absolute path to the final rendered PPTX. Written regardless of whether the gate passed."},
     "final_score": {"type": "integer", "description": "overall_score of the last (post-repair) pass, in [0, 100]."},
+    "score_basis": {"type": "string", "enum": ["structural"], "description": "What final_score / trace[].score measured: structural = score_deck rules over the generated deck, no pixels."},
     "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_repair_passes iterations."},
     "passes":      {"type": "integer", "description": "Number of auto_repair iterations actually run (≤ max_repair_passes)."},
     "trace": {
@@ -1527,7 +1550,8 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           "api_key_dependency": {"type": "boolean"},
           "cli_counterpart":   {"type": "string"},
           "mcp_only_reason":   {"type": "string"},
-          "primitive_alternatives": {"type": "array", "items": {"type": "string"}}
+          "primitive_alternatives": {"type": "array", "items": {"type": "string"}},
+          "in_core_profile":   {"type": "boolean", "description": "True when the default core tool profile advertises this tool in tools/list. Others are listed only when the server runs with --tools=all (JSON2PPTX_MCP_TOOLS=all)."}
         },
         "required": ["name", "added_in", "kind", "phase"]
       }
@@ -2196,7 +2220,7 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
     "slide_count":     {"type": "integer"},
     "content_hash":    {"type": "string"},
     "duration_ms":     {"type": "integer"},
-    "quality_summary": {"type": "object", "description": "Quality score computed over the compiled slides."},
+    "quality_summary": ` + qualityScoreSchema + `,
     "warnings":        {"type": "array", "items": {"type": "string"}},
     "diagnostics":     {"type": "array", "items": {"$ref": "#/$defs/semantic_diagnostic"}},
     "explanation_summary": {"type": "object", "description": "The compiler's planned decisions (archetype, template, per-slide kind/role/family/density/pattern) and rhythm warnings."},

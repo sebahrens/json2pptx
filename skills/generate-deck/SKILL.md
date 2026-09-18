@@ -20,7 +20,7 @@ This skill is split into focused sub-files. SKILL.md (this file) covers precondi
 
 | File | Contents |
 |---|---|
-| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue (40+ rows) with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
+| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
 | [WORKFLOW.md](WORKFLOW.md) | 4-phase workflow deep dive (Plan, Vary, Render, Repair), visual inspection, `next_tool_call`, response_fingerprint, idempotency_key |
 | [FINDINGS.md](FINDINGS.md) | All finding codes (layout + chart), the `fix.kind` enum, the `repair_slide` apply-only superset, strict-fit promotion ladder |
 | [RULES.md](RULES.md) | Rules 1–20 (shape grid, charts, content/layout, contrast, silent traps, table density), anti-patterns, cell accent variety |
@@ -44,7 +44,7 @@ the compiler choose patterns, layouts, accents, and rhythm — a spec is far sho
 | Discover | `list_deck_archetypes`, `list_slide_kinds` | `semantic schema` | Enumerate `meta.archetype` / `slides[].kind` and each kind's required + typical fields (plus `required_aliases`: required-one-of alias keys, e.g. `kpi_snapshot` accepts `metrics` for `kpis`). `semantic schema` prints the full DeckSpec JSON Schema (draft 2020-12). |
 | Validate | `validate_deck_spec` | `semantic validate` | First check: unknown kinds/archetypes, missing required payload fields, rhythm/density advisories. Returns the shared finding envelope; `ok=false` ⇒ ≥1 error-severity finding (`--strict off\|warn\|strict` controls advisory severity). |
 | Preview plan | `explain_deck_spec` | `semantic explain` | Read-only projection: resolved archetype/template, deck `rhythm` + `rhythm_warnings[]`, and per slide `{index, kind, role, visual_family, density, title, takeaway, pattern, layout}` — **without** compiling or rendering. Use during planning. |
-| Render | `render_deck_spec` | `semantic render` | One-call spec → `.pptx`. Strict output validation by default (`output_validation off\|warn\|strict`). Returns `{success, pptx_path, quality_summary, diagnostics[], explanation_summary}`. |
+| Render | `render_deck_spec` | `semantic render` | One-call spec → `.pptx`. Strict output validation by default (`output_validation off\|warn\|strict`). Returns `{success, pptx_path, quality_summary (0-100, basis "input"), diagnostics[], explanation_summary}`. |
 | Lower to raw | `compile_deck_spec` (`include_compiled_json: true`) | `semantic compile --envelope` | Escape hatch: emit the compiled `PresentationInput` to hand-edit, then drive `validate_input` / `generate_presentation`. Default output is compact (`{ok, slide_count, template, diagnostics[]}`). |
 
 **`meta.archetype`** ∈ `board_update`, `qbr`, `sales_pitch`, `strategy_proposal`,
@@ -305,10 +305,11 @@ This skill talks to **two** independent MCP servers. Both must be reachable for 
 
 ### `json2pptx-mcp` — deck-level engine
 
-Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. The 5-tool quick reference for this server is in the [MCP Tools (most-used)](#mcp-tools-most-used) section below; the full 40+ tool catalogue with phase markers lives in [TOOLS.md](TOOLS.md).
+Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. The 5-tool quick reference for this server is in the [MCP Tools (most-used)](#mcp-tools-most-used) section below; the full tool catalogue with phase markers lives in [TOOLS.md](TOOLS.md).
 
 - **Binary path:** `cmd/json2pptx/json2pptx` (built via `make` or `go build ./cmd/json2pptx`)
-- **Run as MCP:** `json2pptx mcp [-templates-dir <path>] [-output-dir <path>]`
+- **Run as MCP:** `json2pptx mcp [--templates-dir <path>] [--output <path>] [--tools core|all]`
+- **Tool profile:** by default (`--tools core`) `tools/list` advertises only the ~20 core tools (`get_started`, `get_capabilities`, `list_templates`, `describe_finding`, `validate_deck_spec`, `render_deck_spec`, `list_slide_kinds`, `plan_deck`, `recommend_visual`, `analyze_deck_rhythm`, `list_patterns`, `show_pattern`, `expand_pattern`, `validate_input`, `generate_presentation`, `render_deck_thumbnails`, `render_slide_image`, `score_deck`, `repair_slide`) without `outputSchema` (responses still carry `structuredContent`), keeping the listing under 60KB. Start the server with `--tools all` (or env `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue — facades (`make_deck`, `auto_repair`), preview/wireframe, `inspect_slide_images`, template settings, `score_candidates`, `apply_deck_patch`, etc. Non-core tools remain callable by name in core mode; `get_capabilities().mcp_tools_available[].in_core_profile` tells you which tools the core profile lists.
 - **Use when:** generating, validating, planning, scoring, repairing, or introspecting a full deck or any template / pattern / icon / shape catalog.
 
 ```json
@@ -424,7 +425,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (most-used)
 
-The five tools below cover the precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. For the full 40+ tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, `examine_template`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
+The five tools below cover the precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. For the full tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, `examine_template`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
 
 | Tool | Phase | When to call |
 |---|---|---|
@@ -717,6 +718,10 @@ Full details for each phase live in [WORKFLOW.md](WORKFLOW.md). One-line summary
 2. **VARY** — call `analyze_deck_rhythm` and act on `longest_run`, `accent_balance`, `density_cv`, `composition_score`.
 3. **RENDER** — generate the JSON in one pass; verify the pre-emit checklist (Rule 20, semantic fills, gap ≥4pt, accent variety, 60–110% density).
 4. **REPAIR** — `validate_input` → `generate_presentation` → `render_slide_image` / `render_deck_thumbnails` → `inspect_slide_images` → `repair_slide`. Images are truth.
+
+**Rendered slides arrive as images you can see.** `render_slide_image`, `render_slide_image_from_json`, and `render_deck_thumbnails` return each slide as a native MCP image content block (`image/jpeg`, max 1280px wide) after a small JSON metadata block (`delivery: "image_content"`, per-slide `index` / `path` / `image_content_index`, no base64). Look at the images directly — no `ANTHROPIC_API_KEY` or `inspect_slide_images` round-trip is needed to see the slides; hand the returned `path`s to `inspect_slide_images` only when you want its categorized findings. Clients that cannot display MCP images can pass `include_base64_json: true` to get the legacy base64-PNG-in-JSON envelope (the CLI `render-slide` / `render-thumbnails` / `render-slide-from-json` subcommands always print that legacy JSON).
+
+**One score scale, explicit basis.** Every deck-quality score is 0-100 and names what it measured: `generate_presentation.quality` / `render_deck_spec.quality_summary` carry `basis: "input"` (static heuristics over the input JSON); `score_deck.overall_score` carries `basis: "structural"` and `auto_repair` / `make_deck` `final_score` carry `score_basis: "structural"` (deterministic rules over the generated deck — no pixels). None of them is a visual verdict (`"rendered"` is reserved for pixel-derived scores); look at the rendered slides for that.
 
 For the `repair_slide` fix-kind vocabulary, finding-code catalog, and strict-fit promotion ladder, see [FINDINGS.md](FINDINGS.md).
 

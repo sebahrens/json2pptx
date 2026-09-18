@@ -47,6 +47,8 @@ func runRenderSlide() error {
 		"slide_index": float64(*slideIndex),
 		"density":     float64(*density),
 		"force":       *force,
+		// The CLI prints JSON to stdout; keep the base64/path envelope.
+		argIncludeBase64JSON: true,
 	}
 
 	result, err := mc.handleRenderSlideImage(context.Background(), mcpRequestWithArgs(args))
@@ -117,6 +119,8 @@ func runRenderSlideFromJSON() error {
 		"density":  float64(*density),
 		"force":    *force,
 		"overlay":  *overlay,
+		// The CLI prints JSON to stdout; keep the base64/path envelope.
+		argIncludeBase64JSON: true,
 	}
 
 	result, err := mc.handleRenderSlideImageFromJSON(context.Background(), mcpRequestWithArgs(args))
@@ -165,6 +169,8 @@ func runRenderThumbnails() error {
 		"density":    float64(*density),
 		"max_slides": float64(*maxSlides),
 		"force":      *force,
+		// The CLI prints JSON to stdout; keep the base64/path envelope.
+		argIncludeBase64JSON: true,
 	}
 
 	result, err := mc.handleRenderDeckThumbnails(context.Background(), mcpRequestWithArgs(args))

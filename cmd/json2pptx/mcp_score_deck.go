@@ -24,9 +24,9 @@ import (
 
 func mcpScoreDeckTool() mcp.Tool {
 	return mcp.NewTool("score_deck",
-		mcp.WithDescription(`Score a presentation for visual quality using deterministic rules. Returns an overall score (0-100), per-slide scores, and structured findings with fix suggestions.
+		mcp.WithDescription(`Score a presentation's STRUCTURAL quality using deterministic rules. Returns overall_score on the shared 0-100 scale with basis="structural", per-slide scores, and structured findings with fix suggestions. It never looks at rendered pixels, so it cannot visually approve a deck; render (render_deck_thumbnails) and look at the slides for that.
 
-Runs a full generation pass (to a temporary directory) so the score reflects actual rendered state — including pagination, autofit shrink, contrast swaps, and layout synthesis. Static analysis alone (without generation) misses these render-time effects.
+Runs a full generation pass (to a temporary directory) so the score reflects the GENERATED deck structure — including pagination, autofit shrink, contrast swaps, and layout synthesis — not just the input JSON. Static analysis alone (without generation) misses these generation-time effects.
 
 Score formula: 100 - sum(severity_weights × findings). Weights: refuse=25, shrink_or_split=15, review=5, info=0.
 

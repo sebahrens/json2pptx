@@ -13,7 +13,7 @@ json2pptx has two audiences. Jump straight to yours:
 |------------|-------|
 | **Author a deck semantically** — write compact YAML/JSON describing slide intent and content | [Semantic Quick Start](#semantic-quick-start) |
 | **Run the raw CLI or Go library** — generate decks from compiled `PresentationInput` JSON in a shell, script, or program | [Install](#installation) → [Raw JSON CLI Quick Start](#raw-json-cli-quick-start) |
-| **Integrate via MCP** — let an AI agent plan, build, validate, and repair decks | [Claude Code Integration](#mcp-integration) → [MCP Server (51 tools)](#mcp-server-51-tools) |
+| **Integrate via MCP** — let an AI agent plan, build, validate, and repair decks | [Claude Code Integration](#mcp-integration) → [MCP Server](#mcp-server) |
 
 New here? The [Philosophy](#philosophy) and [How It Works](#how-it-works) sections give the mental model first.
 
@@ -372,13 +372,18 @@ json2pptx ships with three Claude Code skills and an MCP server that let an AI a
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
-### MCP Server (51 Tools)
+### MCP Server
 
 Start manually for debugging:
 
 ```sh
 json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
 ```
+
+By default the server runs the `core` tool profile: `tools/list` advertises ~20
+core tools without `outputSchema` (~45KB instead of ~215KB of context). Pass
+`--tools all` (or set `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue
+below; non-core tools stay callable by name either way.
 
 The installer configures this automatically in `~/.claude/mcp.json`. The fastest
 way to learn the workflow at runtime is the `get_started` tool: it returns the
