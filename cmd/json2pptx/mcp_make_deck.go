@@ -41,14 +41,25 @@ const (
 // internally so agents can see which patterns were chosen on each slide and
 // chain to repair_slide for per-slide content edits.
 type makeDeckOutput struct {
-	Path       string `json:"path,omitempty"`
-	FinalScore int    `json:"final_score"`
+	Path string `json:"path,omitempty"`
+	// FinalScore is the headline quality score. For exemplar-skeleton output
+	// (always, today) it is forced to 0 so agents keying on a high score never
+	// mistake placeholder copy for a finished deck; the deterministic structural
+	// score the loop computed is preserved in StructuralScore.
+	FinalScore int `json:"final_score"`
+	// GatePassed is forced false whenever the deck carries exemplar content,
+	// with "exemplar_content" as the first gate/blocking reason.
 	// ScoreBasis mirrors auto_repair.score_basis ("structural").
 	ScoreBasis  string                 `json:"score_basis"`
 	GatePassed  bool                   `json:"gate_passed"`
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
+	// StructuralScore is the deterministic loop score of the last pass (layout,
+	// fit, and structure only — it never judges the copy). ContentScore rates the
+	// content itself: 0 for exemplar placeholder content.
+	StructuralScore int  `json:"structural_score"`
+	ContentScore    *int `json:"content_score,omitempty"`
 	// QualityMode truth-labels the inspection regime that ACTUALLY ran:
 	// "deterministic" (default) or "deterministic+visual_qa" when a visual
 	// refinement phase actually inspected slides. Alias of Quality.Actual. Mirrors
@@ -136,7 +147,9 @@ IMPORTANT — the output is a SKELETON, not a publishable deck. When the caller 
 
 Quality mode (truth-labeled in the response as quality_mode): like auto_repair, the DEFAULT is "deterministic" — the internal loop scores the deck from static + render-fit findings only, with no rendering and no API key. Pass visual_qa.enabled=true to additionally run the opt-in vision/heuristic visual refinement phase (quality_mode "deterministic+visual_qa"); it inherits auto_repair's visual_qa semantics, requirements, and transparent fallbacks.
 
-Returns {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. next_state mirrors auto_repair: {completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]} — pass next_state.resume_token back as resume_token to continue the internal convergence loop from the saved skeleton without repeating completed passes (the plan is preserved across the resume; outline is ignored). publishable / manual_review_required / blocking_reasons make the skeleton status unambiguous (publishable is always false for exemplar content; blocking_reasons names the exemplar-content reason plus any unmet gate criteria). plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
+SKELETON / WIREFRAME ONLY: because the content is exemplar placeholder copy, gate_passed is ALWAYS false, gate_reasons[] and blocking_reasons[] lead with "exemplar_content", final_score and content_score are 0, and the deterministic layout/fit score is reported separately as structural_score. For a real deck from a brief, author a DeckSpec and call render_deck_spec instead (see get_started).
+
+Returns {path, final_score, structural_score, content_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, plan, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. The final PPTX is written to the configured output directory whether the gate passed or not. next_state mirrors auto_repair: {completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]} — pass next_state.resume_token back as resume_token to continue the internal convergence loop from the saved skeleton without repeating completed passes (the plan is preserved across the resume; outline is ignored). publishable / manual_review_required / blocking_reasons make the skeleton status unambiguous (publishable is always false for exemplar content; blocking_reasons names the exemplar-content reason plus any unmet gate criteria). plan.slides[] lets the caller target individual slides via repair_slide for follow-up content edits without re-planning. final_presentation is the full deck JSON the engine authored and repaired (reflects any visual_qa repairs) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding it from the plan or trace.
 
 Style hints (all optional):
 - slide_budget: target deck size, clamped to [3, 30] (default 10).
@@ -328,10 +341,11 @@ func (mc *mcpConfig) runMakeDeckResume(ctx context.Context, request mcp.CallTool
 // so the response shape stays identical; respondMakeDeck attaches next_state and
 // the resume token.
 func makeDeckOutputFromLoop(loopOut *autoRepairOutput, plan *makeDeckPlanSummary) *makeDeckOutput {
-	return &makeDeckOutput{
+	out := &makeDeckOutput{
 		Path:              loopOut.Path,
 		FinalScore:        loopOut.FinalScore,
 		ScoreBasis:        loopOut.ScoreBasis,
+		StructuralScore:   loopOut.FinalScore,
 		GatePassed:        loopOut.GatePassed,
 		Passes:            loopOut.Passes,
 		Trace:             loopOut.Trace,
@@ -351,8 +365,48 @@ func makeDeckOutputFromLoop(loopOut *autoRepairOutput, plan *makeDeckPlanSummary
 		ValidationStatus:     loopOut.ValidationStatus,
 		Publishable:          loopOut.Publishable,
 		ManualReviewRequired: loopOut.ManualReviewRequired,
-		BlockingReasons:      loopOut.BlockingReasons,
+		BlockingReasons:      append([]string(nil), loopOut.BlockingReasons...),
 	}
+	if out.UsesExemplarContent {
+		applyExemplarContentGate(out)
+	}
+	return out
+}
+
+// exemplarContentReason is the machine-matchable blocking/gate reason token
+// reported when a deck's slides carry pattern exemplar placeholder content.
+const exemplarContentReason = "exemplar_content"
+
+// applyExemplarContentGate fails the make_deck gate for exemplar-skeleton
+// output. The internal convergence loop scores layout/fit/structure only, so a
+// deck of off-topic placeholder copy can score 98 and "pass" — agents key on
+// gate_passed and final_score, so both must say "not done" here: gate_passed is
+// forced false, "exemplar_content" leads gate_reasons and blocking_reasons,
+// final_score and content_score drop to 0, and the structural score the loop
+// actually computed stays available as structural_score.
+func applyExemplarContentGate(out *makeDeckOutput) {
+	out.GatePassed = false
+	out.FinalScore = 0
+	zero := 0
+	out.ContentScore = &zero
+	out.Publishable = false
+	out.ManualReviewRequired = true
+	if !containsString(out.GateReasons, exemplarContentReason) {
+		out.GateReasons = append([]string{exemplarContentReason}, out.GateReasons...)
+	}
+	if !containsString(out.BlockingReasons, exemplarContentReason) {
+		out.BlockingReasons = append([]string{exemplarContentReason}, out.BlockingReasons...)
+	}
+}
+
+// containsString reports whether list holds s exactly.
+func containsString(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
 
 // respondMakeDeck finalizes a make_deck output: it carries the plan summary into

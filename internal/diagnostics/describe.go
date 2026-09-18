@@ -112,6 +112,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeMissingParameter, CodeInvalidJSON, CodeUnknownEnum},
 	},
+	CodeUnknownParameter: {
+		Code:        CodeUnknownParameter,
+		Summary:     "A tool call supplied an argument the tool does not accept.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "Every MCP tool call is checked against the tool's input schema before the handler runs; an argument name the schema does not declare is rejected instead of being silently ignored (e.g. plan_deck slide_count, whose real name is slide_budget).",
+		RemediationSteps: []string{
+			"Rename the argument at evidence.path to fix.params.did_you_mean (also named in the message), or remove it.",
+			"The message lists every accepted argument; tools/list carries the full input schema.",
+		},
+		ExampleBefore: `plan_deck({"brief": "...", "slide_count": 8})`,
+		ExampleAfter:  `plan_deck({"brief": "...", "slide_budget": 8})`,
+		RelatedCodes:  []string{CodeInvalidParameter, CodeMissingParameter},
+	},
 	CodeInvalidGrid: {
 		Code:        CodeInvalidGrid,
 		Summary:     "A shape_grid is structurally invalid.",
@@ -774,12 +787,12 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 	},
 	CodeSemanticUnknownField: {
 		Code:        CodeSemanticUnknownField,
-		Summary:     "A top-level field in the semantic deck spec is not recognized.",
+		Summary:     "A field in the semantic deck spec is not recognized (top-level, meta, slide payload, list entry, or chart object).",
 		Severity:    describeSeverityRefuse,
-		WhenEmitted: "semantic parsing finds a top-level key other than meta or slides — most often a stale spec using deck instead of meta. The suggestion in the message names the field it was likely meant to be.",
+		WhenEmitted: "semantic parsing finds a top-level key other than meta or slides (error — most often a stale spec using deck instead of meta), or validation finds a slide payload key, list-entry key (e.g. slides[i].kpis[j].valeu), or chart key that the kind's compiler never reads (warning; error under strict) — its content would otherwise be dropped silently. The path names the dropped key; fix.params.did_you_mean names the likely intended key.",
 		RemediationSteps: []string{
-			"Rename the unknown top-level field to the suggested key (e.g. deck -> meta), or remove it.",
-			"A semantic deck spec has exactly two top-level fields: meta and slides. See json2pptx semantic schema.",
+			"Rename the unknown field to the suggested key (fix.params.did_you_mean, e.g. deck -> meta, takeawy -> takeaway), or remove it.",
+			"A semantic deck spec has exactly two top-level fields: meta and slides; each slide kind accepts exactly the fields in list_slide_kinds item_schema (see json2pptx semantic schema).",
 		},
 		ExampleBefore: `{"deck": {"title": "Q2 Review"}, "slides": [...]}`,
 		ExampleAfter:  `{"meta": {"title": "Q2 Review"}, "slides": [...]}`,

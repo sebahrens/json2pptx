@@ -133,7 +133,5 @@ func newJSON2PPTXMCPServer(mc *mcpConfig, profile string, opts ...server.ServerO
 	if f := toolProfileFilter(profile); f != nil {
 		opts = append(opts, server.WithToolFilter(f))
 	}
-	s := server.NewMCPServer("json2pptx", Version, opts...)
-	registerMCPTools(s, mc)
-	return s
+	return newMCPServer(mc, opts...)
 }

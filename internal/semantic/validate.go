@@ -171,6 +171,15 @@ func (s *semDiags) advisory(path, code, msg string) {
 	})
 }
 
+// advisoryFix is advisory with an attached fix suggestion.
+func (s *semDiags) advisoryFix(path, code, msg string, fix *diagnostics.Fix) {
+	n := len(s.out)
+	s.advisory(path, code, msg)
+	if len(s.out) > n {
+		s.out[len(s.out)-1].Fix = fix
+	}
+}
+
 // requireUsableContent reports whether a required content-bearing list field
 // yields at least one entry the compiler can render. When the field cleared the
 // raw presence gate (so the required-field loop stayed silent) but every entry
@@ -336,6 +345,10 @@ func validateSlide(i int, slide SlideSpec, s *semDiags) {
 	// extracts to zero usable content is separately blocked by requireUsableContent.
 	validateFieldShapes(path, slide, s)
 
+	// Flag payload keys the compiler never reads (typos, invented fields, chart
+	// data in the wrong place) instead of silently dropping their content.
+	validateUnknownFields(path, slide, s)
+
 	validateKindRules(path, slide, s)
 
 	// Content-bearing slides should carry a one-line takeaway (insight counts
@@ -397,14 +410,11 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 				fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 is recommended", n))
 		}
 	case KindChartInsight:
-		// The semantic chart payload is minimal at this layer: series data may be
-		// attached by a later compiler phase, so a missing/empty series is an
-		// advisory richness finding rather than a hard error.
+		// A chart without usable data compiles to an insights-only slide (the
+		// chart panel is dropped), so flag it at the path the author must edit —
+		// chart.data — with the expected shape for the chart type.
 		if chart, ok := slide.Body["chart"].(map[string]any); ok {
-			if !chartHasSeries(chart) {
-				s.advisory(path+".chart.series", diagnostics.CodeSemanticDensity,
-					"chart_insight chart declares no data series")
-			}
+			validateChartData(path+".chart", chart, s)
 		}
 		// chart-insights-split renders 1–6 insights alongside the chart; beyond the
 		// cap the compiler degrades to a bullet content slide and drops the chart
@@ -437,16 +447,64 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	}
 }
 
-// chartHasSeries reports whether a chart_insight payload declares at least one
-// data series. It accepts the documented chart.data.series shape (used by
-// examples/semantic/qbr.yaml and docs/SEMANTIC_COMPILER.md) as well as a flat
-// chart.series fallback for older specs.
-func chartHasSeries(chart map[string]any) bool {
-	if n, ok := listLen(chart, "series"); ok && n > 0 {
+// valuesChartTypes are chart types whose data is a flat {categories, values}
+// list rather than {categories, series[]}.
+var valuesChartTypes = map[string]bool{
+	"pie_chart": true, "donut_chart": true, "pie": true, "donut": true, "funnel_chart": true, "funnel": true,
+}
+
+// chartDataShape returns the expected chart.data shape (as a readable string)
+// and a minimal example for a chart type.
+func chartDataShape(chartType string) (string, map[string]any) {
+	if valuesChartTypes[chartType] {
+		return "{categories:[…], values:[…]}", map[string]any{
+			"categories": []any{"Enterprise", "Mid-market", "SMB"},
+			"values":     []any{55, 30, 15},
+		}
+	}
+	return "{categories:[…], series:[{name, values:[…]}]}", map[string]any{
+		"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+		"series":     []any{map[string]any{"name": "Revenue", "values": []any{34, 40, 44, 48}}},
+	}
+}
+
+// validateChartData checks a chart_insight chart carries data in the shape the
+// renderer reads: chart.data {categories, series[]} (or {categories, values}
+// for pie/donut). Findings point at chart.data — the path the author edits —
+// and carry the expected shape and an example in fix.params. The flat
+// chart.series form is NOT read by the compiler (it only reads chart.data), so
+// it no longer counts as data.
+func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
+	chartType, _ := chart["type"].(string)
+	shape, example := chartDataShape(chartType)
+	dataPath := chartPath + ".data"
+	fix := &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{
+		"path":           dataPath,
+		"expected_shape": shape,
+		"example":        example,
+	}}
+
+	data, ok := chart["data"].(map[string]any)
+	if !ok || len(data) == 0 {
+		s.advisoryFix(dataPath, diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("chart_insight chart has no data; the chart panel is dropped. Provide chart.data as %s", shape), fix)
+		return
+	}
+	if chartDataHasValues(data, chartType) {
+		return
+	}
+	s.advisoryFix(dataPath, diagnostics.CodeSemanticDensity,
+		fmt.Sprintf("chart_insight chart.data declares no data series (found keys %s); expected chart.data as %s", joinQuoted(sortedKeys(data)), shape), fix)
+}
+
+// chartDataHasValues reports whether chart.data carries a non-empty series
+// list (or, for pie/donut-style charts, a non-empty values list).
+func chartDataHasValues(data map[string]any, chartType string) bool {
+	if n, ok := listLen(data, "series"); ok && n > 0 {
 		return true
 	}
-	if data, ok := chart["data"].(map[string]any); ok {
-		if n, ok := listLen(data, "series"); ok && n > 0 {
+	if valuesChartTypes[chartType] {
+		if n, ok := listLen(data, "values"); ok && n > 0 {
 			return true
 		}
 	}

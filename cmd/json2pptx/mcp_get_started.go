@@ -33,6 +33,10 @@ type getStartedStep struct {
 type getStartedFastPath struct {
 	Tool       string `json:"tool"`
 	WhenToCall string `json:"when_to_call"`
+	// Steps is the short ordered call chain around Tool (brief:
+	// list_slide_kinds → validate_deck_spec → render_deck_spec →
+	// render_deck_thumbnails). Omitted when the fast path is a single call.
+	Steps []getStartedStep `json:"steps,omitempty"`
 	// FallsBackTo is the manual primitive workflow this facade collapses — always
 	// the tool names in this response's Sequence — so an agent knows exactly which
 	// controllable path to drop to when it needs per-step control.
@@ -42,8 +46,8 @@ type getStartedFastPath struct {
 // getStartedResponse is the JSON envelope for get_started.
 type getStartedResponse struct {
 	Task string `json:"task"`
-	// FastPath is the recommended single-call facade for this task (make_deck for
-	// brief, auto_repair for revise). Present only for tasks that have a facade;
+	// FastPath is the recommended fast path for this task (the DeckSpec path
+	// ending in render_deck_spec for brief, auto_repair for revise). Present only for tasks that have a facade;
 	// omitted for validate-only (pure diagnostics, no facade). Sequence remains
 	// the controllable manual path agents drop to when they need per-step control.
 	FastPath       *getStartedFastPath `json:"fast_path,omitempty"`
@@ -51,6 +55,10 @@ type getStartedResponse struct {
 	AvailableTasks []string            `json:"available_tasks"`
 	Notes          []string            `json:"notes,omitempty"`
 	Completion     completionProtocol  `json:"completion_protocol"`
+	// QualityWorkflow is the server's MCP `instructions` text, echoed verbatim
+	// (same Go const) so MCP clients that do not surface instructions still see
+	// the quality workflow.
+	QualityWorkflow string `json:"quality_workflow"`
 }
 
 type completionProtocol struct {
@@ -70,8 +78,14 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 	switch task {
 	case "brief":
 		return &getStartedFastPath{
-			Tool:        "make_deck",
-			WhenToCall:  "FASTEST PATH (recommended cold start) — ONE call from a natural-language outline to a DRAFT, auto-repaired PPTX. make_deck internally chains plan_deck → expand patterns with exemplar content → auto_repair, so you skip the whole manual sequence. NOTE: the output is a SKELETON, not publishable — it fills slides with pattern exemplar PLACEHOLDER content, so the response reports content_status=\"exemplar_skeleton\", uses_exemplar_content=true, publishable=false even when the gate passes. After the call, replace the exemplar copy via repair_slide and run the rendered visual-QA / manual-review branch (see notes) before shipping. Drop to the manual primitives in `sequence` (recommend_visual → … → generate_presentation) when you want per-slide control over copy, patterns, or layout.",
+			Tool:       "render_deck_spec",
+			WhenToCall: "RECOMMENDED PATH for a new deck from a brief — write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, …}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (each kind's item_schema + copy-ready example) → validate_deck_spec → render_deck_spec → render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their semantic_path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). Drop to the raw primitives in `sequence` (recommend_visual → … → generate_presentation) only when you need a feature outside the DeckSpec schema.",
+			Steps: []getStartedStep{
+				{Tool: "list_slide_kinds", WhenToCall: "Pick a kind per slide; copy its example and match its item_schema exactly (unknown fields are reported as SEMANTIC_UNKNOWN_FIELD)."},
+				{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec; fix every error and SEMANTIC_UNKNOWN_FIELD / SEMANTIC_DENSITY warning at its path."},
+				{Tool: "render_deck_spec", WhenToCall: "Compile and render the DeckSpec to a .pptx; diagnostics map back to semantic_path."},
+				{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides and inspect every returned image; repair the spec and re-render until every slide looks right."},
+			},
 			FallsBackTo: tools,
 		}
 	case "revise":
@@ -125,8 +139,9 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer; repair findings, then render and inspect the new revision again."},
 		}
 		notes = []string{
-			"fast_path (make_deck) is the recommended cold-start entry point: one call to a DRAFT PPTX skeleton (NOT a publishable deck — it uses pattern exemplar placeholder content, so its response reports content_status=\"exemplar_skeleton\", uses_exemplar_content=true, publishable=false). The numbered `sequence` is the controllable path you drop to when you want to author per-slide content or drive each primitive yourself — make_deck is the workflow facade, the sequence is the manual primitives it composes.",
-			"RENDERED VISUAL-QA / MANUAL-REVIEW BRANCH (do this before publishing anything): the deterministic loop in make_deck / auto_repair / score_deck never looks at a rendered pixel, and a passing gate is NOT the same as a publishable deck. Either pass visual_qa:{enabled:true} to make_deck / auto_repair to run the in-loop vision/heuristic refinement phase, OR render the final PPTX (render_deck_thumbnails / render_slide_image) and inspect it (inspect_slide_images) yourself. Always required when publishable=false / manual_review_required=true (e.g. exemplar-skeleton make_deck output or a degraded/gate-failed run) — branch on the response's blocking_reasons to see what to fix.",
+			"fast_path is the DeckSpec path (list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails): author the user's real content as a compact DeckSpec and render it. The numbered `sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema.",
+			"make_deck is a skeleton/wireframe tool, not a deck builder: it fills every slide with pattern exemplar placeholder copy, so it always reports gate_passed=false, uses_exemplar_content=true, and \"exemplar_content\" in blocking_reasons. Never ship its output.",
+			"COMPLETION: " + mcpCompletionRule,
 			"This is the canonical new-deck workflow. Each step's output informs the next.",
 			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
 			"validate_input is mandatory per SKILL.md preconditions — skipping it is a workflow violation even when preview_presentation_plan succeeds.",
@@ -146,7 +161,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		}
 		notes = []string{
 			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
-			"RENDERED VISUAL-QA / MANUAL-REVIEW BRANCH: a passing gate from auto_repair is NOT the same as publishable — the default loop scores from static + render-fit findings only and never inspects a rendered pixel. Check the response's publishable / manual_review_required / blocking_reasons; when review is required, either pass visual_qa:{enabled:true} to auto_repair or render the final PPTX (render_deck_thumbnails / render_slide_image) and inspect it (inspect_slide_images) before shipping.",
+			"COMPLETION: " + mcpCompletionRule + " auto_repair's default loop scores static + render-fit findings only and never looks at a rendered pixel; check publishable / manual_review_required / blocking_reasons, then render and inspect.",
 			"Use this when modifying or repairing an existing PPTX deck.",
 			"You MUST supply the authoritative deck JSON for validate_input, preview_presentation_plan, repair_slide, and generate_presentation. read_presentation is a verification aid only — it does not reconstruct a PresentationInput.",
 			"If the original deck JSON is unavailable, re-author it from the brief (see task=brief) rather than trying to round-trip read_presentation through the editing tools.",
@@ -173,8 +188,9 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		Completion: completionProtocol{
 			DraftStatus:    "draft_needs_visual_review",
 			CompleteStatus: "visually_reviewed_current_revision",
-			Rule:           "Completion requires all-slide rendered inspection bound to the current artifact revision; deterministic scores remain input heuristics.",
+			Rule:           mcpCompletionRule,
 		},
+		QualityWorkflow: mcpQualityWorkflow,
 	}
 }
 
@@ -183,15 +199,15 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithDescription(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
 
 The response carries two complementary paths:
-- fast_path: the recommended single-call facade — make_deck for "brief", auto_repair for "revise". Call this alone for a fast result without orchestrating the tool surface yourself. NOTE: the result is not automatically publishable — make_deck returns a DRAFT skeleton with exemplar placeholder content (publishable=false), and even auto_repair's deterministic gate is not a substitute for the rendered visual-QA / manual-review branch (see notes); branch on the response's publishable / manual_review_required / blocking_reasons. Its falls_back_to lists the manual primitives it collapses. Omitted for "validate-only" (pure diagnostics, no facade).
+- fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" auto_repair. make_deck is a skeleton/wireframe only (exemplar placeholder copy; gate always fails). A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists the manual primitives. Omitted for "validate-only" (pure diagnostics, no facade).
 - sequence: the controllable manual path — the ordered primitives to drive by hand when you need per-slide or per-step control.
 
 Pass "task" to scope both paths:
-- "brief" (default): authoring a new deck — fast_path make_deck; manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
+- "brief" (default): authoring a new deck — fast_path render_deck_spec (DeckSpec); manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
 - "revise": modifying an existing PPTX — fast_path auto_repair; manual sequence get_capabilities → read_presentation (inspection-only; not fed downstream) → validate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
 - "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
 
-Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes.`),
+Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`),
 		mcp.WithRawOutputSchema(outputSchemaGetStarted),
 		mcp.WithString("task",
 			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), or \"validate-only\" (validate JSON without generating). Unknown values fall back to \"brief\"."),

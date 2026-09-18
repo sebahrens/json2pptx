@@ -1352,9 +1352,11 @@ var outputSchemaMakeDeck = json.RawMessage(`{
   "type": "object",
   "properties": {
     "path":        {"type": "string", "description": "Absolute path to the final rendered PPTX. Written regardless of whether the gate passed."},
-    "final_score": {"type": "integer", "description": "overall_score of the last (post-repair) pass, in [0, 100]."},
-    "score_basis": {"type": "string", "enum": ["structural"], "description": "What final_score / trace[].score measured: structural = score_deck rules over the generated deck, no pixels."},
-    "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_repair_passes iterations."},
+    "final_score": {"type": "integer", "description": "Headline score in [0, 100]. Forced to 0 when uses_exemplar_content=true (always, for make_deck) so placeholder copy never reads as a finished deck; the loop's deterministic score is in structural_score."},
+    "score_basis": {"type": "string", "enum": ["structural"], "description": "What structural_score / trace[].score measured: structural = score_deck rules over the generated deck, no pixels."},
+    "structural_score": {"type": "integer", "description": "overall_score of the last (post-repair) pass, in [0, 100]: layout / fit / structure only — it never judges the copy."},
+    "content_score": {"type": "integer", "description": "Content score. 0 when the slides carry pattern exemplar placeholder content (always, for make_deck)."},
+    "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_repair_passes iterations AND the deck carries no exemplar content. Always false for make_deck output (gate_reasons / blocking_reasons lead with 'exemplar_content')."},
     "passes":      {"type": "integer", "description": "Number of auto_repair iterations actually run (≤ max_repair_passes)."},
     "trace": {
       "type": "array",
@@ -1414,7 +1416,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — for make_deck this always includes the exemplar-content reason, plus any unmet gate criteria. Present only when publishable=false (always, for make_deck). Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "quality", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
+  "required": ["final_score", "structural_score", "gate_passed", "passes", "trace", "quality_mode", "quality", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- table_density_guide ---
@@ -1951,10 +1953,22 @@ var outputSchemaGetStarted = json.RawMessage(`{
     "available_tasks": {"type": "array", "items": {"type": "string"}},
     "fast_path": {
       "type": "object",
-      "description": "The recommended single-call workflow facade for this task (make_deck for brief, auto_repair for revise). Present only for tasks that have a facade; omitted for validate-only. Reach for this before the manual sequence when you do not need per-step control.",
+      "description": "The recommended path for this task (brief: the DeckSpec path ending in render_deck_spec; revise: auto_repair). Present only for tasks that have one; omitted for validate-only. Reach for this before the manual sequence.",
       "properties": {
-        "tool":          {"type": "string", "description": "The facade tool to call first (e.g. make_deck)."},
-        "when_to_call":  {"type": "string", "description": "When to use the facade versus dropping to the manual sequence."},
+        "tool":          {"type": "string", "description": "The key tool of the fast path (render_deck_spec for brief, auto_repair for revise)."},
+        "when_to_call":  {"type": "string", "description": "When to use the fast path versus dropping to the manual sequence."},
+        "steps": {
+          "type": "array",
+          "description": "Ordered call chain around tool (brief: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails). Omitted when the fast path is a single call.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tool":         {"type": "string"},
+              "when_to_call": {"type": "string"}
+            },
+            "required": ["tool", "when_to_call"]
+          }
+        },
         "falls_back_to": {"type": "array", "items": {"type": "string"}, "description": "The manual primitive tool names (this response's sequence) the facade collapses into one call."}
       },
       "required": ["tool", "when_to_call", "falls_back_to"]
@@ -1971,6 +1985,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
       }
     },
     "notes": {"type": "array", "items": {"type": "string"}},
+    "quality_workflow": {"type": "string", "description": "The server's MCP instructions text (5-step quality workflow), echoed verbatim."},
     "completion_protocol": {
       "type": "object",
       "properties": {
@@ -1981,7 +1996,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
       "required": ["draft_status", "complete_status", "rule"]
     }
   },
-  "required": ["task", "sequence", "available_tasks", "completion_protocol"]
+  "required": ["task", "sequence", "available_tasks", "completion_protocol", "quality_workflow"]
 }`)
 
 // --- get_input_schema ---
@@ -2308,9 +2323,11 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "summary":         {"type": "string"},
           "required_fields": {"type": "array", "items": {"type": "string"}},
           "required_aliases": {"type": "object", "description": "Maps a required field to accepted alias keys (required-one-of: the field or any alias satisfies the requirement).", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
-          "typical_fields":  {"type": "array", "items": {"type": "string"}}
+          "typical_fields":  {"type": "array", "items": {"type": "string"}},
+          "item_schema":     {"type": "object", "description": "Closed JSON Schema for one slide of this kind: every payload field the compiler reads (list-entry and chart object shapes included), additionalProperties:false."},
+          "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with zero findings."}
         },
-        "required": ["kind", "summary"]
+        "required": ["kind", "summary", "item_schema", "example"]
       }
     }
   },

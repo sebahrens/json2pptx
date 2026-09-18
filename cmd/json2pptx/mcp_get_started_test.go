@@ -109,19 +109,33 @@ func TestGetStartedSequencesAreClassifiedTools(t *testing.T) {
 	}
 }
 
-// TestGetStartedBriefRecommendsMakeDeck pins the acceptance criterion: the
-// brief flow leads with the make_deck fast path and its notes explain when to
-// use the facade versus the manual primitives.
-func TestGetStartedBriefRecommendsMakeDeck(t *testing.T) {
+// TestGetStartedBriefRecommendsRenderDeckSpec pins go-slide-creator-o8kl: the
+// brief fast path is the DeckSpec path (list_slide_kinds → validate_deck_spec →
+// render_deck_spec), not make_deck (exemplar skeleton), and the response says
+// so.
+func TestGetStartedBriefRecommendsRenderDeckSpec(t *testing.T) {
 	resp := callGetStarted(t, "brief")
 	if resp.FastPath == nil {
 		t.Fatal("brief response must carry a fast_path (the recommended best-deck path)")
 	}
-	if resp.FastPath.Tool != "make_deck" {
-		t.Errorf("brief fast_path.tool = %q, want %q", resp.FastPath.Tool, "make_deck")
+	if resp.FastPath.Tool != "render_deck_spec" {
+		t.Errorf("brief fast_path.tool = %q, want %q", resp.FastPath.Tool, "render_deck_spec")
 	}
-	if resp.FastPath.WhenToCall == "" {
-		t.Error("brief fast_path.when_to_call must explain when to use make_deck")
+	if !strings.Contains(resp.FastPath.WhenToCall, "DeckSpec") {
+		t.Errorf("brief fast_path.when_to_call must mention DeckSpec, got %q", resp.FastPath.WhenToCall)
+	}
+	wantSteps := []string{"list_slide_kinds", "validate_deck_spec", "render_deck_spec", "render_deck_thumbnails"}
+	if len(resp.FastPath.Steps) != len(wantSteps) {
+		t.Fatalf("fast_path.steps = %+v, want %v", resp.FastPath.Steps, wantSteps)
+	}
+	for i, w := range wantSteps {
+		if resp.FastPath.Steps[i].Tool != w {
+			t.Errorf("fast_path.steps[%d] = %q, want %q", i, resp.FastPath.Steps[i].Tool, w)
+		}
+	}
+	// make_deck must be positioned as a skeleton/wireframe, never the fast path.
+	if !strings.Contains(resp.FastPath.WhenToCall, "skeleton/wireframe") {
+		t.Errorf("fast_path.when_to_call must position make_deck as skeleton/wireframe only")
 	}
 	// falls_back_to must mirror the manual sequence so the facade and the
 	// controllable path it collapses stay in lockstep.
@@ -137,15 +151,18 @@ func TestGetStartedBriefRecommendsMakeDeck(t *testing.T) {
 			t.Errorf("falls_back_to[%d] = %q, want %q (must mirror sequence)", i, tool, seqTools[i])
 		}
 	}
-	// Notes must explain make_deck (facade) versus the manual primitives.
+	// Notes must name DeckSpec, demote make_deck, and state the completion rule.
 	joined := strings.Join(resp.Notes, "\n")
-	if !strings.Contains(joined, "make_deck") {
-		t.Errorf("brief notes must name make_deck; notes:\n%s", joined)
-	}
-	for _, must := range []string{"facade", "primitive"} {
-		if !strings.Contains(strings.ToLower(joined), must) {
-			t.Errorf("brief notes must contrast the %s path; notes:\n%s", must, joined)
+	for _, must := range []string{"DeckSpec", "make_deck", "skeleton/wireframe", "raw-primitive", mcpCompletionRule} {
+		if !strings.Contains(joined, must) {
+			t.Errorf("brief notes must contain %q; notes:\n%s", must, joined)
 		}
+	}
+	if resp.QualityWorkflow != mcpQualityWorkflow {
+		t.Error("quality_workflow must echo the server instructions const verbatim")
+	}
+	if resp.Completion.Rule != mcpCompletionRule {
+		t.Errorf("completion_protocol.rule = %q, want the shared completion rule", resp.Completion.Rule)
 	}
 }
 

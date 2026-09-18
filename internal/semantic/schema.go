@@ -16,9 +16,11 @@ const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 //
 // SlideSpec is a discriminated union: each registered kind contributes a
 // Slide_<kind> variant in $defs (referenced from SlideSpec.oneOf) that pins
-// `kind` with const and documents that kind's required + typical payload
-// fields. Payloads stay open (additionalProperties: true) — compiler-accepted
-// aliases and extra keys are ignored rather than rejected.
+// `kind` with const and lists exactly the payload fields that kind's compiler
+// reads (canonical names plus accepted aliases, see kindPayloadFields), with
+// additionalProperties:false and closed list-entry / chart object schemas. An
+// unknown key is therefore schema-invalid; the validator reports the same key
+// as a SEMANTIC_UNKNOWN_FIELD warning instead of silently dropping it.
 func Schema() map[string]any {
 	defs := map[string]any{
 		"DeckMeta":  deckMetaSchema(),
@@ -89,10 +91,9 @@ func slideSpecSchema() map[string]any {
 			},
 		},
 		// Discriminated union: exactly one Slide_<kind> variant applies,
-		// selected by `kind`. Each variant documents that kind's required +
-		// typical payload fields. Payloads stay open (additionalProperties:
-		// true) so compiler-accepted aliases and extra keys are ignored
-		// rather than rejected.
+		// selected by `kind`. Each variant is closed (additionalProperties:
+		// false) over the fields that kind's compiler reads, so the wrapper
+		// itself stays open and defers to the variant.
 		"oneOf":                kindVariantRefs(),
 		"additionalProperties": true,
 	}
@@ -126,79 +127,130 @@ func kindVariantSchemas() map[string]any {
 	return defs
 }
 
-// payloadFieldType maps canonical semantic payload field names to their JSON
-// type, for schema hints. Fields absent from the map are emitted without a
-// type constraint (payloads accept aliases, so the hint is advisory).
-var payloadFieldType = map[string]string{
-	"title": "string", "subtitle": "string", "eyebrow": "string",
-	"takeaway": "string", "source": "string", "insight": "string",
-	"recommendation": "string",
-	"points":         "array", "takeaways": "array", "kpis": "array", "metrics": "array",
-	"columns": "array", "steps": "array", "phases": "array",
-	"options": "array", "insights": "array",
-	"chart": "object", "slide": "object",
-}
-
-// payloadFieldSchema describes a single per-kind payload field.
-func payloadFieldSchema(name string, required bool) map[string]any {
-	s := map[string]any{}
-	if t, ok := payloadFieldType[name]; ok {
-		s["type"] = t
+// payloadFieldSchema renders the JSON Schema for one payload field from the
+// closed payload contract (kindPayloadFields): its type, an authoring hint, and
+// for lists / objects the closed entry / key schema the compiler reads.
+func payloadFieldSchema(f payloadField, role string) map[string]any {
+	s := map[string]any{"type": f.typ}
+	desc := f.desc
+	if role != "" {
+		desc = strings.TrimSpace(role + " " + desc)
 	}
-	if required {
-		s["description"] = "Required payload field."
-	} else {
-		s["description"] = "Typical (optional) payload field."
+	if desc != "" {
+		s["description"] = desc
+	}
+	switch f.typ {
+	case "array":
+		if item := payloadItemSchema(f); item != nil {
+			s["items"] = item
+		}
+	case "object":
+		if len(f.objectKeys) > 0 {
+			s["properties"] = objectKeySchemas(f.objectKeys)
+			s["additionalProperties"] = false
+		}
 	}
 	return s
 }
 
-// payloadAliasSchema describes an accepted alias for a required field: it shares
-// the canonical field's type hint and notes which field it stands in for.
-func payloadAliasSchema(name, canonical string) map[string]any {
-	s := map[string]any{}
-	if t, ok := payloadFieldType[name]; ok {
-		s["type"] = t
+// payloadItemSchema renders the entry schema for a list field: a string, a
+// closed object over the keys the compiler reads, or either.
+func payloadItemSchema(f payloadField) map[string]any {
+	var obj map[string]any
+	if len(f.itemKeys) > 0 {
+		obj = map[string]any{
+			"type":                 "object",
+			"properties":           objectKeySchemas(f.itemKeys),
+			"additionalProperties": false,
+		}
 	}
-	s["description"] = fmt.Sprintf("Accepted alias for the required %q field.", canonical)
-	return s
+	switch {
+	case f.itemStrings && obj != nil:
+		return map[string]any{"anyOf": []any{map[string]any{"type": "string"}, obj}}
+	case obj != nil:
+		return obj
+	case f.itemStrings:
+		return map[string]any{"type": "string"}
+	default:
+		return nil
+	}
+}
+
+// objectKeyTypes pins the JSON type of well-known entry / chart keys. Keys not
+// listed are strings.
+var objectKeyTypes = map[string]string{
+	"items": "array", "pros": "array", "cons": "array", "bullets": "array",
+	"active": "boolean", "data": "object",
+}
+
+// objectKeySchemas renders the property schemas for a closed entry / chart
+// object from its key list.
+func objectKeySchemas(keys []string) map[string]any {
+	props := make(map[string]any, len(keys))
+	for _, k := range keys {
+		t, ok := objectKeyTypes[k]
+		if !ok {
+			t = "string"
+		}
+		p := map[string]any{"type": t}
+		switch k {
+		case "items", "pros", "cons", "bullets":
+			p["items"] = map[string]any{"type": "string"}
+		case "data":
+			p["description"] = "Chart data. Bar/line/area: {categories:[…], series:[{name, values:[…]}]}. Pie/donut: {categories:[…], values:[…]}."
+		case "type":
+			p["description"] = "Chart type, e.g. bar_chart, line_chart, pie_chart (see get_chart_capabilities)."
+		}
+		props[k] = p
+	}
+	return props
 }
 
 // kindVariantSchema renders the discriminated-union variant for one slide kind:
-// a const-pinned `kind`, the kind's required + typical payload fields as
-// properties, and required set to {kind} ∪ RequiredFields. A required field that
-// has registered aliases is expressed as required-one-of (an anyOf over the
-// canonical name and each alias) rather than a flat required entry, so a spec
-// using only an alias is schema-valid — matching the validator and compiler,
-// which read the aliases interchangeably. additionalProperties stays true so
-// compiler-accepted aliases and extra keys are not rejected.
+// a const-pinned `kind`, every payload field the kind's compiler reads (from
+// kindPayloadFields) as a typed property, and required set to {kind} ∪
+// RequiredFields. A required field that has registered aliases is expressed as
+// required-one-of (an anyOf over the canonical name and each alias) rather than
+// a flat required entry, so a spec using only an alias is schema-valid —
+// matching the validator and compiler, which read the aliases interchangeably.
+// additionalProperties is false: a key outside the contract would be dropped by
+// the compiler, so it is schema-invalid (and a SEMANTIC_UNKNOWN_FIELD finding).
 func kindVariantSchema(info KindInfo) map[string]any {
 	props := map[string]any{
 		"kind": map[string]any{"const": string(info.Kind)},
 	}
+	fields := kindPayloadFields[info.Kind]
+	roles := map[string]string{}
+	for _, f := range info.TypicalFields {
+		roles[f] = "Typical (optional) payload field."
+	}
+	for canonical, aliases := range info.RequiredAliases {
+		for _, a := range aliases {
+			roles[a] = fmt.Sprintf("Accepted alias for the required %q field.", canonical)
+		}
+	}
+	for _, f := range info.RequiredFields {
+		roles[f] = "Required payload field."
+	}
+	for _, name := range PayloadFieldNames(info.Kind) {
+		props[name] = payloadFieldSchema(fields[name], roles[name])
+	}
+
 	required := []any{"kind"}
 	var oneOfGroups []any
 	for _, f := range info.RequiredFields {
-		props[f] = payloadFieldSchema(f, true)
 		aliases := info.RequiredAliases[f]
 		if len(aliases) == 0 {
 			required = append(required, f)
 			continue
 		}
 		// required-one-of: the canonical field or any alias satisfies the
-		// requirement. Document each alias as a property too so it is discoverable.
+		// requirement.
 		opts := []any{map[string]any{"required": []any{f}}}
 		for _, a := range aliases {
-			props[a] = payloadAliasSchema(a, f)
 			opts = append(opts, map[string]any{"required": []any{a}})
 		}
 		oneOfGroups = append(oneOfGroups, map[string]any{"anyOf": opts})
-	}
-	for _, f := range info.TypicalFields {
-		if _, exists := props[f]; exists {
-			continue
-		}
-		props[f] = payloadFieldSchema(f, false)
 	}
 	variant := map[string]any{
 		"type":                 "object",
@@ -206,7 +258,7 @@ func kindVariantSchema(info KindInfo) map[string]any {
 		"description":          info.Summary,
 		"required":             required,
 		"properties":           props,
-		"additionalProperties": true,
+		"additionalProperties": false,
 	}
 	// Each alias group becomes its own anyOf; all groups must hold, so they are
 	// combined under allOf.
@@ -214,6 +266,57 @@ func kindVariantSchema(info KindInfo) map[string]any {
 		variant["allOf"] = oneOfGroups
 	}
 	return variant
+}
+
+// KindItemSchema returns the closed JSON Schema for one slide of the given kind
+// (the Slide_<kind> variant), or nil for an unknown kind. list_slide_kinds
+// publishes it as item_schema.
+func KindItemSchema(k SlideKind) map[string]any {
+	info, ok := LookupKind(k)
+	if !ok {
+		return nil
+	}
+	return kindVariantSchema(info)
+}
+
+// InlineSchema returns Schema() with every local "#/$defs/..." reference
+// replaced by the referenced definition and $defs / $schema removed, so the
+// DeckSpec schema can be embedded as a nested property (e.g. an MCP tool's
+// `spec` input) where root-relative references would not resolve.
+func InlineSchema() map[string]any {
+	root := Schema()
+	defs, _ := root["$defs"].(map[string]any)
+	out, _ := inlineRefs(root, defs).(map[string]any)
+	delete(out, "$defs")
+	delete(out, "$schema")
+	return out
+}
+
+func inlineRefs(v any, defs map[string]any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		if ref, ok := t["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/") {
+			if def, ok := defs[strings.TrimPrefix(ref, "#/$defs/")]; ok {
+				return inlineRefs(def, defs)
+			}
+		}
+		out := make(map[string]any, len(t))
+		for k, e := range t {
+			if k == "$defs" {
+				continue
+			}
+			out[k] = inlineRefs(e, defs)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, e := range t {
+			out[i] = inlineRefs(e, defs)
+		}
+		return out
+	default:
+		return v
+	}
 }
 
 func kindEnum() []any {

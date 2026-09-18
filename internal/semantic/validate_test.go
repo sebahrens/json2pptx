@@ -335,9 +335,9 @@ func TestValidateChartSeriesAdvisory(t *testing.T) {
 		}}},
 	}
 	ds := Validate(spec, StrictnessWarn)
-	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].chart.series")
+	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].chart.data")
 	if !ok {
-		t.Fatalf("expected SEMANTIC_DENSITY at slides[0].chart.series, got %v", ds)
+		t.Fatalf("expected SEMANTIC_DENSITY at slides[0].chart.data, got %v", ds)
 	}
 	if d.Severity != diagnostics.SeverityWarning {
 		t.Errorf("chart series severity = %q, want warning under warn strictness", d.Severity)

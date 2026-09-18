@@ -87,6 +87,86 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   empty) listing facts no slide had capacity for. make_deck's derived slide
   titles pick up the facts through `content_seed`.
 
+## Unreleased — DeckSpec fast path + server instructions (go-slide-creator-o8kl, go-slide-creator-f6kq, go-slide-creator-09e0)
+
+### Changed
+
+- **`get_started{task:"brief"}` fast path is now the DeckSpec path.**
+  `fast_path.tool` is `render_deck_spec` (was `make_deck`) and the new
+  `fast_path.steps[]` lists `list_slide_kinds` → `validate_deck_spec` →
+  `render_deck_spec` → `render_deck_thumbnails`. `make_deck` is repositioned as a
+  skeleton/wireframe tool. `falls_back_to` still mirrors the raw `sequence`.
+  `render_deck_spec` is now classified `kind: "workflow_facade"`
+  (`primitive_alternatives`: `validate_deck_spec`, `compile_deck_spec`,
+  `validate_input`, `generate_presentation`).
+- **One completion rule everywhere.** `completion_protocol.rule`, the get_started
+  notes, SKILL.md and the server instructions now share one text: render ALL
+  slides (`render_deck_thumbnails`) and inspect every image; a passing gate /
+  score is a precondition, never completion. SKILL.md's old "stop … do not
+  render thumbnails" rule is removed.
+
+### Added
+
+- **MCP server `instructions`.** The `initialize` response carries the 5-step
+  quality workflow (get_started → DeckSpec → render + inspect all slides → fix
+  at `semantic_path` → never ship exemplar content).
+- **`get_started.quality_workflow`** (always present) echoes the same text
+  (single Go const, so the two cannot drift).
+
+## Unreleased — strict MCP arguments (go-slide-creator-s9uq)
+
+### Changed
+
+- **Unknown MCP tool arguments are rejected.** Every tool call is checked against
+  the tool's declared input schema by a server-level middleware; an undeclared
+  argument name now fails the call with the new code **`UNKNOWN_PARAMETER`**
+  (`INPUT` namespace, `path` = the argument) instead of being silently ignored.
+  The message lists the accepted arguments; when a close name exists the
+  diagnostic carries `fix: {kind: "rename_field", params: {from, to,
+  did_you_mean}}` and a `next_tool_call` retry (e.g. `plan_deck` `slide_count` →
+  `slide_budget`). `make_deck` keeps accepting the legacy `max_passes` alias.
+
+## Unreleased — closed DeckSpec schema (go-slide-creator-h8o7, go-slide-creator-dg8f)
+
+### Changed
+
+- **`spec` on `validate_deck_spec` / `render_deck_spec` / `compile_deck_spec` /
+  `explain_deck_spec` now carries the real DeckSpec JSON Schema** (inlined — no
+  `$ref`s) instead of `{"type":"object","properties":{}}`: `slides.items.oneOf`
+  has one `Slide_<kind>` variant per kind, each `additionalProperties: false`
+  with closed list-entry and chart object schemas. `json2pptx semantic schema`
+  and `GET /api/v1/semantic/schema` emit the same closed variants (previously
+  `additionalProperties: true`).
+- **Unknown payload keys are diagnosed.** A slide payload key, list-entry key, or
+  chart key the compiler never reads now yields `SEMANTIC_UNKNOWN_FIELD` at the
+  exact path (warning; error under `strict`; not suppressed by `off`) with a
+  `rename_field` fix (`params.{from, to, did_you_mean}`) when a close key exists.
+- **Chart data hints point at `slides[i].chart.data`.** The chart advisory
+  (`SEMANTIC_DENSITY`) moved from the non-existent `slides[i].chart.series` path
+  to `slides[i].chart.data`; its message shows the expected shape and its `fix`
+  (`provide_value`) carries `params.{path, expected_shape, example}`. Pie/donut
+  `{categories, values}` data is accepted. A flat `chart.series` (never read by
+  the compiler) no longer counts as data.
+
+### Added
+
+- **`list_slide_kinds` entries gain `item_schema`** (the closed per-kind slide
+  schema) **and `example`** (a copy-ready slide, including `kind`, that
+  validates with zero findings under strict).
+
+## Unreleased — make_deck exemplar gate (go-slide-creator-htwq)
+
+### Changed
+
+- **`make_deck` never reports a passing gate on exemplar content.** Its slides
+  are pattern exemplar placeholders, so the response now forces
+  `gate_passed: false`, prepends the machine token `"exemplar_content"` to both
+  `gate_reasons[]` and `blocking_reasons[]`, and reports `final_score: 0` plus
+  a new `content_score: 0`. The deterministic layout/fit score the loop computed
+  moves to the new always-present **`structural_score`** field. Previously a QBR
+  brief could return `final_score: 98, gate_passed: true` for off-topic
+  placeholder copy. `auto_repair` (author-supplied content) is unchanged.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added
