@@ -157,7 +157,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			Text:     textContent,
 		}
 		if cell.Icon != nil {
-			if icon := cell.Icon.Resolve(accent, "left"); icon != nil {
+			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "left"); icon != nil {
 				shape.Icon = icon
 			}
 		}

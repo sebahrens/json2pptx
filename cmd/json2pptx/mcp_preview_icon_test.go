@@ -231,6 +231,28 @@ func TestPreviewIcon_InlineSVGData_FillIgnoredWithWarning(t *testing.T) {
 	}
 }
 
+// TestPreviewIcon_SchemeFillWarnsAndIsNotWritten covers ra7t on the preview
+// path: preview_icon has no template theme, so a scheme-name fill must never
+// be written verbatim into the SVG (invalid paint -> invisible icon) and the
+// agent is told why the recolor was skipped.
+func TestPreviewIcon_SchemeFillWarnsAndIsNotWritten(t *testing.T) {
+	resp := callPreviewIcon(t, nil, map[string]any{
+		"icon": map[string]any{"name": "rocket", "fill": "accent1"},
+	})
+	if strings.Contains(resp.SVGData, "accent1") {
+		t.Errorf("scheme name leaked into svg_data: %s", truncate(resp.SVGData, 300))
+	}
+	found := false
+	for _, w := range resp.Warnings {
+		if strings.Contains(w, "accent1") && strings.Contains(w, "not a hex color") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected non-hex fill warning, got: %v", resp.Warnings)
+	}
+}
+
 func TestPreviewIcon_MissingSource(t *testing.T) {
 	callPreviewIconExpectError(t, nil, map[string]any{
 		"icon": map[string]any{},

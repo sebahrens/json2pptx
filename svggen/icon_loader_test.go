@@ -154,3 +154,19 @@ func TestFetchURL_SizeLimit(t *testing.T) {
 	}
 }
 
+func TestRasterizeSVGToPNG(t *testing.T) {
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" fill="#1F3864"/></svg>`)
+	out, err := RasterizeSVGToPNG(svg, 64)
+	if err != nil {
+		t.Fatalf("RasterizeSVGToPNG: %v", err)
+	}
+	if len(out) < 8 || string(out[1:4]) != "PNG" {
+		t.Fatalf("output is not a PNG (len %d)", len(out))
+	}
+	if _, err := RasterizeSVGToPNG(svg, 0); err != nil {
+		t.Errorf("default size: %v", err)
+	}
+	if _, err := RasterizeSVGToPNG([]byte("not svg"), 64); err == nil {
+		t.Error("expected error for non-SVG input")
+	}
+}
