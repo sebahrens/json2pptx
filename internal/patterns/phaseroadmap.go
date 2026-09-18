@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -316,12 +318,19 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 			}
 			applyPhaseRoadmapOverride(milestoneCells[i], cellOverrides, milestoneIdx0+i, accent)
 		}
-		rows = append(rows, jsonschema.GridRowInput{Height: 14, Cells: milestoneCells})
+		msH := math.Round(shapegrid.EffectiveTextSizePt(milestoneSize)*contentLineHeight*2 + 2*defaultShapeInsetTBPt)
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: msH, MaxHeight: msH, Cells: milestoneCells})
 	}
 
 	// Final row — per-phase description callouts (left-aligned small font).
+	// The row hugs the tallest description (go-slide-creator-7km8) instead of
+	// flexing over the rest of the slide; the grid centres the block.
+	contentW, _ := contentAreaPt(ctx)
+	descW := equalColumnWidthPt(contentW, n, 6) - 2*defaultShapeInsetLRPt
+	descH := 0.0
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
+		descH = math.Max(descH, textBlockHeightPt(ctx.Theme.BodyFont, descW, textParagraph{text: p.Description, size: bodySize}))
 		descCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
@@ -331,13 +340,14 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
 	}
-	rows = append(rows, jsonschema.GridRowInput{Cells: descCells})
+	rows = append(rows, jsonschema.GridRowInput{Cells: descCells, MaxHeight: math.Round(math.Max(descH, bodySize*contentLineHeight) + 2*defaultShapeInsetTBPt + 6)})
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:     6,
-		RowGap:  4,
-		Rows:    rows,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
+		Gap:           6,
+		RowGap:        4,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil

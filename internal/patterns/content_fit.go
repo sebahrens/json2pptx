@@ -1,6 +1,9 @@
 package patterns
 
 import (
+	"math"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
@@ -14,6 +17,10 @@ import (
 const (
 	// defaultShapeInsetLRPt is the OOXML default left/right text inset (0.1").
 	defaultShapeInsetLRPt = 7.2
+	// defaultShapeInsetTBPt is the OOXML default top/bottom text inset (0.05").
+	defaultShapeInsetTBPt = 3.6
+	// contentLineHeight is the line-height factor used for content estimates.
+	contentLineHeight = 1.2
 )
 
 // contentAreaPt returns the pattern's content-area width and height in points,
@@ -83,4 +90,51 @@ func fitSingleLineSize(text, font string, bold bool, sizePt, minPt, widthPt floa
 	}
 	// Even the floor does not fit on one line in practice; keep the floor.
 	return minPt
+}
+
+// GridVerticalAlignDefault is the vertical_align every expanded pattern grid
+// gets unless the pattern sets its own (go-slide-creator-7km8): content-sized
+// blocks (rows capped by max_height, height-capped bounds) are centred in the
+// content area instead of stretching to fill it or hugging the top.
+const GridVerticalAlignDefault = "center"
+
+// ApplyGridDefaults applies the pattern-expansion defaults shared by every
+// caller of Pattern.Expand (generation, budgets, previews, the HTTP API) so
+// all of them resolve the same geometry.
+func ApplyGridDefaults(grid *jsonschema.ShapeGridInput) {
+	if grid == nil {
+		return
+	}
+	if grid.VerticalAlign == "" {
+		grid.VerticalAlign = GridVerticalAlignDefault
+	}
+}
+// textParagraph is a sized paragraph used for height estimates.
+type textParagraph struct {
+	text string
+	size float64
+	bold bool
+}
+
+// textBlockHeightPt estimates the height (points) of stacked paragraphs
+// wrapped in a text box widthPt wide (insets already removed).
+func textBlockHeightPt(font string, widthPt float64, paras ...textParagraph) float64 {
+	var h float64
+	for _, p := range paras {
+		if p.text == "" {
+			continue
+		}
+		size := shapegrid.EffectiveTextSizePt(p.size)
+		lines := measuredLines(p.text, font, p.bold, size, widthPt)
+		h += float64(lines) * size * contentLineHeight
+	}
+	return h
+}
+
+// clampPt clamps v into [lo, hi]; hi <= 0 means "no upper bound".
+func clampPt(v, lo, hi float64) float64 {
+	if hi > 0 {
+		v = math.Min(v, hi)
+	}
+	return math.Max(v, lo)
 }

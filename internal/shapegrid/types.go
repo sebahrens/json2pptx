@@ -42,6 +42,38 @@ const (
 	FitHeight FitMode = "fit-height"
 )
 
+// VerticalAlign controls how a grid whose rows do not fill its bounds is
+// placed vertically inside them.
+type VerticalAlign string
+
+const (
+	// VAlignStretch (default) re-scales the rows to fill the bounds — the
+	// legacy behavior: a grid always spans its full height.
+	VAlignStretch VerticalAlign = ""
+	// VAlignTop keeps resolved row heights and anchors the block at the top.
+	VAlignTop VerticalAlign = "top"
+	// VAlignCenter keeps resolved row heights and centres the block.
+	VAlignCenter VerticalAlign = "center"
+	// VAlignBottom keeps resolved row heights and anchors the block at the bottom.
+	VAlignBottom VerticalAlign = "bottom"
+)
+
+// ParseVerticalAlign maps the DTO string to a VerticalAlign. "" and
+// "stretch" map to VAlignStretch; ok is false for unknown values.
+func ParseVerticalAlign(s string) (VerticalAlign, bool) {
+	switch s {
+	case "", "stretch":
+		return VAlignStretch, true
+	case "top":
+		return VAlignTop, true
+	case "center", "middle", "ctr":
+		return VAlignCenter, true
+	case "bottom":
+		return VAlignBottom, true
+	}
+	return VAlignStretch, false
+}
+
 // Grid is the domain representation of a shape grid layout.
 type Grid struct {
 	Bounds  pptx.RectEmu // Absolute bounds in EMU (authoritative — never shrunk)
@@ -49,6 +81,11 @@ type Grid struct {
 	Rows    []Row        // Row definitions
 	ColGap  float64      // Column gap in points (1pt = 12700 EMU)
 	RowGap  float64      // Row gap in points (1pt = 12700 EMU)
+	// VAlign controls placement when the resolved rows (fixed heights, auto
+	// heights, and flex rows capped by MaxHeight) sum to less than the
+	// bounds. VAlignStretch (default) re-scales rows to fill; the other
+	// values keep the content-sized block and place it top/center/bottom.
+	VAlign VerticalAlign
 }
 
 // Row is a single row in the grid.

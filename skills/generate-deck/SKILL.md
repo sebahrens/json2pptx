@@ -769,6 +769,8 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 }
 ```
 
+**Content-sized pattern blocks.** Patterns size their cards/steps to their content and centre the block vertically in the content area (expanded grids carry `vertical_align: "center"`): `kpi-2up`…`kpi-6up` cards are capped at 45% of the content height, `process-flow` steps at 35%, `timeline-horizontal` (default `dots` style = date row + accent-dot axis + label/body under each dot) and `phase-roadmap` rows hug their text, and height-capped variants (`*-compact`, `kpi-inline`, `numbered-step-strip` chevrons) are centred rather than top-anchored — the centring respects the takeaway/source band. A `bounds` / `max_height_pct` override keeps the old top-anchored, fill-the-box behaviour. For a raw `shape_grid`, set `vertical_align` (`stretch` default, `top`, `center`, `bottom`) together with a row `max_height` to get the same content-sized, centred block.
+
 **KPI `values` is always a JSON array of cells**, one per metric (`kpi-2up`…`kpi-6up`, `kpi-inline`). Each cell is either:
 
 - an object `{"big": "$127M", "small": "Revenue"}` — `big` is the headline number (≤ 8 chars), `small` is the caption. The intuitive aliases `value`/`number` (→ `big`) and `label`/`caption` (→ `small`) are also accepted. An optional `sub` (≤ 12 chars) renders a small delta/trend annotation between the number and the caption (e.g. `{"big": "$50M", "small": "Revenue", "sub": "+5%"}`); the aliases `delta`/`trend`/`change` map to `sub`. Put the sign in the value itself (`"+5%"` / `"-0.4%"`) — the annotation stays in the card's light text color rather than green/red so it remains legible on the accent fill.

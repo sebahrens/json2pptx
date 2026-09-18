@@ -403,7 +403,17 @@ Patterns assume `full_content_area` by default — the grid fills the entire lay
 
 These fields live on `PatternInput` (slide-level JSON) and on the `expand_pattern` MCP tool parameters. When set, the expanded grid gets a `bounds` field on the `ShapeGridInput`, which the shapegrid resolver and density math respect automatically.
 
-`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default).
+`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default). A user `bounds` / `max_height_pct` override also resets the grid's `vertical_align` to `stretch`, so the block stays where the user put it.
+
+## Content-sized heights and vertical centring (authoring contract)
+
+Do not let cards / steps stretch to the full content height just because the grid is full-area. Every expanded pattern grid gets `vertical_align: "center"` (`patterns.ApplyGridDefaults`, applied by `expandPattern` and every other `Expand` caller), and the shapegrid resolver keeps a content-sized block when **at least one row sets `max_height`** (points):
+
+- Cap rows in points, not percentages, derived from `contentAreaPt(ctx)` (e.g. kpi-Nup `0.45 × content height`, process-flow `0.35 ×`), or from a text estimate (`textBlockHeightPt`) for text rows. Point caps keep nested / composed use sane: inside a small compose cell the cap exceeds the cell and the row simply fills it.
+- Fixed `height` percentages in a grid that has a capped row are kept as absolute shares (no re-normalisation), so the slack is real and the block is centred.
+- Grids without any capped row keep the legacy proportional stretch (agenda lists, stacked steps, team-bios rely on it).
+- Height-capped, top-anchored pattern `bounds` (`y: 0`, `height < 100`) are centred inside the content area under `vertical_align: "center"`; the content area already excludes the takeaway/source chrome band.
+- Big single-token values (KPI numbers) must shrink to fit one line (`fitSingleLineSize`) rather than wrap.
 
 ## Expand conventions
 

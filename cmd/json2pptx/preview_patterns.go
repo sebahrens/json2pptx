@@ -153,6 +153,7 @@ func generateOnePatternPreview(
 	if err != nil {
 		return fmt.Errorf("expand: %w", err)
 	}
+	patterns.ApplyGridDefaults(grid)
 	// Convert the jsonschema.ShapeGridInput to our local ShapeGridInput type
 	// (both use the same JSON schema, but are different Go types)
 	gridJSON, err := json.Marshal(grid)

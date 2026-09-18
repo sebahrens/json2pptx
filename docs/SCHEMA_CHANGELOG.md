@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.60.0 (2026-09-18)
+
+### Added
+
+- **`shape_grid.vertical_align` (go-slide-creator-7km8).** New optional grid
+  field: `"stretch"` (default for raw grids — rows are re-scaled to fill the
+  bounds, the previous behaviour), `"top"`, `"center"`, `"bottom"`. It takes
+  effect when at least one row sets `max_height`: the capped, content-sized
+  row block keeps its height and is placed inside the bounds instead of being
+  stretched. For content-relative, top-anchored bounds (pattern height caps
+  such as `before-after-compact`, `process-flow-compact`, `kpi-inline`,
+  `numbered-step-strip` chevrons) `center`/`bottom` also position the capped
+  box inside the content area (which already excludes the takeaway/source
+  band). Invalid values are a validate error. Named patterns now expand with
+  `vertical_align: "center"`; a `bounds` / `max_height_pct` override resets it
+  to `stretch` so user-positioned blocks stay where they were put.
+
+### Changed
+
+- **Content-sized pattern heights (go-slide-creator-7km8).** `kpi-2up`…`kpi-6up`
+  cards are capped at 45% of the content height (`max_height` on the row),
+  `process-flow` steps at 35%, and the block is centred. `timeline-horizontal`
+  default `dots` style now draws a real timeline: optional date row, an axis of
+  accent dots joined by line connectors, and label/body text under each dot
+  (previously full-height filled boxes); `chevron` / `gantt` rows are capped.
+  `phase-roadmap` description and milestone rows hug their text. Expanded
+  `shape_grid` output for these patterns changes shape accordingly.
+
 ## 4.59.0 (2026-09-18)
 
 ### Changed

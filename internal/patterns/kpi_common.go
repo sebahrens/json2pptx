@@ -364,6 +364,13 @@ const (
 	kpiIconScale        = 0.6
 	kpiIconGapPt        = 3.0
 	kpiLeftIconMaxWFrac = 0.25
+	// kpiMaxCardHeightFrac caps a KPI card at this share of the content
+	// height (go-slide-creator-7km8): a big number in a 5in-tall card reads
+	// as an empty box. The row is centred vertically by the grid.
+	kpiMaxCardHeightFrac = 0.45
+	// kpiCardPadPt is the vertical breathing room added around the card text
+	// when content needs more than the cap.
+	kpiCardPadPt = 24.0
 )
 
 // kpiCardGeometry is the estimated size (points) of one KPI card.
@@ -372,10 +379,41 @@ type kpiCardGeometry struct {
 }
 
 // kpiCardGeometryFor estimates the card size for n cards spread across the
-// content area.
+// content area. Card height is capped at kpiMaxCardHeightFrac of the content
+// height.
 func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
 	w, h := contentAreaPt(ctx)
-	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h}
+	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiMaxCardHeightFrac}
+}
+
+// kpiRowMaxHeightPt returns the KPI row's max_height: the capped card height,
+// raised when the tallest card's content (top icon zone + value + sub +
+// caption + padding) needs more, never above the content height.
+func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, iconPos string, bigSize, smallSize float64) float64 {
+	_, contentH := contentAreaPt(ctx)
+	font := ctx.Theme.BodyFont
+	textW := geo.wPt - 2*defaultShapeInsetLRPt
+	need := 0.0
+	for _, c := range cells {
+		w := geo.valueWidthPt(c.Icon, iconPos)
+		if w <= 0 {
+			w = textW
+		}
+		h := textBlockHeightPt(font, w,
+			textParagraph{text: c.Big, size: bigSize, bold: true},
+			textParagraph{text: c.Sub, size: kpiSubSize(smallSize)},
+			textParagraph{text: c.Small, size: smallSize},
+		)
+		pos := iconPos
+		if c.Icon != nil && c.Icon.Position != "" {
+			pos = c.Icon.Position
+		}
+		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {
+			h += math.Min(geo.wPt, geo.hPt)*kpiIconScale + 2*kpiIconGapPt
+		}
+		need = math.Max(need, h+kpiCardPadPt+2*defaultShapeInsetTBPt)
+	}
+	return clampPt(need, geo.hPt, contentH)
 }
 
 // iconPosition picks the default overlay icon position: "left" for landscape

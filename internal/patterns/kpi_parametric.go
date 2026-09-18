@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -194,8 +195,12 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		Columns: colsJSON,
 		Gap:     kpiCardGapPt,
 		Rows: []jsonschema.GridRowInput{
-			{Cells: gridCells},
+			{
+				Cells:     gridCells,
+				MaxHeight: math.Round(kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)),
+			},
 		},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil

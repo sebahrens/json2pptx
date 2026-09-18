@@ -79,12 +79,14 @@ func computeCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCont
 		)
 	}
 
+	vAlign, _ := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	sgGrid := &shapegrid.Grid{
 		Bounds:  bounds,
 		Columns: colWidths,
 		Rows:    rows,
 		ColGap:  colGap,
 		RowGap:  rowGap,
+		VAlign:  vAlign,
 	}
 
 	// Validate before resolving
