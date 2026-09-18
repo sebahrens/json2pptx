@@ -441,15 +441,21 @@ func clampMaxPasses(n int) int {
 // findings predictor uses, which means the resulting deck reflects the
 // plan_deck's predicted_findings output verbatim.
 //
-// Patterns lacking an Exemplar implementation degrade to a title-only slide
-// using the layout that matches the narrative role. This keeps the deck shape
-// stable even when individual pattern slots cannot be auto-filled.
+// The plan's title (opening) and closing slots carry no pattern and render as
+// title-only slides on the plan's "title" / "closing" layout. Patterns lacking
+// an Exemplar implementation degrade the same way, using the layout that
+// matches the narrative role. This keeps the deck shape stable even when
+// individual pattern slots cannot be auto-filled.
 func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, templateName, outline, accentStrategy string) *PresentationInput {
 	slides := make([]SlideInput, 0, len(plan.Slides))
 	for _, ps := range plan.Slides {
 		title := titleForPlannedSlide(ps, outline)
+		layoutID := ps.Layout
+		if layoutID == "" {
+			layoutID = layoutIDForNarrativeRole(ps.NarrativeRole)
+		}
 		slide := SlideInput{
-			LayoutID: layoutIDForNarrativeRole(ps.NarrativeRole),
+			LayoutID: layoutID,
 			Content:  []ContentInput{makeTitleContent(title)},
 		}
 

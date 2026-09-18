@@ -1806,8 +1806,10 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "properties": {
           "slide_index":          {"type": "integer"},
           "narrative_role":       {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "closing"]},
-          "recommended_pattern":  {"type": "string"},
-          "content_seed":         {"type": "string"},
+          "recommended_pattern":  {"type": "string", "description": "Pattern for this slide; empty string for the title (opening) and closing slides, which use a structural layout with no pattern."},
+          "layout":               {"type": "string", "description": "Canonical layout_id for the slide: \"title\" (opening), \"closing\" (closing), \"blank-title\" (every pattern slide). Always equals skeleton.layout_id."},
+          "content_seed":         {"type": "string", "description": "Hint of what belongs on the slide. When brief facts were routed here they are prefixed verbatim, joined by '; ', before an em dash and the role hint."},
+          "facts":                {"type": "array", "items": {"type": "string"}, "description": "Brief facts (quantity / named-entity clauses, verbatim) routed to this slide. Quantities go to KPI / stat / chart patterns first. Omitted when none; never set on title/closing slides."},
           "rationale":            {"type": "string"},
           "suggested_pattern":    {"type": "string", "description": "First-choice pattern (same value as recommended_pattern; kept as a separate field for the suggested_pattern / suggested_pattern_fallback / skeleton agent-facing triplet)."},
           "suggested_pattern_fallback": {"type": "string", "description": "Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from alternatives[0] when available."},
@@ -1854,11 +1856,12 @@ var outputSchemaPlanDeck = json.RawMessage(`{
           },
           "template_support": {"$ref": "#/$defs/template_support"}
         },
-        "required": ["slide_index", "narrative_role", "recommended_pattern", "suggested_pattern", "content_seed", "rationale"]
+        "required": ["slide_index", "narrative_role", "recommended_pattern", "layout", "suggested_pattern", "content_seed", "rationale"]
       }
     },
     "brief":        {"type": "string"},
     "slide_budget":  {"type": "integer"},
+    "unplaced_facts": {"type": "array", "items": {"type": "string"}, "description": "Brief facts no slide had capacity for (always present; [] when all placed). Add slides or fold these into existing slides — they are not on any content seed."},
     "template":      {"type": "string", "description": "Echo of the template name the plan was vetted against (the 'template' argument). Present only when template context was supplied."},
     "rhythm_check": {
       "type": "object",
@@ -1872,7 +1875,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
     },
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
-  "required": ["slides", "brief", "slide_budget", "rhythm_check"],
+  "required": ["slides", "brief", "slide_budget", "rhythm_check", "unplaced_facts"],
   "$defs": {
     "template_support": {
       "type": "object",

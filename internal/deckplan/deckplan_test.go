@@ -120,11 +120,18 @@ func TestBuildDeckPlan_NilPredictor(t *testing.T) {
 	}
 
 	for i, s := range result.Slides {
-		if s.RecommendedPattern == "" {
-			t.Errorf("slide %d has empty recommended_pattern", i)
-		}
 		if s.SuggestedPattern != s.RecommendedPattern {
 			t.Errorf("slide %d: suggested_pattern %q != recommended_pattern %q", i, s.SuggestedPattern, s.RecommendedPattern)
+		}
+		if isStructuralRole(s.NarrativeRole) {
+			// Title / closing slides carry a layout, not a pattern.
+			if s.RecommendedPattern != "" || len(s.Alternatives) != 0 {
+				t.Errorf("slide %d (%s): structural slide must have no pattern/alternatives, got %q %v", i, s.NarrativeRole, s.RecommendedPattern, s.Alternatives)
+			}
+			continue
+		}
+		if s.RecommendedPattern == "" {
+			t.Errorf("slide %d has empty recommended_pattern", i)
 		}
 		if len(s.Alternatives) == 0 {
 			t.Errorf("slide %d: expected at least 1 alternative", i)

@@ -32,10 +32,22 @@ import (
 // Slide describes one slide in the planned deck outline.
 type Slide struct {
 	SlideIndex         int    `json:"slide_index"`
-	NarrativeRole      string `json:"narrative_role"` // "opening", "evidence", "comparison", "emphasis", "framework", "closing"
-	RecommendedPattern string `json:"recommended_pattern"`
-	ContentSeed        string `json:"content_seed"` // brief hint of what content should go here
-	Rationale          string `json:"rationale"`
+	NarrativeRole      string `json:"narrative_role"`      // "opening", "evidence", "comparison", "emphasis", "framework", "closing"
+	RecommendedPattern string `json:"recommended_pattern"` // "" for the title (opening) and closing slides — they use a structural layout, not a pattern
+
+	// Layout is the canonical layout_id the slide should use: "title" for the
+	// opening slide, "closing" for the closing slide, and "blank-title" for
+	// every pattern-bearing slide (a pattern needs the free canvas below a
+	// title). Always equal to the skeleton's layout_id.
+	Layout      string `json:"layout"`
+	ContentSeed string `json:"content_seed"` // brief hint of what content should go here; brief facts assigned to the slide are prefixed
+
+	// Facts are the brief's own quantity / named-entity clauses routed to this
+	// slide (e.g. "+23% revenue", "churn 4%"), verbatim. Quantities go to KPI /
+	// stat / chart patterns first. Omitted when the slide received none; title
+	// and closing slides never receive facts.
+	Facts     []string `json:"facts,omitempty"`
+	Rationale string   `json:"rationale"`
 
 	// SuggestedPattern is the first-choice pattern for this slot. Currently
 	// always equal to RecommendedPattern; kept as a separate field so the
@@ -114,6 +126,11 @@ type Result struct {
 	SlideBudget int         `json:"slide_budget"`
 	RhythmCheck RhythmCheck `json:"rhythm_check"`
 
+	// UnplacedFacts lists brief facts (quantity / named-entity clauses) that no
+	// slide had capacity for, so none silently disappears. Always present;
+	// empty when every fact was placed or the brief had none.
+	UnplacedFacts []string `json:"unplaced_facts"`
+
 	// Template echoes the template name the plan was vetted against, when a
 	// template context was supplied. Empty for a template-agnostic plan.
 	Template string `json:"template,omitempty"`
@@ -134,6 +151,10 @@ type RhythmCheck struct {
 
 // MaxAlternatives caps the alternatives list emitted per slide.
 const MaxAlternatives = 2
+
+// mustIncludeRationale marks a slot filled by a must_include pattern; such
+// slots are exempt from the emphasis cap.
+const mustIncludeRationale = "required by must_include"
 
 // --- Inputs ---
 
@@ -191,9 +212,52 @@ var standardArc = []narrativeArc{
 }
 
 // emphasisPatterns are patterns that serve as visual emphasis / breathing room.
+// Their count is capped at MaxEmphasisSlides(n) so emphasis stays emphatic.
 var emphasisPatterns = map[string]bool{
 	"stat-hero":  true,
 	"pull-quote": true,
+	"kpi-inline": true,
+}
+
+// comparisonFamily is the closed set of patterns a "comparison" narrative slot
+// may use. Free-form recommendation for "compare options" intents otherwise
+// drifts to process / flow patterns that do not show two sides.
+var comparisonFamily = []string{"comparison-2col", "before-after"}
+
+// Canonical layout IDs the plan assigns. Resolved against the template at
+// generate time (see internal/layout/canonical.go).
+const (
+	LayoutTitle   = "title"
+	LayoutClosing = "closing"
+	LayoutPattern = "blank-title"
+)
+
+// isStructuralRole reports whether a narrative role is served by a structural
+// layout (title / closing) rather than a named pattern.
+func isStructuralRole(role string) bool {
+	return role == "opening" || role == "closing"
+}
+
+// layoutForRole returns the canonical layout for a slide in the given role.
+func layoutForRole(role string) string {
+	switch role {
+	case "opening":
+		return LayoutTitle
+	case "closing":
+		return LayoutClosing
+	default:
+		return LayoutPattern
+	}
+}
+
+// MaxEmphasisSlides is the emphasis-pattern cap for an n-slide deck:
+// ceil(n/5). A 10-slide deck gets at most 2 stat-hero / pull-quote /
+// kpi-inline slides.
+func MaxEmphasisSlides(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	return (n + 4) / 5
 }
 
 // narrativeRoleToTaxonomy maps our arc roles to taxonomy NarrativeRole values.
@@ -227,6 +291,10 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 		swapInfeasiblePatterns(reg, p.TemplateCtx, slides, p.Brief, p.Audience)
 	}
 
+	// 4b. Route the brief's facts (quantities, named entities) into the content
+	//     seeds of the final pattern slots; leftovers become unplaced_facts.
+	unplaced := assignBriefFacts(slides, p.Brief)
+
 	// 5. Attach per-slot predictions: cell budgets, fit findings, ranked
 	//    alternatives, suggested-pattern triplet, and skeleton. Done after
 	//    rhythm enforcement so the predictions reflect the final pattern choice.
@@ -242,11 +310,12 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	check := computeRhythmCheck(slides)
 
 	return &Result{
-		Slides:      slides,
-		Brief:       p.Brief,
-		SlideBudget: p.SlideBudget,
-		RhythmCheck: check,
-		Template:    p.TemplateName,
+		Slides:        slides,
+		Brief:         p.Brief,
+		SlideBudget:   p.SlideBudget,
+		RhythmCheck:   check,
+		UnplacedFacts: unplaced,
+		Template:      p.TemplateName,
 	}
 }
 
@@ -267,7 +336,7 @@ func patternFeasibleForTemplate(tc *generator.TemplateSupportContext, name strin
 // supports).
 func swapInfeasiblePatterns(reg *patterns.Registry, tc *generator.TemplateSupportContext, slides []Slide, brief, audience string) {
 	for i := range slides {
-		if patternFeasibleForTemplate(tc, slides[i].RecommendedPattern) {
+		if slides[i].RecommendedPattern == "" || patternFeasibleForTemplate(tc, slides[i].RecommendedPattern) {
 			continue
 		}
 		for _, alt := range computeAlternativesForSlot(reg, slides, i, brief, audience) {
@@ -288,6 +357,11 @@ func swapInfeasiblePatterns(reg *patterns.Registry, tc *generator.TemplateSuppor
 // constraints.
 func annotatePlanTemplateSupport(tc *generator.TemplateSupportContext, slides []Slide) {
 	for i := range slides {
+		if slides[i].RecommendedPattern == "" {
+			// Structural title/closing slide: vet the layout it needs instead.
+			slides[i].TemplateSupport = tc.Support(patterns.VisualCategoryPlaceholder, slides[i].Layout, nil)
+			continue
+		}
 		slides[i].TemplateSupport = tc.Support(patterns.VisualCategoryPattern, slides[i].RecommendedPattern, nil)
 		for j := range slides[i].Alternatives {
 			slides[i].Alternatives[j].TemplateSupport = tc.Support(patterns.VisualCategoryPattern, slides[i].Alternatives[j].PatternName, nil)
@@ -391,14 +465,30 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 	for i, role := range roleSlots {
 		slides[i].SlideIndex = i
 		slides[i].NarrativeRole = role
+		slides[i].Layout = layoutForRole(role)
 		slides[i].ContentSeed = contentSeedForRole(role, brief, i, len(roleSlots))
+
+		// Title and closing slides use the template's structural layouts;
+		// a pattern there fights the layout's own title/subtitle treatment.
+		if isStructuralRole(role) {
+			slides[i].Rationale = fmt.Sprintf("%s slide: use the template's %q layout with no pattern", role, slides[i].Layout)
+			continue
+		}
 
 		// Check if we should place a must_include pattern here.
 		if pat := pickMustInclude(role, mustInclude, mustIncludeUsed, patternList); pat != "" {
 			slides[i].RecommendedPattern = pat
-			slides[i].Rationale = "required by must_include"
+			slides[i].Rationale = mustIncludeRationale
 			mustIncludeUsed[pat] = true
 			usedPatterns = append(usedPatterns, pat)
+			continue
+		}
+
+		// Comparison slots draw only from the comparison family.
+		if role == "comparison" {
+			slides[i].RecommendedPattern = pickComparisonPattern(brief, usedPatterns, "")
+			slides[i].Rationale = "comparison slot: two-sided comparison pattern"
+			usedPatterns = append(usedPatterns, slides[i].RecommendedPattern)
 			continue
 		}
 
@@ -447,12 +537,48 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 		}
 		if bestIdx >= 0 {
 			slides[bestIdx].RecommendedPattern = mi
-			slides[bestIdx].Rationale = "required by must_include"
+			slides[bestIdx].Rationale = mustIncludeRationale
 			mustIncludeUsed[mi] = true
 		}
 	}
 
 	return slides
+}
+
+// pickComparisonPattern chooses a comparison-family pattern for a comparison
+// slot. A brief that talks about a before/after or current/future state gets
+// before-after first; otherwise comparison-2col. The least-used family member
+// wins so two comparison slots alternate; exclude (when non-empty) is never
+// returned unless it is the only option.
+func pickComparisonPattern(brief string, used []string, exclude string) string {
+	lower := strings.ToLower(brief)
+	order := comparisonFamily
+	for _, kw := range []string{"before", "after", "current state", "future state", "as-is", "to-be", "transformation"} {
+		if strings.Contains(lower, kw) {
+			order = []string{"before-after", "comparison-2col"}
+			break
+		}
+	}
+	best := ""
+	bestUses := math.MaxInt
+	for _, name := range order {
+		if name == exclude {
+			continue
+		}
+		n := 0
+		for _, u := range used {
+			if u == name {
+				n++
+			}
+		}
+		if n < bestUses {
+			best, bestUses = name, n
+		}
+	}
+	if best == "" {
+		return order[0]
+	}
+	return best
 }
 
 // pickMustInclude checks if any unused must_include pattern fits the current role.
@@ -598,7 +724,103 @@ func enforceRhythm(reg *patterns.Registry, slides []Slide, brief string) []Slide
 	// Pass 3: Break any new runs introduced by emphasis injection.
 	slides = breakLongRuns(reg, slides)
 
+	// Pass 4: Cap emphasis patterns at ceil(n/5). Replacements are chosen to
+	// differ from both neighbours, so this pass cannot create a new run.
+	slides = capEmphasis(reg, slides, brief)
+
 	return slides
+}
+
+// capEmphasis demotes emphasis-pattern slides beyond MaxEmphasisSlides(n).
+// must_include placements are always kept; then dedicated "emphasis" role
+// slots, then any other slot, in slide order — and a kept emphasis slide is
+// never adjacent to another. Demoted slides get a non-emphasis pattern that
+// differs from both neighbours; a demoted "emphasis"-role slot becomes an
+// "evidence" slot.
+func capEmphasis(reg *patterns.Registry, slides []Slide, brief string) []Slide {
+	limit := MaxEmphasisSlides(len(slides))
+	kept := make(map[int]bool)
+	adjacentKept := func(i int) bool { return kept[i-1] || kept[i+1] }
+
+	var candidates []int
+	for i, s := range slides {
+		if !emphasisPatterns[s.RecommendedPattern] {
+			continue
+		}
+		if s.Rationale == mustIncludeRationale {
+			kept[i] = true
+			continue
+		}
+		candidates = append(candidates, i)
+	}
+	// Priority: emphasis-role slots first, then others; stable by index.
+	sort.SliceStable(candidates, func(a, b int) bool {
+		ea := slides[candidates[a]].NarrativeRole == "emphasis"
+		eb := slides[candidates[b]].NarrativeRole == "emphasis"
+		return ea && !eb
+	})
+	var demote []int
+	for _, i := range candidates {
+		if len(kept) < limit && !adjacentKept(i) {
+			kept[i] = true
+			continue
+		}
+		demote = append(demote, i)
+	}
+	sort.Ints(demote)
+
+	for _, i := range demote {
+		old := slides[i].RecommendedPattern
+		if slides[i].NarrativeRole == "emphasis" {
+			slides[i].NarrativeRole = "evidence"
+			slides[i].ContentSeed = contentSeedForRole("evidence", brief, i, len(slides))
+		}
+		slides[i].RecommendedPattern = nonEmphasisReplacement(reg, slides, i)
+		slides[i].Rationale = fmt.Sprintf("emphasis cap: %q demoted — at most %d emphasis slides (stat-hero / pull-quote / kpi-inline) per %d-slide deck", old, limit, len(slides))
+	}
+	return slides
+}
+
+// nonEmphasisReplacement picks a variety-aware, non-emphasis pattern for slot
+// idx that differs from both neighbours' patterns.
+func nonEmphasisReplacement(reg *patterns.Registry, slides []Slide, idx int) string {
+	avoid := map[string]bool{slides[idx].RecommendedPattern: true}
+	if idx > 0 {
+		avoid[slides[idx-1].RecommendedPattern] = true
+	}
+	if idx+1 < len(slides) {
+		avoid[slides[idx+1].RecommendedPattern] = true
+	}
+	ok := func(name string) bool {
+		return name != "" && !avoid[name] && !emphasisPatterns[name]
+	}
+	if slides[idx].NarrativeRole == "comparison" {
+		for _, name := range comparisonFamily {
+			if ok(name) {
+				return name
+			}
+		}
+	}
+	recent := make([]string, 0, len(slides))
+	for _, s := range slides {
+		recent = append(recent, s.RecommendedPattern)
+	}
+	rec := patterns.Recommend(reg, buildIntent(slides[idx].NarrativeRole, "", ""), nil, 10, &patterns.RecommendOptions{
+		RecentPatterns: recent,
+		PreferVariety:  true,
+		SlideIndex:     idx,
+	})
+	for _, c := range rec.Candidates {
+		if ok(c.PatternName) {
+			return c.PatternName
+		}
+	}
+	for _, name := range []string{"card-grid", "icon-row", "comparison-2col"} {
+		if ok(name) {
+			return name
+		}
+	}
+	return "card-grid"
 }
 
 // breakLongRuns detects consecutive runs of 3+ and swaps the middle slide.
@@ -611,7 +833,7 @@ func breakLongRuns(reg *patterns.Registry, slides []Slide) []Slide {
 				continue
 			}
 			runLen := i - runStart
-			if runLen >= 3 {
+			if runLen >= 3 && slides[runStart].RecommendedPattern != "" {
 				// Swap the middle element of the run.
 				mid := runStart + runLen/2
 				if mid > 0 && mid < len(slides)-1 {
@@ -636,6 +858,14 @@ func breakLongRuns(reg *patterns.Registry, slides []Slide) []Slide {
 func findBreakPattern(reg *patterns.Registry, slides []Slide, idx int) string {
 	current := slides[idx].RecommendedPattern
 	role := slides[idx].NarrativeRole
+
+	if role == "comparison" {
+		used := make([]string, 0, len(slides))
+		for _, s := range slides {
+			used = append(used, s.RecommendedPattern)
+		}
+		return pickComparisonPattern("", used, current)
+	}
 
 	// Build recent patterns excluding the current.
 	recent := make([]string, 0, len(slides))
@@ -704,8 +934,8 @@ func ensureEmphasis(reg *patterns.Registry, slides []Slide) []Slide {
 		if emphasisPatterns[slides[i].RecommendedPattern] {
 			continue // already emphasis
 		}
-		// Don't replace opening/closing.
-		if slides[i].NarrativeRole == "opening" || slides[i].NarrativeRole == "closing" {
+		// Don't replace opening/closing or a comparison slot.
+		if isStructuralRole(slides[i].NarrativeRole) || slides[i].NarrativeRole == "comparison" {
 			continue
 		}
 		// Alternate between stat-hero and pull-quote.
@@ -728,7 +958,7 @@ func computeRhythmCheck(slides []Slide) RhythmCheck {
 	longestRun := 1
 	currentRun := 1
 	for i := 1; i < len(slides); i++ {
-		if slides[i].RecommendedPattern == slides[i-1].RecommendedPattern {
+		if slides[i].RecommendedPattern != "" && slides[i].RecommendedPattern == slides[i-1].RecommendedPattern {
 			currentRun++
 			if currentRun > longestRun {
 				longestRun = currentRun
@@ -747,7 +977,9 @@ func computeRhythmCheck(slides []Slide) RhythmCheck {
 
 	unique := make(map[string]bool)
 	for _, s := range slides {
-		unique[s.RecommendedPattern] = true
+		if s.RecommendedPattern != "" {
+			unique[s.RecommendedPattern] = true
+		}
 	}
 
 	return RhythmCheck{
@@ -788,6 +1020,16 @@ func containsStr(slice []string, s string) bool {
 // skeleton are pure planning and always populated.
 func attachSlidePredictions(reg *patterns.Registry, slides []Slide, brief, audience string, predictor Predictor) {
 	for i := range slides {
+		if slides[i].Layout == "" {
+			slides[i].Layout = layoutForRole(slides[i].NarrativeRole)
+		}
+		if slides[i].RecommendedPattern == "" {
+			// Structural title / closing slide: no pattern, so no pattern
+			// forecasts or alternatives — just a layout skeleton.
+			slides[i].SuggestedPattern = ""
+			slides[i].Skeleton = structuralSkeleton(slides[i].Layout)
+			continue
+		}
 		if predictor != nil {
 			slides[i].PredictedCellBudgets = predictor.CellBudgets(slides[i].RecommendedPattern)
 			slides[i].PredictedFindings = predictor.FitFindings(slides[i].RecommendedPattern, i)
@@ -799,9 +1041,46 @@ func attachSlidePredictions(reg *patterns.Registry, slides []Slide, brief, audie
 			slides[i].SuggestedPatternFallback = slides[i].Alternatives[0].PatternName
 		}
 		if skel, err := patterns.SkeletonForPattern(reg, slides[i].RecommendedPattern, slides[i].NarrativeRole); err == nil {
-			slides[i].Skeleton = skel
+			slides[i].Skeleton = withLayoutID(skel, slides[i].Layout)
 		}
 	}
+}
+
+// structuralSkeleton builds the fillable skeleton for a pattern-less title or
+// closing slide: the layout plus title and subtitle placeholders (the portable
+// placeholder IDs both canonical layouts carry).
+func structuralSkeleton(layoutID string) json.RawMessage {
+	slide := map[string]any{
+		"layout_id": layoutID,
+		"content": []map[string]any{
+			{"placeholder_id": "title", "type": "text", "text_value": patterns.FillPlaceholder},
+			{"placeholder_id": "subtitle", "type": "text", "text_value": patterns.FillPlaceholder},
+		},
+	}
+	out, err := json.Marshal(slide)
+	if err != nil {
+		return nil
+	}
+	return out
+}
+
+// withLayoutID rewrites a pattern skeleton's layout_id so it always agrees with
+// the plan's Slide.Layout. Returns the input unchanged if it cannot be decoded.
+func withLayoutID(skel json.RawMessage, layoutID string) json.RawMessage {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(skel, &m); err != nil {
+		return skel
+	}
+	lid, err := json.Marshal(layoutID)
+	if err != nil {
+		return skel
+	}
+	m["layout_id"] = lid
+	out, err := json.Marshal(m)
+	if err != nil {
+		return skel
+	}
+	return out
 }
 
 // computeAlternativesForSlot returns the next-best ranked patterns for this
