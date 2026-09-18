@@ -83,26 +83,8 @@ func Suggest(name string, maxResults int) []string {
 	// A business concept is not a misspelling: edit distance over 5,000 glyph
 	// names turned "strategy" into "karate" and "revenue" into "venus". When the
 	// name reads as a concept, suggest what it MEANS (go-slide-creator-3ojy).
-	if concepts := ConceptNames(base); len(concepts) > 0 {
-		out := make([]string, 0, maxResults)
-		for _, c := range concepts {
-			candidate := c
-			if isQualified {
-				candidate = set + ":" + c
-				if !Exists(candidate) {
-					continue
-				}
-			} else if !Exists(c) {
-				continue
-			}
-			out = append(out, candidate)
-			if len(out) == maxResults {
-				break
-			}
-		}
-		if len(out) > 0 {
-			return out
-		}
+	if out := conceptSuggestions(base, set, isQualified, maxResults); len(out) > 0 {
+		return out
 	}
 
 	outline, _ := List("outline")
@@ -217,4 +199,30 @@ func levenshteinDist(a, b string) int {
 		prev = curr
 	}
 	return prev[la]
+}
+
+
+// conceptSuggestions returns the icons a business concept maps to, filtered to
+// those that actually exist in the relevant set and capped at maxResults.
+// It returns nil when the name is not a known concept.
+func conceptSuggestions(base, set string, isQualified bool, maxResults int) []string {
+	concepts := ConceptNames(base)
+	if len(concepts) == 0 {
+		return nil
+	}
+	out := make([]string, 0, maxResults)
+	for _, c := range concepts {
+		candidate := c
+		if isQualified {
+			candidate = set + ":" + c
+		}
+		if !Exists(candidate) {
+			continue
+		}
+		out = append(out, candidate)
+		if len(out) == maxResults {
+			break
+		}
+	}
+	return out
 }
