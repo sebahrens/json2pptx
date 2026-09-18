@@ -1,0 +1,633 @@
+{
+  "purpose": "Recovery snapshot; Beads is authoritative. Dolt push failed with no common ancestor. Do not import blindly over existing issues.",
+  "reviewed_commit": "2c219bf",
+  "epic": "go-slide-creator-fh57",
+  "issues": [
+    {
+      "id": "go-slide-creator-fh57.13",
+      "title": "Gate template portability with adversarial rendered regression fixtures",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nBuild a reproducible content-by-template matrix covering bundled templates and independent seven-layout fixtures, including cases bundled templates do not exercise. Gate content/geometry deterministically and visually inspect/render representative outputs; do not use byte-identical screenshots as the sole oracle.\n\nWhere\ntests/quality, internal/template fixtures, tests/quality/run.sh, CI workflows, examples/semantic/qbr.yaml\n\nHow\nInclude 4:3/16:9/ultrawide, reordered/nonnumeric role bindings, multiple masters, inherited styles, dark fills, foreground logos, font substitutions and sparse/dense/long/multilingual content. Pin renderer/font environment for golden jobs, use tolerant geometry/image comparisons and save contact sheets/failure artifacts. Keep unsupported malformed cases explicit. Require documented human review for baseline updates.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Reproduce QBR wrong-layout defect and off-slide chrome on altered dimensions before fixes, pass after fixes. All matrix decks preserve facts and have no off-slide/forbidden overlap; rendered review detects planted tiny text, clipping and unreadable contrast. Run required CI job with renderer absent to confirm failure, local optional job to confirm explicit skip. Record which renderer was actually tested; PowerPoint/LibreOffice differences stay disclosed.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "task",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:08Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:08Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.13",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.13",
+          "depends_on_id": "go-slide-creator-fh57.4",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.13",
+          "depends_on_id": "go-slide-creator-fh57.5",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.13",
+          "depends_on_id": "go-slide-creator-fh57.1",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.13",
+          "depends_on_id": "go-slide-creator-fh57.8",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.13",
+          "depends_on_id": "go-slide-creator-fh57.6",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 5,
+      "dependent_count": 1,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.10",
+      "title": "Generate executable source-grounded repairs with meaning safeguards",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nMake proposed repairs executable rather than category-to-fix names missing required parameters. Resolve finding targets to semantic or raw source and keep pattern/compose/shape_grid representations supported. Preserve numbers, negations, units, qualifiers and chart data.\n\nWhere\ninternal/visualqa/repair_map.go, cmd/json2pptx repair handlers/propose_repairs/autofix_visual, internal/semantic source maps\n\nHow\nEach proposal carries target stable ID/path, preconditions/revision, typed parameters, expected improvement and semantic impact. Unsupported targets return an actionable no-op diagnostic, never pretend success. Prefer geometry/recomposition/splitting before text edits; meaning-changing edits require review. Validate, regenerate and reinspect after application; retain best version and cap/reject oscillating or degrading changes.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "End-to-end tests for reduce_cell_text cell_path/max_chars, reshape_grid pattern-array values, swap_layout layout_id and replace_color from/to. Test stale revision, wrong target, unsupported repair, repeated proposals and harmful truncation of a negated claim. Assert proposed applicable repairs run successfully and semantic facts survive. Run visualqa, semantic and CLI tests.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:05Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:05Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.10",
+          "depends_on_id": "go-slide-creator-fh57.7",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:05Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.10",
+          "depends_on_id": "go-slide-creator-fh57.6",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:05Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.10",
+          "depends_on_id": "go-slide-creator-fh57.9",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:05Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.10",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:05Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 3,
+      "dependent_count": 1,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.9",
+      "title": "Make all-slide rendered inspection an available completion step",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nConnect generated deck pixels and contact sheet to host-agent or configured vision inspection, inspecting every slide plus cross-deck consistency. Do not require a specific vendor/API key or silently upgrade a heuristic fallback to visual review.\n\nWhere\ncmd/pptx2jpg, cmd/json2pptx/mcp_visual_qa.go, internal/visualqa, preview/inspection tools and quality completion protocol\n\nHow\nExpose current-revision thumbnails/contact sheet with actual semantic roles and findings that identify slide/object, category, severity, evidence and next action. Support host/manual recorded review and configured provider adapters using one contract. Keep content fidelity, readability, hierarchy, clipping, contrast and template fidelity separate. Include advisory design defects in final review status; bounded iterations must end with truthful unresolved findings. No automatic external paid calls without configured consent.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Test missing renderer/provider, timeouts, partial images, actual semantic types, P2 readability findings and all-slide coverage. Use original QBR KPI image as a known failure case; confirm after-render review sees repaired artifact, not a prior revision. Run go test ./internal/visualqa/... ./cmd/json2pptx/... and an opt-in rendered integration test.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:05Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:05Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.9",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:04Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.9",
+          "depends_on_id": "go-slide-creator-fh57.8",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:04Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 1,
+      "dependent_count": 2,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.8",
+      "title": "Separate input scores, structural validity and pixel-reviewed quality",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nIntroduce a shared truthful evidence contract: schema-valid, generated, fit-checked, rendered, visually-inspected and approved/needs-review are distinct states. A 1.0 input heuristic or deterministic 100 cannot stand for visual quality. Maintain backwards-compatible score fields but label scope and deprecate misleading claims.\n\nWhere\ncmd/json2pptx/json_mode.go computeQualityScore, semantic_cmd.go, mcp_score_deck.go, auto_repair/make_deck publishability responses, internal/pipeline quality types\n\nHow\nBind statuses to artifact revision/hash and enumerate reviewed slide IDs. Distinguish OOXML generation from pixel rendering. Draft generation remains possible offline; visual approval requires actual current slide images and an explicit inspection verdict. Partial inspection, missing renderer/fonts and heuristic-only inspection remain visible and cannot pass a visually-reviewed gate. Preserve already implemented requested-vs-actual and incomplete-evidence safeguards.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Contract tests for clean-but-ugly KPI, generation success/render failure, heuristic-only fallback, one unreviewed slide, stale hash and successful all-slide inspection. Test semantic CLI and MCP score/repair responses for consistent meanings without breaking legacy parsing. Run go test ./cmd/json2pptx/... ./internal/pipeline/... .",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:04Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:04Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.8",
+          "depends_on_id": "go-slide-creator-fh57.7",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:04Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.8",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:04Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 1,
+      "dependent_count": 2,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.6",
+      "title": "Preserve semantic content and expose bounded composition alternatives",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nStop successful fallback from silently removing charts or process descriptions. Preserve supplied evidence, metric units, qualifiers, sources and labels across compilation. Let the agent choose a small supported set of composition alternatives by communication intent instead of one fixed pattern per kind.\n\nWhere\ninternal/semantic/ir.go, internal/semantic/slides/visual.go, chart.go, kpi.go, semantic schemas, source maps and preflight; cmd/json2pptx/semantic_cmd.go\n\nHow\nRespect existing explicit visual layout/pattern choices or reject unsupported combinations clearly. Provide deterministic candidates with fit/capacity reasons (native content, comparison, staged process, chart+insights, split slides); do not create an unconstrained optimizer. Every omitted or transformed field gets a source-linked diagnostic. If a chart cannot coexist with all insights, split/paginate or request a decision, never replace it with bullets silently.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Add boundary tests at 1/2/6/7 KPI, 2/3/8/9 process steps, 0/6/7 insights, unbalanced comparisons and explicit overrides. Assert every supplied semantic fact has emitted content or a blocking diagnostic and chart data survive fallback. Snapshot source links and split-slide identities. Run go test ./internal/semantic/... ./cmd/json2pptx/... .",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:03Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:03Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.6",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:02Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.6",
+          "depends_on_id": "go-slide-creator-fh57.2",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:02Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 1,
+      "dependent_count": 3,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.5",
+      "title": "Unify readable typography policy and effective text measurement",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nResolve role-based typography from the template and intended viewing mode, then use the same effective font/style/insets in fit prediction and emitted OOXML. Avoid treating tiny but fitting text as successful design. Preserve template hierarchy and expose font substitution.\n\nWhere\ninternal/textfit/measure.go, internal/textfit, internal/patterns, internal/shapegrid, internal/generator, template font resolution, docs/INPUT_FORMAT.md\n\nHow\nDefine live-presentation versus dense-report policy with explicit minimum readable roles and user overrides; calibrate rather than blindly scaling every template to 18pt. Measure bold/runs, line spacing, paragraph spacing and insets consistently. When content cannot meet policy, choose another composition or split/request editing, not unlimited shrink. Surface unavailable fonts and renderer identity in evidence.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Table tests for regular/bold/mixed runs, multiline bullets, missing fonts, non-Latin text and long KPI values. Render stress fixtures at target viewing size; compare measured and actual wrapping. Assert policy violations cannot be labeled publishable and all affected pattern roles use resolved tokens. Run go test ./internal/textfit/... ./internal/patterns/... ./internal/shapegrid/... .",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:02Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:02Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.5",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:02Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.5",
+          "depends_on_id": "go-slide-creator-fh57.4",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:02Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.5",
+          "depends_on_id": "go-slide-creator-fh57.3",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:02Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 2,
+      "dependent_count": 2,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.3",
+      "title": "Resolve a validated per-layout template profile through actual master relationships",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nMake seven-role templates portable across names, order, dimensions and multiple masters. Produce one reusable profile with slide dimensions, role bindings, effective placeholder geometry/text styles, layout-to-master-to-theme relationships, backgrounds and diagnostics. Do not equate seven recognized names with usable geometry.\n\nWhere\ninternal/template/canonical.go, conformance.go, theme.go, master.go, font_resolver.go, style_extractor.go, slide_dimensions.go; internal/types; docs/TEMPLATE_SPEC.md\n\nHow\nExtend existing metadata types/resolvers rather than introducing a parallel template engine. Follow package relationships and inherited transforms/font/color mappings for each selected layout. Cache by template content hash and parser version, not filename. Resolve ambiguous roles explicitly or report actionable ambiguity. Separate valid role presence from unusable geometry and rendering capabilities. Correct spec EMU/aspect-ratio and font-unit arithmetic.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Add fixtures for reordered/renamed canonical layouts, inherited transforms, two masters with different themes, 4:3 and wide slides, missing optional metadata and malformed packages. Assert exact effective colors/fonts/bounds and explicit ambiguity diagnostics. Run go test ./internal/template/... ./internal/types/...; bundled templates must retain valid role bindings.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:01Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:01Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.3",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:00Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 0,
+      "dependent_count": 3,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.4",
+      "title": "Use one template-relative safe-area model for content and slide chrome",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nReplace fixed takeaway/source/footer geometry and first-placeholder canvas guesses with a shared resolved frame used by planning, preflight and emission. Protect titles, footers, logos and template decorations without treating full-slide backgrounds as obstacles.\n\nWhere\ncmd/json2pptx/shape_grid.go, internal/shapegrid, internal/generator/takeaway_note.go, source_note.go, footer generation, internal/template layout metadata\n\nHow\nCompute slide-frame bounds and named content/chrome regions from the effective layout profile. Reserve actual takeaway/source heights before composing content. Prefer native placeholders; for absent ones derive conservative margins relative to dimensions. Account for grouped/transformed foreground decorations. Allow optional explicit safe-area overrides for inherently ambiguous decorative intent; return unsupported/needs-review instead of hiding content when no usable region exists.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Golden geometry tests on 4:3, 16:9, ultrawide, narrow content, oversized title, side logo, full-slide background and absent footers. Assert all generated objects inside canvas, no forbidden-region overlap, and preflight/emitted coordinates agree. Render examples with source+takeaway across these fixtures. Run go test ./internal/generator/... ./internal/shapegrid/... ./cmd/json2pptx/... .",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:01Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:01Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.4",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:01Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.4",
+          "depends_on_id": "go-slide-creator-fh57.3",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:01Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.4",
+          "depends_on_id": "go-slide-creator-fh57.2",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:01Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 2,
+      "dependent_count": 3,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.1",
+      "title": "Make quality regression collection fail closed and parse current envelopes",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nRemove ignored validation/generation failures and legacy fit-report decoding. Share a tested current-envelope decoder, distinguish expected validation findings from infrastructure failures, and make declared regression budgets fail tests rather than only log. Keep missing renderer an explicit local skip and a CI failure in required visual jobs.\n\nWhere\ntests/quality/quality_test.go, tests/quality/loop_driver.go, tests/quality/run.sh, tests/quality/README.md\n\nHow\nPreserve diagnostic stdout/stderr and exit status; reject malformed or unexpectedly empty output. Decode findings.findings plus evidence.action consistently; verify generation's actual envelope before decoding. Rebaseline only after auditing changed counts, never automatically bless new values.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Add fake-command tests for nonzero exit, malformed JSON, empty stdout, valid zero findings, and known refuse/shrink findings. Assert known broken fixtures produce nonzero expected histograms. Run go test ./tests/quality/... and the documented quality runner with a deliberately failing binary; it must fail. Baseline regressions must return nonzero.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "bug",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:00Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:00Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.1",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:48:59Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 0,
+      "dependent_count": 1,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.2",
+      "title": "Bind semantic compositions to compatible canonical layouts before scoring",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nFix title-plus-pattern slides selecting Section Divider or Closing and deriving their canvas from a section-number placeholder. Treat pattern/compose as real content during layout compatibility checks. Bind abstract role to concrete template layout once, preserve explicit valid layout overrides, and keep plan and generation in agreement.\n\nWhere\ninternal/semantic/slides/kpi.go, internal/semantic/slides/visual.go, internal/semantic/ir.go, internal/layout/heuristic.go, cmd/json2pptx/json_mode.go, cmd/json2pptx/shape_grid.go\n\nHow\nIntroduce or reuse a composition-role requirement before heuristic variety scoring; KPI/custom compositions default to compatible blank-title, native body content to content roles. Variety must never override compatibility. Exclude section-number/utility placeholders as body canvases. Resolve role aliases through existing canonical resolver, not hardcoded slideLayoutN IDs.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Add regression for examples/semantic/qbr.yaml: slide 3 must select blank-title-compatible layout, never Section Divider; card bounds must occupy safe content area and numbers remain single line at readable size. Test raw pattern, compose, reordered layout files, misleading titles and explicit compatible/incompatible overrides. Run go test ./internal/semantic/... ./internal/layout/... ./cmd/json2pptx/...; render QBR before/after.",
+      "status": "open",
+      "priority": 1,
+      "issue_type": "bug",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:00Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:00Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.2",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:00Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 0,
+      "dependent_count": 2,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.14",
+      "title": "Measure end-to-end agent slide quality against a human-rated baseline",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nTest the user's actual claim with fresh agents producing decks from briefs, not only pre-authored JSON fixtures. Compare current baseline to redesigned workflow with a frozen rubric and held-out templates. Determine whether the workflow improves useful visual output instead of merely passing more validators.\n\nWhere\ntests/quality/prompts, tests/quality/README.md, new benchmark runner/report alongside existing quality harness\n\nHow\nUse at least 12 briefs spanning KPI, comparison, process, narrative and charts, at least 3 template families including an unseen seven-layout template, and two repeated runs per configuration. Record model/version, prompts, tool calls, artifacts, cost and iterations. Blind paired ratings by two reviewers on readability, hierarchy, template fidelity, factual completeness and overall usability; report disagreements and failures. Pre-register target >=80% usable without manual slide editing, zero lost critical facts, and clear paired improvement; treat target as proposed product bar, not a proven guarantee.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Runner must actually invoke the configured agent and capture tools/artifacts; static fixture replay is labeled separately. Publish per-run evidence and aggregate uncertainty rather than only average score. Release decision requires achieved target and no critical content/template defects; otherwise narrow advertised capability or iterate. No unapproved paid/provider runs in default CI.",
+      "status": "open",
+      "priority": 2,
+      "issue_type": "task",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:12Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:12Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.14",
+          "depends_on_id": "go-slide-creator-fh57.12",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:11Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.14",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:11Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.14",
+          "depends_on_id": "go-slide-creator-fh57.13",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:11Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 2,
+      "dependent_count": 0,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.12",
+      "title": "Unify agent onboarding and supported entrypoints around the visual workflow",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nOffer one short default workflow: understand brief, inspect template, plan message/composition, generate draft, inspect all pixels, repair and verify. Remove contradictory instructions to never render thumbnails or to finish on deterministic score. Align entrypoints on the same source/evidence semantics; document any deliberately unsupported operation.\n\nWhere\nskills/generate-deck/SKILL.md and linked tools docs, skills/template-deck/TEMPLATE_GUIDE.md, get_started/make_deck, semantic CLI, MCP and internal/api supported generation paths\n\nHow\nUse semantic authoring as the normal intent layer with raw JSON escape hatch for supported advanced composition. Reuse shared pipeline orchestration instead of implementing independent API/CLI/MCP quality logic. Handle local user-provided template paths consistently. Put detailed pattern/tool references behind discovery rather than requiring the entire manual. Clearly distinguish draft-only from visually-reviewed completion.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Run documented cold-start examples through CLI and MCP on a provided seven-layout template, including missing visual tools. Add protocol/contract tests for shared statuses and unsupported API operations; verify bundled/installed skill contents match. A fresh-agent exercise must discover visual inspection and never call deterministic score visual approval.",
+      "status": "open",
+      "priority": 2,
+      "issue_type": "task",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:07Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:07Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.12",
+          "depends_on_id": "go-slide-creator-fh57.6",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.12",
+          "depends_on_id": "go-slide-creator-fh57.9",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.12",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.12",
+          "depends_on_id": "go-slide-creator-fh57.11",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:07Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.12",
+          "depends_on_id": "go-slide-creator-fh57.10",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 4,
+      "dependent_count": 1,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.11",
+      "title": "Expose template-specific visual examples and compact composition discovery",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nGive the authoring agent a compact template-specific design palette: seven canonical role thumbnails, effective dimensions/styles, and a small set of relevant pattern examples with capacity limits. Names and a large text registry alone are insufficient for visual choices.\n\nWhere\ntemplate inspection CLI/MCP tools, internal/patterns registry, preview rendering, skills/template-deck/TEMPLATE_GUIDE.md\n\nHow\nReuse the existing renderer and pattern registry. Render real template masters/decorations with representative content; paginate discovery and filter by intent/count. Cache by template+pattern+renderer hashes. Present missing-renderer metadata-only output honestly. Do not pre-render every combination at cold start or require bespoke templates.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Test cache invalidation on template replacement, correct master/theme in thumbnails, metadata-only mode, bounded response size and intent/count filtering. Render previews on light/dark and 4:3 templates and compare geometry to final generation. Run affected registry, template and tool tests.",
+      "status": "open",
+      "priority": 2,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:06Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:06Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.11",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.11",
+          "depends_on_id": "go-slide-creator-fh57.3",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.11",
+          "depends_on_id": "go-slide-creator-fh57.5",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        },
+        {
+          "issue_id": "go-slide-creator-fh57.11",
+          "depends_on_id": "go-slide-creator-fh57.4",
+          "type": "blocks",
+          "created_at": "2026-09-18T09:49:06Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 3,
+      "dependent_count": 1,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    },
+    {
+      "id": "go-slide-creator-fh57.7",
+      "title": "Persist authoring source and revision-bound artifact manifests",
+      "description": "Context: docs/SLIDE_QUALITY_REDESIGN.md; reviewed baseline 2c219bf. Scope is user-provided PPTX templates with seven canonical layouts, not arbitrary template reconstruction.\n\nWhat\nProvide a versioned filesystem sidecar connecting original semantic/raw source, stable slide IDs, effective template hash, compiled input, PPTX and render artifacts. Enable targeted edits without reconstructing authoring intent from lossy PPTX reading.\n\nWhere\ninternal/semantic source maps, internal/pipeline, cmd/json2pptx/semantic_cmd.go, generation/preview/repair response types\n\nHow\nReuse source maps and artifact paths; no database/workspace service or new UI. Persist only explicitly produced artifacts to the requested output directory, atomically. Record revision and source/template hashes, renderer/version/fonts, diagnostics and visual review coverage. Changes invalidate downstream evidence. Handle split/reordered slides with stable logical IDs plus generated-child mapping; keep existing API consumers compatible.\n\nBoundary\nImplement this deliverable and its tests together; reuse existing metadata, source maps, rendering and quality infrastructure. Do not implement unrelated epic work. Preserve backwards compatibility or explicitly document a migration.",
+      "acceptance_criteria": "Round-trip generate, reopen source, edit one slide, regenerate and verify unrelated source remains unchanged. Test reordered/split slides, template replaced at same path, interrupted writes and stale manifest. Assert prior visual evidence is invalid after any content/template change. Run relevant pipeline, semantic and CLI tests.",
+      "status": "open",
+      "priority": 2,
+      "issue_type": "feature",
+      "owner": "platon2001@icloud.com",
+      "created_at": "2026-09-18T07:49:03Z",
+      "created_by": "platon2001",
+      "updated_at": "2026-09-18T07:49:03Z",
+      "labels": [
+        "slide-quality",
+        "template-portability"
+      ],
+      "dependencies": [
+        {
+          "issue_id": "go-slide-creator-fh57.7",
+          "depends_on_id": "go-slide-creator-fh57",
+          "type": "parent-child",
+          "created_at": "2026-09-18T09:49:03Z",
+          "created_by": "platon2001",
+          "metadata": "{}"
+        }
+      ],
+      "dependency_count": 0,
+      "dependent_count": 2,
+      "comment_count": 0,
+      "parent": "go-slide-creator-fh57"
+    }
+  ]
+}
