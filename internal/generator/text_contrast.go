@@ -193,9 +193,11 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 	// Fix lstStyle inherited text colors
 	if shape.TextBody.ListStyle != nil && shape.TextBody.ListStyle.Inner != "" {
 		start := len(swaps)
+		lstPt, lstBold := smallestTextPt(shape.TextBody.ListStyle.Inner)
 		shape.TextBody.ListStyle.Inner = fixSchemeColorsForContrast(
 			shape.TextBody.ListStyle.Inner, bgColor, bgHex, themeColors, &swaps,
 			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
+			contrastThresholdFor(lstPt, lstBold),
 		)
 		annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "lstStyle")
 	}
@@ -207,9 +209,11 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 			run := &para.Runs[ri]
 			if run.RunProperties != nil && run.RunProperties.Inner != "" {
 				start := len(swaps)
+				runPt, runBold := runTextSize(run)
 				run.RunProperties.Inner = fixSchemeColorsForContrast(
 					run.RunProperties.Inner, bgColor, bgHex, themeColors, &swaps,
 					shape.NonVisualProperties.ConnectionNonVisual.Name, "run", false,
+					contrastThresholdFor(runPt, runBold),
 				)
 				annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "run")
 			}
@@ -281,7 +285,10 @@ type themeTextCandidate struct {
 // candidate is returned. Preferring dk2 over dk1 keeps the fix inside the
 // template palette — dk1 is literal #000000 in most templates, which reads as
 // an off-brand black on accent fills.
-func pickThemeTextColor(bg svggen.Color, themeColors []types.ThemeColor) themeTextCandidate {
+func pickThemeTextColor(bg svggen.Color, themeColors []types.ThemeColor, threshold float64) themeTextCandidate {
+	if threshold <= 0 {
+		threshold = svggen.WCAGAANormal
+	}
 	var cands []themeTextCandidate
 	add := func(scheme, hex string) {
 		if hex == "" {
@@ -306,9 +313,12 @@ func pickThemeTextColor(bg svggen.Color, themeColors []types.ThemeColor) themeTe
 	shade := svggen.EnsureContrast(bg, bg, svggen.WCAGAANormal)
 	cands = append(cands, themeTextCandidate{Hex: strings.ToUpper(shade.Hex()), Color: shade})
 
-	for _, threshold := range []float64{svggen.WCAGAANormal, svggen.WCAGAALarge} {
+	// The required threshold first; only then relax, so a candidate that merely
+	// clears the large-text bar is never chosen for small text when a stricter
+	// one exists.
+	for _, t := range []float64{threshold, svggen.WCAGAALarge} {
 		for _, c := range cands {
-			if c.Color.ContrastWith(bg) >= threshold {
+			if c.Color.ContrastWith(bg) >= t {
 				return c
 			}
 		}
@@ -328,8 +338,8 @@ func pickThemeTextColor(bg svggen.Color, themeColors []types.ThemeColor) themeTe
 // (lt1 / dk2 / dk1) or a tonal shade of the background.
 //
 // The returned hex string is upper-case with a leading "#".
-func pickFlippedTextColor(bg svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string) {
-	c := pickThemeTextColor(bg, themeColors)
+func pickFlippedTextColor(bg svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string) {
+	c := pickThemeTextColor(bg, themeColors, threshold)
 	return c.Color, c.Hex
 }
 
@@ -379,6 +389,89 @@ func isNeutralForeground(value string) bool {
 	return isNeutralExtremeScheme(v)
 }
 
+// runSizeRegexp captures the sz attribute (hundredths of a point) of every run
+// or paragraph default in a text body.
+var runSizeRegexp = regexp.MustCompile(`\bsz="(\d+)"`)
+
+// runBoldRegexp captures the b attribute of every run in a text body.
+var runBoldRegexp = regexp.MustCompile(`\bb="([01])"`)
+
+// defaultBodyTextPt is assumed when a text body declares no explicit size: the
+// inherited body size is the conservative case, and it is below the
+// large-text bar either way.
+const defaultBodyTextPt = 12.0
+
+// wcagLargeTextPt / wcagLargeBoldTextPt are the WCAG "large text" thresholds:
+// 18pt, or 14pt when bold. Only text at or above them may be fixed to the 3:1
+// large-text contrast ratio; everything else needs 4.5:1.
+const (
+	wcagLargeTextPt     = 18.0
+	wcagLargeBoldTextPt = 14.0
+)
+
+// contrastThresholdFor returns the WCAG AA contrast ratio a run of the given
+// size must meet: 3:1 only for genuinely large text, 4.5:1 otherwise.
+//
+// The contrast pass used to fix every foreground to 3:1 on the stated
+// assumption that "presentation text is almost always >= 18pt or >= 14pt
+// bold". That is false for the 11pt supporting line a card carries, so swaps
+// landed at exactly ratio 3.0 and the rendered text was barely visible
+// grey-on-grey (go-slide-creator-9ux4).
+func contrastThresholdFor(textPt float64, bold bool) float64 {
+	if textPt <= 0 {
+		textPt = defaultBodyTextPt
+	}
+	if textPt >= wcagLargeTextPt || (bold && textPt >= wcagLargeBoldTextPt) {
+		return svggen.WCAGAALarge
+	}
+	return svggen.WCAGAANormal
+}
+
+// smallestTextPt returns the smallest declared run size in a text-body fragment
+// (in points) and whether every sized run in it is bold. A fragment with no
+// explicit size reports defaultBodyTextPt.
+//
+// The contrast pass rewrites a whole text body against one background, so the
+// threshold is chosen from its SMALLEST text: fixing the 28pt KPI value to the
+// stricter ratio alongside its 11pt label is harmless, while the reverse would
+// leave the label illegible.
+func smallestTextPt(fragment string) (float64, bool) {
+	matches := runSizeRegexp.FindAllStringSubmatch(fragment, -1)
+	if len(matches) == 0 {
+		return defaultBodyTextPt, allRunsBold(fragment)
+	}
+	smallest := 0.0
+	for _, m := range matches {
+		hundredths, err := strconv.Atoi(m[1])
+		if err != nil || hundredths <= 0 {
+			continue
+		}
+		pt := float64(hundredths) / 100.0
+		if smallest == 0 || pt < smallest {
+			smallest = pt
+		}
+	}
+	if smallest == 0 {
+		return defaultBodyTextPt, allRunsBold(fragment)
+	}
+	return smallest, allRunsBold(fragment)
+}
+
+// allRunsBold reports whether every run that declares a b attribute declares
+// b="1". A fragment with no b attribute at all is not bold.
+func allRunsBold(fragment string) bool {
+	matches := runBoldRegexp.FindAllStringSubmatch(fragment, -1)
+	if len(matches) == 0 {
+		return false
+	}
+	for _, m := range matches {
+		if m[1] != "1" {
+			return false
+		}
+	}
+	return true
+}
+
 // contrastReplacement computes the high-contrast replacement color for a
 // low-contrast foreground, and is the single source of truth shared by the
 // render-time contrast pass (fixSrgbColorsForContrast / fixSchemeColorsForContrast)
@@ -393,8 +486,8 @@ func isNeutralForeground(value string) bool {
 // extreme (e.g. white on light yellow). Every other foreground is lerped toward
 // contrast via EnsureContrast. The returned mode is contrastModeFlip or
 // contrastModeLerp.
-func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string) {
-	c, mode, _ := contrastReplacementScheme(originalFg, fgColor, bgColor, themeColors)
+func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string) {
+	c, mode, _ := contrastReplacementScheme(originalFg, fgColor, bgColor, themeColors, threshold)
 	return c, mode
 }
 
@@ -402,12 +495,15 @@ func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, theme
 // ("lt1", "dk2", "dk1") of the chosen color when it came from the template
 // palette, or "" for derived colors. Render-time fixes log it so the swap is
 // traceable to the template palette.
-func contrastReplacementScheme(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string, string) {
+func contrastReplacementScheme(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string, string) {
+	if threshold <= 0 {
+		threshold = svggen.WCAGAANormal
+	}
 	if isNeutralForeground(originalFg) {
-		c := pickThemeTextColor(bgColor, themeColors)
+		c := pickThemeTextColor(bgColor, themeColors, threshold)
 		return c.Color, contrastModeFlip, c.Scheme
 	}
-	return svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge), contrastModeLerp, ""
+	return svggen.EnsureContrast(fgColor, bgColor, threshold), contrastModeLerp, ""
 }
 
 // =============================================================================
@@ -573,10 +669,15 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	txBody := string(shapeXML[txStart:txEnd])
 
 	var swaps []ContrastSwap
+	// The whole body is fixed against one background, so its threshold comes
+	// from its SMALLEST text: an 11pt supporting line needs 4.5:1 even when it
+	// sits beside a 28pt KPI value (go-slide-creator-9ux4).
+	bodyPt, bodyBold := smallestTextPt(txBody)
+	threshold := contrastThresholdFor(bodyPt, bodyBold)
 	// Fix scheme colors in text (with white-text-safe awareness)
-	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe)
+	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold)
 	// Fix sRGB colors in text (with white-text-safe awareness)
-	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe)
+	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold)
 
 	if fixed == txBody {
 		return shapeXML, nil // No changes needed
@@ -609,7 +710,7 @@ var srgbClrInFillRegexp = regexp.MustCompile(
 // snaps to dk1/lt1 (clean flip) instead of lerping to an intermediate gray.
 // This avoids the muddy-gray-on-light-yellow result that the binary-search
 // EnsureContrast produces when both fg and target are close to one extreme.
-func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, fillSafe bool) string {
+func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, fillSafe bool, threshold float64) string {
 	return srgbClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		submatches := srgbClrInFillRegexp.FindStringSubmatch(match)
 		if len(submatches) < 4 {
@@ -628,11 +729,11 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 		}
 
 		ratio := fgColor.ContrastWith(bgColor)
-		if ratio >= svggen.WCAGAALarge {
-			return match // Contrast is adequate (large text threshold: 3:1)
+		if ratio >= threshold {
+			return match // Contrast already meets the ratio this text size needs
 		}
 
-		fixedColor, _, fixedScheme := contrastReplacementScheme(hexVal, fgColor, bgColor, themeColors)
+		fixedColor, _, fixedScheme := contrastReplacementScheme(hexVal, fgColor, bgColor, themeColors, threshold)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Warn("text contrast fix: replacing low-contrast sRGB color",
@@ -670,7 +771,7 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 // When fillSafe is true and the foreground scheme color is lt1/bg1 (white),
 // the fix is skipped — the template metadata certifies that white text on
 // this fill is safe.
-func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool) string {
+func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool, threshold float64) string {
 	return schemeClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		// Extract the scheme color name from the match
 		submatches := schemeClrInFillRegexp.FindStringSubmatch(match)
@@ -708,7 +809,7 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		// theme extreme rather than lerping into a muddy gray — this fixes the
 		// white-on-light-yellow case where EnsureContrast otherwise produces
 		// ~#606060.
-		fixedColor, _, fixedScheme := contrastReplacementScheme(schemeName, fgColor, bgColor, themeColors)
+		fixedColor, _, fixedScheme := contrastReplacementScheme(schemeName, fgColor, bgColor, themeColors, threshold)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Warn("text contrast fix: replacing low-contrast scheme color",
@@ -736,4 +837,20 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		hexVal := strings.TrimPrefix(fixedColor.Hex(), "#")
 		return fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, hexVal)
 	})
+}
+
+
+// runTextSize returns a run's declared size in points and whether it is bold,
+// falling back to the inherited body default when the run declares no size.
+func runTextSize(run *runXML) (float64, bool) {
+	if run == nil || run.RunProperties == nil {
+		return defaultBodyTextPt, false
+	}
+	pt := defaultBodyTextPt
+	if run.RunProperties.FontSize != "" {
+		if hundredths, err := strconv.Atoi(run.RunProperties.FontSize); err == nil && hundredths > 0 {
+			pt = float64(hundredths) / 100.0
+		}
+	}
+	return pt, run.RunProperties.Bold == "1"
 }

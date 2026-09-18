@@ -825,7 +825,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeContrastPredicted,
 		Summary:     "Pre-flight predicts the renderer's auto-fix will replace a text color for WCAG AA contrast.",
 		Severity:    "info",
-		WhenEmitted: "Pre-flight contrast detector walks shape-grid cells with author-specified text and fill colors and predicts a swap using the same replacement algorithm the renderer applies, so predicted_replacement equals the contrast_autofixed color. fix.params.replacement_mode is 'flip' (pure-neutral white/black snapped to dk1/lt1) or 'lerp' (darkened/lightened via EnsureContrast).",
+		WhenEmitted: "Pre-flight contrast detector walks shape-grid cells with author-specified text and fill colors and predicts a swap using the same replacement algorithm the renderer applies, so predicted_replacement equals the contrast_autofixed color. The required ratio depends on the TEXT SIZE: 4.5:1 for normal text, 3:1 only for genuinely large text (>=18pt, or >=14pt bold). fix.params.replacement_mode is 'flip' (pure-neutral white/black snapped to dk1/lt1) or 'lerp' (darkened/lightened via EnsureContrast).",
 		RemediationSteps: []string{
 			"Adjust the text color upstream to clear the WCAG AA threshold (≥3:1 against the fill).",
 			"Or apply repair_slide(kind=replace_color, params.from/to) to lock in the predicted replacement.",

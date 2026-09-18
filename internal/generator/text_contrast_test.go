@@ -149,7 +149,7 @@ func TestFixSchemeColorsForContrast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var sw []ContrastSwap
-			got := fixSchemeColorsForContrast(tt.xmlIn, bgColor, "#FFE8D4", tc, &sw, "TestShape", "test", false)
+			got := fixSchemeColorsForContrast(tt.xmlIn, bgColor, "#FFE8D4", tc, &sw, "TestShape", "test", false, svggen.WCAGAALarge)
 
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
@@ -317,7 +317,7 @@ func TestFixSchemeColorsForContrast_MultipleLevels(t *testing.T) {
 		`<a:lvl2pPr><a:defRPr sz="2000"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
 
 	var swaps []ContrastSwap
-	got := fixSchemeColorsForContrast(xmlIn, bgColor, "#FFE8D4", tc, &swaps, "TestShape", "test", false)
+	got := fixSchemeColorsForContrast(xmlIn, bgColor, "#FFE8D4", tc, &swaps, "TestShape", "test", false, svggen.WCAGAALarge)
 
 	// accent1 should be replaced (low contrast)
 	if strings.Contains(got, `schemeClr val="accent1"`) {
@@ -540,7 +540,7 @@ func TestFixSrgbColorsForContrast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var srgbSwaps []ContrastSwap
-			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", nil, &srgbSwaps, false)
+			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", nil, &srgbSwaps, false, svggen.WCAGAALarge)
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
 				t.Errorf("changed = %v, want %v\n  input:  %s\n  output: %s", changed, tt.wantChange, tt.xmlIn, got)
@@ -957,7 +957,7 @@ func TestPickFlippedTextColor(t *testing.T) {
 
 	t.Run("light_bg_picks_dk1", func(t *testing.T) {
 		bg := svggen.MustParseColor("#E8A838") // light yellow
-		_, hex := pickFlippedTextColor(bg, tc)
+		_, hex := pickFlippedTextColor(bg, tc, svggen.WCAGAALarge)
 		if hex != "#000000" {
 			t.Errorf("expected dk1 (#000000) for light bg, got %s", hex)
 		}
@@ -965,7 +965,7 @@ func TestPickFlippedTextColor(t *testing.T) {
 
 	t.Run("dark_bg_picks_lt1", func(t *testing.T) {
 		bg := svggen.MustParseColor("#1B2A4A") // dark navy
-		_, hex := pickFlippedTextColor(bg, tc)
+		_, hex := pickFlippedTextColor(bg, tc, svggen.WCAGAALarge)
 		if hex != "#FFFFFF" {
 			t.Errorf("expected lt1 (#FFFFFF) for dark bg, got %s", hex)
 		}
@@ -973,7 +973,7 @@ func TestPickFlippedTextColor(t *testing.T) {
 
 	t.Run("empty_theme_falls_back_to_pure_extremes", func(t *testing.T) {
 		bg := svggen.MustParseColor("#E8A838")
-		_, hex := pickFlippedTextColor(bg, nil)
+		_, hex := pickFlippedTextColor(bg, nil, svggen.WCAGAALarge)
 		if hex != "#000000" {
 			t.Errorf("expected fallback #000000 with nil theme, got %s", hex)
 		}

@@ -1432,9 +1432,11 @@ func collectContrastPreflightFindings(input *PresentationInput, themeColors []ty
 				for _, tc := range extractShapeTextColors(cell.Shape.Text) {
 					pairs = append(pairs, generator.ContrastPreflightPair{
 						Path:       slidepath.GridCellField(si, ri, ci, "shape/text"),
-						Foreground: tc,
+						Foreground: tc.Color,
 						Background: fill,
 						Source:     "shape_grid",
+						TextPt:     tc.SizePt,
+						Bold:       tc.Bold,
 					})
 				}
 			}
@@ -1477,7 +1479,7 @@ func extractShapeFillColor(raw json.RawMessage) string {
 // RawMessage. A single object-form text contributes one color (if set); a
 // paragraphs-array form contributes one color per paragraph that sets one.
 // String-form text contributes nothing (no authored color).
-func extractShapeTextColors(raw json.RawMessage) []string {
+func extractShapeTextColors(raw json.RawMessage) []shapeTextColor {
 	if len(raw) == 0 {
 		return nil
 	}
@@ -1488,24 +1490,46 @@ func extractShapeTextColors(raw json.RawMessage) []string {
 	}
 	// Object / paragraphs-array form.
 	var obj struct {
-		Color      string `json:"color"`
+		Color      string  `json:"color"`
+		Size       float64 `json:"size"`
+		Bold       bool    `json:"bold"`
 		Paragraphs []struct {
-			Color string `json:"color"`
+			Color string  `json:"color"`
+			Size  float64 `json:"size"`
+			Bold  bool    `json:"bold"`
 		} `json:"paragraphs"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return nil
 	}
-	var colors []string
+	var colors []shapeTextColor
 	if obj.Color != "" {
-		colors = append(colors, obj.Color)
+		colors = append(colors, shapeTextColor{Color: obj.Color, SizePt: obj.Size, Bold: obj.Bold})
 	}
 	for _, p := range obj.Paragraphs {
-		if p.Color != "" {
-			colors = append(colors, p.Color)
+		if p.Color == "" {
+			continue
 		}
+		// A paragraph without its own size inherits the shape's.
+		size, bold := p.Size, p.Bold
+		if size == 0 {
+			size = obj.Size
+		}
+		if !bold {
+			bold = obj.Bold
+		}
+		colors = append(colors, shapeTextColor{Color: p.Color, SizePt: size, Bold: bold})
 	}
 	return colors
+}
+
+// shapeTextColor is an authored text color together with the size and weight it
+// is drawn at. The size decides which WCAG AA ratio the contrast check must
+// require — 3:1 only for genuinely large text (go-slide-creator-9ux4).
+type shapeTextColor struct {
+	Color  string
+	SizePt float64
+	Bold   bool
 }
 
 // expandComposeForPreflight returns a shallow copy of input where each slide

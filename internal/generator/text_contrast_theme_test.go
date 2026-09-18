@@ -46,7 +46,7 @@ func TestContrastFix_WhiteOnAccent2PicksThemeColor(t *testing.T) {
 
 func TestPickThemeTextColor_Order(t *testing.T) {
 	t.Run("dark_fill_keeps_lt1", func(t *testing.T) {
-		c := pickThemeTextColor(svggen.MustParseColor("#1B2A4A"), forestGreenTheme)
+		c := pickThemeTextColor(svggen.MustParseColor("#1B2A4A"), forestGreenTheme, svggen.WCAGAALarge)
 		if c.Scheme != "lt1" {
 			t.Errorf("scheme = %q, want lt1", c.Scheme)
 		}
@@ -54,7 +54,7 @@ func TestPickThemeTextColor_Order(t *testing.T) {
 	t.Run("dk2_too_close_falls_to_dk1", func(t *testing.T) {
 		// Mid-light fill where dk2 (dark green) misses 4.5 but dk1 passes.
 		theme := []types.ThemeColor{{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#555555"}}
-		c := pickThemeTextColor(svggen.MustParseColor("#9E9E9E"), theme)
+		c := pickThemeTextColor(svggen.MustParseColor("#9E9E9E"), theme, svggen.WCAGAALarge)
 		if c.Scheme != "dk1" {
 			t.Errorf("scheme = %q (%s), want dk1", c.Scheme, c.Hex)
 		}
@@ -63,7 +63,7 @@ func TestPickThemeTextColor_Order(t *testing.T) {
 		// Only lt1 and a dk2 identical to the fill: no theme slot passes, the
 		// tonal shade of the fill does.
 		theme := []types.ThemeColor{{Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#FF8F00"}}
-		c := pickThemeTextColor(svggen.MustParseColor("#FF8F00"), theme)
+		c := pickThemeTextColor(svggen.MustParseColor("#FF8F00"), theme, svggen.WCAGAALarge)
 		if c.Scheme != "" {
 			t.Errorf("scheme = %q, want derived shade", c.Scheme)
 		}
@@ -72,7 +72,7 @@ func TestPickThemeTextColor_Order(t *testing.T) {
 		}
 	})
 	t.Run("no_theme_falls_back_to_extremes", func(t *testing.T) {
-		c := pickThemeTextColor(svggen.MustParseColor("#FFFFFF"), nil)
+		c := pickThemeTextColor(svggen.MustParseColor("#FFFFFF"), nil, svggen.WCAGAALarge)
 		if c.Hex != "#000000" {
 			t.Errorf("hex = %s, want #000000", c.Hex)
 		}

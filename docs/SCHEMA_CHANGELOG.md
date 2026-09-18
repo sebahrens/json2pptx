@@ -10,6 +10,19 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Contrast autofix targets the ratio the text size requires
+  (go-slide-creator-9ux4).** Every swap targeted the WCAG AA *large text* ratio
+  of 3.0:1, on the stated assumption that presentation text is almost always
+  ≥18pt or ≥14pt bold — false for the 11pt supporting line a card carries. Swaps
+  landed at exactly 3.0 and the text rendered as barely-visible grey-on-grey. The
+  threshold is now derived from the run's own size and weight: 4.5:1 for normal
+  text, 3:1 only at ≥18pt (or ≥14pt bold). A shape grid's text body takes its
+  threshold from its SMALLEST run, so an 11pt label beside a 28pt KPI value is
+  fixed for the label. `ContrastPreflightPair` gains `TextPt` / `Bold` so
+  `contrast_predicted` stays identical to the render-time swap. Measured on the
+  reported cases: `#CCCCCC` on `#DDDDDD` now lands at 4.56 (was 3.0), `#444444`
+  on `#333333` at 4.55, `#9ACD9A` on `#8FBC8F` at 4.51.
+
 - **`cell_underfilled` is one finding per slide, and exempts metrics and labels
   (go-slide-creator-xpz8).** It was emitted once per cell with no aggregation —
   by far the most common finding in the system (395 occurrences over 50 decks) —

@@ -30,12 +30,18 @@ type ContrastPreflightPair struct {
 	Background string
 	// Source is a short tag for the message (e.g. "shape_grid", "layout").
 	Source string
+	// TextPt is the text size in points and Bold its weight. They decide which
+	// WCAG AA ratio applies: 3:1 only for genuinely large text (>=18pt, or
+	// >=14pt bold), 4.5:1 otherwise. Zero means "unknown", which is treated as
+	// small text — the conservative reading (go-slide-creator-9ux4).
+	TextPt float64
+	Bold   bool
 }
 
 // DetectContrastPreflight predicts whether the renderer's contrast pass
 // would auto-replace the foreground color in each pair. It emits a
-// contrast_predicted finding for any pair with contrast < WCAG AA Large
-// (3.0:1).
+// contrast_predicted finding for any pair below the WCAG AA ratio that pair's
+// text size requires — 4.5:1 for normal text, 3:1 only for large text.
 //
 // Both colors are first resolved through the theme (so semantic scheme
 // names work). Pairs that cannot be resolved or parsed are skipped.
@@ -61,8 +67,9 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 			continue
 		}
 
+		threshold := contrastThresholdFor(p.TextPt, p.Bold)
 		ratio := fg.ContrastWith(bg)
-		if ratio >= svggen.WCAGAALarge {
+		if ratio >= threshold {
 			continue
 		}
 
@@ -72,7 +79,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		// render-time pass would. This keeps the predicted color identical to
 		// the contrast_autofixed swap. replacement_mode discloses which branch
 		// produced it.
-		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors)
+		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold)
 		newRatio := replacement.ContrastWith(bg)
 		source := p.Source
 		if source == "" {
