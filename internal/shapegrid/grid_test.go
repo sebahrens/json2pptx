@@ -1320,9 +1320,15 @@ func TestResolve_ShapeWithIconOverlay_LeftPosition(t *testing.T) {
 	if c.TextInsets[0] == 0 {
 		t.Error("TextInsets[0] (left) should be > 0 for left-positioned icon")
 	}
-	expectedInsetL := int64(600 + 2*38100)
+	// TextInsets are the COMPLETE insets: the icon reservation is ADDED to the
+	// renderer defaults, and the other three sides keep their defaults rather
+	// than being written as an explicit 0 (go-slide-creator-jzb1).
+	expectedInsetL := defaultTextInsetLREMU + int64(600+2*38100)
 	if c.TextInsets[0] != expectedInsetL {
 		t.Errorf("TextInsets[0] should be %d, got %d", expectedInsetL, c.TextInsets[0])
+	}
+	if want := [3]int64{defaultTextInsetTBEMU, defaultTextInsetLREMU, defaultTextInsetTBEMU}; [3]int64{c.TextInsets[1], c.TextInsets[2], c.TextInsets[3]} != want {
+		t.Errorf("non-icon sides = %v, want defaults %v", c.TextInsets[1:], want)
 	}
 }
 
@@ -1330,7 +1336,7 @@ func TestResolve_ShapeWithIconOverlay_TopPosition(t *testing.T) {
 	// Square cell (1000x1000): icon on top, text shifted down.
 	// scale=0.6, minDim=1000, size=600
 	// Icon X = (1000-600)/2=200, Y = gap(38100)
-	// TextInsets[1] = 600 + 2*38100 = 76800... wait let me recalc
+	// TextInsets[1] = default top inset + 600 + 2*38100
 	grid := &Grid{
 		Bounds:  pptx.RectEmu{X: 0, Y: 0, CX: 1000, CY: 1000},
 		Columns: []float64{100},
@@ -1358,9 +1364,12 @@ func TestResolve_ShapeWithIconOverlay_TopPosition(t *testing.T) {
 	if c.TextInsets[1] == 0 {
 		t.Error("TextInsets[1] (top) should be > 0 for top-positioned icon")
 	}
-	expectedInsetT := int64(600 + 2*38100)
+	expectedInsetT := defaultTextInsetTBEMU + int64(600+2*38100)
 	if c.TextInsets[1] != expectedInsetT {
 		t.Errorf("TextInsets[1] should be %d, got %d", expectedInsetT, c.TextInsets[1])
+	}
+	if want := [3]int64{defaultTextInsetLREMU, defaultTextInsetLREMU, defaultTextInsetTBEMU}; [3]int64{c.TextInsets[0], c.TextInsets[2], c.TextInsets[3]} != want {
+		t.Errorf("non-icon sides = [%d %d %d], want defaults %v", c.TextInsets[0], c.TextInsets[2], c.TextInsets[3], want)
 	}
 }
 

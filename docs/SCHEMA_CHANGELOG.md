@@ -41,6 +41,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Icon cells keep the default text padding (go-slide-creator-jzb1).**
+  `resolveIconOverlay` returned text insets of `{iconWidth+gap, 0, 0, 0}` (icon
+  left) or `{0, iconZoneH, 0, 0}` (icon top). `buildTextBody` writes all four
+  `lIns/tIns/rIns/bIns` as soon as one is non-zero, so those zeros were emitted
+  verbatim and overrode PowerPoint's default 0.1in/0.05in padding: card text sat
+  flush against the fill edge on every icon-bearing pattern (`card-grid`,
+  `hero-detail`, `icon-row`, `kpi-2up`…`kpi-6up`, `kpi-inline`, `matrix-2x2`
+  with icons). `iconOverlayLayout.TextInsets` is now the complete inset set —
+  defaults on every side, plus the icon reservation on the icon's own axis.
+  Expanded `shape_grid` output for these patterns changes accordingly.
 - **`validate` / `validate_input` now run pattern value-schema validation
   (go-slide-creator-xvek).** Named-pattern values were never checked against the
   pattern's own schema during validation, so a deck reported VALID (`ok: true`,

@@ -847,15 +847,28 @@ func ApplyFitMode(mode FitMode, cellBounds pptx.RectEmu) pptx.RectEmu {
 	}
 }
 
-// iconOverlayLayout holds the resolved icon position and extra text insets
+// iconOverlayLayout holds the resolved icon position and the text insets
 // needed to prevent text from overlapping the icon.
 type iconOverlayLayout struct {
-	Bounds     pptx.RectEmu // Icon position and size
-	TextInsets [4]int64     // Extra text insets [L,T,R,B] in EMU
+	Bounds pptx.RectEmu // Icon position and size
+	// TextInsets are the COMPLETE text insets [L,T,R,B] in EMU, not a delta:
+	// buildTextBody writes all four as soon as one is non-zero, so every side
+	// must carry its real value (defaults on the sides the icon does not
+	// touch).
+	TextInsets [4]int64
 }
 
 // iconOverlayGapEMU is the gap between icon and text (3pt).
 const iconOverlayGapEMU = 3 * 12700
+
+// defaultTextInsetLREMU / defaultTextInsetTBEMU are PowerPoint's default text
+// body insets (0.1in left/right, 0.05in top/bottom). A shape that writes any
+// inset must write all four, so these are the values to use on the sides an
+// icon overlay does not reserve space on.
+const (
+	defaultTextInsetLREMU int64 = 91440
+	defaultTextInsetTBEMU int64 = 45720
+)
 
 // leftIconMaxWidthFrac caps a "left" overlay icon at this share of the shape
 // width, bounding the text's extra left inset to icon size + padding.
@@ -962,7 +975,17 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 				CX: iconH,
 				CY: iconH,
 			},
-			TextInsets: [4]int64{iconH + 2*iconOverlayGapEMU, 0, 0, 0}, // extra left inset
+			// Seed with the OOXML defaults and ADD the icon reservation on the
+			// icon's own axis. Writing a bare 0 on the other three sides is not
+			// "unset": buildTextBody emits all four whenever any is non-zero, so
+			// a zero there overrode PowerPoint's default padding and the card
+			// text sat flush against the fill edge (go-slide-creator-jzb1).
+			TextInsets: [4]int64{
+				defaultTextInsetLREMU + iconH + 2*iconOverlayGapEMU,
+				defaultTextInsetTBEMU,
+				defaultTextInsetLREMU,
+				defaultTextInsetTBEMU,
+			},
 		}
 	case "top":
 		// Icon centered horizontally and vertically within the top icon zone.
@@ -984,7 +1007,12 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 				CX: size,
 				CY: size,
 			},
-			TextInsets: [4]int64{0, iconZoneH, 0, 0}, // extra top inset
+			TextInsets: [4]int64{
+				defaultTextInsetLREMU,
+				defaultTextInsetTBEMU + iconZoneH,
+				defaultTextInsetLREMU,
+				defaultTextInsetTBEMU,
+			},
 		}
 	default: // "center" — legacy behavior, no text adjustment
 		return iconOverlayLayout{
