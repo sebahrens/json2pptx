@@ -1406,7 +1406,7 @@ func collectContrastPreflightFindings(input *PresentationInput, themeColors []ty
 				if cell == nil || cell.Shape == nil {
 					continue
 				}
-				fill := extractShapeFillColor(cell.Shape.Fill)
+				fill := effectiveShapeFillColor(cell.Shape.Fill, themeColors)
 				if fill == "" {
 					continue
 				}

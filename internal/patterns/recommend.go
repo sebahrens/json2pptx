@@ -718,6 +718,24 @@ var rules = []rule{
 		rationale: "SCQA pattern when the slide opens with situation/complication and resolves with questions/answer",
 	},
 
+	// table-highlight — options × criteria evaluation matrix (Harvey balls / RAG)
+	{
+		pattern:   "table-highlight",
+		keywords:  []string{"harvey ball", "harvey balls", "evaluation matrix", "options vs criteria", "options against criteria", "option evaluation", "decision matrix", "scoring matrix", "criteria matrix", "rag status", "rag table", "red amber green", "vendor evaluation", "vendor assessment", "options assessment"},
+		baseScore: 0.93,
+		rationale: "Options × criteria matrix scored with Harvey balls, RAG dots or short values, with the recommended option highlighted",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "table-highlight",
+		keywords:  []string{"evaluate options", "assess options", "criteria", "shortlist", "scorecard", "status by workstream"},
+		baseScore: 0.8,
+		rationale: "table-highlight when several options are rated on shared criteria (not a two-option prose comparison)",
+		itemMin:   2,
+		itemMax:   6,
+	},
+
 	// exec-summary — 3-5 bold lead-in statements with support (answer-first)
 	{
 		pattern:   "exec-summary",

@@ -356,6 +356,25 @@
           "bottom_line": "Approve the wave-1 budget to start in Q1."
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Option Evaluation"}
+      ],
+      "pattern": {
+        "name": "table-highlight",
+        "values": {
+          "criteria": ["Cost", "Time to value", "Scalability", {"label": "Risk", "scale": "rag"}],
+          "options": [
+            {"name": "Build in-house", "detail": "Custom platform", "scores": [1, 1, 4, "amber"]},
+            {"name": "Buy SaaS suite", "detail": "Configure and integrate", "scores": [3, 4, 3, "green"]},
+            {"name": "Partner / JV", "detail": "Shared investment", "scores": [2, 2, 3, "red"]}
+          ],
+          "highlight_row": 1,
+          "highlight_label": "Recommended"
+        }
+      }
     }
   ]
 }

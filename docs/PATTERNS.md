@@ -139,6 +139,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Narrowing hierarchy | `pyramid` | Visual narrowing (top < bottom) |
 | Before/after comparison | `before-after` | Temporal transformation |
 | Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side |
+| Options × criteria evaluation | `table-highlight` | 2–6 options × 2–6 criteria rated with Harvey balls (0–4), RAG (`red`/`amber`/`green`) or ≤24-char text per column (`scale` or per-criterion `{label, scale}`); `highlight_row` tints + bars the recommended option, `highlight_col` tints the decisive criterion; legend row for symbol scales. RAG uses conventional status colours (`overrides.rag_colors` swaps them) — the one non-theme palette, because status must read the same on every template |
 | 4-quadrant positioning | `matrix-2x2` | Axis-labeled quadrants; each axis is an arrow pointing to its high end (right / up) flanked by low/high end labels — optional `x_low` / `x_high` / `y_low` / `y_high` (≤20 chars, default `Low` / `High`) |
 | Phased plan with workstreams | `roadmap-phased` | Named phases × workstreams grid |
 | Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones) |
@@ -220,7 +221,7 @@ These patterns have structurally determined accent logic and do not expose `cell
 - **Single-cell patterns** (stat-hero, pull-quote): one cell, no variation needed.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 

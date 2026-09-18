@@ -13,7 +13,7 @@ import (
 // text (go-slide-creator-xyph / e53n / ycbn / pzrs). Their exemplar values
 // must render without the geometry / readability findings that flag stretched,
 // mostly-empty or unreadable layouts.
-var contentSizedPatterns = []string{"exec-summary"}
+var contentSizedPatterns = []string{"exec-summary", "table-highlight"}
 
 // forbiddenExemplarFindings are the codes a content-sized pattern must not
 // emit on its own exemplar values.
