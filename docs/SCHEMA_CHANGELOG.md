@@ -4,6 +4,24 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## 4.59.0 (2026-09-18)
+
+### Changed
+
+- **Render tools return MCP ImageContent (go-slide-creator-cn3h).**
+  `render_slide_image`, `render_slide_image_from_json`, and
+  `render_deck_thumbnails` now deliver pixels as native MCP `image` content
+  blocks (`image/jpeg`, downscaled to max 1280px wide, quality 80) so the client
+  model can actually see the slides. `content[0]` is a compact JSON metadata
+  block (also `structuredContent`) with **no base64**: `delivery:
+  "image_content"`, per-slide `index`, `path` (content-addressed full-resolution
+  PNG, always materialized), `width`/`height`, `content_hash`,
+  `image_content_index`, `image_mime_type`, `image_width`, `image_height`.
+  `render_deck_thumbnails` hoists the deck-wide `source_hash` / `cleanup` to the
+  top level. New input `include_base64_json` (bool, default false) restores the
+  legacy base64-PNG-in-JSON envelope unchanged; the CLI render subcommands always
+  use it.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

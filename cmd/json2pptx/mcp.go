@@ -2354,14 +2354,15 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 
 func mcpRenderSlideImageTool() mcp.Tool {
 	return mcp.NewTool("render_slide_image",
-		mcp.WithDescription(`Render a single slide from a generated PPTX to a PNG image. Returns base64-encoded PNG data (or a file path if the image exceeds 200KB).
+		mcp.WithDescription(`Render a single slide from a generated PPTX and return it as a native MCP image content block (JPEG, max 1280px wide) that you can look at directly, plus a small JSON metadata block (index, full-resolution PNG path, dimensions, hashes — no base64). Legacy clients: pass include_base64_json=true to get the old base64-PNG-in-JSON envelope instead.
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Use this for detailed visual inspection of a specific slide.
 
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
-Cost note: a density=100 slide is typically 20-80KB base64. Higher densities produce larger payloads.`),
+Cost note: one image block per call; the JSON metadata stays under 1KB.`),
 		mcp.WithRawOutputSchema(outputSchemaRenderSlideImage),
+		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
 			mcp.Description("Path to the PPTX file to render. Use the output_path from generate_presentation."),
@@ -2380,14 +2381,15 @@ Cost note: a density=100 slide is typically 20-80KB base64. Higher densities pro
 
 func mcpRenderDeckThumbnailsTool() mcp.Tool {
 	return mcp.NewTool("render_deck_thumbnails",
-		mcp.WithDescription(`Render all slides in a PPTX as low-resolution PNG thumbnails. Returns an array of base64-encoded PNGs.
+		mcp.WithDescription(`Render all slides in a PPTX as thumbnails and return them as native MCP image content blocks (one JPEG per slide, in slide order) that you can look at directly, plus a small JSON metadata block (slides[].index / path / image_content_index — no base64). Legacy clients: pass include_base64_json=true to get the old array of base64 PNGs inside JSON instead.
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visual overview of the entire deck.
 
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
-Cost note: at density=50, each thumbnail is typically 5-20KB base64. A 10-slide deck is ~100-200KB total.`),
+Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnail is one image block. Use max_slides to cap large decks.`),
 		mcp.WithRawOutputSchema(outputSchemaRenderDeckThumbnails),
+		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
 			mcp.Description("Path to the PPTX file to render. Use the output_path from generate_presentation."),
@@ -2456,11 +2458,7 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 		return api.MCPSimpleError(code, err.Error()), nil
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, img)
-	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
-	}
-	return mcpResult, nil
+	return slideImageMCPResult(ctx, request, img), nil
 }
 
 func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -2518,9 +2516,5 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		return api.MCPSimpleError(code, err.Error()), nil
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, deckResult)
-	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
-	}
-	return mcpResult, nil
+	return deckThumbnailsMCPResult(ctx, request, deckResult), nil
 }

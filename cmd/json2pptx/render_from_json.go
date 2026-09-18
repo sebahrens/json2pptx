@@ -31,7 +31,7 @@ import (
 // mcpRenderSlideImageFromJSONTool is the tool-definition constructor.
 func mcpRenderSlideImageFromJSONTool() mcp.Tool {
 	return mcp.NewTool("render_slide_image_from_json",
-		mcp.WithDescription(`Render a single slide directly from its JSON definition + a template name, without first generating the full deck. Returns the same image envelope as render_slide_image (base64 PNG or path reference if >200KB).
+		mcp.WithDescription(`Render a single slide directly from its JSON definition + a template name, without first generating the full deck. Returns the same envelope as render_slide_image: a native MCP image content block you can look at directly plus small JSON metadata (pass include_base64_json=true for the legacy base64-in-JSON envelope).
 
 Use this for tight single-slide design iteration loops: edit one slide's JSON, see the rendered PNG, repeat. Avoids the cost of rendering N-1 unchanged slides.
 
@@ -39,6 +39,7 @@ Requires LibreOffice and ImageMagick (magick) on PATH. Behind the scenes, this b
 
 Results are cached by (slide JSON content + template content + density) — repeated calls with identical inputs return instantly. Pass force=true to re-render.`),
 		mcp.WithRawOutputSchema(outputSchemaRenderSlideImage),
+		includeBase64JSONOption(),
 		mcp.WithObject("slide",
 			mcp.Required(),
 			mcp.Description("A single slide JSON object. Same schema as one entry in presentation.slides for generate_presentation. Use get_input_schema to discover the slide shape."),
@@ -239,11 +240,7 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		}
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, img)
-	if err != nil {
-		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
-	}
-	return mcpResult, nil
+	return slideImageMCPResult(ctx, request, img), nil
 }
 
 // applyRenderOverlay composites a wireframe overlay (cell bounds, fit

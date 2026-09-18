@@ -580,7 +580,12 @@ var outputSchemaRenderSlideImage = json.RawMessage(`{
     "size_error":   {"type": "string"},
     "content_hash": {"type": "string", "description": "SHA-256 of the rendered PNG bytes. Stable identity of this image regardless of delivery (inline or path)."},
     "source_hash":  {"type": "string", "description": "Identity of the upstream artifact this image was rendered from: the PPTX file content hash, or the caller-supplied cache key for keyed renders."},
-    "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned; empty for inline png_base64."}
+    "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned; empty for inline png_base64."},
+    "delivery":     {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when the pixels are delivered as an MCP image content block after this JSON (no png_base64). Absent in the legacy include_base64_json=true envelope."},
+    "image_content_index": {"type": "integer", "description": "Position of this slide's image block in the result content array (content[0] is this JSON)."},
+    "image_mime_type":     {"type": "string", "description": "MIME type of the delivered image block (image/jpeg)."},
+    "image_width":         {"type": "integer", "description": "Pixel width of the delivered (downscaled) image block."},
+    "image_height":        {"type": "integer", "description": "Pixel height of the delivered (downscaled) image block."}
   },
   "required": ["index"]
 }`)
@@ -627,12 +632,19 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
           "size_error":   {"type": "string"},
           "content_hash": {"type": "string", "description": "SHA-256 of the rendered thumbnail PNG bytes."},
           "source_hash":  {"type": "string", "description": "PPTX file content hash this thumbnail was rendered from."},
-          "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned."}
+          "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned."},
+          "image_content_index": {"type": "integer", "description": "Position of this slide's image block in the result content array (content[0] is this JSON)."},
+          "image_mime_type":     {"type": "string"},
+          "image_width":         {"type": "integer"},
+          "image_height":        {"type": "integer"}
         },
         "required": ["index"]
       }
     },
-    "truncated": {"type": "boolean"}
+    "truncated": {"type": "boolean"},
+    "delivery":  {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when thumbnails are delivered as MCP image content blocks (one per slide, in order) after this JSON. Absent in the legacy include_base64_json=true envelope."},
+    "source_hash": {"type": "string", "description": "image_content mode: PPTX content hash shared by every slide (hoisted from slides[])."},
+    "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."}
   },
   "required": ["slides", "truncated"]
 }`)

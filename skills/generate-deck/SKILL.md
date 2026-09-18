@@ -718,6 +718,8 @@ Full details for each phase live in [WORKFLOW.md](WORKFLOW.md). One-line summary
 3. **RENDER** — generate the JSON in one pass; verify the pre-emit checklist (Rule 20, semantic fills, gap ≥4pt, accent variety, 60–110% density).
 4. **REPAIR** — `validate_input` → `generate_presentation` → `render_slide_image` / `render_deck_thumbnails` → `inspect_slide_images` → `repair_slide`. Images are truth.
 
+**Rendered slides arrive as images you can see.** `render_slide_image`, `render_slide_image_from_json`, and `render_deck_thumbnails` return each slide as a native MCP image content block (`image/jpeg`, max 1280px wide) after a small JSON metadata block (`delivery: "image_content"`, per-slide `index` / `path` / `image_content_index`, no base64). Look at the images directly — no `ANTHROPIC_API_KEY` or `inspect_slide_images` round-trip is needed to see the slides; hand the returned `path`s to `inspect_slide_images` only when you want its categorized findings. Clients that cannot display MCP images can pass `include_base64_json: true` to get the legacy base64-PNG-in-JSON envelope (the CLI `render-slide` / `render-thumbnails` / `render-slide-from-json` subcommands always print that legacy JSON).
+
 For the `repair_slide` fix-kind vocabulary, finding-code catalog, and strict-fit promotion ladder, see [FINDINGS.md](FINDINGS.md).
 
 ---
