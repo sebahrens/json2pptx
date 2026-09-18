@@ -32,10 +32,13 @@ const (
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.
-	coreToolLimit = 20
+	coreToolLimit = 23
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
-	// the core profile.
-	coreToolListByteBudget = 60 * 1024
+	// the core profile. ~33KB of it is the closed per-kind DeckSpec schema that
+	// validate_deck_spec and render_deck_spec each carry (go-slide-creator-h8o7):
+	// that schema is what stops agents guessing payload shapes, so it is worth
+	// its bytes. The full profile is ~215KB.
+	coreToolListByteBudget = 96 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.
@@ -66,6 +69,8 @@ var coreToolNames = []string{
 	"render_slide_image",
 	"score_deck",
 	"repair_slide",
+	"preview_presentation_plan",
+	"inspect_slide_images",
 }
 
 // coreToolSet returns coreToolNames as a lookup set.

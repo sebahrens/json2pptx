@@ -24,8 +24,9 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 - **MCP tool profiles (go-slide-creator-vdxa).** `json2pptx mcp` now takes
   `--tools core|all` (env `JSON2PPTX_MCP_TOOLS`), default `core`. The core
-  profile's `tools/list` advertises 19 tools (cap 20) without `outputSchema`
-  (~45KB vs ~215KB); `all` advertises the full, unchanged catalogue. Every tool
+  profile's `tools/list` advertises ~21 tools (cap 23, incl. preview_presentation_plan
+  and inspect_slide_images) without `outputSchema` (~80KB, mostly the closed DeckSpec
+  schema, vs ~215KB); `all` advertises the full, unchanged catalogue. Every tool
   is still registered, so non-core tools remain callable by name. New
   `get_capabilities().mcp_tools_available[].in_core_profile` boolean. The tool
   NAME set is unchanged, so the schema fingerprint is unchanged.

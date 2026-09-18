@@ -15,7 +15,7 @@ import (
 //
 // Surfaces a recommended single-call fast path (a workflow facade) plus an
 // ordered, task-keyed sequence of MCP primitives so agents do not have to
-// reverse-engineer the workflow from the 45-tool flat catalog returned by
+// reverse-engineer the workflow from the flat tool catalog returned by
 // get_capabilities. Each step pairs an MCP tool name with a one-line
 // "when to call" hint, in the order an agent should invoke them.
 // ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "validate_input", WhenToCall: "Once the full deck JSON is assembled, run schema + fit checks (pass fit_report: true). Cheapest single gate before preview/generate; SKILL.md lists this as a precondition for generate_presentation."},
 			{Tool: "preview_presentation_plan", WhenToCall: "Dry-run the validated deck JSON to verify layout selection, placeholder mapping, and fit findings without rendering."},
 			{Tool: "generate_presentation", WhenToCall: "Produce the PPTX once validate + preview are clean. Pass strict_fit: \"warn\" (default) or \"strict\" for refuse-on-overflow."},
-			{Tool: "score_deck", WhenToCall: "Measure input structure only; this score cannot visually approve a deck."},
+			{Tool: "score_deck", WhenToCall: "Structural rules over the generated deck (0-100, basis=structural); no pixels, so this score cannot visually approve a deck."},
 			{Tool: "render_deck_thumbnails", WhenToCall: "Render the current PPTX revision to pixels; every slide must have an image."},
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer; repair findings, then render and inspect the new revision again."},
 		}
@@ -160,6 +160,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect all current-revision pixels and record unresolved findings or explicit approval."},
 		}
 		notes = []string{
+			"auto_repair and read_presentation are advertised only in the full tool profile: if they are missing from your tool list, ask the operator to start the server with `json2pptx mcp --tools all` (or JSON2PPTX_MCP_TOOLS=all), or use the core sequence generate_presentation → render_deck_thumbnails → repair_slide.",
 			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
 			"COMPLETION: " + mcpCompletionRule + " auto_repair's default loop scores static + render-fit findings only and never looks at a rendered pixel; check publishable / manual_review_required / blocking_reasons, then render and inspect.",
 			"Use this when modifying or repairing an existing PPTX deck.",

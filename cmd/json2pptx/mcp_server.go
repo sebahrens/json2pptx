@@ -115,7 +115,7 @@ func runMCP() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files")
 	configPath := fs.String("config", "", "Path to config file (optional)")
-	toolsProfile := fs.String("tools", toolProfileCore, "Tool profile advertised in tools/list: core (default; ~20 tools, no outputSchema) or all (full catalog). Env: "+toolProfileEnv)
+	toolsProfile := fs.String("tools", toolProfileCore, "Tool profile advertised in tools/list: core (default; ~21 tools, no outputSchema) or all (full catalog). Env: "+toolProfileEnv)
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx mcp [options]\n\n")
