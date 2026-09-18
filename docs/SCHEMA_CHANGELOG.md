@@ -8,6 +8,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Top-level `viewing_mode`** (`"present"` default | `"read"`) selecting the
+  readability policy, and the **`TEXT_BELOW_READABLE_MIN`** fit finding
+  (`action: review`, `fix.kind: reduce_text`, `fix.params: {strategy, role,
+  actual_pt, min_pt, viewing_mode}`) emitted for placeholder autofit (generate)
+  and shape_grid cells (fit report / preflight). Schema fingerprint updated;
+  SchemaVersion bump left to the merge (coordinator instruction).
+
 - **`TITLE_OVERFLOW` fit finding** (`action: shrink_or_split`, `fix.kind: shorten_title`,
   `fix.params: {current_chars, max_chars, font_pt, min_font_pt}`). Emitted by
   `generate` when a title cannot fit its resolved title placeholder at the

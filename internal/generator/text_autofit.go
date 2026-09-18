@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // applySmartAutofit uses font metrics to determine whether text overflows the
@@ -39,6 +40,11 @@ type autofitConfig struct {
 	// isTitle marks a title placeholder: overflow is reported as
 	// TITLE_OVERFLOW and no paragraphs are trimmed.
 	isTitle bool
+
+	// viewingMode / textRole select the readability policy the final fit is
+	// judged against (TEXT_BELOW_READABLE_MIN). Empty role = not checked.
+	viewingMode tokens.ViewingMode
+	textRole    tokens.TextRole
 }
 
 // withInheritedTextStyle supplies the placeholder's inherited (master) text
@@ -132,6 +138,8 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	}
 
 	params := buildTextfitParams(shape, widthEMU, heightEMU, texts, &cfg)
+	params.ViewingMode = cfg.viewingMode
+	params.TextRole = cfg.textRole
 
 	result, err := textfit.Calculate(params)
 	if err != nil {
@@ -150,6 +158,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		// recompute autofit would otherwise squash the lines together) and
 		// keep a bare normAutofit as the shrink safety net.
 		bakeTitleFit(shape, params, result)
+		emitReadabilityFinding(&cfg, params, result, len(shape.TextBody.Paragraphs))
 		bp.Inner += `<a:normAutofit/>`
 		return
 	}
@@ -174,6 +183,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// <a:bodyPr/> overrides the slide master's normAutofit, disabling LibreOffice's
 	// built-in shrink-to-fit. This is a safety net for cases where our height
 	// estimate is slightly optimistic (e.g., bold text width, inherited marL).
+	emitReadabilityFinding(&cfg, params, result, len(shape.TextBody.Paragraphs))
 	bp.Inner += buildNormAutofitElement(result)
 }
 

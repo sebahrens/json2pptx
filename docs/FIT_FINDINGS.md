@@ -1076,6 +1076,37 @@ The facades also surface a structured `render_evidence` block (`{complete:false,
 }
 ```
 
+### `TEXT_BELOW_READABLE_MIN`
+
+**Action:** `review`
+**Fix kind:** `reduce_text` (`fix.params.strategy`: `shorten` or `split`)
+
+Text ends up below the readability floor for its role in the deck's `viewing_mode` (go-slide-creator-vbic). Floors come from `tokens.MinReadableHPt`:
+
+| Role | `present` (default) | `read` |
+|------|--------------------|--------|
+| title | 20pt | 20pt |
+| body / card-title / card-body | 12pt | 10pt / 12pt / 9pt |
+| caption (KPI labels, deltas, chips) / footnote | 10pt | 7pt |
+| kpi-value | 18pt | 18pt |
+
+Emitted from two fit sites, each tagging its text role:
+
+- **Placeholders (generate):** measured autofit shrinks title / body text below the floor. Template-native sizes already below the floor are not reported (shortening would not change them). The policy never changes the fitted size — it reports rather than trimming.
+- **shape_grid cells (fit report / preflight):** the renderer writes cell text at its authored size with `<a:normAutofit/>` and shrinks every paragraph by one factor when the text overflows the cell. The fit report predicts that factor by measuring the cell's paragraphs in its text rectangle and reports the paragraph furthest below its floor. Roles are inferred per paragraph: ≥24pt → `kpi-value`, bold → `card-title`, ≤40 chars → `caption`, else `card-body`.
+
+`fix.params`: `strategy` (`split` when the text has more than 3 paragraphs, else `shorten`), `role`, `actual_pt`, `min_pt`, `viewing_mode`.
+
+```json
+{
+  "path": "/slides/2/shape_grid/rows/0/cells/0/shape/text",
+  "code": "TEXT_BELOW_READABLE_MIN",
+  "message": "caption text renders at 7.4pt, below the 10pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~7.4pt); shorten the text",
+  "fix": { "kind": "reduce_text", "params": { "strategy": "shorten", "role": "caption", "actual_pt": 7.4, "min_pt": 10, "viewing_mode": "present" } },
+  "action": "review"
+}
+```
+
 ## Scope Rules
 
 Fit findings are scoped to **JSON-authored content only**. Content inherited from template layouts or masters is never checked.

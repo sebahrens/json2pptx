@@ -166,6 +166,7 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 	}
 	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, flaggedTitleFitFindings(input, layouts)...)
+	findings = append(findings, flaggedReadabilityFitFindings(input, layouts, slideWidth, slideHeight)...)
 	return budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
 }
 

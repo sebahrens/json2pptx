@@ -14,6 +14,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -289,6 +290,7 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	svgCfg, compatMode := buildSVGConfig(req)
 
 	ctx := newSinglePassContext(req.OutputPath, req.Slides, req.AllowedImagePaths, req.ExcludeTemplateSlides, req.SyntheticFiles)
+	ctx.viewingMode = tokens.ParseViewingMode(req.ViewingMode)
 	ctx.ctx = goCtx
 	ctx.svgConverter = NewSVGConverterWithConfig(svgCfg)
 	ctx.themeOverride = req.ThemeOverride

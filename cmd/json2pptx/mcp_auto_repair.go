@@ -1162,6 +1162,7 @@ func (mc *mcpConfig) renderAutoRepairFinal(
 		SyntheticFiles:        syntheticFiles,
 		StrictFit:             "warn",
 		DataPalette:           dataPalette,
+		ViewingMode:           input.ViewingMode,
 	}
 	if input.Chrome != nil {
 		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs))

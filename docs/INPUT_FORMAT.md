@@ -192,6 +192,10 @@ The deck's visual identity comes from the chosen `template`. Override deck-wide 
 
 In `design_mode: "constrained"` (the default), raw hex colors are restricted; switch to `design_mode: "free"` for exploratory/artistic decks.
 
+## Viewing mode and readability
+
+Top-level `viewing_mode`: `"present"` (default, projected: 12pt body, 10pt captions, 20pt titles) or `"read"` (on-screen/print, lower floors). It never changes rendering; text shrunk below its role's floor is reported as `TEXT_BELOW_READABLE_MIN` (see `docs/FIT_FINDINGS.md`).
+
 ## Footer, page numbers, and structure
 
 `footer`, `chrome.page_numbers`, and `structure.sections` configure deck chrome and section grouping. See the schema for the full set; agents typically only set `footer.enabled` and `footer.left_text`.

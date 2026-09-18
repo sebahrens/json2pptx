@@ -45,6 +45,13 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 		}
 	}
 
+	// Top-level viewing_mode enum
+	if input.ViewingMode != "" {
+		if err := checkEnum("viewing_mode", input.ViewingMode, canonicalViewingModes, viewingModeAliases); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
 	allowedTransitions := canonicalTransitions()
 
 	for i, slide := range input.Slides {

@@ -46,6 +46,7 @@ type GenerationRequest struct {
 	StrictFit             string               // Text-fit checking mode for charts: "off", "warn", "strict" (default: "warn")
 	DataPalette           []string             // Ordered hex colors for chart series (resolved from TemplateMetadata.DataPalette)
 	ValidateOutput        bool                 // When true, run OOXML content validation on generated file
+	ViewingMode           string               // Deck viewing_mode: "present" (default) or "read"; selects the readability policy
 }
 
 // BackgroundImage specifies a slide background image.

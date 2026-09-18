@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -14,6 +15,7 @@ import (
 type TitleFitContext struct {
 	titleFontName   string                                 // theme major (heading) font
 	titleStyleCache map[string]template.InheritedTextStyle // masterPath -> inherited title style (lazy)
+	viewingMode     tokens.ViewingMode                     // readability policy mode (go-slide-creator-vbic)
 }
 
 // masterPathForLayout returns the ZIP path of the slide master a layout

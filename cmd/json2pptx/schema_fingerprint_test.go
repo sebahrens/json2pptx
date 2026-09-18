@@ -77,7 +77,7 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// list_slide_kinds), which change the tool-name set, so the hash advanced from
 	// 968385126256b966 (4.57.0).
 	// If this fails, see file header comment.
-	const wantFingerprint = "24b985854165d81f"
+	const wantFingerprint = "d94734632f3497cd"
 
 	got := schemaFingerprint()
 

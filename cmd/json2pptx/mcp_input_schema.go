@@ -93,6 +93,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"output_filename": "deck",
 		"design_mode":     "deck",
 		"accent_strategy": "deck",
+		"viewing_mode":    "deck",
 		"footer":          "deck",
 		"chrome":          "deck",
 		"theme_override":  "deck",
@@ -165,6 +166,7 @@ var enumMap = map[string]map[string][]string{
 	"PresentationInput": {
 		"design_mode":     canonicalDesignModes,
 		"accent_strategy": canonicalAccentStrategies,
+		"viewing_mode":    canonicalViewingModes,
 	},
 	"SlideInput": {
 		"slide_type":       canonicalSlideTypes,

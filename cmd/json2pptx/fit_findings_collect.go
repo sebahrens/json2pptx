@@ -53,6 +53,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// resolved title placeholder and inherited title style.
 	findings = append(findings, collectTitleFitFindings(input, layouts)...)
 
+	// 2c. Readability policy: shape_grid text the renderer would shrink below
+	// the viewing_mode floor for its role (TEXT_BELOW_READABLE_MIN).
+	findings = append(findings, collectReadabilityFindings(input, layouts, slideWidth, slideHeight)...)
+
 	// 3. Grid rhythm violations when a deck-level grid is configured.
 	if input.Grid != nil {
 		if err := validateGridConfig(input.Grid); err == nil {

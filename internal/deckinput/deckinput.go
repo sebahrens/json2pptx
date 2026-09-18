@@ -61,6 +61,7 @@ type PresentationInput struct {
 	OutputFilename string          `json:"output_filename,omitempty"`
 	DesignMode     string          `json:"design_mode,omitempty"`     // "constrained" (default) or "free"
 	AccentStrategy string          `json:"accent_strategy,omitempty"` // "primary" (default), "rotate", or "section-keyed"
+	ViewingMode    string          `json:"viewing_mode,omitempty"`    // "present" (default: projected, 12pt body / 10pt caption floor) or "read"
 	Footer         *JSONFooter     `json:"footer,omitempty"`
 	Chrome         *ChromeInput    `json:"chrome,omitempty"`
 	ThemeOverride  *ThemeInput     `json:"theme_override,omitempty"`
