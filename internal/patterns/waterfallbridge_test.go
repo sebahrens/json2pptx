@@ -3,7 +3,110 @@ package patterns
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
+
+// wbStructuralRows counts a column sub-grid's spacer/bar rows, ignoring the
+// hairline bridge-line rows.
+func wbStructuralRows(g *jsonschema.ShapeGridInput) int {
+	n := 0
+	for _, r := range g.Rows {
+		if r.Height >= 0.5 {
+			n++
+		}
+	}
+	return n
+}
+
+// wbIsBridgeLine reports whether a sub-grid row is a bridge-line hairline.
+func wbIsBridgeLine(r jsonschema.GridRowInput) bool {
+	if r.Height >= 0.5 {
+		return false
+	}
+	for _, c := range r.Cells {
+		if c.Shape != nil && strings.Contains(string(c.Shape.Fill), "lumMod") {
+			return true
+		}
+	}
+	return false
+}
+
+func TestFormatWaterfallBridgeValue_UnitPlacement(t *testing.T) {
+	cases := []struct {
+		v      float64
+		unit   string
+		signed bool
+		want   string
+	}{
+		{210, "$m", false, "$210m"},
+		{35, "$m", true, "+$35m"},
+		{-41, "$m", true, "−$41m"},
+		{12.5, "€bn", true, "+€12.5bn"},
+		{3, "US$m", false, "US$3m"},
+		{4, "%", true, "+4%"},
+		{-2, "pts", true, "−2 pts"},
+		{7, "m", false, "7m"},
+		{9, "", false, "9"},
+	}
+	for _, c := range cases {
+		if got := formatWaterfallBridgeValue(c.v, c.unit, c.signed); got != c.want {
+			t.Errorf("format(%v, %q, %v) = %q, want %q", c.v, c.unit, c.signed, got, c.want)
+		}
+	}
+}
+
+// Thin bars carry their value label outside the bar (in dark text) and every
+// adjacent pair of columns is joined by a bridge line at the shared level.
+func TestWaterfallBridge_Expand_ThinBarLabelsAndBridgeLines(t *testing.T) {
+	p, _ := Default().Get("waterfall-bridge")
+	v := &WaterfallBridgeValues{
+		Unit: "$m",
+		Columns: []WaterfallBridgeColumn{
+			{Label: "FY25", Value: 210, Type: "total"},
+			{Label: "Volume", Value: 35, Type: "delta"},
+			{Label: "Mix", Value: -1, Type: "delta"},
+			{Label: "FY26", Value: 244, Type: "total"},
+		},
+	}
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mix := grid.Rows[0].Cells[2].Grid
+	var barText, outsideText string
+	for _, r := range mix.Rows {
+		for _, c := range r.Cells {
+			if c.Shape == nil || len(c.Shape.Text) == 0 {
+				continue
+			}
+			if strings.Contains(string(c.Shape.Fill), "accent2") {
+				barText = string(c.Shape.Text)
+			} else {
+				outsideText = string(c.Shape.Text)
+			}
+		}
+	}
+	if barText != "" {
+		t.Errorf("thin bar should not carry its label inside, got %s", barText)
+	}
+	if !strings.Contains(outsideText, "−$1m") || !strings.Contains(outsideText, `"dk1"`) {
+		t.Errorf("thin bar label should sit outside in dark text, got %q", outsideText)
+	}
+
+	// Bridge lines: first column leaves, last column enters, middle both.
+	for i, cell := range grid.Rows[0].Cells {
+		lines := 0
+		for _, r := range cell.Grid.Rows {
+			if wbIsBridgeLine(r) {
+				lines++
+			}
+		}
+		if lines == 0 {
+			t.Errorf("column %d has no bridge line", i)
+		}
+	}
+}
 
 func TestWaterfallBridge_Registration(t *testing.T) {
 	p, ok := Default().Get("waterfall-bridge")
@@ -165,8 +268,8 @@ func TestWaterfallBridge_Expand_FloatingBars(t *testing.T) {
 	if revenue.Grid == nil {
 		t.Fatal("expected sub-grid on revenue bar cell")
 	}
-	if len(revenue.Grid.Rows) != 1 {
-		t.Errorf("revenue total 0..max should have 1 sub-row (bar only), got %d", len(revenue.Grid.Rows))
+	if wbStructuralRows(revenue.Grid) != 1 {
+		t.Errorf("revenue total 0..max should have 1 sub-row (bar only), got %d", wbStructuralRows(revenue.Grid))
 	}
 
 	// Column 1 = COGS (delta, -45). yStart=120, yEnd=75. Bar from 75..120, so:
@@ -176,8 +279,8 @@ func TestWaterfallBridge_Expand_FloatingBars(t *testing.T) {
 	if cogs.Grid == nil {
 		t.Fatal("expected sub-grid on COGS bar cell")
 	}
-	if len(cogs.Grid.Rows) != 2 {
-		t.Errorf("COGS delta should have 2 sub-rows (bar + bottom spacer), got %d", len(cogs.Grid.Rows))
+	if wbStructuralRows(cogs.Grid) != 2 {
+		t.Errorf("COGS delta should have 2 sub-rows (bar + bottom spacer), got %d", wbStructuralRows(cogs.Grid))
 	}
 
 	// Column 3 = OpEx (delta, -30). yStart=75, yEnd=45. Bar from 45..75:
@@ -187,8 +290,8 @@ func TestWaterfallBridge_Expand_FloatingBars(t *testing.T) {
 	if opex.Grid == nil {
 		t.Fatal("expected sub-grid on OpEx bar cell")
 	}
-	if len(opex.Grid.Rows) != 3 {
-		t.Errorf("OpEx floating delta should have 3 sub-rows (top + bar + bottom), got %d", len(opex.Grid.Rows))
+	if wbStructuralRows(opex.Grid) != 3 {
+		t.Errorf("OpEx floating delta should have 3 sub-rows (top + bar + bottom), got %d", wbStructuralRows(opex.Grid))
 	}
 }
 
