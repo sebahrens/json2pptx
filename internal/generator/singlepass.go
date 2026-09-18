@@ -112,6 +112,7 @@ func (ctx *singlePassContext) initializeContext(templatePath string) (cleanup fu
 		return nil, fmt.Errorf("failed to open template: %w", err)
 	}
 	ctx.templateIndex = utils.BuildZipIndex(&ctx.templateReader.Reader)
+	ctx.loadTemplateProfile(templatePath)
 
 	outputDir := filepath.Dir(ctx.outputPath)
 	tempPattern := "." + filepath.Base(ctx.outputPath) + ".*.tmp"

@@ -88,6 +88,29 @@ func TestMCPExamineTemplate(t *testing.T) {
 	if report.Findings.Findings == nil {
 		t.Error("findings.findings must be non-nil (may be empty)")
 	}
+
+	// The template profile (the generator's chrome-geometry source) is
+	// exposed: identity, role bindings, and per-layout geometry with the
+	// resolved master footers and the takeaway/source band frame
+	// (go-slide-creator-fw42).
+	if report.Profile == nil || report.Profile.TemplateHash != report.SHA256 || report.Profile.ParserVersion != template.ProfileParserVersion {
+		t.Fatalf("profile summary missing or mismatched: %+v", report.Profile)
+	}
+	if report.Profile.RoleBindings["One Content"] == "" {
+		t.Error("profile role_bindings missing One Content")
+	}
+	for _, l := range report.Layouts {
+		g := l.ProfileGeometry
+		if g == nil || g.LayoutID != l.ID {
+			t.Fatalf("layout %s missing profile_geometry", l.ID)
+		}
+		if len(g.FooterRegions) == 0 || !g.Frame.HasFooter {
+			t.Errorf("layout %s: expected master footer regions in profile geometry", l.ID)
+		}
+		if g.Frame.Takeaway.CY <= 0 || g.Frame.Source.Bottom() > g.Frame.FooterTop {
+			t.Errorf("layout %s: band frame invalid or overlapping footer: %+v", l.ID, g.Frame)
+		}
+	}
 }
 
 // TestMCPExamineTemplateParity confirms the MCP handler returns the identical

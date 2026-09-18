@@ -402,6 +402,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleBefore: `{"slides":[{"layout_id":"content","content":[{"type":"chart","chart_value":{...}}]}]}  // takeaway omitted`,
 		ExampleAfter:  `{"slides":[{"layout_id":"content","takeaway":"Q4 revenue grew 18% YoY, driven by enterprise.","content":[{"type":"chart","chart_value":{...}}]}]}`,
 	},
+	ErrCodeChromeBandNoFit: {
+		Code:        ErrCodeChromeBandNoFit,
+		Summary:     "The slide's takeaway/source band cannot be placed on its layout without overlapping chrome.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight resolves the layout-derived band stack (body column x-range, stacked above the dt/ftr/sldNum footer placeholders) and finds it would climb into the title or leave under 20% of the slide height for the layout's content placeholders. The band is skipped at render instead of overlapping.",
+		RemediationSteps: []string{
+			"Move the slide to a layout with more vertical room (e.g. One Content instead of a section divider).",
+			"Or drop the `source` note, or fold the takeaway into the title / body text.",
+		},
+		RelatedCodes: []string{ErrCodeTakeawayMissing, ErrCodeFooterCollision},
+	},
 	ErrCodeAccentOverload: {
 		Code:        ErrCodeAccentOverload,
 		Summary:     "A slide's shape_grid uses more than two distinct accent hues.",

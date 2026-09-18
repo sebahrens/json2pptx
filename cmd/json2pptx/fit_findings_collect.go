@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -365,6 +366,12 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 			findings = append(findings, checkPlaceholderFindings(&slide, si, layout)...)
 		}
 
+		// Takeaway / source band: the band stack is derived from the layout's
+		// geometry; when it cannot fit, render skips it rather than overlap.
+		if f := checkChromeBandFit(&slide, si, layouts, slideWidth, slideHeight); f != nil {
+			findings = append(findings, *f)
+		}
+
 		// Shape grid: title/footer collision and bounds overflow. Resolve the
 		// SAME layout-aware geometry generation uses (resolveGridGeometry), so
 		// virtual-layout slides (no explicit layout_id) are checked too and the
@@ -388,6 +395,39 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 	}
 
 	return findings
+}
+
+// checkChromeBandFit emits chrome_band_no_fit when a slide's takeaway/source
+// band stack cannot be placed on its layout (the same layout-derived frame the
+// generator emits the band into) without climbing into the title or starving
+// the layout's content placeholders. Returns nil when the slide has no
+// takeaway/source, no layouts are known, or the band fits.
+func checkChromeBandFit(slide *SlideInput, si int, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) *patterns.FitFinding {
+	if (slide.Takeaway == "" && slide.Source == "") || len(layouts) == 0 {
+		return nil
+	}
+	frame := slideChromeFrame(*slide, "", layouts, slideWidth, slideHeight)
+	if frame.Fits {
+		return nil
+	}
+	field := "takeaway"
+	if slide.Takeaway == "" {
+		field = "source"
+	}
+	f := &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path:    slidepath.SlideField(si, field),
+			Code:    patterns.ErrCodeChromeBandNoFit,
+			Message: fmt.Sprintf("slide %d: the takeaway/source band does not fit layout %q (it would overlap the title or leave too little room for content); the band is skipped at render", si+1, slide.LayoutID),
+		},
+		Action: "review",
+	}
+	// Suggest the template's One Content layout, whose body column the band
+	// is designed around, when the slide is not already on it.
+	if ref := template.ChromeReferenceLayout(layouts); ref != nil && ref.ID != slide.LayoutID {
+		f.Fix = &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"layout_id": ref.ID}}
+	}
+	return f
 }
 
 // checkPlaceholderFindings checks a slide's content placeholders for title

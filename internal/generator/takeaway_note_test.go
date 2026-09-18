@@ -3,31 +3,34 @@ package generator
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // TestGenerateTakeawayShape verifies that the takeaway shape XML contains
 // the expected text, bold formatting, font size, dark text color, and the
 // distinct accent-tinted band fill plus accent rule (go-slide-creator-5ovr).
 func TestGenerateTakeawayShape(t *testing.T) {
-	xml := generateTakeawayShape("Revenue doubled year over year.", 100)
+	xml := generateTakeawayShapeInBounds("Revenue doubled year over year.", 100, pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 360000})
 	if xml == "" {
-		t.Fatal("generateTakeawayShape returned empty string")
+		t.Fatal("generateTakeawayShapeInBounds returned empty string")
 	}
 
 	wants := []string{
 		"Revenue doubled year over year.",
 		`name="Takeaway"`,
-		`sz="1200"`,                  // 12pt
-		`b="1"`,                      // bold
-		"1F1F1F",                     // dark gray text color
-		`<a:schemeClr val="accent1"`, // accent-driven band fill / rule
-		`<a:lumMod val="20000"/>`,    // light wash: 20% luminance retained
-		`<a:lumOff val="80000"/>`,    // light wash: +80% luminance
-		`<a:ln w="12700"`,            // 1pt accent rule framing the band
+		`sz="1400"`,                       // 14pt headline, not a 12pt footnote
+		`b="1"`,                           // bold
+		"1F1F1F",                          // dark gray text color
+		`<a:schemeClr val="accent1"`,      // accent-driven band fill / rule
+		`<a:lumMod val="20000"/>`,         // light wash: 20% luminance retained
+		`<a:lumOff val="80000"/>`,         // light wash: +80% luminance
+		`<a:ln w="12700"`,                 // 1pt accent rule framing the band
+		`<a:off x="838200" y="5700000"/>`, // placed at the supplied chrome band
 	}
 	for _, want := range wants {
 		if !strings.Contains(xml, want) {
-			t.Errorf("generateTakeawayShape() missing %q in:\n%s", want, xml)
+			t.Errorf("generateTakeawayShapeInBounds() missing %q in:\n%s", want, xml)
 		}
 	}
 
@@ -42,7 +45,7 @@ func TestGenerateTakeawayShape(t *testing.T) {
 // the spTree (before its closing tag) without corrupting the surrounding XML.
 func TestInsertTakeaway(t *testing.T) {
 	const slide = `<?xml version="1.0"?><p:sld xmlns:p="x"><p:cSld><p:spTree><p:sp/></p:spTree></p:cSld></p:sld>`
-	out, err := insertTakeaway([]byte(slide), "Hello world")
+	out, err := insertTakeaway([]byte(slide), "Hello world", pptx.RectEmu{X: 1, Y: 2, CX: 3, CY: 4})
 	if err != nil {
 		t.Fatalf("insertTakeaway error: %v", err)
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -58,6 +59,7 @@ type SlideContext struct {
 	footerPositionsByLayout map[string]map[string]*transformXML // layoutID -> ("dt"/"ftr"/"sldNum" -> position)
 	slideBgMedia            map[int]mediaRel                    // slideNum -> background image media relationship
 	themeFontName           string                              // Theme body font (e.g. "Franklin Gothic Book") for text fitting
+	profile                 *template.TemplateProfile           // Template profile (per-layout chrome geometry); nil when the template could not be profiled
 }
 
 // tableInsert tracks a table that replaces a placeholder shape.

@@ -702,6 +702,32 @@ Mechanics:
 }
 ```
 
+### `chrome_band_no_fit`
+
+**Action:** `review`
+**Pattern:** *(none — slide-level)*
+**Fix kind:** `swap_layout` (`params.layout_id` = the template's One Content layout; omitted when the slide is already on it)
+
+Emitted by `validate_input`, the CLI dry-run / `validate -fit-report`, and every other preflight surface that runs the structural detectors when a slide carries a `takeaway` or `source` whose band cannot be placed on the slide's layout. The band stack is derived from the template profile (`template.ResolveChromeFrame`), not slide-size percentages:
+
+- **Horizontal extent** = the union of the layout's body / content / picture / chart / table placeholders (`x .. x+cx`); layouts without one borrow the One Content layout's column.
+- **Bottom** = the top of the layout's footer chrome (min Y of the visible `dt` / `ftr` / `sldNum` placeholders, layout first, else slide master) minus a gap. Without footer placeholders the bottom margin line is used.
+- The source note sits at the bottom, the takeaway above it; body/chart/table placeholders on the slide are shrunk so they stop above the band.
+
+The band **does not fit** when the stack would climb into the title, or — on layouts with their own content placeholders — would leave under 20% of the slide height for content. Generation then **skips the band** (and logs a warning) rather than overlapping the title or footers. Move the slide to a roomier layout, drop the source note, or fold the takeaway into the title/body.
+
+```json
+{
+  "path": "/slides/2/takeaway",
+  "code": "chrome_band_no_fit",
+  "message": "slide 3: the takeaway/source band does not fit layout \"slideLayout4\" (it would overlap the title or leave too little room for content); the band is skipped at render",
+  "fix": { "kind": "swap_layout", "params": { "layout_id": "slideLayout2" } },
+  "action": "review"
+}
+```
+
+The resolved frame per layout (content area, takeaway band, source band, footer top, `fits`) is visible up front in `examine_template`'s `layouts[].profile_geometry`.
+
 ### `takeaway_missing`
 
 **Action:** `review`
@@ -715,7 +741,7 @@ Triggers when **all** of the following hold:
 - `slide.takeaway` is empty (or whitespace-only)
 - The slide has at least one of: a `chart` content item, a `diagram` content item whose `diagram_value.type` is chart-shaped (bar, line, area, scatter, bubble, pie, donut, stacked_bar, grouped_bar, waterfall, funnel, radar, gauge, treemap), or a pattern whose `name` starts with `matrix-`
 
-The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as bold dark-gray text in the lower band of the slide, above the source note row.
+The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as 14pt bold dark-gray text in the layout-derived band above the footer placeholders, above the source note row (see `chrome_band_no_fit`).
 
 ```json
 {

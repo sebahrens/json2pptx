@@ -763,22 +763,31 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
-	// Insert takeaway headline shape if present. Goes BEFORE source note so
-	// source attribution renders below the takeaway in the lower band.
-	if takeawayText, hasTakeaway := ctx.slideTakeaways[slideNum]; hasTakeaway {
-		_, hasSource := ctx.slideSources[slideNum]
-		slideData, err = insertTakeawayForSlide(slideData, takeawayText, ctx.slideWidth, ctx.slideHeight, hasSource)
-		if err != nil {
-			return fmt.Errorf("failed to insert takeaway for slide %d: %w", slideNum, err)
-		}
-	}
-
-	// Insert source attribution text shape if present
-	if sourceText, hasSource := ctx.slideSources[slideNum]; hasSource {
-		_, hasTakeaway := ctx.slideTakeaways[slideNum]
-		slideData, err = insertSourceNoteForSlide(slideData, sourceText, ctx.slideWidth, ctx.slideHeight, hasTakeaway)
-		if err != nil {
-			return fmt.Errorf("failed to insert source note for slide %d: %w", slideNum, err)
+	// Insert the takeaway headline and source note into the band stack the
+	// template profile derives from this layout (body column x-range, above
+	// the footer chrome). Takeaway goes BEFORE the source note so attribution
+	// renders below it. When the bands do not fit the layout, they are skipped
+	// rather than overlapping title/footer chrome; preflight reports the same
+	// condition as a chrome_band_no_fit finding.
+	takeawayText, hasTakeaway := ctx.slideTakeaways[slideNum]
+	sourceText, hasSource := ctx.slideSources[slideNum]
+	if hasTakeaway || hasSource {
+		frame := ctx.chromeFrameForSlide(slideNum)
+		if !frame.Fits {
+			ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: takeaway/source band does not fit layout %q; band skipped (chrome_band_no_fit)", slideNum, ctx.slideContentMap[slideNum].LayoutID))
+		} else {
+			if hasTakeaway {
+				slideData, err = insertTakeaway(slideData, takeawayText, frame.Takeaway.Rect())
+				if err != nil {
+					return fmt.Errorf("failed to insert takeaway for slide %d: %w", slideNum, err)
+				}
+			}
+			if hasSource {
+				slideData, err = insertSourceNote(slideData, sourceText, frame.Source.Rect())
+				if err != nil {
+					return fmt.Errorf("failed to insert source note for slide %d: %w", slideNum, err)
+				}
+			}
 		}
 	}
 

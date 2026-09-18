@@ -99,12 +99,13 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 	capacity := estimateCapacity(placeholders)
 
 	layoutMeta := types.LayoutMetadata{
-		ID:           layoutID,
-		Name:         name,
-		Index:        index,
-		Placeholders: placeholders,
-		Capacity:     capacity,
-		Tags:         []string{},
+		ID:            layoutID,
+		Name:          name,
+		Index:         index,
+		Placeholders:  placeholders,
+		Capacity:      capacity,
+		Tags:          []string{},
+		FooterRegions: resolveFooterRegions(xmlLayout.CommonSlideData.ShapeTree.Shapes, masterPositions, name),
 	}
 
 	// Classify layout to populate tags
@@ -120,6 +121,43 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 	layoutMeta.CanonicalType, layoutMeta.CanonicalConfidence = ClassifyLayoutCanonical(&layoutMeta)
 
 	return layoutMeta, nil
+}
+
+// footerChromeTypes are the OOXML placeholder types that make up a slide's
+// footer chrome, in left-to-right reading order.
+var footerChromeTypes = []string{"dt", "ftr", "sldNum"}
+
+// resolveFooterRegions resolves the dt/ftr/sldNum chrome rectangles for a
+// layout. A footer placeholder declared on the layout wins (its own xfrm, or
+// the master's when it inherits); types the layout does not declare fall back
+// to the slide master's placeholder of the same type, which is where the
+// generator injects footers for such layouts. Regions with no usable extent
+// are dropped.
+func resolveFooterRegions(shapes []shapeXML, masterPositions map[string]*MasterTransform, layoutName string) []types.ChromeRegion {
+	var regions []types.ChromeRegion
+	for _, t := range footerChromeTypes {
+		var bounds types.BoundingBox
+		found := false
+		for i := range shapes {
+			ph := shapes[i].NonVisualProperties.Placeholder
+			if ph == nil || ph.Type != t {
+				continue
+			}
+			bounds = ResolvePlaceholderBounds(shapes[i].ShapeProperties.Transform, ph, masterPositions, layoutName, i)
+			found = true
+			break
+		}
+		if !found {
+			if mt, ok := masterPositions["type:"+t]; ok && mt != nil {
+				bounds = mt.ToBoundingBox()
+				found = true
+			}
+		}
+		if found && bounds.Width > 0 && bounds.Height > 0 {
+			regions = append(regions, types.ChromeRegion{Type: t, X: bounds.X, Y: bounds.Y, Width: bounds.Width, Height: bounds.Height})
+		}
+	}
+	return regions
 }
 
 // extractLayoutID extracts the layout ID from the filename.

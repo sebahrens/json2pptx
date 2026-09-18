@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased
+
+### Added
+
+- **`examine_template` exposes the template profile** (go-slide-creator-fw42).
+  The report gains a top-level `profile` object (`{template_hash,
+  parser_version, role_bindings, diagnostics[]}`) and a per-layout
+  `layouts[].profile_geometry` object (`{layout_id, footer_regions[], frame}`).
+  `footer_regions[]` are the resolved `dt`/`ftr`/`sldNum` rectangles
+  (`{type, x_emu, y_emu, w_emu, h_emu}`, layout first, else master); `frame` is
+  the chrome frame the generator renders into — `{canvas, content,
+  takeaway_band, source_band, footer_top_emu, has_footer, basis, fits}` with
+  `basis ∈ {layout, reference_layout, slide_fallback}`. The profile is built
+  once per template content hash (+ parser version) and is the same object the
+  generator uses for takeaway/source placement. Additive; no field removed.
+- **Fit finding `chrome_band_no_fit`** (go-slide-creator-7m9v). `review`
+  action, `fix.kind: swap_layout` (`params.layout_id` = One Content layout).
+  Emitted when a slide's takeaway/source band cannot be placed on its layout;
+  the band is skipped at render instead of overlapping title/footer chrome.
+
+### Changed
+
+- **Takeaway / source band geometry is layout-derived** (go-slide-creator-7m9v).
+  The band spans the layout's body column and sits above its footer
+  placeholders (was: a fixed 0.5in slide-percentage margin overlapping the
+  master footers). Content placeholders shrink to end above the band. The
+  takeaway text is 14pt bold (was 12pt).
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

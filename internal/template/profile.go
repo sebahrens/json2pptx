@@ -11,7 +11,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-const ProfileParserVersion = "1"
+// ProfileParserVersion is part of the profile cache key; bump it whenever the
+// profile shape or derivation changes so cached profiles are rebuilt.
+// v2: resolved footer regions + per-layout chrome geometry.
+const ProfileParserVersion = "2"
 
 type ProfileDiagnostic struct {
 	Code     string `json:"code"`
@@ -29,7 +32,50 @@ type TemplateProfile struct {
 	AspectRatio   string                               `json:"aspect_ratio"`
 	Layouts       []types.LayoutMetadata               `json:"layouts"`
 	RoleBindings  map[types.CanonicalLayoutType]string `json:"role_bindings"`
-	Diagnostics   []ProfileDiagnostic                  `json:"diagnostics,omitempty"`
+	// Geometry is the per-layout chrome geometry (footer regions, content
+	// area, takeaway and source bands) derived from the layout placeholders.
+	// It is the single source the generator, shape_grid reservation, and
+	// examine_template read, so all three agree on where chrome sits.
+	Geometry    []LayoutGeometry    `json:"geometry"`
+	Diagnostics []ProfileDiagnostic `json:"diagnostics,omitempty"`
+}
+
+// LayoutGeometry is the profiled chrome geometry of one layout. Frame is
+// resolved with both the takeaway and source bands reserved (the worst case);
+// callers needing another combination use TemplateProfile.ChromeFrame.
+type LayoutGeometry struct {
+	LayoutID      string               `json:"layout_id"`
+	FooterRegions []types.ChromeRegion `json:"footer_regions"`
+	Frame         ChromeFrame          `json:"frame"`
+}
+
+// Layout returns the profiled layout with the given ID, or nil.
+func (p *TemplateProfile) Layout(id string) *types.LayoutMetadata {
+	if p == nil {
+		return nil
+	}
+	return FindLayout(p.Layouts, id)
+}
+
+// ReferenceLayout returns the layout bound to the One Content role, the
+// reference geometry for chrome on layouts without a body placeholder.
+func (p *TemplateProfile) ReferenceLayout() *types.LayoutMetadata {
+	if p == nil {
+		return nil
+	}
+	if id, ok := p.RoleBindings[types.CanonicalLayoutOneContent]; ok {
+		return p.Layout(id)
+	}
+	return nil
+}
+
+// ChromeFrame resolves the chrome frame of a slide on layoutID. Unknown IDs
+// (e.g. synthesized layouts) resolve against the reference layout.
+func (p *TemplateProfile) ChromeFrame(layoutID string, hasTakeaway, hasSource bool) ChromeFrame {
+	if p == nil {
+		return ResolveChromeFrame(nil, nil, 0, 0, hasTakeaway, hasSource)
+	}
+	return ResolveChromeFrame(p.Layout(layoutID), p.ReferenceLayout(), p.SlideWidth, p.SlideHeight, hasTakeaway, hasSource)
 }
 
 var profileCache = struct {
@@ -114,6 +160,21 @@ func BuildProfile(reader *Reader) (*TemplateProfile, error) {
 		}
 	}
 
+	ref := p.ReferenceLayout()
+	p.Geometry = make([]LayoutGeometry, len(p.Layouts))
+	for i := range p.Layouts {
+		l := &p.Layouts[i]
+		regions := l.FooterRegions
+		if regions == nil {
+			regions = []types.ChromeRegion{}
+		}
+		p.Geometry[i] = LayoutGeometry{
+			LayoutID:      l.ID,
+			FooterRegions: regions,
+			Frame:         ResolveChromeFrame(l, ref, width, height, true, true),
+		}
+	}
+
 	profileCache.Lock()
 	profileCache.m[key] = cloneProfile(p)
 	profileCache.Unlock()
@@ -180,6 +241,7 @@ func cloneProfile(in *TemplateProfile) *TemplateProfile {
 	for k, v := range in.RoleBindings {
 		out.RoleBindings[k] = v
 	}
+	out.Geometry = append([]LayoutGeometry(nil), in.Geometry...)
 	out.Diagnostics = append([]ProfileDiagnostic(nil), in.Diagnostics...)
 	return &out
 }

@@ -3,10 +3,14 @@ package generator
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
+var testSourceBand = pptx.RectEmu{X: 838200, Y: 6100000, CX: 10515600, CY: 200000}
+
 func TestGenerateSourceNoteShape(t *testing.T) {
-	shape := generateSourceNoteShape("Company Annual Report, FY2025", 100)
+	shape := generateSourceNoteShapeInBounds("Company Annual Report, FY2025", 100, testSourceBand)
 
 	// Check it contains the source text
 	if !strings.Contains(shape, "Source: Company Annual Report, FY2025") {
@@ -29,7 +33,7 @@ func TestGenerateSourceNoteShape(t *testing.T) {
 }
 
 func TestGenerateSourceNoteShapeXMLEscaping(t *testing.T) {
-	shape := generateSourceNoteShape("Smith & Jones <2025>", 100)
+	shape := generateSourceNoteShapeInBounds("Smith & Jones <2025>", 100, testSourceBand)
 
 	if !strings.Contains(shape, "Smith &amp; Jones &lt;2025&gt;") {
 		t.Error("special XML characters should be escaped")
@@ -45,7 +49,7 @@ func TestInsertSourceNote(t *testing.T) {
   </p:cSld>
 </p:sld>`)
 
-	result, err := insertSourceNote(slideXML, "Test Source")
+	result, err := insertSourceNote(slideXML, "Test Source", testSourceBand)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +77,7 @@ func TestInsertSourceNote(t *testing.T) {
 func TestInsertSourceNoteMissingSpTree(t *testing.T) {
 	slideXML := []byte(`<p:sld><p:cSld></p:cSld></p:sld>`)
 
-	_, err := insertSourceNote(slideXML, "Test Source")
+	_, err := insertSourceNote(slideXML, "Test Source", testSourceBand)
 	if err == nil {
 		t.Error("expected error when </p:spTree> is missing")
 	}

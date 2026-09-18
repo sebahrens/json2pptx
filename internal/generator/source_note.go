@@ -4,25 +4,14 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
-// Source note position constants (in EMUs).
-// Positioned at the bottom-right of a standard 16:9 widescreen slide (12192000 x 6858000).
-// The shape sits in the lower-right area with small margins.
-const (
-	sourceNoteOffsetX  = 457200   // ~0.5 inch left margin
-	sourceNoteOffsetY  = 6607200  // Shape bottom lands ~4pt above slide edge
-	sourceNoteExtentCX = 11277600 // ~12.4 inches wide (full width minus margins)
-	sourceNoteExtentCY = 200000   // ~15.7pt — sufficient for 8pt text with zero margins
-	sourceNoteFontSize = 800      // 8pt in hundredths of a point
-)
+// sourceNoteFontSize is the source attribution size in hundredths of a point.
+// The note's geometry comes from the chrome frame's source band.
+const sourceNoteFontSize = 800 // 8pt
 
-// generateSourceNoteShape creates a p:sp element for source attribution text.
-// The shape is positioned at the bottom of the slide with small, gray text.
-// shapeID must be unique within the slide's shape tree; callers allocate it
-// from findMaxShapeID(slideData)+1 just before insertion.
-func generateSourceNoteShape(sourceText string, shapeID uint32) string {
-	return generateSourceNoteShapeInBounds(sourceText, shapeID, pptx.RectEmu{X: sourceNoteOffsetX, Y: sourceNoteOffsetY, CX: sourceNoteExtentCX, CY: sourceNoteExtentCY})
-}
-
+// generateSourceNoteShapeInBounds creates a p:sp element for source
+// attribution text in small gray italics, placed at bounds (the chrome frame's
+// source band). shapeID must be unique within the slide's shape tree; callers
+// allocate it from findMaxShapeID(slideData)+1 just before insertion.
 func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
@@ -54,18 +43,11 @@ func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds p
 	return string(b)
 }
 
-// insertSourceNote inserts a source attribution text shape into the slide XML.
-// It finds the closing </p:spTree> tag and inserts the shape before it.
-func insertSourceNote(slideData []byte, sourceText string) ([]byte, error) {
+// insertSourceNote inserts a source attribution text shape at bounds (the
+// chrome frame's source band) before </p:spTree>.
+func insertSourceNote(slideData []byte, sourceText string, bounds pptx.RectEmu) ([]byte, error) {
 	// Allocate a slide-unique ID above any existing shape (including shapes
 	// injected earlier on this slide, which are already present in slideData).
-	shapeXML := generateSourceNoteShape(sourceText, findMaxShapeID(slideData)+1)
-
-	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
-}
-
-func insertSourceNoteForSlide(slideData []byte, sourceText string, slideWidth, slideHeight int64, hasTakeaway bool) ([]byte, error) {
-	frame := ResolveSlideChromeFrame(slideWidth, slideHeight, hasTakeaway, true)
-	shapeXML := generateSourceNoteShapeInBounds(sourceText, findMaxShapeID(slideData)+1, frame.Source)
+	shapeXML := generateSourceNoteShapeInBounds(sourceText, findMaxShapeID(slideData)+1, bounds)
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }
