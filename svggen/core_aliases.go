@@ -161,6 +161,7 @@ const (
 	FindingLabelClipped          = core.FindingLabelClipped
 	FindingLegendOverflowDropped = core.FindingLegendOverflowDropped
 	FindingOverflowSuppressed    = core.FindingOverflowSuppressed
+	FindingPlotAreaCollapsed     = core.FindingPlotAreaCollapsed
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries
@@ -174,4 +175,5 @@ const (
 	FixKindExplicitScale   = core.FixKindExplicitScale
 	FixKindReduceItems     = core.FixKindReduceItems
 	FixKindIncreaseCanvas  = core.FixKindIncreaseCanvas
+	FixKindShortenLabels   = core.FixKindShortenLabels
 )

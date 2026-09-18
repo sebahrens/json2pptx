@@ -629,7 +629,10 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 			maxLabelWidth = measureMaxLabel(fontSize)
 		}
 
-		// Add extra bottom margin for rotated labels.
+		// Add extra bottom margin for rotated labels. The caller caps this
+		// against the plot height it actually has (CapXLabelBand) — uncapped,
+		// 16 categories of ~30 characters squeezed the plot to 5% of the
+		// canvas (go-slide-creator-k478).
 		rotatedHeight := maxLabelWidth * math.Sin(rotAngleRad)
 		eb := rotatedHeight - fontSize
 		if eb > 0 {
@@ -644,4 +647,62 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 		Categories:        cats,
 		ExtraBottomMargin: extraBottom,
 	}
+}
+
+
+// minPlotHeightFrac is the share of its preliminary height the plot area must
+// retain after the x-axis label band is subtracted. Below this the labels have
+// displaced the chart they describe: the reported case was a hairline of bars
+// (5% of the canvas) above a wall of rotated text.
+const minPlotHeightFrac = 0.55
+
+// CapXLabelBand clamps a label layout's ExtraBottomMargin so the plot keeps at
+// least minPlotHeightFrac of prelimPlotH, and reports the clamp as a
+// chart.plot_area_collapsed finding so an agent can shorten the labels or split
+// the slide instead of shipping an unreadable chart (go-slide-creator-k478).
+//
+// It is called by every chart that consumes AdaptXLabels, at the point where
+// the preliminary plot height is known. A non-positive prelimPlotH (no layout
+// yet) leaves the layout untouched.
+func CapXLabelBand(b *SVGBuilder, layout *XLabelLayout, prelimPlotH float64, categories []string) {
+	if layout == nil || prelimPlotH <= 0 || layout.ExtraBottomMargin <= 0 {
+		return
+	}
+	maxBand := prelimPlotH * (1 - minPlotHeightFrac)
+	if layout.ExtraBottomMargin <= maxBand {
+		return
+	}
+
+	needed := layout.ExtraBottomMargin
+	layout.ExtraBottomMargin = maxBand
+
+	b.AddFinding(Finding{
+		Field: "x_axis.labels",
+		Code:  FindingPlotAreaCollapsed,
+		Message: fmt.Sprintf(
+			"x-axis labels need %.0fpx of rotated height, which would leave the plot at %.0f%% of its height; the label band is capped at %.0fpx and the labels are clipped. Shorten the category labels (longest is %d characters over %d categories) or split the slide",
+			needed, math.Max(0, (prelimPlotH-needed)/prelimPlotH*100), maxBand,
+			longestLabelLen(categories), len(categories)),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind: FixKindShortenLabels,
+			Params: map[string]any{
+				"needed_px":         math.Round(needed),
+				"capped_px":         math.Round(maxBand),
+				"total_categories":  len(categories),
+				"longest_label_len": longestLabelLen(categories),
+			},
+		},
+	})
+}
+
+// longestLabelLen returns the character length of the longest label.
+func longestLabelLen(labels []string) int {
+	longest := 0
+	for _, l := range labels {
+		if n := len([]rune(l)); n > longest {
+			longest = n
+		}
+	}
+	return longest
 }

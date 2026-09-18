@@ -335,6 +335,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	isNarrow := bc.config.Width < 500
 	prelimPlotW := bc.config.Width - bc.config.MarginLeft - bc.config.MarginRight
 	xLayout := AdaptXLabels(b, data.Categories, prelimPlotW, style.Typography.SizeSmall, isNarrow)
+	CapXLabelBand(b, &xLayout, bc.config.Height-bc.config.MarginTop-bc.config.MarginBottom, data.Categories)
 	axisFontSize := xLayout.FontSize
 	xLabelRotation := xLayout.Rotation
 	labelStep := xLayout.LabelStep
@@ -1237,6 +1238,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	if len(data.Categories) > 0 && !isTimeSeries {
 		prelimPlotW := plotArea.W
 		xLayout = AdaptXLabels(b, data.Categories, prelimPlotW, style.Typography.SizeSmall, isNarrow)
+		CapXLabelBand(b, &xLayout, plotArea.H, data.Categories)
 		categories = xLayout.Categories
 		if xLayout.ExtraBottomMargin > 0 {
 			plotArea.H -= xLayout.ExtraBottomMargin

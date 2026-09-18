@@ -61,6 +61,14 @@ const (
 	// FindingOverflowSuppressed is emitted when overflow content (e.g.
 	// "+N more" indicators) is suppressed or truncated.
 	FindingOverflowSuppressed = "chart.overflow_suppressed"
+
+	// FindingPlotAreaCollapsed is emitted when x-axis labels claim so much
+	// of the canvas that the plot itself is squeezed into a sliver — the
+	// chart has effectively vanished behind a wall of rotated text. The
+	// label band is capped, but the chart is still too dense to read, so the
+	// author must shorten the category labels or split the slide
+	// (go-slide-creator-k478).
+	FindingPlotAreaCollapsed = "chart.plot_area_collapsed"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.
@@ -71,6 +79,7 @@ const (
 	FixKindExplicitScale   = "explicit_scale"
 	FixKindReduceItems     = "reduce_items"
 	FixKindIncreaseCanvas  = "increase_canvas"
+	FixKindShortenLabels   = "shorten_labels"
 )
 
 // FixSuggestion is a structured remediation hint attached to a finding.

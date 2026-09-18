@@ -182,6 +182,7 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	prelimPlotW := wc.config.Width - wc.config.MarginLeft - wc.config.MarginRight
 	xLayout := AdaptXLabels(b, categories, prelimPlotW, style.Typography.SizeBody, isNarrow)
 	axisFontSize := xLayout.FontSize
+	CapXLabelBand(b, &xLayout, wc.config.Height-wc.config.MarginTop-wc.config.MarginBottom, categories)
 	xLabelRotation := xLayout.Rotation
 	labelStep := xLayout.LabelStep
 	categories = xLayout.Categories

@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`chart.plot_area_collapsed` svggen finding (go-slide-creator-k478).** New
+  warning-severity finding with fix kind `shorten_labels`, emitted when rotated
+  x-axis labels would claim so much of a chart that the plot is squeezed into a
+  sliver. The label band is now capped so the plot keeps at least 55% of its
+  height, and the finding carries `needed_px`, `capped_px`, `total_categories`
+  and `longest_label_len` so an agent can shorten the categories or split the
+  slide. It reaches the fit-finding stream through the existing chart
+  dry-render merge.
+
 - **Chart `annotations` and `data_labels` (go-slide-creator-pizh).** svggen has
   always implemented reference lines, fitted trendlines, positioned callouts,
   and per-point value labels, but `commonChartFields()` did not declare the two
