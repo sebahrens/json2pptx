@@ -31,23 +31,42 @@ func findingsByCode(fs []patterns.FitFinding, code string) []patterns.FitFinding
 
 // TestGeometry_ChevronStripTextExceedsShape mirrors the strategy-deck repro:
 // numbered-step-strip chevrons whose notches leave no text width.
-func TestGeometry_ChevronStripTextExceedsShape(t *testing.T) {
+// The numbered-step-strip chevron keeps its labels clear of the notch
+// (go-slide-creator-c11o), so the pattern itself must not trip the check.
+func TestGeometry_ChevronStripPatternFits(t *testing.T) {
 	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"numbered-step-strip","values":{"style":"chevron","steps":[
 		{"label":"Attract","body":"Paid social"},{"label":"Convert","body":"Landing pages"},
 		{"label":"Onboard","body":"Welcome series"},{"label":"Retain","body":"Loyalty"},{"label":"Advocate","body":"Referrals"}]}}}]`)
+	if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeTextExceedsShape); len(fs) != 0 {
+		t.Fatalf("chevron pattern labels should fit, got %+v", fs)
+	}
+}
+
+// Hand-authored narrow chevrons whose labels cannot fit between the notches
+// are still flagged, aggregated per slide.
+func TestGeometry_ChevronTextExceedsShape(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":8,"rows":[{"cells":[
+		{"shape":{"geometry":"chevron","fill":"accent1","text":{"content":"Decommissioning","size":18}}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":{"content":"Transformation","size":18}}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}},{"shape":{"geometry":"chevron","fill":"accent1","text":"Ok"}}]}]}}]`)
 	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeTextExceedsShape)
 	if len(fs) != 1 {
 		t.Fatalf("want one aggregated TEXT_EXCEEDS_SHAPE, got %d: %+v", len(fs), fs)
 	}
 	f := fs[0]
-	if !strings.HasPrefix(f.Path, "/slides/0/pattern/rows/0/cells/") || f.Action != "review" {
+	if !strings.HasPrefix(f.Path, "/slides/0/shape_grid/rows/0/cells/") || f.Action != "review" {
 		t.Errorf("unexpected path/action: %s %s", f.Path, f.Action)
 	}
 	if f.Fix == nil || f.Fix.Kind != "reduce_text" || f.Fix.Params["geometry"] != "chevron" {
 		t.Errorf("unexpected fix: %+v", f.Fix)
 	}
-	if cells, _ := f.Fix.Params["cells"].([]string); len(cells) != 5 {
-		t.Errorf("want 5 offending cells, got %v", f.Fix.Params["cells"])
+	// Tall, narrow chevrons leave (almost) no width between the notches, so
+	// every cell is legitimately flagged; the long labels must be among them.
+	cells, _ := f.Fix.Params["cells"].([]string)
+	if len(cells) < 2 || cells[0] != "/slides/0/shape_grid/rows/0/cells/0/shape/text" || cells[1] != "/slides/0/shape_grid/rows/0/cells/1/shape/text" {
+		t.Errorf("want the long-label cells flagged, got %v", cells)
 	}
 }
 
