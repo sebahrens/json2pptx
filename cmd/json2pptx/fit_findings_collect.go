@@ -834,6 +834,11 @@ func estimateCellInputContentHeightEMU(cell *GridCellInput) int64 {
 		return int64(100 * 12700)
 	}
 
+	// Nested sub-grids: their own stacked rows.
+	if cell.Grid != nil {
+		return estimateGridContentHeightEMU(cell.Grid, 0)
+	}
+
 	return 0
 }
 

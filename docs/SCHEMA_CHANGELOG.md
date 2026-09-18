@@ -54,6 +54,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 All three size their rows in points (`min_height` = `max_height`) and are
 centred by the pattern `vertical_align` default.
 
+### Changed — chart-insights-split so-what (go-slide-creator-pzrs)
+
+- New optional values `headline {value, label}`, `so_what`, `chart_label`,
+  `unit` and overrides `data_labels`, `headline_size`. The chart now carries
+  a series / unit caption (derived from a single series name + unit) and
+  value labels by default on bar charts (≤16 points) and single-series
+  line / area charts (≤12 points). With a headline or so-what the insights
+  cell expands to a nested column grid; the source row is pinned at 30pt.
+  Expanded `shape_grid` output changes accordingly.
+
 ### Changed — shape_grid images and contrast preflight
 
 - **Grid image cells cover-fill (go-slide-creator-e53n).** A raster `image`
