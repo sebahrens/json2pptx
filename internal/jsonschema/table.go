@@ -51,6 +51,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 		}
 		spec.Rows = append(spec.Rows, cells)
 	}
+	spec.Rows = expandCellSpans(spec.Rows)
 	if t.Style != nil {
 		spec.Style = types.TableStyle{
 			Borders:         t.Style.Borders,
@@ -179,4 +180,96 @@ func CellExtraLogicalRows(content string) int {
 		return 0
 	}
 	return effective - 1
+}
+
+
+// expandCellSpans materialises the continuation cells a merge requires.
+//
+// ECMA-376 expresses a merge as a gridSpan/rowSpan on the origin cell PLUS an
+// explicit placeholder <a:tc hMerge="1"/> or <a:tc vMerge="1"/> for every grid
+// column the merge covers, so each <a:tr> still carries exactly one <a:tc> per
+// <a:gridCol>. The generator already knew how to emit those placeholders (the
+// cell.IsMerged branches in generateDataCell / generateHeaderRowWithMerges) but
+// nothing ever set IsMerged from JSON input, so the branch was dead: a col_span
+// row emitted 3 cells against 5 grid columns and LibreOffice dropped the text
+// of the second merged cell, painting it as an empty block
+// (go-slide-creator-chvf).
+//
+// The pass walks each row against a grid-occupancy model. Positions covered by
+// a span reuse an author-supplied empty filler cell when there is one — decks
+// in the wild pad rowspans by hand — and get a synthetic continuation
+// otherwise. Rows that already carry IsMerged cells are left untouched, so
+// re-converting an expanded spec is a no-op.
+func expandCellSpans(rows [][]types.TableCell) [][]types.TableCell {
+	if len(rows) == 0 {
+		return rows
+	}
+	for _, row := range rows {
+		for _, c := range row {
+			if c.IsMerged {
+				return rows // already expanded
+			}
+		}
+	}
+
+	// covered[col] counts how many further rows a vertical span still covers,
+	// and hSpanOf[col] carries that span's horizontal width so a rectangle
+	// merge gets a placeholder at every position it covers.
+	covered := map[int]int{}
+	hSpanOf := map[int]int{}
+
+	out := make([][]types.TableCell, len(rows))
+	for i, row := range rows {
+		var expanded []types.TableCell
+		col := 0
+		src := 0
+
+		emit := func(c types.TableCell) {
+			expanded = append(expanded, c)
+			col++
+		}
+
+		for {
+			// Fill any grid columns a span from an earlier row covers.
+			if n := covered[col]; n > 0 {
+				covered[col] = n - 1
+				cont := types.TableCell{IsMerged: true, RowSpan: 0, ColSpan: 1}
+				if hSpanOf[col] == 0 {
+					// Interior column of a rectangle merge: horizontal wins.
+					cont.ColSpan = 0
+				}
+				// Consume an author-supplied empty filler at this position
+				// rather than inserting a second cell for it.
+				if src < len(row) && row[src].Content == "" && row[src].ColSpan <= 1 && row[src].RowSpan <= 1 {
+					src++
+				}
+				emit(cont)
+				continue
+			}
+			if src >= len(row) {
+				break
+			}
+
+			cell := row[src]
+			src++
+			emit(cell)
+
+			// Reserve the rows this cell's vertical span covers, across every
+			// column its horizontal span covers.
+			if cell.RowSpan > 1 {
+				covered[col-1] = cell.RowSpan - 1
+				hSpanOf[col-1] = cell.ColSpan
+			}
+			for k := 1; k < cell.ColSpan; k++ {
+				emit(types.TableCell{IsMerged: true, ColSpan: 0, RowSpan: 1})
+				if cell.RowSpan > 1 {
+					covered[col-1] = cell.RowSpan - 1
+					hSpanOf[col-1] = 0
+				}
+			}
+		}
+
+		out[i] = expanded
+	}
+	return out
 }

@@ -134,8 +134,15 @@ var ooxmlCodeMap = map[string]string{
 // repair prompt on any of these; they must block output acceptance like
 // OPC errors do.
 var blockingOOXMLCodes = map[string]bool{
-	"OOXML_ILLEGAL_XML_CHAR":    true,
+	"OOXML_ILLEGAL_XML_CHAR":     true,
 	"OOXML_SLIDE_COUNT_MISMATCH": true,
+	// A row whose <a:tc> count does not match the <a:gridCol> count is not a
+	// rendering nit: readers align cells positionally, so the row's remaining
+	// cells shift and a merged cell's text is dropped outright (LibreOffice
+	// paints it as an empty block). The check existed but was advisory, which
+	// is why strict output validation shipped such a deck
+	// (go-slide-creator-chvf).
+	"OOXML_INVALID_TABLE": true,
 }
 
 // OutputValidator runs both structural (OPC) and content-level (OOXML) validation

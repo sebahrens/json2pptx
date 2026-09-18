@@ -358,15 +358,36 @@ func TestGoldenStructure_TableCellShorthand(t *testing.T) {
 				if len(spec.Rows) == 0 {
 					t.Errorf("slide %d: table has no rows", i)
 				}
-				// Verify all cells have ColSpan >= 1 and RowSpan >= 1
+				// Every ORIGIN cell carries ColSpan >= 1 and RowSpan >= 1.
+				// Merge continuation cells are the exception by design: a zero
+				// span is exactly how they signal their direction (ColSpan 0 =>
+				// hMerge, RowSpan 0 => vMerge), and they exist so each row
+				// carries one <a:tc> per <a:gridCol> (go-slide-creator-chvf).
 				for ri, row := range spec.Rows {
 					for ci, cell := range row {
+						if cell.IsMerged {
+							if cell.ColSpan != 0 && cell.RowSpan != 0 {
+								t.Errorf("slide %d, row %d, cell %d: merge continuation must zero one span, got ColSpan=%d RowSpan=%d",
+									i, ri, ci, cell.ColSpan, cell.RowSpan)
+							}
+							continue
+						}
 						if cell.ColSpan < 1 {
 							t.Errorf("slide %d, row %d, cell %d: ColSpan = %d, want >= 1", i, ri, ci, cell.ColSpan)
 						}
 						if cell.RowSpan < 1 {
 							t.Errorf("slide %d, row %d, cell %d: RowSpan = %d, want >= 1", i, ri, ci, cell.RowSpan)
 						}
+					}
+				}
+
+				// The cell count of every row must equal the grid width, or
+				// PowerPoint/LibreOffice drops the text of merged cells.
+				gridWidth := len(spec.Headers)
+				for ri, row := range spec.Rows {
+					if len(row) != gridWidth {
+						t.Errorf("slide %d, row %d: %d cells against %d grid columns — merge continuations are missing",
+							i, ri, len(row), gridWidth)
 					}
 				}
 			}

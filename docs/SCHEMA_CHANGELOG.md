@@ -8,6 +8,19 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Merged table cells render their text (go-slide-creator-chvf).** A `col_span`
+  / `row_span` cell produced one `<a:tc gridSpan="N">` and nothing for the grid
+  columns it covered, so a row carried fewer `<a:tc>` than the table had
+  `<a:gridCol>`. ECMA-376 requires an explicit `<a:tc hMerge="1"/>` /
+  `<a:tc vMerge="1"/>` per covered column; without them LibreOffice dropped the
+  second merged cell's text and painted an empty block — so two-tier financial
+  headers came out blank. `TableInput.ToTableSpec` now materialises those
+  continuation cells (consuming an author-supplied empty filler where one
+  exists, so hand-padded rowspans are not doubled), which activates the
+  generator's existing `IsMerged` branches. `OOXML_INVALID_TABLE` — the
+  row-cell-count check, which already existed but was advisory — is now promoted
+  to blocking, so strict `output_validation` can no longer ship this.
+
 - **`chart.plot_area_collapsed` svggen finding (go-slide-creator-k478).** New
   warning-severity finding with fix kind `shorten_labels`, emitted when rotated
   x-axis labels would claim so much of a chart that the plot is squeezed into a

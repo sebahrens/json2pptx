@@ -250,7 +250,7 @@
               {
                 "col_span": 1,
                 "content": "",
-                "row_span": 1
+                "row_span": 0
               },
               {
                 "col_span": 1,
@@ -284,7 +284,7 @@
               {
                 "col_span": 1,
                 "content": "",
-                "row_span": 1
+                "row_span": 0
               },
               {
                 "col_span": 1,
@@ -301,6 +301,11 @@
               {
                 "col_span": 2,
                 "content": "Grand Total",
+                "row_span": 1
+              },
+              {
+                "col_span": 0,
+                "content": "",
                 "row_span": 1
               },
               {
