@@ -103,5 +103,25 @@ template defects, and a clear paired improvement over baseline. Until an actual
 run and both ratings exist this remains a proposed bar and the release decision
 is `inconclusive` or `hold`.
 
+Templates default to `midnight-blue` (corporate), `warm-coral` (editorial) and
+the held-out `business-template` (seven-layout; not one of the four templates
+used for day-to-day pattern tuning); override with
+`--templates name:family[:heldout],...`. Missing template files fail fast.
+
+After the agent runs, every `.pptx` artifact is rendered (LibreOffice →
+pdftoppm/ImageMagick) into a contact sheet named by an opaque blind ID under
+`<out>/sheets/`, alongside `ratings_template.csv` (blind IDs only) and
+`blind_key.json` (the un-blinding key — keep it away from reviewers). The
+results JSON goes to `tests/quality/results/`. Apply the two reviewers' filled
+CSV with `go run ./cmd/qualitybench --report tests/quality/results/<file>.json
+--ratings ratings.csv`, which computes the summary and release decision.
+
+`go run ./cmd/qualitybench --dry-run` exercises the whole harness without an
+agent: each brief gets a deterministic category-based reference deck
+(`dry-run-reference` configuration) rendered on all three templates, producing
+36 blind contact sheets for the 12 briefs and a results JSON. Reference decks
+measure template/engine rendering, not agent authoring — never report them as
+agent results.
+
 Static fixture replay from the mechanical harness above is separate and must
 never be reported as a fresh-agent benchmark result.

@@ -39,6 +39,11 @@ type Evidence struct {
 	StartedAt  time.Time   `json:"started_at"`
 	DurationMS int64       `json:"duration_ms"`
 	Error      string      `json:"error,omitempty"`
+	// BlindID / ContactSheet / SlideCount are filled by
+	// AttachBlindContactSheets for runs that produced a .pptx artifact.
+	BlindID      string `json:"blind_id,omitempty"`
+	ContactSheet string `json:"contact_sheet,omitempty"`
+	SlideCount   int    `json:"slide_count,omitempty"`
 }
 type Rating struct {
 	RunID, Reviewer                                                          string
