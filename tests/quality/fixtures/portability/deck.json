@@ -1,0 +1,59 @@
+{
+  "template": "portability-4x3",
+  "output_filename": "portability-deck.pptx",
+  "footer": {"enabled": true, "left_text": "Acme Corporation | Confidential Strategy Review 2026"},
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "FY2026 Strategy Review"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Board pre-read"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Margin contraction is regional"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "EU gross margin fell 6 pts on energy pass-through lag",
+          "North America held flat despite wage inflation",
+          "APAC expanded 2 pts on mix shift to services",
+          "Group margin down 1.4 pts, entirely explained by EU",
+          "Pricing actions in EU land in Q3 and recover ~4 pts"
+        ]}
+      ],
+      "takeaway": "Fix EU pricing; the rest of the business is healthy.",
+      "source": "Company management accounts, FY2025"
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three numbers that matter"}
+      ],
+      "pattern": {"name": "kpi-3up", "values": [
+        {"big": "$4.2B", "small": "Revenue, +12% YoY"},
+        {"big": "31%", "small": "Gross margin, -1.4 pts"},
+        {"big": "92", "small": "Net promoter score"}
+      ]},
+      "takeaway": "Growth is strong; margin is the one number to fix.",
+      "source": "Q4 board pack"
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Revenue grew every quarter"},
+        {"placeholder_id": "body", "type": "chart", "chart_value": {"type": "bar", "title": "Revenue ($M)", "data": {"Q1": 910, "Q2": 1010, "Q3": 1090, "Q4": 1190}}}
+      ],
+      "takeaway": "Q4 revenue up 31% vs Q1 on enterprise demand."
+    },
+    {
+      "layout_id": "two-column",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Options on the table"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Raise EU prices 4%", "Hedge energy for FY27"]},
+        {"placeholder_id": "body_2", "type": "bullets", "bullets_value": ["Hold prices, cut SG&A", "Exit two low-margin SKUs"]}
+      ],
+      "source": "Strategy team analysis"
+    }
+  ]
+}

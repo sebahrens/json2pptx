@@ -83,7 +83,7 @@ INSTALL_CMDS := json2pptx svggen svggen-server svggen-mcp
         check test test-race test-cover test-svg-stress \
         template-check install-git-hooks \
         lint vulncheck security fmt fmt-check \
-        preview-patterns \
+        preview-patterns portability-fixtures template-previews \
         run clean ci help
 
 # ─── Build ────────────────────────────────────────────────────────────
@@ -358,6 +358,14 @@ fmt-check:
 
 preview-patterns: build
 	./bin/json2pptx$(EXE) preview-patterns -templates-dir templates -output assets/pattern-previews
+
+# ─── Template portability fixtures ────────────────────────────────────
+# Small 4:3 / 21:9 / two-master / side-logo templates derived from
+# midnight-blue, used by the portability geometry tests (cmd/json2pptx
+# TestPortabilityFixtureGeometry, tests/quality TestPortability*).
+
+portability-fixtures:
+	go run ./cmd/mktemplate -portability-fixtures tests/quality/fixtures/portability/templates
 
 # ─── Run / Clean / Release ────────────────────────────────────────────
 
