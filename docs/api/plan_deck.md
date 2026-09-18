@@ -8,8 +8,9 @@ Plan a presentation deck from a natural-language brief — returns an ordered sl
 
 Use `plan_deck` as the **first step** when building a deck from scratch. It converts a brief into a structured outline that:
 - Assigns narrative roles (opening, framework, evidence, comparison, emphasis, closing)
-- Recommends patterns for each slide using taxonomy-aware matching
-- Enforces deck-rhythm rules automatically (no 3+ consecutive same-pattern runs, emphasis every ~5 slides)
+- Assigns every slide a canonical `layout`: the opening slide is `"title"` and the closing slide is `"closing"`, both with **no pattern**; content slides use `"blank-title"` plus a pattern
+- Recommends patterns for each content slide using taxonomy-aware matching; `comparison` slots use only `comparison-2col` / `before-after`
+- Enforces deck-rhythm rules automatically (no 3+ consecutive same-pattern runs, emphasis every ~5 slides, capped at ceil(n/5))
 - Produces output directly consumable as the `slides` array in `generate_presentation`
 
 Skip `plan_deck` when you already have a detailed slide-by-slide outline or when modifying an existing deck.
@@ -31,23 +32,40 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
     {
       "slide_index": 0,
       "narrative_role": "opening",
-      "recommended_pattern": "stat-hero",
-      "suggested_pattern": "stat-hero",
-      "suggested_pattern_fallback": "pull-quote",
+      "recommended_pattern": "",
+      "layout": "title",
+      "suggested_pattern": "",
       "skeleton": {
         "layout_id": "title",
-        "content": [{"placeholder_id": "title", "type": "text", "text_value": "__FILL__"}],
-        "pattern": {"name": "stat-hero", "values": {"stat": "__FILL__", "label": "__FILL__", "context": "__FILL__"}}
+        "content": [
+          {"placeholder_id": "title", "type": "text", "text_value": "__FILL__"},
+          {"placeholder_id": "subtitle", "type": "text", "text_value": "__FILL__"}
+        ]
       },
       "content_seed": "Title and context: Pitch our Series B...",
-      "rationale": "fallback selection for opening",
+      "rationale": "opening slide: use the template's \"title\" layout with no pattern"
+    },
+    {
+      "slide_index": 3,
+      "narrative_role": "evidence",
+      "recommended_pattern": "kpi-inline",
+      "layout": "blank-title",
+      "suggested_pattern": "kpi-inline",
+      "suggested_pattern_fallback": "kpi-3up",
+      "skeleton": {
+        "layout_id": "blank-title",
+        "content": [{"placeholder_id": "title", "type": "text", "text_value": "__FILL__"}],
+        "pattern": {"name": "kpi-inline", "values": ["__FILL__"]}
+      },
+      "content_seed": "Key data point or supporting detail",
+      "rationale": "variety pick: different visual family",
       "predicted_cell_budgets": [
-        {"columns": 1, "rows": 1, "body_max_chars": 220, "header_max_chars": 80}
+        {"columns": 3, "rows": 1, "body_max_chars": 60, "header_max_chars": 20}
       ],
       "predicted_findings": [],
       "alternatives": [
-        {"pattern_name": "pull-quote", "score": 0.62, "rationale": "narrative open"},
-        {"pattern_name": "agenda", "score": 0.48, "rationale": "taxonomy fallback for opening"}
+        {"pattern_name": "kpi-3up", "score": 0.62, "rationale": "evidence metrics"},
+        {"pattern_name": "card-grid", "score": 0.48, "rationale": "taxonomy fallback for evidence"}
       ]
     }
   ],
@@ -68,12 +86,13 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 |-------|------|-------------|
 | `slide_index` | int | 0-based position |
 | `narrative_role` | string | One of: `"opening"`, `"framework"`, `"evidence"`, `"comparison"`, `"emphasis"`, `"closing"` |
-| `recommended_pattern` | string | Pattern name to use (from `list_patterns`) |
+| `recommended_pattern` | string | Pattern name to use (from `list_patterns`). **Empty string** for the opening (title) and closing slides — they use a structural layout, not a pattern, and carry no `alternatives` / predictions. |
+| `layout` | string | Canonical `layout_id` for the slide: `"title"` (opening), `"closing"` (closing), `"blank-title"` (every pattern slide). Always equals `skeleton.layout_id`. With `template`, the title/closing slides' `template_support` vets that layout (Title Slide / Closing family) instead of a pattern. |
 | `content_seed` | string | Brief hint of what content belongs on this slide |
 | `rationale` | string | Why this pattern was selected (e.g., "required by must_include", "rhythm break") |
 | `suggested_pattern` | string | First-choice pattern for this slot. Currently identical to `recommended_pattern`; kept as a separate field so the `(suggested_pattern, suggested_pattern_fallback, skeleton)` triplet reads as a single agent-facing contract. |
 | `suggested_pattern_fallback` | string | Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from `alternatives[0]` when available, omitted otherwise. |
-| `skeleton` | object | Partial `SlideInput` JSON object with `__FILL__` tokens for every agent-supplied string. Includes `layout_id`, a single `title` content entry, and a `pattern` envelope (`name` + `values`) whose string leaves are placeholders. Numeric and boolean leaves are preserved so structural defaults (grid dimensions, flags) survive the round-trip. Omitted when the recommended pattern has no `Exemplar` implementation. The skeleton validates as-is with `validate_input` (`valid: true`, since `__FILL__` is a non-empty string), but any leftover `__FILL__` is reported as an `unresolved_placeholder` warning — replace every token before publishable generation, or pass `placeholder_policy: "strict"` to `validate_input`/`generate_presentation` to make leftover tokens blocking. |
+| `skeleton` | object | Partial `SlideInput` JSON object with `__FILL__` tokens for every agent-supplied string. Title/closing slides get a layout-only skeleton (`layout_id` + `title` and `subtitle` entries, no `pattern`). Pattern slides include `layout_id`, a single `title` content entry, and a `pattern` envelope (`name` + `values`) whose string leaves are placeholders. Numeric and boolean leaves are preserved so structural defaults (grid dimensions, flags) survive the round-trip. Omitted when the recommended pattern has no `Exemplar` implementation. The skeleton validates as-is with `validate_input` (`valid: true`, since `__FILL__` is a non-empty string), but any leftover `__FILL__` is reported as an `unresolved_placeholder` warning — replace every token before publishable generation, or pass `placeholder_policy: "strict"` to `validate_input`/`generate_presentation` to make leftover tokens blocking. |
 | `predicted_cell_budgets` | array | Per-configuration character budgets (body/header) the renderer would impose on this pattern. Empty for non-grid patterns (e.g. `pull-quote`, `stat-hero`). |
 | `predicted_findings` | array | Up to 3 forecast fit-findings the renderer would emit when this pattern is filled with exemplar (role-default) content. Each entry has `code`, `path`, `message`, `action`, and (when applicable) `next_tool_call`. Empty when the pattern declares no exemplar or expansion fails. |
 | `alternatives` | array | Up to 2 next-best ranked patterns for this slot. Each entry has `pattern_name`, `score`, and `rationale`. Includes a taxonomy fallback when the rule-based recommender returns too few. |
@@ -85,9 +104,9 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 | Field | Type | Description |
 |-------|------|-------------|
 | `longest_pattern_run` | int | Longest consecutive run of the same pattern (target: ≤2) |
-| `has_emphasis` | bool | Whether at least one emphasis slide (stat-hero or pull-quote) exists |
-| `emphasis_count` | int | Number of emphasis slides |
-| `pattern_variety` | int | Count of unique patterns used |
+| `has_emphasis` | bool | Whether at least one emphasis slide (stat-hero, pull-quote, or kpi-inline) exists |
+| `emphasis_count` | int | Number of emphasis slides — never more than ceil(slide_budget/5) |
+| `pattern_variety` | int | Count of unique patterns used (title/closing slides have none and are not counted) |
 
 ## Narrative Roles
 
@@ -106,9 +125,12 @@ The planner distributes slides across a standard narrative arc:
 
 The planner automatically enforces:
 
-1. **No 3+ consecutive runs** — if detected, the middle slide is swapped to a pattern from a different visual family
-2. **Emphasis injection** — at least one `stat-hero` or `pull-quote` every ~5 slides
-3. **Variety awareness** — `recommend_pattern` is called with `prefer_variety=true` to penalize recently-used patterns
+1. **Structural bookends** — slide 0 is layout `title` and the last slide is layout `closing`, both with no pattern (a pattern there fights the layout's own title treatment)
+2. **No 3+ consecutive runs** — if detected, the middle slide is swapped to a pattern from a different visual family
+3. **Emphasis injection** — at least one `stat-hero` or `pull-quote` every ~5 slides
+4. **Emphasis cap** — at most ceil(n/5) emphasis slides (`stat-hero`, `pull-quote`, `kpi-inline`) per n-slide deck; extras are demoted to a non-emphasis pattern (must_include placements are kept)
+5. **Comparison family** — `comparison` slots use only `comparison-2col` or `before-after` (before-after first when the brief mentions before/after or current/future state; the two alternate across multiple comparison slots)
+6. **Variety awareness** — `recommend_pattern` is called with `prefer_variety=true` to penalize recently-used patterns
 
 ## Example
 
@@ -126,14 +148,14 @@ The planner automatically enforces:
 // Response
 {
   "slides": [
-    {"slide_index": 0, "narrative_role": "opening",    "recommended_pattern": "stat-hero",      "content_seed": "Title and context: Series B pitch for an AI infrastructure...", "rationale": "fallback selection for opening"},
+    {"slide_index": 0, "narrative_role": "opening",    "recommended_pattern": "",               "layout": "title",       "content_seed": "Title and context: Series B pitch for an AI infrastructure...", "rationale": "opening slide: use the template's \"title\" layout with no pattern"},
     {"slide_index": 1, "narrative_role": "framework",  "recommended_pattern": "kpi-3up",        "content_seed": "Structure or methodology overview", "rationale": "required by must_include"},
     {"slide_index": 2, "narrative_role": "evidence",   "recommended_pattern": "arch-stack",     "content_seed": "Key data point or supporting detail", "rationale": "taxonomy match: evidence+structural"},
     {"slide_index": 3, "narrative_role": "evidence",   "recommended_pattern": "card-grid",      "content_seed": "Key data point or supporting detail", "rationale": "variety pick: different visual family"},
     {"slide_index": 4, "narrative_role": "emphasis",   "recommended_pattern": "pull-quote",     "content_seed": "Standout metric or memorable takeaway", "rationale": "emphasis injection: visual breathing room every ~5 slides"},
-    {"slide_index": 5, "narrative_role": "comparison", "recommended_pattern": "comparison-2col","content_seed": "Comparison of alternatives or trade-offs", "rationale": "taxonomy match: comparison"},
+    {"slide_index": 5, "narrative_role": "comparison", "recommended_pattern": "comparison-2col","layout": "blank-title", "content_seed": "Comparison of alternatives or trade-offs", "rationale": "comparison slot: two-sided comparison pattern"},
     {"slide_index": 6, "narrative_role": "evidence",   "recommended_pattern": "roadmap-phased", "content_seed": "Detailed evidence or case study", "rationale": "required by must_include"},
-    {"slide_index": 7, "narrative_role": "closing",    "recommended_pattern": "icon-row",       "content_seed": "Summary, next steps, or call to action", "rationale": "fallback selection for closing"}
+    {"slide_index": 7, "narrative_role": "closing",    "recommended_pattern": "",               "layout": "closing",     "content_seed": "Summary, next steps, or call to action", "rationale": "closing slide: use the template's \"closing\" layout with no pattern"}
   ],
   "brief": "Series B pitch for an AI infrastructure company with $50M ARR",
   "slide_budget": 8,
@@ -141,10 +163,12 @@ The planner automatically enforces:
     "longest_pattern_run": 1,
     "has_emphasis": true,
     "emphasis_count": 1,
-    "pattern_variety": 7
+    "pattern_variety": 5
   }
 }
 ```
+
+(Pattern slides 1–4 and 6 also carry `"layout": "blank-title"`; omitted above for width.)
 
 ## Composing with Other Tools
 

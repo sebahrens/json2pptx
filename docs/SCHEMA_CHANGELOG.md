@@ -4,6 +4,27 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased — plan_deck deck-quality fixes (go-slide-creator-xmpb)
+
+### Changed
+
+- **`plan_deck` title/closing slides carry a layout, not a pattern.** Every
+  `slides[]` entry gains a required `layout` field (canonical `layout_id`, always
+  equal to `skeleton.layout_id`): `"title"` for slide 0, `"closing"` for the last
+  slide, `"blank-title"` for every pattern slide. Title and closing slides now
+  have `recommended_pattern: ""` / `suggested_pattern: ""`, no `alternatives` or
+  predictions, and a layout-only skeleton (`title` + `subtitle` entries, no
+  `pattern`). With `template`, their `template_support` vets the Title Slide /
+  Closing layout family. Pattern skeletons' `layout_id` is now `"blank-title"`
+  (was `"section"` / `"blank"` by role). make_deck's `plan.slides[]` likewise
+  reports `recommended_pattern: ""` for those two slides.
+- **Comparison slots map only to the comparison family** (`comparison-2col`,
+  `before-after`).
+- **Emphasis cap.** Emphasis patterns (`stat-hero`, `pull-quote`, and now
+  `kpi-inline`) are capped at ceil(n/5) per n-slide plan; excess ones are demoted
+  (must_include placements are kept). `rhythm_check.emphasis_count` /
+  `has_emphasis` count all three; `pattern_variety` ignores title/closing slides.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

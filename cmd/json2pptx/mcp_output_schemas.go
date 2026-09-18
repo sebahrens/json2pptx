@@ -1806,7 +1806,8 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "properties": {
           "slide_index":          {"type": "integer"},
           "narrative_role":       {"type": "string", "enum": ["opening", "evidence", "comparison", "emphasis", "framework", "closing"]},
-          "recommended_pattern":  {"type": "string"},
+          "recommended_pattern":  {"type": "string", "description": "Pattern for this slide; empty string for the title (opening) and closing slides, which use a structural layout with no pattern."},
+          "layout":               {"type": "string", "description": "Canonical layout_id for the slide: \"title\" (opening), \"closing\" (closing), \"blank-title\" (every pattern slide). Always equals skeleton.layout_id."},
           "content_seed":         {"type": "string"},
           "rationale":            {"type": "string"},
           "suggested_pattern":    {"type": "string", "description": "First-choice pattern (same value as recommended_pattern; kept as a separate field for the suggested_pattern / suggested_pattern_fallback / skeleton agent-facing triplet)."},
@@ -1854,7 +1855,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
           },
           "template_support": {"$ref": "#/$defs/template_support"}
         },
-        "required": ["slide_index", "narrative_role", "recommended_pattern", "suggested_pattern", "content_seed", "rationale"]
+        "required": ["slide_index", "narrative_role", "recommended_pattern", "layout", "suggested_pattern", "content_seed", "rationale"]
       }
     },
     "brief":        {"type": "string"},

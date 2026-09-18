@@ -40,7 +40,7 @@ Present the outline to the user. Proceed to Phase 2 only after approval or if th
 4. Ensure the outline alternates density: high-density slides (tables, grids) should be followed by low-density (stat-hero, pull-quote, section divider). Place a narrative-break pattern (stat-hero, pull-quote) every ~5 slides.
 5. Check the outline against the rhythm rule: no pattern should appear 3+ times consecutively. If it does, swap the middle occurrence for a contrasting pattern from a different visual family.
 
-For longer decks, `plan_deck` produces a structured outline (ordered slides with per-slide pattern recommendations, narrative roles, content seeds, accent rotation) enforcing the rhythm rules above.
+For longer decks, `plan_deck` produces a structured outline (ordered slides with per-slide pattern recommendations, narrative roles, content seeds, accent rotation) enforcing the rhythm rules above. Each slide carries a canonical `layout`: slide 0 is `"title"` and the last slide is `"closing"` with no pattern (`recommended_pattern: ""`); content slides are `"blank-title"` + a pattern. Comparison slots use only `comparison-2col` / `before-after`, and emphasis patterns (`stat-hero`, `pull-quote`, `kpi-inline`) are capped at ceil(n/5).
 
 Each `slides[]` entry in the `plan_deck` response carries three fillable-skeleton fields so you do not re-derive slide structure from the prose `content_seed`:
 

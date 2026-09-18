@@ -161,6 +161,10 @@ func (tc *TemplateSupportContext) placeholderSupport(slideType string, hints *pa
 		// Title Slide or Blank+Title can be repurposed rather than failing.
 		repurpose := tc.repurposableDividerLayouts()
 		return tc.familyRequirement(types.LayoutFamilySectionDivider, "Section Divider", repurpose)
+	case "closing":
+		// A closing slide can borrow a Title Slide layout when the template has
+		// no dedicated closing / Q&A layout (plan_deck's closing slot).
+		return tc.familyRequirement(types.LayoutFamilyQAClosing, "Closing", tc.familyLayouts[types.LayoutFamilyTitleSlide])
 	case "content":
 		return tc.contentSupport(hints)
 	case "two-column":

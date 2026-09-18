@@ -258,3 +258,26 @@ func TestReorderByTemplateSupport_NoAnnotationNoop(t *testing.T) {
 		t.Errorf("no-annotation reorder should be a no-op; got %q first", result.Candidates[0].Name)
 	}
 }
+
+// TestSupport_ClosingPlaceholder covers plan_deck's closing slot: native
+// Closing layout -> supported; only a Title Slide to borrow -> risky; neither
+// -> unsupported.
+func TestSupport_ClosingPlaceholder(t *testing.T) {
+	withClosing := fullTemplate()
+	withClosing.Layouts = append(withClosing.Layouts, canonicalLayout("Closing", types.CanonicalLayoutClosing, titlePH()))
+	cases := []struct {
+		name string
+		tmpl *types.TemplateAnalysis
+		want string
+	}{
+		{"native", withClosing, patterns.TemplateSupportSupported},
+		{"borrow-title", fullTemplate(), patterns.TemplateSupportRisky},
+		{"none", minimalTemplate(), patterns.TemplateSupportUnsupported},
+	}
+	for _, c := range cases {
+		ts := NewTemplateSupportContext(c.tmpl, patterns.Default()).Support(patterns.VisualCategoryPlaceholder, "closing", nil)
+		if ts == nil || ts.Status != c.want {
+			t.Errorf("%s: closing support = %+v, want status %q", c.name, ts, c.want)
+		}
+	}
+}

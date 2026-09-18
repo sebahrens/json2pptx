@@ -144,6 +144,9 @@ func TestMCPPlanDeck_AgreesWithRecommendVisual(t *testing.T) {
 		if s.TemplateSupport == nil {
 			t.Fatalf("slide %d: missing template_support", s.SlideIndex)
 		}
+		if s.RecommendedPattern == "" {
+			continue // title/closing slide: layout support, not a pattern
+		}
 		planStatus[s.RecommendedPattern] = s.TemplateSupport.Status
 	}
 

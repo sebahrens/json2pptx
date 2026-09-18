@@ -58,10 +58,11 @@ func TestBuildDeckPlan_Basic12Slides(t *testing.T) {
 		t.Error("expected at least one emphasis pattern (stat-hero or pull-quote)")
 	}
 
-	// Verify all slides have patterns.
+	// Verify all content slides have patterns; title/closing use layouts.
 	for i, s := range result.Slides {
-		if s.RecommendedPattern == "" {
-			t.Errorf("slide %d has empty recommended_pattern", i)
+		structural := s.NarrativeRole == "opening" || s.NarrativeRole == "closing"
+		if structural != (s.RecommendedPattern == "") {
+			t.Errorf("slide %d (%s): recommended_pattern=%q; want empty only for title/closing", i, s.NarrativeRole, s.RecommendedPattern)
 		}
 		if s.ContentSeed == "" {
 			t.Errorf("slide %d has empty content_seed", i)
@@ -120,8 +121,15 @@ func TestBuildDeckPlan_AttachesPredictions(t *testing.T) {
 		t.Fatalf("expected 10 slides, got %d", len(result.Slides))
 	}
 
-	// Every slide should have alternatives populated (next-best ranked patterns).
+	// Every content slide should have alternatives populated (next-best ranked
+	// patterns); title/closing slides have no pattern and so no alternatives.
 	for i, s := range result.Slides {
+		if s.RecommendedPattern == "" {
+			if len(s.Alternatives) != 0 {
+				t.Errorf("slide %d (%s): structural slide should have no alternatives", i, s.NarrativeRole)
+			}
+			continue
+		}
 		if len(s.Alternatives) == 0 {
 			t.Errorf("slide %d (%s): expected at least 1 alternative, got 0", i, s.RecommendedPattern)
 		}
@@ -201,6 +209,18 @@ func TestBuildDeckPlan_AttachesSkeletonAndFallback(t *testing.T) {
 	}
 
 	for i, s := range result.Slides {
+		if s.RecommendedPattern == "" {
+			// Structural title/closing slide: layout-only skeleton.
+			var slide SlideInput
+			if err := json.Unmarshal(s.Skeleton, &slide); err != nil {
+				t.Errorf("slide %d: structural skeleton invalid: %v", i, err)
+				continue
+			}
+			if slide.LayoutID != s.Layout || slide.Pattern != nil {
+				t.Errorf("slide %d: structural skeleton layout_id=%q (want %q) pattern=%v", i, slide.LayoutID, s.Layout, slide.Pattern)
+			}
+			continue
+		}
 		if s.SuggestedPattern == "" {
 			t.Errorf("slide %d: suggested_pattern is empty", i)
 		}
@@ -261,6 +281,15 @@ func TestBuildDeckPlan_SkeletonParsesAsSlideInput(t *testing.T) {
 		}
 		if slide.LayoutID == "" {
 			t.Errorf("slide %d skeleton has empty layout_id after decode", i)
+		}
+		if slide.LayoutID != s.Layout {
+			t.Errorf("slide %d skeleton layout_id %q != plan layout %q", i, slide.LayoutID, s.Layout)
+		}
+		if s.RecommendedPattern == "" {
+			if slide.Pattern != nil {
+				t.Errorf("slide %d: structural skeleton must not carry a pattern", i)
+			}
+			continue
 		}
 		if slide.Pattern == nil {
 			t.Errorf("slide %d skeleton has nil Pattern after decode", i)

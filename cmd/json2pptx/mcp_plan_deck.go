@@ -19,9 +19,10 @@ func mcpPlanDeckTool() mcp.Tool {
 	return mcp.NewTool("plan_deck",
 		mcp.WithDescription(`Plan a presentation deck from a brief — returns an ordered slide outline with recommended patterns and narrative roles.
 
-Use this BEFORE generate_presentation to get a structured plan. The output includes per-slide pattern recommendations, content seeds, and narrative roles (opening, evidence, comparison, close). The plan enforces deck-rhythm rules:
+Use this BEFORE generate_presentation to get a structured plan. The output includes per-slide layout + pattern recommendations, content seeds, and narrative roles (opening, evidence, comparison, close). Every slide carries a canonical layout: the opening slide is layout "title" and the closing slide is layout "closing", both with NO pattern (recommended_pattern ""); content slides use "blank-title" plus a pattern. The plan enforces deck-rhythm rules:
 - No 3 consecutive slides with the same pattern
-- At least one emphasis slide (stat-hero or pull-quote) every ~5 slides
+- Emphasis slides (stat-hero, pull-quote, kpi-inline) about every ~5 slides, capped at ceil(n/5) per deck
+- Comparison slots use only two-sided comparison patterns (comparison-2col, before-after)
 - Accent color rotation for visual variety
 
 The output is directly consumable as the slides array in generate_presentation — just fill in the content values.`),
