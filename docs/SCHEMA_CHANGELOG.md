@@ -4,6 +4,32 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased — DeckSpec fast path + server instructions (go-slide-creator-o8kl, go-slide-creator-f6kq, go-slide-creator-09e0)
+
+### Changed
+
+- **`get_started{task:"brief"}` fast path is now the DeckSpec path.**
+  `fast_path.tool` is `render_deck_spec` (was `make_deck`) and the new
+  `fast_path.steps[]` lists `list_slide_kinds` → `validate_deck_spec` →
+  `render_deck_spec` → `render_deck_thumbnails`. `make_deck` is repositioned as a
+  skeleton/wireframe tool. `falls_back_to` still mirrors the raw `sequence`.
+  `render_deck_spec` is now classified `kind: "workflow_facade"`
+  (`primitive_alternatives`: `validate_deck_spec`, `compile_deck_spec`,
+  `validate_input`, `generate_presentation`).
+- **One completion rule everywhere.** `completion_protocol.rule`, the get_started
+  notes, SKILL.md and the server instructions now share one text: render ALL
+  slides (`render_deck_thumbnails`) and inspect every image; a passing gate /
+  score is a precondition, never completion. SKILL.md's old "stop … do not
+  render thumbnails" rule is removed.
+
+### Added
+
+- **MCP server `instructions`.** The `initialize` response carries the 5-step
+  quality workflow (get_started → DeckSpec → render + inspect all slides → fix
+  at `semantic_path` → never ship exemplar content).
+- **`get_started.quality_workflow`** (always present) echoes the same text
+  (single Go const, so the two cannot drift).
+
 ## Unreleased — strict MCP arguments (go-slide-creator-s9uq)
 
 ### Changed

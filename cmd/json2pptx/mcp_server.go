@@ -87,7 +87,9 @@ func newServerMCPConfig(cfg config.Config) *mcpConfig {
 }
 
 // newMCPServer builds the json2pptx MCP server with every tool registered and
-// the server-wide options production relies on: strict argument decoding
+// the server-wide options production relies on: the quality-workflow
+// `instructions` sent in the initialize response (mcp_instructions.go), strict
+// argument decoding
 // (unknown tool arguments are rejected with UNKNOWN_PARAMETER + did_you_mean,
 // see mcp_strict_args.go). runMCP and the server-level tests share it so the
 // behaviour under test is the behaviour that ships. extra options (e.g. hooks)
@@ -96,6 +98,7 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 	var s *server.MCPServer
 	opts := []server.ServerOption{
 		server.WithToolCapabilities(false),
+		server.WithInstructions(mcpQualityWorkflow),
 		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
 			return s.GetTool(name)
 		})),

@@ -1926,10 +1926,22 @@ var outputSchemaGetStarted = json.RawMessage(`{
     "available_tasks": {"type": "array", "items": {"type": "string"}},
     "fast_path": {
       "type": "object",
-      "description": "The recommended single-call workflow facade for this task (make_deck for brief, auto_repair for revise). Present only for tasks that have a facade; omitted for validate-only. Reach for this before the manual sequence when you do not need per-step control.",
+      "description": "The recommended path for this task (brief: the DeckSpec path ending in render_deck_spec; revise: auto_repair). Present only for tasks that have one; omitted for validate-only. Reach for this before the manual sequence.",
       "properties": {
-        "tool":          {"type": "string", "description": "The facade tool to call first (e.g. make_deck)."},
-        "when_to_call":  {"type": "string", "description": "When to use the facade versus dropping to the manual sequence."},
+        "tool":          {"type": "string", "description": "The key tool of the fast path (render_deck_spec for brief, auto_repair for revise)."},
+        "when_to_call":  {"type": "string", "description": "When to use the fast path versus dropping to the manual sequence."},
+        "steps": {
+          "type": "array",
+          "description": "Ordered call chain around tool (brief: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails). Omitted when the fast path is a single call.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tool":         {"type": "string"},
+              "when_to_call": {"type": "string"}
+            },
+            "required": ["tool", "when_to_call"]
+          }
+        },
         "falls_back_to": {"type": "array", "items": {"type": "string"}, "description": "The manual primitive tool names (this response's sequence) the facade collapses into one call."}
       },
       "required": ["tool", "when_to_call", "falls_back_to"]
@@ -1946,6 +1958,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
       }
     },
     "notes": {"type": "array", "items": {"type": "string"}},
+    "quality_workflow": {"type": "string", "description": "The server's MCP instructions text (5-step quality workflow), echoed verbatim."},
     "completion_protocol": {
       "type": "object",
       "properties": {
@@ -1956,7 +1969,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
       "required": ["draft_status", "complete_status", "rule"]
     }
   },
-  "required": ["task", "sequence", "available_tasks", "completion_protocol"]
+  "required": ["task", "sequence", "available_tasks", "completion_protocol", "quality_workflow"]
 }`)
 
 // --- get_input_schema ---

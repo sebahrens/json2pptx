@@ -216,7 +216,12 @@ func toolClassifications() map[string]toolClassification {
 		// --- Semantic compiler (compact DeckSpec authoring; recommended default for new decks) ---
 		"validate_deck_spec":   {Kind: toolKindDiagnostic, Phase: toolPhaseRender, CLICounterpart: "semantic validate"},
 		"compile_deck_spec":    {Kind: toolKindPrimitive, Phase: toolPhaseRender, CLICounterpart: "semantic compile"},
-		"render_deck_spec":     {Kind: toolKindPrimitive, Phase: toolPhaseRender, WritesFiles: true, CLICounterpart: "semantic render"},
+		"render_deck_spec": {
+			// One call from a DeckSpec to a .pptx: validate + compile + generate.
+			// The recommended get_started fast path for task=brief.
+			Kind: toolKindWorkflowFacade, Phase: toolPhaseRender, WritesFiles: true, CLICounterpart: "semantic render",
+			PrimitiveAlternatives: []string{"validate_deck_spec", "compile_deck_spec", "validate_input", "generate_presentation"},
+		},
 		"explain_deck_spec":    {Kind: toolKindDiagnostic, Phase: toolPhasePlan, CLICounterpart: "semantic explain"},
 		"list_deck_archetypes": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic schema"},
 		"list_slide_kinds":     {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "semantic schema"},

@@ -16,6 +16,16 @@ below. Drop to raw `PresentationInput` via `generate_presentation` / `json2pptx 
 only when the user needs a feature outside the semantic schema or a targeted raw repair;
 raw JSON is also the compiler's own output format.
 
+**Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
+server `instructions`):** A deck is done only after you render ALL slides of the current revision (render_deck_thumbnails) and inspect every returned image yourself. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After any repair, re-render and re-inspect.
+
+**MCP-only clients:** the server sends this workflow as its `initialize` `instructions` (and
+`get_started` echoes it verbatim as `quality_workflow`): call `get_started` first → author a DeckSpec
+(`list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`) → render every slide with
+`render_deck_thumbnails` and inspect the images → fix at `semantic_path` → never ship exemplar
+content. `get_started{task:"brief"}` returns this DeckSpec path as its `fast_path` (`tool:
+"render_deck_spec"`, `steps[]`); `make_deck` is a skeleton/wireframe tool only.
+
 This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
 | File | Contents |
@@ -456,7 +466,7 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 }
 ```
 
-When `quality_gate.passed === true`, the deck has cleared the ship-quality bar — **stop**. Do not chain another `propose_repairs` / `repair_slide` / `repair_slides_batch` / `auto_repair` call, do not render thumbnails to "double-check", and do not spend more tokens on aesthetic polish. When `passed === false`, `reasons[]` enumerates the unmet criteria in a stable order (`score → P0 → P1 → takeaway → accent_overload`) so you can address the highest-impact issue first. The criteria block is fixed by the server (not configurable on `score_deck`) so the gate cannot be relaxed at call time — agents that need a different threshold should call `auto_repair` (which exposes a tunable gate) instead. The same gate semantics apply inside the visual-QA loop: stop iterating once `quality_gate.passed` flips true on a `score_deck` pass.
+When `quality_gate.passed === true`, the deterministic precondition is met — stop the *score-driven* repair loop (no further `propose_repairs` / `repair_slides_batch` / `auto_repair` calls just to raise the number, no aesthetic polish for its own sake). The gate is **not** completion: now apply the [completion rule](#deck-generation-skill) — render all slides with `render_deck_thumbnails`, inspect every returned image, and repair (then re-render and re-inspect) anything you see wrong. When `passed === false`, `reasons[]` enumerates the unmet criteria in a stable order (`score → P0 → P1 → takeaway → accent_overload`) so you can address the highest-impact issue first. The criteria block is fixed by the server (not configurable on `score_deck`) so the gate cannot be relaxed at call time — agents that need a different threshold should call `auto_repair` (which exposes a tunable gate) instead. The same gate semantics apply inside the visual-QA loop: stop iterating once `quality_gate.passed` flips true on a `score_deck` pass.
 
 **Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
 
@@ -721,7 +731,7 @@ Full details for each phase live in [WORKFLOW.md](WORKFLOW.md). One-line summary
 1. **PLAN** — produce a short outline (template, accent strategy, slide-by-slide list of layouts + patterns + accents). Use `plan_deck` for decks >4 slides. **Pass the optional `template` (a template name) to make the plan template-aware:** every planned slide — and each `alternatives[]` entry — then carries `template_support: {status: supported|risky|unsupported, reasons[], required_layout}` from the same shared helper `recommend_visual` uses, so the two tools agree for identical template constraints. A recommended pattern the template cannot host is swapped for a supported alternative during planning, so the plan never assigns an impossible pattern; the result also echoes the vetted `template`. Without `template`, slides carry no `template_support` (template-agnostic plan, unchanged).
 2. **VARY** — call `analyze_deck_rhythm` and act on `longest_run`, `accent_balance`, `density_cv`, `composition_score`.
 3. **RENDER** — generate the JSON in one pass; verify the pre-emit checklist (Rule 20, semantic fills, gap ≥4pt, accent variety, 60–110% density).
-4. **REPAIR** — `validate_input` → `generate_presentation` → `render_slide_image` / `render_deck_thumbnails` → `inspect_slide_images` → `repair_slide`. Images are truth.
+4. **REPAIR** — `validate_input` → `generate_presentation` → `render_deck_thumbnails` (all slides) → inspect every image (`inspect_slide_images` or your own review) → `repair_slide` → re-render. Images are truth; done means every slide of the current revision was rendered and inspected.
 
 For the `repair_slide` fix-kind vocabulary, finding-code catalog, and strict-fit promotion ladder, see [FINDINGS.md](FINDINGS.md).
 
