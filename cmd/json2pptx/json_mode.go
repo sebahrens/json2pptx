@@ -903,6 +903,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			AccentStrategy: accentStrategy,
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
+			Theme:          patternThemeFromDiag(diagCtx),
 		}
 		expanded, composeWarnings, err := expandCompose(slide.Compose, ctx, patterns.Default())
 		if err != nil {
@@ -925,6 +926,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			AccentStrategy: accentStrategy,
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
+			Theme:          patternThemeFromDiag(diagCtx),
 		}
 		expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 		if err != nil {
@@ -945,6 +947,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			AccentStrategy: accentStrategy,
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
+			Theme:          patternThemeFromDiag(diagCtx),
 		}
 		if err := expandNestedCellPatterns(slide.ShapeGrid, nestedCtx, patterns.Default()); err != nil {
 			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: nested pattern: %w", i+1, err)
@@ -2762,4 +2765,15 @@ func applyChromeSkip(specs []generator.SlideSpec, chrome *ChromeInput, slides []
 			}
 		}
 	}
+}
+
+// patternThemeFromDiag exposes the template theme colours to pattern
+// expanders so they can pick readable text colours against tinted fills
+// (see patterns.readableTextOn). Returns the zero ThemeInfo when no diagram
+// context is available; patterns then fall back to their static defaults.
+func patternThemeFromDiag(diagCtx *GridDiagramContext) types.ThemeInfo {
+	if diagCtx == nil {
+		return types.ThemeInfo{}
+	}
+	return types.ThemeInfo{Colors: diagCtx.ThemeColors}
 }

@@ -949,7 +949,7 @@ The detector walks shape-grid cells that author both a fill color (on the shape)
 **Action:** `info`
 **Fix kind:** `replace_color`
 
-Text color was automatically replaced to meet WCAG AA contrast requirements against the resolved background. This is informational — the fix has already been applied. The `fix.params` include the original and replacement colors, the background color, the contrast ratios before and after the swap, and the text surface `source`.
+Text color was automatically replaced to meet WCAG AA contrast requirements against the resolved background. For `shape_grid` cells the background is the *effective* fill: `alpha` (composited over the theme `lt1`) and `lumMod`/`lumOff` modifiers on the solid fill are applied before the ratio is computed, so a light accent tint is not mistaken for the saturated base accent. This is informational — the fix has already been applied. The `fix.params` include the original and replacement colors, the background color, the contrast ratios before and after the swap, and the text surface `source`.
 
 The finding's `path` locates the swap so an agent can map it back to the offending element. For `shape_grid` cell swaps the path is the flat rendered-shape index `"/slides/{i}/shape_grid/shapes/{n}"` (the original grid row/cell coordinates are not retained on the raw shape XML at render time). For template layout text (the `lstStyle`/`run` sources) the path is the slide-level `"/slides/{i}"`. The owning slide index is derived from `path` like every other finding. `fix.params.source` names the surface: `shape_grid`, `lstStyle`, or `run`.
 

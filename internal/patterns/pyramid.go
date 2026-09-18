@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -138,25 +139,41 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
 	n := len(vals.Tiers)
+	if n == 0 {
+		return nil, fmt.Errorf("pyramid: at least one tier is required")
+	}
 
-	// Each tier is a row with a single cell. We use column widths to
-	// simulate narrowing: row i has left padding + content + right padding.
-	// The "trapezoid" effect is achieved via the geometry (use "trapezoid"
-	// OOXML auto-shape) with centered text.
-	var rows []jsonschema.GridRowInput
+	// Geometry: a symmetric column grid [side×(n-1), centre, side×(n-1)].
+	// Tier i (0 = top) starts at column n-1-i and spans 2i+1 columns, so each
+	// tier is exactly one side-column wider on each edge than the tier above
+	// it — widths grow linearly top→bottom and the bottom tier spans the full
+	// grid. The top tier keeps pyramidTopWidthPct of the width regardless of
+	// tier count.
+	cols := pyramidColumns(n)
+	colsJSON, _ := json.Marshal(cols)
+	adj := pyramidTrapezoidAdj(ctx, n, cols[0])
+
+	rows := make([]jsonschema.GridRowInput, 0, n)
 	for i, tier := range vals.Tiers {
-		text := buildPyramidTextContent(tier, bodySize)
+		// Gradient the fill: top tier uses the full accent, lower tiers
+		// lighten. Text colour is picked per tier against the effective
+		// (alpha-composited) fill so light bottom tiers get dark text.
+		alpha := 100 - i*15
+		tone := fillTone{Color: accent, Alpha: float64(alpha)}
+		textColor := readableTextOn(ctx, tone, pyramidFallbackTextColor(alpha))
+		fill := json.RawMessage(fmt.Sprintf(`{"color":"%s","alpha":%d}`, accent, alpha))
 
-		// Gradient the fill: top tier uses accent, lower tiers lighten.
-		// We use accent for all tiers but vary alpha for visual weight.
-		fill := json.RawMessage(fmt.Sprintf(`{"color":"%s","alpha":%d}`, accent, 100-i*15))
-
+		shape := &jsonschema.ShapeSpecInput{
+			Geometry: "trapezoid",
+			Fill:     fill,
+			Text:     buildPyramidTextContent(tier, bodySize, textColor),
+		}
+		if adj > 0 {
+			shape.Adjustments = map[string]int64{"adj": adj}
+		}
 		cell := &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "trapezoid",
-				Fill:     fill,
-				Text:     text,
-			},
+			ColSpan: 2*i + 1,
+			Shape:   shape,
 		}
 
 		// Apply cell overrides
@@ -170,38 +187,99 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 			}
 		}
 
-		// Use column proportions to create narrowing effect: pad on sides.
-		// Top tier: narrow center. Bottom tier: full width.
-		padPct := float64(n-1-i) * 10 // 0% at bottom, up to 40% each side at top
-		cols := []float64{padPct, 100 - 2*padPct, padPct}
-		colsJSON, _ := json.Marshal(cols)
-
-		row := jsonschema.GridRowInput{
-			Cells: []*jsonschema.GridCellInput{
-				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
-				cell,
-				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
-			},
+		// Leading empty cells advance the column cursor to the tier's
+		// first column; trailing columns are simply left unfilled.
+		rowCells := make([]*jsonschema.GridCellInput, 0, n-i)
+		for k := 0; k < n-1-i; k++ {
+			rowCells = append(rowCells, &jsonschema.GridCellInput{})
 		}
-		_ = colsJSON // columns set per-row is not supported; use single grid columns
-
-		rows = append(rows, row)
+		rowCells = append(rowCells, cell)
+		rows = append(rows, jsonschema.GridRowInput{Cells: rowCells})
 	}
 
-	// The shape grid doesn't support per-row column widths, so we use a
-	// single 3-column grid with all rows. The trapezoid geometry itself
-	// creates the narrowing visual effect.
-	colsJSON := json.RawMessage(`3`)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		Gap:     4,
+		ColGap:  pyramidColGapPt,
+		RowGap:  pyramidRowGapPt,
 		Rows:    rows,
 	}
 
 	return grid, nil
 }
 
-func buildPyramidTextContent(content string, size float64) json.RawMessage {
+const (
+	// pyramidTopWidthPct is the share of the grid width the top tier spans.
+	pyramidTopWidthPct = 34.0
+	// pyramidColGapPt is a hairline column gap: the pyramid's side columns
+	// are purely geometric, so real gaps would only distort the tier widths.
+	pyramidColGapPt = 0.01
+	// pyramidRowGapPt separates the stacked tiers.
+	pyramidRowGapPt = 4.0
+)
+
+// pyramidColumns returns the 2n-1 column percentages for an n-tier pyramid.
+func pyramidColumns(n int) []float64 {
+	if n <= 1 {
+		return []float64{100}
+	}
+	side := (100 - pyramidTopWidthPct) / float64(2*(n-1))
+	cols := make([]float64, 0, 2*n-1)
+	for k := 0; k < n-1; k++ {
+		cols = append(cols, side)
+	}
+	cols = append(cols, pyramidTopWidthPct)
+	for k := 0; k < n-1; k++ {
+		cols = append(cols, side)
+	}
+	return cols
+}
+
+// pyramidTrapezoidAdj returns the trapezoid "adj" value that makes each
+// tier's slanted edges line up with the tiers above and below: the
+// horizontal inset of each side must equal one side column. OOXML measures
+// adj against min(width, height) of the shape, which for pyramid tiers is the
+// row height. Returns 0 (keep the preset default) when the layout size is
+// unknown, e.g. in unit tests without a template.
+func pyramidTrapezoidAdj(ctx ExpandContext, n int, sidePct float64) int64 {
+	w, h := expandContentSize(ctx)
+	if w <= 0 || h <= 0 || n <= 1 {
+		return 0
+	}
+	rowGapEMU := int64(pyramidRowGapPt * 12700)
+	rowH := float64(h-int64(n-1)*rowGapEMU) / float64(n)
+	if rowH <= 0 {
+		return 0
+	}
+	inset := float64(w) * sidePct / 100
+	return int64(inset / rowH * 100000)
+}
+
+// expandContentSize returns the best available estimate of the grid's
+// content-area size in EMU: the explicit layout bounds when the caller set
+// them, otherwise the shape-grid default bounds for the slide size (the
+// generate path expands patterns before the final bounds are known).
+func expandContentSize(ctx ExpandContext) (w, h int64) {
+	if ctx.LayoutBounds.Width > 0 && ctx.LayoutBounds.Height > 0 {
+		return ctx.LayoutBounds.Width, ctx.LayoutBounds.Height
+	}
+	if ctx.SlideWidth > 0 && ctx.SlideHeight > 0 {
+		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
+		return db.CX, db.CY
+	}
+	return 0, 0
+}
+
+// pyramidFallbackTextColor is used only when the theme cannot be resolved:
+// tiers at or above 70% accent opacity keep light text, lighter tiers flip
+// to dark.
+func pyramidFallbackTextColor(alpha int) string {
+	if alpha >= 70 {
+		return "lt1"
+	}
+	return "dk1"
+}
+
+func buildPyramidTextContent(content string, size float64, color string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -216,7 +294,7 @@ func buildPyramidTextContent(content string, size float64) json.RawMessage {
 		VerticalAlign string      `json:"vertical_align"`
 	}{
 		Paragraphs: []paragraph{
-			{Content: content, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: content, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",

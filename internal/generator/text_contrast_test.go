@@ -367,6 +367,18 @@ func TestExtractShapeFillHex(t *testing.T) {
 			xml:  `<p:sp><p:spPr><a:noFill/></p:spPr><p:txBody><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:rPr><a:t>X</a:t></a:r></a:p></p:txBody></p:sp>`,
 			want: "",
 		},
+		{
+			// 50% black over white lt1 → mid grey, not black.
+			name: "alpha modifier composites over lt1",
+			xml:  `<p:sp><p:spPr><a:solidFill><a:srgbClr val="000000"><a:alpha val="50000"/></a:srgbClr></a:solidFill></p:spPr><p:txBody/></p:sp>`,
+			want: "#808080",
+		},
+		{
+			// lumMod 0 + lumOff 100% forces full lightness → white.
+			name: "lumMod/lumOff tint applied",
+			xml:  `<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"><a:lumMod val="1"/><a:lumOff val="100000"/></a:schemeClr></a:solidFill></p:spPr><p:txBody/></p:sp>`,
+			want: "#FFFFFF",
+		},
 	}
 
 	for _, tt := range tests {
