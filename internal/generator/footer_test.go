@@ -21,7 +21,7 @@ func TestGenerateFooterShapes(t *testing.T) {
 		},
 	}
 
-	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"}, 100)
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"}, 100, "")
 
 	// Verify left and right footer shapes are present (no center)
 	if !strings.Contains(result, "Footer Left") {
@@ -87,7 +87,7 @@ func TestGenerateFooterShapes_EmptyLeftAndCenter(t *testing.T) {
 	}
 
 	// No left text — only slide number should appear
-	result := generateFooterShapes(positions, &FooterConfig{Enabled: true}, 100)
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true}, 100, "")
 
 	if strings.Contains(result, "Footer Left") {
 		t.Error("left footer should not appear when text is empty")
@@ -122,7 +122,7 @@ func TestInsertFooters(t *testing.T) {
 		},
 	}
 
-	result, err := insertFooters(slideXML, config, positions)
+	result, err := insertFooters(slideXML, config, positions, "")
 	if err != nil {
 		t.Fatalf("insertFooters failed: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestInsertFooters_DisabledConfig(t *testing.T) {
 
 	// Disabled config
 	config := &FooterConfig{Enabled: false}
-	result, err := insertFooters(slideXML, config, computeDefaultFooterPositions(0))
+	result, err := insertFooters(slideXML, config, computeDefaultFooterPositions(0), "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestInsertFooters_DisabledConfig(t *testing.T) {
 	}
 
 	// Nil config
-	result, err = insertFooters(slideXML, nil, computeDefaultFooterPositions(0))
+	result, err = insertFooters(slideXML, nil, computeDefaultFooterPositions(0), "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -373,10 +373,10 @@ func TestNormalizeFooterVerticalPositions_Empty(t *testing.T) {
 
 func TestClampFooterPosition(t *testing.T) {
 	tests := []struct {
-		name         string
-		y, cy        int64
-		slideHeight  int64
-		expectedY    int64
+		name        string
+		y, cy       int64
+		slideHeight int64
+		expectedY   int64
 	}{
 		{"within bounds", 6000000, 365125, 6858000, 6000000},
 		{"exactly at edge", 6492875, 365125, 6858000, 6492875},
@@ -799,35 +799,35 @@ func TestGenerateFooterShape_XMLEscaping(t *testing.T) {
 
 func TestBuildPageNumberRuns(t *testing.T) {
 	tests := []struct {
-		name        string
-		format      string
-		total       int
-		wantCount   int
+		name         string
+		format       string
+		total        int
+		wantCount    int
 		wantSlideNum bool
-		wantTotal   string
+		wantTotal    string
 	}{
 		{
-			name:        "current only",
-			format:      "{current}",
-			total:       30,
-			wantCount:   1,
+			name:         "current only",
+			format:       "{current}",
+			total:        30,
+			wantCount:    1,
 			wantSlideNum: true,
 		},
 		{
-			name:        "current / total",
-			format:      "{current} / {total}",
-			total:       30,
-			wantCount:   3, // slidenum field, " / " text, "30" text
+			name:         "current / total",
+			format:       "{current} / {total}",
+			total:        30,
+			wantCount:    3, // slidenum field, " / " text, "30" text
 			wantSlideNum: true,
-			wantTotal:   "30",
+			wantTotal:    "30",
 		},
 		{
-			name:        "Slide X of Y",
-			format:      "Slide {current} of {total}",
-			total:       15,
-			wantCount:   4, // "Slide " text, slidenum field, " of " text, "15" text
+			name:         "Slide X of Y",
+			format:       "Slide {current} of {total}",
+			total:        15,
+			wantCount:    4, // "Slide " text, slidenum field, " of " text, "15" text
 			wantSlideNum: true,
-			wantTotal:   "15",
+			wantTotal:    "15",
 		},
 		{
 			name:      "plain text only",
@@ -897,7 +897,7 @@ func TestGenerateFooterShapes_FormattedPageNumbers(t *testing.T) {
 		TotalSlides:      30,
 	}
 
-	result := generateFooterShapes(positions, config, 100)
+	result := generateFooterShapes(positions, config, 100, "")
 
 	if !strings.Contains(result, "Confidential") {
 		t.Error("expected left text")

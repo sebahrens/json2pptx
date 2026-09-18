@@ -194,7 +194,7 @@ In `design_mode: "constrained"` (the default), raw hex colors are restricted; sw
 
 ## Footer, page numbers, and structure
 
-`footer`, `chrome.page_numbers`, and `structure.sections` configure deck chrome and section grouping. See the schema for the full set; agents typically only set `footer.enabled` and `footer.left_text`.
+`footer`, `chrome.page_numbers`, and `structure.sections` configure deck chrome and section grouping. See the schema for the full set; agents typically only set `footer.enabled` and `footer.left_text`. `left_text` always renders on a single line: its box starts at the template's date (`dt`) placeholder and spans the footer (`ftr`) placeholder width (stopping before the slide number); text that is still too wide shrinks from 10.5pt down to 8pt and is then ellipsized (`…`).
 
 ## Patch input
 

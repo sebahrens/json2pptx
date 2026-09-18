@@ -797,7 +797,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		if spec, ok := ctx.slideContentMap[slideNum]; ok {
 			footerPositions = ctx.getFooterPositionsForLayout(spec.LayoutID)
 		}
-		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions)
+		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName)
 		if err != nil {
 			ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to insert footer for slide %d: %v", slideNum, err))
 		}
