@@ -25,6 +25,8 @@ Use this BEFORE generate_presentation to get a structured plan. The output inclu
 - Comparison slots use only two-sided comparison patterns (comparison-2col, before-after)
 - Accent color rotation for visual variety
 
+Facts in the brief (clauses with numbers such as "+23% revenue", "churn 4%", or named entities such as "EU expansion") are routed verbatim into slide content seeds and each slide's facts[] — quantities to KPI / stat / chart slides first. Facts no slide had room for are listed in unplaced_facts.
+
 The output is directly consumable as the slides array in generate_presentation — just fill in the content values.`),
 		mcp.WithRawOutputSchema(outputSchemaPlanDeck),
 		mcp.WithString("brief",

@@ -306,3 +306,24 @@ func TestBuildDeckPlan_SkeletonParsesAsSlideInput(t *testing.T) {
 		}
 	}
 }
+
+// TestMCPPlanDeck_CarriesBriefFacts drives the plan_deck handler end to end
+// (go-slide-creator-kndv): the brief's numbers must surface in the response
+// JSON — in a non-title content_seed / facts entry or in unplaced_facts.
+func TestMCPPlanDeck_CarriesBriefFacts(t *testing.T) {
+	mc := testMCPConfig(t)
+	plan := callPlanDeck(t, mc, map[string]any{"brief": "+23% revenue, churn 4%", "slide_budget": 6.0})
+	var body strings.Builder
+	for _, s := range plan.Slides[1:] {
+		body.WriteString(s.ContentSeed + "\n" + strings.Join(s.Facts, "\n") + "\n")
+	}
+	body.WriteString(strings.Join(plan.UnplacedFacts, "\n"))
+	for _, want := range []string{"+23% revenue", "churn 4%"} {
+		if !strings.Contains(body.String(), want) {
+			t.Errorf("%q missing from plan seeds/facts/unplaced_facts:\n%s", want, body.String())
+		}
+	}
+	if plan.UnplacedFacts == nil {
+		t.Error("unplaced_facts must decode as an array, got null/missing")
+	}
+}

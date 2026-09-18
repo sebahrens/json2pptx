@@ -25,6 +25,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   (must_include placements are kept). `rhythm_check.emphasis_count` /
   `has_emphasis` count all three; `pattern_variety` ignores title/closing slides.
 
+### Added (go-slide-creator-kndv)
+
+- **`plan_deck` carries brief facts into the plan.** Quantity and named-entity
+  clauses from the brief (e.g. `+23% revenue`, `churn 4%`, `EU expansion is on
+  track`) are routed verbatim to pattern slides: each slide gains an optional
+  `facts[]` array and its `content_seed` is prefixed with those facts. The result
+  gains a required top-level `unplaced_facts[]` array (always present, `[]` when
+  empty) listing facts no slide had capacity for. make_deck's derived slide
+  titles pick up the facts through `content_seed`.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

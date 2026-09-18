@@ -40,8 +40,14 @@ type Slide struct {
 	// every pattern-bearing slide (a pattern needs the free canvas below a
 	// title). Always equal to the skeleton's layout_id.
 	Layout      string `json:"layout"`
-	ContentSeed string `json:"content_seed"` // brief hint of what content should go here
-	Rationale   string `json:"rationale"`
+	ContentSeed string `json:"content_seed"` // brief hint of what content should go here; brief facts assigned to the slide are prefixed
+
+	// Facts are the brief's own quantity / named-entity clauses routed to this
+	// slide (e.g. "+23% revenue", "churn 4%"), verbatim. Quantities go to KPI /
+	// stat / chart patterns first. Omitted when the slide received none; title
+	// and closing slides never receive facts.
+	Facts     []string `json:"facts,omitempty"`
+	Rationale string   `json:"rationale"`
 
 	// SuggestedPattern is the first-choice pattern for this slot. Currently
 	// always equal to RecommendedPattern; kept as a separate field so the
@@ -119,6 +125,11 @@ type Result struct {
 	Brief       string      `json:"brief"`
 	SlideBudget int         `json:"slide_budget"`
 	RhythmCheck RhythmCheck `json:"rhythm_check"`
+
+	// UnplacedFacts lists brief facts (quantity / named-entity clauses) that no
+	// slide had capacity for, so none silently disappears. Always present;
+	// empty when every fact was placed or the brief had none.
+	UnplacedFacts []string `json:"unplaced_facts"`
 
 	// Template echoes the template name the plan was vetted against, when a
 	// template context was supplied. Empty for a template-agnostic plan.
@@ -280,6 +291,10 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 		swapInfeasiblePatterns(reg, p.TemplateCtx, slides, p.Brief, p.Audience)
 	}
 
+	// 4b. Route the brief's facts (quantities, named entities) into the content
+	//     seeds of the final pattern slots; leftovers become unplaced_facts.
+	unplaced := assignBriefFacts(slides, p.Brief)
+
 	// 5. Attach per-slot predictions: cell budgets, fit findings, ranked
 	//    alternatives, suggested-pattern triplet, and skeleton. Done after
 	//    rhythm enforcement so the predictions reflect the final pattern choice.
@@ -295,11 +310,12 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 	check := computeRhythmCheck(slides)
 
 	return &Result{
-		Slides:      slides,
-		Brief:       p.Brief,
-		SlideBudget: p.SlideBudget,
-		RhythmCheck: check,
-		Template:    p.TemplateName,
+		Slides:        slides,
+		Brief:         p.Brief,
+		SlideBudget:   p.SlideBudget,
+		RhythmCheck:   check,
+		UnplacedFacts: unplaced,
+		Template:      p.TemplateName,
 	}
 }
 

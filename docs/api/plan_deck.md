@@ -88,7 +88,8 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 | `narrative_role` | string | One of: `"opening"`, `"framework"`, `"evidence"`, `"comparison"`, `"emphasis"`, `"closing"` |
 | `recommended_pattern` | string | Pattern name to use (from `list_patterns`). **Empty string** for the opening (title) and closing slides — they use a structural layout, not a pattern, and carry no `alternatives` / predictions. |
 | `layout` | string | Canonical `layout_id` for the slide: `"title"` (opening), `"closing"` (closing), `"blank-title"` (every pattern slide). Always equals `skeleton.layout_id`. With `template`, the title/closing slides' `template_support` vets that layout (Title Slide / Closing family) instead of a pattern. |
-| `content_seed` | string | Brief hint of what content belongs on this slide |
+| `content_seed` | string | Brief hint of what content belongs on this slide. When brief facts were routed here they are prefixed verbatim (joined by `; `, then ` — ` and the role hint), e.g. `"revenue grew +23% year over year — Key data point or supporting detail"`. |
+| `facts` | array of strings | Brief facts routed to this slide, verbatim (see [Brief facts](#brief-facts)). Omitted when none; never set on title/closing slides. |
 | `rationale` | string | Why this pattern was selected (e.g., "required by must_include", "rhythm break") |
 | `suggested_pattern` | string | First-choice pattern for this slot. Currently identical to `recommended_pattern`; kept as a separate field so the `(suggested_pattern, suggested_pattern_fallback, skeleton)` triplet reads as a single agent-facing contract. |
 | `suggested_pattern_fallback` | string | Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from `alternatives[0]` when available, omitted otherwise. |
@@ -98,6 +99,18 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 | `alternatives` | array | Up to 2 next-best ranked patterns for this slot. Each entry has `pattern_name`, `score`, and `rationale`. Includes a taxonomy fallback when the rule-based recommender returns too few. |
 
 > **Note on predictions:** `predicted_cell_budgets` and `predicted_findings` are derived without rendering or template/theme context. Findings that require a parsed template (placeholder overflow, footer collision, contrast prediction) are skipped here — only shape-grid-resident detectors fire (text overflow, sparse layout, pattern occupancy, table preflight).
+
+### Brief facts
+
+The planner lifts facts out of the brief so its numbers reach the slides instead of generic seeds. The brief is split into clauses (sentence ends, `;`, newlines, `, `, `: `, spaced dashes — decimals like `1.5M` and separators like `1,200` survive). A clause is a fact when it holds a standalone quantity (`+23%`, `$50M`, `40 engineers`; period labels such as `Q3`/`FY24` do not count) or a named entity (an acronym like `EU`, or a mid-clause proper noun). The first clause is treated as the deck topic and only counts when it holds a quantity.
+
+Facts are assigned to pattern slides (never title/closing): quantities first go to numeric patterns (`kpi-*`, `stat-hero`, `kpi-inline`, `chart-insights-split`, `horizontal-bar-with-callouts`, `waterfall-bridge`, `driver-tree`); everything else is spread round-robin over evidence/comparison slides, then framework/emphasis slides. Capacity is one fact per KPI card (`kpi-3up` → 3), one for `stat-hero` / `pull-quote`, two otherwise. Leftovers go to the top-level `unplaced_facts` array (always present, `[]` when empty) — add a slide or fold them in by hand.
+
+### Top-level fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `unplaced_facts` | array of strings | Brief facts no slide had capacity for. Always present. |
 
 ### Rhythm Check
 
@@ -149,7 +162,7 @@ The planner automatically enforces:
 {
   "slides": [
     {"slide_index": 0, "narrative_role": "opening",    "recommended_pattern": "",               "layout": "title",       "content_seed": "Title and context: Series B pitch for an AI infrastructure...", "rationale": "opening slide: use the template's \"title\" layout with no pattern"},
-    {"slide_index": 1, "narrative_role": "framework",  "recommended_pattern": "kpi-3up",        "content_seed": "Structure or methodology overview", "rationale": "required by must_include"},
+    {"slide_index": 1, "narrative_role": "framework",  "recommended_pattern": "kpi-3up",        "content_seed": "Series B pitch for an AI infrastructure company with $50M ARR — Structure or methodology overview", "facts": ["Series B pitch for an AI infrastructure company with $50M ARR"], "rationale": "required by must_include"},
     {"slide_index": 2, "narrative_role": "evidence",   "recommended_pattern": "arch-stack",     "content_seed": "Key data point or supporting detail", "rationale": "taxonomy match: evidence+structural"},
     {"slide_index": 3, "narrative_role": "evidence",   "recommended_pattern": "card-grid",      "content_seed": "Key data point or supporting detail", "rationale": "variety pick: different visual family"},
     {"slide_index": 4, "narrative_role": "emphasis",   "recommended_pattern": "pull-quote",     "content_seed": "Standout metric or memorable takeaway", "rationale": "emphasis injection: visual breathing room every ~5 slides"},
@@ -159,6 +172,7 @@ The planner automatically enforces:
   ],
   "brief": "Series B pitch for an AI infrastructure company with $50M ARR",
   "slide_budget": 8,
+  "unplaced_facts": [],
   "rhythm_check": {
     "longest_pattern_run": 1,
     "has_emphasis": true,
