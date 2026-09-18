@@ -117,8 +117,8 @@ type WaterfallBridgeValues struct {
 // accent for downward delta bars.
 type WaterfallBridgeOverrides struct {
 	TextOverrides
-	NegativeAccent string  `json:"negative_accent,omitempty"` // default "accent2"
-	SubtotalAccent string  `json:"subtotal_accent,omitempty"` // default "accent3"
+	NegativeAccent string  `json:"negative_accent,omitempty"` // default: template semantic_accents.negative, else "accent2"
+	SubtotalAccent string  `json:"subtotal_accent,omitempty"` // default: template semantic_accents.neutral, else "accent3"
 	ValueSize      float64 `json:"value_size,omitempty"`      // default 10
 	LabelSize      float64 `json:"label_size,omitempty"`      // default 9
 }
@@ -159,8 +159,8 @@ func (w *waterfallBridge) Schema() *Schema {
 			"header_size":      NumberSchema(6, 40).WithDescription("Column label font size (default 9)"),
 			"body_size":        NumberSchema(6, 40).WithDescription("Value label font size (default 10)"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for delta bars"),
-			"negative_accent":  StringSchema(0).WithDescription("Accent scheme color used for negative delta bars (default accent2)").WithDefault("accent2"),
-			"subtotal_accent":  StringSchema(0).WithDescription("Accent scheme color used for subtotal bars (default accent3)").WithDefault("accent3"),
+			"negative_accent":  StringSchema(0).WithDescription("Accent scheme color used for negative delta bars (default: the template's declared semantic_accents.negative, else accent2)"),
+			"subtotal_accent":  StringSchema(0).WithDescription("Accent scheme color used for subtotal bars (default: the template's declared semantic_accents.neutral, else accent3)"),
 			"label_size":       NumberSchema(6, 40).WithDescription("Column label font size (default 9) — overrides header_size for this pattern"),
 			"value_size":       NumberSchema(6, 40).WithDescription("Value label font size (default 10) — overrides body_size for this pattern"),
 		},
@@ -316,14 +316,18 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	// Negative and subtotal fills carry meaning, so they come from the
+	// template's declared semantic_accents when it has them; the literals are
+	// only the fallback for templates that declare none (go-slide-creator-noa7).
 	negativeAccent := ovr.NegativeAccent
 	if negativeAccent == "" {
-		negativeAccent = "accent2"
+		negativeAccent = ctx.SemanticAccentOr("negative", "accent2")
 	}
 	subtotalAccent := ovr.SubtotalAccent
 	if subtotalAccent == "" {
-		subtotalAccent = "accent3"
+		subtotalAccent = ctx.SemanticAccentOr("neutral", "accent3")
 	}
+	positiveAccent := ctx.SemanticAccentOr("positive", "")
 	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, 9.0))
 	valueSize := ResolveSize(ovr.ValueSize, ResolveSize(ovr.BodySize, 10.0))
 
@@ -346,9 +350,15 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 		case wbTypeSubtotal:
 			fill = subtotalAccent
 		case wbTypeDelta:
-			if col.isNegDelta {
+			switch {
+			case col.isNegDelta:
 				fill = negativeAccent
-			} else {
+			case positiveAccent != "" && ovr.CellAccentMode == "":
+				// A positive delta is "good"; use the template's declared
+				// positive accent unless the author asked for a per-cell
+				// rotation, which they own.
+				fill = positiveAccent
+			default:
 				fill = ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
 			}
 		case wbTypeTotal:

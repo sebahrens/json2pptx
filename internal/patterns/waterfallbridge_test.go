@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // wbStructuralRows counts a column sub-grid's spacer/bar rows, ignoring the
@@ -556,4 +557,137 @@ func TestWaterfallBridge_Recommend(t *testing.T) {
 			}
 		})
 	}
+}
+
+// go-slide-creator-noa7: negativeAccent defaulted to the literal "accent2" and
+// never consulted template metadata, so on a template whose declared negative
+// colour is something else (modern-template: negative=accent1, a red) the
+// negative delta bars rendered accent2 — its cool "positive-ish" blue — while
+// the declared negative colour sat unused.
+func TestWaterfallBridge_SemanticAccentsDriveFills(t *testing.T) {
+	pat, ok := Default().Get("waterfall-bridge")
+	if !ok {
+		t.Fatal("waterfall-bridge not registered")
+	}
+
+	values := &WaterfallBridgeValues{
+		Unit: "EUR m",
+		Columns: []WaterfallBridgeColumn{
+			{Label: "FY24", Value: 210, Type: "total"},
+			{Label: "Price", Value: 31, Type: "delta"},
+			{Label: "Volume", Value: -31, Type: "delta"},
+			{Label: "FY25", Value: 210, Type: "total"},
+		},
+	}
+
+	tests := []struct {
+		name            string
+		semanticAccents map[string]string
+		wantNegative    string
+		wantPositive    string
+	}{
+		{
+			name:            "modern-template palette",
+			semanticAccents: map[string]string{"negative": "accent1", "positive": "accent3", "neutral": "accent4"},
+			wantNegative:    "accent1",
+			wantPositive:    "accent3",
+		},
+		{
+			name:            "midnight-blue palette",
+			semanticAccents: map[string]string{"negative": "accent2", "positive": "accent4", "neutral": "accent5"},
+			wantNegative:    "accent2",
+			wantPositive:    "accent4",
+		},
+		{
+			name:            "template declaring no semantic accents falls back",
+			semanticAccents: nil,
+			wantNegative:    "accent2",
+			wantPositive:    "", // no declared positive: keeps the deck accent rotation
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := ExpandContext{
+				SlideWidth:  12192000,
+				SlideHeight: 6858000,
+			}
+			if tt.semanticAccents != nil {
+				ctx.Metadata = &types.TemplateMetadata{SemanticAccents: tt.semanticAccents}
+			}
+
+			grid, err := pat.Expand(ctx, values, nil, nil)
+			if err != nil {
+				t.Fatalf("expand: %v", err)
+			}
+
+			negFill := waterfallBarFillForLabel(t, grid, "−31")
+			if negFill != tt.wantNegative {
+				t.Errorf("negative delta bar fill = %q, want %q", negFill, tt.wantNegative)
+			}
+			if tt.wantPositive != "" {
+				posFill := waterfallBarFillForLabel(t, grid, "+31")
+				if posFill != tt.wantPositive {
+					t.Errorf("positive delta bar fill = %q, want %q", posFill, tt.wantPositive)
+				}
+			}
+		})
+	}
+}
+
+// An explicit negative_accent override still wins over the template palette.
+func TestWaterfallBridge_ExplicitNegativeAccentWins(t *testing.T) {
+	pat, _ := Default().Get("waterfall-bridge")
+	values := &WaterfallBridgeValues{
+		Columns: []WaterfallBridgeColumn{
+			{Label: "FY24", Value: 210, Type: "total"},
+			{Label: "Volume", Value: -31, Type: "delta"},
+		},
+	}
+	ctx := ExpandContext{
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
+		Metadata:    &types.TemplateMetadata{SemanticAccents: map[string]string{"negative": "accent1"}},
+	}
+	grid, err := pat.Expand(ctx, values, &WaterfallBridgeOverrides{NegativeAccent: "accent6"}, nil)
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	if got := waterfallBarFillForLabel(t, grid, "−31"); got != "accent6" {
+		t.Errorf("explicit negative_accent override = %q, want accent6", got)
+	}
+}
+
+// waterfallBarFillForLabel finds the bar shape whose value text contains the
+// given label fragment and returns its fill colour string.
+func waterfallBarFillForLabel(t *testing.T, grid *jsonschema.ShapeGridInput, labelFragment string) string {
+	t.Helper()
+	var found string
+	var walk func(g *jsonschema.ShapeGridInput)
+	walk = func(g *jsonschema.ShapeGridInput) {
+		if g == nil || found != "" {
+			return
+		}
+		for _, row := range g.Rows {
+			for _, cell := range row.Cells {
+				if cell == nil {
+					continue
+				}
+				if cell.Shape != nil && strings.Contains(string(cell.Shape.Text), labelFragment) {
+					fill := strings.Trim(string(cell.Shape.Fill), `"`)
+					// Skip the transparent outside-label cells.
+					if fill != "" && !strings.Contains(fill, "alpha") {
+						found = fill
+						return
+					}
+				}
+				walk(cell.Grid)
+			}
+		}
+	}
+	walk(grid)
+	if found == "" {
+		t.Fatalf("no bar shape found whose value text contains %q", labelFragment)
+	}
+	return found
 }

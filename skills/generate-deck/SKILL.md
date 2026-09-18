@@ -853,7 +853,7 @@ Each template exposes `color_roles` in `list_templates` (MCP) / `json2pptx skill
 
 **Semantic palette metadata.** `list_templates` (MCP, `fields=full`) / `json2pptx skill-info` also surface the template's authored palette intent (omitted when the template ships no metadata block):
 
-- `semantic_accents` — maps `positive` / `negative` / `neutral` to accent names; use these when a pattern field expects a `semantic_accent` so reds/greens follow the template's own conventions.
+- `semantic_accents` — maps `positive` / `negative` / `neutral` to accent names; use these when a pattern field expects a `semantic_accent` so reds/greens follow the template's own conventions. Patterns whose fills carry fixed meaning already resolve through this map without being asked: `waterfall-bridge` takes its negative-delta fill from `semantic_accents.negative`, its positive-delta fill from `positive`, and its subtotal fill from `neutral`, falling back to `accent2` / the deck accent / `accent3` only on a template that declares none. An explicit `negative_accent` / `subtotal_accent` override still wins.
 - `surface_tints` — maps `subtle` / `paper` / `elevated` / `inverse` surface roles to scheme color names for tinted card/panel backgrounds.
 - `data_palette` — ordered scheme color names for chart series (matches what svggen uses), so multi-series charts stay on-brand.
 - `metadata_version` and `sha256` — the metadata schema version and a stable content hash of the template file; use `sha256` as a cache key to detect when a template changed under a stable name.

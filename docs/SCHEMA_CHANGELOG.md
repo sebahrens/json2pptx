@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`waterfall-bridge` fills follow the template's `semantic_accents`
+  (go-slide-creator-noa7).** `negative_accent` defaulted to the literal
+  `accent2` and never consulted template metadata, so on modern-template
+  (`negative: accent1`, a red) negative delta bars rendered `accent2` — its cool
+  blue — while the declared negative colour sat unused. Negative bars now default
+  to `semantic_accents.negative`, subtotals to `neutral`, and positive deltas to
+  `positive`; the old literals remain the fallback for templates declaring no
+  semantic accents, and explicit `negative_accent` / `subtotal_accent` overrides
+  (or an author-chosen `cell_accent_mode`) still win. The two override
+  descriptions no longer advertise a fixed literal default.
+
 - **`kpi_dashboard` honours `unit` and `change` (go-slide-creator-hu58).** The
   documented metric shape is `{label, value, unit?, change?, trend?}`, but the
   native card builder read only `label` / `value` / `delta` / `trend`, so the

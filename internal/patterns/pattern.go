@@ -140,6 +140,26 @@ func (c ExpandContext) ResolveSurface(role, defaultColor string) string {
 	return ResolveSurface(role, c.Metadata, defaultColor)
 }
 
+// SemanticAccentOr returns the template's declared accent for a semantic role
+// ("positive", "negative", "neutral"), falling back to defaultColor when the
+// template declares no semantic_accents or omits this role.
+//
+// This is for fills whose MEANING is fixed — a negative delta bar is "bad"
+// whatever the palette — as opposed to a fill that just needs to be
+// distinguishable from its neighbour. Hardcoding a literal for a semantic role
+// puts the wrong colour on any template whose palette disagrees: waterfall
+// bridges painted negative bars accent2, which on modern-template is a cool
+// blue, while the template's declared negative colour sat unused
+// (go-slide-creator-noa7).
+func (c ExpandContext) SemanticAccentOr(role, defaultColor string) string {
+	if c.Metadata != nil {
+		if resolved, ok := c.Metadata.SemanticAccents[role]; ok && resolved != "" {
+			return resolved
+		}
+	}
+	return defaultColor
+}
+
 // LayoutBounds describes the usable content area on a slide in EMU.
 type LayoutBounds struct {
 	X      int64 // Left offset in EMU
