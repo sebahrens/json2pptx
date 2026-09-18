@@ -1675,9 +1675,9 @@ func TestResolve_Connectors(t *testing.T) {
 		Rows: []Row{{
 			Connector: &ConnectorSpec{Style: "arrow", Color: "FF0000", Width: 1.5, Dash: "dot"},
 			Cells: []Cell{
-				{Shape: &ShapeSpec{Geometry: "homePlate"}},
-				{Shape: &ShapeSpec{Geometry: "homePlate"}},
-				{Shape: &ShapeSpec{Geometry: "homePlate"}},
+				{Shape: &ShapeSpec{Geometry: "homePlate", Fill: json.RawMessage(`"accent1"`)}},
+				{Shape: &ShapeSpec{Geometry: "homePlate", Fill: json.RawMessage(`"accent1"`)}},
+				{Shape: &ShapeSpec{Geometry: "homePlate", Fill: json.RawMessage(`"accent1"`)}},
 			},
 		}},
 	}
@@ -1757,15 +1757,15 @@ func TestResolve_ConnectorOnlyOnSpecifiedRows(t *testing.T) {
 			{
 				Connector: &ConnectorSpec{Style: "arrow"},
 				Cells: []Cell{
-					{Shape: &ShapeSpec{Geometry: "rect"}},
-					{Shape: &ShapeSpec{Geometry: "rect"}},
+					{Shape: &ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
+					{Shape: &ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
 				},
 			},
 			{
 				// No connector on this row
 				Cells: []Cell{
-					{Shape: &ShapeSpec{Geometry: "rect"}},
-					{Shape: &ShapeSpec{Geometry: "rect"}},
+					{Shape: &ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
+					{Shape: &ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
 				},
 			},
 		},

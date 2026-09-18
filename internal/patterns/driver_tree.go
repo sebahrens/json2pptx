@@ -15,8 +15,10 @@ import (
 // ---------------------------------------------------------------------------
 //
 // Layout: root node (left) → 2-4 branch nodes (middle) → 1-4 leaf items per
-// branch (right) → optional per-branch annotation column (far right). Connector
-// lines join each branch row across the columns. The pattern is implemented
+// branch (right) → optional per-branch annotation column (far right). Elbow
+// connectors fan out root → each branch → each leaf (the shape-grid row
+// connector follows row_span parents into every child row); the unboxed
+// annotation column is never connected. The pattern is implemented
 // as a shape_grid with row spans, NOT via svggen — svggen's org_chart is for
 // people/role hierarchies and lacks horizontal-decomposition semantics
 // (metric/unit fields).
@@ -275,9 +277,9 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// branch supplies an annotation.
 	var cols []float64
 	if hasAnnotation {
-		cols = []float64{22, 30, 33, 15}
+		cols = []float64{20, 24, 36, 20}
 	} else {
-		cols = []float64{25, 35, 40}
+		cols = []float64{22, 28, 50}
 	}
 	colsJSON, _ := json.Marshal(cols)
 
@@ -300,6 +302,10 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	annotCounter := 0
 	for branchPos, branch := range vals.Branches {
 		branchAccent := ResolveCellAccent(baseAccent, branchPos, cellAccentMode)
+		// Branch nodes are boxed in a light tint of their accent (they used to
+		// be lt1-on-white, i.e. unboxed floating labels) so the elbow
+		// connectors from the root and to the leaves attach to a visible box.
+		branchTone := inactiveTintTone(branchAccent)
 		branchSpan := len(branch.Leaves)
 		annotationText := strings.TrimSpace(branch.Annotation)
 
@@ -314,7 +320,7 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
 						Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-						Text:     buildDriverTreeNodeText(vals.Root.Label, vals.Root.Unit, rootSize, "lt1"),
+						Text:     buildDriverTreeNodeText(vals.Root.Label, vals.Root.Unit, rootSize, readableTextOn(ctx, fillTone{Color: baseAccent}, "lt1")),
 					},
 				}
 				applyDriverTreeOverride(rootCell, cellOverrides, 0, baseAccent)
@@ -327,13 +333,8 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 					RowSpan: branchSpan,
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     json.RawMessage(`"lt1"`),
-						Text:     buildDriverTreeNodeText(branch.Label, branch.Unit, branchSize, "dk1"),
-					},
-					AccentBar: &jsonschema.AccentBarInput{
-						Position: "left",
-						Color:    branchAccent,
-						Width:    4,
+						Fill:     branchTone.fillJSON(),
+						Text:     buildDriverTreeNodeText(branch.Label, branch.Unit, branchSize, readableTextOn(ctx, branchTone, "dk1")),
 					},
 				}
 				applyDriverTreeOverride(branchCell, cellOverrides, branchIdx0+branchPos, branchAccent)
@@ -362,7 +363,7 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 						RowSpan: branchSpan,
 						Shape: &jsonschema.ShapeSpecInput{
 							Geometry: "rect",
-							Fill:     json.RawMessage(`"bg1"`),
+							Fill:     json.RawMessage(`"none"`), // unboxed note: not a connector anchor
 							Text:     buildDriverTreeAnnotationText(pptx.ConvertMarkdownEmphasis(annotationText), leafSize),
 						},
 					}
@@ -390,7 +391,7 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     6,
+		ColGap:  driverTreeColGapPt, // room for the elbow connectors between columns
 		RowGap:  4,
 		Rows:    rows,
 	}
@@ -489,3 +490,7 @@ func applyDriverTreeOverride(cell *jsonschema.GridCellInput, cellOverrides map[i
 		}
 	}
 }
+
+// driverTreeColGapPt is the column gap: wide enough for the elbow
+// connectors (root -> branch -> leaf) to read as a tree.
+const driverTreeColGapPt = 20.0

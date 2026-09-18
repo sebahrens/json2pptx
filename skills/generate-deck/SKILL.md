@@ -969,4 +969,4 @@ A bare string is classified at parse time: bundled name → `name`, `http(s)://`
 
 ## Reference
 
-For complete field specifications (connectors, accent bars, callout geometries, speaker notes, footers, backgrounds, theme overrides, patch operations, all chart/diagram types, and more), see `../template-deck/TEMPLATE_GUIDE.md` or run `json2pptx validate-template <path>`.
+For complete field specifications (connectors, accent bars, callout geometries, speaker notes, footers, backgrounds, theme overrides, patch operations, all chart/diagram types, and more), see `../template-deck/TEMPLATE_GUIDE.md` or run `json2pptx validate-template <path>`. Row `connector`s only join **visible** cells (a fill or outline — unboxed text and spacers are skipped) and fan out from a `row_span` parent to each child with elbow routing.

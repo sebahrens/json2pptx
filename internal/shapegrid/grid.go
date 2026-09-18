@@ -271,38 +271,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 		}
 	}
 
-	// Generate connectors between adjacent cells in rows that have a connector spec
-	var connectors []ResolvedConnector
-	for r, row := range grid.Rows {
-		if row.Connector == nil || len(rowCellIDs[r]) < 2 {
-			continue
-		}
-		for i := 0; i < len(rowCellIDs[r])-1; i++ {
-			srcCell := cells[rowCellIDs[r][i]]
-			tgtCell := cells[rowCellIDs[r][i+1]]
-
-			// Route connector between actual shape edges (not cell bounds)
-			srcOpts := pptx.ShapeOptions{Bounds: srcCell.Bounds}
-			tgtOpts := pptx.ShapeOptions{Bounds: tgtCell.Bounds}
-			if srcCell.ShapeSpec != nil {
-				srcOpts.Geometry = pptx.PresetGeometry(srcCell.ShapeSpec.Geometry)
-			}
-			if tgtCell.ShapeSpec != nil {
-				tgtOpts.Geometry = pptx.PresetGeometry(tgtCell.ShapeSpec.Geometry)
-			}
-			bounds, startSite, endSite := pptx.RouteBetween(srcOpts, tgtOpts)
-
-			connectors = append(connectors, ResolvedConnector{
-				Bounds:    bounds,
-				ID:        alloc.Alloc(),
-				Spec:      row.Connector,
-				SourceID:  srcCell.ID,
-				TargetID:  tgtCell.ID,
-				StartSite: startSite,
-				EndSite:   endSite,
-			})
-		}
-	}
+	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
 
 	return &ResolveResult{
 		Cells:        cells,
