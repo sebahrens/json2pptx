@@ -13,8 +13,13 @@ Each element MUST use EXACTLY these fields and allowed values:
   "severity": "P0" | "P1" | "P2" | "P3",
   "category": "<one of the allowed categories below>",
   "description": "<what is wrong>",
-  "location": "<where on the slide>"
+  "location": "<where on the slide>",
+  "bbox": {"x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0}
 }
+
+"bbox" is OPTIONAL: the tight box around the defect as fractions (0–1) of the
+slide width/height (x,y = top-left). Include it whenever the defect is local to
+one element so the repair can target that element; omit it for slide-wide issues.
 
 Allowed categories (use these strings exactly):
   text_overflow, text_truncation, contrast, alignment, spacing, overlap,

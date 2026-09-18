@@ -664,6 +664,7 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
                 "category":    {"type": "string", "description": "text_overflow | text_truncation | contrast | alignment | spacing | overlap | missing_content | font_size | visual_hierarchy | chart_readability | table_readability | image_quality | layout_balance | color_consistency | border_style | footer_clearance | aspect_ratio"},
                 "description": {"type": "string"},
                 "location":    {"type": "string"},
+                "bbox":        {"type": "object", "description": "Optional defect region as fractions (0-1) of the slide; propose_repairs hit-tests it against generated cell bounds to target an element path.", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "w": {"type": "number"}, "h": {"type": "number"}}, "required": ["x", "y", "w", "h"]},
                 "source":      {"type": "string", "enum": ["vision", "heuristic"], "description": "Which checker produced this finding. Heuristic findings are advisory and may have higher false-positive rates."},
                 "suggested_fixes": {
                   "type": "array",

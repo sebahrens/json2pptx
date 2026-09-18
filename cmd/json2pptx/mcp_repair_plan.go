@@ -144,6 +144,10 @@ type proposeRepairsFinding struct {
 	Description    string                  `json:"description,omitempty"`
 	Location       string                  `json:"location,omitempty"`
 	SuggestedFixes []visualqa.SuggestedFix `json:"suggested_fixes,omitempty"`
+	// BBox is the optional defect region in normalized slide coordinates
+	// ({x,y,w,h} fractions of the slide); hit-tested against generated
+	// element bounds to target a specific cell path.
+	BBox *visualqa.BBox `json:"bbox,omitempty"`
 }
 
 // --- Tool definition ---
@@ -154,7 +158,7 @@ func mcpProposeRepairsTool() mcp.Tool {
 
 Accepts two finding shapes (polymorphic, mixed input is fine):
 - Fit findings: {path, code, message, action, fix:{kind,params}, slide_index?} — emitted by generate_presentation(fit_report=true) and validate_input. (repair_slide / repair_slides_batch now return residual findings as a FindingEnvelope under "findings", a different shape — feed propose_repairs from a fit_report or validate_input instead.)
-- Visual QA findings: {slide_index, slide_type, severity, category, suggested_fixes:[{kind,params}], description, location} — emitted by inspect_slide_images.
+- Visual QA findings: {slide_index, slide_type, severity, category, suggested_fixes:[{kind,params}], description, location, bbox?} — emitted by inspect_slide_images. bbox is {x,y,w,h} as fractions (0–1) of the slide; when present it is hit-tested against the generated shape_grid cell bounds so directives target that cell's path (/slides/N/shape_grid/rows/R/cells/C, also threaded into reduce_cell_text's cell_path) instead of the whole slide.
 
 For each finding the tool:
 1. Resolves the target slide (from finding.slide_index, finding.path /slides/N, or fix.params.path).
@@ -214,7 +218,14 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 		return argMissing("propose_repairs", "findings", "array", []any{map[string]any{"code": "BODY_TOO_LONG", "slide_index": 0, "path": "slides[0].content.body"}}, nil), nil
 	}
 
-	output := proposeRepairs(&input, findings)
+	var geom *deckGeometry
+	for _, f := range findings {
+		if f.BBox != nil {
+			geom = loadDeckGeometry(input.Template, mc.templatesDir)
+			break
+		}
+	}
+	output := proposeRepairsWithGeometry(&input, findings, geom)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
 	if err != nil {
@@ -232,7 +243,15 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 // full presentation in its args_template so the call is directly submittable
 // to repair_slide — without this slot the agent gets MISSING_PARAMETER.
 func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) proposeRepairsOutput {
+	return proposeRepairsWithGeometry(input, findings, nil)
+}
+
+// proposeRepairsWithGeometry is proposeRepairs with the template geometry used
+// to hit-test visual findings' bboxes against generated element bounds. A nil
+// geometry uses default slide dimensions and grid bounds.
+func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepairsFinding, geom *deckGeometry) proposeRepairsOutput {
 	slideCount := len(input.Slides)
+	elements := &elementBoxCache{input: input, geom: geom}
 	revision := presentationRevision(input)
 
 	// Marshal the presentation once into a generic map so each emitted
@@ -286,15 +305,16 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 			findingCounts[slideIdx]++
 			mappedFindings++
 			score := scoreFinding(f, "")
+			visualPath := elements.visualPath(f.BBox, slideIdx)
 			source := directiveSource{
 				Type:     "visual",
 				Category: f.Category,
 				Severity: normalizeSeverity(f.Severity),
-				Path:     buildVisualPath(slideIdx),
+				Path:     visualPath,
 				Message:  f.Description,
 			}
 			for ci, cand := range candidates {
-				dir := buildDirective(cand.Kind, cand.Params, slideIdx, source, presentationObj, revision, score-ci /* preserve candidate order within a finding */)
+				dir := buildDirective(cand.Kind, elementTargetParams(cand.Kind, cand.Params, visualPath), slideIdx, source, presentationObj, revision, score-ci /* preserve candidate order within a finding */)
 				buckets[slideIdx] = append(buckets[slideIdx], bucketEntry{directive: dir, score: score - ci})
 			}
 			continue
@@ -572,10 +592,62 @@ func reasonForVisualCategory(category string) string {
 	return "no_fix_for_category"
 }
 
-// buildVisualPath constructs a slide-scoped path for visual QA findings that
-// otherwise have no path (they only carry slide_index).
+// buildVisualPath constructs the slide-scoped fallback path for visual QA
+// findings that carry no bbox (or whose bbox hits no generated element).
+// Findings with a bbox are first hit-tested against the slide's generated
+// element bounds (visualElementBoxes + visualqa.ElementPathAt) so directives
+// target the specific shape_grid cell.
 func buildVisualPath(slideIdx int) string {
 	return slidepath.Slide(slideIdx)
+}
+
+// elementBoxCache lazily computes and memoizes per-slide generated element
+// bounds for visual-finding hit-testing.
+type elementBoxCache struct {
+	input *PresentationInput
+	geom  *deckGeometry
+	m     map[int][]visualqa.ElementBox
+}
+
+// visualPath returns the element path a visual finding's bbox hits on the
+// slide, or the slide-level buildVisualPath fallback.
+func (c *elementBoxCache) visualPath(bbox *visualqa.BBox, slideIdx int) string {
+	if bbox == nil {
+		return buildVisualPath(slideIdx)
+	}
+	if c.m == nil {
+		c.m = make(map[int][]visualqa.ElementBox)
+	}
+	boxes, ok := c.m[slideIdx]
+	if !ok {
+		boxes = visualElementBoxes(c.input, slideIdx, c.geom)
+		c.m[slideIdx] = boxes
+	}
+	if p, hit := visualqa.ElementPathAt(*bbox, boxes); hit {
+		return p
+	}
+	return buildVisualPath(slideIdx)
+}
+
+// elementTargetParams threads an element-level visual path into a candidate
+// fix's params when the fix kind addresses a single cell: reduce_cell_text
+// needs cell_path. Caller-supplied params win; the input map is not mutated.
+func elementTargetParams(kind string, params map[string]any, path string) map[string]any {
+	if kind != "reduce_cell_text" {
+		return params
+	}
+	if _, _, _, ok := slidepath.ParseGridCell(path); !ok {
+		return params
+	}
+	if _, set := params["cell_path"]; set {
+		return params
+	}
+	out := make(map[string]any, len(params)+1)
+	for k, v := range params {
+		out[k] = v
+	}
+	out["cell_path"] = path
+	return out
 }
 
 // isRepairFixKind reports whether kind is in the set of fix kinds that

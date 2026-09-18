@@ -384,7 +384,7 @@ func (mc *mcpConfig) runVisualQALoop(
 			break
 		}
 
-		proposed := proposeRepairs(input, visualFindingsToProposeFindings(actionable))
+		proposed := proposeRepairsWithGeometry(input, visualFindingsToProposeFindings(actionable), &deckGeometry{Layouts: layouts, SlideWidth: slideWidth, SlideHeight: slideHeight, Metadata: templateMetadata})
 		entry.ProposedRepairs = flattenProposedRepairs(proposed)
 
 		// Stage the repairs atomically: apply them, re-render, and roll back the
@@ -673,6 +673,7 @@ func visualFindingsToProposeFindings(findings []visualqa.Finding) []proposeRepai
 			Description:    f.Description,
 			Location:       f.Location,
 			SuggestedFixes: f.SuggestedFixes,
+			BBox:           f.BBox,
 		})
 	}
 	return out

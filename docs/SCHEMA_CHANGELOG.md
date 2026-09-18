@@ -14,6 +14,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   proposing `repair_slide` → `split_pattern{path, first}`; pass
   `confirm_semantic_change: true` to override. `split_pattern` accepts an
   optional `path` that splits a `pattern.values` array across two slides.
+- **Visual findings carry an optional `bbox`** (`{x,y,w,h}`, fractions of the
+  slide) on `inspect_slide_images` findings and `propose_repairs` visual input.
+  `propose_repairs` hit-tests it against the generated shape_grid cell bounds
+  (patterns are expanded first) and targets the element path
+  (`/slides/N/shape_grid/rows/R/cells/C`, also set as `reduce_cell_text`
+  `cell_path`) instead of the whole slide; no bbox or no hit keeps the slide path.
 
 ## 4.58.0 (2026-05-30)
 
