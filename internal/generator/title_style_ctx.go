@@ -1,0 +1,84 @@
+package generator
+
+import (
+	"encoding/xml"
+	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/utils"
+)
+
+// TitleFitContext holds the state for measured title fitting: the theme's
+// heading font and a per-master cache of inherited title styles.
+type TitleFitContext struct {
+	titleFontName   string                                 // theme major (heading) font
+	titleStyleCache map[string]template.InheritedTextStyle // masterPath -> inherited title style (lazy)
+}
+
+// masterPathForLayout returns the ZIP path of the slide master a layout
+// inherits from, or "" when it cannot be resolved.
+func (ctx *singlePassContext) masterPathForLayout(layoutID string) string {
+	relsData, err := ctx.readFileWithSyntheticFallback(LayoutRelsPath(layoutID))
+	if err != nil {
+		return ""
+	}
+	var rels pptx.RelationshipsXML
+	if err := xml.Unmarshal(relsData, &rels); err != nil {
+		return ""
+	}
+	for _, rel := range rels.Relationships {
+		if rel.Type == pptx.RelTypeSlideMaster {
+			return template.ResolveRelativePath(strings.TrimSuffix(PathSlideLayouts, "/"), rel.Target)
+		}
+	}
+	return ""
+}
+
+// inheritedTitleStyle returns the title text style (size, caps, line spacing,
+// typeface) the layout's title placeholder inherits from its slide master.
+// Results are cached per master. ok is false when the master has no usable
+// title style.
+func (ctx *singlePassContext) inheritedTitleStyle(layoutID string) (template.InheritedTextStyle, bool) {
+	masterPath := ctx.masterPathForLayout(layoutID)
+	if masterPath == "" {
+		return template.InheritedTextStyle{}, false
+	}
+	if ctx.titleStyleCache == nil {
+		ctx.titleStyleCache = make(map[string]template.InheritedTextStyle)
+	}
+	st, cached := ctx.titleStyleCache[masterPath]
+	if !cached {
+		if data, err := utils.ReadFileFromZipIndex(ctx.templateIndex, masterPath); err == nil {
+			st = template.ParseMasterTitleStyle(data)
+		}
+		ctx.titleStyleCache[masterPath] = st
+	}
+	return st, st.SizeHPt > 0
+}
+
+// titleAutofitOptions returns the autofit options for a title placeholder on
+// the given layout: the inherited master title style (so measured fit uses the
+// real size / caps / line spacing) and the title role (TITLE_OVERFLOW instead
+// of paragraph trimming).
+func (ctx *singlePassContext) titleAutofitOptions(layoutID string) []autofitOption {
+	opts := []autofitOption{withTitleRole()}
+	if st, ok := ctx.inheritedTitleStyle(layoutID); ok {
+		fontName := resolveStyleFontName(st.Typeface, ctx.titleFontName, ctx.themeFontName)
+		if fontName == "" {
+			fontName = ctx.titleFontName
+		}
+		opts = append(opts, withInheritedTextStyle(st, fontName))
+	}
+	return opts
+}
+
+// isTitleShape reports whether a slide shape is a title placeholder
+// (type="title" or "ctrTitle").
+func isTitleShape(shape *shapeXML) bool {
+	ph := shape.NonVisualProperties.NvPr.Placeholder
+	if ph == nil {
+		return false
+	}
+	return ph.Type == "title" || ph.Type == "ctrTitle"
+}

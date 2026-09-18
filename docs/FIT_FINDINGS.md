@@ -157,6 +157,29 @@ Title text wraps to multiple lines within its placeholder. This is common and of
 }
 ```
 
+### `TITLE_OVERFLOW`
+
+**Action:** `shrink_or_split`
+**Pattern:** `placeholder`
+**Fix kind:** `shorten_title`
+
+The title does not fit its title placeholder even at the minimum autofit size (60% font scale, or the readability floor if higher, plus the maximum 20% line-spacing reduction). Title placeholders on generated slides usually inherit their geometry from the layout and their font size, all-caps and line spacing from the slide master's `titleStyle`; the measurement resolves all of these (e.g. modern-template: 45pt, `cap="all"`, 80% line spacing) and measures with exact glyph widths.
+
+Emitted at render time (generate). When the title fits by shrinking, the generator writes the reduced size (and any line-spacing reduction) explicitly into the title runs instead of relying on `<a:normAutofit fontScale>` — LibreOffice ignores the stored scale and re-shrinks by compressing line spacing, which made long title lines collide.
+
+`fix.params`: `current_chars`, `max_chars` (longest word-prefix length that fits at the minimum size), `font_pt` (template size), `min_font_pt`.
+
+```json
+{
+  "pattern": "placeholder",
+  "path": "/slides/1/content/title",
+  "code": "TITLE_OVERFLOW",
+  "message": "title (212 chars) does not fit its 11.4\"x1.2\" title placeholder even at 27pt (template size 45pt); lines will collide or spill",
+  "fix": { "kind": "shorten_title", "params": { "current_chars": 212, "max_chars": 118, "font_pt": 45, "min_font_pt": 27 } },
+  "action": "shrink_or_split"
+}
+```
+
 ### `slide_bounds_overflow`
 
 **Action:** `shrink_or_split`

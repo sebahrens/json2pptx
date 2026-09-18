@@ -76,6 +76,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `CUSTOM_COLOR_DROPPED` | In **constrained** mode, a diagram's data payload embeds raw hex colors in per-item fields (e.g. `pyramid` `levels[].color`) that the engine ignores in favor of the template scheme. Advisory — never blocks (`action: info`; MCP `warning` severity). `fix.kind: set_design_mode_free`, `fix.params: {path, dropped_colors}`. Agent action: rerun with `design_mode: "free"` to honor the custom colors, or accept the template scheme. Scheme-color names in the same payload are allowed and not reported |
 | `text_trimmed` | Trailing paragraphs trimmed to fit placeholder |
 | `text_overflow` | Text still overflows placeholder after trimming |
+| `TITLE_OVERFLOW` | Title does not fit its resolved title placeholder even at the minimum autofit size, measured with the template's inherited title style (master size, all-caps, line spacing) and exact glyph widths. When a long title *does* fit by shrinking, the generator bakes the reduced size into the title runs instead (no finding). `action: shrink_or_split`, `fix.kind: shorten_title`, `fix.params: {current_chars, max_chars, font_pt, min_font_pt}`. Agent action: shorten the title to ≤ `max_chars` or move detail into the body/takeaway |
 | `readability_trimmed` | Paragraphs trimmed for readability floor |
 | `no_autofit_overflow` | Text overflows placeholder that has `noAutofit` set |
 | `table_rows_truncated` | Table rows truncated to fit row height |

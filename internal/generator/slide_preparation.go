@@ -473,9 +473,11 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
 		findingPath := slidepath.Content(slideIndex, item.PlaceholderID)
-		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName,
-			withFindingsCollector(&ctx.fitFindings, findingPath),
-		); err != nil {
+		autofitOpts := []autofitOption{withFindingsCollector(&ctx.fitFindings, findingPath)}
+		if isTitleShape(shape) {
+			autofitOpts = append(autofitOpts, ctx.titleAutofitOptions(layoutID)...)
+		}
+		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName, autofitOpts...); err != nil {
 			warnings = append(warnings, err.Error())
 		}
 

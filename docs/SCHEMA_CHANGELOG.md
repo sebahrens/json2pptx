@@ -4,6 +4,21 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased (deck-quality lane L7)
+
+### Added
+
+- **`TITLE_OVERFLOW` fit finding** (`action: shrink_or_split`, `fix.kind: shorten_title`,
+  `fix.params: {current_chars, max_chars, font_pt, min_font_pt}`). Emitted by
+  `generate` when a title cannot fit its resolved title placeholder at the
+  minimum autofit size, measured with the master's inherited title style.
+
+### Changed
+
+- Title placeholders that fit by shrinking now carry the reduced size as an
+  explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
+  `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

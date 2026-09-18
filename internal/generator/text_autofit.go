@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
@@ -27,6 +28,32 @@ type autofitConfig struct {
 	minFontScalePct     int // override textfit min font scale floor (default 0 = use textfit default 60%)
 	findings            *[]patterns.FitFinding // optional collector for render-time findings
 	findingPath         string                 // JSON path prefix for findings (e.g. "slides[0].content.body")
+
+	// inherited is the text style the placeholder inherits from the slide
+	// master (size / caps / line spacing), used when the shape carries no
+	// explicit value. nil = unknown (legacy defaults).
+	inherited *template.InheritedTextStyle
+	// inheritedFontName is the concrete font family for the inherited style
+	// (theme tokens already resolved).
+	inheritedFontName string
+	// isTitle marks a title placeholder: overflow is reported as
+	// TITLE_OVERFLOW and no paragraphs are trimmed.
+	isTitle bool
+}
+
+// withInheritedTextStyle supplies the placeholder's inherited (master) text
+// style so measured autofit uses the real rendered size, caps and line
+// spacing (go-slide-creator-6cjs).
+func withInheritedTextStyle(st template.InheritedTextStyle, fontName string) autofitOption {
+	return func(c *autofitConfig) {
+		c.inherited = &st
+		c.inheritedFontName = fontName
+	}
+}
+
+// withTitleRole marks the shape as a title placeholder.
+func withTitleRole() autofitOption {
+	return func(c *autofitConfig) { c.isTitle = true }
 }
 
 // withThemeFont sets the theme font name for autofit calculations.
@@ -105,6 +132,12 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	}
 
 	params := buildTextfitParams(shape, widthEMU, heightEMU, texts, &cfg)
+	if cfg.isTitle {
+		// Titles are measured with correct glyph widths (see
+		// textfit.Params.ExactWidths) so long titles get a real fontScale
+		// or a TITLE_OVERFLOW finding instead of colliding lines.
+		params.ExactWidths = true
+	}
 
 	result, err := textfit.Calculate(params)
 	if err != nil {
@@ -118,6 +151,21 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// Default threshold is 62500 (62.5% → ~12.5pt for 20pt base font).
 	// Callers can lower this for dense content like 4+ bullet groups where
 	// preserving all authored content is more important than larger font size.
+	// Titles are a single statement: never trim paragraphs. When the title
+	// cannot fit even at the minimum scale, keep the maximum reduction and
+	// report TITLE_OVERFLOW so the author shortens it.
+	if cfg.isTitle {
+		if result.Overflow && cfg.findings != nil {
+			*cfg.findings = append(*cfg.findings, newTitleOverflowFinding(cfg.findingPath, strings.Join(texts, " "), params, result))
+		}
+		// Bake the fit into explicit sizes / line spacing (renderers that
+		// recompute autofit would otherwise squash the lines together) and
+		// keep a bare normAutofit as the shrink safety net.
+		bakeTitleFit(shape, params, result)
+		bp.Inner += `<a:normAutofit/>`
+		return
+	}
+
 	if result.FontScale > 0 && result.FontScale < cfg.readabilityMinScale && len(texts) > 6 {
 		result = trimForReadability(shape, params, cfg.readabilityMinScale, &cfg)
 	}
@@ -210,16 +258,38 @@ func applyZeroDimensionAutofit(bp *bodyPropertiesXML, shape *shapeXML, cfg *auto
 func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []string, cfg *autofitConfig) textfit.Params {
 	fontSizeHPt := extractFontSizeFromShape(shape)
 	fontName := extractFontNameFromShape(shape)
+	if strings.HasPrefix(fontName, "+") {
+		fontName = "" // theme token, not a family — resolve below
+	}
+
+	// Inherited (master) style: the shape's own lstStyle overrides the master.
+	var style *template.InheritedTextStyle
+	if cfg.inherited != nil {
+		st := *cfg.inherited
+		if shape.TextBody.ListStyle != nil {
+			st = st.OverrideFromListStyle(shape.TextBody.ListStyle.Inner)
+		}
+		style = &st
+		if fontName == "" && cfg.inheritedFontName != "" {
+			fontName = cfg.inheritedFontName
+		}
+	}
 	if fontName == "" && cfg.themeFontName != "" {
 		fontName = cfg.themeFontName // Use theme font when shape has no explicit typeface
 	}
 
 	// When the font size is inherited from the slide master (not explicit in the shape),
 	// the master's bodyStyle typically adds spcBef + spcAft (~10pt + 2pt = 12pt per paragraph).
-	// Account for this extra spacing in the height estimate.
+	// Account for this extra spacing in the height estimate. When the inherited
+	// style is known, use its real size and space-before instead.
 	var extraSpacingPt float64
 	if fontSizeHPt == 0 {
-		extraSpacingPt = 12.0 // typical slide master spcBef + spcAft
+		if style != nil && style.SizeHPt > 0 {
+			fontSizeHPt = style.SizeHPt
+			extraSpacingPt = style.SpcBefPt
+		} else {
+			extraSpacingPt = 12.0 // typical slide master spcBef + spcAft
+		}
 	}
 
 	// Extract per-paragraph spacings from explicit spcBef values in paragraph properties.
@@ -231,7 +301,7 @@ func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []stri
 	// Bullet paragraphs inherit left margins that reduce the available width for wrapping.
 	leftMargins := extractParagraphLeftMargins(shape.TextBody.Paragraphs, shape.TextBody.ListStyle)
 
-	return textfit.Params{
+	params := textfit.Params{
 		WidthEMU:        widthEMU,
 		HeightEMU:       heightEMU,
 		FontSizeHPt:     fontSizeHPt,
@@ -242,6 +312,10 @@ func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []stri
 		LeftMarginsPt:   leftMargins,
 		MinFontScalePct: cfg.minFontScalePct,
 	}
+	if style != nil {
+		applyInheritedStyleToParams(&params, *style)
+	}
+	return params
 }
 
 // buildNormAutofitElement renders the OOXML <a:normAutofit/> element from a

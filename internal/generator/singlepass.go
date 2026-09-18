@@ -347,6 +347,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 	ctx.themeColors = themeInfo.Colors
 	ctx.whiteTextSafeHex = computeWhiteTextSafeHex(themeInfo.Colors)
 	ctx.themeFontName = themeInfo.BodyFont
+	ctx.titleFontName = themeInfo.TitleFont
 
 	// Detect logo images in slide layouts so title/diagram positions can be adjusted
 	ctx.logoZones = detectLogoZones(&ctx.templateReader.Reader, ctx.templateIndex)

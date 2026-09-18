@@ -79,8 +79,16 @@ type Params struct {
 	// lists can set this lower (e.g., 45) to allow more text to fit before
 	// overflow trimming kicks in.
 	MinFontScalePct int
-	ViewingMode     tokens.ViewingMode
-	TextRole        tokens.TextRole
+	// ExactWidths measures glyph advances at the real point size. The legacy
+	// path builds the canvas font face at fontPt*ptToMM, which renders glyphs
+	// ~2.83x too narrow (canvas faces take a size in points and report
+	// widths in mm). Existing autofit thresholds and corpora are calibrated
+	// against the legacy widths, so correct measurement is opt-in; title fit
+	// (go-slide-creator-6cjs) uses it because under-measured titles were
+	// written without a fontScale and collided when rendered.
+	ExactWidths bool
+	ViewingMode tokens.ViewingMode
+	TextRole    tokens.TextRole
 }
 
 const (
@@ -173,7 +181,7 @@ func Calculate(p Params) (FitResult, error) {
 		scale := float64(scalePct) / 100.0
 		scaledFontPt := fontSizePt * scale
 
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, p.ExactWidths)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, scalePct*1000, p.ViewingMode, p.TextRole)
@@ -191,7 +199,7 @@ func Calculate(p Params) (FitResult, error) {
 	scaledFontPt := fontSizePt * minScaleF
 	for lnReduction := 5; lnReduction <= maxLnSpcReductionPct; lnReduction += 5 {
 		reducedSpacing := p.LineSpacing * (1.0 - float64(lnReduction)/100.0)
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, p.ExactWidths)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
@@ -218,8 +226,13 @@ func Calculate(p Params) (FitResult, error) {
 // extraSpacingPt is the default per-paragraph spacing (e.g., spcBef + spcAft from slide master).
 // perParaSpacings overrides extraSpacingPt for each corresponding paragraph index.
 // leftMargins is per-paragraph left margin in points (from bullet marL); reduces available width.
-func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64) float64 {
-	face := ff.Face(fontSizePt*ptToMM, color.Black, canvas.FontRegular, canvas.FontNormal)
+// exactWidths selects correct glyph-width measurement (see Params.ExactWidths).
+func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64, exactWidths bool) float64 {
+	faceSize := fontSizePt * ptToMM
+	if exactWidths {
+		faceSize = fontSizePt // canvas faces take points; widths come back in mm
+	}
+	face := ff.Face(faceSize, color.Black, canvas.FontRegular, canvas.FontNormal)
 
 	lineHeightPt := fontSizePt * lineSpacing
 	var totalHeight float64
@@ -343,7 +356,7 @@ func MeasureHeight(p Params) (int64, error) {
 		return 0, ErrNoFontCache
 	}
 
-	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, p.ExactWidths)
 	return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
 }
 
