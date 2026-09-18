@@ -37,11 +37,11 @@ type BulletTextOptions struct {
 func ParseBulletText(text string, opts BulletTextOptions) []Paragraph {
 	bulletChar := opts.BulletChar
 	if bulletChar == "" {
-		bulletChar = "\u2022"
+		bulletChar = DefaultBulletChar
 	}
 	bulletFont := opts.BulletFont
 	if bulletFont == "" {
-		bulletFont = "Arial"
+		bulletFont = DefaultBulletFont
 	}
 
 	lines := strings.Split(text, "\n")
@@ -126,3 +126,14 @@ func ParseNumberedPrefix(line string) (int, string, bool) {
 	}
 	return num, line[dotIdx+2:], true
 }
+
+
+// DefaultBulletChar and DefaultBulletFont are the bullet glyph and the buFont
+// it must be resolved in. A <a:buChar> without a <a:buFont> is looked up in the
+// theme font, which may not carry U+2022 at all — renderers then substitute a
+// different glyph in the bullet colour (go-slide-creator-2zej). Every caller
+// that sets a bullet character should name this font.
+const (
+	DefaultBulletChar = "\u2022"
+	DefaultBulletFont = "Arial"
+)

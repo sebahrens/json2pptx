@@ -3,6 +3,8 @@ package generator
 import (
 	"encoding/xml"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -470,4 +472,113 @@ func TestPorterDefaultLabel(t *testing.T) {
 			}
 		})
 	}
+}
+
+// go-slide-creator-2zej: connectorPairs assumed rect connection site 1 = right
+// and 3 = left, but OOXML lists rect sites counter-clockwise from the top
+// (0 = top, 1 = left, 2 = bottom, 3 = right). Both horizontal connectors
+// therefore attached to the FAR side of their box and ran straight through its
+// text into Rivalry. Sites must come from pptx.ConnectionSiteIndex so this
+// cannot drift from the shapegrid connector code again.
+func TestPorterConnectorSites(t *testing.T) {
+	xml := generatePorterFiveForcesXMLForTest(t)
+
+	type link struct{ from, to string }
+	// The side each connector must leave / enter, expressed as the canonical
+	// site index for a roundRect.
+	want := map[link][2]int{
+		{"Threat of New Entrants", "Competitive Rivalry"}: {
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideBottom),
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideTop),
+		},
+		{"Threat of Substitutes", "Competitive Rivalry"}: {
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideTop),
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideBottom),
+		},
+		{"Supplier Power", "Competitive Rivalry"}: {
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideRight),
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideLeft),
+		},
+		{"Buyer Power", "Competitive Rivalry"}: {
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideLeft),
+			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideRight),
+		},
+	}
+
+	names := map[string]string{}
+	for _, m := range regexp.MustCompile(`<p:cNvPr id="(\d+)" name="Porter ([^"]*)"`).FindAllStringSubmatch(xml, -1) {
+		names[m[1]] = m[2]
+	}
+
+	starts := regexp.MustCompile(`<a:stCxn id="(\d+)" idx="(\d+)"/>`).FindAllStringSubmatch(xml, -1)
+	ends := regexp.MustCompile(`<a:endCxn id="(\d+)" idx="(\d+)"/>`).FindAllStringSubmatch(xml, -1)
+	if len(starts) != 4 || len(ends) != 4 {
+		t.Fatalf("expected 4 connectors, got %d stCxn / %d endCxn", len(starts), len(ends))
+	}
+
+	got := map[link][2]int{}
+	for i := range starts {
+		fromName := names[starts[i][1]]
+		toName := names[ends[i][1]]
+		fromIdx, _ := strconv.Atoi(starts[i][2])
+		toIdx, _ := strconv.Atoi(ends[i][2])
+		got[link{fromName, toName}] = [2]int{fromIdx, toIdx}
+	}
+
+	for l, sites := range want {
+		g, ok := got[l]
+		if !ok {
+			t.Errorf("no connector from %q to %q; got %v", l.from, l.to, got)
+			continue
+		}
+		if g != sites {
+			t.Errorf("%s -> %s attaches at sites %v, want %v (a wrong site routes the line through the box text)",
+				l.from, l.to, g, sites)
+		}
+	}
+}
+
+// The factor bullets must name their buFont: a <a:buChar> resolved in the theme
+// font can fall back to a different glyph (the reported stray "*").
+func TestPorterFactorBulletsDeclareBuFont(t *testing.T) {
+	xml := generatePorterFiveForcesXMLForTest(t)
+
+	chars := regexp.MustCompile(`<a:buChar char="([^"]*)"/>`).FindAllStringSubmatch(xml, -1)
+	if len(chars) == 0 {
+		t.Fatal("no bullet characters emitted for the factor lists")
+	}
+	for _, c := range chars {
+		if c[1] != pptx.DefaultBulletChar {
+			t.Errorf("bullet char = %q, want %q", c[1], pptx.DefaultBulletChar)
+		}
+	}
+	fonts := regexp.MustCompile(`<a:buFont typeface="([^"]*)"/>`).FindAllStringSubmatch(xml, -1)
+	if len(fonts) != len(chars) {
+		t.Errorf("%d buChar but %d buFont — a bullet without a buFont may substitute a different glyph",
+			len(chars), len(fonts))
+	}
+	for _, f := range fonts {
+		if f[1] != pptx.DefaultBulletFont {
+			t.Errorf("buFont = %q, want %q", f[1], pptx.DefaultBulletFont)
+		}
+	}
+}
+
+// generatePorterFiveForcesXMLForTest builds the native Porter shape group XML
+// for a complete five-force spec.
+func generatePorterFiveForcesXMLForTest(t *testing.T) string {
+	t.Helper()
+	panels := []nativePanelData{
+		{title: "Competitive Rivalry", value: string(porterRivalry) + ":0.5", body: "- Three scaled players"},
+		{title: "Supplier Power", value: string(porterSupplier) + ":0.4", body: "- Two key vendors"},
+		{title: "Buyer Power", value: string(porterBuyer) + ":0.7", body: "- Concentrated demand"},
+		{title: "Threat of New Entrants", value: string(porterNewEntrant) + ":0.3", body: "- High capital need"},
+		{title: "Threat of Substitutes", value: string(porterSubstitute) + ":0.5", body: "- In-house build"},
+	}
+	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9144000, Height: 5143500}
+	xml := generatePortersFiveGroupXML(panels, bounds, 100)
+	if xml == "" {
+		t.Fatal("generatePortersFiveGroupXML returned empty XML")
+	}
+	return xml
 }

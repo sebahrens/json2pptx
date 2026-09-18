@@ -439,16 +439,30 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 
 	// Generate connectors between center and peripherals.
 	// Each connector goes from the peripheral toward the center (arrow points to center).
+	// Sites are resolved through pptx.ConnectionSiteIndex rather than written
+	// as literals. The horizontal pairs used to assume rect site 1 = right and
+	// 3 = left, but OOXML lists rect sites counter-clockwise from the top
+	// (0 = top, 1 = left, 2 = bottom, 3 = right), so both connectors attached to
+	// the FAR side of their box and ran straight through its text into Rivalry.
+	// The same literals were corrected for shapegrid in 13e4292; this caller was
+	// missed (go-slide-creator-2zej). Naming the sides keeps them in step.
+	site := func(sd pptx.ConnectionSide) int {
+		return pptx.ConnectionSiteIndex(pptx.GeomRoundRect, sd)
+	}
 	connectorPairs := []struct {
 		from     porterForceType
 		to       porterForceType
 		fromSite int // Connection site on 'from' shape
 		toSite   int // Connection site on 'to' shape
 	}{
-		{porterNewEntrant, porterRivalry, 2, 0},  // top bottom → center top
-		{porterSubstitute, porterRivalry, 0, 2},  // bottom top → center bottom
-		{porterSupplier, porterRivalry, 1, 3},     // left right → center left
-		{porterBuyer, porterRivalry, 3, 1},        // right left → center right
+		// New entrants sit above Rivalry: leave its bottom, enter Rivalry's top.
+		{porterNewEntrant, porterRivalry, site(pptx.SideBottom), site(pptx.SideTop)},
+		// Substitutes sit below: leave its top, enter Rivalry's bottom.
+		{porterSubstitute, porterRivalry, site(pptx.SideTop), site(pptx.SideBottom)},
+		// Suppliers sit to the left: leave its right, enter Rivalry's left.
+		{porterSupplier, porterRivalry, site(pptx.SideRight), site(pptx.SideLeft)},
+		// Buyers sit to the right: leave its left, enter Rivalry's right.
+		{porterBuyer, porterRivalry, site(pptx.SideLeft), site(pptx.SideRight)},
 	}
 
 	for _, cp := range connectorPairs {
@@ -539,7 +553,13 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 			paras = append(paras, pptx.Paragraph{
 				Align: "l",
 				Bullet: &pptx.BulletDef{
-					Char:  "\u2022",
+					Char: "\u2022",
+					// Without a buFont the bullet glyph is resolved in the
+					// theme font, where U+2022 may be absent — LibreOffice
+					// then substitutes, which is the stray "*" marker reported
+					// in the bullet colour (go-slide-creator-2zej). Arial is
+					// the same buFont pptx.BulletOptions defaults to.
+					Font:  pptx.DefaultBulletFont,
 					Color: pptx.SchemeFill(scheme),
 				},
 				Runs: []pptx.Run{{
