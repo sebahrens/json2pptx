@@ -33,6 +33,19 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`shorten_title` no longer truncates titles into fragments
+  (go-slide-creator-28zf).** It byte-sliced at `max_length`, producing
+  "Workstream 1: Our comprehensive enterprise-wide di" — cut mid-word — while
+  the deck's score went UP for having meaningless titles. It now cuts at a word
+  boundary (never mid-word, never mid-rune), drops a dangling colon or trailing
+  function word, and **refuses** with `semantic_review_required` when the cut
+  would leave a fragment: fewer than 3 words, or half the headline or more
+  removed. It also accepts `max_words` as well as `max_length`, so the directive
+  `HEADLINE_TOO_LONG` carries and a call constructed from `repair_slide`'s own
+  description behave identically — that finding now supplies both params, and
+  switches its `fix.kind` to `review` when the headline is more than twice the
+  budget, because that is a rewrite rather than a trim.
+
 - **Title autofit no longer crushes line spacing into a collision
   (go-slide-creator-g5h7).** `bakeTitleFit` applied its line-spacing reduction to
   the TEMPLATE's own spacing rather than to single spacing, so a template that

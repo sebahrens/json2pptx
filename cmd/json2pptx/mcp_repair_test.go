@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"unicode/utf8"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -110,7 +111,7 @@ func TestRepairSlide_ShortenTitle(t *testing.T) {
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
 		"presentation": mustParseJSON(deck),
 		"slide_index":  float64(0),
-		"fixes":        []any{map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(20)}}},
+		"fixes":        []any{map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(40)}}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -134,8 +135,17 @@ func TestRepairSlide_ShortenTitle(t *testing.T) {
 	}
 	for _, ci := range patched.Slides[0].Content {
 		if ci.PlaceholderID == "title" && ci.TextValue != nil {
-			if len(*ci.TextValue) != 20 {
-				t.Errorf("expected title length 20, got %d", len(*ci.TextValue))
+			// Truncation now cuts at a word boundary, so the result is at most
+			// the budget rather than exactly it, and never mid-word
+			// (go-slide-creator-28zf).
+			if len(*ci.TextValue) > 40 {
+				t.Errorf("expected title within the 40-char budget, got %d: %q", len(*ci.TextValue), *ci.TextValue)
+			}
+			if strings.HasSuffix(*ci.TextValue, " ") || strings.Contains(*ci.TextValue, "  ") {
+				t.Errorf("truncated title has ragged whitespace: %q", *ci.TextValue)
+			}
+			if !strings.HasPrefix("This is a very long title that should be truncated to a shorter length", *ci.TextValue) {
+				t.Errorf("truncated title is not a prefix of the original: %q", *ci.TextValue)
 			}
 		}
 	}
@@ -442,7 +452,7 @@ func TestRepairSlide_MultipleFixes(t *testing.T) {
 		"presentation": mustParseJSON(deck),
 		"slide_index":  float64(0),
 		"fixes": []any{
-			map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(10)}},
+			map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(40)}},
 			map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": float64(2)}},
 		},
 	}))
@@ -472,11 +482,14 @@ func TestRepairSlide_MultipleFixes(t *testing.T) {
 		t.Fatalf("unmarshal patched deck: %v", err)
 	}
 
-	// Verify title truncated.
+	// Verify title truncated — within the budget and at a word boundary.
 	for _, ci := range patched.Slides[0].Content {
 		if ci.PlaceholderID == "title" && ci.TextValue != nil {
-			if len(*ci.TextValue) != 10 {
-				t.Errorf("expected title length 10, got %d", len(*ci.TextValue))
+			if len(*ci.TextValue) > 40 {
+				t.Errorf("expected title within the 40-char budget, got %d: %q", len(*ci.TextValue), *ci.TextValue)
+			}
+			if *ci.TextValue == "A very long title that needs to be shortened to fit properly" {
+				t.Error("title was not shortened at all")
 			}
 		}
 	}
@@ -1543,4 +1556,159 @@ func textContent(result *mcp.CallToolResult) string {
 		}
 	}
 	return ""
+}
+
+// go-slide-creator-28zf: shorten_title byte-sliced at max_length, producing
+// "Workstream 1: Our comprehensive enterprise-wide di" — a mid-word fragment —
+// and the deck's SCORE WENT UP for having meaningless titles. Truncation now
+// cuts at a word boundary, never mid-rune, and refuses outright when the cut
+// would leave a fragment.
+func TestShortenTitleAtWordBoundary(t *testing.T) {
+	tests := []struct {
+		name      string
+		title     string
+		maxWords  int
+		maxLength int
+		want      string
+		wantTrim  bool
+	}{
+		{
+			name:      "cuts at a word boundary, never mid-word",
+			title:     "Workstream 1: Our comprehensive enterprise-wide digital modernisation effort",
+			maxLength: 50,
+			want:      "Workstream 1: Our comprehensive enterprise-wide",
+			wantTrim:  true,
+		},
+		{
+			name:     "word budget",
+			title:    "One two three four five six seven eight",
+			maxWords: 4,
+			want:     "One two three four",
+			wantTrim: true,
+		},
+		{
+			name:      "never ends on a function word",
+			title:     "Margin did not improve in FY24 despite the pricing reset",
+			maxLength: 45,
+			want:      "Margin did not improve in FY24",
+			wantTrim:  true,
+		},
+		{
+			name:      "drops a dangling colon",
+			title:     "Programme: comprehensive enterprise rollout",
+			maxLength: 11,
+			want:      "Programme",
+			wantTrim:  true,
+		},
+		{
+			name:      "already within budget is untouched",
+			title:     "Short and sharp",
+			maxLength: 50,
+			want:      "Short and sharp",
+			wantTrim:  false,
+		},
+		{
+			name:      "multi-byte text is never cut mid-rune",
+			title:     "Programme für die nächste Generation von Plattformen",
+			maxLength: 30,
+			want:      "Programme für die nächste",
+			wantTrim:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, trimmed := shortenTitleAtWordBoundary(tt.title, tt.maxWords, tt.maxLength)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+			if trimmed != tt.wantTrim {
+				t.Errorf("trimmed = %v, want %v", trimmed, tt.wantTrim)
+			}
+			if !utf8.ValidString(got) {
+				t.Errorf("result is not valid UTF-8: %q", got)
+			}
+		})
+	}
+}
+
+// A cut that would leave a fragment must be refused, not applied.
+func TestApplyShortenTitle_RefusesFragments(t *testing.T) {
+	deckWith := func(title string) *PresentationInput {
+		return &PresentationInput{Slides: []SlideInput{{
+			Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr(title)}},
+		}}}
+	}
+
+	t.Run("the reported title is refused, not mangled", func(t *testing.T) {
+		// Applying HEADLINE_TOO_LONG's directive verbatim rewrote this to
+		// "Digital Transformation Programme: A Comprehensive" and the deck's
+		// score went UP. Here the year is a protected fact, so the fix refuses;
+		// either way the title must come back untouched.
+		title := "Digital Transformation Programme: A Comprehensive Enterprise-Wide Initiative For 2026"
+		in := deckWith(title)
+		f := applyShortenTitle(in, 0, map[string]any{"max_length": 50})
+
+		if f.Applied {
+			t.Error("this cut must be refused")
+		}
+		if f.Code != "semantic_review_required" {
+			t.Errorf("code = %q, want semantic_review_required", f.Code)
+		}
+		if got := *in.Slides[0].Content[0].TextValue; got != title {
+			t.Errorf("a refused fix must not modify the title; got %q", got)
+		}
+	})
+
+	t.Run("losing half the words is refused as a fragment", func(t *testing.T) {
+		// No protected facts here, so the fragment guard is what must fire.
+		title := "Our comprehensive enterprise wide modernisation effort across every business unit"
+		in := deckWith(title)
+		f := applyShortenTitle(in, 0, map[string]any{"max_words": 4})
+
+		if f.Applied {
+			t.Error("losing half the headline must be refused")
+		}
+		if f.Code != "semantic_review_required" {
+			t.Errorf("code = %q, want semantic_review_required", f.Code)
+		}
+		if !strings.Contains(f.Message, "rewrite") {
+			t.Errorf("message should point at rewriting, got: %s", f.Message)
+		}
+		if got := *in.Slides[0].Content[0].TextValue; got != title {
+			t.Errorf("a refused fix must not modify the title; got %q", got)
+		}
+	})
+
+	t.Run("fewer than three words remaining is refused", func(t *testing.T) {
+		in := deckWith("Alpha beta gamma delta")
+		f := applyShortenTitle(in, 0, map[string]any{"max_words": 2})
+		if f.Applied {
+			t.Error("leaving fewer than three words must be refused")
+		}
+	})
+
+	t.Run("a mild trim is applied", func(t *testing.T) {
+		in := deckWith("Workstream 1: Our comprehensive enterprise-wide digital modernisation effort")
+		f := applyShortenTitle(in, 0, map[string]any{"max_length": 50})
+		if !f.Applied {
+			t.Fatalf("a mild trim should be applied, got %+v", f)
+		}
+		if got := *in.Slides[0].Content[0].TextValue; got != "Workstream 1: Our comprehensive enterprise-wide" {
+			t.Errorf("got %q", got)
+		}
+	})
+
+	t.Run("max_words from the finding is honoured", func(t *testing.T) {
+		// HEADLINE_TOO_LONG describes the problem in words; repair_slide's own
+		// description documents max_length. Both must work.
+		in := deckWith("One two three four five six seven eight nine ten eleven twelve")
+		f := applyShortenTitle(in, 0, map[string]any{"max_words": 9})
+		if !f.Applied {
+			t.Fatalf("max_words should be honoured, got %+v", f)
+		}
+		if got := len(strings.Fields(*in.Slides[0].Content[0].TextValue)); got != 9 {
+			t.Errorf("kept %d words, want 9", got)
+		}
+	})
 }

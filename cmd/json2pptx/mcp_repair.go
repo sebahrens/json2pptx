@@ -350,10 +350,30 @@ func applyReduceText(input *PresentationInput, slideIdx int, params map[string]a
 
 // applyShortenTitle truncates the title placeholder text.
 // When params["path"] is set, the specific placeholder is targeted by path.
+// minShortenedTitleWords is the fewest words a truncated title may keep. Below
+// this a headline is a fragment, not a shorter headline.
+const minShortenedTitleWords = 3
+
+// maxShortenedTitleWordLossFrac is the share of a title's words that truncation
+// may drop. At or beyond it the remedy is rewriting, not cutting — losing half a
+// headline leaves a fragment — so the fix refuses and reports
+// semantic_review_required.
+const maxShortenedTitleWordLossFrac = 0.5
+
 func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := &input.Slides[slideIdx]
-	maxLength := intParam(params, "max_length", 50) // default 50 chars
 	targetPath := stringParam(params, "path", "")
+
+	// The finding that suggests this fix (HEADLINE_TOO_LONG) describes the
+	// problem in WORDS, while repair_slide's own description documents
+	// max_length in characters. Accept both so an agent replaying the finding's
+	// next_tool_call verbatim and an agent constructing the call from the tool
+	// description get the same behaviour (go-slide-creator-28zf).
+	maxWords := intParam(params, "max_words", 0)
+	maxLength := intParam(params, "max_length", 0)
+	if maxWords <= 0 && maxLength <= 0 {
+		maxLength = 50 // historical default
+	}
 
 	for i := range slide.Content {
 		ci := &slide.Content[i]
@@ -363,19 +383,100 @@ func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string
 		if targetPath != "" && !contentMatchesPath(slideIdx, i, ci.PlaceholderID, targetPath) {
 			continue
 		}
-		if ci.TextValue != nil {
-			if len(*ci.TextValue) > maxLength {
-				truncated := (*ci.TextValue)[:maxLength]
-				if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(*ci.TextValue, truncated) {
-					return appliedFix{Kind: "shorten_title", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier"}
-				}
-				ci.TextValue = &truncated
-				return appliedFix{Kind: "shorten_title", Applied: true}
-			}
-			return appliedFix{Kind: "shorten_title", Applied: false, Message: "title already within max_length"}
+		if ci.TextValue == nil {
+			continue
 		}
+
+		original := *ci.TextValue
+		truncated, ok := shortenTitleAtWordBoundary(original, maxWords, maxLength)
+		if !ok {
+			return appliedFix{Kind: "shorten_title", Applied: false, Message: "title already within the requested budget"}
+		}
+
+		// A title cut down to a fragment is worse than a long title: it reads as
+		// broken and it makes the score look better, which is exactly the
+		// wrong trade. Refuse and let the author rewrite (go-slide-creator-28zf).
+		origWords := len(strings.Fields(original))
+		keptWords := len(strings.Fields(truncated))
+		if keptWords < minShortenedTitleWords ||
+			(origWords > 0 && float64(origWords-keptWords)/float64(origWords) >= maxShortenedTitleWordLossFrac) {
+			return appliedFix{
+				Kind:    "shorten_title",
+				Applied: false,
+				Code:    "semantic_review_required",
+				Message: fmt.Sprintf(
+					"shortening to the requested budget would cut the title from %d words to %d, leaving a fragment — rewrite the headline instead of truncating it, or move the detail into the body or takeaway",
+					origWords, keptWords),
+			}
+		}
+		if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(original, truncated) {
+			return appliedFix{Kind: "shorten_title", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier"}
+		}
+
+		ci.TextValue = &truncated
+		return appliedFix{Kind: "shorten_title", Applied: true}
 	}
 	return appliedFix{Kind: "shorten_title", Applied: false, Message: "no title placeholder found on this slide"}
+}
+
+// shortenTitleAtWordBoundary trims a title to a word or character budget,
+// always cutting at a word boundary and never mid-rune. It returns the
+// truncated title and whether any trimming was needed.
+//
+// The previous implementation byte-sliced at maxLength, producing
+// "Workstream 1: Our comprehensive enterprise-wide di" — a mid-word fragment,
+// and on multi-byte text a broken rune (go-slide-creator-28zf).
+func shortenTitleAtWordBoundary(title string, maxWords, maxLength int) (string, bool) {
+	words := strings.Fields(title)
+	if len(words) == 0 {
+		return title, false
+	}
+
+	kept := words
+	trimmed := false
+	if maxWords > 0 && len(kept) > maxWords {
+		kept = kept[:maxWords]
+		trimmed = true
+	}
+
+	if maxLength > 0 {
+		for len(kept) > 1 && len([]rune(strings.Join(kept, " "))) > maxLength {
+			kept = kept[:len(kept)-1]
+			trimmed = true
+		}
+	}
+
+	if !trimmed {
+		return title, false
+	}
+
+	// A cut that lands on a function word reads as an unfinished sentence
+	// ("... despite the"), so drop trailing articles, prepositions and
+	// conjunctions before returning.
+	for len(kept) > 1 && isTrailingFunctionWord(kept[len(kept)-1]) {
+		kept = kept[:len(kept)-1]
+	}
+
+	// Drop a trailing colon or dash left dangling by the cut.
+	out := strings.TrimRight(strings.Join(kept, " "), " :;,-–—")
+	return out, out != title
+}
+
+// trailingFunctionWords are words a headline must not end on: cutting there
+// leaves the line reading as though it were interrupted.
+var trailingFunctionWords = map[string]bool{
+	"a": true, "an": true, "the": true, "and": true, "or": true, "but": true,
+	"of": true, "in": true, "on": true, "at": true, "to": true, "for": true,
+	"with": true, "by": true, "from": true, "as": true, "into": true,
+	"than": true, "that": true, "which": true, "via": true, "per": true,
+	"despite": true, "across": true, "over": true, "under": true, "between": true,
+}
+
+// isTrailingFunctionWord reports whether a word (ignoring trailing punctuation
+// and case) is one a headline must not end on.
+func isTrailingFunctionWord(word string) bool {
+	w := strings.ToLower(strings.Trim(word, " .,;:!?-–—"))
+	return trailingFunctionWords[w]
 }
 
 // applySplitAtRow wraps the target slide in a split_slide envelope, delegating

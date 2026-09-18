@@ -601,8 +601,11 @@ func TestProposeRepairs_ToolCallRoundTripsToRepairSlide(t *testing.T) {
 			"message": "title overflows allowed extent",
 			"action":  "shrink_or_split",
 			"fix": map[string]any{
-				"kind":   "shorten_title",
-				"params": map[string]any{"max_length": float64(30)},
+				"kind": "shorten_title",
+				// A budget that keeps most of the headline: shorten_title
+				// refuses a cut that would leave a fragment, so a round-trip
+				// fixture must ask for a sane trim (go-slide-creator-28zf).
+				"params": map[string]any{"max_length": float64(55)},
 			},
 		},
 	}

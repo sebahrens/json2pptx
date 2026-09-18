@@ -176,23 +176,57 @@ func maxBulletDepth(bullets []string, baseLevel int) int {
 
 func makeHeadlineFinding(slideIdx int, phID string, words int) patterns.FitFinding {
 	path := slidepath.Content(slideIdx, phID)
+
+	// Truncation is only a sane remedy for a mild overrun. Cutting a headline
+	// in half turns a long-but-meaningful line into a fragment while making the
+	// score look better — the reward-hacking shape to avoid — so a drastic
+	// overrun asks for a REWRITE instead, and repair_slide refuses to truncate
+	// that far even if asked (go-slide-creator-28zf).
+	fix := &patterns.FixSuggestion{
+		Kind: "shorten_title",
+		Params: map[string]any{
+			"current_words": words,
+			"max_words":     maxHeadlineWords,
+			// max_length is what repair_slide's own description documents;
+			// supplying both means an agent replaying this directive and one
+			// constructing the call from the tool description agree.
+			"max_length": headlineCharBudget(maxHeadlineWords),
+		},
+	}
+	message := fmt.Sprintf(
+		"slide %d: headline is %d words; trim to %d or fewer for readability",
+		slideIdx+1, words, maxHeadlineWords)
+
+	if words > 0 && float64(words-maxHeadlineWords)/float64(words) > maxShortenedTitleWordLossFrac {
+		fix = &patterns.FixSuggestion{
+			Kind: "review",
+			Params: map[string]any{
+				"current_words": words,
+				"max_words":     maxHeadlineWords,
+				"reason":        "truncating to the budget would cut more than half the headline, leaving a fragment",
+			},
+		}
+		message = fmt.Sprintf(
+			"slide %d: headline is %d words, more than twice the %d-word budget — rewrite it as a shorter claim rather than truncating, and move the detail into the body or takeaway",
+			slideIdx+1, words, maxHeadlineWords)
+	}
+
 	return patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
-			Path: path,
-			Code: patterns.ErrCodeHeadlineTooLong,
-			Message: fmt.Sprintf(
-				"slide %d: headline is %d words; trim to %d or fewer for readability",
-				slideIdx+1, words, maxHeadlineWords),
-			Fix: &patterns.FixSuggestion{
-				Kind: "shorten_title",
-				Params: map[string]any{
-					"current_words": words,
-					"max_words":     maxHeadlineWords,
-				},
-			},
+			Path:    path,
+			Code:    patterns.ErrCodeHeadlineTooLong,
+			Message: message,
+			Fix:     fix,
 		},
 		Action: "review",
 	}
+}
+
+// headlineCharBudget converts a word budget into the character budget
+// repair_slide's max_length expects, at a conservative average word length.
+func headlineCharBudget(maxWords int) int {
+	const avgWordChars = 7 // 6 letters plus a space
+	return maxWords * avgWordChars
 }
 
 func makeBodyFinding(slideIdx int, phID string, words int) patterns.FitFinding {
