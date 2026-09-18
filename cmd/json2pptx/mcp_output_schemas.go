@@ -1330,8 +1330,10 @@ var outputSchemaMakeDeck = json.RawMessage(`{
   "type": "object",
   "properties": {
     "path":        {"type": "string", "description": "Absolute path to the final rendered PPTX. Written regardless of whether the gate passed."},
-    "final_score": {"type": "integer", "description": "overall_score of the last (post-repair) pass, in [0, 100]."},
-    "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_repair_passes iterations."},
+    "final_score": {"type": "integer", "description": "Headline score in [0, 100]. Forced to 0 when uses_exemplar_content=true (always, for make_deck) so placeholder copy never reads as a finished deck; the loop's deterministic score is in structural_score."},
+    "structural_score": {"type": "integer", "description": "overall_score of the last (post-repair) pass, in [0, 100]: layout / fit / structure only — it never judges the copy."},
+    "content_score": {"type": "integer", "description": "Content score. 0 when the slides carry pattern exemplar placeholder content (always, for make_deck)."},
+    "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_repair_passes iterations AND the deck carries no exemplar content. Always false for make_deck output (gate_reasons / blocking_reasons lead with 'exemplar_content')."},
     "passes":      {"type": "integer", "description": "Number of auto_repair iterations actually run (≤ max_repair_passes)."},
     "trace": {
       "type": "array",
@@ -1391,7 +1393,7 @@ var outputSchemaMakeDeck = json.RawMessage(`{
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — for make_deck this always includes the exemplar-content reason, plus any unmet gate criteria. Present only when publishable=false (always, for make_deck). Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
   },
-  "required": ["final_score", "gate_passed", "passes", "trace", "quality_mode", "quality", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
+  "required": ["final_score", "structural_score", "gate_passed", "passes", "trace", "quality_mode", "quality", "plan", "final_presentation", "next_state", "evidence_complete", "artifact_status", "content_status", "uses_exemplar_content", "validation_status", "publishable", "manual_review_required"]
 }`)
 
 // --- table_density_guide ---

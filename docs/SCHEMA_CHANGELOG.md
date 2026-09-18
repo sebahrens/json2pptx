@@ -4,6 +4,19 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased — make_deck exemplar gate (go-slide-creator-htwq)
+
+### Changed
+
+- **`make_deck` never reports a passing gate on exemplar content.** Its slides
+  are pattern exemplar placeholders, so the response now forces
+  `gate_passed: false`, prepends the machine token `"exemplar_content"` to both
+  `gate_reasons[]` and `blocking_reasons[]`, and reports `final_score: 0` plus
+  a new `content_score: 0`. The deterministic layout/fit score the loop computed
+  moves to the new always-present **`structural_score`** field. Previously a QBR
+  brief could return `final_score: 98, gate_passed: true` for off-topic
+  placeholder copy. `auto_repair` (author-supplied content) is unchanged.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added
