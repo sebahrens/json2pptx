@@ -27,6 +27,9 @@ func hasURLReferences(slides []SlideInput) bool { //nolint:gocognit
 		if slides[i].Background != nil && slides[i].Background.URL != "" {
 			return true
 		}
+		if patternHasImageURL(&slides[i]) {
+			return true
+		}
 		for j := range slides[i].Content {
 			if slides[i].Content[j].Type == "image" && slides[i].Content[j].ImageValue != nil && slides[i].Content[j].ImageValue.URL != "" {
 				return true
@@ -78,6 +81,9 @@ func resolveURLs(slides []SlideInput, resolver urlResolver) []diagnostics.Diagno
 				slides[i].Background.URL = ""
 			}
 		}
+
+		// Pattern-level image URLs (e.g. image-text-split values.image.url)
+		findings = append(findings, resolvePatternImageURLs(&slides[i], i, resolver)...)
 
 		// Content-level image URLs
 		for j := range slides[i].Content {

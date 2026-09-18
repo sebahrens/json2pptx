@@ -1365,6 +1365,7 @@ func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.D
 	for i := range slides {
 		findings = append(findings, resolveSlideAssets(&slides[i], baseDir, i)...)
 	}
+	findings = append(findings, resolvePatternImagePaths(slides, baseDir)...)
 	return findings
 }
 

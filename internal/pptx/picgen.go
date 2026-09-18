@@ -38,6 +38,16 @@ type PicOptions struct {
 	// OmitNamespaces omits xmlns declarations from the p:pic element.
 	// Use this when inserting into a document that already declares the namespaces.
 	OmitNamespaces bool
+
+	// SrcRect optionally crops the source image (a:srcRect), in thousandths
+	// of a percent trimmed from the left, top, right and bottom edges. Used to
+	// cover-fill a frame without distorting the picture. Nil = no crop.
+	SrcRect *SrcRect
+}
+
+// SrcRect is an a:srcRect crop (1/1000 %, 100000 = the whole image).
+type SrcRect struct {
+	L, T, R, B int
 }
 
 // GeneratePic generates a complete p:pic XML element for embedding an image.
@@ -134,6 +144,12 @@ func GeneratePic(opts PicOptions) ([]byte, error) {
 	} else {
 		// Simple blip without extensions
 		fmt.Fprintf(&buf, `    <a:blip r:embed="%s"/>`, opts.PNGRelID)
+		buf.WriteByte('\n')
+	}
+
+	// Optional crop precedes the fill mode (CT_BlipFillProperties order).
+	if r := opts.SrcRect; r != nil && (r.L != 0 || r.T != 0 || r.R != 0 || r.B != 0) {
+		fmt.Fprintf(&buf, `    <a:srcRect l="%d" t="%d" r="%d" b="%d"/>`, r.L, r.T, r.R, r.B)
 		buf.WriteByte('\n')
 	}
 

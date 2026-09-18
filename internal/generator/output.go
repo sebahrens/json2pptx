@@ -928,6 +928,7 @@ func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, me
 			ExtentCX:       mr.extentCX,
 			ExtentCY:       mr.extentCY,
 			OmitNamespaces: true,
+			SrcRect:        mr.crop,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate p:pic for media: %w", err)
