@@ -303,6 +303,11 @@ type BarChart struct {
 	// xDisplayLabels holds wrapped x-axis tick text from AdaptXLabels
 	// (nil when labels are drawn verbatim).
 	xDisplayLabels []string
+
+	// xAxisCfg is the x-axis configuration drawAxes actually drew with. The
+	// legend is placed below everything that config draws, so the two cannot
+	// overprint (go-slide-creator-jp5d).
+	xAxisCfg AxisConfig
 }
 
 // NewBarChart creates a new bar chart renderer.
@@ -550,13 +555,12 @@ func (bc *BarChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGuid
 	}
 	legend.SetItems(items)
 
-	// Calculate x-axis label space: tick size + tick padding + label height + extra gap
-	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
-	xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
-
+	// Place the legend below everything the x axis draws — ticks, tick labels
+	// (including the rotation/wrap allowance) and the axis title. Measured by
+	// the same helper Axis.drawTitle uses, so they cannot overprint.
 	legendBounds := Rect{
 		X: plotArea.X,
-		Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
+		Y: plotArea.Y + plotArea.H + XAxisFooterHeight(style, bc.resolvedXAxisConfig()),
 		W: plotArea.W,
 		H: legendHeight,
 	}
@@ -892,6 +896,7 @@ func (bc *BarChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *Li
 	xAxisConfig.LabelRotation = xLabelRotation
 	xAxisConfig.LabelStep = labelStep
 	xAxisConfig.DisplayLabels = bc.xDisplayLabels
+	bc.xAxisCfg = xAxisConfig
 
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
@@ -1169,6 +1174,10 @@ func DefaultLineChartConfig(width, height float64) LineChartConfig {
 type LineChart struct {
 	builder *SVGBuilder
 	config  LineChartConfig
+
+	// xAxisCfg is the x-axis configuration drawAxes actually drew with; the
+	// legend is placed below it (go-slide-creator-jp5d).
+	xAxisCfg AxisConfig
 }
 
 // NewLineChart creates a new line chart renderer.
@@ -1371,12 +1380,9 @@ func (lc *LineChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGui
 	}
 	legend.SetItems(items)
 
-	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
-	xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
-
 	legendBounds := Rect{
 		X: plotArea.X,
-		Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
+		Y: plotArea.Y + plotArea.H + XAxisFooterHeight(style, lc.resolvedXAxisConfig()),
 		W: plotArea.W,
 		H: legendHeight,
 	}
@@ -1632,6 +1638,7 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 		xAxisConfig.LabelRotation = xLayout.Rotation
 		xAxisConfig.LabelStep = xLayout.LabelStep
 		xAxisConfig.DisplayLabels = xLayout.DisplayLabels
+		xAxisConfig.ExtraLabelHeight = xLayout.ExtraBottomMargin
 
 		xAxis := NewAxis(b, xAxisConfig)
 		xAxis.DrawCategoricalAxis(xs, plotArea.X, plotArea.Y+plotArea.H)
@@ -1642,6 +1649,7 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 		xAxis := NewAxis(b, xAxisConfig)
 		xAxis.DrawTimeAxis(xs, plotArea.X, plotArea.Y+plotArea.H)
 	}
+	lc.xAxisCfg = xAxisConfig
 
 	// Y axis (shared)
 	DrawCartesianYAxis(b, plotArea, yScale, lc.config.YAxisTitle)
@@ -1912,6 +1920,10 @@ func DefaultScatterChartConfig(width, height float64) ScatterChartConfig {
 type ScatterChart struct {
 	builder *SVGBuilder
 	config  ScatterChartConfig
+
+	// xAxisCfg is the x-axis configuration drawAxes actually drew with; the
+	// legend is placed below it (go-slide-creator-jp5d).
+	xAxisCfg AxisConfig
 }
 
 // NewScatterChart creates a new scatter chart renderer.
@@ -2005,13 +2017,9 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 		}
 		legend.SetItems(items)
 
-		// Calculate x-axis label space: tick size + tick padding + label height + extra gap
-		xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
-		xAxisLabelSpace := xAxisConfig.TickSize + xAxisConfig.TickPadding + style.Typography.SizeSmall + style.Spacing.SM
-
 		legendBounds := Rect{
 			X: plotArea.X,
-			Y: plotArea.Y + plotArea.H + xAxisLabelSpace,
+			Y: plotArea.Y + plotArea.H + XAxisFooterHeight(style, sc.resolvedXAxisConfig()),
 			W: plotArea.W,
 			H: legendHeight,
 		}
@@ -3279,4 +3287,40 @@ func (rc *RadarChart) drawLegend(data ChartData, colors []Color, plotArea Rect, 
 // getColors returns colors for the series.
 func (rc *RadarChart) getColors(style *StyleGuide, count int) []Color {
 	return resolveColors(rc.config.Colors, style, count)
+}
+
+
+// resolvedXAxisConfig returns the x-axis configuration drawAxes drew with,
+// falling back to the bottom-axis default when the axes were suppressed.
+func (bc *BarChart) resolvedXAxisConfig() AxisConfig {
+	// TickCount 0 means drawAxes never ran (AxisPosition's zero value is a
+	// legitimate position, so it cannot signal "unset").
+	if bc.xAxisCfg.TickCount == 0 {
+		cfg := DefaultAxisConfig(AxisPositionBottom)
+		cfg.Title = bc.config.XAxisTitle
+		return cfg
+	}
+	return bc.xAxisCfg
+}
+
+// resolvedXAxisConfig returns the x-axis configuration drawAxes drew with,
+// falling back to the bottom-axis default when the axes were suppressed.
+func (lc *LineChart) resolvedXAxisConfig() AxisConfig {
+	if lc.xAxisCfg.TickCount == 0 {
+		cfg := DefaultAxisConfig(AxisPositionBottom)
+		cfg.Title = lc.config.XAxisTitle
+		return cfg
+	}
+	return lc.xAxisCfg
+}
+
+// resolvedXAxisConfig returns the x-axis configuration drawAxes drew with,
+// falling back to the bottom-axis default when the axes were suppressed.
+func (sc *ScatterChart) resolvedXAxisConfig() AxisConfig {
+	if sc.xAxisCfg.TickCount == 0 {
+		cfg := DefaultAxisConfig(AxisPositionBottom)
+		cfg.Title = sc.config.XAxisTitle
+		return cfg
+	}
+	return sc.xAxisCfg
 }

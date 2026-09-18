@@ -40,6 +40,12 @@ type AxisConfig struct {
 	// GridLineLength is the length of grid lines (typically chart width/height).
 	GridLineLength float64
 
+	// ExtraLabelHeight is the additional vertical space the tick labels need
+	// beyond one line — the rotation / wrapping allowance AdaptXLabels
+	// computed. It keeps the axis title (and the legend below it) clear of
+	// rotated or wrapped labels (go-slide-creator-jp5d).
+	ExtraLabelHeight float64
+
 	// LabelRotation rotates labels by this angle in degrees.
 	// Useful for long category names on X axis.
 	LabelRotation float64
@@ -525,7 +531,7 @@ func (a *Axis) drawTitle(originX, originY float64, positions []float64) {
 	var titleX, titleY float64
 	var align TextAlign
 
-	titleOffset := a.config.TickSize + a.config.TickPadding + style.Typography.SizeSmall + style.Spacing.LG
+	titleOffset := axisTitleOffset(style, a.config)
 
 	switch a.config.Position {
 	case AxisPositionBottom:
@@ -788,4 +794,40 @@ func (ab *AxisBuilder) DrawTime(scale *TimeScale, x, y float64) *SVGBuilder {
 	axis := NewAxis(ab.builder, ab.config)
 	axis.DrawTimeAxis(scale, x, y)
 	return ab.builder
+}
+
+
+// axisLabelBlockHeight returns the vertical space an axis's tick labels occupy
+// beyond the axis line: one line at the axis font size plus whatever rotation
+// or wrapping allowance the layout pass measured.
+func axisLabelBlockHeight(style *StyleGuide, cfg AxisConfig) float64 {
+	lineHeight := style.Typography.SizeSmall
+	if cfg.FontSize > 0 {
+		lineHeight = cfg.FontSize
+	}
+	return lineHeight + cfg.ExtraLabelHeight
+}
+
+// axisTitleOffset is the distance from the axis line to the TOP of the axis
+// title: past the ticks, their labels, and a small gap.
+func axisTitleOffset(style *StyleGuide, cfg AxisConfig) float64 {
+	return cfg.TickSize + cfg.TickPadding + axisLabelBlockHeight(style, cfg) + style.Spacing.SM
+}
+
+// XAxisFooterHeight returns the distance from the bottom of the plot area to
+// just below everything the x axis draws — ticks, tick labels, and the axis
+// title when there is one.
+//
+// It is the single measurement shared by Axis.drawTitle and every chart's
+// legend placement. They used to compute the offset independently: the legend
+// used Spacing.SM where the title used Spacing.LG, so the legend landed ABOVE
+// the title and the two overprinted on every Cartesian chart carrying an
+// x_label. Neither accounted for the axis-title height or for rotated/wrapped
+// tick labels (go-slide-creator-jp5d).
+func XAxisFooterHeight(style *StyleGuide, cfg AxisConfig) float64 {
+	h := axisTitleOffset(style, cfg)
+	if cfg.Title != "" {
+		h += style.Typography.SizeBody + style.Spacing.SM
+	}
+	return h
 }
