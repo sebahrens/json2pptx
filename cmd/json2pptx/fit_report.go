@@ -49,6 +49,10 @@ func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.La
 	// gate read only generateFitReport, so that prediction never reached it and
 	// a deck shipped with three rows of data missing (go-slide-creator-oaif).
 	findings = append(findings, tablePreflightLocalFindings(input, layouts)...)
+	// A chart whose type or data svggen rejects is a lost visual — the slide
+	// gets a grey "Data unavailable" box, or generation aborts on a grid
+	// surface. Predicted here so the gate sees it (go-slide-creator-rrjj).
+	findings = append(findings, chartDryRenderLocalFindings(input)...)
 	if len(findings) == 0 {
 		return nil, nil
 	}
@@ -449,6 +453,29 @@ func printFitFindingsBySlide(findings []fitFinding) {
 func tablePreflightLocalFindings(input *PresentationInput, layouts []types.LayoutMetadata) []fitFinding {
 	var out []fitFinding
 	for _, f := range collectTablePreflightFindings(input, layouts) {
+		severity := "warning"
+		if f.Action == "refuse" {
+			severity = "error"
+		}
+		out = append(out, fitFinding{
+			Code:     f.Code,
+			Path:     f.Path,
+			Message:  f.Message,
+			Fix:      f.Fix,
+			Action:   f.Action,
+			Severity: severity,
+		})
+	}
+	return out
+}
+
+
+// chartDryRenderLocalFindings dry-renders every chart and diagram surface and
+// converts the resulting findings into the local fitFinding shape the CLI fit
+// report and the strict-fit gate share.
+func chartDryRenderLocalFindings(input *PresentationInput) []fitFinding {
+	var out []fitFinding
+	for _, f := range collectChartDryRenderFindings(input, nil, "", "warn") {
 		severity := "warning"
 		if f.Action == "refuse" {
 			severity = "error"

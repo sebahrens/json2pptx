@@ -787,13 +787,15 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeDiagramRenderFailed: {
 		Code:        ErrCodeDiagramRenderFailed,
-		Summary:     "Diagram rendering failed; a placeholder image was inserted instead.",
-		Severity:    "review",
-		WhenEmitted: "Render-time svggen call returns an error; the engine inserts a placeholder rather than failing the deck.",
+		Summary:     "The chart or diagram did not render — the slide carries a grey \"Data unavailable\" placeholder where the visual should be.",
+		Severity:    "refuse",
+		WhenEmitted: "The render-time svggen call returns an error (an unregistered type, a rejected optional key, or data the type cannot accept) and the engine substitutes a slide-sized placeholder image rather than failing the deck. The visual is lost, so this blocks rather than warns.",
 		RemediationSteps: []string{
-			"Inspect the diagram data shape against get_diagram_capabilities.",
-			"Try a simpler diagram type, or regenerate with svggen-mcp.validate_diagram to surface the underlying error.",
+			"Read the finding's fix.params.reason — for an unrecognised type it names the closest registered type and lists every allowed one.",
+			"Fix the type or the data shape; check it against get_diagram_capabilities or svggen-mcp.validate_diagram, which surfaces the underlying error without a full render.",
+			"If the visual you want has no registered type (a combo chart, a sankey, a choropleth), pick a supported type that carries the same argument, or supply the visual as an image.",
 		},
+		RelatedCodes: []string{ErrCodeChartDataEmpty, ErrCodeContentDropped},
 	},
 	ErrCodePaginationDefault: {
 		Code:        ErrCodePaginationDefault,

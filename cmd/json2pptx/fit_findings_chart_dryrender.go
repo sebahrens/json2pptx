@@ -235,13 +235,22 @@ func dryRenderSpec(
 
 	dryFindings, renderErr := svggen.DryRender(req)
 	var out []patterns.FitFinding
-	if renderErr != nil && gridSurface {
+	if renderErr != nil {
+		// Both outcomes lose the visual, so both refuse. A grid/pattern surface
+		// aborts generation outright; a content placeholder degrades to a
+		// slide-sized grey "Data unavailable" box, which used to be predicted
+		// nowhere at all — validate said clean and the deck shipped the
+		// placeholder (go-slide-creator-rrjj).
+		outcome := "render as a \"Data unavailable\" placeholder instead of the chart"
+		if gridSurface {
+			outcome = "fail to render and abort generation"
+		}
 		out = append(out, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Pattern: spec.Type,
 				Path:    path,
 				Code:    patterns.ErrCodeDiagramRenderFailed,
-				Message: fmt.Sprintf("diagram would fail to render and abort generation: %v", renderErr),
+				Message: fmt.Sprintf("diagram would %s: %v", outcome, renderErr),
 				Fix: &patterns.FixSuggestion{
 					Kind:   "review",
 					Params: map[string]any{"diagram_type": spec.Type, "reason": renderErr.Error()},

@@ -10,6 +10,19 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Unknown chart/diagram types get a vocabulary, and a grey placeholder blocks
+  (go-slide-creator-rrjj).** Asking for an unregistered type (combo, sankey,
+  choropleth, or a typo like `barchart`) produced a slide-sized grey
+  "Data unavailable" box while `generate_presentation` answered `success: true`
+  with a score in the 90s, burying the reason in `warnings[]`. Three changes:
+  svggen's unknown-type error is now structured — `did you mean "bar_chart"?`
+  plus the full allowed list, with the suggestion suppressed for genuinely
+  unregistered types so it never guesses misleadingly; `diagram_render_failed`
+  is now `action: refuse` at the render-time placeholder path (it was `review`,
+  so the deck shipped) and is predicted at validate time for content surfaces as
+  well as grid ones; and the grid-cell error names the author-meaningful row and
+  column instead of the internal shape-allocator id ("grid cell 204").
+
 - **Silent table row truncation now blocks (go-slide-creator-oaif).** A 12-row
   table shipped 9 rows plus a literal "…and 3 more rows" cell — three regions'
   financials absent from the deck — reported at `action: review` with the

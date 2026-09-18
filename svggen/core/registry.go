@@ -161,7 +161,9 @@ func (r *Registry) Render(req *RequestEnvelope) (*SVGDocument, error) {
 
 	d := r.Get(req.Type)
 	if d == nil {
-		return nil, fmt.Errorf("svggen: unknown diagram type %q", req.Type)
+		// Carry the vocabulary an agent needs to self-correct rather than a
+		// bare "unknown diagram type" (go-slide-creator-rrjj).
+		return nil, r.NewUnknownTypeError(req.Type)
 	}
 
 	// If the diagram provides a data schema, validate unknown fields first.

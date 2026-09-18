@@ -663,7 +663,7 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 		}
 		sub, err := resolveShapeGrid(src.Grid, alloc, &inset, nil, slideWidth, slideHeight, diagCtx)
 		if err != nil {
-			return fmt.Errorf("nested sub-grid at row %d col %d: %w", rc.RowIdx, rc.ColIdx, err)
+			return fmt.Errorf("nested sub-grid at row %d, column %d: %w", rc.RowIdx+1, rc.ColIdx+1, err)
 		}
 		if sub == nil {
 			continue
@@ -1125,12 +1125,17 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	}
 	diagramSpec.Width, diagramSpec.Height, _ = generator.ResolveDiagramRenderDimensions(diagramSpec, cellBox)
 
+	// Locate the failure by the cell's row/column — what the author wrote —
+	// rather than by cell.ID, which is an internal shape-allocator number
+	// ("grid cell 204") that means nothing to the caller (go-slide-creator-rrjj).
+	cellLocation := fmt.Sprintf("diagram in grid row %d, column %d", cell.RowIdx+1, cell.ColIdx+1)
+
 	result, err := generator.RenderDiagramSpecWithMetadata(diagramSpec, themeColors, 0, true)
 	if err != nil {
-		return nil, nil, fmt.Errorf("diagram in grid cell %d: %w", cell.ID, err)
+		return nil, nil, fmt.Errorf("%s: %w", cellLocation, err)
 	}
 	if len(result.SVG) == 0 {
-		return nil, nil, fmt.Errorf("diagram in grid cell %d: renderer returned empty SVG", cell.ID)
+		return nil, nil, fmt.Errorf("%s: renderer returned empty SVG", cellLocation)
 	}
 
 	// Check for complex diagram in narrow cell

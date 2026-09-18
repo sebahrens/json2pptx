@@ -169,6 +169,7 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 	// Predicted table row truncation is data loss and must show up in validate,
 	// not only at generate time (go-slide-creator-oaif).
 	findings = append(findings, tablePreflightLocalFindings(input, layouts)...)
+	findings = append(findings, chartDryRenderLocalFindings(input)...)
 	findings = append(findings, flaggedTitleFitFindings(input, layouts)...)
 	findings = append(findings, flaggedReadabilityFitFindings(input, layouts, slideWidth, slideHeight)...)
 	// Unsupported inline markup prints literally on the slide, so the CLI fit

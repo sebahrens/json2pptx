@@ -489,21 +489,25 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			Reason:        reason,
 			Fallback:      "placeholder_image",
 		})
-		// Site 8: emit finding when diagram render fails and falls back to placeholder.
-		// Fix kind is "review" — no deterministic auto-fix; the agent must
-		// inspect the diagram data and decide whether to simplify, change type,
-		// or regenerate.
+		// Site 8: emit finding when diagram render fails and falls back to
+		// placeholder. The slide now carries a slide-sized grey box reading
+		// "<Type> / Data unavailable" where the chart should be — that is a
+		// lost visual, not a styling nit, so the action is "refuse": it blocks
+		// the strict-fit gate and penalises the deck score, instead of letting
+		// an agent that repairs only what the gate flags ship the placeholder
+		// (go-slide-creator-rrjj). Fix kind stays "review": there is no
+		// deterministic auto-fix — the author must correct the type or the data.
 		ctx.emitFitFinding(patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
 				Code:    patterns.ErrCodeDiagramRenderFailed,
-				Message: fmt.Sprintf("diagram render failed, placeholder image inserted: %s", reason),
+				Message: fmt.Sprintf("diagram render failed — the slide shows a \"Data unavailable\" placeholder instead of the chart: %s", reason),
 				Fix: &patterns.FixSuggestion{
 					Kind:   "review",
 					Params: map[string]any{"diagram_type": diagramType, "reason": reason},
 				},
 			},
-			Action: "review",
+			Action: "refuse",
 		})
 		return
 	}

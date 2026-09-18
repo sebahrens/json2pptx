@@ -166,7 +166,9 @@ func renderMultiFormatInternal(r *Registry, req *RequestEnvelope, formats ...str
 
 	d := r.Get(req.Type)
 	if d == nil {
-		return nil, nil, fmt.Errorf("svggen: unknown diagram type %q", req.Type)
+		// Carry the vocabulary an agent needs to self-correct rather than a
+		// bare "unknown diagram type" (go-slide-creator-rrjj).
+		return nil, nil, r.NewUnknownTypeError(req.Type)
 	}
 
 	// If the diagram provides a data schema, validate unknown fields first.
