@@ -229,25 +229,52 @@ func TestPhaseRoadmap_Expand_DefaultLayout(t *testing.T) {
 
 func TestPhaseRoadmap_Expand_ActivePhaseGetsAccent(t *testing.T) {
 	p, _ := Default().Get("phase-roadmap")
-	grid, err := p.Expand(ExpandContext{}, validPhaseRoadmapValues(), nil, nil)
+	ctx := testThemeCtx()
+	grid, err := p.Expand(ctx, validPhaseRoadmapValues(), nil, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	// In valid values, phase index 1 is active and should fill with accent1.
-	// Non-active phases should fill with dk1.
+	// Non-active phases use a light accent tint — never dk1 black.
 	for i, cell := range grid.Rows[0].Cells {
-		var fill string
-		if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
-			t.Fatalf("cell[%d] fill unmarshal: %v", i, err)
+		fillRaw := string(cell.Shape.Fill)
+		if strings.Contains(fillRaw, "dk1") {
+			t.Errorf("cell[%d] fill %s must not use dk1", i, fillRaw)
 		}
+		var text struct {
+			Paragraphs []struct {
+				Color string `json:"color"`
+			} `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+			t.Fatalf("cell[%d] text: %v", i, err)
+		}
+		fg, _ := resolveThemeColor(ctx, text.Paragraphs[0].Color)
 		if i == 1 {
-			if fill != "accent1" {
-				t.Errorf("active cell[%d] fill = %q, want accent1", i, fill)
+			var fill string
+			if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil || fill != "accent1" {
+				t.Errorf("active cell[%d] fill = %s, want \"accent1\"", i, fillRaw)
 			}
-		} else {
-			if fill != "dk1" {
-				t.Errorf("inactive cell[%d] fill = %q, want dk1", i, fill)
+			bg, _ := resolveThemeColor(ctx, "accent1")
+			if r := fg.ContrastWith(bg); r < 4.5 {
+				t.Errorf("active cell text contrast %.2f < 4.5", r)
 			}
+			continue
+		}
+		var fill struct {
+			Color  string `json:"color"`
+			LumMod int    `json:"lumMod"`
+			LumOff int    `json:"lumOff"`
+		}
+		if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
+			t.Fatalf("inactive cell[%d] fill %s: %v", i, fillRaw, err)
+		}
+		if fill.Color != "accent1" || fill.LumMod == 0 || fill.LumOff == 0 {
+			t.Errorf("inactive cell[%d] fill = %s, want accent1 lumMod/lumOff tint", i, fillRaw)
+		}
+		bg, _ := effectiveFillColor(ctx, fillTone{Color: fill.Color, LumMod: fill.LumMod, LumOff: fill.LumOff})
+		if r := fg.ContrastWith(bg); r < 4.5 {
+			t.Errorf("inactive cell[%d] text %s contrast %.2f < 4.5", i, text.Paragraphs[0].Color, r)
 		}
 	}
 }

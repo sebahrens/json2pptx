@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"math"
 	"strings"
 
@@ -26,6 +27,40 @@ type fillTone struct {
 	Alpha  float64 // 0-100 percent opacity; 0 = fully opaque
 	LumMod int     // OOXML thousandths of a percent (e.g. 20000 = 20%)
 	LumOff int     // OOXML thousandths of a percent
+}
+
+// Light-tint modifiers (PowerPoint's "Lighter 80%" swatch): L' = 0.2·L + 0.8.
+const (
+	tintLumMod = 20000
+	tintLumOff = 80000
+)
+
+// inactiveTintTone returns the light tint of color used for de-emphasised
+// (inactive / neutral) boxes in place of a dk1 black fill.
+func inactiveTintTone(color string) fillTone {
+	// The shape-grid fill resolver only honours lumMod/lumOff on scheme
+	// colours; a hex accent override falls back to the neutral lt2 surface.
+	if isHexColor(color) {
+		return fillTone{Color: "lt2"}
+	}
+	return fillTone{Color: color, LumMod: tintLumMod, LumOff: tintLumOff}
+}
+
+// fillJSON renders the tone as a shape-grid fill value: a bare colour string
+// when unmodified, otherwise the object form with the modifiers.
+func (t fillTone) fillJSON() json.RawMessage {
+	if t.Alpha == 0 && t.LumMod == 0 && t.LumOff == 0 {
+		data, _ := json.Marshal(t.Color)
+		return data
+	}
+	obj := struct {
+		Color  string  `json:"color"`
+		Alpha  float64 `json:"alpha,omitempty"`
+		LumMod int     `json:"lumMod,omitempty"`
+		LumOff int     `json:"lumOff,omitempty"`
+	}{t.Color, t.Alpha, t.LumMod, t.LumOff}
+	data, _ := json.Marshal(obj)
+	return data
 }
 
 // schemeAliases maps the bg/tx aliases to their underlying theme slots.

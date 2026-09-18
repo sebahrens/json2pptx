@@ -116,7 +116,7 @@ func (pr *phaseRoadmap) Schema() *Schema {
 			"name":        StringSchema(40).WithDescription("Phase name (e.g. \"Plan\", \"Build\")"),
 			"date_label":  StringSchema(30).WithDescription("Optional date range label rendered below the timeline bar (e.g. \"Mar–Apr 2025\")"),
 			"description": StringSchema(160).WithDescription("Short description rendered below the date label"),
-			"active":      BooleanSchema().WithDescription("When true, this phase renders with the accent fill (others use dk1/neutral)"),
+			"active":      BooleanSchema().WithDescription("When true, this phase renders with the accent fill (others use a light tint of the accent)"),
 			"milestone":   StringSchema(60).WithDescription("Optional milestone callout (e.g. \"Pilot go-live\"); when any phase sets one, a milestone row is rendered"),
 		},
 		[]string{"name"},
@@ -246,15 +246,19 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// Row 1 — phase label boxes
 	phaseCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
-		fill := json.RawMessage(`"dk1"`)
+		// Inactive phases use a light tint of the accent (not dk1 black, which
+		// reads off-brand next to the accent); the active phase keeps the
+		// full accent. Header text colour follows the effective fill.
+		tone := inactiveTintTone(accent)
 		if p.Active {
-			fill = json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+			tone = fillTone{Color: accent}
 		}
+		textColor := readableTextOn(ctx, tone, phaseRoadmapFallbackText(p.Active))
 		phaseCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     fill,
-				Text:     buildPhaseRoadmapHeaderText(pptx.ConvertMarkdownEmphasis(p.Name), headerSize),
+				Fill:     tone.fillJSON(),
+				Text:     buildPhaseRoadmapHeaderText(pptx.ConvertMarkdownEmphasis(p.Name), headerSize, textColor),
 			},
 		}
 		applyPhaseRoadmapOverride(phaseCells[i], cellOverrides, phaseIdx0+i, accent)
@@ -374,10 +378,19 @@ type phaseRoadmapTextObj struct {
 	VerticalAlign string                  `json:"vertical_align"`
 }
 
-func buildPhaseRoadmapHeaderText(content string, size float64) json.RawMessage {
+// phaseRoadmapFallbackText is the header text colour used when the theme
+// cannot be resolved: light text on the full accent, dark on the tint.
+func phaseRoadmapFallbackText(active bool) string {
+	if active {
+		return "lt1"
+	}
+	return "dk1"
+}
+
+func buildPhaseRoadmapHeaderText(content string, size float64, color string) json.RawMessage {
 	textObj := phaseRoadmapTextObj{
 		Paragraphs: []phaseRoadmapParagraph{
-			{Content: content, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: content, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
