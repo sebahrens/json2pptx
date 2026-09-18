@@ -60,14 +60,22 @@ type CompositionResult struct {
 	Diagnostics []CompositionDiagnostic `json:"diagnostics"` // individual composition issues
 }
 
+// ScoreBasisStructural labels a score computed by deterministic rules over the
+// GENERATED deck structure (fit findings, pagination, autofit, contrast swaps,
+// deck rhythm). It never inspects rendered pixels.
+const ScoreBasisStructural = "structural"
+
 // DeckScore is the top-level score_deck response.
 type DeckScore struct {
-	OverallScore int                `json:"overall_score"`
-	PerSlide     []SlideScore       `json:"per_slide"`
-	Composition  *CompositionResult `json:"composition,omitempty"`
-	Summary      DeckSummary        `json:"summary"`
-	QualityGate  *QualityGate       `json:"quality_gate,omitempty"`
-	ModeUsed     string             `json:"mode_used"`
+	// OverallScore is on the shared 0-100 scale.
+	OverallScore int `json:"overall_score"`
+	// Basis states what the score measured: always ScoreBasisStructural here.
+	Basis       string             `json:"basis"`
+	PerSlide    []SlideScore       `json:"per_slide"`
+	Composition *CompositionResult `json:"composition,omitempty"`
+	Summary     DeckSummary        `json:"summary"`
+	QualityGate *QualityGate       `json:"quality_gate,omitempty"`
+	ModeUsed    string             `json:"mode_used"`
 	// RenderEvidence is present only when the render-time finding pass that
 	// backs the score did NOT complete (slide conversion, temp-dir creation, or
 	// generation failed). Its presence is the unambiguous signal that the score
@@ -320,6 +328,7 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 
 	return &DeckScore{
 		OverallScore: overall,
+		Basis:        ScoreBasisStructural,
 		PerSlide:     perSlide,
 		Summary: DeckSummary{
 			TopCodes:           topCodes,
@@ -403,6 +412,7 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 
 	return &DeckScore{
 		OverallScore: overall,
+		Basis:        ScoreBasisStructural,
 		PerSlide:     perSlide,
 		Summary: DeckSummary{
 			TopCodes:           topCodes,

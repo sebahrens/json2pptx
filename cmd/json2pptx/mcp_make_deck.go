@@ -41,8 +41,10 @@ const (
 // internally so agents can see which patterns were chosen on each slide and
 // chain to repair_slide for per-slide content edits.
 type makeDeckOutput struct {
-	Path        string                 `json:"path,omitempty"`
-	FinalScore  int                    `json:"final_score"`
+	Path       string `json:"path,omitempty"`
+	FinalScore int    `json:"final_score"`
+	// ScoreBasis mirrors auto_repair.score_basis ("structural").
+	ScoreBasis  string                 `json:"score_basis"`
 	GatePassed  bool                   `json:"gate_passed"`
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
@@ -329,6 +331,7 @@ func makeDeckOutputFromLoop(loopOut *autoRepairOutput, plan *makeDeckPlanSummary
 	return &makeDeckOutput{
 		Path:              loopOut.Path,
 		FinalScore:        loopOut.FinalScore,
+		ScoreBasis:        loopOut.ScoreBasis,
 		GatePassed:        loopOut.GatePassed,
 		Passes:            loopOut.Passes,
 		Trace:             loopOut.Trace,

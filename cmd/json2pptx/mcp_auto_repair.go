@@ -63,8 +63,11 @@ const (
 
 // autoRepairOutput is the top-level response for auto_repair.
 type autoRepairOutput struct {
-	Path        string                 `json:"path,omitempty"`
-	FinalScore  int                    `json:"final_score"`
+	Path       string `json:"path,omitempty"`
+	FinalScore int    `json:"final_score"`
+	// ScoreBasis states what final_score / trace[].score measured (always
+	// "structural": score_deck rules over the generated deck, no pixels).
+	ScoreBasis  string                 `json:"score_basis"`
 	GatePassed  bool                   `json:"gate_passed"`
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
@@ -674,6 +677,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	output := &autoRepairOutput{
 		Path:              finalPath,
 		FinalScore:        lastScore,
+		ScoreBasis:        scoreBasisStructural,
 		GatePassed:        gatePassed,
 		Passes:            passesRun,
 		Trace:             trace,

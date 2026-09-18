@@ -40,6 +40,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `json2pptx <cmd> --flag` shown in SKILL.md / TOOLS.md / WORKFLOW.md against the
   command's real flag set, and `TestNoHardcodedToolCounts` rejects new counts.
 
+### Changed (value scale)
+
+- **One 0-100 score scale with an explicit basis (go-slide-creator-n1t7).**
+  `generate_presentation.quality.score` / `slide_scores[].score` (CLI
+  `--json-output` too) and `render_deck_spec.quality_summary.score` move from
+  0.0-1.0 to the shared **0-100** integer-valued scale (a former `0.87` is now
+  `87`) and gain `basis: "input"`. `score_deck` gains `basis: "structural"`;
+  `auto_repair` / `make_deck` gain `score_basis: "structural"`. Basis enum:
+  `input` (static input-JSON heuristics) | `structural` (deterministic rules over
+  the generated deck, no pixels) | `rendered` (reserved for pixel-derived
+  scores). The `generate_presentation` output schema's stale `quality_score`
+  definition (overall/variety/coverage/structure) is replaced by the real shape,
+  and `render_deck_spec.quality_summary` now references it. `score_deck` and
+  `render_deck_spec` descriptions state exactly what each score measured.
+  Agents comparing `quality.score` against 0-1 thresholds must rescale.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added
