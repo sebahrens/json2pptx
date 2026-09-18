@@ -308,7 +308,8 @@ This skill talks to **two** independent MCP servers. Both must be reachable for 
 Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. The 5-tool quick reference for this server is in the [MCP Tools (most-used)](#mcp-tools-most-used) section below; the full 40+ tool catalogue with phase markers lives in [TOOLS.md](TOOLS.md).
 
 - **Binary path:** `cmd/json2pptx/json2pptx` (built via `make` or `go build ./cmd/json2pptx`)
-- **Run as MCP:** `json2pptx mcp [-templates-dir <path>] [-output-dir <path>]`
+- **Run as MCP:** `json2pptx mcp [--templates-dir <path>] [--output <path>] [--tools core|all]`
+- **Tool profile:** by default (`--tools core`) `tools/list` advertises only the ~20 core tools (`get_started`, `get_capabilities`, `list_templates`, `describe_finding`, `validate_deck_spec`, `render_deck_spec`, `list_slide_kinds`, `plan_deck`, `recommend_visual`, `analyze_deck_rhythm`, `list_patterns`, `show_pattern`, `expand_pattern`, `validate_input`, `generate_presentation`, `render_deck_thumbnails`, `render_slide_image`, `score_deck`, `repair_slide`) without `outputSchema` (responses still carry `structuredContent`), keeping the listing under 60KB. Start the server with `--tools all` (or env `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue — facades (`make_deck`, `auto_repair`), preview/wireframe, `inspect_slide_images`, template settings, `score_candidates`, `apply_deck_patch`, etc. Non-core tools remain callable by name in core mode; `get_capabilities().mcp_tools_available[].in_core_profile` tells you which tools the core profile lists.
 - **Use when:** generating, validating, planning, scoring, repairing, or introspecting a full deck or any template / pattern / icon / shape catalog.
 
 ```json

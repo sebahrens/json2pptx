@@ -93,6 +93,7 @@ func runMCP() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files")
 	configPath := fs.String("config", "", "Path to config file (optional)")
+	toolsProfile := fs.String("tools", toolProfileCore, "Tool profile advertised in tools/list: core (default; ~20 tools, no outputSchema) or all (full catalog). Env: "+toolProfileEnv)
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx mcp [options]\n\n")
@@ -107,15 +108,22 @@ func runMCP() error {
 
 	// Record whether the directory flags were explicitly provided so their
 	// non-empty default values don't overwrite config-file/env directories.
-	var templatesDirSet, outputDirSet bool
+	var templatesDirSet, outputDirSet, toolsSet bool
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "templates-dir":
 			templatesDirSet = true
 		case "output":
 			outputDirSet = true
+		case "tools":
+			toolsSet = true
 		}
 	})
+
+	profile, err := resolveToolProfile(*toolsProfile, toolsSet)
+	if err != nil {
+		return err
+	}
 
 	// Fail fast if the font subsystem is broken.
 	if err := fontcache.Verify(); err != nil {
@@ -159,17 +167,14 @@ func runMCP() error {
 		result.Capabilities.Experimental["compact_responses"] = true
 	})
 
-	s := server.NewMCPServer(
-		"json2pptx",
-		Version,
+	s := newJSON2PPTXMCPServer(mc, profile,
 		server.WithToolCapabilities(false),
 		server.WithHooks(hooks),
 	)
 
-	registerMCPTools(s, mc)
-
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,
+		"tool_profile", profile,
 		"templates_dir", mc.templatesDir,
 		"output_dir", mc.outputDir,
 	)

@@ -1539,7 +1539,8 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           "api_key_dependency": {"type": "boolean"},
           "cli_counterpart":   {"type": "string"},
           "mcp_only_reason":   {"type": "string"},
-          "primitive_alternatives": {"type": "array", "items": {"type": "string"}}
+          "primitive_alternatives": {"type": "array", "items": {"type": "string"}},
+          "in_core_profile":   {"type": "boolean", "description": "True when the default core tool profile advertises this tool in tools/list. Others are listed only when the server runs with --tools=all (JSON2PPTX_MCP_TOOLS=all)."}
         },
         "required": ["name", "added_in", "kind", "phase"]
       }

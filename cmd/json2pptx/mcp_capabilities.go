@@ -121,6 +121,10 @@ type mcpToolEntry struct {
 	MCPOnlyReason string `json:"mcp_only_reason,omitempty"`
 	// PrimitiveAlternatives lists the primitives a workflow_facade composes.
 	PrimitiveAlternatives []string `json:"primitive_alternatives,omitempty"`
+	// InCoreProfile is true when the tool is advertised by the default "core"
+	// MCP tool profile. Tools with false are only listed when the server runs
+	// with --tools=all (or JSON2PPTX_MCP_TOOLS=all).
+	InCoreProfile bool `json:"in_core_profile"`
 }
 
 // capabilitiesVocabularies exposes categorical enums and vocabularies so agents
@@ -334,7 +338,9 @@ func mcpToolCatalog() []mcpToolEntry {
 	// self-describing. A missing classification leaves Kind/Phase empty;
 	// TestEveryRegisteredToolIsClassified catches that.
 	classifications := toolClassifications()
+	core := coreToolSet()
 	for i := range entries {
+		entries[i].InCoreProfile = core[entries[i].Name]
 		c, ok := classifications[entries[i].Name]
 		if !ok {
 			continue

@@ -380,6 +380,11 @@ Start manually for debugging:
 json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
 ```
 
+By default the server runs the `core` tool profile: `tools/list` advertises ~20
+core tools without `outputSchema` (~45KB instead of ~215KB of context). Pass
+`--tools all` (or set `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue
+below; non-core tools stay callable by name either way.
+
 The installer configures this automatically in `~/.claude/mcp.json`. The fastest
 way to learn the workflow at runtime is the `get_started` tool: it returns the
 recommended single-call **fast path** plus the ordered manual **sequence** it

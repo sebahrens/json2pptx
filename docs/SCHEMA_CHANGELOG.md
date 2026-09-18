@@ -22,6 +22,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   legacy base64-PNG-in-JSON envelope unchanged; the CLI render subcommands always
   use it.
 
+- **MCP tool profiles (go-slide-creator-vdxa).** `json2pptx mcp` now takes
+  `--tools core|all` (env `JSON2PPTX_MCP_TOOLS`), default `core`. The core
+  profile's `tools/list` advertises 19 tools (cap 20) without `outputSchema`
+  (~45KB vs ~215KB); `all` advertises the full, unchanged catalogue. Every tool
+  is still registered, so non-core tools remain callable by name. New
+  `get_capabilities().mcp_tools_available[].in_core_profile` boolean. The tool
+  NAME set is unchanged, so the schema fingerprint is unchanged.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added
