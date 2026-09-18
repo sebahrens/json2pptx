@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -465,7 +466,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			StrictUnknownKeys:    true,
 			NamedPatterns:        true,
 			TemplateSettings:     true,
-			SupportsInlineMarkup: []string{"b", "i", "u"},
+			SupportsInlineMarkup: inlinemarkup.SupportedTags,
 			SupportsSpeakerNotes: true,
 			OutputValidation:     []string{"off", "warn", "strict"},
 			PlaceholderPolicy:    []string{"off", "warn", "strict"},

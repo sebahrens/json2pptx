@@ -1027,6 +1027,38 @@ Every other `CONTENT_DROPPED` cause (partial-mode slide skips, visual collisions
 }
 ```
 
+### `UNSUPPORTED_INLINE_MARKUP`
+
+**Action:** `review`
+**Pattern:** `inline_markup`
+**Fix kind:** `remove_key`
+
+The renderer understands a fixed inline-markup vocabulary — `<b>`, `<i>`, `<u>`, `<sup>`, `<sub>` — and passes anything else straight through to the text run, so an unsupported tag **prints literally on the slide**. This used to be silent: a deck using `<a>`, `<color>` or `<code>` validated clean and shipped visible XML-ish garbage.
+
+The finding is advisory (`review`): the deck renders, it just renders the tag as text. It fires once per offending string, naming every distinct unsupported tag in it. `fix.params` carries both `unsupported` (what was found) and `supported` (the full vocabulary) so an agent can repair without a second lookup.
+
+The scan walks **every** authored string in the input — typed fields, raw overrides, shape grids, pattern values — via the shared `internal/policy/textwalk` traversal the no-emoji policy uses, so it cannot miss a field that policy already reaches. Strings with no `<` are skipped, so ordinary prose costs nothing.
+
+`<sup>` / `<sub>` are supported precisely because footnote markers are near-universal in consulting decks; they render as real OOXML baseline shifts (`a:rPr baseline="30000"` / `"-25000"`), not as text.
+
+```json
+{
+  "path": "slides[0].content[1].bullets_value[1]",
+  "code": "UNSUPPORTED_INLINE_MARKUP",
+  "message": "slides[0].content[1].bullets_value[1] uses inline tag(s) <a>, <code>, <color> which the renderer does not support — they print literally on the slide; supported tags are <b>, <i>, <u>, <sup>, <sub>",
+  "fix": {
+    "kind": "remove_key",
+    "params": {
+      "path": "slides[0].content[1].bullets_value[1]",
+      "unsupported": ["a", "code", "color"],
+      "supported": ["b", "i", "u", "sup", "sub"],
+      "hint": "remove the tag, or express the intent with a supported one (a footnote marker is <sup>1</sup>)"
+    }
+  },
+  "action": "review"
+}
+```
+
 ### `CUSTOM_COLOR_DROPPED`
 
 **Action:** `info`

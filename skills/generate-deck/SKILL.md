@@ -833,6 +833,8 @@ Non-negotiable. Full catalog with rationale and examples in [RULES.md](RULES.md)
 
   Non-Cartesian charts (pie, donut, scatter, bubble, waterfall, funnel, gauge, treemap, radar-only schemas) do not declare these keys and reject them as `UNKNOWN_FIELD`.
 
+- **Inline markup is a closed vocabulary.** Text fields render `<b>`, `<i>`, `<u>`, `<sup>` and `<sub>` — nothing else. `<sup>` / `<sub>` become real OOXML baseline shifts, so a footnote marker is `"+210bps<sup>1</sup>"`. Any other tag (`<a>`, `<color>`, `<code>`, `<br>`, `<span>`, …) is passed through to the text run and **prints literally on the slide**; `validate_input` / `validate --fit-report` now report it as `UNSUPPORTED_INLINE_MARKUP` (`action: review`) naming the tag and the JSON path. `get_capabilities().features.supports_inline_markup` is the authoritative list.
+
 - **Silent traps (Rules 17–19):** `footer` is an object not a string; never prefix `source` with "Source: "; content fields need `_value` suffix (`chart_value`, `table_value`).
 - **Table density (Rule 20 — enforced):** MUST split if rows > 7 OR cols > 6 OR font < 9pt. Multiline cells count as N logical rows.
 - **No emoji codepoints (hard rule):** emoji glyphs are rejected by pattern validators in `card-grid`, `icon-row`, `herodetail`, etc. Use a bundled SVG icon name or supply a user icon via `path` / `url` / `svg_data`. See the [Icon Names](#icon-names) section.

@@ -611,6 +611,7 @@ type runPropertiesXML struct {
 	Bold      string `xml:"b,attr,omitempty"`    // Bold flag: "1" for bold, omit otherwise
 	Italic    string `xml:"i,attr,omitempty"`    // Italic flag: "1" for italic, omit otherwise
 	Underline string `xml:"u,attr,omitempty"`    // Underline style: "sng" for single, omit otherwise
+	Baseline  string `xml:"baseline,attr,omitempty"` // Baseline shift in thousandths of a percent: "30000" superscript, "-25000" subscript
 	Caps      string `xml:"cap,attr,omitempty"`  // Capitalization: "small" for small-caps, "all" for all-caps
 	Inner     string `xml:",innerxml"`           // Child elements (preserved verbatim)
 }

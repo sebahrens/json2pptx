@@ -8,6 +8,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+### Added
+
+- **`<sup>` / `<sub>` inline markup + `UNSUPPORTED_INLINE_MARKUP`
+  (go-slide-creator-510u).** `supports_inline_markup` advertised `[b, i, u]` and
+  every other tag was passed through to the text run verbatim, so `<sup>`,
+  `<a>`, `<color>` and `<code>` printed as literal XML-ish text on the slide with
+  nothing reported. Superscript and subscript are now rendered (OOXML
+  `a:rPr baseline="30000"` / `"-25000"`) and the capability list grows to
+  `[b, i, u, sup, sub]`. Any tag outside it now raises the new advisory finding
+  `UNSUPPORTED_INLINE_MARKUP` (`action: review`, fix kind `remove_key`, carrying
+  both the `unsupported` and `supported` vocabularies) from `validate_input` and
+  `validate --fit-report`. The scan reuses the no-emoji policy's traversal, now
+  shared as `internal/policy/textwalk`, so it reaches every authored string.
+
 - **`describe_finding` covers the codes it claimed to (go-slide-creator-7zrt).**
   `design_mode_violation` — the code most likely to block a generation — returned
   `INPUT.UNKNOWN_FINDING_CODE`, and the error inlined all 150+ known codes

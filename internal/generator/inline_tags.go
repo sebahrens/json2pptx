@@ -1,6 +1,10 @@
 package generator
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
+)
 
 // TextRun represents a segment of text with optional formatting.
 type TextRun struct {
@@ -8,6 +12,10 @@ type TextRun struct {
 	Bold      bool   // Whether this run should be bold
 	Italic    bool   // Whether this run should be italic
 	Underline bool   // Whether this run should be underlined
+	// Baseline is the OOXML baseline shift in thousandths of a percent:
+	// pptx.BaselineSuperscript for <sup>, pptx.BaselineSubscript for <sub>,
+	// 0 for a normal run.
+	Baseline int
 }
 
 // ParseInlineTags parses HTML-like inline tags in text and returns a slice of
@@ -16,7 +24,10 @@ type TextRun struct {
 // Supported tags:
 //   - <b>...</b> for bold
 //   - <i>...</i> for italic
-//   - <u>...</u> for underline (mapped to Bold since TextRun has no Underline)
+//   - <u>...</u> for underline
+//   - <sup>...</sup> / <sub>...</sub> for superscript / subscript (footnote
+//     markers are near-universal in consulting decks; without them the tag
+//     printed literally on the slide — go-slide-creator-510u)
 //   - Nesting is supported: <b><i>bold italic</i></b>
 //
 // Tags are matched case-insensitively. If no tags are found, returns a single
@@ -36,6 +47,8 @@ func ParseInlineTags(text string) []TextRun {
 	bold := 0
 	italic := 0
 	underline := 0
+	superscript := 0
+	subscript := 0
 	pos := 0
 
 	for pos < len(text) {
@@ -44,7 +57,7 @@ func ParseInlineTags(text string) []TextRun {
 		if tagStart == -1 {
 			// No more tags — emit remaining text
 			if pos < len(text) {
-				runs = appendMergedRun(runs, text[pos:], bold > 0, italic > 0, underline > 0)
+				runs = appendMergedRun(runs, text[pos:], bold > 0, italic > 0, underline > 0, baselineFor(superscript, subscript))
 			}
 			break
 		}
@@ -52,14 +65,14 @@ func ParseInlineTags(text string) []TextRun {
 
 		// Emit text before the tag
 		if tagStart > pos {
-			runs = appendMergedRun(runs, text[pos:tagStart], bold > 0, italic > 0, underline > 0)
+			runs = appendMergedRun(runs, text[pos:tagStart], bold > 0, italic > 0, underline > 0, baselineFor(superscript, subscript))
 		}
 
 		// Find the closing '>'
 		tagEnd := strings.IndexByte(text[tagStart:], '>')
 		if tagEnd == -1 {
 			// No closing '>' — emit rest as literal text
-			runs = appendMergedRun(runs, text[tagStart:], bold > 0, italic > 0, underline > 0)
+			runs = appendMergedRun(runs, text[tagStart:], bold > 0, italic > 0, underline > 0, baselineFor(superscript, subscript))
 			break
 		}
 		tagEnd += tagStart
@@ -85,9 +98,21 @@ func ParseInlineTags(text string) []TextRun {
 			if underline > 0 {
 				underline--
 			}
+		case "sup":
+			superscript++
+		case "/sup":
+			if superscript > 0 {
+				superscript--
+			}
+		case "sub":
+			subscript++
+		case "/sub":
+			if subscript > 0 {
+				subscript--
+			}
 		default:
 			// Unknown tag — preserve as literal text
-			runs = appendMergedRun(runs, text[tagStart:tagEnd+1], bold > 0, italic > 0, underline > 0)
+			runs = appendMergedRun(runs, text[tagStart:tagEnd+1], bold > 0, italic > 0, underline > 0, baselineFor(superscript, subscript))
 		}
 
 		pos = tagEnd + 1
@@ -102,13 +127,13 @@ func ParseInlineTags(text string) []TextRun {
 
 // appendMergedRun appends a TextRun to the slice, merging with the last run if
 // formatting matches (to avoid fragmented runs with identical styles).
-func appendMergedRun(runs []TextRun, text string, bold, italic, underline bool) []TextRun {
+func appendMergedRun(runs []TextRun, text string, bold, italic, underline bool, baseline int) []TextRun {
 	if text == "" {
 		return runs
 	}
 	if len(runs) > 0 {
 		last := &runs[len(runs)-1]
-		if last.Bold == bold && last.Italic == italic && last.Underline == underline {
+		if last.Bold == bold && last.Italic == italic && last.Underline == underline && last.Baseline == baseline {
 			last.Text += text
 			return runs
 		}
@@ -118,5 +143,19 @@ func appendMergedRun(runs []TextRun, text string, bold, italic, underline bool) 
 		Bold:      bold,
 		Italic:    italic,
 		Underline: underline,
+		Baseline:  baseline,
 	})
+}
+
+// baselineFor maps open <sup> / <sub> nesting depths to an OOXML baseline shift.
+// Superscript wins when both are somehow open.
+func baselineFor(superscript, subscript int) int {
+	switch {
+	case superscript > 0:
+		return pptx.BaselineSuperscript
+	case subscript > 0:
+		return pptx.BaselineSubscript
+	default:
+		return 0
+	}
 }

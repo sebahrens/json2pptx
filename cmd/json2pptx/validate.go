@@ -13,6 +13,7 @@ import (
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -167,6 +168,18 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, flaggedTitleFitFindings(input, layouts)...)
 	findings = append(findings, flaggedReadabilityFitFindings(input, layouts, slideWidth, slideHeight)...)
+	// Unsupported inline markup prints literally on the slide, so the CLI fit
+	// report must name it too — not just the MCP path (go-slide-creator-510u).
+	for _, f := range inlinemarkup.Validate(input) {
+		findings = append(findings, fitFinding{
+			Code:     f.Code,
+			Path:     f.Path,
+			Message:  f.Message,
+			Fix:      f.Fix,
+			Action:   f.Action,
+			Severity: "warning",
+		})
+	}
 	return budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
 }
 

@@ -40,7 +40,21 @@ type Run struct {
 	FontFamily string // Font typeface (e.g. "+mn-lt" for theme minor font, "Arial")
 	FieldType  string // If set, renders as <a:fld type="..."> instead of <a:r> (e.g. "slidenum")
 	FieldID    string // UUID for field identification (required when FieldType is set)
+
+	// Baseline raises or lowers the run relative to the text baseline, in
+	// thousandths of a percent of the font size — OOXML's a:rPr baseline
+	// attribute. BaselineSuperscript / BaselineSubscript are the conventional
+	// values; 0 means normal baseline.
+	Baseline int
 }
+
+// Baseline offsets for superscript and subscript runs, in the thousandths-of-a-
+// percent units OOXML's a:rPr baseline attribute uses. These are the values
+// PowerPoint itself writes for its superscript / subscript buttons.
+const (
+	BaselineSuperscript = 30000
+	BaselineSubscript   = -25000
+)
 
 // BulletDef defines bullet formatting for a paragraph.
 type BulletDef struct {
@@ -167,7 +181,7 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 	}
 
 	// Run properties
-	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != ""
+	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != "" || r.Baseline != 0
 	if hasRPr {
 		buf.WriteString(`<a:rPr`)
 		if r.Lang != "" {
@@ -184,6 +198,9 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 		}
 		if r.Underline {
 			buf.WriteString(` u="sng"`)
+		}
+		if r.Baseline != 0 {
+			fmt.Fprintf(buf, ` baseline="%d"`, r.Baseline)
 		}
 		if r.Dirty {
 			buf.WriteString(` dirty="0"`)

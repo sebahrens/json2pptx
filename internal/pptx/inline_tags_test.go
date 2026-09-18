@@ -1,6 +1,8 @@
 package pptx
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -162,5 +164,75 @@ func TestConvertMarkdownEmphasis_EndToEnd(t *testing.T) {
 	// " overall" — plain
 	if runs[4].Text != " overall" || runs[4].Bold || runs[4].Italic {
 		t.Errorf("run[4] = %+v", runs[4])
+	}
+}
+
+// go-slide-creator-510u: <sup> / <sub> are the dominant real use of inline
+// markup in consulting decks (footnote markers). They must produce a baseline
+// shift, not literal text.
+func TestSplitInlineTags_SuperscriptAndSubscript(t *testing.T) {
+	tests := []struct {
+		name      string
+		text      string
+		wantTexts []string
+		wantBase  []int
+	}{
+		{
+			name:      "footnote marker",
+			text:      "+210bps<sup>1</sup> reset",
+			wantTexts: []string{"+210bps", "1", " reset"},
+			wantBase:  []int{0, BaselineSuperscript, 0},
+		},
+		{
+			name:      "chemical subscript",
+			text:      "H<sub>2</sub>O",
+			wantTexts: []string{"H", "2", "O"},
+			wantBase:  []int{0, BaselineSubscript, 0},
+		},
+		{
+			name:      "superscript combined with bold",
+			text:      "<b>Revenue<sup>2</sup></b>",
+			wantTexts: []string{"Revenue", "2"},
+			wantBase:  []int{0, BaselineSuperscript},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runs := SplitInlineTags(Run{Text: tt.text})
+			if len(runs) != len(tt.wantTexts) {
+				t.Fatalf("got %d runs, want %d: %+v", len(runs), len(tt.wantTexts), runs)
+			}
+			for i := range runs {
+				if runs[i].Text != tt.wantTexts[i] {
+					t.Errorf("run %d text = %q, want %q", i, runs[i].Text, tt.wantTexts[i])
+				}
+				if runs[i].Baseline != tt.wantBase[i] {
+					t.Errorf("run %d baseline = %d, want %d", i, runs[i].Baseline, tt.wantBase[i])
+				}
+			}
+		})
+	}
+}
+
+// A baseline shift must reach the emitted rPr.
+func TestRun_BaselineInXML(t *testing.T) {
+	var buf bytes.Buffer
+	Run{Text: "1", Baseline: BaselineSuperscript}.marshalXML(&buf)
+	if got := buf.String(); !strings.Contains(got, `baseline="30000"`) {
+		t.Errorf("superscript run XML missing baseline attribute: %s", got)
+	}
+
+	buf.Reset()
+	Run{Text: "2", Baseline: BaselineSubscript}.marshalXML(&buf)
+	if got := buf.String(); !strings.Contains(got, `baseline="-25000"`) {
+		t.Errorf("subscript run XML missing baseline attribute: %s", got)
+	}
+
+	// A normal run must not emit the attribute at all.
+	buf.Reset()
+	Run{Text: "plain", Lang: "en-US"}.marshalXML(&buf)
+	if got := buf.String(); strings.Contains(got, "baseline=") {
+		t.Errorf("plain run should not carry a baseline attribute: %s", got)
 	}
 }

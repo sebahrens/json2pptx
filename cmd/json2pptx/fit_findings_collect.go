@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -65,6 +66,12 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 			findings = append(findings, detectGridViolations(rg, layouts, input.Slides)...)
 		}
 	}
+
+	// 3b. Inline markup the renderer does not support. Unsupported tags are
+	// passed through to the text run verbatim, so they print as literal
+	// XML-ish garbage on the slide; nothing used to report them
+	// (go-slide-creator-510u).
+	findings = append(findings, inlinemarkup.Validate(input)...)
 
 	// 4. Grid occupancy: pattern_underfilled / pattern_overcrowded.
 	findings = append(findings, collectGridOccupancyFindings(input)...)

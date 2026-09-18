@@ -98,6 +98,11 @@ const (
 	// honor the custom colors.
 	ErrCodeCustomColorDropped = "CUSTOM_COLOR_DROPPED"
 
+	// ErrCodeUnsupportedInlineMarkup is emitted when authored text carries an
+	// inline tag the run builder does not render, which therefore prints
+	// literally on the slide.
+	ErrCodeUnsupportedInlineMarkup = "UNSUPPORTED_INLINE_MARKUP"
+
 	// ErrCodeDesignModeViolation is emitted when a slide uses a raw hex color,
 	// an absolute font size, or another free-mode-only construct while the deck
 	// runs in constrained design mode (the default). It blocks generation.

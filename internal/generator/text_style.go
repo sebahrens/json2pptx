@@ -1,7 +1,10 @@
 // Package generator provides PPTX file generation from slide specifications.
 package generator
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // bulletLevelStyle holds paragraph and run properties for a bullet level.
 type bulletLevelStyle struct {
@@ -299,6 +302,9 @@ func createFormattedRuns(text string, templateRProps *runPropertiesXML) []runXML
 		}
 		if tr.Underline {
 			rProps.Underline = "sng"
+		}
+		if tr.Baseline != 0 {
+			rProps.Baseline = strconv.Itoa(tr.Baseline)
 		}
 
 		runs[i] = runXML{

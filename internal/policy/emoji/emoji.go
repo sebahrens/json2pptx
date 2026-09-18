@@ -8,12 +8,12 @@
 package emoji
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"unicode"
 
+	"github.com/sebahrens/json2pptx/internal/policy/textwalk"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -142,17 +142,11 @@ func Scan(input any) []Violation {
 	if input == nil {
 		return nil
 	}
-	data, err := json.Marshal(input)
-	if err != nil {
-		return nil
-	}
-	var root any
-	if err := json.Unmarshal(data, &root); err != nil {
-		return nil
-	}
-
 	var violations []Violation
-	walkJSONStrings(root, "", func(value, path string) {
+	textwalk.Strings(input, func(value, path string) {
+		if !Contains(value) {
+			return
+		}
 		violations = append(violations, Violation{
 			Path:   path,
 			Value:  value,
@@ -189,7 +183,7 @@ func ValidateNoEmojiInText(input any) []patterns.FitFinding {
 				Path:    v.Path,
 				Code:    "no_emoji_violation",
 				Message: fmt.Sprintf("%s contains emoji codepoint(s) %q — %s",
-					displayPath(v.Path), v.Sample, PolicyMessage),
+					textwalk.DisplayPath(v.Path), v.Sample, PolicyMessage),
 				Fix: &patterns.FixSuggestion{
 					Kind: "remove_emoji",
 					Params: map[string]any{
@@ -204,35 +198,4 @@ func ValidateNoEmojiInText(input any) []patterns.FitFinding {
 	return findings
 }
 
-// walkJSONStrings recursively visits every string value in a decoded JSON
-// tree and calls visit when the string contains an emoji codepoint. The path
-// argument is a JSON-style accessor (e.g. "slides[2].content[0].text_value").
-func walkJSONStrings(v any, path string, visit func(value, path string)) {
-	switch n := v.(type) {
-	case string:
-		if Contains(n) {
-			visit(n, path)
-		}
-	case map[string]any:
-		for k, child := range n {
-			next := k
-			if path != "" {
-				next = path + "." + k
-			}
-			walkJSONStrings(child, next, visit)
-		}
-	case []any:
-		for i, child := range n {
-			walkJSONStrings(child, fmt.Sprintf("%s[%d]", path, i), visit)
-		}
-	}
-}
 
-// displayPath returns a human-friendly variant of a JSON path for messages.
-// Empty paths render as "<root>" so the message is never blank.
-func displayPath(path string) string {
-	if path == "" {
-		return "<root>"
-	}
-	return path
-}

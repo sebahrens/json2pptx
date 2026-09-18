@@ -4,8 +4,40 @@ import (
 	"strings"
 )
 
-// SplitInlineTags parses <b>, <i>, <u> inline formatting tags in a Run's text
-// and returns multiple Runs with appropriate Bold/Italic/Underline flags.
+// formatState tracks the open nesting depth of each supported inline tag.
+// Counting rather than flagging keeps nested and repeated tags
+// (<b>a<b>b</b>c</b>) well-behaved.
+type formatState struct {
+	bold, italic, underline int
+	superscript, subscript  int
+}
+
+// counterFor maps a tag name (with or without a leading "/") to the depth
+// counter it controls, or nil when the tag is not one the renderer supports.
+func (s *formatState) counterFor(tag string) *int {
+	switch strings.TrimPrefix(tag, "/") {
+	case "b":
+		return &s.bold
+	case "i":
+		return &s.italic
+	case "u":
+		return &s.underline
+	case "sup":
+		return &s.superscript
+	case "sub":
+		return &s.subscript
+	default:
+		return nil
+	}
+}
+
+// SplitInlineTags parses <b>, <i>, <u>, <sup> and <sub> inline formatting tags
+// in a Run's text and returns multiple Runs with the matching Bold / Italic /
+// Underline / Baseline properties.
+//
+// <sup> and <sub> exist because footnote markers are near-universal in
+// consulting decks: without them an author writing "+210bps<sup>1</sup>" got
+// the tag printed literally on the slide (go-slide-creator-510u).
 // The template Run provides base styling (font size, color, font family, etc.).
 // If no tags are found, returns a single-element slice with the original Run.
 func SplitInlineTags(base Run) []Run {
@@ -14,9 +46,6 @@ func SplitInlineTags(base Run) []Run {
 		return []Run{base}
 	}
 
-	type formatState struct {
-		bold, italic, underline int
-	}
 	var state formatState
 	if base.Bold {
 		state.bold = 1
@@ -40,11 +69,19 @@ func SplitInlineTags(base Run) []Run {
 		r.Bold = state.bold > 0
 		r.Italic = state.italic > 0
 		r.Underline = state.underline > 0
+		switch {
+		case state.superscript > 0:
+			r.Baseline = BaselineSuperscript
+		case state.subscript > 0:
+			r.Baseline = BaselineSubscript
+		default:
+			r.Baseline = base.Baseline
+		}
 
 		// Merge with previous run if formatting matches
 		if len(runs) > 0 {
 			last := &runs[len(runs)-1]
-			if last.Bold == r.Bold && last.Italic == r.Italic && last.Underline == r.Underline {
+			if last.Bold == r.Bold && last.Italic == r.Italic && last.Underline == r.Underline && last.Baseline == r.Baseline {
 				last.Text += s
 				return
 			}
@@ -74,26 +111,15 @@ func SplitInlineTags(base Run) []Run {
 
 		tag := strings.ToLower(strings.TrimSpace(text[tagStart+1 : tagEnd]))
 
-		switch tag {
-		case "b":
-			state.bold++
-		case "/b":
-			if state.bold > 0 {
-				state.bold--
+		if counter := state.counterFor(tag); counter != nil {
+			if strings.HasPrefix(tag, "/") {
+				if *counter > 0 {
+					*counter--
+				}
+			} else {
+				*counter++
 			}
-		case "i":
-			state.italic++
-		case "/i":
-			if state.italic > 0 {
-				state.italic--
-			}
-		case "u":
-			state.underline++
-		case "/u":
-			if state.underline > 0 {
-				state.underline--
-			}
-		default:
+		} else {
 			// Unknown tag — preserve as literal text
 			emit(text[tagStart : tagEnd+1])
 		}
