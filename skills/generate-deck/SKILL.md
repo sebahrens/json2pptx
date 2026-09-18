@@ -41,7 +41,7 @@ the compiler choose patterns, layouts, accents, and rhythm — a spec is far sho
 
 | Step | MCP tool | CLI | Purpose |
 |---|---|---|---|
-| Discover | `list_deck_archetypes`, `list_slide_kinds` | `semantic schema` | Enumerate `meta.archetype` / `slides[].kind` and each kind's required + typical fields (plus `required_aliases`: required-one-of alias keys, e.g. `kpi_snapshot` accepts `metrics` for `kpis`). `semantic schema` prints the full DeckSpec JSON Schema (draft 2020-12). |
+| Discover | `list_deck_archetypes`, `list_slide_kinds` | `semantic schema` | Enumerate `meta.archetype` / `slides[].kind` and each kind's required + typical fields (plus `required_aliases`: required-one-of alias keys, e.g. `kpi_snapshot` accepts `metrics` for `kpis`), the closed per-kind `item_schema`, and a copy-ready `example` slide that validates clean. `semantic schema` prints the full DeckSpec JSON Schema (draft 2020-12); the same schema (inlined) is the MCP input schema of `spec` on `validate_deck_spec` / `render_deck_spec` / `compile_deck_spec` / `explain_deck_spec`. |
 | Validate | `validate_deck_spec` | `semantic validate` | First check: unknown kinds/archetypes, missing required payload fields, rhythm/density advisories. Returns the shared finding envelope; `ok=false` ⇒ ≥1 error-severity finding (`--strict off\|warn\|strict` controls advisory severity). |
 | Preview plan | `explain_deck_spec` | `semantic explain` | Read-only projection: resolved archetype/template, deck `rhythm` + `rhythm_warnings[]`, and per slide `{index, kind, role, visual_family, density, title, takeaway, pattern, layout}` — **without** compiling or rendering. Use during planning. |
 | Render | `render_deck_spec` | `semantic render` | One-call spec → `.pptx`. Strict output validation by default (`output_validation off\|warn\|strict`). Returns `{success, pptx_path, quality_summary, diagnostics[], explanation_summary}`. |
@@ -56,14 +56,17 @@ synthesis/decision slide is expected (call `list_deck_archetypes` for each one's
 for each kind's required + typical fields; the table below mirrors it exactly. Template resolution
 order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 
-> ⚠️ **Unknown payload fields are silently ignored.** The DeckSpec payload accepts arbitrary keys
-> (`additionalProperties: true`), so a misspelled or invented field name — `points` written as
-> `bullets`, `kpis` as `metrics_list`, a column's `items` as `rows` — is dropped without error and
-> its content never reaches a slide. Use **exactly** the field names in the table. `semantic schema`
-> now declares each kind's payload fields as a discriminated union (`$defs.Slide_<kind>`, pinned by
-> `kind` const, referenced from `SlideSpec.oneOf`), so a JSON-Schema validator can flag missing
-> required or unknown fields — but the compiler itself still ignores unknown keys at render time, so
-> validate the spec against the schema rather than relying on the engine to reject mistakes.
+> ⚠️ **Unknown payload fields are reported, never silently used.** Each kind's payload is a closed
+> schema (`additionalProperties: false`): `semantic schema` and the MCP `spec` input schema declare a
+> discriminated union (one `Slide_<kind>` variant per kind, pinned by `kind` const, in
+> `SlideSpec.oneOf`) listing exactly the fields the compiler reads — including list-entry keys
+> (`kpis[]`, `columns[]`, `steps[]`, `phases[]`, `options[]`) and the chart object (`type`, `title`,
+> `data`). A misspelled or invented key (`takeawy`, a KPI's `valeu`, a column's `rows`, a flat
+> `chart.series`) is still **dropped by the compiler**, so `validate_deck_spec` / `render_deck_spec`
+> report it as **`SEMANTIC_UNKNOWN_FIELD`** at the exact path (e.g. `slides[2].kpis[1].valeu`) —
+> `warning` under `off`/`warn`, `error` under `strict` — with `fix: {kind: "rename_field", params:
+> {from, to, did_you_mean}}` when a known key is close. Treat every such warning as lost content and
+> fix it. Use **exactly** the field names in the table (or copy `list_slide_kinds` `example`).
 
 | kind | required | typical / optional | item-object fields (exact) |
 |---|---|---|---|
@@ -71,12 +74,12 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `section` | `title` | `subtitle` | — |
 | `executive_summary` | `title` | `points` (body bullets), `takeaway` (footer one-liner) | — |
 | `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label, delta?}` (`delta` ≤12 chars, e.g. `"+5%"`, renders a small annotation; aliases `sub`/`trend`/`change`) |
-| `chart_insight` | `chart` | `insights[]` (1–6 → chart+insights visual), `title`, `source`, `takeaway` | chart: `{type, data, title?}` |
+| `chart_insight` | `chart` | `insights[]` (1–6 → chart+insights visual), `title`, `source`, `takeaway` | chart: `{type, data, title?}`; `data` = `{categories:[…], series:[{name, values:[…]}]}` (bar/line/area) or `{categories:[…], values:[…]}` (pie/donut) — a missing/malformed `data` yields `SEMANTIC_DENSITY` at `slides[i].chart.data` with `fix.params.{expected_shape, example}` |
 | `comparison` | `columns` (exactly 2, balanced, ≤10 rows each → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
 | `process` | `steps` (3–8 → visual) | `title`, `takeaway` | each step: string or `{label, type?}` |
 | `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
 | `decision` | `title` | `recommendation`, `options[]`, `takeaway` | each option: string or `{label}` |
-| `closing` | `title` | `subtitle` | — |
+| `closing` | `title` | `subtitle`, `bullets[]`/`points[]` (renders a content slide) | — |
 | `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, structurally validated then passed through (see note) |
 
 > **`executive_summary` body vs footer:** body bullets come from `points` (preferred) **or**

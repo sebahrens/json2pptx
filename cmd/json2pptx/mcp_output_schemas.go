@@ -2283,9 +2283,11 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "summary":         {"type": "string"},
           "required_fields": {"type": "array", "items": {"type": "string"}},
           "required_aliases": {"type": "object", "description": "Maps a required field to accepted alias keys (required-one-of: the field or any alias satisfies the requirement).", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
-          "typical_fields":  {"type": "array", "items": {"type": "string"}}
+          "typical_fields":  {"type": "array", "items": {"type": "string"}},
+          "item_schema":     {"type": "object", "description": "Closed JSON Schema for one slide of this kind: every payload field the compiler reads (list-entry and chart object shapes included), additionalProperties:false."},
+          "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with zero findings."}
         },
-        "required": ["kind", "summary"]
+        "required": ["kind", "summary", "item_schema", "example"]
       }
     }
   },

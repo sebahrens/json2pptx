@@ -4,6 +4,34 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased — closed DeckSpec schema (go-slide-creator-h8o7, go-slide-creator-dg8f)
+
+### Changed
+
+- **`spec` on `validate_deck_spec` / `render_deck_spec` / `compile_deck_spec` /
+  `explain_deck_spec` now carries the real DeckSpec JSON Schema** (inlined — no
+  `$ref`s) instead of `{"type":"object","properties":{}}`: `slides.items.oneOf`
+  has one `Slide_<kind>` variant per kind, each `additionalProperties: false`
+  with closed list-entry and chart object schemas. `json2pptx semantic schema`
+  and `GET /api/v1/semantic/schema` emit the same closed variants (previously
+  `additionalProperties: true`).
+- **Unknown payload keys are diagnosed.** A slide payload key, list-entry key, or
+  chart key the compiler never reads now yields `SEMANTIC_UNKNOWN_FIELD` at the
+  exact path (warning; error under `strict`; not suppressed by `off`) with a
+  `rename_field` fix (`params.{from, to, did_you_mean}`) when a close key exists.
+- **Chart data hints point at `slides[i].chart.data`.** The chart advisory
+  (`SEMANTIC_DENSITY`) moved from the non-existent `slides[i].chart.series` path
+  to `slides[i].chart.data`; its message shows the expected shape and its `fix`
+  (`provide_value`) carries `params.{path, expected_shape, example}`. Pie/donut
+  `{categories, values}` data is accepted. A flat `chart.series` (never read by
+  the compiler) no longer counts as data.
+
+### Added
+
+- **`list_slide_kinds` entries gain `item_schema`** (the closed per-kind slide
+  schema) **and `example`** (a copy-ready slide, including `kind`, that
+  validates with zero findings under strict).
+
 ## Unreleased — make_deck exemplar gate (go-slide-creator-htwq)
 
 ### Changed
