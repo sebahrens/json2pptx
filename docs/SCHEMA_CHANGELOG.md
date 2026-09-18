@@ -75,6 +75,233 @@ centred by the pattern `vertical_align` default.
   colour before the check, removing false predictions for dark text on light
   accent tints.
 
+### plan_deck deck-quality fixes (go-slide-creator-xmpb)
+
+#### Changed
+
+- **`plan_deck` title/closing slides carry a layout, not a pattern.** Every
+  `slides[]` entry gains a required `layout` field (canonical `layout_id`, always
+  equal to `skeleton.layout_id`): `"title"` for slide 0, `"closing"` for the last
+  slide, `"blank-title"` for every pattern slide. Title and closing slides now
+  have `recommended_pattern: ""` / `suggested_pattern: ""`, no `alternatives` or
+  predictions, and a layout-only skeleton (`title` + `subtitle` entries, no
+  `pattern`). With `template`, their `template_support` vets the Title Slide /
+  Closing layout family. Pattern skeletons' `layout_id` is now `"blank-title"`
+  (was `"section"` / `"blank"` by role). make_deck's `plan.slides[]` likewise
+  reports `recommended_pattern: ""` for those two slides.
+- **Comparison slots map only to the comparison family** (`comparison-2col`,
+  `before-after`).
+- **Emphasis cap.** Emphasis patterns (`stat-hero`, `pull-quote`, and now
+  `kpi-inline`) are capped at ceil(n/5) per n-slide plan; excess ones are demoted
+  (must_include placements are kept). `rhythm_check.emphasis_count` /
+  `has_emphasis` count all three; `pattern_variety` ignores title/closing slides.
+
+#### Added (go-slide-creator-kndv)
+
+- **`plan_deck` carries brief facts into the plan.** Quantity and named-entity
+  clauses from the brief (e.g. `+23% revenue`, `churn 4%`, `EU expansion is on
+  track`) are routed verbatim to pattern slides: each slide gains an optional
+  `facts[]` array and its `content_seed` is prefixed with those facts. The result
+  gains a required top-level `unplaced_facts[]` array (always present, `[]` when
+  empty) listing facts no slide had capacity for. make_deck's derived slide
+  titles pick up the facts through `content_seed`.
+
+### DeckSpec fast path + server instructions (go-slide-creator-o8kl, go-slide-creator-f6kq, go-slide-creator-09e0)
+
+#### Changed
+
+- **`get_started{task:"brief"}` fast path is now the DeckSpec path.**
+  `fast_path.tool` is `render_deck_spec` (was `make_deck`) and the new
+  `fast_path.steps[]` lists `list_slide_kinds` → `validate_deck_spec` →
+  `render_deck_spec` → `render_deck_thumbnails`. `make_deck` is repositioned as a
+  skeleton/wireframe tool. `falls_back_to` still mirrors the raw `sequence`.
+  `render_deck_spec` is now classified `kind: "workflow_facade"`
+  (`primitive_alternatives`: `validate_deck_spec`, `compile_deck_spec`,
+  `validate_input`, `generate_presentation`).
+- **One completion rule everywhere.** `completion_protocol.rule`, the get_started
+  notes, SKILL.md and the server instructions now share one text: render ALL
+  slides (`render_deck_thumbnails`) and inspect every image; a passing gate /
+  score is a precondition, never completion. SKILL.md's old "stop … do not
+  render thumbnails" rule is removed.
+
+#### Added
+
+- **MCP server `instructions`.** The `initialize` response carries the 5-step
+  quality workflow (get_started → DeckSpec → render + inspect all slides → fix
+  at `semantic_path` → never ship exemplar content).
+- **`get_started.quality_workflow`** (always present) echoes the same text
+  (single Go const, so the two cannot drift).
+
+### Strict MCP arguments (go-slide-creator-s9uq)
+
+#### Changed
+
+- **Unknown MCP tool arguments are rejected.** Every tool call is checked against
+  the tool's declared input schema by a server-level middleware; an undeclared
+  argument name now fails the call with the new code **`UNKNOWN_PARAMETER`**
+  (`INPUT` namespace, `path` = the argument) instead of being silently ignored.
+  The message lists the accepted arguments; when a close name exists the
+  diagnostic carries `fix: {kind: "rename_field", params: {from, to,
+  did_you_mean}}` and a `next_tool_call` retry (e.g. `plan_deck` `slide_count` →
+  `slide_budget`). `make_deck` keeps accepting the legacy `max_passes` alias.
+
+### Closed DeckSpec schema (go-slide-creator-h8o7, go-slide-creator-dg8f)
+
+#### Changed
+
+- **`spec` on `validate_deck_spec` / `render_deck_spec` / `compile_deck_spec` /
+  `explain_deck_spec` now carries the real DeckSpec JSON Schema** (inlined — no
+  `$ref`s) instead of `{"type":"object","properties":{}}`: `slides.items.oneOf`
+  has one `Slide_<kind>` variant per kind, each `additionalProperties: false`
+  with closed list-entry and chart object schemas. `json2pptx semantic schema`
+  and `GET /api/v1/semantic/schema` emit the same closed variants (previously
+  `additionalProperties: true`).
+- **Unknown payload keys are diagnosed.** A slide payload key, list-entry key, or
+  chart key the compiler never reads now yields `SEMANTIC_UNKNOWN_FIELD` at the
+  exact path (warning; error under `strict`; not suppressed by `off`) with a
+  `rename_field` fix (`params.{from, to, did_you_mean}`) when a close key exists.
+- **Chart data hints point at `slides[i].chart.data`.** The chart advisory
+  (`SEMANTIC_DENSITY`) moved from the non-existent `slides[i].chart.series` path
+  to `slides[i].chart.data`; its message shows the expected shape and its `fix`
+  (`provide_value`) carries `params.{path, expected_shape, example}`. Pie/donut
+  `{categories, values}` data is accepted. A flat `chart.series` (never read by
+  the compiler) no longer counts as data.
+
+#### Added
+
+- **`list_slide_kinds` entries gain `item_schema`** (the closed per-kind slide
+  schema) **and `example`** (a copy-ready slide, including `kind`, that
+  validates with zero findings under strict).
+
+### make_deck exemplar gate (go-slide-creator-htwq)
+
+#### Changed
+
+- **`make_deck` never reports a passing gate on exemplar content.** Its slides
+  are pattern exemplar placeholders, so the response now forces
+  `gate_passed: false`, prepends the machine token `"exemplar_content"` to both
+  `gate_reasons[]` and `blocking_reasons[]`, and reports `final_score: 0` plus
+  a new `content_score: 0`. The deterministic layout/fit score the loop computed
+  moves to the new always-present **`structural_score`** field. Previously a QBR
+  brief could return `final_score: 98, gate_passed: true` for off-topic
+  placeholder copy. `auto_repair` (author-supplied content) is unchanged.
+
+#### Added
+
+- **`submit_visual_review` MCP tool** — records a host/manual all-slide visual
+  review (`pptx_path`, `pptx_revision`, `slides[{index, verdict, image_path|image_sha256,
+  role?, findings?}]`, `reviewer?`, `revision?`). Validated by
+  `ReviewRecord.ValidateCompletion` (all slides, pixel hashes, current revision);
+  partial/stale reviews are rejected. Returns quality `evidence` with
+  `inspection_backend: host|manual` and `status`
+  (`visually_reviewed_current_revision` | `draft_needs_visual_review`); updates the
+  `.authoring.json` manifest's `visual_evidence` (new `reviewer` field) when present.
+  `QualityEvidence.approved` now accepts `provider`/`host`/`manual` backends in
+  addition to `vision` (heuristic still never approves).
+
+#### Changed
+
+- **`repair_slide` `reduce_items` / `resize_list` fact-loss guard.** Dropping
+  pattern-values items that contain a number, unit, negation, or qualifier is
+  refused with `code: "semantic_review_required"` and a `next_tool_call`
+  proposing `repair_slide` → `split_pattern{path, first}`; pass
+  `confirm_semantic_change: true` to override. `split_pattern` accepts an
+  optional `path` that splits a `pattern.values` array across two slides.
+- **Visual findings carry an optional `bbox`** (`{x,y,w,h}`, fractions of the
+  slide) on `inspect_slide_images` findings and `propose_repairs` visual input.
+  `propose_repairs` hit-tests it against the generated shape_grid cell bounds
+  (patterns are expanded first) and targets the element path
+  (`/slides/N/shape_grid/rows/R/cells/C`, also set as `reduce_cell_text`
+  `cell_path`) instead of the whole slide; no bbox or no hit keeps the slide path.
+
+### Deck-quality fixes (lanes L4, L6)
+
+#### Added
+
+- **`matrix-2x2` axis direction.** Optional `values.x_low`, `x_high`, `y_low`,
+  `y_high` (strings, ≤20 chars; default `"Low"` / `"High"`) label the ends of
+  each axis. Both value forms (named quadrants and positional `quadrants`)
+  accept them. The axes now render as arrows pointing to the high end (x →
+  right, y → up) instead of flat header bars. Additive; existing inputs are
+  unchanged apart from the new rendering.
+
+- **`examine_template` exposes the template profile** (go-slide-creator-fw42).
+  The report gains a top-level `profile` object (`{template_hash,
+  parser_version, role_bindings, diagnostics[]}`) and a per-layout
+  `layouts[].profile_geometry` object (`{layout_id, footer_regions[], frame}`).
+  `footer_regions[]` are the resolved `dt`/`ftr`/`sldNum` rectangles
+  (`{type, x_emu, y_emu, w_emu, h_emu}`, layout first, else master); `frame` is
+  the chrome frame the generator renders into — `{canvas, content,
+  takeaway_band, source_band, footer_top_emu, has_footer, basis, fits}` with
+  `basis ∈ {layout, reference_layout, slide_fallback}`. The profile is built
+  once per template content hash (+ parser version) and is the same object the
+  generator uses for takeaway/source placement. Additive; no field removed.
+- **Fit finding `chrome_band_no_fit`** (go-slide-creator-7m9v). `review`
+  action, `fix.kind: swap_layout` (`params.layout_id` = One Content layout).
+  Emitted when a slide's takeaway/source band cannot be placed on its layout;
+  the band is skipped at render instead of overlapping title/footer chrome.
+
+- **`recommend_visual` template preview refs** (go-slide-creator-aruv). With a
+  `template`, `candidates[].example` gains `layout_id` and
+  `layout_preview_png_path` — the shipped 320px thumbnail
+  (`templates/previews/<template>/<layout_id>.png`, embedded in the binary and
+  materialised into the user cache for embedded templates) of the layout the
+  candidate renders on. Placeholder candidates now resolve slide types
+  (`title`, `section`, `content`, `two-column`, `image`, `blank`) to their
+  canonical layout and use the thumbnail as `preview_png_path`
+  (`renderer: "template-preview"`, `metadata_only: false`). Additive.
+
+#### Changed
+
+- **Takeaway / source band geometry is layout-derived** (go-slide-creator-7m9v).
+  The band spans the layout's body column and sits above its footer
+  placeholders (was: a fixed 0.5in slide-percentage margin overlapping the
+  master footers). Content placeholders shrink to end above the band. The
+  takeaway text is 14pt bold (was 12pt).
+
+### Typography, contrast and readability (deck-quality lane L7)
+
+#### Added
+
+- **Top-level `viewing_mode`** (`"present"` default | `"read"`) selecting the
+  readability policy, and the **`TEXT_BELOW_READABLE_MIN`** fit finding
+  (`action: review`, `fix.kind: reduce_text`, `fix.params: {strategy, role,
+  actual_pt, min_pt, viewing_mode}`) emitted for placeholder autofit (generate)
+  and shape_grid cells (fit report / preflight). Schema fingerprint updated;
+  SchemaVersion bump left to the merge (coordinator instruction).
+
+- **`TITLE_OVERFLOW` fit finding** (`action: shrink_or_split`, `fix.kind: shorten_title`,
+  `fix.params: {current_chars, max_chars, font_pt, min_font_pt}`). Emitted by
+  `generate` when a title cannot fit its resolved title placeholder at the
+  minimum autofit size, measured with the master's inherited title style.
+
+#### Changed
+
+- **Title checks unified on measured fit.** `validate` title diagnostics,
+  the fit report and the generate `quality` score now measure titles against the
+  resolved title placeholder and inherited title style. `title_wraps` escalates
+  to `action: shrink_or_split` with `fix.kind: shorten_title`,
+  `fix.params: {current_chars, max_chars, fit_scale_pct}` when the title only
+  fits below the comfort size; `TITLE_OVERFLOW` is also emitted by preflight.
+  Validate title warnings now carry `fix.kind: shorten_title` (was
+  `shrink_text`) with a measured `max_chars`. Quality-score title issues read
+  "title (N chars) only fits its title placeholder at P% …" instead of
+  "title too long (N chars, max 60)" when the template is known.
+- **Default table styling.** Tables without explicit style fields now render an
+  `accent1` bold/`lt1` header, right-aligned detected numeric columns, an
+  emphasised `Total`/`Sum` row (bold + top rule) and content-driven row heights.
+  No schema change; explicit style fields opt out (see `docs/STYLE_DEFAULTS.md`).
+- **textfit glyph widths fixed.** textfit built canvas font faces at
+  `fontPt*ptToMM` (canvas takes points), under-measuring every string ~2.83x.
+  All measured fit (placeholder autofit, title fit, table cell measurement,
+  shape_grid capacity budgets) now uses real widths, so `max_chars` budgets,
+  `fit_overflow` / `cell_underfilled` density bands and autofit scales are
+  roughly 2.8x stricter than before. The viewing-mode policy no longer acts as
+  a shrink floor in `textfit.Calculate`.
+- Title placeholders that fit by shrinking now carry the reduced size as an
+  explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
+  `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.
+
 ## 4.59.0 (2026-09-18)
 
 ### Changed
@@ -127,233 +354,6 @@ centred by the pattern `vertical_align` default.
   and `render_deck_spec.quality_summary` now references it. `score_deck` and
   `render_deck_spec` descriptions state exactly what each score measured.
   Agents comparing `quality.score` against 0-1 thresholds must rescale.
-
-## Unreleased — plan_deck deck-quality fixes (go-slide-creator-xmpb)
-
-### Changed
-
-- **`plan_deck` title/closing slides carry a layout, not a pattern.** Every
-  `slides[]` entry gains a required `layout` field (canonical `layout_id`, always
-  equal to `skeleton.layout_id`): `"title"` for slide 0, `"closing"` for the last
-  slide, `"blank-title"` for every pattern slide. Title and closing slides now
-  have `recommended_pattern: ""` / `suggested_pattern: ""`, no `alternatives` or
-  predictions, and a layout-only skeleton (`title` + `subtitle` entries, no
-  `pattern`). With `template`, their `template_support` vets the Title Slide /
-  Closing layout family. Pattern skeletons' `layout_id` is now `"blank-title"`
-  (was `"section"` / `"blank"` by role). make_deck's `plan.slides[]` likewise
-  reports `recommended_pattern: ""` for those two slides.
-- **Comparison slots map only to the comparison family** (`comparison-2col`,
-  `before-after`).
-- **Emphasis cap.** Emphasis patterns (`stat-hero`, `pull-quote`, and now
-  `kpi-inline`) are capped at ceil(n/5) per n-slide plan; excess ones are demoted
-  (must_include placements are kept). `rhythm_check.emphasis_count` /
-  `has_emphasis` count all three; `pattern_variety` ignores title/closing slides.
-
-### Added (go-slide-creator-kndv)
-
-- **`plan_deck` carries brief facts into the plan.** Quantity and named-entity
-  clauses from the brief (e.g. `+23% revenue`, `churn 4%`, `EU expansion is on
-  track`) are routed verbatim to pattern slides: each slide gains an optional
-  `facts[]` array and its `content_seed` is prefixed with those facts. The result
-  gains a required top-level `unplaced_facts[]` array (always present, `[]` when
-  empty) listing facts no slide had capacity for. make_deck's derived slide
-  titles pick up the facts through `content_seed`.
-
-## Unreleased — DeckSpec fast path + server instructions (go-slide-creator-o8kl, go-slide-creator-f6kq, go-slide-creator-09e0)
-
-### Changed
-
-- **`get_started{task:"brief"}` fast path is now the DeckSpec path.**
-  `fast_path.tool` is `render_deck_spec` (was `make_deck`) and the new
-  `fast_path.steps[]` lists `list_slide_kinds` → `validate_deck_spec` →
-  `render_deck_spec` → `render_deck_thumbnails`. `make_deck` is repositioned as a
-  skeleton/wireframe tool. `falls_back_to` still mirrors the raw `sequence`.
-  `render_deck_spec` is now classified `kind: "workflow_facade"`
-  (`primitive_alternatives`: `validate_deck_spec`, `compile_deck_spec`,
-  `validate_input`, `generate_presentation`).
-- **One completion rule everywhere.** `completion_protocol.rule`, the get_started
-  notes, SKILL.md and the server instructions now share one text: render ALL
-  slides (`render_deck_thumbnails`) and inspect every image; a passing gate /
-  score is a precondition, never completion. SKILL.md's old "stop … do not
-  render thumbnails" rule is removed.
-
-### Added
-
-- **MCP server `instructions`.** The `initialize` response carries the 5-step
-  quality workflow (get_started → DeckSpec → render + inspect all slides → fix
-  at `semantic_path` → never ship exemplar content).
-- **`get_started.quality_workflow`** (always present) echoes the same text
-  (single Go const, so the two cannot drift).
-
-## Unreleased — strict MCP arguments (go-slide-creator-s9uq)
-
-### Changed
-
-- **Unknown MCP tool arguments are rejected.** Every tool call is checked against
-  the tool's declared input schema by a server-level middleware; an undeclared
-  argument name now fails the call with the new code **`UNKNOWN_PARAMETER`**
-  (`INPUT` namespace, `path` = the argument) instead of being silently ignored.
-  The message lists the accepted arguments; when a close name exists the
-  diagnostic carries `fix: {kind: "rename_field", params: {from, to,
-  did_you_mean}}` and a `next_tool_call` retry (e.g. `plan_deck` `slide_count` →
-  `slide_budget`). `make_deck` keeps accepting the legacy `max_passes` alias.
-
-## Unreleased — closed DeckSpec schema (go-slide-creator-h8o7, go-slide-creator-dg8f)
-
-### Changed
-
-- **`spec` on `validate_deck_spec` / `render_deck_spec` / `compile_deck_spec` /
-  `explain_deck_spec` now carries the real DeckSpec JSON Schema** (inlined — no
-  `$ref`s) instead of `{"type":"object","properties":{}}`: `slides.items.oneOf`
-  has one `Slide_<kind>` variant per kind, each `additionalProperties: false`
-  with closed list-entry and chart object schemas. `json2pptx semantic schema`
-  and `GET /api/v1/semantic/schema` emit the same closed variants (previously
-  `additionalProperties: true`).
-- **Unknown payload keys are diagnosed.** A slide payload key, list-entry key, or
-  chart key the compiler never reads now yields `SEMANTIC_UNKNOWN_FIELD` at the
-  exact path (warning; error under `strict`; not suppressed by `off`) with a
-  `rename_field` fix (`params.{from, to, did_you_mean}`) when a close key exists.
-- **Chart data hints point at `slides[i].chart.data`.** The chart advisory
-  (`SEMANTIC_DENSITY`) moved from the non-existent `slides[i].chart.series` path
-  to `slides[i].chart.data`; its message shows the expected shape and its `fix`
-  (`provide_value`) carries `params.{path, expected_shape, example}`. Pie/donut
-  `{categories, values}` data is accepted. A flat `chart.series` (never read by
-  the compiler) no longer counts as data.
-
-### Added
-
-- **`list_slide_kinds` entries gain `item_schema`** (the closed per-kind slide
-  schema) **and `example`** (a copy-ready slide, including `kind`, that
-  validates with zero findings under strict).
-
-## Unreleased — make_deck exemplar gate (go-slide-creator-htwq)
-
-### Changed
-
-- **`make_deck` never reports a passing gate on exemplar content.** Its slides
-  are pattern exemplar placeholders, so the response now forces
-  `gate_passed: false`, prepends the machine token `"exemplar_content"` to both
-  `gate_reasons[]` and `blocking_reasons[]`, and reports `final_score: 0` plus
-  a new `content_score: 0`. The deterministic layout/fit score the loop computed
-  moves to the new always-present **`structural_score`** field. Previously a QBR
-  brief could return `final_score: 98, gate_passed: true` for off-topic
-  placeholder copy. `auto_repair` (author-supplied content) is unchanged.
-
-### Added
-
-- **`submit_visual_review` MCP tool** — records a host/manual all-slide visual
-  review (`pptx_path`, `pptx_revision`, `slides[{index, verdict, image_path|image_sha256,
-  role?, findings?}]`, `reviewer?`, `revision?`). Validated by
-  `ReviewRecord.ValidateCompletion` (all slides, pixel hashes, current revision);
-  partial/stale reviews are rejected. Returns quality `evidence` with
-  `inspection_backend: host|manual` and `status`
-  (`visually_reviewed_current_revision` | `draft_needs_visual_review`); updates the
-  `.authoring.json` manifest's `visual_evidence` (new `reviewer` field) when present.
-  `QualityEvidence.approved` now accepts `provider`/`host`/`manual` backends in
-  addition to `vision` (heuristic still never approves).
-
-### Changed
-
-- **`repair_slide` `reduce_items` / `resize_list` fact-loss guard.** Dropping
-  pattern-values items that contain a number, unit, negation, or qualifier is
-  refused with `code: "semantic_review_required"` and a `next_tool_call`
-  proposing `repair_slide` → `split_pattern{path, first}`; pass
-  `confirm_semantic_change: true` to override. `split_pattern` accepts an
-  optional `path` that splits a `pattern.values` array across two slides.
-- **Visual findings carry an optional `bbox`** (`{x,y,w,h}`, fractions of the
-  slide) on `inspect_slide_images` findings and `propose_repairs` visual input.
-  `propose_repairs` hit-tests it against the generated shape_grid cell bounds
-  (patterns are expanded first) and targets the element path
-  (`/slides/N/shape_grid/rows/R/cells/C`, also set as `reduce_cell_text`
-  `cell_path`) instead of the whole slide; no bbox or no hit keeps the slide path.
-
-## Unreleased
-
-### Added
-
-- **`matrix-2x2` axis direction.** Optional `values.x_low`, `x_high`, `y_low`,
-  `y_high` (strings, ≤20 chars; default `"Low"` / `"High"`) label the ends of
-  each axis. Both value forms (named quadrants and positional `quadrants`)
-  accept them. The axes now render as arrows pointing to the high end (x →
-  right, y → up) instead of flat header bars. Additive; existing inputs are
-  unchanged apart from the new rendering.
-
-- **`examine_template` exposes the template profile** (go-slide-creator-fw42).
-  The report gains a top-level `profile` object (`{template_hash,
-  parser_version, role_bindings, diagnostics[]}`) and a per-layout
-  `layouts[].profile_geometry` object (`{layout_id, footer_regions[], frame}`).
-  `footer_regions[]` are the resolved `dt`/`ftr`/`sldNum` rectangles
-  (`{type, x_emu, y_emu, w_emu, h_emu}`, layout first, else master); `frame` is
-  the chrome frame the generator renders into — `{canvas, content,
-  takeaway_band, source_band, footer_top_emu, has_footer, basis, fits}` with
-  `basis ∈ {layout, reference_layout, slide_fallback}`. The profile is built
-  once per template content hash (+ parser version) and is the same object the
-  generator uses for takeaway/source placement. Additive; no field removed.
-- **Fit finding `chrome_band_no_fit`** (go-slide-creator-7m9v). `review`
-  action, `fix.kind: swap_layout` (`params.layout_id` = One Content layout).
-  Emitted when a slide's takeaway/source band cannot be placed on its layout;
-  the band is skipped at render instead of overlapping title/footer chrome.
-
-- **`recommend_visual` template preview refs** (go-slide-creator-aruv). With a
-  `template`, `candidates[].example` gains `layout_id` and
-  `layout_preview_png_path` — the shipped 320px thumbnail
-  (`templates/previews/<template>/<layout_id>.png`, embedded in the binary and
-  materialised into the user cache for embedded templates) of the layout the
-  candidate renders on. Placeholder candidates now resolve slide types
-  (`title`, `section`, `content`, `two-column`, `image`, `blank`) to their
-  canonical layout and use the thumbnail as `preview_png_path`
-  (`renderer: "template-preview"`, `metadata_only: false`). Additive.
-
-### Changed
-
-- **Takeaway / source band geometry is layout-derived** (go-slide-creator-7m9v).
-  The band spans the layout's body column and sits above its footer
-  placeholders (was: a fixed 0.5in slide-percentage margin overlapping the
-  master footers). Content placeholders shrink to end above the band. The
-  takeaway text is 14pt bold (was 12pt).
-
-## Unreleased (deck-quality lane L7)
-
-### Added
-
-- **Top-level `viewing_mode`** (`"present"` default | `"read"`) selecting the
-  readability policy, and the **`TEXT_BELOW_READABLE_MIN`** fit finding
-  (`action: review`, `fix.kind: reduce_text`, `fix.params: {strategy, role,
-  actual_pt, min_pt, viewing_mode}`) emitted for placeholder autofit (generate)
-  and shape_grid cells (fit report / preflight). Schema fingerprint updated;
-  SchemaVersion bump left to the merge (coordinator instruction).
-
-- **`TITLE_OVERFLOW` fit finding** (`action: shrink_or_split`, `fix.kind: shorten_title`,
-  `fix.params: {current_chars, max_chars, font_pt, min_font_pt}`). Emitted by
-  `generate` when a title cannot fit its resolved title placeholder at the
-  minimum autofit size, measured with the master's inherited title style.
-
-### Changed
-
-- **Title checks unified on measured fit.** `validate` title diagnostics,
-  the fit report and the generate `quality` score now measure titles against the
-  resolved title placeholder and inherited title style. `title_wraps` escalates
-  to `action: shrink_or_split` with `fix.kind: shorten_title`,
-  `fix.params: {current_chars, max_chars, fit_scale_pct}` when the title only
-  fits below the comfort size; `TITLE_OVERFLOW` is also emitted by preflight.
-  Validate title warnings now carry `fix.kind: shorten_title` (was
-  `shrink_text`) with a measured `max_chars`. Quality-score title issues read
-  "title (N chars) only fits its title placeholder at P% …" instead of
-  "title too long (N chars, max 60)" when the template is known.
-- **Default table styling.** Tables without explicit style fields now render an
-  `accent1` bold/`lt1` header, right-aligned detected numeric columns, an
-  emphasised `Total`/`Sum` row (bold + top rule) and content-driven row heights.
-  No schema change; explicit style fields opt out (see `docs/STYLE_DEFAULTS.md`).
-- **textfit glyph widths fixed.** textfit built canvas font faces at
-  `fontPt*ptToMM` (canvas takes points), under-measuring every string ~2.83x.
-  All measured fit (placeholder autofit, title fit, table cell measurement,
-  shape_grid capacity budgets) now uses real widths, so `max_chars` budgets,
-  `fit_overflow` / `cell_underfilled` density bands and autofit scales are
-  roughly 2.8x stricter than before. The viewing-mode policy no longer acts as
-  a shrink floor in `textfit.Calculate`.
-- Title placeholders that fit by shrinking now carry the reduced size as an
-  explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
-  `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.
 
 ## 4.58.0 (2026-05-30)
 
