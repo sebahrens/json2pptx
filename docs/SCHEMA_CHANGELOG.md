@@ -4,6 +4,17 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased
+
+### Added
+
+- **`matrix-2x2` axis direction.** Optional `values.x_low`, `x_high`, `y_low`,
+  `y_high` (strings, ≤20 chars; default `"Low"` / `"High"`) label the ends of
+  each axis. Both value forms (named quadrants and positional `quadrants`)
+  accept them. The axes now render as arrows pointing to the high end (x →
+  right, y → up) instead of flat header bars. Additive; existing inputs are
+  unchanged apart from the new rendering.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

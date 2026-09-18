@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func TestMatrix2x2(t *testing.T) {
@@ -249,40 +251,55 @@ func TestMatrix2x2(t *testing.T) {
 			t.Errorf("row[2] expected 2 cells, got %d", len(grid.Rows[2].Cells))
 		}
 
-		// X-axis label should have accent fill
+		// Axes are sub-grids: [low | arrow | high] for x, [high / arrow / low]
+		// for y. The arrows point towards "high" (right, up) — go-slide-creator-2f9d.
+		xAxis := grid.Rows[0].Cells[1].Grid
+		yAxis := grid.Rows[1].Cells[0].Grid
+		if xAxis == nil || yAxis == nil {
+			t.Fatalf("axis cells must be sub-grids, got x=%v y=%v", xAxis, yAxis)
+		}
+		xArrow := xAxis.Rows[0].Cells[1].Shape
+		yArrow := yAxis.Rows[1].Cells[0].Shape
+		if xArrow.Geometry != "rightArrow" {
+			t.Errorf("x-axis geometry = %q, want rightArrow", xArrow.Geometry)
+		}
+		if yArrow.Geometry != "upArrow" {
+			t.Errorf("y-axis geometry = %q, want upArrow", yArrow.Geometry)
+		}
 		var xFill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Fill, &xFill); err != nil {
+		if err := json.Unmarshal(xArrow.Fill, &xFill); err != nil {
 			t.Fatalf("x-axis fill unmarshal: %v", err)
 		}
 		if xFill != "accent1" {
 			t.Errorf("x-axis fill = %q, want %q", xFill, "accent1")
 		}
-
-		// Y-axis band must NOT rotate the whole cell: rotating a narrow-tall
-		// rect about its center flips its width/height so the colored band
-		// renders wide-short and intrudes into the quadrants (J2P-MATRIX-005).
-		// The fill geometry stays unrotated; only the text reads vertically.
-		yShape := grid.Rows[1].Cells[0].Shape
-		if yShape.Rotation != 0 {
-			t.Errorf("y-axis cell rotation = %v, want 0 (band must not rotate; J2P-MATRIX-005)", yShape.Rotation)
+		endText := func(c *jsonschema.GridCellInput) string { return string(c.Shape.Text) }
+		if !strings.Contains(endText(xAxis.Rows[0].Cells[0]), `"Low"`) || !strings.Contains(endText(xAxis.Rows[0].Cells[2]), `"High"`) {
+			t.Errorf("x-axis ends must read Low (left) / High (right)")
 		}
-		// Y-axis label text must carry vert270 so it reads bottom-to-top inside
-		// the unrotated band.
+		if !strings.Contains(endText(yAxis.Rows[0].Cells[0]), `"High"`) || !strings.Contains(endText(yAxis.Rows[2].Cells[0]), `"Low"`) {
+			t.Errorf("y-axis ends must read High (top) / Low (bottom)")
+		}
+
+		// Y-axis arrow must NOT rotate: rotating the shape flips its
+		// width/height about its center (J2P-MATRIX-005). Only the text
+		// reads vertically (vert270).
+		if yArrow.Rotation != 0 {
+			t.Errorf("y-axis rotation = %v, want 0 (J2P-MATRIX-005)", yArrow.Rotation)
+		}
 		var yText struct {
 			Vert string `json:"vert"`
 		}
-		if err := json.Unmarshal(yShape.Text, &yText); err != nil {
+		if err := json.Unmarshal(yArrow.Text, &yText); err != nil {
 			t.Fatalf("y-axis text unmarshal: %v", err)
 		}
 		if yText.Vert != "vert270" {
 			t.Errorf("y-axis text vert = %q, want %q", yText.Vert, "vert270")
 		}
-
-		// The x-axis label must stay horizontal (no vert direction).
 		var xText struct {
 			Vert string `json:"vert"`
 		}
-		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &xText); err != nil {
+		if err := json.Unmarshal(xArrow.Text, &xText); err != nil {
 			t.Fatalf("x-axis text unmarshal: %v", err)
 		}
 		if xText.Vert != "" {
@@ -320,7 +337,7 @@ func TestMatrix2x2(t *testing.T) {
 		}
 		// X-axis label should use the overridden accent
 		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Fill, &fill); err != nil {
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Grid.Rows[0].Cells[1].Shape.Fill, &fill); err != nil {
 			t.Fatalf("fill unmarshal: %v", err)
 		}
 		if fill != "accent5" {
@@ -532,4 +549,36 @@ func TestMatrix2x2(t *testing.T) {
 			t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
 		}
 	})
+}
+
+// go-slide-creator-2f9d: custom axis end labels flow into the arrows' end
+// cells in both value forms, and over-long ends are rejected.
+func TestMatrix2x2_AxisEndLabels(t *testing.T) {
+	p := &matrix2x2{}
+	raw := `{"x_axis_label":"Effort","y_axis_label":"Impact","x_low":"Easy","x_high":"Hard","y_low":"Minor","y_high":"Major",
+		"quadrants":["A","B","C","D"]}`
+	var vals Matrix2x2Values
+	if err := json.Unmarshal([]byte(raw), &vals); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Validate(&vals, nil, nil); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	x := grid.Rows[0].Cells[1].Grid.Rows[0].Cells
+	y := grid.Rows[1].Cells[0].Grid.Rows
+	for want, cell := range map[string]*jsonschema.GridCellInput{
+		"Easy": x[0], "Hard": x[2], "Major": y[0].Cells[0], "Minor": y[2].Cells[0],
+	} {
+		if !strings.Contains(string(cell.Shape.Text), `"`+want+`"`) {
+			t.Errorf("axis end %q missing, got %s", want, cell.Shape.Text)
+		}
+	}
+	vals.XHigh = strings.Repeat("x", matrix2x2AxisEndMax+1)
+	if err := p.Validate(&vals, nil, nil); err == nil {
+		t.Error("expected validation error for over-long x_high")
+	}
 }

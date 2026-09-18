@@ -162,7 +162,7 @@ Data + interpretation
 Compare 2 options / states
   side-by-side text                    → comparison-2col
   before / after transition            → before-after (or -compact)
-  2×2 axes positioning                 → matrix-2x2  ·  svggen: matrix_2x2
+  2×2 axes positioning                 → matrix-2x2 (axes are low→high arrows; optional x_low/x_high/y_low/y_high end labels, default Low/High)  ·  svggen: matrix_2x2
 Process / sequence   ⚠ sparse-sequence rule below — NOT one row of 3-6 boxes on a bare slide
   short ordered steps (3-6, no branch) → numbered-step-strip (chevron / stacked-box / toc; never diamonds)
   ordered steps + a description each    → value-chain (4-10) · or numbered-step-strip detail zone
