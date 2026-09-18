@@ -809,6 +809,28 @@ Non-negotiable. Full catalog with rationale and examples in [RULES.md](RULES.md)
 - **Charts (Rules 8–10):** `series[i].values` length equals `len(categories)`; chart types use underscores (`stacked_bar`, NOT `stacked-bar`); don't mix data formats. **Per-slide chart-style overrides:** add `chart_value.chart_style: {show_vertical_gridlines: true}` or `{show_single_series_legend: true}` to flip an executive token default for one chart — omit the block to keep the deck defaults. **Legend defaults:** bar / line / grouped-bar / area charts with 2–4 series render inline series labels and suppress the legend (executive default); above 4 series the legend reappears. Force the legend back on inside the 2–4 window with `chart_value.style.show_legend: true`. Stacked variants and non-Cartesian charts (pie, donut, scatter, radar, waterfall, funnel, gauge, treemap) keep the previous legend behaviour.
 - **Content & layout (Rules 11–15):** `layout_id` must be canonical (`title`, `content`, `blank`, `section`, `closing`, `two-column`, …); semantic fills (`accent1`, `lt2`, `dk1`) required, never mix with hex on one slide; align values are `"l"`/`"ctr"`/`"r"`/`"just"`, vertical align is `"t"`/`"ctr"`/`"b"`.
 - **Contrast auto-fix (Rule 16):** engine auto-replaces low-contrast text with dark gray; surfaces as `contrast_autofixed` findings. Tinted shape_grid fills (`alpha`, `lumMod`/`lumOff`) are judged by their effective tinted colour, so dark text on a light tint is kept.
+- **Chart annotations and value labels (Cartesian charts).** `bar`, `line`, `area`, `stacked_bar`, `grouped_bar`, and `stacked_area` accept two optional data keys that carry the consulting-standard chart furniture:
+  - `annotations` — an array of `{kind, ...}` objects. `reference_line` (`axis` `"x"`/`"y"` default `"y"`, `value`, `label`, `style` `solid`/`dashed`/`dotted`, `color`) draws a target or threshold line; `trendline` (`series`, `method: "linear"`, `label`, `style`, `color`) fits and draws a trend over one series; `callout` (`x`, `y`, `text`, `color`) drops a positioned annotation on the plot.
+  - `data_labels` — `{format, show_on}` turns on per-point value labels. `format` is a Go number format (`"$%.0fM"`, `"%.1f%%"`); `show_on` ∈ `all` (default), `last`, `peaks`, `first_last`.
+
+  Both are declared on the chart data object, beside `categories` / `series`:
+
+  ```json
+  {
+    "type": "bar_chart",
+    "data": {
+      "categories": ["Q1", "Q2", "Q3", "Q4"],
+      "series": [{ "name": "Revenue", "values": [120, 145, 160, 195] }],
+      "annotations": [
+        { "kind": "reference_line", "axis": "y", "value": 180, "label": "Target: $180M", "style": "dashed" }
+      ],
+      "data_labels": { "format": "$%.0fM", "show_on": "all" }
+    }
+  }
+  ```
+
+  Non-Cartesian charts (pie, donut, scatter, bubble, waterfall, funnel, gauge, treemap, radar-only schemas) do not declare these keys and reject them as `UNKNOWN_FIELD`.
+
 - **Silent traps (Rules 17–19):** `footer` is an object not a string; never prefix `source` with "Source: "; content fields need `_value` suffix (`chart_value`, `table_value`).
 - **Table density (Rule 20 — enforced):** MUST split if rows > 7 OR cols > 6 OR font < 9pt. Multiline cells count as N logical rows.
 - **No emoji codepoints (hard rule):** emoji glyphs are rejected by pattern validators in `card-grid`, `icon-row`, `herodetail`, etc. Use a bundled SVG icon name or supply a user icon via `path` / `url` / `svg_data`. See the [Icon Names](#icon-names) section.

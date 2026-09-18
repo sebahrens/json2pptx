@@ -978,12 +978,12 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		// --- Charts ---
 		"bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label"},
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
 			Description:  "categories: string array; series: [{name, values: number[]}]",
 		},
 		"line": {
 			RequiredKeys: []string{"series"},
-			OptionalKeys: []string{"categories", "colors", "x_label", "y_label"},
+			OptionalKeys: []string{"categories", "colors", "x_label", "y_label", "annotations", "data_labels"},
 			Description:  "series: [{name, values: number[]}]; categories required unless series contain time_strings or time_values",
 		},
 		"pie": {
@@ -998,12 +998,12 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"area": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label"},
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
 			Description:  "categories: string array; series: [{name, values: number[]}]",
 		},
 		"radar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors"},
+			OptionalKeys: []string{"colors", "annotations", "data_labels"},
 			Description:  "categories: string[] (min 3 axes); series: [{name, values: number[]}]",
 		},
 		"scatter": {
@@ -1013,7 +1013,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"stacked_bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label"},
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
 			Description:  "categories: string[]; series: [{name, values: number[]}]",
 		},
 		"bubble": {
@@ -1023,12 +1023,12 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"stacked_area": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label"},
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
 			Description:  "categories: string[]; series: [{name, values: number[]}]",
 		},
 		"grouped_bar": {
 			RequiredKeys: []string{"categories", "series"},
-			OptionalKeys: []string{"colors", "x_label", "y_label"},
+			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels"},
 			Description:  "categories: string[]; series: [{name, values: number[]}] (min 2 series)",
 		},
 		"waterfall": {

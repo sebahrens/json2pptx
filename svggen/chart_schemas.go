@@ -30,7 +30,73 @@ func commonChartFields() map[string]*DataSchema {
 		"x_axis_title": StringDataSchema("X-axis title (alias)"),
 		"y_label":      StringDataSchema("Y-axis title"),
 		"y_axis_title": StringDataSchema("Y-axis title (alias)"),
+		"annotations":  annotationsFieldSchema(),
+		"data_labels":  dataLabelsFieldSchema(),
 	}
+}
+
+// annotationsFieldSchema describes the `annotations` array every Cartesian
+// chart accepts: reference lines ("Target: $180M"), fitted trendlines, and
+// free-positioned callout arrows. The renderer has always supported these
+// (Annotation / DrawAnnotations, read by extractAnnotations); until they were
+// declared here, strict schema validation rejected the field outright and the
+// deck fell back to a grey "Data unavailable" placeholder
+// (go-slide-creator-pizh).
+//
+// Which keys apply depends on `kind`:
+//   - reference_line: axis ("x" | "y", default "y"), value, label, style, color
+//   - trendline:      series, method ("linear"), label, style, color
+//   - callout:        x, y, text, label, color
+func annotationsFieldSchema() *DataSchema {
+	kind := StringDataSchema("Annotation kind")
+	kind.Enum = []string{"reference_line", "trendline", "callout"}
+
+	axis := StringDataSchema("Axis a reference_line is drawn against (default \"y\")")
+	axis.Enum = []string{"x", "y"}
+
+	style := StringDataSchema("Line style")
+	style.Enum = []string{"solid", "dashed", "dotted"}
+
+	method := StringDataSchema("Trendline fit method")
+	method.Enum = []string{"linear"}
+
+	item := ObjectDataSchema(
+		"One chart annotation",
+		map[string]*DataSchema{
+			"kind":   kind,
+			"axis":   axis,
+			"value":  NumberDataSchema("reference_line: the axis value the line is drawn at"),
+			"label":  StringDataSchema("Short label rendered beside the annotation, e.g. \"Target: $180M\""),
+			"style":  style,
+			"color":  StringDataSchema("Hex color or scheme color name; defaults to a neutral accent"),
+			"series": StringDataSchema("trendline: name of the series to fit"),
+			"method": method,
+			"x":      NumberDataSchema("callout: x position, in category index or axis units"),
+			"y":      NumberDataSchema("callout: y position, in value-axis units"),
+			"text":   StringDataSchema("callout: the callout body text"),
+		},
+		[]string{"kind"},
+	)
+	return ArrayDataSchema(
+		"Chart annotations: reference lines, fitted trendlines, and positioned callouts",
+		item, 0)
+}
+
+// dataLabelsFieldSchema describes the `data_labels` object that turns on
+// per-point value labels and controls their number format
+// (go-slide-creator-pizh).
+func dataLabelsFieldSchema() *DataSchema {
+	showOn := StringDataSchema("Which points carry a label (default \"all\")")
+	showOn.Enum = []string{"all", "last", "peaks", "first_last"}
+
+	return ObjectDataSchema(
+		"Per-point value labels on the series",
+		map[string]*DataSchema{
+			"format":  StringDataSchema("Number format for the label, e.g. \"%.1f%%\" or \"$%.0fM\""),
+			"show_on": showOn,
+		},
+		nil,
+	)
 }
 
 // DataSchema returns the JSON Schema for bar_chart data.

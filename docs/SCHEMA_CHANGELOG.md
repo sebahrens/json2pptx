@@ -8,6 +8,19 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Chart `annotations` and `data_labels` (go-slide-creator-pizh).** svggen has
+  always implemented reference lines, fitted trendlines, positioned callouts,
+  and per-point value labels, but `commonChartFields()` did not declare the two
+  data keys, so strict schema validation rejected them with `UNKNOWN_FIELD` and
+  the deck rendered a grey "Data unavailable" placeholder while still reporting
+  `success: true`. Both keys are now declared on every Cartesian chart schema
+  (`bar_chart`, `line_chart`, `area_chart`, `stacked_bar_chart`,
+  `grouped_bar_chart`, `stacked_area_chart`) and surfaced in `skill-info`
+  `data_format_hints[].optional_keys`. `annotations[]` is
+  `{kind: reference_line|trendline|callout, axis, value, label, style, color,
+  series, method, x, y, text}` (`kind` required); `data_labels` is
+  `{format, show_on: all|last|peaks|first_last}`.
+
 - **`slides[].placeholders_dropped` (go-slide-creator-lhq6).** New optional
   array on each `generate_presentation` / `json2pptx generate` slide-resolution
   entry: the placeholder IDs the slide targeted that the resolved layout does

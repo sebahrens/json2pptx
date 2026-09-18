@@ -363,3 +363,91 @@ func TestApplyDataLabelsToConfig(t *testing.T) {
 		t.Errorf("ValueFormat = %q, want $%%.1fM", config.ValueFormat)
 	}
 }
+
+// go-slide-creator-pizh: annotations and data_labels are implemented in the
+// renderer but were absent from commonChartFields(), so strict schema
+// validation rejected them with UNKNOWN_FIELD and the deck fell back to a grey
+// "Data unavailable" placeholder. Every Cartesian chart schema must accept
+// both, and the values must reach the drawn output.
+func TestChartSchemasAcceptAnnotationsAndDataLabels(t *testing.T) {
+	chartTypes := []string{
+		"bar_chart", "line_chart", "area_chart",
+		"stacked_bar_chart", "grouped_bar_chart", "stacked_area_chart",
+	}
+
+	for _, ct := range chartTypes {
+		t.Run(ct, func(t *testing.T) {
+			req := &RequestEnvelope{
+				Type: ct,
+				Data: map[string]any{
+					"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+					"series": []any{
+						map[string]any{"name": "Revenue", "values": []any{120.0, 145.0, 160.0, 195.0}},
+						map[string]any{"name": "Plan", "values": []any{130.0, 140.0, 170.0, 180.0}},
+					},
+					"annotations": []any{
+						map[string]any{
+							"kind": "reference_line", "axis": "y", "value": 180.0,
+							"label": "Target: $180M", "style": "dashed",
+						},
+						map[string]any{"kind": "trendline", "series": "Revenue", "method": "linear"},
+						map[string]any{"kind": "callout", "x": 2.0, "y": 160.0, "text": "Supply constrained"},
+					},
+					"data_labels": map[string]any{"format": "$%.0fM", "show_on": "all"},
+				},
+			}
+
+			if _, err := DryRender(req); err != nil {
+				t.Fatalf("%s rejects annotations/data_labels: %v", ct, err)
+			}
+			if _, err := Render(req); err != nil {
+				t.Fatalf("%s failed to render with annotations: %v", ct, err)
+			}
+		})
+	}
+}
+
+// The reference-line label must actually appear in the drawn SVG — accepting
+// the field without rendering it would be the same silent failure in a new
+// costume.
+func TestReferenceLineLabelIsDrawn(t *testing.T) {
+	req := &RequestEnvelope{
+		Type: "bar_chart",
+		Data: map[string]any{
+			"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+			"series":     []any{map[string]any{"name": "Revenue", "values": []any{120.0, 145.0, 160.0, 195.0}}},
+			"annotations": []any{map[string]any{
+				"kind": "reference_line", "axis": "y", "value": 180.0, "label": "Target: $180M", "style": "dashed",
+			}},
+		},
+	}
+	doc, err := Render(req)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if !strings.Contains(string(doc.Content), "Target: $180M") {
+		t.Error("rendered SVG does not carry the reference-line label")
+	}
+}
+
+// Declaring annotations/data_labels must not open the data object up: a
+// misspelled TOP-LEVEL key is still an UNKNOWN_FIELD. (ValidateUnknownFields is
+// top-level only by design, so keys nested inside an annotation object are not
+// checked here.)
+func TestChartSchemaStillRejectsUnknownTopLevelKeys(t *testing.T) {
+	for _, key := range []string{"annotation", "datalabels", "data_label"} {
+		t.Run(key, func(t *testing.T) {
+			req := &RequestEnvelope{
+				Type: "bar_chart",
+				Data: map[string]any{
+					"categories": []any{"Q1", "Q2"},
+					"series":     []any{map[string]any{"name": "Revenue", "values": []any{1.0, 2.0}}},
+					key:          []any{map[string]any{"kind": "reference_line", "value": 180.0}},
+				},
+			}
+			if _, err := DryRender(req); err == nil {
+				t.Errorf("expected top-level key %q to be rejected as UNKNOWN_FIELD", key)
+			}
+		})
+	}
+}

@@ -369,19 +369,23 @@ func (r *Registry) Suggest(name string) (string, bool) {
 	best := ""
 	bestDist := maxDist + 1
 
-	for registered := range r.patterns {
-		d := damerauLevenshtein(name, registered)
-		if d < bestDist {
+	// Ties are broken lexicographically, NOT by map order. "kpi-9up" is
+	// distance 1 from every one of kpi-2up…kpi-6up; picking whichever the map
+	// yielded first made the suggestion differ between two calls in the same
+	// process, so validate and generate could report different did_you_mean
+	// values for one typo.
+	consider := func(candidate string) {
+		d := damerauLevenshtein(name, candidate)
+		if d < bestDist || (d == bestDist && candidate < best) {
 			bestDist = d
-			best = registered
+			best = candidate
 		}
 	}
+	for registered := range r.patterns {
+		consider(registered)
+	}
 	for alias := range r.aliases {
-		d := damerauLevenshtein(name, alias)
-		if d < bestDist {
-			bestDist = d
-			best = alias
-		}
+		consider(alias)
 	}
 	if bestDist <= maxDist {
 		return best, true
