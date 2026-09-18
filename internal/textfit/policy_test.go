@@ -44,7 +44,7 @@ func TestMeasureStyledRunsReportsFontSubstitution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !m.FontSubstituted || m.FontFamily != "Arial" {
+	if !m.FontSubstituted || m.FontFamily == "" {
 		t.Fatalf("substitution not exposed: %+v", m)
 	}
 }

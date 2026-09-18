@@ -44,12 +44,14 @@ type fontCache struct {
 // fallbackName is an optional system font to try when name is not found (pass ""
 // to skip). The font loading strategy is:
 //
-//  1. Try loading name as a system font.
-//  2. If that fails and fallbackName is non-empty, try fallbackName as a system font.
-//  3. If that fails, cycle through common system fallbacks (Arial, Helvetica, DejaVu Sans).
-//  4. If no system font is available, load the embedded Liberation Sans (metric-compatible
+//  1. Resolve Arial to embedded Liberation Sans for cross-platform metric stability.
+//  2. Try loading name as a system font.
+//  3. If that fails and fallbackName is non-empty, try the fallback (using the
+//     embedded face when that fallback is Arial).
+//  4. If that fails, cycle through common system fallbacks (Arial, Helvetica, DejaVu Sans).
+//  5. If no system font is available, load the embedded Liberation Sans (metric-compatible
 //     with Arial, works in headless/Docker environments).
-//  5. If all attempts fail, return nil.
+//  6. If all attempts fail, return nil.
 //
 // Results (including nil) are cached so that repeated lookups for the same name
 // are fast. The cache key is the requested name; the fallback name does not
@@ -94,6 +96,17 @@ func Resolve(name string, fallbackName string) (*canvas.FontFamily, string, bool
 func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, bool) {
 	ff := canvas.NewFontFamily(name)
 
+	// Keep the default presentation font deterministic across hosts. On Linux,
+	// fontconfig may report a successful "Arial" lookup while silently returning
+	// DejaVu Sans, which changes text metrics and therefore chart geometry. The
+	// embedded Liberation Sans face is metrically compatible with Arial and is
+	// available in every build.
+	if name == "Arial" {
+		if err := loadEmbeddedLiberation(ff); err == nil {
+			return ff, "Liberation Sans", true
+		}
+	}
+
 	// 1. Try loading the requested system font.
 	if err := ff.LoadSystemFont(name, canvas.FontRegular); err == nil {
 		_ = ff.LoadSystemFont(name, canvas.FontBold) // best-effort bold
@@ -102,6 +115,11 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 
 	// 2. Try the explicit fallback name.
 	if fallbackName != "" && fallbackName != name {
+		if fallbackName == "Arial" {
+			if err := loadEmbeddedLiberation(ff); err == nil {
+				return ff, "Liberation Sans", true
+			}
+		}
 		if err := ff.LoadSystemFont(fallbackName, canvas.FontRegular); err == nil {
 			_ = ff.LoadSystemFont(fallbackName, canvas.FontBold) // best-effort bold
 			return ff, fallbackName, true
@@ -120,13 +138,20 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 	}
 
 	// 4. Load embedded Liberation Sans (always available, metric-compatible with Arial).
-	if err := ff.LoadFont(fonts.LiberationSansRegular, 0, canvas.FontRegular); err == nil {
-		_ = ff.LoadFont(fonts.LiberationSansBold, 0, canvas.FontBold) // best-effort bold
+	if err := loadEmbeddedLiberation(ff); err == nil {
 		return ff, "Liberation Sans", true
 	}
 
 	// 5. Nothing worked.
 	return nil, "", false
+}
+
+func loadEmbeddedLiberation(ff *canvas.FontFamily) error {
+	if err := ff.LoadFont(fonts.LiberationSansRegular, 0, canvas.FontRegular); err != nil {
+		return err
+	}
+	_ = ff.LoadFont(fonts.LiberationSansBold, 0, canvas.FontBold)
+	return nil
 }
 
 // evictOldest removes the least-recently-used entry. Caller must hold mu.

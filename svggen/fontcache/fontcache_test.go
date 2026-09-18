@@ -50,6 +50,18 @@ func TestGet_WithExplicitFallback(t *testing.T) {
 	}
 }
 
+func TestResolve_ArialUsesDeterministicEmbeddedMetrics(t *testing.T) {
+	Reset()
+
+	ff, resolved, substituted := Resolve("Arial", "")
+	if ff == nil {
+		t.Fatal("expected embedded Arial-compatible font")
+	}
+	if resolved != "Liberation Sans" || !substituted {
+		t.Fatalf("Resolve(Arial) = (%q, substituted=%v), want embedded Liberation Sans", resolved, substituted)
+	}
+}
+
 func TestLRUEviction(t *testing.T) {
 	Reset()
 
