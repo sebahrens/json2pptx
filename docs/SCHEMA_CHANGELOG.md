@@ -38,6 +38,33 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   default size 12 → 14pt. Expanded
   `shape_grid` output for these patterns changes shape accordingly.
 
+### Added — named patterns (go-slide-creator-xyph / e53n / ycbn)
+
+- **`table-highlight`** — options × criteria evaluation matrix (2–6 × 2–6)
+  with Harvey-ball (0–4), RAG or short-text cells, `highlight_row` /
+  `highlight_col`, legend row, `overrides.rag_colors`.
+- **`image-text-split`** — one image (`path` / `url` / placeholder) beside
+  eyebrow + heading + body / bullets and 0–3 result metrics
+  (`overrides.image_side`, `image_width_pct`). Its `values.image.path` is
+  resolved against the deck directory and `values.image.url` fetched like a
+  shape_grid image cell (`patterns.ImageAssetPattern`).
+- **`exec-summary`** — 3–5 bold lead-in statements with supporting sentences
+  and an optional `bottom_line` bar.
+
+All three size their rows in points (`min_height` = `max_height`) and are
+centred by the pattern `vertical_align` default.
+
+### Changed — shape_grid images and contrast preflight
+
+- **Grid image cells cover-fill (go-slide-creator-e53n).** A raster `image`
+  cell without `fit` now fills its whole cell and is centre-cropped
+  (`a:srcRect`) instead of being squashed into a centred square; explicit
+  `fit` values keep the square frame and are cover-cropped into it.
+- **`contrast_predicted` judges tints (go-slide-creator-xyph).** Object-form
+  fills with `lumMod` / `lumOff` / `alpha` are composed into their effective
+  colour before the check, removing false predictions for dark text on light
+  accent tints.
+
 ## 4.59.0 (2026-09-18)
 
 ### Changed

@@ -736,6 +736,20 @@ var rules = []rule{
 		itemMax:   6,
 	},
 
+	// image-text-split — one photo beside a narrative column (case study)
+	{
+		pattern:   "image-text-split",
+		keywords:  []string{"case study", "customer story", "photo and text", "image and text", "image beside text", "picture with text", "site visit", "product spotlight", "photo with bullets", "image with bullets", "success story"},
+		baseScore: 0.92,
+		rationale: "One image (photo / screenshot) beside a heading, short narrative and optional result metrics",
+	},
+	{
+		pattern:   "image-text-split",
+		keywords:  []string{"photo", "image", "picture", "screenshot", "spotlight", "showcase"},
+		baseScore: 0.76,
+		rationale: "image-text-split when a single visual needs a short narrative next to it",
+	},
+
 	// exec-summary — 3-5 bold lead-in statements with support (answer-first)
 	{
 		pattern:   "exec-summary",

@@ -603,6 +603,10 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 		slideIdx = diagCtx.SlideNum - 1
 	}
 
+	// Raster image cells without an explicit fit fill their whole cell (the
+	// generator cover-crops them) instead of shapegrid's centred square.
+	fillDefaultFitImages(result, defaultFitImageSpecs(input.Rows, rows))
+
 	// Generate XML fragments, icon inserts, and image inserts from resolved cells
 	out, err := generateGridOutput(result, alloc, diagCtx, slideIdx)
 	if err != nil {

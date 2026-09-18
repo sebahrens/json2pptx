@@ -31,7 +31,8 @@ import (
 // generator cover-crops to the frame (no distortion). Without an image the
 // pattern draws a dashed wireframe placeholder labelled with image_label.
 // The grid is content-sized: its height is the larger of the text column's
-// measured height and a ~4:3 image frame, capped at the content area.
+// measured height and a ~4:3 image frame, capped at the content area and
+// pinned in points so the pattern vertical_align default centres it.
 
 func init() {
 	Default().Register(&imageTextSplit{})
@@ -321,7 +322,7 @@ func (p *imageTextSplit) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	areaW, areaH := contentAreaPt(ctx)
+	areaW, areaH := sizingAreaPt(ctx)
 	lay := itsMeasure(ctx, v, ovr, areaW, areaH)
 
 	imageCell := itsImageColumn(ctx, v, lay)
@@ -336,10 +337,7 @@ func (p *imageTextSplit) Expand(ctx ExpandContext, values, overrides any, cellOv
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		ColGap:  itsColGapPt,
-		Rows:    []jsonschema.GridRowInput{{Cells: cells}},
-	}
-	if hPct := pctOf(lay.heightPt, areaH); hPct < 99.5 {
-		grid.Bounds = &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 100, Height: hPct}
+		Rows:    []jsonschema.GridRowInput{{MinHeight: lay.heightPt, MaxHeight: lay.heightPt, Cells: cells}},
 	}
 	return grid, nil
 }
@@ -354,7 +352,7 @@ func itsMeasure(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitO
 		lay.metricsPt = itsMetricValuePt*sizingLineSpacing + 2*itsMetricLabelPt*sizingLineSpacing + 2*sizingInsetTBPt + sizingSafetyPt
 	}
 	if strings.TrimSpace(v.Caption) != "" {
-		lay.captionPt = textBlockHeightPt(ctx, []sizedPara{{text: v.Caption, sizePt: 12}}, lay.imgW)
+		lay.captionPt = sizedBlockHeightPt(ctx, []sizedPara{{text: v.Caption, sizePt: 12}}, lay.imgW)
 	}
 
 	steps := [][2]float64{{20, 14}, {18, 13}, {16, 12}}
@@ -364,7 +362,7 @@ func itsMeasure(ctx ExpandContext, v *ImageTextSplitValues, ovr *ImageTextSplitO
 	var column float64
 	for _, st := range steps {
 		lay.headingSize, lay.bodySize = st[0], st[1]
-		lay.textPt = textBlockHeightPt(ctx, itsTextParas(v, st[0], st[1]), lay.textW)
+		lay.textPt = sizedBlockHeightPt(ctx, itsTextParas(v, st[0], st[1]), lay.textW)
 		column = lay.textPt
 		if lay.metricsPt > 0 {
 			column += itsRowGapPt + lay.metricsPt

@@ -29,7 +29,9 @@ import (
 // Harvey balls and RAG dots are drawn as inline SVG icons (resolved theme hex
 // for Harvey balls, conventional status colours for RAG) centred on the cell
 // shape, so the row fill stays behind them. Rows are content-sized from the
-// measured option / criterion text; the table never stretches to full height.
+// measured option / criterion text and pinned in points (min_height =
+// max_height), so the table never stretches to full height and is centred by
+// the pattern vertical_align default.
 
 func init() {
 	Default().Register(&tableHighlight{})
@@ -519,7 +521,7 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 	for i := 0; i < nCrit; i++ {
 		l.cols = append(l.cols, (100-nameColPct)/float64(nCrit))
 	}
-	l.areaW, l.areaH = contentAreaPt(ctx)
+	l.areaW, l.areaH = sizingAreaPt(ctx)
 	l.symbolInk = inkOnLight(ctx, "dk2", 4.5)
 	l.corner = v.CornerLabel
 	if strings.TrimSpace(l.corner) == "" {
@@ -542,9 +544,9 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 	ctx, v := l.ctx, l.v
 	l.headerSize, l.bodySize, l.detailSize = headerSize, bodySize, detailSize
-	l.headerPt = math.Max(thMinHeaderPt, textBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, l.colW(0)))
+	l.headerPt = math.Max(thMinHeaderPt, sizedBlockHeightPt(ctx, []sizedPara{{text: l.corner, sizePt: headerSize, bold: true}}, l.colW(0)))
 	for j, c := range v.Criteria {
-		l.headerPt = math.Max(l.headerPt, textBlockHeightPt(ctx, []sizedPara{{text: c.Label, sizePt: headerSize, bold: true}}, l.colW(j+1)))
+		l.headerPt = math.Max(l.headerPt, sizedBlockHeightPt(ctx, []sizedPara{{text: c.Label, sizePt: headerSize, bold: true}}, l.colW(j+1)))
 	}
 	rowPt, hlPt := thMinRowPt, 0.0
 	for i, o := range v.Options {
@@ -576,10 +578,10 @@ func (l *thLayout) optionHeight(o TableHighlightOption, bodySize, detailSize flo
 	if o.Detail != "" {
 		paras = append(paras, sizedPara{text: o.Detail, sizePt: detailSize})
 	}
-	h := textBlockHeightPt(l.ctx, paras, l.colW(0)-6)
+	h := sizedBlockHeightPt(l.ctx, paras, l.colW(0)-6)
 	for j := range l.v.Criteria {
 		if sc, ok := parseTableHighlightScore(safeScore(o.Scores, j), l.v.scaleFor(j)); ok && sc.kind == thScaleText {
-			h = math.Max(h, textBlockHeightPt(l.ctx, []sizedPara{{text: sc.text, sizePt: bodySize}}, l.colW(j+1)))
+			h = math.Max(h, sizedBlockHeightPt(l.ctx, []sizedPara{{text: sc.text, sizePt: bodySize}}, l.colW(j+1)))
 		}
 	}
 	return h
@@ -621,17 +623,16 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 	l := newTHLayout(ctx, v, ovr)
 	l.fit()
-	rowsAvail := l.total() - l.gapsPt
 
 	rows := make([]jsonschema.GridRowInput, 0, len(v.Options)+2)
-	rows = append(rows, jsonschema.GridRowInput{Height: pctOf(l.headerPt, rowsAvail), Cells: l.headerCells()})
+	rows = append(rows, jsonschema.GridRowInput{MinHeight: l.headerPt, MaxHeight: l.headerPt, Cells: l.headerCells()})
 	for i := range v.Options {
-		rows = append(rows, jsonschema.GridRowInput{Height: pctOf(l.rowPt[i], rowsAvail), Cells: l.optionCells(i, cellOverrides)})
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: l.rowPt[i], MaxHeight: l.rowPt[i], Cells: l.optionCells(i, cellOverrides)})
 	}
 	if len(l.legend) > 0 {
 		rows = append(rows, jsonschema.GridRowInput{
-			Height: pctOf(thLegendPt, rowsAvail),
-			Cells:  []*jsonschema.GridCellInput{thLegendCell(ctx, v, l.legend, l.symbolInk, ovr.RAGColors, len(l.cols))},
+			MinHeight: thLegendPt, MaxHeight: thLegendPt,
+			Cells: []*jsonschema.GridCellInput{thLegendCell(ctx, v, l.legend, l.symbolInk, ovr.RAGColors, len(l.cols))},
 		})
 	}
 
@@ -641,9 +642,6 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 		ColGap:  thColGapPt,
 		RowGap:  thRowGapPt,
 		Rows:    rows,
-	}
-	if hPct := pctOf(l.total(), l.areaH); hPct < 99.5 {
-		grid.Bounds = &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 100, Height: hPct}
 	}
 	return grid, nil
 }

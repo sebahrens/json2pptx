@@ -375,6 +375,23 @@
           "highlight_label": "Recommended"
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Case Study"}
+      ],
+      "pattern": {
+        "name": "image-text-split",
+        "values": {
+          "image_label": "Photo: distribution centre",
+          "eyebrow": "Case study",
+          "heading": "Retailer cut stock-outs by a third",
+          "body": "Replenishment was rebuilt around store-level demand signals.",
+          "bullets": ["Daily forecasts for 18,000 SKUs", "Automated orders for 60% of volume"],
+          "metrics": [{"value": "-34%", "label": "stock-outs"}, {"value": "$12M", "label": "working capital"}]
+        }
+      }
     }
   ]
 }

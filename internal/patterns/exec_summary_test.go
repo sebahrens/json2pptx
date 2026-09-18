@@ -162,15 +162,21 @@ func TestExecSummary_ContentSizedHeight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if grid.Bounds == nil || grid.Bounds.Height >= 90 {
-		t.Fatalf("short summary should be height-capped, got bounds %+v", grid.Bounds)
-	}
+	// Every row is capped in points (min == max) so the resolver keeps the
+	// content-sized block and centres it instead of stretching the rows.
+	_, areaH := sizingAreaPt(fullThemeCtx())
 	sum := 0.0
-	for _, r := range grid.Rows {
-		sum += r.Height
+	for i, r := range grid.Rows {
+		if r.MaxHeight <= 0 || r.MinHeight != r.MaxHeight || r.Height != 0 {
+			t.Fatalf("row %d should be point-capped, got %+v", i, r)
+		}
+		sum += r.MaxHeight
 	}
-	if sum < 99 || sum > 101 {
-		t.Errorf("row heights should sum to ~100%%, got %.1f", sum)
+	if sum >= areaH*0.9 {
+		t.Errorf("short summary should not fill the content area: rows sum to %.0fpt of %.0fpt", sum, areaH)
+	}
+	if grid.Bounds != nil {
+		t.Errorf("content-sized rows need no bounds cap, got %+v", grid.Bounds)
 	}
 }
 

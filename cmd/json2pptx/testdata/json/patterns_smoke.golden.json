@@ -183,5 +183,12 @@
       5,
       1
     ]
+  },
+  {
+    "pattern_name": "image-text-split",
+    "row_count": 1,
+    "cell_counts": [
+      2
+    ]
   }
 ]

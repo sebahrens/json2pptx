@@ -80,10 +80,10 @@ const (
 	sizingCapacitySlack = 1.08  // stay a little inside the 110% overflow band
 )
 
-// textBlockHeightPt estimates the rendered height (points) of paras inside a
+// sizedBlockHeightPt estimates the rendered height (points) of paras inside a
 // text frame widthPt wide, including the default top/bottom insets and a small
 // safety margin.
-func textBlockHeightPt(ctx ExpandContext, paras []sizedPara, widthPt float64) float64 {
+func sizedBlockHeightPt(ctx ExpandContext, paras []sizedPara, widthPt float64) float64 {
 	total := 0.0
 	for i, p := range paras {
 		lines := paragraphLines(ctx, p, widthPt)
@@ -108,11 +108,11 @@ const (
 	sizingDefaultHeightFrac = 0.855
 )
 
-// contentAreaPt returns the pattern's content-area size in points: the
+// sizingAreaPt returns the pattern's content-area size in points: the
 // caller's layout bounds when known, else a conservative estimate derived from
 // the shape-grid default bounds for the slide (16:9 when the context carries
 // no slide size).
-func contentAreaPt(ctx ExpandContext) (w, h float64) {
+func sizingAreaPt(ctx ExpandContext) (w, h float64) {
 	if ctx.LayoutBounds.Width > 0 && ctx.LayoutBounds.Height > 0 {
 		return float64(ctx.LayoutBounds.Width) / sizingEMUPerPt, float64(ctx.LayoutBounds.Height) / sizingEMUPerPt
 	}

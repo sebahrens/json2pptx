@@ -162,6 +162,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right |
 | `icon-row` | Horizontal row of icon+caption pairs |
+| `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
 | `kpi-2up` | Two big-number KPI cards with short captions |
 | `kpi-3up` | Three big-number KPI cards with short captions |

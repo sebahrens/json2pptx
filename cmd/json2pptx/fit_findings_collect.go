@@ -795,6 +795,11 @@ func estimateRowInputContentHeightEMU(row GridRowInput) int64 {
 	if maxH == 0 {
 		maxH = int64(24 * 12700) // 24pt minimum fallback
 	}
+	// A point floor (min_height) is space the row occupies regardless of how
+	// little text it carries — content-sized patterns pin rows this way.
+	if minH := int64(row.MinHeight * 12700); minH > maxH {
+		maxH = minH
+	}
 	return maxH
 }
 

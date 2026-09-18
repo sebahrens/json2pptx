@@ -151,6 +151,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Team / 'Our People' page | `team-bios` | 1–8 named people with photo placeholder + role + short bio, up to 4 per row |
 | Joint-venture / engagement-team paired roles | `dual-org-ladder` | Two parallel columns of 2–6 paired role cards with an org-name header above each column (optional connector line per row) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |
+| Photo / case study beside text | `image-text-split` | One `image` (`path` resolved against the deck dir, or `url`) beside eyebrow + heading + body + ≤5 bullets and 0–3 result `metrics`; `image_side` left/right, `image_width_pct` 30–60. Without an image it draws a dashed placeholder (`image_label`). Implements `ImageAssetPattern` so hosts resolve its image like a shape_grid image cell |
 | Callout / testimonial | `pull-quote` | Attributed quotation |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quote bubbles in a 3-column grid (voice-of-customer slides) |
 
@@ -221,7 +222,7 @@ These patterns have structurally determined accent logic and do not expose `cell
 - **Single-cell patterns** (stat-hero, pull-quote): one cell, no variation needed.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 

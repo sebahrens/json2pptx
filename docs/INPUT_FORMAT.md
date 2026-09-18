@@ -112,7 +112,7 @@ For slides where placeholders aren't expressive enough, use `shape_grid` on a `b
 }
 ```
 
-Each cell holds exactly one of: `shape`, `table`, `icon`, `image`, `diagram`, or `composite`. Cells can span columns/rows via `col_span` / `row_span`. Slide-level `overlays` can float arrows, lines, and badges over the grid; anchor them to cells by `(row, col, at)` or by percent-of-slide coordinates. Grid-level `vertical_align` (`"stretch"` default, `"top"`, `"center"`, `"bottom"`) places a block of `max_height`-capped rows inside the bounds instead of stretching it; named patterns expand with `"center"`.
+Each cell holds exactly one of: `shape`, `table`, `icon`, `image`, `diagram`, or `composite`. A raster `image` cell without an explicit `fit` fills its whole cell and is centre-cropped to it ("cover", via `a:srcRect`) — never stretched; with `fit` (`contain` / `fit-width` / `fit-height`) it keeps the square frame and is cover-cropped into it; SVG images keep the square frame. Cells can span columns/rows via `col_span` / `row_span`. Slide-level `overlays` can float arrows, lines, and badges over the grid; anchor them to cells by `(row, col, at)` or by percent-of-slide coordinates. Grid-level `vertical_align` (`"stretch"` default, `"top"`, `"center"`, `"bottom"`) places a block of `max_height`-capped rows inside the bounds instead of stretching it; named patterns expand with `"center"`.
 
 ## Named patterns (prefer over hand-built grids)
 

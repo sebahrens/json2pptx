@@ -26,9 +26,10 @@ import (
 //
 // Rows are content-sized: each row's height comes from the measured wrapped
 // height of its lead and support text, so short summaries do not stretch into
-// full-height blocks. The grid is top-anchored and only padded (never
-// stretched past 1.6× its natural height) to keep the slide from reading as
-// mostly empty.
+// full-height blocks. Every row is pinned in points (min_height = max_height),
+// so the block keeps its size and the pattern vertical_align default centres
+// it; short summaries are padded (never past 1.6× their natural height) so
+// the slide does not read as mostly empty.
 
 func init() {
 	Default().Register(&execSummary{})
@@ -227,7 +228,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	if numbered {
 		cols = []float64{execSummaryNumColPct, execSummaryLeadColPct, 100 - execSummaryNumColPct - execSummaryLeadColPct}
 	}
-	areaW, areaH := contentAreaPt(ctx)
+	areaW, areaH := sizingAreaPt(ctx)
 
 	// Type scale: the largest step whose natural height fits the content
 	// area (never below the 12pt readability floor). Explicit header_size /
@@ -249,11 +250,10 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	leadSize, supportSize, numSize := lay.leadSize, lay.supportSize, lay.numSize
 	rowPt, bottomPt := lay.rowPt, lay.bottomPt
 	rowCount := lay.rowCount()
-	gapsPt := lay.gapsPt()
 	fixedPt := lay.fixedPt()
 
-	// Pad point rows (whitespace only — they are unfilled) so the block does
-	// not read as a sliver at the top of the slide.
+	// Pad point rows (whitespace only — they are unfilled) so a short
+	// summary does not read as a thin strip in the middle of the slide.
 	if target := areaH * execSummaryMinFillPct / 100; lay.natural() < target {
 		pointsPt := lay.natural() - fixedPt
 		scale := math.Min((target-fixedPt)/pointsPt, execSummaryMaxPad)
@@ -261,18 +261,12 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			rowPt[i] *= scale
 		}
 	}
-	total := fixedPt
-	for _, h := range rowPt {
-		total += h
-	}
-	rowsAvail := total - gapsPt // row Height percentages exclude the gaps
-
 	ruleFill := fillTone{Color: "dk1", Alpha: 30}.fillJSON()
 	rows := make([]jsonschema.GridRowInput, 0, rowCount)
 	for i, p := range vals.Points {
 		if i > 0 {
 			rows = append(rows, jsonschema.GridRowInput{
-				Height: pctOf(execSummaryRulePt, rowsAvail),
+				MinHeight: execSummaryRulePt, MaxHeight: execSummaryRulePt,
 				Cells: []*jsonschema.GridCellInput{{
 					ColSpan: len(cols),
 					Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: ruleFill},
@@ -296,7 +290,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		cells = append(cells, execSummaryTextCell([]chartInsightsParagraph{
 			{Content: pptx.ConvertMarkdownEmphasis(p.Support), Size: supportSize, Color: "dk1", Align: "l"},
 		}, "ctr"))
-		rows = append(rows, jsonschema.GridRowInput{Height: pctOf(rowPt[i], rowsAvail), Cells: cells})
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: rowPt[i], MaxHeight: rowPt[i], Cells: cells})
 	}
 
 	if bottomPt > 0 {
@@ -313,7 +307,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 		textJSON, _ := json.Marshal(text)
 		rows = append(rows, jsonschema.GridRowInput{
-			Height: pctOf(bottomPt, rowsAvail),
+			MinHeight: bottomPt, MaxHeight: bottomPt,
 			Cells: []*jsonschema.GridCellInput{{
 				ColSpan:   len(cols),
 				Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
@@ -328,9 +322,6 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		ColGap:  execSummaryColGapPt,
 		RowGap:  execSummaryRowGapPt,
 		Rows:    rows,
-	}
-	if hPct := pctOf(total, areaH); hPct < 99.5 {
-		grid.Bounds = &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 100, Height: hPct}
 	}
 	return grid, nil
 }
@@ -396,8 +387,8 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 		rowPt:       make([]float64, len(vals.Points)),
 	}
 	for i, p := range vals.Points {
-		lead := textBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol))
-		support := textBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))
+		lead := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol))
+		support := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))
 		h := math.Max(lead, support)
 		if numbered {
 			h = math.Max(h, lay.numSize*sizingLineSpacing+2*sizingInsetTBPt)
@@ -405,7 +396,7 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 		lay.rowPt[i] = h
 	}
 	if strings.TrimSpace(vals.BottomLine) != "" {
-		lay.bottomPt = textBlockHeightPt(ctx, []sizedPara{{text: "<b>Bottom line:</b> " + vals.BottomLine, sizePt: supportSize + 1, bold: true}}, areaW)
+		lay.bottomPt = sizedBlockHeightPt(ctx, []sizedPara{{text: "<b>Bottom line:</b> " + vals.BottomLine, sizePt: supportSize + 1, bold: true}}, areaW)
 	}
 	return lay
 }

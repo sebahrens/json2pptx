@@ -150,8 +150,16 @@ func TestTableHighlight_ExpandStructure(t *testing.T) {
 	if got := len(grid.Rows[0].Cells); got != 5 {
 		t.Errorf("header cells = %d, want 5", got)
 	}
-	if grid.Bounds == nil || grid.Bounds.Height >= 99.5 {
-		t.Errorf("table should be content-sized, bounds = %+v", grid.Bounds)
+	_, areaH := sizingAreaPt(fullThemeCtx())
+	sum := 0.0
+	for i, r := range grid.Rows {
+		if r.MaxHeight <= 0 || r.MinHeight != r.MaxHeight {
+			t.Fatalf("row %d should be point-capped, got %+v", i, r)
+		}
+		sum += r.MaxHeight
+	}
+	if sum >= areaH {
+		t.Errorf("table should be content-sized: rows sum to %.0fpt of %.0fpt", sum, areaH)
 	}
 
 	hdr := cellText(t, grid.Rows[0].Cells[0].Shape.Text).Paragraphs[0]
