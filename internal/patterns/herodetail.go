@@ -278,9 +278,9 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	for i, d := range v.Details {
 		switch style {
 		case "minimal":
-			detailCells[i] = hd.buildMinimalDetailCell(d, accent, headerSize, detailSize)
+			detailCells[i] = hd.buildMinimalDetailCell(ctx, d, accent, headerSize, detailSize)
 		default: // "cards"
-			detailCells[i] = hd.buildCardDetailCell(d, accent, headerSize, detailSize)
+			detailCells[i] = hd.buildCardDetailCell(ctx, d, accent, headerSize, detailSize)
 		}
 		// Apply cell overrides (detail cells are 1-indexed since cell 0 is the hero)
 		if co, ok := cellOverrides[i+1]; ok {
@@ -339,7 +339,7 @@ func (hd *heroDetail) buildHeroCell(hero HeroDetailHero, accent string, heroSize
 }
 
 // buildCardDetailCell produces an accent-filled detail card (default style).
-func (hd *heroDetail) buildCardDetailCell(d HeroDetailItem, accent string, headerSize, detailSize float64) *jsonschema.GridCellInput {
+func (hd *heroDetail) buildCardDetailCell(ctx ExpandContext, d HeroDetailItem, accent string, headerSize, detailSize float64) *jsonschema.GridCellInput {
 	paras := []heroDetailParagraph{
 		{Content: d.Title, Size: headerSize, Bold: true, Color: "lt1", Align: "l"},
 	}
@@ -366,7 +366,7 @@ func (hd *heroDetail) buildCardDetailCell(d HeroDetailItem, accent string, heade
 
 	// Add icon overlay when provided
 	if d.Icon != nil {
-		if icon := d.Icon.Resolve(accent, "top"); icon != nil {
+		if icon := d.Icon.Resolve(iconFillOn(ctx, gc.Shape.Fill, accent), "top"); icon != nil {
 			gc.Shape.Icon = icon
 		}
 	}
@@ -375,7 +375,7 @@ func (hd *heroDetail) buildCardDetailCell(d HeroDetailItem, accent string, heade
 }
 
 // buildMinimalDetailCell produces a light-background detail card with accent header text.
-func (hd *heroDetail) buildMinimalDetailCell(d HeroDetailItem, accent string, headerSize, detailSize float64) *jsonschema.GridCellInput {
+func (hd *heroDetail) buildMinimalDetailCell(ctx ExpandContext, d HeroDetailItem, accent string, headerSize, detailSize float64) *jsonschema.GridCellInput {
 	paras := []heroDetailParagraph{
 		{Content: d.Title, Size: headerSize, Bold: true, Color: accent, Align: "l"},
 	}
@@ -406,7 +406,7 @@ func (hd *heroDetail) buildMinimalDetailCell(d HeroDetailItem, accent string, he
 	}
 
 	if d.Icon != nil {
-		if icon := d.Icon.Resolve(accent, "top"); icon != nil {
+		if icon := d.Icon.Resolve(iconFillOn(ctx, gc.Shape.Fill, accent), "top"); icon != nil {
 			gc.Shape.Icon = icon
 		}
 	}

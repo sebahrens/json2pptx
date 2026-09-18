@@ -364,7 +364,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			Text:     buildMatrix2x2QuadrantContent(q, headerSize, bodySize, accent),
 		}
 		if q.Icon != nil {
-			if icon := q.Icon.Resolve(accent, "top"); icon != nil {
+			if icon := q.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "top"); icon != nil {
 				shape.Icon = icon
 			}
 		}
