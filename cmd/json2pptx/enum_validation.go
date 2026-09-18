@@ -25,32 +25,35 @@ import (
 // toward the canonical form.
 // ---------------------------------------------------------------------------
 
+// checkDeckEnumValues validates the top-level (deck-scope) enum fields:
+// design_mode, accent_strategy and viewing_mode.
+func checkDeckEnumValues(input *PresentationInput) []*patterns.ValidationError {
+	var errs []*patterns.ValidationError
+	deckEnums := []struct {
+		field, value string
+		allowed      []string
+		aliases      map[string]string
+	}{
+		{"design_mode", input.DesignMode, canonicalDesignModes, designModeAliases},
+		{"accent_strategy", input.AccentStrategy, canonicalAccentStrategies, accentStrategyAliases},
+		{"viewing_mode", input.ViewingMode, canonicalViewingModes, viewingModeAliases},
+	}
+	for _, e := range deckEnums {
+		if e.value == "" {
+			continue
+		}
+		if err := checkEnum(e.field, e.value, e.allowed, e.aliases); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs
+}
+
 // checkInputEnumValues validates enum-constrained fields across all slides
 // in a parsed PresentationInput. Returns ValidationError warnings for any
 // field with a value not in its allowed set.
 func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError {
-	var errs []*patterns.ValidationError
-
-	// Top-level design_mode enum
-	if input.DesignMode != "" {
-		if err := checkEnum("design_mode", input.DesignMode, canonicalDesignModes, designModeAliases); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	// Top-level accent_strategy enum
-	if input.AccentStrategy != "" {
-		if err := checkEnum("accent_strategy", input.AccentStrategy, canonicalAccentStrategies, accentStrategyAliases); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	// Top-level viewing_mode enum
-	if input.ViewingMode != "" {
-		if err := checkEnum("viewing_mode", input.ViewingMode, canonicalViewingModes, viewingModeAliases); err != nil {
-			errs = append(errs, err)
-		}
-	}
+	errs := checkDeckEnumValues(input)
 
 	allowedTransitions := canonicalTransitions()
 

@@ -1806,7 +1806,7 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 					}
 				} else if isLikelyTitle(item.PlaceholderID) {
 					text, isText := resolved.(string)
-					if m := measureTitleInPlaceholder(text, titlePlaceholderFor(&slides[i], item.PlaceholderID, layouts)); isText && m.OK {
+					if m := measureTitleInPlaceholder(text, titlePlaceholderFor(&slide, item.PlaceholderID, layouts)); isText && m.OK {
 						if m.Flagged() {
 							penalty := 0.15
 							if m.Overflow {
