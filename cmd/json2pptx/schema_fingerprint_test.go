@@ -76,8 +76,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// compile_deck_spec, render_deck_spec, explain_deck_spec, list_deck_archetypes,
 	// list_slide_kinds), which change the tool-name set, so the hash advanced from
 	// 968385126256b966 (4.57.0).
+	// 4.59.0 added the submit_visual_review MCP tool (host/manual visual review
+	// completion path), which changes the tool-name set, so the hash advanced
+	// from 24b985854165d81f (4.58.0).
 	// If this fails, see file header comment.
-	const wantFingerprint = "24b985854165d81f"
+	const wantFingerprint = "d6a3ae98aa2cf3ad"
 
 	got := schemaFingerprint()
 

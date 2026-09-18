@@ -4,7 +4,20 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
-## Unreleased
+## 4.59.0 (2026-09-18)
+
+### Added
+
+- **`submit_visual_review` MCP tool** — records a host/manual all-slide visual
+  review (`pptx_path`, `pptx_revision`, `slides[{index, verdict, image_path|image_sha256,
+  role?, findings?}]`, `reviewer?`, `revision?`). Validated by
+  `ReviewRecord.ValidateCompletion` (all slides, pixel hashes, current revision);
+  partial/stale reviews are rejected. Returns quality `evidence` with
+  `inspection_backend: host|manual` and `status`
+  (`visually_reviewed_current_revision` | `draft_needs_visual_review`); updates the
+  `.authoring.json` manifest's `visual_evidence` (new `reviewer` field) when present.
+  `QualityEvidence.approved` now accepts `provider`/`host`/`manual` backends in
+  addition to `vision` (heuristic still never approves).
 
 ### Changed
 

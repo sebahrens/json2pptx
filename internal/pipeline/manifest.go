@@ -27,6 +27,7 @@ type VisualEvidence struct {
 	Fonts           []string `json:"fonts,omitempty"`
 	ReviewedSlides  []string `json:"reviewed_slides,omitempty"`
 	Verdict         string   `json:"verdict,omitempty"`
+	Reviewer        string   `json:"reviewer,omitempty"` // vision, provider, host, or manual
 }
 
 type AuthoringManifest struct {

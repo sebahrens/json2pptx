@@ -468,6 +468,7 @@ collapse a whole chain into one call:
 | `apply_deck_patch` | Pure deck-JSON transform: bounded structural ops (insert/remove/move/replace) | MCP-only |
 | `auto_repair` | Server-side convergence loop (see fast path above) | MCP-only |
 | `inspect_slide_images` | Vision/heuristic visual QA of rendered slides with pre-mapped fixes | `inspect` |
+| `submit_visual_review` | Record a host/manual all-slide visual review verdict as quality evidence (validated against the current PPTX revision) | MCP-only |
 | `render_slide_image` | Render one PPTX slide to PNG (requires LibreOffice + ImageMagick) | `render-slide` |
 | `render_slide_image_from_json` | Render one slide directly from its JSON (requires LibreOffice + ImageMagick) | `render-slide-from-json` |
 | `render_deck_thumbnails` | Render all slides to low-res thumbnails (requires LibreOffice + ImageMagick) | `render-thumbnails` |

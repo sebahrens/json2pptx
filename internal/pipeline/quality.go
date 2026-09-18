@@ -29,7 +29,7 @@ func (e *QualityEvidence) Finalize() {
 	sort.Strings(e.ReviewedSlideIDs)
 	allSlides := e.TotalSlides > 0 && len(e.ReviewedSlideIDs) == e.TotalSlides
 	e.VisuallyInspected = e.PixelsRendered && allSlides
-	e.Approved = e.SchemaValid && e.Generated && e.FitChecked && e.StructuralValid && e.VisuallyInspected && e.InspectionBackend == "vision" && e.VisualVerdict == "approved"
+	e.Approved = e.SchemaValid && e.Generated && e.FitChecked && e.StructuralValid && e.VisuallyInspected && approvingBackend(e.InspectionBackend) && e.VisualVerdict == "approved"
 	e.NeedsReview = !e.Approved
 	if !e.PixelsRendered {
 		e.Reasons = appendUnique(e.Reasons, "current artifact was not pixel-rendered")
@@ -37,12 +37,23 @@ func (e *QualityEvidence) Finalize() {
 	if e.PixelsRendered && !allSlides {
 		e.Reasons = appendUnique(e.Reasons, "visual inspection did not cover every slide")
 	}
-	if e.VisuallyInspected && e.InspectionBackend != "vision" {
+	if e.VisuallyInspected && !approvingBackend(e.InspectionBackend) {
 		e.Reasons = appendUnique(e.Reasons, "inspection backend was heuristic, not vision")
 	}
 	if e.VisualVerdict != "approved" {
 		e.Reasons = appendUnique(e.Reasons, "no explicit visual approval verdict for the current artifact")
 	}
+}
+
+// approvingBackend reports whether an inspection backend can carry a visual
+// approval: a vision provider, or an explicitly recorded host/manual review
+// (submit_visual_review). Heuristic pixel checks never approve.
+func approvingBackend(backend string) bool {
+	switch backend {
+	case "vision", "provider", "host", "manual":
+		return true
+	}
+	return false
 }
 
 func appendUnique(values []string, value string) []string {

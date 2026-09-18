@@ -329,6 +329,8 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "explain_deck_spec", AddedIn: "4.58.0"},
 		{Name: "list_deck_archetypes", AddedIn: "4.58.0"},
 		{Name: "list_slide_kinds", AddedIn: "4.58.0"},
+		// Tools from 4.59.0 — host/manual visual review completion path
+		{Name: "submit_visual_review", AddedIn: "4.59.0"},
 	}
 	// Merge the per-tool classification metadata so every entry is
 	// self-describing. A missing classification leaves Kind/Phase empty;
@@ -673,6 +675,7 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpRepairSlideTool,
 		mcpRepairSlidesBatchTool,
 		mcpProposeRepairsTool,
+		mcpSubmitVisualReviewTool,
 		mcpAutoRepairTool,
 		mcpMakeDeckTool,
 		mcpListTemplateSettingsTool,

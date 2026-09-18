@@ -34,6 +34,7 @@ var mcpToCLI = map[string]string{
 	"preview_slide_wireframe":      "preview-wireframe",
 	"repair_slide":                 "repair",
 	"repair_slides_batch":          "repair",   // [MCP-only] CLI users loop with 'json2pptx repair' for each slide
+	"submit_visual_review":         "inspect",  // [MCP-only] records a host/manual review verdict; CLI users inspect with 'json2pptx inspect'
 	"propose_repairs":              "repair",   // [MCP-only] CLI users translate findings to fixes manually and invoke 'json2pptx repair'
 	"auto_repair":                  "repair",   // [MCP-only] CLI users chain 'json2pptx generate' / 'validate' / 'repair' manually
 	"make_deck":                    "generate", // [MCP-only] cold-start facade; CLI users assemble JSON and call 'json2pptx generate' manually

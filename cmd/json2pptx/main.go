@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.58.0"
+const SchemaVersion = "4.59.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -199,6 +199,9 @@ MCP-only tools (no direct CLI subcommand — use 'json2pptx mcp'):
                       'json2pptx repair'.
   repair_slides_batch [MCP-only] Apply fixes to multiple slides in one call. CLI
                       workaround: loop 'json2pptx repair' for each slide.
+  submit_visual_review [MCP-only] Record a host/manual all-slide visual review
+                      verdict as quality evidence bound to the current PPTX
+                      revision. CLI workaround: 'json2pptx inspect'.
 
 CLI parity gaps (CLI accepts a subset of the matching MCP tool's parameters):
   recommend-visual    CLI takes -intent only. MCP recommend_visual also accepts
