@@ -350,7 +350,9 @@ When the field is a bare string, it is classified at unmarshal time by `svggen.C
 - `svg_data` — inline SVG markup. No disk I/O is performed when set; `fill` is ignored (pre-style the SVG instead). The shared validator does not enforce arity beyond "exactly one of name/path/url/svg_data".
 - `alt` — accessibility description; defaults to a derived value from name/path.
 - `fill` — hex or scheme color override (e.g. `"accent1"`, `"#FF0000"`). Pattern code supplies a sensible default (the cell's accent) when blank; explicit values win.
-- `position` — `left`, `top`, or `center`. Defaults to the pattern-specific position (kpi → `left`, card-grid/iconrow/herodetail/matrix → `top`) when blank.
+- `position` — `left`, `top`, or `center`. Defaults to the pattern-specific position (kpi-Nup → `left` on landscape cards (width ≥ 1.2× height) and `top` on square/narrow cards; kpi-inline → `left`; card-grid/iconrow/herodetail/matrix → `top`) when blank. On any shape, a `left` overlay icon is capped at 25% of the shape width (the text's extra left inset is icon + 6pt padding), and a default-scale `top` icon on a landscape shape is capped at 40% of the shape height.
+- kpi-Nup icons default to an accent-sized footprint (top: ≤ 28% of card height / 45% of width; left: ≤ 40% of height / 20% of width) by setting the overlay `scale`; an authored `scale` wins.
+- kpi-Nup big values never wrap: the value font shrinks (uniformly across the row, floor 16pt) until every value fits on one line in its card's text width after the icon inset.
 - `scale` — optional overlay scale factor (`0 < scale <= 1`) applied when the icon is overlaid on a shape; out-of-range or unset values fall back to the `0.6` overlay default. No effect on standalone (text-free) icon cells. `IconRef.Resolve` copies it through unchanged, and the bundled-name shorthand marshal form is suppressed when `scale` is set.
 
 **Schema authoring.** New patterns that accept an icon should reuse `IconRefSchema(description)` and `validateIconRef(pattern, path, ref)` rather than duplicate the OneOf string-or-object schema. When a pattern repeats the icon slot across many siblings (matrix-2x2's four quadrants, multi-row card grids), wrap the cell schema in `$defs` and use `RefSchema(name)` to keep the per-pattern schema under the 6 KB compression budget.
@@ -402,7 +404,19 @@ Patterns assume `full_content_area` by default — the grid fills the entire lay
 
 These fields live on `PatternInput` (slide-level JSON) and on the `expand_pattern` MCP tool parameters. When set, the expanded grid gets a `bounds` field on the `ShapeGridInput`, which the shapegrid resolver and density math respect automatically.
 
-`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default).
+`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default). A user `bounds` / `max_height_pct` override also resets the grid's `vertical_align` to `stretch`, so the block stays where the user put it.
+
+## Content-sized heights and vertical centring (authoring contract)
+
+Do not let cards / steps stretch to the full content height just because the grid is full-area. Every expanded pattern grid gets `vertical_align: "center"` (`patterns.ApplyGridDefaults`, applied by `expandPattern` and every other `Expand` caller), and the shapegrid resolver keeps a content-sized block when **at least one row sets `max_height`** (points):
+
+- Cap rows in points, not percentages, derived from `contentAreaPt(ctx)` (e.g. kpi-Nup `0.45 × content height`, process-flow `0.35 ×`), or from a text estimate (`textBlockHeightPt`) for text rows. Point caps keep nested / composed use sane: inside a small compose cell the cap exceeds the cell and the row simply fills it.
+- Fixed `height` percentages in a grid that has a capped row are kept as absolute shares (no re-normalisation), so the slack is real and the block is centred.
+- Grids without any capped row keep the legacy proportional stretch (agenda lists, stacked steps, team-bios rely on it).
+- Height-capped, top-anchored pattern `bounds` (`y: 0`, `height < 100`) are centred inside the content area under `vertical_align: "center"`; the content area already excludes the takeaway/source chrome band.
+- Big single-token values (KPI numbers) must shrink to fit one line (`fitSingleLineSize`) rather than wrap.
+- Header bands: fix the row with `min_height = max_height = headerRowPt(...)` (~1.2× the header line height + padding), never a percentage of the grid.
+- Cards: size with `contentCardHeightPt(shapeTextHeightPt(...), cardW, hasTopIcon)` and pass sparse card text through `anchorSparseText` so a short body is centred instead of hanging top-left (target: < 30% unused area per card). Skip content-sizing for rows that host a secondary chart.
 
 ## Expand conventions
 

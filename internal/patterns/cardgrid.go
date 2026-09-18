@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"unicode"
 
@@ -352,18 +353,47 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			gridCells[col] = gc
 			cellIdx++
 		}
-		rows = append(rows, jsonschema.GridRowInput{
-			Cells: gridCells,
-		})
+		rows = append(rows, cardGridContentRow(ctx, gridCells, vals.Columns))
 	}
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, vals.Columns)),
-		Gap:     10,
-		Rows:    rows,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, vals.Columns)),
+		Gap:           10,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
+}
+
+// cardGridContentRow builds a card-grid row whose height hugs its tallest
+// card (go-slide-creator-3i7c) instead of flexing over the content area;
+// sparse cards in the row get vertically centred text. Rows holding a
+// secondary chart (composite cells) keep the flex height the chart needs.
+func cardGridContentRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int) jsonschema.GridRowInput {
+	row := jsonschema.GridRowInput{Cells: cells}
+	for _, c := range cells {
+		if c == nil || c.Shape == nil || c.Composite != nil {
+			return row
+		}
+	}
+	font := ctx.Theme.BodyFont
+	contentW, _ := contentAreaPt(ctx)
+	cardW := equalColumnWidthPt(contentW, cols, 10)
+	textW := cardW - 2*defaultShapeInsetLRPt
+	textHs := make([]float64, len(cells))
+	cardH := 0.0
+	for i, c := range cells {
+		textHs[i] = shapeTextHeightPt(font, c.Shape.Text, textW)
+		cardH = math.Max(cardH, contentCardHeightPt(textHs[i], cardW, c.Shape.Icon != nil))
+	}
+	for i, c := range cells {
+		if c.Shape.Icon == nil {
+			c.Shape.Text = anchorSparseText(c.Shape.Text, textHs[i], cardH-2*defaultShapeInsetTBPt)
+		}
+	}
+	row.MaxHeight = cardH
+	return row
 }
 
 // expandCell produces a single GridCellInput based on the selected visual style.

@@ -159,6 +159,7 @@ func (h *PatternsHandler) ExpandHandler() http.HandlerFunc {
 				err.Error(), map[string]any{"pattern": name})
 			return
 		}
+		patterns.ApplyGridDefaults(grid)
 
 		writeJSON(w, http.StatusOK, patternExpandResponse{ShapeGrid: grid})
 	}

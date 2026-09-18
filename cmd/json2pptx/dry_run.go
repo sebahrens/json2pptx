@@ -17,6 +17,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -853,6 +854,10 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 	if len(grid.Rows) == 0 {
 		errors = append(errors, fmt.Sprintf("slide %d: shape_grid has no rows", slideNum))
 		return
+	}
+
+	if _, ok := shapegrid.ParseVerticalAlign(grid.VerticalAlign); !ok {
+		errors = append(errors, fmt.Sprintf("slide %d: shape_grid vertical_align must be one of \"stretch\", \"top\", \"center\", \"bottom\", got %q", slideNum, grid.VerticalAlign))
 	}
 
 	// Validate columns

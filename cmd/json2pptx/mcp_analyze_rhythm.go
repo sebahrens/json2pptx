@@ -158,12 +158,14 @@ func buildDensityGrid(sg *ShapeGridInput) *shapegrid.Grid {
 		)
 	}
 
+	vAlign, _ := shapegrid.ParseVerticalAlign(sg.VerticalAlign)
 	return &shapegrid.Grid{
 		Bounds:  bounds,
 		Columns: colWidths,
 		Rows:    rows,
 		ColGap:  colGap,
 		RowGap:  rowGap,
+		VAlign:  vAlign,
 	}
 }
 

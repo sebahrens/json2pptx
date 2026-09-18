@@ -3,6 +3,7 @@
   "columns": 4,
   "rows": [
     {
+      "max_height": 175,
       "cells": [
         {
           "shape": {
@@ -106,5 +107,6 @@
         }
       ]
     }
-  ]
+  ],
+  "vertical_align": "center"
 }

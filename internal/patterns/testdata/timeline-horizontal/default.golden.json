@@ -1,103 +1,186 @@
 {
-  "gap": 16,
+  "col_gap": 16,
+  "row_gap": 6,
   "columns": 3,
   "rows": [
     {
+      "min_height": 26,
+      "max_height": 26,
       "cells": [
         {
           "shape": {
-            "geometry": "roundRect",
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Q1 2025",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Q2 2025",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Q3 2025",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "b"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 18,
+      "max_height": 18,
+      "cells": [
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
             "fill": "accent1",
+            "line": "none"
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": "none"
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": "none"
+          }
+        }
+      ],
+      "connector": {
+        "style": "line",
+        "color": "accent1",
+        "width": 2.5
+      }
+    },
+    {
+      "max_height": 42,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "Phase 1",
                   "size": 14,
                   "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
-                },
-                {
-                  "content": "Q1 2025",
-                  "size": 10,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 },
                 {
                   "content": "Planning",
-                  "size": 10,
-                  "color": "lt1",
+                  "size": 12,
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "Phase 2",
                   "size": 14,
                   "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
-                },
-                {
-                  "content": "Q2 2025",
-                  "size": 10,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 },
                 {
                   "content": "Development",
-                  "size": 10,
-                  "color": "lt1",
+                  "size": 12,
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
           }
         },
         {
           "shape": {
-            "geometry": "roundRect",
-            "fill": "accent1",
+            "geometry": "rect",
+            "fill": "none",
             "text": {
               "paragraphs": [
                 {
                   "content": "Phase 3",
                   "size": 14,
                   "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
-                },
-                {
-                  "content": "Q3 2025",
-                  "size": 10,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 },
                 {
                   "content": "Launch",
-                  "size": 10,
-                  "color": "lt1",
+                  "size": 12,
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
           }
         }
       ]
     }
-  ]
+  ],
+  "vertical_align": "center"
 }

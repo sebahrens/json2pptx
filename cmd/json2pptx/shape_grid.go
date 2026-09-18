@@ -477,7 +477,8 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 	case input.Bounds != nil:
 		if input.BoundsRelativeToContentArea {
 			contentBounds := contentRelativeBoundsBase(overrideBounds, zone, slideWidth, slideHeight)
-			return boundsFromRectPercentages(contentBounds, input.Bounds)
+			b := boundsFromRectPercentages(contentBounds, input.Bounds)
+			return alignRelativeBounds(b, contentBounds, input)
 		}
 		bounds := shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
 		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
@@ -492,6 +493,27 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 	default:
 		return shapegrid.DefaultBounds(slideWidth, slideHeight)
 	}
+}
+
+// alignRelativeBounds places a top-anchored (y = 0) content-relative bounds box
+// that is shorter than its content area according to the grid's
+// vertical_align: "center" centres it in the content area (which already
+// excludes the takeaway/source chrome band — see reserveTakeawayBand),
+// "bottom" anchors it at the bottom. This is how height-capped patterns
+// (numbered-step-strip, *-compact, kpi-inline) avoid leaving the lower half of
+// the slide empty. Explicit non-zero y offsets are kept as authored.
+func alignRelativeBounds(b, content pptx.RectEmu, input *ShapeGridInput) pptx.RectEmu {
+	if input.Bounds == nil || input.Bounds.Y != 0 || b.CY >= content.CY {
+		return b
+	}
+	align, _ := shapegrid.ParseVerticalAlign(input.VerticalAlign)
+	switch align {
+	case shapegrid.VAlignCenter:
+		b.Y = content.Y + (content.CY-b.CY)/2
+	case shapegrid.VAlignBottom:
+		b.Y = content.Y + content.CY - b.CY
+	}
+	return b
 }
 
 func contentRelativeBoundsBase(overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) pptx.RectEmu {
@@ -550,12 +572,18 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	// Convert DTO rows to shapegrid.Row
 	rows := convertGridRows(input.Rows)
 
+	vAlign, ok := shapegrid.ParseVerticalAlign(input.VerticalAlign)
+	if !ok {
+		return nil, fmt.Errorf("shape_grid: vertical_align must be one of \"stretch\", \"top\", \"center\", \"bottom\", got %q", input.VerticalAlign)
+	}
+
 	grid := &shapegrid.Grid{
 		Bounds:  bounds,
 		Columns: colWidths,
 		Rows:    rows,
 		ColGap:  colGap,
 		RowGap:  rowGap,
+		VAlign:  vAlign,
 	}
 
 	// Validate grid structure before rendering (catches overlaps, span errors, etc.)

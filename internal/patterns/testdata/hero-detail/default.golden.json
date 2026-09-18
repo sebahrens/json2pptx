@@ -3,7 +3,7 @@
   "columns": 3,
   "rows": [
     {
-      "height": 40,
+      "max_height": 142,
       "cells": [
         {
           "col_span": 3,
@@ -33,6 +33,7 @@
       ]
     },
     {
+      "max_height": 58,
       "cells": [
         {
           "shape": {
@@ -111,5 +112,6 @@
         }
       ]
     }
-  ]
+  ],
+  "vertical_align": "center"
 }

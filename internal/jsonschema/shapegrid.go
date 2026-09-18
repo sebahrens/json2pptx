@@ -23,6 +23,13 @@ type ShapeGridInput struct {
 	RowGap                      float64          `json:"row_gap,omitempty"` // Row gap in points (overrides gap)
 	Columns                     json.RawMessage  `json:"columns,omitempty"` // number | number[]
 	Rows                        []GridRowInput   `json:"rows"`
+	// VerticalAlign places a content-sized row block inside the bounds when
+	// the rows (fixed heights, auto heights, flex rows capped by max_height)
+	// sum to less than the bounds: "stretch" (default for raw grids — rows
+	// are re-scaled to fill), "top", "center", "bottom". Named patterns
+	// default to "center" so capped cards/steps sit mid-slide instead of
+	// stretching or leaving the bottom of the slide empty.
+	VerticalAlign string `json:"vertical_align,omitempty"`
 }
 
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.

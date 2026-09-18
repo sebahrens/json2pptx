@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // PatternInput is the JSON schema for pattern-based slides.
@@ -87,13 +88,22 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	if grid.Bounds != nil {
 		grid.BoundsRelativeToContentArea = true
 	}
+	// Patterns place their content-sized block in the middle of the content
+	// area by default (go-slide-creator-7km8): rows capped by max_height and
+	// height-capped pattern bounds are centred instead of stretching or
+	// leaving the lower half of the slide empty. A pattern may opt out by
+	// setting vertical_align itself ("top" / "stretch").
+	patterns.ApplyGridDefaults(grid)
 
 	// Apply bounds_override: explicit bounds or max_height_pct convenience alias.
 	// This constrains the grid to a sub-region of the layout area, which also
 	// corrects density math (cell_budgets uses grid.Bounds when present).
+	// A user-positioned block is kept where the user put it: max_height_pct
+	// stays top-anchored and rows fill the user's bounds (stretch).
 	if b, relativeToContentArea := resolvePatternBounds(p); b != nil {
 		grid.Bounds = b
 		grid.BoundsRelativeToContentArea = relativeToContentArea
+		grid.VerticalAlign = string(shapegrid.VAlignStretch)
 	}
 
 	// Post-expand callout decorator (D18): append full-width callout row
