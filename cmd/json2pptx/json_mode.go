@@ -1777,8 +1777,10 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 			issues = append(issues, "empty slide with no content")
 		}
 
-		// Analyze each content item using ResolveValue for typed + legacy support
-		bulletCount := 0
+		// Analyze each content item using ResolveValue for typed + legacy support.
+		// Bullets are counted per placeholder: a two-column slide with 5+5
+		// bullets is two readable lists, not one list of 10.
+		bulletsByPlaceholder := map[string]int{}
 		contentCount := len(slide.Content)
 		for _, item := range slide.Content {
 			resolved, _ := item.ResolveValue()
@@ -1806,7 +1808,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 				}
 			case "bullets":
 				if bullets, ok := resolved.([]string); ok {
-					bulletCount += len(bullets)
+					bulletsByPlaceholder[item.PlaceholderID] += len(bullets)
 				}
 			case "table":
 				if table, ok := resolved.(*TableInput); ok {
@@ -1821,12 +1823,12 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 				}
 			case "body_and_bullets":
 				if bab, ok := resolved.(*BodyAndBulletsInput); ok {
-					bulletCount += len(bab.Bullets)
+					bulletsByPlaceholder[item.PlaceholderID] += len(bab.Bullets)
 				}
 			case "bullet_groups":
 				if bg, ok := resolved.(*BulletGroupsInput); ok {
 					for _, g := range bg.Groups {
-						bulletCount += len(g.Bullets)
+						bulletsByPlaceholder[item.PlaceholderID] += len(g.Bullets)
 					}
 				}
 			case "chart":
@@ -1864,7 +1866,13 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 			}
 		}
 
-		// Bullet count penalty
+		// Bullet count penalty — applied to the densest single placeholder.
+		bulletCount := 0
+		for _, n := range bulletsByPlaceholder {
+			if n > bulletCount {
+				bulletCount = n
+			}
+		}
 		if bulletCount > maxBullets {
 			penalty := float64(bulletCount-maxBullets) * 0.05
 			if penalty > 0.4 {
