@@ -74,7 +74,6 @@ func titleFitParams(in TitleFitInput) textfit.Params {
 		FontSizeHPt: in.Style.SizeHPt,
 		FontName:    in.FontName,
 		Paragraphs:  []string{in.Title},
-		ExactWidths: true,
 	}
 	applyInheritedStyleToParams(&p, in.Style)
 	return p

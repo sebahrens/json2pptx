@@ -132,12 +132,6 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	}
 
 	params := buildTextfitParams(shape, widthEMU, heightEMU, texts, &cfg)
-	if cfg.isTitle {
-		// Titles are measured with correct glyph widths (see
-		// textfit.Params.ExactWidths) so long titles get a real fontScale
-		// or a TITLE_OVERFLOW finding instead of colliding lines.
-		params.ExactWidths = true
-	}
 
 	result, err := textfit.Calculate(params)
 	if err != nil {
@@ -145,12 +139,6 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		bp.Inner += `<a:normAutofit/>`
 		return
 	}
-	// Prefer readability over completeness: when font would shrink below the
-	// readability threshold and there are enough paragraphs to trim, remove
-	// trailing paragraphs to keep text at a legible size.
-	// Default threshold is 62500 (62.5% → ~12.5pt for 20pt base font).
-	// Callers can lower this for dense content like 4+ bullet groups where
-	// preserving all authored content is more important than larger font size.
 	// Titles are a single statement: never trim paragraphs. When the title
 	// cannot fit even at the minimum scale, keep the maximum reduction and
 	// report TITLE_OVERFLOW so the author shortens it.
@@ -166,6 +154,12 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		return
 	}
 
+	// Prefer readability over completeness: when font would shrink below the
+	// readability threshold and there are enough paragraphs to trim, remove
+	// trailing paragraphs to keep text at a legible size.
+	// Default threshold is 62500 (62.5% → ~12.5pt for 20pt base font).
+	// Callers can lower this for dense content like 4+ bullet groups where
+	// preserving all authored content is more important than larger font size.
 	if result.FontScale > 0 && result.FontScale < cfg.readabilityMinScale && len(texts) > 6 {
 		result = trimForReadability(shape, params, cfg.readabilityMinScale, &cfg)
 	}

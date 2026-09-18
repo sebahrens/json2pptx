@@ -79,16 +79,8 @@ type Params struct {
 	// lists can set this lower (e.g., 45) to allow more text to fit before
 	// overflow trimming kicks in.
 	MinFontScalePct int
-	// ExactWidths measures glyph advances at the real point size. The legacy
-	// path builds the canvas font face at fontPt*ptToMM, which renders glyphs
-	// ~2.83x too narrow (canvas faces take a size in points and report
-	// widths in mm). Existing autofit thresholds and corpora are calibrated
-	// against the legacy widths, so correct measurement is opt-in; title fit
-	// (go-slide-creator-6cjs) uses it because under-measured titles were
-	// written without a fontScale and collided when rendered.
-	ExactWidths bool
-	ViewingMode tokens.ViewingMode
-	TextRole    tokens.TextRole
+	ViewingMode     tokens.ViewingMode
+	TextRole        tokens.TextRole
 }
 
 const (
@@ -109,7 +101,9 @@ const (
 	maxLnSpcReductionPct = 20
 	// fontScaleStep is the decrement step for font scale (percentage points).
 	fontScaleStep = 5
-	// ptToMM converts points to millimeters.
+	// ptToMM converts points to millimeters. canvas text bounds are reported
+	// in millimetres, so available widths are converted with it; font faces
+	// take their size in points (see newFace).
 	ptToMM = 0.3528
 )
 
@@ -162,12 +156,11 @@ func Calculate(p Params) (FitResult, error) {
 
 	// Enforce absolute minimum font size floor (10pt). If the percentage-based
 	// floor would produce a font smaller than AbsMinFontPt, raise the floor.
+	// The viewing-mode readability policy is deliberately NOT a shrink floor:
+	// clamping here would trim or overflow content instead of reporting it.
+	// Readability is reported separately via FitResult.Readable (and surfaced
+	// as TEXT_BELOW_READABLE_MIN by callers, go-slide-creator-vbic).
 	absMinScalePct := int(math.Ceil(AbsMinFontPt / fontSizePt * 100))
-	policyMin := tokens.MinReadableHPt(p.ViewingMode, p.TextRole)
-	policyScalePct := int(math.Ceil(float64(policyMin) / float64(p.FontSizeHPt) * 100))
-	if policyScalePct > absMinScalePct {
-		absMinScalePct = policyScalePct
-	}
 	if absMinScalePct > minScale {
 		minScale = absMinScalePct
 	}
@@ -181,7 +174,7 @@ func Calculate(p Params) (FitResult, error) {
 		scale := float64(scalePct) / 100.0
 		scaledFontPt := fontSizePt * scale
 
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, p.ExactWidths)
+		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, scalePct*1000, p.ViewingMode, p.TextRole)
@@ -199,7 +192,7 @@ func Calculate(p Params) (FitResult, error) {
 	scaledFontPt := fontSizePt * minScaleF
 	for lnReduction := 5; lnReduction <= maxLnSpcReductionPct; lnReduction += 5 {
 		reducedSpacing := p.LineSpacing * (1.0 - float64(lnReduction)/100.0)
-		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, p.ExactWidths)
+		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
@@ -226,13 +219,8 @@ func Calculate(p Params) (FitResult, error) {
 // extraSpacingPt is the default per-paragraph spacing (e.g., spcBef + spcAft from slide master).
 // perParaSpacings overrides extraSpacingPt for each corresponding paragraph index.
 // leftMargins is per-paragraph left margin in points (from bullet marL); reduces available width.
-// exactWidths selects correct glyph-width measurement (see Params.ExactWidths).
-func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64, exactWidths bool) float64 {
-	faceSize := fontSizePt * ptToMM
-	if exactWidths {
-		faceSize = fontSizePt // canvas faces take points; widths come back in mm
-	}
-	face := ff.Face(faceSize, color.Black, canvas.FontRegular, canvas.FontNormal)
+func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64) float64 {
+	face := newFace(ff, fontSizePt, canvas.FontRegular)
 
 	lineHeightPt := fontSizePt * lineSpacing
 	var totalHeight float64
@@ -302,7 +290,7 @@ func MaxFontForWidth(text string, widthEMU int64, fontName string) int {
 	for lo < hi {
 		mid := (lo + hi + 1) / 2 // round up to converge on largest valid size
 		fontPt := float64(mid) / 100.0
-		face := ff.Face(fontPt*ptToMM, color.Black, canvas.FontRegular, canvas.FontNormal)
+		face := newFace(ff, fontPt, canvas.FontRegular)
 
 		fits := true
 		for _, w := range words {
@@ -356,7 +344,7 @@ func MeasureHeight(p Params) (int64, error) {
 		return 0, ErrNoFontCache
 	}
 
-	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, p.ExactWidths)
+	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
 	return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
 }
 
@@ -398,4 +386,16 @@ func wrapText(face *canvas.FontFace, text string, widthPt float64) int {
 	}
 
 	return lines
+}
+
+// newFace builds a canvas font face for measuring text at fontPt points.
+//
+// canvas.FontFamily.Face takes the font size in POINTS and reports text
+// bounds in millimetres. textfit previously passed fontPt*ptToMM as the size,
+// building faces ~2.83x too small, so every width was under-measured by that
+// factor: long titles "fit" boxes they overflowed and footers "fit" 1in that
+// need 3.5in (go-slide-creator-6cjs / vbic). Widths are compared against
+// ptToMM-converted available widths, which stays correct.
+func newFace(ff *canvas.FontFamily, fontPt float64, style canvas.FontStyle) *canvas.FontFace {
+	return ff.Face(fontPt, color.Black, style, canvas.FontNormal)
 }

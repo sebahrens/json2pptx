@@ -74,7 +74,9 @@ func TestDetectPlaceholderOverflow_AutofitNoneButFitsAtMin(t *testing.T) {
 	input := PlaceholderOverflowInput{
 		SlideIndex:  0,
 		Path:        "slides[0].body",
-		Paragraphs:  makeOverflowParagraphs(15),
+		// 6 paragraphs (calibrated for point-sized glyph measurement): ~1.4x
+		// the frame at 20pt, fits at the 60% floor.
+		Paragraphs:  makeOverflowParagraphs(6),
 		WidthEMU:    testPHWidthEMU,
 		HeightEMU:   testPHHeightEMU,
 		FontSizeHPt: 2000,
@@ -201,7 +203,7 @@ func TestDetectTitleWraps_MultiLine(t *testing.T) {
 	input := TitleWrapsInput{
 		SlideIndex:  0,
 		Path:        "slides[0].content.title",
-		Title:       "This Is an Extremely Long Title That Will Definitely Wrap to Multiple Lines in a Standard Title Placeholder at Large Font Size Because It Contains So Many Words",
+		Title:       "This Is a Long Title That Will Wrap Onto a Second Line Here",
 		WidthEMU:    testTitleWidthEMU,
 		HeightEMU:   testTitleHeightEMU,
 		FontSizeHPt: 3600, // 36pt

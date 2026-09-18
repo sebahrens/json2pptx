@@ -29,6 +29,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `accent1` bold/`lt1` header, right-aligned detected numeric columns, an
   emphasised `Total`/`Sum` row (bold + top rule) and content-driven row heights.
   No schema change; explicit style fields opt out (see `docs/STYLE_DEFAULTS.md`).
+- **textfit glyph widths fixed.** textfit built canvas font faces at
+  `fontPt*ptToMM` (canvas takes points), under-measuring every string ~2.83x.
+  All measured fit (placeholder autofit, title fit, table cell measurement,
+  shape_grid capacity budgets) now uses real widths, so `max_chars` budgets,
+  `fit_overflow` / `cell_underfilled` density bands and autofit scales are
+  roughly 2.8x stricter than before. The viewing-mode policy no longer acts as
+  a shrink floor in `textfit.Calculate`.
 - Title placeholders that fit by shrinking now carry the reduced size as an
   explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
   `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.

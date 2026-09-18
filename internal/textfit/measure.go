@@ -1,7 +1,6 @@
 package textfit
 
 import (
-	"image/color"
 	"math"
 	"strings"
 
@@ -67,7 +66,7 @@ func MeasureStyledRuns(p StyledMeasureParams) (RunMeasurement, error) {
 		if run.Bold {
 			style = canvas.FontBold
 		}
-		face := ff.Face(p.FontPt*ptToMM, color.Black, style, canvas.FontNormal)
+		face := newFace(ff, p.FontPt, style)
 		parts := strings.Split(run.Text, "\n")
 		for partIndex, part := range parts {
 			if partIndex > 0 {
@@ -138,7 +137,7 @@ func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, ma
 		return RunMeasurement{Lines: 1, Fits: false, OverflowChars: len([]rune(text))}, nil
 	}
 
-	face := ff.Face(fontPt*ptToMM, color.Black, canvas.FontRegular, canvas.FontNormal)
+	face := newFace(ff, fontPt, canvas.FontRegular)
 	lines := wrapText(face, text, widthPt)
 
 	// Default line spacing 1.2×

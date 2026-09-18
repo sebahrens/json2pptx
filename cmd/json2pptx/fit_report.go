@@ -145,9 +145,18 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 	tableWidthEMU := int64(float64(slideWidthEMU) * 0.9)
 	colWidthEMU := tableWidthEMU / int64(numCols)
 
-	// Row height: use the generator's default row height for max lines calc.
-	const defaultRowHeightEMU int64 = 370840
+	// Row height budget: rows grow with their content, so a cell may wrap as
+	// long as the table still fits its body area. Budget each row an equal
+	// share of a typical body placeholder (~60% of the slide height), never
+	// less than the generator's minimum row height. (With glyph widths now
+	// measured at the real point size, the old fixed one-line-per-row budget
+	// flagged ordinary two-line cells as overflow.)
+	const minRowHeightEMU int64 = 370840
 	const defaultLineSpacing = 1.2
+	defaultRowHeightEMU := int64(float64(shapegrid.DefaultSlideHeightEMU) * 0.6 / float64(numRows))
+	if defaultRowHeightEMU < minRowHeightEMU {
+		defaultRowHeightEMU = minRowHeightEMU
+	}
 	lineHeightPt := fontPt * defaultLineSpacing
 	maxLines := int(float64(defaultRowHeightEMU) / (lineHeightPt * 12700)) // 12700 EMU per pt
 	if maxLines < 1 {
