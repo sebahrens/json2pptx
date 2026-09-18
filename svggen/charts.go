@@ -1531,15 +1531,27 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 		return min - offset, max + offset
 	}
 
+	// A filled mark is read against the axis: the band's area IS the claim
+	// ("this much of the total"), and on a stacked area the bands are a
+	// part-to-whole. Truncating the axis makes a 40-unit base look like zero
+	// and overstates the trend, so area and stacked_area always baseline at
+	// zero — matching stacked_bar, which already did (go-slide-creator-6wfe).
+	// A plain line chart keeps the zoomed axis: it encodes value by position,
+	// not by area.
+	if lc.config.FillArea {
+		min = math.Min(0, min)
+		max = math.Max(0, max)
+	}
+
 	// Add small top padding (~5%) so the highest data point doesn't touch
 	// the axis boundary. Nice() will round this to a clean tick value.
 	span := max - min
 	max += span * 0.05
 
-	// For line/area charts, allow the min to remain above zero when the
-	// data range is far from zero (e.g., 100-200 should not show 0-220).
-	// Nice() will round to a nearby clean number.
-	// If data is close to zero (min < 20% of range), snap to zero for clarity.
+	// For line charts, allow the min to remain above zero when the data range
+	// is far from zero (e.g., 100-200 should not show 0-220). Nice() will
+	// round to a nearby clean number. If data is close to zero (min < 20% of
+	// range), snap to zero for clarity.
 	if min > 0 && min < span*0.2 {
 		min = 0
 	}
