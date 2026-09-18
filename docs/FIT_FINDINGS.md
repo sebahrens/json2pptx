@@ -2,7 +2,7 @@
 
 Fit findings are structured diagnostics emitted when generated slide content may not render correctly — text overflowing placeholders, shapes falling outside slide bounds, or tables exceeding density limits. They are surfaced via the MCP `generate_presentation` tool (text-fit findings detected by `strict_fit` are merged into `fit_findings` unconditionally when `strict_fit != "off"`; the full preflight detector set runs when `fit_report=true`) and the CLI `json2pptx generate -json` and `validate -fit-report` commands (the JSON output's `fit_findings` always includes the active `strict_fit` findings).
 
-**Chart / diagram dry-render.** `validate_input` and `preview_presentation_plan` also drive svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item **and every diagram surface embedded in a slide's `shape_grid`** — cell `diagram`s, composite cell `sub_diagram`s, and diagrams inside recursively nested sub-grids — merging the resulting `chart.*` findings (e.g. `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`) into the fit-finding stream. Content-item findings keep the legacy `slides[i].content[j].chart_value` path; shape_grid findings use the slidepath JSON Pointer convention shared with the structural detectors (e.g. `/slides/0/shape_grid/rows/1/cells/2/diagram`, `.../composite/sub_diagram`, or a nested `.../cells/2/grid/rows/0/cells/1/diagram`). Agents see render-time chart issues at validate / preview time without paying for full generation. The strict-fit severity ladder applies identically to the generate path. The svggen top-level helper is `svggen.DryRender(req) ([]Finding, error)`; the corresponding MCP entry point is `render_diagram` with `dry_run: true`.
+**Chart / diagram dry-render.** `validate_input` and `preview_presentation_plan` also drive svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item **and every diagram surface embedded in a slide's `shape_grid` or in a named pattern's expanded grid (e.g. `chart-insights-split`, paths rooted at `/slides/{i}/pattern`)** — cell `diagram`s, composite cell `sub_diagram`s, and diagrams inside recursively nested sub-grids — merging the resulting `chart.*` findings (e.g. `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`) into the fit-finding stream. Content-item findings keep the legacy `slides[i].content[j].chart_value` path; shape_grid findings use the slidepath JSON Pointer convention shared with the structural detectors (e.g. `/slides/0/shape_grid/rows/1/cells/2/diagram`, `.../composite/sub_diagram`, or a nested `.../cells/2/grid/rows/0/cells/1/diagram`). Agents see render-time chart issues at validate / preview time without paying for full generation. The strict-fit severity ladder applies identically to the generate path. The svggen top-level helper is `svggen.DryRender(req) ([]Finding, error)`; the corresponding MCP entry point is `render_diagram` with `dry_run: true`.
 
 ## Output-Validation Findings — Separate Category
 
@@ -504,11 +504,13 @@ A diagram placeholder's width or height was below the engine's minimum threshold
 
 ### `diagram_render_failed`
 
-**Action:** `review`
+**Action:** `review` (render time); `refuse` (validate / preview time, shape_grid and pattern diagram cells)
 **Fix kind:** `review` (no auto-fix)
-**Emitted at:** render time
+**Emitted at:** render time; validate / preview time via chart dry-render
 
-Diagram rendering failed entirely; a placeholder image was inserted instead. This is review-only — no deterministic auto-fix is available. The agent must inspect the diagram data and decide whether to simplify the diagram, change its type, or regenerate the slide.
+Diagram rendering failed entirely; a placeholder image was inserted instead.
+
+At validate / preview time the chart dry-render emits this code with `action: refuse` for diagrams inside a `shape_grid` cell or a pattern-expanded grid (e.g. `chart-insights-split`), because generate aborts the whole deck on those instead of inserting a placeholder. The path is the cell's JSON Pointer (`/slides/{i}/shape_grid/rows/{r}/cells/{c}/diagram`, or `/slides/{i}/pattern/rows/{r}/cells/{c}/diagram` for pattern-embedded charts) and `fix.params.reason` carries the svggen error generate would report. This is review-only — no deterministic auto-fix is available. The agent must inspect the diagram data and decide whether to simplify the diagram, change its type, or regenerate the slide.
 
 ```json
 {
@@ -876,6 +878,69 @@ Slide selection:
       "placeholder_id": "title"
     }
   },
+  "action": "review"
+}
+```
+
+### `TEXT_EXCEEDS_SHAPE`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `reduce_text`
+**Emitted at:** preflight (validate / preview / score), deterministic geometry
+
+A word in a shape_grid shape's text is wider than the text rectangle the shape's preset geometry leaves after text insets, so the renderer breaks it mid-word or the shape outline clips it. The widest whitespace-delimited word of every paragraph (single glyphs such as arrows are ignored) is measured with the template body font at the size the renderer uses (authored size floored to 12pt, default 14pt, bold honoured) and compared with the geometry's text width per ECMA-376 `presetShapeDefinitions`: `chevron` keeps `w − 2·min(w,h)·adj`, `homePlate` `w − min(w,h)·adj/2`, `diamond` / `triangle` / `flowChartDecision` `w/2`, `ellipse` `w·0.707`, `hexagon` / `octagon` their inset rectangles, everything else the full width. Default OOXML insets (0.1" left/right) apply unless the text authors `inset_*`. Charts, tables and images are not measured.
+
+Grids produced by named patterns are expanded first (paths rooted at `/slides/{i}/pattern`), and nested sub-grids are resolved inside their parent cell like the renderer does. One finding is emitted per slide: `path` is the first offending cell, `fix.params.cells` lists every offending cell path, and `word` / `required_pt` / `available_pt` / `geometry` describe the worst case. Typical trigger: `numbered-step-strip` `style: "chevron"` labels, whose notches leave almost no text width.
+
+```json
+{
+  "pattern": "numbered-step-strip",
+  "path": "/slides/6/pattern/rows/0/cells/0/shape/text",
+  "code": "TEXT_EXCEEDS_SHAPE",
+  "message": "5 shapes have words wider than their text area (Attract, Convert, Onboard, Retain, Advocate); worst: \"Advocate\" needs 59pt but the chevron shape leaves 0pt of text width after geometry and insets — it will break mid-word or be clipped",
+  "fix": { "kind": "reduce_text", "params": { "cells": ["/slides/6/pattern/rows/0/cells/0/shape/text", "…"], "word": "Advocate", "required_pt": 59.2, "available_pt": 0, "geometry": "chevron", "hint": "shorten the label, lower text size, or use a geometry with a wider text area (rect/homePlate instead of chevron)" } },
+  "action": "review",
+  "measured": { "width_emu": 751840, "height_emu": 0 },
+  "allowed": { "width_emu": 0, "height_emu": 0 }
+}
+```
+
+### `SPARSE_FILL`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight, deterministic geometry
+
+A filled shape covering more than **10% of the slide area** holds text whose estimated wrapped block (word-wrapped at the shape's text width, 1.2 line height) covers less than **20% of the shape** — a large, mostly empty coloured box (e.g. `kpi-3up` cards with one number, tall process boxes with a two-word label). Fills of `none` / transparent, alpha below 20%, or the background colours `lt1` / `bg1` / white do not count as filled. One finding per slide; `fix.params.cells` lists the offending shapes and `max_text_area_pct` the densest of them. Fix by adding detail, capping the grid height (`bounds` / `max_height_pct`), or switching to a compact / unfilled variant.
+
+```json
+{
+  "pattern": "kpi-3up",
+  "path": "/slides/8/pattern/rows/0/cells/0/shape",
+  "code": "SPARSE_FILL",
+  "message": "3 filled shape(s) each cover >10% of the slide (up to 19%) but their text fills only 7–13% of the box — large, mostly empty blocks",
+  "fix": { "kind": "add_detail_or_resize", "params": { "cells": ["/slides/8/pattern/rows/0/cells/0/shape", "…"], "max_text_area_pct": 13, "hint": "add detail, cap the grid height (bounds / max_height_pct), or use a compact / unfilled variant" } },
+  "action": "review"
+}
+```
+
+### `SLIDE_UNDERUSED`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight, deterministic geometry
+
+The bounding box of the slide's grid "ink" covers less than **45% of the safe content area** (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). Ink is every filled shape, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area). Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a `before-after` with three short bullets per side.
+
+```json
+{
+  "path": "/slides/3",
+  "code": "SLIDE_UNDERUSED",
+  "message": "slide content covers 12% of the safe content area (threshold 45%) — the slide reads as mostly empty",
+  "fix": { "kind": "add_detail_or_resize", "params": { "content_area_pct": 12, "hint": "remove bounds / max_height_pct caps, add a supporting zone, or merge with another slide" } },
   "action": "review"
 }
 ```

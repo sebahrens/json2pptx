@@ -683,7 +683,7 @@ See [cmd/README.md](cmd/README.md) for the full command index — purpose, a usa
 
 | Binary | Purpose |
 |--------|---------|
-| `pptx2jpg` | Convert PPTX to JPG/PNG via LibreOffice + ImageMagick |
+| `pptx2jpg` | Convert PPTX to JPG via LibreOffice (`libreoffice` or `soffice`, incl. the macOS app bundle) + `pdftoppm` (preferred) or ImageMagick |
 | `mktemplate` | Template authoring helper |
 | `templatecaps` | Template capabilities inspector |
 | `debugcolors` | Theme color introspector |

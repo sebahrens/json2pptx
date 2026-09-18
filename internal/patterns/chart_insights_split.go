@@ -95,6 +95,32 @@ type ChartInsightsSplitValues struct {
 	Source        string             `json:"source,omitempty"`         // Optional source / footnote rendered below the left panel
 }
 
+// UnmarshalJSON decodes the values and normalizes the {label: value} chart
+// shorthand (the form chart_value accepts, e.g. {"Q1": 12, "Q2": 14}) into
+// svggen's categories/series payload, preserving the author's key order.
+// Without this the raw map reached svggen, which rejected every label as an
+// unknown field and aborted generation (go-slide-creator-yzbo).
+func (v *ChartInsightsSplitValues) UnmarshalJSON(b []byte) error {
+	type plain ChartInsightsSplitValues
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	*v = ChartInsightsSplitValues(p)
+	if v.Chart == nil {
+		return nil
+	}
+	var raw struct {
+		Chart struct {
+			Data json.RawMessage `json:"data"`
+		} `json:"chart"`
+	}
+	if err := json.Unmarshal(b, &raw); err == nil {
+		v.Chart.NormalizeFlatChartData(types.JSONObjectKeyOrder(raw.Chart.Data))
+	}
+	return nil
+}
+
 // ChartInsightsSplitOverrides contains pattern-level overrides.
 type ChartInsightsSplitOverrides struct {
 	Accent         string  `json:"accent,omitempty"`

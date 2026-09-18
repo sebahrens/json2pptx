@@ -299,6 +299,10 @@ type BarChart struct {
 	builder  *SVGBuilder
 	config   BarChartConfig
 	logScale *LogScale // non-nil when auto-log-scale is active
+
+	// xDisplayLabels holds wrapped x-axis tick text from AdaptXLabels
+	// (nil when labels are drawn verbatim).
+	xDisplayLabels []string
 }
 
 // NewBarChart creates a new bar chart renderer.
@@ -330,6 +334,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	xLabelRotation := xLayout.Rotation
 	labelStep := xLayout.LabelStep
 	categories := xLayout.Categories
+	bc.xDisplayLabels = xLayout.DisplayLabels
 	if xLayout.ExtraBottomMargin > 0 {
 		bc.config.MarginBottom += xLayout.ExtraBottomMargin
 	}
@@ -354,6 +359,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 	// Calculate layout (shared across Cartesian chart types)
 	layout := ComputeCartesianLayout(bc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
+	layout = bc.fallBackFromCollidingDirectLabels(style, data, colors, layout)
 	plotArea := layout.PlotArea
 	headerHeight := layout.HeaderHeight
 	legendHeight := layout.LegendHeight
@@ -492,6 +498,23 @@ func (bc *BarChart) Draw(data ChartData) error {
 	return nil
 }
 
+// fallBackFromCollidingDirectLabels keeps inline series labels only when
+// they fit: if any label would sit on a bar, another label, or spill off the
+// canvas, it switches the chart to a legend (go-slide-creator-t2ka) and
+// returns a recomputed layout so the legend band is reserved.
+func (bc *BarChart) fallBackFromCollidingDirectLabels(style *StyleGuide, data ChartData, colors []Color, layout CartesianLayout) CartesianLayout {
+	if !useDirectLabels(bc.config.ChartConfig, len(data.Series)) || bc.config.Stacked || bc.config.Horizontal {
+		return layout
+	}
+	labels, bars := barDirectLabelGeometry(bc.builder, style, data, layout.PlotArea, colors, bc.config)
+	if !barDirectLabelsCollide(labels, bars, bc.config.Width) {
+		return layout
+	}
+	bc.config.PreferDirectLabels = false
+	bc.config.ShowLegend = true
+	return ComputeCartesianLayout(bc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series))
+}
+
 // drawLegendOrDirectLabels routes to either the legend renderer or the
 // inline direct-label renderer based on the directLabels flag and the
 // existing legend-show gates. Centralises the branch so BarChart.Draw stays
@@ -540,16 +563,24 @@ func (bc *BarChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGuid
 	legend.Draw(legendBounds)
 }
 
-// drawBarDirectSeriesLabels draws inline series labels above the last bar of
-// each series in a grouped bar chart, in the series color. Used in place of a
-// legend when the series count is in the direct-label window.
-func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, colors []Color, cfg BarChartConfig) {
+// barDirectLabel is one inline series label with its measured bounding box.
+type barDirectLabel struct {
+	Text  string
+	X, Y  float64 // anchor: center-x, bottom baseline
+	Color Color
+	Box   Rect
+}
+
+// barDirectLabelGeometry computes the inline series labels (one above the
+// last bar of each series) and the rectangles of every rendered bar, using a
+// scale that matches drawBars so positions line up with the drawn bars.
+// Value-label slots above each bar are included in bars when ShowValues is
+// on, because the direct label must not sit on top of a value label either.
+func barDirectLabelGeometry(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, colors []Color, cfg BarChartConfig) ([]barDirectLabel, []Rect) {
 	if len(data.Series) == 0 || len(data.Categories) == 0 {
-		return
+		return nil, nil
 	}
 
-	// Build a scale matching what drawBars uses so label X positions line up
-	// with the rendered bars.
 	xScale := NewCategoricalScale(data.Categories)
 	xScale.SetRangeCategorical(plotArea.X, plotArea.X+plotArea.W)
 	xScale.PaddingOuter(cfg.GroupPadding)
@@ -572,7 +603,7 @@ func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData,
 		}
 	}
 	if math.IsInf(yMin, 1) || math.IsInf(yMax, -1) {
-		return
+		return nil, nil
 	}
 	if yMin > 0 {
 		yMin = 0
@@ -580,14 +611,34 @@ func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData,
 	yScale := NewLinearScale(yMin, withBarTopHeadroom(yMax))
 	yScale.SetRangeLinear(plotArea.H, 0)
 	yScale.Nice(true)
+	baseY := plotArea.Y + yScale.Scale(0)
+	fontSize := style.Typography.SizeSmall
+
+	var bars []Rect
+	for ci, cat := range data.Categories {
+		for si, series := range data.Series {
+			if ci >= len(series.Values) {
+				continue
+			}
+			x := xScale.ScaleStart(cat) + (bandwidth-groupWidth)/2 + barWidth*float64(si)
+			top := plotArea.Y + yScale.Scale(series.Values[ci])
+			y0, y1 := math.Min(top, baseY), math.Max(top, baseY)
+			bars = append(bars, Rect{X: x, Y: y0, W: barWidth, H: y1 - y0})
+			if cfg.ShowValues {
+				bars = append(bars, Rect{X: x, Y: y0 - fontSize - style.Spacing.XS, W: barWidth, H: fontSize})
+			}
+		}
+	}
 
 	lastCatIdx := len(data.Categories) - 1
 	lastCat := data.Categories[lastCatIdx]
 
 	b.Push()
-	b.SetFontSize(style.Typography.SizeSmall)
+	b.SetFontSize(fontSize)
 	b.SetFontWeight(style.Typography.WeightMedium)
+	defer b.Pop()
 
+	var labels []barDirectLabel
 	for i, series := range data.Series {
 		if len(series.Values) <= lastCatIdx {
 			continue
@@ -598,17 +649,66 @@ func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData,
 		// Place label above the bar top with a small gap, clamped inside the
 		// plot area. Uses SM (not XS) so the label clears the bar top cleanly.
 		labelY := barTopY - style.Spacing.SM
-		if labelY < plotArea.Y+style.Typography.SizeSmall {
-			labelY = plotArea.Y + style.Typography.SizeSmall
+		if labelY < plotArea.Y+fontSize {
+			labelY = plotArea.Y + fontSize
 		}
 		color := colors[i%len(colors)]
 		if series.Color != nil {
 			color = *series.Color
 		}
-		b.SetTextColor(color)
-		b.DrawText(series.Name, barCenterX, labelY, TextAlignCenter, TextBaselineBottom)
+		w, h := b.MeasureText(series.Name)
+		if h <= 0 {
+			h = fontSize
+		}
+		labels = append(labels, barDirectLabel{
+			Text: series.Name, X: barCenterX, Y: labelY, Color: color,
+			Box: Rect{X: barCenterX - w/2, Y: labelY - h, W: w, H: h},
+		})
 	}
+	return labels, bars
+}
 
+// barDirectLabelsCollide reports whether any inline series label would
+// overlap a bar (or value-label slot), another inline label, or spill outside
+// the chart canvas horizontally. A 1pt tolerance absorbs sub-pixel rounding
+// so labels that merely touch a bar edge are not rejected.
+func barDirectLabelsCollide(labels []barDirectLabel, bars []Rect, canvasWidth float64) bool {
+	const tol = 1.0
+	for i, l := range labels {
+		box := l.Box.Inset(tol, tol, tol, tol)
+		if l.Box.X < 0 || l.Box.X+l.Box.W > canvasWidth {
+			return true
+		}
+		for _, r := range bars {
+			if r.W > 0 && r.H > 0 && box.Intersects(r) {
+				return true
+			}
+		}
+		for j := i + 1; j < len(labels); j++ {
+			if box.Intersects(labels[j].Box) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// drawBarDirectSeriesLabels draws inline series labels above the last bar of
+// each series in a grouped bar chart, in the series color. Used in place of a
+// legend when the series count is in the direct-label window and the labels
+// fit without colliding (see barDirectLabelsCollide / BarChart.Draw).
+func drawBarDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, colors []Color, cfg BarChartConfig) {
+	labels, _ := barDirectLabelGeometry(b, style, data, plotArea, colors, cfg)
+	if len(labels) == 0 {
+		return
+	}
+	b.Push()
+	b.SetFontSize(style.Typography.SizeSmall)
+	b.SetFontWeight(style.Typography.WeightMedium)
+	for _, l := range labels {
+		b.SetTextColor(l.Color)
+		b.DrawText(l.Text, l.X, l.Y, TextAlignCenter, TextBaselineBottom)
+	}
 	b.Pop()
 }
 
@@ -767,6 +867,7 @@ func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFon
 	xAxisConfig.FontSize = axisFontSize
 	xAxisConfig.LabelRotation = xLabelRotation
 	xAxisConfig.LabelStep = labelStep
+	xAxisConfig.DisplayLabels = bc.xDisplayLabels
 
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
@@ -790,6 +891,7 @@ func (bc *BarChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *Li
 	xAxisConfig.FontSize = axisFontSize
 	xAxisConfig.LabelRotation = xLabelRotation
 	xAxisConfig.LabelStep = labelStep
+	xAxisConfig.DisplayLabels = bc.xDisplayLabels
 
 	xAxis := NewAxis(b, xAxisConfig)
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
@@ -1517,6 +1619,7 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 		xAxisConfig.FontSize = xLayout.FontSize
 		xAxisConfig.LabelRotation = xLayout.Rotation
 		xAxisConfig.LabelStep = xLayout.LabelStep
+		xAxisConfig.DisplayLabels = xLayout.DisplayLabels
 
 		xAxis := NewAxis(b, xAxisConfig)
 		xAxis.DrawCategoricalAxis(xs, plotArea.X, plotArea.Y+plotArea.H)

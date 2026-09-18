@@ -1045,6 +1045,26 @@ func TestFixSVGFontFamilyFallbacks(t *testing.T) {
 			expected: `<rect style="fill:#336699;stroke:#000"/>`,
 		},
 		{
+			name:     "multi-word family is quoted and gets fallbacks",
+			input:    `<text style="font: 12px Poppins Light;fill:#000">`,
+			expected: `<text style="font: 12px 'Poppins Light', Helvetica, sans-serif;font-family:'Poppins Light', Helvetica, sans-serif;fill:#000">`,
+		},
+		{
+			name:     "multi-word family with weight at end of style",
+			input:    `<text style="font: 700 18px Segoe UI Semibold">`,
+			expected: `<text style="font: 700 18px 'Segoe UI Semibold', Helvetica, sans-serif;font-family:'Segoe UI Semibold', Helvetica, sans-serif">`,
+		},
+		{
+			name:     "already-quoted multi-word family is not double-quoted",
+			input:    `<text style="font: 12px 'Poppins Light';fill:#000">`,
+			expected: `<text style="font: 12px 'Poppins Light', Helvetica, sans-serif;font-family:'Poppins Light', Helvetica, sans-serif;fill:#000">`,
+		},
+		{
+			name:     "family list with existing fallbacks is left alone",
+			input:    `<text style="font: 12px 'Poppins Light', sans-serif;fill:#000">`,
+			expected: `<text style="font: 12px 'Poppins Light', sans-serif;fill:#000">`,
+		},
+		{
 			name:     "decimal font size with weight",
 			input:    `<text style="font: 500 9.5px DejaVu-Sans;fill:#000">`,
 			expected: `<text style="font: 500 9.5px DejaVu-Sans, Helvetica, sans-serif;font-family:DejaVu-Sans, Helvetica, sans-serif;fill:#000">`,
@@ -1084,6 +1104,30 @@ func TestRenderSVGFontFamilyFallbacks(t *testing.T) {
 	// shorthand so axis tick labels render in the requested sans-serif.
 	if !strings.Contains(svgStr, "font-family:") {
 		t.Errorf("SVG output must contain explicit font-family: declaration (LibreOffice ignores CSS `font:` shorthand):\n%s", svgStr[:min(len(svgStr), 500)])
+	}
+}
+
+// TestRenderSVGMultiWordFontFallback is the regression for
+// go-slide-creator-w6um: multi-word families such as "Poppins Light" (the
+// modern-template theme font) used to slip past the single-word regex, so the
+// SVG carried no generic fallback and LibreOffice rendered every chart label
+// in its serif default.
+func TestRenderSVGMultiWordFontFallback(t *testing.T) {
+	b := NewSVGBuilder(200, 100)
+	b.SetFontFamily("Poppins Light")
+	b.SetFontSize(12)
+	b.DrawText("Hello", 100, 50, TextAlignCenter, TextBaselineMiddle)
+
+	doc, err := b.Render()
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	svgStr := doc.String()
+	if !strings.Contains(svgStr, "font-family:'Poppins Light', Helvetica, sans-serif") {
+		t.Errorf("multi-word family must be quoted with a sans-serif fallback:\n%s", svgStr[:min(len(svgStr), 800)])
+	}
+	if strings.Contains(svgStr, "px Poppins Light;") || strings.Contains(svgStr, "px Poppins Light\"") {
+		t.Errorf("unquoted multi-word family without fallback remains in SVG:\n%s", svgStr[:min(len(svgStr), 800)])
 	}
 }
 

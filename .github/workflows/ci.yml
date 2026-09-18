@@ -172,6 +172,18 @@ jobs:
         with:
           go-version-file: svggen/go.mod
 
+      # Golden drift gate. Goldens are compared, never regenerated, in CI
+      # (the pre-5ded1f9 "-update" step rewrote them before testing, which
+      # masked every drift). Intended visual changes must commit regenerated
+      # goldens: cd svggen && go test -run TestGolden -update -count=1 .
+      - name: Check svggen golden files (no drift)
+        run: |
+          cd svggen && go test -run 'TestGolden' -count=1 -timeout=5m .
+          cd .. && if ! git diff --exit-code --stat -- svggen/testdata/golden || [ -n "$(git status --porcelain -- svggen/testdata/golden)" ]; then
+            echo "::error::svggen golden files drifted or were written during tests; regenerate intentionally and commit them"
+            exit 1
+          fi
+
       - name: Test svggen module
         run: cd svggen && go test ./... -short -v -race -timeout=10m
 
