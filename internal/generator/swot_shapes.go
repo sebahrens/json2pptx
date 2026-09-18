@@ -89,10 +89,6 @@ func (ctx *singlePassContext) processSWOTNativeShapes(slideNum int, item Content
 	}
 
 	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-	if ctx.themeOverride != nil {
-		slog.Warn("swot native shapes: themeOverride is set but scheme color refs in SWOT shapes will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	// Parse the 4 quadrants into panel data.
 	// SWOT data format: {"strengths": [...], "weaknesses": [...], "opportunities": [...], "threats": [...]}

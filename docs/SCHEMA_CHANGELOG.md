@@ -8,6 +8,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+### Fixed
+
+- **`theme_override` reaches the artifact (go-slide-creator-p327).** The override
+  was applied only to the in-memory palette used for chart styling;
+  `ppt/theme/themeN.xml` was copied from the template unmodified, so every
+  `<a:schemeClr val="accent1">` in a layout, pattern or native shape still
+  resolved to the template's colour. A deck asking for `accent1: "#6A1B9A"`
+  rendered in the template's navy with zero warnings, while `resolve_theme`
+  reported the override as applied. The generator now patches the theme part's
+  `<a:clrScheme>` slots and `majorFont` / `minorFont` typefaces before the
+  package is written, and the chart data palette resolves against the
+  post-override theme. `ApplyOverride`'s advisories (a font the template does not
+  embed) now surface as deck warnings on both the CLI and MCP paths, and an
+  override naming a slot the theme does not declare warns instead of silently
+  doing nothing. The ten `slog.Warn("… will not reflect overrides")` sites are
+  removed — they no longer hold.
+
 ### Added
 
 - **`<sup>` / `<sub>` inline markup + `UNSUPPORTED_INLINE_MARKUP`

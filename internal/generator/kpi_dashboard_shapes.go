@@ -106,10 +106,6 @@ func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum int, item
 		return
 	}
 
-	if ctx.themeOverride != nil {
-		slog.Warn("kpi dashboard native shapes: themeOverride is set but scheme color refs will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	// Parse metrics from DiagramSpec.Data — accept "metrics" or "kpis" key.
 	metrics := parseKPIMetrics(diagramSpec.Data)

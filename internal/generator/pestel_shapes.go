@@ -88,10 +88,6 @@ func (ctx *singlePassContext) processPESTELNativeShapes(slideNum int, item Conte
 	}
 
 	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-	if ctx.themeOverride != nil {
-		slog.Warn("pestel native shapes: themeOverride is set but scheme color refs in PESTEL shapes will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	// Parse segments from DiagramSpec.Data.
 	// Supports two formats:

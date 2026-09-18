@@ -84,10 +84,6 @@ func (ctx *singlePassContext) processPyramidNativeShapes(slideNum int, item Cont
 		return
 	}
 
-	if ctx.themeOverride != nil {
-		slog.Warn("pyramid native shapes: themeOverride is set but scheme color refs will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	levels, err := parsePyramidDiagramData(diagramSpec.Data)
 	if err != nil {

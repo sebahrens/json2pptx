@@ -99,10 +99,6 @@ func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum int, item Cont
 		return
 	}
 
-	if ctx.themeOverride != nil {
-		slog.Warn("heatmap native shapes: themeOverride is set but scheme color refs will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	parsed, err := parseHeatmapData(diagramSpec.Data)
 	if err != nil {

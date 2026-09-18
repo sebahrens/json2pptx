@@ -409,6 +409,8 @@ Call `resolve_theme` once per deck and pass its `theme_colors` array straight th
 
 If the deck applies a `theme_override`, pass that same object as `resolve_theme`'s `theme_override` argument so the array reflects the post-override palette.
 
+**What `theme_override` actually changes.** The engine rewrites the artifact's theme part (`ppt/theme/themeN.xml`), so an overridden scheme colour or font reaches *everything* that resolves through it: layout placeholders, pattern fills, native shapes, and every `<a:schemeClr>` reference. Chart series colours follow too, because the data palette resolves its scheme names against the post-override theme. Overriding a font the template does not embed is allowed but emits a deck warning — the font may substitute at render time — and an override naming a scheme slot the template's theme does not declare emits a warning and leaves that slot alone.
+
 ---
 
 ## Minimum Valid Deck

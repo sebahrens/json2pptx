@@ -1019,10 +1019,6 @@ func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item Conten
 	}
 
 	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-	if ctx.themeOverride != nil {
-		slog.Warn("panel native shapes: themeOverride is set but scheme color refs in panel shapes will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	// Parse panels from DiagramSpec.Data
 	panelsRaw, ok := diagramSpec.Data["panels"].([]any)

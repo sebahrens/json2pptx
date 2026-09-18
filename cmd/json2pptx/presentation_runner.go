@@ -111,6 +111,11 @@ type RenderResult struct {
 
 	// OutputValidationFindings is the post-generation validation report's findings.
 	OutputValidationFindings []pptx.Finding
+
+	// ThemeOverrideWarnings are the advisories ThemeInfo.ApplyOverride produced
+	// (e.g. a replacement font that is not embedded in the template and may
+	// substitute at render time). Callers surface them as deck warnings.
+	ThemeOverrideWarnings []string
 }
 
 // RunPresentation executes the shared raw generation pipeline in memory.
@@ -159,8 +164,21 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	res.SlideWidth = slideWidth
 	res.SlideHeight = slideHeight
 	res.TemplateMetadata = templateMetadata
+
+	// Apply the deck's theme_override to the resolved theme BEFORE anything
+	// derives colours from it. The chart data palette and the svggen theme
+	// colours both resolve scheme names through this struct, so resolving them
+	// against the pre-override theme painted chart series in the template's
+	// original palette while the artifact's theme part carried the override
+	// (go-slide-creator-p327). The generator applies the same override to the
+	// theme part itself, so the two now agree.
+	var themeOverrideWarnings []string
+	if input.ThemeOverride != nil {
+		templateTheme, themeOverrideWarnings = templateTheme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
+	}
 	res.TemplateTheme = templateTheme
 	res.SynthesisFindings = synthesisFindings
+	res.ThemeOverrideWarnings = themeOverrideWarnings
 
 	// Resolve canonical layout names to concrete layout IDs.
 	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)

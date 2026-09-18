@@ -104,10 +104,6 @@ func (ctx *singlePassContext) processHouseDiagramNativeShapes(slideNum int, item
 		return
 	}
 
-	if ctx.themeOverride != nil {
-		slog.Warn("house diagram native shapes: themeOverride is set but scheme color refs will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	panels, meta, err := parseHouseDiagramNativeData(diagramSpec.Data)
 	if err != nil {

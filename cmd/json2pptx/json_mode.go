@@ -552,6 +552,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	result := runRes.GenResult
 
 	inputWarnings = append(inputWarnings, runRes.GridDiagWarnings...)
+	inputWarnings = append(inputWarnings, runRes.ThemeOverrideWarnings...)
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
 	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)

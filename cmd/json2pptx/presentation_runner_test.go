@@ -5,10 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // runnerTestTemplatesDir returns the repo's templates/ directory relative to
@@ -188,5 +190,46 @@ func TestRunPresentation_PreConvertHook(t *testing.T) {
 	// No file should have been generated because the hook aborted before convert.
 	if _, statErr := os.Stat(filepath.Join(outDir, "hook.pptx")); statErr == nil {
 		t.Fatal("output file should not exist after PreConvert abort")
+	}
+}
+
+// go-slide-creator-p327: the chart data palette and the svggen theme colours
+// both resolve scheme names through the theme struct, so resolving them against
+// the PRE-override theme painted chart series in the template's original
+// palette while the artifact's theme part carried the override.
+func TestResolveDataPalette_FollowsThemeOverride(t *testing.T) {
+	metadata := &types.TemplateMetadata{DataPalette: []string{"accent1", "accent2"}}
+	theme := types.ThemeInfo{
+		TitleFont: "Gill Sans",
+		BodyFont:  "Calibri",
+		Colors: []types.ThemeColor{
+			{Name: "accent1", RGB: "#2E5090"},
+			{Name: "accent2", RGB: "#C0504D"},
+		},
+	}
+
+	before := resolveDataPalette(metadata, theme.Colors)
+	if len(before) != 2 || before[0] != "#2E5090" {
+		t.Fatalf("baseline palette = %v, want the template colours", before)
+	}
+
+	overridden, warnings := theme.ApplyOverride(&types.ThemeOverride{
+		Colors:   map[string]string{"accent1": "#6A1B9A"},
+		BodyFont: "Verdana",
+	})
+	after := resolveDataPalette(metadata, overridden.Colors)
+
+	if len(after) != 2 {
+		t.Fatalf("palette = %v, want 2 entries", after)
+	}
+	if !strings.EqualFold(after[0], "#6A1B9A") {
+		t.Errorf("palette[0] = %q, want the overridden #6A1B9A", after[0])
+	}
+	if !strings.EqualFold(after[1], "#C0504D") {
+		t.Errorf("palette[1] = %q, want the untouched #C0504D", after[1])
+	}
+	// The font advisory must be available to surface as a deck warning.
+	if len(warnings) == 0 {
+		t.Error("overriding body_font to a font the template does not embed should warn")
 	}
 }

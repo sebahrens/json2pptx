@@ -57,6 +57,11 @@ func (ctx *singlePassContext) writeOutput() error {
 	// of the synthetic override.
 	ctx.installTableStylesOverride()
 
+	// Stage patched theme parts when a theme_override is set. This must run
+	// before writeTemplateFiles so the template's original theme is skipped in
+	// favour of the override (go-slide-creator-p327).
+	ctx.applyThemeOverrideToThemeParts()
+
 	// Step 1: Copy unchanged template files
 	if err := ctx.writeTemplateFiles(); err != nil {
 		return err

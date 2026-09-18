@@ -352,6 +352,16 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
 	}
 	theme := template.ParseTheme(reader)
+	// Apply the deck's theme_override BEFORE anything derives colours from the
+	// theme. The chart data palette and the svggen theme colours both resolve
+	// scheme names through this struct, so resolving them against the
+	// pre-override theme painted chart series in the template's original
+	// palette while the artifact's theme part carried the override
+	// (go-slide-creator-p327).
+	var themeOverrideWarnings []string
+	if input.ThemeOverride != nil {
+		theme, themeOverrideWarnings = theme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
+	}
 	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
 	analysis := &types.TemplateAnalysis{
 		TemplatePath: templatePath,
@@ -530,6 +540,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Merge input-layer warnings with generation warnings.
 	allWarnings := append(inputWarnings, result.Warnings...)
+	allWarnings = append(allWarnings, themeOverrideWarnings...)
 	// Surface deprecation warnings for legacy field usage.
 	allWarnings = append(allWarnings, deprecationWarnings(&input)...)
 	// Surface boundary warnings (e.g. unknown keys) in the response.

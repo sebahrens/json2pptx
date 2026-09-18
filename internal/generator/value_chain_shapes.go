@@ -124,10 +124,6 @@ func (ctx *singlePassContext) processValueChainNativeShapes(slideNum int, item C
 		return
 	}
 
-	if ctx.themeOverride != nil {
-		slog.Warn("value_chain native shapes: themeOverride is set but scheme color refs will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	panels, meta := parseValueChainData(diagramSpec.Data)
 	if len(panels) == 0 {

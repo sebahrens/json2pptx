@@ -165,10 +165,6 @@ func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentI
 		return
 	}
 
-	if ctx.themeOverride != nil {
-		slog.Warn("bmc native shapes: themeOverride is set but scheme color refs in BMC shapes will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	// Parse BMC sections from DiagramSpec.Data
 	sections := parseBMCSections(diagramSpec.Data)

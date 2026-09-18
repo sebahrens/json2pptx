@@ -130,10 +130,6 @@ func (ctx *singlePassContext) processNineBoxNativeShapes(slideNum int, item Cont
 	}
 
 	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-	if ctx.themeOverride != nil {
-		slog.Warn("nine_box native shapes: themeOverride is set but scheme color refs in nine box shapes will not reflect overrides",
-			"slide", slideNum)
-	}
 
 	// Parse cells and axis info from DiagramSpec.Data.
 	cells := parseNineBoxCells(diagramSpec.Data)
