@@ -1032,7 +1032,7 @@ The drop is intended behavior in constrained mode (brand consistency), so the fi
 
 Preflight prediction that the renderer's contrast auto-fix pass would replace a text color to meet WCAG AA Large (3:1) contrast against its background. Emitted by `validate` and `preview_presentation_plan` (and downstream tools like `repair_slide` / `score_candidates`) using only theme colors and JSON content — no rendering. The predictor calls the **same replacement algorithm** the renderer uses (`contrastReplacement`), so the predicted color matches the `contrast_autofixed` swap that fires when the same input is generated.
 
-The detector walks shape-grid cells that author both a fill color (on the shape) and a text color (on `shape.text` or on a paragraph in `shape.text.paragraphs`). Scheme names (`accent1`, `lt1`, …) are resolved against the template theme. Pairs that cannot be parsed are skipped.
+The detector walks shape-grid cells that author both a fill color (on the shape) and a text color (on `shape.text` or on a paragraph in `shape.text.paragraphs`). Scheme names (`accent1`, `lt1`, …) are resolved against the template theme. Object-form fills that carry `lumMod` / `lumOff` / `alpha` modifiers (the light tints patterns paint behind highlighted rows and callouts) are composed into their effective colour over `lt1` first, so dark text on a light accent tint is judged against the tint rather than the untinted accent. Pairs that cannot be parsed are skipped.
 
 `fix.params.replacement_mode` discloses which branch of the algorithm produced the color:
 

@@ -339,6 +339,59 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"}
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {"lead": "Growth is plateauing in the core business", "support": "Revenue grew 4% in FY25 versus 11% for the market."},
+            {"lead": "Cost to serve is the main margin drag", "support": "Service costs rose 18% while volumes rose 6%."},
+            {"lead": "Self-service can close the gap in 18 months", "support": "Peers cut cost to serve 25-30% with automated onboarding."}
+          ],
+          "bottom_line": "Approve the wave-1 budget to start in Q1."
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Option Evaluation"}
+      ],
+      "pattern": {
+        "name": "table-highlight",
+        "values": {
+          "criteria": ["Cost", "Time to value", "Scalability", {"label": "Risk", "scale": "rag"}],
+          "options": [
+            {"name": "Build in-house", "detail": "Custom platform", "scores": [1, 1, 4, "amber"]},
+            {"name": "Buy SaaS suite", "detail": "Configure and integrate", "scores": [3, 4, 3, "green"]},
+            {"name": "Partner / JV", "detail": "Shared investment", "scores": [2, 2, 3, "red"]}
+          ],
+          "highlight_row": 1,
+          "highlight_label": "Recommended"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Case Study"}
+      ],
+      "pattern": {
+        "name": "image-text-split",
+        "values": {
+          "image_label": "Photo: distribution centre",
+          "eyebrow": "Case study",
+          "heading": "Retailer cut stock-outs by a third",
+          "body": "Replenishment was rebuilt around store-level demand signals.",
+          "bullets": ["Daily forecasts for 18,000 SKUs", "Automated orders for 60% of volume"],
+          "metrics": [{"value": "-34%", "label": "stock-outs"}, {"value": "$12M", "label": "working capital"}]
+        }
+      }
     }
   ]
 }

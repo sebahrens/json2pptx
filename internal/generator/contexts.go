@@ -276,6 +276,10 @@ type mediaRel struct {
 
 	// Placeholder index to remove from slide (required for p:pic insertion)
 	placeholderIdx int
+
+	// crop optionally cover-crops the picture into its frame (shape_grid
+	// image cells) instead of stretching it. Nil = stretch.
+	crop *pptx.SrcRect
 }
 
 // nativeSVGInsert tracks a native SVG+PNG insert for a slide.

@@ -717,6 +717,56 @@ var rules = []rule{
 		baseScore: 0.74,
 		rationale: "SCQA pattern when the slide opens with situation/complication and resolves with questions/answer",
 	},
+
+	// table-highlight — options × criteria evaluation matrix (Harvey balls / RAG)
+	{
+		pattern:   "table-highlight",
+		keywords:  []string{"harvey ball", "harvey balls", "evaluation matrix", "options vs criteria", "options against criteria", "option evaluation", "decision matrix", "scoring matrix", "criteria matrix", "rag status", "rag table", "red amber green", "vendor evaluation", "vendor assessment", "options assessment"},
+		baseScore: 0.93,
+		rationale: "Options × criteria matrix scored with Harvey balls, RAG dots or short values, with the recommended option highlighted",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "table-highlight",
+		keywords:  []string{"evaluate options", "assess options", "criteria", "shortlist", "scorecard", "status by workstream"},
+		baseScore: 0.8,
+		rationale: "table-highlight when several options are rated on shared criteria (not a two-option prose comparison)",
+		itemMin:   2,
+		itemMax:   6,
+	},
+
+	// image-text-split — one photo beside a narrative column (case study)
+	{
+		pattern:   "image-text-split",
+		keywords:  []string{"case study", "customer story", "photo and text", "image and text", "image beside text", "picture with text", "site visit", "product spotlight", "photo with bullets", "image with bullets", "success story"},
+		baseScore: 0.92,
+		rationale: "One image (photo / screenshot) beside a heading, short narrative and optional result metrics",
+	},
+	{
+		pattern:   "image-text-split",
+		keywords:  []string{"photo", "image", "picture", "screenshot", "spotlight", "showcase"},
+		baseScore: 0.76,
+		rationale: "image-text-split when a single visual needs a short narrative next to it",
+	},
+
+	// exec-summary — 3-5 bold lead-in statements with support (answer-first)
+	{
+		pattern:   "exec-summary",
+		keywords:  []string{"key messages", "key message", "lead-in", "lead-ins", "lead in statements", "bold statements", "headline messages", "answer first", "answer-first", "summary of findings", "key findings summary", "top findings"},
+		baseScore: 0.93,
+		rationale: "Executive summary as 3–5 bold lead-in conclusions, each with one supporting sentence",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "exec-summary",
+		keywords:  []string{"key findings", "main points", "conclusions", "main messages", "summary points"},
+		baseScore: 0.78,
+		rationale: "exec-summary when a summary slide states several conclusions with brief evidence (not an SCQA arc)",
+		itemMin:   3,
+		itemMax:   5,
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

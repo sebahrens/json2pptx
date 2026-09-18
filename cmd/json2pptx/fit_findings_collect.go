@@ -795,6 +795,11 @@ func estimateRowInputContentHeightEMU(row GridRowInput) int64 {
 	if maxH == 0 {
 		maxH = int64(24 * 12700) // 24pt minimum fallback
 	}
+	// A point floor (min_height) is space the row occupies regardless of how
+	// little text it carries — content-sized patterns pin rows this way.
+	if minH := int64(row.MinHeight * 12700); minH > maxH {
+		maxH = minH
+	}
 	return maxH
 }
 
@@ -827,6 +832,11 @@ func estimateCellInputContentHeightEMU(cell *GridCellInput) int64 {
 	// Diagram cells: ~100pt default.
 	if cell.Diagram != nil {
 		return int64(100 * 12700)
+	}
+
+	// Nested sub-grids: their own stacked rows.
+	if cell.Grid != nil {
+		return estimateGridContentHeightEMU(cell.Grid, 0)
 	}
 
 	return 0
@@ -1408,7 +1418,7 @@ func collectContrastPreflightFindings(input *PresentationInput, themeColors []ty
 				if cell == nil || cell.Shape == nil {
 					continue
 				}
-				fill := extractShapeFillColor(cell.Shape.Fill)
+				fill := effectiveShapeFillColor(cell.Shape.Fill, themeColors)
 				if fill == "" {
 					continue
 				}

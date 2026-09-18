@@ -157,9 +157,14 @@ func TestChartInsightsSplit(t *testing.T) {
 		if len(grid.Rows[0].Cells) != 2 {
 			t.Fatalf("expected 2 cells (chart + insights), got %d", len(grid.Rows[0].Cells))
 		}
-		// Cell 0 should be a Diagram cell.
-		if grid.Rows[0].Cells[0].Diagram == nil {
-			t.Error("expected first cell to be a Diagram cell")
+		// Cell 0 carries the chart under a series caption ("x"), stacked in
+		// a nested grid (go-slide-creator-pzrs).
+		chartCol := grid.Rows[0].Cells[0]
+		if chartCol.Grid == nil || len(chartCol.Grid.Rows) != 2 || chartCol.Grid.Rows[1].Cells[0].Diagram == nil {
+			t.Fatalf("expected caption + Diagram stacked in the chart column, got %+v", chartCol)
+		}
+		if caption := string(chartCol.Grid.Rows[0].Cells[0].Shape.Text); !strings.Contains(caption, `"x"`) {
+			t.Errorf("caption should carry the series name, got %s", caption)
 		}
 		// Cell 1 should be a Shape cell carrying the insights text.
 		if grid.Rows[0].Cells[1].Shape == nil {

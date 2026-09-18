@@ -139,16 +139,19 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Narrowing hierarchy | `pyramid` | Visual narrowing (top < bottom) |
 | Before/after comparison | `before-after` | Temporal transformation |
 | Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side |
+| Options × criteria evaluation | `table-highlight` | 2–6 options × 2–6 criteria rated with Harvey balls (0–4), RAG (`red`/`amber`/`green`) or ≤24-char text per column (`scale` or per-criterion `{label, scale}`); `highlight_row` tints + bars the recommended option, `highlight_col` tints the decisive criterion; legend row for symbol scales. RAG uses conventional status colours (`overrides.rag_colors` swaps them) — the one non-theme palette, because status must read the same on every template |
 | 4-quadrant positioning | `matrix-2x2` | Axis-labeled quadrants; each axis is an arrow pointing to its high end (right / up) flanked by low/high end labels — optional `x_low` / `x_high` / `y_low` / `y_high` (≤20 chars, default `Low` / `High`) |
 | Phased plan with workstreams | `roadmap-phased` | Named phases × workstreams grid |
 | Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones) |
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
+| Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` bar; answer-first rather than an SCQA arc |
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items) |
 | Team / 'Our People' page | `team-bios` | 1–8 named people with photo placeholder + role + short bio, up to 4 per row |
 | Joint-venture / engagement-team paired roles | `dual-org-ladder` | Two parallel columns of 2–6 paired role cards with an org-name header above each column (optional connector line per row) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |
+| Photo / case study beside text | `image-text-split` | One `image` (`path` resolved against the deck dir, or `url`) beside eyebrow + heading + body + ≤5 bullets and 0–3 result `metrics`; `image_side` left/right, `image_width_pct` 30–60. Without an image it draws a dashed placeholder (`image_label`). Implements `ImageAssetPattern` so hosts resolve its image like a shape_grid image cell |
 | Callout / testimonial | `pull-quote` | Attributed quotation |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quote bubbles in a 3-column grid (voice-of-customer slides) |
 
@@ -219,7 +222,7 @@ These patterns have structurally determined accent logic and do not expose `cell
 - **Single-cell patterns** (stat-hero, pull-quote): one cell, no variation needed.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 
@@ -394,6 +397,15 @@ For readability the right panel applies vertical rhythm via per-paragraph `space
 `values.chart` is **optional**. When omitted, the pattern collapses to a single-column insights cell at 100% width and emits the structured warning `CHART_PLACEHOLDER_EMPTY: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel` via the `PostExpandWarner` interface. Downstream `preview_presentation_plan` and `generate_presentation` callers convert that warning into a `FitFinding` with `code = "CHART_PLACEHOLDER_EMPTY"` and `action = "review"`. Agents should either supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`).
 
 `values.chart` is a regular `types.DiagramSpec` — pass the same shape used in slide-level diagram content (`type` + `data`, optional `title` / `style`).
+
+**So-what extensions (go-slide-creator-pzrs).** Consulting chart slides state the figure and the implication, not just the bullets:
+
+- `headline` `{value ≤12, label ≤60}` — a big accent number (32pt, 26pt with ≥5 insights; `overrides.headline_size`) at the top of the insights column.
+- `so_what` (≤160) — a tinted, accent-barred callout ("**So what:** …") at the bottom of the column.
+- Chart caption — single-series charts render without a legend, so the series name used to disappear. A bold caption above the chart now shows `chart_label` (≤60) or, when the chart has no `title`, the single series name plus `unit` (≤12): `"Revenue"` + `"$M"` → `Revenue ($M)`; multi-series charts get `Values in <unit>` (their legend names the series).
+- Data labels — `Style.ShowValues` is switched on by default for bar-type charts with ≤16 points and single-series line / area charts with ≤12 points; `overrides.data_labels` forces on / off and an explicit `data.data_labels` payload is left to svggen. The caller's chart spec is never mutated.
+
+With a headline or so-what the insights cell becomes a nested column (headline / insights / so-what rows sized from the measured text) and the vertical divider is omitted; without them the panel is unchanged. The source row is pinned at 30pt so its 12pt floor never autofits.
 
 ## Bounds Override
 

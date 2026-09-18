@@ -442,6 +442,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 				extentCX:       img.ExtentCX,
 				extentCY:       img.ExtentCY,
 				placeholderIdx: -1, // No placeholder to remove — injected as new p:pic
+				crop:           gridImageCoverCrop(img),
 			})
 		}
 		// Register background image as media relationship

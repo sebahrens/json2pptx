@@ -155,12 +155,14 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `card-grid` | Parameterized N×M grid of titled cards |
-| `chart-insights-split` | Left chart panel + right insights column (65/35 split); falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
+| `chart-insights-split` | Left chart panel + right insights column (65/35 split) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison with optional headers |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
+| `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right |
 | `icon-row` | Horizontal row of icon+caption pairs |
+| `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
 | `kpi-2up` | Two big-number KPI cards with short captions |
 | `kpi-3up` | Three big-number KPI cards with short captions |
@@ -183,6 +185,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
+| `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
 | `team-bios` | Team / 'Our People' grid of 1–8 members with photo placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
