@@ -99,6 +99,12 @@ type VisualExample struct {
 	Capacity       string `json:"capacity,omitempty"`
 	Renderer       string `json:"renderer,omitempty"`
 	MetadataOnly   bool   `json:"metadata_only"`
+	// LayoutID is the template layout the candidate renders on (the matching
+	// layout for placeholder candidates, the One Content layout otherwise).
+	LayoutID string `json:"layout_id,omitempty"`
+	// LayoutPreviewPNGPath is the shipped thumbnail of LayoutID
+	// (templates/previews/<template>/<layoutID>.png), when one exists.
+	LayoutPreviewPNGPath string `json:"layout_preview_png_path,omitempty"`
 }
 
 // VisualHints extends ContentHints with data-shape information for chart/diagram routing.

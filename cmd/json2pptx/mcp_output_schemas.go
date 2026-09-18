@@ -484,8 +484,10 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
         "template_hash":   {"type": "string"},
         "preview_png_path": {"type": "string"},
         "capacity":        {"type": "string"},
-        "renderer":        {"type": "string"},
-        "metadata_only":   {"type": "boolean"}
+        "renderer":        {"type": "string", "description": "pre-rendered (pattern gallery PNG) or template-preview (shipped layout thumbnail)."},
+        "metadata_only":   {"type": "boolean"},
+        "layout_id":       {"type": "string", "description": "Template layout the candidate renders on (matching layout for placeholder candidates, else the One Content layout)."},
+        "layout_preview_png_path": {"type": "string", "description": "Absolute path to the shipped 320px thumbnail of layout_id (templates/previews/<template>/<layout_id>.png)."}
       },
       "required": ["template_hash", "metadata_only"]
     }

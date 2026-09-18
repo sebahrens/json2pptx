@@ -26,6 +26,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/templatepreview"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/svggen/icons"
@@ -1658,14 +1659,74 @@ func visualExampleForCandidate(candidate patterns.VisualCandidate, analysis *typ
 			ex.MetadataOnly = false
 		}
 	case patterns.VisualCategoryPlaceholder:
-		for _, l := range analysis.Layouts {
-			if strings.EqualFold(l.Name, candidate.Name) || strings.EqualFold(l.ID, candidate.Name) {
-				ex.Capacity = fmt.Sprintf("%d bullets / %d lines", l.Capacity.MaxBullets, l.Capacity.MaxTextLines)
-				break
-			}
+		if l := placeholderCandidateLayout(candidate.Name, analysis.Layouts); l != nil {
+			ex.Capacity = fmt.Sprintf("%d bullets / %d lines", l.Capacity.MaxBullets, l.Capacity.MaxTextLines)
+			ex.LayoutID = l.ID
 		}
 	}
+	attachLayoutPreview(ex, candidate, analysis)
 	return ex
+}
+
+// placeholderSlideTypeCanonical maps recommend_visual placeholder candidate
+// names (slide types) to the canonical layout role that hosts them.
+var placeholderSlideTypeCanonical = map[string]types.CanonicalLayoutType{
+	"title":      types.CanonicalLayoutTitleSlide,
+	"section":    types.CanonicalLayoutSectionDivider,
+	"content":    types.CanonicalLayoutOneContent,
+	"image":      types.CanonicalLayoutOneContent,
+	"two-column": types.CanonicalLayoutTwoContent,
+	"blank":      types.CanonicalLayoutBlank,
+}
+
+// placeholderCandidateLayout resolves a placeholder candidate to a template
+// layout: an exact layout name/ID match first, else the highest-confidence
+// layout of the slide type's canonical role.
+func placeholderCandidateLayout(name string, layouts []types.LayoutMetadata) *types.LayoutMetadata {
+	for i := range layouts {
+		if strings.EqualFold(layouts[i].Name, name) || strings.EqualFold(layouts[i].ID, name) {
+			return &layouts[i]
+		}
+	}
+	role, ok := placeholderSlideTypeCanonical[strings.ToLower(name)]
+	if !ok {
+		return nil
+	}
+	var best *types.LayoutMetadata
+	for i := range layouts {
+		l := &layouts[i]
+		if template.EffectiveCanonicalType(l) != role {
+			continue
+		}
+		if best == nil || l.CanonicalConfidence > best.CanonicalConfidence {
+			best = l
+		}
+	}
+	return best
+}
+
+// attachLayoutPreview points the example at the shipped thumbnail of the
+// layout the candidate renders on (go-slide-creator-aruv): the matching layout
+// for placeholder candidates, otherwise the template's One Content layout that
+// patterns / charts / diagrams are placed on. A placeholder candidate's layout
+// thumbnail IS its preview, so it also fills preview_png_path and clears
+// metadata_only.
+func attachLayoutPreview(ex *patterns.VisualExample, candidate patterns.VisualCandidate, analysis *types.TemplateAnalysis) {
+	if ex.LayoutID == "" {
+		if ref := template.ChromeReferenceLayout(analysis.Layouts); ref != nil {
+			ex.LayoutID = ref.ID
+		}
+	}
+	path := templatepreview.Resolve(analysis.TemplatePath, ex.LayoutID)
+	if path == "" {
+		return
+	}
+	ex.LayoutPreviewPNGPath = path
+	if candidate.Category == patterns.VisualCategoryPlaceholder && ex.PreviewPNGPath == "" {
+		ex.PreviewPNGPath = path
+		ex.Renderer = "template-preview"
+		ex.MetadataOnly = false
+	}
 }
 
 // patternCategoryGroup is a category-keyed group of patterns for list_patterns.

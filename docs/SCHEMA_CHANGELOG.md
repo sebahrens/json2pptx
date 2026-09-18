@@ -24,6 +24,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   Emitted when a slide's takeaway/source band cannot be placed on its layout;
   the band is skipped at render instead of overlapping title/footer chrome.
 
+- **`recommend_visual` template preview refs** (go-slide-creator-aruv). With a
+  `template`, `candidates[].example` gains `layout_id` and
+  `layout_preview_png_path` — the shipped 320px thumbnail
+  (`templates/previews/<template>/<layout_id>.png`, embedded in the binary and
+  materialised into the user cache for embedded templates) of the layout the
+  candidate renders on. Placeholder candidates now resolve slide types
+  (`title`, `section`, `content`, `two-column`, `image`, `blank`) to their
+  canonical layout and use the thumbnail as `preview_png_path`
+  (`renderer: "template-preview"`, `metadata_only: false`). Additive.
+
 ### Changed
 
 - **Takeaway / source band geometry is layout-derived** (go-slide-creator-7m9v).
