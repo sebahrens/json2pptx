@@ -45,7 +45,7 @@ func TestFormatWaterfallBridgeValue_UnitPlacement(t *testing.T) {
 		{12.5, "€bn", true, "+€12.5bn"},
 		{3, "US$m", false, "US$3m"},
 		{4, "%", true, "+4%"},
-		{-2, "pts", true, "−2 pts"},
+		{-2, "pts", true, "−2\u2009pts"}, // thin space (go-slide-creator-d6zo)
 		{7, "m", false, "7m"},
 		{9, "", false, "9"},
 	}

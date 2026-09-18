@@ -3,6 +3,8 @@ package patterns
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func TestHorizontalBarCallouts_Registration(t *testing.T) {
@@ -354,5 +356,116 @@ func TestHorizontalBarCallouts_Recommend(t *testing.T) {
 				t.Errorf("expected horizontal-bar-with-callouts in recommendations for intent %q; got %+v", tc.intent, result.Candidates)
 			}
 		})
+	}
+}
+
+// go-slide-creator-d6zo: bar values concatenated the raw number and the unit,
+// so a currency/magnitude unit — the consulting default — produced
+// "1240.5EUR M". Values now go through the shared formatter.
+func TestFormatHorizontalBarValue_UnitPlacement(t *testing.T) {
+	cases := []struct {
+		v    float64
+		unit string
+		want string
+	}{
+		{1240.5, "EUR M", "1,240.5 EUR M"},
+		{96.44, "", "96.4"},
+		{3.8, "%", "3.8%"},
+		{210, "$m", "$210m"},
+		{1234567, "", "1,234,567"},
+		{12, "x", "12x"},
+		{0, "%", "0%"},
+	}
+	for _, c := range cases {
+		if got := formatHorizontalBarValue(c.v, c.unit); got != c.want {
+			t.Errorf("formatHorizontalBarValue(%v, %q) = %q, want %q", c.v, c.unit, got, c.want)
+		}
+	}
+	// The concrete regression: no separator at all before a word unit.
+	if got := formatHorizontalBarValue(1240.5, "EUR M"); got == "1240.5EUR M" {
+		t.Error("value and unit are still concatenated with no separator")
+	}
+}
+
+// A bar too short to hold its value label must carry the label OUTSIDE (in the
+// transparent remainder cell, dark text) instead of clipping it inside.
+func TestValueLabelFitsInBar(t *testing.T) {
+	const size = 12.0
+	cases := []struct {
+		name       string
+		label      string
+		barWidthPt float64
+		want       bool
+	}{
+		{"wide bar holds a short label", "195", 200, true},
+		{"narrow bar rejects a long label", "1,240.5 EUR M", 30, false},
+		{"very short bar rejects even a short label", "3.8", 8, false},
+		{"unknown bar width keeps the label inside", "3.8", 0, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := valueLabelFitsInBar(c.label, size, c.barWidthPt); got != c.want {
+				t.Errorf("valueLabelFitsInBar(%q, %v, %v) = %v, want %v", c.label, size, c.barWidthPt, got, c.want)
+			}
+		})
+	}
+}
+
+// End-to-end: a deck whose smallest bar is a sliver of the largest must put
+// that bar's value label in the remainder cell, and the largest bar's inside.
+func TestHorizontalBarCallouts_ShortBarLabelMovesOutside(t *testing.T) {
+	pat, ok := Default().Get("horizontal-bar-with-callouts")
+	if !ok {
+		t.Fatal("pattern not registered")
+	}
+	vals := &HorizontalBarCalloutsValues{
+		Unit: "EUR M",
+		Bars: []HorizontalBarCalloutsBar{
+			{Label: "Enterprise", Value: 1240.5, Callout: "Largest segment"},
+			{Label: "Mid-market", Value: 96.4, Callout: "Steady"},
+			{Label: "SMB", Value: 3.8, Callout: "Long tail"},
+		},
+	}
+	ctx := ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+	grid, err := pat.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	if len(grid.Rows) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(grid.Rows))
+	}
+
+	// barSubGrid returns the [label, fill, rest] sub-grid cells of a row.
+	barSubGrid := func(rowIdx int) []*jsonschema.GridCellInput {
+		row := grid.Rows[rowIdx]
+		if len(row.Cells) == 0 || row.Cells[0].Grid == nil || len(row.Cells[0].Grid.Rows) == 0 {
+			t.Fatalf("row %d has no bar sub-grid", rowIdx)
+		}
+		return row.Cells[0].Grid.Rows[0].Cells
+	}
+
+	hasText := func(c *jsonschema.GridCellInput) bool {
+		return c != nil && c.Shape != nil && len(c.Shape.Text) > 0
+	}
+
+	// Largest bar: label inside the fill cell.
+	big := barSubGrid(0)
+	if !hasText(big[1]) {
+		t.Error("the longest bar should carry its value label inside the fill")
+	}
+
+	// Smallest bar: fill cell carries no text; the remainder cell does.
+	small := barSubGrid(2)
+	if hasText(small[1]) {
+		t.Error("a sliver bar must not carry its value label inside the fill (it clips)")
+	}
+	if len(small) < 3 || !hasText(small[2]) {
+		t.Fatal("a sliver bar must carry its value label in the remainder cell to the right")
+	}
+	if !strings.Contains(string(small[2].Shape.Text), "3.8") {
+		t.Errorf("outside label should carry the value, got %s", small[2].Shape.Text)
+	}
+	if !strings.Contains(string(small[2].Shape.Text), "dk1") {
+		t.Errorf("outside label should be dark text on the transparent remainder, got %s", small[2].Shape.Text)
 	}
 }

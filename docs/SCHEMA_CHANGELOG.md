@@ -41,6 +41,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`horizontal-bar-with-callouts` value labels (go-slide-creator-d6zo).** Bar
+  values concatenated the raw number and the unit, so a currency/magnitude unit
+  rendered as `1240.5EUR M`; and a bar short relative to `max_value` neither fit
+  its label nor moved it, clipping `96.4` into stacked lines and dropping `3.8`
+  entirely. Both patterns that carry numeric labels now share one formatter
+  (`patterns.FormatMagnitudeLabel`): thousands separators, at most one decimal,
+  currency symbols before the number (`$210m`), word units after it separated by
+  a thin space (`1,240.5 EUR M`), short magnitude suffixes kept tight (`12bn`).
+  A label needing more than 80% of its bar's width is now rendered in dark text
+  just right of the bar end instead of inside it. `waterfall-bridge` adopts the
+  same formatter, so its word units gain the thin-space separator.
 - **`generate_presentation`'s inline pattern example is schema-true
   (go-slide-creator-e5tm).** The `presentation` parameter description carried a
   hand-written `{"pattern":{"name":"kpi-3up","values":{"items":[{"label","value"}]}}}`

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -274,6 +273,13 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 	n := len(vals.Bars)
 	rows := make([]jsonschema.GridRowInput, n)
 
+	// Width (in points) of the whole bar area, used to decide whether a bar is
+	// wide enough to hold its own value label (go-slide-creator-d6zo).
+	barAreaWidthPt := 0.0
+	if cw, _ := expandContentSize(ctx); cw > 0 {
+		barAreaWidthPt = float64(cw) / 12700 * (100.0 - hbcLabelColPct) / 100.0
+	}
+
 	for i, bar := range vals.Bars {
 		// Per-bar accent (governs the callout accent bar; bar fill stays accent
 		// for consistency unless cell_accent_mode is explicitly set).
@@ -294,7 +300,7 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 		fillPct := barAreaPct * fillFraction
 		restPct := barAreaPct - fillPct
 
-		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, fillPct, restPct)
+		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, fillPct, restPct, barAreaWidthPt)
 		calloutCell := buildHorizontalBarCalloutCell(bar.Callout, calloutSize)
 
 		// Cell-override accent bar always renders on the callout cell so the
@@ -334,7 +340,7 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 
 // buildHorizontalBarRowCell constructs the left-column cell containing a
 // three-column sub-grid: [label, fill, rest].
-func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string, labelSize, valueSize, fillPct, restPct float64) *jsonschema.GridCellInput {
+func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string, labelSize, valueSize, fillPct, restPct, barAreaWidthPt float64) *jsonschema.GridCellInput {
 	labelCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -344,25 +350,39 @@ func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string
 	}
 
 	valueLabel := formatHorizontalBarValue(bar.Value, unit)
-	fillCell := &jsonschema.GridCellInput{
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     buildHorizontalBarValueText(valueLabel, valueSize),
-		},
+
+	// A short bar cannot hold its label: the text neither fits nor moves, so it
+	// wraps into stacked clipped lines or disappears entirely. When the label
+	// needs more than hbcInBarLabelMaxFrac of the bar's width, render it in the
+	// transparent remainder cell to the right of the bar end, in dark text
+	// (go-slide-creator-d6zo).
+	labelInBar := valueLabelFitsInBar(valueLabel, valueSize, barAreaWidthPt*fillPct/100)
+
+	fillShape := &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
 	}
+	if labelInBar {
+		fillShape.Text = buildHorizontalBarValueText(valueLabel, valueSize)
+	}
+	fillCell := &jsonschema.GridCellInput{Shape: fillShape}
 
 	cells := []*jsonschema.GridCellInput{labelCell, fillCell}
 	cols := []float64{hbcLabelColPct, fillPct}
 	if restPct > 0.01 {
-		restCell := &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
-			},
+		restShape := &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
 		}
-		cells = append(cells, restCell)
+		if !labelInBar {
+			restShape.Text = buildHorizontalBarOutsideValueText(valueLabel, valueSize)
+		}
+		cells = append(cells, &jsonschema.GridCellInput{Shape: restShape})
 		cols = append(cols, restPct)
+	} else if !labelInBar {
+		// The bar fills the whole area, so there is no remainder cell to put the
+		// label in — keep it inside.
+		fillShape.Text = buildHorizontalBarValueText(valueLabel, valueSize)
 	}
 
 	subColsJSON, _ := json.Marshal(cols)
@@ -438,6 +458,46 @@ func buildHorizontalBarValueText(value string, size float64) json.RawMessage {
 	return data
 }
 
+// buildHorizontalBarOutsideValueText renders a value label placed to the RIGHT
+// of a bar that is too short to hold it, in dark text on the transparent
+// remainder cell.
+func buildHorizontalBarOutsideValueText(value string, size float64) json.RawMessage {
+	textObj := horizontalBarTextObj{
+		Paragraphs: []horizontalBarParagraph{
+			{Content: value, Size: size, Bold: true, Color: "dk1", Align: "l"},
+		},
+		Align:         "l",
+		VerticalAlign: "ctr",
+	}
+	data, _ := json.Marshal(textObj)
+	return data
+}
+
+// hbcInBarLabelMaxFrac is the share of a bar's width a value label may occupy
+// and still be rendered inside it. Above this the label is moved outside.
+const hbcInBarLabelMaxFrac = 0.8
+
+// hbcAvgGlyphWidthFrac estimates a bold label's average glyph advance as a
+// fraction of the font size. Value labels are digits, separators and short
+// unit words, whose advances cluster tightly, so a single factor is accurate
+// enough to choose a side.
+const hbcAvgGlyphWidthFrac = 0.58
+
+// valueLabelFitsInBar reports whether a value label fits inside a bar of the
+// given width in points. An unknown bar width (no slide geometry in the expand
+// context) keeps the historical in-bar placement.
+func valueLabelFitsInBar(label string, fontSize, barWidthPt float64) bool {
+	if barWidthPt <= 0 {
+		return true
+	}
+	needPt := float64(len([]rune(label)))*fontSize*hbcAvgGlyphWidthFrac + 2*hbcValueInsetPt
+	return needPt <= barWidthPt*hbcInBarLabelMaxFrac
+}
+
+// hbcValueInsetPt is the horizontal breathing room kept on each side of an
+// in-bar value label.
+const hbcValueInsetPt = 4.0
+
 func buildHorizontalBarCalloutText(text string, size float64) json.RawMessage {
 	textObj := horizontalBarTextObj{
 		Paragraphs: []horizontalBarParagraph{
@@ -450,15 +510,11 @@ func buildHorizontalBarCalloutText(text string, size float64) json.RawMessage {
 	return data
 }
 
-// formatHorizontalBarValue renders a numeric value with an optional unit
-// suffix. Integers render without a decimal; non-integers use minimal
-// precision.
+// formatHorizontalBarValue renders a bar's value label through the shared
+// numeric formatter: thousands separators, at most one decimal, and the unit
+// placed on the correct side of the number with a separator. It used to
+// concatenate the raw value and the unit, so a currency/magnitude unit — the
+// consulting default — produced "1240.5EUR M" (go-slide-creator-d6zo).
 func formatHorizontalBarValue(v float64, unit string) string {
-	var s string
-	if v == float64(int64(v)) {
-		s = strconv.FormatInt(int64(v), 10)
-	} else {
-		s = strconv.FormatFloat(v, 'f', -1, 64)
-	}
-	return s + unit
+	return FormatMagnitudeLabel(v, unit, false)
 }

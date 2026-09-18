@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -483,62 +482,7 @@ func buildWaterfallBridgeLabelText(label string, size float64) json.RawMessage {
 // and a leading "+" / "-" sign for deltas so positive vs. negative direction is
 // unambiguous in the label.
 func formatWaterfallBridgeValue(v float64, unit string, signed bool) string {
-	abs := math.Abs(v)
-	var s string
-	if abs == float64(int64(abs)) {
-		s = strconv.FormatInt(int64(abs), 10)
-	} else {
-		s = strconv.FormatFloat(abs, 'f', -1, 64)
-	}
-	prefix, suffix := splitWaterfallUnit(unit)
-	body := prefix + s + suffix
-	switch {
-	case signed && v < 0:
-		return "−" + body
-	case signed && v > 0:
-		return "+" + body
-	default:
-		return body
-	}
-}
-
-// wbCurrencySymbols are rendered before the number ("$210m", not "210$m").
-const wbCurrencySymbols = "$€£¥₹₩₽₺₪₫฿₦₱"
-
-// splitWaterfallUnit splits a unit such as "$m", "US$bn" or "€k" into the
-// currency prefix and the magnitude suffix. Units without a currency symbol
-// are pure suffixes ("%", "m", "pts"); a multi-letter word suffix such as
-// "USD" is separated from the number by a space.
-func splitWaterfallUnit(unit string) (prefix, suffix string) {
-	unit = strings.TrimSpace(unit)
-	if unit == "" {
-		return "", ""
-	}
-	runes := []rune(unit)
-	for i, r := range runes {
-		if !strings.ContainsRune(wbCurrencySymbols, r) {
-			continue
-		}
-		// Allow a short country code before the symbol (US$, A$, HK$).
-		lead := string(runes[:i])
-		if len(lead) <= 2 && strings.ToUpper(lead) == lead && !strings.ContainsAny(lead, "0123456789 ") {
-			return string(runes[:i+1]), strings.TrimSpace(string(runes[i+1:]))
-		}
-		break
-	}
-	if len(runes) >= 3 && isAlphaWord(unit) {
-		return "", " " + unit
-	}
-	return "", unit
-}
-
-func isAlphaWord(s string) bool {
-	for _, r := range s {
-		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
-			return false
-		}
-	}
-	return true
+	return FormatMagnitudeLabel(v, unit, signed)
 }
 
 // wbColumnLayout describes one waterfall column's vertical split (percent of
