@@ -359,7 +359,7 @@ type semanticDiagnostic struct {
 // (falling back to the raw path only when no mapping exists), and prints a
 // compact result with a quality summary. Blocking failures print the same
 // compact result (OK=false) to stderr and exit non-zero.
-func runSemanticRender() error {
+func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, compilation, rendering, and atomic manifest persistence.
 	fs := flag.NewFlagSet("semantic render", flag.ContinueOnError)
 	specPath := fs.String("spec", "", "Path to the semantic deck spec (.yaml/.yml/.json); use - for stdin")
 	output := fs.String("output", "", "Output .pptx path (or directory); required")

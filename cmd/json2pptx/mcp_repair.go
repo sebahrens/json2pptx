@@ -1235,7 +1235,7 @@ func applySetPatternStyle(input *PresentationInput, slideIdx int, params map[str
 //
 // Agents should prefer pre-generation budget awareness via expand_pattern over
 // post-generation repair.
-func applyReduceCellText(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+func applyReduceCellText(input *PresentationInput, slideIdx int, params map[string]any) appliedFix { //nolint:gocyclo // Three compatible text encodings plus semantic safety checks.
 	cellPath := stringParam(params, "cell_path", "")
 	maxChars := intParam(params, "max_chars", 0)
 

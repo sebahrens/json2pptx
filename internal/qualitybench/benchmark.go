@@ -108,6 +108,8 @@ func (r Runner) Run(ctx context.Context) (*Report, error) {
 func (r Runner) invoke(ctx context.Context, req Request) Evidence {
 	started := time.Now().UTC()
 	payload, _ := json.Marshal(req)
+	// #nosec G204 -- executing the explicitly configured agent is the purpose of
+	// this opt-in benchmark; default CI supplies no executable and cannot run it.
 	cmd := exec.CommandContext(ctx, r.Agent[0], r.Agent[1:]...)
 	cmd.Stdin = bytes.NewReader(payload)
 	var stdout, stderr bytes.Buffer

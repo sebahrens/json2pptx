@@ -96,6 +96,8 @@ func TestPortabilityRenderedIntegration(t *testing.T) {
 	for _, tmpl := range []string{"midnight-blue", "modern-yellow", "business-template"} {
 		dir := filepath.Join(outDir, tmpl)
 		_ = os.MkdirAll(dir, 0o755)
+		// #nosec G204,G702 -- binary is an explicit test configuration and every
+		// argument except the temporary output directory is fixed by this test.
 		cmd := exec.Command(binary, "generate", "-json", filepath.Join(root, "tests", "quality", "fixtures", "kpi-grid-9-tiles.json"), "-template", tmpl, "-templates-dir", filepath.Join(root, "templates"), "-output", dir)
 		cmd.Dir = root
 		if output, err := cmd.CombinedOutput(); err != nil {
