@@ -856,6 +856,69 @@ Slide selection:
 }
 ```
 
+### `TEXT_EXCEEDS_SHAPE`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `reduce_text`
+**Emitted at:** preflight (validate / preview / score), deterministic geometry
+
+A word in a shape_grid shape's text is wider than the text rectangle the shape's preset geometry leaves after text insets, so the renderer breaks it mid-word or the shape outline clips it. The widest whitespace-delimited word of every paragraph (single glyphs such as arrows are ignored) is measured with the template body font at the size the renderer uses (authored size floored to 12pt, default 14pt, bold honoured) and compared with the geometry's text width per ECMA-376 `presetShapeDefinitions`: `chevron` keeps `w − 2·min(w,h)·adj`, `homePlate` `w − min(w,h)·adj/2`, `diamond` / `triangle` / `flowChartDecision` `w/2`, `ellipse` `w·0.707`, `hexagon` / `octagon` their inset rectangles, everything else the full width. Default OOXML insets (0.1" left/right) apply unless the text authors `inset_*`. Charts, tables and images are not measured.
+
+Grids produced by named patterns are expanded first (paths rooted at `/slides/{i}/pattern`), and nested sub-grids are resolved inside their parent cell like the renderer does. One finding is emitted per slide: `path` is the first offending cell, `fix.params.cells` lists every offending cell path, and `word` / `required_pt` / `available_pt` / `geometry` describe the worst case. Typical trigger: `numbered-step-strip` `style: "chevron"` labels, whose notches leave almost no text width.
+
+```json
+{
+  "pattern": "numbered-step-strip",
+  "path": "/slides/6/pattern/rows/0/cells/0/shape/text",
+  "code": "TEXT_EXCEEDS_SHAPE",
+  "message": "5 shapes have words wider than their text area (Attract, Convert, Onboard, Retain, Advocate); worst: \"Advocate\" needs 59pt but the chevron shape leaves 0pt of text width after geometry and insets — it will break mid-word or be clipped",
+  "fix": { "kind": "reduce_text", "params": { "cells": ["/slides/6/pattern/rows/0/cells/0/shape/text", "…"], "word": "Advocate", "required_pt": 59.2, "available_pt": 0, "geometry": "chevron", "hint": "shorten the label, lower text size, or use a geometry with a wider text area (rect/homePlate instead of chevron)" } },
+  "action": "review",
+  "measured": { "width_emu": 751840, "height_emu": 0 },
+  "allowed": { "width_emu": 0, "height_emu": 0 }
+}
+```
+
+### `SPARSE_FILL`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight, deterministic geometry
+
+A filled shape covering more than **10% of the slide area** holds text whose estimated wrapped block (word-wrapped at the shape's text width, 1.2 line height) covers less than **20% of the shape** — a large, mostly empty coloured box (e.g. `kpi-3up` cards with one number, tall process boxes with a two-word label). Fills of `none` / transparent, alpha below 20%, or the background colours `lt1` / `bg1` / white do not count as filled. One finding per slide; `fix.params.cells` lists the offending shapes and `max_text_area_pct` the densest of them. Fix by adding detail, capping the grid height (`bounds` / `max_height_pct`), or switching to a compact / unfilled variant.
+
+```json
+{
+  "pattern": "kpi-3up",
+  "path": "/slides/8/pattern/rows/0/cells/0/shape",
+  "code": "SPARSE_FILL",
+  "message": "3 filled shape(s) each cover >10% of the slide (up to 19%) but their text fills only 7–13% of the box — large, mostly empty blocks",
+  "fix": { "kind": "add_detail_or_resize", "params": { "cells": ["/slides/8/pattern/rows/0/cells/0/shape", "…"], "max_text_area_pct": 13, "hint": "add detail, cap the grid height (bounds / max_height_pct), or use a compact / unfilled variant" } },
+  "action": "review"
+}
+```
+
+### `SLIDE_UNDERUSED`
+
+**Action:** `review`
+**Pattern:** the slide's pattern (empty for raw `shape_grid`)
+**Fix kind:** `add_detail_or_resize`
+**Emitted at:** preflight, deterministic geometry
+
+The bounding box of the slide's grid "ink" covers less than **45% of the safe content area** (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). Ink is every filled shape, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area). Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a `before-after` with three short bullets per side.
+
+```json
+{
+  "path": "/slides/3",
+  "code": "SLIDE_UNDERUSED",
+  "message": "slide content covers 12% of the safe content area (threshold 45%) — the slide reads as mostly empty",
+  "fix": { "kind": "add_detail_or_resize", "params": { "content_area_pct": 12, "hint": "remove bounds / max_height_pct caps, add a supporting zone, or merge with another slide" } },
+  "action": "review"
+}
+```
+
 ### `CONTENT_DROPPED`
 
 **Action:** `review`

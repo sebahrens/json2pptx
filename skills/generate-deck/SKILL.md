@@ -774,6 +774,8 @@ Non-negotiable. Full catalog with rationale and examples in [RULES.md](RULES.md)
 - **Anti-patterns:** two-tables-one-grid, hex-fill mix, pattern monotony (no 3-in-a-row), accent monotony, sparse single-row flow (no full-slide `process-flow`/`timeline-horizontal` for 3-6 short labels — see the Sparse-sequence rule).
 - **Cell accent variety:** `cell_accent_mode` ∈ {`uniform`, `alternate`, `progressive`} — use `progressive` for 4+ peer cells.
 
+Deterministic geometry findings run on every shape_grid and pattern-expanded grid at validate / preview time: `TEXT_EXCEEDS_SHAPE` (a word wider than the shape's geometry text area — typical for chevron labels; `fix.kind: reduce_text`), `SPARSE_FILL` (filled shape >10% of the slide with text filling <20% of it) and `SLIDE_UNDERUSED` (grid content covers <45% of the safe area); both use `fix.kind: add_detail_or_resize`, all three `action: review` — treat them as "looks broken / empty when rendered" and fix before generating.
+
 For the full finding-code catalog (`fit_overflow`, `cell_underfilled`, `placeholder_overflow`, `chart.*` family, render-time codes like `contrast_autofixed`, `text_trimmed`, `diagram_clamped`, etc.) and the `fix.kind` enums, see [FINDINGS.md](FINDINGS.md).
 
 ---

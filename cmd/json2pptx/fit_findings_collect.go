@@ -117,6 +117,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// legitimately repeat phrasing.
 	findings = append(findings, collectDuplicateTitleFindings(input)...)
 
+	// 11. Deterministic geometry: TEXT_EXCEEDS_SHAPE / SPARSE_FILL / SLIDE_UNDERUSED.
+	findings = append(findings, collectGeometryFindings(input, layouts, slideWidth, slideHeight, theme)...)
+
 	// Deduplicate findings that share (Code, Path, Action, Message). This guards
 	// against the case where a pre-compose detector and the post-compose
 	// structural pass both emit the same diagnostic for one cell — the
