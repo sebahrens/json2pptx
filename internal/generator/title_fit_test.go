@@ -173,7 +173,10 @@ func TestBakeTitleFit(t *testing.T) {
 		t.Errorf("baked sizes = %s,%s want 2700,2400", runs[0].RunProperties.FontSize, runs[1].RunProperties.FontSize)
 	}
 	inner := shape.TextBody.Paragraphs[0].Properties.Inner
-	if !strings.HasPrefix(inner, `<a:lnSpc><a:spcPct val="72000"/></a:lnSpc>`) || strings.Count(inner, "lnSpc>") != 2 {
+	// 80% template spacing x a 10% reduction is 72%, which is below the
+	// collision floor, so the baked pitch is clamped to it
+	// (go-slide-creator-g5h7).
+	if !strings.HasPrefix(inner, `<a:lnSpc><a:spcPct val="85000"/></a:lnSpc>`) || strings.Count(inner, "lnSpc>") != 2 {
 		t.Errorf("baked lnSpc inner = %s", inner)
 	}
 	if shared.Inner != `<a:lnSpc><a:spcPct val="90000"/></a:lnSpc><a:buNone/>` {

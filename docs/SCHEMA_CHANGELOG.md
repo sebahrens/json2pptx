@@ -10,6 +10,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Title autofit no longer crushes line spacing into a collision
+  (go-slide-creator-g5h7).** `bakeTitleFit` applied its line-spacing reduction to
+  the TEMPLATE's own spacing rather than to single spacing, so a template that
+  already ships tight leading compounded it: modern-template's ~80% times a 20%
+  reduction wrote `<a:spcPct val="64000"/>` while keeping `sz=2700` — a 17.3pt
+  line pitch for 27pt all-caps glyphs, which LibreOffice renders with the lines
+  physically overlapping. The baked pitch is now floored at 85% of single
+  spacing (the reported collisions were at 76% and 64%), and a title that no
+  longer fits at that floor falls through to the existing measured-overflow path
+  and surfaces `TITLE_OVERFLOW` instead of being silently crushed.
+
 - **Contrast autofix targets the ratio the text size requires
   (go-slide-creator-9ux4).** Every swap targeted the WCAG AA *large text* ratio
   of 3.0:1, on the stated assumption that presentation text is almost always

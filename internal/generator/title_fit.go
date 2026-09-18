@@ -132,6 +132,24 @@ const (
 	titleComfortMaxHPt = 3200
 )
 
+// minTitleLineSpacingPctThousandths is the floor on a baked title line pitch,
+// in the thousandths-of-a-percent units OOXML's <a:spcPct val> uses. 85000 =
+// 85% of single spacing.
+//
+// Single spacing already includes the font's own leading, so ~85% is about the
+// tightest pitch that still clears ascenders and descenders on all-caps titles;
+// the reported collisions were at 76% (umlaut touching the next line's
+// ascenders, a "Q" descender crossing the line above) and at 64% (lines
+// physically overlapping). The reduction is applied to the TEMPLATE's line
+// spacing rather than to 100%, so a template shipping tight leading compounds
+// it — modern-template's ~80% times a 20% reduction produced 64%, i.e. 17.3pt
+// of pitch for 27pt all-caps text (go-slide-creator-g5h7).
+//
+// Titles that no longer fit once the pitch is floored fall through to the
+// existing measured-overflow path and surface TITLE_OVERFLOW, which is the
+// signal an agent needs — crushing the leading silently was not.
+const minTitleLineSpacingPctThousandths = 85000
+
 // TitleComfortScalePct returns the smallest comfortable font scale (percent of
 // the template title size) for a title of the given size.
 func TitleComfortScalePct(sizeHPt int) int {
@@ -265,6 +283,16 @@ func bakeTitleFit(shape *shapeXML, p textfit.Params, res textfit.FitResult) {
 			basePct = p.LineSpacing / baseLineSpacing * 100.0
 		}
 		val := int(basePct*(1.0-float64(res.LnSpcReduction)/100000.0)*1000.0 + 0.5)
+		// Floor the pitch so lines cannot physically overlap. The reduction is
+		// applied to the TEMPLATE's own line spacing, so a template that
+		// already ships tight leading compounds it: modern-template's ~80%
+		// times a 20% reduction wrote 64% — a 17.3pt line pitch for 27pt
+		// all-caps glyphs, which LibreOffice renders with the lines on top of
+		// each other (go-slide-creator-g5h7). Titles that still do not fit at
+		// the floor are reported as TITLE_OVERFLOW rather than crushed.
+		if val < minTitleLineSpacingPctThousandths {
+			val = minTitleLineSpacingPctThousandths
+		}
 		lnSpc := fmt.Sprintf(`<a:lnSpc><a:spcPct val="%d"/></a:lnSpc>`, val)
 		for i := range shape.TextBody.Paragraphs {
 			para := &shape.TextBody.Paragraphs[i]
