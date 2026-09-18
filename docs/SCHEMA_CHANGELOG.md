@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`kpi_dashboard` honours `unit` and `change` (go-slide-creator-hu58).** The
+  documented metric shape is `{label, value, unit?, change?, trend?}`, but the
+  native card builder read only `label` / `value` / `delta` / `trend`, so the
+  unit and the delta — the two things an executive KPI card exists for — never
+  reached the slide and no warning said so. `unit` is now attached to the hero
+  value on the correct side (`184.2 EUR m`, `118%`, `$210m`), and `change` is
+  read as the documented key with `delta` kept as a synonym. The declared
+  capacity (`max_nodes` 12) is now enforced: extra metrics are dropped with a
+  `CONTENT_DROPPED` finding naming the count instead of being crushed into
+  unreadable slivers.
+
 - **Merged table cells render their text (go-slide-creator-chvf).** A `col_span`
   / `row_span` cell produced one `<a:tc gridSpan="N">` and nothing for the grid
   columns it covered, so a row carried fewer `<a:tc>` than the table had

@@ -132,3 +132,20 @@ func unitNeedsSpace(unit string) bool {
 	}
 	return hasLetter && len([]rune(unit)) >= 3
 }
+
+// FormatUnitLabel attaches a unit to an ALREADY-FORMATTED value string, using
+// the same placement rules as FormatMagnitudeLabel: a currency symbol leads the
+// number, a word unit follows it after a thin space, and a symbolic or short
+// magnitude suffix is kept tight.
+//
+// It exists for callers whose value is authored as a display string rather than
+// a number (KPI cards, stat tiles), where re-parsing it would risk changing the
+// author's chosen precision. An empty unit returns the value unchanged.
+func FormatUnitLabel(value, unit string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.TrimSpace(unit) == "" {
+		return value
+	}
+	prefix, suffix := splitUnit(unit)
+	return prefix + value + suffix
+}

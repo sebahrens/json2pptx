@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -68,10 +70,27 @@ const (
 // kpiMetric holds parsed data for a single KPI metric card.
 type kpiMetric struct {
 	label string // Metric name (e.g., "Revenue")
-	value string // Display value (e.g., "$21M")
-	delta string // Change indicator (e.g., "+17%")
+	value string // Display value (e.g., "184.2")
+	unit  string // Unit rendered with the value (e.g., "EUR m", "%")
+	delta string // Change indicator (e.g., "+12.4%"); JSON key "change" or "delta"
 	trend string // Direction: "up", "down", "flat"
 }
+
+// displayValue renders the hero value with its unit attached. The unit is the
+// difference between "184.2" and "EUR 184.2m" — half of what an executive KPI
+// card is for — and it used to be parsed nowhere at all, so the documented
+// field silently vanished (go-slide-creator-hu58).
+func (m kpiMetric) displayValue() string {
+	if m.value == "" {
+		return ""
+	}
+	return patterns.FormatUnitLabel(m.value, m.unit)
+}
+
+// kpiMaxMetrics is the documented capacity of a kpi_dashboard (MaxNodes 12 in
+// the diagram capabilities). Metrics beyond it are dropped rather than crushed
+// into unreadable slivers, with a CONTENT_DROPPED finding naming the count.
+const kpiMaxMetrics = 12
 
 // isKPIDashboardDiagram returns true if the diagram spec is a kpi_dashboard type.
 func isKPIDashboardDiagram(spec *types.DiagramSpec) bool {
@@ -100,13 +119,26 @@ func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum int, item
 	}
 
 	// Convert metrics to nativePanelData for the panelShapeInsert system.
+	// Enforce the documented capacity instead of silently accepting any count.
+	if len(metrics) > kpiMaxMetrics {
+		dropped := len(metrics) - kpiMaxMetrics
+		reason := fmt.Sprintf(
+			"kpi_dashboard holds at most %d metrics (declared max_nodes); %d of %d were dropped — split across two slides",
+			kpiMaxMetrics, dropped, len(metrics))
+		ctx.emitFitFinding(patterns.ContentDropped(
+			slidepath.Content(slideNum-1, item.PlaceholderID),
+			fmt.Sprintf("%d kpi_dashboard metrics", dropped), reason))
+		ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: %s", slideNum, reason))
+		metrics = metrics[:kpiMaxMetrics]
+	}
+
 	var panels []nativePanelData
 	for _, m := range metrics {
 		// Build delta text with trend arrow prefix.
 		deltaText := buildKPIDeltaText(m.delta, m.trend)
 		panels = append(panels, nativePanelData{
 			title: m.label,
-			value: m.value,
+			value: m.displayValue(),
 			body:  deltaText,
 		})
 	}
@@ -315,8 +347,15 @@ func parseKPIMetrics(data map[string]any) []kpiMetric {
 		} else if value, ok := m["value"].(float64); ok {
 			metric.value = fmt.Sprintf("%.0f", value)
 		}
-		if delta, ok := m["delta"].(string); ok {
+		// "change" is the documented key; "delta" is accepted as a synonym
+		// because the renderer has always called it that internally.
+		if change, ok := m["change"].(string); ok {
+			metric.delta = change
+		} else if delta, ok := m["delta"].(string); ok {
 			metric.delta = delta
+		}
+		if unit, ok := m["unit"].(string); ok {
+			metric.unit = unit
 		}
 		if trend, ok := m["trend"].(string); ok {
 			metric.trend = trend
