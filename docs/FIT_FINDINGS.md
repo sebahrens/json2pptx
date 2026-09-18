@@ -920,7 +920,7 @@ The detector walks shape-grid cells that author both a fill color (on the shape)
 
 `fix.params.replacement_mode` discloses which branch of the algorithm produced the color:
 
-- `flip` — the foreground is a pure neutral (literal white/black, or scheme `lt1`/`bg1`/`dk1`/`tx1`); it is snapped to the opposite theme extreme (`dk1`/`lt1`). This is why white text on a light accent predicts a clean dark color rather than a muddy mid-gray.
+- `flip` — the foreground is a pure neutral (literal white/black, or scheme `lt1`/`bg1`/`dk1`/`tx1`); it is snapped to the first template color that meets WCAG AA normal (4.5:1), tried in order `lt1`, `dk2`, `dk1`, then a darker/lighter shade of the fill hue (falling back to the first meeting AA large 3:1). Preferring `dk2` keeps the fix inside the template palette instead of literal `#000000`. This is why white text on a light accent predicts a clean dark theme color rather than a muddy mid-gray. Render-time swaps are logged at `WARN` with before/after colors and ratios.
 - `lerp` — any other foreground; it is darkened or lightened toward black/white via `EnsureContrast` until it clears 3:1.
 
 ```json
