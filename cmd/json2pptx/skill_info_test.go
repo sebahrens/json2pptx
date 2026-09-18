@@ -837,3 +837,87 @@ func TestEmuToInches(t *testing.T) {
 		}
 	}
 }
+
+// go-slide-creator-3ojy: list_icons offered only a substring filter on glyph
+// names, so business vocabulary missed entirely — "strategy", "revenue",
+// "governance" and a dozen others returned nothing, while "risk" returned eight
+// icons whose only connection was containing "asterisk".
+func TestApplyConceptSearch(t *testing.T) {
+	sets := []string{"outline"}
+
+	t.Run("a concept with no substring matches resolves via synonym", func(t *testing.T) {
+		flat, via, matches, vocab := applyConceptSearch(nil, "strategy", sets)
+		if via != "synonym" {
+			t.Errorf("matched_via = %q, want synonym", via)
+		}
+		if len(flat) == 0 || flat[0].name != "target" {
+			t.Errorf("first icon = %+v, want target", flat)
+		}
+		if len(matches) == 0 || matches[0].Concept != "strategy" {
+			t.Errorf("concept_matches = %+v, want the strategy concept named", matches)
+		}
+		if vocab != nil {
+			t.Error("a successful match must not also dump the vocabulary")
+		}
+	})
+
+	t.Run("concept hits lead even when the substring also matched", func(t *testing.T) {
+		// This is the "risk" case: the substring filter finds the asterisks.
+		substring := []iconSetName{
+			{set: "outline", name: "asterisk"},
+			{set: "outline", name: "asterisk-simple"},
+		}
+		flat, via, _, _ := applyConceptSearch(substring, "risk", sets)
+		if via != "synonym+name" {
+			t.Errorf("matched_via = %q, want synonym+name", via)
+		}
+		if len(flat) == 0 || flat[0].name != "alert-triangle" {
+			t.Errorf("first icon = %+v, want alert-triangle to lead", flat)
+		}
+		// The substring matches are kept, just after the concept hits.
+		var keptAsterisk bool
+		for _, e := range flat {
+			if e.name == "asterisk" {
+				keptAsterisk = true
+			}
+		}
+		if !keptAsterisk {
+			t.Error("substring matches should be kept after the concept hits, not dropped")
+		}
+	})
+
+	t.Run("a pure name query is unaffected", func(t *testing.T) {
+		substring := []iconSetName{{set: "outline", name: "chart-bar"}}
+		flat, via, matches, _ := applyConceptSearch(substring, "chart-bar", sets)
+		if via != "name" {
+			t.Errorf("matched_via = %q, want name", via)
+		}
+		if len(flat) != 1 || flat[0].name != "chart-bar" {
+			t.Errorf("flat = %+v, want just chart-bar", flat)
+		}
+		if len(matches) != 0 {
+			t.Errorf("concept_matches = %+v, want none", matches)
+		}
+	})
+
+	t.Run("no match at all returns the concept vocabulary", func(t *testing.T) {
+		flat, via, _, vocab := applyConceptSearch(nil, "zzznonsense", sets)
+		if len(flat) != 0 {
+			t.Errorf("flat = %+v, want empty", flat)
+		}
+		if via != "" {
+			t.Errorf("matched_via = %q, want empty", via)
+		}
+		if len(vocab) < 100 {
+			t.Errorf("vocabulary has %d concepts, want the full index so the next call is informed", len(vocab))
+		}
+	})
+
+	t.Run("no filter is a pass-through", func(t *testing.T) {
+		all := []iconSetName{{set: "outline", name: "a"}, {set: "outline", name: "b"}}
+		flat, via, matches, vocab := applyConceptSearch(all, "", sets)
+		if len(flat) != 2 || via != "" || matches != nil || vocab != nil {
+			t.Errorf("unfiltered call should pass through unchanged, got %+v %q %+v %v", flat, via, matches, vocab)
+		}
+	})
+}

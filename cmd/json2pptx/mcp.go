@@ -2276,7 +2276,9 @@ Pagination: response is an object {sets, total_count, page_size, next_cursor?}. 
 
 Projection (token-economy): pass fields="compact" to drop the redundant sets[].icons[] dual array (qualified_name is always "<set>:<name>", easy to synthesize). Pass fields="full" for the legacy payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
 
-Filtering: filter (preferred) and search (legacy alias) both apply a case-insensitive substring filter on the icon name. Applied before pagination.`),
+Filtering: filter (preferred) and search (legacy alias) both apply a case-insensitive substring filter on the icon name. Applied before pagination.
+
+Concept search: when the substring filter matches nothing, the query is resolved through a curated business-concept index instead — "strategy", "revenue", "customer", "governance", "compliance", "risk", "milestone", "efficiency" and ~150 others map to the 1-3 bundled icons that express them. The response then carries matched_via:"synonym" and concept_matches[] naming which concept produced each icon. Multi-word queries reach the concepts inside them ("cost reduction" → the cost icons). A query that matches neither a name nor a concept returns concepts[] — the full vocabulary the index understands — so the next call is informed rather than another guess.`),
 		mcp.WithRawOutputSchema(outputSchemaListIcons),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
@@ -2326,6 +2328,14 @@ type iconSetResult struct {
 	Icons []iconEntry `json:"icons,omitempty"`
 }
 
+// conceptMatchResult reports which business concept produced an icon, so an
+// agent can see WHY a name came back for a query that does not appear in it
+// (go-slide-creator-3ojy).
+type conceptMatchResult struct {
+	Name    string `json:"name"`
+	Concept string `json:"concept"`
+}
+
 // listIconsResponse is the paginated envelope for list_icons.
 type listIconsResponse struct {
 	Sets       []iconSetResult `json:"sets"`
@@ -2335,6 +2345,19 @@ type listIconsResponse struct {
 	// Warnings carries advisory hints (currently: deprecation notice when
 	// `fields` is omitted).
 	Warnings []string `json:"warnings,omitempty"`
+
+	// MatchedVia names how the filter was satisfied: "name" for the substring
+	// filter alone, "synonym" when only the business-concept index matched, and
+	// "synonym+name" when both did (concept hits lead). Absent when no filter
+	// was supplied, or when nothing matched at all.
+	MatchedVia string `json:"matched_via,omitempty"`
+	// ConceptMatches lists the concept each returned icon came from, present
+	// only when matched_via is "synonym".
+	ConceptMatches []conceptMatchResult `json:"concept_matches,omitempty"`
+	// Concepts lists every business concept the index understands. Present only
+	// when a query matched nothing at all, so the agent can see the vocabulary
+	// instead of guessing again.
+	Concepts []string `json:"concepts,omitempty"`
 }
 
 func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -2367,10 +2390,7 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	// Flatten (set, name) pairs across all requested sets, applying the
 	// search filter as we go. Preserves intra-set ordering and overall
 	// set order.
-	type setName struct {
-		set, name string
-	}
-	flat := make([]setName, 0, 256)
+	flat := make([]iconSetName, 0, 256)
 	for _, s := range sets {
 		names, err := icons.List(s)
 		if err != nil {
@@ -2378,10 +2398,17 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		}
 		for _, n := range names {
 			if filterStr == "" || strings.Contains(strings.ToLower(n), filterStr) {
-				flat = append(flat, setName{set: s, name: n})
+				flat = append(flat, iconSetName{set: s, name: n})
 			}
 		}
 	}
+
+	// A substring filter over glyph names misses business vocabulary entirely:
+	// "strategy", "revenue", "governance" and a dozen others returned nothing,
+	// while "risk" returned icons whose only connection was containing
+	// "asterisk". When the substring filter finds nothing, resolve the query
+	// through the business-concept index instead (go-slide-creator-3ojy).
+	flat, matchedVia, conceptMatches, conceptVocabulary := applyConceptSearch(flat, filterStr, sets)
 
 	totalCount := len(flat)
 	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
@@ -2412,10 +2439,13 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	}
 
 	resp := listIconsResponse{
-		Sets:       pageSets,
-		TotalCount: totalCount,
-		PageSize:   pageSize,
-		NextCursor: nextCursor,
+		Sets:           pageSets,
+		TotalCount:     totalCount,
+		PageSize:       pageSize,
+		NextCursor:     nextCursor,
+		MatchedVia:     matchedVia,
+		ConceptMatches: conceptMatches,
+		Concepts:       conceptVocabulary,
 	}
 	if !fieldsExplicit {
 		resp.Warnings = append(resp.Warnings, defaultFieldsDeprecation)
@@ -2595,4 +2625,62 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	}
 
 	return deckThumbnailsMCPResult(ctx, request, deckResult), nil
+}
+
+
+// iconSetName is one (set, icon) pair in a flattened list_icons page.
+type iconSetName struct {
+	set, name string
+}
+
+// applyConceptSearch resolves a list_icons query through the business-concept
+// index and merges the result with the substring matches.
+//
+// Concept hits LEAD, even when the substring filter also matched something:
+// "risk" matches eight icons whose only connection is containing "asterisk",
+// and burying alert-triangle behind them is the defect the bead reported. The
+// substring matches are kept after them — a filter is still a filter. When
+// neither the names nor the concepts match, the concept vocabulary is returned
+// so the next call is informed rather than another guess
+// (go-slide-creator-3ojy).
+func applyConceptSearch(flat []iconSetName, filterStr string, sets []string) ([]iconSetName, string, []conceptMatchResult, []string) {
+	if filterStr == "" {
+		return flat, "", nil, nil
+	}
+
+	var conceptMatches []conceptMatchResult
+	conceptHits := make([]iconSetName, 0, 8)
+	for _, m := range icons.MatchConcepts(filterStr) {
+		for _, s := range sets {
+			if icons.Exists(s + ":" + m.Name) {
+				conceptHits = append(conceptHits, iconSetName{set: s, name: m.Name})
+				conceptMatches = append(conceptMatches, conceptMatchResult{Name: m.Name, Concept: m.Concept})
+				break
+			}
+		}
+	}
+
+	switch {
+	case len(conceptHits) == 0 && len(flat) == 0:
+		return flat, "", nil, icons.ConceptKeys()
+	case len(conceptHits) == 0:
+		return flat, "name", nil, nil
+	}
+
+	matchedVia := "synonym+name"
+	if len(flat) == 0 {
+		matchedVia = "synonym"
+	}
+
+	seen := make(map[string]bool, len(conceptHits))
+	for _, h := range conceptHits {
+		seen[h.set+":"+h.name] = true
+	}
+	merged := conceptHits
+	for _, e := range flat {
+		if !seen[e.set+":"+e.name] {
+			merged = append(merged, e)
+		}
+	}
+	return merged, matchedVia, conceptMatches, nil
 }

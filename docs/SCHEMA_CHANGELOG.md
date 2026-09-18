@@ -10,6 +10,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+### Added
+
+- **Icon search by business concept (go-slide-creator-3ojy).** `list_icons`
+  offered only a case-insensitive substring filter on glyph names, so business
+  vocabulary missed entirely: `strategy`, `revenue`, `customer`, `efficiency`,
+  `governance`, `compliance`, `innovation`, `cost`, `profit`, `roadmap`,
+  `milestone`, `process`, `security` and `quality` all returned zero hits, while
+  `risk` returned eight icons whose only connection was containing `asterisk`
+  and `team` returned `brand-teams` / `ironing-steam`. A curated index of 142
+  business concepts now maps each to the 1–3 bundled icons that express it.
+  Concept hits LEAD the results even when the substring filter also matched, so
+  `risk` opens with `alert-triangle`. New response fields: `matched_via`
+  (`name` / `synonym` / `synonym+name`), `concept_matches[]` naming which concept
+  produced each icon, and `concepts[]` — the full vocabulary — when a query
+  matches nothing at all. Multi-word queries reach the concepts inside them
+  (`cost reduction` → the cost icons). `ICON_BUNDLED_NAME_UNKNOWN`'s suggestions
+  consult the same index first, so `strategy` now suggests `target` / `chess` /
+  `map-2` rather than `karate`, and `revenue` suggests `coin` / `cash` rather
+  than `venus`; genuine typos still fall through to edit distance
+  (`chart-bra` → `chart-bar`, `rockt` → `rocket`).
+
+### Fixed
+
 - **Title autofit no longer crushes line spacing into a collision
   (go-slide-creator-g5h7).** `bakeTitleFit` applied its line-spacing reduction to
   the TEMPLATE's own spacing rather than to single spacing, so a template that

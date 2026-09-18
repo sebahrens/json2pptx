@@ -80,6 +80,31 @@ func Suggest(name string, maxResults int) []string {
 	set, base := parseName(name)
 	isQualified := strings.IndexByte(name, ':') >= 0
 
+	// A business concept is not a misspelling: edit distance over 5,000 glyph
+	// names turned "strategy" into "karate" and "revenue" into "venus". When the
+	// name reads as a concept, suggest what it MEANS (go-slide-creator-3ojy).
+	if concepts := ConceptNames(base); len(concepts) > 0 {
+		out := make([]string, 0, maxResults)
+		for _, c := range concepts {
+			candidate := c
+			if isQualified {
+				candidate = set + ":" + c
+				if !Exists(candidate) {
+					continue
+				}
+			} else if !Exists(c) {
+				continue
+			}
+			out = append(out, candidate)
+			if len(out) == maxResults {
+				break
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+
 	outline, _ := List("outline")
 	filled, _ := List("filled")
 
