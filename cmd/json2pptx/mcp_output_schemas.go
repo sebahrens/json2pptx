@@ -684,6 +684,7 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
                 "category":    {"type": "string", "description": "text_overflow | text_truncation | contrast | alignment | spacing | overlap | missing_content | font_size | visual_hierarchy | chart_readability | table_readability | image_quality | layout_balance | color_consistency | border_style | footer_clearance | aspect_ratio"},
                 "description": {"type": "string"},
                 "location":    {"type": "string"},
+                "bbox":        {"type": "object", "description": "Optional defect region as fractions (0-1) of the slide; propose_repairs hit-tests it against generated cell bounds to target an element path.", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "w": {"type": "number"}, "h": {"type": "number"}}, "required": ["x", "y", "w", "h"]},
                 "source":      {"type": "string", "enum": ["vision", "heuristic"], "description": "Which checker produced this finding. Heuristic findings are advisory and may have higher false-positive rates."},
                 "suggested_fixes": {
                   "type": "array",
@@ -1914,6 +1915,27 @@ var outputSchemaPlanDeck = json.RawMessage(`{
       "required": ["status"]
     }
   }
+}`)
+
+// --- submit_visual_review ---
+var outputSchemaSubmitVisualReview = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "ok":               {"type": "boolean"},
+    "status":           {"type": "string", "enum": ["visually_reviewed_current_revision", "draft_needs_visual_review"], "description": "visually_reviewed_current_revision only when evidence.approved (every slide approved, no P0/P1 finding, structurally valid artifact)."},
+    "verdict":          {"type": "string", "enum": ["approved", "changes_requested", "inconclusive"]},
+    "reviewer":         {"type": "string", "enum": ["host", "manual"]},
+    "pptx_path":        {"type": "string"},
+    "artifact_sha256":  {"type": "string"},
+    "revision":         {"type": "string", "description": "Current revision the review is bound to: the authoring-manifest revision when one exists for this artifact, else the artifact sha256."},
+    "total_slides":     {"type": "integer"},
+    "evidence":         {"type": "object", "description": "Quality evidence (schema_valid, generated, fit_checked, structural_valid, pixels_rendered, visually_inspected, inspection_backend=host|manual, reviewed_slide_ids, total_slides, visual_verdict, approved, needs_review, reasons)."},
+    "review":           {"type": "object", "description": "The validated ReviewRecord (artifact_sha256, revision, backend, slides[{index, role, image_path, image_sha256}], findings[], verdict)."},
+    "manifest_path":    {"type": "string"},
+    "manifest_updated": {"type": "boolean", "description": "True when <pptx_path>.authoring.json existed for this artifact and its visual_evidence was updated."},
+    "notes":            {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["ok", "status", "verdict", "reviewer", "artifact_sha256", "revision", "total_slides", "evidence", "review", "manifest_updated"]
 }`)
 
 // --- validate_presentation_output ---

@@ -341,6 +341,7 @@ func parseFindings(text string, info SlideInfo) ([]Finding, error) {
 		Category    string `json:"category"`
 		Description string `json:"description"`
 		Location    string `json:"location"`
+		BBox        *BBox  `json:"bbox"`
 	}
 
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {
@@ -365,6 +366,12 @@ func parseFindings(text string, info SlideInfo) ([]Finding, error) {
 			Description:    r.Description,
 			Location:       r.Location,
 			SuggestedFixes: SuggestedFixesForCategory(r.Category),
+		}
+		// An out-of-range bbox is dropped rather than rejected: it is an
+		// optional targeting hint, not part of the finding contract.
+		if r.BBox != nil && r.BBox.Valid() {
+			bb := *r.BBox
+			f.BBox = &bb
 		}
 		findings = append(findings, f)
 	}

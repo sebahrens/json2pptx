@@ -229,8 +229,8 @@ func comparisonPattern(body map[string]any) string {
 // chartInsightPattern advertises chart-insights-split only when the payload will
 // actually compile to it (1–6 usable insight bullets); otherwise it returns ""
 // so the explain projection matches compile's content fallback rather than
-// over-promising a chart+insights visual the renderer will not emit and which
-// drops the chart (explain/compile parity for over-cap inputs).
+// over-promising a chart+insights visual the renderer will not emit
+// (explain/compile parity for over-cap inputs).
 func chartInsightPattern(body map[string]any) string {
 	if slides.ChartInsightPatternFeasible(body) {
 		return "chart-insights-split"
@@ -296,6 +296,12 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	pattern := ""
 	if plan.pattern != nil {
 		pattern = plan.pattern(slide.Body)
+	}
+	// An over-cap (or insight-less) chart_insight compiles to the native
+	// fallback slide rather than the blank-title pattern canvas; plan that
+	// layout so explain reports the slide_type compile actually emits.
+	if slide.Kind == KindChartInsight && pattern == "" {
+		plan.layout = slides.ChartInsightFallbackSlideType(slide.Body)
 	}
 	alternatives := compositionCandidates(slide.Kind, pattern)
 	if requested := slide.String("pattern"); requested != "" {

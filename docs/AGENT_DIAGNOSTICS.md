@@ -75,9 +75,9 @@ content-less slide behind a green gate. The
 KPIs, comparison 1–10 balanced rows per column, chart_insight 1–6 insights)
 likewise use the usable count, so validation and compile agree on whether a visual
 pattern will be emitted — a balanced comparison whose columns exceed the 10-row cap,
-or a chart_insight with more than 6 insights, degrades to a bullet list (the latter
-also dropping the chart), so validation flags the over-cap count rather than passing
-the raw shape. After compilation, raw validation/fit/output findings are mapped back
+or a chart_insight with more than 6 insights, degrades to a native layout (the latter
+to a `two-column` slide: chart in `body`, the full insight list in `body_2`), so
+validation flags the over-cap count rather than passing the raw shape. After compilation, raw validation/fit/output findings are mapped back
 through the semantic source map. For example, a raw overflow at
 `/slides/2/shape_grid/rows/0/cells/1/shape/text/content` is reported to agents
 as `slides[1].kpis[1]` with the raw path preserved only as fallback evidence

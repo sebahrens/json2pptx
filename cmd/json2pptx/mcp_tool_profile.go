@@ -71,6 +71,7 @@ var coreToolNames = []string{
 	"repair_slide",
 	"preview_presentation_plan",
 	"inspect_slide_images",
+	"submit_visual_review",
 }
 
 // coreToolSet returns coreToolNames as a lookup set.

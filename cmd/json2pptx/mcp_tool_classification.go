@@ -188,6 +188,10 @@ func toolClassifications() map[string]toolClassification {
 			MCPOnlyReason:         "Batches repair_slide; CLI users loop `json2pptx repair` for each slide.",
 			PrimitiveAlternatives: []string{"repair_slide"},
 		},
+		"submit_visual_review": {
+			Kind: toolKindPrimitive, Phase: toolPhaseRender, CLICounterpart: "inspect",
+			MCPOnlyReason: "Records a host/manual all-slide review verdict as quality evidence; CLI users inspect rendered slides with `json2pptx inspect`.",
+		},
 		"propose_repairs": {
 			Kind: toolKindDiagnostic, Phase: toolPhaseRepair, CLICounterpart: "repair",
 			MCPOnlyReason: "Translates findings into repair directives; CLI users map findings to fixes manually and invoke `json2pptx repair`.",

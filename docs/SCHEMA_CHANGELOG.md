@@ -168,6 +168,34 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   brief could return `final_score: 98, gate_passed: true` for off-topic
   placeholder copy. `auto_repair` (author-supplied content) is unchanged.
 
+### Added
+
+- **`submit_visual_review` MCP tool** — records a host/manual all-slide visual
+  review (`pptx_path`, `pptx_revision`, `slides[{index, verdict, image_path|image_sha256,
+  role?, findings?}]`, `reviewer?`, `revision?`). Validated by
+  `ReviewRecord.ValidateCompletion` (all slides, pixel hashes, current revision);
+  partial/stale reviews are rejected. Returns quality `evidence` with
+  `inspection_backend: host|manual` and `status`
+  (`visually_reviewed_current_revision` | `draft_needs_visual_review`); updates the
+  `.authoring.json` manifest's `visual_evidence` (new `reviewer` field) when present.
+  `QualityEvidence.approved` now accepts `provider`/`host`/`manual` backends in
+  addition to `vision` (heuristic still never approves).
+
+### Changed
+
+- **`repair_slide` `reduce_items` / `resize_list` fact-loss guard.** Dropping
+  pattern-values items that contain a number, unit, negation, or qualifier is
+  refused with `code: "semantic_review_required"` and a `next_tool_call`
+  proposing `repair_slide` → `split_pattern{path, first}`; pass
+  `confirm_semantic_change: true` to override. `split_pattern` accepts an
+  optional `path` that splits a `pattern.values` array across two slides.
+- **Visual findings carry an optional `bbox`** (`{x,y,w,h}`, fractions of the
+  slide) on `inspect_slide_images` findings and `propose_repairs` visual input.
+  `propose_repairs` hit-tests it against the generated shape_grid cell bounds
+  (patterns are expanded first) and targets the element path
+  (`/slides/N/shape_grid/rows/R/cells/C`, also set as `reduce_cell_text`
+  `cell_path`) instead of the whole slide; no bbox or no hit keeps the slide path.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

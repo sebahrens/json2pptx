@@ -112,6 +112,13 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		return slidePreparationResult{}, err
 	}
 
+	// Two content items that fall back onto the same physical placeholder would
+	// silently bury one another (e.g. body_2 bullets resolving onto the body
+	// placeholder a chart then replaces). Fail loudly instead of dropping content.
+	if err := checkPlaceholderCollisions(slide.CommonSlideData.ShapeTree.Shapes, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex); err != nil {
+		return slidePreparationResult{}, err
+	}
+
 	var warnings []string
 	if len(input.slideSpec.Content) > 0 {
 		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)

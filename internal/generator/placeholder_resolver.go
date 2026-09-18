@@ -610,3 +610,80 @@ func logFallbackResolution(placeholderID string, resolvedTo string, tier Resolut
 		"layout_id", layoutID,
 	)
 }
+
+// =============================================================================
+// Collision Detection: two content items on one physical placeholder
+// =============================================================================
+
+// PlaceholderCollisionError reports that two content items with distinct
+// placeholder IDs resolve — via a non-exact fallback tier — to the same
+// physical placeholder shape. Rendering would silently bury one of them (a
+// chart replacing the placeholder that received bullets, or one text body
+// overwriting another), so generation fails instead of dropping content.
+type PlaceholderCollisionError struct {
+	SlideIndex   int    // 0-based slide index
+	LayoutID     string // layout the slide was built from
+	FirstID      string // requested placeholder_id of the item that claimed the shape first
+	FirstIndex   int    // 0-based content index of that item
+	SecondID     string // requested placeholder_id of the colliding item
+	SecondIndex  int    // 0-based content index of the colliding item
+	ResolvedName string // physical shape name both resolved to
+	Tier         ResolutionTier
+}
+
+func (e *PlaceholderCollisionError) Error() string {
+	return fmt.Sprintf(
+		"slide %d: content %d (placeholder_id %q) and content %d (placeholder_id %q) both resolve to placeholder %q on layout %q (%s fallback) — one would be silently dropped; choose a layout that provides distinct placeholders (e.g. slide_type \"two-column\" for body + body_2) or merge the content",
+		e.SlideIndex+1, e.FirstIndex+1, e.FirstID, e.SecondIndex+1, e.SecondID,
+		e.ResolvedName, e.LayoutID, e.Tier)
+}
+
+// checkPlaceholderCollisions resolves every content item against the slide's
+// shapes and returns a *PlaceholderCollisionError when two items carrying
+// different placeholder IDs land on the same shape and at least one of them got
+// there through a fallback tier (semantic/fuzzy/positional). Same-ID items
+// (merged text, text-above-diagram) and distinct IDs that both name the shape
+// exactly (e.g. "body" and "idx:1") are intentional and allowed. The "title"
+// topmost-placeholder rescue is also exempt: it exists precisely for layouts
+// without a title placeholder.
+func checkPlaceholderCollisions(shapes []shapeXML, content []ContentItem, layoutID string, slideIndex int) error {
+	if len(content) < 2 {
+		return nil
+	}
+	resolver := newPlaceholderResolver(shapes, layoutID)
+	type claim struct {
+		contentIdx int
+		id         string
+		tier       ResolutionTier
+	}
+	claims := make(map[int]claim)
+	for j, item := range content {
+		shapeIdx, tier, found := resolver.ResolveWithFallback(item.PlaceholderID)
+		if !found || tier == TierTopmost {
+			continue
+		}
+		prev, taken := claims[shapeIdx]
+		if !taken {
+			claims[shapeIdx] = claim{contentIdx: j, id: item.PlaceholderID, tier: tier}
+			continue
+		}
+		if prev.id == item.PlaceholderID || (tier == TierExact && prev.tier == TierExact) {
+			continue
+		}
+		reported := tier
+		if reported == TierExact {
+			reported = prev.tier
+		}
+		return &PlaceholderCollisionError{
+			SlideIndex:   slideIndex,
+			LayoutID:     layoutID,
+			FirstID:      prev.id,
+			FirstIndex:   prev.contentIdx,
+			SecondID:     item.PlaceholderID,
+			SecondIndex:  j,
+			ResolvedName: shapes[shapeIdx].NonVisualProperties.ConnectionNonVisual.Name,
+			Tier:         reported,
+		}
+	}
+	return nil
+}

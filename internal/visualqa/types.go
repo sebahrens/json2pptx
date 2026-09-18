@@ -88,6 +88,10 @@ type Finding struct {
 	Location       string         `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
 	Source         string         `json:"source,omitempty"`          // "vision" (default) or "heuristic"
 	SuggestedFixes []SuggestedFix `json:"suggested_fixes,omitempty"` // Mapped repair_slide fix kinds
+	// BBox is the optional defect region in normalized slide coordinates.
+	// propose_repairs hit-tests it against generated element bounds to target
+	// a specific shape/cell path instead of the whole slide.
+	BBox *BBox `json:"bbox,omitempty"`
 }
 
 // String returns a human-readable representation of the finding.

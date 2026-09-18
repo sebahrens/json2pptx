@@ -136,12 +136,13 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "generate_presentation", WhenToCall: "Produce the PPTX once validate + preview are clean. Pass strict_fit: \"warn\" (default) or \"strict\" for refuse-on-overflow."},
 			{Tool: "score_deck", WhenToCall: "Structural rules over the generated deck (0-100, basis=structural); no pixels, so this score cannot visually approve a deck."},
 			{Tool: "render_deck_thumbnails", WhenToCall: "Render the current PPTX revision to pixels; every slide must have an image."},
-			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer; repair findings, then render and inspect the new revision again."},
+			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer (a host/manual reviewer records its all-slide verdict with submit_visual_review against the current pptx_revision); repair findings, then render and inspect the new revision again."},
 		}
 		notes = []string{
 			"fast_path is the DeckSpec path (list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails): author the user's real content as a compact DeckSpec and render it. The numbered `sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema.",
 			"make_deck is a skeleton/wireframe tool, not a deck builder: it fills every slide with pattern exemplar placeholder copy, so it always reports gate_passed=false, uses_exemplar_content=true, and \"exemplar_content\" in blocking_reasons. Never ship its output.",
 			"COMPLETION: " + mcpCompletionRule,
+			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}; only a complete, current-revision review with no P0/P1 findings marks the deck visually_reviewed_current_revision.",
 			"This is the canonical new-deck workflow. Each step's output informs the next.",
 			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
 			"validate_input is mandatory per SKILL.md preconditions — skipping it is a workflow violation even when preview_presentation_plan succeeds.",
@@ -163,6 +164,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			"auto_repair and read_presentation are advertised only in the full tool profile: if they are missing from your tool list, ask the operator to start the server with `json2pptx mcp --tools all` (or JSON2PPTX_MCP_TOOLS=all), or use the core sequence generate_presentation → render_deck_thumbnails → repair_slide.",
 			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
 			"COMPLETION: " + mcpCompletionRule + " auto_repair's default loop scores static + render-fit findings only and never looks at a rendered pixel; check publishable / manual_review_required / blocking_reasons, then render and inspect.",
+			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}; only a complete, current-revision review with no P0/P1 findings marks the deck visually_reviewed_current_revision.",
 			"Use this when modifying or repairing an existing PPTX deck.",
 			"You MUST supply the authoritative deck JSON for validate_input, preview_presentation_plan, repair_slide, and generate_presentation. read_presentation is a verification aid only — it does not reconstruct a PresentationInput.",
 			"If the original deck JSON is unavailable, re-author it from the brief (see task=brief) rather than trying to round-trip read_presentation through the editing tools.",
