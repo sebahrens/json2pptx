@@ -220,6 +220,7 @@ func predictFitFindingsForPattern(reg *patterns.Registry, name string, slideIdx 
 	if err != nil || grid == nil {
 		return nil
 	}
+	patterns.ApplyGridDefaults(grid)
 
 	input := &PresentationInput{
 		Slides: []SlideInput{{

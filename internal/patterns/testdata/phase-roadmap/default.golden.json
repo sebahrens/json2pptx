@@ -190,6 +190,7 @@
       ]
     },
     {
+      "max_height": 28,
       "cells": [
         {
           "shape": {
@@ -265,5 +266,6 @@
         }
       ]
     }
-  ]
+  ],
+  "vertical_align": "center"
 }

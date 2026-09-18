@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -145,6 +146,13 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	smallSize := resolveKPISmallSize(ovr)
 	cellAccentMode := ovr.CellAccentMode
 
+	geo := kpiCardGeometryFor(ctx, n)
+	iconPos := geo.iconPosition()
+	bigSize = kpiFitBigSize(ctx, *cells, bigSize, geo, iconPos)
+	rowMaxPt := kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)
+	// Icons are sized against the final card height.
+	cardGeo := kpiCardGeometry{wPt: geo.wPt, hPt: rowMaxPt}
+
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
@@ -157,7 +165,8 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			Text:     textContent,
 		}
 		if cell.Icon != nil {
-			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), "left"); icon != nil {
+			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), iconPos); icon != nil {
+				icon.Scale = cardGeo.iconScale(cell.Icon, icon.Position)
 				shape.Icon = icon
 			}
 		}
@@ -188,10 +197,14 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	colsJSON := json.RawMessage(strconv.Itoa(n))
 	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		Gap:     12,
+		Gap:     kpiCardGapPt,
 		Rows: []jsonschema.GridRowInput{
-			{Cells: gridCells},
+			{
+				Cells:     gridCells,
+				MaxHeight: math.Round(rowMaxPt),
+			},
 		},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil

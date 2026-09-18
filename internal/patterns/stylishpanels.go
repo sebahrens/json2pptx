@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -252,12 +253,26 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
+	// Content-sized rows (go-slide-creator-3i7c): the ribbon header is a
+	// band ~1.2x the header line height instead of 20% of the slide, and the
+	// body row hugs the longest bullet list; the grid centres the block.
+	font := ctx.Theme.BodyFont
+	contentW, _ := contentAreaPt(ctx)
+	colW := equalColumnWidthPt(contentW, n, 12) - 2*defaultShapeInsetLRPt
+	titles := make([]string, n)
+	bodyH := 0.0
+	for i, item := range *items {
+		titles[i] = item.Title
+		bodyH = math.Max(bodyH, shapeTextHeightPt(font, bodyCells[i].Shape.Text, colW))
+	}
+	headerPt := headerRowPt(font, titles, headerSize, colW)
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:     12,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
+		Gap:           12,
+		VerticalAlign: GridVerticalAlignDefault,
 		Rows: []jsonschema.GridRowInput{
-			{Cells: headerCells, Height: 20},
-			{Cells: bodyCells},
+			{Cells: headerCells, MinHeight: headerPt, MaxHeight: headerPt},
+			{Cells: bodyCells, MaxHeight: math.Round(bodyH + 2*defaultShapeInsetTBPt + cardPadPt)},
 		},
 	}
 

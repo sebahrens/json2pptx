@@ -54,7 +54,9 @@ func computeTextBudgetGuide(pat patterns.Pattern) *textcapacity.TextBudgetGuide 
 		if values == nil {
 			return nil, nil
 		}
-		return pat.Expand(expandCtx, values, nil, nil)
+		grid, err := pat.Expand(expandCtx, values, nil, nil)
+		patterns.ApplyGridDefaults(grid)
+		return grid, err
 	}
 
 	bounds := shapegrid.DefaultBounds(slideWidth, slideHeight)

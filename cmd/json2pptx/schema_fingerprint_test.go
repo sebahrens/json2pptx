@@ -79,8 +79,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.59.0 added the submit_visual_review MCP tool (host/manual visual review
 	// completion path), which changes the tool-name set, so the hash advanced
 	// from 24b985854165d81f (4.58.0).
+	// 4.60.0 added the shape_grid `vertical_align` input field
+	// (PresentationInput surface), so the hash advanced from 7f195236332af9cf
+	// (4.59.0).
 	// If this fails, see file header comment.
-	const wantFingerprint = "7f195236332af9cf"
+	const wantFingerprint = "1ac5c1b7225e3cb3"
 
 	got := schemaFingerprint()
 

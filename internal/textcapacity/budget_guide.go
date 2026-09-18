@@ -120,12 +120,14 @@ func computeConfigBudget(
 		)
 	}
 
+	vAlign, _ := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	sgGrid := &shapegrid.Grid{
 		Bounds:  bounds,
 		Columns: colWidths,
 		Rows:    sgRows,
 		ColGap:  colGap,
 		RowGap:  rowGap,
+		VAlign:  vAlign,
 	}
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {

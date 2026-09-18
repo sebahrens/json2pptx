@@ -62,7 +62,7 @@ Shape grid (optional per-slide, XOR with pattern): "shape_grid" places preset ge
 Example: {"shape_grid":{"columns":3,"rows":[{"cells":[{"shape":{"geometry":"roundRect","fill":"#4472C4","text":"Step 1"}},{"shape":{"geometry":"rightArrow","fill":"#70AD47"}},{"shape":{"geometry":"roundRect","fill":"#4472C4","text":"Step 2"}}]}]}}
 Cell types: "shape" (preset geometry with fill/line/text) or "table" (same as table content type).
 Common geometries: rect, roundRect, ellipse, diamond, chevron, rightArrow, hexagon, plus, star5, donut, flowChartProcess, flowChartDecision, flowChartTerminator.
-Grid options: "columns" (number or width array), "gap"/"col_gap"/"row_gap" (points), "bounds" (percentage {x,y,width,height}).
+Grid options: "columns" (number or width array), "gap"/"col_gap"/"row_gap" (points), "bounds" (percentage {x,y,width,height}), "vertical_align" ("stretch" default|"top"|"center"|"bottom"; places a block of max_height-capped rows inside the bounds).
 Cell options: "col_span", "row_span" for merged cells. Shape options: "geometry", "fill" (color string or {color,alpha}), "line" ({color,width,dash}), "text" (string or {content,size,bold,italic,align,vertical_align,color,font,inset_left,inset_right,inset_top,inset_bottom}), "rotation", "adjustments".
 
 Optional top-level fields: "output_filename", "accent_strategy" ("primary"|"rotate"|"section-keyed" — controls default accent color rotation across slides), "viewing_mode" ("present" default|"read" — readability floors for TEXT_BELOW_READABLE_MIN), "defaults":{"table_style":{...},"cell_style":{...}} (swap-only deck-level defaults applied before validation), "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
@@ -1437,6 +1437,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		}
 		grid, err := pat.Expand(expandCtx, exemplar.ExemplarValues(), nil, nil)
 		if err == nil {
+			patterns.ApplyGridDefaults(grid)
 			candidates[i].ExpansionPreview = grid
 		}
 

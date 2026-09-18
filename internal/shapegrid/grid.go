@@ -89,10 +89,12 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 		}
 	}
 
-	// Compute absolute row positions and heights (truncation-safe)
-	rowHeightsEMU := distributeEMU(rowHeights, availH)
+	// Compute absolute row positions and heights (truncation-safe). With a
+	// non-stretch VAlign, slack left by capped rows is kept and the block is
+	// placed inside the bounds instead of re-scaling rows to fill them.
+	rowHeightsEMU, blockOffset := layoutRowsEMU(rowHeights, availH, effectiveVAlign(grid))
 	rowYOffsets := make([]int64, numRows)
-	y := gridY
+	y := gridY + blockOffset
 	for r := 0; r < numRows; r++ {
 		rowYOffsets[r] = y
 		y += rowHeightsEMU[r] + rowGapEMU
@@ -558,6 +560,57 @@ func textHeightEMU(lines int, fontSizePt, insetTopPt, insetBottomPt float64) int
 	return int64(totalPt * 12700)                        // points to EMU
 }
 
+// effectiveVAlign returns the grid's alignment. Slack is only kept when at
+// least one row is capped by max_height — the explicit "this row is
+// content-sized" signal. Grids without capped rows keep the legacy
+// proportional stretch even when their fixed / auto_height rows sum below
+// 100%: many layouts (agenda lists, stacked steps, team-bios photo/text
+// rows) author relative proportions and rely on that normalisation.
+func effectiveVAlign(grid *Grid) VerticalAlign {
+	if grid.VAlign == VAlignStretch {
+		return VAlignStretch
+	}
+	for _, r := range grid.Rows {
+		if r.MaxHeight > 0 {
+			return grid.VAlign
+		}
+	}
+	return VAlignStretch
+}
+
+// layoutRowsEMU converts resolved row percentages to EMU heights and returns
+// the vertical offset of the row block inside the available height.
+//
+// VAlignStretch (legacy) normalises the percentages to fill availH exactly.
+// Any other alignment keeps the percentages as absolute shares of availH when
+// they sum to less than 100 — so MaxHeight caps and fixed heights that leave
+// slack produce a content-sized block — and positions that block at the
+// top, centre, or bottom. When the rows over-fill (sum >= 100) the behavior
+// is the same as stretch (rows are scaled down to fit).
+func layoutRowsEMU(pcts []float64, availH int64, align VerticalAlign) ([]int64, int64) {
+	if align == VAlignStretch || availH <= 0 {
+		return distributeEMU(pcts, availH), 0
+	}
+	var sum float64
+	for _, p := range pcts {
+		sum += p
+	}
+	if sum <= 0 || sum >= 100-1e-6 {
+		return distributeEMU(pcts, availH), 0
+	}
+	used := int64(float64(availH) * sum / 100.0)
+	heights := distributeEMU(pcts, used)
+	slack := availH - used
+	switch align {
+	case VAlignCenter:
+		return heights, slack / 2
+	case VAlignBottom:
+		return heights, slack
+	default:
+		return heights, 0
+	}
+}
+
 // distributeEMU converts percentage slices into absolute EMU values that sum
 // exactly to totalEMU. It uses largest-remainder rounding to distribute
 // truncation error evenly across entries, preventing cumulative drift that
@@ -804,6 +857,14 @@ type iconOverlayLayout struct {
 // iconOverlayGapEMU is the gap between icon and text (3pt).
 const iconOverlayGapEMU = 3 * 12700
 
+// leftIconMaxWidthFrac caps a "left" overlay icon at this share of the shape
+// width, bounding the text's extra left inset to icon size + padding.
+const leftIconMaxWidthFrac = 0.25
+
+// topIconMaxHeightFrac caps a "top" overlay icon at this share of the shape
+// height so short, wide cards keep most of their height for text.
+const topIconMaxHeightFrac = 0.4
+
 // hasNonEmptyText checks whether a json.RawMessage text field contains actual
 // non-empty text content. It mirrors the shape text renderer (ResolveTextInput)
 // by recognizing all three authored forms: a plain string, an object with a
@@ -882,10 +943,17 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 
 	switch pos {
 	case "left":
-		// Icon on the left side, sized to 60% of cell height, vertically centered.
+		// Icon on the left side, sized to scale × cell height, vertically
+		// centered. The icon (and therefore the text's left inset) is capped
+		// at leftIconMaxWidthFrac of the shape width so a tall card does not
+		// hand 60% of its width to the icon and squeeze the text into a
+		// sliver on the right (go-slide-creator-5lbo).
 		iconH := int64(float64(h) * scale)
 		if iconH > size {
 			iconH = size // keep square
+		}
+		if maxW := int64(float64(w) * leftIconMaxWidthFrac); iconH > maxW {
+			iconH = maxW
 		}
 		return iconOverlayLayout{
 			Bounds: pptx.RectEmu{
@@ -898,6 +966,16 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 		}
 	case "top":
 		// Icon centered horizontally and vertically within the top icon zone.
+		// On landscape shapes with the default scale the icon is capped at
+		// topIconMaxHeightFrac of the shape height so the text keeps the
+		// majority of the box (a width-derived icon would otherwise eat a
+		// short card). Square/portrait shapes and explicit scales are kept.
+		explicitScale := icon != nil && icon.Scale > 0 && icon.Scale <= 1.0
+		if !explicitScale && w > int64(float64(h)*1.2) {
+			if maxH := int64(float64(h) * topIconMaxHeightFrac); size > maxH {
+				size = maxH
+			}
+		}
 		iconZoneH := size + 2*iconOverlayGapEMU
 		return iconOverlayLayout{
 			Bounds: pptx.RectEmu{

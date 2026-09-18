@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -198,7 +199,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
-	bodySize := ResolveSize(ovr.BodySize, 12.0)
+	bodySize := ResolveSize(ovr.BodySize, 14.0)
 	cellAccentMode := ovr.CellAccentMode
 
 	beforeAccent := ResolveCellAccent(baseAccent, 0, cellAccentMode)
@@ -267,15 +268,22 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// 3-column grid: [45%, 10%, 45%]
 	colsJSON := json.RawMessage(`[45, 10, 45]`)
 
+	// Content-sized rows (go-slide-creator-3i7c): the header band is ~1.2x
+	// the header line height (not 25% of the slide) and the body row hugs the
+	// longest bullet list; the grid centres the block vertically.
+	headerPt, bodyPt := beforeAfterRowHeights(ctx, vals, headerSize, bodySize, 8)
 	grid := &jsonschema.ShapeGridInput{
-		Columns: colsJSON,
-		Gap:     8,
+		Columns:       colsJSON,
+		Gap:           8,
+		VerticalAlign: GridVerticalAlignDefault,
 		Rows: []jsonschema.GridRowInput{
 			{
-				Height: 25,
-				Cells:  []*jsonschema.GridCellInput{beforeHeaderCell, chevronCell, afterHeaderCell},
+				MinHeight: headerPt,
+				MaxHeight: headerPt,
+				Cells:     []*jsonschema.GridCellInput{beforeHeaderCell, chevronCell, afterHeaderCell},
 			},
 			{
+				MaxHeight: bodyPt,
 				Cells: []*jsonschema.GridCellInput{
 					beforeBodyCell,
 					{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
@@ -286,6 +294,21 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	return grid, nil
+}
+
+// beforeAfterRowHeights returns the fixed header-band height and the body
+// row's max height (points) for the [45, 10, 45] before/after layout.
+func beforeAfterRowHeights(ctx ExpandContext, vals *BeforeAfterValues, headerSize, bodySize, gapPt float64) (headerPt, bodyPt float64) {
+	font := ctx.Theme.BodyFont
+	w, _ := contentAreaPt(ctx)
+	colW := (w-2*gapPt)*0.45 - 2*defaultShapeInsetLRPt
+	headerPt = headerRowPt(font, []string{vals.Before.Header, vals.After.Header}, headerSize, colW)
+	body := math.Max(
+		shapeTextHeightPt(font, buildBeforeAfterBulletContent(vals.Before.Items, bodySize), colW),
+		shapeTextHeightPt(font, buildBeforeAfterBulletContent(vals.After.Items, bodySize), colW),
+	)
+	bodyPt = math.Round(body + 2*defaultShapeInsetTBPt + cardPadPt)
+	return headerPt, bodyPt
 }
 
 func buildBeforeAfterTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -241,6 +242,10 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	colsJSON, _ := json.Marshal(len(vals.Steps))
 
+	// Steps are capped at processFlowMaxHeightFrac of the content height
+	// (go-slide-creator-7km8) instead of stretching into full-height pillars
+	// with needle-thin diamonds; the grid centres the row vertically.
+	_, contentH := contentAreaPt(ctx)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		Gap:     12,
@@ -248,12 +253,18 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			{
 				Cells:     cells,
 				Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
+				MaxHeight: math.Round(contentH * processFlowMaxHeightFrac),
 			},
 		},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
 }
+
+// processFlowMaxHeightFrac caps process-flow steps at this share of the
+// content height.
+const processFlowMaxHeightFrac = 0.35
 
 func buildProcessFlowTextContent(content string, size float64) json.RawMessage {
 	type paragraph struct {

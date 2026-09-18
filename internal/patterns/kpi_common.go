@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -343,4 +344,150 @@ func kpiSubSize(smallSize float64) float64 {
 		return 8
 	}
 	return s
+}
+
+// ---------------------------------------------------------------------------
+// KPI card geometry (go-slide-creator-5lbo)
+// ---------------------------------------------------------------------------
+
+const (
+	// kpiCardGapPt is the gap between KPI cards.
+	kpiCardGapPt = 12.0
+	// kpiLeftIconMinAspect: cards at least this much wider than tall place
+	// their icon on the left; narrower cards stack the icon on top so the
+	// value keeps the full card width.
+	kpiLeftIconMinAspect = 1.2
+	// kpiMinBigSize is the floor the big number shrinks to before it may wrap.
+	kpiMinBigSize = 16.0
+	// Mirrors shapegrid's overlay defaults: 0.6 icon scale, 3pt gap, and
+	// the left-icon cap of 25% of the card width.
+	kpiIconGapPt        = 3.0
+	kpiLeftIconMaxWFrac = 0.25
+	// Default KPI icon footprint (the icon is an accent, not the headline):
+	// a top icon is at most 28% of the card height / 45% of its width, a left
+	// icon at most 40% of the card height / 20% of its width.
+	kpiTopIconHFrac  = 0.28
+	kpiTopIconWFrac  = 0.45
+	kpiLeftIconHFrac = 0.4
+	kpiLeftIconWFrac = 0.2
+	// kpiMaxCardHeightFrac caps a KPI card at this share of the content
+	// height (go-slide-creator-7km8): a big number in a 5in-tall card reads
+	// as an empty box. The row is centred vertically by the grid.
+	kpiMaxCardHeightFrac = 0.45
+	// kpiCardPadPt is the vertical breathing room added around the card text
+	// when content needs more than the cap.
+	kpiCardPadPt = 24.0
+)
+
+// kpiCardGeometry is the estimated size (points) of one KPI card.
+type kpiCardGeometry struct {
+	wPt, hPt float64
+}
+
+// kpiCardGeometryFor estimates the card size for n cards spread across the
+// content area. Card height is capped at kpiMaxCardHeightFrac of the content
+// height.
+func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
+	w, h := contentAreaPt(ctx)
+	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiMaxCardHeightFrac}
+}
+
+// kpiRowMaxHeightPt returns the KPI row's max_height: the capped card height,
+// raised when the tallest card's content (top icon zone + value + sub +
+// caption + padding) needs more, never above the content height.
+func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, iconPos string, bigSize, smallSize float64) float64 {
+	_, contentH := contentAreaPt(ctx)
+	font := ctx.Theme.BodyFont
+	textW := geo.wPt - 2*defaultShapeInsetLRPt
+	need := 0.0
+	for _, c := range cells {
+		w := geo.valueWidthPt(c.Icon, iconPos)
+		if w <= 0 {
+			w = textW
+		}
+		h := textBlockHeightPt(font, w,
+			textParagraph{text: c.Big, size: bigSize, bold: true},
+			textParagraph{text: c.Sub, size: kpiSubSize(smallSize)},
+			textParagraph{text: c.Small, size: smallSize},
+		)
+		pos := effectiveIconPos(c.Icon, iconPos)
+		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {
+			h += math.Min(geo.wPt, geo.hPt)*geo.iconScale(c.Icon, pos) + 2*kpiIconGapPt
+		}
+		need = math.Max(need, h+kpiCardPadPt+2*defaultShapeInsetTBPt)
+	}
+	return clampPt(need, geo.hPt, contentH)
+}
+
+// iconPosition picks the default overlay icon position: "left" for landscape
+// cards, "top" for square / portrait cards (a left icon on a narrow card
+// squeezes the value into a sliver and breaks it mid-token).
+func (g kpiCardGeometry) iconPosition() string {
+	if g.wPt >= g.hPt*kpiLeftIconMinAspect {
+		return "left"
+	}
+	return "top"
+}
+
+// iconSizePt returns the default icon edge (points) for a card at pos.
+func (g kpiCardGeometry) iconSizePt(pos string) float64 {
+	if pos == "left" {
+		return math.Min(g.hPt*kpiLeftIconHFrac, g.wPt*kpiLeftIconWFrac)
+	}
+	return math.Min(g.hPt*kpiTopIconHFrac, g.wPt*kpiTopIconWFrac)
+}
+
+// iconScale converts the default icon size into the overlay scale factor
+// shapegrid applies (icon edge = scale x min(card w, card h)); a
+// user-authored scale wins.
+func (g kpiCardGeometry) iconScale(icon *IconRef, pos string) float64 {
+	if icon != nil && icon.Scale > 0 && icon.Scale <= 1 {
+		return icon.Scale
+	}
+	minDim := math.Min(g.wPt, g.hPt)
+	if minDim <= 0 {
+		return 0
+	}
+	return math.Min(1, math.Round(g.iconSizePt(pos)/minDim*100)/100)
+}
+
+// effectiveIconPos returns the icon's authored position or the default.
+func effectiveIconPos(icon *IconRef, pos string) string {
+	if icon != nil && icon.Position != "" {
+		return icon.Position
+	}
+	return pos
+}
+
+// valueWidthPt returns the text width available to the big value in a card
+// whose icon (if any) sits at pos, mirroring shapegrid's overlay layout.
+func (g kpiCardGeometry) valueWidthPt(icon *IconRef, pos string) float64 {
+	w := g.wPt - 2*defaultShapeInsetLRPt
+	if icon == nil || icon.IsEmpty() {
+		return w
+	}
+	pos = effectiveIconPos(icon, pos)
+	if pos != "left" {
+		return w
+	}
+	scale := g.iconScale(icon, pos)
+	iconPt := math.Min(g.hPt*scale, math.Min(g.wPt, g.hPt)*scale)
+	iconPt = math.Min(iconPt, g.wPt*kpiLeftIconMaxWFrac)
+	return w - iconPt - 2*kpiIconGapPt
+}
+
+// kpiFitBigSize shrinks the big-number size so every card's value renders on
+// a single line (no "$4 / .2 / M" or "12 / days" breaks). The smallest fitting
+// size is applied to all cards so the row stays visually uniform.
+func kpiFitBigSize(ctx ExpandContext, cells []KPICell, bigSize float64, geo kpiCardGeometry, iconPos string) float64 {
+	font := ctx.Theme.BodyFont
+	size := bigSize
+	for _, c := range cells {
+		if c.Big == "" {
+			continue
+		}
+		s := fitSingleLineSize(c.Big, font, true, bigSize, kpiMinBigSize, geo.valueWidthPt(c.Icon, iconPos))
+		size = math.Min(size, s)
+	}
+	return size
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -107,7 +108,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
 					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default rounded rectangles), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
+					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default: horizontal axis with accent dots, dates above, label/body below), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -212,59 +213,129 @@ func (th *timelineHorizontal) Expand(ctx ExpandContext, values, overrides any, c
 func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	labelSize := ResolveSize(ovr.LabelSize, 14.0)
-	dateSize := ResolveSize(ovr.DateSize, 10.0)
-	bodySize := ResolveSize(ovr.BodySize, 10.0)
+	dateSize := ResolveSize(ovr.DateSize, 12.0)
+	bodySize := ResolveSize(ovr.BodySize, 12.0)
 
 	n := len(*stops)
-	gridCells := make([]*jsonschema.GridCellInput, n)
+	font := ctx.Theme.BodyFont
+	contentW, contentH := contentAreaPt(ctx)
+	textW := equalColumnWidthPt(contentW, n, timelineDotsColGapPt) - 2*defaultShapeInsetLRPt
+
+	// A real timeline (go-slide-creator-7km8): an optional date row above a
+	// horizontal axis of accent dots joined by connector lines, with the stop
+	// label + body below each dot. Every row is content-sized and the block
+	// is centred vertically, instead of full-height filled pillars.
+	hasDates := false
+	dateCells := make([]*jsonschema.GridCellInput, n)
+	dotCells := make([]*jsonschema.GridCellInput, n)
+	labelCells := make([]*jsonschema.GridCellInput, n)
+	var dateH, labelH float64
 	for i, stop := range *stops {
-		textContent := buildTimelineStopTextContent(stop, labelSize, dateSize, bodySize)
-
-		shape := &jsonschema.ShapeSpecInput{
-			Geometry: "roundRect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     textContent,
+		if stop.Date != "" {
+			hasDates = true
 		}
+		dateCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Text:     buildTimelineDotsText([]timelineDotsPara{{stop.Date, dateSize, true, accent}}, "b"),
+		}}
+		dateH = math.Max(dateH, textBlockHeightPt(font, textW, textParagraph{text: stop.Date, size: dateSize, bold: true}))
 
-		gc := &jsonschema.GridCellInput{
-			Shape: shape,
-		}
-
-		// Apply cell overrides
-		if co, ok := cellOverrides[i]; ok {
-			cellOvr, coOk := co.(*TimelineHorizontalCellOverride)
-			if !coOk {
-				continue
-			}
-			if cellOvr.AccentBar {
-				gc.AccentBar = &jsonschema.AccentBarInput{
-					Position: "top",
-					Color:    accent,
-					Width:    4,
-				}
-			}
-		}
-
-		gridCells[i] = gc
-	}
-
-	// Connectors are intentionally omitted in dots style: a horizontal line
-	// routed between adjacent rounded rectangles sits at the same vertical
-	// position as centered text inside the cells, producing visible artifacts
-	// where 'Jan-Mar' reads as 'jan-iviar' at low rendering DPIs (see bead
-	// go-slide-creator-2krk). The uniform horizontal arrangement of boxes
-	// already communicates the timeline sequence without a separator line.
-	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
-		Gap:     16,
-		Rows: []jsonschema.GridRowInput{
-			{
-				Cells: gridCells,
+		dotCells[i] = &jsonschema.GridCellInput{
+			Fit: "contain",
+			Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "ellipse",
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+				Line:     json.RawMessage(`"none"`),
 			},
-		},
+		}
+
+		paras := []timelineDotsPara{{stop.Label, labelSize, true, "dk1"}}
+		if stop.Body != "" {
+			paras = append(paras, timelineDotsPara{stop.Body, bodySize, false, "dk1"})
+		}
+		labelCells[i] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`"none"`),
+			Text:     buildTimelineDotsText(paras, "t"),
+		}}
+		labelH = math.Max(labelH, textBlockHeightPt(font, textW,
+			textParagraph{text: stop.Label, size: labelSize, bold: true},
+			textParagraph{text: stop.Body, size: bodySize}))
+
+		if co, ok := cellOverrides[i]; ok {
+			if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk && cellOvr.AccentBar {
+				labelCells[i].AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
+			}
+		}
 	}
 
-	return grid, nil
+	pad := 2*defaultShapeInsetTBPt + 4
+	var rows []jsonschema.GridRowInput
+	if hasDates {
+		h := math.Round(dateH + pad)
+		rows = append(rows, jsonschema.GridRowInput{Cells: dateCells, MinHeight: h, MaxHeight: h})
+	}
+	rows = append(rows, jsonschema.GridRowInput{
+		Cells:     dotCells,
+		MinHeight: timelineDotSizePt,
+		MaxHeight: timelineDotSizePt,
+		Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: accent, Width: 2.5},
+	})
+	stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
+	rows = append(rows, jsonschema.GridRowInput{Cells: labelCells, MaxHeight: math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))})
+
+	return &jsonschema.ShapeGridInput{
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
+		ColGap:        timelineDotsColGapPt,
+		RowGap:        6,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
+	}, nil
+}
+
+const (
+	// timelineDotSizePt is the axis-row height and therefore the dot diameter.
+	timelineDotSizePt = 18.0
+	// timelineDotsColGapPt separates stop columns in dots style.
+	timelineDotsColGapPt = 16.0
+	// timelineStopMaxHeightFrac caps the label/body zone under each dot.
+	timelineStopMaxHeightFrac = 0.4
+	// timelineChevronMaxHeightFrac caps the chevron row in chevron style.
+	timelineChevronMaxHeightFrac = 0.25
+)
+
+// timelineDotsPara is one paragraph of dots-style stop text.
+type timelineDotsPara struct {
+	content string
+	size    float64
+	bold    bool
+	color   string
+}
+
+// buildTimelineDotsText renders centred paragraphs anchored at vAlign.
+func buildTimelineDotsText(paras []timelineDotsPara, vAlign string) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Bold    bool    `json:"bold,omitempty"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+	out := make([]paragraph, 0, len(paras))
+	for _, p := range paras {
+		content := p.content
+		if content == "" {
+			content = " "
+		}
+		out = append(out, paragraph{Content: content, Size: p.size, Bold: p.bold, Color: p.color, Align: "ctr"})
+	}
+	data, _ := json.Marshal(struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+	}{Paragraphs: out, Align: "ctr", VerticalAlign: vAlign})
+	return data
 }
 
 // expandChevron renders connected homePlate shapes with a gradient tint across the chain.
@@ -330,13 +401,19 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 		dateCells[i] = &jsonschema.GridCellInput{Shape: shape}
 	}
 
+	// Content-sized rows (go-slide-creator-7km8): the chevron row is capped
+	// at timelineChevronMaxHeightFrac of the content height and the date row
+	// hugs its text; the grid centres the block vertically.
+	_, contentH := contentAreaPt(ctx)
+	dateRowH := math.Round(dateSize*contentLineHeight + 2*defaultShapeInsetTBPt + 4)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, n)),
 		Gap:     0,
 		Rows: []jsonschema.GridRowInput{
-			{Cells: chevronCells, Height: 60},
-			{Cells: dateCells, Height: 24},
+			{Cells: chevronCells, MaxHeight: math.Round(contentH * timelineChevronMaxHeightFrac)},
+			{Cells: dateCells, MinHeight: dateRowH, MaxHeight: dateRowH},
 		},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
@@ -350,6 +427,10 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 	dateSize := ResolveSize(ovr.DateSize, 9.0)
 
 	n := len(*stops)
+	// Bars are capped (go-slide-creator-7km8) so 3 stops do not become three
+	// slide-height slabs; the grid centres the stack vertically.
+	_, contentH := contentAreaPt(ctx)
+	ganttBarMaxPt := math.Round(math.Max(contentH*0.12, labelSize*contentLineHeight*2+2*defaultShapeInsetTBPt))
 
 	// Each stop becomes a row with: label cell (col 1) + bar cell (col 2)
 	rows := make([]jsonschema.GridRowInput, n)
@@ -403,13 +484,15 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 				{Shape: labelShape},
 				barCell,
 			},
+			MaxHeight: ganttBarMaxPt,
 		}
 	}
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`[30, 70]`),
-		Gap:     8,
-		Rows:    rows,
+		Columns:       json.RawMessage(`[30, 70]`),
+		Gap:           8,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
@@ -455,40 +538,6 @@ func buildChevronTextContent(stop TimelineStop, labelSize float64) json.RawMessa
 	}
 	if stop.Body != "" {
 		paras = append(paras, paragraph{Content: stop.Body, Size: labelSize - 2, Color: "lt1", Align: "ctr"})
-	}
-
-	textObj := struct {
-		Paragraphs    []paragraph `json:"paragraphs"`
-		Align         string      `json:"align"`
-		VerticalAlign string      `json:"vertical_align"`
-	}{
-		Paragraphs:    paras,
-		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-
-	data, _ := json.Marshal(textObj)
-	return data
-}
-
-// buildTimelineStopTextContent creates a JSON text object with paragraphs for a timeline stop.
-func buildTimelineStopTextContent(stop TimelineStop, labelSize, dateSize, bodySize float64) json.RawMessage {
-	type paragraph struct {
-		Content string  `json:"content"`
-		Size    float64 `json:"size"`
-		Bold    bool    `json:"bold,omitempty"`
-		Color   string  `json:"color,omitempty"`
-		Align   string  `json:"align,omitempty"`
-	}
-
-	paras := []paragraph{
-		{Content: stop.Label, Size: labelSize, Bold: true, Color: "lt1", Align: "ctr"},
-	}
-	if stop.Date != "" {
-		paras = append(paras, paragraph{Content: stop.Date, Size: dateSize, Color: "lt1", Align: "ctr"})
-	}
-	if stop.Body != "" {
-		paras = append(paras, paragraph{Content: stop.Body, Size: bodySize, Color: "lt1", Align: "ctr"})
 	}
 
 	textObj := struct {

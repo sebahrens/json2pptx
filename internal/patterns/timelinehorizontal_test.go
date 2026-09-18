@@ -209,11 +209,14 @@ func TestTimelineHorizontal(t *testing.T) {
 		if grid == nil {
 			t.Fatal("Expand returned nil grid")
 		}
-		if len(grid.Rows) != 1 {
-			t.Fatalf("expected 1 row, got %d", len(grid.Rows))
+		// dots style: date row, axis row (dots + connector line), label row.
+		if len(grid.Rows) != 3 {
+			t.Fatalf("expected 3 rows (dates, axis, labels), got %d", len(grid.Rows))
 		}
-		if len(grid.Rows[0].Cells) != 3 {
-			t.Fatalf("expected 3 cells, got %d", len(grid.Rows[0].Cells))
+		for r := range grid.Rows {
+			if len(grid.Rows[r].Cells) != 3 {
+				t.Fatalf("row %d: expected 3 cells, got %d", r, len(grid.Rows[r].Cells))
+			}
 		}
 		// Check columns matches stop count
 		var cols int
@@ -223,16 +226,21 @@ func TestTimelineHorizontal(t *testing.T) {
 		if cols != 3 {
 			t.Errorf("columns = %d, want 3", cols)
 		}
-		// Connector must not be emitted in dots style: a horizontal line
-		// between adjacent rounded rectangles slashes through centered text
-		// inside the cells (regression guard for go-slide-creator-2krk).
-		if grid.Rows[0].Connector != nil {
-			t.Errorf("dots style must not emit a row connector, got %+v", grid.Rows[0].Connector)
+		// The axis row joins text-free dots with a line connector; text rows
+		// never carry a connector (go-slide-creator-2krk guard).
+		axis := grid.Rows[1]
+		if axis.Connector == nil || axis.Connector.Style != "line" {
+			t.Errorf("axis row must carry a line connector, got %+v", axis.Connector)
 		}
-		// Check default fill is accent1
-		for i, cell := range grid.Rows[0].Cells {
-			if cell.Shape == nil {
-				t.Fatalf("cell[%d].Shape is nil", i)
+		if grid.Rows[0].Connector != nil || grid.Rows[2].Connector != nil {
+			t.Error("text rows must not carry connectors")
+		}
+		for i, cell := range axis.Cells {
+			if cell.Shape == nil || cell.Shape.Geometry != "ellipse" || cell.Fit != "contain" {
+				t.Fatalf("axis cell[%d] must be a contained ellipse dot, got %+v", i, cell)
+			}
+			if len(cell.Shape.Text) != 0 {
+				t.Errorf("axis dot[%d] must carry no text", i)
 			}
 			var fill string
 			if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
@@ -240,6 +248,14 @@ func TestTimelineHorizontal(t *testing.T) {
 			}
 			if fill != "accent1" {
 				t.Errorf("cell[%d] fill = %q, want %q", i, fill, "accent1")
+			}
+		}
+		if grid.VerticalAlign != GridVerticalAlignDefault {
+			t.Errorf("vertical_align = %q, want %q", grid.VerticalAlign, GridVerticalAlignDefault)
+		}
+		for r, row := range grid.Rows {
+			if row.MaxHeight <= 0 {
+				t.Errorf("row %d must be content-sized (max_height), got 0", r)
 			}
 		}
 	})
@@ -252,6 +268,9 @@ func TestTimelineHorizontal(t *testing.T) {
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
+		}
+		if len(grid.Rows) != 2 {
+			t.Fatalf("labels-only stops: expected 2 rows (axis, labels), got %d", len(grid.Rows))
 		}
 		if len(grid.Rows[0].Cells) != 7 {
 			t.Fatalf("expected 7 cells, got %d", len(grid.Rows[0].Cells))
@@ -276,6 +295,7 @@ func TestTimelineHorizontal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
+		// No dates: row 0 is the axis of dots.
 		for i, cell := range grid.Rows[0].Cells {
 			var fill string
 			if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
@@ -300,10 +320,12 @@ func TestTimelineHorizontal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		if grid.Rows[0].Cells[0].AccentBar != nil {
+		// No dates: row 1 holds the stop labels, which carry the accent bar.
+		labels := grid.Rows[len(grid.Rows)-1]
+		if labels.Cells[0].AccentBar != nil {
 			t.Error("cell[0] should not have accent bar")
 		}
-		ab := grid.Rows[0].Cells[1].AccentBar
+		ab := labels.Cells[1].AccentBar
 		if ab == nil {
 			t.Fatal("cell[1] should have accent bar")
 		}
@@ -326,7 +348,10 @@ func TestTimelineHorizontal(t *testing.T) {
 			t.Fatalf("Expand: %v", err)
 		}
 		// Check that text only contains 1 paragraph (label only, no date/body)
-		for i, cell := range grid.Rows[0].Cells {
+		if len(grid.Rows) != 2 {
+			t.Fatalf("no dates: expected axis + label rows, got %d", len(grid.Rows))
+		}
+		for i, cell := range grid.Rows[1].Cells {
 			var textObj struct {
 				Paragraphs []json.RawMessage `json:"paragraphs"`
 			}

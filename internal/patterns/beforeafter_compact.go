@@ -232,18 +232,25 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 	colsJSON := json.RawMessage(`[45, 10, 45]`)
 
+	// Compact means compact (go-slide-creator-3i7c): a header band sized to
+	// the header text and a body row that hugs the bullets, the whole block
+	// capped at 60% of the content area and centred there.
+	headerPt, bodyPt := beforeAfterRowHeights(ctx, vals, headerSize, bodySize, 6)
 	grid := &jsonschema.ShapeGridInput{
 		Bounds: &jsonschema.GridBoundsInput{
 			X: 0, Y: 0, Width: 100, Height: 60,
 		},
-		Columns: colsJSON,
-		Gap:     6,
+		Columns:       colsJSON,
+		Gap:           6,
+		VerticalAlign: GridVerticalAlignDefault,
 		Rows: []jsonschema.GridRowInput{
 			{
-				Height: 30,
-				Cells:  []*jsonschema.GridCellInput{beforeHeaderCell, chevronCell, afterHeaderCell},
+				MinHeight: headerPt,
+				MaxHeight: headerPt,
+				Cells:     []*jsonschema.GridCellInput{beforeHeaderCell, chevronCell, afterHeaderCell},
 			},
 			{
+				MaxHeight: bodyPt,
 				Cells: []*jsonschema.GridCellInput{
 					beforeBodyCell,
 					{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
