@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -268,9 +269,15 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	heroCell := hd.buildHeroCell(v.Hero, accent, heroSize, labelSize)
 	heroCell.ColSpan = len(v.Details)
 
+	// Content-sized rows (go-slide-creator-3i7c): the hero row hugs the
+	// stat + label, detail cards hug their title/body (sparse card text is
+	// centred), and the grid centres the block vertically.
+	font := ctx.Theme.BodyFont
+	contentW, contentH := contentAreaPt(ctx)
+	heroH := shapeTextHeightPt(font, heroCell.Shape.Text, contentW-2*defaultShapeInsetLRPt)
 	heroRow := jsonschema.GridRowInput{
-		Height: 40,
-		Cells:  []*jsonschema.GridCellInput{heroCell},
+		MaxHeight: math.Round(math.Min(heroH+2*defaultShapeInsetTBPt+cardPadPt, contentH*0.45)),
+		Cells:     []*jsonschema.GridCellInput{heroCell},
 	}
 
 	// Row 2: Detail cards (N columns, ~60% height)
@@ -295,13 +302,28 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
+	cardW := equalColumnWidthPt(contentW, len(v.Details), 10)
+	textW := cardW - 2*defaultShapeInsetLRPt
+	textHs := make([]float64, len(detailCells))
+	cardH := 0.0
+	for i, dc := range detailCells {
+		textHs[i] = shapeTextHeightPt(font, dc.Shape.Text, textW)
+		cardH = math.Max(cardH, contentCardHeightPt(textHs[i], cardW, dc.Shape.Icon != nil))
+	}
+	for i, dc := range detailCells {
+		if dc.Shape.Icon == nil {
+			dc.Shape.Text = anchorSparseText(dc.Shape.Text, textHs[i], cardH-2*defaultShapeInsetTBPt)
+		}
+	}
 	detailRow := jsonschema.GridRowInput{
-		Cells: detailCells,
+		MaxHeight: cardH,
+		Cells:     detailCells,
 	}
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, len(v.Details))),
-		Gap:     10,
+		VerticalAlign: GridVerticalAlignDefault,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, len(v.Details))),
+		Gap:           10,
 		Rows: []jsonschema.GridRowInput{
 			heroRow,
 			detailRow,

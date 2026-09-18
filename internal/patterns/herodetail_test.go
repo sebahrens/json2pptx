@@ -345,8 +345,16 @@ func TestHeroDetail(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		if grid.Rows[0].Height != 40 {
-			t.Errorf("hero row height = %v, want 40", grid.Rows[0].Height)
+		// Content-sized rows (go-slide-creator-3i7c): both rows carry a
+		// max_height in points and the block is centred.
+		if grid.Rows[0].Height != 0 || grid.Rows[0].MaxHeight <= 0 {
+			t.Errorf("hero row must be content-sized, got height=%v max=%v", grid.Rows[0].Height, grid.Rows[0].MaxHeight)
+		}
+		if grid.Rows[1].MaxHeight <= 0 {
+			t.Errorf("detail row must be content-sized, got max=%v", grid.Rows[1].MaxHeight)
+		}
+		if grid.VerticalAlign != GridVerticalAlignDefault {
+			t.Errorf("vertical_align = %q", grid.VerticalAlign)
 		}
 	})
 

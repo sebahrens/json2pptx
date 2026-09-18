@@ -3,6 +3,7 @@
   "columns": 2,
   "rows": [
     {
+      "max_height": 61,
       "cells": [
         {
           "shape": {

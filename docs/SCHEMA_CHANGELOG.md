@@ -29,7 +29,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   default `dots` style now draws a real timeline: optional date row, an axis of
   accent dots joined by line connectors, and label/body text under each dot
   (previously full-height filled boxes); `chevron` / `gantt` rows are capped.
-  `phase-roadmap` description and milestone rows hug their text. Expanded
+  `phase-roadmap` description and milestone rows hug their text.
+  `before-after` / `before-after-compact` / `stylish-panels` header bands are
+  sized to the header text (~1.2× line height + padding) instead of 25–30% /
+  20% of the grid; their bodies, `hero-detail` rows and `card-grid` rows
+  (except rows holding a secondary chart) hug their text, and sparse card
+  text is vertically centred (go-slide-creator-3i7c). `before-after` body
+  default size 12 → 14pt. Expanded
   `shape_grid` output for these patterns changes shape accordingly.
 
 ## 4.59.0 (2026-09-18)

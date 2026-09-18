@@ -415,6 +415,8 @@ Do not let cards / steps stretch to the full content height just because the gri
 - Grids without any capped row keep the legacy proportional stretch (agenda lists, stacked steps, team-bios rely on it).
 - Height-capped, top-anchored pattern `bounds` (`y: 0`, `height < 100`) are centred inside the content area under `vertical_align: "center"`; the content area already excludes the takeaway/source chrome band.
 - Big single-token values (KPI numbers) must shrink to fit one line (`fitSingleLineSize`) rather than wrap.
+- Header bands: fix the row with `min_height = max_height = headerRowPt(...)` (~1.2× the header line height + padding), never a percentage of the grid.
+- Cards: size with `contentCardHeightPt(shapeTextHeightPt(...), cardW, hasTopIcon)` and pass sparse card text through `anchorSparseText` so a short body is centred instead of hanging top-left (target: < 30% unused area per card). Skip content-sizing for rows that host a secondary chart.
 
 ## Expand conventions
 
