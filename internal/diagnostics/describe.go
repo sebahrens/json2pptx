@@ -86,6 +86,245 @@ func stripNamespacePrefix(code string) string {
 // TestDescribeCoversAllDiagnosticCodes fails the build when a declared code has
 // no entry here or in the patterns registry.
 var codeMetaRegistry = map[string]patterns.FindingMeta{
+	// ---- Codes emitted as bare string literals by cmd/json2pptx ----
+	//
+	// These used to be absent from the catalogue, so describe_finding — the
+	// documented "use after any tool returns a finding you do not recognize"
+	// recovery path — answered UNKNOWN_FINDING_CODE for them
+	// (go-slide-creator-7zrt). TestDescribeFindingCoversCodesEmittedInCmd keeps
+	// the set closed: a new Code string literal in cmd/json2pptx fails the build
+	// until it is described here.
+
+	"REQUIRED": {
+		Code:        "REQUIRED",
+		Summary:     "A required field of the request payload is absent or empty.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "Payload validation (preview, patch, repair, dry-run) finds a required field missing — e.g. a presentation with no template, or with an empty slides array.",
+		RemediationSteps: []string{
+			"Supply the field named in the finding's path.",
+			"For \"template\", call list_templates to pick a valid name; for \"slides\", supply at least one slide object.",
+		},
+		ExampleBefore: `{"slides": [...]}  // no "template"`,
+		ExampleAfter:  `{"template": "midnight-blue", "slides": [...]}`,
+		RelatedCodes:  []string{CodeMissingParameter, CodeInvalidParameter},
+	},
+
+	"FILE_READ_ERROR": {
+		Code:        "FILE_READ_ERROR",
+		Summary:     "An input file named on the command line could not be read.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "The CLI validate path cannot open or read the deck JSON it was given (missing path, wrong permissions, a directory).",
+		RemediationSteps: []string{
+			"Check the path exists and is a readable file, not a directory.",
+			"Prefer an absolute path; a relative one resolves against the process working directory.",
+		},
+		RelatedCodes: []string{CodeInvalidPath},
+	},
+
+	"PATCH_ERROR": {
+		Code:        "PATCH_ERROR",
+		Summary:     "A deck patch could not be applied to the presentation.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "apply_deck_patch / the dry-run patch path fails while applying an operation — usually a path that does not exist in the target deck, or an operation shape the patch format does not accept.",
+		RemediationSteps: []string{
+			"Re-read the target deck and confirm every patch path resolves against it (slide indices are 0-based).",
+			"Apply the operations one at a time to find which one fails; the message carries the underlying error.",
+		},
+		RelatedCodes: []string{CodeInvalidPath, CodeInvalidSlideIndex},
+	},
+
+	"INVALID_STRUCTURE": {
+		Code:        "INVALID_STRUCTURE",
+		Summary:     "The deck-level \"structure\" envelope could not be expanded into a slide sequence.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A deck uses the top-level \"structure\" field (cover / closing / sections / auto_agenda) and its shape is invalid — e.g. a section with no slides, or a malformed cover block.",
+		RemediationSteps: []string{
+			"Fix the structure block named in the message; each section needs a title and at least one slide.",
+			"Call get_input_schema for the structure envelope's exact shape, or drop to a flat top-level \"slides\" array instead.",
+		},
+		RelatedCodes: []string{"STRUCTURE_AND_SLIDES", CodeInvalidSlide},
+	},
+
+	"STRUCTURE_AND_SLIDES": {
+		Code:        "STRUCTURE_AND_SLIDES",
+		Summary:     "The deck sets both \"structure\" and \"slides\", which are mutually exclusive.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A presentation carries the top-level \"structure\" envelope AND a top-level \"slides\" array. structure expands INTO a slide sequence, so supplying both is ambiguous.",
+		RemediationSteps: []string{
+			"Keep \"structure\" and remove \"slides\" to let the envelope generate the sequence (cover, sections, dividers, closing).",
+			"Or keep \"slides\" and remove \"structure\" to author the flat sequence yourself.",
+		},
+		ExampleBefore: `{"structure": {...}, "slides": [...]}`,
+		ExampleAfter:  `{"structure": {...}}`,
+		RelatedCodes:  []string{"INVALID_STRUCTURE"},
+	},
+
+	"COMPOSE_SEGMENT_EXPAND_FAILED": {
+		Code:        "COMPOSE_SEGMENT_EXPAND_FAILED",
+		Summary:     "One segment of a slide's compose envelope failed to expand into a shape grid.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "preview / validate expands each compose segment's pattern; a segment whose pattern name is unknown or whose values fail the pattern's value schema reports this, naming the slide.",
+		RemediationSteps: []string{
+			"Read the message for the underlying pattern error — it is the same one generate_presentation would report.",
+			"Call show_pattern for the segment's pattern to check its value schema, then fix that segment's values.",
+			"Confirm the segment count and directions are within the compose caps reported by get_capabilities.",
+		},
+		RelatedCodes: []string{CodePatternError, CodeUnknownPattern},
+	},
+
+	"no_emoji_violation": {
+		Code:        "no_emoji_violation",
+		Summary:     "Deck content contains an emoji codepoint, which is rejected everywhere in the input.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "The boundary validator in validate_input / generate_presentation finds an emoji or pictographic character in any authored string — icon fields, pattern values, shape text, titles, bullets, headers, captions, table cells.",
+		RemediationSteps: []string{
+			"Remove the emoji from the field named in the finding's path.",
+			"For an icon, use a bundled SVG icon name instead (call list_icons), or supply path / url / svg_data.",
+			"Plain Unicode symbols outside the emoji range (arrows like → and ←) are still allowed in text, but not in icon fields.",
+		},
+		ExampleBefore: `{"header": "🚀 Launch"}`,
+		ExampleAfter:  `{"header": "Launch", "icon": {"name": "rocket"}}`,
+		RelatedCodes:  []string{CodeIconBundledNameUnknown},
+	},
+
+	"grid_violation": {
+		Code:        "grid_violation",
+		Summary:     "A shape grid's geometry does not sit on the deck's rhythm grid.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "Rhythm-grid analysis finds shape bounds that do not align to the resolved column/row grid, which reads as visual drift between slides that should look aligned.",
+		RemediationSteps: []string{
+			"Snap the offending bounds to the grid values the message names, or drop the explicit bounds and let the pattern place the block.",
+			"When an off-grid position is deliberate (a deliberately offset hero element), the finding is advisory and can be left.",
+		},
+		RelatedCodes: []string{patterns.ErrCodeSlideBoundsOverflow},
+	},
+
+	"style_collision": {
+		Code:        "style_collision",
+		Summary:     "Two style sources set the same property on one element, so one silently loses.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "Validation finds an explicit per-element style that collides with a deck-level default or a table style — e.g. a cell_style default and an inline cell style setting the same fill.",
+		RemediationSteps: []string{
+			"Decide which source should own the property and remove it from the other.",
+			"Prefer the deck-level \"defaults\" block for deck-wide choices and inline styles only for genuine exceptions.",
+		},
+		RelatedCodes: []string{"redundant_field"},
+	},
+
+	"redundant_field": {
+		Code:        "redundant_field",
+		Summary:     "Both a typed content field and the legacy \"value\" field are set; the typed field wins and \"value\" is ignored.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "A content item carries e.g. both text_value and value. The engine uses the typed field, so the \"value\" content never renders.",
+		RemediationSteps: []string{
+			"Remove the \"value\" field and keep the typed one named in the message (text_value, bullets_value, table_value, chart_value, …).",
+			"If the \"value\" content is the one you wanted, move it into the typed field.",
+		},
+		ExampleBefore: `{"type": "text", "text_value": "New", "value": "Old"}`,
+		ExampleAfter:  `{"type": "text", "text_value": "New"}`,
+		RelatedCodes:  []string{"legacy_authoring_form"},
+	},
+
+	"legacy_authoring_form": {
+		Code:        "legacy_authoring_form",
+		Summary:     "A content item uses the legacy \"value\" field instead of the typed field for its content type.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "Validation finds \"value\" on a content item whose type has a dedicated typed field. It still works, but the typed field is the supported authoring form.",
+		RemediationSteps: []string{
+			"Rename \"value\" to the typed field the message names for this content type.",
+		},
+		ExampleBefore: `{"type": "bullets", "value": ["a", "b"]}`,
+		ExampleAfter:  `{"type": "bullets", "bullets_value": ["a", "b"]}`,
+		RelatedCodes:  []string{"redundant_field"},
+	},
+
+	"kind_not_supported": {
+		Code:        "kind_not_supported",
+		Summary:     "repair_slide was asked for a fix kind it cannot execute.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "A repair request names a fix kind outside repair_slide's executable set. The response's supported_kinds lists what it can actually apply.",
+		RemediationSteps: []string{
+			"Pick a kind from the response's supported_kinds field.",
+			"When a finding suggests a kind repair_slide cannot execute, treat it as a review item: restructure the slide yourself, or split it.",
+		},
+		RelatedCodes: []string{"semantic_review_required"},
+	},
+
+	"semantic_review_required": {
+		Code:        "semantic_review_required",
+		Summary:     "A text-shortening repair was refused because it would have removed meaning.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "reduce_text / shorten_title detect that the truncation point would drop a number, unit, negation, or qualifier — changing what the sentence claims — so the fix is reported un-applied rather than silently altering the meaning.",
+		RemediationSteps: []string{
+			"Rewrite the text yourself so it fits without losing the number, unit, or negation.",
+			"Or split the content across two slides / cells so the full sentence survives.",
+			"Do not re-request the same automatic truncation; it will refuse again for the same reason.",
+		},
+		ExampleBefore: `"Margin did not improve in FY24 (-2.1pp)"  // truncating drops "-2.1pp"`,
+		ExampleAfter:  `"Margin fell 2.1pp in FY24"`,
+		RelatedCodes:  []string{"kind_not_supported"},
+	},
+
+	"duplicate_title": {
+		Code:        "duplicate_title",
+		Summary:     "Two or more slides carry the same title.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "score_deck's composition pass finds repeated slide titles, which makes the deck hard to navigate and suggests an unsplit topic.",
+		RemediationSteps: []string{
+			"Differentiate the titles with a subtopic suffix (\"Pricing — Plans\", \"Pricing — Margins\").",
+			"If the slides genuinely duplicate each other, merge them.",
+		},
+		RelatedCodes: []string{patterns.ErrCodeDuplicateTitle},
+	},
+
+	"pattern_run": {
+		Code:        "pattern_run",
+		Summary:     "The same pattern repeats across several consecutive slides, flattening the deck's rhythm.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "score_deck finds a run of consecutive slides using one pattern. The message names the pattern, the run length, and the slide index range.",
+		RemediationSteps: []string{
+			"Swap one slide in the run to a different pattern; call recommend_visual for the slide's intent to rank alternatives.",
+			"An emphasis slide (stat-hero, pull-quote) in the middle of a run breaks it effectively.",
+		},
+		RelatedCodes: []string{"density_monotony", "missing_emphasis"},
+	},
+
+	"density_monotony": {
+		Code:        "density_monotony",
+		Summary:     "Every slide carries a similar content density, so the deck has no visual pacing.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "score_deck's density coefficient of variation across slides is low — content-heavy and content-light slides are not mixed.",
+		RemediationSteps: []string{
+			"Alternate dense slides with light ones: follow a table or dense grid with a stat-hero, pull-quote, or section divider.",
+			"Call analyze_deck_rhythm for the per-slide density figures behind this score.",
+		},
+		RelatedCodes: []string{"pattern_run", "missing_emphasis"},
+	},
+
+	"missing_emphasis": {
+		Code:        "missing_emphasis",
+		Summary:     "A long deck contains no emphasis slide to break its monotony.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "score_deck finds 10 or more slides with no emphasis pattern (stat-hero, pull-quote) anywhere in the sequence.",
+		RemediationSteps: []string{
+			"Add a stat-hero slide for the deck's single most important number, or a pull-quote for a customer/stakeholder voice.",
+			"Place it at a natural pause — after a section, or before the recommendation.",
+		},
+		RelatedCodes: []string{"density_monotony", "pattern_run"},
+	},
+
+	"accent_dominance": {
+		Code:        "accent_dominance",
+		Summary:     "One accent color is used on nearly every accented slide, so accent carries no signal.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "score_deck finds a single accent dominating the share of accented slides. The message names the accent and its share.",
+		RemediationSteps: []string{
+			"Set the deck-level \"accent_strategy\" to \"rotate\" or \"section-keyed\" so accents vary across slides or sections.",
+			"Or set per-slide accents deliberately, reserving one accent for emphasis.",
+		},
+		RelatedCodes: []string{patterns.ErrCodeAccentOverload},
+	},
+
 	// ---- Input family — request / JSON-payload problems ----
 
 	CodeMissingParameter: {

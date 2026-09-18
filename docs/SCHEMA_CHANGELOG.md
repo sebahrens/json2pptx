@@ -8,6 +8,21 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`describe_finding` covers the codes it claimed to (go-slide-creator-7zrt).**
+  `design_mode_violation` — the code most likely to block a generation — returned
+  `INPUT.UNKNOWN_FINDING_CODE`, and the error inlined all 150+ known codes
+  (~3.8KB) instead of a suggestion. It and `CUSTOM_COLOR_DROPPED` are now in the
+  catalogue with remediation naming the deck-level `design_mode` field, along
+  with 16 further codes that a new coverage test found equally undescribable
+  (`REQUIRED`, `FILE_READ_ERROR`, `PATCH_ERROR`, `INVALID_STRUCTURE`,
+  `STRUCTURE_AND_SLIDES`, `COMPOSE_SEGMENT_EXPAND_FAILED`, `no_emoji_violation`,
+  `grid_violation`, `style_collision`, `redundant_field`,
+  `legacy_authoring_form`, `kind_not_supported`, `semantic_review_required`,
+  `duplicate_title`, `pattern_run`, `density_monotony`, `missing_emphasis`,
+  `accent_dominance`). Unknown codes now answer with
+  `fix.params.did_you_mean` and fall back to the full `allowed` list only when
+  nothing is close — the typo response drops from ~3.8KB to ~0.5KB.
+
 - **`list_templates` reports the real slide size and a real aspect ratio
   (go-slide-creator-r9nn, go-slide-creator-ccpv).** Two discovery defects:
   `aspect_ratio` was hardcoded to `"16:9"` and only overridden by template

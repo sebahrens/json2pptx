@@ -98,6 +98,11 @@ const (
 	// honor the custom colors.
 	ErrCodeCustomColorDropped = "CUSTOM_COLOR_DROPPED"
 
+	// ErrCodeDesignModeViolation is emitted when a slide uses a raw hex color,
+	// an absolute font size, or another free-mode-only construct while the deck
+	// runs in constrained design mode (the default). It blocks generation.
+	ErrCodeDesignModeViolation = "design_mode_violation"
+
 	// Chart data diagnostic codes (emitted during chart data validation).
 	ErrCodeChartValueCoerced     = "chart_value_coerced"
 	ErrCodeChartShapeInferred    = "chart_shape_inferred"

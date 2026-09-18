@@ -579,6 +579,38 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodePlaceholderRemapped, ErrCodeTextTrimmed, ErrCodeTableRowsTruncated},
 	},
 
+	// ---- Design-mode codes ----
+
+	ErrCodeDesignModeViolation: {
+		Code:        ErrCodeDesignModeViolation,
+		Summary:     "The slide uses a free-mode-only construct — a raw hex color or an absolute font size — while the deck is in constrained design mode (the default), which blocks generation.",
+		Severity:    "refuse",
+		WhenEmitted: "validate_input / generate_presentation find a raw hex color on the documented override surface (diagram_value.style.colors, shape fills, text colors) or an explicit font size, and the deck's design_mode is \"constrained\" (the default when the field is absent). Unlike CUSTOM_COLOR_DROPPED — which is advisory and describes colors the engine ignores — this one refuses the deck.",
+		RemediationSteps: []string{
+			"Replace the raw hex color with a scheme color name (accent1-accent6, dk1, dk2, lt1, lt2). fix.params.value carries the nearest scheme color to the hex you used.",
+			"Remove the explicit size field and let the template manage type scale; fix.kind \"remove_field\" names the exact path.",
+			"If the raw value is genuinely required (a brand color the template does not carry), set the DECK-level \"design_mode\": \"free\" — it is a top-level field, not a slide field — or pass --design-mode=free to the CLI.",
+		},
+		ExampleBefore: `{"shape": {"fill": "#1F4E79"}}`,
+		ExampleAfter:  `{"shape": {"fill": "accent1"}}`,
+		RelatedCodes:  []string{ErrCodeCustomColorDropped},
+	},
+
+	ErrCodeCustomColorDropped: {
+		Code:        ErrCodeCustomColorDropped,
+		Summary:     "A diagram's data payload embedded raw hex colors, which constrained design mode ignores — the diagram rendered with the template scheme instead.",
+		Severity:    "info",
+		WhenEmitted: "A diagram data payload carries raw hex colors in per-item fields (e.g. pyramid levels[].color) that are not part of the validated override surface. In constrained mode (the default) they are dropped rather than refused, so this finding makes the drop visible.",
+		RemediationSteps: []string{
+			"If the template scheme is acceptable, no action is needed — the drop is intended behaviour in constrained mode.",
+			"To honor the custom colors, rerun with the deck-level \"design_mode\": \"free\".",
+			"To keep constrained mode and still vary the colors, use scheme color names (accent1-accent6) in the data payload instead of hex; those are allowed and never dropped.",
+		},
+		ExampleBefore: `{"type": "pyramid", "data": {"levels": [{"label": "Vision", "color": "#FF0000"}]}}`,
+		ExampleAfter:  `{"type": "pyramid", "data": {"levels": [{"label": "Vision", "color": "accent1"}]}}`,
+		RelatedCodes:  []string{ErrCodeDesignModeViolation},
+	},
+
 	// ---- Chart data diagnostic codes ----
 
 	ErrCodeChartValueCoerced: {
