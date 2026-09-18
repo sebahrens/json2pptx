@@ -67,6 +67,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 		}
 	}
 
+	// 3a. Layout resolution: a template missing the role a slide needs used to
+	// pass validate silently and fail generate (go-slide-creator-9svyz).
+	findings = append(findings, collectLayoutResolutionFindings(input, layouts)...)
+
 	// 3b. Inline markup the renderer does not support. Unsupported tags are
 	// passed through to the text run verbatim, so they print as literal
 	// XML-ish garbage on the slide; nothing used to report them

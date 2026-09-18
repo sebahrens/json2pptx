@@ -808,25 +808,28 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			req.Context.PreviousType = existingSpecs[len(existingSpecs)-1].LayoutID
 		}
 
-		result, err := layout.SelectLayout(req)
-		if err != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: auto-layout selection failed: %w", i+1, err)
+		resolvedID, confidence, fallbackWarning, selErr := resolveAutoLayout(req, slide, hasComposition, layouts, i)
+		if selErr != nil {
+			return generator.SlideSpec{}, nil, nil, selErr
+		}
+		if fallbackWarning != "" {
+			warnings = append(warnings, fallbackWarning)
 		}
 
-		slide.LayoutID = result.LayoutID
-		usedLayouts[result.LayoutID]++
+		slide.LayoutID = resolvedID
+		usedLayouts[resolvedID]++
 
 		slog.Info("auto-layout selected",
 			slog.Int("slide", i+1),
-			slog.String("layout_id", result.LayoutID),
+			slog.String("layout_id", resolvedID),
 			slog.String("slide_type", string(slideDef.Type)),
-			slog.Float64("confidence", result.Confidence),
+			slog.Float64("confidence", confidence),
 		)
 
 		// Auto-map placeholder IDs for items that don't have one
 		var selectedLayout *types.LayoutMetadata
 		for j := range layouts {
-			if layouts[j].ID == result.LayoutID {
+			if layouts[j].ID == resolvedID {
 				selectedLayout = &layouts[j]
 				break
 			}
@@ -2904,4 +2907,73 @@ func blockingFindingCodes(findings []patterns.FitFinding) []string {
 		codes = append(codes, f.Code)
 	}
 	return codes
+}
+
+
+// resolveAutoLayout picks a layout for a slide that declared none.
+//
+// A template that lacks the role a slide needs used to fail the WHOLE deck at
+// the first such slide, reporting the INTERNAL coerced slide type ("diagram")
+// rather than what the author wrote, and offering no remediation. A pattern /
+// shape_grid / compose slide needs only a canvas, and any template's Blank or
+// Blank+Title layout provides one, so such a slide falls back to that canvas
+// with a warning instead of refusing the deck (go-slide-creator-9svyz).
+//
+// It returns the resolved layout ID, the selection confidence, a warning when
+// the fallback was taken, and an error only when nothing can host the slide.
+func resolveAutoLayout(req layout.SelectionRequest, slide SlideInput, hasComposition bool, layouts []types.LayoutMetadata, slideIdx int) (string, float64, string, error) {
+	result, err := layout.SelectLayout(req)
+	if err == nil {
+		return result.LayoutID, result.Confidence, "", nil
+	}
+
+	if hasComposition {
+		if fallbackID, ok := compositionFallbackLayoutID(layouts); ok {
+			warning := fmt.Sprintf(
+				"slide %d: no layout matches slide_type %q, so its %s content was placed on the %q canvas layout instead — this template declares no better-suited layout",
+				slideIdx+1, authoredSlideType(slide), compositionKind(slide), fallbackID)
+			return fallbackID, 0, warning, nil
+		}
+	}
+
+	return "", 0, "", fmt.Errorf(
+		"slide %d: no layout in this template can host slide_type %q: %w",
+		slideIdx+1, authoredSlideType(slide), err)
+}
+
+// compositionFallbackLayoutID returns the layout a pattern / shape_grid /
+// compose slide can always be placed on: the title canvas when the template has
+// one (so the slide keeps its heading), else the bare Blank layout.
+func compositionFallbackLayoutID(layouts []types.LayoutMetadata) (string, bool) {
+	for _, canonical := range []string{"blank-title", "blank-canvas", "blank"} {
+		if id, ok := layout.ResolveCanonicalLayoutID(canonical, layouts); ok && id != canonical {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// authoredSlideType returns the slide_type the AUTHOR wrote, so an error names
+// their input rather than the type the engine coerced it to internally (a
+// pattern slide authored as "content" was reported as "diagram").
+func authoredSlideType(slide SlideInput) string {
+	if slide.SlideType != "" {
+		return slide.SlideType
+	}
+	return "(unset)"
+}
+
+// compositionKind names which composition surface a slide carries, for warning
+// messages.
+func compositionKind(slide SlideInput) string {
+	switch {
+	case slide.Pattern != nil:
+		return "pattern \"" + slide.Pattern.Name + "\""
+	case slide.Compose != nil:
+		return "compose"
+	case slide.ShapeGrid != nil:
+		return "shape_grid"
+	default:
+		return "composition"
+	}
 }

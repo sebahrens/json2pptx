@@ -580,6 +580,19 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodePlaceholderRemapped, ErrCodeTextTrimmed, ErrCodeTableRowsTruncated},
 	},
 
+	ErrCodeLayoutUnresolvable: {
+		Code:        ErrCodeLayoutUnresolvable,
+		Summary:     "No layout in this template can host the slide's declared slide_type.",
+		Severity:    "review",
+		WhenEmitted: "Layout auto-selection finds no layout matching the slide's type — the template is missing that role entirely (e.g. only Title Slide and Blank are present). A pattern / shape_grid / compose slide then falls back to the template's blank canvas with a warning, since those need only a canvas; any other slide refuses, because there is nowhere to put its placeholders.",
+		RemediationSteps: []string{
+			"Set slide.layout_id explicitly to one of fix.params.candidates — the layouts this template actually declares.",
+			"Or pick a template that declares the role: call list_templates and check canonical_layout_ids, or examine_template for the missing-role findings.",
+			"For a pattern or shape_grid slide the canvas fallback is usually acceptable; the finding tells you the placement was not the engine's first choice.",
+		},
+		RelatedCodes: []string{ErrCodeContentDropped},
+	},
+
 	// ---- Design-mode codes ----
 
 	ErrCodeDesignModeViolation: {

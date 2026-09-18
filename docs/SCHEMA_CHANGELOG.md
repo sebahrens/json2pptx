@@ -31,7 +31,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   than `venus`; genuine typos still fall through to edit distance
   (`chart-bra` → `chart-bar`, `rockt` → `rocket`).
 
+- **`LAYOUT_UNRESOLVABLE` finding (go-slide-creator-9svyz).** New review-severity
+  code (fix kind `swap_layout`, params `slide_type` / `candidates[]` /
+  `fallback_layout_id`) emitted by `validate_input`, `validate --fit-report` and
+  preview for every slide whose `slide_type` no layout in the template can host.
+  Neither surface ran layout resolution before, so a template missing a role
+  returned `valid: true` with no findings and `generate` then failed the whole
+  deck at the first affected slide.
+
 ### Fixed
+
+- **A template missing a layout role no longer fails the whole deck
+  (go-slide-creator-9svyz).** Auto-selection failure aborted generation at the
+  first affected slide of seven, and the error named the INTERNAL coerced slide
+  type ("diagram") rather than the `slide_type` the author wrote. A `pattern` /
+  `shape_grid` / `compose` slide needs only a canvas, so it now falls back to the
+  template's Blank+Title (else Blank) layout with a per-slide warning, which
+  means every affected slide is reported rather than just the first; other slides
+  still refuse, now naming the authored `slide_type`.
 
 - **`shorten_title` no longer truncates titles into fragments
   (go-slide-creator-28zf).** It byte-sliced at `max_length`, producing

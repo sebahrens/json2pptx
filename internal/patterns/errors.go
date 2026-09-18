@@ -98,6 +98,11 @@ const (
 	// honor the custom colors.
 	ErrCodeCustomColorDropped = "CUSTOM_COLOR_DROPPED"
 
+	// ErrCodeLayoutUnresolvable is emitted when no layout in the template can
+	// host a slide's declared slide_type. Pattern / shape_grid / compose slides
+	// then fall back to the template's blank canvas; other slides refuse.
+	ErrCodeLayoutUnresolvable = "LAYOUT_UNRESOLVABLE"
+
 	// ErrCodeUnsupportedInlineMarkup is emitted when authored text carries an
 	// inline tag the run builder does not render, which therefore prints
 	// literally on the slide.

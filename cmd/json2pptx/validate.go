@@ -170,6 +170,14 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 	// not only at generate time (go-slide-creator-oaif).
 	findings = append(findings, tablePreflightLocalFindings(input, layouts)...)
 	findings = append(findings, chartDryRenderLocalFindings(input)...)
+	// A template missing the role a slide needs must be reported here, not only
+	// when generate fails (go-slide-creator-9svyz).
+	for _, f := range collectLayoutResolutionFindings(input, layouts) {
+		findings = append(findings, fitFinding{
+			Code: f.Code, Path: f.Path, Message: f.Message,
+			Fix: f.Fix, Action: f.Action, Severity: "warning",
+		})
+	}
 	findings = append(findings, flaggedTitleFitFindings(input, layouts)...)
 	findings = append(findings, flaggedReadabilityFitFindings(input, layouts, slideWidth, slideHeight)...)
 	// Unsupported inline markup prints literally on the slide, so the CLI fit
