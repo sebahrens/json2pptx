@@ -105,3 +105,20 @@ is `inconclusive` or `hold`.
 
 Static fixture replay from the mechanical harness above is separate and must
 never be reported as a fresh-agent benchmark result.
+
+## Template portability matrix
+
+`portability_matrix_test.go` generates a representative deck (title, bullets,
+kpi pattern, chart, two-column; footer + takeaway + source bands) on four small
+fixture templates in `fixtures/portability/templates/` — 4:3, 21:9 ultrawide,
+two slide masters, and a master logo in the right margin — and asserts the
+geometry contract with `testutil.CheckDeckPortability`: every shape inside the
+canvas; takeaway/source bands on the layout's body column and clear of the
+title, footer placeholders, rendered footers and logo; content inside the safe
+area. Regenerate the fixtures with `make portability-fixtures`.
+
+```bash
+go build -o bin/json2pptx ./cmd/json2pptx
+go test ./tests/quality -run TestPortability -v          # geometry (needs the binary)
+PORTABILITY_RENDER_INTEGRATION=1 go test ./tests/quality -run TestPortability -v  # + LibreOffice render
+```

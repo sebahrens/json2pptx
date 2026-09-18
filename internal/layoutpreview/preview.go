@@ -31,6 +31,21 @@ type Options struct {
 	CacheDir string
 	// DPI controls the rendering density (default: 96).
 	DPI int
+	// LibreOfficeProfileDir, when set, runs LibreOffice with a private user
+	// profile (-env:UserInstallation) so concurrent renders do not collide on
+	// the shared default profile. Empty = LibreOffice's default profile.
+	LibreOfficeProfileDir string
+}
+
+func (o *Options) loProfileArgs() []string {
+	if o == nil || o.LibreOfficeProfileDir == "" {
+		return nil
+	}
+	abs, err := filepath.Abs(o.LibreOfficeProfileDir)
+	if err != nil {
+		abs = o.LibreOfficeProfileDir
+	}
+	return []string{"-env:UserInstallation=file://" + filepath.ToSlash(abs)}
 }
 
 func (o *Options) cacheDir() string {
@@ -97,7 +112,7 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 
 	// Generate a single PPTX with all layouts (one slide per layout)
 	// then split the resulting PDF pages into individual PNGs.
-	if err := generateAllPreviews(templatePath, analysis, previewDir, opts.dpi()); err != nil {
+	if err := generateAllPreviews(templatePath, analysis, previewDir, opts.dpi(), opts.loProfileArgs()); err != nil {
 		return nil, err
 	}
 
@@ -109,7 +124,7 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 
 // generateAllPreviews creates a PPTX with one slide per layout, converts to PDF,
 // then splits into per-layout PNG files.
-func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, previewDir string, dpi int) error {
+func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, previewDir string, dpi int, loArgs []string) error {
 	tmpDir, err := os.MkdirTemp("", "layoutpreview-*")
 	if err != nil {
 		return err
@@ -141,7 +156,8 @@ func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, 
 
 	// Convert to PDF via LibreOffice
 	loBin := libreOfficeBin()
-	cmd := exec.Command(loBin, "--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath) //nolint:gosec // binary path from LookPath
+	loArgs = append(loArgs, "--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath)
+	cmd := exec.Command(loBin, loArgs...) //nolint:gosec // binary path from LookPath
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	if err := cmd.Run(); err != nil {

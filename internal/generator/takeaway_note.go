@@ -5,31 +5,12 @@ import (
 	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
-// Takeaway position constants (in EMUs).
-// Positioned in the lower band of a standard 16:9 widescreen slide
-// (12192000 x 6858000), above the source note row so source attribution
-// sits below the takeaway. The takeaway is the slide's headline answer —
-// what the audience should remember if they look at nothing else — so it
-// gets bold weight and a darker fill than the source note.
-const (
-	takeawayOffsetX  = 457200   // ~0.5 inch left margin
-	takeawayOffsetY  = 6200000  // ~0.45 inch above the source note row
-	takeawayExtentCX = 11277600 // ~12.4 inches wide (matches source note row)
-	takeawayExtentCY = 360000   // ~28pt — accommodates a 12pt bold line + padding
-)
-
-// TakeawayBandTopEMU is the Y coordinate (EMU) of the top edge of the fixed
-// lower band where the takeaway headline renders. It is the single source of
-// truth for that boundary: layout code that lays out full-area content (e.g.
-// the shape-grid content zone) reserves space above this line when a slide
-// carries a takeaway, so cards do not crowd or touch the takeaway text
-// (go-slide-creator-rdtn).
-const TakeawayBandTopEMU int64 = takeawayOffsetY
-
-// takeawayFontSize is the takeaway font size in hundredths of a point.
-// Sourced from the tokens package so the rendered takeaway tracks the
-// CardTitle typography role published in skills/generate-deck/RULES.md.
-var takeawayFontSize = tokens.CardTitleMinHPt // 12pt
+// takeawayFontSize is the takeaway font size in hundredths of a point. The
+// takeaway is the slide's headline answer, so it uses the top of the CardTitle
+// typography role (14pt) rather than a footnote-sized 12pt. Its band geometry
+// (x-range, height, position above the footer chrome) comes from the template
+// profile via template.ResolveChromeFrame — there are no fixed EMU positions.
+var takeawayFontSize = tokens.CardTitleMaxHPt // 14pt
 
 // Takeaway band accent tint (in thousandths of a percent). The band fill is
 // the template's accent1 lightened ~80% toward white ("Accent 1, Lighter 80%"
@@ -43,17 +24,12 @@ const (
 	takeawayRuleWidth  = 12700 // 1pt accent border framing the band
 )
 
-// generateTakeawayShape creates a p:sp element for slide takeaway text.
-// The shape renders as a distinct band in the lower content zone: a subtle
-// accent-tinted fill framed by a thin accent rule, carrying bold dark text.
-// The band gives the takeaway its own light background, so the headline reads
-// regardless of the underlying slide/template color.
-// shapeID must be unique within the slide's shape tree; callers allocate it
-// from findMaxShapeID(slideData)+1 just before insertion.
-func generateTakeawayShape(takeawayText string, shapeID uint32) string {
-	return generateTakeawayShapeInBounds(takeawayText, shapeID, pptx.RectEmu{X: takeawayOffsetX, Y: takeawayOffsetY, CX: takeawayExtentCX, CY: takeawayExtentCY})
-}
-
+// generateTakeawayShapeInBounds creates a p:sp element for slide takeaway text.
+// The shape renders as a distinct band: a subtle accent-tinted fill framed by
+// a thin accent rule, carrying bold dark text, so the headline reads
+// regardless of the underlying slide/template color. bounds is the takeaway
+// rectangle of the slide's chrome frame. shapeID must be unique within the
+// slide's shape tree; callers allocate it from findMaxShapeID(slideData)+1.
 func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds pptx.RectEmu) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
@@ -86,18 +62,11 @@ func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds p
 	return string(b)
 }
 
-// insertTakeaway inserts a takeaway text shape into the slide XML.
-// It finds the closing </p:spTree> tag and inserts the shape before it,
-// so the takeaway renders on top of any overlapping content.
-func insertTakeaway(slideData []byte, takeawayText string) ([]byte, error) {
+// insertTakeaway inserts a takeaway text shape at bounds (the chrome frame's
+// takeaway band) before </p:spTree>, so it renders on top of slide content.
+func insertTakeaway(slideData []byte, takeawayText string, bounds pptx.RectEmu) ([]byte, error) {
 	// Allocate a slide-unique ID above any existing shape so the takeaway
 	// cannot collide with content shapes or other late injections.
-	shapeXML := generateTakeawayShape(takeawayText, findMaxShapeID(slideData)+1)
-	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
-}
-
-func insertTakeawayForSlide(slideData []byte, takeawayText string, slideWidth, slideHeight int64, hasSource bool) ([]byte, error) {
-	frame := ResolveSlideChromeFrame(slideWidth, slideHeight, true, hasSource)
-	shapeXML := generateTakeawayShapeInBounds(takeawayText, findMaxShapeID(slideData)+1, frame.Takeaway)
+	shapeXML := generateTakeawayShapeInBounds(takeawayText, findMaxShapeID(slideData)+1, bounds)
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

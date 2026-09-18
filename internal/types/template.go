@@ -141,6 +141,23 @@ type LayoutMetadata struct {
 	MasterPath string
 	ThemePath  string
 	Theme      ThemeInfo
+
+	// FooterRegions are the resolved date / footer / slide-number chrome
+	// rectangles a slide on this layout carries: the layout's own dt/ftr/sldNum
+	// placeholders when it declares them, otherwise the slide master's. They
+	// are populated by ParseLayouts and feed the takeaway/source band and
+	// footer geometry (template.ResolveChromeFrame).
+	FooterRegions []ChromeRegion
+}
+
+// ChromeRegion is one resolved chrome rectangle of a layout (e.g. the "ftr"
+// footer placeholder inherited from the slide master).
+type ChromeRegion struct {
+	Type   string `json:"type"` // OOXML placeholder type: "dt", "ftr", or "sldNum"
+	X      int64  `json:"x_emu"`
+	Y      int64  `json:"y_emu"`
+	Width  int64  `json:"w_emu"`
+	Height int64  `json:"h_emu"`
 }
 
 // PlaceholderInfo describes a placeholder within a layout.

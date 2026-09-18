@@ -2,10 +2,13 @@ package generator
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
+	"github.com/tdewolff/canvas"
 )
 
 // footerFontSize is the footer text size in hundredths of a point.
@@ -54,8 +57,97 @@ func computeDefaultFooterPositions(slideHeight int64) map[string]*transformXML {
 	}
 }
 
+// Footer single-line fitting (go-slide-creator-55i1).
+const (
+	// footerMinFontSize is the smallest size the left footer text shrinks to
+	// before it is ellipsized, in hundredths of a point.
+	footerMinFontSize = 800 // 8pt
+	// footerFontStep is the shrink step, in hundredths of a point.
+	footerFontStep = 50
+	// footerBoxGap separates the widened left footer box from the slide
+	// number box.
+	footerBoxGap int64 = 91440 // 0.1in
+)
+
+// leftFooterBox returns the box the left footer text renders into. It starts
+// at the date (dt) placeholder's left edge — where footer text has always
+// been anchored — and extends across the footer (ftr) placeholder, which the
+// generator otherwise leaves empty, so the text has the template's full
+// footer width instead of the ~3in date slot. The box stops short of the
+// slide-number (sldNum) placeholder. Returns nil when there is no dt position.
+func leftFooterBox(positions map[string]*transformXML) *transformXML {
+	dt, ok := positions["type:dt"]
+	if !ok || dt == nil {
+		return nil
+	}
+	box := *dt
+	right := dt.Offset.X + dt.Extent.CX
+	if ftr, ok := positions["type:ftr"]; ok && ftr != nil && ftr.Offset.X >= dt.Offset.X {
+		if r := ftr.Offset.X + ftr.Extent.CX; r > right {
+			right = r
+		}
+	}
+	if sn, ok := positions["type:sldNum"]; ok && sn != nil && sn.Offset.X > dt.Offset.X {
+		if limit := sn.Offset.X - footerBoxGap; right > limit {
+			right = limit
+		}
+	}
+	if right > box.Offset.X {
+		box.Extent.CX = right - box.Offset.X
+	}
+	return &box
+}
+
+// fitFooterText fits footer text onto a single line of a box widthEMU wide:
+// it keeps the default footer size when the text fits, otherwise shrinks it
+// in half-point steps down to footerMinFontSize, and if the text still wraps,
+// ellipsizes it word by word. fontName is the theme body font used for
+// measurement (falling back to Arial metrics, which are wider than most body
+// fonts, so the fit is conservative). When no font can be resolved the text is
+// returned unchanged.
+func fitFooterText(text string, widthEMU int64, fontName string) (string, int) {
+	ff, _, _ := fontcache.Resolve(fontName, "Arial")
+	if ff == nil {
+		return text, footerFontSize
+	}
+	// Usable single-line width: box minus the 0.1in left/right insets, in mm
+	// (canvas text-line bounds are millimetres; the face size is points).
+	usableMM := float64(widthEMU-2*91440) / 36000
+	fits := func(t string, size int) bool {
+		face := ff.Face(float64(size)/100, color.Black, canvas.FontRegular, canvas.FontNormal)
+		return canvas.NewTextLine(face, t, canvas.Left).Bounds().W() <= usableMM
+	}
+	for size := footerFontSize; size >= footerMinFontSize; size -= footerFontStep {
+		if fits(text, size) {
+			return text, size
+		}
+	}
+	words := strings.Fields(text)
+	for n := len(words) - 1; n > 0; n-- {
+		candidate := strings.TrimRight(strings.Join(words[:n], " "), " ,;:|-–—") + "…"
+		if fits(candidate, footerMinFontSize) {
+			return candidate, footerMinFontSize
+		}
+	}
+	// A single over-long word: trim runes until it fits.
+	runes := []rune(text)
+	for n := len(runes) - 1; n > 0; n-- {
+		candidate := string(runes[:n]) + "…"
+		if fits(candidate, footerMinFontSize) {
+			return candidate, footerMinFontSize
+		}
+	}
+	return text, footerMinFontSize
+}
+
 // generateFooterShape creates a single p:sp element for a footer zone.
 func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text string, alignment string) string {
+	return generateFooterShapeSized(shapeID, name, xfrm, text, alignment, footerFontSize)
+}
+
+// generateFooterShapeSized creates a footer p:sp element with an explicit
+// font size (hundredths of a point).
+func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, text string, alignment string, fontSize int) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     name,
@@ -72,7 +164,7 @@ func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text s
 				Runs: []pptx.Run{{
 					Text:     text,
 					Lang:     "en-US",
-					FontSize: footerFontSize,
+					FontSize: fontSize,
 					Dirty:    true,
 					Color:    pptx.SchemeFill("tx1"),
 				}},
@@ -89,12 +181,18 @@ func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text s
 // nextID is the first slide-unique shape ID to assign; each emitted footer
 // shape consumes one ID, allocated sequentially so the left and right footers
 // never collide with each other or with existing slide shapes.
-func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32) string {
+//
+// The left footer text is laid out on a single line (go-slide-creator-55i1):
+// its box spans the dt + ftr placeholder width (see leftFooterBox) and the
+// text shrinks, then ellipsizes, to fit that width. fontName is the theme
+// body font used for measurement.
+func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName string) string {
 	var shapes []string
 
-	// Left footer (dt position): configurable text
-	if pos, ok := positions["type:dt"]; ok && config.LeftText != "" {
-		shapes = append(shapes, generateFooterShape(nextID, "Footer Left", pos, config.LeftText, "l"))
+	// Left footer (dt position, widened across ftr): configurable text
+	if box := leftFooterBox(positions); box != nil && config.LeftText != "" {
+		text, size := fitFooterText(config.LeftText, box.Extent.CX, fontName)
+		shapes = append(shapes, generateFooterShapeSized(nextID, "Footer Left", box, text, "l", size))
 		nextID++
 	}
 
@@ -250,7 +348,8 @@ func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
 }
 
 // insertFooters inserts footer shapes into slide XML before </p:spTree>.
-func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML) ([]byte, error) {
+// fontName is the theme body font used to fit the left footer text on one line.
+func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName string) ([]byte, error) {
 	if footerConfig == nil || !footerConfig.Enabled {
 		return slideData, nil
 	}
@@ -261,7 +360,7 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 
 	// Allocate slide-unique IDs above any existing shape (including the
 	// takeaway/source-note shapes injected earlier on this slide).
-	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1)
+	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1, fontName)
 	if footerXML == "" {
 		return slideData, nil
 	}

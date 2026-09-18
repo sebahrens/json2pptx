@@ -476,8 +476,10 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
         "template_hash":   {"type": "string"},
         "preview_png_path": {"type": "string"},
         "capacity":        {"type": "string"},
-        "renderer":        {"type": "string"},
-        "metadata_only":   {"type": "boolean"}
+        "renderer":        {"type": "string", "description": "pre-rendered (pattern gallery PNG) or template-preview (shipped layout thumbnail)."},
+        "metadata_only":   {"type": "boolean"},
+        "layout_id":       {"type": "string", "description": "Template layout the candidate renders on (matching layout for placeholder candidates, else the One Content layout)."},
+        "layout_preview_png_path": {"type": "string", "description": "Absolute path to the shipped 320px thumbnail of layout_id (templates/previews/<template>/<layout_id>.png)."}
       },
       "required": ["template_hash", "metadata_only"]
     }
@@ -1022,14 +1024,84 @@ var outputSchemaExamineTemplate = json.RawMessage(`{
               },
               "required": ["id", "type", "role", "index", "z_index", "font_pt", "max_chars", "bounds"]
             }
+          },
+          "profile_geometry": {
+            "type": "object",
+            "description": "Chrome geometry from the template profile — the same frame the generator renders the takeaway/source bands into. footer_regions are the resolved dt/ftr/sldNum rectangles (layout, else master); frame is resolved with both bands reserved.",
+            "properties": {
+              "layout_id": {"type": "string"},
+              "footer_regions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type":  {"type": "string", "enum": ["dt", "ftr", "sldNum"]},
+                    "x_emu": {"type": "integer"},
+                    "y_emu": {"type": "integer"},
+                    "w_emu": {"type": "integer"},
+                    "h_emu": {"type": "integer"}
+                  },
+                  "required": ["type", "x_emu", "y_emu", "w_emu", "h_emu"]
+                }
+              },
+              "frame": {
+                "type": "object",
+                "properties": {
+                  "canvas":         {"$ref": "#/$defs/chromeRect"},
+                  "content":        {"$ref": "#/$defs/chromeRect"},
+                  "takeaway_band":  {"$ref": "#/$defs/chromeRect"},
+                  "source_band":    {"$ref": "#/$defs/chromeRect"},
+                  "footer_top_emu": {"type": "integer", "description": "Top of the footer chrome (min Y of visible dt/ftr/sldNum), or the bottom margin line when the layout has none."},
+                  "has_footer":     {"type": "boolean"},
+                  "basis":          {"type": "string", "enum": ["layout", "reference_layout", "slide_fallback"], "description": "Where the band x-range came from: this layout's body/content placeholders, the One Content reference layout, or slide-percentage margins."},
+                  "fits":           {"type": "boolean", "description": "False when the band stack would overlap the title or starve the layout's content; the band is skipped at render and preflight emits chrome_band_no_fit."}
+                },
+                "required": ["canvas", "content", "takeaway_band", "source_band", "footer_top_emu", "has_footer", "basis", "fits"]
+              }
+            },
+            "required": ["layout_id", "footer_regions", "frame"]
           }
         },
         "required": ["index", "id", "name", "canonical_type", "canonical_family", "asset_base", "xml_path", "content_zone", "placeholders"]
       }
     },
+    "profile": {
+      "type": "object",
+      "description": "Template profile summary (cache identity = template_hash + parser_version).",
+      "properties": {
+        "template_hash":  {"type": "string"},
+        "parser_version": {"type": "string"},
+        "role_bindings":  {"type": "object", "additionalProperties": {"type": "string"}, "description": "Canonical layout role → bound layout ID."},
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code":     {"type": "string"},
+              "severity": {"type": "string"},
+              "message":  {"type": "string"}
+            },
+            "required": ["code", "severity", "message"]
+          }
+        }
+      },
+      "required": ["template_hash", "parser_version", "role_bindings"]
+    },
     "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["template", "aspect_ratio", "slide", "theme", "canonical_coverage", "layouts", "findings"]
+  "required": ["template", "aspect_ratio", "slide", "theme", "canonical_coverage", "layouts", "findings"],
+  "$defs": {
+    "chromeRect": {
+      "type": "object",
+      "properties": {
+        "x_emu": {"type": "integer"},
+        "y_emu": {"type": "integer"},
+        "w_emu": {"type": "integer"},
+        "h_emu": {"type": "integer"}
+      },
+      "required": ["x_emu", "y_emu", "w_emu", "h_emu"]
+    }
+  }
 }`)
 
 // --- apply_deck_patch ---

@@ -1,0 +1,55 @@
+{
+  "template": "portability-two-master",
+  "output_filename": "portability-deck-two-master.pptx",
+  "footer": {"enabled": true, "left_text": "Acme Corporation | Confidential Strategy Review 2026"},
+  "slides": [
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Master 1: margin contraction is regional"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "EU gross margin fell 6 pts on energy pass-through lag",
+          "North America held flat despite wage inflation",
+          "APAC expanded 2 pts on mix shift to services"
+        ]}
+      ],
+      "takeaway": "Fix EU pricing; the rest of the business is healthy.",
+      "source": "Company management accounts, FY2025"
+    },
+    {
+      "layout_id": "slideLayout9",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Master 2: the same story, inset column"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+          "EU gross margin fell 6 pts on energy pass-through lag",
+          "North America held flat despite wage inflation",
+          "APAC expanded 2 pts on mix shift to services"
+        ]}
+      ],
+      "takeaway": "Master 2's band follows master 2's body column.",
+      "source": "Company management accounts, FY2025"
+    },
+    {
+      "layout_id": "slideLayout9",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Master 2: three numbers"}
+      ],
+      "pattern": {"name": "kpi-3up", "values": [
+        {"big": "$4.2B", "small": "Revenue, +12% YoY"},
+        {"big": "31%", "small": "Gross margin, -1.4 pts"},
+        {"big": "92", "small": "Net promoter score"}
+      ]},
+      "takeaway": "Growth is strong; margin is the one number to fix.",
+      "source": "Q4 board pack"
+    },
+    {
+      "layout_id": "slideLayout10",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Master 2: options"},
+        {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Raise EU prices 4%", "Hedge energy for FY27"]},
+        {"placeholder_id": "body_2", "type": "bullets", "bullets_value": ["Hold prices, cut SG&A", "Exit two low-margin SKUs"]}
+      ],
+      "takeaway": "Pricing is the lever with the fastest payback."
+    }
+  ]
+}

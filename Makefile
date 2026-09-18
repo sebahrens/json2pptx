@@ -83,7 +83,7 @@ INSTALL_CMDS := json2pptx svggen svggen-server svggen-mcp
         check test test-race test-cover test-svg-stress \
         template-check install-git-hooks \
         lint vulncheck security fmt fmt-check \
-        preview-patterns \
+        preview-patterns portability-fixtures template-previews \
         run clean ci help
 
 # ─── Build ────────────────────────────────────────────────────────────
@@ -164,6 +164,7 @@ ifndef SKIP_TEMPLATES
 	@echo "==> Installing templates to $(HOME)/.json2pptx/templates/"
 	@mkdir -p "$(HOME)/.json2pptx/templates"
 	@cp templates/*.pptx "$(HOME)/.json2pptx/templates/"
+	@cp -R templates/previews "$(HOME)/.json2pptx/templates/"
 	@echo "    $$(ls templates/*.pptx 2>/dev/null | wc -l | tr -d ' ') templates installed"
 endif
 
@@ -272,6 +273,7 @@ dist-linux: release-check ensure-templates
 	mkdir -p $(DIST_STAGING)/bin $(DIST_STAGING)/templates
 	cp bin/json2pptx-linux-amd64 $(DIST_STAGING)/bin/json2pptx
 	cp templates/*.pptx $(DIST_STAGING)/templates/
+	cp -R templates/previews $(DIST_STAGING)/templates/
 	@$(call stage-skills,$(DIST_STAGING))
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
@@ -358,6 +360,22 @@ fmt-check:
 
 preview-patterns: build
 	./bin/json2pptx$(EXE) preview-patterns -templates-dir templates -output assets/pattern-previews
+
+# ─── Template portability fixtures ────────────────────────────────────
+# Small 4:3 / 21:9 / two-master / side-logo templates derived from
+# midnight-blue, used by the portability geometry tests (cmd/json2pptx
+# TestPortabilityFixtureGeometry, tests/quality TestPortability*).
+
+portability-fixtures:
+	go run ./cmd/mktemplate -portability-fixtures tests/quality/fixtures/portability/templates
+
+# ─── Template layout previews ─────────────────────────────────────────
+# Per-layout 320px thumbnails (templates/previews/<template>/<layoutID>.png),
+# committed and embedded; recommend_visual returns them as preview refs.
+# Requires LibreOffice + ImageMagick. Re-run after changing a template.
+
+template-previews:
+	go run ./cmd/templatepreviews -templates-dir templates -output templates/previews
 
 # ─── Run / Clean / Release ────────────────────────────────────────────
 

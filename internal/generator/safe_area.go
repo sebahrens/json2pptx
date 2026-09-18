@@ -1,57 +1,75 @@
 package generator
 
-import "github.com/sebahrens/json2pptx/internal/pptx"
+import (
+	"log/slog"
 
-const defaultSlideWidthEMU int64 = 12192000
+	"github.com/sebahrens/json2pptx/internal/template"
+)
 
-// SlideChromeFrame is the dimension-relative contract used by content
-// reservation and late shape emission. Every rectangle is guaranteed to lie
-// inside the declared slide canvas.
-type SlideChromeFrame struct {
-	Canvas   pptx.RectEmu
-	Content  pptx.RectEmu
-	Takeaway pptx.RectEmu
-	Source   pptx.RectEmu
+// loadTemplateProfile builds (or fetches from the content-hash cache) the
+// template profile for the generation run. The profile carries the per-layout
+// chrome geometry — footer regions, body column, takeaway/source bands — that
+// late shape emission and placeholder reservation read. A template the
+// profiler cannot open leaves ctx.profile nil, and chrome falls back to
+// slide-relative margins.
+func (ctx *singlePassContext) loadTemplateProfile(templatePath string) {
+	reader, err := template.OpenTemplate(templatePath)
+	if err != nil {
+		slog.Debug("template profile unavailable; chrome uses slide fallback", slog.String("error", err.Error()))
+		return
+	}
+	defer func() { _ = reader.Close() }()
+	profile, err := template.BuildProfile(reader)
+	if err != nil {
+		slog.Debug("template profile build failed; chrome uses slide fallback", slog.String("error", err.Error()))
+		return
+	}
+	ctx.profile = profile
 }
 
-func ResolveSlideChromeFrame(slideWidth, slideHeight int64, hasTakeaway, hasSource bool) SlideChromeFrame {
-	if slideWidth <= 0 {
-		slideWidth = defaultSlideWidthEMU
+// chromeFrameForLayout resolves the chrome frame for a slide on layoutID from
+// the template profile. Layouts the profile does not know (synthesized
+// layouts) resolve against the profile's One Content reference layout.
+func (ctx *singlePassContext) chromeFrameForLayout(layoutID string, hasTakeaway, hasSource bool) template.ChromeFrame {
+	if ctx.profile == nil {
+		return template.ResolveChromeFrame(nil, nil, ctx.slideWidth, ctx.slideHeight, hasTakeaway, hasSource)
 	}
-	if slideHeight <= 0 {
-		slideHeight = defaultSlideHeightEMU
-	}
-	marginX := slideWidth * 375 / 10000
-	bottom := slideHeight * 290 / 10000
-	gap := slideHeight * 70 / 10000
-	sourceH := slideHeight * 292 / 10000
-	takeawayH := slideHeight * 525 / 10000
-	if sourceH < 160000 {
-		sourceH = 160000
-	}
-	if takeawayH < 300000 {
-		takeawayH = 300000
-	}
-
-	frame := SlideChromeFrame{Canvas: pptx.RectEmu{CX: slideWidth, CY: slideHeight}}
-	y := slideHeight - bottom
-	if hasSource {
-		y -= sourceH
-		frame.Source = pptx.RectEmu{X: marginX, Y: y, CX: slideWidth - 2*marginX, CY: sourceH}
-		y -= gap
-	}
-	if hasTakeaway {
-		y -= takeawayH
-		frame.Takeaway = pptx.RectEmu{X: marginX, Y: y, CX: slideWidth - 2*marginX, CY: takeawayH}
-		y -= gap
-	}
-	frame.Content = pptx.RectEmu{X: marginX, Y: 0, CX: slideWidth - 2*marginX, CY: y}
-	if frame.Content.CY < 0 {
-		frame.Content.CY = 0
-	}
-	return frame
+	return ctx.profile.ChromeFrame(layoutID, hasTakeaway, hasSource)
 }
 
-func TakeawayBandTopForHeight(slideHeight int64, hasSource bool) int64 {
-	return ResolveSlideChromeFrame(0, slideHeight, true, hasSource).Takeaway.Y
+// chromeFrameForSlide resolves the chrome frame for an output slide number,
+// reserving the bands the slide actually carries.
+func (ctx *singlePassContext) chromeFrameForSlide(slideNum int) template.ChromeFrame {
+	_, hasTakeaway := ctx.slideTakeaways[slideNum]
+	_, hasSource := ctx.slideSources[slideNum]
+	return ctx.chromeFrameForLayout(ctx.slideContentMap[slideNum].LayoutID, hasTakeaway, hasSource)
+}
+
+// clampContentPlaceholdersToChrome shrinks content placeholders (body,
+// generic content, picture, chart, table) whose bottom edge would run into the
+// takeaway/source band stack, so body text, charts, and tables stop above the
+// band instead of rendering underneath it. Title, subtitle, and footer chrome
+// placeholders are left untouched. A frame that does not fit is ignored: the
+// band is not emitted in that case, so there is nothing to reserve.
+func clampContentPlaceholdersToChrome(slide *slideXML, frame template.ChromeFrame) {
+	if slide == nil || !frame.Fits {
+		return
+	}
+	limit := frame.Content.Bottom()
+	for i := range slide.CommonSlideData.ShapeTree.Shapes {
+		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
+		ph := shape.NonVisualProperties.NvPr.Placeholder
+		xfrm := shape.ShapeProperties.Transform
+		if ph == nil || xfrm == nil {
+			continue
+		}
+		switch ph.Type {
+		case "title", "ctrTitle", "subTitle", "dt", "ftr", "sldNum", "hdr":
+			continue
+		}
+		if xfrm.Offset.Y+xfrm.Extent.CY <= limit || xfrm.Offset.Y >= limit {
+			continue
+		}
+		xfrm.Extent.CY = limit - xfrm.Offset.Y
+	}
 }

@@ -105,7 +105,16 @@ func main() {
 	allFlag := flag.Bool("all", false, "Generate all templates")
 	outFlag := flag.String("out", "", "Output file path (for single template)")
 	outdirFlag := flag.String("outdir", "templates", "Output directory (for -all)")
+	variantFlag := flag.String("variant", "", "Portability variant for -name: 4x3, 21x9, two-master, side-logo")
+	fixturesFlag := flag.String("portability-fixtures", "", "Generate all portability fixture templates into this directory")
 	flag.Parse()
+
+	if *fixturesFlag != "" {
+		if err := generatePortabilityFixtures(*fixturesFlag); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		return
+	}
 
 	if !*allFlag && *nameFlag == "" {
 		fmt.Println("Available templates:")
@@ -143,6 +152,13 @@ func main() {
 	outPath := *outFlag
 	if outPath == "" {
 		outPath = def.Name + ".pptx"
+	}
+	if *variantFlag != "" {
+		if err := generateVariant(*def, *variantFlag, outPath); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		fmt.Printf("Generated: %s\n", outPath)
+		return
 	}
 	if err := generateTemplate(*def, outPath); err != nil {
 		log.Fatalf("Error: %v", err)

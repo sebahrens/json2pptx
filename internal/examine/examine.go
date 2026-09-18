@@ -86,7 +86,20 @@ type Report struct {
 	CanonicalCoverage map[string]CanonicalCoverage `json:"canonical_coverage"`
 	DerivableLayouts  []DerivableLayoutReport      `json:"derivable_layouts"`
 	Layouts           []LayoutReport               `json:"layouts"`
-	Findings          diagnostics.FindingEnvelope  `json:"findings"`
+	// Profile is the summary of the template profile (template.BuildProfile)
+	// the generator uses for chrome geometry; nil when profiling failed.
+	Profile  *ProfileReport              `json:"profile,omitempty"`
+	Findings diagnostics.FindingEnvelope `json:"findings"`
+}
+
+// ProfileReport summarises the relationship-aware template profile: its cache
+// identity, canonical role bindings, and profiling diagnostics. Per-layout
+// geometry is reported on each LayoutReport.ProfileGeometry.
+type ProfileReport struct {
+	TemplateHash  string                       `json:"template_hash"`
+	ParserVersion string                       `json:"parser_version"`
+	RoleBindings  map[string]string            `json:"role_bindings"`
+	Diagnostics   []template.ProfileDiagnostic `json:"diagnostics,omitempty"`
 }
 
 // SlideDimensions reports the slide canvas size in both EMU and inches.
@@ -142,6 +155,10 @@ type LayoutReport struct {
 	XMLPath             string              `json:"xml_path"`
 	ContentZone         ZoneReport          `json:"content_zone"`
 	Placeholders        []PlaceholderReport `json:"placeholders"`
+	// ProfileGeometry is this layout's chrome geometry from the template
+	// profile: resolved footer regions and the chrome frame (content area,
+	// takeaway band, source band) the generator renders into.
+	ProfileGeometry *template.LayoutGeometry `json:"profile_geometry,omitempty"`
 }
 
 // ZoneReport is the derived safe content area (title-bottom, footer-top,
@@ -194,6 +211,9 @@ type Inputs struct {
 	// MetadataDiagnostics are diagnostics produced by metadata validation,
 	// folded into the report's findings alongside canonical-coverage findings.
 	MetadataDiagnostics []diagnostics.Diagnostic
+	// Profile is the template profile; when set, the report carries its
+	// summary and per-layout chrome geometry.
+	Profile *template.TemplateProfile
 }
 
 // Examine parses a template via the reader and builds the full report.
@@ -218,6 +238,10 @@ func Examine(reader *template.Reader, opts Options) (*Report, error) {
 
 	masters := collectMasters(reader)
 
+	// The profile is best-effort: a template the profiler rejects still gets
+	// the rest of its examination report.
+	profile, _ := template.BuildProfile(reader)
+
 	return BuildReport(Inputs{
 		Template:            displayName(opts.TemplatePath),
 		SHA256:              reader.Hash(),
@@ -228,6 +252,7 @@ func Examine(reader *template.Reader, opts Options) (*Report, error) {
 		Layouts:             layouts,
 		Masters:             masters,
 		MetadataDiagnostics: vr.Diagnostics,
+		Profile:             profile,
 	}), nil
 }
 
@@ -242,6 +267,7 @@ func BuildReport(in Inputs) *Report {
 	layoutReports := make([]LayoutReport, len(in.Layouts))
 	for i := range in.Layouts {
 		layoutReports[i] = buildLayoutReport(&in.Layouts[i], w, h)
+		layoutReports[i].ProfileGeometry = profileGeometry(in.Profile, in.Layouts[i].ID)
 	}
 
 	coverage, coverageDiags := buildCanonicalCoverage(in.Layouts)
@@ -274,7 +300,40 @@ func BuildReport(in Inputs) *Report {
 		CanonicalCoverage: coverage,
 		DerivableLayouts:  buildDerivable(in.Layouts),
 		Layouts:           layoutReports,
+		Profile:           buildProfileReport(in.Profile),
 		Findings:          env,
+	}
+}
+
+// profileGeometry returns a copy of the profiled geometry for layoutID, or nil.
+func profileGeometry(p *template.TemplateProfile, layoutID string) *template.LayoutGeometry {
+	if p == nil {
+		return nil
+	}
+	for i := range p.Geometry {
+		if p.Geometry[i].LayoutID == layoutID {
+			g := p.Geometry[i]
+			return &g
+		}
+	}
+	return nil
+}
+
+// buildProfileReport projects the profile's identity, role bindings, and
+// diagnostics into the report.
+func buildProfileReport(p *template.TemplateProfile) *ProfileReport {
+	if p == nil {
+		return nil
+	}
+	bindings := make(map[string]string, len(p.RoleBindings))
+	for role, id := range p.RoleBindings {
+		bindings[string(role)] = id
+	}
+	return &ProfileReport{
+		TemplateHash:  p.TemplateHash,
+		ParserVersion: p.ParserVersion,
+		RoleBindings:  bindings,
+		Diagnostics:   p.Diagnostics,
 	}
 }
 

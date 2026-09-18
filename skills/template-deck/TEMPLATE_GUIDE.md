@@ -4,7 +4,11 @@ For agent discovery, call `list_templates` first to obtain the seven canonical
 role bindings and their template-rendered layout thumbnails. Then call
 `recommend_visual` with the selected `template` and content counts. Each
 candidate includes compact capacity/support metadata and, when available, a
-template-specific preview path. `example.metadata_only=true` means no renderer
+template-specific preview path. Every candidate's `example.layout_id` /
+`example.layout_preview_png_path` point at the shipped thumbnail of the layout
+it renders on (bundled templates ship `templates/previews/<template>/<layout>.png`,
+regenerated with `make template-previews`); placeholder candidates use it as
+their `preview_png_path`. `example.metadata_only=true` means no renderer
 preview was available; treat the recommendation as structural evidence and run
 rendered inspection before approval.
 

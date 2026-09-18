@@ -45,7 +45,7 @@ The numeric ranges above are the published surface of the canonical design token
 
 | # | Rule | Rationale |
 |---|---|---|
-| 11a | Chart and matrix slides MUST set `slide.takeaway` (a single sentence — the headline answer). | A chart or 2x2 without a takeaway forces the audience to guess the argument. The validator emits `takeaway_missing` warning when chart/matrix slides leave it empty. The takeaway renders as bold dark text in a distinct band in the lower zone of the slide (a subtle accent-tinted fill framed by a thin accent rule), above the source note. The band gives the headline its own light background, so it reads on dark templates too. |
+| 11a | Chart and matrix slides MUST set `slide.takeaway` (a single sentence — the headline answer). | A chart or 2x2 without a takeaway forces the audience to guess the argument. The validator emits `takeaway_missing` warning when chart/matrix slides leave it empty. The takeaway renders as 14pt bold dark text in a distinct band in the lower zone of the slide (a subtle accent-tinted fill framed by a thin accent rule), above the source note. The band gives the headline its own light background, so it reads on dark templates too. Band geometry comes from the layout: it spans the body placeholder's column and sits above the footer placeholders; body/chart/table placeholders shrink to stop above it. If a layout has no room for it, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {
@@ -86,7 +86,7 @@ Accepted `IconInput` sources, exactly one per icon: `name` (bundled), `path` (lo
 
 | # | Wrong | Right | What happens |
 |---|---|---|---|
-| 17 | `"footer": "text"` (string) | `"footer": {"enabled": true, "left_text": "text"}` | Crash: cannot unmarshal string |
+| 17 | `"footer": "text"` (string) | `"footer": {"enabled": true, "left_text": "text"}` (renders on one line across the dt+ftr footer width; over-long text shrinks to 8pt then ellipsizes — keep it short) | Crash: cannot unmarshal string |
 | 18 | `"source": "Source: X"` | `"source": "X"` | Renders "Source: Source: X" — engine prepends prefix |
 | 19 | `"chart": {...}` / `"table": {...}` | `"chart_value": {...}` / `"table_value": {...}` | Empty slide — content fields need `_value` suffix |
 

@@ -207,6 +207,40 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   right, y → up) instead of flat header bars. Additive; existing inputs are
   unchanged apart from the new rendering.
 
+- **`examine_template` exposes the template profile** (go-slide-creator-fw42).
+  The report gains a top-level `profile` object (`{template_hash,
+  parser_version, role_bindings, diagnostics[]}`) and a per-layout
+  `layouts[].profile_geometry` object (`{layout_id, footer_regions[], frame}`).
+  `footer_regions[]` are the resolved `dt`/`ftr`/`sldNum` rectangles
+  (`{type, x_emu, y_emu, w_emu, h_emu}`, layout first, else master); `frame` is
+  the chrome frame the generator renders into — `{canvas, content,
+  takeaway_band, source_band, footer_top_emu, has_footer, basis, fits}` with
+  `basis ∈ {layout, reference_layout, slide_fallback}`. The profile is built
+  once per template content hash (+ parser version) and is the same object the
+  generator uses for takeaway/source placement. Additive; no field removed.
+- **Fit finding `chrome_band_no_fit`** (go-slide-creator-7m9v). `review`
+  action, `fix.kind: swap_layout` (`params.layout_id` = One Content layout).
+  Emitted when a slide's takeaway/source band cannot be placed on its layout;
+  the band is skipped at render instead of overlapping title/footer chrome.
+
+- **`recommend_visual` template preview refs** (go-slide-creator-aruv). With a
+  `template`, `candidates[].example` gains `layout_id` and
+  `layout_preview_png_path` — the shipped 320px thumbnail
+  (`templates/previews/<template>/<layout_id>.png`, embedded in the binary and
+  materialised into the user cache for embedded templates) of the layout the
+  candidate renders on. Placeholder candidates now resolve slide types
+  (`title`, `section`, `content`, `two-column`, `image`, `blank`) to their
+  canonical layout and use the thumbnail as `preview_png_path`
+  (`renderer: "template-preview"`, `metadata_only: false`). Additive.
+
+### Changed
+
+- **Takeaway / source band geometry is layout-derived** (go-slide-creator-7m9v).
+  The band spans the layout's body column and sits above its footer
+  placeholders (was: a fixed 0.5in slide-percentage margin overlapping the
+  master footers). Content placeholders shrink to end above the band. The
+  takeaway text is 14pt bold (was 12pt).
+
 ## 4.58.0 (2026-05-30)
 
 ### Added
