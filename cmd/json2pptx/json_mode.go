@@ -591,7 +591,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles,
 		droppedPlaceholdersBySlide(allFitFindings))
 
-	quality := computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts)
+	quality := computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts, allFitFindings...)
 	evidence := &pipeline.QualityEvidence{ArtifactSHA256: result.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(outputValidationFindings), TotalSlides: result.SlideCount}
 	evidence.Finalize()
 	quality.Evidence = evidence
@@ -1775,7 +1775,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 // layouts available: titles are then judged by measured fit against their
 // resolved title placeholder (go-slide-creator-vjwn) instead of the 60-char
 // heuristic, which remains the fallback when a title cannot be measured.
-func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layouts []types.LayoutMetadata) *QualityScore { //nolint:gocognit,gocyclo
+func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layouts []types.LayoutMetadata, findings ...patterns.FitFinding) *QualityScore { //nolint:gocognit,gocyclo
 	if len(slides) == 0 {
 		return &QualityScore{
 			Score:  0.0,
@@ -1955,6 +1955,16 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 		}
 		overallScore -= warningPenalty
 		globalIssues = append(globalIssues, fmt.Sprintf("%d pipeline warning(s)", len(warnings)))
+	}
+
+	// Refuse-class findings are content loss or an unrenderable slide, not a
+	// styling nit. A deck that dropped three rows of financial data must not
+	// score 100 (go-slide-creator-oaif), so these carry a hard, uncapped
+	// penalty — unlike the generic warning penalty, which caps at 0.2.
+	if blocking := blockingFindingCodes(findings); len(blocking) > 0 {
+		overallScore -= float64(len(blocking)) * refuseFindingPenalty
+		globalIssues = append(globalIssues, fmt.Sprintf(
+			"%d blocking finding(s): %s", len(blocking), strings.Join(blocking, ", ")))
 	}
 
 	// Clamp overall score
@@ -2873,4 +2883,25 @@ func renderSucceeded(findings []patterns.FitFinding, outputValidation string) bo
 		return false
 	}
 	return true
+}
+
+
+// refuseFindingPenalty is the score deducted per refuse-class finding. At 0.25
+// a single one takes a perfect deck out of the 90s, and three take it below the
+// usual gate — which is the point: the deck is missing content.
+const refuseFindingPenalty = 0.25
+
+// blockingFindingCodes returns the distinct codes of the refuse-class findings
+// in a set, in first-seen order.
+func blockingFindingCodes(findings []patterns.FitFinding) []string {
+	seen := map[string]bool{}
+	var codes []string
+	for _, f := range findings {
+		if f.Action != "refuse" || seen[f.Code] {
+			continue
+		}
+		seen[f.Code] = true
+		codes = append(codes, f.Code)
+	}
+	return codes
 }

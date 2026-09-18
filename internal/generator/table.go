@@ -195,17 +195,25 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 				slog.Int("hidden_rows", overflow),
 			)
 
-			// Site 5: emit warning when rows are truncated.
+			// Site 5: dropping authored rows is DATA LOSS, not a layout nit —
+			// three regions' financials simply vanish from the deck. The action
+			// is "refuse" so the strict-fit gate and the deck score both treat
+			// it as blocking; the fix (the row to split at) is already computed
+			// here, so the deck is trivially repairable (go-slide-creator-oaif).
 			findings = append(findings, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
 					Code:    patterns.ErrCodeTableRowsTruncated,
-					Message: fmt.Sprintf("table rows truncated: %d of %d rows hidden (headers: %s)", overflow, len(truncatedRows)+overflow, tableID),
+					Message: fmt.Sprintf("table rows truncated: %d of %d rows hidden (headers: %s) — the hidden rows are absent from the deck; split the table at row %d", overflow, len(truncatedRows)+overflow, tableID, len(truncatedRows)),
 					Fix: &patterns.FixSuggestion{
-						Kind:   "split_at_row",
-						Params: map[string]any{"visible_rows": len(truncatedRows), "hidden_rows": overflow},
+						Kind: "split_at_row",
+						Params: map[string]any{
+							"visible_rows": len(truncatedRows),
+							"hidden_rows":  overflow,
+							"split_at_row": len(truncatedRows),
+						},
 					},
 				},
-				Action: "review",
+				Action: "refuse",
 			})
 		}
 	}

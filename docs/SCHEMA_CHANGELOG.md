@@ -10,6 +10,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Silent table row truncation now blocks (go-slide-creator-oaif).** A 12-row
+  table shipped 9 rows plus a literal "…and 3 more rows" cell — three regions'
+  financials absent from the deck — reported at `action: review` with the
+  quality score still 100 and the gate still passing. `table_rows_truncated` is
+  now `action: refuse` at both the pre-generation predictor and the render-time
+  site (and `severity: refuse` in the describe catalogue), and its
+  `fix.params` gains `split_at_row` so the repair is fully specified. Two
+  plumbing gaps are closed with it: the strict-fit gate and the CLI
+  `validate --fit-report` read only `generateFitReport`, which omitted the table
+  predictor, so the refusal never reached either — both now include it. And
+  refuse-class findings carry a hard, uncapped penalty in the input quality
+  score (a truncating deck scores 75, not 100) instead of only the generic
+  warning penalty, which caps at 0.2.
+
 - **Venn items render, and a Venn beyond 3 circles is refused
   (go-slide-creator-onop).** The exclusive item list got 30% of a circle's
   radius — room for barely one short line — so a circle with 7 items rendered

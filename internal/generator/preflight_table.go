@@ -139,18 +139,21 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 					Path: input.Path,
 					Code: patterns.ErrCodeTableRowsTruncated,
 					Message: fmt.Sprintf(
-						"predicted: table rows will be truncated — %d of %d rows hidden (headers: %s)",
-						overflow, len(input.Rows), tableID,
+						"predicted: table rows will be truncated — %d of %d rows hidden (headers: %s); the hidden rows would be absent from the deck, so split the table at row %d",
+						overflow, len(input.Rows), tableID, len(input.Rows)-overflow,
 					),
 					Fix: &patterns.FixSuggestion{
 						Kind: "split_at_row",
 						Params: map[string]any{
 							"visible_rows": len(input.Rows) - overflow,
 							"hidden_rows":  overflow,
+							"split_at_row": len(input.Rows) - overflow,
 						},
 					},
 				},
-				Action: "review",
+				// Data loss, not a layout nit — see the render-time site in
+				// table.go (go-slide-creator-oaif).
+				Action: "refuse",
 			})
 		}
 	}

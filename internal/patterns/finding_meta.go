@@ -753,12 +753,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeTableRowsTruncated: {
 		Code:        ErrCodeTableRowsTruncated,
-		Summary:     "Table rows were truncated at render time to fit the available height.",
-		Severity:    "review",
-		WhenEmitted: "Render-time table layout drops trailing rows because they would exceed the placeholder height at the minimum font scale.",
+		Summary:     "Table rows were dropped to fit the available height — the hidden rows are absent from the deck.",
+		Severity:    "refuse",
+		WhenEmitted: "Table layout cannot fit every row in the placeholder height even at the minimum font scale, so trailing rows are replaced by an \"…and N more rows\" cell. This is content loss, not a styling nit: the rows' data is simply not in the deck, so it blocks rather than warns.",
 		RemediationSteps: []string{
-			"Split the table at the suggested row via repair_slide(kind=split_at_row).",
-			"Or reduce row count upstream.",
+			"Split the table at the row named in fix.params.split_at_row via repair_slide(kind=split_at_row) — the split point is already computed for you.",
+			"Or use the split_slide envelope (by: \"table.rows\") so the engine paginates the rows across slides.",
+			"Or reduce the row count upstream, if the trailing rows are genuinely not needed.",
 		},
 		RelatedCodes: []string{ErrCodeDensityExceeded, ErrCodeFitOverflow, ErrCodeTableFontScaled},
 	},

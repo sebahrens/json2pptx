@@ -596,7 +596,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		ContentHash:              result.ContentHash,
 		DurationMs:               duration.Milliseconds(),
 		Warnings:                 allWarnings,
-		Quality:                  computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts),
+		Quality:                  computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts, fitFindings...),
 		ValidationErrors:         result.ValidationErrors,
 		FitFindings:              fitFindings,
 		Slides:                   slideResolutions,

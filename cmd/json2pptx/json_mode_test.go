@@ -2510,3 +2510,63 @@ func TestDroppedPlaceholdersBySlide(t *testing.T) {
 		t.Errorf("advisory partial-mode drop must not appear in the index: %v", got[1])
 	}
 }
+
+// go-slide-creator-oaif: a deck that dropped three rows of financial data still
+// scored 100. Refuse-class findings now carry a hard, uncapped penalty, unlike
+// the generic warning penalty which caps at 0.2.
+func TestComputeQualityScore_PenalisesRefuseFindings(t *testing.T) {
+	slides := []SlideInput{{
+		LayoutID: "slideLayout2",
+		Content: []ContentInput{
+			{PlaceholderID: "title", Type: "text", TextValue: strPtr("Regional performance")},
+			{PlaceholderID: "body", Type: "text", TextValue: strPtr("Some supporting prose for the slide.")},
+		},
+	}}
+
+	clean := computeQualityScoreWithLayouts(slides, nil, nil)
+	withDrop := computeQualityScoreWithLayouts(slides, nil, nil, patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Code:    patterns.ErrCodeTableRowsTruncated,
+			Path:    "/slides/0/content/1",
+			Message: "table rows truncated: 3 of 12 rows hidden",
+		},
+		Action: "refuse",
+	})
+
+	if withDrop.Score >= clean.Score {
+		t.Errorf("a refuse-class finding must lower the score: clean=%v withDrop=%v", clean.Score, withDrop.Score)
+	}
+	var named bool
+	for _, issue := range withDrop.Issues {
+		if strings.Contains(issue, patterns.ErrCodeTableRowsTruncated) {
+			named = true
+		}
+	}
+	if !named {
+		t.Errorf("the blocking finding should be named in issues, got %v", withDrop.Issues)
+	}
+
+	// A review-class finding must NOT trip the blocking penalty.
+	withReview := computeQualityScoreWithLayouts(slides, nil, nil, patterns.FitFinding{
+		ValidationError: patterns.ValidationError{Code: patterns.ErrCodeTableFontScaled},
+		Action:          "review",
+	})
+	if withReview.Score != clean.Score {
+		t.Errorf("a review-class finding must not carry the blocking penalty: clean=%v withReview=%v",
+			clean.Score, withReview.Score)
+	}
+}
+
+func TestBlockingFindingCodes(t *testing.T) {
+	findings := []patterns.FitFinding{
+		{ValidationError: patterns.ValidationError{Code: "a"}, Action: "refuse"},
+		{ValidationError: patterns.ValidationError{Code: "a"}, Action: "refuse"}, // duplicate
+		{ValidationError: patterns.ValidationError{Code: "b"}, Action: "review"},
+		{ValidationError: patterns.ValidationError{Code: "c"}, Action: "refuse"},
+		{ValidationError: patterns.ValidationError{Code: "d"}, Action: "info"},
+	}
+	got := blockingFindingCodes(findings)
+	if len(got) != 2 || got[0] != "a" || got[1] != "c" {
+		t.Errorf("blockingFindingCodes = %v, want [a c] (distinct, refuse-only, first-seen order)", got)
+	}
+}

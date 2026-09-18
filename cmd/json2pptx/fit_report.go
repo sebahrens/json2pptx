@@ -44,6 +44,11 @@ type fitFinding struct {
 // default bounds — identical to the pre-geometry behavior).
 func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) ([]fitFinding, error) {
 	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
+	// Table row truncation is predicted BEFORE generation (DetectTablePreflight)
+	// and is refuse-class because the hidden rows are absent from the deck. The
+	// gate read only generateFitReport, so that prediction never reached it and
+	// a deck shipped with three rows of data missing (go-slide-creator-oaif).
+	findings = append(findings, tablePreflightLocalFindings(input, layouts)...)
 	if len(findings) == 0 {
 		return nil, nil
 	}
@@ -435,4 +440,27 @@ func printFitFindingsBySlide(findings []fitFinding) {
 			fmt.Fprintf(os.Stderr, "    [%s] %s — %s\n", f.Action, f.Path, f.Message)
 		}
 	}
+}
+
+
+// tablePreflightLocalFindings runs the pre-generation table predictor and
+// converts its findings into the local fitFinding shape the CLI fit report and
+// the strict-fit gate share.
+func tablePreflightLocalFindings(input *PresentationInput, layouts []types.LayoutMetadata) []fitFinding {
+	var out []fitFinding
+	for _, f := range collectTablePreflightFindings(input, layouts) {
+		severity := "warning"
+		if f.Action == "refuse" {
+			severity = "error"
+		}
+		out = append(out, fitFinding{
+			Code:     f.Code,
+			Path:     f.Path,
+			Message:  f.Message,
+			Fix:      f.Fix,
+			Action:   f.Action,
+			Severity: severity,
+		})
+	}
+	return out
 }
