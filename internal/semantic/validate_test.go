@@ -350,7 +350,7 @@ func TestValidateChartSeriesAdvisory(t *testing.T) {
 
 // TestValidateChartInsightOverCap is the regression guard for go-slide-creator-hadk:
 // a chart_insight with more than 6 insights validates cleanly today but compile
-// degrades to a bullet list and drops the chart. Validation must flag the
+// degrades to a native fallback slide. Validation must flag the
 // over-cap count (warning under warn, error under strict) so an agent can split
 // or shorten before shipping a slide that loses its chart.
 func TestValidateChartInsightOverCap(t *testing.T) {

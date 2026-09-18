@@ -17,9 +17,9 @@ type chartInsightsValues struct {
 }
 
 // ChartInsightMaxInsights is the insight-bullet cap of the chart-insights-split
-// pattern. Beyond it the compiler degrades to a content slide and drops the
-// chart entirely, so validation and the explain planner share this bound to stay
-// in step with compile.
+// pattern. Beyond it the compiler degrades to a native two-column slide (chart
+// beside the full insight list), so validation and the explain planner share
+// this bound to stay in step with compile.
 const ChartInsightMaxInsights = 6
 
 // ChartInsightInsightCount returns the number of insight bullets a chart_insight
@@ -37,8 +37,8 @@ func ChartInsightInsightCount(body map[string]any) int {
 }
 
 // ChartInsightPatternFeasible reports whether a chart_insight payload will
-// compile to the chart-insights-split pattern rather than degrading to a content
-// fallback (which drops the chart): it must resolve to 1–ChartInsightMaxInsights
+// compile to the chart-insights-split pattern rather than degrading to the
+// native two-column fallback: it must resolve to 1–ChartInsightMaxInsights
 // usable insight bullets.
 func ChartInsightPatternFeasible(body map[string]any) bool {
 	n := ChartInsightInsightCount(body)
@@ -50,7 +50,8 @@ func ChartInsightPatternFeasible(body map[string]any) bool {
 // pattern (left chart panel + right insights), including the chart only when it
 // carries a type and a non-empty data payload — the pattern renders insights
 // full-width otherwise. Without usable insights (or beyond the cap) it degrades
-// to a content slide so the deck still compiles.
+// to a native two-column (chart + insights) or content slide so the deck still
+// compiles without losing either.
 func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	insights, insightsField := chartInsights(in.Body)
 
@@ -113,10 +114,25 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	return slide, links, nil
 }
 
-// compileChartFallback renders a content slide carrying the title, any insight
-// bullets, and the takeaway when the chart-insights-split shape does not fit.
+// ChartInsightFallbackSlideType returns the native slide_type the density
+// fallback compiles to: a two-column slide (chart left in "body", insights
+// right in "body_2") when a renderable chart is present, so both survive, or a
+// plain content slide when there is no chart. The explain planner consults this
+// so its alternative stays in step with compile.
+func ChartInsightFallbackSlideType(body map[string]any) string {
+	if chartSpec(body) != nil {
+		return "two-column"
+	}
+	return "content"
+}
+
+// compileChartFallback renders the title, every insight bullet, the chart (when
+// renderable) and the takeaway when the chart-insights-split shape does not fit.
+// With a chart it compiles to a two-column slide — chart in "body", insights in
+// "body_2" — so the two never contend for one placeholder (a one-content layout
+// would resolve body_2 onto body and the chart would bury every insight).
 func compileChartFallback(in Input, insights []string, insightsField string) (*deckinput.SlideInput, []SourceLink, error) {
-	slide := &deckinput.SlideInput{SlideType: "content"}
+	slide := &deckinput.SlideInput{SlideType: ChartInsightFallbackSlideType(in.Body)}
 	var links []SourceLink
 
 	if in.Title != "" {
