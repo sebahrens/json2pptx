@@ -361,8 +361,28 @@ func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect) {
 			break
 		}
 
-		// Prune the deepest level
-		oc.pruneDeepestLevel(root, currentDepth)
+		// Prune the deepest level. collapseSiblings already reports the nodes
+		// IT hides, but this path reported nothing: a 21-person chart rendered
+		// as 5 boxes reading "+4 reports" with no warning and no finding, so an
+		// agent that fed real names in had no way to know the deck now
+		// misrepresents the org (go-slide-creator-pwcg).
+		if removed := oc.pruneDeepestLevel(root, currentDepth); removed > 0 {
+			oc.builder.AddFinding(Finding{
+				Code: FindingOrgChartDepthPruned,
+				Message: fmt.Sprintf(
+					"org chart: %d node(s) below depth %d removed to keep the remaining boxes readable — the chart no longer shows the full org; split it across slides or reduce its depth",
+					removed, currentDepth-1),
+				Severity: "warning",
+				Fix: &FixSuggestion{
+					Kind: FixKindReduceItems,
+					Params: map[string]any{
+						"removed_count": removed,
+						"kept_depth":    currentDepth - 1,
+						"diagram_type":  "org_chart",
+					},
+				},
+			})
+		}
 		totalNodes = oc.countDescendants(root)
 	}
 
@@ -463,11 +483,13 @@ func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect) {
 
 // pruneDeepestLevel removes all children at the specified depth, replacing
 // parent nodes that had children with a "+N" suffix to indicate hidden reports.
-func (oc *OrgChartRenderer) pruneDeepestLevel(node *layoutNode, maxDepth int) {
+// It returns the number of nodes removed so the caller can report the loss.
+func (oc *OrgChartRenderer) pruneDeepestLevel(node *layoutNode, maxDepth int) int {
 	if len(node.children) == 0 {
-		return
+		return 0
 	}
 
+	removed := 0
 	for _, child := range node.children {
 		if child.depth == maxDepth-1 {
 			// This child's children are at the deepest level — prune them
@@ -475,13 +497,15 @@ func (oc *OrgChartRenderer) pruneDeepestLevel(node *layoutNode, maxDepth int) {
 				count := oc.countDescendants(child) - 1 // exclude the child itself
 				if count > 0 {
 					child.title = fmt.Sprintf("+%d reports", count)
+					removed += count
 				}
 				child.children = nil
 			}
 		} else {
-			oc.pruneDeepestLevel(child, maxDepth)
+			removed += oc.pruneDeepestLevel(child, maxDepth)
 		}
 	}
+	return removed
 }
 
 // leafNodeTotalWidth returns the sum of NodeWidth for all leaf nodes in the tree.

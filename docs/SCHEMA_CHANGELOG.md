@@ -10,6 +10,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Org charts report the levels they drop (go-slide-creator-pwcg).** A
+  21-person `org_chart` rendered as 5 boxes reading "+4 reports" — every named
+  person below level 1 gone — with no warning and no finding.
+  `collapseSiblings` reported the nodes it hid, but `pruneDeepestLevel`, which
+  is what fires on a deep chart, reported nothing. It now emits the new
+  warning-severity `diagram.org_chart_depth_pruned` (fix kind `reduce_items`,
+  carrying `removed_count` and `kept_depth`) so the misrepresentation is
+  visible and the author is told to split the chart across slides.
+
 - **`theme_override` reaches the artifact (go-slide-creator-p327).** The override
   was applied only to the in-memory palette used for chart styling;
   `ppt/theme/themeN.xml` was copied from the template unmodified, so every

@@ -161,6 +161,7 @@ const (
 	FindingLabelClipped          = core.FindingLabelClipped
 	FindingLegendOverflowDropped = core.FindingLegendOverflowDropped
 	FindingOverflowSuppressed    = core.FindingOverflowSuppressed
+	FindingOrgChartDepthPruned   = core.FindingOrgChartDepthPruned
 	FindingPlotAreaCollapsed     = core.FindingPlotAreaCollapsed
 
 	// Capacity limits (re-exported from core/limits.go).

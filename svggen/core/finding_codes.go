@@ -62,6 +62,12 @@ const (
 	// "+N more" indicators) is suppressed or truncated.
 	FindingOverflowSuppressed = "chart.overflow_suppressed"
 
+	// FindingOrgChartDepthPruned is emitted when an org chart drops whole
+	// levels of the hierarchy to keep the remaining boxes readable. The chart
+	// then misrepresents the org, so the loss must be visible
+	// (go-slide-creator-pwcg).
+	FindingOrgChartDepthPruned = "diagram.org_chart_depth_pruned"
+
 	// FindingPlotAreaCollapsed is emitted when x-axis labels claim so much
 	// of the canvas that the plot itself is squeezed into a sliver — the
 	// chart has effectively vanished behind a wall of rotated text. The
