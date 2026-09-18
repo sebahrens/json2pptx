@@ -129,17 +129,17 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |
 | Ordered steps / annotated ToC (no branching) | `numbered-step-strip` | 3–6 numbered steps with an optional per-step detail zone; `chevron` ribbon, `stacked-box` scorecard, or `toc` agenda — never emits decision diamonds (use `process-flow` for branching) |
-| Two parallel process tracks | `process-grid-2row` | Two rows × 3–6 phase columns sharing the same N columns; dk1 row-label column on the left, per-row accent fill |
+| Two parallel process tracks | `process-grid-2row` | Two rows × 3–6 phase columns sharing the same N columns; dk2 row-label column on the left, per-row accent fill |
 | Porter / supply value chain | `value-chain` | 4–10 step columns with bold label + 1–3 line description |
 | Maturity ladder / current-state journey | `journey-maturity-model` | 3–6 stage columns with numbered headers, description, and optional 'where we are' marker |
-| P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals |
+| P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals, grey bridge lines between bar levels; `unit` currency symbols render as a prefix (`"$m"` → `$210m`), value labels move outside bars too thin to hold them |
 | Value / cost driver tree | `driver-tree` | Root metric → 2–4 branches → 1–4 leaves each, with optional per-branch annotations (for **people/role** hierarchies use svggen `org_chart` instead) |
 | Temporal sequence | `timeline-horizontal` | Date-labeled stops |
 | Layer/stack diagram | `arch-stack` | Vertical tier ordering |
 | Narrowing hierarchy | `pyramid` | Visual narrowing (top < bottom) |
 | Before/after comparison | `before-after` | Temporal transformation |
 | Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side |
-| 4-quadrant positioning | `matrix-2x2` | Axis-labeled quadrants |
+| 4-quadrant positioning | `matrix-2x2` | Axis-labeled quadrants; each axis is an arrow pointing to its high end (right / up) flanked by low/high end labels — optional `x_low` / `x_high` / `y_low` / `y_high` (≤20 chars, default `Low` / `High`) |
 | Phased plan with workstreams | `roadmap-phased` | Named phases × workstreams grid |
 | Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones) |
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |

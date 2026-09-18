@@ -11,7 +11,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// process-grid-2row pattern — two parallel tracks of phase boxes with a dk1
+// process-grid-2row pattern — two parallel tracks of phase boxes with a dk2
 // row-label column on the left. Each row carries an equal number of phases.
 // ---------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ type processGrid2Row struct{}
 
 func (p *processGrid2Row) Name() string { return "process-grid-2row" }
 func (p *processGrid2Row) Description() string {
-	return "Two parallel process tracks: dk1 row-label column on the left, then N equal-width phase boxes per row"
+	return "Two parallel process tracks: dk2 row-label column on the left, then N equal-width phase boxes per row"
 }
 func (p *processGrid2Row) UseWhen() string {
 	return "Double-track processes where two parallel workstreams share the same N phase columns (e.g., Design / Production, Strategy / Execution); prefer process-flow for a single linear track, swimlane when steps are owned by distinct actors with potentially different step counts"
@@ -101,10 +101,10 @@ func (p *processGrid2Row) Schema() *Schema {
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"row1_label":  StringSchema(40).WithDescription("Label for the top row (rendered in the dk1 left column)"),
+			"row1_label":  StringSchema(40).WithDescription("Label for the top row (rendered in the dk2 left column)"),
 			"row1_phases": phasesSchema,
 			"row1_color":  StringSchema(0).WithDescription("Scheme color for the top-row phase boxes (default accent1)").WithDefault("accent1"),
-			"row2_label":  StringSchema(40).WithDescription("Label for the bottom row (rendered in the dk1 left column)"),
+			"row2_label":  StringSchema(40).WithDescription("Label for the bottom row (rendered in the dk2 left column)"),
 			"row2_phases": phasesSchema,
 			"row2_color":  StringSchema(0).WithDescription("Scheme color for the bottom-row phase boxes (default accent3)").WithDefault("accent3"),
 		},
@@ -120,7 +120,7 @@ func (p *processGrid2Row) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Two parallel process tracks with a dk1 row-label column on the left and N equal-width phase boxes per row")
+	}).WithDescription("Two parallel process tracks with a dk2 row-label column on the left and N equal-width phase boxes per row")
 }
 
 func (p *processGrid2Row) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -244,21 +244,21 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	cellIdx := 0
 
 	row1Cells := make([]*jsonschema.GridCellInput, numCols)
-	row1Cells[0] = buildProcessGrid2RowLabelCell(vals.Row1Label, labelSize)
+	row1Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row1Label, labelSize)
 	applyProcessGrid2RowOverride(row1Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 	for i, phase := range vals.Row1Phases {
-		row1Cells[1+i] = buildProcessGrid2RowPhaseCell(phase, row1Color, phaseSize)
+		row1Cells[1+i] = buildProcessGrid2RowPhaseCell(ctx, phase, row1Color, phaseSize)
 		applyProcessGrid2RowOverride(row1Cells[1+i], cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 	}
 
 	row2Cells := make([]*jsonschema.GridCellInput, numCols)
-	row2Cells[0] = buildProcessGrid2RowLabelCell(vals.Row2Label, labelSize)
+	row2Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row2Label, labelSize)
 	applyProcessGrid2RowOverride(row2Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 	for i, phase := range vals.Row2Phases {
-		row2Cells[1+i] = buildProcessGrid2RowPhaseCell(phase, row2Color, phaseSize)
+		row2Cells[1+i] = buildProcessGrid2RowPhaseCell(ctx, phase, row2Color, phaseSize)
 		applyProcessGrid2RowOverride(row2Cells[1+i], cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 	}
@@ -280,19 +280,26 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 // Cell builders
 // ---------------------------------------------------------------------------
 
-func buildProcessGrid2RowLabelCell(label string, size float64) *jsonschema.GridCellInput {
-	text := buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(label), size, true, "lt1")
+// processGrid2RowLabelFill is the row-label column fill: the template's dark
+// brand colour (dk2) rather than dk1, which is pure black in most themes and
+// reads off-brand next to the accent phase boxes.
+const processGrid2RowLabelFill = "dk2"
+
+func buildProcessGrid2RowLabelCell(ctx ExpandContext, label string, size float64) *jsonschema.GridCellInput {
+	textColor := readableTextOn(ctx, fillTone{Color: processGrid2RowLabelFill}, "lt1")
+	text := buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(label), size, true, textColor)
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"dk1"`),
+			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, processGrid2RowLabelFill)),
 			Text:     text,
 		},
 	}
 }
 
-func buildProcessGrid2RowPhaseCell(phase, color string, size float64) *jsonschema.GridCellInput {
-	text := buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), size, true, "lt1")
+func buildProcessGrid2RowPhaseCell(ctx ExpandContext, phase, color string, size float64) *jsonschema.GridCellInput {
+	textColor := readableTextOn(ctx, fillTone{Color: color}, "lt1")
+	text := buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), size, true, textColor)
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",

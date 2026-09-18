@@ -172,10 +172,10 @@ func TestValueChain_Expand_HighlightDefaultColor(t *testing.T) {
 	if !strings.Contains(string(highlighted.Shape.Fill), "accent2") {
 		t.Errorf("expected highlighted label fill to include accent2, got %q", string(highlighted.Shape.Fill))
 	}
-	// Step 0 (not highlighted) should fill with dk1.
+	// Step 0 (not highlighted) should fill with dk2 (never dk1 black).
 	plain := grid.Rows[0].Cells[0]
-	if !strings.Contains(string(plain.Shape.Fill), "dk1") {
-		t.Errorf("expected non-highlighted label fill to include dk1, got %q", string(plain.Shape.Fill))
+	if !strings.Contains(string(plain.Shape.Fill), "dk2") {
+		t.Errorf("expected non-highlighted label fill to include dk2, got %q", string(plain.Shape.Fill))
 	}
 }
 

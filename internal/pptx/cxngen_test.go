@@ -120,11 +120,11 @@ func TestGenerateConnector_WithConnectionRefs(t *testing.T) {
 		Geometry: GeomStraightConnector1,
 		StartConn: &ConnectionRef{
 			ShapeID: 2,
-			SiteIdx: 1, // right
+			SiteIdx: 1, // left
 		},
 		EndConn: &ConnectionRef{
 			ShapeID: 3,
-			SiteIdx: 3, // left
+			SiteIdx: 3, // right
 		},
 	})
 	if err != nil {
@@ -308,11 +308,11 @@ func TestRouteBetween_TargetToRight(t *testing.T) {
 
 	bounds, startSite, endSite := RouteBetween(source, target)
 
-	if startSite != 1 {
-		t.Errorf("startSite = %d, want 1 (right)", startSite)
+	if startSite != 3 {
+		t.Errorf("startSite = %d, want 3 (right)", startSite)
 	}
-	if endSite != 3 {
-		t.Errorf("endSite = %d, want 3 (left)", endSite)
+	if endSite != 1 {
+		t.Errorf("endSite = %d, want 1 (left)", endSite)
 	}
 	// Bounds should span from right edge of source to left edge of target
 	if bounds.X != 300 { // source.X + source.CX
@@ -363,11 +363,11 @@ func TestRouteBetween_TargetToLeft(t *testing.T) {
 
 	_, startSite, endSite := RouteBetween(source, target)
 
-	if startSite != 3 {
-		t.Errorf("startSite = %d, want 3 (left)", startSite)
+	if startSite != 1 {
+		t.Errorf("startSite = %d, want 1 (left)", startSite)
 	}
-	if endSite != 1 {
-		t.Errorf("endSite = %d, want 1 (right)", endSite)
+	if endSite != 3 {
+		t.Errorf("endSite = %d, want 3 (right)", endSite)
 	}
 }
 
@@ -408,11 +408,11 @@ func TestRouteBetween_HomePlateOffset(t *testing.T) {
 
 	bounds, startSite, endSite := RouteBetween(source, target)
 
-	if startSite != 1 {
-		t.Errorf("startSite = %d, want 1 (right)", startSite)
+	if startSite != 3 {
+		t.Errorf("startSite = %d, want 3 (right)", startSite)
 	}
-	if endSite != 3 {
-		t.Errorf("endSite = %d, want 3 (left)", endSite)
+	if endSite != 1 {
+		t.Errorf("endSite = %d, want 1 (left)", endSite)
 	}
 
 	// Source right edge is 2100. With 15% tip offset (300 EMU), connector starts at 2400.
@@ -474,10 +474,52 @@ func TestRouteBetween_DiagonalPreferHorizontal(t *testing.T) {
 
 	_, startSite, endSite := RouteBetween(source, target)
 
-	if startSite != 1 {
-		t.Errorf("startSite = %d, want 1 (right)", startSite)
+	if startSite != 3 {
+		t.Errorf("startSite = %d, want 3 (right)", startSite)
 	}
-	if endSite != 3 {
-		t.Errorf("endSite = %d, want 3 (left)", endSite)
+	if endSite != 1 {
+		t.Errorf("endSite = %d, want 1 (left)", endSite)
+	}
+}
+
+// Site indices follow the ECMA-376 preset cxnLst order (verified against
+// LibreOffice's oox-drawingml-cs-presets glue points): rect-like presets list
+// top, left, bottom, right; ellipse and triangle carry extra sites.
+func TestConnectionSiteIndex(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		geom PresetGeometry
+		want [4]int // top, left, bottom, right
+	}{
+		{GeomRect, [4]int{0, 1, 2, 3}},
+		{GeomRoundRect, [4]int{0, 1, 2, 3}},
+		{GeomChevron, [4]int{0, 1, 2, 3}},
+		{GeomEllipse, [4]int{0, 2, 4, 6}},
+		{GeomTriangle, [4]int{0, 1, 3, 5}},
+	}
+	for _, c := range cases {
+		for side := SideTop; side <= SideRight; side++ {
+			if got := ConnectionSiteIndex(c.geom, side); got != c.want[side] {
+				t.Errorf("%s side %d = %d, want %d", c.geom, side, got, c.want[side])
+			}
+		}
+	}
+}
+
+func TestRoute_FlipFlags(t *testing.T) {
+	t.Parallel()
+	src := ShapeOptions{Geometry: GeomRect, Bounds: RectEmu{X: 0, Y: 1000, CX: 100, CY: 2000}}
+	above := ShapeOptions{Geometry: GeomRect, Bounds: RectEmu{X: 300, Y: 0, CX: 100, CY: 100}}
+	r := Route(src, above, true)
+	if !r.FlipV || r.FlipH {
+		t.Errorf("target up-right: FlipV=%v FlipH=%v, want true/false", r.FlipV, r.FlipH)
+	}
+	if r.StartSite != 3 || r.EndSite != 1 {
+		t.Errorf("sites %d->%d, want 3->1", r.StartSite, r.EndSite)
+	}
+	left := ShapeOptions{Geometry: GeomRect, Bounds: RectEmu{X: -500, Y: 3000, CX: 100, CY: 100}}
+	r = Route(src, left, true)
+	if !r.FlipH || r.FlipV {
+		t.Errorf("target down-left: FlipH=%v FlipV=%v, want true/false", r.FlipH, r.FlipV)
 	}
 }

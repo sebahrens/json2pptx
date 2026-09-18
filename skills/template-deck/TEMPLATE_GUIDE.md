@@ -405,6 +405,8 @@ Each row has `cells` (array of cell objects), an optional `height` (percentage o
 | `width` | number | `1.0` | Line width in points |
 | `dash`  | string | `"solid"` | `"solid"`, `"dash"`, `"dot"`, `"lgDash"`, `"dashDot"` |
 
+Connector semantics: the chain runs left-to-right through every **visible** cell occupying the row — including a `row_span` cell from an earlier row, which fans out to each child row once. Cells with no visible fill and no outline (spacers, empty placeholders, unboxed text labels) are skipped. Endpoints at different heights (a spanning parent vs. a child) are drawn as elbow connectors, not diagonals.
+
 ### Cell Definition
 
 Each cell holds one of `shape`, `table`, `icon`, `image`, or `diagram` (mutually exclusive). Optional `col_span` / `row_span` for merged cells (default 1). Optional `fit` controls shape scaling: `"contain"` (fit in cell preserving 1:1 ratio), `"fit-width"` (match cell width), `"fit-height"` (match cell height), or omit for stretch (default). An empty/null cell leaves the grid position blank.

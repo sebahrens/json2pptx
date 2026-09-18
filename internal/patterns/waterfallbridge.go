@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -21,9 +22,11 @@ import (
 //   at that step, creating the classic waterfall/bridge silhouette.
 //
 //   Outer grid: 2 rows.
-//     Row 1 — bar area: N column cells, each holding a vertical 3-row sub-grid
-//             [top-spacer, bar, bottom-spacer]. Unused spacer rows collapse to
-//             zero height. The bar cell carries the value label.
+//     Row 1 — bar area: N column cells, each holding a vertical sub-grid
+//             [top-spacer, bridge line, bar, bridge line, bottom-spacer] on a
+//             [gutter, bar, gutter] split (see buildWaterfallColumnGrid). Unused rows collapse to
+//             zero height. The bar carries the value label unless it is too thin,
+//             in which case the label sits in the adjacent spacer.
 //     Row 2 — labels: N column cells with the component name beneath each bar.
 //
 //   Column types:
@@ -145,7 +148,7 @@ func (w *waterfallBridge) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"columns": ArraySchema(columnSchema, wbMinColumns, wbMaxColumns).WithDescription("Bridge columns left-to-right (3-10)"),
-			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit string appended to value labels (e.g. \"$m\", \"%\")"),
+			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit for value labels (e.g. \"$m\", \"%\"); a leading currency symbol renders as a prefix (\"$m\" → $210m, −$41m)"),
 		},
 		[]string{"columns"},
 	).WithAdditionalProperties(false)
@@ -333,6 +336,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	}
 
 	n := len(resolved)
+	barAreaPt := waterfallBarAreaPt(ctx)
 	barCells := make([]*jsonschema.GridCellInput, n)
 	labelCells := make([]*jsonschema.GridCellInput, n)
 
@@ -379,45 +383,23 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 		}
 
 		valueText := formatWaterfallBridgeValue(col.value, vals.Unit, col.typ == wbTypeDelta)
-		barShape := &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
-			Text:     buildWaterfallBridgeValueText(valueText, valueSize),
-		}
-
-		subRows := []jsonschema.GridRowInput{}
-		if topPct > 0.5 {
-			subRows = append(subRows, jsonschema.GridRowInput{
-				Height: topPct,
-				Cells: []*jsonschema.GridCellInput{{
-					Shape: &jsonschema.ShapeSpecInput{
-						Geometry: "rect",
-						Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
-					},
-				}},
-			})
-		}
-		subRows = append(subRows, jsonschema.GridRowInput{
-			Height: barPct,
-			Cells:  []*jsonschema.GridCellInput{{Shape: barShape}},
-		})
-		if bottomPct > 0.5 {
-			subRows = append(subRows, jsonschema.GridRowInput{
-				Height: bottomPct,
-				Cells: []*jsonschema.GridCellInput{{
-					Shape: &jsonschema.ShapeSpecInput{
-						Geometry: "rect",
-						Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
-					},
-				}},
-			})
-		}
-
 		barCells[i] = &jsonschema.GridCellInput{
-			Grid: &jsonschema.ShapeGridInput{
-				Rows:   subRows,
-				RowGap: 0,
-			},
+			Grid: buildWaterfallColumnGrid(ctx, wbColumnLayout{
+				fill:      fill,
+				valueText: valueText,
+				valueSize: valueSize,
+				topPct:    topPct,
+				barPct:    barPct,
+				bottomPct: bottomPct,
+				labelUp:   !col.isNegDelta,
+				// Bridge lines: the level this column is entered at (from the
+				// previous column) and left at (towards the next one).
+				inOnTop:  col.typ != wbTypeDelta || col.isNegDelta,
+				outOnTop: !col.isNegDelta,
+				hasIn:    i > 0,
+				hasOut:   i < n-1,
+				areaPt:   barAreaPt,
+			}),
 		}
 
 		// Per-column override accent bar: render along the left edge of the
@@ -445,7 +427,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     6,
+		ColGap:  0.01, // columns carry their own inner gutter so bridge lines can cross it
 		RowGap:  4,
 		Rows: []jsonschema.GridRowInput{
 			{Height: 85, Cells: barCells},
@@ -473,13 +455,13 @@ type waterfallBridgeTextObj struct {
 	VerticalAlign string                     `json:"vertical_align"`
 }
 
-func buildWaterfallBridgeValueText(value string, size float64) json.RawMessage {
+func buildWaterfallBridgeValueTextAnchored(value string, size float64, color, anchor string) json.RawMessage {
 	textObj := waterfallBridgeTextObj{
 		Paragraphs: []waterfallBridgeParagraph{
-			{Content: value, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: value, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
-		VerticalAlign: "ctr",
+		VerticalAlign: anchor,
 	}
 	data, _ := json.Marshal(textObj)
 	return data
@@ -508,12 +490,222 @@ func formatWaterfallBridgeValue(v float64, unit string, signed bool) string {
 	} else {
 		s = strconv.FormatFloat(abs, 'f', -1, 64)
 	}
+	prefix, suffix := splitWaterfallUnit(unit)
+	body := prefix + s + suffix
 	switch {
 	case signed && v < 0:
-		return "−" + s + unit
+		return "−" + body
 	case signed && v > 0:
-		return "+" + s + unit
+		return "+" + body
 	default:
-		return s + unit
+		return body
+	}
+}
+
+// wbCurrencySymbols are rendered before the number ("$210m", not "210$m").
+const wbCurrencySymbols = "$€£¥₹₩₽₺₪₫฿₦₱"
+
+// splitWaterfallUnit splits a unit such as "$m", "US$bn" or "€k" into the
+// currency prefix and the magnitude suffix. Units without a currency symbol
+// are pure suffixes ("%", "m", "pts"); a multi-letter word suffix such as
+// "USD" is separated from the number by a space.
+func splitWaterfallUnit(unit string) (prefix, suffix string) {
+	unit = strings.TrimSpace(unit)
+	if unit == "" {
+		return "", ""
+	}
+	runes := []rune(unit)
+	for i, r := range runes {
+		if !strings.ContainsRune(wbCurrencySymbols, r) {
+			continue
+		}
+		// Allow a short country code before the symbol (US$, A$, HK$).
+		lead := string(runes[:i])
+		if len(lead) <= 2 && strings.ToUpper(lead) == lead && !strings.ContainsAny(lead, "0123456789 ") {
+			return string(runes[:i+1]), strings.TrimSpace(string(runes[i+1:]))
+		}
+		break
+	}
+	if len(runes) >= 3 && isAlphaWord(unit) {
+		return "", " " + unit
+	}
+	return "", unit
+}
+
+func isAlphaWord(s string) bool {
+	for _, r := range s {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return false
+		}
+	}
+	return true
+}
+
+// wbColumnLayout describes one waterfall column's vertical split (percent of
+// the bar area) and bridge-line attachment.
+type wbColumnLayout struct {
+	fill                      string
+	valueText                 string
+	valueSize                 float64
+	topPct, barPct, bottomPct float64
+	labelUp                   bool // preferred side for an outside label
+	inOnTop, outOnTop         bool // bridge levels sit on the bar's top edge?
+	hasIn, hasOut             bool // bridge line from the previous / to the next column
+	areaPt                    float64
+}
+
+const (
+	// wbGutterPct is each column's inner gutter (left and right) — the gap
+	// between bars. The bridge lines run across it.
+	wbGutterPct = 7.0
+	// wbBridgeLinePt is the bridge line thickness.
+	wbBridgeLinePt = 0.75
+)
+
+// waterfallBarAreaPt estimates the bar-area row height in points (85% of the
+// content height) for label-fit and line-thickness decisions.
+func waterfallBarAreaPt(ctx ExpandContext) float64 {
+	_, h := expandContentSize(ctx)
+	if h <= 0 {
+		h = shapegrid.DefaultBounds(12192000, 6858000).CY
+	}
+	return float64(h) / 12700 * 0.85
+}
+
+// waterfallLabelSide returns where a column's value label goes: "bar" when
+// the bar can hold one line of value text, otherwise the adjacent spacer
+// ("top" / "bottom", preferring l.labelUp) that has room.
+func waterfallLabelSide(l wbColumnLayout, topPct, barPct, bottomPct float64) string {
+	needPt := l.valueSize*1.5 + 4
+	if l.areaPt <= 0 || l.areaPt*barPct/100 >= needPt {
+		return "bar"
+	}
+	first, second := "top", "bottom"
+	firstPct, secondPct := topPct, bottomPct
+	if !l.labelUp {
+		first, second = second, first
+		firstPct, secondPct = secondPct, firstPct
+	}
+	switch {
+	case l.areaPt*firstPct/100 >= needPt:
+		return first
+	case l.areaPt*secondPct/100 >= needPt:
+		return second
+	}
+	return "bar"
+}
+
+// buildWaterfallColumnGrid builds a column's sub-grid:
+//
+//	[top spacer] [top bridge line] [bar] [bottom bridge line] [bottom spacer]
+//
+// on a [gutter, bar, gutter] column split. Bridge lines are hairline rows at
+// the bar edge the running total enters / leaves at; the entering segment
+// covers the left gutter and the leaving segment the right gutter, so
+// adjacent columns' segments meet across the gap at the same level. A bar too
+// thin to hold its value label gets the label in the adjacent spacer (above
+// for totals and increases, below for decreases) in dark text.
+func buildWaterfallColumnGrid(ctx ExpandContext, l wbColumnLayout) *jsonschema.ShapeGridInput {
+	linePct := 0.0
+	if l.areaPt > 0 {
+		linePct = wbBridgeLinePt / l.areaPt * 100
+	}
+	topPct, barPct, bottomPct := l.topPct, l.barPct, l.bottomPct
+
+	type edgeLine struct{ left, right bool }
+	var top, bottom edgeLine
+	if l.hasIn {
+		if l.inOnTop {
+			top.left = true
+		} else {
+			bottom.left = true
+		}
+	}
+	if l.hasOut {
+		if l.outOnTop {
+			top.right = true
+		} else {
+			bottom.right = true
+		}
+	}
+	// Carve line rows out of the adjacent spacer (or the bar when flush).
+	take := func(spacer *float64) {
+		if *spacer >= linePct+0.5 {
+			*spacer -= linePct
+		} else {
+			barPct -= linePct
+		}
+	}
+	if top.left || top.right {
+		take(&topPct)
+	}
+	if bottom.left || bottom.right {
+		take(&bottomPct)
+	}
+
+	labelSide := waterfallLabelSide(l, topPct, barPct, bottomPct)
+
+	spacer := func(pct float64, side, anchor string) jsonschema.GridRowInput {
+		shape := &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
+		}
+		if labelSide == side {
+			shape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize, "dk1", anchor)
+		}
+		return jsonschema.GridRowInput{Height: pct, Cells: []*jsonschema.GridCellInput{{ColSpan: 3, Shape: shape}}}
+	}
+	lineRow := func(e edgeLine) jsonschema.GridRowInput {
+		line := func(span int) *jsonschema.GridCellInput {
+			return &jsonschema.GridCellInput{ColSpan: span, Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     json.RawMessage(`{"color":"dk1","lumMod":50000,"lumOff":50000}`),
+			}}
+		}
+		var cells []*jsonschema.GridCellInput
+		switch {
+		case e.left && e.right:
+			cells = []*jsonschema.GridCellInput{line(3)}
+		case e.left:
+			cells = []*jsonschema.GridCellInput{line(2)}
+		default:
+			cells = []*jsonschema.GridCellInput{{}, line(2)}
+		}
+		return jsonschema.GridRowInput{Height: linePct, Cells: cells}
+	}
+
+	barShape := &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, l.fill)),
+	}
+	if labelSide == "bar" {
+		barShape.Text = buildWaterfallBridgeValueTextAnchored(l.valueText, l.valueSize,
+			readableTextOn(ctx, fillTone{Color: l.fill}, "lt1"), "ctr")
+	}
+
+	var rows []jsonschema.GridRowInput
+	if topPct > 0.5 {
+		rows = append(rows, spacer(topPct, "top", "b"))
+	}
+	if (top.left || top.right) && linePct > 0 {
+		rows = append(rows, lineRow(top))
+	}
+	rows = append(rows, jsonschema.GridRowInput{
+		Height: barPct,
+		Cells:  []*jsonschema.GridCellInput{{}, {Shape: barShape}},
+	})
+	if (bottom.left || bottom.right) && linePct > 0 {
+		rows = append(rows, lineRow(bottom))
+	}
+	if bottomPct > 0.5 {
+		rows = append(rows, spacer(bottomPct, "bottom", "t"))
+	}
+
+	cols, _ := json.Marshal([]float64{wbGutterPct, 100 - 2*wbGutterPct, wbGutterPct})
+	return &jsonschema.ShapeGridInput{
+		Columns: cols,
+		ColGap:  0.01,
+		RowGap:  0.01,
+		Rows:    rows,
 	}
 }

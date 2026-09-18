@@ -196,6 +196,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   (`/slides/N/shape_grid/rows/R/cells/C`, also set as `reduce_cell_text`
   `cell_path`) instead of the whole slide; no bbox or no hit keeps the slide path.
 
+## Unreleased
+
+### Added
+
+- **`matrix-2x2` axis direction.** Optional `values.x_low`, `x_high`, `y_low`,
+  `y_high` (strings, ≤20 chars; default `"Low"` / `"High"`) label the ends of
+  each axis. Both value forms (named quadrants and positional `quadrants`)
+  accept them. The axes now render as arrows pointing to the high end (x →
+  right, y → up) instead of flat header bars. Additive; existing inputs are
+  unchanged apart from the new rendering.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

@@ -169,11 +169,16 @@ func TestJourneyMaturity_Expand_CurrentStageMarker(t *testing.T) {
 	if currentMarker.Shape == nil {
 		t.Fatal("expected shape on current-stage marker cell")
 	}
-	if currentMarker.Shape.Geometry != "triangle" {
-		t.Errorf("expected triangle geometry on current-stage marker, got %q", currentMarker.Shape.Geometry)
+	if currentMarker.Shape.Geometry != "upArrowCallout" {
+		t.Errorf("expected upArrowCallout geometry on current-stage marker, got %q", currentMarker.Shape.Geometry)
 	}
-	if currentMarker.Shape.Rotation != 180 {
-		t.Errorf("expected rotation 180 for downward triangle, got %v", currentMarker.Shape.Rotation)
+	// A rotated shape rotates its text too: the marker must stay unrotated so
+	// the "We are here" label reads upright.
+	if currentMarker.Shape.Rotation != 0 {
+		t.Errorf("marker must not be rotated (label would render upside down), got %v", currentMarker.Shape.Rotation)
+	}
+	if !strings.Contains(string(currentMarker.Shape.Text), "We are here") {
+		t.Errorf("marker text missing label: %s", currentMarker.Shape.Text)
 	}
 
 	for i, cell := range grid.Rows[2].Cells {

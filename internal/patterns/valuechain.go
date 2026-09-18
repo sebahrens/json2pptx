@@ -95,7 +95,7 @@ func (vc *valueChain) Schema() *Schema {
 		map[string]*Schema{
 			"label":       StringSchema(40).WithDescription("Short step label (1-3 words)"),
 			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label"),
-			"highlight":   BooleanSchema().WithDescription("When true, the label row uses the highlight color (default accent2) instead of dk1"),
+			"highlight":   BooleanSchema().WithDescription("When true, the label row uses the highlight color (default accent2) instead of dk2"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -192,16 +192,16 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	labelCells := make([]*jsonschema.GridCellInput, n)
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, step := range vals.Steps {
-		fill := "dk1"
+		fill := valueChainLabelFill
 		if step.Highlight {
 			fill = highlightColor
 		}
 		// Resolved accent governs the connector and per-cell override accent bar,
 		// but does NOT override the label fill — that semantic is reserved for
-		// highlight vs. dk1 contrast per the layout spec.
+		// highlight vs. dk2 contrast per the layout spec.
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 
-		labelText := buildValueChainLabelText(pptx.ConvertMarkdownEmphasis(step.Label), labelSize)
+		labelText := buildValueChainLabelText(pptx.ConvertMarkdownEmphasis(step.Label), labelSize, readableTextOn(ctx, fillTone{Color: fill}, "lt1"))
 		labelCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
@@ -279,10 +279,15 @@ type valueChainTextObj struct {
 	VerticalAlign string                `json:"vertical_align"`
 }
 
-func buildValueChainLabelText(label string, size float64) json.RawMessage {
+// valueChainLabelFill is the default (non-highlighted) label fill: the
+// template's dark brand colour (dk2), not dk1, which is pure black in most
+// themes and reads off-brand next to the highlight accent.
+const valueChainLabelFill = "dk2"
+
+func buildValueChainLabelText(label string, size float64, color string) json.RawMessage {
 	textObj := valueChainTextObj{
 		Paragraphs: []valueChainParagraph{
-			{Content: label, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: label, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",

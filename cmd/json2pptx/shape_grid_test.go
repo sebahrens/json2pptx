@@ -1590,8 +1590,8 @@ func TestResolveShapeGrid_LineConnector(t *testing.T) {
 		Rows: []GridRowInput{{
 			Connector: &ConnectorSpecInput{Style: "line"},
 			Cells: []*GridCellInput{
-				{Shape: &ShapeSpecInput{Geometry: "rect"}},
-				{Shape: &ShapeSpecInput{Geometry: "rect"}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
 			},
 		}},
 	}

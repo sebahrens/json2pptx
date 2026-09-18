@@ -12,27 +12,88 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "lt2"
+            "fill": "none"
           }
         },
         {
           "col_span": 2,
-          "shape": {
-            "geometry": "rect",
-            "fill": "accent1",
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "Market Share",
-                  "size": 14,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
-                }
-              ],
-              "align": "ctr",
-              "vertical_align": "ctr"
-            }
+          "grid": {
+            "col_gap": 4,
+            "row_gap": 0.01,
+            "columns": [
+              11,
+              78,
+              11
+            ],
+            "rows": [
+              {
+                "cells": [
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Low",
+                            "size": 11,
+                            "color": "dk1",
+                            "align": "r"
+                          }
+                        ],
+                        "align": "r",
+                        "vertical_align": "ctr",
+                        "inset_left": 2,
+                        "inset_right": 2
+                      }
+                    }
+                  },
+                  {
+                    "shape": {
+                      "geometry": "rightArrow",
+                      "fill": "accent1",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Market Share",
+                            "size": 14,
+                            "bold": true,
+                            "color": "lt1",
+                            "align": "ctr"
+                          }
+                        ],
+                        "align": "ctr",
+                        "vertical_align": "ctr"
+                      },
+                      "adjustments": {
+                        "adj1": 70000,
+                        "adj2": 45000
+                      }
+                    }
+                  },
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "High",
+                            "size": 11,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "ctr",
+                        "inset_left": 2,
+                        "inset_right": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         }
       ]
@@ -41,23 +102,91 @@
       "cells": [
         {
           "row_span": 2,
-          "shape": {
-            "geometry": "rect",
-            "fill": "accent1",
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "Market Growth",
-                  "size": 14,
-                  "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
-                }
-              ],
-              "align": "ctr",
-              "vertical_align": "ctr",
-              "vert": "vert270"
-            }
+          "grid": {
+            "col_gap": 0.01,
+            "row_gap": 4,
+            "columns": 1,
+            "rows": [
+              {
+                "height": 8,
+                "cells": [
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "High",
+                            "size": 11,
+                            "color": "dk1",
+                            "align": "ctr"
+                          }
+                        ],
+                        "align": "ctr",
+                        "vertical_align": "b",
+                        "inset_left": 2,
+                        "inset_right": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "height": 84,
+                "cells": [
+                  {
+                    "shape": {
+                      "geometry": "upArrow",
+                      "fill": "accent1",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Market Growth",
+                            "size": 14,
+                            "bold": true,
+                            "color": "lt1",
+                            "align": "ctr"
+                          }
+                        ],
+                        "align": "ctr",
+                        "vertical_align": "ctr",
+                        "vert": "vert270"
+                      },
+                      "adjustments": {
+                        "adj1": 70000,
+                        "adj2": 45000
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "height": 8,
+                "cells": [
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Low",
+                            "size": 11,
+                            "color": "dk1",
+                            "align": "ctr"
+                          }
+                        ],
+                        "align": "ctr",
+                        "vertical_align": "t",
+                        "inset_left": 2,
+                        "inset_right": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         },
         {

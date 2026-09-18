@@ -149,11 +149,11 @@ func TestProcessGrid2Row_Expand_DefaultColorsAreAccent1Accent3(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// Row label cells (col 0 of each row) should be dk1.
+	// Row label cells (col 0 of each row) should be dk2 (never dk1 black).
 	for i, row := range grid.Rows {
 		labelCell := row.Cells[0]
-		if labelCell.Shape == nil || !strings.Contains(string(labelCell.Shape.Fill), "dk1") {
-			t.Errorf("row %d label cell: expected dk1 fill, got %q", i, string(labelCell.Shape.Fill))
+		if labelCell.Shape == nil || !strings.Contains(string(labelCell.Shape.Fill), "dk2") {
+			t.Errorf("row %d label cell: expected dk2 fill, got %q", i, string(labelCell.Shape.Fill))
 		}
 	}
 	// Row 1 phase cells default to accent1.

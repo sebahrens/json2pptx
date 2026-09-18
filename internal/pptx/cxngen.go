@@ -45,7 +45,7 @@ type ConnectorOptions struct {
 // ConnectionRef identifies a connection site on a target shape.
 type ConnectionRef struct {
 	ShapeID uint32 // cNvPr id of target shape
-	SiteIdx int    // Connection site index (0=top, 1=right, 2=bottom, 3=left for rect)
+	SiteIdx int    // Connection site index; see ConnectionSiteIndex (rect: 0=top, 1=left, 2=bottom, 3=right)
 }
 
 // ArrowHead describes an arrowhead on a connector end.
@@ -253,6 +253,53 @@ func geometryHasTipLeft(geom PresetGeometry) bool {
 	}
 }
 
+
+// ConnectionSide names a side of a shape's bounding box for connector routing.
+type ConnectionSide int
+
+// Connection sides in the order they appear in most preset cxnLst entries.
+const (
+	SideTop ConnectionSide = iota
+	SideLeft
+	SideBottom
+	SideRight
+)
+
+// ConnectionSiteIndex returns the index into the preset geometry's
+// connection-site list (<a:cxnLst>) for the midpoint of the given side.
+//
+// OOXML presets list their sites counter-clockwise from the top, so for
+// rect-like presets (rect, roundRect, chevron, homePlate, diamond, callouts,
+// …) the order is 0 = top, 1 = left, 2 = bottom, 3 = right. A few presets
+// carry extra sites (ellipse has 8; triangle has 6) and are mapped
+// explicitly. Using the wrong index makes renderers that honour the
+// attachment (LibreOffice on import, PowerPoint whenever a shape moves)
+// re-route the connector from the far side of each shape, dragging the line
+// across both shapes and their text.
+func ConnectionSiteIndex(geom PresetGeometry, side ConnectionSide) int {
+	switch geom {
+	case GeomEllipse:
+		return [...]int{0, 2, 4, 6}[side]
+	case GeomTriangle:
+		return [...]int{0, 1, 3, 5}[side]
+	default:
+		return int(side)
+	}
+}
+
+// ConnectorRoute is a resolved connector path between two shapes.
+type ConnectorRoute struct {
+	Bounds    RectEmu // Normalised connector bounds (positive extents)
+	StartSite int     // Connection site index on the source shape
+	EndSite   int     // Connection site index on the target shape
+	StartX    int64   // Start point (EMU)
+	StartY    int64
+	EndX      int64 // End point (EMU)
+	EndY      int64
+	FlipH     bool // End point lies left of the start point
+	FlipV     bool // End point lies above the start point
+}
+
 // RouteBetween computes connector bounds and connection site indices for routing
 // a connector between two shapes. It finds the closest pair of edges and returns
 // bounds that span from one connection point to the other.
@@ -260,11 +307,20 @@ func geometryHasTipLeft(geom PresetGeometry) bool {
 // For pointed geometries (homePlate, chevron, arrows), the connector endpoints
 // are offset past the tip to avoid visual overlap.
 //
-// Connection site indices (for rectangular shapes):
-//
-//	0 = top center, 1 = right center, 2 = bottom center, 3 = left center
+// Site indices come from ConnectionSiteIndex (for rect: 0 = top, 1 = left,
+// 2 = bottom, 3 = right). Callers that need the flip flags for a straight or
+// bent connector should use Route.
 func RouteBetween(source, target ShapeOptions) (bounds RectEmu, startSite, endSite int) {
-	// Compute centers of each shape
+	r := Route(source, target, false)
+	return r.Bounds, r.StartSite, r.EndSite
+}
+
+// Route computes the connector path between source and target. When
+// horizontal is true the connector always runs from a side edge to the facing
+// side edge (used for cells that share a grid row, whose centres may be far
+// apart vertically when one of them spans several rows); otherwise the
+// dominant axis between the shape centres decides.
+func Route(source, target ShapeOptions, horizontal bool) ConnectorRoute {
 	srcCX := source.Bounds.X + source.Bounds.CX/2
 	srcCY := source.Bounds.Y + source.Bounds.CY/2
 	tgtCX := target.Bounds.X + target.Bounds.CX/2
@@ -273,95 +329,73 @@ func RouteBetween(source, target ShapeOptions) (bounds RectEmu, startSite, endSi
 	dx := tgtCX - srcCX
 	dy := tgtCY - srcCY
 
-	absDX := dx
-	if absDX < 0 {
-		absDX = -absDX
-	}
-	absDY := dy
-	if absDY < 0 {
-		absDY = -absDY
-	}
-
-	var startX, startY, endX, endY int64
-
-	if absDX >= absDY {
-		// Horizontal-dominant: connect right/left edges
+	var r ConnectorRoute
+	if horizontal || abs64(dx) >= abs64(dy) {
 		if dx >= 0 {
-			startSite = 1 // source right
-			endSite = 3   // target left
-			startX = source.Bounds.X + source.Bounds.CX
-			startY = srcCY
-			endX = target.Bounds.X
-			endY = tgtCY
-
-			// Offset past pointed tips to avoid visual overlap
+			r.StartSite = ConnectionSiteIndex(source.Geometry, SideRight)
+			r.EndSite = ConnectionSiteIndex(target.Geometry, SideLeft)
+			r.StartX = source.Bounds.X + source.Bounds.CX
+			r.EndX = target.Bounds.X
 			if geometryHasTipRight(source.Geometry) {
-				startX += geometryTipOffset(source.Geometry, source.Bounds.CX)
+				r.StartX += geometryTipOffset(source.Geometry, source.Bounds.CX)
 			}
 			if geometryHasTipLeft(target.Geometry) {
-				endX -= geometryTipOffset(target.Geometry, target.Bounds.CX)
+				r.EndX -= geometryTipOffset(target.Geometry, target.Bounds.CX)
 			}
 		} else {
-			startSite = 3 // source left
-			endSite = 1   // target right
-			startX = source.Bounds.X
-			startY = srcCY
-			endX = target.Bounds.X + target.Bounds.CX
-			endY = tgtCY
-
-			// Offset past pointed tips to avoid visual overlap
+			r.StartSite = ConnectionSiteIndex(source.Geometry, SideLeft)
+			r.EndSite = ConnectionSiteIndex(target.Geometry, SideRight)
+			r.StartX = source.Bounds.X
+			r.EndX = target.Bounds.X + target.Bounds.CX
 			if geometryHasTipLeft(source.Geometry) {
-				startX -= geometryTipOffset(source.Geometry, source.Bounds.CX)
+				r.StartX -= geometryTipOffset(source.Geometry, source.Bounds.CX)
 			}
 			if geometryHasTipRight(target.Geometry) {
-				endX += geometryTipOffset(target.Geometry, target.Bounds.CX)
+				r.EndX += geometryTipOffset(target.Geometry, target.Bounds.CX)
 			}
 		}
+		r.StartY = srcCY
+		r.EndY = tgtCY
 	} else {
-		// Vertical-dominant: connect top/bottom edges
 		if dy >= 0 {
-			startSite = 2 // source bottom
-			endSite = 0   // target top
-			startX = srcCX
-			startY = source.Bounds.Y + source.Bounds.CY
-			endX = tgtCX
-			endY = target.Bounds.Y
+			r.StartSite = ConnectionSiteIndex(source.Geometry, SideBottom)
+			r.EndSite = ConnectionSiteIndex(target.Geometry, SideTop)
+			r.StartY = source.Bounds.Y + source.Bounds.CY
+			r.EndY = target.Bounds.Y
 		} else {
-			startSite = 0 // source top
-			endSite = 2   // target bottom
-			startX = srcCX
-			startY = source.Bounds.Y
-			endX = tgtCX
-			endY = target.Bounds.Y + target.Bounds.CY
+			r.StartSite = ConnectionSiteIndex(source.Geometry, SideTop)
+			r.EndSite = ConnectionSiteIndex(target.Geometry, SideBottom)
+			r.StartY = source.Bounds.Y
+			r.EndY = target.Bounds.Y + target.Bounds.CY
 		}
+		r.StartX = srcCX
+		r.EndX = tgtCX
 	}
 
-	// Compute bounds: position at min(x,y), size = abs(delta)
-	minX := startX
-	if endX < minX {
-		minX = endX
-	}
-	minY := startY
-	if endY < minY {
-		minY = endY
-	}
-
-	w := startX - endX
-	if w < 0 {
-		w = -w
-	}
-	h := startY - endY
-	if h < 0 {
-		h = -h
-	}
-
+	w := abs64(r.StartX - r.EndX)
+	h := abs64(r.StartY - r.EndY)
 	if w == 0 {
 		w = 1
 	}
 	if h == 0 {
 		h = 1
 	}
+	r.Bounds = RectEmu{X: min64(r.StartX, r.EndX), Y: min64(r.StartY, r.EndY), CX: w, CY: h}
+	r.FlipH = r.EndX < r.StartX
+	r.FlipV = r.EndY < r.StartY
+	return r
+}
 
-	bounds = RectEmu{X: minX, Y: minY, CX: w, CY: h}
-	return bounds, startSite, endSite
+func abs64(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }

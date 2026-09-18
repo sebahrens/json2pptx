@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -89,6 +90,10 @@ func (q *Matrix2x2Quadrant) UnmarshalJSON(data []byte) error {
 type Matrix2x2Values struct {
 	XAxisLabel  string            `json:"x_axis_label"`
 	YAxisLabel  string            `json:"y_axis_label"`
+	XLow        string            `json:"x_low,omitempty"`  // left end of the x axis (default "Low")
+	XHigh       string            `json:"x_high,omitempty"` // right end of the x axis (default "High")
+	YLow        string            `json:"y_low,omitempty"`  // bottom end of the y axis (default "Low")
+	YHigh       string            `json:"y_high,omitempty"` // top end of the y axis (default "High")
 	TopLeft     Matrix2x2Quadrant `json:"top_left"`
 	TopRight    Matrix2x2Quadrant `json:"top_right"`
 	BottomLeft  Matrix2x2Quadrant `json:"bottom_left"`
@@ -102,11 +107,17 @@ func (v *Matrix2x2Values) UnmarshalJSON(data []byte) error {
 	var withArray struct {
 		XAxisLabel string              `json:"x_axis_label"`
 		YAxisLabel string              `json:"y_axis_label"`
+		XLow       string              `json:"x_low"`
+		XHigh      string              `json:"x_high"`
+		YLow       string              `json:"y_low"`
+		YHigh      string              `json:"y_high"`
 		Quadrants  []Matrix2x2Quadrant `json:"quadrants"`
 	}
 	if err := json.Unmarshal(data, &withArray); err == nil && len(withArray.Quadrants) == 4 {
 		v.XAxisLabel = withArray.XAxisLabel
 		v.YAxisLabel = withArray.YAxisLabel
+		v.XLow, v.XHigh = withArray.XLow, withArray.XHigh
+		v.YLow, v.YHigh = withArray.YLow, withArray.YHigh
 		v.TopLeft = withArray.Quadrants[0]
 		v.TopRight = withArray.Quadrants[1]
 		v.BottomLeft = withArray.Quadrants[2]
@@ -160,12 +171,17 @@ func (m *matrix2x2) Schema() *Schema {
 	)
 
 	quadrantRef := RefSchema("quadrant")
+	axisEndRef := RefSchema("axisEnd")
 
 	// Named form: top_left, top_right, bottom_left, bottom_right
 	namedValuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
+			"x_low":        axisEndRef,
+			"x_high":       axisEndRef,
+			"y_low":        axisEndRef,
+			"y_high":       axisEndRef,
 			"top_left":     quadrantRef,
 			"top_right":    quadrantRef,
 			"bottom_left":  quadrantRef,
@@ -179,6 +195,10 @@ func (m *matrix2x2) Schema() *Schema {
 		map[string]*Schema{
 			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
+			"x_low":        axisEndRef,
+			"x_high":       axisEndRef,
+			"y_low":        axisEndRef,
+			"y_high":       axisEndRef,
 			"quadrants":    ArraySchema(quadrantRef, 4, 4).WithDescription("Positional quadrants: [top_left, top_right, bottom_left, bottom_right]"),
 		},
 		[]string{"x_axis_label", "y_axis_label", "quadrants"},
@@ -205,6 +225,7 @@ func (m *matrix2x2) Schema() *Schema {
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
 		"quadrant":     quadrantSchema,
+		"axisEnd":      StringSchema(matrix2x2AxisEndMax).WithDescription("Axis end label (x_low/x_high: left/right; y_low/y_high: bottom/top); default \"Low\" / \"High\""),
 	}).WithDescription("2×2 quadrant matrix with axis labels")
 }
 
@@ -227,6 +248,14 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		errs = append(errs, errRequired(name, "y_axis_label"))
 	} else if len(vals.YAxisLabel) > 60 {
 		errs = append(errs, errMaxLength(name, "y_axis_label", 60, len(vals.YAxisLabel)))
+	}
+
+	for _, end := range []struct{ path, v string }{
+		{"x_low", vals.XLow}, {"x_high", vals.XHigh}, {"y_low", vals.YLow}, {"y_high", vals.YHigh},
+	} {
+		if len(end.v) > matrix2x2AxisEndMax {
+			errs = append(errs, errMaxLength(name, end.path, matrix2x2AxisEndMax, len(end.v)))
+		}
 	}
 
 	// Validate each quadrant
@@ -288,20 +317,22 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	// Row 2: [BL quadrant, BR quadrant]  (y-axis spans from row 1)
 
 	// X-axis label cell
+	// Both axes are drawn as arrows pointing in the "high" direction (right
+	// for x, up for y) flanked by low / high end labels, so the reader can
+	// tell which quadrant is high-high without guessing from the headers.
+	axisText := readableTextOn(ctx, fillTone{Color: accent}, "lt1")
+	xLow, xHigh := axisEnds(vals.XLow, vals.XHigh)
+	yLow, yHigh := axisEnds(vals.YLow, vals.YHigh)
 	xAxisCell := &jsonschema.GridCellInput{
 		ColSpan: 2,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     buildMatrix2x2LabelContent(vals.XAxisLabel, labelSize, "lt1", "ctr", ""),
-		},
+		Grid: buildMatrix2x2XAxis(vals.XAxisLabel, xLow, xHigh, labelSize, accent, axisText),
 	}
 
-	// Empty corner cell
+	// Empty (unpainted) corner cell
 	cornerCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt2"`),
+			Fill:     json.RawMessage(`"none"`), // blank corner: the axes carry their own low/high cues
 		},
 	}
 
@@ -313,11 +344,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	// because the fill geometry is never transformed.
 	yAxisCell := &jsonschema.GridCellInput{
 		RowSpan: 2,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-			Text:     buildMatrix2x2LabelContent(vals.YAxisLabel, labelSize, "lt1", "ctr", "vert270"),
-		},
+		Grid:    buildMatrix2x2YAxis(vals.YAxisLabel, yLow, yHigh, labelSize, accent, axisText),
 	}
 
 	// Default quadrant cell border: subtle dk1-tinted stroke so the four
@@ -446,5 +473,102 @@ func applyMatrix2x2CellOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 			Color:    accent,
 			Width:    4,
 		}
+	}
+}
+
+// matrix2x2AxisEndMax bounds the low/high axis end labels.
+const matrix2x2AxisEndMax = 20
+
+// axisEnds applies the "Low" / "High" defaults to the axis end labels.
+func axisEnds(low, high string) (string, string) {
+	if strings.TrimSpace(low) == "" {
+		low = "Low"
+	}
+	if strings.TrimSpace(high) == "" {
+		high = "High"
+	}
+	return low, high
+}
+
+// matrix2x2AxisEndText renders a small low/high end label next to an axis arrow.
+func matrix2x2AxisEndText(content string, size float64, align, vAlign string) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+		InsetLeft     float64     `json:"inset_left"`
+		InsetRight    float64     `json:"inset_right"`
+	}{
+		Paragraphs:    []paragraph{{Content: content, Size: size, Color: "dk1", Align: align}},
+		Align:         align,
+		VerticalAlign: vAlign,
+		InsetLeft:     2,
+		InsetRight:    2,
+	}
+	data, _ := json.Marshal(textObj)
+	return data
+}
+
+func matrix2x2EndCell(content string, size float64, align, vAlign string) *jsonschema.GridCellInput {
+	return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(`"none"`),
+		Text:     matrix2x2AxisEndText(content, size, align, vAlign),
+	}}
+}
+
+// Arrow adjustments: a thick shaft (70% of the band) so the axis label fits
+// inside it, and a short head.
+var matrix2x2ArrowAdj = map[string]int64{"adj1": 70000, "adj2": 45000}
+
+// buildMatrix2x2XAxis renders the x axis as [low | → label → | high], the
+// arrow pointing right (towards "high").
+func buildMatrix2x2XAxis(label, low, high string, size float64, accent, textColor string) *jsonschema.ShapeGridInput {
+	endSize := math.Max(size-3, 9)
+	arrow := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry:    "rightArrow",
+		Fill:        json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+		Adjustments: matrix2x2ArrowAdj,
+		Text:        buildMatrix2x2LabelContent(label, size, textColor, "ctr", ""),
+	}}
+	return &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`[11, 78, 11]`),
+		ColGap:  4,
+		RowGap:  0.01,
+		Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{
+			matrix2x2EndCell(low, endSize, "r", "ctr"),
+			arrow,
+			matrix2x2EndCell(high, endSize, "l", "ctr"),
+		}}},
+	}
+}
+
+// buildMatrix2x2YAxis renders the y axis as [high / ↑ label ↑ / low], the
+// arrow pointing up (towards "high") with the label reading bottom-to-top.
+// The arrow shape itself is never rotated (J2P-MATRIX-005); only its text
+// direction is (vert270).
+func buildMatrix2x2YAxis(label, low, high string, size float64, accent, textColor string) *jsonschema.ShapeGridInput {
+	endSize := math.Max(size-3, 9)
+	arrow := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry:    "upArrow",
+		Fill:        json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+		Adjustments: matrix2x2ArrowAdj,
+		Text:        buildMatrix2x2LabelContent(label, size, textColor, "ctr", "vert270"),
+	}}
+	return &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`1`),
+		ColGap:  0.01,
+		RowGap:  4,
+		Rows: []jsonschema.GridRowInput{
+			{Height: 8, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(high, endSize, "ctr", "b")}},
+			{Height: 84, Cells: []*jsonschema.GridCellInput{arrow}},
+			{Height: 8, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(low, endSize, "ctr", "t")}},
+		},
 	}
 }

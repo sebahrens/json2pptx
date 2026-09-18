@@ -9,14 +9,18 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "dk1",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
             "text": {
               "paragraphs": [
                 {
                   "content": "Plan",
                   "size": 14,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
@@ -47,14 +51,18 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "dk1",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
             "text": {
               "paragraphs": [
                 {
                   "content": "Scale",
                   "size": 14,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],
@@ -66,14 +74,18 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": "dk1",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
             "text": {
               "paragraphs": [
                 {
                   "content": "Optimize",
                   "size": 14,
                   "bold": true,
-                  "color": "lt1",
+                  "color": "dk1",
                   "align": "ctr"
                 }
               ],

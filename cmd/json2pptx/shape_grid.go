@@ -1960,11 +1960,17 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 		line.Dash = spec.Dash
 	}
 
+	geom := pptx.GeomStraightConnector1
+	if conn.Elbow {
+		geom = pptx.GeomBentConnector3
+	}
 	opts := pptx.ConnectorOptions{
 		ID:       conn.ID,
-		Geometry: pptx.GeomStraightConnector1,
+		Geometry: geom,
 		Bounds:   conn.Bounds,
 		Line:     line,
+		FlipH:    conn.FlipH,
+		FlipV:    conn.FlipV,
 		StartConn: &pptx.ConnectionRef{
 			ShapeID: conn.SourceID,
 			SiteIdx: conn.StartSite,

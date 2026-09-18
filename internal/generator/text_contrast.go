@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -393,15 +395,70 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string
 
 	// Try sRGB first
 	if m := shapeFillSrgbRegexp.FindSubmatch(spPr); len(m) >= 2 {
-		return "#" + strings.ToUpper(string(m[1]))
+		return applyShapeFillModifiers("#"+strings.ToUpper(string(m[1])), spPr, themeColors)
 	}
 
 	// Try scheme color
 	if m := shapeFillSchemeRegexp.FindSubmatch(spPr); len(m) >= 2 {
-		return resolveSchemeColorToHex(string(m[1]), themeColors)
+		return applyShapeFillModifiers(resolveSchemeColorToHex(string(m[1]), themeColors), spPr, themeColors)
 	}
 
 	return ""
+}
+
+// shapeFillBlockRegexp captures the first <a:solidFill>…</a:solidFill> block
+// (the shape fill precedes the outline in spPr) so its colour modifiers can
+// be read.
+var shapeFillBlockRegexp = regexp.MustCompile(`(?s)<a:solidFill[^>]*>(.*?)</a:solidFill>`)
+
+// shapeFillModRegexp matches lumMod / lumOff / alpha colour modifiers.
+var shapeFillModRegexp = regexp.MustCompile(`<a:(lumMod|lumOff|alpha)\s+val="(\d+)"`)
+
+// applyShapeFillModifiers folds lumMod / lumOff / alpha modifiers on the
+// shape's solid fill into baseHex so contrast is judged against the colour
+// the viewer actually sees. Without this, a light accent tint (e.g. accent1
+// at 40% alpha, or lumMod 20% / lumOff 80%) is evaluated as the saturated
+// base accent and correct dark text gets "fixed" to white.
+func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.ThemeColor) string {
+	if baseHex == "" {
+		return ""
+	}
+	block := shapeFillBlockRegexp.FindSubmatch(spPr)
+	if len(block) < 2 {
+		return baseHex
+	}
+	var lumMod, lumOff int
+	alpha := 1.0
+	found := false
+	for _, m := range shapeFillModRegexp.FindAllSubmatch(block[1], -1) {
+		v, err := strconv.Atoi(string(m[2]))
+		if err != nil {
+			continue
+		}
+		found = true
+		switch string(m[1]) {
+		case "lumMod":
+			lumMod = v
+		case "lumOff":
+			lumOff = v
+		case "alpha":
+			alpha = float64(v) / 100000
+		}
+	}
+	if !found {
+		return baseHex
+	}
+	base, err := svggen.ParseColor(baseHex)
+	if err != nil {
+		return baseHex
+	}
+	bg := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	if bgHex := resolveSchemeColorToHex("lt1", themeColors); bgHex != "" {
+		if c, perr := svggen.ParseColor(bgHex); perr == nil {
+			bg = c
+		}
+	}
+	return strings.ToUpper(patterns.EffectiveColor(base, lumMod, lumOff, alpha, bg).Hex())
 }
 
 // enforceShapeGridContrast checks text colors within shape_grid raw shape XML

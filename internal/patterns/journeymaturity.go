@@ -258,16 +258,19 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		}
 		bodyCell := &jsonschema.GridCellInput{Shape: descShape}
 
-		// Marker row: only the current stage renders a downward-pointing
-		// triangle in the resolved base accent. Other cells render an empty
-		// rect so the grid stays well-formed.
+		// Marker row: only the current stage renders a "We are here" callout
+		// in the resolved base accent — an up-arrow callout whose arrow
+		// points at the current stage column. The shape is never rotated:
+		// a rotated shape rotates its text too (the old rot=180 triangle
+		// rendered the label upside down). Other cells render an empty rect
+		// so the grid stays well-formed.
 		var markerShape *jsonschema.ShapeSpecInput
 		if stage.Current {
+			markerText := readableTextOn(ctx, fillTone{Color: baseAccent}, "lt1")
 			markerShape = &jsonschema.ShapeSpecInput{
-				Geometry: "triangle",
-				Rotation: 180,
+				Geometry: journeyMaturityMarkerGeometry,
 				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-				Text:     buildJourneyMaturityMarkerText("We are here", descSize),
+				Text:     buildJourneyMaturityMarkerText("We are here", descSize, markerText),
 			}
 		} else {
 			markerShape = &jsonschema.ShapeSpecInput{
@@ -359,10 +362,14 @@ func buildJourneyMaturityDescriptionText(description string, size float64) json.
 	return data
 }
 
-func buildJourneyMaturityMarkerText(label string, size float64) json.RawMessage {
+// journeyMaturityMarkerGeometry is an upright callout box with an arrow
+// pointing up at the current stage (never rotated, so its label reads upright).
+const journeyMaturityMarkerGeometry = "upArrowCallout"
+
+func buildJourneyMaturityMarkerText(label string, size float64, color string) json.RawMessage {
 	textObj := journeyMaturityTextObj{
 		Paragraphs: []journeyMaturityParagraph{
-			{Content: label, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: label, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",

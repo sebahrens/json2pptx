@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -259,25 +261,31 @@ func stepNumber(step NumberedStepStripStep, idx int) string {
 func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	labelSize := ResolveSize(ovr.HeaderSize, 13.0)
-	descSize := ResolveSize(ovr.BodySize, 9.0)
+	descSize := ResolveSize(ovr.BodySize, chevronDescDefaultSize)
 	cellAccentMode := ovr.CellAccentMode
 
 	withBody := n.hasBody(vals)
 	count := len(vals.Steps)
 
+	geo := chevronStripGeometry(ctx, count)
+	notchInsetPt := geo.notchPt + chevronTextPadPt
+
 	chevronCells := make([]*jsonschema.GridCellInput, count)
 	descCells := make([]*jsonschema.GridCellInput, count)
+	maxDescLines := 0
 	for i, step := range vals.Steps {
 		fill := step.TipColor
 		if fill == "" {
 			fill = ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
-		text := buildNumberedStepLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), labelSize, "lt1", "ctr")
+		textColor := readableTextOn(ctx, fillTone{Color: fill}, "lt1")
+		text := buildChevronLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), labelSize, textColor, notchInsetPt)
 		cell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "chevron",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
-				Text:     text,
+				Geometry:    "chevron",
+				Fill:        json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+				Text:        text,
+				Adjustments: map[string]int64{"adj": chevronAdj},
 			},
 		}
 		applyNumberedStepOverride(cell, cellOverrides, i, baseAccent)
@@ -286,28 +294,178 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 		body := strings.TrimSpace(step.Body)
 		descShape := &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}
 		if body != "" {
-			descShape.Text = buildNumberedStepBodyText(pptx.ConvertMarkdownEmphasis(body), descSize, "dk1", "ctr")
+			descShape.Text = buildChevronDescText(pptx.ConvertMarkdownEmphasis(body), descSize)
+			if lines := estimateWrappedLines(body, descSize, geo.stepWPt-2*chevronDescInsetPt); lines > maxDescLines {
+				maxDescLines = lines
+			}
 		}
 		descCells[i] = &jsonschema.GridCellInput{Shape: descShape}
 	}
 
 	colsJSON, _ := json.Marshal(count)
 
+	// Height budget: the chevron row is capped so every chevron is at least
+	// twice as wide as it is tall, and the detail row is sized to its text so
+	// descriptions sit directly under the chevrons rather than floating in a
+	// flex row that fills the rest of the slide.
+	totalPt := geo.chevHPt
+	chevRow := jsonschema.GridRowInput{Cells: chevronCells}
+	rows := []jsonschema.GridRowInput{chevRow}
+	if withBody {
+		descHPt := float64(maxDescLines)*descSize*chevronLineHeight + 2*chevronDescInsetPt
+		totalPt = geo.chevHPt + chevronRowGapPt + descHPt
+		rows[0].Height = geo.chevHPt / totalPt * 100
+		rows = append(rows, jsonschema.GridRowInput{Cells: descCells})
+	}
+	heightPct := totalPt / geo.contentHPt * 100
+	if heightPct > 100 {
+		// Content taller than the area: fall back to a proportional split so
+		// the chevrons keep their capped share and descriptions get the rest.
+		heightPct = 100
+		if withBody {
+			rows[0].Height = math.Min(geo.chevHPt/geo.contentHPt*100, 40)
+		}
+	}
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		Gap:     0,
-		RowGap:  6,
-		Rows: []jsonschema.GridRowInput{
-			{Cells: chevronCells},
-		},
-	}
-	if withBody {
-		grid.Rows = append(grid.Rows, jsonschema.GridRowInput{Cells: descCells})
-	} else {
-		// Short-label-only strips read as a compact ribbon, not a full-slide flow.
-		grid.Bounds = &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 100, Height: 35}
+		RowGap:  chevronRowGapPt,
+		Rows:    rows,
+		Bounds:  &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 100, Height: math.Round(heightPct*10) / 10},
 	}
 	return grid
+}
+
+const (
+	// chevronAdj is the chevron point/notch depth as a fraction (×100000) of
+	// the shape height. The OOXML default (50000) on a near-square chevron
+	// swallows the label; 30% keeps a clear arrow with room for text.
+	chevronAdj = 30000
+	// chevronDescDefaultSize is the default detail-zone text size (pt).
+	chevronDescDefaultSize = 12.0
+	// chevronTextPadPt is extra breathing room beyond the notch depth.
+	chevronTextPadPt = 3.0
+	// chevronDescInsetPt matches the default shape text inset (0.1in ≈ 7.2pt).
+	chevronDescInsetPt = 7.2
+	chevronRowGapPt    = 6.0
+	chevronLineHeight  = 1.25
+	// chevronMaxAspectH caps chevron height at half its width (width >= 2x height).
+	chevronMaxAspectH = 0.5
+	// chevronMaxHeightFrac caps the chevron row at this share of the content height.
+	chevronMaxHeightFrac = 0.3
+	// chevronMinHeightPt keeps a two-line (number + label) chevron legible.
+	chevronMinHeightPt = 44.0
+)
+
+// chevronGeometry is the estimated per-step geometry of a chevron strip.
+type chevronGeometry struct {
+	stepWPt    float64 // width of one chevron column
+	chevHPt    float64 // chevron row height
+	notchPt    float64 // depth of the tail notch (= depth of the point)
+	contentHPt float64 // content-area height the grid bounds are relative to
+}
+
+// chevronStripGeometry estimates chevron sizes from the content area so the
+// row height, notch depth and text insets can be fixed at expand time.
+func chevronStripGeometry(ctx ExpandContext, count int) chevronGeometry {
+	w, h := expandContentSize(ctx)
+	if w <= 0 || h <= 0 {
+		db := shapegrid.DefaultBounds(12192000, 6858000)
+		w, h = db.CX, db.CY
+	}
+	if count < 1 {
+		count = 1
+	}
+	const emuPerPt = 12700.0
+	stepW := float64(w) / emuPerPt / float64(count)
+	contentH := float64(h) / emuPerPt
+	chevH := math.Min(stepW*chevronMaxAspectH, contentH*chevronMaxHeightFrac)
+	if chevH < chevronMinHeightPt {
+		chevH = math.Min(chevronMinHeightPt, stepW*chevronMaxAspectH)
+	}
+	// OOXML chevron: notch/point depth = adj × min(w, h); h is the minimum
+	// because of the aspect cap above.
+	notch := float64(chevronAdj) / 100000 * math.Min(chevH, stepW)
+	return chevronGeometry{stepWPt: stepW, chevHPt: chevH, notchPt: notch, contentHPt: contentH}
+}
+
+// estimateWrappedLines estimates how many lines text wraps to at sizePt in a
+// box widthPt wide (average glyph advance ≈ 0.5 em).
+func estimateWrappedLines(text string, sizePt, widthPt float64) int {
+	if widthPt <= 0 || sizePt <= 0 {
+		return 1
+	}
+	perLine := int(widthPt / (sizePt * 0.5))
+	if perLine < 1 {
+		perLine = 1
+	}
+	lines := 0
+	for _, para := range strings.Split(text, "\n") {
+		words := strings.Fields(para)
+		cur := 0
+		paraLines := 1
+		for _, w := range words {
+			l := len([]rune(w))
+			switch {
+			case cur == 0:
+				cur = l
+			case cur+1+l <= perLine:
+				cur += 1 + l
+			default:
+				paraLines++
+				cur = l
+			}
+			for cur > perLine {
+				paraLines++
+				cur -= perLine
+			}
+		}
+		lines += paraLines
+	}
+	if lines < 1 {
+		lines = 1
+	}
+	return lines
+}
+
+// buildChevronLabelText renders the number + label inside a chevron. The
+// left inset clears the tail notch and the right inset clears the point, so
+// no glyph falls into the notch (which shows the slide background) even in
+// renderers that lay text out over the whole shape box.
+func buildChevronLabelText(number, label string, size float64, color string, insetPt float64) json.RawMessage {
+	obj := struct {
+		numberedStepTextObj
+		InsetLeft  float64 `json:"inset_left"`
+		InsetRight float64 `json:"inset_right"`
+	}{
+		numberedStepTextObj: numberedStepTextObj{
+			Paragraphs: []numberedStepParagraph{
+				{Content: number, Size: size - 2, Bold: true, Color: color, Align: "ctr"},
+				{Content: label, Size: size, Bold: true, Color: color, Align: "ctr"},
+			},
+			Align:         "ctr",
+			VerticalAlign: "ctr",
+		},
+		InsetLeft:  insetPt,
+		InsetRight: insetPt,
+	}
+	data, _ := json.Marshal(obj)
+	return data
+}
+
+// buildChevronDescText renders a detail-zone description, top-anchored so it
+// sits directly under its chevron.
+func buildChevronDescText(body string, size float64) json.RawMessage {
+	obj := numberedStepTextObj{
+		Paragraphs: []numberedStepParagraph{
+			{Content: body, Size: size, Color: "dk1", Align: "ctr"},
+		},
+		Align:         "ctr",
+		VerticalAlign: "t",
+	}
+	data, _ := json.Marshal(obj)
+	return data
 }
 
 // ---------------------------------------------------------------------------
@@ -432,21 +590,6 @@ type numberedStepTextObj struct {
 	VerticalAlign string                  `json:"vertical_align"`
 }
 
-// buildNumberedStepLabelText renders a number paragraph above a label paragraph,
-// used inside chevron cells.
-func buildNumberedStepLabelText(number, label string, size float64, color, align string) json.RawMessage {
-	obj := numberedStepTextObj{
-		Paragraphs: []numberedStepParagraph{
-			{Content: number, Size: size - 2, Bold: true, Color: color, Align: align},
-			{Content: label, Size: size, Bold: true, Color: color, Align: align},
-		},
-		Align:         align,
-		VerticalAlign: "ctr",
-	}
-	data, _ := json.Marshal(obj)
-	return data
-}
-
 // buildNumberedStepNumberText renders a single centered ordinal, used in the
 // number / tip lane of stacked-box and toc styles.
 func buildNumberedStepNumberText(number string, size float64, color string) json.RawMessage {
@@ -455,19 +598,6 @@ func buildNumberedStepNumberText(number string, size float64, color string) json
 			{Content: number, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-	data, _ := json.Marshal(obj)
-	return data
-}
-
-// buildNumberedStepBodyText renders a single body/description paragraph.
-func buildNumberedStepBodyText(body string, size float64, color, align string) json.RawMessage {
-	obj := numberedStepTextObj{
-		Paragraphs: []numberedStepParagraph{
-			{Content: body, Size: size, Color: color, Align: align},
-		},
-		Align:         align,
 		VerticalAlign: "ctr",
 	}
 	data, _ := json.Marshal(obj)

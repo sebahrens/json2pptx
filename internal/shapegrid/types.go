@@ -211,6 +211,9 @@ type ResolvedConnector struct {
 	TargetID  uint32         // Shape ID of the target cell
 	StartSite int            // Connection site index on source
 	EndSite   int            // Connection site index on target
+	Elbow     bool           // Route as an elbow (bentConnector3) — endpoints at different heights
+	FlipH     bool           // End point lies left of the start point
+	FlipV     bool           // End point lies above the start point
 }
 
 // ResolvedAccentBar is a decorative accent bar shape attached to a cell.
