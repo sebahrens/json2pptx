@@ -30,6 +30,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `get_capabilities().mcp_tools_available[].in_core_profile` boolean. The tool
   NAME set is unchanged, so the schema fingerprint is unchanged.
 
+### Fixed
+
+- **Stale tool counts and CLI flag in docs (go-slide-creator-og5i).** The
+  `get_started` / `make_deck` descriptions, SKILL.md, TOOLS.md, and README no
+  longer hard-code tool counts ("45-tool", "37-tool", "40+", "51 tools"), and
+  SKILL.md's `json2pptx mcp` line uses the real `--output` flag (not the
+  non-existent `-output-dir`). `TestSkillDocCLIFlagsExist` now verifies every
+  `json2pptx <cmd> --flag` shown in SKILL.md / TOOLS.md / WORKFLOW.md against the
+  command's real flag set, and `TestNoHardcodedToolCounts` rejects new counts.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

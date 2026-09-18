@@ -20,7 +20,7 @@ This skill is split into focused sub-files. SKILL.md (this file) covers precondi
 
 | File | Contents |
 |---|---|
-| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue (40+ rows) with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
+| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
 | [WORKFLOW.md](WORKFLOW.md) | 4-phase workflow deep dive (Plan, Vary, Render, Repair), visual inspection, `next_tool_call`, response_fingerprint, idempotency_key |
 | [FINDINGS.md](FINDINGS.md) | All finding codes (layout + chart), the `fix.kind` enum, the `repair_slide` apply-only superset, strict-fit promotion ladder |
 | [RULES.md](RULES.md) | Rules 1–20 (shape grid, charts, content/layout, contrast, silent traps, table density), anti-patterns, cell accent variety |
@@ -305,7 +305,7 @@ This skill talks to **two** independent MCP servers. Both must be reachable for 
 
 ### `json2pptx-mcp` — deck-level engine
 
-Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. The 5-tool quick reference for this server is in the [MCP Tools (most-used)](#mcp-tools-most-used) section below; the full 40+ tool catalogue with phase markers lives in [TOOLS.md](TOOLS.md).
+Builds, validates, and repairs whole PPTX presentations. Owns templates, layouts, patterns, fit-report, and the `repair_slide` apply-only fix vocabulary. The 5-tool quick reference for this server is in the [MCP Tools (most-used)](#mcp-tools-most-used) section below; the full tool catalogue with phase markers lives in [TOOLS.md](TOOLS.md).
 
 - **Binary path:** `cmd/json2pptx/json2pptx` (built via `make` or `go build ./cmd/json2pptx`)
 - **Run as MCP:** `json2pptx mcp [--templates-dir <path>] [--output <path>] [--tools core|all]`
@@ -425,7 +425,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (most-used)
 
-The five tools below cover the precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. For the full 40+ tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, `examine_template`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
+The five tools below cover the precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. For the full tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, `examine_template`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
 
 | Tool | Phase | When to call |
 |---|---|---|

@@ -13,7 +13,7 @@
 // "exemplar_skeleton" / publishable=false so it is never mistaken for a
 // finished deck (see go-slide-creator-33oo).
 //
-// The full 37-tool surface remains available for power users who want to
+// The full tool surface remains available for power users who want to
 // drive each step manually.
 package main
 
@@ -130,7 +130,7 @@ func mcpMakeDeckTool() mcp.Tool {
 	return mcp.NewTool("make_deck",
 		mcp.WithDescription(`Cold-start facade: ONE call from a natural-language outline to a DRAFT PPTX skeleton. Internally chains plan_deck → expand patterns with exemplar content → auto_repair (generate → inspect → repair) until the quality gate passes or max_repair_passes is exhausted.
 
-IMPORTANT — the output is a SKELETON, not a publishable deck. When the caller supplies no per-slide content, make_deck fills every planned slide with the pattern's exemplar PLACEHOLDER values, so the response always reports content_status="exemplar_skeleton", uses_exemplar_content=true, and publishable=false — even when the quality gate passes. Treat it as a structured first draft: inspect plan.slides[] and final_presentation, replace the exemplar copy with real content via repair_slide, then re-run auto_repair / validate_input / generate_presentation. Reach for it to skip orchestrating the 37-tool surface yourself; the full surface remains available for fine-grained control.
+IMPORTANT — the output is a SKELETON, not a publishable deck. When the caller supplies no per-slide content, make_deck fills every planned slide with the pattern's exemplar PLACEHOLDER values, so the response always reports content_status="exemplar_skeleton", uses_exemplar_content=true, and publishable=false — even when the quality gate passes. Treat it as a structured first draft: inspect plan.slides[] and final_presentation, replace the exemplar copy with real content via repair_slide, then re-run auto_repair / validate_input / generate_presentation. Reach for it to skip orchestrating the tool surface yourself; the full surface remains available for fine-grained control.
 
 Quality mode (truth-labeled in the response as quality_mode): like auto_repair, the DEFAULT is "deterministic" — the internal loop scores the deck from static + render-fit findings only, with no rendering and no API key. Pass visual_qa.enabled=true to additionally run the opt-in vision/heuristic visual refinement phase (quality_mode "deterministic+visual_qa"); it inherits auto_repair's visual_qa semantics, requirements, and transparent fallbacks.
 
