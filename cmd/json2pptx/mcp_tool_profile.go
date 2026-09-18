@@ -34,11 +34,10 @@ const (
 	// together with coreToolListByteBudget.
 	coreToolLimit = 23
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
-	// the core profile. ~33KB of it is the closed per-kind DeckSpec schema that
-	// validate_deck_spec and render_deck_spec each carry (go-slide-creator-h8o7):
-	// that schema is what stops agents guessing payload shapes, so it is worth
-	// its bytes. The full profile is ~215KB.
-	coreToolListByteBudget = 96 * 1024
+	// the core profile. validate_deck_spec and render_deck_spec each embed the
+	// closed per-kind DeckSpec schema in compact form (no annotations; see
+	// semantic.CompactInlineSchema). The full profile is ~215KB.
+	coreToolListByteBudget = 72 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.

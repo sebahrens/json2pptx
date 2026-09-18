@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -172,5 +173,22 @@ func TestSchemaArchetypeEnumMatchesRegistry(t *testing.T) {
 	}
 	if len(enum) != len(archetypeRegistry) {
 		t.Errorf("archetype enum has %d entries, registry has %d", len(enum), len(archetypeRegistry))
+	}
+}
+
+func TestCompactInlineSchemaKeepsStructure(t *testing.T) {
+	full, _ := json.Marshal(InlineSchema())
+	compact := CompactInlineSchema()
+	cb, _ := json.Marshal(compact)
+	if len(cb) >= len(full) {
+		t.Fatalf("compact schema not smaller: %d >= %d", len(cb), len(full))
+	}
+	if _, ok := compact["description"]; ok {
+		t.Error("root description not stripped")
+	}
+	for _, kw := range []string{`"oneOf"`, `"additionalProperties":false`, `"required"`, `"title":{`} {
+		if !strings.Contains(string(cb), kw) {
+			t.Errorf("compact schema lost %s", kw)
+		}
 	}
 }

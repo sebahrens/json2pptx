@@ -124,13 +124,13 @@ func semanticStrictArg(tool string, request mcp.CallToolRequest) (semantic.Stric
 }
 
 // deckSpecArg declares the required `spec` argument with the full DeckSpec JSON
-// Schema embedded (semantic.InlineSchema: per-kind oneOf variants, each closed
+// Schema embedded (semantic.CompactInlineSchema: per-kind oneOf variants, each closed
 // with additionalProperties:false), so tools/list tells an agent the exact
 // payload shape per slide kind instead of an open object.
 func deckSpecArg(desc string) mcp.ToolOption {
 	return mcp.WithObject("spec",
 		mcp.Required(),
-		mcp.Description(desc+" Schema: the DeckSpec JSON Schema (same as `json2pptx semantic schema`); each slides[] entry matches exactly one per-kind variant selected by `kind`. Unknown payload fields are schema-invalid and reported as SEMANTIC_UNKNOWN_FIELD."),
+		mcp.Description(desc+" Schema: the DeckSpec JSON Schema (same as `json2pptx semantic schema`); each slides[] entry matches exactly one per-kind variant selected by `kind`. Unknown payload fields are schema-invalid and reported as SEMANTIC_UNKNOWN_FIELD. Field prose is omitted here; call list_slide_kinds for per-kind item_schema and a copy-ready example."),
 		withDeckSpecSchema(),
 	)
 }
@@ -139,7 +139,7 @@ func deckSpecArg(desc string) mcp.ToolOption {
 // schema, keeping the property's own type/description.
 func withDeckSpecSchema() mcp.PropertyOption {
 	return func(schema map[string]any) {
-		for k, v := range semantic.InlineSchema() {
+		for k, v := range semantic.CompactInlineSchema() {
 			switch k {
 			case "type", "description", "title":
 				continue
@@ -282,18 +282,18 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 // the semantic source paths the author wrote, and an explanation summary of the
 // compiler's planned decisions.
 type renderDeckSpecResponse struct {
-	OK          bool                       `json:"ok"`
-	Success     bool                       `json:"success"`
-	PptxPath    string                     `json:"pptx_path,omitempty"`
-	Template    string                     `json:"template,omitempty"`
-	SlideCount  int                        `json:"slide_count,omitempty"`
-	ContentHash string                     `json:"content_hash,omitempty"`
-	DurationMs  int64                      `json:"duration_ms,omitempty"`
-	Quality     *QualityScore              `json:"quality_summary,omitempty"`
-	Warnings    []string                   `json:"warnings,omitempty"`
-	Diagnostics []semanticDiagnostic       `json:"diagnostics,omitempty"`
-	Explanation *semantic.DeckExplanation  `json:"explanation_summary,omitempty"`
-	Error       string                     `json:"error,omitempty"`
+	OK          bool                      `json:"ok"`
+	Success     bool                      `json:"success"`
+	PptxPath    string                    `json:"pptx_path,omitempty"`
+	Template    string                    `json:"template,omitempty"`
+	SlideCount  int                       `json:"slide_count,omitempty"`
+	ContentHash string                    `json:"content_hash,omitempty"`
+	DurationMs  int64                     `json:"duration_ms,omitempty"`
+	Quality     *QualityScore             `json:"quality_summary,omitempty"`
+	Warnings    []string                  `json:"warnings,omitempty"`
+	Diagnostics []semanticDiagnostic      `json:"diagnostics,omitempty"`
+	Explanation *semantic.DeckExplanation `json:"explanation_summary,omitempty"`
+	Error       string                    `json:"error,omitempty"`
 }
 
 // semanticRenderToMCP adapts the CLI-shaped semanticRenderResult into the MCP

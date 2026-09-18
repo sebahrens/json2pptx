@@ -36,7 +36,7 @@ func Schema() map[string]any {
 		"type":        "object",
 		"required":    []any{"slides"},
 		"properties": map[string]any{
-			"meta":   map[string]any{"$ref": "#/$defs/DeckMeta"},
+			"meta": map[string]any{"$ref": "#/$defs/DeckMeta"},
 			"slides": map[string]any{
 				"type":        "array",
 				"description": "Ordered list of semantic slides.",
@@ -62,8 +62,8 @@ func deckMetaSchema() map[string]any {
 		"type":        "object",
 		"description": "Deck-level intent and presentation context.",
 		"properties": map[string]any{
-			"title":     map[string]any{"type": "string", "description": "Deck title."},
-			"subtitle":  map[string]any{"type": "string", "description": "Optional deck subtitle."},
+			"title":    map[string]any{"type": "string", "description": "Deck title."},
+			"subtitle": map[string]any{"type": "string", "description": "Optional deck subtitle."},
 			"archetype": map[string]any{
 				"type":        "string",
 				"description": "Overall purpose of the deck.",
@@ -290,6 +290,44 @@ func InlineSchema() map[string]any {
 	delete(out, "$defs")
 	delete(out, "$schema")
 	return out
+}
+
+// CompactInlineSchema returns InlineSchema() without annotation keywords
+// (description, title, examples, $comment). It keeps every structural
+// constraint (types, required, enums, oneOf, additionalProperties) and is used
+// where the schema is repeated per MCP tool, so tools/list stays small; the
+// per-kind prose lives in list_slide_kinds / `json2pptx semantic schema`.
+func CompactInlineSchema() map[string]any {
+	out, _ := stripAnnotations(InlineSchema(), false).(map[string]any)
+	return out
+}
+
+// stripAnnotations drops annotation keywords from schema objects. inProps
+// marks a "properties" map, whose keys are field names (a field may itself be
+// called "title" or "description") and must be kept.
+func stripAnnotations(v any, inProps bool) any {
+	switch t := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, e := range t {
+			if !inProps {
+				switch k {
+				case "description", "title", "examples", "$comment":
+					continue
+				}
+			}
+			out[k] = stripAnnotations(e, !inProps && (k == "properties" || k == "patternProperties"))
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, e := range t {
+			out[i] = stripAnnotations(e, false)
+		}
+		return out
+	default:
+		return v
+	}
 }
 
 func inlineRefs(v any, defs map[string]any) any {
