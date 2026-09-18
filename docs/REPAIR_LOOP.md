@@ -68,7 +68,7 @@ Beyond text-shrinking and table-splitting, the repair loop supports structural f
 |------|--------|--------------|---------------------|
 | `swap_pattern` | `filled_pct`, `filled_slots`, `total_slots`, `reason` | `pattern_underfilled` or `wrong_pattern` — content doesn't match the chosen pattern's slot count | No (use `recommend_pattern` tool instead) |
 | `reshape_grid` | (embedded in `swap_pattern` params as `reason`) | `pattern_underfilled` — grid has too few items for the pattern | No (informational — tells agent why `swap_pattern` was suggested) |
-| `split_pattern` | `filled_slots`, `recommended_max`, `first`, `second`, `title_part_2` | `pattern_overcrowded` — grid exceeds the pattern's recommended max | **Yes** — splits grid rows across two slides |
+| `split_pattern` | `filled_slots`, `recommended_max`, `first`, `second`, `title_part_2`, `path` | `pattern_overcrowded` — grid exceeds the pattern's recommended max; also proposed when `reduce_items`/`resize_list` is refused for dropping a protected fact | **Yes** — splits grid rows (or, with `path`, the `pattern.values[path]` array) across two slides |
 | `convert_content` | `from_type`, `to_type`, `reason` | Agent-initiated — convert e.g. table to bullets when density is unfixable | Not yet (agent must regenerate the slide) |
 
 ### End-to-End Loop Example: wrong_pattern → swap_pattern → regenerate

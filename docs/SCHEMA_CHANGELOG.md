@@ -4,6 +4,17 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased
+
+### Changed
+
+- **`repair_slide` `reduce_items` / `resize_list` fact-loss guard.** Dropping
+  pattern-values items that contain a number, unit, negation, or qualifier is
+  refused with `code: "semantic_review_required"` and a `next_tool_call`
+  proposing `repair_slide` → `split_pattern{path, first}`; pass
+  `confirm_semantic_change: true` to override. `split_pattern` accepts an
+  optional `path` that splits a `pattern.values` array across two slides.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

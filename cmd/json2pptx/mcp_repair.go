@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -91,7 +93,7 @@ Color / theme:
 - use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
 
 Pattern shape:
-- split_pattern: Split a single pattern slide into two slides by row. Params: first (int, optional, number of filled cells to keep on slide 1; defaults to half), title_part_2 (string, optional, suffix appended to slide 2's title; defaults to "(continued)").
+- split_pattern: Split a single pattern slide into two slides by row. Params: first (int, optional, number of filled cells to keep on slide 1; defaults to half), title_part_2 (string, optional, suffix appended to slide 2's title; defaults to "(continued)"), path (string, optional: on a pattern slide, split the pattern.values array at this key instead — slide 1 keeps the first "first" items, slide 2 the rest).
 - swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
 - reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
 - set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
@@ -101,9 +103,9 @@ Pattern values (field-level edits to slide.pattern.values):
 - reshape_value: Replace a pattern-values field with a restructured value (e.g. array → object). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required, replacement value in the target shape).
 - provide_value: Set a pattern-values field to an agent-supplied value, creating the key if missing. Params: path (string, required, key in pattern.values), value (any, required).
 - replace_value: Replace an existing pattern-values field with a new value (typically to bring it within valid bounds). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required).
-- reduce_items: Truncate an array field in pattern values to max_items entries. Params: path (string, required, array key in pattern.values), max_items (int, required, > 0).
+- reduce_items: Truncate an array field in pattern values to max_items entries. Params: path (string, required, array key in pattern.values), max_items (int, required, > 0), confirm_semantic_change (bool, optional). Refused with code "semantic_review_required" (and a next_tool_call proposing split_pattern) when a dropped item carries a number, unit, negation, or qualifier.
 - add_items: Append items to an array field in pattern values (creates the array if missing). Params: path (string, required, array key in pattern.values), items (array, required, items to append).
-- resize_list: Adjust an array field in pattern values to exactly count entries. Truncates if too many; returns applied=false with guidance if too few (agent must supply additional items via add_items). Params: path (string, required, array key in pattern.values), count (int, required, > 0).
+- resize_list: Adjust an array field in pattern values to exactly count entries. Truncates if too many; returns applied=false with guidance if too few (agent must supply additional items via add_items). Params: path (string, required, array key in pattern.values), count (int, required, > 0), confirm_semantic_change (bool, optional). Same fact-loss guard as reduce_items.
 - remove_key: Remove a key from pattern overrides or pattern values (overrides checked first). Params: key (string, required, key to remove).
 - remove_field: Remove a top-level field from pattern values or slide-level fields. Params: path (string, required, field name to remove).
 
@@ -884,8 +886,11 @@ func stringParam(params map[string]any, key string, defaultVal string) string {
 func applySplitPattern(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := input.Slides[slideIdx]
 	grid := slide.ShapeGrid
+	if (grid == nil || len(grid.Rows) == 0) && slide.Pattern != nil && stringParam(params, "path", "") != "" {
+		return splitPatternValues(input, slideIdx, params)
+	}
 	if grid == nil || len(grid.Rows) == 0 {
-		return appliedFix{Kind: "split_pattern", Applied: false, Message: "slide has no shape_grid to split"}
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: "slide has no shape_grid to split (pass path to split a pattern.values array)"}
 	}
 
 	firstN := intParam(params, "first", 0)
@@ -931,6 +936,69 @@ func applySplitPattern(input *PresentationInput, slideIdx int, params map[string
 		Applied: true,
 		Message: fmt.Sprintf("split into 2 slides (%d + %d cells)", cells1, cells2),
 	}
+}
+
+// splitPatternValues splits a pattern slide into two by dividing the array at
+// pattern.values[path]: slide 1 keeps the first `first` items (default: half),
+// slide 2 — a copy of the slide with the title suffixed — carries the rest. No
+// item is dropped, so it is the fact-preserving alternative to reduce_items /
+// resize_list.
+func splitPatternValues(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	slide := input.Slides[slideIdx]
+	path := stringParam(params, "path", "")
+	var valuesMap map[string]any
+	if err := json.Unmarshal(slide.Pattern.Values, &valuesMap); err != nil {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+	}
+	arr, ok := valuesMap[path].([]any)
+	if !ok {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("field %q is not an array", path)}
+	}
+	firstN := intParam(params, "first", 0)
+	if firstN <= 0 {
+		firstN = (len(arr) + 1) / 2
+	}
+	if len(arr) < 2 || firstN >= len(arr) {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("%q has %d items; nothing to move to a second slide", path, len(arr))}
+	}
+	titlePart2 := stringParam(params, "title_part_2", "(continued)")
+
+	half := func(items []any) (SlideInput, error) {
+		vals := make(map[string]any, len(valuesMap))
+		for k, v := range valuesMap {
+			vals[k] = v
+		}
+		vals[path] = items
+		encoded, err := json.Marshal(vals)
+		if err != nil {
+			return SlideInput{}, err
+		}
+		out := slide
+		pat := *slide.Pattern
+		pat.Values = encoded
+		out.Pattern = &pat
+		out.ShapeGrid = nil
+		out.Content = append([]ContentInput(nil), slide.Content...)
+		return out, nil
+	}
+	slide1, err := half(arr[:firstN])
+	if err != nil {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("failed to marshal values: %v", err)}
+	}
+	slide2, err := half(arr[firstN:])
+	if err != nil {
+		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("failed to marshal values: %v", err)}
+	}
+	appendTitleSuffix(slide2.Content, " "+titlePart2)
+	slide2.SpeakerNotes = ""
+	slide2.Source = ""
+
+	newSlides := make([]SlideInput, 0, len(input.Slides)+1)
+	newSlides = append(newSlides, input.Slides[:slideIdx]...)
+	newSlides = append(newSlides, slide1, slide2)
+	newSlides = append(newSlides, input.Slides[slideIdx+1:]...)
+	input.Slides = newSlides
+	return appliedFix{Kind: "split_pattern", Applied: true, Message: fmt.Sprintf("split %q into 2 slides (%d + %d items)", path, firstN, len(arr)-firstN)}
 }
 
 // countFilledCells counts non-nil cells in a shape grid.
@@ -1655,6 +1723,10 @@ func applyReduceItems(input *PresentationInput, slideIdx int, params map[string]
 		return appliedFix{Kind: "reduce_items", Applied: false, Message: fmt.Sprintf("%q already has %d items (max %d)", path, len(arr), maxItems)}
 	}
 
+	if refusal, blocked := guardDroppedItems("reduce_items", slideIdx, path, arr[maxItems:], maxItems, params); blocked {
+		return refusal
+	}
+
 	valuesMap[path] = arr[:maxItems]
 	newValues, err := json.Marshal(valuesMap)
 	if err != nil {
@@ -1663,6 +1735,67 @@ func applyReduceItems(input *PresentationInput, slideIdx int, params map[string]
 	slide.Pattern.Values = newValues
 	slide.ShapeGrid = nil
 	return appliedFix{Kind: "reduce_items", Applied: true, Message: fmt.Sprintf("reduced %q from %d to %d items", path, len(arr), maxItems)}
+}
+
+// guardDroppedItems is the fact-loss guard for list-truncating repairs
+// (reduce_items, resize_list). It flattens the items that would be dropped and
+// refuses the mutation when they carry a protected fact — a number, unit,
+// negation, or qualifier (the same losesProtectedFacts vocabulary that guards
+// reduce_text / shorten_title / reduce_cell_text). The refusal proposes a
+// split_pattern repair that moves the overflow items to a continuation slide
+// instead of deleting them. confirm_semantic_change: true bypasses the guard.
+func guardDroppedItems(kind string, slideIdx int, path string, dropped []any, keep int, params map[string]any) (appliedFix, bool) {
+	if boolParam(params, "confirm_semantic_change", false) {
+		return appliedFix{}, false
+	}
+	var parts []string
+	for _, item := range dropped {
+		parts = collectItemText(item, parts)
+	}
+	if !losesProtectedFacts(strings.Join(parts, " "), "") {
+		return appliedFix{}, false
+	}
+	return appliedFix{
+		Kind:    kind,
+		Applied: false,
+		Code:    "semantic_review_required",
+		Message: fmt.Sprintf("dropping %d item(s) from %q would remove a number, unit, negation, or qualifier; split the slide instead (split_pattern moves the overflow items to a continuation slide) or pass confirm_semantic_change: true", len(dropped), path),
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool: "repair_slide",
+			ArgsTemplate: map[string]any{
+				"slide_index": slideIdx,
+				"fixes": []any{map[string]any{
+					"kind":   "split_pattern",
+					"params": map[string]any{"path": path, "first": keep},
+				}},
+			},
+		},
+	}, true
+}
+
+// collectItemText appends every string leaf of a pattern-values item (string,
+// object, or nested array) to parts, in a deterministic key order.
+func collectItemText(item any, parts []string) []string {
+	switch v := item.(type) {
+	case string:
+		return append(parts, v)
+	case float64:
+		return append(parts, strconv.FormatFloat(v, 'f', -1, 64))
+	case []any:
+		for _, e := range v {
+			parts = collectItemText(e, parts)
+		}
+	case map[string]any:
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			parts = collectItemText(v[k], parts)
+		}
+	}
+	return parts
 }
 
 // applyAddItems is a placeholder for the add_items fix kind. Since the repair
@@ -1741,6 +1874,9 @@ func applyResizeList(input *PresentationInput, slideIdx int, params map[string]a
 	}
 
 	if len(arr) > count {
+		if refusal, blocked := guardDroppedItems("resize_list", slideIdx, path, arr[count:], count, params); blocked {
+			return refusal
+		}
 		valuesMap[path] = arr[:count]
 	} else {
 		return appliedFix{Kind: "resize_list", Applied: false, Message: fmt.Sprintf("%q has %d items but needs %d; provide additional items via add_items", path, len(arr), count)}
