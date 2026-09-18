@@ -387,6 +387,8 @@ The `chart-insights-split` pattern is the canonical "chart on the left, takeaway
 
 For readability the right panel applies vertical rhythm via per-paragraph `space_after` (points): the title carries extra separation below it so it reads as a header, and non-final bullets carry inter-bullet breathing room so the column does not render as a dense block. `space_after` is a general field on the shape-grid `paragraphs[]` cell-text form (points, converted to hundredths of a point), available to any pattern that emits paragraph arrays.
 
+`values.chart` accepts any svggen `DiagramSpec` payload or the flat `{label: value}` shorthand that `chart_value` accepts (e.g. `{"type": "bar", "data": {"Q1": 12, "Q2": 14}}`); the shorthand is normalized to `categories`/`series` at decode time, preserving key order. Validation expands the pattern and dry-renders the chart, so `validate_input` rejects exactly the charts `generate_presentation` would.
+
 `values.chart` is **optional**. When omitted, the pattern collapses to a single-column insights cell at 100% width and emits the structured warning `CHART_PLACEHOLDER_EMPTY: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel` via the `PostExpandWarner` interface. Downstream `preview_presentation_plan` and `generate_presentation` callers convert that warning into a `FitFinding` with `code = "CHART_PLACEHOLDER_EMPTY"` and `action = "review"`. Agents should either supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`).
 
 `values.chart` is a regular `types.DiagramSpec` — pass the same shape used in slide-level diagram content (`type` + `data`, optional `title` / `style`).

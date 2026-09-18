@@ -2,7 +2,7 @@
 
 Fit findings are structured diagnostics emitted when generated slide content may not render correctly — text overflowing placeholders, shapes falling outside slide bounds, or tables exceeding density limits. They are surfaced via the MCP `generate_presentation` tool (text-fit findings detected by `strict_fit` are merged into `fit_findings` unconditionally when `strict_fit != "off"`; the full preflight detector set runs when `fit_report=true`) and the CLI `json2pptx generate -json` and `validate -fit-report` commands (the JSON output's `fit_findings` always includes the active `strict_fit` findings).
 
-**Chart / diagram dry-render.** `validate_input` and `preview_presentation_plan` also drive svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item **and every diagram surface embedded in a slide's `shape_grid`** — cell `diagram`s, composite cell `sub_diagram`s, and diagrams inside recursively nested sub-grids — merging the resulting `chart.*` findings (e.g. `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`) into the fit-finding stream. Content-item findings keep the legacy `slides[i].content[j].chart_value` path; shape_grid findings use the slidepath JSON Pointer convention shared with the structural detectors (e.g. `/slides/0/shape_grid/rows/1/cells/2/diagram`, `.../composite/sub_diagram`, or a nested `.../cells/2/grid/rows/0/cells/1/diagram`). Agents see render-time chart issues at validate / preview time without paying for full generation. The strict-fit severity ladder applies identically to the generate path. The svggen top-level helper is `svggen.DryRender(req) ([]Finding, error)`; the corresponding MCP entry point is `render_diagram` with `dry_run: true`.
+**Chart / diagram dry-render.** `validate_input` and `preview_presentation_plan` also drive svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item **and every diagram surface embedded in a slide's `shape_grid` or in a named pattern's expanded grid (e.g. `chart-insights-split`, paths rooted at `/slides/{i}/pattern`)** — cell `diagram`s, composite cell `sub_diagram`s, and diagrams inside recursively nested sub-grids — merging the resulting `chart.*` findings (e.g. `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`) into the fit-finding stream. Content-item findings keep the legacy `slides[i].content[j].chart_value` path; shape_grid findings use the slidepath JSON Pointer convention shared with the structural detectors (e.g. `/slides/0/shape_grid/rows/1/cells/2/diagram`, `.../composite/sub_diagram`, or a nested `.../cells/2/grid/rows/0/cells/1/diagram`). Agents see render-time chart issues at validate / preview time without paying for full generation. The strict-fit severity ladder applies identically to the generate path. The svggen top-level helper is `svggen.DryRender(req) ([]Finding, error)`; the corresponding MCP entry point is `render_diagram` with `dry_run: true`.
 
 ## Output-Validation Findings — Separate Category
 
@@ -504,11 +504,13 @@ A diagram placeholder's width or height was below the engine's minimum threshold
 
 ### `diagram_render_failed`
 
-**Action:** `review`
+**Action:** `review` (render time); `refuse` (validate / preview time, shape_grid and pattern diagram cells)
 **Fix kind:** `review` (no auto-fix)
-**Emitted at:** render time
+**Emitted at:** render time; validate / preview time via chart dry-render
 
-Diagram rendering failed entirely; a placeholder image was inserted instead. This is review-only — no deterministic auto-fix is available. The agent must inspect the diagram data and decide whether to simplify the diagram, change its type, or regenerate the slide.
+Diagram rendering failed entirely; a placeholder image was inserted instead.
+
+At validate / preview time the chart dry-render emits this code with `action: refuse` for diagrams inside a `shape_grid` cell or a pattern-expanded grid (e.g. `chart-insights-split`), because generate aborts the whole deck on those instead of inserting a placeholder. The path is the cell's JSON Pointer (`/slides/{i}/shape_grid/rows/{r}/cells/{c}/diagram`, or `/slides/{i}/pattern/rows/{r}/cells/{c}/diagram` for pattern-embedded charts) and `fix.params.reason` carries the svggen error generate would report. This is review-only — no deterministic auto-fix is available. The agent must inspect the diagram data and decide whether to simplify the diagram, change its type, or regenerate the slide.
 
 ```json
 {

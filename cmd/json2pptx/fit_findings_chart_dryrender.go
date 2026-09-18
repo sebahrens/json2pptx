@@ -74,6 +74,13 @@ func collectChartDryRenderFindings(
 		if slide.ShapeGrid != nil {
 			findings = append(findings, collectGridDryRenderFindings(
 				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit)...)
+		} else if pg := expandSlidePatternGrid(&slide, slideIdx, 0, 0, nil); pg != nil {
+			// Named patterns that embed charts (chart-insights-split, ...)
+			// are only expanded at generate time; expand them here so their
+			// charts get the same dry-render as raw shape_grid diagrams
+			// (go-slide-creator-yzbo). Paths are rooted at the pattern.
+			findings = append(findings, collectGridDryRenderFindings(
+				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit)...)
 		}
 	}
 	return findings
@@ -108,11 +115,11 @@ func collectGridDryRenderFindings(
 			}
 			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, ri, ci)
 			if cell.Diagram != nil {
-				findings = append(findings, dryRenderSpecToFindings(
+				findings = append(findings, dryRenderGridSpecToFindings(
 					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram")...)
 			}
 			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
-				findings = append(findings, dryRenderSpecToFindings(
+				findings = append(findings, dryRenderGridSpecToFindings(
 					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram")...)
 			}
 			if cell.Grid != nil {
@@ -151,13 +158,41 @@ func chartValueToDiagramSpec(c *types.ChartSpec) *types.DiagramSpec { //nolint:s
 
 // dryRenderSpecToFindings calls svggen.DryRender for a single DiagramSpec
 // and converts the returned svggen.Findings into patterns.FitFinding entries
-// pinned at the supplied path.
+// pinned at the supplied path. A render error is dropped: placeholder
+// content items fall back to a placeholder image at generate time and the
+// chart_value shorthand forms are only normalized on the render path.
 func dryRenderSpecToFindings(
 	spec *types.DiagramSpec,
 	themeColors []types.ThemeColor,
 	bodyFont string,
 	strictFit string,
 	path string,
+) []patterns.FitFinding {
+	return dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, false)
+}
+
+// dryRenderGridSpecToFindings is dryRenderSpecToFindings for shape_grid
+// (and pattern-expanded) diagram cells. Generate aborts the deck when such a
+// cell fails to render, so a dry-render error is surfaced as a
+// diagram_render_failed finding with action "refuse" instead of being
+// dropped (go-slide-creator-yzbo).
+func dryRenderGridSpecToFindings(
+	spec *types.DiagramSpec,
+	themeColors []types.ThemeColor,
+	bodyFont string,
+	strictFit string,
+	path string,
+) []patterns.FitFinding {
+	return dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, true)
+}
+
+func dryRenderSpec(
+	spec *types.DiagramSpec,
+	themeColors []types.ThemeColor,
+	bodyFont string,
+	strictFit string,
+	path string,
+	gridSurface bool,
 ) []patterns.FitFinding {
 	if spec == nil || spec.Type == "" {
 		return nil
@@ -198,11 +233,26 @@ func dryRenderSpecToFindings(
 	// Theme colors enable contrast-related findings if any are added later.
 	_ = themeColors
 
-	dryFindings, _ := svggen.DryRender(req)
-	if len(dryFindings) == 0 {
-		return nil
+	dryFindings, renderErr := svggen.DryRender(req)
+	var out []patterns.FitFinding
+	if renderErr != nil && gridSurface {
+		out = append(out, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Pattern: spec.Type,
+				Path:    path,
+				Code:    patterns.ErrCodeDiagramRenderFailed,
+				Message: fmt.Sprintf("diagram would fail to render and abort generation: %v", renderErr),
+				Fix: &patterns.FixSuggestion{
+					Kind:   "review",
+					Params: map[string]any{"diagram_type": spec.Type, "reason": renderErr.Error()},
+				},
+			},
+			Action: "refuse",
+		})
 	}
-	out := make([]patterns.FitFinding, 0, len(dryFindings))
+	if len(dryFindings) == 0 {
+		return out
+	}
 	for _, df := range dryFindings {
 		fixSug := convertSvggenFixSuggestion(df.Fix)
 		fieldPath := path

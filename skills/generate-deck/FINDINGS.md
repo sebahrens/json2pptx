@@ -81,7 +81,7 @@ Native (non-chart) findings. No prefix — the `chart.*` namespace below covers 
 | `table_rows_truncated` | Table rows truncated to fit row height |
 | `table_font_scaled` | Table font scaled down to the minimum floor |
 | `diagram_clamped` | Diagram placeholder dimensions clamped to minimum. `action: review`, `fix.kind: swap_layout`, `fix.params: {dimension, original_emu, clamped_emu}`. Agent action: switch to a wider layout via `repair_slide` |
-| `diagram_render_failed` | Diagram render failed; placeholder image inserted. `action: review`, `fix.kind: review` (no auto-fix). Agent must inspect diagram data and decide whether to simplify, change type, or regenerate |
+| `diagram_render_failed` | Diagram render failed; placeholder image inserted. `action: review`, `fix.kind: review` (no auto-fix). At validate/preview time it is emitted with `action: refuse` for shape_grid / pattern-embedded diagrams (generate would abort). Agent must inspect diagram data and decide whether to simplify, change type, or regenerate |
 | `column_width_deficit` | Column widths fell back to global floor |
 | `pagination_default_threshold` | Pagination used default threshold (no template capacity available) |
 | `contrast_autofixed` | Text color auto-replaced for WCAG AA. `action: info`, `fix.kind: replace_color`, `fix.params: {original_color, replacement_color, background_color, contrast_ratio_before, contrast_ratio_after, source}` where `source` is `shape_grid`, `lstStyle`, or `run`. Path locates the swap: `/slides/{i}/shape_grid/shapes/{n}` for grid cells (flat rendered-shape index), or the slide-level `/slides/{i}` for layout/run text. Slide index is derived from `path` |

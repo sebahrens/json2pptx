@@ -720,6 +720,18 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			}
 		}
 
+		// Grid diagram data: generate aborts on svggen validation failures in
+		// shape_grid diagrams, including those produced by pattern expansion
+		// (e.g. chart-insights-split), so report them as errors here.
+		gridDiags := gridDiagramValidationDiagnostics(slideInput.ShapeGrid, i, "shape_grid", slidepath.ShapeGrid(i))
+		if pg := expandSlidePatternGrid(&slideInput, i, analysis.SlideWidth, analysis.SlideHeight, &analysis.Theme); pg != nil {
+			gridDiags = append(gridDiags, gridDiagramValidationDiagnostics(pg, i, "pattern "+slideInput.Pattern.Name, slidepath.SlideField(i, "pattern"))...)
+		}
+		if len(gridDiags) > 0 {
+			output.Valid = false
+			output.Diagnostics = append(output.Diagnostics, gridDiags...)
+		}
+
 		// Takeaway warning: chart and matrix slides without a takeaway lose
 		// most of their narrative value — the audience cannot tell what the
 		// data is supposed to argue. Warn (do not error) when missing.
