@@ -452,6 +452,58 @@ func containsProminentNumber(text string) bool {
 	return false
 }
 
+// hasVisualContent reports whether the slide carries author-provided visual
+// content (image, diagram/chart, or table) either at the top level or inside a
+// slot. Such content needs a placeholder that can host a full-area visual; a
+// layout without one drops it silently, so layout scoring must never steer a
+// slide with visual content toward a title-only layout.
+func hasVisualContent(slide types.SlideDefinition) bool {
+	if slide.Content.ImagePath != "" ||
+		slide.Content.DiagramSpec != nil ||
+		slide.Content.Table != nil ||
+		slide.Content.TableRaw != "" {
+		return true
+	}
+	for _, slot := range slide.Slots {
+		if slot == nil {
+			continue
+		}
+		if slot.ImagePath != "" || slot.DiagramSpec != nil || slot.Table != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// needsFullContentArea reports whether a slide must land on a layout with a
+// full-area body / picture placeholder, which disqualifies it from the
+// last-slide "closing layout" bonus. Closing layouts carry a centred title and
+// subtitle only, so anything larger than a short sign-off is dropped or
+// crushed.
+//
+// Visual content (image / chart / diagram / table) and slot-addressed content
+// qualify whatever the declared slide type: a `content` slide that carries an
+// image is still an image slide as far as placement is concerned, and scoring
+// it by slide.Type alone silently dropped the image (go-slide-creator-lhq6).
+func needsFullContentArea(slide types.SlideDefinition) bool {
+	hasTable := slide.Content.TableRaw != "" || slide.Content.Table != nil
+	hasDenseContent := hasTable ||
+		len(slide.Content.BulletGroups) > 0 ||
+		len(slide.Content.Bullets) > 4 ||
+		(slide.Content.Body != "" && len(slide.Content.Bullets) > 0)
+
+	switch slide.Type {
+	case types.SlideTypeChart, types.SlideTypeDiagram, types.SlideTypeImage,
+		types.SlideTypeTwoColumn, types.SlideTypeComparison:
+		return true
+	case types.SlideTypeContent:
+		if hasDenseContent {
+			return true
+		}
+	}
+	return hasVisualContent(slide) || slide.HasSlots()
+}
+
 // scoreTypeMatch checks if layout tags match slide type and position.
 func scoreTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinition, ctx SelectionContext) float64 {
 	// Position-based bonus for first slide
@@ -465,21 +517,7 @@ func scoreTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinition, ct
 	// image slides need full-area placeholders that closing layouts don't provide.
 	isLastSlide := ctx.TotalSlides > 0 && ctx.Position == ctx.TotalSlides-1
 	if isLastSlide {
-		// Skip closing bonus for slide types that need full content area.
-		// Tables (Content type with TableRaw) also need full-width body
-		// placeholders that closing layouts don't provide.
-		hasTable := slide.Content.TableRaw != ""
-		hasDenseContent := hasTable ||
-			len(slide.Content.BulletGroups) > 0 ||
-			len(slide.Content.Bullets) > 4 ||
-			(slide.Content.Body != "" && len(slide.Content.Bullets) > 0)
-		needsFullArea := slide.Type == types.SlideTypeChart ||
-			slide.Type == types.SlideTypeDiagram ||
-			slide.Type == types.SlideTypeImage ||
-			slide.Type == types.SlideTypeTwoColumn ||
-			slide.Type == types.SlideTypeComparison ||
-			(slide.Type == types.SlideTypeContent && hasDenseContent)
-		if !needsFullArea {
+		if !needsFullContentArea(slide) {
 			isClosing := hasTag(layout.Tags, "closing") || hasTag(layout.Tags, "thank-you")
 			isTitleSlide := hasTag(layout.Tags, "title-slide")
 			if slide.Type == types.SlideTypeTitle {
@@ -539,13 +577,24 @@ func scoreSlideTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinitio
 // (e.g. it also carries a stray body placeholder) yet is unambiguously a cover
 // per the authoritative canonical classifier.
 //
-// The "blank-title" utility layout is excluded: a bare title canvas (title
-// placeholder only, used to host a shape_grid below a heading) also earns the
-// structural "title-slide" tag, but it is a content canvas, not a cover. This
-// mirrors the canonicalNames["title"] rule in canonical.go, which requires the
-// "title-slide" tag while excluding "blank-title".
+// The "blank-title" and "closing" layouts are excluded: a bare title canvas
+// (title placeholder only, used to host a shape_grid below a heading) also
+// earns the structural "title-slide" tag but is a content canvas, not a cover;
+// and a Closing layout is the deck's last slide, not its first. This mirrors
+// the canonicalNames["title"] rule in canonical.go, which requires the
+// "title-slide" tag while excluding both "blank-title" and "closing".
 func isTitleSlideLayout(layout types.LayoutMetadata) bool {
 	if hasTag(layout.Tags, "blank-title") {
+		return false
+	}
+	// A Closing / "Thank you" layout is never the cover, even when it also
+	// carries the structural "title-slide" tag (centred title + subtitle makes
+	// the two structurally identical). Without this, a template whose Closing
+	// layout precedes its Title Slide in master order wins the position-0 tie
+	// and the deck opens on its closing slide (go-slide-creator-g5sb). This
+	// mirrors canonicalNames["title"] in canonical.go, which excludes
+	// "closing" for the same reason.
+	if hasTag(layout.Tags, "closing") {
 		return false
 	}
 	if hasTag(layout.Tags, "title-slide") {

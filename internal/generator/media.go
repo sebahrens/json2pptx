@@ -221,6 +221,13 @@ func (ctx *singlePassContext) prepareImages() error {
 				available := resolver.Keys()
 				layoutID := slideSpec.LayoutID
 				ctx.warnings = append(ctx.warnings, PlaceholderNotFoundError(item.PlaceholderID, layoutID, available))
+				// The visual is silently gone from the rendered slide. Emit a
+				// machine-actionable CONTENT_DROPPED so callers do not report
+				// success with a blank slide (go-slide-creator-lhq6).
+				ctx.emitFitFinding(patterns.ContentDroppedNoPlaceholder(
+					slidepath.ContentIndex(slideNum-1, contentIdx),
+					fmt.Sprintf("content block %d (%s)", contentIdx+1, item.Type),
+					item.PlaceholderID, layoutID, available))
 				continue
 			}
 

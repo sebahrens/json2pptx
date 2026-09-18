@@ -574,11 +574,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	fitFindings = append(fitFindings, synthesisFindings...)
 
 	// Build per-slide resolution summary
-	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
+	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles,
+		droppedPlaceholdersBySlide(fitFindings))
 
 	// Build response
 	output := JSONOutput{
-		Success:                  true,
+		Success:                  renderSucceeded(fitFindings, outputValidation),
 		OutputPath:               outputPath,
 		SlideCount:               result.SlideCount,
 		ContentHash:              result.ContentHash,

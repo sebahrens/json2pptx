@@ -980,7 +980,36 @@ The single, shared signal for **any** path that fails to place author-provided c
 
 The drop has *already happened* by the time the finding is emitted — it is advisory and never blocks generation (action `review`). The fix carries `params.locator` (a short label for what was dropped — `"slide 4"`, `"content block 3"`, `"left column"`) and `params.reason` (why placement failed) so an agent can route the repair without re-deriving the cause. There is no single deterministic auto-fix (fix kind `review`, mirroring `diagram_render_failed`): the agent restructures or splits the slide, or fixes the underlying spec error.
 
-Emitted today from the partial-mode slide-skip path in slide conversion, and from the **multi-visual collision** path in image preparation — when two or more visual content blocks (chart / table / image / diagram) resolve to the *same* placeholder, only the first is rendered and each subsequent one is dropped (rather than silently overlapping the first at identical bounds), each with its own `CONTENT_DROPPED` finding pointing at `/slides/{i}/content/{n}` and a `reason` suggesting the author split the slide or use `compose` to give each visual its own region. Other drop paths (dense-pattern section-divider overflow) adopt the same `patterns.ContentDropped(path, locator, reason)` constructor as they are hardened.
+Emitted today from the partial-mode slide-skip path in slide conversion, from the **multi-visual collision** path in image preparation — when two or more visual content blocks (chart / table / image / diagram) resolve to the *same* placeholder, only the first is rendered and each subsequent one is dropped (rather than silently overlapping the first at identical bounds), each with its own `CONTENT_DROPPED` finding pointing at `/slides/{i}/content/{n}` and a `reason` suggesting the author split the slide or use `compose` to give each visual its own region — and from the **missing-placeholder** path (see below). Other drop paths (dense-pattern section-divider overflow) adopt the same `patterns.ContentDropped(path, locator, reason)` constructor as they are hardened.
+
+#### Hard drops: `params.cause = "placeholder_not_found"`
+
+One drop cause is **not** advisory. When a content block targets a `placeholder_id` the resolved layout does not declare, the content is simply absent from the artifact: the render "succeeds" and the slide is missing the author's image or copy. Those findings carry `fix.params.cause = "placeholder_not_found"` plus `placeholder_id`, `layout_id` and the `available` placeholder ids, and they change two things in the response:
+
+- **`success` is `false`** under `output_validation: "strict"` (the default). Under `warn` / `off` the finding is still emitted but `success` stays `true`.
+- **`placeholders_used` excludes the dropped placeholder**, which instead appears in the new `placeholders_dropped` array on that slide's entry in `slides[]`. Previously `placeholders_used` echoed the *requested* ids, so it claimed a placeholder that was never populated.
+
+Every other `CONTENT_DROPPED` cause (partial-mode slide skips, visual collisions) stays advisory and leaves `success` untouched.
+
+```json
+{
+  "path": "/slides/3/content/1",
+  "code": "CONTENT_DROPPED",
+  "message": "author-provided content dropped (content block 2 (image)): placeholder_id \"body\" does not exist in layout \"slideLayout5\", so the content was not rendered",
+  "fix": {
+    "kind": "review",
+    "params": {
+      "cause": "placeholder_not_found",
+      "placeholder_id": "body",
+      "layout_id": "slideLayout5",
+      "available": ["title", "subtitle"],
+      "locator": "content block 2 (image)",
+      "reason": "placeholder_id \"body\" does not exist in layout \"slideLayout5\", so the content was not rendered"
+    }
+  },
+  "action": "review"
+}
+```
 
 ```json
 {

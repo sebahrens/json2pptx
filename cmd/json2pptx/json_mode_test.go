@@ -2218,7 +2218,7 @@ func TestBuildSlideResolutions_Basic(t *testing.T) {
 		"ppt/slideLayouts/slideLayout99.xml": []byte("<xml/>"),
 	}
 
-	resolutions := buildSlideResolutions(inputSlides, specs, layouts, syntheticFiles)
+	resolutions := buildSlideResolutions(inputSlides, specs, layouts, syntheticFiles, nil)
 
 	if len(resolutions) != 3 {
 		t.Fatalf("expected 3 resolutions, got %d", len(resolutions))
@@ -2266,7 +2266,7 @@ func TestBuildSlideResolutions_NilSyntheticFiles(t *testing.T) {
 	}}
 	layouts := []types.LayoutMetadata{{ID: "slideLayout1", Placeholders: []types.PlaceholderInfo{{ID: "title"}}}}
 
-	resolutions := buildSlideResolutions(inputSlides, specs, layouts, nil)
+	resolutions := buildSlideResolutions(inputSlides, specs, layouts, nil, nil)
 	if len(resolutions) != 1 {
 		t.Fatalf("expected 1 resolution, got %d", len(resolutions))
 	}
@@ -2412,5 +2412,101 @@ func TestIconFindingsToError_WarningsAreNonBlocking(t *testing.T) {
 	}
 	if err := iconFindingsToError(findings); err != nil {
 		t.Errorf("expected nil error for warning-only findings, got: %v", err)
+	}
+}
+
+// go-slide-creator-lhq6: placeholders_used must never claim a placeholder whose
+// content was dropped because the resolved layout does not declare it. Those
+// ids move to placeholders_dropped, and occupancy is computed from the real
+// (reduced) used set.
+func TestBuildSlideResolutions_DroppedPlaceholdersExcluded(t *testing.T) {
+	inputSlides := []SlideInput{{LayoutID: ""}}
+	specs := []generator.SlideSpec{
+		{
+			LayoutID: "slideLayout5",
+			Content: []generator.ContentItem{
+				{PlaceholderID: "title", Type: generator.ContentText, Value: "The New Console"},
+				{PlaceholderID: "body", Type: generator.ContentImage, Value: generator.ImageContent{Path: "img/hero.png"}},
+			},
+		},
+	}
+	layouts := []types.LayoutMetadata{
+		{ID: "slideLayout5", Placeholders: []types.PlaceholderInfo{{ID: "title"}, {ID: "subtitle"}}},
+	}
+	dropped := map[int]map[string]bool{0: {"body": true}}
+
+	resolutions := buildSlideResolutions(inputSlides, specs, layouts, nil, dropped)
+	if len(resolutions) != 1 {
+		t.Fatalf("expected 1 resolution, got %d", len(resolutions))
+	}
+	got := resolutions[0]
+	if len(got.PlaceholdersUsed) != 1 || got.PlaceholdersUsed[0] != "title" {
+		t.Errorf("placeholders_used = %v, want [title]", got.PlaceholdersUsed)
+	}
+	if len(got.PlaceholdersDropped) != 1 || got.PlaceholdersDropped[0] != "body" {
+		t.Errorf("placeholders_dropped = %v, want [body]", got.PlaceholdersDropped)
+	}
+	if got.OccupancyPct != 50 {
+		t.Errorf("occupancy_pct = %d, want 50 (1 of 2 placeholders)", got.OccupancyPct)
+	}
+}
+
+// go-slide-creator-lhq6: a hard content drop fails the render under strict
+// output_validation (the default) and is advisory under warn/off.
+func TestRenderSucceeded_HardContentDrop(t *testing.T) {
+	hard := patterns.ContentDroppedNoPlaceholder(
+		"/slides/3/content/0", "content block 1 (image)", "body", "slideLayout5", []string{"title", "subtitle"})
+	advisory := patterns.ContentDropped("/slides/1", "slide 2", "skipped in partial mode")
+
+	if !patterns.IsHardContentDrop(hard) {
+		t.Fatal("ContentDroppedNoPlaceholder must be a hard content drop")
+	}
+	if patterns.IsHardContentDrop(advisory) {
+		t.Fatal("a partial-mode slide skip must stay advisory, not a hard drop")
+	}
+
+	tests := []struct {
+		name             string
+		findings         []patterns.FitFinding
+		outputValidation string
+		want             bool
+	}{
+		{"strict + hard drop", []patterns.FitFinding{hard}, "strict", false},
+		{"default (empty) + hard drop", []patterns.FitFinding{hard}, "", false},
+		{"warn + hard drop", []patterns.FitFinding{hard}, "warn", true},
+		{"off + hard drop", []patterns.FitFinding{hard}, "off", true},
+		{"strict + advisory drop only", []patterns.FitFinding{advisory}, "strict", true},
+		{"strict + no findings", nil, "strict", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := renderSucceeded(tt.findings, tt.outputValidation); got != tt.want {
+				t.Errorf("renderSucceeded = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// droppedPlaceholdersBySlide must index hard drops by slide and ignore the
+// advisory CONTENT_DROPPED findings that share the code.
+func TestDroppedPlaceholdersBySlide(t *testing.T) {
+	findings := []patterns.FitFinding{
+		patterns.ContentDroppedNoPlaceholder("/slides/3/content/0", "block", "body", "slideLayout5", nil),
+		patterns.ContentDroppedNoPlaceholder("/slides/3/content/2", "block", "body_2", "slideLayout5", nil),
+		patterns.ContentDroppedNoPlaceholder("/slides/0/content/1", "block", "subtitle", "slideLayout2", nil),
+		patterns.ContentDropped("/slides/1", "slide 2", "skipped in partial mode"),
+	}
+	got := droppedPlaceholdersBySlide(findings)
+	if len(got) != 2 {
+		t.Fatalf("expected drops on 2 slides, got %d: %v", len(got), got)
+	}
+	if !got[3]["body"] || !got[3]["body_2"] {
+		t.Errorf("slide 3 drops = %v, want body and body_2", got[3])
+	}
+	if !got[0]["subtitle"] {
+		t.Errorf("slide 0 drops = %v, want subtitle", got[0])
+	}
+	if _, ok := got[1]; ok {
+		t.Errorf("advisory partial-mode drop must not appear in the index: %v", got[1])
 	}
 }

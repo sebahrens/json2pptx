@@ -4634,3 +4634,110 @@ func TestUpdateAppProperties(t *testing.T) {
 		t.Errorf("expected <TotalTime>0</TotalTime>, got: %s", content)
 	}
 }
+
+// go-slide-creator-lhq6: a visual content block targeting a placeholder the
+// layout does not declare is silently dropped from the rendered slide. It must
+// raise a machine-actionable CONTENT_DROPPED finding, not only a warning.
+func TestPrepareImages_PlaceholderNotFound_EmitsContentDropped(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	ctx.templateSlideData[4] = &slideXML{
+		CommonSlideData: commonSlideDataXML{
+			ShapeTree: shapeTreeXML{
+				Shapes: []shapeXML{
+					{
+						NonVisualProperties: nonVisualPropertiesXML{
+							ConnectionNonVisual: connectionNonVisualXML{ID: 2, Name: "title"},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "ctrTitle"}},
+						},
+					},
+				},
+			},
+		},
+	}
+	ctx.slideContentMap[4] = SlideSpec{
+		LayoutID: "slideLayout5",
+		Content: []ContentItem{
+			{PlaceholderID: "body", Type: ContentImage, Value: ImageContent{Path: "img/hero.png"}},
+		},
+	}
+
+	if err := ctx.prepareImages(); err != nil {
+		t.Fatalf("prepareImages() error = %v", err)
+	}
+
+	var dropped *patterns.FitFinding
+	for i := range ctx.fitFindings {
+		if patterns.IsHardContentDrop(ctx.fitFindings[i]) {
+			dropped = &ctx.fitFindings[i]
+			break
+		}
+	}
+	if dropped == nil {
+		t.Fatalf("expected a hard CONTENT_DROPPED finding, got %+v", ctx.fitFindings)
+	}
+	if dropped.Path != "/slides/3/content/0" {
+		t.Errorf("path = %q, want %q", dropped.Path, "/slides/3/content/0")
+	}
+	if got, _ := dropped.Fix.Params["placeholder_id"].(string); got != "body" {
+		t.Errorf("fix.params.placeholder_id = %q, want %q", got, "body")
+	}
+	if got, _ := dropped.Fix.Params["layout_id"].(string); got != "slideLayout5" {
+		t.Errorf("fix.params.layout_id = %q, want %q", got, "slideLayout5")
+	}
+}
+
+// go-slide-creator-lhq6: non-empty text that resolves to no placeholder is
+// dropped content and must raise CONTENT_DROPPED alongside the existing
+// placeholder_not_found validation error. Empty content must not.
+func TestPopulateTextInSlide_PlaceholderNotFound_ContentDroppedOnlyWhenNonEmpty(t *testing.T) {
+	newSlide := func() *slideXML {
+		return &slideXML{
+			CommonSlideData: commonSlideDataXML{
+				ShapeTree: shapeTreeXML{
+					Shapes: []shapeXML{
+						{
+							NonVisualProperties: nonVisualPropertiesXML{
+								ConnectionNonVisual: connectionNonVisualXML{ID: 2, Name: "title"},
+								NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "ctrTitle"}},
+							},
+							TextBody: &textBodyXML{},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		value       any
+		wantDropped bool
+	}{
+		{"non-empty text", "The console ships in Q3", true},
+		{"non-empty bullets", []string{"", "One real bullet"}, true},
+		{"empty text", "   ", false},
+		{"empty bullets", []string{"", "  "}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := newSinglePassContext("", nil, nil, false, nil)
+			content := []ContentItem{{PlaceholderID: "sidebar", Type: ContentText, Value: tt.value}}
+			ctx.populateTextInSlide(newSlide(), content, "slideLayout5", 1, "")
+
+			got := false
+			for i := range ctx.fitFindings {
+				if patterns.IsHardContentDrop(ctx.fitFindings[i]) {
+					got = true
+				}
+			}
+			if got != tt.wantDropped {
+				t.Errorf("hard CONTENT_DROPPED emitted = %v, want %v (findings: %+v)", got, tt.wantDropped, ctx.fitFindings)
+			}
+			// The structured placeholder_not_found error is emitted either way.
+			if len(ctx.validationErrors) != 1 {
+				t.Errorf("expected 1 placeholder_not_found validation error, got %d", len(ctx.validationErrors))
+			}
+		})
+	}
+}

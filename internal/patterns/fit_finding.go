@@ -83,6 +83,54 @@ func ContentDropped(path, locator, reason string) FitFinding {
 	}
 }
 
+// ContentDroppedNoPlaceholder builds a CONTENT_DROPPED fit finding for
+// author-provided content that could not be placed because the target
+// placeholder_id does not exist in the resolved layout. This is the silent
+// killer the raw generate path used to report only as a human-readable warning
+// while still answering success:true (go-slide-creator-lhq6): the slide renders
+// without the content and nothing machine-readable says so.
+//
+//   - path is the JSON Pointer to the dropped content block.
+//   - locator is a short human label ("content block 2 (image)").
+//   - placeholderID / layoutID identify the failed target.
+//   - available lists the placeholder IDs the layout does declare.
+//
+// The Fix carries cause "placeholder_not_found" plus the available ids and a
+// did_you_mean suggestion, so callers can both remap the content and
+// distinguish this drop from advisory ones (strict output_validation fails the
+// render on this cause alone).
+func ContentDroppedNoPlaceholder(path, locator, placeholderID, layoutID string, available []string) FitFinding {
+	reason := fmt.Sprintf(
+		"placeholder_id %q does not exist in layout %q, so the content was not rendered",
+		placeholderID, layoutID)
+	f := ContentDropped(path, locator, reason)
+	f.Fix.Params["cause"] = CausePlaceholderNotFound
+	f.Fix.Params["placeholder_id"] = placeholderID
+	f.Fix.Params["layout_id"] = layoutID
+	if len(available) > 0 {
+		f.Fix.Params["available"] = available
+	}
+	return f
+}
+
+// CausePlaceholderNotFound is the Fix.Params["cause"] value that marks a
+// CONTENT_DROPPED finding as a hard drop caused by a missing placeholder,
+// as opposed to the advisory drops (partial-mode slide skips, visual
+// collisions) that share the code.
+const CausePlaceholderNotFound = "placeholder_not_found"
+
+// IsHardContentDrop reports whether a finding is a CONTENT_DROPPED caused by a
+// placeholder that does not exist in the resolved layout. Strict
+// output_validation treats these as render failures: the artifact is missing
+// content the author asked for.
+func IsHardContentDrop(f FitFinding) bool {
+	if f.Code != ErrCodeContentDropped || f.Fix == nil {
+		return false
+	}
+	cause, _ := f.Fix.Params["cause"].(string)
+	return cause == CausePlaceholderNotFound
+}
+
 // SparseSingleRowFlow builds a SPARSE_SINGLE_ROW_FLOW fit finding for a
 // slide-level single-row sequence pattern (process-flow or the single-row
 // "dots" style of timeline-horizontal) that carries sparse per-cell text and

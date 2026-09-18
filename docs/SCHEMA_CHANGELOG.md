@@ -4,6 +4,42 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased
+
+### Added
+
+- **`slides[].placeholders_dropped` (go-slide-creator-lhq6).** New optional
+  array on each `generate_presentation` / `json2pptx generate` slide-resolution
+  entry: the placeholder IDs the slide targeted that the resolved layout does
+  not declare. Their content was NOT rendered. `placeholders_used` now reports
+  only placeholders that actually received content (and `occupancy_pct` is
+  computed from that reduced set) instead of echoing the requested IDs.
+
+### Changed
+
+- **Dropped content fails strict output validation (go-slide-creator-lhq6).**
+  Content targeting a non-existent `placeholder_id` now emits a
+  `CONTENT_DROPPED` fit finding carrying `fix.params.cause =
+  "placeholder_not_found"` (plus `placeholder_id`, `layout_id`, `available`),
+  and `success` is `false` under `output_validation: "strict"` (the default).
+  Under `warn` / `off` the finding is emitted but `success` stays `true`. Other
+  `CONTENT_DROPPED` causes (partial-mode slide skips, visual collisions) remain
+  advisory.
+
+### Fixed
+
+- **Last slide with visual content no longer lands on the Closing layout
+  (go-slide-creator-lhq6).** Layout scoring withheld the last-slide "closing"
+  bonus only by `slide_type`, so a `content` slide carrying an image, chart,
+  diagram, table, or slot content was assigned a title+subtitle closing layout
+  and the visual was silently dropped. Visual and slot-addressed content now
+  always require a full content area.
+- **Cover slide no longer resolves to the Closing layout
+  (go-slide-creator-g5sb).** `isTitleSlideLayout` excluded only `blank-title`,
+  so on a template whose Closing layout precedes Title Slide in master order
+  (ties are broken by layout order) the deck opened on its closing slide. It
+  now mirrors the canonical `"title"` rule and excludes `closing` too.
+
 ## 4.60.0 (2026-09-18)
 
 ### Added

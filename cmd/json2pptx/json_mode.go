@@ -122,6 +122,10 @@ type SlideResolution struct {
 	Index            int      `json:"index"`
 	ResolvedLayoutID string   `json:"resolved_layout_id"`
 	PlaceholdersUsed []string `json:"placeholders_used"`
+	// PlaceholdersDropped lists the placeholder IDs the slide targeted that the
+	// resolved layout does not declare. Their content was NOT rendered, so they
+	// are excluded from PlaceholdersUsed (go-slide-creator-lhq6).
+	PlaceholdersDropped []string `json:"placeholders_dropped,omitempty"`
 	WasSynthesized   bool     `json:"was_synthesized_layout,omitempty"`
 	WasAutoSelected  bool     `json:"was_auto_selected,omitempty"`
 	OccupancyPct     int      `json:"occupancy_pct,omitempty"`
@@ -583,14 +587,15 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	allFitFindings = dedupFitFindings(allFitFindings)
 
 	// Build per-slide resolution summary
-	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
+	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles,
+		droppedPlaceholdersBySlide(allFitFindings))
 
 	quality := computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts)
 	evidence := &pipeline.QualityEvidence{ArtifactSHA256: result.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(outputValidationFindings), TotalSlides: result.SlideCount}
 	evidence.Finalize()
 	quality.Evidence = evidence
 	output := JSONOutput{
-		Success:                  true,
+		Success:                  renderSucceeded(allFitFindings, outputValidation),
 		OutputPath:               outputPath,
 		SlideCount:               result.SlideCount,
 		ContentHash:              result.ContentHash,
@@ -1056,6 +1061,7 @@ func buildSlideResolutions(
 	specs []generator.SlideSpec,
 	layouts []types.LayoutMetadata,
 	syntheticFiles map[string][]byte,
+	droppedPlaceholders map[int]map[string]bool,
 ) []SlideResolution {
 	// Build layout lookup
 	layoutByID := make(map[string]types.LayoutMetadata, len(layouts))
@@ -1090,13 +1096,22 @@ func buildSlideResolutions(
 			sr.WasSynthesized = true
 		}
 
-		// Collect placeholders that received content
+		// Collect placeholders that received content. A placeholder the
+		// resolved layout does not declare never received anything — its
+		// content was dropped — so it is reported under placeholders_dropped
+		// instead of being claimed as used (go-slide-creator-lhq6).
+		dropped := droppedPlaceholders[i]
 		seen := make(map[string]bool)
 		for _, ci := range spec.Content {
-			if !seen[ci.PlaceholderID] {
-				sr.PlaceholdersUsed = append(sr.PlaceholdersUsed, ci.PlaceholderID)
-				seen[ci.PlaceholderID] = true
+			if seen[ci.PlaceholderID] {
+				continue
 			}
+			seen[ci.PlaceholderID] = true
+			if dropped[ci.PlaceholderID] {
+				sr.PlaceholdersDropped = append(sr.PlaceholdersDropped, ci.PlaceholderID)
+				continue
+			}
+			sr.PlaceholdersUsed = append(sr.PlaceholdersUsed, ci.PlaceholderID)
 		}
 
 		// Compute occupancy: placeholders used / total placeholders in layout
@@ -2802,4 +2817,59 @@ func patternThemeFromDiag(diagCtx *GridDiagramContext) types.ThemeInfo {
 		return types.ThemeInfo{}
 	}
 	return types.ThemeInfo{Colors: diagCtx.ThemeColors}
+}
+
+// droppedPlaceholdersBySlide indexes hard content drops — content targeting a
+// placeholder the resolved layout does not declare — by 0-based slide index.
+// The result feeds buildSlideResolutions so placeholders_used reports only
+// placeholders that actually received content (go-slide-creator-lhq6).
+func droppedPlaceholdersBySlide(findings []patterns.FitFinding) map[int]map[string]bool {
+	var bySlide map[int]map[string]bool
+	for _, f := range findings {
+		if !patterns.IsHardContentDrop(f) {
+			continue
+		}
+		phID, _ := f.Fix.Params["placeholder_id"].(string)
+		if phID == "" {
+			continue
+		}
+		slideIdx := slidepath.SlideIndex(f.Path)
+		if slideIdx < 0 {
+			continue
+		}
+		if bySlide == nil {
+			bySlide = make(map[int]map[string]bool)
+		}
+		if bySlide[slideIdx] == nil {
+			bySlide[slideIdx] = make(map[string]bool)
+		}
+		bySlide[slideIdx][phID] = true
+	}
+	return bySlide
+}
+
+// hasHardContentDrop reports whether the run dropped author-provided content
+// because a targeted placeholder does not exist in the resolved layout. Under
+// strict output_validation (the default) this fails the render: the artifact is
+// missing content the author asked for, so answering success:true would tell
+// the agent nothing is wrong (go-slide-creator-lhq6).
+func hasHardContentDrop(findings []patterns.FitFinding) bool {
+	for _, f := range findings {
+		if patterns.IsHardContentDrop(f) {
+			return true
+		}
+	}
+	return false
+}
+
+// renderSucceeded reports the success flag for a completed render given the
+// findings collected and the effective output_validation mode.
+func renderSucceeded(findings []patterns.FitFinding, outputValidation string) bool {
+	if outputValidation == "" {
+		outputValidation = "strict"
+	}
+	if outputValidation == "strict" && hasHardContentDrop(findings) {
+		return false
+	}
+	return true
 }

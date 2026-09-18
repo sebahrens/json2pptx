@@ -525,6 +525,16 @@ A blocking finding means PowerPoint or Keynote would show the "we found a proble
 
 `OPC_*` and the two structural-corruption `OOXML_*` codes (`OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`) are always promoted to `severity: "blocking"`. Other `OOXML_*` codes are advisory `warning`s and do not fail strict mode unless the validator escalates them.
 
+### Dropped content also fails strict mode
+
+Strict `output_validation` covers a second class of failure: **content the engine could not place at all**. When a content block targets a `placeholder_id` the resolved layout does not declare, the block is simply absent from the rendered slide. The response reports this three ways:
+
+- a `CONTENT_DROPPED` fit finding at `/slides/{i}/content/{n}` whose `fix.params.cause` is `"placeholder_not_found"` (plus `placeholder_id`, `layout_id`, and the `available` ids) — see [FIT_FINDINGS.md](../../docs/FIT_FINDINGS.md#content_dropped);
+- **`success: false`** under `output_validation: "strict"` (the default). Under `warn` / `off` the finding is still emitted and `success` stays `true`;
+- the dropped id is **excluded from that slide's `placeholders_used`** and listed in **`placeholders_dropped`** instead. `placeholders_used` reports what was actually populated, never what was merely requested, and `occupancy_pct` is computed from the reduced set.
+
+Other `CONTENT_DROPPED` causes (a slide skipped in `--partial` mode, two visuals colliding on one placeholder) stay advisory and leave `success` untouched. So: read `placeholders_dropped` and the `cause` param, not just `success`, when a slide renders emptier than you expect.
+
 ### Validation evidence on the repair facades
 
 `auto_repair` and `make_deck` succeed at the transport layer even when something went wrong, so they expose **explicit evidence and status fields** instead of letting a clean-looking response (a successful tool call with a `path`) imply a publishable deck. Never treat artifact existence or `gate_passed` alone as "done":

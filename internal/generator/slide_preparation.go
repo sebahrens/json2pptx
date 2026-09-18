@@ -461,6 +461,16 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			)
 			warnings = append(warnings, PlaceholderNotFoundError(item.PlaceholderID, layoutID, available))
 			ctx.emitPlaceholderNotFound(item.PlaceholderID, layoutID, available, slideIndex, j)
+			// Non-empty text that lands nowhere is dropped content, not just a
+			// resolution warning: without a CONTENT_DROPPED finding the caller
+			// reports success on a slide missing the author's copy
+			// (go-slide-creator-lhq6).
+			if contentItemHasText(item) {
+				ctx.emitFitFinding(patterns.ContentDroppedNoPlaceholder(
+					slidepath.ContentIndex(slideIndex, j),
+					fmt.Sprintf("content block %d (%s)", j+1, item.Type),
+					item.PlaceholderID, layoutID, available))
+			}
 			continue
 		}
 
@@ -606,4 +616,25 @@ func (ctx *singlePassContext) emitPlaceholderNotFound(placeholderID, layoutID st
 		Message: msg,
 		Fix:     fix,
 	})
+}
+
+// contentItemHasText reports whether a text-bearing content item actually
+// carries non-empty author copy. An empty item that fails to resolve is a
+// no-op, not dropped content, and must not raise CONTENT_DROPPED.
+func contentItemHasText(item ContentItem) bool {
+	switch v := item.Value.(type) {
+	case nil:
+		return false
+	case string:
+		return strings.TrimSpace(v) != ""
+	case []string:
+		for _, s := range v {
+			if strings.TrimSpace(s) != "" {
+				return true
+			}
+		}
+		return false
+	default:
+		return true
+	}
 }

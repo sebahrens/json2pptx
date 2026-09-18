@@ -3333,3 +3333,146 @@ func TestIsLayoutSuitable_CorporateTemplateChartBounds(t *testing.T) {
 		}
 	}
 }
+
+// go-slide-creator-lhq6: a last slide of type "content" that carries visual
+// content (image / diagram / table) must not be steered to a Closing layout.
+// Closing layouts have title+subtitle only, so the visual is silently dropped.
+func TestSelectLayout_LastSlideVisualContentRejectsClosingLayout(t *testing.T) {
+	closing := types.LayoutMetadata{
+		ID:   "layout-closing",
+		Name: "Closing Slide",
+		Tags: []string{"title-slide", "closing"},
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "title-1", Type: types.PlaceholderTitle, MaxChars: 100},
+			{ID: "subtitle-1", Type: types.PlaceholderSubtitle, MaxChars: 80},
+		},
+		Capacity: types.CapacityEstimate{MaxTextLines: 2, VisualFocused: true},
+	}
+	content := contentLayout(6)
+
+	tests := []struct {
+		name    string
+		content types.SlideContent
+		slots   map[int]*types.SlotContent
+	}{
+		{
+			name:    "image in body",
+			content: types.SlideContent{ImagePath: "img/hero.png"},
+		},
+		{
+			name:    "diagram",
+			content: types.SlideContent{DiagramSpec: &types.DiagramSpec{Type: "bar_chart"}},
+		},
+		{
+			name:    "raw table",
+			content: types.SlideContent{TableRaw: "| a | b |\n|---|---|\n| 1 | 2 |"},
+		},
+		{
+			name:    "parsed table",
+			content: types.SlideContent{Table: &types.TableSpec{}},
+		},
+		{
+			name:    "image inside a slot",
+			content: types.SlideContent{Body: "Closing thought"},
+			slots:   map[int]*types.SlotContent{1: {SlotNumber: 1, Type: types.SlotContentImage, ImagePath: "img/hero.png"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := SelectionRequest{
+				Slide: types.SlideDefinition{
+					Title:   "The New Console",
+					Type:    types.SlideTypeContent,
+					Content: tt.content,
+					Slots:   tt.slots,
+				},
+				Layouts: []types.LayoutMetadata{closing, content},
+				Context: SelectionContext{Position: 3, TotalSlides: 4},
+			}
+
+			result, err := SelectLayout(req)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result.LayoutID == closing.ID {
+				t.Errorf("last slide with visual content resolved to the Closing layout; "+
+					"the visual would be dropped (reasoning: %s)", result.Reasoning)
+			}
+			if result.LayoutID != content.ID {
+				t.Errorf("expected %s, got %s (reasoning: %s)", content.ID, result.LayoutID, result.Reasoning)
+			}
+		})
+	}
+}
+
+// go-slide-creator-g5sb: the cover slide must never resolve to a Closing
+// layout, even on templates whose Closing layout precedes Title Slide in
+// master order (ties are won by layout order).
+func TestSelectLayout_CoverSlideRejectsClosingLayout(t *testing.T) {
+	// Mirrors business-template: slideLayout1 = Closing, slideLayout4 = Title Slide.
+	closingFirst := types.LayoutMetadata{
+		ID:    "slideLayout1",
+		Name:  "Closing",
+		Index: 0,
+		Tags:  []string{"title-slide", "closing"},
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "title-1", Type: types.PlaceholderTitle, MaxChars: 100},
+			{ID: "subtitle-1", Type: types.PlaceholderSubtitle, MaxChars: 80},
+		},
+		Capacity: types.CapacityEstimate{MaxTextLines: 2, VisualFocused: true},
+	}
+	realTitle := types.LayoutMetadata{
+		ID:    "slideLayout4",
+		Name:  "Title Slide",
+		Index: 3,
+		Tags:  []string{"title-slide"},
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "title-1", Type: types.PlaceholderTitle, MaxChars: 100},
+			{ID: "subtitle-1", Type: types.PlaceholderSubtitle, MaxChars: 80},
+		},
+		Capacity: types.CapacityEstimate{MaxTextLines: 2, VisualFocused: true},
+	}
+
+	req := SelectionRequest{
+		Slide: types.SlideDefinition{
+			Title: "Launch Plan",
+			Type:  types.SlideTypeTitle,
+		},
+		Layouts: []types.LayoutMetadata{closingFirst, realTitle},
+		Context: SelectionContext{Position: 0, TotalSlides: 12},
+	}
+
+	result, err := SelectLayout(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.LayoutID != realTitle.ID {
+		t.Errorf("cover slide resolved to %s, want %s (reasoning: %s)",
+			result.LayoutID, realTitle.ID, result.Reasoning)
+	}
+}
+
+// isTitleSlideLayout must mirror canonicalNames["title"]: both "blank-title"
+// and "closing" are excluded.
+func TestIsTitleSlideLayout_ExcludesClosingAndBlankTitle(t *testing.T) {
+	tests := []struct {
+		name string
+		tags []string
+		want bool
+	}{
+		{"plain title slide", []string{"title-slide"}, true},
+		{"closing that also tags title-slide", []string{"title-slide", "closing"}, false},
+		{"thank-you closing", []string{"title-slide", "closing", "thank-you"}, false},
+		{"blank title canvas", []string{"title-slide", "blank-title"}, false},
+		{"content layout", []string{"content"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isTitleSlideLayout(types.LayoutMetadata{ID: "l", Tags: tt.tags})
+			if got != tt.want {
+				t.Errorf("isTitleSlideLayout(%v) = %v, want %v", tt.tags, got, tt.want)
+			}
+		})
+	}
+}
