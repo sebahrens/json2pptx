@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"math"
 	"regexp"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/svggen/core"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
@@ -264,7 +265,28 @@ func fixSVGMatrixRotations(svgContent []byte) []byte {
 // The regex captures everything up to and including "Npx " and the family name,
 // stopping at ";" or end of style attribute ("). It avoids matching families that
 // already contain a comma (i.e., already have fallbacks).
-var fontFamilyInStyleRe = regexp.MustCompile(`(font:\s*(?:\w+\s+)*[\d.]+px\s+)([\w-]+)([;"])`)
+//
+// Family names may contain spaces ("Poppins Light", "Segoe UI Semibold"); the
+// canvas library emits them unquoted, so the family group captures everything
+// up to the terminator and the replacement quotes multi-word names.
+var fontFamilyInStyleRe = regexp.MustCompile(`(font:\s*(?:\w+\s+)*[\d.]+px\s+)([^;",<>]+?)\s*([;"])`)
+
+// cssFontFamilyName returns family formatted for a CSS font-family list:
+// names containing whitespace are single-quoted (the style attribute itself is
+// double-quoted), already-quoted names are left untouched.
+func cssFontFamilyName(family string) string {
+	family = strings.TrimSpace(family)
+	if family == "" {
+		return family
+	}
+	if strings.HasPrefix(family, "'") && strings.HasSuffix(family, "'") {
+		return family
+	}
+	if strings.ContainsAny(family, " \t") {
+		return "'" + strings.ReplaceAll(family, "'", "") + "'"
+	}
+	return family
+}
 
 // fixSVGFontFamilyFallbacks rewrites CSS font shorthand declarations in SVG
 // text elements so they (a) include generic font-family fallbacks and (b) also
@@ -288,9 +310,9 @@ func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 		if len(parts) < 4 {
 			return match
 		}
-		prefix := parts[1]     // "font: [weight] Npx "
-		family := parts[2]     // "Arial"
-		terminator := parts[3] // ";" or "\""
+		prefix := parts[1]                                    // "font: [weight] Npx "
+		family := []byte(cssFontFamilyName(string(parts[2]))) // "Arial" or "'Poppins Light'"
+		terminator := parts[3]                                // ";" or "\""
 
 		// Build replacement: shorthand with fallbacks + explicit font-family
 		// declaration so LibreOffice/PowerPoint (which ignore the shorthand)
@@ -779,7 +801,7 @@ func (b *SVGBuilder) DrawImage(img image.Image, r Rect) *SVGBuilder {
 
 	// Position in mm with Y-flip (canvas origin is bottom-left)
 	xMM := r.X * ptToMM
-	yMM := (b.height-r.Y-r.H)*ptToMM // bottom edge of rect in canvas coords
+	yMM := (b.height - r.Y - r.H) * ptToMM // bottom edge of rect in canvas coords
 
 	// Calculate dots-per-mm so the image fills the target rect.
 	// Use the larger DPMM (smaller scale) to fit within bounds, then
