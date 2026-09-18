@@ -455,15 +455,16 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 			}
 			_, rProps := getBulletStyleForLevel(templateStyles, 0)
 			runs := createFormattedRuns(bodyPara, rProps)
-			// Body text acts as a section header: render bold in Arial.
+			// Body text acts as a section header: render bold in the
+			// template's body (minor) font. Any latin typeface on the
+			// template's level-0 run style is kept; otherwise the font is
+			// inherited from the placeholder / theme (+mn-lt). Never force a
+			// literal font family here — it breaks template fidelity.
 			for i := range runs {
 				if runs[i].RunProperties == nil {
 					runs[i].RunProperties = &runPropertiesXML{Lang: "en-US"}
 				}
 				runs[i].RunProperties.Bold = "1"
-				// Replace any existing latin font with Arial.
-				runs[i].RunProperties.Inner = stripSelfClosingElement(runs[i].RunProperties.Inner, "a:latin") +
-					`<a:latin typeface="Arial"/>`
 			}
 			paragraphs = append(paragraphs, paragraphXML{
 				// Suppress bullet marker and hanging indent on body text.
@@ -772,8 +773,7 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 			}
 			runs[i].RunProperties.FontSize = "1000" // 10pt
 			// Add cap="small" for small-caps rendering
-			runs[i].RunProperties.Inner = stripSelfClosingElement(runs[i].RunProperties.Inner, "a:latin") +
-				`<a:latin typeface="Arial"/>`
+			// Font family is inherited from the template (theme minor font).
 			runs[i].RunProperties.Caps = "small"
 		}
 		spcBef := fmt.Sprintf(`<a:spcBef><a:spcPts val="%s"/></a:spcBef>`, headerSpcBefVal)
@@ -846,7 +846,7 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 
 // prependEyebrowParagraph inserts a small-caps eyebrow paragraph before the
 // existing title text in a shape. The eyebrow renders as 10pt small-caps
-// in Arial with tight spacing below to visually couple it with the title.
+// in the theme minor font (+mn-lt) with tight spacing below to visually couple it with the title.
 func prependEyebrowParagraph(shape *shapeXML, eyebrow string) {
 	if shape.TextBody == nil || len(shape.TextBody.Paragraphs) == 0 {
 		return
@@ -858,7 +858,9 @@ func prependEyebrowParagraph(shape *shapeXML, eyebrow string) {
 			Lang:     "en-US",
 			FontSize: "1000", // 10pt
 			Caps:     "small",
-			Inner:    `<a:latin typeface="Arial"/>`,
+			// Theme minor (body) font: the eyebrow sits inside a title
+			// placeholder whose default is the major font.
+			Inner: `<a:latin typeface="+mn-lt"/>`,
 		},
 	}
 

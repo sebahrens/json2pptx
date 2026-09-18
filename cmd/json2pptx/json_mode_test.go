@@ -487,6 +487,33 @@ func TestComputeQualityScore_TooManyBullets(t *testing.T) {
 	}
 }
 
+// go-slide-creator-nb39: bullets are counted per placeholder, so a
+// two-column 5+5 slide is not flagged while a single 10-bullet list is.
+func TestComputeQualityScore_BulletsCountedPerPlaceholder(t *testing.T) {
+	five := json.RawMessage(`["1","2","3","4","5"]`)
+	hasBulletIssue := func(slides []SlideInput) bool {
+		for _, issue := range computeQualityScore(slides, nil).SlideScores[0].Issues {
+			if strings.Contains(issue, "too many bullets") {
+				return true
+			}
+		}
+		return false
+	}
+	twoCol := []SlideInput{{LayoutID: "two-column", Content: []ContentInput{
+		{PlaceholderID: "body", Type: "bullets", Value: five},
+		{PlaceholderID: "body_2", Type: "bullets", Value: five},
+	}}}
+	if hasBulletIssue(twoCol) {
+		t.Error("two-column 5+5 bullets should not be flagged as too many bullets")
+	}
+	single := []SlideInput{{LayoutID: "content", Content: []ContentInput{
+		{PlaceholderID: "body", Type: "bullets", Value: json.RawMessage(`["1","2","3","4","5","6","7","8","9","10"]`)},
+	}}}
+	if !hasBulletIssue(single) {
+		t.Error("single placeholder with 10 bullets should be flagged")
+	}
+}
+
 func TestComputeQualityScore_EmptySlides(t *testing.T) {
 	score := computeQualityScore(nil, nil)
 	if score.Score != 0.0 {

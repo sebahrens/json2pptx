@@ -14,6 +14,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -290,6 +291,7 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	svgCfg, compatMode := buildSVGConfig(req)
 
 	ctx := newSinglePassContext(req.OutputPath, req.Slides, req.AllowedImagePaths, req.ExcludeTemplateSlides, req.SyntheticFiles)
+	ctx.viewingMode = tokens.ParseViewingMode(req.ViewingMode)
 	ctx.ctx = goCtx
 	ctx.svgConverter = NewSVGConverterWithConfig(svgCfg)
 	ctx.themeOverride = req.ThemeOverride
@@ -348,6 +350,7 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 	ctx.themeColors = themeInfo.Colors
 	ctx.whiteTextSafeHex = computeWhiteTextSafeHex(themeInfo.Colors)
 	ctx.themeFontName = themeInfo.BodyFont
+	ctx.titleFontName = themeInfo.TitleFont
 
 	// Detect logo images in slide layouts so title/diagram positions can be adjusted
 	ctx.logoZones = detectLogoZones(&ctx.templateReader.Reader, ctx.templateIndex)

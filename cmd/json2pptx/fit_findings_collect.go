@@ -50,6 +50,14 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings,
 		collectStructuralFindings(input, layouts, slideWidth, slideHeight)...)
 
+	// 2b. Measured title fit (TITLE_OVERFLOW / title_wraps) against the
+	// resolved title placeholder and inherited title style.
+	findings = append(findings, collectTitleFitFindings(input, layouts)...)
+
+	// 2c. Readability policy: shape_grid text the renderer would shrink below
+	// the viewing_mode floor for its role (TEXT_BELOW_READABLE_MIN).
+	findings = append(findings, collectReadabilityFindings(input, layouts, slideWidth, slideHeight)...)
+
 	// 3. Grid rhythm violations when a deck-level grid is configured.
 	if input.Grid != nil {
 		if err := validateGridConfig(input.Grid); err == nil {
@@ -459,19 +467,8 @@ func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMet
 
 		path := slidepath.Content(si, content.PlaceholderID)
 
-		if ph.Type == types.PlaceholderTitle {
-			if f := generator.DetectTitleWraps(generator.TitleWrapsInput{
-				SlideIndex:  si,
-				Path:        path,
-				Title:       strings.Join(paragraphs, " "),
-				WidthEMU:    ph.Bounds.Width,
-				HeightEMU:   ph.Bounds.Height,
-				FontSizeHPt: ph.FontSize,
-				FontName:    ph.FontFamily,
-			}); f != nil {
-				findings = append(findings, *f)
-			}
-		} else if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+		// Titles are measured by collectTitleFitFindings (title_measure.go).
+		if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
 			if f := generator.DetectPlaceholderOverflow(generator.PlaceholderOverflowInput{
 				SlideIndex:  si,
 				Path:        path,

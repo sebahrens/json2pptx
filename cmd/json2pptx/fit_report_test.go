@@ -415,9 +415,10 @@ func TestGenerateFitReport_CellUnderfilled_DensityBands(t *testing.T) {
 		},
 		{
 			// fontSz 11 floors to the shape_grid 12pt minimum for budgeting
-			// (cell allows 232 chars at 12pt); 116 chars ≈ 50% → info band.
+			// (cell allows 80 chars at 12pt with point-sized glyph metrics);
+			// 40 chars = 50% → info band.
 			name:         "underfilled_info",
-			textRepeat:   116,
+			textRepeat:   40,
 			fontSz:       11,
 			boundsWidth:  30,
 			boundsHeight: 10,
@@ -425,9 +426,9 @@ func TestGenerateFitReport_CellUnderfilled_DensityBands(t *testing.T) {
 			wantSeverity: "info",
 		},
 		{
-			// 185 chars ≈ 80% of the 232-char 12pt budget → optimal band.
+			// 64 chars = 80% of the 80-char 12pt budget → optimal band.
 			name:          "optimal_no_finding",
-			textRepeat:    185,
+			textRepeat:    64,
 			fontSz:        11,
 			boundsWidth:   30,
 			boundsHeight:  10,

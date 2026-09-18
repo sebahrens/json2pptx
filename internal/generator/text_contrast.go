@@ -260,39 +260,77 @@ func isWhiteOrLt1(hexOrScheme string) bool {
 // Flip-to-extreme helper
 // =============================================================================
 
+// themeTextCandidate is a replacement text color considered by
+// pickThemeTextColor. Scheme is the theme slot name ("lt1", "dk2", "dk1") when
+// the candidate is a theme color; it is empty for derived shades.
+type themeTextCandidate struct {
+	Scheme string
+	Hex    string
+	Color  svggen.Color
+}
+
+// pickThemeTextColor chooses a template-derived replacement text color for a
+// neutral (white/black) foreground that fails contrast against bg.
+//
+// Candidates are tried in template-fidelity order (go-slide-creator-sis2):
+//
+//	lt1, dk2, dk1, then a darker/lighter shade of the background hue
+//
+// The first candidate meeting WCAG AA normal text (4.5:1) wins; if none does,
+// the first meeting AA large (3:1) wins; otherwise the highest-contrast
+// candidate is returned. Preferring dk2 over dk1 keeps the fix inside the
+// template palette — dk1 is literal #000000 in most templates, which reads as
+// an off-brand black on accent fills.
+func pickThemeTextColor(bg svggen.Color, themeColors []types.ThemeColor) themeTextCandidate {
+	var cands []themeTextCandidate
+	add := func(scheme, hex string) {
+		if hex == "" {
+			return
+		}
+		c, err := svggen.ParseColor(hex)
+		if err != nil {
+			return
+		}
+		cands = append(cands, themeTextCandidate{Scheme: scheme, Hex: strings.ToUpper(c.Hex()), Color: c})
+	}
+	add("lt1", resolveSchemeColorToHex("lt1", themeColors))
+	add("dk2", resolveSchemeColorToHex("dk2", themeColors))
+	add("dk1", resolveSchemeColorToHex("dk1", themeColors))
+	if len(cands) == 0 {
+		// No theme at all: fall back to pure extremes.
+		add("", "#FFFFFF")
+		add("", "#000000")
+	}
+	// Tonal shade of the background hue (darker on light fills, lighter on
+	// dark fills) — keeps the text inside the fill's color family.
+	shade := svggen.EnsureContrast(bg, bg, svggen.WCAGAANormal)
+	cands = append(cands, themeTextCandidate{Hex: strings.ToUpper(shade.Hex()), Color: shade})
+
+	for _, threshold := range []float64{svggen.WCAGAANormal, svggen.WCAGAALarge} {
+		for _, c := range cands {
+			if c.Color.ContrastWith(bg) >= threshold {
+				return c
+			}
+		}
+	}
+	best := cands[0]
+	for _, c := range cands[1:] {
+		if c.Color.ContrastWith(bg) > best.Color.ContrastWith(bg) {
+			best = c
+		}
+	}
+	return best
+}
+
 // pickFlippedTextColor returns a clean high-contrast replacement for white/black
-// text against bg using the theme's dk1/lt1 colors (falling back to pure black
-// or white). Used when the original foreground is a semantic "neutral" color
-// (white, black, lt1, dk1): rather than lerping to an intermediate gray, we
-// snap to whichever extreme yields better contrast. This produces visually
-// clean accessibility fixes — e.g. white text on light yellow → black text,
-// instead of the previous behavior of darkening to a muddy mid-gray that
-// barely clears the 3:1 threshold.
+// text against bg, chosen from the template palette by pickThemeTextColor.
+// Rather than lerping to an intermediate gray, it snaps to a theme text color
+// (lt1 / dk2 / dk1) or a tonal shade of the background.
 //
 // The returned hex string is upper-case with a leading "#".
 func pickFlippedTextColor(bg svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string) {
-	dk1Hex := resolveSchemeColorToHex("dk1", themeColors)
-	lt1Hex := resolveSchemeColorToHex("lt1", themeColors)
-	if dk1Hex == "" {
-		dk1Hex = "#000000"
-	}
-	if lt1Hex == "" {
-		lt1Hex = "#FFFFFF"
-	}
-	dk1, dkErr := svggen.ParseColor(dk1Hex)
-	lt1, ltErr := svggen.ParseColor(lt1Hex)
-	if dkErr != nil {
-		dk1 = svggen.MustParseColor("#000000")
-		dk1Hex = "#000000"
-	}
-	if ltErr != nil {
-		lt1 = svggen.MustParseColor("#FFFFFF")
-		lt1Hex = "#FFFFFF"
-	}
-	if dk1.ContrastWith(bg) >= lt1.ContrastWith(bg) {
-		return dk1, strings.ToUpper(dk1Hex)
-	}
-	return lt1, strings.ToUpper(lt1Hex)
+	c := pickThemeTextColor(bg, themeColors)
+	return c.Color, c.Hex
 }
 
 // isNeutralExtremeHex reports whether a 6-hex color value is pure white or
@@ -319,7 +357,7 @@ func isNeutralExtremeScheme(name string) bool {
 // render-time swap (today the two always agree because both call
 // contrastReplacement).
 const (
-	contrastModeFlip = "flip" // snapped to the opposite theme extreme (dk1/lt1)
+	contrastModeFlip = "flip" // snapped to a template text color (lt1/dk2/dk1) or fill shade
 	contrastModeLerp = "lerp" // lerped toward black/white via EnsureContrast
 )
 
@@ -349,18 +387,27 @@ func isNeutralForeground(value string) bool {
 //
 // originalFg is the foreground exactly as authored (a hex string or a scheme
 // name); fgColor is its resolved color and bgColor the resolved background.
-// Pure-neutral foregrounds (white/black, or scheme lt1/bg1/dk1/tx1) snap to the
-// opposite theme extreme (dk1/lt1) via pickFlippedTextColor — avoiding the
+// Pure-neutral foregrounds (white/black, or scheme lt1/bg1/dk1/tx1) snap to a
+// template text color (lt1/dk2/dk1, then a fill shade) via pickThemeTextColor — avoiding the
 // muddy mid-gray that EnsureContrast yields when both fg and target sit near one
 // extreme (e.g. white on light yellow). Every other foreground is lerped toward
 // contrast via EnsureContrast. The returned mode is contrastModeFlip or
 // contrastModeLerp.
 func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string) {
+	c, mode, _ := contrastReplacementScheme(originalFg, fgColor, bgColor, themeColors)
+	return c, mode
+}
+
+// contrastReplacementScheme is contrastReplacement plus the theme slot name
+// ("lt1", "dk2", "dk1") of the chosen color when it came from the template
+// palette, or "" for derived colors. Render-time fixes log it so the swap is
+// traceable to the template palette.
+func contrastReplacementScheme(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor) (svggen.Color, string, string) {
 	if isNeutralForeground(originalFg) {
-		flipped, _ := pickFlippedTextColor(bgColor, themeColors)
-		return flipped, contrastModeFlip
+		c := pickThemeTextColor(bgColor, themeColors)
+		return c.Color, contrastModeFlip, c.Scheme
 	}
-	return svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge), contrastModeLerp
+	return svggen.EnsureContrast(fgColor, bgColor, svggen.WCAGAALarge), contrastModeLerp, ""
 }
 
 // =============================================================================
@@ -585,15 +632,17 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 			return match // Contrast is adequate (large text threshold: 3:1)
 		}
 
-		fixedColor, _ := contrastReplacement(hexVal, fgColor, bgColor, themeColors)
+		fixedColor, _, fixedScheme := contrastReplacementScheme(hexVal, fgColor, bgColor, themeColors)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
-		slog.Info("text contrast fix: replacing low-contrast sRGB color",
+		slog.Warn("text contrast fix: replacing low-contrast sRGB color",
 			slog.String("source", "shape_grid"),
-			slog.String("original", "#"+hexVal),
-			slog.Float64("contrast_ratio", ratio),
-			slog.String("replacement", fixedColor.Hex()),
-			slog.Float64("new_ratio", newRatio),
+			slog.String("background", bgHex),
+			slog.String("before", "#"+strings.ToUpper(hexVal)),
+			slog.Float64("ratio_before", ratio),
+			slog.String("after", fixedColor.Hex()),
+			slog.String("after_scheme", fixedScheme),
+			slog.Float64("ratio_after", newRatio),
 		)
 
 		*swaps = append(*swaps, ContrastSwap{
@@ -659,17 +708,18 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		// theme extreme rather than lerping into a muddy gray — this fixes the
 		// white-on-light-yellow case where EnsureContrast otherwise produces
 		// ~#606060.
-		fixedColor, _ := contrastReplacement(schemeName, fgColor, bgColor, themeColors)
+		fixedColor, _, fixedScheme := contrastReplacementScheme(schemeName, fgColor, bgColor, themeColors)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
-		slog.Info("text contrast fix: replacing low-contrast scheme color",
+		slog.Warn("text contrast fix: replacing low-contrast scheme color",
 			slog.String("shape", shapeName),
 			slog.String("source", source),
-			slog.String("scheme", schemeName),
-			slog.String("resolved", hexColor),
-			slog.Float64("contrast_ratio", ratio),
-			slog.String("replacement", fixedColor.Hex()),
-			slog.Float64("new_ratio", newRatio),
+			slog.String("background", bgHex),
+			slog.String("before", schemeName+" "+hexColor),
+			slog.Float64("ratio_before", ratio),
+			slog.String("after", fixedColor.Hex()),
+			slog.String("after_scheme", fixedScheme),
+			slog.Float64("ratio_after", newRatio),
 		)
 
 		*swaps = append(*swaps, ContrastSwap{
@@ -682,6 +732,7 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 
 		// Replace <a:solidFill><a:schemeClr val="X"/></a:solidFill>
 		// with    <a:solidFill><a:srgbClr val="RRGGBB"/></a:solidFill>
+		// (RRGGBB is the chosen theme slot's value, e.g. dk2).
 		hexVal := strings.TrimPrefix(fixedColor.Hex(), "#")
 		return fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, hexVal)
 	})

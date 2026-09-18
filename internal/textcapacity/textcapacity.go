@@ -154,6 +154,11 @@ func computeBudget(widthEMU, heightEMU int64, fontPt float64) Budget {
 	// Use MeasureRun to binary-search for max chars that fit one line,
 	// then multiply by maxLines.
 	charsPerLine := binarySearchCharsPerLine(widthEMU, fontPt)
+	if charsPerLine < 1 {
+		// A box narrower than one glyph still holds (and wraps) one character
+		// per line; a zero budget would hide the overflow entirely.
+		charsPerLine = 1
+	}
 	maxChars := charsPerLine * maxLines
 
 	return Budget{

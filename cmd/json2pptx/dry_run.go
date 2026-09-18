@@ -510,8 +510,24 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				} else {
 					ph.MaxChars = phInfo.MaxChars
 
+					// Titles: measured fit against the resolved title box and
+					// inherited title style replaces the character estimate
+					// (go-slide-creator-vjwn).
+					titleMeasured := false
+					if item.Type == "text" && phInfo.Type == types.PlaceholderTitle {
+						resolved, _ := item.ResolveValue()
+						if text, ok := resolved.(string); ok {
+							if d, measured := titleFitDiagnostic(text, &phInfo, i, j); measured {
+								titleMeasured = true
+								if d != nil {
+									output.Diagnostics = append(output.Diagnostics, *d)
+								}
+							}
+						}
+					}
+
 					// Check character limits for text content
-					if item.Type == "text" && phInfo.MaxChars > 0 {
+					if !titleMeasured && item.Type == "text" && phInfo.MaxChars > 0 {
 						resolved, _ := item.ResolveValue()
 						if text, ok := resolved.(string); ok && len(text) > phInfo.MaxChars {
 							ph.Truncated = true

@@ -241,6 +241,49 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   master footers). Content placeholders shrink to end above the band. The
   takeaway text is 14pt bold (was 12pt).
 
+## Unreleased (deck-quality lane L7)
+
+### Added
+
+- **Top-level `viewing_mode`** (`"present"` default | `"read"`) selecting the
+  readability policy, and the **`TEXT_BELOW_READABLE_MIN`** fit finding
+  (`action: review`, `fix.kind: reduce_text`, `fix.params: {strategy, role,
+  actual_pt, min_pt, viewing_mode}`) emitted for placeholder autofit (generate)
+  and shape_grid cells (fit report / preflight). Schema fingerprint updated;
+  SchemaVersion bump left to the merge (coordinator instruction).
+
+- **`TITLE_OVERFLOW` fit finding** (`action: shrink_or_split`, `fix.kind: shorten_title`,
+  `fix.params: {current_chars, max_chars, font_pt, min_font_pt}`). Emitted by
+  `generate` when a title cannot fit its resolved title placeholder at the
+  minimum autofit size, measured with the master's inherited title style.
+
+### Changed
+
+- **Title checks unified on measured fit.** `validate` title diagnostics,
+  the fit report and the generate `quality` score now measure titles against the
+  resolved title placeholder and inherited title style. `title_wraps` escalates
+  to `action: shrink_or_split` with `fix.kind: shorten_title`,
+  `fix.params: {current_chars, max_chars, fit_scale_pct}` when the title only
+  fits below the comfort size; `TITLE_OVERFLOW` is also emitted by preflight.
+  Validate title warnings now carry `fix.kind: shorten_title` (was
+  `shrink_text`) with a measured `max_chars`. Quality-score title issues read
+  "title (N chars) only fits its title placeholder at P% …" instead of
+  "title too long (N chars, max 60)" when the template is known.
+- **Default table styling.** Tables without explicit style fields now render an
+  `accent1` bold/`lt1` header, right-aligned detected numeric columns, an
+  emphasised `Total`/`Sum` row (bold + top rule) and content-driven row heights.
+  No schema change; explicit style fields opt out (see `docs/STYLE_DEFAULTS.md`).
+- **textfit glyph widths fixed.** textfit built canvas font faces at
+  `fontPt*ptToMM` (canvas takes points), under-measuring every string ~2.83x.
+  All measured fit (placeholder autofit, title fit, table cell measurement,
+  shape_grid capacity budgets) now uses real widths, so `max_chars` budgets,
+  `fit_overflow` / `cell_underfilled` density bands and autofit scales are
+  roughly 2.8x stricter than before. The viewing-mode policy no longer acts as
+  a shrink floor in `textfit.Calculate`.
+- Title placeholders that fit by shrinking now carry the reduced size as an
+  explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
+  `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.
+
 ## 4.58.0 (2026-05-30)
 
 ### Added

@@ -237,6 +237,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		SyntheticFiles:        syntheticFiles,
 		StrictFit:             strictFit,
 		DataPalette:           dataPalette,
+		ViewingMode:           input.ViewingMode,
 	}
 
 	// Wire footer/chrome configuration. Chrome supersedes footer.

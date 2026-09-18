@@ -207,6 +207,7 @@ type singlePassContext struct {
 	SecurityContext
 	ChartContext
 	OutputContext
+	TitleFitContext
 }
 
 // newSinglePassContext creates a new singlePassContext with initialized maps.

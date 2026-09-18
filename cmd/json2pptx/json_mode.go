@@ -585,7 +585,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
 
-	quality := computeQualityScore(input.Slides, allWarnings)
+	quality := computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts)
 	evidence := &pipeline.QualityEvidence{ArtifactSHA256: result.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(outputValidationFindings), TotalSlides: result.SlideCount}
 	evidence.Finalize()
 	quality.Evidence = evidence
@@ -1751,7 +1751,15 @@ func writeJSONError(jsonOutputPath string, err error) error {
 // returns a QualityScore. It can be used by both JSON mode (json_mode.go)
 // and markdown mode (generate.go) when --json-output is specified.
 // Accepts []SlideInput (typed schema) for full typed + legacy field support.
-func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore { //nolint:gocognit,gocyclo
+func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
+	return computeQualityScoreWithLayouts(slides, warnings, nil)
+}
+
+// computeQualityScoreWithLayouts is computeQualityScore with the template
+// layouts available: titles are then judged by measured fit against their
+// resolved title placeholder (go-slide-creator-vjwn) instead of the 60-char
+// heuristic, which remains the fallback when a title cannot be measured.
+func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layouts []types.LayoutMetadata) *QualityScore { //nolint:gocognit,gocyclo
 	if len(slides) == 0 {
 		return &QualityScore{
 			Score:  0.0,
@@ -1782,8 +1790,10 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 			issues = append(issues, "empty slide with no content")
 		}
 
-		// Analyze each content item using ResolveValue for typed + legacy support
-		bulletCount := 0
+		// Analyze each content item using ResolveValue for typed + legacy support.
+		// Bullets are counted per placeholder: a two-column slide with 5+5
+		// bullets is two readable lists, not one list of 10.
+		bulletsByPlaceholder := map[string]int{}
 		contentCount := len(slide.Content)
 		for _, item := range slide.Content {
 			resolved, _ := item.ResolveValue()
@@ -1800,7 +1810,17 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 						issues = append(issues, fmt.Sprintf("subtitle too long (%d chars, max %d)", len(text), maxSubtitleLen))
 					}
 				} else if isLikelyTitle(item.PlaceholderID) {
-					if text, ok := resolved.(string); ok && len(text) > maxTitleLen {
+					text, isText := resolved.(string)
+					if m := measureTitleInPlaceholder(text, titlePlaceholderFor(&slide, item.PlaceholderID, layouts)); isText && m.OK {
+						if m.Flagged() {
+							penalty := 0.15
+							if m.Overflow {
+								penalty = 0.3
+							}
+							slideScore -= penalty
+							issues = append(issues, m.describe())
+						}
+					} else if isText && len(text) > maxTitleLen {
 						penalty := float64(len(text)-maxTitleLen) / 100.0
 						if penalty > 0.3 {
 							penalty = 0.3
@@ -1811,7 +1831,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 				}
 			case "bullets":
 				if bullets, ok := resolved.([]string); ok {
-					bulletCount += len(bullets)
+					bulletsByPlaceholder[item.PlaceholderID] += len(bullets)
 				}
 			case "table":
 				if table, ok := resolved.(*TableInput); ok {
@@ -1826,12 +1846,12 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 				}
 			case "body_and_bullets":
 				if bab, ok := resolved.(*BodyAndBulletsInput); ok {
-					bulletCount += len(bab.Bullets)
+					bulletsByPlaceholder[item.PlaceholderID] += len(bab.Bullets)
 				}
 			case "bullet_groups":
 				if bg, ok := resolved.(*BulletGroupsInput); ok {
 					for _, g := range bg.Groups {
-						bulletCount += len(g.Bullets)
+						bulletsByPlaceholder[item.PlaceholderID] += len(g.Bullets)
 					}
 				}
 			case "chart":
@@ -1869,7 +1889,13 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 			}
 		}
 
-		// Bullet count penalty
+		// Bullet count penalty — applied to the densest single placeholder.
+		bulletCount := 0
+		for _, n := range bulletsByPlaceholder {
+			if n > bulletCount {
+				bulletCount = n
+			}
+		}
 		if bulletCount > maxBullets {
 			penalty := float64(bulletCount-maxBullets) * 0.05
 			if penalty > 0.4 {

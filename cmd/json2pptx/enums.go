@@ -76,6 +76,13 @@ var canonicalAccentStrategies = []string{"primary", "rotate", "section-keyed"}
 
 var accentStrategyAliases = map[string]string{}
 
+// canonicalViewingModes is the published vocabulary for the deck-level
+// viewing_mode field (go-slide-creator-vbic): "present" (projected; default)
+// or "read" (on-screen / print). Selects the readability policy floors.
+var canonicalViewingModes = []string{"present", "read"}
+
+var viewingModeAliases = map[string]string{}
+
 // canonicalSlideTypes is the published vocabulary for the slide-level
 // slide_type hint used by layout auto-selection.
 //

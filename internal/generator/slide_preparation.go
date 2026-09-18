@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -487,9 +488,14 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
 		findingPath := slidepath.Content(slideIndex, item.PlaceholderID)
-		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName,
-			withFindingsCollector(&ctx.fitFindings, findingPath),
-		); err != nil {
+		autofitOpts := []autofitOption{withFindingsCollector(&ctx.fitFindings, findingPath)}
+		if isTitleShape(shape) {
+			autofitOpts = append(autofitOpts, ctx.titleAutofitOptions(layoutID)...)
+			autofitOpts = append(autofitOpts, withReadabilityPolicy(ctx.viewingMode, tokens.TextRoleTitle))
+		} else {
+			autofitOpts = append(autofitOpts, withReadabilityPolicy(ctx.viewingMode, tokens.TextRoleBody))
+		}
+		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName, autofitOpts...); err != nil {
 			warnings = append(warnings, err.Error())
 		}
 

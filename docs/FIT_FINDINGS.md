@@ -143,6 +143,8 @@ Text in a body or content placeholder overflows its frame. Emitted only when all
 
 Title text wraps to multiple lines within its placeholder. This is common and often acceptable, so the action is `review` rather than `shrink_or_split`. Emitted when the measured text height exceeds a single-line height (computed as `fontSize * 1.2 line spacing`).
 
+**Measured escalation (go-slide-creator-vjwn).** Titles are also measured against the resolved title placeholder with the template's inherited title style (master size, all-caps, line spacing; canonical `layout_id`s such as `"content"` are resolved) using exact glyph widths — the same measurement the generator applies at render time. When the title only fits below the comfort size (80% of the template title size, capped at 32pt for large display titles) or only with reduced line spacing, `title_wraps` is emitted with `action: shrink_or_split`, `fix.kind: shorten_title` and `fix.params: {current_chars, max_chars, fit_scale_pct}` (`max_chars` = longest prefix that fits at the comfort size). When it cannot fit at all, `TITLE_OVERFLOW` is emitted instead. `validate` (dry-run diagnostics: `max_length` / `TITLE_OVERFLOW`, `fix.kind: shorten_title`) and the generate `quality` score use the same verdict, replacing the old placeholder `max_chars` and 60-character title heuristics (still used as the fallback when a title cannot be measured).
+
 ```json
 {
   "pattern": "placeholder",
@@ -154,6 +156,29 @@ Title text wraps to multiple lines within its placeholder. This is common and of
   "measured": { "width_emu": 8229600, "height_emu": 731520 },
   "allowed": { "width_emu": 8229600, "height_emu": 548640 },
   "overflow_ratio": 1.33
+}
+```
+
+### `TITLE_OVERFLOW`
+
+**Action:** `shrink_or_split`
+**Pattern:** `placeholder`
+**Fix kind:** `shorten_title`
+
+The title does not fit its title placeholder even at the minimum autofit size (60% font scale, or the readability floor if higher, plus the maximum 20% line-spacing reduction). Title placeholders on generated slides usually inherit their geometry from the layout and their font size, all-caps and line spacing from the slide master's `titleStyle`; the measurement resolves all of these (e.g. modern-template: 45pt, `cap="all"`, 80% line spacing) and measures with exact glyph widths.
+
+Emitted at render time (generate) and predicted by preflight (`validate --fit-report`, `validate_input`, preview), which share the same measurement. When the title fits by shrinking, the generator writes the reduced size (and any line-spacing reduction) explicitly into the title runs instead of relying on `<a:normAutofit fontScale>` — LibreOffice ignores the stored scale and re-shrinks by compressing line spacing, which made long title lines collide.
+
+`fix.params`: `current_chars`, `max_chars` (longest word-prefix length that fits at the minimum size), `font_pt` (template size), `min_font_pt`.
+
+```json
+{
+  "pattern": "placeholder",
+  "path": "/slides/1/content/title",
+  "code": "TITLE_OVERFLOW",
+  "message": "title (212 chars) does not fit its 11.4\"x1.2\" title placeholder even at 27pt (template size 45pt); lines will collide or spill",
+  "fix": { "kind": "shorten_title", "params": { "current_chars": 212, "max_chars": 118, "font_pt": 45, "min_font_pt": 27 } },
+  "action": "shrink_or_split"
 }
 ```
 
@@ -1011,7 +1036,7 @@ The detector walks shape-grid cells that author both a fill color (on the shape)
 
 `fix.params.replacement_mode` discloses which branch of the algorithm produced the color:
 
-- `flip` — the foreground is a pure neutral (literal white/black, or scheme `lt1`/`bg1`/`dk1`/`tx1`); it is snapped to the opposite theme extreme (`dk1`/`lt1`). This is why white text on a light accent predicts a clean dark color rather than a muddy mid-gray.
+- `flip` — the foreground is a pure neutral (literal white/black, or scheme `lt1`/`bg1`/`dk1`/`tx1`); it is snapped to the first template color that meets WCAG AA normal (4.5:1), tried in order `lt1`, `dk2`, `dk1`, then a darker/lighter shade of the fill hue (falling back to the first meeting AA large 3:1). Preferring `dk2` keeps the fix inside the template palette instead of literal `#000000`. This is why white text on a light accent predicts a clean dark theme color rather than a muddy mid-gray. Render-time swaps are logged at `WARN` with before/after colors and ratios.
 - `lerp` — any other foreground; it is darkened or lightened toward black/white via `EnsureContrast` until it clears 3:1.
 
 ```json
@@ -1139,6 +1164,37 @@ The facades also surface a structured `render_evidence` block (`{complete:false,
   "code": "RENDER_EVIDENCE_INCOMPLETE",
   "action": "refuse",
   "message": "render-time validation evidence is incomplete: the \"generate\" stage failed (…); reported findings reflect static analysis only and may miss render-time defects (contrast swaps, autofit shrink, pagination, clamping)"
+}
+```
+
+### `TEXT_BELOW_READABLE_MIN`
+
+**Action:** `review`
+**Fix kind:** `reduce_text` (`fix.params.strategy`: `shorten` or `split`)
+
+Text ends up below the readability floor for its role in the deck's `viewing_mode` (go-slide-creator-vbic). Floors come from `tokens.MinReadableHPt`:
+
+| Role | `present` (default) | `read` |
+|------|--------------------|--------|
+| title | 20pt | 20pt |
+| body / card-title / card-body | 12pt | 10pt / 12pt / 9pt |
+| caption (KPI labels, deltas, chips) / footnote | 10pt | 7pt |
+| kpi-value | 18pt | 18pt |
+
+Emitted from two fit sites, each tagging its text role:
+
+- **Placeholders (generate):** measured autofit shrinks title / body text below the floor. Template-native sizes already below the floor are not reported (shortening would not change them). The policy never changes the fitted size — it reports rather than trimming.
+- **shape_grid cells (fit report / preflight):** the renderer writes cell text at its authored size with `<a:normAutofit/>` and shrinks every paragraph by one factor when the text overflows the cell. The fit report predicts that factor by measuring the cell's paragraphs in its text rectangle and reports the paragraph furthest below its floor. Roles are inferred per paragraph: ≥24pt → `kpi-value`, bold → `card-title`, ≤40 chars → `caption`, else `card-body`.
+
+`fix.params`: `strategy` (`split` when the text has more than 3 paragraphs, else `shorten`), `role`, `actual_pt`, `min_pt`, `viewing_mode`.
+
+```json
+{
+  "path": "/slides/2/shape_grid/rows/0/cells/0/shape/text",
+  "code": "TEXT_BELOW_READABLE_MIN",
+  "message": "caption text renders at 7.4pt, below the 10pt minimum for viewing_mode \"present\" (cell text overflows; autofit shrinks 12pt to ~7.4pt); shorten the text",
+  "fix": { "kind": "reduce_text", "params": { "strategy": "shorten", "role": "caption", "actual_pt": 7.4, "min_pt": 10, "viewing_mode": "present" } },
+  "action": "review"
 }
 ```
 

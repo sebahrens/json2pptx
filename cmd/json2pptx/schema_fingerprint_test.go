@@ -80,7 +80,7 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// completion path), which changes the tool-name set, so the hash advanced
 	// from 24b985854165d81f (4.58.0).
 	// If this fails, see file header comment.
-	const wantFingerprint = "d6a3ae98aa2cf3ad"
+	const wantFingerprint = "7f195236332af9cf"
 
 	got := schemaFingerprint()
 

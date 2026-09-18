@@ -21,6 +21,9 @@ type MasterFontResolver struct {
 
 // MasterFontStyles contains font styles from a slide master's txStyles.
 type MasterFontStyles struct {
+	// TitleText is the full inherited title text style (size, all-caps, line
+	// spacing, space-before, typeface) used for measured title fit.
+	TitleText  InheritedTextStyle
 	TitleStyle *FontStyle         // p:titleStyle
 	BodyStyle  map[int]*FontStyle // p:bodyStyle lvlNpPr (0-8)
 	OtherStyle map[int]*FontStyle // p:otherStyle lvlNpPr (0-8)
@@ -124,6 +127,7 @@ func (r *MasterFontResolver) parseMasterFontStyles(masterData []byte) *MasterFon
 	}
 
 	styles := &MasterFontStyles{
+		TitleText:  ParseMasterTitleStyle(masterData),
 		BodyStyle:  make(map[int]*FontStyle),
 		OtherStyle: make(map[int]*FontStyle),
 	}
@@ -283,6 +287,12 @@ func (r *MasterFontResolver) ResolvePlaceholderFonts(
 	}
 
 	// Fall back to master styles based on placeholder type
+	return masterStyleForType(placeholderType, masterStyles)
+}
+
+// masterStyleForType returns the master txStyles entry a placeholder of the
+// given type inherits from, or nil.
+func masterStyleForType(placeholderType types.PlaceholderType, masterStyles *MasterFontStyles) *FontStyle {
 	if masterStyles == nil {
 		return nil
 	}

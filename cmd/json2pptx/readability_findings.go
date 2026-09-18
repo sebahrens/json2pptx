@@ -1,0 +1,233 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
+	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
+	"github.com/sebahrens/json2pptx/internal/types"
+)
+
+// Shape-grid readability (go-slide-creator-vbic).
+//
+// shape_grid text is written at its authored size (floored at 12pt) with
+// <a:normAutofit/>; when the text exceeds the cell, the renderer shrinks every
+// paragraph by the same factor — which is how real decks ended up with 6pt
+// KPI deltas and 9pt chevron descriptions. The fit report predicts that
+// shrink by measuring the cell's paragraphs in its text rectangle (the same
+// rectangle textcapacity budgets) and reports the paragraph that lands
+// furthest below the deck viewing_mode floor for its text role.
+
+// collectReadabilityFindings returns TEXT_BELOW_READABLE_MIN findings for
+// shape_grid cells in the deck.
+func collectReadabilityFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
+	mode := tokens.ParseViewingMode(input.ViewingMode)
+	if slideWidth <= 0 {
+		slideWidth = shapegrid.DefaultSlideWidthEMU
+	}
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
+	}
+	var findings []patterns.FitFinding
+	for si, slide := range input.Slides {
+		if slide.ShapeGrid == nil {
+			continue
+		}
+		geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+		result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+		if result == nil {
+			continue
+		}
+		densities := textcapacity.ForResolvedGrid(result)
+		for i, cell := range result.Cells {
+			if i >= len(densities) || cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
+				continue
+			}
+			d := densities[i]
+			if d.ActualChars == 0 || d.WidthEMU <= 0 || d.HeightEMU <= 0 {
+				continue
+			}
+			paras := parseCellParagraphs(cell.ShapeSpec.Text)
+			if len(paras) == 0 {
+				continue
+			}
+			scale := predictedAutofitScale(paras, d.WidthEMU, d.HeightEMU)
+			path := slidepath.Join(slidepath.GridCell(si, cell.RowIdx, cell.ColIdx), "shape/text")
+			if f := worstReadability(paras, scale, mode, path); f != nil {
+				findings = append(findings, *f)
+			}
+		}
+	}
+	return findings
+}
+
+// cellParagraph is one paragraph of shape_grid cell text at its rendered
+// (floored) size.
+type cellParagraph struct {
+	text   string
+	sizePt float64
+	bold   bool
+}
+
+// renderDefaultCellPt mirrors the shape_grid renderer's default text size
+// (shapegrid defaultTextSizeHPt) for text without an authored size.
+const renderDefaultCellPt = 14.0
+
+// parseCellParagraphs reads a shape_grid text payload (string shorthand,
+// object, or paragraphs array) into paragraphs at their rendered sizes.
+func parseCellParagraphs(raw json.RawMessage) []cellParagraph {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return splitCellParagraphs(s, renderDefaultCellPt, false)
+	}
+	var obj struct {
+		Content    string  `json:"content"`
+		Size       float64 `json:"size"`
+		Bold       bool    `json:"bold"`
+		Paragraphs []struct {
+			Content string  `json:"content"`
+			Size    float64 `json:"size"`
+			Bold    *bool   `json:"bold"`
+		} `json:"paragraphs"`
+	}
+	if json.Unmarshal(raw, &obj) != nil {
+		return nil
+	}
+	base := renderDefaultCellPt
+	if obj.Size > 0 {
+		base = shapegrid.EffectiveTextSizePt(obj.Size)
+	}
+	if len(obj.Paragraphs) == 0 {
+		return splitCellParagraphs(obj.Content, base, obj.Bold)
+	}
+	var out []cellParagraph
+	for _, p := range obj.Paragraphs {
+		size := base
+		if p.Size > 0 {
+			size = shapegrid.EffectiveTextSizePt(p.Size)
+		}
+		bold := obj.Bold
+		if p.Bold != nil {
+			bold = *p.Bold
+		}
+		out = append(out, splitCellParagraphs(p.Content, size, bold)...)
+	}
+	return out
+}
+
+func splitCellParagraphs(content string, sizePt float64, bold bool) []cellParagraph {
+	var out []cellParagraph
+	for _, line := range strings.Split(content, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		out = append(out, cellParagraph{text: line, sizePt: sizePt, bold: bold})
+	}
+	return out
+}
+
+// predictedAutofitScale estimates the uniform font scale the renderer's
+// shrink-on-overflow (<a:normAutofit/>) applies to fit all paragraphs of a
+// cell into its text rectangle: the largest scale, in 2% steps, whose
+// measured wrapped height fits. Returns 1 when the text already fits.
+func predictedAutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) float64 {
+	const lineSpacing = 1.2
+	const insetPt = 7.2
+	usablePt := float64(heightEMU)/12700.0 - 2*insetPt
+	if usablePt <= 0 {
+		return 1
+	}
+	fits := func(scale float64) bool {
+		total := 0.0
+		for _, p := range paras {
+			pt := p.sizePt * scale
+			m, err := textfit.MeasureRun(p.text, "Arial", pt, widthEMU, 0)
+			if err != nil {
+				return true // cannot measure: assume it fits
+			}
+			total += float64(m.Lines) * pt * lineSpacing
+		}
+		return total <= usablePt
+	}
+	for step := 0; step < 40; step++ {
+		scale := 1.0 - 0.02*float64(step)
+		if fits(scale) {
+			return scale
+		}
+	}
+	return 0.2
+}
+
+// worstReadability returns the TEXT_BELOW_READABLE_MIN finding for the
+// paragraph furthest below its role's floor after the predicted autofit
+// scale, or nil when every paragraph stays readable.
+func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingMode, path string) *patterns.FitFinding {
+	var worst *patterns.FitFinding
+	worstRatio := 1.0
+	for _, p := range paras {
+		role := cellTextRole(p.sizePt, p.bold, len([]rune(p.text)))
+		effective := p.sizePt * scale
+		minPt := float64(tokens.MinReadableHPt(mode, role)) / 100.0
+		ratio := effective / minPt
+		if ratio >= worstRatio {
+			continue
+		}
+		ctx := fmt.Sprintf("authored %.0fpt", p.sizePt)
+		if scale < 1 {
+			ctx = fmt.Sprintf("cell text overflows; autofit shrinks %.0fpt to ~%.1fpt", p.sizePt, effective)
+		}
+		f := generator.NewReadabilityFinding(generator.ReadabilityFindingInput{
+			Path:         path,
+			Mode:         mode,
+			Role:         role,
+			EffectiveHPt: int(math.Round(effective * 100)),
+			Paragraphs:   len(paras),
+			Context:      ctx,
+		})
+		if f != nil {
+			worst, worstRatio = f, ratio
+		}
+	}
+	return worst
+}
+
+// cellTextRole infers the text role of a shape_grid paragraph from its style:
+// display-size text is a KPI value, bold text a card title, short text a
+// caption (KPI labels, deltas, chips), anything else card body copy.
+func cellTextRole(fontPt float64, bold bool, chars int) tokens.TextRole {
+	switch {
+	case fontPt >= 24:
+		return tokens.TextRoleKPIValue
+	case bold:
+		return tokens.TextRoleCardTitle
+	case chars <= 40:
+		return tokens.TextRoleCaption
+	default:
+		return tokens.TextRoleCardBody
+	}
+}
+
+// flaggedReadabilityFitFindings converts readability findings to the local
+// fit-report shape for the CLI `validate --fit-report` human output.
+func flaggedReadabilityFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
+	var out []fitFinding
+	for _, f := range collectReadabilityFindings(input, layouts, slideWidth, slideHeight) {
+		out = append(out, fitFinding{
+			Code:     f.Code,
+			Path:     f.Path,
+			Severity: "warning",
+			Message:  f.Message,
+			Fix:      f.Fix,
+			Action:   f.Action,
+		})
+	}
+	return out
+}

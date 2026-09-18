@@ -296,6 +296,7 @@ func (mc *mcpConfig) collectRenderFindings(
 		SyntheticFiles:        syntheticFiles,
 		StrictFit:             "warn",
 		DataPalette:           dataPalette,
+		ViewingMode:           input.ViewingMode,
 	}
 
 	// Wire footer/chrome configuration.
