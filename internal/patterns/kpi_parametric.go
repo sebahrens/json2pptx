@@ -145,6 +145,10 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	smallSize := resolveKPISmallSize(ovr)
 	cellAccentMode := ovr.CellAccentMode
 
+	geo := kpiCardGeometryFor(ctx, n)
+	iconPos := geo.iconPosition()
+	bigSize = kpiFitBigSize(ctx, *cells, bigSize, geo, iconPos)
+
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
@@ -157,7 +161,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			Text:     textContent,
 		}
 		if cell.Icon != nil {
-			if icon := cell.Icon.Resolve(accent, "left"); icon != nil {
+			if icon := cell.Icon.Resolve(accent, iconPos); icon != nil {
 				shape.Icon = icon
 			}
 		}
@@ -188,7 +192,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	colsJSON := json.RawMessage(strconv.Itoa(n))
 	grid := &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		Gap:     12,
+		Gap:     kpiCardGapPt,
 		Rows: []jsonschema.GridRowInput{
 			{Cells: gridCells},
 		},

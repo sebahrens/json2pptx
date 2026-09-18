@@ -992,6 +992,8 @@ All findings carry `details.input_value` (local paths) or `details.input_url` (U
 
 A bare string is classified at parse time: bundled name → `name`, `http(s)://` or `data:` → `url`, `<svg…>` → `svg_data`, path with `/` and `.svg`/`.png`/`.jpg` → `path`. Unknown short strings stay in `name` and are rejected by the bundled-name preflight (`ICON_BUNDLED_NAME_UNKNOWN`). Setting two of `name`/`path`/`url`/`svg_data` in the object form fails validate with `invalid_shape`. The patterns above bumped their `version` to `2` when this slot landed.
 
+**KPI icon placement and value fit.** `kpi-2up`…`kpi-6up` default the icon to `left` on landscape cards and `top` on square/narrow cards (explicit `position` wins), and shrink `big` uniformly (floor 16pt) so values like `$4.2M` / `12 days` never break across lines — you do not need to lower `big_size` by hand to avoid wraps.
+
 **Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide.
 
 ---

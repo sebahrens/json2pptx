@@ -804,6 +804,14 @@ type iconOverlayLayout struct {
 // iconOverlayGapEMU is the gap between icon and text (3pt).
 const iconOverlayGapEMU = 3 * 12700
 
+// leftIconMaxWidthFrac caps a "left" overlay icon at this share of the shape
+// width, bounding the text's extra left inset to icon size + padding.
+const leftIconMaxWidthFrac = 0.25
+
+// topIconMaxHeightFrac caps a "top" overlay icon at this share of the shape
+// height so short, wide cards keep most of their height for text.
+const topIconMaxHeightFrac = 0.4
+
 // hasNonEmptyText checks whether a json.RawMessage text field contains actual
 // non-empty text content. It mirrors the shape text renderer (ResolveTextInput)
 // by recognizing all three authored forms: a plain string, an object with a
@@ -882,10 +890,17 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 
 	switch pos {
 	case "left":
-		// Icon on the left side, sized to 60% of cell height, vertically centered.
+		// Icon on the left side, sized to scale × cell height, vertically
+		// centered. The icon (and therefore the text's left inset) is capped
+		// at leftIconMaxWidthFrac of the shape width so a tall card does not
+		// hand 60% of its width to the icon and squeeze the text into a
+		// sliver on the right (go-slide-creator-5lbo).
 		iconH := int64(float64(h) * scale)
 		if iconH > size {
 			iconH = size // keep square
+		}
+		if maxW := int64(float64(w) * leftIconMaxWidthFrac); iconH > maxW {
+			iconH = maxW
 		}
 		return iconOverlayLayout{
 			Bounds: pptx.RectEmu{
@@ -898,6 +913,16 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 		}
 	case "top":
 		// Icon centered horizontally and vertically within the top icon zone.
+		// On landscape shapes with the default scale the icon is capped at
+		// topIconMaxHeightFrac of the shape height so the text keeps the
+		// majority of the box (a width-derived icon would otherwise eat a
+		// short card). Square/portrait shapes and explicit scales are kept.
+		explicitScale := icon != nil && icon.Scale > 0 && icon.Scale <= 1.0
+		if !explicitScale && w > int64(float64(h)*1.2) {
+			if maxH := int64(float64(h) * topIconMaxHeightFrac); size > maxH {
+				size = maxH
+			}
+		}
 		iconZoneH := size + 2*iconOverlayGapEMU
 		return iconOverlayLayout{
 			Bounds: pptx.RectEmu{
