@@ -15,6 +15,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Title checks unified on measured fit.** `validate` title diagnostics,
+  the fit report and the generate `quality` score now measure titles against the
+  resolved title placeholder and inherited title style. `title_wraps` escalates
+  to `action: shrink_or_split` with `fix.kind: shorten_title`,
+  `fix.params: {current_chars, max_chars, fit_scale_pct}` when the title only
+  fits below the comfort size; `TITLE_OVERFLOW` is also emitted by preflight.
+  Validate title warnings now carry `fix.kind: shorten_title` (was
+  `shrink_text`) with a measured `max_chars`. Quality-score title issues read
+  "title (N chars) only fits its title placeholder at P% …" instead of
+  "title too long (N chars, max 60)" when the template is known.
 - Title placeholders that fit by shrinking now carry the reduced size as an
   explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
   `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.

@@ -143,6 +143,8 @@ Text in a body or content placeholder overflows its frame. Emitted only when all
 
 Title text wraps to multiple lines within its placeholder. This is common and often acceptable, so the action is `review` rather than `shrink_or_split`. Emitted when the measured text height exceeds a single-line height (computed as `fontSize * 1.2 line spacing`).
 
+**Measured escalation (go-slide-creator-vjwn).** Titles are also measured against the resolved title placeholder with the template's inherited title style (master size, all-caps, line spacing; canonical `layout_id`s such as `"content"` are resolved) using exact glyph widths — the same measurement the generator applies at render time. When the title only fits below the comfort size (80% of the template title size, capped at 32pt for large display titles) or only with reduced line spacing, `title_wraps` is emitted with `action: shrink_or_split`, `fix.kind: shorten_title` and `fix.params: {current_chars, max_chars, fit_scale_pct}` (`max_chars` = longest prefix that fits at the comfort size). When it cannot fit at all, `TITLE_OVERFLOW` is emitted instead. `validate` (dry-run diagnostics: `max_length` / `TITLE_OVERFLOW`, `fix.kind: shorten_title`) and the generate `quality` score use the same verdict, replacing the old placeholder `max_chars` and 60-character title heuristics (still used as the fallback when a title cannot be measured).
+
 ```json
 {
   "pattern": "placeholder",
@@ -165,7 +167,7 @@ Title text wraps to multiple lines within its placeholder. This is common and of
 
 The title does not fit its title placeholder even at the minimum autofit size (60% font scale, or the readability floor if higher, plus the maximum 20% line-spacing reduction). Title placeholders on generated slides usually inherit their geometry from the layout and their font size, all-caps and line spacing from the slide master's `titleStyle`; the measurement resolves all of these (e.g. modern-template: 45pt, `cap="all"`, 80% line spacing) and measures with exact glyph widths.
 
-Emitted at render time (generate). When the title fits by shrinking, the generator writes the reduced size (and any line-spacing reduction) explicitly into the title runs instead of relying on `<a:normAutofit fontScale>` — LibreOffice ignores the stored scale and re-shrinks by compressing line spacing, which made long title lines collide.
+Emitted at render time (generate) and predicted by preflight (`validate --fit-report`, `validate_input`, preview), which share the same measurement. When the title fits by shrinking, the generator writes the reduced size (and any line-spacing reduction) explicitly into the title runs instead of relying on `<a:normAutofit fontScale>` — LibreOffice ignores the stored scale and re-shrinks by compressing line spacing, which made long title lines collide.
 
 `fix.params`: `current_chars`, `max_chars` (longest word-prefix length that fits at the minimum size), `font_pt` (template size), `min_font_pt`.
 

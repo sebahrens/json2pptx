@@ -156,6 +156,13 @@ type PlaceholderInfo struct {
 	FontSize   int    // Font size in hundredths of a point (e.g., 1400 = 14pt)
 	FontColor  string // Font color as hex string (e.g., "#000000")
 
+	// TextCaps and LineSpacingPct are the inherited text style that changes
+	// measured fit (resolved for title placeholders from the layout lstStyle →
+	// master titleStyle): all-caps rendering and the lnSpc percentage (0 =
+	// single spacing).
+	TextCaps       bool
+	LineSpacingPct int
+
 	// Role is the canonical, agent-facing placeholder role assigned by
 	// internal/template.ClassifyPlaceholderRole. It refines Type with
 	// intent-level distinctions (eyebrow vs title, section_number vs body,

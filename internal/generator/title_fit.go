@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -93,6 +94,13 @@ func MeasureTitleFit(in TitleFitInput) (textfit.FitResult, error) {
 // the (single-paragraph) params text that fits without overflow. Returns 0
 // when even the first word overflows or measurement fails.
 func estimateFittingChars(p textfit.Params) int {
+	return longestFittingPrefix(p, func(r textfit.FitResult) bool { return !r.Overflow })
+}
+
+// longestFittingPrefix binary-searches the longest word-prefix of the
+// (single-paragraph) params text whose fit result satisfies fits, returning
+// its rune length.
+func longestFittingPrefix(p textfit.Params, fits func(textfit.FitResult) bool) int {
 	if len(p.Paragraphs) == 0 {
 		return 0
 	}
@@ -106,13 +114,60 @@ func estimateFittingChars(p textfit.Params) int {
 		if err != nil {
 			return 0
 		}
-		if r.Overflow {
+		if !fits(r) {
 			hi = mid - 1
 		} else {
 			lo = mid
 		}
 	}
 	return len([]rune(strings.Join(words[:lo], " ")))
+}
+
+// Title comfort threshold (go-slide-creator-vjwn): a title reads as intended
+// while it renders at ≥ 80% of the template size, or at ≥ 32pt for very
+// large display titles (a 66pt cover title shrunk to 46pt is still a
+// headline). Titles that only fit below that — or only with reduced line
+// spacing — are flagged by validate, the quality score and the fit report.
+const (
+	titleComfortRatio  = 0.80
+	titleComfortMaxHPt = 3200
+)
+
+// TitleComfortScalePct returns the smallest comfortable font scale (percent of
+// the template title size) for a title of the given size.
+func TitleComfortScalePct(sizeHPt int) int {
+	if sizeHPt <= 0 {
+		return int(titleComfortRatio * 100)
+	}
+	minHPt := titleComfortRatio * float64(sizeHPt)
+	if minHPt > titleComfortMaxHPt {
+		minHPt = titleComfortMaxHPt
+	}
+	return int(math.Ceil(minHPt / float64(sizeHPt) * 100))
+}
+
+// TitleNeedsShortening reports whether a measured title fit falls below the
+// comfort scale for its template size (or needed line-spacing reduction)
+// without overflowing.
+func TitleNeedsShortening(res textfit.FitResult, sizeHPt int) bool {
+	if res.Overflow {
+		return false
+	}
+	if res.LnSpcReduction > 0 {
+		return true
+	}
+	return res.FontScale > 0 && res.FontScale < TitleComfortScalePct(sizeHPt)*1000
+}
+
+// MaxTitleCharsAtScale estimates the longest word-prefix length of the title
+// that fits its placeholder at no less than minScalePct of the template size
+// and without line-spacing reduction.
+func MaxTitleCharsAtScale(in TitleFitInput, minScalePct int) int {
+	p := titleFitParams(in)
+	p.MinFontScalePct = minScalePct
+	return longestFittingPrefix(p, func(r textfit.FitResult) bool {
+		return !r.Overflow && r.LnSpcReduction == 0
+	})
 }
 
 // newTitleOverflowFinding builds a TITLE_OVERFLOW fit finding for a title that

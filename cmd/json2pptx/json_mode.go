@@ -584,7 +584,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
 
-	quality := computeQualityScore(input.Slides, allWarnings)
+	quality := computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts)
 	evidence := &pipeline.QualityEvidence{ArtifactSHA256: result.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(outputValidationFindings), TotalSlides: result.SlideCount}
 	evidence.Finalize()
 	quality.Evidence = evidence
@@ -1747,7 +1747,15 @@ func writeJSONError(jsonOutputPath string, err error) error {
 // returns a QualityScore. It can be used by both JSON mode (json_mode.go)
 // and markdown mode (generate.go) when --json-output is specified.
 // Accepts []SlideInput (typed schema) for full typed + legacy field support.
-func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore { //nolint:gocognit,gocyclo
+func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
+	return computeQualityScoreWithLayouts(slides, warnings, nil)
+}
+
+// computeQualityScoreWithLayouts is computeQualityScore with the template
+// layouts available: titles are then judged by measured fit against their
+// resolved title placeholder (go-slide-creator-vjwn) instead of the 60-char
+// heuristic, which remains the fallback when a title cannot be measured.
+func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layouts []types.LayoutMetadata) *QualityScore { //nolint:gocognit,gocyclo
 	if len(slides) == 0 {
 		return &QualityScore{
 			Score:  0.0,
@@ -1797,7 +1805,17 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 						issues = append(issues, fmt.Sprintf("subtitle too long (%d chars, max %d)", len(text), maxSubtitleLen))
 					}
 				} else if isLikelyTitle(item.PlaceholderID) {
-					if text, ok := resolved.(string); ok && len(text) > maxTitleLen {
+					text, isText := resolved.(string)
+					if m := measureTitleInPlaceholder(text, titlePlaceholderFor(&slides[i], item.PlaceholderID, layouts)); isText && m.OK {
+						if m.Flagged() {
+							penalty := 0.15
+							if m.Overflow {
+								penalty = 0.3
+							}
+							slideScore -= penalty
+							issues = append(issues, m.describe())
+						}
+					} else if isText && len(text) > maxTitleLen {
 						penalty := float64(len(text)-maxTitleLen) / 100.0
 						if penalty > 0.3 {
 							penalty = 0.3

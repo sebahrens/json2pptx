@@ -186,7 +186,7 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			idx = *ph.Index
 		}
 
-		placeholders = append(placeholders, types.PlaceholderInfo{
+		info := types.PlaceholderInfo{
 			ID:         shape.NonVisualProperties.ConnectionNonVisual.Name,
 			Type:       phType,
 			Index:      idx,
@@ -195,7 +195,11 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			FontFamily: fontFamily,
 			FontSize:   fontSize,
 			FontColor:  fontColor,
-		})
+		}
+		if phType == types.PlaceholderTitle {
+			applyInheritedTitleText(&info, &shape, masterFonts)
+		}
+		placeholders = append(placeholders, info)
 	}
 
 	return placeholders
@@ -480,12 +484,14 @@ type listStyleXML struct {
 // levelParagraphPropsXML represents level paragraph properties with default run properties.
 // Defined here for use by both layouts.go and font_resolver.go.
 type levelParagraphPropsXML struct {
+	LnSpc  *spacingXML         `xml:"lnSpc"`
 	DefRPr *defaultRunPropsXML `xml:"defRPr"`
 }
 
 // defaultRunPropsXML represents default run properties with font attributes.
 type defaultRunPropsXML struct {
 	Size      int           `xml:"sz,attr"`
+	Cap       string        `xml:"cap,attr"`
 	Latin     *latinFontXML `xml:"latin"`
 	SolidFill *solidFillXML `xml:"solidFill"`
 }

@@ -165,6 +165,7 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 		resolveCanonicalLayoutIDs(input.Slides, layouts)
 	}
 	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
+	findings = append(findings, flaggedTitleFitFindings(input, layouts)...)
 	return budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
 }
 

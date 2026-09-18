@@ -574,7 +574,7 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 		DurationMs:  time.Since(start).Milliseconds(),
 		Warnings:    warnings,
 		Diagnostics: diags,
-		Quality:     computeQualityScore(input.Slides, warnings),
+		Quality:     computeQualityScoreWithLayouts(input.Slides, warnings, rr.TemplateLayouts),
 	}
 	if rr.GenResult != nil {
 		res.SlideCount = rr.GenResult.SlideCount
