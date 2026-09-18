@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // =============================================================================
@@ -414,8 +415,62 @@ type XLabelLayout struct {
 	// Categories holds the (potentially truncated) category labels.
 	Categories []string
 
-	// ExtraBottomMargin is the additional bottom margin needed for rotated labels.
+	// ExtraBottomMargin is the additional bottom margin needed for rotated
+	// or wrapped labels.
 	ExtraBottomMargin float64
+
+	// DisplayLabels, when non-nil, holds the axis text for each category
+	// (parallel to Categories). Wrapped labels join their lines with "\n".
+	// Categories itself is left unwrapped so name-based scale lookups
+	// (waterfall totals, bar positions) keep matching the input data.
+	DisplayLabels []string
+
+	// MaxLines is 2 when category labels were word-wrapped onto two lines;
+	// 0 or 1 means single-line labels.
+	MaxLines int
+}
+
+// xLabelLineHeight is the line-height multiplier used for wrapped x-axis
+// category labels (drawTickLabel stacks lines with the same factor).
+const xLabelLineHeight = 1.2
+
+// wrapXLabelsTwoLines word-wraps every category label that is wider than
+// limit onto two lines (joined with "\n") at the given font size. It returns
+// ok=false when any label still needs more than two lines, in which case the
+// caller falls back to rotation.
+func wrapXLabelsTwoLines(b *SVGBuilder, cats []string, limit, fontSize float64) ([]string, bool) {
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(fontSize)
+
+	out := make([]string, len(cats))
+	for i, cat := range cats {
+		if w, _ := b.MeasureText(cat); w <= limit {
+			out[i] = cat
+			continue
+		}
+		words := strings.Fields(cat)
+		if len(words) < 2 {
+			return nil, false
+		}
+		bestW := math.MaxFloat64
+		best := ""
+		for k := 1; k < len(words); k++ {
+			l1 := strings.Join(words[:k], " ")
+			l2 := strings.Join(words[k:], " ")
+			w1, _ := b.MeasureText(l1)
+			w2, _ := b.MeasureText(l2)
+			if m := math.Max(w1, w2); m < bestW {
+				bestW = m
+				best = l1 + "\n" + l2
+			}
+		}
+		if bestW > limit {
+			return nil, false
+		}
+		out[i] = best
+	}
+	return out, true
 }
 
 // AdaptXLabels computes adaptive font size, rotation, thinning, and truncation
@@ -423,9 +478,10 @@ type XLabelLayout struct {
 //
 // Strategy (applied in order):
 //  1. Shrink font size toward a 9pt floor.
-//  2. Rotate labels 45 degrees when they still exceed available space.
-//  3. Thin labels (show every Nth) if rotated labels still overlap.
-//  4. Truncate with ellipsis as a last resort.
+//  2. Word-wrap labels onto two horizontal lines (rotation 0).
+//  3. Rotate labels 45 degrees when a two-line wrap still does not fit.
+//  4. Thin labels (show every Nth) if rotated labels still overlap.
+//  5. Truncate with ellipsis as a last resort (emits chart.label_ellipsized).
 //
 // Parameters:
 //   - b: SVGBuilder for text measurement
@@ -489,7 +545,33 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 		}
 	}
 
-	// ── Step 2: Rotate 45 degrees if still overflowing ──
+	// ── Step 2: Wrap onto two horizontal lines before rotating ──
+	// Rotated labels are hard to read and were routinely ellipsized
+	// ("IT hardware & s…"); a two-line word wrap at 0° keeps the full
+	// category text readable. Try the largest font first so wrapping is
+	// preferred over shrinking to the floor.
+	if maxLabelWidth > bandwidth*0.95 {
+		limit := bandwidth * 0.92 / 1.1 // 1.1x safety factor as in measureMaxLabel; 0.92 keeps a visible gutter between wrapped neighbours
+		for _, candidate := range []float64{baseFontSize, baseFontSize * 0.9, baseFontSize * 0.8, fontFloor} {
+			candidate = math.Max(fontFloor, candidate)
+			if candidate > baseFontSize {
+				continue
+			}
+			if wrapped, ok := wrapXLabelsTwoLines(b, cats, limit, candidate); ok {
+				return XLabelLayout{
+					FontSize:          candidate,
+					Rotation:          0,
+					LabelStep:         1,
+					Categories:        cats,
+					DisplayLabels:     wrapped,
+					MaxLines:          2,
+					ExtraBottomMargin: candidate * xLabelLineHeight,
+				}
+			}
+		}
+	}
+
+	// ── Step 3: Rotate 45 degrees if two-line wrap still overflows ──
 	if maxLabelWidth > bandwidth*0.95 {
 		rotation = -45
 
@@ -524,11 +606,25 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 			if maxChars < 3 {
 				maxChars = 3
 			}
+			truncated := 0
 			for i, cat := range cats {
 				runes := []rune(cat)
 				if len(runes) > maxChars {
 					cats[i] = string(runes[:maxChars-1]) + "\u2026"
+					truncated++
 				}
+			}
+			if truncated > 0 {
+				b.AddFinding(Finding{
+					Field:    "x_axis.labels",
+					Code:     FindingLabelEllipsized,
+					Message:  fmt.Sprintf("%d of %d x-axis category labels ellipsized — too long even for a two-line wrap or rotation", truncated, numCats),
+					Severity: "warning",
+					Fix: &FixSuggestion{
+						Kind:   FixKindIncreaseCanvas,
+						Params: map[string]any{"max_chars": maxChars, "truncated_labels": truncated},
+					},
+				})
 			}
 			maxLabelWidth = measureMaxLabel(fontSize)
 		}

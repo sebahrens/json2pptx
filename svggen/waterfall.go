@@ -102,6 +102,10 @@ func DefaultWaterfallChartConfig(width, height float64) WaterfallChartConfig {
 type WaterfallChart struct {
 	builder *SVGBuilder
 	config  WaterfallChartConfig
+
+	// xDisplayLabels holds wrapped x-axis tick text from AdaptXLabels
+	// (nil when labels are drawn verbatim).
+	xDisplayLabels []string
 }
 
 // NewWaterfallChart creates a new waterfall chart renderer.
@@ -181,6 +185,7 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	xLabelRotation := xLayout.Rotation
 	labelStep := xLayout.LabelStep
 	categories = xLayout.Categories
+	wc.xDisplayLabels = xLayout.DisplayLabels
 	if xLayout.ExtraBottomMargin > 0 {
 		wc.config.MarginBottom += xLayout.ExtraBottomMargin
 	}
@@ -360,6 +365,7 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 	xAxisConfig.FontSize = axisFontSize
 	xAxisConfig.LabelRotation = xLabelRotation
 	xAxisConfig.LabelStep = labelStep
+	xAxisConfig.DisplayLabels = wc.xDisplayLabels
 	if labelStep > 1 && len(importantLabels) > 0 {
 		important := make([]int, 0, len(importantLabels))
 		for idx := range importantLabels {

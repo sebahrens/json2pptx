@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // AxisPosition specifies where an axis is placed.
@@ -74,6 +75,11 @@ type AxisConfig struct {
 	// preserve byte-compatible SVG element ordering with the previous
 	// per-chart "manual thinning" code paths.
 	LabelStep int
+
+	// DisplayLabels, when its length matches the categorical scale, replaces
+	// the category names as the rendered tick text (e.g. two-line wrapped
+	// labels from AdaptXLabels). Scale lookups still use the category names.
+	DisplayLabels []string
 
 	// ImportantLabels lists tick indices that must always be labeled even
 	// when LabelStep > 1 would otherwise thin them.
@@ -162,7 +168,11 @@ func (a *Axis) DrawCategoricalAxis(scale *CategoricalScale, x, y float64) *Axis 
 		positions[i] = scale.Scale(cat)
 	}
 
-	a.drawAxis(positions, categories, x, y)
+	labels := categories
+	if len(a.config.DisplayLabels) == len(categories) {
+		labels = a.config.DisplayLabels
+	}
+	a.drawAxis(positions, labels, x, y)
 	return a
 }
 
@@ -474,6 +484,22 @@ func (a *Axis) drawTickLabel(pos, originX, originY float64, label string) {
 		b.RotateAround(a.config.LabelRotation, labelX, labelY)
 		b.DrawText(label, labelX, labelY, align, baseline)
 		b.Pop()
+	} else if strings.Contains(label, "\n") {
+		// Word-wrapped category label (see AdaptXLabels step 2): stack the
+		// lines horizontally at 0°. Bottom axes grow downward from the tick,
+		// top axes grow upward, and side axes are centered on the tick.
+		lines := strings.Split(label, "\n")
+		lineH := fontSize * xLabelLineHeight
+		startY := labelY
+		switch a.config.Position {
+		case AxisPositionTop:
+			startY = labelY - float64(len(lines)-1)*lineH
+		case AxisPositionLeft, AxisPositionRight:
+			startY = labelY - float64(len(lines)-1)*lineH/2
+		}
+		for i, line := range lines {
+			b.DrawText(line, labelX, startY+float64(i)*lineH, align, baseline)
+		}
 	} else {
 		b.DrawText(label, labelX, labelY, align, baseline)
 	}

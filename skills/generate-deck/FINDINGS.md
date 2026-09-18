@@ -235,7 +235,7 @@ Charts and diagrams emit structured findings at render time, following the same 
 | `chart.tick_thinned` | Axis tick labels thinned to prevent overlap | `reduce_items` |
 | `chart.scatter_label_skipped` | Scatter label skipped due to collision | `increase_canvas` |
 | `chart.label_truncated` | Label truncated to fit available space | `increase_canvas` |
-| `chart.label_ellipsized` | Label shortened with ellipsis | `increase_canvas` |
+| `chart.label_ellipsized` | Label shortened with ellipsis (x-axis categories: only after a two-line horizontal wrap and rotation both fail) | `increase_canvas` |
 | `chart.label_clipped` | Label hard-clipped at container boundary | `increase_canvas` |
 
 ### Strict-fit promotion ladder for chart codes
