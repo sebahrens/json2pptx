@@ -159,6 +159,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `comparison-2col` | Two-column comparison with optional headers |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
+| `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right |
 | `icon-row` | Horizontal row of icon+caption pairs |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |

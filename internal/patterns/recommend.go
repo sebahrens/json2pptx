@@ -717,6 +717,24 @@ var rules = []rule{
 		baseScore: 0.74,
 		rationale: "SCQA pattern when the slide opens with situation/complication and resolves with questions/answer",
 	},
+
+	// exec-summary — 3-5 bold lead-in statements with support (answer-first)
+	{
+		pattern:   "exec-summary",
+		keywords:  []string{"key messages", "key message", "lead-in", "lead-ins", "lead in statements", "bold statements", "headline messages", "answer first", "answer-first", "summary of findings", "key findings summary", "top findings"},
+		baseScore: 0.93,
+		rationale: "Executive summary as 3–5 bold lead-in conclusions, each with one supporting sentence",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "exec-summary",
+		keywords:  []string{"key findings", "main points", "conclusions", "main messages", "summary points"},
+		baseScore: 0.78,
+		rationale: "exec-summary when a summary slide states several conclusions with brief evidence (not an SCQA arc)",
+		itemMin:   3,
+		itemMax:   5,
+	},
 }
 
 // Recommend scores all rules against the given intent and content hints,

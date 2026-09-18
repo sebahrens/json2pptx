@@ -339,6 +339,23 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"}
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {"lead": "Growth is plateauing in the core business", "support": "Revenue grew 4% in FY25 versus 11% for the market."},
+            {"lead": "Cost to serve is the main margin drag", "support": "Service costs rose 18% while volumes rose 6%."},
+            {"lead": "Self-service can close the gap in 18 months", "support": "Peers cut cost to serve 25-30% with automated onboarding."}
+          ],
+          "bottom_line": "Approve the wave-1 budget to start in Q1."
+        }
+      }
     }
   ]
 }

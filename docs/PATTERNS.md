@@ -144,6 +144,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones) |
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
+| Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` bar; answer-first rather than an SCQA arc |
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items) |
 | Team / 'Our People' page | `team-bios` | 1–8 named people with photo placeholder + role + short bio, up to 4 per row |
