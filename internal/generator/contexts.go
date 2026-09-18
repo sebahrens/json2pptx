@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ZipContext holds ZIP I/O state for single-pass generation.
@@ -331,6 +332,26 @@ var transparentPNG1x1 = []byte{
 	0x01, 0xe5, 0x27, 0xde, 0xfc,
 	0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, // IEND chunk
 	0xae, 0x42, 0x60, 0x82,
+}
+
+// iconFallbackPNGSizePx is the longer-side pixel size of the rasterized PNG
+// fallback emitted alongside shape_grid icon SVGs.
+const iconFallbackPNGSizePx = 128
+
+// iconFallbackPNG rasterizes a (small) icon SVG into a real PNG fallback for
+// the a:blip reference, so viewers that ignore the asvg:svgBlip extension
+// still show the icon. Icons are tiny, so rasterizing them is cheap (unlike
+// full diagrams, which keep the 1x1 stub). Falls back to transparentPNG1x1
+// when the SVG cannot be parsed or rasterized.
+func iconFallbackPNG(svgData []byte) []byte {
+	if len(svgData) == 0 {
+		return transparentPNG1x1
+	}
+	png, err := svggen.RasterizeSVGToPNG(svgData, iconFallbackPNGSizePx)
+	if err != nil || len(png) == 0 {
+		return transparentPNG1x1
+	}
+	return png
 }
 
 // allocSVGPNGPair allocates a paired SVG+PNG media filename slot via the MediaAllocator.

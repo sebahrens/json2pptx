@@ -355,7 +355,7 @@ When the field is a bare string, it is classified at unmarshal time by `svggen.C
 
 **Schema authoring.** New patterns that accept an icon should reuse `IconRefSchema(description)` and `validateIconRef(pattern, path, ref)` rather than duplicate the OneOf string-or-object schema. When a pattern repeats the icon slot across many siblings (matrix-2x2's four quadrants, multi-row card grids), wrap the cell schema in `$defs` and use `RefSchema(name)` to keep the per-pattern schema under the 6 KB compression budget.
 
-**Expansion.** Pattern `Expand` code calls `cell.Icon.Resolve(defaultFill, defaultPosition)`. Resolve returns `nil` for empty refs, applies pattern defaults only when the author left a field blank, and copies the underlying `IconInput` so downstream mutation is safe. Patterns that supported a string-only icon field bumped their `Version()` to `2` when migrating.
+**Expansion.** Pattern `Expand` code calls `cell.Icon.Resolve(defaultFill, defaultPosition)`. Resolve returns `nil` for empty refs, applies pattern defaults only when the author left a field blank, and copies the underlying `IconInput` so downstream mutation is safe. Patterns that supported a string-only icon field bumped their `Version()` to `2` when migrating. Compute `defaultFill` with `iconFillOn(ctx, shape.Fill, accent)` — never pass the cell accent directly: on a solid accent card that paints the icon in the card's own colour and it vanishes. `iconFillOn` returns the accent when it reaches 3:1 against the effective fill (light cards), else `lt1` when that reaches 3:1 (matching the pattern's on-accent text), else the better of `lt1`/`dk1`.
 
 ## Secondary chart slot (card-grid, icon-row)
 

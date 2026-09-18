@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/svggen/icons"
+	"github.com/sebahrens/json2pptx/svggen/raster"
 	"github.com/tdewolff/canvas"
 	"github.com/tdewolff/canvas/renderers/rasterizer"
 )
@@ -202,6 +203,45 @@ func rasterizeIconData(data []byte, targetSizePx int) (image.Image, error) {
 	}
 
 	return nil, fmt.Errorf("could not parse icon as SVG or raster image")
+}
+
+// RasterizeSVGToPNG renders SVG markup to PNG bytes with the longer side at
+// targetSizePx pixels (default 128). It is used to produce a real raster
+// fallback for native-SVG pictures (asvg:svgBlip), so viewers that ignore the
+// SVG extension show the icon instead of a blank placeholder.
+//
+// The rasterizer call is serialized on raster.Mu (see package raster) and
+// recovered from panics; PNG encoding happens outside the lock.
+func RasterizeSVGToPNG(data []byte, targetSizePx int) (pngBytes []byte, err error) {
+	if targetSizePx <= 0 {
+		targetSizePx = 128
+	}
+	svgCanvas, perr := canvas.ParseSVG(bytes.NewReader(data))
+	if perr != nil {
+		return nil, fmt.Errorf("parse svg: %w", perr)
+	}
+	if svgCanvas == nil {
+		return nil, fmt.Errorf("parse svg: empty canvas")
+	}
+	var img image.Image
+	func() {
+		raster.Mu.Lock()
+		defer raster.Mu.Unlock()
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("svg rasterizer panic: %v", r)
+			}
+		}()
+		img = rasterizeSVGCanvas(svgCanvas, targetSizePx)
+	}()
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if eerr := png.Encode(&buf, img); eerr != nil {
+		return nil, fmt.Errorf("png encode: %w", eerr)
+	}
+	return buf.Bytes(), nil
 }
 
 // rasterizeSVGCanvas renders a parsed SVG canvas to an image.Image at the target size.

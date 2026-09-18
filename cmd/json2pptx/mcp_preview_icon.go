@@ -223,6 +223,11 @@ func previewIconSourceKind(icon *IconInput) (string, *diagnostics.Diagnostic) {
 // short-circuit.
 func (mc *mcpConfig) resolvePreviewIcon(icon *IconInput, sourceKind, baseDir string) ([]byte, []string, *mcp.CallToolResult) {
 	var warnings []string
+	if sourceKind != "inline" && icon.Fill != "" && normalizeSVGHexColor(icon.Fill) == "" {
+		// preview_icon loads no template, so scheme names cannot be resolved
+		// and are not valid SVG paint; applyIconFill ignores them.
+		warnings = append(warnings, fmt.Sprintf("icon.fill %q is not a hex color; preview_icon has no template theme, so the icon keeps its default color (scheme names like accent1 are resolved at generation time)", icon.Fill))
+	}
 
 	switch sourceKind {
 	case "inline":
