@@ -1,4 +1,4 @@
-package testutil
+package portabilitycheck
 
 import (
 	"archive/zip"
@@ -14,7 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
-// Geometry assertions for rendered decks on arbitrary templates
+// Package portabilitycheck asserts geometry for rendered decks on arbitrary templates
 // (go-slide-creator-94sk). CheckDeckPortability opens a generated .pptx and the
 // template it was generated from and reports every slide-level violation of the
 // template-portability contract:

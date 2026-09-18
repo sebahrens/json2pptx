@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/portabilitycheck"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
-	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // portabilityCase is one real fixture template in the portability matrix
@@ -141,7 +141,7 @@ func generatePortabilityDeck(t *testing.T, binary, root, fixtures string, c port
 
 // TestPortabilityFixtureGeometryCLI generates the representative deck on each
 // fixture with the built binary and asserts the portability geometry contract
-// (testutil.CheckDeckPortability). It needs only the binary — no renderer — so
+// (portabilitycheck.CheckDeckPortability). It needs only the binary — no renderer — so
 // it also runs in the rendered CI job ahead of rasterization. Point
 // JSON2PPTX_BINARY at an older build to see the contract bite.
 func TestPortabilityFixtureGeometryCLI(t *testing.T) {
@@ -153,7 +153,7 @@ func TestPortabilityFixtureGeometryCLI(t *testing.T) {
 	for _, c := range portabilityMatrix {
 		t.Run(c.Template, func(t *testing.T) {
 			deck := generatePortabilityDeck(t, binary, root, fixtures, c, t.TempDir())
-			violations, err := testutil.CheckDeckPortability(deck, filepath.Join(fixtures, "templates", c.Template+".pptx"))
+			violations, err := portabilitycheck.CheckDeckPortability(deck, filepath.Join(fixtures, "templates", c.Template+".pptx"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -199,7 +199,7 @@ func TestPortabilityRenderedIntegration(t *testing.T) {
 		_ = os.RemoveAll(dir)
 		_ = os.MkdirAll(dir, 0o755)
 		deckPath := generatePortabilityDeck(t, binary, root, fixtures, c, dir)
-		violations, err := testutil.CheckDeckPortability(deckPath, filepath.Join(fixtures, "templates", c.Template+".pptx"))
+		violations, err := portabilitycheck.CheckDeckPortability(deckPath, filepath.Join(fixtures, "templates", c.Template+".pptx"))
 		if err != nil {
 			t.Fatalf("%s: %v", c.Template, err)
 		}
@@ -210,7 +210,7 @@ func TestPortabilityRenderedIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render %s: %v", c.Template, err)
 		}
-		slides, err := testutil.ReadDeckSlides(deckPath)
+		slides, err := portabilitycheck.ReadDeckSlides(deckPath)
 		if err != nil {
 			t.Fatal(err)
 		}

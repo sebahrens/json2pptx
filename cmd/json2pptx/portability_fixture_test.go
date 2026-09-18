@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sebahrens/json2pptx/internal/testutil"
+	"github.com/sebahrens/json2pptx/internal/portabilitycheck"
 )
 
 // portabilityFixtures maps each portability fixture template (built by
@@ -56,14 +56,14 @@ func TestPortabilityFixtureGeometry(t *testing.T) {
 			if !out.Success {
 				t.Fatalf("generation failed: %s", out.Error)
 			}
-			violations, err := testutil.CheckDeckPortability(out.OutputPath, templatePath)
+			violations, err := portabilitycheck.CheckDeckPortability(out.OutputPath, templatePath)
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, v := range violations {
 				t.Error(v)
 			}
-			slides, err := testutil.ReadDeckSlides(out.OutputPath)
+			slides, err := portabilitycheck.ReadDeckSlides(out.OutputPath)
 			if err != nil {
 				t.Fatal(err)
 			}
