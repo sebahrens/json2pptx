@@ -161,6 +161,7 @@ const (
 	FindingLabelClipped          = core.FindingLabelClipped
 	FindingLegendOverflowDropped = core.FindingLegendOverflowDropped
 	FindingOverflowSuppressed    = core.FindingOverflowSuppressed
+	FindingDiagramItemsDropped   = core.FindingDiagramItemsDropped
 	FindingOrgChartDepthPruned   = core.FindingOrgChartDepthPruned
 	FindingPlotAreaCollapsed     = core.FindingPlotAreaCollapsed
 

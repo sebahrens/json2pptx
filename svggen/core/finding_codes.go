@@ -62,6 +62,11 @@ const (
 	// "+N more" indicators) is suppressed or truncated.
 	FindingOverflowSuppressed = "chart.overflow_suppressed"
 
+	// FindingDiagramItemsDropped is emitted when a diagram could not fit the
+	// item list it was given and rendered only part of it
+	// (go-slide-creator-onop).
+	FindingDiagramItemsDropped = "diagram.items_dropped"
+
 	// FindingOrgChartDepthPruned is emitted when an org chart drops whole
 	// levels of the hierarchy to keep the remaining boxes readable. The chart
 	// then misrepresents the org, so the loss must be visible

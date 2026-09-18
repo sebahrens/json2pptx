@@ -10,6 +10,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Venn items render, and a Venn beyond 3 circles is refused
+  (go-slide-creator-onop).** The exclusive item list got 30% of a circle's
+  radius — room for barely one short line — so a circle with 7 items rendered
+  none of them and the slide showed three labelled circles and nothing else,
+  with no finding. The budget is now 55% of the radius (7 items per circle render
+  on a full canvas), and anything that still does not fit raises the new
+  warning-severity `diagram.items_dropped` (fix kind `reduce_items`, carrying
+  `dropped_count` / `total_count` / `rendered` / `circle`). Separately, more than
+  3 circles used to be silently truncated to the first 3 — passing 5 rendered 3
+  with no notice; `VennDiagram.Validate` now refuses it with a message naming
+  `matrix_2x2` and a card grid as alternatives.
+
 - **Org charts report the levels they drop (go-slide-creator-pwcg).** A
   21-person `org_chart` rendered as 5 boxes reading "+4 reports" — every named
   person below level 1 gone — with no warning and no finding.

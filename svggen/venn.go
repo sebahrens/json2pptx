@@ -95,9 +95,14 @@ type circleLayout struct {
 
 // Draw renders the Venn diagram.
 func (vc *VennChart) Draw(data VennData) error {
-	// Cap at 3 circles gracefully — use first 3 if more provided.
-	if len(data.Circles) > 3 {
-		data.Circles = data.Circles[:3]
+	// A Venn beyond 3 circles has no readable planar form, so the extra
+	// circles used to be silently dropped: passing 5 rendered 3 with no notice
+	// at all (go-slide-creator-onop). Refuse instead, in the same style as the
+	// other data constraints, so the author picks a different diagram.
+	if len(data.Circles) > vennMaxCircles {
+		return fmt.Errorf(
+			"venn diagram accepts at most %d circles, got %d — a 4+ set Venn has no readable planar form; use a matrix_2x2, a card grid, or split the comparison across slides",
+			vennMaxCircles, len(data.Circles))
 	}
 	numCircles := len(data.Circles)
 	if numCircles < 2 {
@@ -358,7 +363,7 @@ func (vc *VennChart) drawLabels2(data VennData, layouts []circleLayout) {
 		itemsStartY := pos.y + block.TotalHeight/2 + labelSize*0.4
 		itemsMaxH := maxItemsBottom - itemsStartY
 		fittedSize := vc.fitVennItemsFontSize(circle.Items, exclusiveWidth, itemSize, itemsMaxH, style)
-		vc.drawVennItemsAligned(circle.Items, pos.x, itemsStartY, exclusiveWidth, fittedSize, itemsMaxH, align.textAlign, style)
+		vc.drawVennItemsAligned(circle.Items, pos.x, itemsStartY, exclusiveWidth, fittedSize, itemsMaxH, align.textAlign, style, circle.Label)
 	}
 }
 
@@ -431,9 +436,9 @@ func (vc *VennChart) drawLabels3(data VennData, layouts []circleLayout) {
 		b.Pop()
 
 		itemsStartY := labelY + block.TotalHeight/2 + labelSize*0.4
-		itemsMaxH := cl.radius * 0.30
+		itemsMaxH := cl.radius * vennItemsHeightFrac
 		fittedSize := vc.fitVennItemsFontSize(circle.Items, exclusiveW, itemSize, itemsMaxH, style)
-		vc.drawVennItemsBudgeted(circle.Items, labelX, itemsStartY, exclusiveW, fittedSize, itemsMaxH, style)
+		vc.drawVennItemsBudgeted(circle.Items, labelX, itemsStartY, exclusiveW, fittedSize, itemsMaxH, style, circle.Label)
 	}
 }
 
@@ -495,7 +500,7 @@ func (vc *VennChart) drawIntersection2(data VennData, layouts []circleLayout) {
 	maxItemsBottom := iy + r*0.50
 	itemsMaxH := maxItemsBottom - labelBottomY
 	fittedSize := vc.fitVennItemsFontSize(region.Items, intersectWidth, itemSize, itemsMaxH, style)
-	vc.drawVennItemsBudgeted(region.Items, ix, labelBottomY, intersectWidth, fittedSize, itemsMaxH, style)
+	vc.drawVennItemsBudgeted(region.Items, ix, labelBottomY, intersectWidth, fittedSize, itemsMaxH, style, region.Label)
 }
 
 // drawIntersections3 draws labels in the intersection regions of 3 circles.
@@ -566,7 +571,7 @@ func (vc *VennChart) drawIntersections3(data VennData, layouts []circleLayout) {
 		itemsStartY := my + block.TotalHeight/2 + labelSize*0.3
 		pairItemsMaxH := r * 0.18
 		fittedPairSize := vc.fitVennItemsFontSize(region.Items, pairWidth, itemSize, pairItemsMaxH, style)
-		vc.drawVennItemsBudgeted(region.Items, mx, itemsStartY, pairWidth, fittedPairSize, pairItemsMaxH, style)
+		vc.drawVennItemsBudgeted(region.Items, mx, itemsStartY, pairWidth, fittedPairSize, pairItemsMaxH, style, region.Label)
 	}
 
 	// Triple intersection: "abc"
@@ -593,7 +598,7 @@ func (vc *VennChart) drawIntersections3(data VennData, layouts []circleLayout) {
 		itemsStartY := centerY + block.TotalHeight/2 + labelSize*0.3
 		tripleItemsMaxH := r * 0.18
 		fittedTripleSize := vc.fitVennItemsFontSize(region.Items, tripleWidth, itemSize, tripleItemsMaxH, style)
-		vc.drawVennItemsBudgeted(region.Items, centerX, itemsStartY, tripleWidth, fittedTripleSize, tripleItemsMaxH, style)
+		vc.drawVennItemsBudgeted(region.Items, centerX, itemsStartY, tripleWidth, fittedTripleSize, tripleItemsMaxH, style, region.Label)
 	}
 }
 
@@ -652,7 +657,7 @@ func (vc *VennChart) fitVennItemsFontSize(items []string, maxWidth, fontSize, ma
 }
 
 // drawVennItemsAligned draws items with a specific text alignment and vertical budget.
-func (vc *VennChart) drawVennItemsAligned(items []string, x, startY, maxWidth, fontSize, maxHeight float64, align TextAlign, style *StyleGuide) {
+func (vc *VennChart) drawVennItemsAligned(items []string, x, startY, maxWidth, fontSize, maxHeight float64, align TextAlign, style *StyleGuide, circleLabel string) {
 	if len(items) == 0 || maxHeight <= 0 {
 		return
 	}
@@ -668,6 +673,7 @@ func (vc *VennChart) drawVennItemsAligned(items []string, x, startY, maxWidth, f
 		lineSpacing *= style.Typography.LineHeight
 	}
 
+	drawn := 0
 	y := startY
 	for _, item := range items {
 		block := b.WrapText(item, maxWidth)
@@ -686,14 +692,16 @@ func (vc *VennChart) drawVennItemsAligned(items []string, x, startY, maxWidth, f
 			y += lineSpacing
 		}
 		y += lineSpacing * 0.15
+		drawn++
 	}
 
 	b.Pop()
+	vc.reportDroppedItems(len(items), drawn, circleLabel)
 }
 
 // drawVennItemsBudgeted draws items within a vertical height budget.
 // Items that would overflow maxHeight are omitted.
-func (vc *VennChart) drawVennItemsBudgeted(items []string, x, startY, maxWidth, fontSize, maxHeight float64, style *StyleGuide) {
+func (vc *VennChart) drawVennItemsBudgeted(items []string, x, startY, maxWidth, fontSize, maxHeight float64, style *StyleGuide, circleLabel string) {
 	if len(items) == 0 || maxHeight <= 0 {
 		return
 	}
@@ -710,6 +718,7 @@ func (vc *VennChart) drawVennItemsBudgeted(items []string, x, startY, maxWidth, 
 		lineSpacing *= style.Typography.LineHeight
 	}
 
+	drawn := 0
 	y := startY
 	for _, item := range items {
 		block := b.WrapText(item, maxWidth)
@@ -729,11 +738,54 @@ func (vc *VennChart) drawVennItemsBudgeted(items []string, x, startY, maxWidth, 
 			y += lineSpacing
 		}
 		y += lineSpacing * 0.15
+		drawn++
 	}
 
 	b.Pop()
+	vc.reportDroppedItems(len(items), drawn, circleLabel)
 }
 
+// vennMaxCircles is the largest set count a Venn can render readably.
+const vennMaxCircles = 3
+
+// vennItemsHeightFrac is the share of a circle's radius reserved for its
+// exclusive item list, below the circle label. At the previous 0.30 a
+// three-circle Venn had room for barely one short item, so ordinary 2-4 item
+// lists were silently truncated (go-slide-creator-onop).
+const vennItemsHeightFrac = 0.55
+
+// reportDroppedItems emits a diagram.items_dropped finding when a circle's item
+// list did not fit its budget. The items are gone from the picture by the time
+// this runs; the finding is what makes the loss visible, since the rendered
+// slide otherwise shows a labelled circle and nothing else.
+func (vc *VennChart) reportDroppedItems(total, drawn int, circleLabel string) {
+	if drawn >= total {
+		return
+	}
+	dropped := total - drawn
+	where := "a circle"
+	if circleLabel != "" {
+		where = fmt.Sprintf("circle %q", circleLabel)
+	}
+	vc.builder.AddFinding(Finding{
+		Field: "circles",
+		Code:  FindingDiagramItemsDropped,
+		Message: fmt.Sprintf(
+			"venn: %d of %d item(s) in %s did not fit and were not rendered — shorten the items, list fewer of them, or move the detail to a text column beside the diagram",
+			dropped, total, where),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind: FixKindReduceItems,
+			Params: map[string]any{
+				"dropped_count": dropped,
+				"total_count":   total,
+				"rendered":      drawn,
+				"circle":        circleLabel,
+				"diagram_type":  "venn",
+			},
+		},
+	})
+}
 
 // blendColors creates a simple average blend of two colors.
 func blendColors(a, b Color) Color {
@@ -792,7 +844,14 @@ func (d *VennDiagram) Validate(req *RequestEnvelope) error {
 	if len(circleSlice) < 2 {
 		return fmt.Errorf("venn diagram requires at least 2 circles (got %d). Provide at least: [{\"label\": \"Set A\"}, {\"label\": \"Set B\"}]", len(circleSlice))
 	}
-	// Allow >3 circles in input — parseVennData will use the first 3.
+	// A 4+ set Venn has no readable planar form. Extra circles used to be
+	// silently dropped here — 5 circles rendered 3 with no notice at all — so
+	// the limit is now part of the data contract (go-slide-creator-onop).
+	if len(circleSlice) > vennMaxCircles {
+		return fmt.Errorf(
+			"venn diagram accepts at most %d circles, got %d — a 4+ set Venn has no readable planar form; use a matrix_2x2, a card grid, or split the comparison across slides",
+			vennMaxCircles, len(circleSlice))
+	}
 
 	return nil
 }
@@ -836,7 +895,8 @@ func parseVennData(req *RequestEnvelope) (VennData, error) {
 		Subtitle: req.Subtitle,
 	}
 
-	// Parse circles (cap at 3 — use first 3 if more provided).
+	// Parse circles. Validate has already refused more than vennMaxCircles, so
+	// nothing is dropped here.
 	// Accept "sets" as alias for "circles".
 	circlesKey := req.Data["circles"]
 	if circlesKey == nil {
@@ -845,9 +905,6 @@ func parseVennData(req *RequestEnvelope) (VennData, error) {
 	circlesRaw, ok := toAnySlice(circlesKey)
 	if !ok {
 		return data, fmt.Errorf("invalid venn circles format")
-	}
-	if len(circlesRaw) > 3 {
-		circlesRaw = circlesRaw[:3]
 	}
 
 	for _, cRaw := range circlesRaw {

@@ -94,11 +94,15 @@ func TestVennChart_Draw(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "4 circles gracefully uses first 3",
+			// 4+ circles used to be silently truncated to the first 3, so a
+			// 5-circle request rendered 3 with no notice at all. A 4-set Venn
+			// has no readable planar form, so it is refused
+			// (go-slide-creator-onop).
+			name: "4 circles are refused, not silently truncated",
 			data: VennData{Circles: []VennCircle{
 				{Label: "A"}, {Label: "B"}, {Label: "C"}, {Label: "D"},
 			}},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 
@@ -193,7 +197,10 @@ func TestVennDiagram_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "4 circles gracefully uses first 3",
+			// A 4-set Venn has no readable planar form, so the extra circles
+			// are refused rather than silently dropped — the previous
+			// behaviour rendered 3 of 5 with no notice (go-slide-creator-onop).
+			name: "4 circles are refused, not silently truncated",
 			req: &RequestEnvelope{
 				Type: "venn",
 				Data: map[string]any{
@@ -205,7 +212,7 @@ func TestVennDiagram_Validate(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "valid 2-circle using sets alias",
