@@ -123,9 +123,11 @@ func TestGenerateTableXML_HeaderStyling(t *testing.T) {
 	}
 }
 
-func TestGenerateTableXML_NoHeaderFillWhenOmitted(t *testing.T) {
-	// When HeaderBackground is empty (default), no solidFill should be emitted
-	// so the table style's firstRow appearance takes effect.
+func TestGenerateTableXML_DefaultHeaderFillWhenOmitted(t *testing.T) {
+	// go-slide-creator-weaq: when HeaderBackground is empty and no explicit
+	// table style was chosen, the engine renders the default header: accent1
+	// fill, bold, lt1 text (most templates do not ship the default GUID style,
+	// so deferring to it rendered plain headers).
 	table := &types.TableSpec{
 		Headers: []string{"Header 1"},
 		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
@@ -141,15 +143,27 @@ func TestGenerateTableXML_NoHeaderFillWhenOmitted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	// The tcPr should close immediately after borders — no solidFill between borders and </a:tcPr>
-	if strings.Contains(result.XML, `<a:schemeClr val="accent1"/></a:solidFill></a:tcPr>`) {
-		t.Error("header cell should not contain accent1 solidFill when HeaderBackground is empty")
+	firstRow := result.XML[strings.Index(result.XML, "<a:tr "):strings.Index(result.XML, "</a:tr>")]
+	if !strings.Contains(firstRow, `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:tcPr>`) {
+		t.Errorf("default header should have accent1 fill: %s", firstRow)
 	}
-	// More broadly: no fill element should appear as direct child of tcPr for header cells.
-	// solidFill inside <a:ln> (borders) is fine; we check that no schemeClr fill precedes </a:tcPr>.
+	if !strings.Contains(firstRow, `b="1"`) || !strings.Contains(firstRow, `<a:schemeClr val="lt1"/>`) {
+		t.Errorf("default header should be bold lt1 text: %s", firstRow)
+	}
+}
+
+func TestGenerateTableXML_NoHeaderFillWhenNone(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Header 1"},
+		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}}},
+		Style:   types.TableStyle{HeaderBackground: "none", Borders: "all"},
+	}
+	result, err := GenerateTableXML(table, TableRenderConfig{Bounds: types.BoundingBox{Width: 1000000}, Style: table.Style})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if strings.Contains(result.XML, `</a:solidFill></a:tcPr>`) {
-		t.Error("header cell tcPr should not end with a solidFill when HeaderBackground is empty")
+		t.Error("header_background none should not emit a header fill")
 	}
 }
 
@@ -161,7 +175,8 @@ func TestGenerateTableXML_HeaderTextNotOverriddenWithStyle(t *testing.T) {
 	table := &types.TableSpec{
 		Headers: []string{"Header 1", "Header 2"},
 		Rows:    [][]types.TableCell{{{Content: "A", ColSpan: 1, RowSpan: 1}, {Content: "B", ColSpan: 1, RowSpan: 1}}},
-		Style:   types.TableStyle{HeaderBackground: "", StyleID: types.DefaultTableStyleID, Borders: "all"},
+		// An explicitly chosen (non-default) table style controls the header.
+		Style: types.TableStyle{HeaderBackground: "", StyleID: "{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}", Borders: "all"},
 	}
 
 	config := TableRenderConfig{

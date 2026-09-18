@@ -75,6 +75,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	if config.DefaultFont == "" {
 		config.DefaultFont = defaultFontFamily
 	}
+	applyDefaultTableStyling(table, &config)
 
 	// Strict-fit path: measure every cell at the user-specified font size
 	// BEFORE the shrink chain. If any cell overflows, return a ValidationError
@@ -229,7 +230,13 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// cap totalHeight to bounds so the table doesn't overflow the slide.
 	var rowHeight, totalHeight int64
 	if config.Bounds.Height > 0 {
+		// Content-driven: rows are sized for their text (renderers grow rows
+		// that wrap) instead of being stretched to fill the placeholder, which
+		// produced tall rows with small text. Never exceed the even split.
 		computedRowHeight := config.Bounds.Height / int64(numRows)
+		if natural := contentRowHeight(config.DefaultSize); computedRowHeight > natural {
+			computedRowHeight = natural
+		}
 		if computedRowHeight < defaultRowHeight {
 			computedRowHeight = defaultRowHeight
 		}
@@ -307,7 +314,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		if rowIdx == summaryRowIdx {
 			xml.WriteString(generateSummaryRow(row, rowIdx, rowHeight, config))
 		} else {
-			isTotals := config.Style.TotalsRow && rowIdx == lastDataRowIdx
+			isTotals := (config.Style.TotalsRow && rowIdx == lastDataRowIdx) || isTotalRow(row)
 			xml.WriteString(generateDataRow(row, rowIdx, rowHeight, config, isTotals))
 		}
 	}
@@ -747,6 +754,13 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 		algn = "r"
 	}
 
+	rPr := fmt.Sprintf(`<a:rPr lang="en-US" sz="%d" b="%s"/>`, fontSize, bold)
+	if isHeader {
+		if color := headerTextColorXML(config); color != "" {
+			rPr = fmt.Sprintf(`<a:rPr lang="en-US" sz="%d" b="%s">%s</a:rPr>`, fontSize, bold, color)
+		}
+	}
+
 	return fmt.Sprintf(
 		`<a:txBody>`+
 			`<a:bodyPr wrap="square" vert="horz" lIns="%d" rIns="%d" tIns="%d" bIns="%d" spcFirstLastPara="1">`+
@@ -754,11 +768,11 @@ func generateCellContent(text string, isHeader bool, config TableRenderConfig, c
 			`</a:bodyPr>`+
 			`<a:lstStyle/>`+
 			`<a:p><a:pPr algn="%s"/><a:r>`+
-			`<a:rPr lang="en-US" sz="%d" b="%s"/>`+
+			`%s`+
 			`<a:t>%s</a:t>`+
 			`</a:r></a:p></a:txBody>`,
 		cellMargin, cellMargin, cellMargin/2, cellMargin/2,
-		algn, fontSize, bold, escapeXMLText(text),
+		algn, rPr, escapeXMLText(text),
 	)
 }
 

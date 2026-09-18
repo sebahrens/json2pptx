@@ -25,6 +25,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `shrink_text`) with a measured `max_chars`. Quality-score title issues read
   "title (N chars) only fits its title placeholder at P% …" instead of
   "title too long (N chars, max 60)" when the template is known.
+- **Default table styling.** Tables without explicit style fields now render an
+  `accent1` bold/`lt1` header, right-aligned detected numeric columns, an
+  emphasised `Total`/`Sum` row (bold + top rule) and content-driven row heights.
+  No schema change; explicit style fields opt out (see `docs/STYLE_DEFAULTS.md`).
 - Title placeholders that fit by shrinking now carry the reduced size as an
   explicit run `sz` (plus `lnSpc` when line spacing is reduced) with a bare
   `<a:normAutofit/>`, instead of `<a:normAutofit fontScale=…>`.

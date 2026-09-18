@@ -95,6 +95,19 @@ Result for this table:
 
 If a table has **no** `style` object at all, the entire default is adopted as a single unit.
 
+## Engine Table Defaults (no style authored)
+
+Independent of the `defaults` block, the renderer applies a consulting-grade table look whenever the author leaves the relevant field unset (go-slide-creator-weaq). Only theme scheme colors are used, so the look follows the template:
+
+| Aspect | Default | Applies when | Opt out |
+|--------|---------|--------------|---------|
+| Header row | `accent1` fill, bold, `lt1` text | `header_background` unset, `use_table_style` false, and `style_id` unset or the engine default GUID | set `header_background` (e.g. `"none"`, `"lt2"`), `use_table_style: true`, or an explicit `style_id` |
+| Numeric columns | right-aligned (data and header) | `column_types` unset; a column whose every non-empty cell reads as a number (`24.1`, `+4%`, `$1.2M`, `2.8x`, `(3.0)`) | set `column_types` or a per-column `column_alignments` entry |
+| Total row | bold with a `dk1` top rule | first cell is `Total` / `Totals` / `Grand total` / `Sum` / `Subtotal` (case-insensitive) — in addition to `totals_row: true` for the last row | rename the label |
+| Row height | content-driven minimum (one line at the table font plus insets, never below 0.4in); rows are no longer stretched to fill the placeholder | always | — |
+
+A header with an explicit dark scheme `header_background` (`accent1`–`accent6`, `dk1`, `dk2`, `tx1`, `tx2`) also gets `lt1` header text.
+
 ## Application Order
 
 Defaults are applied **after** JSON unmarshal but **before** struct validation or conversion into internal types. The call sequence is:
