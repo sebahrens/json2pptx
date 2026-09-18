@@ -737,6 +737,22 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			}
 		}
 
+		// Pattern values: generate validates every named pattern against the
+		// pattern's own value schema and refuses the deck on failure, so
+		// validate must run the same check rather than silently accepting a
+		// deck generate will reject (go-slide-creator-xvek).
+		patternCtx := patterns.ExpandContext{
+			Theme:       analysis.Theme,
+			Metadata:    analysis.Metadata,
+			SlideWidth:  analysis.SlideWidth,
+			SlideHeight: analysis.SlideHeight,
+			SlideIndex:  i,
+		}
+		if pd := slidePatternDiagnostics(&slideInput, i, patternCtx, patterns.Default()); len(pd) > 0 {
+			output.Valid = false
+			output.Diagnostics = append(output.Diagnostics, pd...)
+		}
+
 		// Grid diagram data: generate aborts on svggen validation failures in
 		// shape_grid diagrams, including those produced by pattern expansion
 		// (e.g. chart-insights-split), so report them as errors here.

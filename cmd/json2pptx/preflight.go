@@ -14,7 +14,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
-	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -279,16 +278,18 @@ func requiredTopLevelDiags(input *PresentationInput) []diagnostics.Diagnostic {
 	return out
 }
 
-// collectPatternResolutionDiags expands every slide-level pattern and compose
-// envelope and reports expansion failures as PATTERN-stage errors. It uses a
-// minimal ExpandContext (the structural resolvers only need slide geometry and
-// the template theme/metadata), mirroring expandComposeForPreflight.
+// collectPatternResolutionDiags expands every slide-level pattern, compose
+// envelope, and cell-level nested pattern, reporting expansion failures as
+// PATTERN-stage errors. It uses a minimal ExpandContext (the structural
+// resolvers only need slide geometry and the template theme/metadata),
+// mirroring expandComposeForPreflight, and shares slidePatternDiagnostics with
+// the validate / validate_input path so all three agree with generate.
 func collectPatternResolutionDiags(input *PresentationInput, analysis *types.TemplateAnalysis) []diagnostics.Diagnostic {
 	reg := patterns.Default()
 	var out []diagnostics.Diagnostic
 	for i := range input.Slides {
 		s := &input.Slides[i]
-		if s.Pattern == nil && s.Compose == nil {
+		if s.Pattern == nil && s.Compose == nil && s.ShapeGrid == nil {
 			continue
 		}
 		ctx := patterns.ExpandContext{
@@ -298,26 +299,7 @@ func collectPatternResolutionDiags(input *PresentationInput, analysis *types.Tem
 			SlideHeight: analysis.SlideHeight,
 			SlideIndex:  i,
 		}
-		switch {
-		case s.Pattern != nil:
-			if _, _, err := expandPattern(s.Pattern, ctx, reg); err != nil {
-				out = append(out, diagnostics.Diagnostic{
-					Code:     diagnostics.CodePatternError,
-					Path:     slidepath.SlideField(i, "pattern"),
-					Message:  fmt.Sprintf("slide %d: %v", i+1, err),
-					Severity: diagnostics.SeverityError,
-				})
-			}
-		case s.Compose != nil:
-			if _, _, err := expandCompose(s.Compose, ctx, reg); err != nil {
-				out = append(out, diagnostics.Diagnostic{
-					Code:     diagnostics.CodePatternError,
-					Path:     slidepath.SlideField(i, "compose"),
-					Message:  fmt.Sprintf("slide %d: %v", i+1, err),
-					Severity: diagnostics.SeverityError,
-				})
-			}
-		}
+		out = append(out, slidePatternDiagnostics(s, i, ctx, reg)...)
 	}
 	return out
 }

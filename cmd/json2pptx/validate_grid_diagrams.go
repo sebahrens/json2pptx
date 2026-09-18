@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -96,4 +98,81 @@ func gridDiagramValidationDiagnostics(grid *ShapeGridInput, slideIdx int, label,
 		}
 	}
 	return out
+}
+
+// slidePatternDiagnostics runs the SAME pattern resolution generate runs over
+// one slide — compose envelope, slide-level named pattern, and any cell-level
+// nested patterns — and reports every failure as a blocking diagnostic.
+//
+// Before this existed, validate / validate_input expanded patterns only to
+// harvest geometry findings and discarded the expansion error, so a deck whose
+// pattern values violate the pattern's own value schema (over maxLength, under
+// minItems, an unknown bundled icon name) was reported VALID and then refused
+// by generate with INPUT.INVALID_SLIDE. Agents following the documented
+// validate-then-render loop burned a full round-trip per mistake
+// (go-slide-creator-xvek).
+//
+// The expansion order mirrors convertSinglePresentationSlide exactly: compose
+// first (it produces the grid), then a slide-level pattern (which replaces it),
+// then nested cell patterns over whichever grid resulted. Stopping at the first
+// failing stage matches generate, which aborts there.
+func slidePatternDiagnostics(slide *SlideInput, slideIdx int, ctx patterns.ExpandContext, reg *patterns.Registry) []diagnostics.Diagnostic {
+	if slide == nil {
+		return nil
+	}
+
+	patternErr := func(field string, err error) []diagnostics.Diagnostic {
+		return []diagnostics.Diagnostic{{
+			Code:     diagnostics.CodePatternError,
+			Path:     slidepath.SlideField(slideIdx, field),
+			Message:  fmt.Sprintf("slide %d: %v (generate would refuse this deck)", slideIdx+1, err),
+			Severity: diagnostics.SeverityError,
+		}}
+	}
+
+	grid := slide.ShapeGrid
+	if slide.Compose != nil {
+		expanded, _, err := expandCompose(slide.Compose, ctx, reg)
+		if err != nil {
+			return patternErr("compose", err)
+		}
+		grid = expanded
+	}
+	if slide.Pattern != nil {
+		expanded, _, err := expandPattern(slide.Pattern, ctx, reg)
+		if err != nil {
+			return patternErr("pattern", err)
+		}
+		grid = expanded
+	}
+	if grid != nil {
+		// expandNestedCellPatterns mutates the grid it walks, so a grid that
+		// came straight off the input is cloned first — validate must never
+		// rewrite the caller's deck.
+		if grid == slide.ShapeGrid {
+			cloned, err := cloneShapeGrid(grid)
+			if err != nil {
+				return patternErr("shape_grid", err)
+			}
+			grid = cloned
+		}
+		if err := expandNestedCellPatterns(grid, ctx, reg); err != nil {
+			return patternErr("shape_grid", err)
+		}
+	}
+	return nil
+}
+
+// cloneShapeGrid deep-copies a shape grid via its JSON representation so
+// validation-time expansion cannot mutate the caller's input.
+func cloneShapeGrid(grid *ShapeGridInput) (*ShapeGridInput, error) {
+	data, err := json.Marshal(grid)
+	if err != nil {
+		return nil, fmt.Errorf("shape_grid: %w", err)
+	}
+	var out ShapeGridInput
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, fmt.Errorf("shape_grid: %w", err)
+	}
+	return &out, nil
 }

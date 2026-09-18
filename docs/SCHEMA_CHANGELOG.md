@@ -28,6 +28,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`validate` / `validate_input` now run pattern value-schema validation
+  (go-slide-creator-xvek).** Named-pattern values were never checked against the
+  pattern's own schema during validation, so a deck reported VALID (`ok: true`,
+  "no issues") was then refused by `generate` with `INPUT.INVALID_SLIDE` —
+  `kpi-3up: values[0].small exceeds maxLength 40`, `exec-summary` `minItems`,
+  `icon-row` unknown bundled icon names, missing required fields. The validate
+  path now runs the same expansion `generate` runs over every slide-level
+  `pattern`, `compose` envelope, and cell-level nested pattern, reporting
+  failures as `PATTERN_ERROR` errors at `/slides/{i}/pattern`,
+  `/slides/{i}/compose`, or `/slides/{i}/shape_grid` carrying generate's own
+  message. `preflight` shares the same helper and now covers nested cell
+  patterns too.
 - **Last slide with visual content no longer lands on the Closing layout
   (go-slide-creator-lhq6).** Layout scoring withheld the last-slide "closing"
   bonus only by `slide_type`, so a `content` slide carrying an image, chart,
