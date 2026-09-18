@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"log/slog"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
@@ -92,6 +93,15 @@ type skillInfoOptions struct {
 	// NoPreview skips layout-preview PNG generation (and the cache writes it
 	// performs), making analysis side-effect-free for read-only discovery.
 	NoPreview bool
+
+	// LogicalName is the name an agent can actually pass back as
+	// `template`. It must be set whenever the analysed path may not be the
+	// template's identity: an EMBEDDED template is extracted to an
+	// os.CreateTemp file, so deriving the name from the path reported
+	// "json2pptx-template-2729383514" — unusable in generate, and different on
+	// every call (go-slide-creator-ccpv). Empty falls back to the file's base
+	// name, which is correct for templates read from a directory.
+	LogicalName string
 }
 
 // skillComposeEntry describes the compose envelope feature for agents browsing
@@ -212,7 +222,13 @@ type skillTableStyle struct {
 type skillTemplateInfo struct {
 	Name        string `json:"name"`
 	AspectRatio string `json:"aspect_ratio,omitempty"`
-	LayoutCount int    `json:"layout_count,omitempty"`
+	// SlideWidthIn / SlideHeightIn are the real slide size in inches. The
+	// compact projection exposes them alongside aspect_ratio so an agent sizing
+	// columns and text lengths can see the actual canvas rather than inferring
+	// it from a ratio name (go-slide-creator-r9nn).
+	SlideWidthIn  float64 `json:"slide_width_in,omitempty"`
+	SlideHeightIn float64 `json:"slide_height_in,omitempty"`
+	LayoutCount   int     `json:"layout_count,omitempty"`
 	Error       string `json:"error,omitempty"`
 	// SHA256 is the content hash of the template file (template.Reader.Hash()).
 	// Agents use it as a stable identity / cache key to detect when a template
@@ -509,11 +525,16 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		return skillTemplateInfo{}, err
 	}
 
-	name := strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
+	name := opts.LogicalName
+	if name == "" {
+		name = strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
+	}
 	info := skillTemplateInfo{
 		Name:        name,
 		AspectRatio: analysis.AspectRatio,
 		LayoutCount: len(analysis.Layouts),
+		SlideWidthIn:  emuToInches(analysis.SlideWidth),
+		SlideHeightIn: emuToInches(analysis.SlideHeight),
 	}
 
 	// Always include table_styles (empty array, never null).
@@ -1246,4 +1267,14 @@ func printSkillInfoText(info skillInfo, mode string) {
 		fmt.Printf("  Bundled Catalog: %s\n", info.IconPolicy.BundledCatalog)
 		fmt.Printf("  %s\n", info.IconPolicy.Description)
 	}
+}
+
+
+// emuToInches converts an EMU length to inches, rounded to three decimals.
+// 914400 EMU = 1 inch.
+func emuToInches(emu int64) float64 {
+	if emu <= 0 {
+		return 0
+	}
+	return math.Round(float64(emu)/914400*1000) / 1000
 }

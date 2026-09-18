@@ -116,8 +116,16 @@ func runValidateTemplate() error {
 	// Apply metadata hints to layouts
 	template.ApplyMetadataHints(layouts, validationResult.Metadata)
 
-	// Determine aspect ratio
-	aspectRatio := "16:9"
+	// Extract actual slide dimensions from presentation.xml.
+	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
+
+	// Determine aspect ratio FROM THE SLIDE SIZE, not from a hardcoded default.
+	// It used to default to "16:9" and only change when template metadata said
+	// otherwise, so a 10x7.5in (4:3) or 17.5x7.5in (21:9) template was reported
+	// as widescreen — and list_templates fields=compact exposes nothing but this
+	// ratio (go-slide-creator-r9nn). Explicit metadata still wins: a template
+	// author may declare an intended ratio.
+	aspectRatio := template.AspectRatio(slideWidth, slideHeight)
 	if validationResult.Metadata != nil && validationResult.Metadata.AspectRatio != "" {
 		aspectRatio = validationResult.Metadata.AspectRatio
 	}

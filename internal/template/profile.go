@@ -3,6 +3,7 @@ package template
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -218,15 +219,41 @@ func resolveLayoutRelationships(reader *Reader, layoutID string) (string, string
 }
 
 func aspectRatio(width, height int64) string {
+	return AspectRatio(width, height)
+}
+
+// namedAspectRatios are the ratios worth reporting by name, with the tolerance
+// each is recognised within. Order matters only for readability; the bands do
+// not overlap.
+var namedAspectRatios = []struct {
+	name     string
+	ratio    float64
+	tolerance float64
+}{
+	{"4:3", 4.0 / 3.0, 0.03},
+	{"16:10", 1.6, 0.02},
+	{"16:9", 16.0 / 9.0, 0.06},
+	{"21:9", 21.0 / 9.0, 0.06},
+}
+
+// AspectRatio reports a slide size as an aspect-ratio string: a recognised name
+// ("4:3", "16:10", "16:9", "21:9") when the dimensions land within tolerance of
+// one, otherwise a decimal "W.WWW:1" form.
+//
+// Callers used to hardcode "16:9" and only override it from template metadata,
+// so a 10x7.5in template was reported as widescreen — and list_templates
+// fields=compact exposes nothing but the ratio, so an agent sizing columns and
+// text for a 4:3 corporate deck was told it had 16:9 to work with
+// (go-slide-creator-r9nn).
+func AspectRatio(width, height int64) string {
 	if width <= 0 || height <= 0 {
 		return "unknown"
 	}
 	r := float64(width) / float64(height)
-	if r > 1.7 && r < 1.82 {
-		return "16:9"
-	}
-	if r > 1.3 && r < 1.36 {
-		return "4:3"
+	for _, named := range namedAspectRatios {
+		if math.Abs(r-named.ratio) <= named.tolerance {
+			return named.name
+		}
 	}
 	return fmt.Sprintf("%.3f:1", r)
 }

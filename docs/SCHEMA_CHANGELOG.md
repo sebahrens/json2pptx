@@ -8,6 +8,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`list_templates` reports the real slide size and a real aspect ratio
+  (go-slide-creator-r9nn, go-slide-creator-ccpv).** Two discovery defects:
+  `aspect_ratio` was hardcoded to `"16:9"` and only overridden by template
+  metadata, so a 10x7.5in (4:3) or 17.5x7.5in (21:9) template was reported as
+  widescreen — and `fields=compact` exposes nothing but the ratio. It is now
+  computed from the slide size via the newly exported
+  `template.AspectRatio(width, height)`, which also recognises `4:3`, `16:10`
+  and `21:9` and falls back to a decimal `W.WWW:1` form; explicit metadata still
+  wins. Each entry additionally carries `slide_width_in` / `slide_height_in`.
+  Separately, with a custom `--templates-dir` every embedded template was listed
+  under its `os.CreateTemp` filename (`json2pptx-template-2729383514`, different
+  on every call and rejected by `generate` as `TEMPLATE_NOT_FOUND`); entries now
+  carry the logical name.
+
 - **`waterfall-bridge` fills follow the template's `semantic_accents`
   (go-slide-creator-noa7).** `negative_accent` defaulted to the literal
   `accent2` and never consulted template metadata, so on modern-template

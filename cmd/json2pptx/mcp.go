@@ -705,9 +705,12 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	start, end, nextCursor := paginationSlice(totalCount, offset, pageSize)
 	pagedTemplates := resolved[start:end]
 
-	skillOpts := skillInfoOptions{NoPreview: readOnly}
 	var templates []skillTemplateInfo
 	for _, rt := range pagedTemplates {
+		// Pass the LOGICAL name: an embedded template's resolved path is an
+		// os.CreateTemp file, so the path's base name is neither stable nor
+		// usable as a `template` argument (go-slide-creator-ccpv).
+		skillOpts := skillInfoOptions{NoPreview: readOnly, LogicalName: rt.name}
 		info, err := analyzeTemplateForSkillInfoOpts(rt.path, mc.cache, mode, skillOpts)
 		if err != nil {
 			slog.Error("failed to analyze template", "template", rt.name, "error", err)

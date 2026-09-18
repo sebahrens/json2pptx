@@ -756,3 +756,84 @@ func TestAnalyzeTemplateForSkillInfo_NoCanonicalMetadataInListMode(t *testing.T)
 		t.Error("list mode: sha256 should be omitted (compact+full only)")
 	}
 }
+
+// go-slide-creator-ccpv: with --templates-dir set, every embedded template was
+// listed under its os.CreateTemp filename ("json2pptx-template-2729383514"),
+// which changes on every call and is rejected by generate as
+// TEMPLATE_NOT_FOUND. The logical name must win over the resolved path.
+func TestAnalyzeTemplateForSkillInfo_UsesLogicalName(t *testing.T) {
+	// Copy a bundled template to a temp path whose base name is NOT its logical
+	// name, mirroring what resolveTemplatePath does for embedded templates.
+	src := filepath.Join("..", "..", "templates", "modern-template.pptx")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Skipf("bundled template not readable: %v", err)
+	}
+	tmp := filepath.Join(t.TempDir(), "json2pptx-template-2729383514.pptx")
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		t.Fatalf("write temp template: %v", err)
+	}
+
+	cache := template.NewMemoryCache(time.Minute)
+
+	withName, err := analyzeTemplateForSkillInfoOpts(tmp, cache, "compact",
+		skillInfoOptions{NoPreview: true, LogicalName: "modern-template"})
+	if err != nil {
+		t.Fatalf("analyze with logical name: %v", err)
+	}
+	if withName.Name != "modern-template" {
+		t.Errorf("name = %q, want the logical name %q", withName.Name, "modern-template")
+	}
+
+	// With no logical name the file's base name is still used — correct for a
+	// template read straight from a directory.
+	withoutName, err := analyzeTemplateForSkillInfoOpts(tmp, cache, "compact",
+		skillInfoOptions{NoPreview: true})
+	if err != nil {
+		t.Fatalf("analyze without logical name: %v", err)
+	}
+	if withoutName.Name != "json2pptx-template-2729383514" {
+		t.Errorf("name = %q, want the file base name", withoutName.Name)
+	}
+}
+
+// go-slide-creator-r9nn: the compact projection must carry the real slide size
+// next to the aspect ratio.
+func TestAnalyzeTemplateForSkillInfo_ReportsSlideDimensions(t *testing.T) {
+	src := filepath.Join("..", "..", "templates", "modern-template.pptx")
+	if _, err := os.Stat(src); err != nil {
+		t.Skipf("bundled template not present: %v", err)
+	}
+
+	info, err := analyzeTemplateForSkillInfoOpts(src, template.NewMemoryCache(time.Minute), "compact",
+		skillInfoOptions{NoPreview: true, LogicalName: "modern-template"})
+	if err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+	if info.SlideWidthIn <= 0 || info.SlideHeightIn <= 0 {
+		t.Fatalf("slide dimensions missing: %gin x %gin", info.SlideWidthIn, info.SlideHeightIn)
+	}
+	// modern-template is a standard 13.333 x 7.5in widescreen deck.
+	if info.SlideWidthIn != 13.333 || info.SlideHeightIn != 7.5 {
+		t.Errorf("slide size = %gin x %gin, want 13.333 x 7.5", info.SlideWidthIn, info.SlideHeightIn)
+	}
+	if info.AspectRatio != "16:9" {
+		t.Errorf("aspect_ratio = %q, want 16:9", info.AspectRatio)
+	}
+}
+
+func TestEmuToInches(t *testing.T) {
+	cases := map[int64]float64{
+		0:        0,
+		-1:       0,
+		914400:   1,
+		12192000: 13.333,
+		6858000:  7.5,
+		9144000:  10,
+	}
+	for emu, want := range cases {
+		if got := emuToInches(emu); got != want {
+			t.Errorf("emuToInches(%d) = %g, want %g", emu, got, want)
+		}
+	}
+}
