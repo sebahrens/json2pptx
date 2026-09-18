@@ -165,7 +165,7 @@ positionally (`json2pptx describe-finding <code>`) or via `-code`. The
 `describe_finding` lookup is the single read surface for code metadata: it
 resolves every code in this section — the lowercase fit/pattern codes and dotted
 `chart.*` codes from `internal/patterns`, plus every `SCREAMING_SNAKE` code
-declared in `internal/diagnostics/codes.go` (`MISSING_PARAMETER`,
+declared in `internal/diagnostics/codes.go` (`MISSING_PARAMETER`, `UNKNOWN_PARAMETER`,
 `TEMPLATE_NOT_FOUND`, `RENDER_FAILED`, `INTERNAL`, …) backed by the registry in
 `internal/diagnostics/describe.go`. `TestDescribeCoversAllDiagnosticCodes` fails
 CI when a declared code has no describe entry.

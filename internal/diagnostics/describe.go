@@ -112,6 +112,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeMissingParameter, CodeInvalidJSON, CodeUnknownEnum},
 	},
+	CodeUnknownParameter: {
+		Code:        CodeUnknownParameter,
+		Summary:     "A tool call supplied an argument the tool does not accept.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "Every MCP tool call is checked against the tool's input schema before the handler runs; an argument name the schema does not declare is rejected instead of being silently ignored (e.g. plan_deck slide_count, whose real name is slide_budget).",
+		RemediationSteps: []string{
+			"Rename the argument at evidence.path to fix.params.did_you_mean (also named in the message), or remove it.",
+			"The message lists every accepted argument; tools/list carries the full input schema.",
+		},
+		ExampleBefore: `plan_deck({"brief": "...", "slide_count": 8})`,
+		ExampleAfter:  `plan_deck({"brief": "...", "slide_budget": 8})`,
+		RelatedCodes:  []string{CodeInvalidParameter, CodeMissingParameter},
+	},
 	CodeInvalidGrid: {
 		Code:        CodeInvalidGrid,
 		Summary:     "A shape_grid is structurally invalid.",

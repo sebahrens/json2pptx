@@ -26,6 +26,11 @@ const (
 	// for a request whose normalized fingerprint differs from the cached one —
 	// replaying would return a deck for the wrong content.
 	CodeIdempotencyConflict Code = "IDEMPOTENCY_CONFLICT"
+
+	// CodeUnknownParameter is emitted when an MCP tool call carries an
+	// argument the tool's input schema does not declare (strict argument
+	// decoding). The diagnostic carries a did_you_mean suggestion.
+	CodeUnknownParameter Code = "UNKNOWN_PARAMETER"
 )
 
 // Template family — template lookup, parsing, and metadata-validation failures.
@@ -153,6 +158,7 @@ func AllCodes() []Code {
 		// Input
 		CodeMissingParameter,
 		CodeInvalidParameter,
+		CodeUnknownParameter,
 		CodeInvalidGrid,
 		CodeInvalidJSON,
 		CodeInvalidKey,

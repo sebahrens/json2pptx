@@ -201,6 +201,7 @@ Boundary-error mappings used by the candidate-decision tools:
 - `MISSING_PARAMETER` on `template` (or `TEMPLATE_NOT_FOUND` / `TEMPLATE_ERROR`) → `list_templates`
 - `MISSING_PARAMETER` on `brief` / `intent` → retry the same tool with the missing argument
 - `INVALID_PARAMETER` for an unknown pattern name → `list_patterns`
+- `UNKNOWN_PARAMETER` (any tool) → the argument name is not accepted by the tool; rename it to `fix.params.did_you_mean` (e.g. `plan_deck` `slide_count` → `slide_budget`) and retry via `next_tool_call`
 - `STRUCTURE_AND_SLIDES` on `structure` → remove one of the two — `structure` and top-level `slides` are mutually exclusive. The `fix.params.field` names which side to drop (`"slides"`).
 - `INVALID_STRUCTURE` on `structure` → repair the structure block (missing section title, empty sections, section with no slides). The underlying expansion error is in `fix.params.error`.
 

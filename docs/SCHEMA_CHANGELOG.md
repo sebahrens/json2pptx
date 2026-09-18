@@ -4,6 +4,19 @@ Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.
 
+## Unreleased — strict MCP arguments (go-slide-creator-s9uq)
+
+### Changed
+
+- **Unknown MCP tool arguments are rejected.** Every tool call is checked against
+  the tool's declared input schema by a server-level middleware; an undeclared
+  argument name now fails the call with the new code **`UNKNOWN_PARAMETER`**
+  (`INPUT` namespace, `path` = the argument) instead of being silently ignored.
+  The message lists the accepted arguments; when a close name exists the
+  diagnostic carries `fix: {kind: "rename_field", params: {from, to,
+  did_you_mean}}` and a `next_tool_call` retry (e.g. `plan_deck` `slide_count` →
+  `slide_budget`). `make_deck` keeps accepting the legacy `max_passes` alias.
+
 ## Unreleased — closed DeckSpec schema (go-slide-creator-h8o7, go-slide-creator-dg8f)
 
 ### Changed

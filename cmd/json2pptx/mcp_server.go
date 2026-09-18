@@ -86,6 +86,25 @@ func newServerMCPConfig(cfg config.Config) *mcpConfig {
 	}
 }
 
+// newMCPServer builds the json2pptx MCP server with every tool registered and
+// the server-wide options production relies on: strict argument decoding
+// (unknown tool arguments are rejected with UNKNOWN_PARAMETER + did_you_mean,
+// see mcp_strict_args.go). runMCP and the server-level tests share it so the
+// behaviour under test is the behaviour that ships. extra options (e.g. hooks)
+// are appended.
+func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer {
+	var s *server.MCPServer
+	opts := []server.ServerOption{
+		server.WithToolCapabilities(false),
+		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
+			return s.GetTool(name)
+		})),
+	}
+	s = server.NewMCPServer("json2pptx", Version, append(opts, extra...)...)
+	registerMCPTools(s, mc)
+	return s
+}
+
 // runMCP starts an MCP server over stdio, exposing json2pptx tools.
 func runMCP() error {
 	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
@@ -159,14 +178,7 @@ func runMCP() error {
 		result.Capabilities.Experimental["compact_responses"] = true
 	})
 
-	s := server.NewMCPServer(
-		"json2pptx",
-		Version,
-		server.WithToolCapabilities(false),
-		server.WithHooks(hooks),
-	)
-
-	registerMCPTools(s, mc)
+	s := newMCPServer(mc, server.WithHooks(hooks))
 
 	slog.Info("starting json2pptx MCP server",
 		"version", Version,

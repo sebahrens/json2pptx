@@ -478,7 +478,7 @@ var classifyMap = func() map[string]Namespace {
 		}
 	}
 	add(NamespaceInput,
-		CodeMissingParameter, CodeInvalidParameter, CodeInvalidJSON, CodeInvalidKey,
+		CodeMissingParameter, CodeInvalidParameter, CodeUnknownParameter, CodeInvalidJSON, CodeInvalidKey,
 		CodeInvalidGrid, CodeInvalidSlide, CodeInvalidSlideIndex, CodeInvalidPath,
 		CodeAmbiguousInput, CodeUnsupported, CodeIdempotencyConflict,
 		CodeUnknownEnum, CodeUnknownTableStyleID,
