@@ -109,7 +109,15 @@ func Analyze(slides []Slide) *Result {
 		perSlide[i] = fingerprint(i, s)
 	}
 
+	// A nil slice marshals to JSON null, but the wire schema declares these as
+	// arrays — three success responses were schema-invalid for exactly this
+	// reason, and a validating MCP client rejects them
+	// (go-slide-creator-vtqo). Empty-but-present is also the friendlier shape:
+	// a caller can iterate without a nil check.
 	runs := detectPatternRuns(perSlide)
+	if runs == nil {
+		runs = []PatternRun{}
+	}
 	longestRun := 0
 	for _, r := range runs {
 		if r.Len > longestRun {
@@ -132,6 +140,9 @@ func Analyze(slides []Slide) *Result {
 	}
 
 	result.Recommendations = generateRecommendations(perSlide, runs, dd)
+	if result.Recommendations == nil {
+		result.Recommendations = []Recommendation{}
+	}
 	result.CompositionScore = computeCompositionScore(result)
 
 	return result

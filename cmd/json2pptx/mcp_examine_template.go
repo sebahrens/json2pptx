@@ -53,7 +53,7 @@ Supply EXACTLY ONE of:
   - template_path — a local .pptx path for a not-yet-registered template. The path is resolved against base_dir (or the server CWD when base_dir is absent) and MUST stay inside that allowed root after ~/$ENV expansion and symlink evaluation; a path escaping it returns an INVALID_PATH forbidden-path diagnostic.
 
 Use this before authoring to learn exactly what layouts, placeholder roles, character budgets, and theme colors a user-provided template supports. For the rendered SVG/PNG artifact tree, use the CLI subcommand instead.`),
-		mcp.WithRawOutputSchema(outputSchemaExamineTemplate),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExamineTemplate)),
 		mcp.WithString("template_name",
 			mcp.Description("Registered/embedded template name (e.g., midnight-blue). Use list_templates to discover available names. Provide this OR template_path, not both."),
 		),

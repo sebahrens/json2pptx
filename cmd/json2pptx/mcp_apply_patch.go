@@ -90,7 +90,7 @@ Operations (ops[] array, applied in order). Each op has an "op" discriminator pl
 Returns {patched_deck, applied_ops[], findings} where findings is a FindingEnvelope of validation + fit/preflight findings for the patched deck (branch on findings.ok; findings.findings[] is empty when the patch left no issues).
 
 Example ops: [{"op":"move_slide","from":3,"to":1}, {"op":"duplicate_slide","index":1}, {"op":"replace_field","path":"/slides/0/content/0/text_value","value":"New title"}]`),
-		mcp.WithRawOutputSchema(outputSchemaApplyDeckPatch),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaApplyDeckPatch)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Full presentation definition to patch. Same schema as generate_presentation.`),

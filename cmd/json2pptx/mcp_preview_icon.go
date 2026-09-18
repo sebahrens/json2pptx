@@ -63,7 +63,7 @@ Failure codes:
 - ICON_BUNDLED_NAME_UNKNOWN: bundled name not in the embedded registry (suggestions returned)
 - URL_FETCH_FAILED: URL download failed or content is not SVG
 - ICON_PATH_RESOLUTION: path resolution failed (missing, traversal, wrong extension)`),
-		mcp.WithRawOutputSchema(outputSchemaPreviewIcon),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPreviewIcon)),
 		mcp.WithObject("icon",
 			mcp.Required(),
 			mcp.Description(`IconInput shape. Exactly one of: name (bundled, e.g. "filled:chart-pie"), path (.svg on disk; relative paths resolve against base_dir), url (HTTPS .svg), svg_data (inline markup). Optional: fill (hex color override; ignored for inline svg_data), alt (accessibility text).`),

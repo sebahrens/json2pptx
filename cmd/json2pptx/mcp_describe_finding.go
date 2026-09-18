@@ -29,7 +29,7 @@ func mcpDescribeFindingTool() mcp.Tool {
 		mcp.WithDescription(`Look up an agent-facing description for a single finding code. Returns {code, summary, severity, when_emitted, remediation_steps[], example_before, example_after, related_codes[]}. Use after any tool returns a finding/error you do not recognize — resolves the meaning in one extra tool call without scanning docs/FIT_FINDINGS.md or SKILL.md.
 
 Covers every code emitted across the pipeline: the fit/pattern codes from get_capabilities.vocabularies.fit_finding_codes, chart.* and string-literal codes (contrast_autofixed, findings_truncated), and every diagnostics taxonomy code (MISSING_PARAMETER, TEMPLATE_NOT_FOUND, RENDER_FAILED, INTERNAL, …). Accepts either the bare legacy code or the dotted namespaced code from a finding envelope (INPUT.MISSING_PARAMETER, FIT.placeholder_overflow) — the namespace prefix is stripped before lookup, so a finding's describe_command runs verbatim. Unknown codes return a structured error carrying fix.params.did_you_mean (the closest known code) — or fix.params.allowed with the full vocabulary when nothing is close.`),
-		mcp.WithRawOutputSchema(outputSchemaDescribeFinding),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaDescribeFinding)),
 		mcp.WithString("code",
 			mcp.Required(),
 			mcp.Description("The finding code to describe (e.g., \"placeholder_overflow\", \"accent_overload\", \"chart.zero_sum_pie\")."),

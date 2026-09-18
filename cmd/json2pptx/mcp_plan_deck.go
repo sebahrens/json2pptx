@@ -28,7 +28,7 @@ Use this BEFORE generate_presentation to get a structured plan. The output inclu
 Facts in the brief (clauses with numbers such as "+23% revenue", "churn 4%", or named entities such as "EU expansion") are routed verbatim into slide content seeds and each slide's facts[] — quantities to KPI / stat / chart slides first. Facts no slide had room for are listed in unplaced_facts.
 
 The output is directly consumable as the slides array in generate_presentation — just fill in the content values.`),
-		mcp.WithRawOutputSchema(outputSchemaPlanDeck),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPlanDeck)),
 		mcp.WithString("brief",
 			mcp.Required(),
 			mcp.Description("Natural-language description of the deck purpose and content (e.g., 'Pitch our Series B for an AI infra company')."),

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -119,10 +118,9 @@ func TestAuditPaletteTool_OutputSchemaValid(t *testing.T) {
 	if len(tool.RawOutputSchema) == 0 {
 		t.Fatal("audit_palette tool has no RawOutputSchema")
 	}
-	var schema map[string]any
-	if err := json.Unmarshal(tool.RawOutputSchema, &schema); err != nil {
-		t.Fatalf("output schema is not valid JSON: %v", err)
-	}
+	// The schema is wrapped as {anyOf: [success, error_envelope]}, so the
+	// success shape lives in the first branch (go-slide-creator-vtqo).
+	schema := successSchemaBranch(t, tool.RawOutputSchema)
 	if schema["type"] != "object" {
 		t.Errorf("schema type = %v, want object", schema["type"])
 	}

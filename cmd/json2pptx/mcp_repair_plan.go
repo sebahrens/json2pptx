@@ -171,7 +171,7 @@ Output:
 - summary: counts (total_findings, mapped_findings, unmapped_findings, total_directives, slides_affected).
 
 Each directive carries {kind, params, rank, source:{type,code|category,severity,action,path,message}, tool_call}. Agents can submit the directive's tool_call directly, or batch directives for one slide using the per-slide batch_tool_call.`),
-		mcp.WithRawOutputSchema(outputSchemaProposeRepairs),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaProposeRepairs)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation / repair_slide.`),

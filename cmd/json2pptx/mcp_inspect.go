@@ -61,7 +61,7 @@ Each slide_images[] entry must include "index" (0-based) and one of "path" (abso
 When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision"). When unset, the tool falls back to a deterministic heuristic pass — pure-Go image checks for blank slides, edge-band overflow, and aspect ratio (Report.mode="heuristic", findings tagged source="heuristic", severity P3). Heuristic findings are advisory and may have higher false-positive rates than vision-backed checks.
 
 Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path traversal (..) is rejected. For images already in memory (e.g. just-rendered thumbnails), prefer png_base64 to avoid disk round-trips.`),
-		mcp.WithRawOutputSchema(outputSchemaInspectSlideImages),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaInspectSlideImages)),
 		mcp.WithArray("slide_images",
 			mcp.Required(),
 			mcp.Description(`Slide images to inspect. Each entry: {index: int, path?: string, png_base64?: string, slide_type?: string, title?: string}. Exactly one of path or png_base64 must be set per entry.`),

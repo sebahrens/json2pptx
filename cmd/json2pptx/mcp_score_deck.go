@@ -31,7 +31,7 @@ Runs a full generation pass (to a temporary directory) so the score reflects the
 Score formula: 100 - sum(severity_weights × findings). Weights: refuse=25, shrink_or_split=15, review=5, info=0.
 
 Use this after generate_presentation to get structured visual feedback without burning vision tokens. The score will differ from a naive static check when generation-time autofix kicked in.`),
-		mcp.WithRawOutputSchema(outputSchemaScoreDeck),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreDeck)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description("Presentation definition. Same schema as generate_presentation."),

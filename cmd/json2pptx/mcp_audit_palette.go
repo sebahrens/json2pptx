@@ -30,7 +30,7 @@ func mcpAuditPaletteTool() mcp.Tool {
 Requires libreoffice + pdftoppm on PATH; returns AUDIT_FAILED when either is missing. Render artifacts are written only to an auto-removed temp directory — there is no parameter to redirect output to disk.
 
 Response shape: the full audit report (pptx, slide_count, violations, per-slide pic/shape regions and (pic, shape) pairs with delta_e + pass) promoted to the top level, plus a "findings" FindingEnvelope where each pair that exceeds max_delta_e becomes one RENDER.palette_drift error finding. Branch on findings.ok: it is false (and violations > 0) when any pair drifts past the threshold.`),
-		mcp.WithRawOutputSchema(outputSchemaAuditPalette),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaAuditPalette)),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
 			mcp.Description("Path to the PPTX file to audit. Must be an absolute or relative .pptx path with no traversal segments."),

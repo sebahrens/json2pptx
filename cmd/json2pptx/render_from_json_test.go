@@ -119,10 +119,7 @@ func TestRenderSlideImageFromJSON_OutputSchemaShared(t *testing.T) {
 	tool := mcpRenderSlideImageFromJSONTool()
 	// Output schema is the same constant (pointer/value identity not required;
 	// what matters is the JSON structure).
-	var schema map[string]any
-	if err := json.Unmarshal(tool.RawOutputSchema, &schema); err != nil {
-		t.Fatalf("schema not valid JSON: %v", err)
-	}
+	schema := successSchemaBranch(t, tool.RawOutputSchema)
 	props, _ := schema["properties"].(map[string]any)
 	for _, want := range []string{"index", "png_base64", "path", "size_error"} {
 		if _, ok := props[want]; !ok {

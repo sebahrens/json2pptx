@@ -53,7 +53,7 @@ Each candidate's score = slide_score - rhythm_penalty, clamped to [0, 100]:
 - rhythm_penalty: 5 if substituting this candidate would extend a pattern run of length 2 at this slide position, 15 if it would extend a run of length 3+. 0 otherwise.
 
 Candidates are sorted best→worst by score; ties broken by input order. Findings are returned per-candidate so the caller can see why each scored as it did.`),
-		mcp.WithRawOutputSchema(outputSchemaScoreCandidates),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreCandidates)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description("Presentation definition. Same schema as generate_presentation."),

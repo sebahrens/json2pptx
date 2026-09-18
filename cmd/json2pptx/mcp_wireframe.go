@@ -89,7 +89,7 @@ STRUCTURAL ONLY — NOT VISUAL QA. The response carries inspection_kind="wirefra
 Use this for fast structural sanity-checks before paying for a full generate_presentation + render_slide_image round-trip. Same plan-resolution path as preview_presentation_plan: pass the same presentation JSON, plus slide_index to pick which slide to render.
 
 Output formats: pass format="svg" for SVG only, format="png" for base64 PNG only, or format="both" (default) for both. PNG generation is more expensive (rasterization) than SVG-only; prefer "svg" when an SVG viewer is available.`),
-		mcp.WithRawOutputSchema(outputSchemaPreviewSlideWireframe),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPreviewSlideWireframe)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Presentation definition. Same schema as generate_presentation / preview_presentation_plan.`),

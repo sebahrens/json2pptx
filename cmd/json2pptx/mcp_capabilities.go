@@ -403,7 +403,7 @@ func buildDeprecatedFields() []capabilitiesDeprecatedField {
 func mcpGetCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_capabilities",
 		mcp.WithDescription("Returns schema version, available MCP tools, deprecated fields, and feature flags. Use this to detect contract drift between sessions without re-reading SKILL.md. Compare schema_version across sessions — a major bump means breaking changes."),
-		mcp.WithRawOutputSchema(outputSchemaGetCapabilities),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetCapabilities)),
 	)
 }
 
@@ -538,7 +538,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 		Runtime: capabilitiesRuntime{
 			SettingsWriteEnabled: settingsWriteAllowed(),
 			RenderAvailable:      renderAvail,
-			RenderMissingCmds:    renderMissing,
+			RenderMissingCmds:    nonNilStrings(renderMissing),
 			TemplatesDir:         resolvedTemplatesDir,
 			OutputDir:            resolvedOutputDir,
 			SchemaFingerprint:    schemaFingerprint(),
@@ -788,4 +788,15 @@ func buildRegistry() capabilitiesRegistry {
 		Diagrams: voc.DiagramTypes,
 		Patterns: voc.PatternNames,
 	}
+}
+
+
+// nonNilStrings returns an empty slice for a nil one. A nil slice marshals to
+// JSON null, but the wire schema declares this field as an array — a validating
+// MCP client rejects the response over it (go-slide-creator-vtqo).
+func nonNilStrings(in []string) []string {
+	if in == nil {
+		return []string{}
+	}
+	return in
 }

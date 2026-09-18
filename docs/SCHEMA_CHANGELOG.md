@@ -31,6 +31,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   than `venus`; genuine typos still fall through to edit distance
   (`chart-bra` → `chart-bar`, `rockt` → `rocket`).
 
+- **Every tool `outputSchema` now admits the error envelope
+  (go-slide-creator-vtqo).** MCP 2025-06-18 requires a tool declaring an
+  `outputSchema` to return conforming `structuredContent`, and clients may
+  validate — but every error result carries the diagnostics `FindingEnvelope`,
+  which matched no success schema, so all 11 tested error responses were
+  schema-invalid and a validating client rejected them instead of showing the
+  diagnostics. All 52 declared schemas are now wrapped as
+  `{$defs?, anyOf: [<success>, <error envelope>]}` (any `$defs` is hoisted to
+  the wrapper root so `#/$defs/…` references keep resolving), so structured
+  errors — which agents depend on — stay exactly as they were and now conform.
+  Three success responses were also invalid and are fixed:
+  `get_capabilities.runtime.render_missing_commands` and
+  `analyze_deck_rhythm.aggregates.pattern_runs` / `.recommendations` serialised
+  as `null` from nil slices where the schema said array, and
+  `show_pattern.example_values` was declared object-only although a
+  list-valued pattern's example is an array.
+
 - **`LAYOUT_UNRESOLVABLE` finding (go-slide-creator-9svyz).** New review-severity
   code (fix kind `swap_layout`, params `slide_type` / `candidates[]` /
   `fallback_layout_id`) emitted by `validate_input`, `validate --fit-report` and

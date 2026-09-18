@@ -230,8 +230,7 @@ var outputSchemaShowPattern = json.RawMessage(`{
       "required": ["target_density", "configurations"]
     },
     "example_values": {
-      "type": "object",
-      "description": "Canonical example values for this pattern. Shows the expected shape and realistic content for the values parameter."
+      "description": "Canonical example values for this pattern. Shows the expected shape and realistic content for the values parameter. The TYPE follows the pattern's own values schema: an ARRAY for patterns whose values are a list of cells (kpi-3up, icon-row, exec-summary), an OBJECT for patterns whose values are a keyed envelope (card-grid, waterfall-bridge). Declaring it as object-only made show_pattern's own successful response schema-invalid for the array patterns (go-slide-creator-vtqo)."
     },
     "rendering_capabilities": {
       "type": "object",

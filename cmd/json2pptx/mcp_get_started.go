@@ -211,7 +211,7 @@ Pass "task" to scope both paths:
 - "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
 
 Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`),
-		mcp.WithRawOutputSchema(outputSchemaGetStarted),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetStarted)),
 		mcp.WithString("task",
 			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), or \"validate-only\" (validate JSON without generating). Unknown values fall back to \"brief\"."),
 		),

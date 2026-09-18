@@ -37,7 +37,7 @@ import (
 func mcpGenerateTool() mcp.Tool {
 	return mcp.NewTool("generate_presentation",
 		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions. Returns the output file path on success."),
-		mcp.WithRawOutputSchema(outputSchemaGenerate),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGenerate)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Presentation definition. Use list_templates to discover available template names, layout_ids, and placeholder_ids.
@@ -126,7 +126,7 @@ Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. 
 Projection (token-economy): pass fields="compact" to suppress per-template detail (theme_colors / color_roles / layouts) and keep only names + aspect_ratio + layout_count + table_styles. Pass fields="full" for the legacy full payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
 
 Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`),
-		mcp.WithRawOutputSchema(outputSchemaListTemplates),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListTemplates)),
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
@@ -157,7 +157,7 @@ Filtering: pass filter="<substring>" to limit the response to templates whose na
 func mcpGetDataFormatHintsTool() mcp.Tool {
 	return mcp.NewTool("get_data_format_hints",
 		mcp.WithDescription("Fetch the full data_format_hints map for all chart and diagram types. Use the digest from list_templates to avoid refetching when hints haven't changed. Note: list_templates is the canonical bundled discovery tool — it returns templates, supported types, chart/diagram capabilities, and a data_format_hints digest in a single call. Use this tool only when you need to fetch the full hints after a digest change."),
-		mcp.WithRawOutputSchema(outputSchemaGetDataFormatHints),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetDataFormatHints)),
 		mcp.WithString("digest",
 			mcp.Description("Digest from a previous list_templates response. If it matches the current hints, a not_modified response is returned instead of the full map."),
 		),
@@ -167,7 +167,7 @@ func mcpGetDataFormatHintsTool() mcp.Tool {
 func mcpValidateTool() mcp.Tool {
 	return mcp.NewTool("validate_input",
 		mcp.WithDescription("Validate a JSON presentation definition without generating output. Returns validation errors or success. When fit_report is true, also runs per-cell text overflow measurement and includes findings in the result."),
-		mcp.WithRawOutputSchema(outputSchemaValidate),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidate)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Presentation definition to validate. Same schema as generate_presentation.
@@ -810,14 +810,14 @@ func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) 
 func mcpGetChartCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_chart_capabilities",
 		mcp.WithDescription("Fetch capability metadata for all chart types: limits, density behavior, label strategy, and supported options per chart type. Note: list_templates already includes chart_capabilities in its supported_types response — prefer that single call for initial discovery."),
-		mcp.WithRawOutputSchema(outputSchemaGetChartCapabilities),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetChartCapabilities)),
 	)
 }
 
 func mcpGetDiagramCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_capabilities",
 		mcp.WithDescription("Fetch capability metadata for all diagram types: node limits, overflow behavior, required/optional fields per diagram type. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
-		mcp.WithRawOutputSchema(outputSchemaGetDiagramCapabilities),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetDiagramCapabilities)),
 		mcp.WithBoolean("include_experimental",
 			mcp.Description("Include experimental/stub diagram types that are not yet fully functional. Default false."),
 		),
@@ -1067,7 +1067,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
 		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses)."),
-		mcp.WithRawOutputSchema(outputSchemaRecommendPattern),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendPattern)),
 		mcp.WithString("intent",
 			mcp.Required(),
 			mcp.Description("Natural-language description of what the slide should show (e.g., \"show 3 KPIs\", \"compare two options\", \"business model canvas\", \"project roadmap\")."),
@@ -1099,7 +1099,7 @@ Pagination: response is an object {groups, total_count, page_size, next_cursor?}
 Projection (token-economy): pass fields="compact" to receive only {name, category, cells, use_when, supports_callout} per pattern. Pass fields="full" for the legacy taxonomy payload (narrative_role, pairs_with, composes_with, role_on_slide, density_class, accent_weight, estimated_prompt_size_bytes). Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
 
 Filtering: pass filter="<substring>" to limit the response to patterns whose name contains the substring (case-insensitive). Applied before pagination.`),
-		mcp.WithRawOutputSchema(outputSchemaListPatterns),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListPatterns)),
 		mcp.WithString("fields",
 			mcp.Description("Field projection: compact (slim — name, category, cells, use_when, supports_callout) or full (legacy taxonomy detail). When omitted, behavior matches full and a deprecation hint is returned in warnings[]."),
 			mcp.Enum(listFieldsCompact, listFieldsFull),
@@ -1119,7 +1119,7 @@ Filtering: pass filter="<substring>" to limit the response to patterns whose nam
 func mcpShowPatternTool() mcp.Tool {
 	return mcp.NewTool("show_pattern",
 		mcp.WithDescription("Show full details for a named pattern, including its authoritative JSON Schema for values, overrides, and cell_overrides."),
-		mcp.WithRawOutputSchema(outputSchemaShowPattern),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaShowPattern)),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name (e.g., kpi-3up, bmc-canvas, card-grid)."),
@@ -1130,7 +1130,7 @@ func mcpShowPatternTool() mcp.Tool {
 func mcpValidatePatternTool() mcp.Tool {
 	return mcp.NewTool("validate_pattern",
 		mcp.WithDescription("Validate pattern inputs without expanding. Returns structured errors on failure."),
-		mcp.WithRawOutputSchema(outputSchemaValidatePattern),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidatePattern)),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name to validate against."),
@@ -1154,7 +1154,7 @@ func mcpValidatePatternTool() mcp.Tool {
 func mcpExpandPatternTool() mcp.Tool {
 	return mcp.NewTool("expand_pattern",
 		mcp.WithDescription("Expand a named pattern into its full shape_grid definition. Useful for debugging and previewing what a pattern call produces. Returns density_warnings if any embedded tables exceed density thresholds."),
-		mcp.WithRawOutputSchema(outputSchemaExpandPattern),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExpandPattern)),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Pattern name to expand."),
@@ -1499,7 +1499,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 func mcpRecommendVisualTool() mcp.Tool {
 	return mcp.NewTool("recommend_visual",
 		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Replaces guesswork — ask this tool first, then use the winning category's tool to build the slide. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation); category is auto-resolved from the catalog and unknown names appear with score 0."),
-		mcp.WithRawOutputSchema(outputSchemaRecommendVisual),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendVisual)),
 		mcp.WithString("intent",
 			mcp.Required(),
 			mcp.Description("Natural-language description of what the slide should show (e.g., \"show Q3 revenue trend\", \"compare 3 vendors on 5 dimensions\", \"agenda slide with 4 sections\")."),
@@ -2279,7 +2279,7 @@ Projection (token-economy): pass fields="compact" to drop the redundant sets[].i
 Filtering: filter (preferred) and search (legacy alias) both apply a case-insensitive substring filter on the icon name. Applied before pagination.
 
 Concept search: when the substring filter matches nothing, the query is resolved through a curated business-concept index instead — "strategy", "revenue", "customer", "governance", "compliance", "risk", "milestone", "efficiency" and ~150 others map to the 1-3 bundled icons that express them. The response then carries matched_via:"synonym" and concept_matches[] naming which concept produced each icon. Multi-word queries reach the concepts inside them ("cost reduction" → the cost icons). A query that matches neither a name nor a concept returns concepts[] — the full vocabulary the index understands — so the next call is informed rather than another guess.`),
-		mcp.WithRawOutputSchema(outputSchemaListIcons),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListIcons)),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
 			mcp.Enum("outline", "filled"),
@@ -2469,7 +2469,7 @@ Requires LibreOffice and ImageMagick (magick) on PATH. Use this for detailed vis
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
 Cost note: one image block per call; the JSON metadata stays under 1KB.`),
-		mcp.WithRawOutputSchema(outputSchemaRenderSlideImage),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderSlideImage)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
@@ -2496,7 +2496,7 @@ Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visu
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
 Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnail is one image block. Use max_slides to cap large decks.`),
-		mcp.WithRawOutputSchema(outputSchemaRenderDeckThumbnails),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
 			mcp.Required(),

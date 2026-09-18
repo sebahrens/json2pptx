@@ -38,7 +38,7 @@ Use this for tight single-slide design iteration loops: edit one slide's JSON, s
 Requires LibreOffice and ImageMagick (magick) on PATH. Behind the scenes, this builds a one-slide PPTX in a temp directory, renders it, and discards the intermediate.
 
 Results are cached by (slide JSON content + template content + density) — repeated calls with identical inputs return instantly. Pass force=true to re-render.`),
-		mcp.WithRawOutputSchema(outputSchemaRenderSlideImage),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderSlideImage)),
 		includeBase64JSONOption(),
 		mcp.WithObject("slide",
 			mcp.Required(),

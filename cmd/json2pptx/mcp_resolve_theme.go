@@ -15,7 +15,7 @@ import (
 func mcpResolveThemeTool() mcp.Tool {
 	return mcp.NewTool("resolve_theme",
 		mcp.WithDescription("Resolve theme colors and fonts for a template. Returns the hex value that each scheme color name (accent1, dk1, lt1, etc.) maps to, plus font families. Use this to preview the palette before authoring slides, avoiding color clashes with the template theme. Pass theme_override to preview the palette after the same overrides that frontmatter would apply (singlepass parity)."),
-		mcp.WithRawOutputSchema(outputSchemaResolveTheme),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaResolveTheme)),
 		mcp.WithString("template_name",
 			mcp.Required(),
 			mcp.Description("Template name (e.g., midnight-blue). Use list_templates to discover available names."),

@@ -22,7 +22,7 @@ func mcpAnalyzeDeckRhythmTool() mcp.Tool {
 Use this BEFORE calling generate_presentation to detect monotony and inform pattern choices. Unlike score_deck (which requires a full generation pass), this tool performs lightweight static analysis on the JSON input.
 
 Returns per-slide fingerprints, pattern run detection, a density coefficient of variation, accent balance, and actionable recommendations for breaking repetitive runs.`),
-		mcp.WithRawOutputSchema(outputSchemaAnalyzeDeckRhythm),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaAnalyzeDeckRhythm)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description("Presentation definition. Same schema as generate_presentation."),

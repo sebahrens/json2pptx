@@ -71,7 +71,7 @@ func mcpRepairSlidesBatchTool() mcp.Tool {
 Use this instead of repair_slide when fit-report flags multiple slides and the agent already knows the full repair plan (typically produced by propose_repairs). It halves round-trip latency and gives the engine a single chance to compute the post-batch fit report.
 
 Returns the patched deck JSON, one outcome per directive (including slide_index, kind, applied, and a human-readable message), and a fresh deck-wide fit report after all fixes have been applied.`),
-		mcp.WithRawOutputSchema(outputSchemaRepairSlidesBatch),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlidesBatch)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation / repair_slide.`),

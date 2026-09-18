@@ -98,7 +98,7 @@ func buildPatternExpansionResult(
 func mcpExpandPatternsTool() mcp.Tool {
 	return mcp.NewTool("expand_patterns",
 		mcp.WithDescription("Batch-expand multiple named patterns against the agent's content using a single template load. Returns each pattern's expansion + occupancy + cell_budgets + capacity_warnings + layout_suggestions, computed against the supplied per-pattern values (NOT the pattern's exemplar). Use after recommend_pattern to compare candidates head-to-head with your real content. Patterns missing an entry in `content` fall back to exemplar values; those results are flagged via `used_exemplar=true`. Each candidate that fails validation/expansion is reported via a per-pattern `error` block without aborting the whole batch."),
-		mcp.WithRawOutputSchema(outputSchemaExpandPatterns),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExpandPatterns)),
 		mcp.WithArray("names",
 			mcp.Required(),
 			mcp.Description("Pattern names to expand (typically the candidates returned by recommend_pattern)."),

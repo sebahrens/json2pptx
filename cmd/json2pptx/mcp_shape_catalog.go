@@ -168,7 +168,7 @@ var shapeCategories = []shapeCategoryDef{
 func mcpGetShapeCatalogTool() mcp.Tool {
 	return mcp.NewTool("get_shape_catalog",
 		mcp.WithDescription("List all available preset shape geometries grouped by use case (basic, arrow, flow, callout, star_banner, line_connector, symbol, math, action_button, chart_tab). Use to discover shapes beyond the default \"rect\" for shape_grid cells. Chevron and homePlate are ideal for process/timeline steps."),
-		mcp.WithRawOutputSchema(outputSchemaGetShapeCatalog),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetShapeCatalog)),
 		mcp.WithString("category",
 			mcp.Description("Filter to a single category. Omit for all categories."),
 			mcp.Enum("basic", "arrow", "flow", "callout", "star_banner", "line_connector", "symbol", "math", "action_button", "chart_tab"),

@@ -38,7 +38,7 @@ Includes all nested types (SlideInput, ContentInput, ShapeGridInput, PatternInpu
 Use this to discover field names, types, allowed values, and correct nesting — eliminates field-scope confusion (e.g., putting contrast_check on content instead of slide).
 
 Supports digest-based caching: pass a previous digest to get a not_modified response when the schema hasn't changed.`),
-		mcp.WithRawOutputSchema(outputSchemaGetInputSchema),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetInputSchema)),
 		mcp.WithString("digest",
 			mcp.Description("Digest from a previous get_input_schema response. If it matches the current schema, a not_modified response is returned instead of the full schema."),
 		),

@@ -113,7 +113,7 @@ Heuristic:
 - autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
 
 Unsupported kinds return {applied: false, code: "kind_not_supported", message: "kind_not_supported", supported_kinds: [...full vocabulary...], next_tool_call: {tool: "get_capabilities", args_template: {}}}. Agents can retry with a kind from supported_kinds or call get_capabilities for the authoritative list.`),
-		mcp.WithRawOutputSchema(outputSchemaRepairSlide),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlide)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),

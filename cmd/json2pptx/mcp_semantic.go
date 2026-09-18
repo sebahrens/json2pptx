@@ -154,7 +154,7 @@ func withDeckSpecSchema() mcp.PropertyOption {
 func mcpValidateDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("validate_deck_spec",
 		mcp.WithDescription(`Validate a compact semantic deck spec (DeckSpec) and return the shared finding envelope {schema_version, tool, subcommand, ok, summary, findings[]}. The recommended first check when authoring a NEW deck with the semantic surface: it catches unknown slide kinds/archetypes, missing required payload fields, and advisory rhythm/density issues before you compile or render. ok=false means at least one error-severity finding; warnings/info leave ok=true. Mirrors the `+"`json2pptx semantic validate`"+` CLI. The raw-model equivalent is validate_input over a compiled PresentationInput.`),
-		mcp.WithRawOutputSchema(outputSchemaValidateDeckSpec),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateDeckSpec)),
 		deckSpecArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict. Controls whether rhythm/density advisories are info, warnings, or errors."),
@@ -203,7 +203,7 @@ type compileDeckSpecResponse struct {
 func mcpCompileDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("compile_deck_spec",
 		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) into the raw json2pptx PresentationInput model. Returns a COMPACT result by default — {ok, slide_count, template, diagnostics[]} — so you can confirm the spec lowers cleanly and inspect any blocking findings without paying for the whole compiled deck. Pass include_compiled_json=true to also receive the full PresentationInput under compiled_json (consumable by validate_input / generate_presentation for advanced edits or debugging). ok=false carries the blocking error and diagnostics. Mirrors the `+"`json2pptx semantic compile`"+` CLI.`),
-		mcp.WithRawOutputSchema(outputSchemaCompileDeckSpec),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaCompileDeckSpec)),
 		deckSpecArg("The semantic DeckSpec to compile, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict."),
@@ -320,7 +320,7 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 func mcpRenderDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("render_deck_spec",
 		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was written, pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. A blocking failure returns success=false with the reason in error/diagnostics. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
-		mcp.WithRawOutputSchema(outputSchemaRenderDeckSpec),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict."),
@@ -424,7 +424,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 func mcpExplainDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("explain_deck_spec",
 		mcp.WithDescription(`Explain the compiler's planned decisions for a semantic deck spec (DeckSpec) WITHOUT compiling or rendering. Returns {title, archetype, template, rhythm, rhythm_warnings[], slides[{index, kind, role, visual_family, density, title, takeaway, pattern, layout}]}: the resolved archetype/template, the deck-rhythm summary and the advisories to address before rendering, and the concrete pattern/layout each slide will compile into. Use during planning to preview how the spec reads and which visuals it will pick. A spec that cannot be parsed returns a structured error envelope. Mirrors the `+"`json2pptx semantic explain`"+` CLI.`),
-		mcp.WithRawOutputSchema(outputSchemaExplainDeckSpec),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExplainDeckSpec)),
 		deckSpecArg("The semantic DeckSpec to explain, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 	)
 }
@@ -462,7 +462,7 @@ type archetypeListEntry struct {
 func mcpListDeckArchetypesTool() mcp.Tool {
 	return mcp.NewTool("list_deck_archetypes",
 		mcp.WithDescription(`List the deck archetypes the semantic compiler recognizes for DeckSpec.meta.archetype. Returns {archetypes:[{archetype, summary, default_template, executive}]}: the archetype biases template choice, default slide rhythm, and whether the deck is expected to carry a synthesis/decision slide. Call this when authoring a NEW deck spec to pick the archetype that matches your purpose. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
-		mcp.WithRawOutputSchema(outputSchemaListDeckArchetypes),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListDeckArchetypes)),
 	)
 }
 
@@ -506,7 +506,7 @@ type slideKindListEntry struct {
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
 		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields, item_schema, example}]}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), typical_fields are common optional keys, item_schema is the closed JSON Schema for one slide of the kind (every field the compiler reads, list-entry and chart shapes included; additionalProperties:false), and example is a minimal copy-ready slide that validates clean. Call this when authoring a NEW deck spec to choose each slide's kind and learn which fields it expects. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
-		mcp.WithRawOutputSchema(outputSchemaListSlideKinds),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 	)
 }
 

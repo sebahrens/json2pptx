@@ -18,7 +18,7 @@ import (
 func mcpValidateOutputTool() mcp.Tool {
 	return mcp.NewTool("validate_presentation_output",
 		mcp.WithDescription("Validate a generated PPTX file for structural and OOXML content correctness. Runs the unified output-validation suite (OPC package integrity + OOXML content checks). Use this to verify a previously generated presentation before delivery."),
-		mcp.WithRawOutputSchema(outputSchemaValidateOutput),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateOutput)),
 		mcp.WithString("path",
 			mcp.Required(),
 			mcp.Description("Absolute or relative path to the PPTX file to validate."),

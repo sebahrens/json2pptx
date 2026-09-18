@@ -245,7 +245,7 @@ Resumable per-pass state (next_state, always present): {completion, resumable, r
 Publishability is reported explicitly so a successful transport response is never mistaken for a publishable deck: publishable is true ONLY when the gate passed on complete evidence AND the content is caller-authored (auto_repair always reports content_status="author_supplied"). When publishable is false, blocking_reasons enumerates every cause; manual_review_required is its affirmative inverse. artifact_status distinguishes a structurally valid PPTX ("generated") from one written but failed validation ("generated_invalid"); validation_status is "passed" / "passed_degraded" / "failed".
 
 When gate_passed is false (max_passes exhausted), gate_reasons (and the superset blocking_reasons) list every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
-		mcp.WithRawOutputSchema(outputSchemaAutoRepair),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaAutoRepair)),
 		mcp.WithObject("presentation",
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation. Required for a fresh run; ignored (and not needed) when resume_token is supplied.`),
 			mcp.Properties(map[string]any{

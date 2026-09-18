@@ -25,7 +25,7 @@ Response shape: {slide_count, slides: [{index, layout_id, placeholders: [{id, ty
 		mcp.WithNumber("slide_index",
 			mcp.Description("Extract a single slide by 0-based index. Omit to read all slides."),
 		),
-		mcp.WithRawOutputSchema(outputSchemaReadPresentation),
+		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaReadPresentation)),
 	)
 }
 
