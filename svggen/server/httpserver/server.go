@@ -193,9 +193,11 @@ func (s *Server) setupRoutes() {
 
 	// Render single diagram
 	s.mux.Handle("POST /render", withMiddleware(http.HandlerFunc(s.handleRender)))
+	s.mux.Handle("OPTIONS /render", withMiddleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})))
 
 	// Render batch of diagrams
 	s.mux.Handle("POST /render/batch", withMiddleware(http.HandlerFunc(s.handleRenderBatch)))
+	s.mux.Handle("OPTIONS /render/batch", withMiddleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})))
 }
 
 // ServeHTTP implements http.Handler.
@@ -335,6 +337,10 @@ func (s *Server) handleRender(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, parseErrorCode(err), err.Error())
 		return
 	}
+	if err := rejectUntrustedIconSources(req.Data, "data"); err != nil {
+		s.writeError(w, http.StatusBadRequest, CodeInvalidRequest, err.Error())
+		return
+	}
 
 	// Determine requested output format
 	requestedFormat := strings.ToLower(req.Output.Format)
@@ -352,8 +358,10 @@ func (s *Server) handleRender(w http.ResponseWriter, r *http.Request) {
 	// Check cache first
 	var result *svggen.RenderResult
 	cacheHit := false
+	cacheKey := ""
 	if s.cache != nil {
-		if cached := s.cache.Get(req); cached != nil {
+		cacheKey = s.cache.Key(req)
+		if cached := s.cache.GetByKey(cacheKey); cached != nil {
 			result = cached
 			cacheHit = true
 		}
@@ -370,7 +378,7 @@ func (s *Server) handleRender(w http.ResponseWriter, r *http.Request) {
 
 		// Store in cache
 		if s.cache != nil {
-			s.cache.Set(req, result)
+			s.cache.SetByKey(cacheKey, result)
 		}
 	}
 
@@ -399,6 +407,42 @@ func (s *Server) handleRender(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
+// rejectUntrustedIconSources prevents the unauthenticated HTTP renderer from
+// turning user-controlled icon fields into network requests or local file
+// reads. Inline SVG, data URIs, and bundled icon names remain available.
+func rejectUntrustedIconSources(value any, path string) error {
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, child := range typed {
+			childPath := path + "." + key
+			if key == "icon" {
+				if icon, ok := child.(string); ok {
+					switch svggen.ClassifyIcon(icon) {
+					case svggen.IconKindURL, svggen.IconKindFilePath:
+						return fmt.Errorf("%s: remote URLs and local file paths are not allowed by the HTTP icon-source policy", childPath)
+					}
+				}
+			}
+			if err := rejectUntrustedIconSources(child, childPath); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for i, child := range typed {
+			if err := rejectUntrustedIconSources(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+	case []map[string]any:
+		for i, child := range typed {
+			if err := rejectUntrustedIconSources(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // BatchRequest is the request body for POST /render/batch.
 type BatchRequest struct {
 	Requests []RenderRequest `json:"requests" yaml:"requests"`
@@ -415,6 +459,9 @@ type BatchResponse struct {
 // renderSingleRequest renders a single request and returns the response.
 // This method handles format validation, caching, and result building.
 func (s *Server) renderSingleRequest(req *RenderRequest) RenderResponse {
+	if err := rejectUntrustedIconSources(req.Data, "data"); err != nil {
+		return RenderResponse{Error: err.Error()}
+	}
 	// Determine requested output format
 	requestedFormat := strings.ToLower(req.Output.Format)
 	if requestedFormat == "" {
@@ -428,8 +475,10 @@ func (s *Server) renderSingleRequest(req *RenderRequest) RenderResponse {
 
 	// Check cache first
 	var result *svggen.RenderResult
+	cacheKey := ""
 	if s.cache != nil {
-		result = s.cache.Get(req)
+		cacheKey = s.cache.Key(req)
+		result = s.cache.GetByKey(cacheKey)
 	}
 
 	// Render if not cached
@@ -442,7 +491,7 @@ func (s *Server) renderSingleRequest(req *RenderRequest) RenderResponse {
 
 		// Store in cache
 		if s.cache != nil {
-			s.cache.Set(req, result)
+			s.cache.SetByKey(cacheKey, result)
 		}
 	}
 

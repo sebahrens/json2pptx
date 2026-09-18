@@ -1,0 +1,14 @@
+[
+  {"ID":"kpi-quarter","Category":"KPI","Prompt":"Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics."},
+  {"ID":"kpi-risk","Category":"KPI","Prompt":"Create a KPI deck showing delivery health, incidents, capacity and forecast risk."},
+  {"ID":"comparison-vendors","Category":"comparison","Prompt":"Compare three vendors across price, capability, implementation time and risk."},
+  {"ID":"comparison-options","Category":"comparison","Prompt":"Compare build, buy and partner options and recommend one with explicit tradeoffs."},
+  {"ID":"process-onboarding","Category":"process","Prompt":"Explain a five-stage customer onboarding process with owners and decision gates."},
+  {"ID":"process-transformation","Category":"process","Prompt":"Show a two-track transformation roadmap for technology and operating model."},
+  {"ID":"narrative-strategy","Category":"narrative","Prompt":"Build a concise strategy narrative from market shift through choice, action and impact."},
+  {"ID":"narrative-board","Category":"narrative","Prompt":"Prepare a board update covering context, performance, risks, decisions and next steps."},
+  {"ID":"chart-revenue","Category":"chart","Prompt":"Show five years of revenue and margin data with a clear evidence-based takeaway."},
+  {"ID":"chart-regions","Category":"chart","Prompt":"Show regional performance, mix shift and the two largest drivers without losing values."},
+  {"ID":"multilingual","Category":"narrative","Prompt":"Create a German and Japanese market-entry summary with long labels and cited facts."},
+  {"ID":"dense-plan","Category":"process","Prompt":"Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones."}
+]

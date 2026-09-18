@@ -45,7 +45,7 @@ func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compileKPIFallback(in, cells, srcField)
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "content"}
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	var links []SourceLink
 
 	if in.Title != "" {

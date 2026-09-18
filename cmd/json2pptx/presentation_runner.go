@@ -33,6 +33,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -83,7 +84,9 @@ type RenderOptions struct {
 // RenderResult bundles everything the callers need to build their responses.
 type RenderResult struct {
 	// OutputPath is the absolute/relative path the .pptx was written to.
-	OutputPath string
+	OutputPath   string
+	TemplatePath string
+	TemplateHash string
 	// GenResult is the raw generator output (slide count, hash, warnings,
 	// media failures, fit findings, contrast swaps, validation errors).
 	GenResult *generator.GenerationResult
@@ -143,6 +146,11 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		return res, cleanup, fmt.Errorf("%s", templateNotFoundError(input.Template, opts.TemplatesDir))
 	}
 	cleanup = templateCleanup
+	res.TemplatePath = templatePath
+	if profileReader, openErr := template.OpenTemplate(templatePath); openErr == nil {
+		res.TemplateHash = profileReader.Hash()
+		_ = profileReader.Close()
+	}
 
 	// Analyze template for layout metadata, synthetic files, and dimensions.
 	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, templateTheme, synthesisFindings := analyzeTemplateLayouts(templatePath)

@@ -21,8 +21,10 @@ const maxEntries = 50
 
 // entry is a single cache entry pairing a name with its loaded font family.
 type entry struct {
-	key  string
-	font *canvas.FontFamily
+	key         string
+	font        *canvas.FontFamily
+	resolved    string
+	substituted bool
 }
 
 // cache is the package-level singleton font cache.
@@ -53,6 +55,13 @@ type fontCache struct {
 // are fast. The cache key is the requested name; the fallback name does not
 // affect the key.
 func Get(name string, fallbackName string) *canvas.FontFamily {
+	font, _, _ := Resolve(name, fallbackName)
+	return font
+}
+
+// Resolve returns the loaded family, its effective name, and whether the
+// requested family was substituted.
+func Resolve(name string, fallbackName string) (*canvas.FontFamily, string, bool) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
@@ -61,16 +70,16 @@ func Get(name string, fallbackName string) *canvas.FontFamily {
 		cache.order.MoveToFront(elem)
 		e, ok := elem.Value.(*entry)
 		if !ok {
-			return nil
+			return nil, "", false
 		}
-		return e.font
+		return e.font, e.resolved, e.substituted
 	}
 
 	// Slow path: load the font.
-	ff := loadFont(name, fallbackName)
+	ff, resolved, substituted := loadFont(name, fallbackName)
 
 	// Store in cache and evict if over capacity.
-	e := &entry{key: name, font: ff}
+	e := &entry{key: name, font: ff, resolved: resolved, substituted: substituted}
 	elem := cache.order.PushFront(e)
 	cache.items[name] = elem
 
@@ -78,24 +87,24 @@ func Get(name string, fallbackName string) *canvas.FontFamily {
 		cache.evictOldest()
 	}
 
-	return ff
+	return ff, resolved, substituted
 }
 
 // loadFont attempts to load a font family using the cascade described in Get.
-func loadFont(name string, fallbackName string) *canvas.FontFamily {
+func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, bool) {
 	ff := canvas.NewFontFamily(name)
 
 	// 1. Try loading the requested system font.
 	if err := ff.LoadSystemFont(name, canvas.FontRegular); err == nil {
 		_ = ff.LoadSystemFont(name, canvas.FontBold) // best-effort bold
-		return ff
+		return ff, name, false
 	}
 
 	// 2. Try the explicit fallback name.
 	if fallbackName != "" && fallbackName != name {
 		if err := ff.LoadSystemFont(fallbackName, canvas.FontRegular); err == nil {
 			_ = ff.LoadSystemFont(fallbackName, canvas.FontBold) // best-effort bold
-			return ff
+			return ff, fallbackName, true
 		}
 	}
 
@@ -106,18 +115,18 @@ func loadFont(name string, fallbackName string) *canvas.FontFamily {
 		}
 		if err := ff.LoadSystemFont(fb, canvas.FontRegular); err == nil {
 			_ = ff.LoadSystemFont(fb, canvas.FontBold) // best-effort bold
-			return ff
+			return ff, fb, true
 		}
 	}
 
 	// 4. Load embedded Liberation Sans (always available, metric-compatible with Arial).
 	if err := ff.LoadFont(fonts.LiberationSansRegular, 0, canvas.FontRegular); err == nil {
 		_ = ff.LoadFont(fonts.LiberationSansBold, 0, canvas.FontBold) // best-effort bold
-		return ff
+		return ff, "Liberation Sans", true
 	}
 
 	// 5. Nothing worked.
-	return nil
+	return nil, "", false
 }
 
 // evictOldest removes the least-recently-used entry. Caller must hold mu.

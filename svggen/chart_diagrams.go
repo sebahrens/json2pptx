@@ -523,6 +523,7 @@ func (d *ScatterChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuild
 //
 // Format 2 is produced by ChartSpec.ToDiagramSpec() when converting
 // map[string]float64 data into scatter chart format.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func extractScatterChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
@@ -1395,7 +1396,11 @@ type BubbleChartDiagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for a bubble chart.
 func (d *BubbleChartDiagram) Validate(req *RequestEnvelope) error {
-	return validateCategoriesAndSeries(req.Data, "bubble_chart", false, 1)
+	if err := validateCategoriesAndSeries(req.Data, "bubble_chart", false, 1); err != nil {
+		return err
+	}
+	_, err := extractBubbleChartData(req)
+	return err
 }
 
 // Render generates an SVG document for the bubble chart.
@@ -1445,6 +1450,7 @@ func (d *BubbleChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilde
 }
 
 // extractBubbleChartData extracts ChartData for bubble charts with bubble_values.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func extractBubbleChartData(req *RequestEnvelope) (ChartData, error) {
 	data := req.Data
@@ -1489,32 +1495,56 @@ func extractBubbleChartData(req *RequestEnvelope) (ChartData, error) {
 					cs.BubbleValues = bSlice
 				}
 			}
+			if labels, ok := s["labels"]; ok {
+				labelSlice, valid := toStringSlice(labels)
+				if !valid {
+					return chartData, fmt.Errorf("bubble_chart series[%d].labels must contain only strings", i)
+				}
+				cs.Labels = labelSlice
+			}
 
 			// Fallback: series with "points" array of {x, y, size, label} objects
 			// (produced by buildStructuredChartData in chart.go for bubble charts).
 			// Handle both []any (JSON unmarshal) and []map[string]any (direct construction).
 			if len(cs.Values) == 0 {
-				parseBubblePoint := func(m map[string]any) {
-					x, _ := toFloat64(m["x"])
-					y, _ := toFloat64(m["y"])
-					size, _ := toFloat64(m["size"])
+				parseBubblePoint := func(pointIdx int, m map[string]any) error {
+					x, ok := toFloat64(m["x"])
+					if !ok {
+						return fmt.Errorf("bubble_chart series[%d].points[%d].x must be a number", i, pointIdx)
+					}
+					y, ok := toFloat64(m["y"])
+					if !ok {
+						return fmt.Errorf("bubble_chart series[%d].points[%d].y must be a number", i, pointIdx)
+					}
+					size := 0.0
+					if rawSize, present := m["size"]; present {
+						var valid bool
+						size, valid = toFloat64(rawSize)
+						if !valid {
+							return fmt.Errorf("bubble_chart series[%d].points[%d].size must be a number", i, pointIdx)
+						}
+					}
 					cs.XValues = append(cs.XValues, x)
 					cs.Values = append(cs.Values, y)
 					cs.BubbleValues = append(cs.BubbleValues, size)
-					if label, ok := m["label"].(string); ok {
-						cs.Labels = append(cs.Labels, label)
-					}
+					label, _ := m["label"].(string)
+					cs.Labels = append(cs.Labels, label)
+					return nil
 				}
 				switch pts := s["points"].(type) {
 				case []any:
-					for _, item := range pts {
+					for pointIdx, item := range pts {
 						if m, ok := item.(map[string]any); ok {
-							parseBubblePoint(m)
+							if err := parseBubblePoint(pointIdx, m); err != nil {
+								return chartData, err
+							}
 						}
 					}
 				case []map[string]any:
-					for _, m := range pts {
-						parseBubblePoint(m)
+					for pointIdx, m := range pts {
+						if err := parseBubblePoint(pointIdx, m); err != nil {
+							return chartData, err
+						}
 					}
 				}
 			}
@@ -1528,13 +1558,14 @@ func extractBubbleChartData(req *RequestEnvelope) (ChartData, error) {
 	// {x, y, size, label} objects, e.g.:
 	//   {"Indonesia": [{"x":48, "y":280, "size":3.2, "label":"..."}], ...}
 	// Convert to series format grouped by category name.
-	chartData.Series = parseBubblePerCategoryData(data)
-	return chartData, nil
+	var err error
+	chartData.Series, err = parseBubblePerCategoryData(data)
+	return chartData, err
 }
 
 // parseBubblePerCategoryData converts per-category bubble data to ChartSeries.
 // Input format: {"CategoryName": [{"x": float, "y": float, "size": float, "label": string}], ...}
-func parseBubblePerCategoryData(data map[string]any) []ChartSeries {
+func parseBubblePerCategoryData(data map[string]any) ([]ChartSeries, error) {
 	// Skip known metadata keys
 	skip := map[string]bool{
 		"title": true, "subtitle": true, "series": true,
@@ -1554,26 +1585,38 @@ func parseBubblePerCategoryData(data map[string]any) []ChartSeries {
 		}
 
 		cs := ChartSeries{Name: key}
-		for _, item := range arr {
+		for pointIdx, item := range arr {
 			m, ok := item.(map[string]any)
 			if !ok {
 				continue
 			}
-			x, _ := toFloat64(m["x"])
-			y, _ := toFloat64(m["y"])
-			size, _ := toFloat64(m["size"])
+			x, ok := toFloat64(m["x"])
+			if !ok {
+				return nil, fmt.Errorf("bubble_chart category %q point[%d].x must be a number", key, pointIdx)
+			}
+			y, ok := toFloat64(m["y"])
+			if !ok {
+				return nil, fmt.Errorf("bubble_chart category %q point[%d].y must be a number", key, pointIdx)
+			}
+			size := 0.0
+			if rawSize, present := m["size"]; present {
+				var valid bool
+				size, valid = toFloat64(rawSize)
+				if !valid {
+					return nil, fmt.Errorf("bubble_chart category %q point[%d].size must be a number", key, pointIdx)
+				}
+			}
 			cs.XValues = append(cs.XValues, x)
 			cs.Values = append(cs.Values, y)
 			cs.BubbleValues = append(cs.BubbleValues, size)
-			if label, ok := m["label"].(string); ok {
-				cs.Labels = append(cs.Labels, label)
-			}
+			label, _ := m["label"].(string)
+			cs.Labels = append(cs.Labels, label)
 		}
 		if len(cs.Values) > 0 {
 			series = append(series, cs)
 		}
 	}
-	return series
+	return series, nil
 }
 
 // =============================================================================
@@ -1692,7 +1735,6 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		return nil
 	})
 }
-
 
 // layoutPresetDimensions maps preset names to pixel dimensions.
 var layoutPresetDimensions = map[string][2]int{

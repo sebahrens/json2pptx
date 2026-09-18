@@ -94,6 +94,31 @@ func TestBarChartDiagram(t *testing.T) {
 	})
 }
 
+func TestBubbleChartPreservesLabelsAndRejectsInvalidCoordinates(t *testing.T) {
+	req := &RequestEnvelope{Type: "bubble_chart", Data: map[string]any{"series": []any{map[string]any{
+		"name": "Revenue", "points": []any{
+			map[string]any{"x": 1.0, "y": 10.0, "size": 2.0},
+			map[string]any{"x": 8.0, "y": 90.0, "size": 7.0, "label": "SECOND"},
+		},
+	}}}}
+	data, err := extractBubbleChartData(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := data.Series[0].Labels; len(got) != 2 || got[0] != "" || got[1] != "SECOND" {
+		t.Fatalf("labels lost positional alignment: %#v", got)
+	}
+
+	for _, field := range []string{"x", "y", "size"} {
+		point := map[string]any{"x": 1.0, "y": 2.0, "size": 3.0}
+		point[field] = "not-a-number"
+		bad := &RequestEnvelope{Type: "bubble_chart", Data: map[string]any{"series": []any{map[string]any{"points": []any{point}}}}}
+		if err := (&BubbleChartDiagram{NewBaseDiagram("bubble_chart")}).Validate(bad); err == nil || !strings.Contains(err.Error(), "."+field+" must be a number") {
+			t.Errorf("invalid %s: got %v", field, err)
+		}
+	}
+}
+
 func TestLineChartDiagram(t *testing.T) {
 	d := &LineChartDiagram{NewBaseDiagram("line_chart")}
 
@@ -1824,8 +1849,8 @@ func TestChartsAutoApplyContainAndFillContainer(t *testing.T) {
 // data are rendered into the SVG output for bar, line, and area charts.
 func TestAxisTitles_BarLineArea(t *testing.T) {
 	tests := []struct {
-		name     string
-		diagram  Diagram
+		name      string
+		diagram   Diagram
 		chartType string
 	}{
 		{"bar_chart", &BarChartDiagram{NewBaseDiagram("bar_chart")}, "bar_chart"},

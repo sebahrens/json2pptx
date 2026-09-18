@@ -122,10 +122,12 @@ func validateSplitSlide(s SplitSlideInput) error {
 	if s.Split.GroupSize <= 0 {
 		return fmt.Errorf("split_slide: group_size must be > 0, got %d", s.Split.GroupSize)
 	}
-
 	tableIdx, _ := findTableContent(s.Base.Content)
 	if tableIdx < 0 {
 		return fmt.Errorf("split_slide: base must contain a table content item")
+	}
+	if !s.Split.RepeatHeaders {
+		return fmt.Errorf("split_slide: repeat_headers=false is unsupported because PowerPoint tables require column headers; set repeat_headers=true")
 	}
 
 	// Reject if base contains both table and chart/diagram

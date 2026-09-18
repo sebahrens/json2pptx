@@ -1,5 +1,20 @@
 # Template Guide
 
+For agent discovery, call `list_templates` first to obtain the seven canonical
+role bindings and their template-rendered layout thumbnails. Then call
+`recommend_visual` with the selected `template` and content counts. Each
+candidate includes compact capacity/support metadata and, when available, a
+template-specific preview path. `example.metadata_only=true` means no renderer
+preview was available; treat the recommendation as structural evidence and run
+rendered inspection before approval.
+
+The supported default workflow is: understand the brief, examine the selected
+template (including local user-provided paths), plan message and composition,
+generate a draft, render every slide to pixels, inspect those pixels, repair,
+and render/inspect the current revision again. Structural scores describe input
+quality and never constitute visual approval. If render or inspection tooling is
+missing, report `draft_needs_visual_review`; do not silently mark completion.
+
 Reference for template selection, layout capabilities, and placeholder naming in go-slide-creator.
 
 > **Canonical doc — template *usage*.** This is the authoritative reference for

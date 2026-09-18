@@ -7,6 +7,44 @@ import (
 	"testing"
 )
 
+func TestRunValidatePassFailsClosedAndParsesEnvelope(t *testing.T) {
+	writeFake := func(t *testing.T, body string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "json2pptx")
+		if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body+"\n"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	tests := []struct {
+		name       string
+		body       string
+		wantErr    bool
+		wantCount  int
+		wantAction string
+	}{
+		{name: "nonzero", body: `echo failed >&2; exit 7`, wantErr: true},
+		{name: "empty", body: `exit 0`, wantErr: true},
+		{name: "malformed", body: `echo '{bad'`, wantErr: true},
+		{name: "zero findings", body: `echo '{"findings":{"findings":[]}}'`},
+		{name: "current envelope", body: `echo '{"findings":{"findings":[{"code":"fit_overflow","category":"FIT","message":"too tall","evidence":{"path":"/slides/0/content/0","action":"refuse"}}]}}'`, wantCount: 1, wantAction: "refuse"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := RunValidatePass(LoopConfig{Binary: writeFake(t, tt.body)}, "fixture.json")
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error=%v wantErr=%v", err, tt.wantErr)
+			}
+			if len(got) != tt.wantCount {
+				t.Fatalf("findings=%d want=%d", len(got), tt.wantCount)
+			}
+			if tt.wantCount > 0 && got[0].Action != tt.wantAction {
+				t.Fatalf("action=%q want=%q", got[0].Action, tt.wantAction)
+			}
+		})
+	}
+}
+
 func TestParseSlideIndex(t *testing.T) {
 	tests := []struct {
 		path string

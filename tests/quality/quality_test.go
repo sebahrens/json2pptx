@@ -72,7 +72,6 @@ type tableInput struct {
 	Rows    []json.RawMessage `json:"rows"`
 }
 
-
 type shapeGridInput struct {
 	Columns json.RawMessage `json:"columns,omitempty"`
 	Gap     float64         `json:"gap,omitempty"`
@@ -273,20 +272,13 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 
 	// Run fit-report via the binary with -verbose-fit for unbudgeted counts.
 	// -fit-report is a boolean flag; NDJSON goes to stdout.
-	cmd := exec.Command(binary, "validate", "-fit-report", "-verbose-fit", jsonPath) //nolint:gosec // test code with controlled args
-	fitData, _ := cmd.Output()
-
-	// Parse fit-report NDJSON from stdout.
-	if len(fitData) > 0 {
+	fitFindings, fitErr := RunValidatePass(LoopConfig{Binary: binary}, jsonPath)
+	if fitErr != nil {
+		t.Fatalf("collect fit findings for %s: %v", name, fitErr)
+	}
+	if len(fitFindings) > 0 {
 		var totalFindings, unfittable, shrink int
-		for _, line := range strings.Split(strings.TrimSpace(string(fitData)), "\n") {
-			if line == "" {
-				continue
-			}
-			var f fitFinding
-			if json.Unmarshal([]byte(line), &f) != nil {
-				continue
-			}
+		for _, f := range fitFindings {
 			totalFindings++
 			// Per-code and per-action histogram.
 			if f.Code != "" {
@@ -324,20 +316,27 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 		"-json-output", jsonOutPath,
 		"-strict-fit=warn",
 	)
-	_ = genCmd.Run()
+	if out, err := genCmd.CombinedOutput(); err != nil {
+		t.Fatalf("generate fixture %s: %v: %s", name, err, strings.TrimSpace(string(out)))
+	}
 
-	if genData, err := os.ReadFile(jsonOutPath); err == nil && len(genData) > 0 {
+	genData, err := os.ReadFile(jsonOutPath)
+	if err != nil || len(genData) == 0 {
+		t.Fatalf("read generation envelope for %s: bytes=%d err=%v", name, len(genData), err)
+	}
+	{
 		var genOut struct {
 			FitFindings []fitFinding `json:"fit_findings"`
 		}
-		if json.Unmarshal(genData, &genOut) == nil {
-			for _, f := range genOut.FitFindings {
-				if f.Code != "" {
-					m.CodeCounts[f.Code]++
-				}
-				if f.Action != "" {
-					m.ActionCounts[f.Action]++
-				}
+		if err := json.Unmarshal(genData, &genOut); err != nil {
+			t.Fatalf("parse generation envelope for %s: %v", name, err)
+		}
+		for _, f := range genOut.FitFindings {
+			if f.Code != "" {
+				m.CodeCounts[f.Code]++
+			}
+			if f.Action != "" {
+				m.ActionCounts[f.Action]++
 			}
 		}
 	}
@@ -448,19 +447,17 @@ func compareBaseline(t *testing.T, baselinePath string, current []metrics) {
 	t.Helper()
 	f, err := os.Open(baselinePath)
 	if err != nil {
-		t.Logf("Could not open baseline: %v", err)
-		return
+		t.Fatalf("open baseline: %v", err)
 	}
 	defer f.Close()
 
 	r := csv.NewReader(f)
 	records, err := r.ReadAll()
 	if err != nil {
-		t.Logf("Could not parse baseline CSV: %v", err)
-		return
+		t.Fatalf("parse baseline CSV: %v", err)
 	}
 	if len(records) < 2 {
-		return
+		t.Fatal("baseline CSV has no data rows")
 	}
 
 	// Build baseline map by name.
@@ -495,10 +492,10 @@ func checkRegression(t *testing.T, name, metric string, baseline []string, col, 
 	}
 	baseVal, err := strconv.Atoi(baseline[col])
 	if err != nil {
-		return
+		t.Fatalf("baseline %s/%s is not an integer: %q", name, metric, baseline[col])
 	}
 	if currentVal > baseVal {
-		t.Logf("REGRESSION %s/%s: baseline=%d current=%d (delta=+%d)",
+		t.Errorf("REGRESSION %s/%s: baseline=%d current=%d (delta=+%d)",
 			name, metric, baseVal, currentVal, currentVal-baseVal)
 	}
 }

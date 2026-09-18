@@ -89,6 +89,16 @@ type VisualPlan struct {
 	Pattern string `json:"pattern,omitempty"`
 	// Layout is the selected json2pptx slide_type / layout tag.
 	Layout string `json:"layout,omitempty"`
+	// Alternatives is a small deterministic set of supported compositions with
+	// capacity reasons. It lets callers choose deliberately without invoking an
+	// unconstrained layout optimizer.
+	Alternatives []CompositionCandidate `json:"alternatives,omitempty"`
+}
+
+type CompositionCandidate struct {
+	Pattern string `json:"pattern,omitempty"`
+	Layout  string `json:"layout"`
+	Reason  string `json:"reason"`
 }
 
 // SlideIR is the normalized, planned view of one semantic slide.
@@ -172,23 +182,23 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleSummary, family: FamilyText, density: DensityMedium, layout: "content",
 	},
 	KindKPISnapshot: {
-		role: RoleEvidence, family: FamilyKPI, density: DensityMedium, layout: "content",
+		role: RoleEvidence, family: FamilyKPI, density: DensityMedium, layout: "blank-title",
 		pattern: kpiPattern,
 	},
 	KindChartInsight: {
-		role: RoleEvidence, family: FamilyChart, density: DensityMedium, layout: "chart",
+		role: RoleEvidence, family: FamilyChart, density: DensityMedium, layout: "blank-title",
 		pattern: chartInsightPattern,
 	},
 	KindComparison: {
-		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "two-column",
+		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
 		pattern: comparisonPattern,
 	},
 	KindProcess: {
-		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "diagram",
+		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
 	},
 	KindRoadmap: {
-		role: RolePlan, family: FamilyTimeline, density: DensityMedium, layout: "diagram",
+		role: RolePlan, family: FamilyTimeline, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "phase-roadmap" },
 	},
 	KindDecision: {
@@ -287,6 +297,24 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	if plan.pattern != nil {
 		pattern = plan.pattern(slide.Body)
 	}
+	alternatives := compositionCandidates(slide.Kind, pattern)
+	if requested := slide.String("pattern"); requested != "" {
+		for _, candidate := range alternatives {
+			if candidate.Pattern == requested {
+				pattern = requested
+				plan.layout = candidate.Layout
+				break
+			}
+		}
+	}
+	if requested := slide.String("layout"); requested != "" {
+		for _, candidate := range alternatives {
+			if candidate.Layout == requested {
+				plan.layout = requested
+				break
+			}
+		}
+	}
 
 	return SlideIR{
 		SourceIndex: index,
@@ -295,12 +323,33 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 		Takeaway:    slideTakeaway(slide),
 		Role:        plan.role,
 		Visual: VisualPlan{
-			Family:  plan.family,
-			Density: plan.density,
-			Pattern: pattern,
-			Layout:  plan.layout,
+			Family:       plan.family,
+			Density:      plan.density,
+			Pattern:      pattern,
+			Layout:       plan.layout,
+			Alternatives: alternatives,
 		},
 		Body: slide.Body,
+	}
+}
+
+func compositionCandidates(kind SlideKind, selected string) []CompositionCandidate {
+	visual := func(pattern, reason string) CompositionCandidate {
+		return CompositionCandidate{Pattern: pattern, Layout: "blank-title", Reason: reason}
+	}
+	switch kind {
+	case KindKPISnapshot:
+		return []CompositionCandidate{visual(selected, "compact visual for 2-6 readable metrics"), {Layout: "content", Reason: "native bullets preserve out-of-range or long metrics"}}
+	case KindChartInsight:
+		return []CompositionCandidate{visual("chart-insights-split", "chart with up to 6 insights"), {Layout: "two-column", Reason: "native chart and full insight list when density exceeds the pattern"}}
+	case KindComparison:
+		return []CompositionCandidate{visual("comparison-2col", "balanced two-column comparison"), {Layout: "content", Reason: "native bullets preserve unbalanced columns"}}
+	case KindProcess:
+		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}
+	case KindRoadmap:
+		return []CompositionCandidate{visual("phase-roadmap", "3-6 phases"), {Layout: "content", Reason: "native bullets preserve dense roadmaps"}}
+	default:
+		return nil
 	}
 }
 

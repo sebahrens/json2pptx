@@ -59,9 +59,9 @@ func TestRepairSlide_ReduceText_Bullets(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
-		"fixes":       []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": float64(3)}}},
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": float64(3)}}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -108,9 +108,9 @@ func TestRepairSlide_ShortenTitle(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
-		"fixes":       []any{map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(20)}}},
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(20)}}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -153,9 +153,9 @@ func TestRepairSlide_SwapLayout(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
-		"fixes":       []any{map[string]any{"kind": "swap_layout", "params": map[string]any{"layout_id": "slideLayout3"}}},
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "swap_layout", "params": map[string]any{"layout_id": "slideLayout3"}}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -218,9 +218,9 @@ func TestRepairSlide_SplitAtRow(t *testing.T) {
 	deckJSON, _ := json.Marshal(deck)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(string(deckJSON)),
-		"slide_index": float64(0),
-		"fixes":       []any{map[string]any{"kind": "split_at_row", "params": map[string]any{"row": float64(3)}}},
+		"presentation": mustParseJSON(string(deckJSON)),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "split_at_row", "params": map[string]any{"row": float64(3)}}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -260,9 +260,9 @@ func TestRepairSlide_UnsupportedKind(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
-		"fixes":       []any{map[string]any{"kind": "reposition_shape"}},
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "reposition_shape"}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -387,9 +387,9 @@ func TestRepairSlide_InvalidSlideIndex(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(5),
-		"fixes":       []any{map[string]any{"kind": "swap_layout", "params": map[string]any{"layout_id": "x"}}},
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(5),
+		"fixes":        []any{map[string]any{"kind": "swap_layout", "params": map[string]any{"layout_id": "x"}}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -411,8 +411,8 @@ func TestRepairSlide_MissingFixes(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -439,8 +439,8 @@ func TestRepairSlide_MultipleFixes(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 		"fixes": []any{
 			map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(10)}},
 			map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": float64(2)}},
@@ -504,9 +504,9 @@ func TestRepairSlide_ContractShape(t *testing.T) {
 	)
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
-		"fixes":       []any{map[string]any{"kind": "reposition_shape"}},
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "reposition_shape"}},
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -658,8 +658,8 @@ func TestRepairSlide_ReplaceColor(t *testing.T) {
 	deck := shapeGridDeck("#FFE8D4")
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 		"fixes": []any{map[string]any{
 			"kind": "replace_color",
 			"params": map[string]any{
@@ -706,8 +706,8 @@ func TestRepairSlide_ReplaceColor_ContrastAutoFixedParams(t *testing.T) {
 
 	// Use the param names from contrast_autofixed findings.
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 		"fixes": []any{map[string]any{
 			"kind": "replace_color",
 			"params": map[string]any{
@@ -739,8 +739,8 @@ func TestRepairSlide_ReplaceColor_NotFound(t *testing.T) {
 	deck := shapeGridDeck("accent1")
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 		"fixes": []any{map[string]any{
 			"kind":   "replace_color",
 			"params": map[string]any{"from": "#DEADBE", "to": "#000000"},
@@ -768,8 +768,8 @@ func TestRepairSlide_UseSemanticColor_WithPath(t *testing.T) {
 	deck := shapeGridDeck("#FF0000")
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 		"fixes": []any{map[string]any{
 			"kind": "use_semantic_color",
 			"params": map[string]any{
@@ -815,8 +815,8 @@ func TestRepairSlide_UseSemanticColor_NoPath_ReplacesAllHex(t *testing.T) {
 	deck := shapeGridDeck("#FF0000")
 
 	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation":  mustParseJSON(deck),
-		"slide_index": float64(0),
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
 		"fixes": []any{map[string]any{
 			"kind":   "use_semantic_color",
 			"params": map[string]any{"value": "accent3"},
@@ -1170,7 +1170,6 @@ func TestReduceCellText_MarkdownEmphasisBroken(t *testing.T) {
 	}
 }
 
-
 func TestReduceCellText_AlreadyWithinBudget(t *testing.T) {
 	mc := repairMC(t)
 	deck := gridDeck("Short")
@@ -1263,6 +1262,38 @@ func TestReduceCellText_NoShapeGrid(t *testing.T) {
 	}
 	if output.AppliedFixes[0].Applied {
 		t.Error("expected not applied for slide without shape_grid")
+	}
+}
+
+func TestReduceCellTextPreservesNegatedClaim(t *testing.T) {
+	var input PresentationInput
+	if err := json.Unmarshal([]byte(gridDeck("Growth did not fall below 12% in FY26")), &input); err != nil {
+		t.Fatal(err)
+	}
+	result := applyRepairFix(&input, 0, repairFixInput{Kind: "reduce_cell_text", Params: map[string]any{
+		"cell_path": "/slides/0/shape_grid/rows/0/cells/0", "max_chars": float64(14),
+	}})
+	if result.Applied || result.Code != "semantic_review_required" {
+		t.Fatalf("expected protected no-op, got %+v", result)
+	}
+	b, _ := json.Marshal(input)
+	if !strings.Contains(string(b), "did not fall below 12%") {
+		t.Fatalf("semantic fact was changed: %s", b)
+	}
+}
+
+func TestRepairSlideRejectsStaleRevision(t *testing.T) {
+	mc := repairMC(t)
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(minimalDeck(map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Original title"})),
+		"slide_index":  float64(0), "expected_revision": "sha256:stale",
+		"fixes": []any{map[string]any{"kind": "shorten_title", "params": map[string]any{"max_length": float64(8)}}},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError || !strings.Contains(textContent(result), "STALE_REVISION") {
+		t.Fatalf("expected stale revision error, got %s", textContent(result))
 	}
 }
 

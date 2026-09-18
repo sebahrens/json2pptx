@@ -1104,7 +1104,6 @@ func (mb *mappingBuilder) addTextMapping(field, content string, ph *types.Placeh
 	})
 }
 
-
 // addWarning adds a warning message.
 func (mb *mappingBuilder) addWarning(msg string) {
 	mb.warnings = append(mb.warnings, msg)
@@ -1523,26 +1522,26 @@ var needsFullWidthDiagramTypes = map[string]bool{
 	"heatmap":               true,
 	"matrix_2x2":            true,
 	// Hierarchical/flow layouts — labels truncate in narrow columns
-	"org_chart":             true,
-	"fishbone":              true,
-	"process_flow":          true,
-	"value_chain":           true,
-	"porters_five_forces":   true,
+	"org_chart":           true,
+	"fishbone":            true,
+	"process_flow":        true,
+	"value_chain":         true,
+	"porters_five_forces": true,
 	// Timeline/Gantt — horizontal space critical for date labels
-	"timeline":              true,
-	"gantt":                 true,
+	"timeline": true,
+	"gantt":    true,
 	// Multi-element visual layouts
-	"kpi_dashboard":         true,
-	"venn":                  true,
+	"kpi_dashboard": true,
+	"venn":          true,
 	// Funnel — bottom segments too narrow for inside labels
-	"funnel":                true,
+	"funnel": true,
 	// Panel layout — multiple side-by-side panels with icons, titles, and body text.
 	// The icon_columns/icon_rows/stat_cards aliases resolve to panel_layout and
 	// must share its full-width preference.
-	"panel_layout":          true,
-	"icon_columns":          true,
-	"icon_rows":             true,
-	"stat_cards":            true,
+	"panel_layout": true,
+	"icon_columns": true,
+	"icon_rows":    true,
+	"stat_cards":   true,
 }
 
 // penalizeNarrowDiagramSlot returns a penalty (0.0–0.5) when a chart/diagram

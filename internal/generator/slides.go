@@ -31,21 +31,21 @@ type FooterConfig struct {
 
 // GenerationRequest specifies what to generate.
 type GenerationRequest struct {
-	TemplatePath          string              // Path to template PPTX file
-	OutputPath            string              // Where to write generated PPTX
-	Slides                []SlideSpec         // Slide specifications
-	AllowedImagePaths     []string            // Allowed base paths for image loading (security)
-	SVGStrategy           string              // SVG conversion strategy: "png" (default), "emf", or "native"
-	SVGScale              float64             // Scale factor for SVG to PNG conversion (default: 2.0)
-	SVGNativeCompat       string              // Native SVG compatibility mode: "warn" (default), "fallback", "strict", "ignore"
-	MaxPNGWidth           int                 // Maximum pixel width for PNG fallback images (0 = no cap, default: 2500)
-	ExcludeTemplateSlides bool                // When true, exclude template's example slides from output (should always be true)
+	TemplatePath          string               // Path to template PPTX file
+	OutputPath            string               // Where to write generated PPTX
+	Slides                []SlideSpec          // Slide specifications
+	AllowedImagePaths     []string             // Allowed base paths for image loading (security)
+	SVGStrategy           string               // SVG conversion strategy: "png" (default), "emf", or "native"
+	SVGScale              float64              // Scale factor for SVG to PNG conversion (default: 2.0)
+	SVGNativeCompat       string               // Native SVG compatibility mode: "warn" (default), "fallback", "strict", "ignore"
+	MaxPNGWidth           int                  // Maximum pixel width for PNG fallback images (0 = no cap, default: 2500)
+	ExcludeTemplateSlides bool                 // When true, exclude template's example slides from output (should always be true)
 	ThemeOverride         *types.ThemeOverride // Per-deck theme color/font overrides from frontmatter (nil = no override)
-	SyntheticFiles        map[string][]byte   // Synthetic layout files from SynthesisManifest (nil = no synthetic layouts)
-	Footer                *FooterConfig       // Footer configuration (nil = disabled)
-	StrictFit             string              // Text-fit checking mode for charts: "off", "warn", "strict" (default: "warn")
-	DataPalette           []string            // Ordered hex colors for chart series (resolved from TemplateMetadata.DataPalette)
-	ValidateOutput        bool                // When true, run OOXML content validation on generated file
+	SyntheticFiles        map[string][]byte    // Synthetic layout files from SynthesisManifest (nil = no synthetic layouts)
+	Footer                *FooterConfig        // Footer configuration (nil = disabled)
+	StrictFit             string               // Text-fit checking mode for charts: "off", "warn", "strict" (default: "warn")
+	DataPalette           []string             // Ordered hex colors for chart series (resolved from TemplateMetadata.DataPalette)
+	ValidateOutput        bool                 // When true, run OOXML content validation on generated file
 }
 
 // BackgroundImage specifies a slide background image.
@@ -110,14 +110,14 @@ type ContentType string
 
 const (
 	ContentText            ContentType = "text"
-	ContentSectionTitle    ContentType = "section_title"       // Section divider title (large, prominent text)
-	ContentTitleSlideTitle ContentType = "title_slide_title"   // Title slide ctrTitle (preserves template font/alignment)
+	ContentSectionTitle    ContentType = "section_title"     // Section divider title (large, prominent text)
+	ContentTitleSlideTitle ContentType = "title_slide_title" // Title slide ctrTitle (preserves template font/alignment)
 	ContentBullets         ContentType = "bullets"
-	ContentBodyAndBullets  ContentType = "body_and_bullets"    // Body text followed by bullets
-	ContentBodyAndLead     ContentType = "body_and_lead"       // Lead paragraph (16pt bold) followed by supporting bullets (12pt)
-	ContentBulletGroups    ContentType = "bullet_groups"       // Grouped bullets with section headers
+	ContentBodyAndBullets  ContentType = "body_and_bullets" // Body text followed by bullets
+	ContentBodyAndLead     ContentType = "body_and_lead"    // Lead paragraph (16pt bold) followed by supporting bullets (12pt)
+	ContentBulletGroups    ContentType = "bullet_groups"    // Grouped bullets with section headers
 	ContentImage           ContentType = "image"
-	ContentDiagram         ContentType = "diagram"             // Unified diagram type (charts, infographics)
+	ContentDiagram         ContentType = "diagram" // Unified diagram type (charts, infographics)
 )
 
 // AllContentTypes returns the sorted list of user-facing content types.
@@ -167,15 +167,15 @@ type BulletGroup = types.BulletGroup
 
 // GenerationResult contains the result of generation.
 type GenerationResult struct {
-	OutputPath    string         // Path to generated file
-	FileSize      int64          // Size of generated file in bytes
-	SlideCount    int            // Number of slides created
-	ContentHash      string                     // SHA-256 hex digest of the output file
-	Warnings         []string                  // Non-fatal warnings
+	OutputPath       string                      // Path to generated file
+	FileSize         int64                       // Size of generated file in bytes
+	SlideCount       int                         // Number of slides created
+	ContentHash      string                      // SHA-256 hex digest of the output file
+	Warnings         []string                    // Non-fatal warnings
 	ValidationErrors []*patterns.ValidationError // Structured validation errors (e.g. placeholder_not_found)
-	Duration         time.Duration              // Time taken to generate
-	MediaFailures    []MediaFailure             // Structured per-slide media errors (diagrams, images, tables)
-	ContrastSwaps    []ContrastSwap             // WCAG contrast auto-fix color replacements
+	Duration         time.Duration               // Time taken to generate
+	MediaFailures    []MediaFailure              // Structured per-slide media errors (diagrams, images, tables)
+	ContrastSwaps    []ContrastSwap              // WCAG contrast auto-fix color replacements
 	FitFindings      []patterns.FitFinding       // Render-time fit findings (overflow, truncation, clamping)
 }
 
@@ -238,8 +238,6 @@ func Generate(ctx context.Context, req GenerationRequest) (*GenerationResult, er
 	// Use single-pass generation for optimal performance
 	result, warnings, err := generateSinglePass(ctx, req)
 	if err != nil {
-		// Clean up partial output if it exists
-		_ = os.Remove(req.OutputPath)
 		return nil, err
 	}
 
@@ -440,7 +438,6 @@ type slideLayoutXML struct {
 	CommonSlideData commonSlideDataXML `xml:"cSld"`
 }
 
-
 type commonSlideDataXML struct {
 	Name      string       `xml:"name,attr"`
 	ShapeTree shapeTreeXML `xml:"spTree"`
@@ -563,16 +560,16 @@ type textBodyXML struct {
 // Attributes are explicitly declared so they survive XML round-tripping;
 // innerxml captures child elements (normAutofit, noAutofit, etc.).
 type bodyPropertiesXML struct {
-	Wrap    string `xml:"wrap,attr,omitempty"`    // Text wrapping: "square" (word wrap) or "none"
-	LIns    *int64 `xml:"lIns,attr,omitempty"`    // Left inset in EMU
-	RIns    *int64 `xml:"rIns,attr,omitempty"`    // Right inset in EMU
-	TIns    *int64 `xml:"tIns,attr,omitempty"`    // Top inset in EMU
-	BIns    *int64 `xml:"bIns,attr,omitempty"`    // Bottom inset in EMU
-	Anchor  string `xml:"anchor,attr,omitempty"`  // Vertical anchor: "t", "ctr", "b"
+	Wrap      string `xml:"wrap,attr,omitempty"`      // Text wrapping: "square" (word wrap) or "none"
+	LIns      *int64 `xml:"lIns,attr,omitempty"`      // Left inset in EMU
+	RIns      *int64 `xml:"rIns,attr,omitempty"`      // Right inset in EMU
+	TIns      *int64 `xml:"tIns,attr,omitempty"`      // Top inset in EMU
+	BIns      *int64 `xml:"bIns,attr,omitempty"`      // Bottom inset in EMU
+	Anchor    string `xml:"anchor,attr,omitempty"`    // Vertical anchor: "t", "ctr", "b"
 	AnchorCtr string `xml:"anchorCtr,attr,omitempty"` // Center anchor: "0" or "1"
-	RtlCol  string `xml:"rtlCol,attr,omitempty"`  // RTL columns: "0" or "1"
-	Vert    string `xml:"vert,attr,omitempty"`     // Text direction: "horz", "vert", etc.
-	Inner   string `xml:",innerxml"`
+	RtlCol    string `xml:"rtlCol,attr,omitempty"`    // RTL columns: "0" or "1"
+	Vert      string `xml:"vert,attr,omitempty"`      // Text direction: "horz", "vert", etc.
+	Inner     string `xml:",innerxml"`
 }
 
 // listStyleXML preserves the raw XML content of list styles.

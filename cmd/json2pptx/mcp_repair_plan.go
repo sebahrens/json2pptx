@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -51,11 +52,25 @@ type batchRepairToolCall struct {
 
 // proposedDirective is a single ranked fix directive, with provenance.
 type proposedDirective struct {
-	Kind     string         `json:"kind"`
-	Params   map[string]any `json:"params,omitempty"`
-	Rank     int            `json:"rank"`
-	Source   directiveSource `json:"source"`
-	ToolCall *patterns.ToolCallSuggestion `json:"tool_call,omitempty"`
+	Kind                string                       `json:"kind"`
+	Params              map[string]any               `json:"params,omitempty"`
+	Rank                int                          `json:"rank"`
+	Target              repairTarget                 `json:"target"`
+	Preconditions       repairPreconditions          `json:"preconditions"`
+	ExpectedImprovement string                       `json:"expected_improvement"`
+	SemanticImpact      string                       `json:"semantic_impact"`
+	Source              directiveSource              `json:"source"`
+	ToolCall            *patterns.ToolCallSuggestion `json:"tool_call,omitempty"`
+}
+
+type repairTarget struct {
+	SlideIndex int    `json:"slide_index"`
+	Path       string `json:"path"`
+}
+
+type repairPreconditions struct {
+	Revision string `json:"revision"`
+	Path     string `json:"path"`
 }
 
 // directiveSource is the provenance of a directive: which finding produced it,
@@ -114,12 +129,12 @@ type proposeSummary struct {
 // extended shapes.
 type proposeRepairsFinding struct {
 	// Fit-finding shape (embedded ValidationError + extras).
-	Pattern  string                  `json:"pattern,omitempty"`
-	Path     string                  `json:"path,omitempty"`
-	Code     string                  `json:"code,omitempty"`
-	Message  string                  `json:"message,omitempty"`
-	Fix      *patterns.FixSuggestion `json:"fix,omitempty"`
-	Action   string                  `json:"action,omitempty"`
+	Pattern string                  `json:"pattern,omitempty"`
+	Path    string                  `json:"path,omitempty"`
+	Code    string                  `json:"code,omitempty"`
+	Message string                  `json:"message,omitempty"`
+	Fix     *patterns.FixSuggestion `json:"fix,omitempty"`
+	Action  string                  `json:"action,omitempty"`
 
 	// Visual QA finding shape.
 	SlideIndex     *int                    `json:"slide_index,omitempty"`
@@ -218,6 +233,7 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 // to repair_slide — without this slot the agent gets MISSING_PARAMETER.
 func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) proposeRepairsOutput {
 	slideCount := len(input.Slides)
+	revision := presentationRevision(input)
 
 	// Marshal the presentation once into a generic map so each emitted
 	// tool_call / batch_tool_call can carry the full repair_slide argument
@@ -278,7 +294,7 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 				Message:  f.Description,
 			}
 			for ci, cand := range candidates {
-				dir := buildDirective(cand.Kind, cand.Params, slideIdx, source, presentationObj, score-ci /* preserve candidate order within a finding */)
+				dir := buildDirective(cand.Kind, cand.Params, slideIdx, source, presentationObj, revision, score-ci /* preserve candidate order within a finding */)
 				buckets[slideIdx] = append(buckets[slideIdx], bucketEntry{directive: dir, score: score - ci})
 			}
 			continue
@@ -334,7 +350,7 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 			Path:     f.Path,
 			Message:  f.Message,
 		}
-		dir := buildDirective(fix.Kind, cloneParams(fix.Params), slideIdx, source, presentationObj, score)
+		dir := buildDirective(fix.Kind, cloneParams(fix.Params), slideIdx, source, presentationObj, revision, score)
 		buckets[slideIdx] = append(buckets[slideIdx], bucketEntry{directive: dir, score: score})
 	}
 
@@ -352,6 +368,23 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 		// Sort: higher score first; stable on tie.
 		sort.SliceStable(entries, func(i, j int) bool { return entries[i].score > entries[j].score })
 
+		// A provider can repeat the same finding. Execute each concrete repair once
+		// so a retry cannot progressively truncate or reshape the slide.
+		seen := map[string]bool{}
+		unique := entries[:0]
+		for _, e := range entries {
+			keyBytes, _ := json.Marshal(struct {
+				Kind   string
+				Params map[string]any
+				Path   string
+			}{e.directive.Kind, e.directive.Params, e.directive.Target.Path})
+			key := string(keyBytes)
+			if !seen[key] {
+				seen[key] = true
+				unique = append(unique, e)
+			}
+		}
+		entries = unique
 		directives := make([]proposedDirective, len(entries))
 		batchFixes := make([]any, len(entries))
 		for i, e := range entries {
@@ -367,9 +400,10 @@ func proposeRepairs(input *PresentationInput, findings []proposeRepairsFinding) 
 		batch := &batchRepairToolCall{
 			Tool: "repair_slide",
 			ArgsTemplate: map[string]any{
-				"presentation": presentationObj,
-				"slide_index":  slideIdx,
-				"fixes":        batchFixes,
+				"presentation":      presentationObj,
+				"slide_index":       slideIdx,
+				"expected_revision": revision,
+				"fixes":             batchFixes,
 			},
 		}
 
@@ -437,10 +471,11 @@ func resolveSlideIndex(f proposeRepairsFinding, slideCount int) (int, bool) {
 // from most-urgent to least-urgent. Higher = more urgent.
 //
 // Tiers (base):
-//   1000 — refuse / P0
-//    800 — shrink_or_split / P1 / error
-//    400 — review / P2 / warning
-//    100 — info / P3
+//
+//	1000 — refuse / P0
+//	 800 — shrink_or_split / P1 / error
+//	 400 — review / P2 / warning
+//	 100 — info / P3
 //
 // A small bonus is added when the original finding already carried a fix
 // (preferred over visualqa category fallback).
@@ -573,23 +608,57 @@ func cloneParams(src map[string]any) map[string]any {
 // The presentation map is embedded directly so the args_template is a complete
 // repair_slide invocation — agents can submit it without having to thread the
 // deck through manually.
-func buildDirective(kind string, params map[string]any, slideIdx int, source directiveSource, presentation map[string]any, _ int) proposedDirective {
+func buildDirective(kind string, params map[string]any, slideIdx int, source directiveSource, presentation map[string]any, revision string, _ int) proposedDirective {
+	path := source.Path
+	if path == "" {
+		path = buildVisualPath(slideIdx)
+	}
+	impact := "preserves authored facts"
+	if kind == "reduce_text" || kind == "reduce_cell_text" || kind == "shorten_title" || kind == "reduce_items" || kind == "resize_list" {
+		impact = "may remove authored meaning; application requires semantic-safety checks"
+	}
 	fixObj := map[string]any{"kind": kind}
 	if len(params) > 0 {
 		fixObj["params"] = params
 	}
 	return proposedDirective{
-		Kind:   kind,
-		Params: params,
-		Source: source,
+		Kind: kind, Params: params, Source: source,
+		Target:              repairTarget{SlideIndex: slideIdx, Path: path},
+		Preconditions:       repairPreconditions{Revision: revision, Path: path},
+		ExpectedImprovement: expectedImprovement(kind),
+		SemanticImpact:      impact,
 		ToolCall: &patterns.ToolCallSuggestion{
 			Tool: "repair_slide",
 			ArgsTemplate: map[string]any{
-				"presentation": presentation,
-				"slide_index":  slideIdx,
-				"fixes":        []any{fixObj},
+				"presentation":      presentation,
+				"slide_index":       slideIdx,
+				"expected_revision": revision,
+				"fixes":             []any{fixObj},
 			},
 		},
+	}
+}
+
+func presentationRevision(input *PresentationInput) string {
+	b, _ := json.Marshal(input)
+	s := sha256.Sum256(b)
+	return fmt.Sprintf("sha256:%x", s[:])
+}
+
+func expectedImprovement(kind string) string {
+	switch kind {
+	case "swap_layout":
+		return "use a layout with geometry better suited to the content"
+	case "reshape_grid":
+		return "improve spacing and content distribution"
+	case "replace_color", "use_semantic_color":
+		return "improve readable contrast and theme fidelity"
+	case "split_at_row", "split_pattern":
+		return "reduce density without discarding content"
+	case "reduce_text", "reduce_cell_text", "shorten_title", "reduce_items", "resize_list":
+		return "reduce text density while preserving protected facts"
+	default:
+		return "resolve the source finding"
 	}
 }
 

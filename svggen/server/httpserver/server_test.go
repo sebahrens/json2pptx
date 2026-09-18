@@ -126,6 +126,39 @@ func TestHandleHealth(t *testing.T) {
 	}
 }
 
+func TestCORSPreflightAndHTTPIconPolicy(t *testing.T) {
+	cfg := DefaultConfig()
+	security := DefaultSecurityConfig()
+	security.Auth.Enabled = true
+	security.Auth.APIKeys = []string{"secret"}
+	security.AllowedOrigins = []string{"https://review.example"}
+	cfg.Security = &security
+	server := NewServer(cfg, svggen.DefaultRegistry())
+
+	for _, path := range []string{"/render", "/render/batch"} {
+		req := httptest.NewRequest(http.MethodOptions, path, nil)
+		req.Header.Set("Origin", "https://review.example")
+		req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+		rec := httptest.NewRecorder()
+		server.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Errorf("OPTIONS %s status=%d, want 204", path, rec.Code)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://review.example" {
+			t.Errorf("OPTIONS %s allow-origin=%q", path, got)
+		}
+	}
+
+	body := `{"type":"timeline","data":{"activities":[{"name":"probe","start":"2024-01-01","end":"2024-12-31","icon":"http://127.0.0.1:1/icon.svg"}]}}`
+	req := httptest.NewRequest(http.MethodPost, "/render", strings.NewReader(body))
+	req.Header.Set("X-API-Key", "secret")
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "icon-source policy") {
+		t.Fatalf("remote icon status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestHandleTypes(t *testing.T) {
 	server, _ := newTestServer()
 

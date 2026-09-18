@@ -39,6 +39,7 @@
       "takeaway": "Your teams are data-rich but decision-poor — and the gap is widening."
     },
     {
+      "layout_id": "blank-title",
       "slide_type": "content",
       "content": [
         {
@@ -92,6 +93,7 @@
       "takeaway": "Spend is shifting decisively from batch reporting to live decisioning."
     },
     {
+      "layout_id": "blank-title",
       "slide_type": "content",
       "content": [
         {

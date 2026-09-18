@@ -20,11 +20,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa"
@@ -64,10 +66,11 @@ func qualityModeLabel(visualQAEnabled bool) string {
 // so an agent never overestimates the inspection rigor that ran. quality_mode in
 // the response is an alias of Actual.
 type qualityReport struct {
-	Requested       string   `json:"requested"`
-	Actual          string   `json:"actual"`
-	InspectionMode  string   `json:"inspection_mode,omitempty"`
-	FallbackReasons []string `json:"fallback_reasons,omitempty"`
+	Requested       string                    `json:"requested"`
+	Actual          string                    `json:"actual"`
+	InspectionMode  string                    `json:"inspection_mode,omitempty"`
+	FallbackReasons []string                  `json:"fallback_reasons,omitempty"`
+	Evidence        *pipeline.QualityEvidence `json:"evidence,omitempty"`
 }
 
 // buildQualityReport derives the requested-vs-actual quality report. cfg is the
@@ -338,6 +341,15 @@ func (mc *mcpConfig) runVisualQALoop(
 		mode = passMode
 
 		failedSlides, inspectionStatus := inspectionFailureStats(report)
+		missingImages := len(input.Slides) - len(images)
+		if missingImages > 0 {
+			failedSlides += missingImages
+			if len(images) == 0 {
+				inspectionStatus = inspectionStatusFailed
+			} else {
+				inspectionStatus = inspectionStatusPartial
+			}
+		}
 		entry := visualQAPassEntry{
 			Pass:             pass,
 			InspectionMode:   passMode,
@@ -540,9 +552,30 @@ func runVisualQAPaletteAudit(outputPath string) *visualQAPaletteAudit {
 func visualQASlideInfos(slides []SlideInput) map[int]visualqa.SlideInfo {
 	infos := make(map[int]visualqa.SlideInfo, len(slides))
 	for i := range slides {
+		role := strings.TrimSpace(slides[i].SlideType)
+		if role == "" && slides[i].Pattern != nil {
+			role = "pattern:" + slides[i].Pattern.Name
+		}
+		if role == "" && slides[i].Compose != nil {
+			role = "compose"
+		}
+		if role == "" && slides[i].ShapeGrid != nil {
+			role = "shape_grid"
+		}
+		if role == "" {
+			for _, content := range slides[i].Content {
+				if content.Type == "chart" || content.Type == "diagram" || content.Type == "image" || content.Type == "table" {
+					role = content.Type
+					break
+				}
+			}
+		}
+		if role == "" {
+			role = "content"
+		}
 		infos[i] = visualqa.SlideInfo{
 			Index: i,
-			Type:  "content",
+			Type:  role,
 			Title: extractTitleFromSlide(&slides[i]),
 		}
 	}

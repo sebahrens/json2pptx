@@ -196,6 +196,39 @@ func TestHandleGenerate_IdempotencyKeyReplaysResponse(t *testing.T) {
 	}
 }
 
+func TestHandleGenerate_StaleArtifactIsRegenerated(t *testing.T) {
+	mc := idempotencyMC(t)
+	deck := map[string]any{"template": "midnight-blue", "slides": []any{map[string]any{
+		"layout_id": "title", "content": []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Original"}},
+	}}}
+	req := map[string]any{"presentation": deck, "output_filename": "same.pptx", "idempotency_key": "original-key"}
+	first, err := mc.handleGenerate(context.Background(), makeRequest(req))
+	if err != nil || first.IsError {
+		t.Fatalf("first generation failed: err=%v response=%s", err, textContent(first))
+	}
+	var firstOut JSONOutput
+	if err := json.Unmarshal([]byte(textContent(first)), &firstOut); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(firstOut.OutputPath, []byte("replaced"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	replay, err := mc.handleGenerate(context.Background(), makeRequest(req))
+	if err != nil || replay.IsError {
+		t.Fatalf("regeneration failed: err=%v response=%s", err, textContent(replay))
+	}
+	var replayOut JSONOutput
+	if err := json.Unmarshal([]byte(textContent(replay)), &replayOut); err != nil {
+		t.Fatal(err)
+	}
+	if replayOut.IdempotentReplay {
+		t.Fatal("replaced artifact must not be reported as an idempotent replay")
+	}
+	if !artifactMatches(replayOut.OutputPath, replayOut.ContentHash) {
+		t.Fatal("regenerated artifact does not match returned content_hash")
+	}
+}
+
 // TestHandleGenerate_DifferentKeysDoNotReplay asserts the cache key actually
 // discriminates: two calls with different idempotency_key values must both
 // produce fresh responses (no false-positive replays).

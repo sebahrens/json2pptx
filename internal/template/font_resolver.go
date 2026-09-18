@@ -21,9 +21,9 @@ type MasterFontResolver struct {
 
 // MasterFontStyles contains font styles from a slide master's txStyles.
 type MasterFontStyles struct {
-	TitleStyle *FontStyle            // p:titleStyle
-	BodyStyle  map[int]*FontStyle    // p:bodyStyle lvlNpPr (0-8)
-	OtherStyle map[int]*FontStyle    // p:otherStyle lvlNpPr (0-8)
+	TitleStyle *FontStyle         // p:titleStyle
+	BodyStyle  map[int]*FontStyle // p:bodyStyle lvlNpPr (0-8)
+	OtherStyle map[int]*FontStyle // p:otherStyle lvlNpPr (0-8)
 }
 
 // FontStyle represents resolved font properties.
@@ -99,7 +99,16 @@ func (r *MasterFontResolver) GetMasterFontsForLayout(layoutID string) *MasterFon
 		return nil
 	}
 
-	styles := r.parseMasterFontStyles(masterData)
+	// Theme font references are scoped through the layout's actual master, not
+	// whichever theme file happens to sort first in the package.
+	effective := *r
+	if _, themePath, relErr := resolveLayoutRelationships(r.reader, layoutID); relErr == nil && themePath != "" {
+		if themeData, readErr := r.reader.ReadFile(themePath); readErr == nil {
+			theme := parseThemeData(themeData)
+			effective.theme = &theme
+		}
+	}
+	styles := effective.parseMasterFontStyles(masterData)
 	r.cache[masterPath] = styles
 	return styles
 }
@@ -220,21 +229,21 @@ func (r *MasterFontResolver) resolveSchemeColor(schemeName string) string {
 
 	// Map scheme color names to theme color names
 	colorMap := map[string]string{
-		"tx1":     "dk1",
-		"tx2":     "dk2",
-		"bg1":     "lt1",
-		"bg2":     "lt2",
-		"dk1":     "dk1",
-		"dk2":     "dk2",
-		"lt1":     "lt1",
-		"lt2":     "lt2",
-		"accent1": "accent1",
-		"accent2": "accent2",
-		"accent3": "accent3",
-		"accent4": "accent4",
-		"accent5": "accent5",
-		"accent6": "accent6",
-		"hlink":   "hlink",
+		"tx1":      "dk1",
+		"tx2":      "dk2",
+		"bg1":      "lt1",
+		"bg2":      "lt2",
+		"dk1":      "dk1",
+		"dk2":      "dk2",
+		"lt1":      "lt1",
+		"lt2":      "lt2",
+		"accent1":  "accent1",
+		"accent2":  "accent2",
+		"accent3":  "accent3",
+		"accent4":  "accent4",
+		"accent5":  "accent5",
+		"accent6":  "accent6",
+		"hlink":    "hlink",
 		"folHlink": "folHlink",
 	}
 
@@ -321,8 +330,8 @@ func (r *MasterFontResolver) extractShapeFonts(shape *shapeXML) *FontStyle {
 // XML structure definitions for parsing slide master font styles
 
 type masterFontXML struct {
-	XMLName  xml.Name     `xml:"sldMaster"`
-	TxStyles txStylesXML  `xml:"txStyles"`
+	XMLName  xml.Name    `xml:"sldMaster"`
+	TxStyles txStylesXML `xml:"txStyles"`
 }
 
 type txStylesXML struct {

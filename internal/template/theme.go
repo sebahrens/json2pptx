@@ -29,6 +29,10 @@ func ParseTheme(reader *Reader) types.ThemeInfo {
 		return getDefaultTheme()
 	}
 
+	return parseThemeData(data)
+}
+
+func parseThemeData(data []byte) types.ThemeInfo {
 	var theme pptx.ThemeXML
 	if err := xml.Unmarshal(data, &theme); err != nil {
 		return getDefaultTheme()

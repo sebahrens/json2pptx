@@ -1,4 +1,5 @@
 {
+  "design_mode": "free",
   "template": "midnight-blue",
   "output_filename": "contrast-fixer-test.pptx",
   "slides": [

@@ -263,6 +263,20 @@ func TestCORSMiddleware(t *testing.T) {
 }
 
 func TestRateLimiter(t *testing.T) {
+	t.Run("configured limits above legacy capacity are enforced", func(t *testing.T) {
+		for _, limit := range []int{128, 129, 512} {
+			limiter := NewRateLimiter(limit, time.Hour)
+			for i := 0; i < limit; i++ {
+				allowed, _, _ := limiter.Allow("192.0.2.1")
+				if !allowed {
+					t.Fatalf("limit %d rejected request %d early", limit, i+1)
+				}
+			}
+			if allowed, _, _ := limiter.Allow("192.0.2.1"); allowed {
+				t.Errorf("limit %d allowed request %d", limit, limit+1)
+			}
+		}
+	})
 	t.Run("allows requests under limit", func(t *testing.T) {
 		limiter := NewRateLimiter(5, time.Minute)
 

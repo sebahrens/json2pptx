@@ -3,12 +3,9 @@ package svggen
 
 import (
 	"container/list"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"hash"
-	"hash/fnv"
-	"slices"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -150,7 +147,16 @@ func NewRenderCacheWithClock(cfg CacheConfig, clock Clock) *RenderCache {
 // Get retrieves a cached result by request key.
 // Returns nil if not found or expired.
 func (c *RenderCache) Get(req *RequestEnvelope) *RenderResult {
-	key := c.computeKey(req)
+	return c.GetByKey(c.Key(req))
+}
+
+// Key returns the stable cache identity for a request at lookup time.
+func (c *RenderCache) Key(req *RequestEnvelope) string {
+	return c.computeKey(req)
+}
+
+// GetByKey retrieves a result using a previously captured request identity.
+func (c *RenderCache) GetByKey(key string) *RenderResult {
 
 	c.mu.RLock()
 	entry, ok := c.entries[key]
@@ -183,7 +189,12 @@ func (c *RenderCache) Get(req *RequestEnvelope) *RenderResult {
 
 // Set stores a render result in the cache.
 func (c *RenderCache) Set(req *RequestEnvelope, result *RenderResult) {
-	key := c.computeKey(req)
+	c.SetByKey(c.Key(req), result)
+}
+
+// SetByKey stores a result under the identity captured before rendering. This
+// prevents renderer defaulting or normalization from changing the insertion key.
+func (c *RenderCache) SetByKey(key string, result *RenderResult) {
 	now := c.clock.Now()
 
 	c.mu.Lock()
@@ -284,141 +295,16 @@ func (c *RenderCache) Stop() {
 	close(c.stopChan)
 }
 
-// computeKey generates a cache key from a request envelope using FNV-1a hash.
-// This is much faster than SHA256 and sufficient for cache key purposes.
-// The key is computed by hashing field values directly rather than JSON marshaling.
+// computeKey hashes the canonical JSON representation of the complete request.
+// encoding/json sorts map keys, and its length-delimited syntax preserves type
+// and element boundaries that delimiter-based encodings cannot distinguish.
 func (c *RenderCache) computeKey(req *RequestEnvelope) string {
-	h := fnv.New64a()
-
-	// Hash simple string fields directly (no allocation)
-	h.Write([]byte(req.Type))
-	h.Write([]byte{0}) // Field separator
-	h.Write([]byte(req.Title))
-	h.Write([]byte{0})
-	h.Write([]byte(req.Subtitle))
-	h.Write([]byte{0})
-
-	// Hash output spec fields
-	h.Write([]byte(req.Output.Format))
-	h.Write([]byte{0})
-	h.Write([]byte(strconv.Itoa(req.Output.Width)))
-	h.Write([]byte{0})
-	h.Write([]byte(strconv.Itoa(req.Output.Height)))
-	h.Write([]byte{0})
-	h.Write([]byte(strconv.FormatFloat(req.Output.Scale, 'f', -1, 64)))
-	h.Write([]byte{0})
-
-	// Hash style spec fields
-	hashAny(h, req.Style.Palette) // May be string or []string
-	h.Write([]byte{0})
-	h.Write([]byte(req.Style.FontFamily))
-	h.Write([]byte{0})
-	h.Write([]byte(req.Style.Background))
-	h.Write([]byte{0})
-	if req.Style.ShowLegend {
-		h.Write([]byte{'1'})
-	} else {
-		h.Write([]byte{'0'})
+	encoded, err := json.Marshal(req)
+	if err != nil {
+		encoded = []byte("unencodable-request")
 	}
-	if req.Style.ShowValues {
-		h.Write([]byte{'1'})
-	} else {
-		h.Write([]byte{'0'})
-	}
-	if req.Style.ShowGrid {
-		h.Write([]byte{'1'})
-	} else {
-		h.Write([]byte{'0'})
-	}
-	h.Write([]byte{0})
-
-	// Hash data map - use JSON for complex nested data (sorted keys for consistency)
-	// This is the only allocation, but it's necessary for map ordering consistency
-	hashMapData(h, req.Data)
-
-	return strconv.FormatUint(h.Sum64(), 16)
-}
-
-// hashAny writes a value of any type to the hash.
-// Used for fields like Palette which can be string or []string.
-func hashAny(h hash.Hash64, v any) {
-	switch val := v.(type) {
-	case string:
-		h.Write([]byte(val))
-	case []string:
-		for _, s := range val {
-			h.Write([]byte(s))
-			h.Write([]byte{','})
-		}
-	case []any:
-		for _, item := range val {
-			hashAny(h, item)
-			h.Write([]byte{','})
-		}
-	case nil:
-		h.Write([]byte("nil"))
-	default:
-		// Fallback: use fmt for unknown types (error ignored for hash writes)
-		_, _ = fmt.Fprintf(h, "%v", v)
-	}
-}
-
-// hashMapData writes a map to the hash with sorted keys for consistency.
-// For complex nested data, this marshals to JSON (compact form).
-func hashMapData(h hash.Hash64, data map[string]any) {
-	if len(data) == 0 {
-		h.Write([]byte("{}"))
-		return
-	}
-
-	// Sort keys for consistent ordering
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
-
-	// Write key-value pairs
-	for _, k := range keys {
-		h.Write([]byte(k))
-		h.Write([]byte{':'})
-		v := data[k]
-		switch val := v.(type) {
-		case string:
-			h.Write([]byte(val))
-		case int:
-			h.Write([]byte(strconv.Itoa(val)))
-		case int64:
-			h.Write([]byte(strconv.FormatInt(val, 10)))
-		case float64:
-			h.Write([]byte(strconv.FormatFloat(val, 'f', -1, 64)))
-		case bool:
-			if val {
-				h.Write([]byte{'t'})
-			} else {
-				h.Write([]byte{'f'})
-			}
-		case map[string]any:
-			// Recursive call for nested maps
-			hashMapData(h, val)
-		case []any:
-			// Hash array elements
-			for i, item := range val {
-				if i > 0 {
-					h.Write([]byte{','})
-				}
-				hashAny(h, item)
-			}
-		default:
-			// Fallback: marshal to JSON for complex types
-			if b, err := json.Marshal(v); err == nil {
-				h.Write(b)
-			} else {
-				_, _ = fmt.Fprintf(h, "%v", v)
-			}
-		}
-		h.Write([]byte{0})
-	}
+	sum := sha256.Sum256(encoded)
+	return hex.EncodeToString(sum[:])
 }
 
 // evictOldestLocked removes the oldest entry. Must be called with lock held.

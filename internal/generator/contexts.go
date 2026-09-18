@@ -38,64 +38,64 @@ type LogoZone struct {
 // SlideContext holds slide tracking state for single-pass generation.
 // Responsible for managing existing and new slides.
 type SlideContext struct {
-	existingSlides        int
-	excludeTemplateSlides bool                // When true, template slides are excluded from output
-	slideWidth            int64               // Slide width in EMU (from presentation.xml <p:sldSz>)
-	slideHeight           int64               // Slide height in EMU (from presentation.xml <p:sldSz>)
-	templateSlideData     map[int]*slideXML   // existing slides that might need modification
-	newSlideData          map[int][]byte      // newly created slides
-	slideSpecs            []SlideSpec         // specs for new slides
-	slideContentMap       map[int]SlideSpec   // slideNum -> content
-	slideRelIDs           map[int]string      // slideNum -> relationship ID (e.g., "rId15")
-	masterBulletLevelCache map[string]int     // masterPath -> first bullet level (cached)
-	slideNotes            map[int]string      // slideNum -> speaker notes text (only for slides with notes)
-	slideSources          map[int]string      // slideNum -> source attribution text (only for slides with source)
-	slideTakeaways        map[int]string      // slideNum -> takeaway / "so what" headline (only for slides with takeaway)
-	tableInserts          map[int][]tableInsert      // slideNum -> table XML inserts (replaces placeholder shapes)
-	panelShapeInserts     map[int][]panelShapeInsert // slideNum -> native panel shape inserts (replaces placeholder shapes)
-	logoZones             map[string]*LogoZone // per-layout logo zones (key = layout basename, e.g. "slideLayout1"); nil if no logos detected
-	footerConfig              *FooterConfig       // Footer configuration (nil = disabled)
-	footerPositionsByLayout   map[string]map[string]*transformXML // layoutID -> ("dt"/"ftr"/"sldNum" -> position)
-	slideBgMedia          map[int]mediaRel    // slideNum -> background image media relationship
-	themeFontName         string              // Theme body font (e.g. "Franklin Gothic Book") for text fitting
+	existingSlides          int
+	excludeTemplateSlides   bool                                // When true, template slides are excluded from output
+	slideWidth              int64                               // Slide width in EMU (from presentation.xml <p:sldSz>)
+	slideHeight             int64                               // Slide height in EMU (from presentation.xml <p:sldSz>)
+	templateSlideData       map[int]*slideXML                   // existing slides that might need modification
+	newSlideData            map[int][]byte                      // newly created slides
+	slideSpecs              []SlideSpec                         // specs for new slides
+	slideContentMap         map[int]SlideSpec                   // slideNum -> content
+	slideRelIDs             map[int]string                      // slideNum -> relationship ID (e.g., "rId15")
+	masterBulletLevelCache  map[string]int                      // masterPath -> first bullet level (cached)
+	slideNotes              map[int]string                      // slideNum -> speaker notes text (only for slides with notes)
+	slideSources            map[int]string                      // slideNum -> source attribution text (only for slides with source)
+	slideTakeaways          map[int]string                      // slideNum -> takeaway / "so what" headline (only for slides with takeaway)
+	tableInserts            map[int][]tableInsert               // slideNum -> table XML inserts (replaces placeholder shapes)
+	panelShapeInserts       map[int][]panelShapeInsert          // slideNum -> native panel shape inserts (replaces placeholder shapes)
+	logoZones               map[string]*LogoZone                // per-layout logo zones (key = layout basename, e.g. "slideLayout1"); nil if no logos detected
+	footerConfig            *FooterConfig                       // Footer configuration (nil = disabled)
+	footerPositionsByLayout map[string]map[string]*transformXML // layoutID -> ("dt"/"ftr"/"sldNum" -> position)
+	slideBgMedia            map[int]mediaRel                    // slideNum -> background image media relationship
+	themeFontName           string                              // Theme body font (e.g. "Franklin Gothic Book") for text fitting
 }
 
 // tableInsert tracks a table that replaces a placeholder shape.
 type tableInsert struct {
-	placeholderIdx int    // Shape index to remove
+	placeholderIdx  int    // Shape index to remove
 	graphicFrameXML string // Complete <p:graphicFrame> XML to insert
 }
 
 // panelShapeInsert tracks a native panel shape group that replaces a placeholder shape.
 type panelShapeInsert struct {
-	placeholderIdx int                // Shape index to remove
-	bounds         types.BoundingBox  // Placeholder EMU bounds
-	panels         []nativePanelData  // Parsed panel data
-	groupXML       string             // Populated during finalizePanelGroupXML()
-	swotMode       bool               // True for SWOT 2x2 grid layout (vs column panels)
-	pestelMode     bool               // True for PESTEL 3x2 grid layout
-	nineBoxMode    bool               // True for Nine Box Talent 3x3 grid layout
-	rowsMode          bool               // True for horizontal rows layout
-	statCardsMode     bool               // True for stat_cards grid layout
-	stylishPanelsMode bool               // True for stylish_panels layout
-	valueChainMode   bool               // True for Value Chain diagram layout
-	valueChainMeta   valueChainMeta     // Metadata for value chain layout (primary/support counts, margin)
-	kpiDashboardMode bool               // True for KPI Dashboard grid layout
-	portersFiveMode  bool               // True for Porter's Five Forces cross layout
-	bmcMode          bool               // True for Business Model Canvas 9-box layout
-	processFlowMode  bool               // True for Process Flow diagram layout
-	processFlowMeta  processFlowMeta    // Metadata for process flow layout
-	heatmapMode      bool               // True for Heatmap NxM grid layout
-	heatmapMeta      heatmapMeta        // Metadata for heatmap layout (rows, cols)
-	pyramidMode      bool               // True for Pyramid stacked trapezoid layout
-	houseDiagramMode bool               // True for House Diagram (roof/pillars/foundation) layout
-	houseDiagramMeta houseDiagramMeta   // Metadata for house diagram layout (floor structure)
+	placeholderIdx    int               // Shape index to remove
+	bounds            types.BoundingBox // Placeholder EMU bounds
+	panels            []nativePanelData // Parsed panel data
+	groupXML          string            // Populated during finalizePanelGroupXML()
+	swotMode          bool              // True for SWOT 2x2 grid layout (vs column panels)
+	pestelMode        bool              // True for PESTEL 3x2 grid layout
+	nineBoxMode       bool              // True for Nine Box Talent 3x3 grid layout
+	rowsMode          bool              // True for horizontal rows layout
+	statCardsMode     bool              // True for stat_cards grid layout
+	stylishPanelsMode bool              // True for stylish_panels layout
+	valueChainMode    bool              // True for Value Chain diagram layout
+	valueChainMeta    valueChainMeta    // Metadata for value chain layout (primary/support counts, margin)
+	kpiDashboardMode  bool              // True for KPI Dashboard grid layout
+	portersFiveMode   bool              // True for Porter's Five Forces cross layout
+	bmcMode           bool              // True for Business Model Canvas 9-box layout
+	processFlowMode   bool              // True for Process Flow diagram layout
+	processFlowMeta   processFlowMeta   // Metadata for process flow layout
+	heatmapMode       bool              // True for Heatmap NxM grid layout
+	heatmapMeta       heatmapMeta       // Metadata for heatmap layout (rows, cols)
+	pyramidMode       bool              // True for Pyramid stacked trapezoid layout
+	houseDiagramMode  bool              // True for House Diagram (roof/pillars/foundation) layout
+	houseDiagramMeta  houseDiagramMeta  // Metadata for house diagram layout (floor structure)
 }
 
 // nativePanelData holds parsed data for a single panel in a native panel shape group.
 type nativePanelData struct {
-	title         string // Panel title
-	body          string // May contain \n and "- " bullets
+	title string // Panel title
+	body  string // May contain \n and "- " bullets
 	value string // Hero value for stat_cards mode (e.g., "10%", "$1.2M")
 
 	// iconSVG holds resolved SVG markup for the panel icon (bundled name, inline
@@ -125,7 +125,7 @@ type MediaContext struct {
 // Responsible for SVG conversion strategies and native SVG handling.
 type SVGContext struct {
 	svgConverter     *SVGConverter // SVG converter with configured strategy
-	svgCleanupFuncs  []func()              // cleanup functions for converted SVG temp files
+	svgCleanupFuncs  []func()      // cleanup functions for converted SVG temp files
 	nativeSVGInserts map[int][]nativeSVGInsert
 }
 
@@ -212,7 +212,6 @@ func newSinglePassContext(outputPath string, slides []SlideSpec, allowedPaths []
 	return &singlePassContext{
 		ZipContext: ZipContext{
 			outputPath: outputPath,
-			tmpPath:    outputPath + ".tmp",
 		},
 		SlideContext: SlideContext{
 			slideSpecs:             slides,

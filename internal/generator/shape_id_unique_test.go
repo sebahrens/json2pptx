@@ -65,3 +65,24 @@ func TestLateInjectionShapeIDsUnique(t *testing.T) {
 		t.Errorf("expected 8 unique shape ids, got %d: %v", len(seen), seen)
 	}
 }
+
+func TestInsertTableFramesAllocatesUniqueShapeIDs(t *testing.T) {
+	slide := []byte(`<p:sld><p:cSld><p:spTree><p:sp><p:nvSpPr><p:cNvPr id="4" name="retained"/></p:nvSpPr></p:sp></p:spTree></p:cSld></p:sld>`)
+	frame := `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="4" name="Table 1"/></p:nvGraphicFramePr></p:graphicFrame>`
+	got, err := insertTableFrames(slide, []tableInsert{{graphicFrameXML: frame}, {graphicFrameXML: frame}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches := shapeIDRegex.FindAllSubmatch(got, -1)
+	seen := map[string]bool{}
+	for _, match := range matches {
+		id := string(match[1])
+		if seen[id] {
+			t.Fatalf("duplicate shape id %s in %s", id, got)
+		}
+		seen[id] = true
+	}
+	if len(seen) != 3 || !seen["4"] || !seen["5"] || !seen["6"] {
+		t.Fatalf("unexpected allocated ids: %v", seen)
+	}
+}

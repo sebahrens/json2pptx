@@ -1,5 +1,17 @@
 # Template Specification
 
+Template analysis resolves each selected layout through its own
+`slideLayout -> slideMaster -> theme` relationship chain. Layout order and file
+names are not role bindings. The reusable profile is keyed by the template's
+content SHA-256 plus the profile parser version and records effective slide
+dimensions, canonical role bindings, inherited placeholder geometry and text
+styles, master/theme paths, and ambiguity or unusable-geometry diagnostics.
+
+Dimensions and placeholder coordinates are stored in EMUs (914,400 EMUs per
+inch). Font sizes are stored in hundredths of a point. Consumers must not mix
+these units or infer a 16:9 canvas when the package declares 4:3 or another
+aspect ratio.
+
 This document defines what a json2pptx-compatible PPTX template must contain. Templates that conform to this spec work out of the box with the generator, the layout selector, and the MCP agent. Templates that violate mandatory rules will fail `json2pptx template-check`.
 
 > **Canonical doc — template *authoring & validation*.** This is the

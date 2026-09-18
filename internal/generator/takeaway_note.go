@@ -51,10 +51,14 @@ const (
 // shapeID must be unique within the slide's shape tree; callers allocate it
 // from findMaxShapeID(slideData)+1 just before insertion.
 func generateTakeawayShape(takeawayText string, shapeID uint32) string {
+	return generateTakeawayShapeInBounds(takeawayText, shapeID, pptx.RectEmu{X: takeawayOffsetX, Y: takeawayOffsetY, CX: takeawayExtentCX, CY: takeawayExtentCY})
+}
+
+func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds pptx.RectEmu) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Takeaway",
-		Bounds:   pptx.RectEmu{X: takeawayOffsetX, Y: takeawayOffsetY, CX: takeawayExtentCX, CY: takeawayExtentCY},
+		Bounds:   bounds,
 		Geometry: pptx.GeomRect,
 		Fill:     pptx.SchemeFill("accent1", pptx.LumMod(takeawayBandLumMod), pptx.LumOff(takeawayBandLumOff)),
 		Line:     pptx.Line{Width: takeawayRuleWidth, Fill: pptx.SchemeFill("accent1")},
@@ -89,5 +93,11 @@ func insertTakeaway(slideData []byte, takeawayText string) ([]byte, error) {
 	// Allocate a slide-unique ID above any existing shape so the takeaway
 	// cannot collide with content shapes or other late injections.
 	shapeXML := generateTakeawayShape(takeawayText, findMaxShapeID(slideData)+1)
+	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
+}
+
+func insertTakeawayForSlide(slideData []byte, takeawayText string, slideWidth, slideHeight int64, hasSource bool) ([]byte, error) {
+	frame := ResolveSlideChromeFrame(slideWidth, slideHeight, true, hasSource)
+	shapeXML := generateTakeawayShapeInBounds(takeawayText, findMaxShapeID(slideData)+1, frame.Takeaway)
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

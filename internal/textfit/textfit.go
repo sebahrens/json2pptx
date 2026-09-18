@@ -32,6 +32,12 @@ type FitResult struct {
 	LnSpcReduction int
 	// Overflow is true if text still doesn't fit even at minimum settings.
 	Overflow bool
+	// Readable is independent of geometric fit. A shape can fit while violating
+	// the selected viewing-mode minimum.
+	Readable        bool
+	EffectiveHPt    int
+	PolicyMinHPt    int
+	FontSubstituted bool
 }
 
 // NeedsAutofit returns true if any scaling is needed.
@@ -73,6 +79,8 @@ type Params struct {
 	// lists can set this lower (e.g., 45) to allow more text to fit before
 	// overflow trimming kicks in.
 	MinFontScalePct int
+	ViewingMode     tokens.ViewingMode
+	TextRole        tokens.TextRole
 }
 
 const (
@@ -133,7 +141,7 @@ func Calculate(p Params) (FitResult, error) {
 
 	fontSizePt := float64(p.FontSizeHPt) / 100.0
 
-	ff := fontcache.Get(p.FontName, "")
+	ff, _, fontSubstituted := fontcache.Resolve(p.FontName, "Arial")
 	if ff == nil {
 		return FitResult{}, ErrNoFontCache
 	}
@@ -147,6 +155,11 @@ func Calculate(p Params) (FitResult, error) {
 	// Enforce absolute minimum font size floor (10pt). If the percentage-based
 	// floor would produce a font smaller than AbsMinFontPt, raise the floor.
 	absMinScalePct := int(math.Ceil(AbsMinFontPt / fontSizePt * 100))
+	policyMin := tokens.MinReadableHPt(p.ViewingMode, p.TextRole)
+	policyScalePct := int(math.Ceil(float64(policyMin) / float64(p.FontSizeHPt) * 100))
+	if policyScalePct > absMinScalePct {
+		absMinScalePct = policyScalePct
+	}
 	if absMinScalePct > minScale {
 		minScale = absMinScalePct
 	}
@@ -163,11 +176,12 @@ func Calculate(p Params) (FitResult, error) {
 		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
 
 		if totalHeight <= usableHeightPt {
+			readability := CheckReadability(p.FontSizeHPt, scalePct*1000, p.ViewingMode, p.TextRole)
 			if scalePct == 100 {
-				return FitResult{}, nil // Fits at full size
+				return FitResult{Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
 			}
 			return FitResult{
-				FontScale: scalePct * 1000, // Convert to OOXML thousandths
+				FontScale: scalePct * 1000, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
 			}, nil
 		}
 	}
@@ -180,18 +194,22 @@ func Calculate(p Params) (FitResult, error) {
 		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
 
 		if totalHeight <= usableHeightPt {
+			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
 			return FitResult{
 				FontScale:      minScale * 1000,
 				LnSpcReduction: lnReduction * 1000,
+				Readable:       readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
 			}, nil
 		}
 	}
 
 	// Still doesn't fit — return maximum reduction values and flag overflow
+	readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
 	return FitResult{
 		FontScale:      minScale * 1000,
 		LnSpcReduction: maxLnSpcReductionPct * 1000,
 		Overflow:       true,
+		Readable:       readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
 	}, nil
 }
 

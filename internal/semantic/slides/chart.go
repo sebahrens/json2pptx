@@ -69,7 +69,7 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 		return compileChartFallback(in, insights, insightsField)
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "content"}
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	var links []SourceLink
 
 	if in.Title != "" {
@@ -128,10 +128,25 @@ func compileChartFallback(in Input, insights []string, insightsField string) (*d
 	}
 
 	if len(insights) > 0 {
-		idx := appendContent(slide, bulletsContent("body", insights))
+		placeholder := "body"
+		if chartSpec(in.Body) != nil {
+			placeholder = "body_2"
+		}
+		idx := appendContent(slide, bulletsContent(placeholder, insights))
 		links = append(links, SourceLink{
 			RawPath:      fmt.Sprintf("%s.content[%d].bullets_value", in.rawSlide(), idx),
 			SemanticPath: in.semSlide() + "." + insightsField,
+		})
+	}
+
+	// A density fallback may change the composition, but it must not turn a
+	// chart-backed claim into unsupported prose. Preserve the complete diagram
+	// payload as native content and keep the insights alongside it.
+	if chart := chartSpec(in.Body); chart != nil {
+		idx := appendContent(slide, diagramContent("body", chart))
+		links = append(links, SourceLink{
+			RawPath:      fmt.Sprintf("%s.content[%d].diagram_value", in.rawSlide(), idx),
+			SemanticPath: in.semSlide() + ".chart",
 		})
 	}
 

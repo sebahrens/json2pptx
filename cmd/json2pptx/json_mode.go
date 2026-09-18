@@ -18,6 +18,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
@@ -160,9 +161,11 @@ type SlideError struct {
 
 // QualityScore provides an overall quality estimate for the generated deck.
 type QualityScore struct {
-	Score       float64        `json:"score"`                  // 0.0-1.0 overall quality estimate
-	SlideScores []SlideQuality `json:"slide_scores,omitempty"` // per-slide breakdown
-	Issues      []string       `json:"issues,omitempty"`       // quality concerns
+	Score       float64                   `json:"score"`                  // 0.0-1.0 overall quality estimate
+	SlideScores []SlideQuality            `json:"slide_scores,omitempty"` // per-slide breakdown
+	Issues      []string                  `json:"issues,omitempty"`       // quality concerns
+	Scope       string                    `json:"scope"`                  // input_heuristic; never a visual verdict
+	Evidence    *pipeline.QualityEvidence `json:"evidence,omitempty"`
 }
 
 // SlideQuality provides quality metrics for a single slide.
@@ -581,6 +584,10 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Build per-slide resolution summary
 	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles)
 
+	quality := computeQualityScore(input.Slides, allWarnings)
+	evidence := &pipeline.QualityEvidence{ArtifactSHA256: result.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(outputValidationFindings), TotalSlides: result.SlideCount}
+	evidence.Finalize()
+	quality.Evidence = evidence
 	output := JSONOutput{
 		Success:                  true,
 		OutputPath:               outputPath,
@@ -589,7 +596,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		DurationMs:               time.Since(startTime).Milliseconds(),
 		Warnings:                 allWarnings,
 		SlideErrors:              slideErrors,
-		Quality:                  computeQualityScore(input.Slides, allWarnings),
+		Quality:                  quality,
 		ValidationErrors:         result.ValidationErrors,
 		FitFindings:              allFitFindings,
 		Slides:                   slideResolutions,
@@ -742,10 +749,35 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 ) (generator.SlideSpec, []string, []patterns.FitFinding, error) {
 	var warnings []string
 	var slideFitFindings []patterns.FitFinding
+	hasComposition := hasPatternContent(slide)
+	explicitLayout := slide.LayoutID != ""
 
 	if slide.LayoutID != "" && len(layouts) > 0 {
 		if resolved, ok := layout.ResolveCanonicalLayoutID(slide.LayoutID, layouts); ok {
 			slide.LayoutID = resolved
+		}
+	}
+
+	// Visual compositions need a title-bearing canvas with the remainder of the
+	// slide available for shapes. Bind that role before heuristic scoring so
+	// variety and misleading layout names cannot select a section or closing
+	// layout. Templates without a canonical blank-title layout fall back to the
+	// regular compatibility-scored diagram path.
+	if hasComposition && slide.LayoutID == "" && len(layouts) > 0 {
+		if resolved, ok := layout.ResolveCanonicalLayoutID("blank-title", layouts); ok {
+			slide.LayoutID = resolved
+		}
+	}
+
+	// An explicit override remains authoritative when it is compatible. Reject
+	// unsafe overrides using the same structural gate as auto-selection; shape
+	// grids also accept the canonical blank-title canvas, which deliberately has
+	// no body placeholder because its free area is derived from title/footer
+	// geometry.
+	if hasComposition && explicitLayout && len(layouts) > 0 {
+		if selected := findLayoutMetadataByID(layouts, slide.LayoutID); selected != nil &&
+			!isCompositionLayoutCompatible(*selected) {
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: layout %q is incompatible with pattern/compose/shape_grid content", i+1, slide.LayoutID)
 		}
 	}
 
@@ -1719,6 +1751,7 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 	if len(slides) == 0 {
 		return &QualityScore{
 			Score:  0.0,
+			Scope:  "input_heuristic",
 			Issues: []string{"no slides in presentation"},
 		}
 	}
@@ -1890,9 +1923,19 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 
 	return &QualityScore{
 		Score:       overallScore,
+		Scope:       "input_heuristic",
 		SlideScores: slideScores,
 		Issues:      globalIssues,
 	}
+}
+
+func hasBlockingOutputFinding(findings []pptx.Finding) bool {
+	for _, finding := range findings {
+		if finding.Severity == pptx.SeverityBlocking {
+			return true
+		}
+	}
+	return false
 }
 
 // sanitizeOutputFilename strips directory components from a user-supplied
@@ -2276,13 +2319,46 @@ func jsonSlideToDefinition(slide SlideInput) types.SlideDefinition { //nolint:go
 	// full-area visual slides so layout selection reuses isLayoutSuitable's
 	// rejection of section-header/closing/two-column layouts and its minimum
 	// body-placeholder size guard, steering to a real content layout instead.
-	// Explicit slide_type hints are respected — inferSlideType returns them
-	// verbatim, so only auto-inferred types are overridden here.
-	if slide.SlideType == "" && hasPatternContent(slide) {
+	// Composition requirements take precedence over a generic slide_type hint:
+	// semantic compilation intentionally emits slide_type=content, but the
+	// pattern still requires a full visual canvas.
+	if hasPatternContent(slide) {
 		def.Type = types.SlideTypeDiagram
 	}
 
 	return def
+}
+
+func findLayoutMetadataByID(layouts []types.LayoutMetadata, id string) *types.LayoutMetadata {
+	for i := range layouts {
+		if layouts[i].ID == id {
+			return &layouts[i]
+		}
+	}
+	return nil
+}
+
+func hasLayoutTag(tags []string, want string) bool {
+	for _, tag := range tags {
+		if strings.EqualFold(tag, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func isCompositionLayoutCompatible(candidate types.LayoutMetadata) bool {
+	if hasLayoutTag(candidate.Tags, "blank-title") || hasLayoutTag(candidate.Tags, "content") {
+		return true
+	}
+	for _, incompatible := range []string{"section-header", "closing", "two-column", "title-slide"} {
+		if hasLayoutTag(candidate.Tags, incompatible) {
+			return false
+		}
+	}
+	// Unclassified explicit layouts remain backward compatible. Their actual
+	// geometry is still clamped by resolveGridGeometry.
+	return true
 }
 
 // hasPatternContent reports whether a slide carries pattern, compose, or

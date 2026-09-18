@@ -84,6 +84,24 @@ func TestRenderCache_DifferentRequests(t *testing.T) {
 	}
 }
 
+func TestRenderCache_KeyIncludesStrictFitAndUnambiguousContent(t *testing.T) {
+	cache := NewRenderCache(DefaultCacheConfig())
+	defer cache.Stop()
+	base := &RequestEnvelope{Type: "pie_chart", Data: map[string]any{
+		"categories": []any{"A,B", "C"}, "values": []any{1.0, 2.0},
+	}, Output: OutputSpec{StrictFit: "warn"}}
+	strict := &RequestEnvelope{Type: base.Type, Data: base.Data, Output: OutputSpec{StrictFit: "strict"}}
+	different := &RequestEnvelope{Type: base.Type, Data: map[string]any{
+		"categories": []any{"A", "B,C"}, "values": []any{1.0, 2.0},
+	}, Output: base.Output}
+	if cache.Key(base) == cache.Key(strict) {
+		t.Error("strict_fit must affect cache identity")
+	}
+	if cache.Key(base) == cache.Key(different) {
+		t.Error("array element boundaries must affect cache identity")
+	}
+}
+
 func TestRenderCache_TTLExpiry(t *testing.T) {
 	cache := NewRenderCache(CacheConfig{
 		TTL:             50 * time.Millisecond,

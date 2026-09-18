@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -112,11 +113,14 @@ func (ctx *singlePassContext) initializeContext(templatePath string) (cleanup fu
 	}
 	ctx.templateIndex = utils.BuildZipIndex(&ctx.templateReader.Reader)
 
-	ctx.outputFile, err = os.Create(ctx.tmpPath)
+	outputDir := filepath.Dir(ctx.outputPath)
+	tempPattern := "." + filepath.Base(ctx.outputPath) + ".*.tmp"
+	ctx.outputFile, err = os.CreateTemp(outputDir, tempPattern)
 	if err != nil {
 		_ = ctx.templateReader.Close()
 		return nil, fmt.Errorf("failed to create output file: %w", err)
 	}
+	ctx.tmpPath = ctx.outputFile.Name()
 
 	ctx.outputWriter = zip.NewWriter(ctx.outputFile)
 

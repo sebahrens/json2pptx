@@ -175,6 +175,28 @@ func trivialDeckJSON() string {
 	return string(b)
 }
 
+func TestVisualQASlideInfosUseActualSemanticRoles(t *testing.T) {
+	slides := []SlideInput{
+		{SlideType: "kpi_snapshot"},
+		{Pattern: &PatternInput{Name: "timeline-horizontal"}},
+		{Content: []ContentInput{{Type: "chart"}}},
+	}
+	infos := visualQASlideInfos(slides)
+	for i, want := range []string{"kpi_snapshot", "pattern:timeline-horizontal", "chart"} {
+		if infos[i].Type != want {
+			t.Errorf("slide %d role=%q want %q", i, infos[i].Type, want)
+		}
+	}
+}
+
+func TestBuildVisualQAImagesExposesPartialCoverage(t *testing.T) {
+	deck := &render.DeckResult{Slides: []render.SlideImage{{Index: 0, PNG64: "aW52YWxpZA=="}, {Index: 1}}}
+	images, _ := buildVisualQAImages(deck, map[int]visualqa.SlideInfo{0: {Type: "content"}, 1: {Type: "content"}})
+	if len(images) != 1 {
+		t.Fatalf("images=%d want 1 so caller can mark missing slide incomplete", len(images))
+	}
+}
+
 // TestVisualQA_DisabledByDefault asserts the default deterministic mode is
 // truth-labeled and carries no visual_qa block — the opt-in must be invisible
 // to callers that don't request it.

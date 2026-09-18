@@ -20,7 +20,7 @@ import (
 
 // regexSldLayoutID extracts the id attribute from <p:sldLayoutId id="NNN" .../> entries.
 var regexSldLayoutID = regexp.MustCompile(`<p:sldLayoutId\b[^>]*\bid="(\d+)"`)
-
+var tableFrameIDRegex = regexp.MustCompile(`<p:cNvPr id="\d+" name="Table 1"/>`)
 
 // writeOutput performs the single-pass write operation.
 // This orchestrates the writing of all components in the correct order.
@@ -540,7 +540,7 @@ func (ctx *singlePassContext) writeSlideMasterXMLWithSynthetic(f *zip.File) erro
 func (ctx *singlePassContext) writeSlides() error {
 	// Write modified presentation.xml
 	if data, ok := ctx.modifiedFiles[PathPresentationXML]; ok {
-		fw, err := utils.ZipCreateDeterministic(ctx.outputWriter,PathPresentationXML)
+		fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, PathPresentationXML)
 		if err != nil {
 			return fmt.Errorf("failed to create presentation.xml: %w", err)
 		}
@@ -634,7 +634,7 @@ func (ctx *singlePassContext) writePresentationRelationships() error {
 		return fmt.Errorf("failed to marshal %s: %w", relsFileName, err)
 	}
 
-	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter,relsFileName)
+	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, relsFileName)
 	if err != nil {
 		return fmt.Errorf("failed to create %s: %w", relsFileName, err)
 	}
@@ -766,7 +766,8 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 	// Insert takeaway headline shape if present. Goes BEFORE source note so
 	// source attribution renders below the takeaway in the lower band.
 	if takeawayText, hasTakeaway := ctx.slideTakeaways[slideNum]; hasTakeaway {
-		slideData, err = insertTakeaway(slideData, takeawayText)
+		_, hasSource := ctx.slideSources[slideNum]
+		slideData, err = insertTakeawayForSlide(slideData, takeawayText, ctx.slideWidth, ctx.slideHeight, hasSource)
 		if err != nil {
 			return fmt.Errorf("failed to insert takeaway for slide %d: %w", slideNum, err)
 		}
@@ -774,7 +775,8 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 
 	// Insert source attribution text shape if present
 	if sourceText, hasSource := ctx.slideSources[slideNum]; hasSource {
-		slideData, err = insertSourceNote(slideData, sourceText)
+		_, hasTakeaway := ctx.slideTakeaways[slideNum]
+		slideData, err = insertSourceNoteForSlide(slideData, sourceText, ctx.slideWidth, ctx.slideHeight, hasTakeaway)
 		if err != nil {
 			return fmt.Errorf("failed to insert source note for slide %d: %w", slideNum, err)
 		}
@@ -807,7 +809,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		slideData = insertBackgroundImage(slideData, bgMedia.relID)
 	}
 
-	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter,slidePath)
+	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, slidePath)
 	if err != nil {
 		return fmt.Errorf("failed to create %s: %w", slidePath, err)
 	}
@@ -839,8 +841,11 @@ func (ctx *singlePassContext) removeTablePlaceholders(slide *slideXML, tables []
 // insertTableFrames inserts <p:graphicFrame> elements for tables before </p:spTree>.
 func insertTableFrames(slideData []byte, tables []tableInsert) ([]byte, error) {
 	var frames []string
+	nextShapeID := findMaxShapeID(slideData) + 1
 	for _, t := range tables {
-		frames = append(frames, t.graphicFrameXML)
+		frame := tableFrameIDRegex.ReplaceAllString(t.graphicFrameXML, fmt.Sprintf(`<p:cNvPr id="%d" name="Table 1"/>`, nextShapeID))
+		frames = append(frames, frame)
+		nextShapeID++
 	}
 
 	insertion := strings.Join(frames, "\n")
@@ -1075,7 +1080,6 @@ func (ctx *singlePassContext) loadOrCreateRelationships(relsFileName string) ppt
 	return existingRels
 }
 
-
 // appendNativeSVGRelationships appends PNG and SVG relationships for native SVG inserts.
 func (ctx *singlePassContext) appendNativeSVGRelationships(rels *pptx.RelationshipsXML, nativeSVGs []nativeSVGInsert) {
 	for _, svg := range nativeSVGs {
@@ -1103,7 +1107,7 @@ func (ctx *singlePassContext) writeRelationshipsFile(relsFileName string, rels p
 		return fmt.Errorf("failed to marshal relationships for %s: %w", relsFileName, err)
 	}
 
-	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter,relsFileName)
+	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, relsFileName)
 	if err != nil {
 		return fmt.Errorf("failed to create %s: %w", relsFileName, err)
 	}
@@ -1145,7 +1149,7 @@ func (ctx *singlePassContext) writeContentTypes() error {
 		}
 	}
 
-	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter,PathContentTypes)
+	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, PathContentTypes)
 	if err != nil {
 		return fmt.Errorf("failed to create [Content_Types].xml: %w", err)
 	}

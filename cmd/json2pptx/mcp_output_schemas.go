@@ -440,7 +440,8 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "confidence_band":  {"type": "string", "enum": ["high", "medium", "low"]},
           "diversity_bonus":  {"type": "boolean"},
           "placement":        {"$ref": "#/$defs/placement_guidance"},
-          "template_support": {"$ref": "#/$defs/template_support"}
+          "template_support": {"$ref": "#/$defs/template_support"},
+          "example":          {"$ref": "#/$defs/visual_example"}
         },
         "required": ["category", "name", "score", "rationale", "confidence_band"]
       }
@@ -475,6 +476,18 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
         "required_layout": {"type": "string", "description": "The canonical layout or derivable capability the candidate needs (e.g. \"Title Slide\", \"Two Content\", \"full-image\", \"grid base\"). Omitted when the candidate has no specific layout requirement."}
       },
       "required": ["status"]
+    },
+    "visual_example": {
+      "type": "object",
+      "description": "Compact template-specific example metadata. metadata_only=true means no renderer-produced PNG was available.",
+      "properties": {
+        "template_hash":   {"type": "string"},
+        "preview_png_path": {"type": "string"},
+        "capacity":        {"type": "string"},
+        "renderer":        {"type": "string"},
+        "metadata_only":   {"type": "boolean"}
+      },
+      "required": ["template_hash", "metadata_only"]
     }
   }
 }`)
@@ -1043,6 +1056,7 @@ var outputSchemaRepairSlide = json.RawMessage(`{
   "type": "object",
   "properties": {
     "patched_deck": {"type": "object"},
+    "revision": {"type": "string"},
     "applied_fixes": {
       "type": "array",
       "items": {
@@ -1067,7 +1081,7 @@ var outputSchemaRepairSlide = json.RawMessage(`{
     },
     "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["patched_deck", "applied_fixes", "findings"]
+  "required": ["patched_deck", "applied_fixes", "revision", "findings"]
 }`)
 
 // --- repair_slides_batch ---
@@ -1110,6 +1124,22 @@ var outputSchemaRepairSlidesBatch = json.RawMessage(`{
 // quality report, and the opt-in visual_qa phase report.
 const visualQAQualityModeSchema = `{"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "Truth-label for which inspection regime ACTUALLY ran (alias of quality.actual). \"deterministic\" (default) = static + render-fit findings only, no rendering or API key. \"deterministic+visual_qa\" = the deterministic loop followed by a visual refinement phase that actually inspected slides. A requested visual-QA phase that was skipped (e.g. render tools unavailable) reports \"deterministic\" here — see quality.requested / quality.fallback_reasons for what was asked for and why it degraded."}`
 
+const qualityEvidenceSchema = `{
+  "type":"object",
+  "properties":{
+    "artifact_sha256":{"type":"string"}, "revision":{"type":"string"},
+    "schema_valid":{"type":"boolean"}, "generated":{"type":"boolean"},
+    "fit_checked":{"type":"boolean"}, "structural_valid":{"type":"boolean"},
+    "pixels_rendered":{"type":"boolean"}, "visually_inspected":{"type":"boolean"},
+    "inspection_backend":{"type":"string"},
+    "reviewed_slide_ids":{"type":"array","items":{"type":"string"}},
+    "total_slides":{"type":"integer"}, "visual_verdict":{"type":"string"},
+    "approved":{"type":"boolean"}, "needs_review":{"type":"boolean"},
+    "reasons":{"type":"array","items":{"type":"string"}}
+  },
+  "required":["schema_valid","generated","fit_checked","structural_valid","pixels_rendered","visually_inspected","reviewed_slide_ids","total_slides","approved","needs_review"]
+}`
+
 const qualityReportSchema = `{
       "type": "object",
       "description": "Requested-vs-actual quality report. Separates the inspection regime the caller asked for from the one that actually ran, so an agent never assumes vision/heuristic inspection happened when it was skipped.",
@@ -1117,7 +1147,8 @@ const qualityReportSchema = `{
         "requested":       {"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "The quality mode requested, derived purely from the request (visual_qa.enabled)."},
         "actual":          {"type": "string", "enum": ["deterministic", "deterministic+visual_qa"], "description": "The quality mode that actually ran. \"deterministic+visual_qa\" only when a visual inspection (vision or heuristic) actually executed; degrades to \"deterministic\" when a requested visual-QA phase inspected no slide (e.g. render tools unavailable). quality_mode is an alias of this field."},
         "inspection_mode": {"type": "string", "enum": ["vision", "heuristic", "skipped"], "description": "Which visual-QA backend ran: vision (Claude API), heuristic (pure-Go fallback, no API key), or skipped (render tools unavailable). Omitted when visual QA was not requested."},
-        "fallback_reasons": {"type": "array", "items": {"type": "string"}, "description": "Explains any divergence between requested and actual (render tools unavailable, render failure, or missing-API-key heuristic fallback). Present only when a fallback occurred."}
+        "fallback_reasons": {"type": "array", "items": {"type": "string"}, "description": "Explains any divergence between requested and actual (render tools unavailable, render failure, or missing-API-key heuristic fallback). Present only when a fallback occurred."},
+        "evidence": ` + qualityEvidenceSchema + `
       },
       "required": ["requested", "actual"]
 }`
@@ -1286,7 +1317,7 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "content_status": {"type": "string", "enum": ["author_supplied", "exemplar_skeleton"], "description": "Content provenance. auto_repair always reports 'author_supplied' (caller-authored slides)."},
     "uses_exemplar_content": {"type": "boolean", "description": "True when slide content is pattern exemplar placeholder values rather than caller content. Always false for auto_repair."},
     "validation_status": {"type": "string", "enum": ["passed", "passed_degraded", "failed"], "description": "Folds the deterministic gate and evidence completeness: 'passed' (gate met on complete evidence), 'passed_degraded' (gate met but evidence_complete=false), or 'failed'."},
-    "publishable": {"type": "boolean", "description": "Single authoritative ship-as-is flag: true ONLY when the gate passed on complete evidence, the artifact is structurally valid, AND content is author-supplied. Equivalent to blocking_reasons being empty."},
+    "publishable": {"type": "boolean", "description": "Single authoritative ship-as-is flag: true ONLY when the deterministic gate and structural checks pass, content is author-supplied, and current all-slide vision inspection records an explicit approved verdict. Equivalent to blocking_reasons being empty."},
     "manual_review_required": {"type": "boolean", "description": "Affirmative inverse of publishable: true whenever a human or agent must review before shipping (gate failed, evidence incomplete, structurally invalid, or exemplar content)."},
     "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Every reason the deck is not publishable — unmet gate criteria (incl. final output validation), incomplete evidence, and exemplar provenance. Present only when publishable=false. Superset of gate_reasons."},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."}
@@ -1912,9 +1943,18 @@ var outputSchemaGetStarted = json.RawMessage(`{
         "required": ["tool", "when_to_call"]
       }
     },
-    "notes": {"type": "array", "items": {"type": "string"}}
+    "notes": {"type": "array", "items": {"type": "string"}},
+    "completion_protocol": {
+      "type": "object",
+      "properties": {
+        "draft_status": {"type": "string"},
+        "complete_status": {"type": "string"},
+        "rule": {"type": "string"}
+      },
+      "required": ["draft_status", "complete_status", "rule"]
+    }
   },
-  "required": ["task", "sequence", "available_tasks"]
+  "required": ["task", "sequence", "available_tasks", "completion_protocol"]
 }`)
 
 // --- get_input_schema ---
@@ -1947,6 +1987,10 @@ var outputSchemaProposeRepairs = json.RawMessage(`{
                 "kind":   {"type": "string"},
                 "params": {"type": "object"},
                 "rank":   {"type": "integer"},
+                "target": {"type": "object"},
+                "preconditions": {"type": "object"},
+                "expected_improvement": {"type": "string"},
+                "semantic_impact": {"type": "string"},
                 "source": {
                   "type": "object",
                   "properties": {
@@ -1969,7 +2013,7 @@ var outputSchemaProposeRepairs = json.RawMessage(`{
                   "required": ["tool", "args_template"]
                 }
               },
-              "required": ["kind", "rank", "source"]
+              "required": ["kind", "rank", "target", "preconditions", "expected_improvement", "semantic_impact", "source"]
             }
           },
           "batch_tool_call": {

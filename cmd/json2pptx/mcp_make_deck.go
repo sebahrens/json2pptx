@@ -455,6 +455,10 @@ func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, te
 
 		if patternInput := buildPatternInputForSlide(reg, ps.RecommendedPattern); patternInput != nil {
 			slide.Pattern = patternInput
+			// A pattern is the slide's primary composition and needs the free
+			// canvas below a title, regardless of narrative role. Structural role
+			// layouts remain appropriate only for the title-only fallback.
+			slide.LayoutID = "blank-title"
 		}
 		slides = append(slides, slide)
 	}

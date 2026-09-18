@@ -461,7 +461,7 @@ When `quality_gate.passed === true`, the deck has cleared the ship-quality bar �
 
 ## Visual-QA mode (auto_repair / make_deck)
 
-`auto_repair` and `make_deck` run a **deterministic** convergence loop by default: they score the deck from static + render-fit findings and **never look at a rendered pixel**. This is fast and free but cannot catch purely visual defects (overlap, contrast, misalignment) the way a vision pass can. The response truth-labels this as `quality_mode: "deterministic"`.
+`auto_repair` and `make_deck` run a **deterministic** convergence loop by default: they score the deck from static + render-fit findings and **never look at a rendered pixel**. This produces `draft_needs_visual_review`, not a completed deck. Completion is `visually_reviewed_current_revision`: render every slide from the current artifact, inspect every image with a configured provider or recorded host/manual review, repair, then render and inspect the repaired revision again. The response truth-labels the default as `quality_mode: "deterministic"`.
 
 To add the agent-grade visual refinement loop, pass `visual_qa: {enabled: true}`. The phase runs AFTER the deterministic loop: render thumbnails → `inspect_slide_images` → map visual findings to `propose_repairs` → apply → re-render. Only **P0/P1** visual findings drive automatic repairs (P2/P3 are advisory). Any repairs it applies are reflected in `final_presentation`.
 

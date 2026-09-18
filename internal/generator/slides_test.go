@@ -75,6 +75,27 @@ func TestGenerate_ValidPPTX(t *testing.T) {
 	}
 }
 
+func TestGenerateFailurePreservesExistingDestination(t *testing.T) {
+	templatePath := "../template/testdata/standard.pptx"
+	outputPath := filepath.Join(t.TempDir(), "existing.pptx")
+	want := []byte("KEEP ME")
+	if err := os.WriteFile(outputPath, want, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Generate(context.Background(), GenerationRequest{
+		TemplatePath: templatePath,
+		OutputPath:   outputPath,
+		Slides:       []SlideSpec{{LayoutID: "not-a-layout"}},
+	})
+	if err == nil {
+		t.Fatal("expected invalid layout failure")
+	}
+	got, readErr := os.ReadFile(outputPath)
+	if readErr != nil || string(got) != string(want) {
+		t.Fatalf("existing destination changed: bytes=%q err=%v", got, readErr)
+	}
+}
+
 // TestGenerate_SlideCount tests AC2: Correct slide count
 func TestGenerate_SlideCount(t *testing.T) {
 	templatePath := "../template/testdata/standard.pptx"

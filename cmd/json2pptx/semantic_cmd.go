@@ -15,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
@@ -319,16 +320,18 @@ func runSemanticCompile() error {
 // at the semantic source path the author wrote (raw paths only as a fallback
 // when no mapping exists).
 type semanticRenderResult struct {
-	OK          bool                 `json:"ok"`
-	OutputPath  string               `json:"output_path,omitempty"`
-	Template    string               `json:"template,omitempty"`
-	SlideCount  int                  `json:"slide_count,omitempty"`
-	ContentHash string               `json:"content_hash,omitempty"`
-	DurationMs  int64                `json:"duration_ms,omitempty"`
-	Quality     *QualityScore        `json:"quality,omitempty"`
-	Warnings    []string             `json:"warnings,omitempty"`
-	Diagnostics []semanticDiagnostic `json:"diagnostics,omitempty"`
-	Error       string               `json:"error,omitempty"`
+	OK           bool                 `json:"ok"`
+	OutputPath   string               `json:"output_path,omitempty"`
+	Template     string               `json:"template,omitempty"`
+	SlideCount   int                  `json:"slide_count,omitempty"`
+	ContentHash  string               `json:"content_hash,omitempty"`
+	Revision     string               `json:"revision,omitempty"`
+	ManifestPath string               `json:"manifest_path,omitempty"`
+	DurationMs   int64                `json:"duration_ms,omitempty"`
+	Quality      *QualityScore        `json:"quality,omitempty"`
+	Warnings     []string             `json:"warnings,omitempty"`
+	Diagnostics  []semanticDiagnostic `json:"diagnostics,omitempty"`
+	Error        string               `json:"error,omitempty"`
 }
 
 // semanticDiagnostic is one compact finding in a render result. SemanticPath
@@ -511,6 +514,22 @@ func runSemanticRender() error {
 
 	res := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
 	res.Warnings = append(res.Warnings, preConvertWarnings...)
+	compiledJSON, marshalErr := json.Marshal(input)
+	if marshalErr != nil {
+		return fmt.Errorf("semantic render: marshal authoring input: %w", marshalErr)
+	}
+	slidePayloads := make([]json.RawMessage, len(spec.Slides))
+	for i := range spec.Slides {
+		slidePayloads[i], _ = json.Marshal(spec.Slides[i])
+	}
+	diagnosticJSON, _ := json.Marshal(res.Diagnostics)
+	manifest := pipeline.NewAuthoringManifest(data, strings.TrimPrefix(strings.ToLower(filepath.Ext(*specPath)), "."), runRes.TemplatePath, runRes.TemplateHash, compiledJSON, runRes.OutputPath, res.ContentHash, compileResult.SourceMap, slidePayloads, diagnosticJSON)
+	manifestPath := runRes.OutputPath + ".authoring.json"
+	if writeErr := pipeline.WriteAuthoringManifest(manifestPath, manifest); writeErr != nil {
+		return fmt.Errorf("semantic render: write authoring manifest: %w", writeErr)
+	}
+	res.Revision = manifest.Revision
+	res.ManifestPath = manifestPath
 	return printJSONIndent(res)
 }
 
@@ -561,6 +580,9 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 		res.SlideCount = rr.GenResult.SlideCount
 		res.ContentHash = rr.GenResult.ContentHash
 	}
+	evidence := &pipeline.QualityEvidence{ArtifactSHA256: res.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(rr.OutputValidationFindings), TotalSlides: res.SlideCount}
+	evidence.Finalize()
+	res.Quality.Evidence = evidence
 	return res
 }
 

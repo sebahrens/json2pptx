@@ -83,3 +83,25 @@ tests/quality/
 | `pattern-card-grid-overflow` | Shape grid text overflow |
 | `pattern-bmc-canvas-dense` | BMC pattern density |
 | `font-size-stress-test` | Small font regression guard |
+
+## Fresh-agent benchmark
+
+`go run ./cmd/qualitybench --agent "/absolute/path/to/agent"` runs the configured
+agent for the 12 frozen briefs in `agent_briefs.json`, three template families,
+two workflow configurations, and two repetitions. The runner invokes the agent
+for every run and writes one evidence file containing the model/version, prompt,
+tool calls, artifacts, cost, iterations, duration, and failures. It never calls
+a provider in default CI and refuses to run without `--agent`.
+
+Rate artifact pairs blind with two reviewers on five frozen 1–5 dimensions:
+readability, hierarchy, template fidelity, factual completeness, and overall
+usability. Reviewers also mark lost critical facts and critical template
+defects. Aggregate reporting includes reviewer disagreements and a 95% Wilson
+interval for the usable rate. The preregistered product bar is at least 80%
+usable without manual slide editing, zero lost critical facts, zero critical
+template defects, and a clear paired improvement over baseline. Until an actual
+run and both ratings exist this remains a proposed bar and the release decision
+is `inconclusive` or `hold`.
+
+Static fixture replay from the mechanical harness above is separate and must
+never be reported as a fresh-agent benchmark result.

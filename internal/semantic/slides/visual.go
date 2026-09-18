@@ -44,7 +44,7 @@ func CompileComparison(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compileComparisonFallback(in)
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "content"}
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	var links []SourceLink
 	links = append(links, titleLink(slide, in)...)
 
@@ -175,7 +175,7 @@ func CompileProcess(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compileStepBulletsFallback(in)
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "content"}
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	var links []SourceLink
 	links = append(links, titleLink(slide, in)...)
 
@@ -213,6 +213,10 @@ func processSteps(body map[string]any) []processFlowStep {
 			if label == "" {
 				continue
 			}
+			description := firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary"))
+			if description != "" && description != label {
+				label += " — " + description
+			}
 			step := processFlowStep{Label: label}
 			if typ := strField(t, "type"); typ != "" {
 				step.Type = typ
@@ -226,7 +230,11 @@ func processSteps(body map[string]any) []processFlowStep {
 // compileStepBulletsFallback renders process steps as "Label — description"
 // bullets on a content slide.
 func compileStepBulletsFallback(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	bullets, _ := stringList(in.Body, "steps")
+	steps := processSteps(in.Body)
+	bullets := make([]string, len(steps))
+	for i := range steps {
+		bullets[i] = steps[i].Label
+	}
 	return contentFallback(in, "steps", bullets)
 }
 
@@ -257,7 +265,7 @@ func CompileRoadmap(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compilePhaseBulletsFallback(in)
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "content"}
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	var links []SourceLink
 	links = append(links, titleLink(slide, in)...)
 

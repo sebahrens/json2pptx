@@ -50,6 +50,13 @@ type getStartedResponse struct {
 	Sequence       []getStartedStep    `json:"sequence"`
 	AvailableTasks []string            `json:"available_tasks"`
 	Notes          []string            `json:"notes,omitempty"`
+	Completion     completionProtocol  `json:"completion_protocol"`
+}
+
+type completionProtocol struct {
+	DraftStatus    string `json:"draft_status"`
+	CompleteStatus string `json:"complete_status"`
+	Rule           string `json:"rule"`
 }
 
 // fastPathFor returns the workflow-facade fast path for a task, or nil when the
@@ -113,7 +120,9 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "validate_input", WhenToCall: "Once the full deck JSON is assembled, run schema + fit checks (pass fit_report: true). Cheapest single gate before preview/generate; SKILL.md lists this as a precondition for generate_presentation."},
 			{Tool: "preview_presentation_plan", WhenToCall: "Dry-run the validated deck JSON to verify layout selection, placeholder mapping, and fit findings without rendering."},
 			{Tool: "generate_presentation", WhenToCall: "Produce the PPTX once validate + preview are clean. Pass strict_fit: \"warn\" (default) or \"strict\" for refuse-on-overflow."},
-			{Tool: "score_deck", WhenToCall: "Final — score the generated deck (0-100) for variety, coverage, and structure."},
+			{Tool: "score_deck", WhenToCall: "Measure input structure only; this score cannot visually approve a deck."},
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render the current PPTX revision to pixels; every slide must have an image."},
+			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer; repair findings, then render and inspect the new revision again."},
 		}
 		notes = []string{
 			"fast_path (make_deck) is the recommended cold-start entry point: one call to a DRAFT PPTX skeleton (NOT a publishable deck — it uses pattern exemplar placeholder content, so its response reports content_status=\"exemplar_skeleton\", uses_exemplar_content=true, publishable=false). The numbered `sequence` is the controllable path you drop to when you want to author per-slide content or drive each primitive yourself — make_deck is the workflow facade, the sequence is the manual primitives it composes.",
@@ -131,7 +140,9 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "preview_presentation_plan", WhenToCall: "Dry-run the deck JSON to surface per-slide fit findings whose Fix.Kind directives feed repair_slide."},
 			{Tool: "repair_slide", WhenToCall: "Apply targeted fixes (the Fix.Kind vocabulary fit-report emits) to the deck JSON, per slide that has findings."},
 			{Tool: "generate_presentation", WhenToCall: "Regenerate the PPTX from the repaired deck JSON."},
-			{Tool: "score_deck", WhenToCall: "Final — confirm the revision improved the deck score."},
+			{Tool: "score_deck", WhenToCall: "Confirm structural metrics improved; this is input-only evidence."},
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render every slide from the repaired current revision."},
+			{Tool: "inspect_slide_images", WhenToCall: "Inspect all current-revision pixels and record unresolved findings or explicit approval."},
 		}
 		notes = []string{
 			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
@@ -159,6 +170,11 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		Sequence:       seq,
 		AvailableTasks: getStartedAvailableTasks(),
 		Notes:          notes,
+		Completion: completionProtocol{
+			DraftStatus:    "draft_needs_visual_review",
+			CompleteStatus: "visually_reviewed_current_revision",
+			Rule:           "Completion requires all-slide rendered inspection bound to the current artifact revision; deterministic scores remain input heuristics.",
+		},
 	}
 }
 

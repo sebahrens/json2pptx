@@ -20,10 +20,14 @@ const (
 // shapeID must be unique within the slide's shape tree; callers allocate it
 // from findMaxShapeID(slideData)+1 just before insertion.
 func generateSourceNoteShape(sourceText string, shapeID uint32) string {
+	return generateSourceNoteShapeInBounds(sourceText, shapeID, pptx.RectEmu{X: sourceNoteOffsetX, Y: sourceNoteOffsetY, CX: sourceNoteExtentCX, CY: sourceNoteExtentCY})
+}
+
+func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Source Note",
-		Bounds:   pptx.RectEmu{X: sourceNoteOffsetX, Y: sourceNoteOffsetY, CX: sourceNoteExtentCX, CY: sourceNoteExtentCY},
+		Bounds:   bounds,
 		Geometry: pptx.GeomRect,
 		Fill:     pptx.NoFill(),
 		TxBox:    true,
@@ -57,5 +61,11 @@ func insertSourceNote(slideData []byte, sourceText string) ([]byte, error) {
 	// injected earlier on this slide, which are already present in slideData).
 	shapeXML := generateSourceNoteShape(sourceText, findMaxShapeID(slideData)+1)
 
+	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
+}
+
+func insertSourceNoteForSlide(slideData []byte, sourceText string, slideWidth, slideHeight int64, hasTakeaway bool) ([]byte, error) {
+	frame := ResolveSlideChromeFrame(slideWidth, slideHeight, hasTakeaway, true)
+	shapeXML := generateSourceNoteShapeInBounds(sourceText, findMaxShapeID(slideData)+1, frame.Source)
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

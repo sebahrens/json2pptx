@@ -107,8 +107,12 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// validate may return non-zero for invalid inputs — that's expected.
-	_ = cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("validate command failed: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	if strings.TrimSpace(stdout.String()) == "" {
+		return nil, fmt.Errorf("validate command returned empty stdout")
+	}
 
 	// NDJSON: one envelope per file, but the CLI is invoked with a single file
 	// here so we parse the single object on the first non-empty line.
@@ -125,6 +129,7 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 	}
 
 	var findings []fitFinding
+	parsedEnvelopes := 0
 	for _, line := range strings.Split(stdout.String(), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -132,8 +137,9 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 		}
 		var env dryRunEnvelope
 		if err := json.Unmarshal([]byte(line), &env); err != nil {
-			continue
+			return nil, fmt.Errorf("validate command returned malformed JSON: %w", err)
 		}
+		parsedEnvelopes++
 		for _, f := range env.Findings.Findings {
 			if f.Category != "FIT" {
 				continue
@@ -147,6 +153,9 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 			}
 			findings = append(findings, ff)
 		}
+	}
+	if parsedEnvelopes == 0 {
+		return nil, fmt.Errorf("validate command returned no JSON envelopes")
 	}
 
 	return findings, nil

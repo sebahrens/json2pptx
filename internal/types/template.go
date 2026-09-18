@@ -134,6 +134,13 @@ type LayoutMetadata struct {
 
 	// CanonicalConfidence is the 0.0–1.0 confidence of CanonicalType.
 	CanonicalConfidence float64
+
+	// MasterPath and ThemePath identify the actual OOXML inheritance chain for
+	// this layout. Theme is the effective theme reached through that chain.
+	// They are populated by template profiling and left empty by older callers.
+	MasterPath string
+	ThemePath  string
+	Theme      ThemeInfo
 }
 
 // PlaceholderInfo describes a placeholder within a layout.

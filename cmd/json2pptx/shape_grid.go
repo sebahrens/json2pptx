@@ -419,10 +419,11 @@ const gridChromeGapPt = 9.0
 // above the band. This runs inside the shared geometry contract so generation,
 // preflight, fit-report, and preview all reserve the band identically.
 func reserveTakeawayBand(g GridGeometry, slide SlideInput) GridGeometry {
-	if slide.Takeaway == "" || g.Zone == nil {
+	if (slide.Takeaway == "" && slide.Source == "") || g.Zone == nil {
 		return g
 	}
-	bandTop := generator.TakeawayBandTopEMU
+	frame := generator.ResolveSlideChromeFrame(g.Zone.SlideWidth, g.Zone.SlideHeight, slide.Takeaway != "", slide.Source != "")
+	bandTop := frame.Content.Y + frame.Content.CY
 	if g.Zone.FooterTop <= bandTop {
 		return g
 	}

@@ -462,11 +462,9 @@ func TestAutoRepair_GateFailedFacadeSuccessNotPublishable(t *testing.T) {
 	}
 }
 
-// TestAutoRepair_CleanRunIsPublishable asserts the positive path: an
-// author-supplied deck that passes the gate on complete evidence is reported
-// publishable with no blocking reasons. This is the only combination that may be
-// publishable, so it must light up correctly.
-func TestAutoRepair_CleanRunIsPublishable(t *testing.T) {
+// TestAutoRepair_CleanDeterministicRunStillNeedsVisualReview asserts that a
+// structural/deterministic pass cannot stand in for pixel review.
+func TestAutoRepair_CleanDeterministicRunStillNeedsVisualReview(t *testing.T) {
 	mc := repairMC(t)
 
 	deck := map[string]any{
@@ -509,14 +507,17 @@ func TestAutoRepair_CleanRunIsPublishable(t *testing.T) {
 		t.Fatalf("expected complete evidence on a passing render; render_evidence=%+v output_validation=%+v",
 			output.RenderEvidence, output.OutputValidation)
 	}
-	if !output.Publishable {
-		t.Errorf("a gate-passed, evidence-complete, author-supplied deck must be publishable; blocking_reasons=%v", output.BlockingReasons)
+	if output.Publishable {
+		t.Errorf("deterministic-only deck must not be publishable; quality=%+v", output.Quality)
 	}
-	if output.ManualReviewRequired {
-		t.Error("manual_review_required must be false for a publishable deck")
+	if !output.ManualReviewRequired {
+		t.Error("manual_review_required must be true without pixel review")
 	}
-	if len(output.BlockingReasons) != 0 {
-		t.Errorf("blocking_reasons must be empty for a publishable deck, got %v", output.BlockingReasons)
+	if len(output.BlockingReasons) == 0 {
+		t.Error("blocking_reasons must explain missing visual approval")
+	}
+	if output.Quality == nil || output.Quality.Evidence == nil || output.Quality.Evidence.PixelsRendered || output.Quality.Evidence.Approved {
+		t.Errorf("quality evidence must truthfully report deterministic-only scope: %+v", output.Quality)
 	}
 	if output.ContentStatus != "author_supplied" {
 		t.Errorf("content_status = %q, want %q", output.ContentStatus, "author_supplied")

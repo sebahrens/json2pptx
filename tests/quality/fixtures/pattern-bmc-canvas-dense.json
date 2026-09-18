@@ -12,17 +12,17 @@
         }
       ],
       "pattern": {
-        "name": "business-model-canvas",
-        "data": {
-          "key_partners": "Cloud infrastructure providers (AWS, Azure, GCP)\nSystem integrators (Accenture, Deloitte)\nTechnology OEMs (Intel, NVIDIA)\nChannel resellers in APAC and EMEA\nOpen-source community contributors\nAcademic research institutions",
-          "key_activities": "Platform R&D and feature development\nEnterprise sales and account management\nCustomer success and onboarding\nPartner ecosystem development\nCompliance certification maintenance\nDeveloper community engagement",
-          "key_resources": "Engineering team (120+ developers)\nProprietary ML models and training data\nPatent portfolio (35 patents filed)\nEnterprise customer relationships\nSOC 2 / HIPAA certifications\nGlobal CDN infrastructure",
-          "value_propositions": "10x faster time-to-insight vs. legacy tools\nNo-code analytics for business users\nEnterprise-grade security and compliance\nReal-time collaborative decision-making\nSeamless integration with 200+ data sources\nPredictive analytics powered by proprietary AI",
-          "customer_relationships": "Dedicated customer success managers\nTiered support (Standard/Premium/Enterprise)\nQuarterly business reviews\nOnline community and knowledge base\nCertification and training programs\nAnnual user conference",
-          "channels": "Direct enterprise sales team\nOnline self-serve platform\nPartner/reseller network (150+ partners)\nAWS/Azure/GCP marketplaces\nDeveloper documentation portal\nIndustry conferences and events",
-          "customer_segments": "Enterprise (5000+ employees)\nMid-market (500-5000 employees)\nPublic sector and government\nFinancial services and banking\nHealthcare and life sciences\nRetail and e-commerce",
-          "cost_structure": "Engineering salaries (55% of costs)\nCloud infrastructure hosting (18%)\nSales and marketing (15%)\nG&A and legal/compliance (8%)\nR&D partnerships and grants (4%)",
-          "revenue_streams": "Annual SaaS subscriptions (70%)\nProfessional services/consulting (15%)\nMarketplace transaction fees (8%)\nTraining and certification revenue (4%)\nData enrichment add-ons (3%)"
+        "name": "bmc-canvas",
+        "values": {
+          "key_partners": {"header": "Key Partners", "bullets": ["Cloud infrastructure providers (AWS, Azure, GCP)", "System integrators (Accenture, Deloitte)", "Technology OEMs (Intel, NVIDIA)", "Channel resellers in APAC and EMEA", "Open-source community contributors", "Academic research institutions"]},
+          "key_activities": {"header": "Key Activities", "bullets": ["Platform R&D and feature development", "Enterprise sales and account management", "Customer success and onboarding", "Partner ecosystem development", "Compliance certification maintenance", "Developer community engagement"]},
+          "key_resources": {"header": "Key Resources", "bullets": ["Engineering team (120+ developers)", "Proprietary ML models and training data", "Patent portfolio (35 patents filed)", "Enterprise customer relationships", "SOC 2 / HIPAA certifications", "Global CDN infrastructure"]},
+          "value_propositions": {"header": "Value Propositions", "bullets": ["10x faster time-to-insight vs. legacy tools", "No-code analytics for business users", "Enterprise-grade security and compliance", "Real-time collaborative decision-making", "Seamless integration with 200+ data sources", "Predictive analytics powered by proprietary AI"]},
+          "customer_relations": {"header": "Customer Relationships", "bullets": ["Dedicated customer success managers", "Tiered support (Standard/Premium/Enterprise)", "Quarterly business reviews", "Online community and knowledge base", "Certification and training programs", "Annual user conference"]},
+          "channels": {"header": "Channels", "bullets": ["Direct enterprise sales team", "Online self-serve platform", "Partner/reseller network (150+ partners)", "AWS/Azure/GCP marketplaces", "Developer documentation portal", "Industry conferences and events"]},
+          "customer_segments": {"header": "Customer Segments", "bullets": ["Enterprise (5000+ employees)", "Mid-market (500-5000 employees)", "Public sector and government", "Financial services and banking", "Healthcare and life sciences", "Retail and e-commerce"]},
+          "cost_structure": {"header": "Cost Structure", "bullets": ["Engineering salaries (55% of costs)", "Cloud infrastructure hosting (18%)", "Sales and marketing (15%)", "G&A and legal/compliance (8%)", "R&D partnerships and grants (4%)"]},
+          "revenue_streams": {"header": "Revenue Streams", "bullets": ["Annual SaaS subscriptions (70%)", "Professional services/consulting (15%)", "Marketplace transaction fees (8%)", "Training and certification revenue (4%)", "Data enrichment add-ons (3%)"]}
         }
       }
     }

@@ -187,12 +187,10 @@ func corsMiddleware(next http.Handler, allowedOrigins map[string]bool) http.Hand
 	})
 }
 
-// ringBufferSize is the maximum number of requests tracked per visitor.
-const ringBufferSize = 128
-
-// visitor tracks requests for a single IP address using a fixed-size ring buffer.
+// visitor tracks requests for a single IP address using a ring buffer sized to
+// the configured limit.
 type visitor struct {
-	requests [ringBufferSize]time.Time
+	requests []time.Time
 	head     int
 	count    int
 	lastSeen time.Time
@@ -209,6 +207,9 @@ type RateLimiter struct {
 
 // NewRateLimiter creates a new rate limiter with specified limit and window.
 func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
+	if limit < 1 {
+		limit = 1
+	}
 	rl := &RateLimiter{
 		visitors: make(map[string]*visitor),
 		limit:    limit,
@@ -221,6 +222,9 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 
 // NewRateLimiterWithTrustedProxies creates a rate limiter with trusted proxy configuration.
 func NewRateLimiterWithTrustedProxies(limit int, window time.Duration, trustedProxyCIDRs []string) (*RateLimiter, error) {
+	if limit < 1 {
+		limit = 1
+	}
 	proxies := make([]*net.IPNet, 0, len(trustedProxyCIDRs))
 	for _, cidr := range trustedProxyCIDRs {
 		_, ipNet, err := net.ParseCIDR(cidr)
@@ -259,7 +263,7 @@ func (rl *RateLimiter) Allow(ip string) (bool, int, time.Time) {
 
 	v, exists := rl.visitors[ip]
 	if !exists {
-		v = &visitor{lastSeen: now}
+		v = &visitor{requests: make([]time.Time, rl.limit), lastSeen: now}
 		rl.visitors[ip] = v
 	}
 
@@ -271,7 +275,7 @@ func (rl *RateLimiter) Allow(ip string) (bool, int, time.Time) {
 	var foundEarliest bool
 
 	for i := 0; i < v.count; i++ {
-		idx := (v.head + i) % ringBufferSize
+		idx := (v.head + i) % len(v.requests)
 		reqTime := v.requests[idx]
 		if reqTime.After(cutoff) {
 			validCount++
@@ -288,7 +292,7 @@ func (rl *RateLimiter) Allow(ip string) (bool, int, time.Time) {
 		if headTime.After(cutoff) {
 			break
 		}
-		v.head = (v.head + 1) % ringBufferSize
+		v.head = (v.head + 1) % len(v.requests)
 		v.count--
 	}
 
@@ -301,12 +305,12 @@ func (rl *RateLimiter) Allow(ip string) (bool, int, time.Time) {
 		return false, 0, resetTime
 	}
 
-	tail := (v.head + v.count) % ringBufferSize
+	tail := (v.head + v.count) % len(v.requests)
 	v.requests[tail] = now
-	if v.count < ringBufferSize {
+	if v.count < len(v.requests) {
 		v.count++
 	} else {
-		v.head = (v.head + 1) % ringBufferSize
+		v.head = (v.head + 1) % len(v.requests)
 	}
 
 	remaining := rl.limit - validCount - 1

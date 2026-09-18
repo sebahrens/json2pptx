@@ -24,6 +24,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -662,12 +663,12 @@ func (mc *mcpConfig) runAutoRepairLoop(
 
 	// Derive the agent-native publishability status block from the loop's
 	// terminal state (see deriveFacadeStatus).
-	status := deriveFacadeStatus(gatePassed, evidenceComplete, outputValidation.Valid, lastGateReasons, provenance)
-
 	// Report requested-vs-actual quality from the resolved visual-QA result rather
 	// than the request alone, so a skipped/heuristic phase is never mislabeled as
 	// a completed vision pass. quality_mode aliases quality.actual.
 	quality := buildQualityReport(vqa, vqaResult)
+	quality.Evidence = buildFacadeQualityEvidence(finalPath, len(input.Slides), lastRenderEvidence.Complete, outputValidation.Valid, vqaResult)
+	status := deriveFacadeStatus(gatePassed, evidenceComplete, outputValidation.Valid, quality.Evidence.Approved, lastGateReasons, provenance)
 
 	outVal := outputValidation
 	output := &autoRepairOutput{
@@ -768,7 +769,7 @@ type facadeStatus struct {
 // gate criteria (gateReasons already includes final-output-validation failures),
 // a degraded/incomplete-evidence pass that nonetheless satisfied the gate, and
 // exemplar content provenance.
-func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid bool, gateReasons []string, provenance contentProvenance) facadeStatus {
+func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid, visuallyApproved bool, gateReasons []string, provenance contentProvenance) facadeStatus {
 	usesExemplar := provenance == contentProvenanceExemplarSkeleton
 	blocking := append([]string(nil), gateReasons...)
 	if gatePassed && !evidenceComplete {
@@ -778,6 +779,9 @@ func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid bool, gateReas
 	if usesExemplar {
 		blocking = append(blocking,
 			"content is an exemplar skeleton (pattern placeholder values), not author-supplied; replace per-slide content via repair_slide before publishing")
+	}
+	if !visuallyApproved {
+		blocking = append(blocking, "current artifact lacks complete all-slide vision inspection and an explicit approved verdict")
 	}
 	publishable := len(blocking) == 0
 
@@ -801,6 +805,30 @@ func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid bool, gateReas
 		ManualReviewRequired: !publishable,
 		BlockingReasons:      blocking,
 	}
+}
+
+func buildFacadeQualityEvidence(path string, totalSlides int, fitComplete, structuralValid bool, result *visualQAResult) *pipeline.QualityEvidence {
+	e := &pipeline.QualityEvidence{SchemaValid: true, Generated: path != "", FitChecked: fitComplete, StructuralValid: structuralValid, TotalSlides: totalSlides}
+	if artifact, err := describeArtifact(path, "pptx"); err == nil {
+		e.ArtifactSHA256 = artifact.SHA256
+	}
+	if result != nil && len(result.Passes) > 0 {
+		last := result.Passes[len(result.Passes)-1]
+		e.PixelsRendered = len(last.ThumbnailPaths) == totalSlides && totalSlides > 0
+		e.InspectionBackend = result.InspectionMode
+		if e.PixelsRendered && result.InspectionComplete {
+			for i := 0; i < totalSlides; i++ {
+				e.ReviewedSlideIDs = append(e.ReviewedSlideIDs, fmt.Sprintf("slide-%d", i+1))
+			}
+		}
+		if result.InspectionMode == "vision" && result.InspectionComplete && len(actionableVisualFindings(last.VisualFindings)) == 0 {
+			e.VisualVerdict = "approved"
+		} else {
+			e.VisualVerdict = "needs-review"
+		}
+	}
+	e.Finalize()
+	return e
 }
 
 // --- Gate evaluation ---

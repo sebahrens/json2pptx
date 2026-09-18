@@ -61,8 +61,8 @@ func TestNewSinglePassContext(t *testing.T) {
 			if ctx.outputPath != tt.outputPath {
 				t.Errorf("outputPath = %q, want %q", ctx.outputPath, tt.outputPath)
 			}
-			if ctx.tmpPath != tt.outputPath+".tmp" {
-				t.Errorf("tmpPath = %q, want %q", ctx.tmpPath, tt.outputPath+".tmp")
+			if ctx.tmpPath != "" {
+				t.Errorf("tmpPath = %q, want empty before initialization", ctx.tmpPath)
 			}
 
 			// Verify SlideContext
@@ -125,10 +125,10 @@ func TestNewSinglePassContext(t *testing.T) {
 func TestMediaRelStruct(t *testing.T) {
 	// Test that mediaRel struct can hold both file path and byte data
 	tests := []struct {
-		name     string
-		rel      mediaRel
-		hasData  bool
-		hasPath  bool
+		name    string
+		rel     mediaRel
+		hasData bool
+		hasPath bool
 	}{
 		{
 			name: "file path based media",
@@ -189,17 +189,17 @@ func TestMediaRelStruct(t *testing.T) {
 func TestNativeSVGInsertStruct(t *testing.T) {
 	// Test that nativeSVGInsert struct can hold SVG+PNG pairs
 	insert := nativeSVGInsert{
-		svgPath:      "/path/to/chart.svg",
-		pngPath:      "/path/to/chart.png",
-		svgMediaFile: "image1.svg",
-		pngMediaFile: "image2.png",
-		svgRelID:     "rId10",
-		pngRelID:     "rId11",
-		offsetX:      1000,
-		offsetY:      2000,
-		extentCX:     3000,
-		extentCY:     4000,
-		shapeID:      7,
+		svgPath:        "/path/to/chart.svg",
+		pngPath:        "/path/to/chart.png",
+		svgMediaFile:   "image1.svg",
+		pngMediaFile:   "image2.png",
+		svgRelID:       "rId10",
+		pngRelID:       "rId11",
+		offsetX:        1000,
+		offsetY:        2000,
+		extentCX:       3000,
+		extentCY:       4000,
+		shapeID:        7,
 		placeholderIdx: 3,
 	}
 

@@ -186,8 +186,8 @@ func TestCompileProcess_EmitsPattern(t *testing.T) {
 	if len(vals.Steps) != 3 {
 		t.Fatalf("steps = %d, want 3", len(vals.Steps))
 	}
-	if vals.Steps[0].Label != "Discover" {
-		t.Errorf("step 0 label = %q, want Discover", vals.Steps[0].Label)
+	if vals.Steps[0].Label != "Discover — Gather inputs" {
+		t.Errorf("step 0 label = %q, want description-preserving label", vals.Steps[0].Label)
 	}
 	if vals.Steps[2].Type != "decision" {
 		t.Errorf("step 2 type = %q, want decision", vals.Steps[2].Type)

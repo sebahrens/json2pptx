@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -34,7 +35,7 @@ func baseSplitSlide(rows [][]TableCellInput, groupSize int) SplitSlideInput {
 				},
 			},
 			SpeakerNotes: "notes",
-			Source:        "source",
+			Source:       "source",
 		},
 		Split: SplitConfig{
 			By:            "table.rows",
@@ -141,26 +142,9 @@ func TestExpandSplitSlide_TitleSuffix(t *testing.T) {
 func TestExpandSplitSlide_RepeatHeadersFalse(t *testing.T) {
 	ss := baseSplitSlide(makeRows(6), 2)
 	ss.Split.RepeatHeaders = false
-	slides, err := expandSplitSlide(ss)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(slides) != 3 {
-		t.Fatalf("expected 3 slides, got %d", len(slides))
-	}
-
-	// First slide should have headers
-	_, t0 := findTableContent(slides[0].Content)
-	if len(t0.Headers) != 2 {
-		t.Errorf("slide 0: expected 2 headers, got %d", len(t0.Headers))
-	}
-
-	// Subsequent slides should NOT have headers
-	for i := 1; i < len(slides); i++ {
-		_, ti := findTableContent(slides[i].Content)
-		if len(ti.Headers) != 0 {
-			t.Errorf("slide %d: expected 0 headers, got %d", i, len(ti.Headers))
-		}
+	_, err := expandSplitSlide(ss)
+	if err == nil || !strings.Contains(err.Error(), "repeat_headers=false is unsupported") {
+		t.Fatalf("expected actionable repeat_headers=false error, got %v", err)
 	}
 }
 

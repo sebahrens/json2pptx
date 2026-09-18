@@ -212,8 +212,10 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	switch cached, original, status := mc.idempotency.Lookup("generate_presentation", idemKey, idemFingerprint); status {
 	case idempotencyHit:
 		if out, ok := cached.(JSONOutput); ok {
-			out.IdempotentReplay = true
-			return api.MCPSuccessResult(ctx, out)
+			if artifactMatches(out.OutputPath, out.ContentHash) {
+				out.IdempotentReplay = true
+				return api.MCPSuccessResult(ctx, out)
+			}
 		}
 	case idempotencyConflict:
 		return idempotencyConflictResult("generate_presentation", idemKey, idemFingerprint, original), nil
@@ -1609,6 +1611,9 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 		if len(opts.Candidates) == 0 && len(rec.Candidates) > maxCands {
 			rec.Candidates = rec.Candidates[:maxCands]
 		}
+		for i := range rec.Candidates {
+			rec.Candidates[i].Example = visualExampleForCandidate(rec.Candidates[i], analysis, mc.templatesDir, templateNameFromRequest(request), reg)
+		}
 	}
 
 	if err := api.ComputeResponseFingerprint(&rec); err != nil {
@@ -1620,6 +1625,47 @@ func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.Call
 		return mcpErrorWithNext("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err), nextCallRetry("recommend_visual", "intent")), nil
 	}
 	return mcpResult, nil
+}
+
+func templateNameFromRequest(request mcp.CallToolRequest) string {
+	if raw, ok := request.GetArguments()["template"].(string); ok {
+		return raw
+	}
+	return ""
+}
+
+func visualExampleForCandidate(candidate patterns.VisualCandidate, analysis *types.TemplateAnalysis, templatesDir, templateName string, reg *patterns.Registry) *patterns.VisualExample {
+	if analysis == nil {
+		return nil
+	}
+	ex := &patterns.VisualExample{TemplateHash: analysis.Hash, MetadataOnly: true}
+	switch candidate.Category {
+	case patterns.VisualCategoryPattern:
+		if p, ok := reg.Get(candidate.Name); ok {
+			ex.Capacity = p.CellsHint()
+		}
+		root := filepath.Dir(templatesDir)
+		if templatesDir == "" {
+			root, _ = os.Getwd()
+		}
+		path := filepath.Join(root, "assets", "pattern-previews", templateName, candidate.Name+".png")
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			if abs, absErr := filepath.Abs(path); absErr == nil {
+				path = abs
+			}
+			ex.PreviewPNGPath = path
+			ex.Renderer = "pre-rendered"
+			ex.MetadataOnly = false
+		}
+	case patterns.VisualCategoryPlaceholder:
+		for _, l := range analysis.Layouts {
+			if strings.EqualFold(l.Name, candidate.Name) || strings.EqualFold(l.ID, candidate.Name) {
+				ex.Capacity = fmt.Sprintf("%d bullets / %d lines", l.Capacity.MaxBullets, l.Capacity.MaxTextLines)
+				break
+			}
+		}
+	}
+	return ex
 }
 
 // patternCategoryGroup is a category-keyed group of patterns for list_patterns.

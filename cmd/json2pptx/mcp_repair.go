@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -27,6 +28,7 @@ import (
 type repairSlideOutput struct {
 	PatchedDeck  json.RawMessage `json:"patched_deck"`
 	AppliedFixes []appliedFix    `json:"applied_fixes"`
+	Revision     string          `json:"revision"`
 	// Findings is the FindingEnvelope of residual post-patch fit findings for
 	// the repaired slide. It is always present (never omitted) so an agent can
 	// branch on findings.ok deterministically; findings.findings[] is empty
@@ -122,6 +124,7 @@ Unsupported kinds return {applied: false, code: "kind_not_supported", message: "
 			mcp.Description("0-based index of the slide to repair."),
 			mcp.Required(),
 		),
+		mcp.WithString("expected_revision", mcp.Description("Optional revision precondition returned by propose_repairs. A stale revision rejects the mutation.")),
 		mcp.WithArray("fixes",
 			mcp.Description(`Array of fix directives: [{"kind":"reduce_text","params":{"max_items":5}}, ...]. Each directive has a "kind" (string) and optional "params" (object).`),
 			mcp.Required(),
@@ -149,6 +152,10 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
 	}
 	applyDefaults(&input)
+	currentRevision := presentationRevision(&input)
+	if expected, err := request.RequireString("expected_revision"); err == nil && expected != "" && expected != currentRevision {
+		return argInvalidValue("repair_slide", "STALE_REVISION", "expected_revision", fmt.Sprintf("stale revision: got %s, current is %s", expected, currentRevision), "string", currentRevision, nil), nil
+	}
 
 	// Validate required fields.
 	if errResult := validateRepairBoundary(&input); errResult != nil {
@@ -206,6 +213,7 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 	output := repairSlideOutput{
 		PatchedDeck:  patchedJSON,
 		AppliedFixes: applied,
+		Revision:     presentationRevision(&input),
 		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 			Subcommand:  "repair_slide",
 			Template:    input.Template,
@@ -324,6 +332,9 @@ func applyReduceText(input *PresentationInput, slideIdx int, params map[string]a
 		// Truncate text by max_length.
 		if maxLength > 0 && ci.TextValue != nil && len(*ci.TextValue) > maxLength {
 			truncated := (*ci.TextValue)[:maxLength]
+			if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(*ci.TextValue, truncated) {
+				return appliedFix{Kind: "reduce_text", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier; recompose/split or explicitly confirm semantic change"}
+			}
 			ci.TextValue = &truncated
 			modified = true
 		}
@@ -353,6 +364,9 @@ func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string
 		if ci.TextValue != nil {
 			if len(*ci.TextValue) > maxLength {
 				truncated := (*ci.TextValue)[:maxLength]
+				if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(*ci.TextValue, truncated) {
+					return appliedFix{Kind: "shorten_title", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier"}
+				}
 				ci.TextValue = &truncated
 				return appliedFix{Kind: "shorten_title", Applied: true}
 			}
@@ -1265,6 +1279,9 @@ func applyReduceCellText(input *PresentationInput, slideIdx int, params map[stri
 		if truncated == s {
 			return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "text already within max_chars"}
 		}
+		if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(s, truncated) {
+			return appliedFix{Kind: "reduce_cell_text", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier; reshape or split the grid instead"}
+		}
 		newText, _ := json.Marshal(truncated)
 		cell.Shape.Text = newText
 		return appliedFix{Kind: "reduce_cell_text", Applied: true}
@@ -1298,6 +1315,9 @@ func applyReduceCellText(input *PresentationInput, slideIdx int, params map[stri
 		if truncated == content {
 			return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "text already within max_chars"}
 		}
+		if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(content, truncated) {
+			return appliedFix{Kind: "reduce_cell_text", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier; reshape or split the grid instead"}
+		}
 		obj["content"] = truncated
 		newText, _ := json.Marshal(obj)
 		cell.Shape.Text = newText
@@ -1305,6 +1325,29 @@ func applyReduceCellText(input *PresentationInput, slideIdx int, params map[stri
 	}
 
 	return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "cell text has no recognizable content"}
+}
+
+var protectedFactRE = regexp.MustCompile(`(?i)(?:\b(?:not|no|never|without|only|at least|at most|approximately|about|more than|less than)\b|[-+]?\d+(?:[.,]\d+)?(?:%|x|bps|bp|k|m|bn|ms|s|h|d|gb|mb|usd|eur|chf)?\b)`)
+
+// losesProtectedFacts prevents an automatic density repair from silently
+// changing a claim. It compares the protected semantic tokens before and after
+// truncation; ordinary prose can still be shortened automatically.
+func losesProtectedFacts(before, after string) bool {
+	remaining := append([]string(nil), protectedFactRE.FindAllString(strings.ToLower(after), -1)...)
+	for _, token := range protectedFactRE.FindAllString(strings.ToLower(before), -1) {
+		found := -1
+		for i, candidate := range remaining {
+			if candidate == token {
+				found = i
+				break
+			}
+		}
+		if found < 0 {
+			return true
+		}
+		remaining = append(remaining[:found], remaining[found+1:]...)
+	}
+	return false
 }
 
 // truncateWithEllipsis truncates text to maxChars-1 visible characters plus a

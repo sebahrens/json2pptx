@@ -10,6 +10,33 @@ permissions:
   contents: read
 
 jobs:
+  template-portability-rendered:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Install pinned rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice-impress libreoffice-common imagemagick fonts-liberation fonts-dejavu-core
+          if ! command -v magick >/dev/null; then printf '#!/bin/sh\nexec convert "$@"\n' | sudo tee /usr/local/bin/magick >/dev/null; sudo chmod +x /usr/local/bin/magick; fi
+      - name: Build generator
+        run: go build -o ./bin/json2pptx ./cmd/json2pptx
+      - name: Run required rendered portability matrix
+        env:
+          PORTABILITY_RENDER_REQUIRED: "1"
+          PORTABILITY_RENDER_INTEGRATION: "1"
+          JSON2PPTX_BINARY: ${{ github.workspace }}/bin/json2pptx
+        run: go test ./tests/quality -run 'TestPortability' -v -count=1 -timeout=10m
+      - name: Upload rendered evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: template-portability-rendered
+          path: output/portability-matrix
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -144,9 +171,6 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: svggen/go.mod
-
-      - name: Regenerate golden files for this environment
-        run: cd svggen && go test -run TestGolden -update -count=1 -timeout=5m
 
       - name: Test svggen module
         run: cd svggen && go test ./... -short -v -race -timeout=10m

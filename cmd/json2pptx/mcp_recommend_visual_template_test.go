@@ -43,6 +43,9 @@ func TestMCPRecommendVisual_NoTemplate_NoSupport(t *testing.T) {
 		if c.TemplateSupport != nil {
 			t.Errorf("candidate %q: template_support should be nil without template context", c.Name)
 		}
+		if c.Example != nil {
+			t.Errorf("candidate %q: example should be nil without template context", c.Name)
+		}
 	}
 }
 
@@ -72,6 +75,9 @@ func TestMCPRecommendVisual_WithTemplate_AnnotatesSupport(t *testing.T) {
 		}
 		if len(c.TemplateSupport.Reasons) == 0 {
 			t.Errorf("candidate %q: template_support has no reasons", c.Name)
+		}
+		if c.Example == nil || c.Example.TemplateHash == "" {
+			t.Errorf("candidate %q: missing template-specific example metadata", c.Name)
 		}
 	}
 }

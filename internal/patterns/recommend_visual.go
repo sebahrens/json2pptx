@@ -88,6 +88,17 @@ type VisualCandidate struct {
 	// engine when the caller supplies template context; nil for
 	// template-agnostic results.
 	TemplateSupport *TemplateSupport `json:"template_support,omitempty"`
+	Example         *VisualExample   `json:"example,omitempty"`
+}
+
+// VisualExample connects a recommendation to compact template-specific visual
+// evidence. MetadataOnly is explicit when no renderer-produced preview exists.
+type VisualExample struct {
+	TemplateHash   string `json:"template_hash"`
+	PreviewPNGPath string `json:"preview_png_path,omitempty"`
+	Capacity       string `json:"capacity,omitempty"`
+	Renderer       string `json:"renderer,omitempty"`
+	MetadataOnly   bool   `json:"metadata_only"`
 }
 
 // VisualHints extends ContentHints with data-shape information for chart/diagram routing.

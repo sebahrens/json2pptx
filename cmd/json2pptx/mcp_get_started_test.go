@@ -10,6 +10,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 )
 
@@ -48,6 +49,8 @@ func TestGetStartedBriefSequence(t *testing.T) {
 		"preview_presentation_plan",
 		"generate_presentation",
 		"score_deck",
+		"render_deck_thumbnails",
+		"inspect_slide_images",
 	}
 	if len(resp.Sequence) != len(want) {
 		t.Fatalf("sequence length = %d, want %d (%v)", len(resp.Sequence), len(want), resp.Sequence)
@@ -58,6 +61,22 @@ func TestGetStartedBriefSequence(t *testing.T) {
 		}
 		if step.WhenToCall == "" {
 			t.Errorf("sequence[%d].when_to_call is empty for tool %q", i, step.Tool)
+		}
+	}
+}
+
+func TestGetStartedRequiresCurrentRevisionPixelReview(t *testing.T) {
+	for _, task := range []string{"brief", "revise"} {
+		resp := callGetStarted(t, task)
+		if resp.Completion.DraftStatus != "draft_needs_visual_review" || resp.Completion.CompleteStatus != "visually_reviewed_current_revision" {
+			t.Fatalf("%s completion protocol=%+v", task, resp.Completion)
+		}
+		joined := ""
+		for _, step := range resp.Sequence {
+			joined += step.Tool + " "
+		}
+		if !strings.Contains(joined, "render_deck_thumbnails") || !strings.Contains(joined, "inspect_slide_images") {
+			t.Fatalf("%s omits pixel workflow: %s", task, joined)
 		}
 	}
 }
@@ -182,6 +201,8 @@ func TestGetStartedReviseSequence(t *testing.T) {
 		"repair_slide",
 		"generate_presentation",
 		"score_deck",
+		"render_deck_thumbnails",
+		"inspect_slide_images",
 	}
 	if len(resp.Sequence) != len(want) {
 		t.Fatalf("sequence length = %d, want %d (%v)", len(resp.Sequence), len(want), resp.Sequence)
@@ -376,6 +397,43 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 			result, err = mc.handleScoreDeck(ctx, makeRequest(map[string]any{
 				"presentation": fixtureDeck,
 			}))
+		case "render_deck_thumbnails":
+			if os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
+				return generatedPath
+			}
+			if ok, _ := render.DependencyStatus(); !ok {
+				return generatedPath
+			}
+			result, err = mc.handleRenderDeckThumbnails(ctx, makeRequest(map[string]any{"pptx_path": generatedPath}))
+		case "inspect_slide_images":
+			if os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
+				return generatedPath
+			}
+			if ok, _ := render.DependencyStatus(); !ok {
+				return generatedPath
+			}
+			rendered, rerr := mc.handleRenderDeckThumbnails(ctx, makeRequest(map[string]any{"pptx_path": generatedPath}))
+			if rerr != nil || rendered == nil {
+				t.Fatalf("render prerequisite failed: %v", rerr)
+			}
+			if rendered.IsError {
+				t.Fatalf("render prerequisite failed: %s", textContent(rendered))
+			}
+			var deck render.DeckResult
+			if jerr := json.Unmarshal([]byte(textContent(rendered)), &deck); jerr != nil {
+				t.Fatal(jerr)
+			}
+			images := make([]any, 0, len(deck.Slides))
+			for _, slide := range deck.Slides {
+				entry := map[string]any{"index": float64(slide.Index)}
+				if slide.Path != "" {
+					entry["path"] = slide.Path
+				} else {
+					entry["png_base64"] = slide.PNG64
+				}
+				images = append(images, entry)
+			}
+			result, err = mc.handleInspectSlideImages(ctx, makeRequest(map[string]any{"slide_images": images}))
 		default:
 			t.Fatalf("integration test does not know how to invoke tool %q — add a case to runStep", tool)
 		}

@@ -31,11 +31,13 @@ func TestReserveTakeawayBand_LowersFooterTop(t *testing.T) {
 
 	out := reserveTakeawayBand(g, SlideInput{Takeaway: "Revenue grew 32% YoY"})
 
-	if out.Zone.FooterTop != generator.TakeawayBandTopEMU {
-		t.Errorf("FooterTop = %d, want %d (band top)", out.Zone.FooterTop, generator.TakeawayBandTopEMU)
+	frame := generator.ResolveSlideChromeFrame(zone.SlideWidth, zone.SlideHeight, true, false)
+	bandTop := frame.Content.Y + frame.Content.CY
+	if out.Zone.FooterTop != bandTop {
+		t.Errorf("FooterTop = %d, want %d (responsive content bottom)", out.Zone.FooterTop, bandTop)
 	}
 	// Override bounds must not extend into the band; leave the standard gap above it.
-	maxBottom := generator.TakeawayBandTopEMU - int64(gridChromeGapPt*12700)
+	maxBottom := bandTop - int64(gridChromeGapPt*12700)
 	if got := out.OverrideBounds.Y + out.OverrideBounds.CY; got > maxBottom {
 		t.Errorf("override bounds bottom = %d, want <= %d", got, maxBottom)
 	}

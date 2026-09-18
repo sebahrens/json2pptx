@@ -1129,7 +1129,7 @@ func TestJsonSlideToDefinition(t *testing.T) {
 		}
 	})
 
-	t.Run("explicit slide_type on pattern slide is respected", func(t *testing.T) {
+	t.Run("composition overrides generic explicit slide_type", func(t *testing.T) {
 		slide := SlideInput{
 			SlideType: "section",
 			Content: []ContentInput{
@@ -1138,8 +1138,8 @@ func TestJsonSlideToDefinition(t *testing.T) {
 			Pattern: &PatternInput{Name: "agenda"},
 		}
 		def := jsonSlideToDefinition(slide)
-		if def.Type != types.SlideTypeSection {
-			t.Errorf("Type = %q, want %q (explicit slide_type must win)", def.Type, types.SlideTypeSection)
+		if def.Type != types.SlideTypeDiagram {
+			t.Errorf("Type = %q, want %q", def.Type, types.SlideTypeDiagram)
 		}
 	})
 }
@@ -1294,7 +1294,7 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 			Name: "Content",
 			Placeholders: []types.PlaceholderInfo{
 				{ID: "title", Type: types.PlaceholderTitle, Index: 1},
-				{ID: "body", Type: types.PlaceholderBody, Index: 2, MaxChars: 500},
+				{ID: "body", Type: types.PlaceholderBody, Index: 2, MaxChars: 500, Bounds: types.BoundingBox{X: 500000, Y: 1200000, Width: 10000000, Height: 5000000}},
 			},
 			Capacity: types.CapacityEstimate{MaxBullets: 6},
 			Tags:     []string{"content"},
@@ -1306,6 +1306,15 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 				{ID: "title", Type: types.PlaceholderTitle, Index: 1},
 			},
 			Tags: []string{"blank-title", "virtual-base"},
+		},
+		{
+			ID:   "slideLayout3",
+			Name: "Quarterly Highlights",
+			Placeholders: []types.PlaceholderInfo{
+				{ID: "title", Type: types.PlaceholderTitle, Index: 1},
+				{ID: "section_number", Type: types.PlaceholderBody, Index: 2},
+			},
+			Tags: []string{"section-header"},
 		},
 	}
 
@@ -1363,6 +1372,50 @@ func TestConvertPresentationSlides_AutoLayout(t *testing.T) {
 		}
 		if specs[0].LayoutID != "slideLayout9" {
 			t.Errorf("LayoutID = %q, want 'slideLayout9'", specs[0].LayoutID)
+		}
+	})
+
+	t.Run("raw pattern binds blank-title before scoring", func(t *testing.T) {
+		values := json.RawMessage(`[{"big":"42%","small":"Growth"},{"big":"9d","small":"Cycle"}]`)
+		slides := []SlideInput{{
+			SlideType: "content",
+			Content:   []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Quarterly Highlights")}},
+			Pattern:   &PatternInput{Name: "kpi-2up", Values: values},
+		}}
+		specs, _, _, err := convertPresentationSlides(slides, layouts, 12192000, 6858000, nil, nil, "", nil, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := specs[0].LayoutID; got != "slideLayout9" {
+			t.Fatalf("LayoutID = %q, want blank-title slideLayout9", got)
+		}
+	})
+
+	t.Run("explicit compatible composition layout is preserved", func(t *testing.T) {
+		slides := []SlideInput{{
+			LayoutID:  "slideLayout5",
+			Content:   []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Metrics")}},
+			ShapeGrid: &ShapeGridInput{},
+		}}
+		specs, _, _, err := convertPresentationSlides(slides, layouts, 12192000, 6858000, nil, nil, "", nil, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := specs[0].LayoutID; got != "slideLayout5" {
+			t.Fatalf("LayoutID = %q, want explicit slideLayout5", got)
+		}
+	})
+
+	t.Run("explicit incompatible composition layout is rejected", func(t *testing.T) {
+		slides := []SlideInput{{
+			LayoutID:  "slideLayout3",
+			SlideType: "section",
+			Content:   []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Metrics")}},
+			ShapeGrid: &ShapeGridInput{},
+		}}
+		_, _, _, err := convertPresentationSlides(slides, layouts, 12192000, 6858000, nil, nil, "", nil, false)
+		if err == nil || !strings.Contains(err.Error(), "incompatible") {
+			t.Fatalf("error = %v, want incompatible layout error", err)
 		}
 	})
 

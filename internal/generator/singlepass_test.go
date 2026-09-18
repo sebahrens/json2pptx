@@ -17,6 +17,38 @@ import (
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
+func TestInitializeContextUsesExclusiveUniqueTempFiles(t *testing.T) {
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "deck.pptx")
+	victim := filepath.Join(dir, "victim")
+	if err := os.WriteFile(victim, []byte("KEEP ME"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(victim, outputPath+".tmp"); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx1 := newSinglePassContext(outputPath, nil, nil, false, nil)
+	cleanup1, err := ctx1.initializeContext("../template/testdata/standard.pptx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup1()
+	ctx2 := newSinglePassContext(outputPath, nil, nil, false, nil)
+	cleanup2, err := ctx2.initializeContext("../template/testdata/standard.pptx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup2()
+	if ctx1.tmpPath == ctx2.tmpPath || ctx1.tmpPath == outputPath+".tmp" || ctx2.tmpPath == outputPath+".tmp" {
+		t.Fatalf("temporary paths are not unique: %q %q", ctx1.tmpPath, ctx2.tmpPath)
+	}
+	got, err := os.ReadFile(victim)
+	if err != nil || string(got) != "KEEP ME" {
+		t.Fatalf("legacy symlink target changed: %q err=%v", got, err)
+	}
+}
+
 // TestInsertSlideEntriesIntoPresentationXML tests the deterministic function
 // that inserts slide entries into presentation.xml
 func TestInsertSlideEntriesIntoPresentationXML(t *testing.T) {
@@ -2269,7 +2301,6 @@ func TestAppendNativeSVGRelationships(t *testing.T) {
 	}
 }
 
-
 // TestProcessImageContent_EdgeCases tests edge cases in image content processing
 func TestProcessImageContent_EdgeCases(t *testing.T) {
 	tests := []struct {
@@ -2484,14 +2515,14 @@ func TestPopulateTextInSlide_PlaceholderNotFound_EmitsValidationError(t *testing
 					{
 						NonVisualProperties: nonVisualPropertiesXML{
 							ConnectionNonVisual: connectionNonVisualXML{ID: 2, Name: "body"},
-							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
 						},
 						TextBody: &textBodyXML{},
 					},
 					{
 						NonVisualProperties: nonVisualPropertiesXML{
 							ConnectionNonVisual: connectionNonVisualXML{ID: 3, Name: "body_2"},
-							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
 						},
 						TextBody: &textBodyXML{},
 					},
@@ -3797,7 +3828,7 @@ func TestAdjustShapesForLogoZone(t *testing.T) {
 						// Title at X=400000, Y=400000 — inside logo zone
 						NonVisualProperties: nonVisualPropertiesXML{
 							ConnectionNonVisual: connectionNonVisualXML{Name: "Title 1"},
-							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "title", Index: &titleIdx}},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "title", Index: &titleIdx}},
 						},
 						ShapeProperties: shapePropertiesXML{
 							Transform: &transformXML{
@@ -3810,7 +3841,7 @@ func TestAdjustShapesForLogoZone(t *testing.T) {
 						// Content at X=400000, Y=1900000 — below logo zone (Y > Bottom)
 						NonVisualProperties: nonVisualPropertiesXML{
 							ConnectionNonVisual: connectionNonVisualXML{Name: "Content 2"},
-							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "", Index: &contentIdx}},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "", Index: &contentIdx}},
 						},
 						ShapeProperties: shapePropertiesXML{
 							Transform: &transformXML{
@@ -3835,7 +3866,7 @@ func TestAdjustShapesForLogoZone(t *testing.T) {
 						// Footer at Y=6500000 — well below logo zone
 						NonVisualProperties: nonVisualPropertiesXML{
 							ConnectionNonVisual: connectionNonVisualXML{Name: "Footer 4"},
-							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "ftr", Index: &footerIdx}},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "ftr", Index: &footerIdx}},
 						},
 						ShapeProperties: shapePropertiesXML{
 							Transform: &transformXML{
@@ -3894,7 +3925,7 @@ func TestAdjustShapesForLogoZone_NilLogoZone(t *testing.T) {
 					{
 						NonVisualProperties: nonVisualPropertiesXML{
 							ConnectionNonVisual: connectionNonVisualXML{Name: "Title 1"},
-							NvPr:               nvPrXML{Placeholder: &placeholderXML{Type: "title", Index: &titleIdx}},
+							NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "title", Index: &titleIdx}},
 						},
 						ShapeProperties: shapePropertiesXML{
 							Transform: &transformXML{
@@ -4316,10 +4347,10 @@ func TestSetTextParagraph_EmptyTextHasEndParaRPr(t *testing.T) {
 // sorts synthetic layout XML filenames correctly, excluding .rels files.
 func TestSyntheticLayoutNames(t *testing.T) {
 	ctx := newSinglePassContext("", nil, nil, false, map[string][]byte{
-		"ppt/slideLayouts/slideLayout99.xml":              []byte("<xml/>"),
-		"ppt/slideLayouts/_rels/slideLayout99.xml.rels":   []byte("<xml/>"),
-		"ppt/slideLayouts/slideLayout100.xml":             []byte("<xml/>"),
-		"ppt/slideLayouts/_rels/slideLayout100.xml.rels":  []byte("<xml/>"),
+		"ppt/slideLayouts/slideLayout99.xml":             []byte("<xml/>"),
+		"ppt/slideLayouts/_rels/slideLayout99.xml.rels":  []byte("<xml/>"),
+		"ppt/slideLayouts/slideLayout100.xml":            []byte("<xml/>"),
+		"ppt/slideLayouts/_rels/slideLayout100.xml.rels": []byte("<xml/>"),
 	})
 
 	names := ctx.syntheticLayoutNames()
@@ -4368,8 +4399,8 @@ xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
 		defer zw.Close()
 
 		for name, content := range map[string]string{
-			"ppt/slideMasters/slideMaster1.xml":                  masterXML,
-			"ppt/slideMasters/_rels/slideMaster1.xml.rels":       relsXML,
+			"ppt/slideMasters/slideMaster1.xml":            masterXML,
+			"ppt/slideMasters/_rels/slideMaster1.xml.rels": relsXML,
 		} {
 			w, err := zw.Create(name)
 			if err != nil {
@@ -4389,8 +4420,8 @@ xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
 	defer reader.Close()
 
 	ctx := newSinglePassContext(outputPath, nil, nil, false, map[string][]byte{
-		"ppt/slideLayouts/slideLayout99.xml":             []byte("<xml/>"),
-		"ppt/slideLayouts/_rels/slideLayout99.xml.rels":  []byte("<xml/>"),
+		"ppt/slideLayouts/slideLayout99.xml":            []byte("<xml/>"),
+		"ppt/slideLayouts/_rels/slideLayout99.xml.rels": []byte("<xml/>"),
 	})
 	ctx.templateReader = reader
 	ctx.templateIndex = utils.BuildZipIndex(&reader.Reader)

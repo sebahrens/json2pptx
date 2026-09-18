@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/visualqa"
 	"sort"
 	"strings"
 	"testing"
@@ -683,4 +684,21 @@ func argKeys(m map[string]any) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func TestProposeRepairsBindsRevisionTargetAndDeduplicates(t *testing.T) {
+	deck := PresentationInput{Template: "midnight-blue", Slides: []SlideInput{{LayoutID: "content", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("A title that is too long")}}}}}
+	idx := 0
+	f := proposeRepairsFinding{SlideIndex: &idx, Severity: "P1", Category: "visual_hierarchy", Description: "title hierarchy", SuggestedFixes: []visualqa.SuggestedFix{{Kind: "swap_layout", Params: map[string]any{"layout_id": "title-and-content"}}}}
+	out := proposeRepairs(&deck, []proposeRepairsFinding{f, f})
+	if len(out.Slides) != 1 || len(out.Slides[0].Directives) != 1 {
+		t.Fatalf("expected one deduplicated directive: %+v", out)
+	}
+	d := out.Slides[0].Directives[0]
+	if d.Preconditions.Revision == "" || d.Target.Path != "/slides/0" {
+		t.Fatalf("missing bound target/precondition: %+v", d)
+	}
+	if got := d.ToolCall.ArgsTemplate["expected_revision"]; got != d.Preconditions.Revision {
+		t.Fatalf("tool call revision = %v", got)
+	}
 }

@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -40,6 +41,21 @@ type idempotencyEntry struct {
 	data        any
 	fingerprint string
 	expiresAt   time.Time
+}
+
+// artifactMatches verifies that replay evidence still names the same immutable
+// bytes that produced the cached response. Missing, replaced, or unreadable
+// artifacts are cache misses and must be regenerated.
+func artifactMatches(path, expectedHash string) bool {
+	if path == "" || expectedHash == "" {
+		return false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]) == expectedHash
 }
 
 // idempotencyStatus is the outcome of an idempotency cache lookup.

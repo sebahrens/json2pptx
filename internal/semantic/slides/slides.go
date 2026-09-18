@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Input is the per-slide compile input: the planned slide plus the bookkeeping
@@ -41,6 +42,10 @@ type Input struct {
 	Layout string
 	// Body is the kind-specific semantic payload.
 	Body map[string]any
+}
+
+func diagramContent(placeholderID string, diagram *types.DiagramSpec) deckinput.ContentInput {
+	return deckinput.ContentInput{PlaceholderID: placeholderID, Type: "diagram", DiagramValue: diagram}
 }
 
 // SourceLink records one raw->semantic correspondence a compiler emitted. The
