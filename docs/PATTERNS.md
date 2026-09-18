@@ -351,6 +351,7 @@ When the field is a bare string, it is classified at unmarshal time by `svggen.C
 - `alt` — accessibility description; defaults to a derived value from name/path.
 - `fill` — hex or scheme color override (e.g. `"accent1"`, `"#FF0000"`). Pattern code supplies a sensible default (the cell's accent) when blank; explicit values win.
 - `position` — `left`, `top`, or `center`. Defaults to the pattern-specific position (kpi-Nup → `left` on landscape cards (width ≥ 1.2× height) and `top` on square/narrow cards; kpi-inline → `left`; card-grid/iconrow/herodetail/matrix → `top`) when blank. On any shape, a `left` overlay icon is capped at 25% of the shape width (the text's extra left inset is icon + 6pt padding), and a default-scale `top` icon on a landscape shape is capped at 40% of the shape height.
+- kpi-Nup icons default to an accent-sized footprint (top: ≤ 28% of card height / 45% of width; left: ≤ 40% of height / 20% of width) by setting the overlay `scale`; an authored `scale` wins.
 - kpi-Nup big values never wrap: the value font shrinks (uniformly across the row, floor 16pt) until every value fits on one line in its card's text width after the icon inset.
 - `scale` — optional overlay scale factor (`0 < scale <= 1`) applied when the icon is overlaid on a shape; out-of-range or unset values fall back to the `0.6` overlay default. No effect on standalone (text-free) icon cells. `IconRef.Resolve` copies it through unchanged, and the bundled-name shorthand marshal form is suppressed when `scale` is set.
 

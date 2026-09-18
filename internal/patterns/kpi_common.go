@@ -361,9 +361,15 @@ const (
 	kpiMinBigSize = 16.0
 	// Mirrors shapegrid's overlay defaults: 0.6 icon scale, 3pt gap, and
 	// the left-icon cap of 25% of the card width.
-	kpiIconScale        = 0.6
 	kpiIconGapPt        = 3.0
 	kpiLeftIconMaxWFrac = 0.25
+	// Default KPI icon footprint (the icon is an accent, not the headline):
+	// a top icon is at most 28% of the card height / 45% of its width, a left
+	// icon at most 40% of the card height / 20% of its width.
+	kpiTopIconHFrac  = 0.28
+	kpiTopIconWFrac  = 0.45
+	kpiLeftIconHFrac = 0.4
+	kpiLeftIconWFrac = 0.2
 	// kpiMaxCardHeightFrac caps a KPI card at this share of the content
 	// height (go-slide-creator-7km8): a big number in a 5in-tall card reads
 	// as an empty box. The row is centred vertically by the grid.
@@ -404,12 +410,9 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 			textParagraph{text: c.Sub, size: kpiSubSize(smallSize)},
 			textParagraph{text: c.Small, size: smallSize},
 		)
-		pos := iconPos
-		if c.Icon != nil && c.Icon.Position != "" {
-			pos = c.Icon.Position
-		}
+		pos := effectiveIconPos(c.Icon, iconPos)
 		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {
-			h += math.Min(geo.wPt, geo.hPt)*kpiIconScale + 2*kpiIconGapPt
+			h += math.Min(geo.wPt, geo.hPt)*geo.iconScale(c.Icon, pos) + 2*kpiIconGapPt
 		}
 		need = math.Max(need, h+kpiCardPadPt+2*defaultShapeInsetTBPt)
 	}
@@ -426,6 +429,36 @@ func (g kpiCardGeometry) iconPosition() string {
 	return "top"
 }
 
+// iconSizePt returns the default icon edge (points) for a card at pos.
+func (g kpiCardGeometry) iconSizePt(pos string) float64 {
+	if pos == "left" {
+		return math.Min(g.hPt*kpiLeftIconHFrac, g.wPt*kpiLeftIconWFrac)
+	}
+	return math.Min(g.hPt*kpiTopIconHFrac, g.wPt*kpiTopIconWFrac)
+}
+
+// iconScale converts the default icon size into the overlay scale factor
+// shapegrid applies (icon edge = scale x min(card w, card h)); a
+// user-authored scale wins.
+func (g kpiCardGeometry) iconScale(icon *IconRef, pos string) float64 {
+	if icon != nil && icon.Scale > 0 && icon.Scale <= 1 {
+		return icon.Scale
+	}
+	minDim := math.Min(g.wPt, g.hPt)
+	if minDim <= 0 {
+		return 0
+	}
+	return math.Min(1, math.Round(g.iconSizePt(pos)/minDim*100)/100)
+}
+
+// effectiveIconPos returns the icon's authored position or the default.
+func effectiveIconPos(icon *IconRef, pos string) string {
+	if icon != nil && icon.Position != "" {
+		return icon.Position
+	}
+	return pos
+}
+
 // valueWidthPt returns the text width available to the big value in a card
 // whose icon (if any) sits at pos, mirroring shapegrid's overlay layout.
 func (g kpiCardGeometry) valueWidthPt(icon *IconRef, pos string) float64 {
@@ -433,16 +466,11 @@ func (g kpiCardGeometry) valueWidthPt(icon *IconRef, pos string) float64 {
 	if icon == nil || icon.IsEmpty() {
 		return w
 	}
-	if icon.Position != "" {
-		pos = icon.Position
-	}
+	pos = effectiveIconPos(icon, pos)
 	if pos != "left" {
 		return w
 	}
-	scale := kpiIconScale
-	if icon.Scale > 0 && icon.Scale <= 1 {
-		scale = icon.Scale
-	}
+	scale := g.iconScale(icon, pos)
 	iconPt := math.Min(g.hPt*scale, math.Min(g.wPt, g.hPt)*scale)
 	iconPt = math.Min(iconPt, g.wPt*kpiLeftIconMaxWFrac)
 	return w - iconPt - 2*kpiIconGapPt

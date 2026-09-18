@@ -149,6 +149,9 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	geo := kpiCardGeometryFor(ctx, n)
 	iconPos := geo.iconPosition()
 	bigSize = kpiFitBigSize(ctx, *cells, bigSize, geo, iconPos)
+	rowMaxPt := kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)
+	// Icons are sized against the final card height.
+	cardGeo := kpiCardGeometry{wPt: geo.wPt, hPt: rowMaxPt}
 
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
@@ -163,6 +166,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		}
 		if cell.Icon != nil {
 			if icon := cell.Icon.Resolve(iconFillOn(ctx, shape.Fill, accent), iconPos); icon != nil {
+				icon.Scale = cardGeo.iconScale(cell.Icon, icon.Position)
 				shape.Icon = icon
 			}
 		}
@@ -197,7 +201,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		Rows: []jsonschema.GridRowInput{
 			{
 				Cells:     gridCells,
-				MaxHeight: math.Round(kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)),
+				MaxHeight: math.Round(rowMaxPt),
 			},
 		},
 		VerticalAlign: GridVerticalAlignDefault,

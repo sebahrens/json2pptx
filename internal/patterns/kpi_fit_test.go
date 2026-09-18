@@ -78,7 +78,11 @@ func TestKPI6up_NarrowCardsUseTopIcon(t *testing.T) {
 	size := -1.0
 	for i, c := range grid.Rows[0].Cells {
 		if c.Shape.Icon == nil || c.Shape.Icon.Position != "top" {
-			t.Errorf("cell %d: want top icon on a narrow card, got %+v", i, c.Shape.Icon)
+			t.Fatalf("cell %d: want top icon on a narrow card, got %+v", i, c.Shape.Icon)
+		}
+		// The icon is an accent, not the headline: well below the 0.6 overlay default.
+		if sc := c.Shape.Icon.Scale; sc <= 0 || sc >= 0.6 {
+			t.Errorf("cell %d: icon scale %g should be a reduced KPI default", i, sc)
 		}
 		var txt kpiTextObj
 		_ = json.Unmarshal(c.Shape.Text, &txt)
