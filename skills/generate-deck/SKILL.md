@@ -992,7 +992,7 @@ All findings carry `details.input_value` (local paths) or `details.input_url` (U
 
 A bare string is classified at parse time: bundled name → `name`, `http(s)://` or `data:` → `url`, `<svg…>` → `svg_data`, path with `/` and `.svg`/`.png`/`.jpg` → `path`. Unknown short strings stay in `name` and are rejected by the bundled-name preflight (`ICON_BUNDLED_NAME_UNKNOWN`). Setting two of `name`/`path`/`url`/`svg_data` in the object form fails validate with `invalid_shape`. The patterns above bumped their `version` to `2` when this slot landed.
 
-**Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide.
+**Accent on icon fill.** Prefer semantic theme colors (`accent1`–`accent6`, `dk1`, `lt1`) for `fill` so the icon adapts to the template's palette. Hex (`#RRGGBB`) is allowed only when the surrounding slide is already on a hex-allowlisted brand palette (see Rule 12 in RULES.md). Do not mix semantic and hex fills on one slide. At generation time scheme names (incl. `tx1`/`bg1` aliases) are resolved to the template's hex before being written into the SVG; a `fill` that is neither a scheme name nor hex is ignored (the icon keeps its default colour). `preview_icon` loads no template, so it only honours hex fills and warns on scheme names. Embedded icons also ship a rasterized PNG fallback for viewers that ignore SVG.
 
 ---
 
