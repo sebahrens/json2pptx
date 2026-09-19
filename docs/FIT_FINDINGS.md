@@ -389,6 +389,8 @@ A pattern grid has less than 50% of its slots populated — the content is too s
 
 A pattern grid exceeds the pattern's recommended maximum cell count. The fix suggests splitting across two slides using `split_pattern`, with params indicating the recommended split point.
 
+The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly.
+
 ```json
 {
   "pattern": "card-grid",

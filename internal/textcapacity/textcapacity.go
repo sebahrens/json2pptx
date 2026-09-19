@@ -45,9 +45,16 @@ import (
 // textfit.MeasureRun's default), and defaultInsetPt is the OOXML default top /
 // bottom text inset. Both mirror what the renderer emits, so a measured block
 // height can be compared with the box a viewer lays it out in.
+//
+// defaultInsetPt was 7.2 — the default LEFT/RIGHT inset (0.1in) — applied
+// vertically, so every cell was budgeted 14.4pt of vertical inset where the
+// renderer takes 7.2 (internal/pptx.autofitDefaultInsetPt, 0.05in a side).
+// A 28pt cell holding one 14pt line was predicted to overflow and shrink to
+// 80%, which is how a pattern that sizes its rows to its own text reported
+// TEXT_BELOW_READABLE_MIN on every stop (go-slide-creator-wrsb).
 const (
 	lineSpacing    = 1.2
-	defaultInsetPt = 7.2
+	defaultInsetPt = 3.6
 )
 
 // budgetFontName is the font used for all budget computations.

@@ -1150,16 +1150,24 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 
 // patternRecommendedMax maps known patterns to their recommended maximum cell
 // count. Patterns not listed here have no overcrowding limit enforced.
+//
+// The unit is GRID CELLS, not the pattern's items: a pattern that draws each
+// item as a stack of cells needs its limit multiplied accordingly.
+// timeline-horizontal's dots layout emits three cells per stop (date, dot,
+// label), so its entry was 6 — the pattern's own stop maximum, in the wrong
+// unit — and every conforming timeline, down to three stops, was reported as
+// overcrowded (go-slide-creator-wrsb).
 var patternRecommendedMax = map[string]int{
 	"card-grid":           9,
 	"icon-row":            5,
 	"kpi-3up":             3,
 	"kpi-4up":             4,
 	"matrix-2x2":          4,
-	"timeline-horizontal": 6,
-	"process-flow":        8,
-	"comparison-2col":     8,
-	"before-after":        8,
+	"timeline-horizontal": 21, // 7 stops (the pattern's own maximum) x 3 cells
+
+	"process-flow":    8,
+	"comparison-2col": 8,
+	"before-after":    8,
 }
 
 // collectGridOccupancyFindings checks each slide's shape_grid for underfilled

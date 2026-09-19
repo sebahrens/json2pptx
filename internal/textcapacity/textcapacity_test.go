@@ -509,3 +509,23 @@ func TestBudgetDeterminism(t *testing.T) {
 		t.Errorf("non-deterministic: first=%+v, second=%+v", b1, b2)
 	}
 }
+
+// A grid cell sized to hold exactly one line of its own text must not be
+// predicted to shrink. defaultInsetPt was the OOXML LEFT/RIGHT inset (0.1in)
+// applied vertically, so every cell was budgeted 14.4pt of vertical inset
+// where the renderer takes 7.2 — and a 28pt cell holding one 14pt line was
+// predicted to shrink to 80% (go-slide-creator-wrsb).
+func TestAutofitScaleForRespectsTheRealVerticalInset(t *testing.T) {
+	const widthEMU = int64(277 * 12700) // a wide cell: the line does not wrap
+	para := []ParagraphSpec{{Text: "Mandate published", FontPt: 14}}
+
+	// 14pt x 1.2 = 16.8pt of text + 7.2pt of inset = 24pt; a 28pt cell holds it.
+	if scale, _ := AutofitScaleFor(para, widthEMU, int64(28*12700)); scale != 1 {
+		t.Errorf("scale in a 28pt cell = %.2f, want 1.00", scale)
+	}
+	// A cell genuinely too short still shrinks.
+	scale, _ := AutofitScaleFor(para, widthEMU, int64(16*12700))
+	if scale >= 1 {
+		t.Errorf("scale in a 16pt cell = %.2f, want a shrink", scale)
+	}
+}

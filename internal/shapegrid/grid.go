@@ -533,15 +533,45 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 		return textHeightEMU(strings.Count(s, "\n")+1, 11, 0, 0)
 	}
 
-	// Object form
+	// Object form, in either the single-content or the paragraphs variant.
 	var obj struct {
 		Content     string  `json:"content"`
 		Size        float64 `json:"size"`
 		InsetTop    float64 `json:"inset_top"`
 		InsetBottom float64 `json:"inset_bottom"`
+		Paragraphs  []struct {
+			Content    string  `json:"content"`
+			Size       float64 `json:"size"`
+			SpaceAfter float64 `json:"space_after"`
+		} `json:"paragraphs"`
 	}
 	if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
 		return 0
+	}
+
+	// A paragraphs-form cell used to fall through to the empty-content default
+	// (one line at 11pt), so every such row was measured as ~27pt whatever it
+	// actually held: patterns that size a row to its own 12pt line reported a
+	// phantom overflow, and a genuinely tall stack of paragraphs reported none
+	// (go-slide-creator-wrsb).
+	if len(obj.Paragraphs) > 0 {
+		var totalPt float64
+		for _, para := range obj.Paragraphs {
+			if para.Content == "" {
+				continue
+			}
+			size := para.Size
+			if size == 0 {
+				size = 11
+			}
+			lines := strings.Count(para.Content, "\n") + 1
+			totalPt += float64(lines) * size * textLineHeightFactor
+			totalPt += para.SpaceAfter
+		}
+		if totalPt == 0 {
+			return 0
+		}
+		return int64((totalPt + obj.InsetTop + obj.InsetBottom + textShapePaddingPt) * 12700)
 	}
 
 	fontSize := obj.Size
@@ -552,12 +582,24 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 	return textHeightEMU(lines, fontSize, obj.InsetTop, obj.InsetBottom)
 }
 
+const (
+	// textLineHeightFactor is the line-spacing factor this estimate assumes. It
+	// matches the factor the pattern expanders size their rows with
+	// (patterns.contentLineHeight): the two used to disagree (1.4 here, 1.2
+	// there), so a row sized to hold exactly its own text was reported as
+	// overflowing by the same ~17% on every pattern that measures its rows
+	// (go-slide-creator-wrsb).
+	textLineHeightFactor = 1.2
+	// textShapePaddingPt is the shape's own top+bottom text inset: the OOXML
+	// default is 0.05in each side (3.6pt), not the 12pt this once allowed.
+	textShapePaddingPt = 7.2
+)
+
 // textHeightEMU computes estimated text height in EMU from line count and font metrics.
 func textHeightEMU(lines int, fontSizePt, insetTopPt, insetBottomPt float64) int64 {
-	lineHeightPt := fontSizePt * 1.4 // standard line spacing factor
-	textPt := float64(lines) * lineHeightPt
-	totalPt := textPt + insetTopPt + insetBottomPt + 12 // 12pt padding for shape border/margin
-	return int64(totalPt * 12700)                        // points to EMU
+	textPt := float64(lines) * fontSizePt * textLineHeightFactor
+	totalPt := textPt + insetTopPt + insetBottomPt + textShapePaddingPt
+	return int64(totalPt * 12700) // points to EMU
 }
 
 // effectiveVAlign returns the grid's alignment. Slack is only kept when at
