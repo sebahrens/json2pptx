@@ -86,6 +86,18 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "Two quarters of capacity buys the top half; the bottom half waits.",
 	},
+	KindFramework: {
+		"kind":      "framework",
+		"title":     "Where we stand",
+		"framework": "swot",
+		"sections": map[string]any{
+			"strengths":     []any{"Two of three clearers already migrated", "Regulatory relationship is good"},
+			"weaknesses":    []any{"Reconciliation is still manual", "One platform team, no bench"},
+			"opportunities": []any{"T+1 mandate forces the market to move", "Adjacent custody business"},
+			"threats":       []any{"A competitor is already live", "The May 2027 deadline does not move"},
+		},
+		"takeaway": "The mandate is the opportunity and the threat; the constraint is the team.",
+	},
 	KindAgenda: {
 		"kind":    "agenda",
 		"title":   "What we will cover",

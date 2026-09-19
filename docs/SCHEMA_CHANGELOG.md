@@ -354,6 +354,30 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `framework` (go-slide-creator-anzx).** SWOT, Porter's five
+  forces and the Business Model Canvas are named things with fixed parts. What
+  goes in them is not a design choice, and an author writing one should not have
+  to know whether the engine draws it as a diagram or as a shape grid.
+  - `{framework, sections}` takes all three. `framework` names which (`swot`,
+    `porters_five_forces`, `bmc`, with the spellings an author reaches for —
+    `five_forces`, `business model canvas`, `SWOT` — resolving to them);
+    `sections` keys the framework's own parts, each a list of short items.
+  - `bmc` compiles to the **bmc-canvas** pattern, supplying each cell's
+    canonical heading so the canvas reads as the canvas. `swot` and
+    `porters_five_forces` compile to the **native OOXML diagram** of that name —
+    the first DeckSpec kind to reach a diagram rather than a pattern — on a
+    `diagram` slide, because `blank-title` has no body placeholder for one and
+    the content would be dropped.
+  - A five-forces payload may state a force's `intensity` (0.0–1.0, or
+    `"high"` / `"medium"` / `"low"`). One the author did NOT state is left to
+    the renderer rather than invented here.
+  - **Every part is required.** A SWOT missing its threats is not a SWOT, so an
+    incomplete framework degrades to bullets grouped under each part's heading
+    rather than rendering an empty quadrant, and `SEMANTIC_DENSITY` names the
+    parts that are missing. A framework this kind does not draw (a PESTEL, say)
+    keeps every section the payload carries, under headings made from its own
+    keys.
+
 - **DeckSpec kind `matrix_2x2` (go-slide-creator-ykjh).** Two axes and four
   quadrants — impact against effort, reach against cost — is one of the handful
   of shapes a strategy deck always reaches for, and the spec had no kind for it.

@@ -37,6 +37,9 @@ const (
 	KindTimeline SlideKind = "timeline"
 	// KindMatrix2x2 is two axes and four quadrants.
 	KindMatrix2x2 SlideKind = "matrix_2x2"
+	// KindFramework is a named framework with fixed parts (SWOT, Porter's five
+	// forces, the Business Model Canvas).
+	KindFramework SlideKind = "framework"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -169,6 +172,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 			"y_axis":    {"y_axis_label"},
 		},
 		TypicalFields: []string{"title", "x_low", "x_high", "y_low", "y_high", "takeaway"},
+	},
+	KindFramework: {
+		Kind:            KindFramework,
+		Summary:         "A named framework with fixed parts: swot (4 quadrants), porters_five_forces (5 forces) or bmc (the 9-cell Business Model Canvas). Give every part or it degrades to grouped bullets — the visual draws all of them or none.",
+		RequiredFields:  []string{"framework", "sections"},
+		RequiredAliases: map[string][]string{"framework": {"type", "model"}},
+		TypicalFields:   []string{"title", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

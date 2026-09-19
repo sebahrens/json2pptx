@@ -138,6 +138,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"x_low": shapeString, "x_high": shapeString, "y_low": shapeString, "y_high": shapeString,
 		"takeaway": shapeString,
 	},
+	KindFramework: {
+		"title": shapeString, "framework": shapeString, "type": shapeString,
+		"model": shapeString, "sections": shapeObject, "takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -471,6 +475,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateTimeline(path, slide, s)
 	case KindMatrix2x2:
 		validateMatrix(path, slide, s)
+	case KindFramework:
+		validateFramework(path, slide, s)
 	case KindProcess:
 		validateProcess(path, slide, s)
 	case KindRoadmap:
@@ -566,6 +572,20 @@ func validateMatrix(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.MatrixOverBudget(slide.Body); over != "" {
 		s.advisory(path+".quadrants", diagnostics.CodeSemanticDensity,
 			fmt.Sprintf("matrix %s (otherwise it degrades to a bullet list)", over))
+	}
+}
+
+// validateFramework reports a framework the visual cannot draw. A framework is
+// a named thing with fixed parts, so a missing part is named rather than
+// silently rendered as an empty quadrant (go-slide-creator-anzx).
+func validateFramework(path string, slide SlideSpec, s *semDiags) {
+	n := slides.UsableFrameworkSectionCount(slide.Body)
+	if !s.requireUsableContent(path, "sections", slide.Body, n) {
+		return
+	}
+	if over := slides.FrameworkOverBudget(slide.Body); over != "" {
+		s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("framework %s (otherwise it degrades to grouped bullets)", over))
 	}
 }
 

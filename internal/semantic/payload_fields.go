@@ -324,6 +324,21 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"y_low":        strField("Label for the bottom end of the vertical axis (default \"Low\"). ≤20 chars."),
 		"y_high":       strField("Label for the top end of the vertical axis (default \"High\"). ≤20 chars."),
 	}, compositionFields()), universalFields()),
+	KindFramework: withFields(withFields(map[string]payloadField{
+		"title":     strField("Slide title."),
+		"takeaway":  strField("One-line takeaway footer."),
+		"framework": strField("Which framework: \"swot\", \"porters_five_forces\" or \"bmc\"."),
+		"type":      strField("Alias for framework."),
+		"model":     strField("Alias for framework."),
+		"sections": {
+			typ: "object",
+			desc: "The framework's parts, keyed by name, each a list of short items (≤10 per part, ≤200 chars each). " +
+				"swot: strengths, weaknesses, opportunities, threats. " +
+				"porters_five_forces: rivalry, new_entrants, substitutes, suppliers, buyers. " +
+				"bmc: key_partners, key_activities, key_resources, value_propositions, customer_relations, channels, customer_segments, cost_structure, revenue_streams. " +
+				"Every part is required; a framework missing one degrades to grouped bullets.",
+		},
+	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),

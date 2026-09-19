@@ -288,6 +288,14 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"title":     {inject: func(s string) map[string]any { return covMatrix(map[string]any{"title": s}) }, rendered: true},
 		"takeaway":  {inject: func(s string) map[string]any { return covMatrix(map[string]any{"takeaway": s}) }, rendered: true},
 	},
+	// go-slide-creator-anzx: every part of the framework has to reach the
+	// rendered visual.
+	KindFramework: {
+		"sections":  {inject: func(s string) map[string]any { return covFramework(map[string]any{"sections": covSWOT(s)}) }, rendered: true},
+		"framework": {inject: func(string) map[string]any { return covFramework(nil) }, rendered: false, why: "framework names the visual rather than contributing text of its own"},
+		"title":     {inject: func(s string) map[string]any { return covFramework(map[string]any{"title": s}) }, rendered: true},
+		"takeaway":  {inject: func(s string) map[string]any { return covFramework(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps("Discover"), "title": s} }, rendered: true},
@@ -447,6 +455,29 @@ func covMatrix(overlay map[string]any) map[string]any {
 		"x_axis":    "Effort",
 		"y_axis":    "Impact",
 		"quadrants": covQuadrants("Do first"),
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
+}
+
+// covSWOT builds the four SWOT quadrants, the first carrying the probed text.
+func covSWOT(firstStrength string) map[string]any {
+	return map[string]any{
+		"strengths":     []any{firstStrength},
+		"weaknesses":    []any{"Reconciliation is manual"},
+		"opportunities": []any{"The T+1 mandate"},
+		"threats":       []any{"A competitor is already live"},
+	}
+}
+
+// covFramework returns a minimal valid framework payload with the given fields
+// overlaid.
+func covFramework(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"framework": "swot",
+		"sections":  covSWOT("Two clearers already migrated"),
 	}
 	for k, v := range overlay {
 		body[k] = v
