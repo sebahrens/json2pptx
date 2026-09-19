@@ -152,7 +152,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindStat: {
 		Kind:            KindStat,
-		Summary:         "One number, made the whole slide: the value, the words beneath it, and optionally a line of context and a source. Renders as the stat-hero visual; past its text budgets it degrades to a content slide.",
+		Summary:         "One number, made the whole slide: the value, the words beneath it, and optionally a line of context and a source. Renders as the stat-hero visual; past its text budgets it degrades to a content slide. For several numbers at equal weight use kpi_snapshot.",
 		RequiredFields:  []string{"value"},
 		RequiredAliases: map[string][]string{"value": {"stat", "number", "metric"}},
 		TypicalFields:   []string{"title", "label", "unit", "context", "source", "takeaway"},
@@ -184,7 +184,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindImageCase: {
 		Kind:            KindImageCase,
-		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide.",
+		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide. When the focal content is what someone said rather than a picture, author a pull-quote through raw_json2pptx.",
 		RequiredFields:  []string{"body"},
 		RequiredAliases: map[string][]string{"body": {"text", "story", "description", "bullets"}},
 		TypicalFields:   []string{"title", "image", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},

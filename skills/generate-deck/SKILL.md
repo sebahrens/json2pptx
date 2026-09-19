@@ -224,6 +224,41 @@ it, replace the `__FILL_*__` tokens. Skeletons pre-encode rhythm, accent strateg
 | Program walkthrough / delivery plan | [`process-roadmap.json`](examples/skeletons/process-roadmap.json) | Process flow + swimlane + phased timeline + metrics (6 slides) |
 | Investor / sales pitch | [`pitch.json`](examples/skeletons/pitch.json) | Problem → solution → traction → ask, classic arc (9 slides) |
 
+### Patterns DeckSpec cannot reach
+
+A DeckSpec kind compiles to 22 of the 43 registered patterns. The rest are authored with
+`kind: raw_json2pptx` (or a hand-written `PresentationInput`), carrying a `pattern` block
+verbatim — see the raw skeletons above. `list_slide_kinds` publishes the per-kind
+`compositions` list; everything in that list is an override the kind will honour, and anything
+outside it is reported as `SEMANTIC_PATTERN_NOT_AVAILABLE` and ignored.
+
+| Pattern | What it draws |
+|---|---|
+| `before-after` | Two-column before/after with a transition chevron |
+| `before-after-compact` | The same, height-capped for brief content |
+| `driver-tree` | Value / cost driver tree: root metric → branches → leaves |
+| `dual-org-ladder` | Two parallel org columns of paired role cards |
+| `hero-detail` | One hero statistic with 2–4 supporting detail cards |
+| `horizontal-bar-with-callouts` | Ranked horizontal bars with a per-bar insight callout |
+| `icon-row` | A horizontal row of icon + caption pairs |
+| `journey-maturity-model` | A 3–6 stage maturity ladder with a 'where we are' marker |
+| `kpi-inline` | A horizontal inline KPI bar, height-capped for supporting context |
+| `numbered-step-strip` | Ordered numbered steps without flowchart diamonds |
+| `process-flow-compact` | A compact process flow, height-capped for short labels |
+| `process-grid-2row` | Two parallel process tracks sharing the same phase columns |
+| `pull-quote` | An italic quote block with attribution |
+| `pyramid` | A stacked trapezoid hierarchy of 3–5 tiers |
+| `quote-cluster` | A grid of 3–8 attributed stakeholder quotes |
+| `roadmap-phased` | A phased roadmap with parallel workstreams |
+| `scqa-summary` | A 4-row Situation / Complication / Questions / Answer summary |
+| `strategy-house` | Objective banner + pillars + foundation row |
+| `swimlane` | A horizontal swimlane diagram with actors and steps |
+| `value-chain` | A horizontal value chain of 4–10 step columns |
+| `waterfall-bridge` | A waterfall / bridge bar chart of 3–10 columns |
+
+`internal/semantic/reach.go` is the source of this table and a test diffs the two, so a pattern
+cannot become reachable (or stop being) without this list changing with it.
+
 ---
 
 ## Quick Pattern Selector

@@ -9,8 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
-	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/render"
 )
 
 // ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 			Tool:       "render_deck_spec",
 			WhenToCall: "RECOMMENDED PATH for a new deck from a brief — write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, …}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (each kind's item_schema + copy-ready example) → validate_deck_spec → render_deck_spec → render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their semantic_path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). Drop to the raw primitives in `sequence` (recommend_visual → … → generate_presentation) only when you need a feature outside the DeckSpec schema.",
 			Steps: []getStartedStep{
-				{Tool: "list_slide_kinds", WhenToCall: "Pick a kind per slide; copy its example and match its item_schema exactly (unknown fields are reported as SEMANTIC_UNKNOWN_FIELD)."},
+				{Tool: "list_slide_kinds", WhenToCall: "Pick a kind per slide; copy its example and match its item_schema exactly (unknown fields are reported as SEMANTIC_UNKNOWN_FIELD). Its `compositions` list is what a slide's optional pattern/layout override will honour — anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE. A kind reaches 22 of the 43 patterns; for one of the other 21 (pull-quote, swimlane, pyramid, value-chain, waterfall-bridge, strategy-house, scqa-summary and the rest — SKILL.md lists them all) use kind raw_json2pptx and carry the pattern block verbatim, as its example shows."},
 				{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec; fix every error and SEMANTIC_UNKNOWN_FIELD / SEMANTIC_DENSITY warning at its path."},
 				{Tool: "render_deck_spec", WhenToCall: "Compile and render the DeckSpec to a .pptx; diagnostics map back to semantic_path."},
 				{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides and inspect every returned image; repair the spec and re-render until every slide looks right."},

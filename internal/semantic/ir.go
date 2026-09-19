@@ -486,11 +486,31 @@ func SlideAlternatives(kind SlideKind, body map[string]any) []CompositionCandida
 	return compositionCandidates(kind, pattern)
 }
 
+// compositionCandidates lists the compositions a kind's optional pattern /
+// layout override accepts. validateCompositionOverride reads this list to
+// decide whether an override is honourable, so everything in it must be
+// something THIS kind compiles to: a cross-kind suggestion here validates clean
+// and then silently does nothing, which is the bug the override reporting
+// exists to prevent. Those suggestions belong in the kind's summary
+// (go-slide-creator-4fr1).
 func compositionCandidates(kind SlideKind, selected string) []CompositionCandidate {
 	visual := func(pattern, reason string) CompositionCandidate {
 		return CompositionCandidate{Pattern: pattern, Layout: "blank-title", Reason: reason}
 	}
 	switch kind {
+	case KindExecutiveSummary:
+		return []CompositionCandidate{
+			visual("exec-summary", "3-5 lead-in statements, each with one supporting sentence"),
+			{Layout: "content", Reason: "native bullets preserve more or fewer points, or longer ones"},
+		}
+	case KindDecision:
+		return []CompositionCandidate{
+			{Layout: "content", Reason: "the recommendation as a lead-in, then the options as bullets"},
+		}
+	case KindTitle, KindSection, KindClosing:
+		// Structural slides take the template's own chrome; there is no visual
+		// to choose, and saying so is more use than saying nothing.
+		return []CompositionCandidate{{Layout: string(kind), Reason: "the template's own " + string(kind) + " layout"}}
 	case KindKPISnapshot:
 		return []CompositionCandidate{visual(selected, "compact visual for 2-6 readable metrics"), {Layout: "content", Reason: "native bullets preserve out-of-range or long metrics"}}
 	case KindChartInsight:
@@ -510,7 +530,6 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 	case KindTable:
 		return []CompositionCandidate{
 			{Layout: "content", Reason: "a native table in the template's own table style"},
-			visual("table-highlight", "switch to kind option_matrix to score options against criteria"),
 		}
 	case KindArchitecture:
 		return []CompositionCandidate{
@@ -531,19 +550,16 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 	case KindStat:
 		return []CompositionCandidate{
 			visual("stat-hero", "one oversized number with a label, context and source"),
-			visual("kpi-3up", "switch to kind kpi_snapshot to show several numbers at equal weight"),
 			{Layout: "content", Reason: "a content slide preserves a number or label past the hero's text budgets"},
 		}
 	case KindTimeline:
 		return []CompositionCandidate{
 			visual("timeline-horizontal", "3-7 dated milestones on one line"),
-			visual("phase-roadmap", "switch to kind roadmap when the phases carry workstreams rather than dates"),
 			{Layout: "content", Reason: "a dated bullet list preserves more or fewer milestones"},
 		}
 	case KindMatrix2x2:
 		return []CompositionCandidate{
 			visual("matrix-2x2", "four quadrants against two named axes"),
-			visual("table-highlight", "switch to kind option_matrix to score options against more than two criteria"),
 			{Layout: "content", Reason: "native bullets preserve a half-filled matrix or unnamed axes"},
 		}
 	case KindFramework:
@@ -555,7 +571,6 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 	case KindImageCase:
 		return []CompositionCandidate{
 			visual("image-text-split", "a picture beside the story, with up to 3 result metrics"),
-			visual("pull-quote", "switch to a quote when the focal content is what someone said"),
 			{Layout: "content", Reason: "a content slide preserves a longer story than the column holds"},
 		}
 	case KindProcess:

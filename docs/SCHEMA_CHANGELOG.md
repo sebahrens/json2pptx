@@ -354,6 +354,31 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Which patterns DeckSpec can reach is now published and pinned
+  (go-slide-creator-4fr1).** DeckSpec is the recommended path but compiles to a
+  subset of the pattern registry, and nothing said which subset — three
+  reviewers independently mis-modelled slides because "unknown slide kind" was
+  the only signal and it arrived after the spec was written.
+  - `internal/semantic/reach.go` maps every registered pattern to the kind that
+    compiles to it, or to nothing. SKILL.md gains a **"Patterns DeckSpec cannot
+    reach"** table listing the 21 that need `raw_json2pptx`, and a test diffs
+    the table, its counts, and `get_started`'s against the registry — so a new
+    pattern cannot ship without someone saying whether a spec author can reach
+    it.
+  - `list_slide_kinds` now returns `compositions` for every kind, not just some:
+    `executive_summary`, `decision`, `title`, `section` and `closing` returned
+    an empty list because they had no entry.
+  - Four kinds advertised a **cross-kind** composition (`table-highlight` on a
+    `table`, `kpi-3up` on a `stat`, `phase-roadmap` on a `timeline`,
+    `pull-quote` on an `image_case`). `validateCompositionOverride` reads that
+    list, so asking for one validated clean and then silently did nothing —
+    exactly the failure the override reporting exists to prevent. They are
+    removed; the advice moved into each kind's summary.
+  - The `raw_json2pptx` example now shows a **pattern slide** (a `pull-quote`,
+    one of the unreachable 21) rather than the bullets every other kind already
+    produces: the escape hatch's reason to exist is a pattern no kind compiles
+    to.
+
 - **DeckSpec kind `image_case` (go-slide-creator-q31s).** A customer story or a
   product screenshot beside the words about it — the case study slide every
   proposal ends with — had no kind, so an agent that wanted one dropped to

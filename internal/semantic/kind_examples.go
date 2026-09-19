@@ -215,13 +215,25 @@ var kindExamples = map[SlideKind]map[string]any{
 	KindClosing: {
 		"kind": "closing", "title": "Thank you", "subtitle": "Questions and discussion",
 	},
+	// The escape hatch's reason to exist is a pattern no kind compiles to, so
+	// the example shows one rather than the bullets every other kind already
+	// does (go-slide-creator-4fr1). See SKILL.md's "Patterns DeckSpec cannot
+	// reach" table for the full list.
 	KindRawJSON2pptx: {
 		"kind": "raw_json2pptx",
 		"slide": map[string]any{
 			"slide_type": "content",
+			"layout_id":  "blank-title",
 			"content": []any{
-				map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Raw slide"},
-				map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []any{"First point", "Second point"}},
+				map[string]any{"placeholder_id": "title", "type": "text", "text_value": "What the steering committee said"},
+			},
+			"pattern": map[string]any{
+				"name": "pull-quote",
+				"values": map[string]any{
+					"quote":       "We will not move the date. Everything else is negotiable.",
+					"attribution": "Amara Okafor",
+					"role":        "Chair, settlement steering committee",
+				},
 			},
 		},
 	},
