@@ -33,10 +33,18 @@ import (
 
 // --- Defaults ---
 
+// The default gate is the SHIP gate — the same numbers score_deck applies
+// (go-slide-creator-ie9v). auto_repair used to default to a looser
+// convergence gate (min_score 75, max_p1 2) whose job was telling the repair
+// loop when to stop iterating; but both tools return a field called
+// gate_passed, so a deck could converge here at 79 and be refused by score_deck
+// at 80 — an agent that stopped at auto_repair shipped decks the project's own
+// ship check rejects. One definition of done, and a caller who genuinely wants
+// the looser stop signal passes `gate` explicitly.
 const (
-	defaultAutoRepairMinScore                = 75
-	defaultAutoRepairMaxP0Findings           = 0
-	defaultAutoRepairMaxP1Findings           = 2
+	defaultAutoRepairMinScore                = deterministic.DefaultQualityGateMinScore
+	defaultAutoRepairMaxP0Findings           = deterministic.DefaultQualityGateMaxP0Findings
+	defaultAutoRepairMaxP1Findings           = deterministic.DefaultQualityGateMaxP1Findings
 	defaultAutoRepairRequireTakeawayOnCharts = true
 	defaultAutoRepairMaxPasses               = 3
 )
@@ -68,7 +76,13 @@ type autoRepairOutput struct {
 	// ScoreBasis states what final_score / trace[].score measured (always
 	// "structural": score_deck rules over the generated deck, no pixels).
 	ScoreBasis  string                 `json:"score_basis"`
-	GatePassed  bool                   `json:"gate_passed"`
+	GatePassed bool `json:"gate_passed"`
+	// Gate echoes the criteria gate_passed was judged against. score_deck has
+	// always returned its criteria block; without the same echo here an agent
+	// could not tell a default verdict (the ship gate) from one a caller
+	// relaxed, which is the difference between "ready to ship" and "the loop
+	// stopped" (go-slide-creator-ie9v).
+	Gate        autoRepairGate         `json:"gate"`
 	Passes      int                    `json:"passes"`
 	Trace       []autoRepairTraceEntry `json:"trace"`
 	GateReasons []string               `json:"gate_reasons,omitempty"`
@@ -255,10 +269,10 @@ Quality mode (truth-labeled in the response as quality_mode):
 
 Replaces the agent's manual chain (generate_presentation → score_deck → propose_repairs → repair_slides_batch → generate_presentation) with a single tool call. The final PPTX is written to the server output directory either way; gate_passed reports whether convergence succeeded.
 
-Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loop only:
-- min_score (default 75): overall_score must be ≥ this value.
+Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loop only. The defaults ARE score_deck's ship gate, so gate_passed here means the same thing as quality_gate.passed there; relax them only when you deliberately want a looser stop signal, and then do not read gate_passed as "ready to ship":
+- min_score (default 80): overall_score must be ≥ this value.
 - max_p0_findings (default 0): max count of refuse-action findings tolerated.
-- max_p1_findings (default 2): max count of shrink_or_split-action findings tolerated.
+- max_p1_findings (default 0): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
 Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, directives_proposed, directives_advisory, directives_applied, directives_failed[{kind, slide_index, code?, reason}], repairs_applied[]} records the full repair funnel per pass, so "nothing was wrong" is distinguishable from "every directive was rejected": directives_advisory counts findings whose remedy is an authoring decision (see get_capabilities.vocabularies.advisory_fix_kinds), and directives_failed names each refused directive with the reason it gave. A pass applies at most one repair per TARGET (cell_path / path), so a slide with many overfull cells converges in one pass; a structural repair that changes the slide count ends the pass so the next one re-derives findings. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
@@ -280,9 +294,9 @@ When gate_passed is false (max_passes exhausted), gate_reasons (and the superset
 			mcp.Description("Template name override. If omitted, uses the template field from the presentation object."),
 		),
 		mcp.WithObject("gate",
-			mcp.Description("Convergence gate configuration. All fields optional; omitted fields fall back to engine defaults (min_score=75, max_p0_findings=0, max_p1_findings=2, require_takeaway_on_charts=true)."),
+			mcp.Description("Convergence gate configuration. All fields optional; omitted fields fall back to the engine defaults, which are score_deck's ship gate (min_score=80, max_p0_findings=0, max_p1_findings=0, require_takeaway_on_charts=true) — one definition of done across the two tools. Relaxing them makes gate_passed a stop signal for the loop, not a shipping verdict."),
 			mcp.Properties(map[string]any{
-				"min_score":                  map[string]any{"type": "integer", "description": "Minimum acceptable overall_score (default 75)."},
+				"min_score":                  map[string]any{"type": "integer", "description": "Minimum acceptable overall_score (default 80, the same floor score_deck applies)."},
 				"max_p0_findings":            map[string]any{"type": "integer", "description": "Maximum refuse-action findings tolerated (default 0)."},
 				"max_p1_findings":            map[string]any{"type": "integer", "description": "Maximum shrink_or_split-action findings tolerated (default 2)."},
 				"require_takeaway_on_charts": map[string]any{"type": "boolean", "description": "Require takeaway on chart/matrix slides (default true)."},
@@ -706,6 +720,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		FinalScore:        lastScore,
 		ScoreBasis:        scoreBasisStructural,
 		GatePassed:        gatePassed,
+		Gate:              gate,
 		Passes:            passesRun,
 		Trace:             trace,
 		GateReasons:       lastGateReasons,

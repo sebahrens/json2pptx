@@ -57,8 +57,9 @@ func TestAutoRepair_ConvergesWithinMaxPasses(t *testing.T) {
 	deckJSON := autoRepairDeck(3)
 
 	// BODY_TOO_LONG findings have action=review (weight 5). Three of them drop
-	// the score by 15 → 85 with default gate min_score=75 would already pass on
-	// pass 1, so raise min_score to 95 to force at least one repair pass.
+	// the score by 15 → 85, which the default gate (min_score 80, the ship gate)
+	// would already pass on pass 1, so raise min_score to 95 to force at least
+	// one repair pass.
 	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
 		"presentation": mustParseJSON(deckJSON),
 		"gate": map[string]any{

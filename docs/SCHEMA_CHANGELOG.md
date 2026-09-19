@@ -330,6 +330,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **One definition of done: `auto_repair`'s default gate IS the ship gate
+  (go-slide-creator-ie9v).** `score_deck`'s gate is 80 / 0 P0 / 0 P1;
+  `auto_repair`'s default was 75 / 0 / 2, and both tools return a field called
+  `gate_passed`. A deck could converge in the repair loop at 79 and be refused
+  by the ship check at 80 — and the `brief` and `revise` fast paths lead to the
+  two different gates, so an agent that stopped at `auto_repair` shipped decks
+  the project's own gate rejects.
+  - `auto_repair` (and `make_deck`, which shares its gate) now default to
+    `min_score: 80, max_p0_findings: 0, max_p1_findings: 0`. The looser numbers
+    remain available as an explicit `gate` argument — and the tool description
+    says that relaxing them makes `gate_passed` a loop stop signal rather than a
+    shipping verdict.
+  - The response now echoes the criteria it judged against as **`gate`**, the
+    way `score_deck` has always echoed `quality_gate.criteria`, so a default
+    verdict is distinguishable from a relaxed one.
+
 - **The completion rule now says what to re-inspect after a repair
   (go-slide-creator-2018).** It read "After any repair, re-render and
   re-inspect", which alongside "render ALL slides" implied a full-deck pass per

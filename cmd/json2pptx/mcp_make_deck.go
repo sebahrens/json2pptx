@@ -157,7 +157,7 @@ Style hints (all optional):
 - accent_strategy: "primary" (default), "rotate", or "section-keyed".
 - must_include: pattern names that MUST appear in the plan.
 
-Quality gate matches auto_repair semantics: same field names, same defaults. Omit it to use the engine defaults (min_score=75, max_p0_findings=0, max_p1_findings=2, require_takeaway_on_charts=true).`),
+Quality gate matches auto_repair semantics: same field names, same defaults. Omit it to use the engine defaults, which are score_deck's ship gate (min_score=80, max_p0_findings=0, max_p1_findings=0, require_takeaway_on_charts=true).`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaMakeDeck)),
 		mcp.WithString("outline",
 			mcp.Description(`Natural-language brief describing the deck purpose and content (e.g., "Pitch our Series B for an AI infra company"). Used as the brief for plan_deck — the planner derives slide-level narrative roles and pattern recommendations from it. Required for a fresh run; ignored (and not needed) when resume_token is supplied.`),

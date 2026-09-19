@@ -1381,6 +1381,16 @@ var outputSchemaAutoRepair = json.RawMessage(`{
     "final_score": {"type": "integer", "description": "Overall_score of the last (post-repair) pass, in [0, 100]."},
     "score_basis": {"type": "string", "enum": ["structural"], "description": "What final_score / trace[].score measured: structural = score_deck rules over the generated deck, no pixels."},
     "gate_passed": {"type": "boolean", "description": "True iff the gate criteria were met within max_passes iterations."},
+    "gate": {
+      "type": "object",
+      "description": "The criteria gate_passed was judged against. The defaults are score_deck's ship gate, so an unrelaxed gate_passed means the same as quality_gate.passed there; a relaxed gate makes it a loop stop signal instead.",
+      "properties": {
+        "min_score":                  {"type": "integer"},
+        "max_p0_findings":            {"type": "integer"},
+        "max_p1_findings":            {"type": "integer"},
+        "require_takeaway_on_charts": {"type": "boolean"}
+      }
+    },
     "passes":      {"type": "integer", "description": "Number of iterations actually run (≤ max_passes)."},
     "trace": {
       "type": "array",
