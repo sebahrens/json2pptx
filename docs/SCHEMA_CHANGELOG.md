@@ -8,6 +8,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`get_started` says what the server can actually do
+  (go-slide-creator-a7fh).** Started without LibreOffice or ImageMagick, the
+  whole surface looked identical: `initialize`'s instructions were
+  byte-for-byte the same, `tools/list` still advertised
+  `render_deck_thumbnails`, and `get_started` still handed back a workflow
+  ending in "render every slide and look at it". Only
+  `get_capabilities.runtime` knew — 183KB into the session — and the agent
+  found out when the MANDATORY completion step failed.
+  - Every `get_started` response now carries a **`runtime`** block
+    (~200 bytes): `{render_available, missing_commands[], templates_dir,
+    output_dir, settings_write_enabled}`. It also hands an agent the output
+    directory on its first call.
+  - When rendering is unavailable, the server's `initialize` **instructions**
+    gain a `RENDER TOOLING MISSING` line, `get_started` drops the render /
+    inspect steps from `fast_path` and `sequence`, the step that now ends the
+    path says to deliver `pptx_path` and declare the deck UNREVIEWED, and
+    `completion_protocol.complete_status` becomes `draft_needs_visual_review`.
+    A path that never rendered (`validate-only`) is left exactly as it was.
+  - On a server with the toolchain installed, nothing changes.
+
 - **DeckSpec kind `architecture` (go-slide-creator-162os).** A 10-slide
   product-launch deck needed `raw_json2pptx` for its platform stack, which drops
   the author back into the raw pattern dialect (values-object vs values-array,

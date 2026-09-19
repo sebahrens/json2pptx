@@ -56,7 +56,7 @@ func TestMCPInitializeCarriesInstructions(t *testing.T) {
 // drift; every task echoes it.
 func TestGetStartedEchoesQualityWorkflow(t *testing.T) {
 	for _, task := range getStartedAvailableTasks() {
-		resp := buildGetStartedResponse(task)
+		resp := buildGetStartedResponse(task, testRenderReady())
 		if resp.QualityWorkflow != mcpQualityWorkflow {
 			t.Errorf("task %q: quality_workflow does not echo the instructions const", task)
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
@@ -62,6 +63,27 @@ type getStartedResponse struct {
 	// (same Go const) so MCP clients that do not surface instructions still see
 	// the quality workflow.
 	QualityWorkflow string `json:"quality_workflow"`
+	// Runtime is what this server can actually do, in ~200 bytes: whether it can
+	// render (the completion rule depends on it), and the directories it reads
+	// and writes. It rides the FIRST call because the alternative was learning it
+	// from get_capabilities, 183KB into the session, or from the mandatory
+	// completion step failing (go-slide-creator-a7fh).
+	Runtime getStartedRuntime `json:"runtime"`
+}
+
+// getStartedRuntime is the environment block every get_started response carries.
+type getStartedRuntime struct {
+	// RenderAvailable reports whether LibreOffice and ImageMagick are on PATH.
+	// When false the render_* tools and the visual-approval step cannot run.
+	RenderAvailable bool `json:"render_available"`
+	// MissingCommands names what is absent, e.g. ["libreoffice/soffice", "magick"].
+	MissingCommands []string `json:"missing_commands,omitempty"`
+	// TemplatesDir and OutputDir are where this server reads templates and
+	// writes decks.
+	TemplatesDir string `json:"templates_dir"`
+	OutputDir    string `json:"output_dir"`
+	// SettingsWriteEnabled reports whether the gated write tools are allowed.
+	SettingsWriteEnabled bool `json:"settings_write_enabled"`
 }
 
 type completionProtocol struct {
@@ -124,7 +146,7 @@ func getStartedAvailableTasks() []string {
 // buildGetStartedResponse returns the ordered call sequence keyed to the
 // caller's stated task. Unknown or empty task strings fall back to "brief",
 // which is the default new-deck workflow and the most common entry point.
-func buildGetStartedResponse(task string) getStartedResponse {
+func buildGetStartedResponse(task string, rt getStartedRuntime) getStartedResponse {
 	normalized := task
 	switch normalized {
 	case "":
@@ -220,7 +242,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		}
 	}
 
-	return getStartedResponse{
+	resp := getStartedResponse{
 		Task:           normalized,
 		FastPath:       fastPathFor(normalized, seq),
 		Sequence:       seq,
@@ -231,8 +253,69 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			CompleteStatus: "visually_reviewed_current_revision",
 			Rule:           mcpCompletionRule,
 		},
-		QualityWorkflow: mcpQualityWorkflow,
+		QualityWorkflow: mcpInstructionsFor(rt.RenderAvailable, rt.MissingCommands),
+		Runtime:         rt,
 	}
+	if !rt.RenderAvailable {
+		degradeForMissingRenderTooling(&resp, rt.MissingCommands)
+	}
+	return resp
+}
+
+// degradeForMissingRenderTooling rewrites a response for a server that cannot
+// render. Every path here ends in "render it and look at it", which on such a
+// server is an instruction to do the impossible: the render steps are dropped,
+// the step that now ends the path says to deliver the file and declare it
+// unreviewed, and the completion rule is replaced with the one that CAN be
+// honoured (go-slide-creator-a7fh).
+func degradeForMissingRenderTooling(resp *getStartedResponse, missing []string) {
+	resp.Sequence = closeWithDelivery(dropRenderSteps(resp.Sequence), len(resp.Sequence))
+	if resp.FastPath != nil {
+		resp.FastPath.Steps = closeWithDelivery(dropRenderSteps(resp.FastPath.Steps), len(resp.FastPath.Steps))
+		resp.FastPath.FallsBackTo = stepTools(resp.Sequence)
+	}
+	resp.Completion = completionProtocol{
+		DraftStatus:    "draft_needs_visual_review",
+		CompleteStatus: "draft_needs_visual_review",
+		Rule:           renderToolingWarning(missing),
+	}
+	resp.Notes = append([]string{"RENDER TOOLING MISSING (" + strings.Join(missing, ", ") + "): the render_* and inspect_slide_images tools fail on this server, so the visual-approval step in the completion rule cannot be performed here. The deck can still be authored, validated and delivered — say it is unreviewed. Install LibreOffice and ImageMagick to restore it."}, resp.Notes...)
+}
+
+// closeWithDelivery turns the step a path now ends on into the delivery step,
+// but only when the path lost its render tail: a validate-only path never
+// produced a deck and has nothing to hand over or disclaim. before is the step
+// count prior to dropping, so an unchanged path is left exactly as it was.
+func closeWithDelivery(steps []getStartedStep, before int) []getStartedStep {
+	if len(steps) == 0 || len(steps) == before {
+		return steps
+	}
+	last := &steps[len(steps)-1]
+	last.WhenToCall = last.WhenToCall +
+		" LAST STEP ON THIS SERVER: rendering is unavailable, so hand back pptx_path (or read the json2pptx://deck/<name> resource) and state plainly that the deck is UNREVIEWED — no slide has been looked at. Do not claim the completion rule was met."
+	return steps
+}
+
+// dropRenderSteps removes the steps that need the render toolchain.
+func dropRenderSteps(steps []getStartedStep) []getStartedStep {
+	out := make([]getStartedStep, 0, len(steps))
+	for _, step := range steps {
+		switch step.Tool {
+		case "render_deck_thumbnails", "render_slide_image", "inspect_slide_images", "submit_visual_review":
+			continue
+		}
+		out = append(out, step)
+	}
+	return out
+}
+
+// stepTools projects a step list to its tool names.
+func stepTools(steps []getStartedStep) []string {
+	out := make([]string, len(steps))
+	for i, s := range steps {
+		out[i] = s.Tool
+	}
+	return out
 }
 
 func mcpGetStartedTool() mcp.Tool {
@@ -278,7 +361,7 @@ Pass "task" to scope both paths:
 Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`, reviseFastPath, makeDeckNote, reviseInspect)
 }
 
-func handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	task := ""
 	if raw, ok := request.GetArguments()["task"]; ok && raw != nil {
 		// A non-string task used to be ignored silently: get_started answered
@@ -295,11 +378,27 @@ func handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.Ca
 		task = t
 	}
 
-	resp := buildGetStartedResponse(task)
+	resp := buildGetStartedResponse(task, mc.getStartedRuntime())
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal get_started response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// getStartedRuntime reports what this server can do, for the runtime block.
+func (mc *mcpConfig) getStartedRuntime() getStartedRuntime {
+	available, missing := render.DependencyStatus()
+	templatesDir, outputDir := "", ""
+	if mc != nil {
+		templatesDir, outputDir = resolveRuntimeDirs(mc.templatesDir, mc.outputDir)
+	}
+	return getStartedRuntime{
+		RenderAvailable:      available,
+		MissingCommands:      missing,
+		TemplatesDir:         templatesDir,
+		OutputDir:            outputDir,
+		SettingsWriteEnabled: settingsWriteAllowed(),
+	}
 }

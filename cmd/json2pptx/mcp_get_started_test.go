@@ -23,7 +23,8 @@ func callGetStarted(t *testing.T, task string) getStartedResponse {
 	if task != "" {
 		args["task"] = task
 	}
-	result, err := handleGetStarted(context.Background(), mcpRequestWithArgs(args))
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()}
+	result, err := mc.handleGetStarted(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {
 		t.Fatalf("handleGetStarted error: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestGetStartedSequencesAreClassifiedTools(t *testing.T) {
 	classes := toolClassifications()
 
 	for _, task := range getStartedAvailableTasks() {
-		resp := buildGetStartedResponse(task)
+		resp := buildGetStartedResponse(task, testRenderReady())
 		if len(resp.Sequence) == 0 {
 			t.Errorf("task %q: empty sequence", task)
 		}
@@ -182,7 +183,7 @@ func TestGetStartedFastPathIsClassifiedFacade(t *testing.T) {
 	classes := toolClassifications()
 
 	for _, task := range getStartedAvailableTasks() {
-		resp := buildGetStartedResponse(task)
+		resp := buildGetStartedResponse(task, testRenderReady())
 		switch task {
 		// validate-only is pure diagnostics; onboard-template vets a file the
 		// server has never seen (go-slide-creator-ydbk) and every step of it
@@ -598,7 +599,7 @@ func TestGetStarted_CoreProfileRecommendsOnlyAdvertisedTools(t *testing.T) {
 
 	for _, task := range getStartedAvailableTasks() {
 		t.Run(task, func(t *testing.T) {
-			resp := buildGetStartedResponse(task)
+			resp := buildGetStartedResponse(task, testRenderReady())
 
 			for i, step := range resp.Sequence {
 				if !core[step.Tool] {
@@ -636,7 +637,7 @@ func TestGetStarted_ReviseIsDeckSpecFirstInBothProfiles(t *testing.T) {
 	for _, profile := range []string{toolProfileCore, toolProfileAll} {
 		t.Run(profile, func(t *testing.T) {
 			withToolProfile(t, profile)
-			resp := buildGetStartedResponse("revise")
+			resp := buildGetStartedResponse("revise", testRenderReady())
 			if resp.FastPath == nil {
 				t.Fatal("revise has no fast_path")
 			}
@@ -677,7 +678,7 @@ func TestGetStarted_ReviseIsDeckSpecFirstInBothProfiles(t *testing.T) {
 // that other profile, where it reads as a lie about the tools on the table.
 func TestGetStartedNotesDoNotMisreportTheProfile(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
-	for _, n := range buildGetStartedResponse("revise").Notes {
+	for _, n := range buildGetStartedResponse("revise", testRenderReady()).Notes {
 		if strings.Contains(n, "this profile hides") {
 			t.Errorf("full profile note claims tools are hidden: %q", n)
 		}
@@ -691,7 +692,7 @@ func TestGetStartedNotesDoNotMisreportTheProfile(t *testing.T) {
 // works on the path it is describing.
 func TestGetStartedChromeNoteMatchesTheRecommendedPath(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
-	resp := buildGetStartedResponse("brief")
+	resp := buildGetStartedResponse("brief", testRenderReady())
 
 	var note string
 	for _, n := range resp.Notes {

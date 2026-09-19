@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/resource"
@@ -113,7 +114,10 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		// resources are immutable once written — and no list-changed
 		// notifications, since the static set is fixed at startup.
 		server.WithResourceCapabilities(false, false),
-		server.WithInstructions(mcpQualityWorkflow),
+		// The instructions say so when this server cannot render: a client that
+		// never reads get_capabilities would otherwise be told to finish with a
+		// step that cannot run here (go-slide-creator-a7fh).
+		server.WithInstructions(mcpInstructionsFor(render.DependencyStatus())),
 		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
 			return s.GetTool(name)
 		})),

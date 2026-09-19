@@ -449,28 +449,7 @@ func buildCapabilitiesResultFor(ctx context.Context, templatesDir, outputDir str
 
 	renderAvail, renderMissing := render.DependencyStatus()
 
-	// Resolve the actual templates directory path for the runtime section. An
-	// empty dir means the caller has no runtime context (e.g. a programmatic
-	// invocation); report that explicitly rather than emitting a blank string,
-	// so an agent can tell "unconfigured" apart from a resolved path. The CLI
-	// and MCP entry points both pass non-empty defaults, so this sentinel only
-	// surfaces for direct callers that omit the context.
-	resolvedTemplatesDir := templatesDir
-	if resolvedTemplatesDir == "" {
-		resolvedTemplatesDir = runtimeDirUnconfigured
-	} else {
-		dir, embedded := resolveTemplatesDir(resolvedTemplatesDir)
-		if embedded {
-			resolvedTemplatesDir = "(embedded)"
-		} else {
-			resolvedTemplatesDir = dir
-		}
-	}
-
-	resolvedOutputDir := outputDir
-	if resolvedOutputDir == "" {
-		resolvedOutputDir = runtimeDirUnconfigured
-	}
+	resolvedTemplatesDir, resolvedOutputDir := resolveRuntimeDirs(templatesDir, outputDir)
 
 	deprecations := buildDeprecatedFields()
 	resp := capabilitiesResponse{
@@ -822,4 +801,33 @@ func nonNilStrings(in []string) []string {
 		return []string{}
 	}
 	return in
+}
+
+// resolveRuntimeDirs reports the templates and output directories as an agent
+// should read them. An empty dir means the caller has no runtime context (e.g. a
+// programmatic invocation); that is reported explicitly rather than as a blank
+// string, so "unconfigured" is distinguishable from a resolved path. The CLI and
+// MCP entry points both pass non-empty defaults, so the sentinel only surfaces
+// for direct callers that omit the context.
+//
+// Shared by get_capabilities and get_started, which must not describe the same
+// server differently (go-slide-creator-a7fh).
+func resolveRuntimeDirs(templatesDir, outputDir string) (templates, output string) {
+	templates = templatesDir
+	switch {
+	case templates == "":
+		templates = runtimeDirUnconfigured
+	default:
+		dir, embedded := resolveTemplatesDir(templates)
+		if embedded {
+			templates = "(embedded)"
+		} else {
+			templates = dir
+		}
+	}
+	output = outputDir
+	if output == "" {
+		output = runtimeDirUnconfigured
+	}
+	return templates, output
 }

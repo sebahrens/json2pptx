@@ -13,7 +13,7 @@ import (
 func TestGetStartedBriefToolsAreCore(t *testing.T) {
 	core := coreToolSet()
 	for _, task := range []string{"brief", "validate-only"} {
-		resp := buildGetStartedResponse(task)
+		resp := buildGetStartedResponse(task, testRenderReady())
 		if resp.FastPath != nil {
 			if !core[resp.FastPath.Tool] {
 				t.Errorf("task=%s fast_path tool %q not in core profile", task, resp.FastPath.Tool)
@@ -75,4 +75,14 @@ func hiddenToolNames(t *testing.T) []string {
 	}
 	sort.Slice(hidden, func(i, j int) bool { return len(hidden[i]) > len(hidden[j]) })
 	return hidden
+}
+
+// testRenderReady is the runtime block for a server with the render toolchain
+// installed — the default the workflow tests assume.
+func testRenderReady() getStartedRuntime {
+	return getStartedRuntime{
+		RenderAvailable: true,
+		TemplatesDir:    "../../templates",
+		OutputDir:       "/tmp",
+	}
 }

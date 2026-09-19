@@ -13,6 +13,8 @@ func runGetStarted() error {
 	fs := flag.NewFlagSet("get-started", flag.ContinueOnError)
 
 	task := fs.String("task", "", "Task scope: brief (new deck, default), revise (modify existing deck), validate-only (validate JSON without generating)")
+	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates (reported in the runtime block)")
+	outputDir := fs.String("output", "", "Directory decks are written to (reported in the runtime block)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx get-started [options]\n\n")
@@ -30,7 +32,8 @@ func runGetStarted() error {
 		args["task"] = *task
 	}
 
-	result, err := handleGetStarted(context.Background(), mcpRequestWithArgs(args))
+	mc := cliMCPConfig(*templatesDir, *outputDir)
+	result, err := mc.handleGetStarted(context.Background(), mcpRequestWithArgs(args))
 	if err != nil {
 		return fmt.Errorf("get-started: %w", err)
 	}

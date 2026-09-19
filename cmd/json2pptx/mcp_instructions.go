@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"strings"
+)
+
 // ---------------------------------------------------------------------------
 // MCP server instructions — the quality workflow in one place
 //
@@ -24,3 +29,24 @@ const mcpQualityWorkflow = `json2pptx quality workflow:
 4. Fix what you see or what diagnostics report at their semantic_path in the DeckSpec (raw decks: repair_slide), then re-render and re-inspect.
 5. Never ship exemplar or placeholder content (uses_exemplar_content=true, an "exemplar_content" blocking reason, __FILL__ tokens, SEMANTIC_WEAK_CONTENT).
 Unknown tool arguments are rejected with UNKNOWN_PARAMETER and a did_you_mean hint; unknown DeckSpec fields are reported as SEMANTIC_UNKNOWN_FIELD.`
+
+// renderToolingWarning is the line appended to the server instructions when the
+// render toolchain is absent. Without it the whole surface looked identical on a
+// server that cannot render: initialize said nothing, tools/list still
+// advertised render_deck_thumbnails, and the agent learned the truth only when
+// the MANDATORY completion step failed — with no documented alternative
+// (go-slide-creator-a7fh).
+func renderToolingWarning(missing []string) string {
+	return fmt.Sprintf(
+		"RENDER TOOLING MISSING (%s): render_deck_thumbnails / render_slide_image / inspect_slide_images will fail on this server, so a deck CANNOT be visually approved here. Build and validate the deck as usual, hand back pptx_path (or the json2pptx://deck/<name> resource), and say plainly that the deck is UNREVIEWED — do not claim the completion rule was met. Install LibreOffice and ImageMagick to restore the visual step.",
+		strings.Join(missing, ", "))
+}
+
+// mcpInstructionsFor returns the server instructions, degraded when the render
+// toolchain is missing.
+func mcpInstructionsFor(renderAvailable bool, missing []string) string {
+	if renderAvailable || len(missing) == 0 {
+		return mcpQualityWorkflow
+	}
+	return mcpQualityWorkflow + "\n" + renderToolingWarning(missing)
+}
