@@ -1,0 +1,117 @@
+{
+  "index": 0,
+  "id": "slideLayout1",
+  "name": "Title Slide",
+  "tags": [
+    "title-slide"
+  ],
+  "canonical_type": "Title Slide",
+  "canonical_family": "title-slide",
+  "canonical_confidence": 0.95,
+  "asset_base": "slideLayout1__title-slide",
+  "xml_path": "ppt/slideLayouts/slideLayout1.xml",
+  "content_zone": {
+    "left_emu": 609600,
+    "top_emu": 3509963,
+    "right_emu": 11582400,
+    "bottom_emu": 6264910
+  },
+  "placeholders": [
+    {
+      "id": "title",
+      "type": "title",
+      "role": "title",
+      "role_confidence": 0.95,
+      "index": 0,
+      "z_index": 0,
+      "font_pt": 60,
+      "max_chars": 25,
+      "bounds": {
+        "x_emu": 1524000,
+        "y_emu": 1122363,
+        "w_emu": 9144000,
+        "h_emu": 2387600,
+        "x_in": 1.667,
+        "y_in": 1.227,
+        "w_in": 10,
+        "h_in": 2.611
+      }
+    },
+    {
+      "id": "subtitle",
+      "type": "subtitle",
+      "role": "subtitle",
+      "role_confidence": 0.95,
+      "index": 1,
+      "z_index": 1,
+      "font_pt": 24,
+      "max_chars": 108,
+      "bounds": {
+        "x_emu": 1524000,
+        "y_emu": 3602038,
+        "w_emu": 9144000,
+        "h_emu": 1655762,
+        "x_in": 1.667,
+        "y_in": 3.939,
+        "w_in": 10,
+        "h_in": 1.811
+      }
+    }
+  ],
+  "profile_geometry": {
+    "layout_id": "slideLayout1",
+    "footer_regions": [
+      {
+        "type": "dt",
+        "x_emu": 838200,
+        "y_emu": 6356350,
+        "w_emu": 2743200,
+        "h_emu": 365125
+      },
+      {
+        "type": "ftr",
+        "x_emu": 4038600,
+        "y_emu": 6356350,
+        "w_emu": 4114800,
+        "h_emu": 365125
+      },
+      {
+        "type": "sldNum",
+        "x_emu": 8610600,
+        "y_emu": 6356350,
+        "w_emu": 2743200,
+        "h_emu": 365125
+      }
+    ],
+    "frame": {
+      "canvas": {
+        "x_emu": 0,
+        "y_emu": 0,
+        "w_emu": 12192000,
+        "h_emu": 6858000
+      },
+      "content": {
+        "x_emu": 838200,
+        "y_emu": 3557969,
+        "w_emu": 10515600,
+        "h_emu": 2094065
+      },
+      "takeaway_band": {
+        "x_emu": 838200,
+        "y_emu": 5700040,
+        "w_emu": 10515600,
+        "h_emu": 360045
+      },
+      "source_band": {
+        "x_emu": 838200,
+        "y_emu": 6108091,
+        "w_emu": 10515600,
+        "h_emu": 200253
+      },
+      "footer_top_emu": 6356350,
+      "has_footer": true,
+      "basis": "reference_layout",
+      "fits": true
+    }
+  }
+}

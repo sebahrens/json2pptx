@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="634" viewBox="0 0 1000 634" font-family="Helvetica,Arial,sans-serif">
+  <rect x="0" y="0" width="1000" height="562.5" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+  <text x="8" y="16" font-size="13" font-weight="bold" fill="#111111">Two Content</text>
+  <text x="8" y="32" font-size="11" fill="#555555">Two Content · one-content · conf 0.95</text>
+  <rect x="68.8" y="138.7" width="862.5" height="375.2" fill="none" stroke="#1f77b4" stroke-width="1" stroke-dasharray="6 4"/>
+  <text x="71.8" y="149.7" font-size="9" fill="#1f77b4">content zone</text>
+  <g class="placeholder" data-ph-id="title" data-role="title" data-type="title" data-font-pt="44" data-max-chars="29" data-z="0" data-x-in="0.917" data-y-in="0.399" data-w-in="11.5" data-h-in="1.45">
+    <rect x="68.8" y="29.9" width="862.5" height="108.7" fill="#1f77b4" fill-opacity="0.12" stroke="#1f77b4" stroke-width="2"/>
+    <text x="72.8" y="43.9" font-size="11" font-weight="bold" fill="#1f77b4">title</text>
+    <text x="72.8" y="56.9" font-size="9.5" fill="#222222">title · 44pt · ≤29 ch</text>
+    <text x="72.8" y="69.9" font-size="9.5" fill="#222222">11.5×1.45 in @ (0.917, 0.399)</text>
+    <text x="72.8" y="82.9" font-size="9.5" fill="#888888">z=0</text>
+  </g>
+  <g class="placeholder" data-ph-id="body" data-role="body" data-type="body" data-font-pt="20" data-max-chars="232" data-z="1" data-x-in="0.917" data-y-in="1.997" data-w-in="5.667" data-h-in="4.759">
+    <rect x="68.8" y="149.7" width="425.0" height="356.9" fill="#2ca02c" fill-opacity="0.12" stroke="#2ca02c" stroke-width="2"/>
+    <text x="72.8" y="163.7" font-size="11" font-weight="bold" fill="#2ca02c">body</text>
+    <text x="72.8" y="176.7" font-size="9.5" fill="#222222">body · 20pt · ≤232 ch</text>
+    <text x="72.8" y="189.7" font-size="9.5" fill="#222222">5.667×4.759 in @ (0.917, 1.997)</text>
+    <text x="72.8" y="202.7" font-size="9.5" fill="#888888">z=1</text>
+  </g>
+  <g class="placeholder" data-ph-id="body_2" data-role="body" data-type="body" data-font-pt="20" data-max-chars="232" data-z="2" data-x-in="6.75" data-y-in="1.997" data-w-in="5.667" data-h-in="4.759">
+    <rect x="506.2" y="149.7" width="425.0" height="356.9" fill="#2ca02c" fill-opacity="0.12" stroke="#2ca02c" stroke-width="2"/>
+    <text x="510.2" y="163.7" font-size="11" font-weight="bold" fill="#2ca02c">body_2</text>
+    <text x="510.2" y="176.7" font-size="9.5" fill="#222222">body · 20pt · ≤232 ch</text>
+    <text x="510.2" y="189.7" font-size="9.5" fill="#222222">5.667×4.759 in @ (6.75, 1.997)</text>
+    <text x="510.2" y="202.7" font-size="9.5" fill="#888888">z=2</text>
+  </g>
+  <text x="8" y="578.5" font-size="11" font-weight="bold" fill="#111111">z-order (bottom → top)</text>
+  <rect x="8" y="583.5" width="11" height="11" fill="#1f77b4"/>
+  <text x="24" y="592.5" font-size="10" fill="#333333">z=0  title (title)</text>
+  <rect x="8" y="599.5" width="11" height="11" fill="#2ca02c"/>
+  <text x="24" y="608.5" font-size="10" fill="#333333">z=1  body (body)</text>
+  <rect x="8" y="615.5" width="11" height="11" fill="#2ca02c"/>
+  <text x="24" y="624.5" font-size="10" fill="#333333">z=2  body_2 (body)</text>
+</svg>

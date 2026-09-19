@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="618" viewBox="0 0 1000 618" font-family="Helvetica,Arial,sans-serif">
+  <rect x="0" y="0" width="1000" height="562.5" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+  <text x="8" y="16" font-size="13" font-weight="bold" fill="#111111">Closing</text>
+  <text x="8" y="32" font-size="11" fill="#555555">Closing · qa-closing · conf 0.90</text>
+  <rect x="50.0" y="331.2" width="900.0" height="182.6" fill="none" stroke="#1f77b4" stroke-width="1" stroke-dasharray="6 4"/>
+  <text x="53.0" y="342.2" font-size="9" fill="#1f77b4">content zone</text>
+  <g class="placeholder" data-ph-id="title" data-role="title" data-type="title" data-font-pt="66" data-max-chars="16" data-z="0" data-x-in="1.625" data-y-in="0.75" data-w-in="10.375" data-h-in="2.024">
+    <rect x="121.9" y="56.2" width="778.1" height="151.8" fill="#1f77b4" fill-opacity="0.12" stroke="#1f77b4" stroke-width="2"/>
+    <text x="125.9" y="70.2" font-size="11" font-weight="bold" fill="#1f77b4">title</text>
+    <text x="125.9" y="83.2" font-size="9.5" fill="#222222">title · 66pt · ≤16 ch</text>
+    <text x="125.9" y="96.2" font-size="9.5" fill="#222222">10.375×2.024 in @ (1.625, 0.75)</text>
+    <text x="125.9" y="109.2" font-size="9.5" fill="#888888">z=0</text>
+  </g>
+  <g class="placeholder" data-ph-id="subtitle" data-role="subtitle" data-type="subtitle" data-font-pt="24" data-max-chars="93" data-z="1" data-x-in="1.625" data-y-in="2.917" data-w-in="10.375" data-h-in="1.5">
+    <rect x="121.9" y="218.8" width="778.1" height="112.5" fill="#17becf" fill-opacity="0.12" stroke="#17becf" stroke-width="2"/>
+    <text x="125.9" y="232.8" font-size="11" font-weight="bold" fill="#17becf">subtitle</text>
+    <text x="125.9" y="245.8" font-size="9.5" fill="#222222">subtitle · 24pt · ≤93 ch</text>
+    <text x="125.9" y="258.8" font-size="9.5" fill="#222222">10.375×1.5 in @ (1.625, 2.917)</text>
+    <text x="125.9" y="271.8" font-size="9.5" fill="#888888">z=1</text>
+  </g>
+  <text x="8" y="578.5" font-size="11" font-weight="bold" fill="#111111">z-order (bottom → top)</text>
+  <rect x="8" y="583.5" width="11" height="11" fill="#1f77b4"/>
+  <text x="24" y="592.5" font-size="10" fill="#333333">z=0  title (title)</text>
+  <rect x="8" y="599.5" width="11" height="11" fill="#17becf"/>
+  <text x="24" y="608.5" font-size="10" fill="#333333">z=1  subtitle (subtitle)</text>
+</svg>

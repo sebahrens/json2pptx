@@ -1,0 +1,98 @@
+{
+  "index": 6,
+  "id": "slideLayout7",
+  "name": "Blank + Title",
+  "tags": [
+    "title-slide",
+    "blank-title"
+  ],
+  "canonical_type": "Blank + Title",
+  "canonical_family": "other",
+  "canonical_confidence": 0.9,
+  "asset_base": "slideLayout7__blank-title",
+  "xml_path": "ppt/slideLayouts/slideLayout7.xml",
+  "content_zone": {
+    "left_emu": 609600,
+    "top_emu": 1690688,
+    "right_emu": 11582400,
+    "bottom_emu": 6264910
+  },
+  "placeholders": [
+    {
+      "id": "title",
+      "type": "title",
+      "role": "title",
+      "role_confidence": 0.95,
+      "index": 0,
+      "z_index": 0,
+      "font_pt": 44,
+      "max_chars": 29,
+      "bounds": {
+        "x_emu": 838200,
+        "y_emu": 365125,
+        "w_emu": 10515600,
+        "h_emu": 1325563,
+        "x_in": 0.917,
+        "y_in": 0.399,
+        "w_in": 11.5,
+        "h_in": 1.45
+      }
+    }
+  ],
+  "profile_geometry": {
+    "layout_id": "slideLayout7",
+    "footer_regions": [
+      {
+        "type": "dt",
+        "x_emu": 838200,
+        "y_emu": 6356350,
+        "w_emu": 2743200,
+        "h_emu": 365125
+      },
+      {
+        "type": "ftr",
+        "x_emu": 4038600,
+        "y_emu": 6356350,
+        "w_emu": 4114800,
+        "h_emu": 365125
+      },
+      {
+        "type": "sldNum",
+        "x_emu": 8610600,
+        "y_emu": 6356350,
+        "w_emu": 2743200,
+        "h_emu": 365125
+      }
+    ],
+    "frame": {
+      "canvas": {
+        "x_emu": 0,
+        "y_emu": 0,
+        "w_emu": 12192000,
+        "h_emu": 6858000
+      },
+      "content": {
+        "x_emu": 838200,
+        "y_emu": 1738694,
+        "w_emu": 10515600,
+        "h_emu": 3913340
+      },
+      "takeaway_band": {
+        "x_emu": 838200,
+        "y_emu": 5700040,
+        "w_emu": 10515600,
+        "h_emu": 360045
+      },
+      "source_band": {
+        "x_emu": 838200,
+        "y_emu": 6108091,
+        "w_emu": 10515600,
+        "h_emu": 200253
+      },
+      "footer_top_emu": 6356350,
+      "has_footer": true,
+      "basis": "reference_layout",
+      "fits": true
+    }
+  }
+}
