@@ -10,6 +10,33 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **auto_repair now repairs, and says what it tried (go-slide-creator-wmfo).**
+  The tool `get_started(task="revise")` advertises as the fast path returned
+  `repairs_applied: []` on all 16 calibration decks and all 34 examples — an
+  unchanged deck, a red gate and no next step — and nothing in the response
+  distinguished "nothing was wrong" from "every directive was rejected". Three
+  causes, all fixed:
+  - `split_pattern`, the directive the fit report proposes for an overfull
+    pattern slide, refused with *"slide has no shape_grid to split"* because
+    findings describe the problem, not the field to split. It now infers the
+    repeated values array (the longest one; a tie is left alone), resizes a
+    declared `columns`/`rows` to match the halves, and **refuses** when a half
+    would violate the pattern's contract instead of producing a deck that fails
+    to generate.
+  - A pass applied at most one repair per SLIDE, so a slide with twenty overfull
+    cells needed twenty passes against a budget of three. It now applies one
+    repair per TARGET (`cell_path` / `path`); a structural repair that changes
+    the slide count ends the pass so the next one re-derives findings against
+    the new deck.
+  - `trace[]` entries gain **`directives_proposed`**, **`directives_advisory`**,
+    **`directives_applied`** and **`directives_failed[{kind, slide_index, code,
+    reason}]`**, and `repairs_applied` is always an array (it serialized as
+    `null` on a zero-repair pass).
+
+  On the `B02_tiny_text_overstuffed` calibration deck: before, 1 pass, 0 repairs,
+  `gate_passed: false`; after, 3 passes, 2 splits applied, score 48 → 64 → 76,
+  converged. On a 20-cell overstuffed grid: one pass, 20 repairs, score 0 → 100.
+
 - **Pattern slides are measured by the text detectors (go-slide-creator-adur).**
   `generateFitReport`, `collectReadabilityFindings` and the structural pass all
   walked `slide.ShapeGrid`, which a slide-level named pattern only gets at

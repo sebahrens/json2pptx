@@ -467,7 +467,7 @@ func applyAndReRenderVisualRepairs(input *PresentationInput, proposed proposeRep
 	// Snapshot before mutating so we can roll back on a re-render failure.
 	snapshot, snapErr := json.Marshal(input)
 
-	applied := applyProposedRepairs(input, proposed)
+	applied, _ := applyProposedRepairs(input, proposed)
 	if len(applied) == 0 {
 		// Nothing changed; the on-disk PPTX already matches input.
 		return visualRepairOutcome{Consistent: true}

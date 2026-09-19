@@ -1368,8 +1368,26 @@ func stringParam(params map[string]any, key string, defaultVal string) string {
 func applySplitPattern(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := input.Slides[slideIdx]
 	grid := slide.ShapeGrid
-	if (grid == nil || len(grid.Rows) == 0) && slide.Pattern != nil && stringParam(params, "path", "") != "" {
-		return splitPatternValues(input, slideIdx, params)
+	if (grid == nil || len(grid.Rows) == 0) && slide.Pattern != nil {
+		if stringParam(params, "path", "") == "" {
+			// Findings on a pattern slide describe the problem (12 filled
+			// slots, recommended max 9), not the field to split, so every
+			// auto_repair directive refused with "slide has no shape_grid"
+			// and the loop stalled at zero repairs (go-slide-creator-wmfo).
+			// Infer the repeated field: the values array the pattern renders
+			// one cell per.
+			if key := longestPatternValuesArray(slide.Pattern); key != "" {
+				next := make(map[string]any, len(params)+1)
+				for k, v := range params {
+					next[k] = v
+				}
+				next["path"] = key
+				params = next
+			}
+		}
+		if stringParam(params, "path", "") != "" {
+			return splitPatternValues(input, slideIdx, params)
+		}
 	}
 	if grid == nil || len(grid.Rows) == 0 {
 		return appliedFix{Kind: "split_pattern", Applied: false, Message: "slide has no shape_grid to split (pass path to split a pattern.values array)"}
@@ -1420,6 +1438,38 @@ func applySplitPattern(input *PresentationInput, slideIdx int, params map[string
 	}
 }
 
+// longestPatternValuesArray returns the key of the array field in a pattern's
+// values that carries the most items — the repeated field a pattern renders one
+// cell per, and so the one a split divides. Returns "" when no field holds at
+// least two items, or when two fields tie (splitting the wrong one would
+// silently restructure the slide).
+func longestPatternValuesArray(pattern *PatternInput) string {
+	if pattern == nil || len(pattern.Values) == 0 {
+		return ""
+	}
+	var values map[string]any
+	if err := json.Unmarshal(pattern.Values, &values); err != nil {
+		return ""
+	}
+	best, bestLen, tied := "", 1, false
+	for key, raw := range values {
+		arr, ok := raw.([]any)
+		if !ok || len(arr) < 2 {
+			continue
+		}
+		switch {
+		case len(arr) > bestLen:
+			best, bestLen, tied = key, len(arr), false
+		case len(arr) == bestLen && key != best:
+			tied = true
+		}
+	}
+	if tied {
+		return ""
+	}
+	return best
+}
+
 // splitPatternValues splits a pattern slide into two by dividing the array at
 // pattern.values[path]: slide 1 keeps the first `first` items (default: half),
 // slide 2 — a copy of the slide with the title suffixed — carries the rest. No
@@ -1451,6 +1501,12 @@ func splitPatternValues(input *PresentationInput, slideIdx int, params map[strin
 			vals[k] = v
 		}
 		vals[path] = items
+		// Patterns that declare their own grid shape require it to match the
+		// item count exactly (card-grid: "cells must contain exactly 12 items
+		// (columns=4 x rows=3)"), so a split that moves items without resizing
+		// the grid produces a deck that fails to generate — which is how the
+		// first working auto_repair pass broke the render (go-slide-creator-wmfo).
+		resizeGridDims(vals, len(items))
 		encoded, err := json.Marshal(vals)
 		if err != nil {
 			return SlideInput{}, err
@@ -1475,12 +1531,98 @@ func splitPatternValues(input *PresentationInput, slideIdx int, params map[strin
 	slide2.SpeakerNotes = ""
 	slide2.Source = ""
 
+	// Refuse rather than hand back a deck that cannot generate: each half must
+	// satisfy the pattern's own contract. Values that were ALREADY invalid are
+	// not this fix's doing — the pattern validator reports those — so the guard
+	// only applies when the original expands cleanly.
+	originalValid := validatePatternHalf(&slide, slideIdx) == nil
+	for i, half := range []SlideInput{slide1, slide2} {
+		if !originalValid {
+			break
+		}
+		if err := validatePatternHalf(&half, slideIdx+i); err != nil {
+			return appliedFix{
+				Kind:    "split_pattern",
+				Applied: false,
+				Code:    "semantic_review_required",
+				Message: fmt.Sprintf("splitting %q at %d leaves values this pattern rejects: %v — split at a different point, or move items to a new slide yourself", path, firstN, err),
+			}
+		}
+	}
+
 	newSlides := make([]SlideInput, 0, len(input.Slides)+1)
 	newSlides = append(newSlides, input.Slides[:slideIdx]...)
 	newSlides = append(newSlides, slide1, slide2)
 	newSlides = append(newSlides, input.Slides[slideIdx+1:]...)
 	input.Slides = newSlides
 	return appliedFix{Kind: "split_pattern", Applied: true, Message: fmt.Sprintf("split %q into 2 slides (%d + %d items)", path, firstN, len(arr)-firstN)}
+}
+
+// resizeGridDims rewrites numeric "columns"/"rows" values so a pattern that
+// declares its own grid shape still describes exactly n items. It only touches
+// keys the values already carry.
+func resizeGridDims(vals map[string]any, n int) {
+	_, hasCols := numericValue(vals["columns"])
+	_, hasRows := numericValue(vals["rows"])
+	if !hasCols && !hasRows {
+		return
+	}
+	cols, rows := balancedGridDims(n)
+	if hasCols {
+		vals["columns"] = cols
+	}
+	if hasRows {
+		vals["rows"] = rows
+	}
+}
+
+// balancedGridDims factors n into the most balanced columns x rows that is
+// exactly n, preferring wider-than-tall (the shape that fills a widescreen
+// slide). A prime count yields a single row.
+func balancedGridDims(n int) (int, int) {
+	if n <= 0 {
+		return 1, 1
+	}
+	bestCols, bestRows, bestSpread := n, 1, n
+	for rows := 1; rows*rows <= n; rows++ {
+		if n%rows != 0 {
+			continue
+		}
+		cols := n / rows
+		if spread := cols - rows; spread >= 0 && spread < bestSpread {
+			bestCols, bestRows, bestSpread = cols, rows, spread
+		}
+	}
+	return bestCols, bestRows
+}
+
+// numericValue reads a JSON number that may have decoded as float64 or int.
+func numericValue(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case json.Number:
+		f, err := n.Float64()
+		return f, err == nil
+	}
+	return 0, false
+}
+
+// validatePatternHalf expands one half of a split to confirm the pattern accepts
+// its values.
+func validatePatternHalf(slide *SlideInput, slideIdx int) error {
+	if slide.Pattern == nil {
+		return nil
+	}
+	ctx := patterns.ExpandContext{
+		SlideWidth:  validationDefaultSlideWidthEMU,
+		SlideHeight: validationDefaultSlideHeightEMU,
+		SlideIndex:  slideIdx,
+	}
+	_, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
+	return err
 }
 
 // countFilledCells counts non-nil cells in a shape grid.

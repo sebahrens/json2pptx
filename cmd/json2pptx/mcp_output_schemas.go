@@ -1389,9 +1389,26 @@ var outputSchemaAutoRepair = json.RawMessage(`{
           "pass":            {"type": "integer"},
           "score":           {"type": "integer"},
           "findings_count":  {"type": "integer"},
+          "directives_proposed": {"type": "integer", "description": "Repair directives propose_repairs produced from this pass's findings."},
+          "directives_advisory": {"type": "integer", "description": "Findings whose remedy is an authoring decision (advisory fix kinds), which no directive can execute."},
+          "directives_applied":  {"type": "integer"},
+          "directives_failed": {
+            "type": "array",
+            "description": "Directives that were submitted and refused, with the reason each gave.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind":        {"type": "string"},
+                "slide_index": {"type": "integer"},
+                "code":        {"type": "string"},
+                "reason":      {"type": "string"}
+              },
+              "required": ["kind", "slide_index", "reason"]
+            }
+          },
           "repairs_applied": {"type": "array", "items": {"type": "string"}}
         },
-        "required": ["pass", "score", "findings_count", "repairs_applied"]
+        "required": ["pass", "score", "findings_count", "directives_proposed", "directives_advisory", "directives_applied", "repairs_applied"]
       }
     },
     "gate_reasons": {

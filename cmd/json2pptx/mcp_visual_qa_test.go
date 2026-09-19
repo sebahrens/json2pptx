@@ -665,7 +665,7 @@ func TestVisualFindingMapping_AppliesRepair(t *testing.T) {
 		t.Errorf("expected a reduce_text directive on slide 0, got %+v", flat)
 	}
 
-	applied := applyProposedRepairs(&deck, proposed)
+	applied, _ := applyProposedRepairs(&deck, proposed)
 	if len(applied) == 0 {
 		t.Fatalf("expected at least one applied repair, got none")
 	}

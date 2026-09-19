@@ -204,11 +204,34 @@ func validateAutoRepairFinalOutput(path string) autoRepairOutputValidation {
 }
 
 // autoRepairTraceEntry is one iteration of the loop.
+//
+// The funnel fields (directives_proposed / _applied / _failed) exist because
+// "repairs_applied: []" gave an agent no way to tell "nothing was wrong" from
+// "every directive was rejected" — and on a deck with 30 refuse findings the
+// facade returned an unchanged deck, a red gate and no next step
+// (go-slide-creator-wmfo).
 type autoRepairTraceEntry struct {
-	Pass           int      `json:"pass"`
-	Score          int      `json:"score"`
-	FindingsCount  int      `json:"findings_count"`
-	RepairsApplied []string `json:"repairs_applied"`
+	Pass          int `json:"pass"`
+	Score         int `json:"score"`
+	FindingsCount int `json:"findings_count"`
+	// DirectivesProposed is how many repair directives propose_repairs produced
+	// from this pass's findings; DirectivesAdvisory how many findings carried a
+	// remedy no directive can execute (an authoring decision).
+	DirectivesProposed int `json:"directives_proposed"`
+	DirectivesAdvisory int `json:"directives_advisory"`
+	DirectivesApplied  int `json:"directives_applied"`
+	// DirectivesFailed lists the directives that were submitted and refused,
+	// with the reason each gave.
+	DirectivesFailed []autoRepairFailedDirective `json:"directives_failed,omitempty"`
+	RepairsApplied   []string                    `json:"repairs_applied"`
+}
+
+// autoRepairFailedDirective is one refused repair directive.
+type autoRepairFailedDirective struct {
+	Kind       string `json:"kind"`
+	SlideIndex int    `json:"slide_index"`
+	Code       string `json:"code,omitempty"`
+	Reason     string `json:"reason"`
 }
 
 // autoRepairGate is the convergence gate config (all fields optional in the
@@ -238,7 +261,7 @@ Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loo
 - max_p1_findings (default 2): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
-Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, repairs_applied[]} records score progression so the agent can audit convergence behavior. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
+Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, directives_proposed, directives_advisory, directives_applied, directives_failed[{kind, slide_index, code?, reason}], repairs_applied[]} records the full repair funnel per pass, so "nothing was wrong" is distinguishable from "every directive was rejected": directives_advisory counts findings whose remedy is an authoring decision (see get_capabilities.vocabularies.advisory_fix_kinds), and directives_failed names each refused directive with the reason it gave. A pass applies at most one repair per TARGET (cell_path / path), so a slide with many overfull cells converges in one pass; a structural repair that changes the slide count ends the pass so the next one re-derives findings. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
 
 Resumable per-pass state (next_state, always present): {completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]}. completion classifies how the loop stopped — "converged" (gate met on complete evidence; not resumable), "converged_degraded", "max_passes_exhausted", "no_progress", or "render_incomplete" — so a partial or degraded result is never mistaken for a converged one. When resumable is true, call auto_repair again with resume_token to continue from the saved post-repair deck WITHOUT repeating completed passes; gate and max_passes may be overridden on that call (e.g. relaxed bounds or a larger budget) while presentation is ignored. next_action is the suggested move; remaining_findings echoes the still-open findings (capped).
 
@@ -604,7 +627,11 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		}
 
 		proposed := proposeRepairs(input, fitFindingsToProposeFindings(findings))
-		applied := applyProposedRepairs(input, proposed)
+		applied, failed := applyProposedRepairs(input, proposed)
+		entry.DirectivesProposed = proposed.Summary.TotalDirectives
+		entry.DirectivesAdvisory = proposed.Summary.AdvisoryFindings
+		entry.DirectivesApplied = len(applied)
+		entry.DirectivesFailed = failed
 		entry.RepairsApplied = applied
 		trace = append(trace, entry)
 
@@ -985,19 +1012,62 @@ func fitFindingsToProposeFindings(findings []patterns.FitFinding) []proposeRepai
 // surfaces the best repair first, so taking just the top directive per slide
 // is the right convergence step. Returns a human-readable summary of each
 // repair that actually landed, suitable for the trace.
-func applyProposedRepairs(input *PresentationInput, proposed proposeRepairsOutput) []string {
-	var applied []string
+func applyProposedRepairs(input *PresentationInput, proposed proposeRepairsOutput) ([]string, []autoRepairFailedDirective) {
+	applied := []string{}
+	var failed []autoRepairFailedDirective
+	slideCount := len(input.Slides)
 	for _, slide := range proposed.Slides {
+		// One repair per TARGET, not one per slide: a slide with twenty
+		// overfull cells carries twenty independent cell directives, and
+		// applying a single one per pass meant twenty passes against a budget
+		// of three (go-slide-creator-wmfo).
+		repaired := map[string]bool{}
 		for _, dir := range slide.Directives {
+			target := directiveTargetKey(dir)
+			if repaired[target] {
+				continue
+			}
 			params := adaptAutoRepairParams(input, slide.SlideIndex, dir.Kind, dir.Params)
 			result := applyRepairFix(input, slide.SlideIndex, repairFixInput{Kind: dir.Kind, Params: params})
 			if result.Applied {
 				applied = append(applied, fmt.Sprintf("%s on slide %d", dir.Kind, slide.SlideIndex))
-				break
+				repaired[target] = true
+				if len(input.Slides) != slideCount {
+					// A structural repair added or removed a slide, so every
+					// remaining directive's slide_index is stale. Stop the pass
+					// and let the next one re-derive findings against the new
+					// deck.
+					return applied, failed
+				}
+				continue
 			}
+			// Record why, rather than silently trying the next candidate: a
+			// pass that applies nothing must be able to say what it tried.
+			reason := result.Message
+			if reason == "" {
+				reason = "directive was not applied"
+			}
+			failed = append(failed, autoRepairFailedDirective{
+				Kind:       dir.Kind,
+				SlideIndex: slide.SlideIndex,
+				Code:       result.Code,
+				Reason:     reason,
+			})
 		}
 	}
-	return applied
+	return applied, failed
+}
+
+// directiveTargetKey identifies what a directive edits, so two directives aimed
+// at the same element are not stacked in one pass. Directives with no explicit
+// target (a slide-level restructure) share the slide's own key.
+func directiveTargetKey(dir proposedDirective) string {
+	for _, key := range []string{"cell_path", "path"} {
+		if v, ok := dir.Params[key].(string); ok && v != "" {
+			return v
+		}
+	}
+	return "slide"
 }
 
 // adaptAutoRepairParams translates fit-finding fix params (which describe the
