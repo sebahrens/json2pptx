@@ -1,7 +1,6 @@
 package svggen
 
 import (
-	"fmt"
 	"math"
 	"strings"
 )
@@ -90,6 +89,12 @@ type AxisConfig struct {
 	// ImportantLabels lists tick indices that must always be labeled even
 	// when LabelStep > 1 would otherwise thin them.
 	ImportantLabels []int
+
+	// ValueFmt formats the tick labels of a value axis. When set it replaces
+	// the axis's own TickFormat/FormatCompact choice, so the ticks read the same
+	// way as the chart's data labels — one chart, one number format
+	// (go-slide-creator-e2ck9). Format still wins when the caller set it.
+	ValueFmt *ValueFormatter
 }
 
 // DefaultAxisConfig returns default axis configuration.
@@ -126,33 +131,7 @@ func NewAxis(builder *SVGBuilder, config AxisConfig) *Axis {
 // DrawLinearAxis draws an axis for a linear scale.
 func (a *Axis) DrawLinearAxis(scale *LinearScale, x, y float64) *Axis {
 	ticks := scale.Ticks(a.config.TickCount)
-	format := a.config.Format
-	if format == "" {
-		format = scale.TickFormat(a.config.TickCount)
-	}
-
-	// Auto-detect whether to use compact format: if any tick value exceeds
-	// 9999 in absolute value and no explicit format was provided, use
-	// FormatCompact (K/M/B suffixes) to keep labels short.
-	useCompact := false
-	if a.config.Format == "" {
-		for _, v := range ticks {
-			if v > 9999 || v < -9999 {
-				useCompact = true
-				break
-			}
-		}
-	}
-
-	// Convert tick values to labels
-	labels := make([]string, len(ticks))
-	for i, v := range ticks {
-		if useCompact {
-			labels[i] = FormatCompact(v)
-		} else {
-			labels[i] = fmt.Sprintf(format, v)
-		}
-	}
+	labels := LinearAxisLabels(scale, a.config.TickCount, a.config.Format, a.config.ValueFmt)
 
 	// Get tick positions
 	positions := make([]float64, len(ticks))

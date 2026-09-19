@@ -718,23 +718,37 @@ func FormatLogLabel(v float64) string {
 //
 // Trailing ".0" is always stripped (1.0K -> "1K").
 func FormatCompact(v float64) string {
+	return formatCompactDecimals(v, -1)
+}
+
+// formatCompactDecimals is FormatCompact with an explicit decimal count.
+// decimals < 0 keeps the historical behaviour: one place, with a trailing ".0"
+// trimmed, so 1200 reads "1.2K" and 1000 reads "1K" (go-slide-creator-e2ck9).
+func formatCompactDecimals(v float64, decimals int) string {
+	scaled := func(value float64, unit string) string {
+		if decimals < 0 {
+			return trimTrailingZero(fmt.Sprintf("%.1f", value)) + unit
+		}
+		return fmt.Sprintf("%.*f", decimals, value) + unit
+	}
 	abs := math.Abs(v)
 	sign := ""
 	if v < 0 {
 		sign = "-"
 	}
-
 	switch {
 	case abs >= 1e12:
-		return sign + trimTrailingZero(fmt.Sprintf("%.1f", abs/1e12)) + "T"
+		return sign + scaled(abs/1e12, "T")
 	case abs >= 1e9:
-		return sign + trimTrailingZero(fmt.Sprintf("%.1f", abs/1e9)) + "B"
+		return sign + scaled(abs/1e9, "B")
 	case abs >= 1e6:
-		return sign + trimTrailingZero(fmt.Sprintf("%.1f", abs/1e6)) + "M"
+		return sign + scaled(abs/1e6, "M")
 	case abs >= 1e3:
-		return sign + trimTrailingZero(fmt.Sprintf("%.1f", abs/1e3)) + "K"
+		return sign + scaled(abs/1e3, "K")
 	default:
-		// For values < 1000, format as integer if whole, otherwise 1 decimal
+		if decimals >= 0 {
+			return sign + fmt.Sprintf("%.*f", decimals, abs)
+		}
 		if abs == math.Trunc(abs) {
 			return fmt.Sprintf("%s%.0f", sign, abs)
 		}

@@ -193,6 +193,8 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 
 	// Calculate domain early so we can probe y-axis label widths and grow
 	// MarginLeft before layout if labels would clip into the title/legend area.
+	wc.config.ResolveValueFormatter(waterfallValues(data.Points), true)
+
 	yMin, yMax := wc.calculateDomain(data.Points)
 	EnsureYAxisFits(b, &wc.config.ChartConfig, yMin, yMax)
 
@@ -379,7 +381,7 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
 
 	// Y axis (shared)
-	DrawCartesianYAxis(b, plotArea, yScale, wc.config.YAxisTitle)
+	DrawCartesianYAxis(b, plotArea, yScale, wc.config.YAxisTitle, wc.config.ValueFmt)
 }
 
 // drawBarsAndConnectors draws the waterfall bars and connecting lines.
@@ -562,7 +564,7 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 				b.SetFontSize(valueFontSize)
 				b.SetFontWeight(style.Typography.WeightNormal)
 
-				label := formatValue(p.Value, wc.config.ValueFormat)
+				label := wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat)
 				if p.Value > 0 && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && i > 0 {
 					label = "+" + label
 				}
@@ -662,7 +664,7 @@ func (wc *WaterfallChart) measureValueLabelWidth(points []WaterfallDataPoint, fo
 	b.SetFontSize(fontSize)
 	var maxW float64
 	for i, p := range points {
-		label := formatValue(p.Value, wc.config.ValueFormat)
+		label := wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat)
 		if p.Value > 0 && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && i > 0 {
 			label = "+" + label
 		}
@@ -759,6 +761,7 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultWaterfallChartConfig(width, height)
+		config.ValueFormatSpec = req.Style.ValueFormat
 		// Waterfall charts ALWAYS show values by default - the numeric deltas are essential
 		// to understanding the flow (e.g., Revenue → Net Income)
 		// Note: DefaultWaterfallChartConfig sets ShowValues=true, so we keep that default
@@ -946,4 +949,14 @@ func calculateRunningTotals(points []WaterfallDataPoint) []float64 {
 	}
 
 	return totals
+}
+
+// waterfallValues flattens a waterfall's bar values, which is what its number
+// format is derived from.
+func waterfallValues(points []WaterfallDataPoint) []float64 {
+	out := make([]float64, 0, len(points))
+	for _, p := range points {
+		out = append(out, p.Value)
+	}
+	return out
 }

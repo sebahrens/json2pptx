@@ -213,10 +213,11 @@ func DrawCartesianGrid(b *SVGBuilder, plotArea Rect, yScale *LinearScale, xScale
 // DrawCartesianYAxis draws the y-axis for a Cartesian chart using the standard
 // left-side linear axis configuration. This is the common y-axis pattern shared
 // by BarChart, LineChart, ScatterChart, and WaterfallChart.
-func DrawCartesianYAxis(b *SVGBuilder, plotArea Rect, yScale *LinearScale, title string) {
+func DrawCartesianYAxis(b *SVGBuilder, plotArea Rect, yScale *LinearScale, title string, vf *ValueFormatter) {
 	yAxisConfig := DefaultAxisConfig(AxisPositionLeft)
 	yAxisConfig.Title = title
 	yAxisConfig.RangeExtent = plotArea.H
+	yAxisConfig.ValueFmt = vf
 	yAxis := NewAxis(b, yAxisConfig)
 	yAxis.DrawLinearAxis(yScale, plotArea.X, plotArea.Y)
 }
@@ -243,13 +244,56 @@ type AdaptYLabelsResult struct {
 	Clipped bool
 }
 
+// LinearAxisLabels renders the tick labels of a linear axis. It is the one
+// place the rule lives, so what DrawLinearAxis draws and what AdaptYLabels
+// measures cannot drift apart.
+//
+// explicitFormat is the axis's own printf verb, which still wins when the
+// caller set one. vf is the chart's value formatter: when present the ticks read
+// exactly like the data labels (go-slide-creator-e2ck9), with at least the
+// precision the tick step needs — a domain of [0, 1] ticks every 0.2, and an
+// integer-derived format would print "0 0 0 1 1". With neither, the historical
+// rule applies: TickFormat, switching to FormatCompact past 9999.
+func LinearAxisLabels(scale *LinearScale, tickCount int, explicitFormat string, vf *ValueFormatter) []string {
+	ticks := scale.Ticks(tickCount)
+	labels := make([]string, len(ticks))
+
+	if explicitFormat == "" && vf != nil {
+		vf = vf.WithDecimals(printfDecimals(scale.TickFormat(tickCount)))
+		for i, v := range ticks {
+			labels[i] = vf.Format(v)
+		}
+		return labels
+	}
+
+	format := explicitFormat
+	useCompact := false
+	if format == "" {
+		format = scale.TickFormat(tickCount)
+		for _, v := range ticks {
+			if v > 9999 || v < -9999 {
+				useCompact = true
+				break
+			}
+		}
+	}
+	for i, v := range ticks {
+		if useCompact {
+			labels[i] = FormatCompact(v)
+		} else {
+			labels[i] = fmt.Sprintf(format, v)
+		}
+	}
+	return labels
+}
+
 // AdaptYLabels measures the widest formatted y-axis tick label for a linear
 // scale and reports how much MarginLeft must grow to keep the label fully
 // inside the chart viewBox. This mirrors AdaptXLabels.ExtraBottomMargin for
 // the bottom axis.
 //
-// Label formatting replicates DrawLinearAxis exactly: TickFormat is used by
-// default, switching to FormatCompact when any tick magnitude exceeds 9999.
+// Labels are formatted by LinearAxisLabels, the same function DrawLinearAxis
+// draws with, so the measurement matches what is rendered.
 //
 // Parameters:
 //   - b: SVGBuilder for text measurement.
@@ -262,35 +306,16 @@ type AdaptYLabelsResult struct {
 //     horizontal space because the title is rotated 90°).
 //   - titleFontSize: axis-title font size (only used when hasTitle is true).
 //   - marginLeft: current MarginLeft to check against.
-func AdaptYLabels(b *SVGBuilder, domainMin, domainMax float64, tickCount int, fontSize, tickSize, tickPadding float64, hasTitle bool, titleFontSize, marginLeft float64) AdaptYLabelsResult {
+//   - vf: the chart's value formatter, or nil for the historical rule.
+func AdaptYLabels(b *SVGBuilder, domainMin, domainMax float64, tickCount int, fontSize, tickSize, tickPadding float64, hasTitle bool, titleFontSize, marginLeft float64, vf *ValueFormatter) AdaptYLabelsResult {
 	if tickCount <= 0 {
 		tickCount = 5
 	}
 	scale := NewLinearScale(domainMin, domainMax)
-	ticks := scale.Ticks(tickCount)
-	if len(ticks) == 0 {
+	if len(scale.Ticks(tickCount)) == 0 {
 		return AdaptYLabelsResult{}
 	}
-
-	// Choose format and compact mode the same way DrawLinearAxis does so the
-	// measured labels match what is actually rendered.
-	format := scale.TickFormat(tickCount)
-	useCompact := false
-	for _, v := range ticks {
-		if v > 9999 || v < -9999 {
-			useCompact = true
-			break
-		}
-	}
-
-	labels := make([]string, len(ticks))
-	for i, v := range ticks {
-		if useCompact {
-			labels[i] = FormatCompact(v)
-		} else {
-			labels[i] = fmt.Sprintf(format, v)
-		}
-	}
+	labels := LinearAxisLabels(scale, tickCount, "", vf)
 
 	// Measure widest with 1.1x safety factor (matches AdaptXLabels).
 	b.Push()
@@ -350,6 +375,7 @@ func EnsureYAxisFits(b *SVGBuilder, config *ChartConfig, domainMin, domainMax fl
 		config.YAxisTitle != "",
 		style.Typography.SizeBody,
 		config.MarginLeft,
+		config.ValueFmt,
 	)
 	if res.ExtraLeftMargin > 0 {
 		config.MarginLeft += res.ExtraLeftMargin

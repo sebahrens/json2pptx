@@ -196,6 +196,9 @@ var enumMap = map[string]map[string][]string{
 	"SplitSlideInput": {
 		"type": {"split_slide"},
 	},
+	"ValueFormatSpec": {
+		"style": {"plain", "compact", "percent", "currency"},
+	},
 	"SplitConfig": {
 		"by": {"table.rows"},
 	},
@@ -251,6 +254,9 @@ var typeOverrides = map[string]map[string]any{
 		"description": "Configures how a split_slide base table is windowed across pages.",
 	},
 	"ContentInput": contentInputOverride(),
+	"ValueFormatSpec": {
+		"description": "One number format for a chart, applied to the value-axis ticks, the data labels and any in-mark label alike. Omit it and the renderer picks: grouped digits with enough decimals to keep the labels distinct, switching to compact notation on a value axis once the numbers pass 9,999.",
+	},
 }
 
 // contentTypeDiscriminator pairs each ContentInput "type" enum value with the
@@ -371,6 +377,10 @@ func buildInputSchema() map[string]any {
 		// unreported (go-slide-creator-z72f).
 		{"ChartStyle", reflect.TypeOf(types.ChartStyle{})},
 		{"ChartStyleOverrides", reflect.TypeOf(types.ChartStyleOverrides{})},
+		// value_format published as a bare {"type":"object"} would hide the four
+		// keys that work and let a typo through additionalProperties
+		// (go-slide-creator-e2ck9).
+		{"ValueFormatSpec", reflect.TypeOf(types.ValueFormatSpec{})},
 	}
 
 	for _, entry := range typeRegistry {
@@ -598,6 +608,7 @@ var knownTypeRefMap = map[reflect.Type]string{
 	reflect.TypeOf(types.DiagramSpec{}):             "#/$defs/DiagramSpec",
 	reflect.TypeOf(types.ChartStyle{}):              "#/$defs/ChartStyle",
 	reflect.TypeOf(types.ChartStyleOverrides{}):     "#/$defs/ChartStyleOverrides",
+	reflect.TypeOf(types.ValueFormatSpec{}):         "#/$defs/ValueFormatSpec",
 }
 
 func knownTypeRef(t reflect.Type) string {

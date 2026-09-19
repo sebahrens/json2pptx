@@ -254,6 +254,9 @@ type DiagramStyle struct {
 	ShowLegend  bool         `json:"show_legend,omitempty" yaml:"show_legend,omitempty"` // Display legend
 	ShowValues  bool         `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements
 	Background  string       `json:"background,omitempty" yaml:"background,omitempty"`   // Background color
+	// ValueFormat is one number format for the diagram's values — axis ticks,
+	// data labels and in-mark labels alike (go-slide-creator-e2ck9).
+	ValueFormat *ValueFormatSpec `json:"value_format,omitempty" yaml:"value_format,omitempty"`
 }
 
 // ParseError represents a non-fatal parsing issue with source position.

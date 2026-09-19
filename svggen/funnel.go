@@ -157,6 +157,7 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 		values = append(values, p.Value)
 	}
 	fc.config.ValueFormat = autoValueFormat(fc.config.ValueFormat, values)
+	fc.config.ResolveValueFormatter(values, false)
 
 	b := fc.builder
 	style := b.StyleGuide()
@@ -299,7 +300,7 @@ func (fc *FunnelChart) reserveExternalLabelSpace(data FunnelData, plotArea Rect,
 	for i, point := range data.Points {
 		label := point.Label
 		if fc.config.ShowValues {
-			label = fmt.Sprintf("%s: %s", point.Label, formatValueGrouped(point.Value, fc.config.ValueFormat))
+			label = fmt.Sprintf("%s: %s", point.Label, fc.config.ValueFmt.FormatOr(point.Value, fc.config.ValueFormat))
 		}
 		if fc.config.ShowPercentage && maxValue > 0 {
 			pct := (point.Value / maxValue) * 100
@@ -397,7 +398,7 @@ func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, t
 	// Build label text
 	label := point.Label
 	if fc.config.ShowValues {
-		label = fmt.Sprintf("%s: %s", point.Label, formatValueGrouped(point.Value, fc.config.ValueFormat))
+		label = fmt.Sprintf("%s: %s", point.Label, fc.config.ValueFmt.FormatOr(point.Value, fc.config.ValueFormat))
 	}
 	if fc.config.ShowPercentage && maxValue > 0 {
 		pct := (point.Value / maxValue) * 100
@@ -567,6 +568,7 @@ func (d *FunnelDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *S
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultFunnelChartConfig(width, height)
+		config.ValueFormatSpec = req.Style.ValueFormat
 		// Funnel charts ALWAYS show values by default - the numeric values are essential
 		// to understanding conversion drop-off. DefaultFunnelChartConfig sets ShowValues=true.
 		// ShowLegend kept at default true; Draw only renders for multi-series.

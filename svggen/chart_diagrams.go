@@ -27,6 +27,9 @@ func applyChartStyleOverrides(cfg *ChartConfig, style StyleSpec) {
 	if style.ShowLegend {
 		cfg.ForceLegendSingleSeries = true
 	}
+	// One number format for the whole chart — the axis ticks, the data labels and
+	// any in-mark label (go-slide-creator-e2ck9).
+	cfg.ValueFormatSpec = style.ValueFormat
 	overrides := style.ChartStyle
 	if overrides == nil {
 		return
@@ -251,6 +254,7 @@ func (d *PieChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultPieChartConfig(width, height)
+		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowTitle = req.Title != ""
 		// Pie charts ALWAYS show legend by default - it's essential to know what each segment represents
 		// The percentage labels on slices show values (40.0%) but not category names (Development, Marketing)

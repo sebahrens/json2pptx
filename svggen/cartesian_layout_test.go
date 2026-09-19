@@ -318,7 +318,7 @@ func TestAdaptYLabels_SmallDomain(t *testing.T) {
 	style := DefaultStyleGuide()
 
 	// Domain 0..100 → labels like "0".."100", well under default MarginLeft.
-	res := AdaptYLabels(b, 0, 100, 5, style.Typography.SizeSmall, 6, 4, false, style.Typography.SizeBody, 60)
+	res := AdaptYLabels(b, 0, 100, 5, style.Typography.SizeSmall, 6, 4, false, style.Typography.SizeBody, 60, nil)
 	if res.Clipped {
 		t.Errorf("expected no clip for 0..100 with MarginLeft=60, got clipped=true (widest=%.2f, extra=%.2f)",
 			res.WidestLabel, res.ExtraLeftMargin)
@@ -339,7 +339,7 @@ func TestAdaptYLabels_LargeCurrencyClips(t *testing.T) {
 	// magnitudes > 9999 the formatter switches to FormatCompact ("1.2M"), so
 	// to force wide labels we use a tiny MarginLeft against a domain whose
 	// compact labels are still wider than the budget.
-	res := AdaptYLabels(b, 0, 1_200_000, 5, style.Typography.SizeSmall, 6, 4, true, style.Typography.SizeBody, 20)
+	res := AdaptYLabels(b, 0, 1_200_000, 5, style.Typography.SizeSmall, 6, 4, true, style.Typography.SizeBody, 20, nil)
 	if !res.Clipped {
 		t.Errorf("expected Clipped=true for tiny MarginLeft=20 + title, got false (widest=%.2f, extra=%.2f)",
 			res.WidestLabel, res.ExtraLeftMargin)
@@ -358,7 +358,7 @@ func TestAdaptYLabels_TickToLabelGapStrict(t *testing.T) {
 	const tickSize = 6.0
 	const tickPadding = 4.0
 
-	res := AdaptYLabels(b, 0, 9_999_999, 5, style.Typography.SizeSmall, tickSize, tickPadding, false, style.Typography.SizeBody, 40)
+	res := AdaptYLabels(b, 0, 9_999_999, 5, style.Typography.SizeSmall, tickSize, tickPadding, false, style.Typography.SizeBody, 40, nil)
 	// Effective MarginLeft after growth.
 	marginLeft := 40.0
 	if res.Clipped {

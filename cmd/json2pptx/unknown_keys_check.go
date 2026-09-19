@@ -437,9 +437,26 @@ func checkChartStyleUnknownKeys(raw json.RawMessage, path string) []*patterns.Va
 	var warnings []*patterns.ValidationError
 	if v, ok := obj["style"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartStyle{}), path+"/style")...)
+		warnings = append(warnings, checkValueFormatUnknownKeys(v, path+"/style")...)
 	}
 	if v, ok := obj["chart_style"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartStyleOverrides{}), path+"/chart_style")...)
 	}
 	return warnings
+}
+
+// checkValueFormatUnknownKeys walks style.value_format. A misspelled key there
+// is silently dropped by the decoder and the chart renders with the default
+// format, which looks like the argument was ignored — because it was
+// (go-slide-creator-e2ck9).
+func checkValueFormatUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return nil
+	}
+	v, ok := obj["value_format"]
+	if !ok {
+		return nil
+	}
+	return checkUnknownKeysForType(v, reflect.TypeOf(types.ValueFormatSpec{}), path+"/value_format")
 }

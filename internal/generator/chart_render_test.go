@@ -527,3 +527,70 @@ func TestRenderDiagramSpecWithMetadata_Treemap(t *testing.T) {
 		t.Fatal("Expected non-empty PNG result")
 	}
 }
+
+// TestValueFormatSurvivesTheBridge pins the go-slide-creator-e2ck9 plumbing: a
+// chart's value_format must reach svggen, where it formats the axis ticks and
+// the data labels alike. Without the copy the field is accepted by the schema
+// and silently ignored, which is worse than rejecting it.
+func TestValueFormatSurvivesTheBridge(t *testing.T) {
+	decimals := 1
+	sep := false
+	spec := &types.DiagramSpec{
+		Type: "bar_chart",
+		Data: map[string]any{"categories": []string{"A"}, "series": []any{}},
+		Style: &types.DiagramStyle{
+			ValueFormat: &types.ValueFormatSpec{
+				Style:        "compact",
+				Decimals:     &decimals,
+				Prefix:       "€",
+				Suffix:       " ARR",
+				ThousandsSep: &sep,
+			},
+		},
+	}
+	got := diagramSpecToSVGGen(spec, nil, 0, "").Style.ValueFormat
+	if got == nil {
+		t.Fatal("StyleSpec.ValueFormat = nil; the bridge dropped value_format")
+	}
+	if got.Style != "compact" || got.Prefix != "€" || got.Suffix != " ARR" {
+		t.Errorf("value_format notation not forwarded: %+v", got)
+	}
+	if got.Decimals == nil || *got.Decimals != 1 {
+		t.Errorf("decimals not forwarded: %+v", got.Decimals)
+	}
+	if got.ThousandsSep == nil || *got.ThousandsSep {
+		t.Errorf("thousands_sep not forwarded: %+v", got.ThousandsSep)
+	}
+
+	// Absent stays absent: a nil spec must not materialise as an empty struct,
+	// which would read as "the caller chose plain" and suppress the defaults.
+	bare := &types.DiagramSpec{
+		Type:  "bar_chart",
+		Data:  map[string]any{"categories": []string{"A"}, "series": []any{}},
+		Style: &types.DiagramStyle{ShowValues: true},
+	}
+	if diagramSpecToSVGGen(bare, nil, 0, "").Style.ValueFormat != nil {
+		t.Error("missing value_format should leave StyleSpec.ValueFormat nil")
+	}
+}
+
+// TestChartSpecValueFormatReachesTheDiagramSpec covers the older ChartSpec
+// surface: chart_value.style.value_format has to survive ToDiagramSpec, which is
+// the hop every raw deck's chart takes.
+func TestChartSpecValueFormatReachesTheDiagramSpec(t *testing.T) {
+	cs := &types.ChartSpec{
+		Type: "bar",
+		Data: map[string]any{"A": 1.0},
+		Style: &types.ChartStyle{
+			ShowValues:  true,
+			ValueFormat: &types.ValueFormatSpec{Style: "currency", Prefix: "$"},
+		},
+	}
+	ds := cs.ToDiagramSpec()
+	if ds.Style == nil || ds.Style.ValueFormat == nil {
+		t.Fatal("ToDiagramSpec dropped style.value_format")
+	}
+	if ds.Style.ValueFormat.Style != "currency" || ds.Style.ValueFormat.Prefix != "$" {
+		t.Errorf("value_format = %+v", ds.Style.ValueFormat)
+	}
+}

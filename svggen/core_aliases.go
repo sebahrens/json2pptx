@@ -35,6 +35,10 @@ type RoleMapSpec = core.RoleMapSpec
 // executive chart-style default for a single render.
 type ChartStyleOverrides = core.ChartStyleOverrides
 
+// ValueFormatSpec is the agent-facing number format applied to a chart's axis
+// ticks, data labels and in-mark labels alike.
+type ValueFormatSpec = core.ValueFormatSpec
+
 // SVGDocument represents a rendered SVG document.
 type SVGDocument = core.SVGDocument
 

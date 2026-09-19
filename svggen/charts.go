@@ -187,6 +187,16 @@ type ChartConfig struct {
 	// ValueFormat is the printf-style format for values.
 	ValueFormat string
 
+	// ValueFormatSpec is the caller's value_format: one number format for the
+	// value axis, the data labels and any in-mark label. Nil means the renderer
+	// derives one from the data (go-slide-creator-e2ck9).
+	ValueFormatSpec *ValueFormatSpec
+
+	// ValueFmt is the resolved formatter. ResolveValueFormatter sets it from
+	// ValueFormatSpec, ValueFormat and the chart's own values, once per render,
+	// and every side of the chart formats through it.
+	ValueFmt *ValueFormatter
+
 	// XAxisTitle is the x-axis title.
 	XAxisTitle string
 
@@ -360,6 +370,11 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 	// Calculate domain early so we can probe y-axis label widths and grow
 	// MarginLeft before layout if labels would clip into the title/legend area.
+	// One number format for the whole chart: the axis ticks, the bar labels and
+	// the measurement that sizes the left margin all read through it
+	// (go-slide-creator-e2ck9).
+	bc.config.ResolveValueFormatter(chartDataValues(data), true)
+
 	yMin, yMax := bc.calculateDomain(data)
 	EnsureYAxisFits(b, &bc.config.ChartConfig, yMin, yMax)
 
@@ -903,7 +918,7 @@ func (bc *BarChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *Li
 	xAxis.DrawCategoricalAxis(xScale, plotArea.X, plotArea.Y+plotArea.H)
 
 	// Y axis (shared)
-	DrawCartesianYAxis(b, plotArea, yScale, bc.config.YAxisTitle)
+	DrawCartesianYAxis(b, plotArea, yScale, bc.config.YAxisTitle, bc.config.ValueFmt)
 }
 
 // drawBars draws the bar series.
@@ -946,6 +961,7 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		barConfig.CornerRadius = bc.config.CornerRadius
 		barConfig.ShowValues = bc.config.ShowValues
 		barConfig.ValueFormat = valueFormat
+		barConfig.ValueFmt = bc.config.ValueFmt
 		barConfig.SeriesIndex = seriesIdx
 		barConfig.SeriesCount = numSeries
 
@@ -1217,6 +1233,8 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	// Calculate y-axis domain early so we can probe label widths and grow
 	// MarginLeft before layout if labels would clip into the title/legend area.
+	lc.config.ResolveValueFormatter(chartDataValues(data), true)
+
 	yMin, yMax := lc.calculateYDomain(data)
 	EnsureYAxisFits(b, &lc.config.ChartConfig, yMin, yMax)
 
@@ -1658,7 +1676,7 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 	lc.xAxisCfg = xAxisConfig
 
 	// Y axis (shared)
-	DrawCartesianYAxis(b, plotArea, yScale, lc.config.YAxisTitle)
+	DrawCartesianYAxis(b, plotArea, yScale, lc.config.YAxisTitle, lc.config.ValueFmt)
 }
 
 // drawLines draws the line series.
@@ -1683,6 +1701,7 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 		lineConfig.FillOpacity = lc.config.FillOpacity
 		lineConfig.ShowValues = lc.config.ShowValues
 		lineConfig.ValueFormat = lineValueFormat
+		lineConfig.ValueFmt = lc.config.ValueFmt
 
 		if series.Color != nil {
 			lineConfig.Color = *series.Color
@@ -1964,6 +1983,8 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 
 	// Calculate domains early so we can probe y-axis label widths and grow
 	// MarginLeft before layout if labels would clip into the title/legend area.
+	sc.config.ResolveValueFormatter(chartDataValues(data), true)
+
 	xMin, xMax := sc.calculateXDomain(data)
 	yMin, yMax := sc.calculateYDomain(data)
 	EnsureYAxisFits(b, &sc.config.ChartConfig, yMin, yMax)
@@ -2190,7 +2211,7 @@ func (sc *ScatterChart) drawAxes(plotArea Rect, xScale, yScale *LinearScale) {
 	xAxis.DrawLinearAxis(relXScale, plotArea.X, plotArea.Y+plotArea.H)
 
 	// Y axis (shared)
-	DrawCartesianYAxis(b, plotArea, relYScale, sc.config.YAxisTitle)
+	DrawCartesianYAxis(b, plotArea, relYScale, sc.config.YAxisTitle, sc.config.ValueFmt)
 }
 
 // drawPoints draws the scatter points.

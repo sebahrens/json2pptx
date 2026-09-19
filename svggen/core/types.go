@@ -234,6 +234,51 @@ type StyleSpec struct {
 	// ChartStyleOverrides shape so the override survives the StyleSpec
 	// bridge.
 	ChartStyle *ChartStyleOverrides `json:"chart_style,omitempty" yaml:"chart_style,omitempty"`
+
+	// ValueFormat is the one number-format contract for a chart: it governs the
+	// axis ticks, the data labels and any in-mark label alike. Nil means the
+	// renderer picks a format from the data (see svggen.NewValueFormatter).
+	//
+	// It exists because the axis and the labels used to be formatted by
+	// different code with different rules, so one chart printed
+	// "1000 / 1200 / 1400" up the axis and "1,240 / 865 / 413" on the bars, and
+	// no single knob reached both (go-slide-creator-e2ck9).
+	ValueFormat *ValueFormatSpec `json:"value_format,omitempty" yaml:"value_format,omitempty"`
+}
+
+// ValueFormatSpec is the agent-facing number format for a chart's values.
+// Every field is optional; an empty spec means "the default, uniformly".
+//
+// Keep this struct in sync with internal/types.ValueFormatSpec on the json2pptx
+// side; the chart_render bridge copies field-for-field.
+type ValueFormatSpec struct {
+	// Style selects the notation: "plain" (grouped digits, the default),
+	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (the value with a %
+	// sign; values are taken as already being percentages), or "currency"
+	// (grouped digits with Prefix, defaulting to 0 decimals).
+	Style string `json:"style,omitempty" yaml:"style,omitempty"`
+
+	// Decimals fixes the number of decimal places. Nil lets the renderer pick:
+	// enough to keep the labels distinct, capped at 2.
+	Decimals *int `json:"decimals,omitempty" yaml:"decimals,omitempty"`
+
+	// Prefix is written before the number ("€", "$"). Applied to ticks and
+	// labels alike, which is the point.
+	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+
+	// Suffix is written after the number ("bn", " units"). A percent style
+	// already supplies "%", so a suffix there is additional.
+	Suffix string `json:"suffix,omitempty" yaml:"suffix,omitempty"`
+
+	// ThousandsSep groups the integer part in threes. Nil means the style's
+	// default: on for plain and currency, off for compact and percent.
+	ThousandsSep *bool `json:"thousands_sep,omitempty" yaml:"thousands_sep,omitempty"`
+}
+
+// IsZero reports whether the spec asks for nothing.
+func (v *ValueFormatSpec) IsZero() bool {
+	return v == nil || (v.Style == "" && v.Decimals == nil && v.Prefix == "" &&
+		v.Suffix == "" && v.ThousandsSep == nil)
 }
 
 // ChartStyleOverrides carries per-request opt-ins/opt-outs that flip an

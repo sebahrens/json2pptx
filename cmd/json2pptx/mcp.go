@@ -859,6 +859,7 @@ func buildChartStyleHints() *chartStyleHints {
 			"colors":      "Hex colours for the data series, in series order (string[]). Overrides the template's data palette.",
 			"font_family": "Font for chart labels and text (string). Defaults to the template's body font.",
 			"background":  "Chart background colour (string). Defaults to transparent so the slide shows through.",
+			"value_format": "ONE number format for the chart, applied to the value-axis ticks, the data labels and any in-mark label alike: {style: plain|compact|percent|currency, decimals, prefix, suffix, thousands_sep}. Set {\"style\":\"compact\",\"prefix\":\"€\"} and both the axis and the bars read \"€1.2M\". Omit it and the renderer picks: grouped digits (\"1,240\") with enough decimals to keep the labels distinct, switching to compact notation on a value axis once the numbers pass 9,999. decimals fixes the precision; thousands_sep forces grouping on or off.",
 		},
 		ChartStyle: map[string]string{
 			"show_single_series_legend": "Force (true) or suppress (false) the legend on a single-series chart. The narrower form of style.show_legend; wins when both are set.",

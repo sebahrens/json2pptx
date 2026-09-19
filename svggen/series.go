@@ -49,6 +49,20 @@ type DataPoint struct {
 	Value float64
 }
 
+// LabelValue is the number a value label should show: the raw Value when the
+// caller recorded one, else the plotted Y.
+//
+// The two differ on a log scale, where Y is log10(value). A bar chart on a log
+// scale labelled its bars with the logarithm — 490,000 printed as "6" — because
+// the label site read Y (go-slide-creator-e2ck9, found while unifying the
+// number format). A label has to show the value, not its exponent.
+func (p DataPoint) LabelValue() float64 {
+	if p.Value != 0 {
+		return p.Value
+	}
+	return p.Y
+}
+
 // =============================================================================
 // Bar Series
 // =============================================================================
@@ -82,6 +96,10 @@ type BarSeriesConfig struct {
 
 	// ValueFormat is the printf-style format for value labels.
 	ValueFormat string
+
+	// ValueFmt is the chart's shared number formatter. When set it formats the
+	// labels, so the bars and the axis read the same way (go-slide-creator-e2ck9).
+	ValueFmt *ValueFormatter
 
 	// ValuePosition specifies where to place value labels.
 	ValuePosition ValuePosition
@@ -187,7 +205,7 @@ func (bs *BarSeries) DrawCategorical(points []DataPoint, xScale *CategoricalScal
 				x = xScale.ScaleStart(point.XCategory) + (bandwidth-groupWidth)/2 + barOffset + barWidth/2
 			}
 
-			bs.drawValueLabel(x, y, point.Y, barWidth, baseY)
+			bs.drawValueLabel(x, y, point.LabelValue(), barWidth, baseY)
 		}
 	}
 
@@ -217,7 +235,7 @@ func (bs *BarSeries) DrawLinear(points []DataPoint, xScale, yScale *LinearScale,
 		for _, point := range points {
 			x := xScale.Scale(point.X)
 			y := yScale.Scale(point.Y)
-			bs.drawValueLabel(x, y, point.Y, barWidth, baseY)
+			bs.drawValueLabel(x, y, point.LabelValue(), barWidth, baseY)
 		}
 	}
 
@@ -289,7 +307,7 @@ func (bs *BarSeries) drawValueLabel(x, y, value, width, baseY float64) {
 	b := bs.builder
 	style := b.StyleGuide()
 
-	label := formatValueGrouped(value, bs.config.ValueFormat)
+	label := bs.config.ValueFmt.FormatOr(value, bs.config.ValueFormat)
 
 	var labelX, labelY float64
 	var baseline TextBaseline
@@ -391,6 +409,9 @@ type LineSeriesConfig struct {
 
 	// ValueFormat is the printf-style format for value labels.
 	ValueFormat string
+
+	// ValueFmt is the chart's shared number formatter (go-slide-creator-e2ck9).
+	ValueFmt *ValueFormatter
 }
 
 // DefaultLineSeriesConfig returns default line series configuration.
@@ -517,7 +538,7 @@ func (ls *LineSeries) draw(coords []Point, baseY float64, points []DataPoint) {
 	if ls.config.ShowValues {
 		b.SetFontSize(style.Typography.SizeSmall).SetFontWeight(style.Typography.WeightNormal)
 		for i, c := range coords {
-			label := formatValueGrouped(points[i].Y, ls.config.ValueFormat)
+			label := ls.config.ValueFmt.FormatOr(points[i].Y, ls.config.ValueFormat)
 			labelY := c.Y - ls.config.MarkerSize - style.Spacing.SM
 			b.DrawText(label, c.X, labelY, TextAlignCenter, TextBaselineBottom)
 		}

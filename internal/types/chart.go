@@ -258,6 +258,37 @@ type ChartStyle struct {
 	ShowLegend bool `json:"show_legend,omitempty"`
 	// ShowValues draws the value on each data point / bar / slice.
 	ShowValues bool `json:"show_values,omitempty"`
+	// ValueFormat is ONE number format for the chart: the value axis ticks, the
+	// data labels and any in-mark label all render through it. Without it the
+	// axis and the labels were formatted by different code with different rules,
+	// so one chart printed "1000 / 1200 / 1400" up the axis and
+	// "1,240 / 865 / 413" on the bars, and no single knob reached both
+	// (go-slide-creator-e2ck9).
+	ValueFormat *ValueFormatSpec `json:"value_format,omitempty"`
+}
+
+// ValueFormatSpec is the agent-facing number format for a chart's values.
+// Every field is optional; an empty spec means "the default, uniformly".
+//
+// Keep in sync with svggen/core.ValueFormatSpec — the chart_render bridge copies
+// it field-for-field.
+type ValueFormatSpec struct {
+	// Style selects the notation: "plain" (grouped digits, the default),
+	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (the value followed by
+	// %; values are taken as already being percentages) or "currency" (grouped
+	// digits with Prefix).
+	Style string `json:"style,omitempty" yaml:"style,omitempty"`
+	// Decimals fixes the decimal places. Omit it and the renderer shows enough
+	// to keep the labels distinct (capped at 2) while the axis shows what its
+	// tick step needs.
+	Decimals *int `json:"decimals,omitempty" yaml:"decimals,omitempty"`
+	// Prefix is written before the number ("€", "$") on ticks and labels alike.
+	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+	// Suffix is written after the number ("bn", " units").
+	Suffix string `json:"suffix,omitempty" yaml:"suffix,omitempty"`
+	// ThousandsSep groups the integer part in threes. Omit it for the style's
+	// default: on for plain and currency, off for compact and percent.
+	ThousandsSep *bool `json:"thousands_sep,omitempty" yaml:"thousands_sep,omitempty"`
 }
 
 // DefaultChartDimensions provides default chart dimensions.
@@ -368,6 +399,7 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 			ShowLegend:  cs.Style.ShowLegend,
 			ShowValues:  cs.Style.ShowValues,
 			Background:  cs.Style.Background,
+			ValueFormat: cs.Style.ValueFormat,
 		}
 	}
 

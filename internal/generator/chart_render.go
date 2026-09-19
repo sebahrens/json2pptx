@@ -248,6 +248,17 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		if len(spec.Style.DataPalette) > 0 {
 			style.DataPalette = spec.Style.DataPalette
 		}
+		// One number format for the whole chart: the value axis, the data labels
+		// and any in-mark label (go-slide-creator-e2ck9).
+		if vf := spec.Style.ValueFormat; vf != nil {
+			style.ValueFormat = &svggen.ValueFormatSpec{
+				Style:        vf.Style,
+				Decimals:     vf.Decimals,
+				Prefix:       vf.Prefix,
+				Suffix:       vf.Suffix,
+				ThousandsSep: vf.ThousandsSep,
+			}
+		}
 	}
 
 	// Forward per-slide chart_style token overrides (vertical gridlines,

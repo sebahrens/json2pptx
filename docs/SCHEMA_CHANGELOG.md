@@ -8,6 +8,31 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`chart_value.style.value_format`: one number format per chart
+  (go-slide-creator-e2ck9).** Within one chart the axis and the data labels were
+  formatted by different code with different rules: on `[1240, 865, 413]` the
+  axis printed `1000 / 1200 / 1400` while the bars printed `1,240 / 865 / 413`,
+  and past 9,999 the axis switched to compact notation while the labels kept
+  grouping digits. Nothing reached both — `data.data_labels.format` formatted
+  the labels only — so a EUR deck could not get `€1.2M` on the axis at all.
+  - **`style.value_format`** `{style: plain|compact|percent|currency, decimals,
+    prefix, suffix, thousands_sep}` is applied to the value-axis ticks, the data
+    labels and any in-mark label alike. Accepted on `chart_value.style` and on a
+    diagram's `style`. The keys are closed and walked by the unknown-key check,
+    so a typo inside the block is reported rather than dropped.
+  - **The default now agrees with itself.** One formatter is derived per chart
+    from its own values and used by every side: grouped digits with enough
+    decimals to keep the labels distinct, switching to compact notation on a
+    chart WITH a value axis once the numbers pass 9,999 (the axis's own
+    long-standing rule, now shared). Charts with no axis to agree with (funnel,
+    gauge, treemap) keep grouped digits. The axis still takes its decimal places
+    from its tick step, not from the data, so a whole-numbered axis prints `1`
+    and not `1.0`.
+  - Renders that change: axis ticks over 999 now group (`1,000` where it said
+    `1000`), and a bar/line chart's labels compact when its axis does
+    (`1.2M` where it said `1,240,000`). A caller-supplied
+    `data_labels.format` is still honoured verbatim and never rewritten.
+
 - **`render_deck_thumbnails` can render just the slides that changed
   (go-slide-creator-2018).** Its only narrowing knob was `max_slides`, a prefix
   cap, so a repair loop that fixed one slide of fifteen re-pulled all fifteen
@@ -277,6 +302,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `submit_visual_review` still requires a complete, current-revision review.
 
 ### Fixed
+
+- **A log-scale bar chart labelled its bars with the logarithm
+  (go-slide-creator-e2ck9).** The label site read the plotted Y coordinate,
+  which on a log scale is log10(value), so a bar worth 490,000 was labelled
+  "6". It now reads the raw value the chart already recorded for the purpose.
 
 - **`validate --fit-report` runs the same collector as every other surface, and
   stops refusing diagrams that render (go-slide-creator-r87g).** A reviewer

@@ -157,6 +157,10 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 	// Apply theme colors if needle still has default hardcoded color.
 	gc.applyThemeColors()
 
+	// The value and the min/max scale ticks are the same quantity, so they get
+	// the same format (go-slide-creator-e2ck9).
+	gc.config.ResolveValueFormatter([]float64{data.Value, gc.config.MinValue, gc.config.MaxValue}, false)
+
 	// Calculate plot area
 	plotArea := gc.config.PlotArea()
 
@@ -540,7 +544,7 @@ func (gc *GaugeChart) drawTicks(centerX, centerY, outerRadius, innerRadius, star
 			}
 
 			b.SetFontSize(style.Typography.SizeSmall)
-			label := formatValueGrouped(value, "%.0f")
+			label := gc.config.ValueFmt.FormatOr(value, "%.0f")
 			b.DrawText(label, labelX, labelY, align, TextBaselineMiddle)
 		}
 	}
@@ -658,7 +662,7 @@ func (gc *GaugeChart) drawCenterLabel(centerX, centerY, innerRadius float64, dat
 	b.SetTextColor(style.Palette.TextPrimary)
 
 	// Format value with unit
-	label := formatValueGrouped(data.Value, gc.config.ValueFormat)
+	label := gc.config.ValueFmt.FormatOr(data.Value, gc.config.ValueFormat)
 	if data.Unit != "" {
 		label = label + data.Unit
 	}
@@ -712,6 +716,7 @@ func (d *GaugeDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SV
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultGaugeChartConfig(width, height)
+		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowValues = req.Style.ShowValues
 
 		// Apply custom min/max, tracking whether they were explicitly set.

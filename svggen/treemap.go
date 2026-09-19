@@ -142,6 +142,8 @@ func (tc *TreemapChart) Draw(data TreemapData) error {
 	style := b.StyleGuide()
 	colors := tc.getColors(style, len(data.Nodes))
 
+	tc.config.ResolveValueFormatter(treemapValues(data.Nodes), false)
+
 	// Calculate plot area
 	plotArea := tc.config.PlotArea()
 
@@ -482,7 +484,7 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 			b.DrawText(node.Label, labelX, labelY-fontSize/2, TextAlignCenter, TextBaselineBottom)
 			// Value below center
 			b.SetFontSize(fontSize * 0.8)
-			valueText := formatValue(node.TotalValue(), tc.config.ValueFormat)
+			valueText := tc.config.ValueFmt.FormatOr(node.TotalValue(), tc.config.ValueFormat)
 			b.DrawText(valueText, labelX, labelY+fontSize/2, TextAlignCenter, TextBaselineTop)
 		} else {
 			b.DrawText(node.Label, labelX, labelY, TextAlignCenter, TextBaselineMiddle)
@@ -570,6 +572,7 @@ func (d *TreemapDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultTreemapChartConfig(width, height)
+		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowLabels = true
 		config.ShowValueLabels = req.Style.ShowValues
 
@@ -668,3 +671,17 @@ func parseTreemapNodes(raw []any) []*TreemapNode {
 	return nodes
 }
 
+
+// treemapValues flattens every node's total, which is what the treemap's number
+// format is derived from.
+func treemapValues(nodes []*TreemapNode) []float64 {
+	out := make([]float64, 0, len(nodes))
+	for _, n := range nodes {
+		if n == nil {
+			continue
+		}
+		out = append(out, n.TotalValue())
+		out = append(out, treemapValues(n.Children)...)
+	}
+	return out
+}
