@@ -303,6 +303,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`expand_pattern` / `validate_pattern` declared `values` as an object, but
+  nine patterns need an array (go-slide-creator-ldu3d).** `kpi-2up`…`kpi-6up`,
+  `icon-row`, `stylish-panels` and `timeline-horizontal` take an ARRAY of cells
+  in `values`; the tools' `inputSchema` said `{"type":"object"}`. A client that
+  validates tool arguments against `inputSchema` could not call those patterns
+  at all, and the server accepted them only because it does not enforce its own
+  advertised schema.
+  - `values` is now `{"oneOf":[{"type":"object"},{"type":"array"}]}` on both
+    tools, and the description names the array patterns — the list is generated
+    from the registry, so it cannot drift from the schemas the validator
+    enforces.
+
 - **Text that stated no colour was never contrast-checked
   (go-slide-creator-ucmgr).** The contrast pass rewrote scheme colours it found
   in the slide's own XML, so text carrying no colour at all was invisible to it:
