@@ -300,8 +300,8 @@ Parameterize over grid configurations (different cell counts, column layouts) an
 
 | Band | Density % | Status string | Agent action |
 |------|-----------|---------------|--------------|
-| Underfilled | < 60% | `"underfilled"` | Add content or pick a smaller grid |
-| Optimal | 60–110% | `"optimal"` | No action needed |
+| Underfilled | < 35% | `"underfilled"` | Add content or pick a smaller grid |
+| Optimal | 35–110% | `"optimal"` | No action needed |
 | Overflow | > 110% | `"overflow"` | The renderer will shrink this cell's text to fit (`<a:normAutofit/>`). Trim content or pick a larger grid if the shrink would push text below the readable floor. |
 
 Density % is `required text height / available text height`, so >100% means "needs an autofit shrink", not "clipped". Two further signals separate those cases:

@@ -99,7 +99,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 2. Every fill is semantic (`accent1`, `lt2`, `dk1`, etc.) except documented brand-color allowlist — no mixed hex+semantic on any slide (Rule 12).
 3. No sibling shapes in any `shape_grid` with computed gap < 4pt — no stacked tables separated by hairline dividers.
 4. Patterns with 4+ peer cells use `cell_accent_mode: "progressive"` (or `"alternate"` for paired layouts) unless visual consistency is intentional — see Cell Accent Variety in RULES.md.
-5. Every cell at 60–110% density — compare your text length against `max_chars` from `expand_pattern`'s `cell_budgets[]`. See Text Capacity Awareness in PATTERNS.md.
+5. Every cell at 35–110% density — read `density_pct` (a height ratio) from `expand_pattern`'s `cell_budgets[]`. See Text Capacity Awareness in PATTERNS.md.
 
 ---
 

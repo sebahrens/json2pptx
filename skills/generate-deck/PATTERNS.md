@@ -59,7 +59,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 2. **Call `show_pattern`** and read `text_budget_guide.configurations[]`.
 3. **Choose** the configuration whose `body_max_chars` is closest to `planned_chars / 0.85` — this targets ~85% density (the ideal band).
 4. **Write** cell content sized to that budget.
-5. **Verify** post-write by calling `expand_pattern` and checking `cell_budgets[]` — every cell should land in the 60–110% density band.
+5. **Verify** post-write by calling `expand_pattern` and checking `cell_budgets[]` — every cell should land in the 35–110% density band.
 
 **Non-grid patterns** (e.g., `pull-quote`, `stat-hero`, single-cell patterns) have no `text_budget_guide`. For those, use per-placeholder budgets from `list_templates` instead.
 
@@ -67,14 +67,14 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 ## Text Capacity Awareness
 
-Every shape grid cell has a measurable text capacity — the maximum character count that fits at the resolved font size within the cell's physical dimensions. The engine computes this deterministically using embedded font metrics (no OS font dependency). Agent content should target **60–110%** of each cell's capacity.
+Every shape grid cell has a measurable text capacity. `density_pct` is a **height** ratio — each paragraph wrapped at its own font size, the line heights summed, compared with the height the cell offers — computed deterministically from embedded font metrics (no OS font dependency); `max_chars` is the derived character hint at the cell's dominant size. Agent content should target **35–110%** of each cell's height. Patterns leave whitespace on purpose, so the median well-authored cell fills about half its box.
 
 ### Density Bands
 
 | Band | Density % | Status | Severity | Meaning |
 |------|-----------|--------|----------|---------|
 | Underfilled | < 60% | `underfilled` | info | Cell looks sparse; content doesn't justify the allocated space |
-| Optimal | 60–110% | `optimal` | — | Content fits naturally with appropriate whitespace |
+| Optimal | 35–110% | `optimal` | — | Content fits naturally with appropriate whitespace |
 | Overflow | > 110% | `overflow` | warning | Text will clip or require aggressive shrinking to fit |
 
 ### Workflow Integration
@@ -96,7 +96,7 @@ Every shape grid cell has a measurable text capacity — the maximum character c
 
 Compare your planned content against `max_chars` for each cell. Adjust before rendering — it's cheaper to rewrite content than to repair after generation.
 
-**Phase 3 RENDER.** The pre-emit checklist (in WORKFLOW.md) includes: *"Every cell at 60–110% density."* Verify this by checking that your text length per cell falls within the `max_chars` range from `expand_pattern`.
+**Phase 3 RENDER.** The pre-emit checklist (in WORKFLOW.md) includes: *"Every cell at 35–110% density."* Verify this by checking `cell_budgets[].density_pct` from `expand_pattern`.
 
 **Phase 4 REPAIR.** If `fit_overflow` or `density_exceeded` findings appear after generation, apply this decision sequence:
 

@@ -456,9 +456,14 @@ func TestDensityStatus(t *testing.T) {
 		actual, max int
 		wantStatus  Status
 	}{
+		// Bands: < UnderfilledPct (35) underfilled, up to OverflowPct (110)
+		// optimal. The floor moved from 60 when density became a height ratio:
+		// the median realistic cell fills 48% of its box, so a 60% floor called
+		// well-authored slides underfilled (go-slide-creator-yj77).
 		{0, 100, StatusUnderfilled},
-		{50, 100, StatusUnderfilled},
-		{59, 100, StatusUnderfilled},
+		{34, 100, StatusUnderfilled},
+		{35, 100, StatusOptimal},
+		{50, 100, StatusOptimal},
 		{60, 100, StatusOptimal},
 		{100, 100, StatusOptimal},
 		{110, 100, StatusOptimal},

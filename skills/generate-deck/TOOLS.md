@@ -29,7 +29,7 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 
 ### PLAN (per slide intent)
 
-- **MANDATORY** — `recommend_visual` (rank candidates across all categories), `show_pattern` (per chosen pattern; learn value schema + `example_values`), `expand_pattern` (per pattern slide; confirm density is in 60–110%).
+- **MANDATORY** — `recommend_visual` (rank candidates across all categories), `show_pattern` (per chosen pattern; learn value schema + `example_values`), `expand_pattern` (per pattern slide; confirm density is in 35–110%).
 - **CONDITIONAL** — `plan_deck` (decks > 4 slides — returns the ordered slide outline with `suggested_pattern` and `skeleton` per slide).
 - **SKIPPABLE** — `recommend_pattern` (legacy pattern-only subset of `recommend_visual`), `list_patterns`, `validate_pattern`, `expand_patterns` (head-to-head candidate comparison), `get_chart_capabilities`, `get_diagram_capabilities`, `get_shape_catalog`, `list_icons`, `preview_icon`, `table_density_guide`.
 

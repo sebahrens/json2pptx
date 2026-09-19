@@ -59,9 +59,23 @@ const budgetFontName = "Liberation Sans"
 type Status string
 
 const (
-	StatusUnderfilled Status = "underfilled" // DensityPct < 60
-	StatusOptimal     Status = "optimal"     // 60 <= DensityPct <= 110
-	StatusOverflow    Status = "overflow"    // DensityPct > 110
+	StatusUnderfilled Status = "underfilled" // DensityPct < UnderfilledPct
+	StatusOptimal     Status = "optimal"     // UnderfilledPct <= DensityPct <= OverflowPct
+	StatusOverflow    Status = "overflow"    // DensityPct > OverflowPct
+)
+
+// UnderfilledPct and OverflowPct are the published density bands.
+//
+// The underfill floor was 60% of a CHARACTER budget. Read as a height ratio it
+// is far too high: across the 42-pattern realistic corpus the median cell fills
+// 48% of its box, so a 60% floor called the median well-authored slide
+// "underfilled" — 23 of 42 patterns had a majority of their cells flagged, and
+// the only pattern-level text signal an agent had was noise pushing it to pad
+// full slides (go-slide-creator-yj77). Patterns leave whitespace on purpose; a
+// cell under ~a third of its height is the one that actually reads as empty.
+const (
+	UnderfilledPct = 35
+	OverflowPct    = 110
 )
 
 // Budget describes the text capacity of a cell or placeholder at a given font size.
@@ -235,14 +249,7 @@ func buildDensity(b Budget, actualChars int) Density {
 	if b.MaxChars > 0 && actualChars > 0 {
 		d.DensityPct = int(math.Round(float64(actualChars) / float64(b.MaxChars) * 100))
 	}
-	switch {
-	case d.DensityPct > 110:
-		d.Status = StatusOverflow
-	case d.DensityPct >= 60:
-		d.Status = StatusOptimal
-	default:
-		d.Status = StatusUnderfilled
-	}
+	d.Status = statusForDensity(d.DensityPct)
 	return d
 }
 
@@ -484,9 +491,9 @@ func availableTextHeightPt(heightEMU int64) float64 {
 // statusForDensity applies the published density bands.
 func statusForDensity(pct int) Status {
 	switch {
-	case pct > 110:
+	case pct > OverflowPct:
 		return StatusOverflow
-	case pct >= 60:
+	case pct >= UnderfilledPct:
 		return StatusOptimal
 	default:
 		return StatusUnderfilled

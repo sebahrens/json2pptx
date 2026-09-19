@@ -704,7 +704,7 @@ Two severity bands:
 | 40–59% | `info` | Consider adding detail; not blocking |
 | <40% | `warning` | Strongly consider adding detail or using a smaller grid |
 
-The 60–110% range is the healthy zone — no finding is emitted. Above 110%, see `fit_overflow`.
+The 35–110% range is the healthy zone — no finding is emitted. Above 110%, see `fit_overflow`.
 
 `strict_fit` interaction: `cell_underfilled` never blocks generation. Its maximum severity is `warning` and its action is `review`, which is never promoted to `refuse` regardless of `strict_fit` mode.
 

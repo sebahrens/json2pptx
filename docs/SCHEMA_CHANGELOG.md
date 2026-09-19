@@ -45,10 +45,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
     (`textcapacity.AutofitScaleFor`), shared by the fit report and the
     readability check.
 
+  - The **underfill band moved from 60% to 35%** (`textcapacity.UnderfilledPct`).
+    A 60% floor is far too high for a height ratio: across the 42-pattern
+    realistic corpus the median cell fills 48% of its box, so the median
+    well-authored slide was reported `underfilled`.
+
   Effect on the bundled examples: `business-model-canvas` 62 → **90** and the
   gate passes; `varied-pitch-deck` stays 95 / passing; `sovereign-ai-strategy`
   90 → 91 (its remaining P0s are real table-cell overflows). No example gains a
-  failure.
+  failure. Across the realistic pattern corpus (42 patterns / 298 cells):
+  optimal 52 → **182** cells, underfilled 211 → **94**, overflow 35 → **22**
+  (worst 911% → 171%), and patterns with a majority of cells reported
+  underfilled 27 → **11**.
 
 - **The two defect classes that block the gate now have working repairs
   (go-slide-creator-9zof).** `BODY_TOO_LONG`'s own `next_tool_call` is

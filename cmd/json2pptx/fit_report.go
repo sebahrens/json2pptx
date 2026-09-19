@@ -423,7 +423,7 @@ func cellDensityFindings(d textcapacity.Density, pathPrefix string) (findings []
 		// there is the 8.6pt — reported by TEXT_BELOW_READABLE_MIN, at review
 		// severity, where it belongs (go-slide-creator-lmpu).
 		findings = append(findings, overflow("error", "refuse"))
-	case d.DensityPct < 60:
+	case d.DensityPct < textcapacity.UnderfilledPct:
 		under = &underfilledCell{
 			path:       textPath,
 			chars:      d.ActualChars,
@@ -502,8 +502,8 @@ func aggregateUnderfilledFinding(slideIdx int, cells []underfilledCell, measured
 
 	action, severity := "info", "info"
 	message := fmt.Sprintf(
-		"%d of %d text cells are under 60%% of their capacity (slide fill %d%%, sparsest cell %d%%) — the grid may be larger than the content needs",
-		len(cells), measuredTextCells, slideFillPct, minDensity)
+		"%d of %d text cells fill under %d%% of their box height (slide fill %d%%, sparsest cell %d%%) — the grid may be larger than the content needs",
+		len(cells), measuredTextCells, textcapacity.UnderfilledPct, slideFillPct, minDensity)
 	if mostlyEmpty {
 		action, severity = "review", "warning"
 		message = fmt.Sprintf(
