@@ -51,7 +51,7 @@ To use a different scale, set the axis range explicitly:
 
 ## Required Fields
 
-Provide **one** of two mutually exclusive forms: `points` (explicit coordinates) or `quadrants` (coordinate-free, auto-placed at quadrant centers). If both are present, `points` wins.
+Provide **one** of two mutually exclusive forms: `points` (explicit coordinates, plotted as a scatter) or `quadrants` (coordinate-free, rendered as four titled lists). If both are present, `points` wins.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -62,7 +62,9 @@ Provide **one** of two mutually exclusive forms: `points` (explicit coordinates)
 
 ### `quadrants` form (coordinate-free)
 
-When you only know which quadrant an item belongs to (not exact coordinates), list items by quadrant and the engine places them near that quadrant's center automatically:
+When you only know which quadrant an item belongs to (not exact coordinates), list items by quadrant. Each quadrant renders as its **title followed by a bulleted list**, filling its own rectangle — no markers, and nothing from one quadrant can collide with anything in another. Items that do not fit the rectangle are elided with `…`.
+
+This form used to invent an (x, y) per item so the scatter renderer could draw it; two items per quadrant were enough for the labels to overprint each other and the quadrant caption (go-slide-creator-s27x).
 
 ```json
 {
@@ -84,7 +86,13 @@ When you only know which quadrant an item belongs to (not exact coordinates), li
 |-------|------|-------------|
 | `quadrants[].position` | `string` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` (underscores also accepted) |
 | `quadrants[].title` | `string` | Quadrant label (also sets `quadrant_labels`; `label` accepted as a synonym) |
-| `quadrants[].items` | `string[]` or `object[]` | Items to place; objects use a `label` field |
+| `quadrants[].items` | `string[]` or `object[]` | Items to list; objects use a `label` field |
+
+### Points outside the axis range
+
+A `points[].x` / `.y` outside `x_min`–`x_max` / `y_min`–`y_max` is **clamped to the axis** and reported as `chart.point_out_of_range` (warning, fix kind `replace_value`), naming the point, the offending value, and where it landed. Such a point used to be drawn wherever the scale put it — outside the plot frame, over the axis titles, or off the canvas — with nothing reported.
+
+In `points` mode the quadrant captions sit in each quadrant's **outer top corner**, not its centre, so they stay clear of the region a point cluster occupies.
 
 ## Optional Fields
 

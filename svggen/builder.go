@@ -329,10 +329,22 @@ func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 	})
 }
 
-// textAnchorRe matches <text x="X1" ...><tspan x="X2" ...> patterns so we can
-// inject text-anchor for center- and right-aligned text. The regex anchors on
-// the literal "<text x=" prefix the canvas library always emits.
-var textAnchorRe = regexp.MustCompile(`<text x="([\d.]+)"([^>]*)><tspan x="([\d.]+)"`)
+// textElementRe matches EVERY <text ...><tspan x="..."> the canvas library
+// emits, in document order — both the positioned form (`<text x="…">`) and the
+// rotated form (`<text transform="translate(…) rotate(-90)">`, which carries no
+// x attribute).
+//
+// Matching both matters: fixSVGTextAlignment pairs elements with the alignments
+// DrawText recorded, BY INDEX. A regex that only matched the positioned form
+// silently skipped every rotated label while its recorded alignment stayed in
+// the slice, so every element after the first rotated text took the previous
+// element's alignment. On a 2x2 matrix — which always draws a rotated y-axis
+// title — that gave the first quadrant heading text-anchor="middle" and hung it
+// half outside its own quadrant (go-slide-creator-s27x).
+var textElementRe = regexp.MustCompile(`<text\b([^>]*)><tspan x="(-?[\d.]+)"`)
+
+// textXAttrRe matches the leading x attribute of a positioned <text> element.
+var textXAttrRe = regexp.MustCompile(`\A x="([\d.]+)"`)
 
 // svgOpenTagRe matches the SVG root opening tag.
 var svgOpenTagRe = regexp.MustCompile(`<svg [^>]*>`)
@@ -391,18 +403,30 @@ func injectTabularNumsStyle(svgContent []byte) []byte {
 // with its alignment and baseline.
 func (b *SVGBuilder) fixSVGTextAlignment(svgContent []byte) []byte {
 	idx := 0
-	return textAnchorRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
+	return textElementRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
+		// Every <text> element consumes one recorded alignment, including the
+		// rotated ones this function cannot rewrite — otherwise the pairing
+		// slips and later elements get someone else's anchor.
 		i := idx
 		idx++
+		parts := textElementRe.FindSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+		xAttr := textXAttrRe.FindSubmatch(parts[1])
+		if xAttr == nil {
+			// Rotated form: the transform already carries the anchor, and there
+			// is no text.x to rewrite against.
+			return match
+		}
 		if i >= len(b.textAligns) || i >= len(b.textBaselines) {
 			return match
 		}
 		align := b.textAligns[i]
 		baseline := b.textBaselines[i]
-		parts := textAnchorRe.FindSubmatch(match)
-		if len(parts) < 4 {
-			return match
-		}
+		// Re-shape the submatches into the (textX, remaining attrs, tspanX)
+		// triple the rewrite below expects.
+		parts = [][]byte{parts[0], xAttr[1], parts[1][len(xAttr[0]):], parts[2]}
 
 		var anchorAttr string
 		// For center / right, collapse tspan.x to text.x so the renderer

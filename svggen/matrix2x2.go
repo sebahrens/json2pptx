@@ -135,8 +135,29 @@ type Matrix2x2Data struct {
 	// Points are the data points to plot.
 	Points []Matrix2x2Point
 
+	// QuadrantItems holds the coordinate-free form: per quadrant, the items
+	// that belong in it. data-format-hints promotes this as the alternative for
+	// an agent with no numbers, and it used to be turned into fabricated scatter
+	// coordinates — two items per quadrant were already enough for the dots'
+	// labels to overprint each other and the quadrant caption
+	// (go-slide-creator-s27x). Quadrants carrying items render as titled lists
+	// instead, and Points is left empty.
+	// Index order matches QuadrantLabels: top-left, top-right, bottom-left,
+	// bottom-right.
+	QuadrantItems [4][]string
+
 	// Footnote is an optional footnote.
 	Footnote string
+}
+
+// HasQuadrantItems reports whether the coordinate-free quadrant form was used.
+func (d Matrix2x2Data) HasQuadrantItems() bool {
+	for _, items := range d.QuadrantItems {
+		if len(items) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Matrix2x2Chart renders 2x2 matrix charts.
@@ -197,11 +218,18 @@ func (mc *Matrix2x2Chart) Draw(data Matrix2x2Data) error {
 	// Draw axis labels
 	mc.drawAxisLabels(plotArea)
 
-	// Draw quadrant labels
-	mc.drawQuadrantLabels(plotArea)
+	if data.HasQuadrantItems() {
+		// Coordinate-free form: each quadrant is a titled list filling its own
+		// rectangle. No markers, and the title is the topmost line in the
+		// rectangle rather than one more centred string among the item labels.
+		mc.drawQuadrantLists(data, plotArea)
+	} else {
+		// Draw quadrant labels
+		mc.drawQuadrantLabels(plotArea)
 
-	// Draw data points
-	mc.drawPoints(data.Points, plotArea)
+		// Draw data points
+		mc.drawPoints(data.Points, plotArea)
+	}
 
 	// Draw title
 	if mc.config.ShowTitle && data.Title != "" {
@@ -329,12 +357,16 @@ func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) {
 		{X: plotArea.X + halfW + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
 	}
 
-	// Center labels in each quadrant for a clean consulting-style layout.
+	// Captions sit in each quadrant's OUTER TOP corner, not its centre.
+	// Centred captions occupy exactly the region a point cluster lands in — on
+	// the reported five-initiative chart "ERP upgrade" printed straight through
+	// "Major projects" (go-slide-creator-s27x). The corner is also the
+	// conventional place for a quadrant name.
 	aligns := []BoxAlign{
-		AlignCenter, // top-left quadrant
-		AlignCenter, // top-right quadrant
-		AlignCenter, // bottom-left quadrant
-		AlignCenter, // bottom-right quadrant
+		AlignTopLeft,  // top-left quadrant
+		AlignTopRight, // top-right quadrant
+		AlignTopLeft,  // bottom-left quadrant
+		AlignTopRight, // bottom-right quadrant
 	}
 
 	// Use LabelFitStrategy with wrapping to adapt heading size for narrow canvases.
@@ -381,6 +413,103 @@ func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) {
 	}
 
 	b.Pop()
+}
+
+// drawQuadrantLists renders the coordinate-free form: each quadrant is a
+// heading followed by a bulleted list, laid out top-down inside its own
+// rectangle (go-slide-creator-s27x). Nothing is plotted, so nothing can collide
+// with anything in another quadrant, and the title is always the topmost line.
+func (mc *Matrix2x2Chart) drawQuadrantLists(data Matrix2x2Data, plotArea Rect) {
+	b := mc.builder
+	style := b.StyleGuide()
+
+	halfW := plotArea.W / 2
+	halfH := plotArea.H / 2
+	pad := style.Spacing.MD
+	rects := [4]Rect{
+		{X: plotArea.X + pad, Y: plotArea.Y + pad, W: halfW - 2*pad, H: halfH - 2*pad},
+		{X: plotArea.X + halfW + pad, Y: plotArea.Y + pad, W: halfW - 2*pad, H: halfH - 2*pad},
+		{X: plotArea.X + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
+		{X: plotArea.X + halfW + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
+	}
+
+	// One type scale across all four quadrants, driven by the fullest one, so
+	// the matrix reads as a single object rather than four independent lists.
+	titleSize, itemSize := mc.quadrantListSizes(data, rects[0])
+
+	for i, rect := range rects {
+		title := mc.config.QuadrantLabels[i]
+		items := data.QuadrantItems[i]
+		if title == "" && len(items) == 0 {
+			continue
+		}
+
+		y := rect.Y
+		if title != "" {
+			b.Push()
+			b.SetFontSize(titleSize)
+			b.SetFontWeight(style.Typography.WeightBold)
+			b.SetTextColor(style.Palette.TextPrimary)
+			b.DrawText(title, rect.X, y+titleSize*0.5, TextAlignLeft, TextBaselineMiddle)
+			b.Pop()
+			y += titleSize * quadrantListLineFactor
+		}
+
+		if len(items) == 0 {
+			continue
+		}
+		b.Push()
+		b.SetFontSize(itemSize)
+		b.SetFontWeight(style.Typography.WeightNormal)
+		b.SetTextColor(style.Palette.TextSecondary)
+		bulletIndent := itemSize * 0.9
+		itemFit := LabelFitStrategy{PreferredSize: itemSize, MinSize: itemSize, MinCharWidth: 4.5}
+		for _, item := range items {
+			lineH := itemSize * quadrantListLineFactor
+			if y+lineH > rect.Y+rect.H {
+				// Out of room: say so rather than drawing past the quadrant.
+				b.DrawText("…", rect.X, y+itemSize*0.5, TextAlignLeft, TextBaselineMiddle)
+				break
+			}
+			text := itemFit.Fit(b, item, rect.W-bulletIndent, 0).DisplayText
+			b.DrawText("•", rect.X, y+itemSize*0.5, TextAlignLeft, TextBaselineMiddle)
+			b.DrawText(text, rect.X+bulletIndent, y+itemSize*0.5, TextAlignLeft, TextBaselineMiddle)
+			y += lineH
+		}
+		b.Pop()
+	}
+}
+
+// quadrantListLineFactor is the line height of a quadrant list line as a
+// multiple of its font size.
+const quadrantListLineFactor = 1.45
+
+// quadrantListSizes picks one heading and one item size for all four quadrants,
+// shrinking until the fullest quadrant's block fits its rectangle.
+func (mc *Matrix2x2Chart) quadrantListSizes(data Matrix2x2Data, rect Rect) (titleSize, itemSize float64) {
+	style := mc.builder.StyleGuide()
+
+	maxItems := 0
+	for _, items := range data.QuadrantItems {
+		if len(items) > maxItems {
+			maxItems = len(items)
+		}
+	}
+
+	titleSize = math.Max(style.Typography.SizeHeading, 12)
+	itemSize = math.Max(style.Typography.SizeBody, 9)
+	const minTitle, minItem = 9.0, 7.0
+
+	for titleSize > minTitle || itemSize > minItem {
+		needed := titleSize * quadrantListLineFactor
+		needed += float64(maxItems) * itemSize * quadrantListLineFactor
+		if needed <= rect.H {
+			break
+		}
+		titleSize = math.Max(minTitle, titleSize*0.92)
+		itemSize = math.Max(minItem, itemSize*0.92)
+	}
+	return titleSize, itemSize
 }
 
 // placedLabel tracks a rendered label's bounding box for collision avoidance.
@@ -439,6 +568,11 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 	var placed []placedLabel
 
 	for i, point := range points {
+		// A coordinate outside the axis range used to be plotted wherever the
+		// scale put it: outside the plot frame, over the axis titles, or off the
+		// canvas — silently (go-slide-creator-s27x). Clamp it back into the
+		// frame and say so.
+		point = mc.clampPointToAxes(point)
 		x := xScale.Scale(point.X)
 		y := yScale.Scale(point.Y)
 
@@ -472,6 +606,41 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 			placed = append(placed, lbl)
 		}
 	}
+}
+
+// clampPointToAxes brings a point's coordinates back inside the configured axis
+// range, reporting each coordinate it had to move.
+func (mc *Matrix2x2Chart) clampPointToAxes(point Matrix2x2Point) Matrix2x2Point {
+	clampAxis := func(v, min, max float64, axis string) float64 {
+		if v >= min && v <= max {
+			return v
+		}
+		clamped := math.Min(math.Max(v, min), max)
+		mc.builder.AddFinding(Finding{
+			Code: FindingPointOutOfRange,
+			Message: fmt.Sprintf(
+				"matrix_2x2: point %q has %s=%g, outside the %g–%g axis range; it was clamped to %g so it stays inside the matrix — check the value or widen the axis",
+				point.Label, axis, v, min, max, clamped),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind: FixKindReplaceValue,
+				Params: map[string]any{
+					"label":     point.Label,
+					"axis":      axis,
+					"value":     v,
+					"clamped":   clamped,
+					"axis_min":  min,
+					"axis_max":  max,
+					"diagram":   "matrix_2x2",
+					"parameter": axis,
+				},
+			},
+		})
+		return clamped
+	}
+	point.X = clampAxis(point.X, mc.config.XAxisMin, mc.config.XAxisMax, "x")
+	point.Y = clampAxis(point.Y, mc.config.YAxisMin, mc.config.YAxisMax, "y")
+	return point
 }
 
 // drawPoint draws a single data point.
@@ -519,8 +688,8 @@ func (mc *Matrix2x2Chart) drawPoint(x, y, size float64, color Color, shape Marke
 
 // labelDirection describes a placement direction relative to a data point.
 type labelDirection struct {
-	dx, dy float64    // offset multipliers relative to the label offset distance
-	align  TextAlign  // text alignment for this direction
+	dx, dy float64   // offset multipliers relative to the label offset distance
+	align  TextAlign // text alignment for this direction
 }
 
 // drawPointLabelAvoiding draws a label for a data point with collision avoidance.
@@ -532,6 +701,7 @@ type labelDirection struct {
 //
 // fontSize and offset are pre-computed by drawPoints based on the total number of
 // data points so that dense charts get smaller, tighter labels.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label string, plotArea Rect, placed []placedLabel, fontSize, offset float64) placedLabel {
 	b := mc.builder
@@ -559,9 +729,9 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 	// point center, with an appropriate text alignment.
 	directions := []labelDirection{
 		{dx: 1, dy: 0, align: TextAlignLeft},    // right of point
-		{dx: -1, dy: 0, align: TextAlignRight},   // left of point
-		{dx: 0, dy: 1, align: TextAlignCenter},    // below point
-		{dx: 0, dy: -1, align: TextAlignCenter},   // above point
+		{dx: -1, dy: 0, align: TextAlignRight},  // left of point
+		{dx: 0, dy: 1, align: TextAlignCenter},  // below point
+		{dx: 0, dy: -1, align: TextAlignCenter}, // above point
 	}
 
 	// Prefer to place the label away from the plot center so it doesn't
@@ -758,6 +928,7 @@ func (d *Matrix2x2Diagram) Render(req *RequestEnvelope) (*SVGDocument, error) {
 
 // RenderWithBuilder renders the diagram and returns both the builder and SVG document.
 // This allows callers to generate PNG/PDF output from the same builder.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDocument, error) {
 	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
@@ -894,6 +1065,7 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 }
 
 // parseMatrix2x2Data parses the request data into Matrix2x2Data.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
 	data := Matrix2x2Data{
@@ -941,10 +1113,11 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
 		}
 	}
 
-	// Parse quadrants format (alternative to points)
-	// This format uses quadrant position with items list
+	// Parse quadrants format (alternative to points). This form carries no
+	// coordinates, so it is kept as lists rather than converted into invented
+	// scatter positions (go-slide-creator-s27x).
 	if quadrants, ok := req.Data["quadrants"].([]any); ok && len(data.Points) == 0 {
-		data.Points = parseQuadrantItems(quadrants)
+		data.QuadrantItems = parseQuadrantItemLists(quadrants)
 	}
 
 	// Parse footnote
@@ -1010,46 +1183,32 @@ func quadrantPositionIndex(position string) int {
 	}
 }
 
-// parseQuadrantItems converts quadrant-based format to points.
-// Quadrant format: position (top-left, top-right, bottom-left, bottom-right), title, items
-func parseQuadrantItems(quadrants []any) []Matrix2x2Point {
-	points := make([]Matrix2x2Point, 0)
-
-	// Define base positions for each quadrant.
-	// Items are centered within their quadrant (center at 25/75 on each axis).
-	quadrantPositions := map[string]struct{ x, y float64 }{
-		"top-left":     {25, 75}, // High value, low effort
-		"top-right":    {75, 75}, // High value, high effort
-		"bottom-left":  {25, 25}, // Low value, low effort
-		"bottom-right": {75, 25}, // Low value, high effort
-	}
-
+// parseQuadrantItemLists reads the coordinate-free quadrant form into per
+// quadrant item lists, indexed the same way as Matrix2x2Config.QuadrantLabels.
+//
+// It replaces parseQuadrantItems, which invented an (x, y) for every item so the
+// scatter renderer could draw it. Those positions were guesses — a fixed
+// quadrant centre plus a small spread — and with two items per quadrant their
+// labels already collided with each other and with the quadrant caption
+// (go-slide-creator-s27x).
+func parseQuadrantItemLists(quadrants []any) [4][]string {
+	var out [4][]string
 	for _, q := range quadrants {
 		qMap, ok := q.(map[string]any)
 		if !ok {
 			continue
 		}
-
 		position, _ := qMap["position"].(string)
-		// Normalize: support both hyphens and underscores
-		position = strings.ReplaceAll(position, "_", "-")
-		basePos, validPos := quadrantPositions[position]
-		if !validPos {
+		// Normalize: support both hyphens and underscores.
+		idx := quadrantPositionIndex(strings.ReplaceAll(position, "_", "-"))
+		if idx < 0 {
 			continue
 		}
-
-		// Get items for this quadrant
 		items, ok := qMap["items"].([]any)
-		if !ok || len(items) == 0 {
+		if !ok {
 			continue
 		}
-
-		// Distribute items within the quadrant.
-		// For few items (1-2), keep them close to the quadrant center so
-		// the quadrant doesn't look empty. For more items, spread them out
-		// to avoid overlap.
-		itemCount := len(items)
-		for i, item := range items {
+		for _, item := range items {
 			var label string
 			switch v := item.(type) {
 			case string:
@@ -1057,45 +1216,12 @@ func parseQuadrantItems(quadrants []any) []Matrix2x2Point {
 			case map[string]any:
 				label, _ = v["label"].(string)
 			}
-
-			if label == "" {
-				continue
+			if label = strings.TrimSpace(label); label != "" {
+				out[idx] = append(out[idx], label)
 			}
-
-			// Vertical distribution: center the group of items in the quadrant.
-			// Spacing between items scales with count to keep things compact for
-			// sparse quadrants and spread out for dense ones.
-			yOffset := 0.0
-			if itemCount > 1 {
-				// Use a spread range that grows with item count but stays moderate
-				spreadRange := math.Min(float64(itemCount)*8.0, 20.0)
-				yOffset = -spreadRange/2 + (spreadRange * float64(i) / float64(itemCount-1))
-			}
-
-			// Small x variation to avoid perfect vertical stacking
-			xOffset := 0.0
-			if itemCount > 2 {
-				xOffset = float64((i % 3) - 1) * 6
-			}
-
-			// Use a slightly larger point size for sparse quadrants so the
-			// single dot doesn't look lost.
-			size := 0.0
-			if itemCount <= 2 {
-				size = 16 // larger marker for 1-2 items
-			}
-
-			point := Matrix2x2Point{
-				Label: label,
-				X:     basePos.x + xOffset,
-				Y:     basePos.y + yOffset,
-				Size:  size,
-			}
-			points = append(points, point)
 		}
 	}
-
-	return points
+	return out
 }
 
 // =============================================================================
@@ -1145,4 +1271,3 @@ func CreateEisenhowerMatrixConfig(width, height float64) Matrix2x2Config {
 	}
 	return config
 }
-

@@ -655,7 +655,7 @@ func TestMatrix2x2Diagram_RenderWithQuadrantColors(t *testing.T) {
 			"points": []any{
 				map[string]any{"label": "Item", "x": 50.0, "y": 50.0},
 			},
-			"quadrant_colors": []any{"#FF0000", "#00FF00", "#0000FF", "#FFFF00"},
+			"quadrant_colors":  []any{"#FF0000", "#00FF00", "#0000FF", "#FFFF00"},
 			"quadrant_opacity": 0.25,
 		},
 		Output: OutputSpec{
@@ -787,8 +787,12 @@ func TestMatrix2x2Diagram_RenderWithQuadrantsFormat(t *testing.T) {
 	}
 }
 
-func TestParseQuadrantItems(t *testing.T) {
-	// Test the parseQuadrantItems helper function
+// The coordinate-free quadrant form is parsed into per-quadrant LISTS, not into
+// invented scatter coordinates. It used to produce a Matrix2x2Point per item at
+// a guessed (x, y), which is what made two items per quadrant enough for the
+// labels to overprint each other and the quadrant caption
+// (go-slide-creator-s27x).
+func TestParseQuadrantItemLists(t *testing.T) {
 	quadrants := []any{
 		map[string]any{
 			"position": "top-left",
@@ -796,88 +800,68 @@ func TestParseQuadrantItems(t *testing.T) {
 			"items":    []any{"Item A", "Item B"},
 		},
 		map[string]any{
-			"position": "bottom-right",
+			"position": "bottom_right", // underscore spelling is accepted
 			"title":    "Low Priority",
-			"items":    []any{"Item C"},
+			"items":    []any{"Item C", map[string]any{"label": "Item D"}},
 		},
 	}
 
-	points := parseQuadrantItems(quadrants)
+	got := parseQuadrantItemLists(quadrants)
 
-	if len(points) != 3 {
-		t.Errorf("Expected 3 points, got %d", len(points))
+	want := [4][]string{
+		{"Item A", "Item B"}, // top-left
+		nil,                  // top-right
+		nil,                  // bottom-left
+		{"Item C", "Item D"}, // bottom-right
 	}
-
-	// Check that items are placed in correct quadrants
-	// top-left should have high Y (around 75)
-	// bottom-right should have low Y (around 25)
-	foundTopLeft := false
-	foundBottomRight := false
-
-	for _, p := range points {
-		if p.Label == "Item A" || p.Label == "Item B" {
-			if p.Y > 50 && p.X < 50 {
-				foundTopLeft = true
-			}
+	for i := range want {
+		if len(got[i]) != len(want[i]) {
+			t.Fatalf("quadrant %d has %d items, want %d (%v)", i, len(got[i]), len(want[i]), got[i])
 		}
-		if p.Label == "Item C" {
-			if p.Y < 50 && p.X > 50 {
-				foundBottomRight = true
+		for j := range want[i] {
+			if got[i][j] != want[i][j] {
+				t.Errorf("quadrant %d item %d = %q, want %q", i, j, got[i][j], want[i][j])
 			}
 		}
 	}
+}
 
-	if !foundTopLeft {
-		t.Error("Expected top-left items to be positioned correctly (high Y, low X)")
+func TestParseQuadrantItemLists_InvalidPositions(t *testing.T) {
+	quadrants := []any{
+		map[string]any{"position": "invalid", "items": []any{"Should Skip"}},
+		map[string]any{"position": "top-left", "items": []any{"Valid Item"}},
 	}
-	if !foundBottomRight {
-		t.Error("Expected bottom-right item to be positioned correctly (low Y, high X)")
+
+	got := parseQuadrantItemLists(quadrants)
+
+	if len(got[0]) != 1 || got[0][0] != "Valid Item" {
+		t.Errorf("top-left = %v, want [Valid Item]", got[0])
+	}
+	for i := 1; i < 4; i++ {
+		if len(got[i]) != 0 {
+			t.Errorf("quadrant %d should be empty, got %v", i, got[i])
+		}
 	}
 }
 
-func TestParseQuadrantItems_InvalidPositions(t *testing.T) {
-	// Test handling of invalid position values
+func TestParseQuadrantItemLists_EmptyItems(t *testing.T) {
 	quadrants := []any{
-		map[string]any{
-			"position": "invalid",
-			"items":    []any{"Should Skip"},
-		},
-		map[string]any{
-			"position": "top-left",
-			"items":    []any{"Valid Item"},
-		},
+		map[string]any{"position": "top-left", "items": []any{}},
+		map[string]any{"position": "bottom-right"}, // no items key at all
+		map[string]any{"position": "top-right", "items": []any{"", "   "}},
 	}
 
-	points := parseQuadrantItems(quadrants)
+	got := parseQuadrantItemLists(quadrants)
 
-	// Only the valid quadrant should be parsed
-	if len(points) != 1 {
-		t.Errorf("Expected 1 point (from valid quadrant), got %d", len(points))
+	for i, items := range got {
+		if len(items) != 0 {
+			t.Errorf("quadrant %d should be empty, got %v", i, items)
+		}
 	}
-
-	if len(points) > 0 && points[0].Label != "Valid Item" {
-		t.Errorf("Expected label 'Valid Item', got '%s'", points[0].Label)
-	}
-}
-
-func TestParseQuadrantItems_EmptyItems(t *testing.T) {
-	// Test handling of quadrants with no items
-	quadrants := []any{
-		map[string]any{
-			"position": "top-left",
-			"items":    []any{},
-		},
-		map[string]any{
-			"position": "bottom-right",
-			// No items key at all
-		},
-	}
-
-	points := parseQuadrantItems(quadrants)
-
-	// No points should be created from empty quadrants
-	if len(points) != 0 {
-		t.Errorf("Expected 0 points from empty quadrants, got %d", len(points))
+	var data Matrix2x2Data
+	data.QuadrantItems = got
+	if data.HasQuadrantItems() {
+		t.Error("empty quadrants must not select the list renderer")
 	}
 }
 

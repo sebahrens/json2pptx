@@ -164,6 +164,7 @@ const (
 	FindingDiagramItemsDropped   = core.FindingDiagramItemsDropped
 	FindingOrgChartDepthPruned   = core.FindingOrgChartDepthPruned
 	FindingPlotAreaCollapsed     = core.FindingPlotAreaCollapsed
+	FindingPointOutOfRange       = core.FindingPointOutOfRange
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries
@@ -171,7 +172,7 @@ const (
 	MaxPoints     = core.MaxPoints
 
 	// Fix kind constants (re-exported from core/finding_codes.go).
-	FixKindReplaceValue = core.FixKindReplaceValue
+	FixKindReplaceValue    = core.FixKindReplaceValue
 	FixKindTruncateOrSplit = core.FixKindTruncateOrSplit
 	FixKindAlignSeries     = core.FixKindAlignSeries
 	FixKindExplicitScale   = core.FixKindExplicitScale

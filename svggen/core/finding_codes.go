@@ -80,6 +80,15 @@ const (
 	// author must shorten the category labels or split the slide
 	// (go-slide-creator-k478).
 	FindingPlotAreaCollapsed = "chart.plot_area_collapsed"
+
+	// FindingPointOutOfRange is emitted when a plotted point's coordinate falls
+	// outside the configured axis range. The point used to be drawn wherever the
+	// scale put it — outside the plot frame, over the axis titles or off the
+	// canvas — with nothing reported, so a matrix with x=-10 and x=120 rendered
+	// two labels floating in the margin and looked like a rendering bug rather
+	// than bad data. The coordinate is clamped to the axis range and the finding
+	// names the point and its original value (go-slide-creator-s27x).
+	FindingPointOutOfRange = "chart.point_out_of_range"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.
@@ -140,12 +149,12 @@ type promotionRule struct {
 //
 // Rationale (from θ telemetry baseline, 2-week eval run):
 //
-//   warn level promotes content-loss codes to shrink_or_split so agents see
-//   them as actionable. strict level promotes data-integrity codes to refuse
-//   so generation is blocked on bad input.
+//	warn level promotes content-loss codes to shrink_or_split so agents see
+//	them as actionable. strict level promotes data-integrity codes to refuse
+//	so generation is blocked on bad input.
 //
-//   Advisory codes (auto-adjustments, label fitting) remain informational
-//   because they represent successful graceful degradation, not errors.
+//	Advisory codes (auto-adjustments, label fitting) remain informational
+//	because they represent successful graceful degradation, not errors.
 var promotionTable = map[string]promotionRule{
 	// --- Content-loss codes: promoted under warn ---
 	FindingCapacityExceeded:      {warnLevel: SeverityShrinkOrSplit, strictLevel: SeverityRefuse},

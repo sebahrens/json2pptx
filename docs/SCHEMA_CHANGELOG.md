@@ -37,6 +37,35 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`matrix_2x2`'s coordinate-free `quadrants` form renders as four lists, not a
+  scatter plot (go-slide-creator-s27x).** data-format-hints promotes
+  `quadrants: [{position, title, items}]` as what an agent without numbers
+  should use. It invented an (x, y) for every item so the scatter renderer could
+  draw it, and with two items per quadrant the labels already overprinted each
+  other and the quadrant caption — "Data platform ●" over "Major projects" over
+  "ERP upgrade ●". Each quadrant is now a heading followed by a bulleted list
+  filling its own rectangle: no markers, the title is always the topmost line,
+  and nothing in one quadrant can collide with anything in another.
+- **Quadrant captions moved out of the point cluster.** In `points` mode the
+  captions were centred in each quadrant — exactly where points land — so
+  "ERP upgrade" printed straight through "Major projects". They now sit in each
+  quadrant's outer top corner.
+- **Points outside the axis range are clamped and reported.** `x: -10` / `x: 120`
+  were plotted wherever the scale put them — outside the plot frame, over the
+  axis titles, off the canvas — with nothing reported. They are clamped to the
+  axis and reported as the new **`chart.point_out_of_range`** (warning, fix kind
+  `replace_value`, params `{label, axis, value, clamped, axis_min, axis_max}`).
+- **Rotated labels no longer steal the next element's text-anchor.**
+  `fixSVGTextAlignment` pairs each emitted `<text>` with the alignment `DrawText`
+  recorded, BY INDEX, and its regex matched only the positioned form
+  (`<text x="…">`). Every rotated label — `<text transform="… rotate(-90)">`,
+  which carries no `x` — was skipped while its recorded alignment stayed in the
+  slice, so from the first rotated label onward every element took the PREVIOUS
+  one's anchor and baseline. On a 2x2 matrix (which always draws a rotated
+  y-axis title) that hung the first quadrant caption half outside its own
+  quadrant, and on a scatter chart it gave the title the wrong baseline. Four
+  golden SVGs move, each to its own correct attribute.
+
 - **`org_chart` node labels no longer overprint each other
   (go-slide-creator-s5ur).** Every node drew its name and its job title at
   almost the same baseline: in the reported chart the name sat at y=103.23 in
