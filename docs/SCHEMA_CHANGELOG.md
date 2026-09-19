@@ -37,6 +37,34 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **MCP responses stopped shipping every payload twice
+  (go-slide-creator-vxre).** `MCPSuccessResult` put the whole object in
+  `content[0].text` AND in `structuredContent`. One pass over the 18 callable
+  core tools weighed **221,206 B of text + 168,072 B of structuredContent =
+  389 KB** for 168 KB of information, **53,134 B of it pure two-space
+  indentation**. The bloat scaled with the input too: a 1 MB title produced a
+  2,003,105 B response because both copies echo it.
+  Two changes. **Compact JSON is now the default** — the text block is a
+  machine-read fallback, not a human document; `JSON2PPTX_MCP_PRETTY=1` indents
+  it for reading raw transcripts by hand. And for a client that negotiated
+  protocol **2025-06-18 or later** the duplicate text copy is **omitted**,
+  because structuredContent is part of that protocol's tool-result contract.
+  Older clients (2024-11-05, 2025-03-26) and sessions with no recorded
+  initialize keep it — the safe direction.
+  Measured on the wire: `list_slide_kinds` 61,606 B → **19,620 B**,
+  `get_started` 16,728 B → **7,919 B**. On protocol 2024-11-05 the text copy is
+  still present and still 49% smaller (38,195 B → 19,550 B) from compaction
+  alone.
+  New server flag **`--text-fallback=auto|always|never`** (env
+  `JSON2PPTX_MCP_TEXT_FALLBACK`), default `auto`. Use `always` if your client
+  reads `content[0].text` despite negotiating a modern protocol — the MCP spec
+  says a tool with an outputSchema SHOULD include the text copy, and `auto`
+  deviates from that SHOULD deliberately, on the grounds that a client
+  negotiating 2025-06-18 can read structuredContent.
+  The `experimental.compact_responses` capability and `MCP_COMPACT_RESPONSES=1`
+  are now no-ops, kept so existing clients do not break; the drift-guarded
+  sentence describing the handshake was updated in all four locations.
+
 - **Chart data labels stopped contradicting their own data
   (go-slide-creator-66qb).** Every value label went through a hardcoded
   `"%.0f"`. A seven-bar series `[4.6, 4.9, 5.2, 5.5, 5.8, 6.2, 6.5]` printed

@@ -10,16 +10,20 @@ import (
 
 // MarshalMCPResponse serializes v for MCP tool output.
 //
-// The server advertises experimental.compact_responses: true in its
-// initialize response; compaction itself is controlled by client opt-in (the
-// client sends experimental.compact_responses: true in its capabilities) or
-// the deprecated MCP_COMPACT_RESPONSES=1 environment variable. When neither
-// is set the response is indented with two spaces.
+// Compact JSON is the default: the text block is a machine-read fallback, not
+// a human document, and one pass over the core tools carried 53,134 B of pure
+// two-space indentation (go-slide-creator-vxre). Set JSON2PPTX_MCP_PRETTY=1 to
+// indent it when reading raw transcripts by hand.
+//
+// Responses are always compact JSON; the server still advertises
+// experimental.compact_responses: true and still honours the client capability
+// and the deprecated MCP_COMPACT_RESPONSES=1 environment variable, but neither
+// changes anything.
 func MarshalMCPResponse(ctx context.Context, v any) ([]byte, error) {
-	if isCompactSession(ctx) || os.Getenv("MCP_COMPACT_RESPONSES") == "1" {
-		return json.Marshal(v)
+	if os.Getenv("JSON2PPTX_MCP_PRETTY") == "1" && !isCompactSession(ctx) && os.Getenv("MCP_COMPACT_RESPONSES") != "1" {
+		return json.MarshalIndent(v, "", "  ")
 	}
-	return json.MarshalIndent(v, "", "  ")
+	return json.Marshal(v)
 }
 
 // isCompactSession checks whether the current MCP session negotiated

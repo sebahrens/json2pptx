@@ -54,7 +54,10 @@ func TestMCPSuccessResult_StructuredContent(t *testing.T) {
 	}
 }
 
-func TestMCPSuccessResult_IndentedByDefault(t *testing.T) {
+// TestMCPSuccessResult_CompactByDefault: the text block is a machine-read
+// fallback, so it is compact. It used to be indented, which cost 53,134 B of
+// pure whitespace over one pass of the core tools (go-slide-creator-vxre).
+func TestMCPSuccessResult_CompactByDefault(t *testing.T) {
 	data := map[string]string{"key": "value"}
 
 	result, err := MCPSuccessResult(context.Background(), data)
@@ -62,11 +65,10 @@ func TestMCPSuccessResult_IndentedByDefault(t *testing.T) {
 		t.Fatalf("MCPSuccessResult error: %v", err)
 	}
 
-	// Default (non-compact) should produce indented JSON.
 	b, _ := json.Marshal(result.Content[0])
 	text := string(b)
-	if !strings.Contains(text, "\\n") {
-		t.Errorf("expected indented JSON in fallback text, got: %s", text)
+	if strings.Contains(text, "\\n") {
+		t.Errorf("expected compact JSON in fallback text, got: %s", text)
 	}
 }
 

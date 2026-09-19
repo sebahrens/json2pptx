@@ -522,7 +522,9 @@ When `quality_gate.passed === true`, the deterministic precondition is met — s
 
 **`score_deck` grades a RAW deck.** Pass a semantic DeckSpec (slides carrying `kind`) and it is refused with `INVALID_PARAMETER` pointing at `validate_deck_spec` / `compile_deck_spec`. It used to unmarshal the spec into a deck whose slides were all empty and grade THAT — answering `overall_score 99, quality_gate PASS` for a deck it had never read (go-slide-creator-xx9i).
 
-**Compact responses.** The server advertises `experimental.compact_responses: true` in its `initialize` response; compaction itself is controlled by client opt-in (the client sends `experimental.compact_responses: true` in its capabilities) or the deprecated `MCP_COMPACT_RESPONSES=1` environment variable.
+**Response size.** Tool results carry the payload as `structuredContent`. For a client that negotiated protocol **2025-06-18 or later** the duplicate JSON text copy in `content[0].text` is omitted — sending both doubled every response (389 KB on the wire for 168 KB of information across one pass of the core tools; `list_slide_kinds` alone went 61.6 KB → 19.6 KB). Older clients still get the text copy. If your client reads `content[0].text` despite negotiating a modern protocol, start the server with `--text-fallback=always` (or `JSON2PPTX_MCP_TEXT_FALLBACK=always`); `never` drops it for everyone (go-slide-creator-vxre).
+
+**Compact responses.** Responses are always compact JSON; the server still advertises `experimental.compact_responses: true` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
 
 ---
 

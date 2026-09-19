@@ -26,7 +26,10 @@ func TestMarshalMCPResponse_Default(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := "{\n  \"name\": \"test\",\n  \"items\": [\n    \"a\",\n    \"b\"\n  ]\n}"
+	// Compact is now the DEFAULT: the text block is a machine-read fallback,
+	// and one pass over the core tools carried 53,134 B of pure indentation
+	// (go-slide-creator-vxre). This assertion used to expect the indented form.
+	want := `{"name":"test","items":["a","b"]}`
 	if string(got) != want {
 		t.Errorf("default mode mismatch:\ngot:  %s\nwant: %s", got, want)
 	}
@@ -116,8 +119,10 @@ func TestMarshalMCPResponse_EnvNotOne(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(string(got), "\n") {
-		t.Errorf("non-'1' env value should produce indented output: %s", got)
+	// The env var no longer selects indentation — compaction is unconditional
+	// (go-slide-creator-vxre), so any value of it produces compact output.
+	if strings.Contains(string(got), "\n") {
+		t.Errorf("output should be compact regardless of the env value: %s", got)
 	}
 }
 
@@ -171,7 +176,9 @@ func TestMarshalMCPResponse_CapabilityNotSet(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(string(got), "\n") {
-		t.Errorf("session without compact capability should produce indented output: %s", got)
+	// Compaction no longer depends on the capability (go-slide-creator-vxre):
+	// every client gets compact JSON.
+	if strings.Contains(string(got), "\n") {
+		t.Errorf("output should be compact even without the capability: %s", got)
 	}
 }

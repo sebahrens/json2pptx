@@ -20,19 +20,19 @@ const mcpErrorSubcommand = "mcp"
 // and a JSON text fallback in Content. The text fallback respects the session's
 // compact_responses negotiation (via MarshalMCPResponse).
 func MCPSuccessResult(ctx context.Context, data any) (*mcp.CallToolResult, error) {
+	res := &mcp.CallToolResult{StructuredContent: data}
+	// The text copy is a fallback for clients that predate structuredContent.
+	// Sending it to a client that negotiated 2025-06-18 doubles every response
+	// for nothing (go-slide-creator-vxre).
+	if !includeTextFallback(ctx) {
+		return res, nil
+	}
 	textJSON, err := MarshalMCPResponse(ctx, data)
 	if err != nil {
 		return nil, err
 	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			mcp.TextContent{
-				Type: "text",
-				Text: string(textJSON),
-			},
-		},
-		StructuredContent: data,
-	}, nil
+	res.Content = []mcp.Content{mcp.TextContent{Type: "text", Text: string(textJSON)}}
+	return res, nil
 }
 
 // MCPResultFor is MCPSuccessResult for a tool that was asked to PRODUCE

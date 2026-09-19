@@ -150,14 +150,14 @@ func TestSkillMdMentionsEveryRepairFixKind(t *testing.T) {
 // TestCompactResponsesPhrasingMatchesRuntime guards against drift between the
 // agent-facing skill (SKILL.md), contributor-facing docs (FIT_FINDINGS.md), and
 // the Go source comments that describe the compact_responses handshake. The
-// runtime contract is: the server advertises the capability unconditionally,
-// but the response is only compacted when the client opts in (or the
-// deprecated env var is set). All four locations must state the same thing,
-// so an agent reading SKILL.md models the same behavior the engine implements.
+// runtime contract is: responses are ALWAYS compact, and the capability and
+// the deprecated env var survive only as no-ops (go-slide-creator-vxre). All
+// four locations must state the same thing, so an agent reading SKILL.md models
+// the same behavior the engine implements.
 func TestCompactResponsesPhrasingMatchesRuntime(t *testing.T) {
 	// The canonical sentence — normalized form (backticks stripped, whitespace
 	// collapsed, lowercased) must appear in every location below.
-	const canonical = "the server advertises experimental.compact_responses: true in its initialize response; compaction itself is controlled by client opt-in (the client sends experimental.compact_responses: true in its capabilities) or the deprecated mcp_compact_responses=1 environment variable"
+	const canonical = "responses are always compact json; the server still advertises experimental.compact_responses: true and still honours the client capability and the deprecated mcp_compact_responses=1 environment variable, but neither changes anything"
 
 	repoRoot := filepath.Join("..", "..")
 	locations := []string{
@@ -179,8 +179,8 @@ func TestCompactResponsesPhrasingMatchesRuntime(t *testing.T) {
 				t.Errorf("%s does not contain the canonical compact_responses sentence.\n"+
 					"All four locations (SKILL.md, docs/FIT_FINDINGS.md, cmd/json2pptx/mcp_server.go, "+
 					"internal/api/mcp_encode.go) must carry identical phrasing of the handshake "+
-					"contract — server advertises the capability; compaction is gated on client "+
-					"opt-in or the deprecated env var. Update this file (or update the canonical "+
+					"contract — responses are always compact; the capability and the env var "+
+					"are no-ops. Update this file (or update the canonical "+
 					"string in this test if the contract itself changed).\n"+
 					"Expected substring (normalized): %q", path, canonical)
 			}

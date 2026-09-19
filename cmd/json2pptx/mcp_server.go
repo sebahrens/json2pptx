@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/resource"
@@ -116,6 +117,10 @@ func runMCP() error {
 	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files")
 	configPath := fs.String("config", "", "Path to config file (optional)")
 	toolsProfile := fs.String("tools", toolProfileCore, "Tool profile advertised in tools/list: core (default; ~21 tools, no outputSchema) or all (full catalog). Env: "+toolProfileEnv)
+	textFallback := fs.String("text-fallback", string(api.TextFallbackAuto),
+		"Whether tool results also carry the payload as JSON text alongside structuredContent: "+
+			"auto (default; omitted for clients that negotiated protocol 2025-06-18 or later, kept for older ones), "+
+			"always (keep it for every client), never. Env: "+textFallbackEnv)
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx mcp [options]\n\n")
@@ -176,17 +181,30 @@ func runMCP() error {
 
 	mc := newServerMCPConfig(cfg)
 
-	// The server advertises experimental.compact_responses: true in its
-	// initialize response; compaction itself is controlled by client opt-in
-	// (the client sends experimental.compact_responses: true in its
-	// capabilities) or the deprecated MCP_COMPACT_RESPONSES=1 environment
-	// variable.
+	// Sending the whole payload as text AND as structuredContent doubled every
+	// response — 389 KB on the wire for 168 KB of information across one pass of
+	// the core tools (go-slide-creator-vxre).
+	api.SetTextFallbackMode(resolveTextFallbackMode(*textFallback))
+
+	// Responses are always compact JSON; the server still advertises
+	// experimental.compact_responses: true and still honours the client
+	// capability and the deprecated MCP_COMPACT_RESPONSES=1 environment
+	// variable, but neither changes anything.
 	hooks := &server.Hooks{}
-	hooks.AddAfterInitialize(func(_ context.Context, _ any, _ *mcp.InitializeRequest, result *mcp.InitializeResult) {
+	hooks.AddAfterInitialize(func(ctx context.Context, _ any, request *mcp.InitializeRequest, result *mcp.InitializeResult) {
 		if result.Capabilities.Experimental == nil {
 			result.Capabilities.Experimental = make(map[string]any)
 		}
 		result.Capabilities.Experimental["compact_responses"] = true
+		// The session interface exposes client info and capabilities but not
+		// the negotiated protocol version, so record it here: it decides
+		// whether the text fallback is worth sending.
+		if request != nil {
+			api.RecordProtocolVersion(ctx, request.Params.ProtocolVersion)
+		}
+	})
+	hooks.AddOnUnregisterSession(func(ctx context.Context, _ server.ClientSession) {
+		api.ForgetProtocolVersion(ctx)
 	})
 
 	s := newJSON2PPTXMCPServer(mc, profile, server.WithHooks(hooks))
@@ -199,4 +217,26 @@ func runMCP() error {
 	)
 
 	return server.ServeStdio(s)
+}
+
+// textFallbackEnv is the environment variable form of --text-fallback.
+const textFallbackEnv = "JSON2PPTX_MCP_TEXT_FALLBACK"
+
+// resolveTextFallbackMode reads the flag, letting the environment variable win
+// only when the flag is at its default (mirroring how --tools resolves).
+func resolveTextFallbackMode(flagValue string) api.TextFallbackMode {
+	value := flagValue
+	if value == "" || value == string(api.TextFallbackAuto) {
+		if env := os.Getenv(textFallbackEnv); env != "" {
+			value = env
+		}
+	}
+	switch api.TextFallbackMode(value) {
+	case api.TextFallbackAlways:
+		return api.TextFallbackAlways
+	case api.TextFallbackNever:
+		return api.TextFallbackNever
+	default:
+		return api.TextFallbackAuto
+	}
 }
