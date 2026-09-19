@@ -159,3 +159,12 @@ func isHexDigits(s string) bool {
 	}
 	return true
 }
+
+// EffectiveSlideBackgroundHex exposes the rule above to preflight callers. A
+// contrast prediction made against a different background than the renderer
+// uses is worse than none, so validate resolves the colour with this function
+// rather than re-deriving it (go-slide-creator-s7wmh). An empty result means
+// the slide sets no background of its own and the layout's fill decides.
+func EffectiveSlideBackgroundHex(bg *BackgroundImage, themeColors []types.ThemeColor) string {
+	return effectiveSlideBackgroundHex(bg, themeColors)
+}

@@ -56,7 +56,7 @@ func TestContrastReplacement_SmallTextReachesAANormal(t *testing.T) {
 			bg := svggen.MustParseColor(c.bgHex)
 			threshold := contrastThresholdFor(c.textPt, false)
 
-			fixed, _ := contrastReplacement(c.fgHex, fg, bg, nil, threshold)
+			fixed, _ := contrastReplacement(c.fgHex, fg, bg, nil, threshold, false)
 			ratio := fixed.ContrastWith(bg)
 
 			if ratio < svggen.WCAGAANormal {
@@ -73,8 +73,8 @@ func TestContrastReplacement_LargeTextKeepsLargeThreshold(t *testing.T) {
 	fg := svggen.MustParseColor("#9ACD9A")
 	bg := svggen.MustParseColor("#8FBC8F")
 
-	large, _ := contrastReplacement("#9ACD9A", fg, bg, nil, contrastThresholdFor(28, false))
-	small, _ := contrastReplacement("#9ACD9A", fg, bg, nil, contrastThresholdFor(11, false))
+	large, _ := contrastReplacement("#9ACD9A", fg, bg, nil, contrastThresholdFor(28, false), false)
+	small, _ := contrastReplacement("#9ACD9A", fg, bg, nil, contrastThresholdFor(11, false), false)
 
 	largeRatio := large.ContrastWith(bg)
 	smallRatio := small.ContrastWith(bg)

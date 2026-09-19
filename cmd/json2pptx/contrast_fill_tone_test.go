@@ -54,12 +54,12 @@ func TestContrastPreflight_TintedFillNotFlagged(t *testing.T) {
 		},
 	}}}}}
 	in := &PresentationInput{Slides: []SlideInput{{ShapeGrid: grid}}}
-	if f := collectContrastPreflightFindings(in, tintTestTheme); len(f) != 0 {
+	if f := collectContrastPreflightFindings(in, nil, tintTestTheme); len(f) != 0 {
 		t.Errorf("dk1 on a light accent tint should not be flagged, got %+v", f)
 	}
 
 	grid.Rows[0].Cells[0].Shape.Fill = json.RawMessage(`"accent1"`)
-	if f := collectContrastPreflightFindings(in, tintTestTheme); len(f) == 0 {
+	if f := collectContrastPreflightFindings(in, nil, tintTestTheme); len(f) == 0 {
 		t.Error("dk1 on solid accent1 should still be flagged")
 	}
 }

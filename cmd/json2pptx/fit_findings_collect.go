@@ -113,7 +113,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 6. Contrast prediction (contrast_predicted) — runs only when theme
 	// colors are available to resolve scheme references.
 	if theme != nil {
-		findings = append(findings, collectContrastPreflightFindings(input, theme.Colors)...)
+		findings = append(findings, collectContrastPreflightFindings(input, layouts, theme.Colors)...)
 	}
 
 	// 7. Chart / diagram dry-render findings (chart.tick_thinned,
@@ -1462,13 +1462,15 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 
 // collectContrastPreflightFindings walks shape_grid cells that author both a
 // fill color and a text color, and emits contrast_predicted findings where
-// the renderer would auto-replace the text color.
-func collectContrastPreflightFindings(input *PresentationInput, themeColors []types.ThemeColor) []patterns.FitFinding {
+// the renderer would auto-replace the text color. It also covers placeholder
+// text on a background the slide itself sets, where the text colour is the
+// template's and only the background is the author's.
+func collectContrastPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
 	if len(themeColors) == 0 {
 		return nil
 	}
 
-	var pairs []generator.ContrastPreflightPair
+	pairs := authorBackgroundContrastPairs(input, layouts, themeColors)
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil {
 			continue
@@ -1497,6 +1499,77 @@ func collectContrastPreflightFindings(input *PresentationInput, themeColors []ty
 	}
 
 	return generator.DetectContrastPreflight(pairs, themeColors)
+}
+
+// authorBackgroundContrastPairs pairs the text colour each populated
+// placeholder inherits from its layout with the background the SLIDE sets.
+//
+// This is the half of the contrast prediction the shape_grid walk above cannot
+// see: nothing in the JSON names the title's colour, it comes from the
+// template, and the author only changed what sits behind it. Without these
+// pairs a dark statement slide validated clean and then reported a
+// contrast_autofixed swap at generate time (go-slide-creator-s7wmh). The pairs
+// carry AuthorBackground so the predicted replacement is the palette colour the
+// renderer snaps to, not the lerp it uses on a template background.
+func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []generator.ContrastPreflightPair {
+	if input == nil || len(layouts) == 0 {
+		return nil
+	}
+	predicted := predictSlideLayouts(input, layouts)
+
+	var pairs []generator.ContrastPreflightPair
+	for si := range input.Slides {
+		slide := &input.Slides[si]
+		// A slide that opts out of contrast checking gets no swap at generate
+		// time, so predicting one here would be a finding about nothing.
+		if slide.ContrastCheck != nil && !*slide.ContrastCheck {
+			continue
+		}
+		layout := predicted[si]
+		if layout == nil {
+			continue
+		}
+		bgHex := generator.EffectiveSlideBackgroundHex(backgroundSpecFor(slide), themeColors)
+		if bgHex == "" {
+			continue
+		}
+		for ci := range slide.Content {
+			content := &slide.Content[ci]
+			ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
+			if ph == nil || ph.FontColor == "" {
+				continue
+			}
+			if len(extractContentParagraphs(content)) == 0 {
+				continue
+			}
+			pairs = append(pairs, generator.ContrastPreflightPair{
+				Path:       slidepath.Content(si, content.PlaceholderID),
+				Foreground: ph.FontColor,
+				Background: bgHex,
+				Source:     "slide_background",
+				// Bold is unknown from placeholder metadata; false is the
+				// conservative reading, matching the unknown-size rule.
+				TextPt:           float64(ph.FontSize) / 100.0,
+				AuthorBackground: true,
+			})
+		}
+	}
+	return pairs
+}
+
+// backgroundSpecFor converts a slide's authored background into the renderer's
+// own background type, so the preflight resolves the effective colour through
+// exactly the code generate uses.
+func backgroundSpecFor(slide *SlideInput) *generator.BackgroundImage {
+	bg := slide.Background
+	if bg == nil || (bg.Image == "" && bg.Color == "") {
+		return nil
+	}
+	spec := &generator.BackgroundImage{Path: bg.Image, Fit: bg.Fit, Color: bg.Color}
+	if bg.Overlay != nil {
+		spec.Overlay = &generator.BackgroundOverlay{Color: bg.Overlay.Color, Alpha: bg.Overlay.Alpha}
+	}
+	return spec
 }
 
 // extractShapeFillColor extracts a color string from a shape fill RawMessage.

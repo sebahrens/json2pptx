@@ -142,6 +142,11 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		// is underneath it and no longer what the audience sees
 		// (go-slide-creator-uy5s).
 		bgHex := effectiveSlideBackgroundHex(input.slideSpec.Background, ctx.themeColors)
+		// Provenance decides how the contrast pass repairs text: a background the
+		// author introduced is not the one the template's text colour was chosen
+		// against, so there is no hue to preserve and the fix snaps to the
+		// palette rather than lerping to the WCAG floor (go-slide-creator-s7wmh).
+		authorBackground := bgHex != ""
 		if bgHex == "" {
 			bgHex = extractLayoutBackgroundColor(layoutData, ctx.themeColors)
 		}
@@ -149,7 +154,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 			// The layout's color map override applies to the slide's own scheme
 			// colors too, not just its background (go-slide-creator-hln7).
 			override := parseLayoutColorMapOverride(layoutData)
-			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override)
+			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override, authorBackground)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
 
 			// Text that names no color at all was invisible to the pass above:

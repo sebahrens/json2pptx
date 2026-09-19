@@ -149,7 +149,7 @@ func TestFixSchemeColorsForContrast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var sw []ContrastSwap
-			got := fixSchemeColorsForContrast(tt.xmlIn, bgColor, "#FFE8D4", tc, &sw, "TestShape", "test", false, svggen.WCAGAALarge, nil)
+			got := fixSchemeColorsForContrast(tt.xmlIn, bgColor, "#FFE8D4", tc, &sw, "TestShape", "test", false, svggen.WCAGAALarge, nil, false)
 
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
@@ -225,7 +225,7 @@ func TestEnforceTextContrastInSlide(t *testing.T) {
 		},
 	}
 
-	enforceTextContrastInSlide(slide, bgHex, tc, 0, nil)
+	enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
 
 	lstInner := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 
@@ -270,7 +270,7 @@ func TestEnforceTextContrastInSlide_NoBackground(t *testing.T) {
 	original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 
 	// No background = should not change anything
-	enforceTextContrastInSlide(slide, "", tc, 0, nil)
+	enforceTextContrastInSlide(slide, "", tc, 0, nil, false)
 
 	after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 	if after != original {
@@ -300,7 +300,7 @@ func TestEnforceTextContrastInSlide_GoodContrastUnchanged(t *testing.T) {
 	}
 
 	original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
-	enforceTextContrastInSlide(slide, "#FFFFFF", tc, 0, nil)
+	enforceTextContrastInSlide(slide, "#FFFFFF", tc, 0, nil, false)
 
 	after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 	if after != original {
@@ -317,7 +317,7 @@ func TestFixSchemeColorsForContrast_MultipleLevels(t *testing.T) {
 		`<a:lvl2pPr><a:defRPr sz="2000"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
 
 	var swaps []ContrastSwap
-	got := fixSchemeColorsForContrast(xmlIn, bgColor, "#FFE8D4", tc, &swaps, "TestShape", "test", false, svggen.WCAGAALarge, nil)
+	got := fixSchemeColorsForContrast(xmlIn, bgColor, "#FFE8D4", tc, &swaps, "TestShape", "test", false, svggen.WCAGAALarge, nil, false)
 
 	// accent1 should be replaced (low contrast)
 	if strings.Contains(got, `schemeClr val="accent1"`) {
@@ -540,7 +540,7 @@ func TestFixSrgbColorsForContrast(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var srgbSwaps []ContrastSwap
-			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", nil, &srgbSwaps, false, svggen.WCAGAALarge)
+			got := fixSrgbColorsForContrast(tt.xmlIn, bgColor, "#FFFFFF", nil, &srgbSwaps, false, svggen.WCAGAALarge, false)
 			changed := got != tt.xmlIn
 			if changed != tt.wantChange {
 				t.Errorf("changed = %v, want %v\n  input:  %s\n  output: %s", changed, tt.wantChange, tt.xmlIn, got)
@@ -581,7 +581,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 		// nil ContrastCheck → enforce (default behavior)
 		var cc *bool
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil)
+			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -599,7 +599,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 
 		cc := boolPtr(true)
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil)
+			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -614,7 +614,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 
 		cc := boolPtr(false)
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil)
+			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -676,7 +676,7 @@ func TestEnforceTextContrastInSlide_ReturnsSwaps(t *testing.T) {
 		},
 	}
 
-	swaps := enforceTextContrastInSlide(slide, bgHex, tc, 0, nil)
+	swaps := enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
 
 	if len(swaps) == 0 {
 		t.Fatal("expected at least 1 contrast swap, got 0")
@@ -943,7 +943,7 @@ func TestEnforceTextContrastInSlide_RecordsSwapLocation(t *testing.T) {
 	}
 
 	const slideIndex = 5
-	swaps := enforceTextContrastInSlide(slide, "#FFFFFF", tc, slideIndex, nil)
+	swaps := enforceTextContrastInSlide(slide, "#FFFFFF", tc, slideIndex, nil, false)
 
 	if len(swaps) == 0 {
 		t.Fatal("expected at least one swap for accent3 text on white background")

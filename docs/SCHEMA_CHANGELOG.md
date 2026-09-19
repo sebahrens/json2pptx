@@ -330,6 +330,30 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Contrast on an author-set background snaps to the palette instead of
+  lerping to the WCAG floor (go-slide-creator-s7wmh).** A slide that darkens
+  its own background (`background.color: dk1`, or an opaque scrim over a
+  photo) keeps the template's title colour, which was chosen against the
+  template's background, not this one. The contrast pass treated that colour's
+  hue as intentional and lerped it toward white just far enough to clear the
+  floor: midnight-blue's navy title on black came out `#4E5A72` at exactly
+  3.0, and warm-coral's `#3E2723` came out `#685552` — legible by the
+  measurement, barely visible on the slide.
+  - Replacement now depends on the background's **provenance**. An
+    author-introduced background has no hue intent to preserve, so the fix
+    flips to the first template text colour that clears the bar (`lt1`, `dk2`,
+    `dk1`, then a tonal shade of the background). Measured: midnight-blue
+    `#1B2A4A → #FFFFFF` (1.5 → 21.0), warm-coral `#3E2723 → #FFFFFF`
+    (1.5 → 21.0).
+  - **Unchanged on a template background** — that pairing is the template's
+    own and still lerps — and unchanged for `shape_grid` cells, where the
+    author chose the fill and the text colour together.
+  - `validate` now predicts this case as well: a `contrast_predicted` finding
+    with `fix.params.source: "slide_background"` naming the same replacement
+    generate emits. Previously no prediction existed for placeholder text on
+    an author background — the deck validated clean and reported a swap only
+    after rendering.
+
 - **The full DeckSpec schema is embedded once, not four times
   (go-slide-creator-uhaq).** The ~17KB closed per-kind `oneOf` was the input
   schema of `spec` on all four spec tools: twice in the core `tools/list` and

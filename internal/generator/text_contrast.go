@@ -166,7 +166,7 @@ var schemeClrInFillRegexp = regexp.MustCompile(
 // Returns a slice of ContrastSwap records for each color replacement made.
 // This function mutates the slide's shapes in place. slideIndex is the 0-based
 // index into the input slides array, recorded on each swap for finding paths.
-func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
+func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool) []ContrastSwap {
 	if bgHex == "" || slide == nil {
 		return nil
 	}
@@ -180,7 +180,7 @@ func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []typ
 	var swaps []ContrastSwap
 	for i := range slide.CommonSlideData.ShapeTree.Shapes {
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
-		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors, slideIndex, override)...)
+		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors, slideIndex, override, authorBackground)...)
 	}
 	return swaps
 }
@@ -189,7 +189,7 @@ func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []typ
 // It processes both the lstStyle (inherited styling) and individual run properties.
 // Recorded swaps are stamped with slideIndex and the slide-level JSON path; the
 // source label distinguishes lstStyle-inherited from run-level replacements.
-func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
+func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool) []ContrastSwap {
 	if shape.TextBody == nil {
 		return nil
 	}
@@ -204,7 +204,7 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 		shape.TextBody.ListStyle.Inner = fixSchemeColorsForContrast(
 			shape.TextBody.ListStyle.Inner, bgColor, bgHex, themeColors, &swaps,
 			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
-			contrastThresholdFor(lstPt, lstBold), override,
+			contrastThresholdFor(lstPt, lstBold), override, authorBackground,
 		)
 		annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "lstStyle")
 	}
@@ -220,7 +220,7 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 				run.RunProperties.Inner = fixSchemeColorsForContrast(
 					run.RunProperties.Inner, bgColor, bgHex, themeColors, &swaps,
 					shape.NonVisualProperties.ConnectionNonVisual.Name, "run", false,
-					contrastThresholdFor(runPt, runBold), override,
+					contrastThresholdFor(runPt, runBold), override, authorBackground,
 				)
 				annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "run")
 			}
@@ -493,8 +493,8 @@ func allRunsBold(fragment string) bool {
 // extreme (e.g. white on light yellow). Every other foreground is lerped toward
 // contrast via EnsureContrast. The returned mode is contrastModeFlip or
 // contrastModeLerp.
-func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string) {
-	c, mode, _ := contrastReplacementScheme(originalFg, fgColor, bgColor, themeColors, threshold)
+func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor, threshold float64, authorBackground bool) (svggen.Color, string) {
+	c, mode, _ := contrastReplacementScheme(originalFg, fgColor, bgColor, themeColors, threshold, authorBackground)
 	return c, mode
 }
 
@@ -502,11 +502,17 @@ func contrastReplacement(originalFg string, fgColor, bgColor svggen.Color, theme
 // ("lt1", "dk2", "dk1") of the chosen color when it came from the template
 // palette, or "" for derived colors. Render-time fixes log it so the swap is
 // traceable to the template palette.
-func contrastReplacementScheme(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string, string) {
+func contrastReplacementScheme(originalFg string, fgColor, bgColor svggen.Color, themeColors []types.ThemeColor, threshold float64, authorBackground bool) (svggen.Color, string, string) {
 	if threshold <= 0 {
 		threshold = svggen.WCAGAANormal
 	}
-	if isNeutralForeground(originalFg) {
+	// A background the AUTHOR introduced — background.color, or a scrim over a
+	// photo — is not the one the template's text colour was chosen against, so
+	// there is no hue intent to preserve and lerping just walks the colour to
+	// the WCAG floor: a 60pt section title on midnight-blue came out #4E5A72 at
+	// exactly 3.0 against black, where the template's own lt1 would read 21
+	// (go-slide-creator-s7wmh). Snap to the palette instead.
+	if authorBackground || isNeutralForeground(originalFg) {
 		c := pickThemeTextColor(bgColor, themeColors, threshold)
 		return c.Color, contrastModeFlip, c.Scheme
 	}
@@ -689,9 +695,12 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	// Fix scheme colors in text (with white-text-safe awareness)
 	// Shape-grid colors are author-specified on the shape's own fill, not
 	// inherited through a layout, so no color map override applies.
-	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil)
+	// A shape-grid cell is NOT an author-introduced background for this purpose:
+	// the author chose the fill and the text colour together, so the hue they
+	// picked is intent worth preserving and the lerp stays (go-slide-creator-s7wmh).
+	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil, false)
 	// Fix sRGB colors in text (with white-text-safe awareness)
-	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold)
+	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold, false)
 
 	if fixed == txBody {
 		return shapeXML, nil // No changes needed
@@ -723,7 +732,7 @@ var srgbClrInFillRegexp = regexp.MustCompile(
 // snaps to dk1/lt1 (clean flip) instead of lerping to an intermediate gray.
 // This avoids the muddy-gray-on-light-yellow result that the binary-search
 // EnsureContrast produces when both fg and target are close to one extreme.
-func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, fillSafe bool, threshold float64) string {
+func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, fillSafe bool, threshold float64, authorBackground bool) string {
 	return srgbClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		submatches := srgbClrInFillRegexp.FindStringSubmatch(match)
 		if len(submatches) < 4 {
@@ -746,7 +755,7 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 			return match // Contrast already meets the ratio this text size needs
 		}
 
-		fixedColor, _, fixedScheme := contrastReplacementScheme(hexVal, fgColor, bgColor, themeColors, threshold)
+		fixedColor, _, fixedScheme := contrastReplacementScheme(hexVal, fgColor, bgColor, themeColors, threshold, authorBackground)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Warn("text contrast fix: replacing low-contrast sRGB color",
@@ -784,7 +793,7 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 // When fillSafe is true and the foreground scheme color is lt1/bg1 (white),
 // the fix is skipped — the template metadata certifies that white text on
 // this fill is safe.
-func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool, threshold float64, override map[string]string) string {
+func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool, threshold float64, override map[string]string, authorBackground bool) string {
 	return schemeClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		// Extract the scheme color name from the match
 		submatches := schemeClrInFillRegexp.FindStringSubmatch(match)
@@ -825,7 +834,7 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		// theme extreme rather than lerping into a muddy gray — this fixes the
 		// white-on-light-yellow case where EnsureContrast otherwise produces
 		// ~#606060.
-		fixedColor, _, fixedScheme := contrastReplacementScheme(schemeName, fgColor, bgColor, themeColors, threshold)
+		fixedColor, _, fixedScheme := contrastReplacementScheme(schemeName, fgColor, bgColor, themeColors, threshold, authorBackground)
 		newRatio := fixedColor.ContrastWith(bgColor)
 
 		slog.Warn("text contrast fix: replacing low-contrast scheme color",

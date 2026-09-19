@@ -72,7 +72,7 @@ The numeric ranges above are the published surface of the canonical design token
 
 | # | Rule | Rationale |
 |---|---|---|
-| 16 | Engine auto-replaces low-contrast text with dark gray (WCAG AA, ratio < ~3.0). Auto-fixes are now visible — check `fit_findings` for `contrast_autofixed` entries (with before/after ratios) before deciding whether to re-author colors | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
+| 16 | Engine auto-replaces low-contrast text (WCAG AA for that text's size). On a fill you authored it nudges the color toward black/white; on a background YOU set on the slide it snaps to a template text color instead. Auto-fixes are visible — check `fit_findings` for `contrast_autofixed` entries (with before/after ratios) before deciding whether to re-author colors | White on `accent3`-`accent6` → surprise gray. Fix: use `accent1`/`accent2` fill, or `dk1` text, or `"contrast_check": false` (last resort — only when you've verified contrast manually) |
 
 ## Icons (no emoji)
 

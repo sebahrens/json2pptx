@@ -36,6 +36,13 @@ type ContrastPreflightPair struct {
 	// small text — the conservative reading (go-slide-creator-9ux4).
 	TextPt float64
 	Bold   bool
+	// AuthorBackground marks a background the author introduced (a slide
+	// background.color or scrim) rather than one the template supplies. The
+	// replacement snaps to the palette there instead of lerping, so the
+	// prediction matches what the renderer does (go-slide-creator-s7wmh). A
+	// shape-grid cell is NOT one of these: its fill and text were chosen
+	// together.
+	AuthorBackground bool
 }
 
 // DetectContrastPreflight predicts whether the renderer's contrast pass
@@ -79,7 +86,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		// render-time pass would. This keeps the predicted color identical to
 		// the contrast_autofixed swap. replacement_mode discloses which branch
 		// produced it.
-		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold)
+		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold, p.AuthorBackground)
 		newRatio := replacement.ContrastWith(bg)
 		source := p.Source
 		if source == "" {
